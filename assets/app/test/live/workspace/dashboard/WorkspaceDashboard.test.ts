@@ -64,6 +64,14 @@ function mountDashboard(props = {}) {
 }
 
 describe("WorkspaceDashboard", () => {
+  it("links members, but not viewers, to read-only workspace settings", () => {
+    const { wrapper: member } = mountDashboard({ membership: { role: "member" } });
+    const { wrapper: viewer } = mountDashboard({ membership: { role: "viewer" } });
+
+    expect(member.find('a[href="/settings"]').exists()).toBe(true);
+    expect(viewer.find('a[href="/settings"]').exists()).toBe(false);
+  });
+
   it("filters projects locally without sending a LiveView search event", async () => {
     const { live, wrapper } = mountDashboard();
     const input = wrapper.get('input[type="search"]');

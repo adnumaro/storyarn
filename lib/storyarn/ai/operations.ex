@@ -3,6 +3,7 @@ defmodule Storyarn.AI.Operations do
 
   import Ecto.Query
 
+  alias Storyarn.AI.Alerts
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.Operation
   alias Storyarn.AI.PolicyDecision
@@ -37,9 +38,18 @@ defmodule Storyarn.AI.Operations do
     fn -> operation.id |> lock_operation() |> start_attempt_locked(task, route) end
     |> Repo.transaction()
     |> case do
-      {:ok, {:started, usage}} -> {:ok, usage}
-      {:ok, {:cancelled, cancelled}} -> {:cancelled, cancelled}
-      {:error, reason} -> {:error, reason}
+      {:ok, {:started, usage}} ->
+        {:ok, usage}
+
+      {:ok, {:cancelled, cancelled}} ->
+        {:cancelled, cancelled}
+
+      {:error, :duplicate_external_attempt = reason} ->
+        duplicate_attempt_alert(operation)
+        {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -74,7 +84,6 @@ defmodule Storyarn.AI.Operations do
 
   defp start_attempt_locked(locked, task, route) do
     if Repo.exists?(from(event in UsageEvent, where: event.operation_id == ^locked.id)) do
-      duplicate_attempt_alert(locked)
       Repo.rollback(:duplicate_external_attempt)
     else
       start_first_attempt(locked, task, route)
@@ -412,6 +421,16 @@ defmodule Storyarn.AI.Operations do
       status: operation.execution_status,
       error_classification: "duplicate_external_attempt"
     })
+
+    Alerts.record(%{
+      dedupe_key: "duplicate-attempt:#{operation.id}",
+      kind: "duplicate_attempt",
+      severity: "critical",
+      workspace_id: operation.workspace_id,
+      workspace_id_snapshot: operation.workspace_id_snapshot,
+      operation_id: operation.id,
+      metadata: %{"task_id" => operation.task_id}
+    })
   end
 
   defp finish_unknown_locked(operation_id, usage_id, reason, metrics) do
@@ -424,6 +443,19 @@ defmodule Storyarn.AI.Operations do
       "unknown",
       metrics |> Map.put(:completed_at, now) |> Map.put(:error_classification, classification)
     )
+
+    Alerts.record(%{
+      dedupe_key: "unknown-operation:#{locked.id}",
+      kind: "unknown_operation",
+      severity: "critical",
+      workspace_id: locked.workspace_id,
+      workspace_id_snapshot: locked.workspace_id_snapshot,
+      operation_id: locked.id,
+      metadata: %{
+        "task_id" => locked.task_id,
+        "error_classification" => classification
+      }
+    })
 
     locked = release!(locked)
     delete_result(locked.id)

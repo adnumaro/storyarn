@@ -28,6 +28,7 @@ defmodule StoryarnWeb.SettingsLive.Tutorials do
       current_scope={@current_scope}
       workspaces={@workspaces}
       managed_workspace_slugs={@managed_workspace_slugs}
+      general_workspace_slugs={@general_workspace_slugs}
       current_path={@current_path}
       onboarding={@onboarding}
     >

@@ -33,6 +33,7 @@ interface SettingsItem {
 }
 
 interface SettingsSection {
+  key: string;
   label: string;
   items: SettingsItem[];
 }
@@ -57,7 +58,7 @@ interface SettingsFeatureFlags {
 const {
   currentPath,
   workspaces = [],
-  managedWorkspaceSlugs = [],
+  workspaceSettingsAccess = {},
   workspace = null,
   project = null,
   title = null,
@@ -68,7 +69,7 @@ const {
 } = defineProps<{
   currentPath: string;
   workspaces?: SettingsWorkspace[];
-  managedWorkspaceSlugs?: string[];
+  workspaceSettingsAccess?: Record<string, "manage" | "general">;
   workspace?: SettingsWorkspace | null;
   project?: SettingsProject | null;
   title?: string | null;
@@ -131,6 +132,7 @@ const sections = computed<SettingsSection[]>(() => {
 
     return [
       {
+        key: "project-general",
         label: t("project_settings.nav.sections.general"),
         items: [
           { label: t("project_settings.nav.items.general"), path: basePath, icon: "settings" },
@@ -147,6 +149,7 @@ const sections = computed<SettingsSection[]>(() => {
         ],
       },
       {
+        key: "project-integrations",
         label: t("project_settings.nav.sections.integrations"),
         items: [
           {
@@ -157,6 +160,7 @@ const sections = computed<SettingsSection[]>(() => {
         ],
       },
       {
+        key: "project-administration",
         label: t("project_settings.nav.sections.administration"),
         items: [
           {
@@ -184,9 +188,11 @@ const sections = computed<SettingsSection[]>(() => {
     ];
   }
 
-  const managedWorkspaceSet = new Set(managedWorkspaceSlugs);
-  const managedWorkspaces = workspaces.filter((workspace) =>
-    managedWorkspaceSet.has(workspace.slug),
+  const managedWorkspaces = workspaces.filter(
+    (workspace) => workspaceSettingsAccess[workspace.slug] === "manage",
+  );
+  const readOnlyWorkspaces = workspaces.filter(
+    (workspace) => workspaceSettingsAccess[workspace.slug] === "general",
   );
 
   const accountItems = [
@@ -217,10 +223,12 @@ const sections = computed<SettingsSection[]>(() => {
 
   return [
     {
+      key: "account",
       label: t("settings.nav.sections.account"),
       items: accountItems,
     },
     ...managedWorkspaces.map((workspace) => ({
+      key: `workspace:${workspace.slug}`,
       label: workspace.name,
       items: [
         {
@@ -237,6 +245,17 @@ const sections = computed<SettingsSection[]>(() => {
           label: t("settings.nav.items.deleted_projects"),
           path: `/users/settings/workspaces/${workspace.slug}/deleted-projects`,
           icon: "trash-2",
+        },
+      ],
+    })),
+    ...readOnlyWorkspaces.map((workspace) => ({
+      key: `workspace:${workspace.slug}`,
+      label: workspace.name,
+      items: [
+        {
+          label: t("settings.nav.items.workspace_general"),
+          path: `/users/settings/workspaces/${workspace.slug}/general`,
+          icon: "settings",
         },
       ],
     })),
@@ -262,7 +281,7 @@ const sections = computed<SettingsSection[]>(() => {
       </div>
 
       <nav class="flex-1 overflow-y-auto p-3 space-y-5">
-        <div v-for="section in sections" :key="section.label">
+        <div v-for="section in sections" :key="section.key">
           <h3 class="text-xs font-semibold uppercase text-foreground/50 px-2 mb-2 tracking-wider">
             {{ section.label }}
           </h3>

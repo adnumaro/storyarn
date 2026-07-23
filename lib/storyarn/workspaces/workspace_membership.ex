@@ -67,7 +67,8 @@ defmodule Storyarn.Workspaces.WorkspaceMembership do
 
   Actions:
   - :manage_workspace - update workspace settings, delete workspace
-  - :access_workspace_settings - open the workspace settings pages
+  - :access_workspace_general_settings - open read-only workspace general settings
+  - :access_workspace_settings - open administrative workspace settings pages
   - :manage_members - invite/remove members, change roles
   - :create_project - create new projects
   - :use_ai - execute an explicitly initiated workspace AI task
@@ -76,18 +77,20 @@ defmodule Storyarn.Workspaces.WorkspaceMembership do
 
   Permissions:
   - owner: all actions
-  - admin: access_workspace_settings, manage_members, create_project, use_ai, view
-  - member: create_project, view
+  - admin: access_workspace_general_settings, access_workspace_settings, manage_members, create_project, use_ai, view
+  - member: access_workspace_general_settings, create_project, view
   - viewer: view only
   """
   def can?(role, action)
 
   def can?("owner", _action), do: true
+  def can?("admin", :access_workspace_general_settings), do: true
   def can?("admin", :access_workspace_settings), do: true
   def can?("admin", :manage_members), do: true
   def can?("admin", :create_project), do: true
   def can?("admin", :use_ai), do: true
   def can?("admin", :view), do: true
+  def can?("member", :access_workspace_general_settings), do: true
   def can?("member", :create_project), do: true
   def can?("member", :view), do: true
   def can?("viewer", :view), do: true

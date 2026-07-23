@@ -8,7 +8,8 @@ defmodule Storyarn.AI.InferenceProvider do
           required(:model) => String.t(),
           required(:input) => map() | list(),
           required(:max_output_bytes) => pos_integer(),
-          required(:provider_options) => map()
+          required(:provider_options) => map(),
+          required(:provider_configuration) => map()
         }
 
   @type response :: %{

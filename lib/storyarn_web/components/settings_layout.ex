@@ -20,7 +20,11 @@ defmodule StoryarnWeb.Components.SettingsLayout do
 
   attr :managed_workspace_slugs, :any,
     default: MapSet.new(),
-    doc: "MapSet of workspace slugs where user has WorkspaceMembership"
+    doc: "MapSet of workspace slugs where the user can access administrative settings"
+
+  attr :general_workspace_slugs, :any,
+    default: MapSet.new(),
+    doc: "MapSet of workspace slugs where the user can access general settings"
 
   attr :current_path, :string, required: true, doc: "current settings path for nav highlighting"
   attr :sudo_grant, :string, default: nil, doc: "validated grant for sensitive settings links"
@@ -46,7 +50,9 @@ defmodule StoryarnWeb.Components.SettingsLayout do
         current-path={@current_path}
         sudo-grant={@sudo_grant}
         workspaces={settings_workspaces(@workspaces)}
-        managed-workspace-slugs={settings_managed_workspace_slugs(@managed_workspace_slugs)}
+        workspace-settings-access={
+          settings_workspace_access(@managed_workspace_slugs, @general_workspace_slugs)
+        }
         workspace={settings_workspace(@workspace)}
         project={settings_project(@project)}
         title={slot_to_text(@title)}
@@ -98,9 +104,18 @@ defmodule StoryarnWeb.Components.SettingsLayout do
     end)
   end
 
-  defp settings_managed_workspace_slugs(%MapSet{} = slugs), do: MapSet.to_list(slugs)
-  defp settings_managed_workspace_slugs(slugs) when is_list(slugs), do: slugs
-  defp settings_managed_workspace_slugs(_slugs), do: []
+  defp settings_workspace_access(managed_slugs, general_slugs) do
+    managed_slugs = normalize_workspace_slugs(managed_slugs)
+
+    general_slugs
+    |> normalize_workspace_slugs()
+    |> Map.new(&{&1, "general"})
+    |> Map.merge(Map.new(managed_slugs, &{&1, "manage"}))
+  end
+
+  defp normalize_workspace_slugs(%MapSet{} = slugs), do: MapSet.to_list(slugs)
+  defp normalize_workspace_slugs(slugs) when is_list(slugs), do: slugs
+  defp normalize_workspace_slugs(_slugs), do: []
 
   defp settings_workspace(nil), do: nil
 

@@ -4,10 +4,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   """
   use StoryarnWeb, :live_view
 
+  alias Storyarn.AI
   alias Storyarn.Assets
   alias Storyarn.Assets.ImageProcessor
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.UploadPolicy
+  alias Storyarn.FeatureFlags
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.LanguagePickerOption
@@ -17,14 +19,15 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   def mount(_params, _session, socket) do
     %{workspace: workspace, membership: membership} = socket.assigns
 
-    if Workspaces.can?(membership.role, :access_workspace_settings) do
+    if Workspaces.can?(membership.role, :access_workspace_general_settings) do
       changeset = Workspaces.change_workspace(workspace)
 
       {:ok,
        socket
        |> assign(:page_title, dgettext("workspaces", "Workspace Settings"))
        |> assign(:current_path, ~p"/users/settings/workspaces/#{workspace.slug}/general")
-       |> assign(:form, to_form(changeset))}
+       |> assign(:form, to_form(changeset))
+       |> assign_ai_settings()}
     else
       {:ok,
        socket
@@ -45,6 +48,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
       current_scope={@current_scope}
       workspaces={@workspaces}
       managed_workspace_slugs={@managed_workspace_slugs}
+      general_workspace_slugs={@general_workspace_slugs}
       current_path={@current_path}
     >
       <.vue
@@ -58,9 +62,24 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         source-locale={@workspace.source_locale || ""}
         language-options={LanguagePickerOption.all()}
         is-owner={@membership.role == "owner"}
+        can-edit-workspace={Workspaces.can?(@membership.role, :manage_workspace)}
+        ai={serialize_ai_settings(assigns)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
+  end
+
+  @impl true
+  def handle_event("update_managed_ai_policy", %{"enabled" => enabled}, socket) when is_boolean(enabled) do
+    if FeatureFlags.enabled?(:ai_integrations, for: socket.assigns.current_scope.user) do
+      update_managed_ai_policy(socket, enabled)
+    else
+      {:noreply, put_flash(socket, :error, dgettext("workspaces", "Storyarn AI policy could not be updated."))}
+    end
+  end
+
+  def handle_event("update_managed_ai_policy", _params, socket) do
+    {:noreply, put_flash(socket, :error, dgettext("workspaces", "Storyarn AI policy could not be updated."))}
   end
 
   @impl true
@@ -197,5 +216,81 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
     else
       _ -> {:error, :invalid_banner_upload}
     end
+  end
+
+  defp assign_ai_settings(socket) do
+    user = socket.assigns.current_scope.user
+    visible? = FeatureFlags.enabled?(:ai_integrations, for: user)
+
+    if visible? do
+      {:ok, policy} = AI.get_workspace_policy(socket.assigns.current_scope, socket.assigns.workspace.id)
+      {:ok, allowance} = AI.allowance_summary(socket.assigns.current_scope, socket.assigns.workspace.id)
+
+      socket
+      |> assign(:ai_visible, true)
+      |> assign(:ai_policy_lanes, policy.allowed_lanes)
+      |> assign(:ai_managed_allowed, "managed" in policy.allowed_lanes)
+      |> assign(:ai_allowance, allowance)
+      |> assign(:ai_provenance, AI.managed_provenance())
+    else
+      socket
+      |> assign(:ai_visible, false)
+      |> assign(:ai_policy_lanes, [])
+      |> assign(:ai_managed_allowed, false)
+      |> assign(:ai_allowance, %{})
+      |> assign(:ai_provenance, nil)
+    end
+  end
+
+  defp update_managed_ai_policy(socket, enabled) do
+    lanes =
+      if enabled,
+        do: Enum.uniq(["managed" | socket.assigns.ai_policy_lanes]),
+        else: List.delete(socket.assigns.ai_policy_lanes, "managed")
+
+    case AI.update_workspace_policy(socket.assigns.current_scope, socket.assigns.workspace.id, lanes) do
+      {:ok, _policy} ->
+        {:noreply,
+         socket
+         |> assign_ai_settings()
+         |> put_flash(:info, dgettext("workspaces", "Storyarn AI policy updated."))}
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("workspaces", "Only the workspace owner can change Storyarn AI policy."))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Storyarn AI policy could not be updated."))}
+    end
+  end
+
+  defp serialize_ai_allowance(%{} = allowance) do
+    %{
+      status: Map.get(allowance, :status),
+      availableUnits: Map.get(allowance, :available_units, 0),
+      reservedUnits: Map.get(allowance, :reserved_units, 0),
+      committedUnits: Map.get(allowance, :committed_units, 0)
+    }
+  end
+
+  defp serialize_ai_provenance(%{} = provenance) do
+    %{
+      provider: Map.get(provenance, :provider),
+      model: Map.get(provenance, :model),
+      region: Map.get(provenance, :region),
+      dataRetention: Map.get(provenance, :data_retention),
+      trainingUsage: Map.get(provenance, :training_usage)
+    }
+  end
+
+  defp serialize_ai_provenance(nil), do: nil
+
+  defp serialize_ai_settings(assigns) do
+    %{
+      visible: assigns.ai_visible,
+      managedAllowed: assigns.ai_managed_allowed,
+      allowance: serialize_ai_allowance(assigns.ai_allowance),
+      provenance: serialize_ai_provenance(assigns.ai_provenance)
+    }
   end
 end

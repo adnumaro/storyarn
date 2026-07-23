@@ -24,7 +24,7 @@ defmodule Storyarn.AI.Executor do
          {:ok, input} <- load_input(operation.id),
          {:ok, usage} <- normalize_attempt(Operations.start_attempt(operation, task, route)) do
       started = System.monotonic_time(:millisecond)
-      result = call_provider(provider, credential, task, route.model, input)
+      result = call_provider(provider, credential, task, route, input)
       latency = max(System.monotonic_time(:millisecond) - started, 0)
       finalize(result, operation, task, usage, latency)
     else
@@ -44,13 +44,14 @@ defmodule Storyarn.AI.Executor do
   defp normalize_attempt({:cancelled, operation}), do: {:cancelled, operation}
   defp normalize_attempt({:error, reason}), do: {:error, reason}
 
-  defp call_provider(provider, credential, task, model, input) do
+  defp call_provider(provider, credential, task, route, input) do
     request = %{
       task_id: task.id,
-      model: model,
+      model: route.model,
       input: input,
       max_output_bytes: task.max_output_bytes,
-      provider_options: task.provider_options
+      provider_options: task.provider_options,
+      provider_configuration: route.provider_configuration
     }
 
     async =

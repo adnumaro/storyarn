@@ -3,6 +3,7 @@ defmodule Storyarn.AI.Execution do
 
   import Ecto.Query
 
+  alias Storyarn.AI.Alerts
   alias Storyarn.AI.CanonicalJSON
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.ExecutionRoute
@@ -51,8 +52,12 @@ defmodule Storyarn.AI.Execution do
     fn -> replay_or_create(intent, task) end
     |> Repo.transaction()
     |> case do
-      {:ok, {operation, created?}} -> {:ok, operation, created?}
-      {:error, reason} -> {:error, reason}
+      {:ok, {operation, created?}} ->
+        {:ok, operation, created?}
+
+      {:error, reason} ->
+        maybe_alert_execution_block(intent, reason)
+        {:error, reason}
     end
   end
 
@@ -232,4 +237,33 @@ defmodule Storyarn.AI.Execution do
 
   defp unwrap_transaction({:ok, result}), do: {:ok, result}
   defp unwrap_transaction({:error, reason}), do: {:error, reason}
+
+  defp maybe_alert_execution_block(intent, reason)
+       when reason in [
+              :provider_daily_budget_exhausted,
+              :provider_monthly_budget_exhausted,
+              :workspace_provider_budget_exhausted
+            ] do
+    Alerts.record(%{
+      dedupe_key: "provider-budget:#{intent.workspace_id}:#{reason}:#{Date.utc_today()}",
+      kind: "provider_cost_spike",
+      severity: "warning",
+      workspace_id: intent.workspace_id,
+      workspace_id_snapshot: intent.workspace_id,
+      metadata: %{"reason" => Atom.to_string(reason), "task_id" => intent.task_id}
+    })
+  end
+
+  defp maybe_alert_execution_block(intent, :allowance_projection_mismatch) do
+    Alerts.record(%{
+      dedupe_key: "allowance-projection:#{intent.workspace_id}:#{Date.utc_today()}",
+      kind: "allowance_anomaly",
+      severity: "critical",
+      workspace_id: intent.workspace_id,
+      workspace_id_snapshot: intent.workspace_id,
+      metadata: %{"task_id" => intent.task_id}
+    })
+  end
+
+  defp maybe_alert_execution_block(_intent, _reason), do: :ok
 end

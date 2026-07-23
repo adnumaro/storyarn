@@ -30,6 +30,8 @@ defmodule Storyarn.AI.RouteOption do
     field :policy_version, :integer
     field :price_id, :string
     field :price_version, :integer
+    field :price_units, :integer
+    field :provider_configuration, :map
     field :expires_at, :utc_datetime
     field :consumed_at, :utc_datetime
 
@@ -61,6 +63,8 @@ defmodule Storyarn.AI.RouteOption do
       :policy_version,
       :price_id,
       :price_version,
+      :price_units,
+      :provider_configuration,
       :expires_at
     ])
     |> put_identity_fields(attrs)
@@ -80,10 +84,13 @@ defmodule Storyarn.AI.RouteOption do
       :assignment_source,
       :consent_basis,
       :policy_version,
+      :price_units,
+      :provider_configuration,
       :expires_at
     ])
     |> validate_inclusion(:lane, ~w(managed personal_byok workspace_byok))
     |> validate_number(:policy_version, greater_than: 0)
+    |> validate_number(:price_units, greater_than: 0)
     |> validate_subject()
     |> unique_constraint(:token_hash)
     |> foreign_key_constraint(:user_id)

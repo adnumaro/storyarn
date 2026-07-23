@@ -22,6 +22,29 @@ defmodule Storyarn.AI.RouteResolver do
     Enum.any?(routes(decision, task), &(&1 == route))
   end
 
+  @spec managed_provenance() :: map() | nil
+  def managed_provenance do
+    config = config()[:managed]
+
+    with true <- is_list(config),
+         true <- config[:enabled] == true,
+         true <- config[:verified_zdr] == true,
+         true <- config[:verified_no_training] == true,
+         provider when is_binary(provider) <- config[:provider],
+         model when is_binary(model) <- config[:model],
+         {:ok, provider_configuration} <- provider_configuration(config) do
+      %{
+        provider: provider,
+        model: model,
+        region: provider_configuration["region"],
+        data_retention: provider_configuration["data_retention"],
+        training_usage: provider_configuration["training_usage"]
+      }
+    else
+      _unavailable -> nil
+    end
+  end
+
   defp route_for_lane(:managed, decision, task) do
     config = config()[:managed]
 
@@ -29,9 +52,13 @@ defmodule Storyarn.AI.RouteResolver do
          true <- Settlement.available?(:managed),
          provider when is_binary(provider) <- config[:provider],
          model when is_binary(model) <- config[:model],
+         true <- config[:enabled] == true,
+         true <- config[:verified_zdr] == true,
+         true <- config[:verified_no_training] == true,
          reference when is_binary(reference) <- config[:credential_ref],
          {:ok, credential_ref} <- CredentialRef.new(:managed, reference),
-         %{id: price_id, version: price_version} <- task.managed_price do
+         {:ok, provider_configuration} <- provider_configuration(config),
+         %{id: price_id, version: price_version, units: price_units} <- task.managed_price do
       [
         %ExecutionRoute{
           lane: :managed,
@@ -43,7 +70,9 @@ defmodule Storyarn.AI.RouteResolver do
           consent_basis: config[:consent_basis] || "workspace_policy",
           policy_version: decision.policy_version,
           price_id: price_id,
-          price_version: price_version
+          price_version: price_version,
+          price_units: price_units,
+          provider_configuration: provider_configuration
         }
       ]
     else
@@ -57,4 +86,103 @@ defmodule Storyarn.AI.RouteResolver do
   defp config do
     Application.get_env(:storyarn, __MODULE__, [])
   end
+
+  defp provider_configuration(config) do
+    endpoint = config[:endpoint]
+    region = config[:region]
+    provider_price = normalize_map(config[:provider_price])
+    budget = normalize_map(config[:budget])
+
+    with true <- valid_https_endpoint?(endpoint),
+         true <- is_binary(region) and byte_size(region) > 0,
+         true <- valid_provider_price?(provider_price),
+         true <- valid_budget?(budget) do
+      {:ok,
+       %{
+         "region" => region,
+         "data_retention" => "zero_data_retention",
+         "training_usage" => "disabled",
+         "provider_price" => provider_price,
+         "budget" => budget
+       }}
+    else
+      _invalid -> {:error, :managed_route_invalid}
+    end
+  end
+
+  defp valid_https_endpoint?(endpoint) when is_binary(endpoint) do
+    case URI.parse(endpoint) do
+      %URI{
+        scheme: "https",
+        host: host,
+        userinfo: nil,
+        query: nil,
+        fragment: nil
+      }
+      when is_binary(host) and host != "" ->
+        true
+
+      _invalid ->
+        false
+    end
+  end
+
+  defp valid_https_endpoint?(_endpoint), do: false
+
+  defp valid_provider_price?(%{
+         "version" => version,
+         "currency" => currency,
+         "input_per_million" => input_rate,
+         "output_per_million" => output_rate,
+         "max_estimated_cost" => estimate
+       }) do
+    with true <- is_integer(version) and version > 0,
+         true <- is_binary(currency) and currency != "",
+         {:ok, input_rate} <- decimal(input_rate),
+         {:ok, output_rate} <- decimal(output_rate),
+         {:ok, estimate} <- decimal(estimate) do
+      free? = zero?(input_rate) and zero?(output_rate)
+      free? or positive?(estimate)
+    else
+      _invalid -> false
+    end
+  end
+
+  defp valid_provider_price?(_price), do: false
+
+  defp valid_budget?(%{"global_daily" => daily, "global_monthly" => monthly, "workspace_daily" => workspace}) do
+    Enum.all?([daily, monthly, workspace], fn value ->
+      case decimal(value) do
+        {:ok, decimal} -> positive?(decimal)
+        {:error, :invalid_decimal} -> false
+      end
+    end)
+  end
+
+  defp valid_budget?(_budget), do: false
+
+  defp decimal(%Decimal{} = value), do: nonnegative_decimal(value)
+  defp decimal(value) when is_integer(value), do: value |> Decimal.new() |> nonnegative_decimal()
+
+  defp decimal(value) when is_binary(value) do
+    case Decimal.parse(value) do
+      {decimal, ""} -> nonnegative_decimal(decimal)
+      _invalid -> {:error, :invalid_decimal}
+    end
+  end
+
+  defp decimal(_value), do: {:error, :invalid_decimal}
+
+  defp nonnegative_decimal(decimal) do
+    if Decimal.compare(decimal, Decimal.new(0)) in [:eq, :gt],
+      do: {:ok, decimal},
+      else: {:error, :invalid_decimal}
+  end
+
+  defp zero?(decimal), do: Decimal.compare(decimal, Decimal.new(0)) == :eq
+  defp positive?(decimal), do: Decimal.compare(decimal, Decimal.new(0)) == :gt
+
+  defp normalize_map(value) when is_list(value), do: value |> Map.new() |> normalize_map()
+  defp normalize_map(value) when is_map(value), do: Map.new(value, fn {key, item} -> {to_string(key), item} end)
+  defp normalize_map(_value), do: %{}
 end

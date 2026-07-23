@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.AI
   alias Storyarn.Assets.Storage
   alias Storyarn.Workspaces
 
@@ -26,6 +27,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert vue.component == "live/workspace/settings/WorkspaceSettingsGeneral"
       assert vue.props["workspace-name"] == "Test Workspace"
       assert vue.props["is-owner"] == true
+      assert vue.props["can-edit-workspace"] == true
     end
 
     test "renders Vue for admin", %{conn: conn} do
@@ -43,6 +45,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       vue = get_general_vue(view)
       assert vue.props["workspace-name"] == "Admin Test Workspace"
       assert vue.props["is-owner"] == false
+      assert vue.props["can-edit-workspace"] == false
     end
 
     test "is-owner=true only for owner", %{conn: conn} do
@@ -74,19 +77,21 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert vue.props["is-owner"] == false
     end
 
-    test "redirects member (non-admin) to settings with error", %{conn: conn} do
+    test "renders read-only general settings for a member", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
 
       member = user_fixture()
       workspace_membership_fixture(workspace, member, "member")
 
-      logged_in_conn = log_in_user(conn, member)
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(member)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      assert {:error, {:live_redirect, %{to: "/users/settings", flash: flash}}} =
-               live(logged_in_conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
-
-      assert flash["error"] =~ "You don't have permission to manage this workspace."
+      vue = get_general_vue(view)
+      assert vue.props["is-owner"] == false
+      assert vue.props["can-edit-workspace"] == false
     end
 
     test "redirects viewer to settings with error", %{conn: conn} do
@@ -152,6 +157,88 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
                "shortLabel" => "PT",
                "value" => "pt-br"
              } in vue.props["language-options"]
+    end
+  end
+
+  describe "Storyarn AI policy" do
+    test "flagged owner sees allowance state and can enable managed policy", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      FunWithFlags.enable(:ai_integrations, for_actor: owner)
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(owner)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      vue = get_general_vue(view)
+      assert vue.props["ai"]["visible"] == true
+      assert vue.props["ai"]["managedAllowed"] == false
+      assert vue.props["ai"]["allowance"]["status"] == "unavailable"
+
+      render_click(view, "update_managed_ai_policy", %{"enabled" => true})
+
+      assert {:ok, policy} = AI.get_workspace_policy(user_scope_fixture(owner), workspace.id)
+      assert policy.allowed_lanes == ["managed"]
+      assert get_general_vue(view).props["ai"]["managedAllowed"] == true
+    end
+
+    test "flagged admin and member can read but cannot change managed policy", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      owner_scope = user_scope_fixture(owner)
+      assert {:ok, _policy} = AI.update_workspace_policy(owner_scope, workspace.id, ["managed"])
+
+      for role <- ["admin", "member"] do
+        user = user_fixture()
+        workspace_membership_fixture(workspace, user, role)
+        FunWithFlags.enable(:ai_integrations, for_actor: user)
+
+        {:ok, view, _html} =
+          conn
+          |> recycle()
+          |> log_in_user(user)
+          |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+        vue = get_general_vue(view)
+        assert vue.props["ai"]["visible"] == true
+        assert vue.props["ai"]["managedAllowed"] == true
+        assert vue.props["is-owner"] == false
+
+        html = render_click(view, "update_managed_ai_policy", %{"enabled" => false})
+        assert html =~ "Only the workspace owner can change Storyarn AI policy."
+      end
+
+      assert {:ok, policy} = AI.get_workspace_policy(owner_scope, workspace.id)
+      assert policy.allowed_lanes == ["managed"]
+    end
+
+    test "AI settings stay absent when the invite flag is off", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(owner)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      assert get_general_vue(view).props["ai"]["visible"] == false
+    end
+
+    test "an unflagged owner cannot forge a managed-policy update", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(owner)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      html = render_click(view, "update_managed_ai_policy", %{"enabled" => true})
+      assert html =~ "Storyarn AI policy could not be updated."
+
+      assert {:ok, policy} = AI.get_workspace_policy(user_scope_fixture(owner), workspace.id)
+      assert policy.allowed_lanes == []
     end
   end
 

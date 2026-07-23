@@ -1,5 +1,10 @@
 import Config
 
+alias Storyarn.AI.CredentialResolver.Managed
+alias Storyarn.AI.InferenceProviders.Fireworks
+alias Storyarn.AI.InferenceProviders.Together
+alias Storyarn.AI.Tasks.ManagedDiagnostic
+
 env = fn key ->
   case System.get_env(key) do
     value when is_binary(value) ->
@@ -63,6 +68,102 @@ if config_env() != :test do
 
   config :storyarn, Storyarn.Workers.TrashRetentionWorker,
     enabled: System.get_env("ENTITY_TRASH_RETENTION_ENABLED") in ~w(true 1)
+end
+
+managed_ai_enabled? = config_env() != :test and env.("STORYARN_AI_MANAGED_ENABLED") in ~w(true 1)
+
+if managed_ai_enabled? do
+  if env.("STORYARN_AI_MANAGED_ZDR_VERIFIED") not in ~w(true 1) or
+       env.("STORYARN_AI_MANAGED_NO_TRAINING_VERIFIED") not in ~w(true 1) do
+    raise "managed AI requires explicit ZDR and no-training verification"
+  end
+
+  positive_integer = fn key ->
+    case Integer.parse(required_env.(key)) do
+      {value, ""} when value > 0 -> value
+      _invalid -> raise "environment variable #{key} must be a positive integer"
+    end
+  end
+
+  provider_configs = %{
+    "fireworks" => %{
+      adapter: Fireworks,
+      api_key_env: "STORYARN_AI_FIREWORKS_API_KEY",
+      credential_ref: "storyarn-managed-fireworks-v1",
+      endpoint:
+        env.("STORYARN_AI_FIREWORKS_ENDPOINT") ||
+          "https://api.fireworks.ai/inference/v1/chat/completions"
+    },
+    "together" => %{
+      adapter: Together,
+      api_key_env: "STORYARN_AI_TOGETHER_API_KEY",
+      credential_ref: "storyarn-managed-together-v1",
+      endpoint:
+        env.("STORYARN_AI_TOGETHER_ENDPOINT") ||
+          "https://api.together.xyz/v1/chat/completions"
+    }
+  }
+
+  provider_name = required_env.("STORYARN_AI_MANAGED_PROVIDER")
+
+  provider_config =
+    Map.get(provider_configs, provider_name) ||
+      raise "STORYARN_AI_MANAGED_PROVIDER must be fireworks or together"
+
+  credentials =
+    provider_configs
+    |> Enum.reduce(%{}, fn {_name, config}, acc ->
+      case env.(config.api_key_env) do
+        nil -> acc
+        api_key -> Map.put(acc, config.credential_ref, api_key)
+      end
+    end)
+    |> Map.put(provider_config.credential_ref, required_env.(provider_config.api_key_env))
+
+  config :storyarn, Fireworks, endpoint: provider_configs["fireworks"].endpoint
+  config :storyarn, Managed, credentials: credentials
+
+  config :storyarn, ManagedDiagnostic,
+    enabled: true,
+    price_id: required_env.("STORYARN_AI_DIAGNOSTIC_PRICE_ID"),
+    price_version: positive_integer.("STORYARN_AI_DIAGNOSTIC_PRICE_VERSION"),
+    price_units: positive_integer.("STORYARN_AI_DIAGNOSTIC_PRICE_UNITS")
+
+  config :storyarn, Storyarn.AI.CredentialResolver, Managed
+
+  config :storyarn, Storyarn.AI.InferenceProviders,
+    providers: Map.new(provider_configs, fn {name, provider} -> {name, provider.adapter} end)
+
+  config :storyarn, Storyarn.AI.RouteResolver,
+    managed: [
+      enabled: true,
+      provider: provider_name,
+      model: required_env.("STORYARN_AI_MANAGED_MODEL"),
+      credential_ref: provider_config.credential_ref,
+      payer: "storyarn",
+      assignment_source: "operator_default",
+      consent_basis: "workspace_policy",
+      verified_zdr: true,
+      verified_no_training: true,
+      endpoint: provider_config.endpoint,
+      region: required_env.("STORYARN_AI_MANAGED_REGION"),
+      provider_price: [
+        version: positive_integer.("STORYARN_AI_PROVIDER_PRICE_VERSION"),
+        currency: required_env.("STORYARN_AI_PROVIDER_PRICE_CURRENCY"),
+        input_per_million: required_env.("STORYARN_AI_PROVIDER_INPUT_PER_MILLION"),
+        output_per_million: required_env.("STORYARN_AI_PROVIDER_OUTPUT_PER_MILLION"),
+        max_estimated_cost: required_env.("STORYARN_AI_PROVIDER_MAX_OPERATION_COST")
+      ],
+      budget: [
+        global_daily: required_env.("STORYARN_AI_PROVIDER_GLOBAL_DAILY_CAP"),
+        global_monthly: required_env.("STORYARN_AI_PROVIDER_GLOBAL_MONTHLY_CAP"),
+        workspace_daily: required_env.("STORYARN_AI_PROVIDER_WORKSPACE_DAILY_CAP")
+      ]
+    ]
+
+  config :storyarn, Storyarn.AI.Settlement, Storyarn.AI.Settlement.Managed
+  config :storyarn, Storyarn.AI.TaskRegistry, tasks: [ManagedDiagnostic]
+  config :storyarn, Together, endpoint: provider_configs["together"].endpoint
 end
 
 posthog_dotenv =

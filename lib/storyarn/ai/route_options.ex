@@ -41,6 +41,8 @@ defmodule Storyarn.AI.RouteOptions do
       policy_version: route.policy_version,
       price_id: route.price_id,
       price_version: route.price_version,
+      price_units: route.price_units,
+      provider_configuration: route.provider_configuration,
       expires_at: expires_at
     }
 
@@ -55,6 +57,7 @@ defmodule Storyarn.AI.RouteOptions do
            payer: route.payer,
            price_id: route.price_id,
            price_version: route.price_version,
+           price_units: route.price_units,
            expires_at: expires_at
          }}
 
@@ -90,7 +93,9 @@ defmodule Storyarn.AI.RouteOptions do
          consent_basis: option.consent_basis,
          policy_version: option.policy_version,
          price_id: option.price_id,
-         price_version: option.price_version
+         price_version: option.price_version,
+         price_units: option.price_units,
+         provider_configuration: option.provider_configuration
        }}
     else
       nil -> {:error, :route_ref_invalid}

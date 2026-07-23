@@ -103,7 +103,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
               key: "workspace_settings",
               items:
                 destinations.workspaces
-                |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_settings))
+                |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_general_settings))
                 |> Enum.map(&workspace_settings_item/1)
             },
             %{key: "entities", items: Enum.map(destinations.entities, &nav_item/1)}

@@ -30,8 +30,8 @@ Storyarn's AI strategy is **Storyarn AI by default, personal BYOK as the advance
 | --- | -------------------------------------------------- | ----------------------------------- | -------------------------------------- | ------------------------------------ |
 | 0   | Personal provider connections + AI flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md`      | —                                      | **merged** (PR #28)                  |
 | 1   | Command palette foundation (no AI)                 | `SLICE_1_COMMAND_PALETTE.md`        | —                                      | **merged** (F1 PR #30; F2/F3 PR #31) |
-| 2   | AI execution kernel + palette bridge               | `SLICE_2_AI_EXECUTION_KERNEL.md`    | 0, 1                                   | implemented; pending review/merge    |
-| 3   | Storyarn AI beta + internal allowance              | `SLICE_3_STORYARN_AI_BETA.md`       | 2                                      | pending                              |
+| 2   | AI execution kernel + palette bridge               | `SLICE_2_AI_EXECUTION_KERNEL.md`    | 0, 1                                   | **merged** (PR #39)                  |
+| 3   | Storyarn AI beta + internal allowance              | `SLICE_3_STORYARN_AI_BETA.md`       | 2                                      | implemented; pending review/merge    |
 | 4   | Personal BYOK execution lane                       | `SLICE_4_PERSONAL_BYOK_LANE.md`     | 0, 2, 3                                | pending                              |
 | 5   | Central routing + personal AI preferences          | `SLICE_5_AI_ROUTING_PREFERENCES.md` | 2–4                                    | pending                              |
 | 6   | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`         | 2                                      | pending                              |
@@ -160,7 +160,7 @@ No lane silently falls back to another. Allowance exhaustion or route failure re
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Beta payment system     | **Not required.** Internal allowance + metering only                                                                                                 |
 | Managed user charge     | Fixed, versioned task price; real provider cost stays internal                                                                                       |
-| Storyarn AI provider    | One configured route; Together remains conditional on verified ZDR + EU setup, otherwise the Storyarn operator reselects                             |
+| Storyarn AI provider    | One active route; Fireworks primary, Together explicit alternative; verified ZDR + no-training, disclosed region, and no automatic provider fallback |
 | Personal key sharing    | Forbidden; only credential owner may execute                                                                                                         |
 | Automatic lane fallback | Forbidden; payer/provider changes require explicit choice                                                                                            |
 | DeepL migration         | Deferred; do not replace shared project config with personal preferences                                                                             |

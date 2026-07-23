@@ -172,7 +172,9 @@ defmodule Storyarn.AI.Task do
   defp valid_managed_price?(%{allowed_lanes: lanes, managed_price: price}) when is_list(lanes) do
     if :managed in lanes do
       match?(
-        %{id: id, version: version} when is_binary(id) and byte_size(id) > 0 and is_integer(version) and version > 0,
+        %{id: id, version: version, units: units}
+        when is_binary(id) and byte_size(id) > 0 and is_integer(version) and version > 0 and
+               is_integer(units) and units > 0,
         price
       )
     else

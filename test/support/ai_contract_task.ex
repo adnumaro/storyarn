@@ -27,7 +27,7 @@ defmodule StoryarnTest.AI.ContractTask do
       bulk_allowed?: false,
       scheduled_allowed?: false,
       result_visibility: :actor_private,
-      managed_price: Keyword.get(config, :managed_price, %{id: "contract-free", version: 1}),
+      managed_price: Keyword.get(config, :managed_price, %{id: "contract-free", version: 1, units: 1}),
       enabled?: Keyword.get(config, :enabled, true),
       command_ids: ["ai.contract.echo"],
       provider_options: %{scenario: Keyword.get(config, :scenario, :success)}
