@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { AlertTriangle, ImagePlus, ShieldCheck, Sparkles, Trash2 } from "lucide-vue-next";
+import {
+  AlertTriangle,
+  ExternalLink,
+  ImagePlus,
+  KeyRound,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+} from "lucide-vue-next";
 import { ref, watch } from "vue";
 import ThemeSelector from "@components/ThemeSelector.vue";
 import { Button } from "@components/ui/button";
@@ -24,6 +32,7 @@ import { useLive } from "@shared/composables/useLive";
 type AiSettings = {
   visible?: boolean;
   managedAllowed?: boolean;
+  personalAllowed?: boolean;
   allowance?: {
     status?: string;
     availableUnits?: number;
@@ -143,6 +152,11 @@ function confirmDeleteWorkspace() {
 function updateManagedAiPolicy(enabled: boolean) {
   if (!isOwner) return;
   live.pushEvent("update_managed_ai_policy", { enabled });
+}
+
+function updatePersonalAiPolicy(enabled: boolean) {
+  if (!isOwner) return;
+  live.pushEvent("update_personal_ai_policy", { enabled });
 }
 </script>
 
@@ -320,6 +334,61 @@ function updateManagedAiPolicy(enabled: boolean) {
           />
           <span v-if="!isOwner" class="text-right text-xs text-muted-foreground">
             {{ $t("settings.workspace.storyarn_ai.owner_only") }}
+          </span>
+        </div>
+      </div>
+
+      <div
+        id="personal-ai-policy"
+        class="flex items-start justify-between gap-5 rounded-xl border border-border bg-card p-5 shadow-sm"
+      >
+        <div class="min-w-0 space-y-3">
+          <div class="flex items-center gap-2">
+            <span
+              class="flex size-9 items-center justify-center rounded-lg bg-secondary text-secondary-foreground"
+            >
+              <KeyRound class="size-5" />
+            </span>
+            <div>
+              <h3 class="font-semibold text-foreground">
+                {{ $t("settings.workspace.personal_ai.title") }}
+              </h3>
+              <p class="text-xs text-muted-foreground">
+                {{ $t("settings.workspace.personal_ai.badge") }}
+              </p>
+            </div>
+          </div>
+
+          <p class="max-w-2xl text-sm leading-6 text-muted-foreground">
+            {{ $t("settings.workspace.personal_ai.description") }}
+          </p>
+
+          <div
+            class="flex items-start gap-2 rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground"
+          >
+            <ShieldCheck class="mt-0.5 size-4 shrink-0 text-primary" />
+            <p>{{ $t("settings.workspace.personal_ai.disclosure") }}</p>
+          </div>
+
+          <a
+            href="/users/settings/integrations"
+            class="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+          >
+            {{ $t("settings.workspace.personal_ai.manage_keys") }}
+            <ExternalLink class="size-3.5" />
+          </a>
+        </div>
+
+        <div class="flex shrink-0 flex-col items-end gap-2">
+          <Switch
+            id="personal-ai-policy-toggle"
+            :model-value="ai.personalAllowed"
+            :disabled="!isOwner"
+            :aria-label="$t('settings.workspace.personal_ai.toggle_label')"
+            @update:model-value="updatePersonalAiPolicy"
+          />
+          <span v-if="!isOwner" class="text-right text-xs text-muted-foreground">
+            {{ $t("settings.workspace.personal_ai.owner_only") }}
           </span>
         </div>
       </div>

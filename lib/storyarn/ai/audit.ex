@@ -17,9 +17,10 @@ defmodule Storyarn.AI.Audit do
   @doc """
   Insert an audit row. Returns `{:ok, entry}` or `{:error, changeset}`.
 
-  Failures are non-fatal for the caller — audit is defense-in-depth, not the
-  primary source of truth. `user_id` is stored twice: as a nilifiable FK and
-  as the immutable `actor_id` snapshot.
+  Credential-mutation callers include this insert in the same transaction so
+  the lifecycle change and audit cannot diverge. Validation-failure callers
+  have no credential mutation to roll back. `user_id` is stored twice: as a
+  nilifiable FK and as the immutable `actor_id` snapshot.
   """
   @spec log(integer(), atom() | String.t(), AuditEntry.action(), map()) ::
           {:ok, AuditEntry.t()} | {:error, Ecto.Changeset.t()}

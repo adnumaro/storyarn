@@ -18,6 +18,7 @@ defmodule Storyarn.AI.PolicyDecision do
   alias Storyarn.Workspaces.WorkspaceMembership
 
   @enforce_keys [
+    :actor_id,
     :workspace_id,
     :project_id,
     :task_id,
@@ -28,6 +29,7 @@ defmodule Storyarn.AI.PolicyDecision do
     :domain_permission
   ]
   defstruct [
+    :actor_id,
     :workspace_id,
     :project_id,
     :task_id,
@@ -53,7 +55,7 @@ defmodule Storyarn.AI.PolicyDecision do
     subject_authorization = Keyword.get(opts, :subject_authorization, intent)
 
     with :ok <- feature_enabled(intent),
-         :ok <- task_shape(intent, task),
+         :ok <- task_shape(intent, task, lane),
          {:ok, access} <- resolve_access(intent, lock_access?),
          :ok <- base_permission(access, task, intent),
          :ok <- domain_permission(access, task, phase),
@@ -62,12 +64,13 @@ defmodule Storyarn.AI.PolicyDecision do
          :ok <- lane_allowed(policy.allowed_lanes, task.allowed_lanes, lane) do
       {:ok,
        %__MODULE__{
+         actor_id: intent.scope.user.id,
          workspace_id: intent.workspace_id,
          project_id: intent.project_id,
          task_id: task.id,
          phase: phase,
          policy_version: policy.version,
-         allowed_lanes: Enum.filter(task.allowed_lanes, &(Atom.to_string(&1) in policy.allowed_lanes)),
+         allowed_lanes: allowed_lanes(intent, task, policy.allowed_lanes),
          base_permission: :use_ai,
          domain_permission: Map.fetch!(task.required_domain_permissions, phase),
          project_role: access.project_role,
@@ -121,6 +124,7 @@ defmodule Storyarn.AI.PolicyDecision do
   def to_map(%__MODULE__{} = decision) do
     %{
       "workspace_id" => decision.workspace_id,
+      "actor_id" => decision.actor_id,
       "project_id" => decision.project_id,
       "task_id" => decision.task_id,
       "phase" => Atom.to_string(decision.phase),
@@ -139,10 +143,10 @@ defmodule Storyarn.AI.PolicyDecision do
     if FeatureFlags.enabled?(:ai_integrations, for: user), do: :ok, else: {:error, :feature_disabled}
   end
 
-  defp task_shape(intent, task) do
+  defp task_shape(intent, task, lane) do
     with :ok <- task_matches(intent, task),
          :ok <- bulk_allowed(intent, task),
-         :ok <- scheduled_allowed(intent, task) do
+         :ok <- scheduled_allowed(intent, task, lane) do
       valid_data_scope(intent, task)
     end
   end
@@ -154,9 +158,13 @@ defmodule Storyarn.AI.PolicyDecision do
   defp bulk_allowed(%ExecutionIntent{}, %Task{bulk_allowed?: true}), do: :ok
   defp bulk_allowed(%ExecutionIntent{}, %Task{}), do: {:error, :bulk_not_allowed}
 
-  defp scheduled_allowed(%ExecutionIntent{scheduled?: false}, %Task{}), do: :ok
-  defp scheduled_allowed(%ExecutionIntent{}, %Task{scheduled_allowed?: true}), do: :ok
-  defp scheduled_allowed(%ExecutionIntent{}, %Task{}), do: {:error, :scheduled_not_allowed}
+  defp scheduled_allowed(%ExecutionIntent{scheduled?: false}, %Task{}, _lane), do: :ok
+
+  defp scheduled_allowed(%ExecutionIntent{scheduled?: true}, %Task{}, :personal_byok),
+    do: {:error, :personal_byok_unattended}
+
+  defp scheduled_allowed(%ExecutionIntent{}, %Task{scheduled_allowed?: true}, _lane), do: :ok
+  defp scheduled_allowed(%ExecutionIntent{}, %Task{}, _lane), do: {:error, :scheduled_not_allowed}
 
   defp valid_data_scope(%ExecutionIntent{project_id: nil, subject: nil}, %Task{data_scope: :workspace}), do: :ok
 
@@ -303,4 +311,14 @@ defmodule Storyarn.AI.PolicyDecision do
   end
 
   defp lane_allowed(_policy_lanes, _task_lanes, _lane), do: {:error, :lane_not_allowed}
+
+  defp allowed_lanes(%ExecutionIntent{scheduled?: true}, task, policy_lanes) do
+    task.allowed_lanes
+    |> List.delete(:personal_byok)
+    |> Enum.filter(&(Atom.to_string(&1) in policy_lanes))
+  end
+
+  defp allowed_lanes(%ExecutionIntent{}, task, policy_lanes) do
+    Enum.filter(task.allowed_lanes, &(Atom.to_string(&1) in policy_lanes))
+  end
 end

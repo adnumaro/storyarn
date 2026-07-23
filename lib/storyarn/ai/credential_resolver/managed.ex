@@ -6,7 +6,7 @@ defmodule Storyarn.AI.CredentialResolver.Managed do
   alias Storyarn.AI.ResolvedCredential
 
   @impl true
-  def resolve(%CredentialRef{kind: :managed, reference: reference}) do
+  def resolve(%CredentialRef{kind: :managed, reference: reference}, _context) do
     config = Application.get_env(:storyarn, __MODULE__, [])
 
     with credentials when is_map(credentials) <- config[:credentials],
@@ -18,5 +18,8 @@ defmodule Storyarn.AI.CredentialResolver.Managed do
     end
   end
 
-  def resolve(_ref), do: {:error, :credential_unavailable}
+  def resolve(_ref, _context), do: {:error, :credential_unavailable}
+
+  @impl true
+  def record_outcome(_credential, _outcome), do: :ok
 end

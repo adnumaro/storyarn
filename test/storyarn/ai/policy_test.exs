@@ -57,7 +57,22 @@ defmodule Storyarn.AI.PolicyTest do
     assert {:ok, readable} = AI.get_workspace_policy(admin_scope, workspace.id)
     assert readable.version == 2
     assert {:error, :unauthorized} = AI.update_workspace_policy(admin_scope, workspace.id, [])
-    assert {:error, :invalid_policy} = AI.update_workspace_policy(scope, workspace.id, ["personal_byok"])
+
+    assert {:ok, personal_only} =
+             AI.update_workspace_policy(scope, workspace.id, ["personal_byok"])
+
+    assert personal_only.allowed_lanes == ["personal_byok"]
+    assert personal_only.version == 3
+
+    assert {:ok, both} =
+             AI.update_workspace_policy(scope, workspace.id, ["personal_byok", "managed"])
+
+    assert both.allowed_lanes == ["managed", "personal_byok"]
+    assert both.version == 4
+    assert Repo.aggregate(WorkspacePolicyAudit, :count) == 3
+
+    assert {:error, :invalid_policy} =
+             AI.update_workspace_policy(scope, workspace.id, ["unknown"])
   end
 
   test "AI permissions have explicit project and workspace matrices" do

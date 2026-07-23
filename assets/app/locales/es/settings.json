@@ -91,6 +91,15 @@
           "unavailable": "Sin asignación"
         }
       },
+      "personal_ai": {
+        "title": "Claves personales de IA",
+        "badge": "BYOK · facturado por el proveedor",
+        "description": "Permite que los miembros autorizados ejecuten explícitamente herramientas de IA compatibles con su propia cuenta de proveedor. Las claves personales siguen siendo privadas para su propietario y nunca consumen la asignación de Storyarn AI del espacio.",
+        "toggle_label": "Permitir claves personales de IA en este espacio",
+        "owner_only": "Solo el propietario del espacio puede cambiar esta política.",
+        "disclosure": "Antes del primer uso, cada miembro debe consentir el proveedor, el espacio, la capacidad y la clase de coste. La tarea muestra qué datos del proyecto saldrán de Storyarn y el proveedor factura a la cuenta de ese miembro. No hay fallback automático entre claves personales y Storyarn AI.",
+        "manage_keys": "Gestionar mis conexiones de proveedor"
+      },
       "appearance": {
         "title": "Apariencia",
         "system": "Sistema",

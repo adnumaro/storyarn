@@ -1,5 +1,7 @@
 import Config
 
+alias Storyarn.AI.InferenceProviders.Fake
+
 # Only in tests, remove the complexity from the password hashing algorithm
 config :bcrypt_elixir, :log_rounds, 1
 
@@ -45,15 +47,40 @@ config :posthog,
 # Oban: inline mode for testing
 config :storyarn, Oban, testing: :manual
 config :storyarn, Storyarn.AI.CredentialResolver, StoryarnTest.AI.FakeCredentialResolver
-config :storyarn, Storyarn.AI.InferenceProviders, providers: %{"fake" => Storyarn.AI.InferenceProviders.Fake}
+
+config :storyarn, Storyarn.AI.InferenceProviders,
+  providers: %{
+    "fake" => Fake,
+    "openai" => Fake
+  }
 
 config :storyarn, Storyarn.AI.InferenceProviders.Fireworks,
   endpoint: "https://fake.test/inference/v1/chat/completions",
   req_options: [plug: {Req.Test, StoryarnTest.AI.Fireworks}]
 
+config :storyarn, Storyarn.AI.InferenceProviders.Personal.Anthropic,
+  endpoint: "https://fake.test/v1/messages",
+  req_options: [plug: {Req.Test, StoryarnTest.AI.PersonalAnthropic}]
+
+config :storyarn, Storyarn.AI.InferenceProviders.Personal.OpenAI,
+  endpoint: "https://fake.test/v1/chat/completions",
+  request_overrides: %{store: false},
+  req_options: [plug: {Req.Test, StoryarnTest.AI.PersonalOpenAI}]
+
 config :storyarn, Storyarn.AI.InferenceProviders.Together,
   endpoint: "https://fake.test/v1/chat/completions",
   req_options: [plug: {Req.Test, StoryarnTest.AI.Together}]
+
+config :storyarn, Storyarn.AI.PersonalConsents, policy_text_version: "personal-egress-test-v1"
+
+config :storyarn, Storyarn.AI.PersonalProviders,
+  providers: %{
+    "openai" => %{
+      model: "personal-deterministic-v1",
+      response_mode: "json_schema",
+      processing_location: "provider-controlled"
+    }
+  }
 
 # Route AI-provider validation calls through Req.Test stubs so no test opens
 # an outbound socket. Each provider adapter has its own stub name so tests can

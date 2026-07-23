@@ -24,8 +24,8 @@ defmodule Storyarn.AI.Runtime do
   ## Telemetry
 
   Emits `[:ai, :integration, :call, :start | :stop | :exception]` via
-  `:telemetry.span/3` with `%{provider: String.t(), user_id: integer()}`
-  metadata.
+  `:telemetry.span/3` with finite provider and credential-kind metadata. Raw
+  user ids are deliberately excluded.
   """
 
   alias Storyarn.Accounts.User
@@ -52,7 +52,7 @@ defmodule Storyarn.AI.Runtime do
         {:error, :not_connected}
 
       %Integration{} = integration ->
-        metadata = %{provider: integration.provider, user_id: integration.user_id}
+        metadata = %{provider: integration.provider, credential_kind: "personal_byok"}
 
         :telemetry.span([:ai, :integration, :call], metadata, fn ->
           result = fun.(integration.api_key_encrypted)

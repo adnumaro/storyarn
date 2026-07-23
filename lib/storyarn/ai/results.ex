@@ -4,7 +4,9 @@ defmodule Storyarn.AI.Results do
   import Ecto.Query
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.PolicyDecision
   alias Storyarn.AI.Result
   alias Storyarn.AI.Task
@@ -89,6 +91,8 @@ defmodule Storyarn.AI.Results do
            {:ok, task} <- TaskRegistry.get(operation.task_id),
            :ok <- task_contract_current(operation, task),
            {:ok, _decision} <- PolicyDecision.reauthorize(operation, task, :apply, lock_policy: true),
+           {:ok, route} <- ExecutionRoute.from_map(operation.execution_route),
+           :ok <- PersonalConsents.authorize_operation(operation, task, route, lock: true),
            %Result{} = result <- lock_result(operation.id),
            true <- DateTime.after?(result.expires_at, TimeHelpers.now()),
            {:ok, output} <- Jason.decode(result.output_encrypted),

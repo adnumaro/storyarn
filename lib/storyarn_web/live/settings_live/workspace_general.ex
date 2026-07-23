@@ -82,6 +82,18 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
     {:noreply, put_flash(socket, :error, dgettext("workspaces", "Storyarn AI policy could not be updated."))}
   end
 
+  def handle_event("update_personal_ai_policy", %{"enabled" => enabled}, socket) when is_boolean(enabled) do
+    if FeatureFlags.enabled?(:ai_integrations, for: socket.assigns.current_scope.user) do
+      update_personal_ai_policy(socket, enabled)
+    else
+      {:noreply, put_flash(socket, :error, dgettext("workspaces", "Personal AI policy could not be updated."))}
+    end
+  end
+
+  def handle_event("update_personal_ai_policy", _params, socket) do
+    {:noreply, put_flash(socket, :error, dgettext("workspaces", "Personal AI policy could not be updated."))}
+  end
+
   @impl true
   def handle_event("validate", %{"workspace" => workspace_params}, socket) do
     changeset =
@@ -230,6 +242,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
       |> assign(:ai_visible, true)
       |> assign(:ai_policy_lanes, policy.allowed_lanes)
       |> assign(:ai_managed_allowed, "managed" in policy.allowed_lanes)
+      |> assign(:ai_personal_allowed, "personal_byok" in policy.allowed_lanes)
       |> assign(:ai_allowance, allowance)
       |> assign(:ai_provenance, AI.managed_provenance())
     else
@@ -237,8 +250,31 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
       |> assign(:ai_visible, false)
       |> assign(:ai_policy_lanes, [])
       |> assign(:ai_managed_allowed, false)
+      |> assign(:ai_personal_allowed, false)
       |> assign(:ai_allowance, %{})
       |> assign(:ai_provenance, nil)
+    end
+  end
+
+  defp update_personal_ai_policy(socket, enabled) do
+    lanes =
+      if enabled,
+        do: Enum.uniq(["personal_byok" | socket.assigns.ai_policy_lanes]),
+        else: List.delete(socket.assigns.ai_policy_lanes, "personal_byok")
+
+    case AI.update_workspace_policy(socket.assigns.current_scope, socket.assigns.workspace.id, lanes) do
+      {:ok, _policy} ->
+        {:noreply,
+         socket
+         |> assign_ai_settings()
+         |> put_flash(:info, dgettext("workspaces", "Personal AI policy updated."))}
+
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("workspaces", "Only the workspace owner can change Personal AI policy."))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Personal AI policy could not be updated."))}
     end
   end
 
@@ -289,6 +325,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
     %{
       visible: assigns.ai_visible,
       managedAllowed: assigns.ai_managed_allowed,
+      personalAllowed: assigns.ai_personal_allowed,
       allowance: serialize_ai_allowance(assigns.ai_allowance),
       provenance: serialize_ai_provenance(assigns.ai_provenance)
     }

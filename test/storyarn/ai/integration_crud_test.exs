@@ -79,7 +79,7 @@ defmodule Storyarn.AI.IntegrationCrudTest do
       Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, %{"data" => []}) end)
 
       {:ok, integration} = AI.connect(user, :anthropic, "sk-ant-api03-first-abcd")
-      {:ok, _} = AI.revoke(integration)
+      {:ok, _} = AI.revoke(user, integration)
 
       assert {:ok, %Integration{key_last_four: "wxyz"}} =
                AI.connect(user, :anthropic, "sk-ant-api03-second-wxyz")
@@ -100,20 +100,20 @@ defmodule Storyarn.AI.IntegrationCrudTest do
       %{user: user, integration: integration}
     end
 
-    test "sets revoked_at and audits", %{integration: integration} do
-      assert {:ok, %Integration{revoked_at: %DateTime{}}} = AI.revoke(integration)
+    test "sets revoked_at and audits", %{user: user, integration: integration} do
+      assert {:ok, %Integration{revoked_at: %DateTime{}}} = AI.revoke(user, integration)
       assert [_connected, %AuditEntry{action: "disconnected"}] = Repo.all(AuditEntry)
     end
 
     test "get_active returns nil after revoke", %{user: user, integration: integration} do
-      {:ok, _} = AI.revoke(integration)
+      {:ok, _} = AI.revoke(user, integration)
       assert is_nil(AI.get_active(user, :anthropic))
     end
 
-    test "a second revoke is rejected and writes no extra audit", %{integration: integration} do
-      {:ok, _} = AI.revoke(integration)
+    test "a second revoke is rejected and writes no extra audit", %{user: user, integration: integration} do
+      {:ok, _} = AI.revoke(user, integration)
 
-      assert {:error, :already_revoked} = AI.revoke(integration)
+      assert {:error, :already_revoked} = AI.revoke(user, integration)
 
       disconnected_count =
         AuditEntry
@@ -121,6 +121,13 @@ defmodule Storyarn.AI.IntegrationCrudTest do
         |> Enum.count(&(&1.action == "disconnected"))
 
       assert disconnected_count == 1
+    end
+
+    test "another user cannot revoke the integration", %{integration: integration} do
+      other_user = user_fixture()
+
+      assert {:error, :unauthorized} = AI.revoke(other_user, integration)
+      assert is_nil(Repo.get!(Integration, integration.id).revoked_at)
     end
   end
 
@@ -132,7 +139,7 @@ defmodule Storyarn.AI.IntegrationCrudTest do
 
       {:ok, _} = AI.connect(user_a, :anthropic, "sk-ant-api03-user-a-key1")
       {:ok, other_integration} = AI.connect(user_b, :anthropic, "sk-ant-api03-user-b-key2")
-      {:ok, _revoked} = AI.revoke(other_integration)
+      {:ok, _revoked} = AI.revoke(user_b, other_integration)
 
       assert [%Integration{user_id: user_a_id}] = AI.list_active(user_a)
       assert user_a_id == user_a.id

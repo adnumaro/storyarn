@@ -338,7 +338,7 @@ defmodule Storyarn.AI.ExecutionTest do
     task = Enum.find(AI.registered_tasks(), &(&1.id == "contract.echo"))
 
     assert {:ok, running, ^task, route} = Operations.claim(queued.id)
-    assert {:ok, usage} = Operations.start_attempt(running, task, route)
+    assert {:ok, usage, _credential} = Operations.start_attempt(running, task, route)
     assert {:ok, requested} = AI.cancel(ctx.scope, running.id)
     assert requested.cancellation_requested_at
 
@@ -358,9 +358,9 @@ defmodule Storyarn.AI.ExecutionTest do
     task = Enum.find(AI.registered_tasks(), &(&1.id == "contract.echo"))
 
     assert {:ok, first, ^task, first_route} = Operations.claim(first.id)
-    assert {:ok, first_usage} = Operations.start_attempt(first, task, first_route)
+    assert {:ok, first_usage, _credential} = Operations.start_attempt(first, task, first_route)
     assert {:ok, second, ^task, second_route} = Operations.claim(second.id)
-    assert {:ok, second_usage} = Operations.start_attempt(second, task, second_route)
+    assert {:ok, second_usage, _credential} = Operations.start_attempt(second, task, second_route)
 
     assert {:error, :invalid_transition} = Operations.finish_failure(first, second_usage, :provider_error)
     assert :ok = Operations.finish_failure(first, first_usage, :provider_error)
@@ -375,7 +375,7 @@ defmodule Storyarn.AI.ExecutionTest do
     {queued, _intent} = execute!(ctx, "settlement failure")
     task = Enum.find(AI.registered_tasks(), &(&1.id == "contract.echo"))
     assert {:ok, running, ^task, route} = Operations.claim(queued.id)
-    assert {:ok, usage} = Operations.start_attempt(running, task, route)
+    assert {:ok, usage, _credential} = Operations.start_attempt(running, task, route)
 
     Application.put_env(:storyarn, FakeSettlement, release: {:error, :ledger_unavailable})
     assert {:error, :ledger_unavailable} = Operations.finish_failure(running, usage, :provider_error)
@@ -417,7 +417,7 @@ defmodule Storyarn.AI.ExecutionTest do
     task = Enum.find(AI.registered_tasks(), &(&1.id == "contract.echo"))
 
     assert {:ok, running, ^task, route} = Operations.claim(queued.id)
-    assert {:ok, usage} = Operations.start_attempt(running, task, route)
+    assert {:ok, usage, _credential} = Operations.start_attempt(running, task, route)
     assert {:error, :duplicate_external_attempt} = Operations.start_attempt(running, task, route)
     assert Repo.aggregate(UsageEvent, :count) == 1
 
@@ -453,7 +453,7 @@ defmodule Storyarn.AI.ExecutionTest do
 
     {after_attempt, _intent} = execute!(ctx, "interrupt after attempt")
     assert {:ok, running_after, ^task, route} = Operations.claim(after_attempt.id)
-    assert {:ok, usage} = Operations.start_attempt(running_after, task, route)
+    assert {:ok, usage, _credential} = Operations.start_attempt(running_after, task, route)
 
     assert :ok = Operations.recover_interrupted(running_after.id)
     recovered_after = Repo.get!(Operation, running_after.id)

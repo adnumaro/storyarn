@@ -4,8 +4,10 @@ defmodule Storyarn.AI.Operations do
   import Ecto.Query
 
   alias Storyarn.AI.Alerts
+  alias Storyarn.AI.CredentialResolver
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.PolicyDecision
   alias Storyarn.AI.Result
   alias Storyarn.AI.Settlement
@@ -33,13 +35,15 @@ defmodule Storyarn.AI.Operations do
   end
 
   @spec start_attempt(Operation.t(), Task.t(), ExecutionRoute.t()) ::
-          {:ok, UsageEvent.t()} | {:cancelled, Operation.t()} | {:error, atom()}
+          {:ok, UsageEvent.t(), Storyarn.AI.ResolvedCredential.t()}
+          | {:cancelled, Operation.t()}
+          | {:error, atom()}
   def start_attempt(%Operation{} = operation, task, route) do
     fn -> operation.id |> lock_operation() |> start_attempt_locked(task, route) end
     |> Repo.transaction()
     |> case do
-      {:ok, {:started, usage}} ->
-        {:ok, usage}
+      {:ok, {:started, usage, credential}} ->
+        {:ok, usage, credential}
 
       {:ok, {:cancelled, cancelled}} ->
         {:cancelled, cancelled}
@@ -93,15 +97,17 @@ defmodule Storyarn.AI.Operations do
   defp start_first_attempt(locked, task, route) do
     with %Operation{execution_status: "running", external_attempt_started_at: nil} <- locked,
          {:ok, _decision} <-
-           PolicyDecision.reauthorize(locked, task, :execute, lane: route.lane, lock_policy: true) do
-      insert_attempt(locked, route)
+           PolicyDecision.reauthorize(locked, task, :execute, lane: route.lane, lock_policy: true),
+         {:ok, credential} <-
+           CredentialResolver.resolve(route.credential_ref, %{operation: locked, task: task, route: route}) do
+      insert_attempt(locked, route, credential)
     else
       {:error, reason} -> {:cancelled, cancel_locked(locked, reason)}
       _invalid -> Repo.rollback(:invalid_attempt_state)
     end
   end
 
-  defp insert_attempt(locked, route) do
+  defp insert_attempt(locked, route, credential) do
     now = TimeHelpers.now()
 
     usage =
@@ -120,7 +126,7 @@ defmodule Storyarn.AI.Operations do
     |> Operation.transition_changeset(%{external_attempt_started_at: now})
     |> Repo.update!()
 
-    {:started, usage}
+    {:started, usage, credential}
   end
 
   @spec fail_before_attempt(Operation.t(), term()) :: :ok | {:error, term()}
@@ -147,10 +153,7 @@ defmodule Storyarn.AI.Operations do
       task = current_task(locked.task_id)
       now = TimeHelpers.now()
 
-      deliver? =
-        not is_nil(task) and locked.task_contract_hash == Task.contract_hash(task) and
-          is_nil(locked.cancellation_requested_at) and
-          match?({:ok, _}, PolicyDecision.reauthorize(locked, task, :execute, lock_policy: true))
+      deliver? = deliverable?(locked, task)
 
       finish_usage!(usage.id, "succeeded", Map.put(metrics, :completed_at, now))
       locked = commit!(locked)
@@ -388,6 +391,19 @@ defmodule Storyarn.AI.Operations do
     case TaskRegistry.get(task_id) do
       {:ok, task} -> task
       {:error, _reason} -> nil
+    end
+  end
+
+  defp deliverable?(locked, task) do
+    with %Task{} <- task,
+         true <- locked.task_contract_hash == Task.contract_hash(task),
+         true <- is_nil(locked.cancellation_requested_at),
+         {:ok, _decision} <- PolicyDecision.reauthorize(locked, task, :execute, lock_policy: true),
+         {:ok, route} <- ExecutionRoute.from_map(locked.execution_route),
+         :ok <- PersonalConsents.authorize_operation(locked, task, route, lock: true) do
+      true
+    else
+      _unauthorized -> false
     end
   end
 

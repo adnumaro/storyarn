@@ -6,11 +6,23 @@ defmodule Storyarn.AI.InferenceProviders.OpenAICompatible do
   def generate(adapter, %ResolvedCredential{kind: :managed, value: api_key}, request)
       when is_atom(adapter) and is_binary(api_key) do
     with {:ok, endpoint} <- endpoint(adapter),
-         {:ok, price_snapshot} <- route_configuration(request.provider_configuration),
-         {:ok, body} <- request_body(request),
+         {:ok, route_config} <- route_configuration(request.provider_configuration),
+         {:ok, body} <- request_body(request, route_config.response_mode),
          {:ok, response} <- post(adapter, endpoint, api_key, body),
          {:ok, output} <- extract_output(response.body),
-         {:ok, metrics} <- metrics(response.body, price_snapshot) do
+         {:ok, metrics} <- metrics(response.body, route_config.price_snapshot) do
+      {:ok, Map.merge(%{output: output}, metrics)}
+    end
+  end
+
+  def generate(adapter, %ResolvedCredential{kind: :personal_byok, value: api_key}, request)
+      when is_atom(adapter) and is_binary(api_key) do
+    with {:ok, endpoint} <- endpoint(adapter),
+         {:ok, route_config} <- route_configuration(request.provider_configuration),
+         {:ok, body} <- request_body(request, route_config.response_mode),
+         {:ok, response} <- post(adapter, endpoint, api_key, body),
+         {:ok, output} <- extract_output(response.body),
+         {:ok, metrics} <- metrics(response.body, route_config.price_snapshot) do
       {:ok, Map.merge(%{output: output}, metrics)}
     end
   end
@@ -23,12 +35,22 @@ defmodule Storyarn.AI.InferenceProviders.OpenAICompatible do
          "provider_price" => price_snapshot
        })
        when is_map(price_snapshot) do
-    {:ok, price_snapshot}
+    {:ok, %{price_snapshot: price_snapshot, response_mode: "json_schema"}}
+  end
+
+  defp route_configuration(%{
+         "personal_consent_id" => consent_id,
+         "personal_consent_version" => consent_version,
+         "response_mode" => response_mode
+       })
+       when is_integer(consent_id) and consent_id > 0 and is_binary(consent_version) and
+              response_mode in ["json_schema", "json_object"] do
+    {:ok, %{price_snapshot: nil, response_mode: response_mode}}
   end
 
   defp route_configuration(_configuration), do: {:error, :provider_error}
 
-  defp request_body(request) do
+  defp request_body(request, response_mode) do
     options = request.provider_options
     system_prompt = option(options, :system_prompt)
     response_schema = option(options, :response_schema)
@@ -40,30 +62,34 @@ defmodule Storyarn.AI.InferenceProviders.OpenAICompatible do
          true <- is_binary(schema_name) and schema_name != "",
          true <- is_integer(max_tokens) and max_tokens > 0,
          {:ok, input_json} <- Jason.encode(request.input) do
-      {:ok,
-       %{
-         model: request.model,
-         messages: [
-           %{role: "system", content: system_prompt},
-           %{role: "user", content: input_json}
-         ],
-         max_tokens: max_tokens,
-         temperature: option(options, :temperature) || 0,
-         response_format: %{
-           type: "json_schema",
-           json_schema: %{name: schema_name, schema: response_schema}
-         }
-       }}
+      body = %{
+        model: request.model,
+        messages: [
+          %{role: "system", content: system_prompt},
+          %{role: "user", content: input_json}
+        ],
+        max_tokens: max_tokens,
+        temperature: option(options, :temperature) || 0,
+        response_format: response_format(response_mode, schema_name, response_schema)
+      }
+
+      {:ok, body}
     else
       _invalid -> {:error, :provider_error}
     end
   end
 
+  defp response_format("json_schema", schema_name, response_schema) do
+    %{type: "json_schema", json_schema: %{name: schema_name, schema: response_schema}}
+  end
+
+  defp response_format("json_object", _schema_name, _response_schema), do: %{type: "json_object"}
+
   defp post(adapter, endpoint, api_key, body) do
     options =
       [
         url: endpoint,
-        json: body,
+        json: Map.merge(body, request_overrides(adapter)),
         headers: [{"authorization", "Bearer #{api_key}"}],
         retry: false,
         redirect: false
@@ -87,7 +113,7 @@ defmodule Storyarn.AI.InferenceProviders.OpenAICompatible do
 
   defp extract_output(_body), do: {:error, :invalid_output}
 
-  defp metrics(body, price_snapshot) do
+  defp metrics(body, price_snapshot) when is_map(price_snapshot) do
     with %{"prompt_tokens" => input, "completion_tokens" => output} <- body["usage"],
          true <- is_integer(input) and input >= 0 and is_integer(output) and output >= 0,
          {:ok, input_rate} <- decimal(price_snapshot["input_per_million"]),
@@ -112,6 +138,20 @@ defmodule Storyarn.AI.InferenceProviders.OpenAICompatible do
     end
   end
 
+  defp metrics(body, nil) do
+    with %{"prompt_tokens" => input, "completion_tokens" => output} <- body["usage"],
+         true <- is_integer(input) and input >= 0 and is_integer(output) and output >= 0 do
+      {:ok,
+       %{
+         provider_request_id: body["id"],
+         input_units: input,
+         output_units: output
+       }}
+    else
+      _invalid -> {:error, :invalid_output}
+    end
+  end
+
   defp option(options, key), do: Map.get(options, key, Map.get(options, Atom.to_string(key)))
 
   defp decimal(%Decimal{} = value), do: {:ok, value}
@@ -127,6 +167,12 @@ defmodule Storyarn.AI.InferenceProviders.OpenAICompatible do
     :storyarn
     |> Application.get_env(adapter, [])
     |> Keyword.get(:req_options, [])
+  end
+
+  defp request_overrides(adapter) do
+    :storyarn
+    |> Application.get_env(adapter, [])
+    |> Keyword.get(:request_overrides, %{})
   end
 
   defp endpoint(adapter) do

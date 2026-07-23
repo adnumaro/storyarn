@@ -109,9 +109,13 @@ defmodule Storyarn.AI.RuntimeTest do
 
     {:ok, _} = AI.with_integration(user, :anthropic, fn _key -> {:ok, :done} end)
 
-    assert_receive {:telemetry, [:ai, :integration, :call, :start], %{provider: "anthropic", user_id: user_id}}
+    assert_receive {:telemetry, [:ai, :integration, :call, :start],
+                    %{provider: "anthropic", credential_kind: "personal_byok"} = start_metadata}
 
-    assert_receive {:telemetry, [:ai, :integration, :call, :stop], %{provider: "anthropic"}}
-    assert user_id == user.id
+    assert_receive {:telemetry, [:ai, :integration, :call, :stop],
+                    %{provider: "anthropic", credential_kind: "personal_byok"} = stop_metadata}
+
+    refute Map.has_key?(start_metadata, :user_id)
+    refute Map.has_key?(stop_metadata, :user_id)
   end
 end

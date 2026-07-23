@@ -174,6 +174,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       vue = get_general_vue(view)
       assert vue.props["ai"]["visible"] == true
       assert vue.props["ai"]["managedAllowed"] == false
+      assert vue.props["ai"]["personalAllowed"] == false
       assert vue.props["ai"]["allowance"]["status"] == "unavailable"
 
       render_click(view, "update_managed_ai_policy", %{"enabled" => true})
@@ -181,6 +182,33 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert {:ok, policy} = AI.get_workspace_policy(user_scope_fixture(owner), workspace.id)
       assert policy.allowed_lanes == ["managed"]
       assert get_general_vue(view).props["ai"]["managedAllowed"] == true
+    end
+
+    test "owner can toggle personal keys without changing the managed policy", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      scope = user_scope_fixture(owner)
+      FunWithFlags.enable(:ai_integrations, for_actor: owner)
+      assert {:ok, _policy} = AI.update_workspace_policy(scope, workspace.id, ["managed"])
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(owner)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      render_click(view, "update_personal_ai_policy", %{"enabled" => true})
+
+      assert {:ok, enabled} = AI.get_workspace_policy(scope, workspace.id)
+      assert enabled.allowed_lanes == ["managed", "personal_byok"]
+      assert get_general_vue(view).props["ai"]["managedAllowed"] == true
+      assert get_general_vue(view).props["ai"]["personalAllowed"] == true
+
+      render_click(view, "update_personal_ai_policy", %{"enabled" => false})
+
+      assert {:ok, disabled} = AI.get_workspace_policy(scope, workspace.id)
+      assert disabled.allowed_lanes == ["managed"]
+      assert get_general_vue(view).props["ai"]["managedAllowed"] == true
+      assert get_general_vue(view).props["ai"]["personalAllowed"] == false
     end
 
     test "flagged admin and member can read but cannot change managed policy", %{conn: conn} do
@@ -211,6 +239,25 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
 
       assert {:ok, policy} = AI.get_workspace_policy(owner_scope, workspace.id)
       assert policy.allowed_lanes == ["managed"]
+    end
+
+    test "flagged non-owner cannot forge a personal-policy update", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      admin = user_fixture()
+      workspace_membership_fixture(workspace, admin, "admin")
+      FunWithFlags.enable(:ai_integrations, for_actor: admin)
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(admin)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      html = render_click(view, "update_personal_ai_policy", %{"enabled" => true})
+      assert html =~ "Only the workspace owner can change Personal AI policy."
+
+      assert {:ok, policy} = AI.get_workspace_policy(user_scope_fixture(admin), workspace.id)
+      assert policy.allowed_lanes == []
     end
 
     test "AI settings stay absent when the invite flag is off", %{conn: conn} do

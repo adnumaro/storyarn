@@ -286,3 +286,37 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:89
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:94
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:277
+#, elixir-autogen, elixir-format
+msgid "Personal AI policy could not be updated."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:270
+#, elixir-autogen, elixir-format
+msgid "Personal AI policy updated."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:274
+#, elixir-autogen, elixir-format
+msgid "Only the workspace owner can change Personal AI policy."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:77
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:82
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:299
+#, elixir-autogen, elixir-format
+msgid "Storyarn AI policy could not be updated."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:292
+#, elixir-autogen, elixir-format
+msgid "Storyarn AI policy updated."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:296
+#, elixir-autogen, elixir-format
+msgid "Only the workspace owner can change Storyarn AI policy."
+msgstr ""

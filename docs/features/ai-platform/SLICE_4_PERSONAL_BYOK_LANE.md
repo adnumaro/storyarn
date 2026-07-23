@@ -71,15 +71,18 @@ Before broad rollout, close Slice-0 credential-security debt: connect/disconnect
 
 ## Verification / Definition of Done
 
+The platform overview deliberately schedules the first end-user AI task for Slice 7. Therefore this infrastructure slice must not add a fake task shell solely to exercise action UI. It ships and verifies the reusable preflight/consent/route contract plus the real settings surfaces. The first consuming task must complete the deferred action-level acceptance below.
+
 - ExUnit: sudo-protected credential mutation, atomic/durable audit, owner-only credential use, extension of the Slice-2 policy without a parallel resolver, independent managed/personal lane combinations, workspace egress denial, actor removal/revocation before an actor-initiated worker call, rejection of unattended/scheduled use, consent lifecycle, no allowance-ledger writes, capability-specific 403 does not revoke, invalid-key response does, task caps, no retries, sanitized telemetry.
-- Vitest/LiveView: explicit lane choice, cost disclosure, consent modal, provider badge, connect/repair CTA, allowance-exhausted choice with no automatic switch.
-- Browser: two users in one workspace prove that each can use only their own connection and cannot select the other's.
+- Vitest/LiveView in this slice: independent managed/personal workspace controls, personal-data egress and external-billing disclosure, owner-only policy mutation, key-management CTA, and sudo-protected connection mutation.
+- Contract tests in this slice: preflight exposes `connect_required`, `consent_required`, and `ready` without leaking another member's integration; only `ready` receives an opaque route reference.
+- Deferred to the first consuming task: explicit lane picker, per-action cost/data disclosure, consent modal, `{Provider} · your key` badge, connect/repair CTA, allowance-exhausted choice with no automatic switch, and a two-user browser proof that neither can select the other's connection.
 - User documentation covers who pays, what data is sent, and how to revoke consent.
-- `just quality-lint` and full relevant suites green.
+- `mix precommit`, Vitest, and full relevant E2E suites green.
 
 ## Delivery
 
-Branch `feat/ai-personal-byok-lane` from `main` → PR → merge before Slice 5. Keep `:ai_integrations` invite-only.
+Branch `codex/slice4-personal-byok-lane` from `main` → PR → merge before Slice 5. Keep `:ai_integrations` invite-only.
 
 ## Inputs from previous slices
 

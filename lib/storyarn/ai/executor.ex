@@ -19,13 +19,13 @@ defmodule Storyarn.AI.Executor do
   end
 
   defp run_claimed(operation, task, route) do
-    with {:ok, credential} <- CredentialResolver.resolve(route.credential_ref),
-         {:ok, provider} <- InferenceProviders.fetch(route.provider),
+    with {:ok, provider} <- InferenceProviders.fetch(route.provider),
          {:ok, input} <- load_input(operation.id),
-         {:ok, usage} <- normalize_attempt(Operations.start_attempt(operation, task, route)) do
+         {:ok, usage, credential} <- normalize_attempt(Operations.start_attempt(operation, task, route)) do
       started = System.monotonic_time(:millisecond)
       result = call_provider(provider, credential, task, route, input)
       latency = max(System.monotonic_time(:millisecond) - started, 0)
+      :ok = CredentialResolver.record_outcome(credential, result)
       finalize(result, operation, task, usage, latency)
     else
       {:cancelled, _operation} -> :ok
@@ -40,7 +40,7 @@ defmodule Storyarn.AI.Executor do
     end
   end
 
-  defp normalize_attempt({:ok, usage}), do: {:ok, usage}
+  defp normalize_attempt({:ok, usage, credential}), do: {:ok, usage, credential}
   defp normalize_attempt({:cancelled, operation}), do: {:cancelled, operation}
   defp normalize_attempt({:error, reason}), do: {:error, reason}
 

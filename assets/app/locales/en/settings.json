@@ -91,6 +91,15 @@
           "unavailable": "No allowance"
         }
       },
+      "personal_ai": {
+        "title": "Personal AI keys",
+        "badge": "BYOK · billed by the provider",
+        "description": "Allow eligible members to explicitly run supported AI tools with their own connected provider account. Personal keys remain private to their owner and never consume this workspace's Storyarn AI allowance.",
+        "toggle_label": "Allow personal AI keys for this workspace",
+        "owner_only": "Only the workspace owner can change this policy.",
+        "disclosure": "Before first use, each member must consent to the provider, workspace, capability and cost class. The task shows what project data will leave Storyarn, and the provider bills that member's account. There is no automatic fallback between personal keys and Storyarn AI.",
+        "manage_keys": "Manage my provider connections"
+      },
       "appearance": {
         "title": "Appearance",
         "system": "System",
