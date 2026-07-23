@@ -35,9 +35,10 @@ During beta:
 ## Managed provider contract
 
 - Managed providers live in a registry separate from Slice-0 connectable providers.
-- Initial candidate: Together.ai only after contractual/operational verification of the required ZDR and EU-region configuration. Failure to prove or configure either keeps the lane disabled and returns the choice to the Storyarn operator.
-- Region is derived from trusted deployment/workspace policy, never client input.
+- Fireworks is the primary beta provider; Together.ai remains an operator-selected alternative. Both require operational verification of zero data retention and no training use. Failure to prove either keeps the lane disabled.
+- Region is derived from trusted deployment/workspace policy, never client input. It is disclosed but does not block the free beta; stricter residency policy remains a commercial/enterprise gate.
 - Provider/model selection is configured behind the route contract so consumers never change when the vendor changes.
+- The environment selector affects new routes only. Provider, model, credential reference, and price snapshot stay captured per operation; there is no automatic cross-provider fallback.
 - No automatic inference retries.
 - Provider request ids are persisted when available for reconciliation.
 
@@ -82,7 +83,7 @@ Slice-2 execution kernel/TaskRegistry/operations · `Storyarn.Billing` value obj
 ## Verification / Definition of Done
 
 - ExUnit: managed policy defaults off; only the workspace owner can enable it through `:manage_workspace`; admin/member read-only behavior; policy/version and `:use_ai` enforcement; exact fixed-price reserve/commit; releases for technical/validation/unknown failure; dismissal remains charged; concurrent balance safety; idempotent grants; grant expiry; global/workspace caps; circuit breakers; no BYOK ledger mutation.
-- Provider contract tests with Req.Test plus one Storyarn-operator-run real diagnostic in the configured EU/ZDR environment.
+- Provider contract tests with Req.Test plus one Storyarn-operator-run real diagnostic after ZDR, no-training, processing-location, model, and price verification.
 - Browser: flagged owner can enable the managed policy and sees Storyarn AI provenance and allowance/blocked states through a diagnostic or first available task shell; admin/member cannot change policy; no payment or “credits” CTA/copy exists.
 - Cost/reconciliation runbook documented.
 - `just quality-lint` and full relevant suites green.

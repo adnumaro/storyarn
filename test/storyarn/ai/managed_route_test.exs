@@ -45,8 +45,8 @@ defmodule Storyarn.AI.ManagedRouteTest do
   test "managed configuration and endpoint circuit breakers fail closed", ctx do
     for override <- [
           [enabled: false],
-          [verified_eu_region: false],
           [verified_zdr: false],
+          [verified_no_training: false],
           [endpoint: "http://unverified.test/v1/chat/completions"],
           [endpoint: "https://user:secret@verified.test/v1/chat/completions"],
           [endpoint: "https://verified.test/v1/chat/completions?api_key=secret"],
@@ -86,6 +86,8 @@ defmodule Storyarn.AI.ManagedRouteTest do
 
     route_option = Repo.one!(RouteOption)
     refute Map.has_key?(route_option.provider_configuration, "endpoint")
+    assert route_option.provider_configuration["data_retention"] == "zero_data_retention"
+    assert route_option.provider_configuration["training_usage"] == "disabled"
   end
 
   test "global daily and monthly provider ceilings block before an external call", ctx do

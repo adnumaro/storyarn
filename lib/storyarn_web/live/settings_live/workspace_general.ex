@@ -278,7 +278,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
       provider: Map.get(provenance, :provider),
       model: Map.get(provenance, :model),
       region: Map.get(provenance, :region),
-      dataRetention: Map.get(provenance, :data_retention)
+      dataRetention: Map.get(provenance, :data_retention),
+      trainingUsage: Map.get(provenance, :training_usage)
     }
   end
 

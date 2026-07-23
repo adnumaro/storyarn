@@ -47,6 +47,10 @@ config :storyarn, Oban, testing: :manual
 config :storyarn, Storyarn.AI.CredentialResolver, StoryarnTest.AI.FakeCredentialResolver
 config :storyarn, Storyarn.AI.InferenceProviders, providers: %{"fake" => Storyarn.AI.InferenceProviders.Fake}
 
+config :storyarn, Storyarn.AI.InferenceProviders.Fireworks,
+  endpoint: "https://fake.test/inference/v1/chat/completions",
+  req_options: [plug: {Req.Test, StoryarnTest.AI.Fireworks}]
+
 config :storyarn, Storyarn.AI.InferenceProviders.Together,
   endpoint: "https://fake.test/v1/chat/completions",
   req_options: [plug: {Req.Test, StoryarnTest.AI.Together}]
@@ -71,8 +75,8 @@ config :storyarn, Storyarn.AI.RouteResolver,
     payer: "storyarn",
     assignment_source: "contract_test",
     consent_basis: "workspace_policy",
-    verified_eu_region: true,
     verified_zdr: true,
+    verified_no_training: true,
     endpoint: "https://fake.test/v1/chat/completions",
     region: "eu-test",
     provider_price: [

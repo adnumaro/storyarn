@@ -35,6 +35,7 @@ type AiSettings = {
     model?: string;
     region?: string;
     dataRetention?: string;
+    trainingUsage?: string;
   } | null;
 };
 

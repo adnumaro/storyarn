@@ -160,7 +160,7 @@ No lane silently falls back to another. Allowance exhaustion or route failure re
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Beta payment system     | **Not required.** Internal allowance + metering only                                                                                                 |
 | Managed user charge     | Fixed, versioned task price; real provider cost stays internal                                                                                       |
-| Storyarn AI provider    | One configured route; Together remains conditional on verified ZDR + EU setup, otherwise the Storyarn operator reselects                             |
+| Storyarn AI provider    | One active route; Fireworks primary, Together explicit alternative; verified ZDR + no-training, disclosed region, and no automatic provider fallback |
 | Personal key sharing    | Forbidden; only credential owner may execute                                                                                                         |
 | Automatic lane fallback | Forbidden; payer/provider changes require explicit choice                                                                                            |
 | DeepL migration         | Deferred; do not replace shared project config with personal preferences                                                                             |

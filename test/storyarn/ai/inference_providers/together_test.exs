@@ -78,6 +78,7 @@ defmodule Storyarn.AI.InferenceProviders.TogetherTest do
       provider_configuration: %{
         "region" => "eu-test",
         "data_retention" => "zero_data_retention",
+        "training_usage" => "disabled",
         "provider_price" => %{
           "version" => 1,
           "currency" => "USD",

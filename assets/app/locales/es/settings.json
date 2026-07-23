@@ -83,8 +83,8 @@
         "allowance": "Unidades de asignación disponibles",
         "toggle_label": "Permitir Storyarn AI en este espacio",
         "owner_only": "Solo el propietario del espacio puede cambiar esta política.",
-        "disclosure": "El contenido autorizado de las tareas se procesa con {provider}, usando {model} en la región configurada {region} y sin retención de datos. Storyarn registra metadatos de uso y coste sin contenido.",
-        "route_unavailable": "Storyarn AI permanece bloqueado hasta que el operador verifique y configure el proveedor gestionado, la región UE y la ruta sin retención de datos.",
+        "disclosure": "El contenido autorizado de las tareas sale de Storyarn y se procesa con {provider}, usando {model} en la ubicación configurada {region}, sin retención de datos ni uso para entrenar modelos. Storyarn registra metadatos de uso y coste sin contenido.",
+        "route_unavailable": "Storyarn AI permanece bloqueado hasta que el operador verifique y configure el proveedor gestionado, la ubicación de procesamiento, la retención cero y la política de no entrenamiento.",
         "states": {
           "active": "Asignación activa",
           "paused": "Asignación pausada",

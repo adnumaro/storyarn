@@ -28,8 +28,8 @@ defmodule Storyarn.AI.RouteResolver do
 
     with true <- is_list(config),
          true <- config[:enabled] == true,
-         true <- config[:verified_eu_region] == true,
          true <- config[:verified_zdr] == true,
+         true <- config[:verified_no_training] == true,
          provider when is_binary(provider) <- config[:provider],
          model when is_binary(model) <- config[:model],
          {:ok, provider_configuration} <- provider_configuration(config) do
@@ -37,7 +37,8 @@ defmodule Storyarn.AI.RouteResolver do
         provider: provider,
         model: model,
         region: provider_configuration["region"],
-        data_retention: provider_configuration["data_retention"]
+        data_retention: provider_configuration["data_retention"],
+        training_usage: provider_configuration["training_usage"]
       }
     else
       _unavailable -> nil
@@ -52,8 +53,8 @@ defmodule Storyarn.AI.RouteResolver do
          provider when is_binary(provider) <- config[:provider],
          model when is_binary(model) <- config[:model],
          true <- config[:enabled] == true,
-         true <- config[:verified_eu_region] == true,
          true <- config[:verified_zdr] == true,
+         true <- config[:verified_no_training] == true,
          reference when is_binary(reference) <- config[:credential_ref],
          {:ok, credential_ref} <- CredentialRef.new(:managed, reference),
          {:ok, provider_configuration} <- provider_configuration(config),
@@ -100,6 +101,7 @@ defmodule Storyarn.AI.RouteResolver do
        %{
          "region" => region,
          "data_retention" => "zero_data_retention",
+         "training_usage" => "disabled",
          "provider_price" => provider_price,
          "budget" => budget
        }}

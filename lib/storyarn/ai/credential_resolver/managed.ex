@@ -1,5 +1,5 @@
 defmodule Storyarn.AI.CredentialResolver.Managed do
-  @moduledoc "Resolves the single operator-configured managed credential without persisting it."
+  @moduledoc "Resolves provider-scoped operator credentials without persisting them."
   @behaviour Storyarn.AI.CredentialResolver
 
   alias Storyarn.AI.CredentialRef
@@ -9,8 +9,8 @@ defmodule Storyarn.AI.CredentialResolver.Managed do
   def resolve(%CredentialRef{kind: :managed, reference: reference}) do
     config = Application.get_env(:storyarn, __MODULE__, [])
 
-    with ^reference <- config[:reference],
-         api_key when is_binary(api_key) <- config[:api_key],
+    with credentials when is_map(credentials) <- config[:credentials],
+         api_key when is_binary(api_key) <- Map.get(credentials, reference),
          true <- byte_size(api_key) > 0 do
       {:ok, %ResolvedCredential{kind: :managed, value: api_key}}
     else

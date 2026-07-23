@@ -76,10 +76,11 @@ describe("WorkspaceSettingsGeneral Storyarn AI policy", () => {
             committedUnits: 5,
           },
           provenance: {
-            provider: "together",
-            model: "eu-model-v1",
-            region: "eu-central",
+            provider: "fireworks",
+            model: "accounts/fireworks/models/test-model",
+            region: "global",
             dataRetention: "zero_data_retention",
+            trainingUsage: "disabled",
           },
         },
       },
@@ -87,6 +88,8 @@ describe("WorkspaceSettingsGeneral Storyarn AI policy", () => {
     });
 
     expect(wrapper.get("#storyarn-ai-settings").text()).toContain("25");
+    expect(wrapper.get("#storyarn-ai-settings").text()).toContain("leaves Storyarn");
+    expect(wrapper.get("#storyarn-ai-settings").text()).toContain("fireworks");
     wrapper.getComponent(Switch).vm.$emit("update:modelValue", true);
     await wrapper.vm.$nextTick();
 

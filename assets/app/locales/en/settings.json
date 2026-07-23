@@ -83,8 +83,8 @@
         "allowance": "Available allowance units",
         "toggle_label": "Allow Storyarn AI for this workspace",
         "owner_only": "Only the workspace owner can change this policy.",
-        "disclosure": "Authorized task content is processed by {provider} using {model} in the configured {region} region with zero data retention. Storyarn records content-free usage and cost metadata.",
-        "route_unavailable": "Storyarn AI remains blocked until the operator has verified and configured the managed provider, EU region, and zero-data-retention route.",
+        "disclosure": "Authorized task content leaves Storyarn and is processed by {provider} using {model} in the configured {region} location, with zero data retention and no model-training use. Storyarn records content-free usage and cost metadata.",
+        "route_unavailable": "Storyarn AI remains blocked until the operator has verified and configured the managed provider, processing location, zero data retention, and no-training policy.",
         "states": {
           "active": "Allowance active",
           "paused": "Allowance paused",
