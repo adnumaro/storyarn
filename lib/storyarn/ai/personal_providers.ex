@@ -7,6 +7,7 @@ defmodule Storyarn.AI.PersonalProviders do
   Storyarn is prepared to execute before Slice 5 adds a model catalog.
   """
 
+  alias Storyarn.AI.ConfigMap
   alias Storyarn.AI.Providers
 
   @response_modes ~w(json_schema json_object)
@@ -52,7 +53,7 @@ defmodule Storyarn.AI.PersonalProviders do
   end
 
   defp normalize_provider_map(value) when is_map(value) do
-    Map.new(value, fn {provider, config} -> {to_string(provider), normalize_map(config)} end)
+    Map.new(value, fn {provider, config} -> {to_string(provider), ConfigMap.normalize(config)} end)
   end
 
   defp normalize_provider_map(_value), do: %{}
@@ -74,10 +75,6 @@ defmodule Storyarn.AI.PersonalProviders do
       {:error, :provider_unavailable}
     end
   end
-
-  defp normalize_map(value) when is_list(value), do: value |> Map.new() |> normalize_map()
-  defp normalize_map(value) when is_map(value), do: Map.new(value, fn {key, item} -> {to_string(key), item} end)
-  defp normalize_map(_value), do: %{}
 
   defp nonempty?(value), do: is_binary(value) and String.trim(value) != ""
 end

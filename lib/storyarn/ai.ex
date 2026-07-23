@@ -32,7 +32,7 @@ defmodule Storyarn.AI do
   defdelegate provider_metadata(), to: Providers, as: :metadata_list
   defdelegate adapter_for(provider), to: Providers
 
-  defdelegate with_integration(user, provider, fun), to: Runtime
+  defdelegate with_personal_integration(user, provider, fun), to: Runtime
 
   defdelegate new_intent(scope, attrs), to: ExecutionIntent, as: :new
   defdelegate preflight(intent), to: Execution

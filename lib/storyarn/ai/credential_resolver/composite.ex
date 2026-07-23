@@ -8,7 +8,7 @@ defmodule Storyarn.AI.CredentialResolver.Composite do
   @impl true
   def resolve(%CredentialRef{kind: kind} = ref, context) do
     case Map.get(adapters(), kind) do
-      adapter when is_atom(adapter) -> adapter.resolve(ref, context)
+      adapter when is_atom(adapter) and not is_nil(adapter) -> adapter.resolve(ref, context)
       _missing -> {:error, :credential_unavailable}
     end
   end
@@ -16,7 +16,7 @@ defmodule Storyarn.AI.CredentialResolver.Composite do
   @impl true
   def record_outcome(%ResolvedCredential{kind: kind} = credential, outcome) do
     case Map.get(adapters(), kind) do
-      adapter when is_atom(adapter) -> adapter.record_outcome(credential, outcome)
+      adapter when is_atom(adapter) and not is_nil(adapter) -> adapter.record_outcome(credential, outcome)
       _missing -> :ok
     end
   end

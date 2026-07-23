@@ -6,6 +6,7 @@ defmodule Storyarn.AI.RouteResolver do
   managed assignment with central routing and personal preferences.
   """
 
+  alias Storyarn.AI.ConfigMap
   alias Storyarn.AI.CredentialRef
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.IntegrationCrud
@@ -178,8 +179,8 @@ defmodule Storyarn.AI.RouteResolver do
   defp provider_configuration(config) do
     endpoint = config[:endpoint]
     region = config[:region]
-    provider_price = normalize_map(config[:provider_price])
-    budget = normalize_map(config[:budget])
+    provider_price = ConfigMap.normalize(config[:provider_price])
+    budget = ConfigMap.normalize(config[:budget])
 
     with true <- valid_https_endpoint?(endpoint),
          true <- is_binary(region) and byte_size(region) > 0,
@@ -269,8 +270,4 @@ defmodule Storyarn.AI.RouteResolver do
 
   defp zero?(decimal), do: Decimal.compare(decimal, Decimal.new(0)) == :eq
   defp positive?(decimal), do: Decimal.compare(decimal, Decimal.new(0)) == :gt
-
-  defp normalize_map(value) when is_list(value), do: value |> Map.new() |> normalize_map()
-  defp normalize_map(value) when is_map(value), do: Map.new(value, fn {key, item} -> {to_string(key), item} end)
-  defp normalize_map(_value), do: %{}
 end

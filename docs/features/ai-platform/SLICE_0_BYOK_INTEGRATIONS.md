@@ -14,7 +14,7 @@ Users connect their own AI provider accounts via API key (BYOK) in Account Setti
 
 ## Architectural direction (as shipped)
 
-- `Storyarn.AI` facade → `IntegrationCrud` / `Providers` registry / `Provider` behaviour (`metadata/0`, `validate_key/1`) / shared `KeyValidation` HTTP plumbing (Req, test-injectable via `req_options` app env) / `Audit` (whitelist-sanitized metadata, `actor_id` snapshot, DB trigger append-only) / `Runtime.with_integration/3` (key checkout: decrypted key in closure, `last_used_at`, auto-revoke on `:unauthorized`, telemetry span `[:ai, :integration, :call]`).
+- `Storyarn.AI` facade → `IntegrationCrud` / `Providers` registry / `Provider` behaviour (`metadata/0`, `validate_key/1`) / shared `KeyValidation` HTTP plumbing (Req, test-injectable via `req_options` app env) / `Audit` (whitelist-sanitized metadata, `actor_id` snapshot, DB trigger append-only) / `Runtime.with_personal_integration/3` (key checkout: decrypted key in closure, `last_used_at`, auto-revoke on `:unauthorized`, telemetry span `[:ai, :integration, :call]`).
 - Deliberately **no completions API**: the first real consumer (Slice 2) defines that shape.
 - `Storyarn.FeatureFlags` wrapper + `FunWithFlags.Actor` impl for `User` (`"user:{id}"`), Ecto persistence, PubSub cache-bust.
 - Revocation = conditional `UPDATE … WHERE revoked_at IS NULL` (idempotent under concurrency, exactly one audit row).
@@ -43,4 +43,4 @@ Telemetry span `[:ai, :integration, :call]` · append-only audit trail (connect/
 
 ## Hand-off to later slices
 
-Slice 2 consumes the facade, feature flag, audit/telemetry, and testing conventions while keeping connectable providers separate from inference providers. Slice 4 consumes `Runtime.with_integration/3` for actor-owned personal BYOK. Slice 5 keeps the personal Translator role hidden until an executable personal translation task exists; the legacy shared localization configuration is not removed.
+Slice 2 consumes the facade, feature flag, audit/telemetry, and testing conventions while keeping connectable providers separate from inference providers. Slice 4 consumes `Runtime.with_personal_integration/3` for actor-owned personal BYOK. Slice 5 keeps the personal Translator role hidden until an executable personal translation task exists; the legacy shared localization configuration is not removed.

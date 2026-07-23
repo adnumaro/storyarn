@@ -10,7 +10,7 @@ defmodule Storyarn.Repo.Migrations.AddPersonalByokLane do
 
     create constraint(:ai_route_options, :ai_route_options_lane_price,
              check:
-               "(lane = 'managed' AND price_id IS NOT NULL AND price_version IS NOT NULL AND price_units > 0) OR " <>
+               "(lane = 'managed' AND price_id IS NOT NULL AND price_version IS NOT NULL AND price_units IS NOT NULL AND price_units > 0) OR " <>
                  "(lane <> 'managed' AND price_id IS NULL AND price_version IS NULL AND price_units IS NULL)"
            )
 

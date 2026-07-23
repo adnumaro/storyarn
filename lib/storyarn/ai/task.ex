@@ -189,7 +189,8 @@ defmodule Storyarn.AI.Task do
 
   defp valid_personal_cost_class?(%{personal_byok_allowed?: true, allowed_lanes: lanes, personal_cost_class: cost_class})
        when is_list(lanes) do
-    :personal_byok in lanes and is_binary(cost_class) and byte_size(cost_class) > 0 and byte_size(cost_class) <= 80
+    :personal_byok in lanes and is_binary(cost_class) and String.valid?(cost_class) and byte_size(cost_class) > 0 and
+      byte_size(cost_class) <= 80
   end
 
   defp valid_personal_cost_class?(%{personal_byok_allowed?: false, allowed_lanes: lanes, personal_cost_class: nil})

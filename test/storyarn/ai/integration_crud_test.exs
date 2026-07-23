@@ -92,7 +92,7 @@ defmodule Storyarn.AI.IntegrationCrudTest do
     end
   end
 
-  describe "revoke/1" do
+  describe "revoke/2" do
     setup do
       user = user_fixture()
       Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, %{"data" => []}) end)

@@ -40,6 +40,17 @@ defmodule Storyarn.AI.TaskRegistryTest do
 
     assert {:error, errors} = Task.new(ContractTask, %{attrs | enabled?: fn _context -> true end})
     assert :invalid_enabled in errors
+
+    assert {:error, errors} =
+             Task.new(ContractTask, %{
+               attrs
+               | allowed_lanes: [:personal_byok],
+                 managed_price: nil,
+                 personal_byok_allowed?: true,
+                 personal_cost_class: <<255>>
+             })
+
+    assert :invalid_personal_cost_class in errors
   end
 
   test "canonical structured hashing ignores map insertion order and rejects structs" do
