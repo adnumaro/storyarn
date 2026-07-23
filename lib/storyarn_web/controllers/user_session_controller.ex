@@ -105,7 +105,7 @@ defmodule StoryarnWeb.UserSessionController do
     session_token = get_session(conn, :user_token)
     return_to = UserAuth.safe_sudo_return_to(requested_return_to) || ~p"/users/settings"
 
-    if UserAuth.sudo_handoff_valid?(user, session_token, sudo_handoff) do
+    if UserAuth.consume_sudo_handoff(user, session_token, sudo_handoff) == :ok do
       # Rotate this browser onto a freshly authenticated session token. The
       # previous token remains un-elevated, so a browser holding a copy does
       # not inherit the password confirmation.

@@ -189,6 +189,36 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       assert html_response(conn, 200)
     end
 
+    test "consumes a handoff exactly once", %{conn: conn, user: user} do
+      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+      original_conn = log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
+      old_session_token = get_session(original_conn, :user_token)
+      handoff = UserAuth.issue_sudo_handoff(user, old_session_token)
+
+      rotated_conn =
+        post(original_conn, ~p"/users/confirm-access", %{
+          "sudo_handoff" => handoff,
+          "return_to" => "/users/settings/security"
+        })
+
+      assert redirected_to(rotated_conn) == "/users/settings/security"
+      refute get_session(rotated_conn, :user_token) == old_session_token
+
+      replayed_conn =
+        build_conn()
+        |> init_test_session(%{locale: "en", user_token: old_session_token})
+        |> post(~p"/users/confirm-access", %{
+          "sudo_handoff" => handoff,
+          "return_to" => "/users/settings/security"
+        })
+
+      assert redirected_to(replayed_conn) ==
+               UserAuth.sudo_confirmation_path("/users/settings/security")
+
+      assert get_session(replayed_conn, :user_token) == old_session_token
+      refute UserAuth.sudo_handoff_valid?(user, old_session_token, handoff)
+    end
+
     test "rejects a handoff from another session without rotating the current session", %{
       conn: conn,
       user: user

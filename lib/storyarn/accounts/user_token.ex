@@ -62,6 +62,12 @@ defmodule Storyarn.Accounts.UserToken do
     {token, %UserToken{token: token, context: "session", user_id: user.id, authenticated_at: dt}}
   end
 
+  @doc false
+  def build_sudo_handoff_nonce(user) do
+    nonce = :crypto.strong_rand_bytes(32)
+    {nonce, %UserToken{token: nonce, context: "sudo_handoff", user_id: user.id}}
+  end
+
   @doc """
   Checks if the token is valid and returns its underlying lookup query.
 
