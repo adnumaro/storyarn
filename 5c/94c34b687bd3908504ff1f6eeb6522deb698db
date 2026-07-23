@@ -1,0 +1,19 @@
+test/storyarn/ai/credential_resolver_composite_test.exs
+  s_6112f11c106698::t_89cb7fdd2f1dc6 22,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5c94c34b687bd3908504ff1f6eeb6522deb698db",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
