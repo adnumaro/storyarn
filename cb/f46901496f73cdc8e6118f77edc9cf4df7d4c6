@@ -1,0 +1,124 @@
+assets/app/test/live/workspace/settings/WorkspaceSettingsGeneral.test.ts
+  s_6112f11c106698::t_10c170cbe3cae1 121
+  s_6112f11c106698::t_142a6e1a97e087 103,114,122-129,139
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_6112f11c106698::t_92040c850ee09c 268-269,273-274,278-279
+  s_6112f11c106698::t_8f13e5aa4a5877 266,276
+priv/gettext/en/LC_MESSAGES/identity.po
+  s_6112f11c106698::t_8e0479f2682baf 132-133
+  s_6112f11c106698::t_5bb2dcfc859b6a 131,134-136
+lib/storyarn/ai/policy_decision.ex
+  s_6112f11c106698::t_6d68a05802a287 64-65,74,302-304,306-307
+  s_6112f11c106698::t_08b8d6b0f2aa12 305
+  s_6112f11c106698::t_b9ce29cd8e3116 314-315,317-318
+  s_6112f11c106698::t_b9a37a1def48d3 308
+priv/gettext/identity.pot
+  s_6112f11c106698::t_5bb2dcfc859b6a 98,101-103
+  s_6112f11c106698::t_8e0479f2682baf 99-100
+assets/app/locales/es/settings.json
+  s_6112f11c106698::t_56af7578a0be76 95-100
+priv/gettext/workspaces.pot
+  s_6112f11c106698::t_92040c850ee09c 294,299,304
+  s_6112f11c106698::t_8f13e5aa4a5877 292,302
+docs/features/ai-platform/SLICE_5_AI_ROUTING_PREFERENCES.md
+  s_6112f11c106698::t_ea54769366f8d7 19-30,38-42,71,86-88
+assets/app/live/auth/confirm-access/AuthConfirmAccessForm.vue
+  s_6112f11c106698::t_616e02e9a8f1af 3,10-15,17-18,21-23,25,35,45-47,49-55,107-108,110-112
+  s_6112f11c106698::t_219972b9198d42 16,24,48,109
+lib/storyarn_web/router.ex
+  s_6112f11c106698::t_0096270a16f8b8 336
+assets/app/live/layouts/settings/Layout.vue
+  s_6112f11c106698::t_4361bc7e15ec39 219
+priv/gettext/es/LC_MESSAGES/identity.po
+  s_6112f11c106698::t_8e0479f2682baf 208-209
+  s_6112f11c106698::t_5bb2dcfc859b6a 207,210-212
+assets/app/locales/en/settings.json
+  s_6112f11c106698::t_56af7578a0be76 95-100
+test/storyarn_web/live/settings_live/workspace_general_test.exs
+  s_6112f11c106698::t_142a6e1a97e087 177,187,199,204,206,211,256-257
+lib/storyarn_web/controllers/user_session_controller.ex
+  s_6112f11c106698::t_0096270a16f8b8 104-107,113,124-141
+  s_6112f11c106698::t_66c94601ffea15 103,108-112,114-123
+assets/app/live/workspace/settings/WorkspaceSettingsGeneral.vue
+  s_6112f11c106698::t_56af7578a0be76 35,157,159,342,384-385,388
+test/storyarn_web/live/user_live/auth_redirect_test.exs
+  s_6112f11c106698::t_1ae7e68bcde206 57
+  s_6112f11c106698::t_10785efd7245df 41,80-81,89
+  s_6112f11c106698::t_9053c55525535b 38-40,42,68-69,75-78,82-83
+lib/storyarn_web/user_auth.ex
+  s_6112f11c106698::t_9d0102d1035bfc 41-42,418-421,423-425,427-432,548-549,551-560
+  s_6112f11c106698::t_47e1644444e103 422,426,547,550
+  s_6112f11c106698::t_240ecdc4677008 561
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_6112f11c106698::t_8f13e5aa4a5877 266,276
+  s_6112f11c106698::t_92040c850ee09c 268,273,278
+lib/storyarn_web/live/user_live/confirm_access.ex
+  s_6112f11c106698::t_6c6f7fbf0126c0 9-11
+  s_6112f11c106698::t_219972b9198d42 42,67,94,96
+  s_6112f11c106698::t_0096270a16f8b8 39-41,43,66,68,109,111
+  s_6112f11c106698::t_47e1644444e103 110
+assets/app/live/account/settings/AccountSettingsIntegrations.vue
+  s_6112f11c106698::t_57caf0f8669e44 131
+test/storyarn_web/user_auth_test.exs
+  s_6112f11c106698::t_6de0d49a1324c1 444-459
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_6112f11c106698::t_08b8d6b0f2aa12 85,89,94,281
+  s_6112f11c106698::t_56af7578a0be76 87,93,245,253,259,270,274-278,332
+priv/docs/es/ai/01-overview.md
+  s_6112f11c106698::t_ea54769366f8d7 21,26
+assets/app/test/shared/command-palette/accountCommands.test.ts
+  s_6112f11c106698::t_10c170cbe3cae1 20
+  s_6112f11c106698::t_4361bc7e15ec39 28-29
+  s_6112f11c106698::t_b93842ad180dec 30
+test/storyarn/ai/personal_byok_test.exs
+  s_6112f11c106698::t_6d68a05802a287 108-143
+test/storyarn_web/controllers/user_session_controller_test.exs
+  s_6112f11c106698::t_10785efd7245df 162,166,200,204,220,224
+  s_6112f11c106698::t_68c7d0dd50dcbc 154-161,163-165,167-187,189-191,193-199,201-203,205-211,213-219,221-223,225-231
+  s_6112f11c106698::t_965013d2823d5b 188
+  s_6112f11c106698::t_8b57267fd42b6f 212
+  s_6112f11c106698::t_1ae7e68bcde206 192
+docs/features/ai-platform/OVERVIEW.md
+  s_6112f11c106698::t_e2fcc6c4fea239 23,106,130
+assets/app/test/live/layouts/SettingsLayout.test.ts
+  s_6112f11c106698::t_4361bc7e15ec39 21-22,38-39,80-84
+  s_6112f11c106698::t_10c170cbe3cae1 85
+  s_6112f11c106698::t_8bcada19303217 86
+priv/docs/en/ai/01-overview.md
+  s_6112f11c106698::t_ea54769366f8d7 21,26
+assets/app/test/live/auth/confirm-access/AuthConfirmAccessForm.test.ts
+  s_6112f11c106698::t_10785efd7245df 16,74
+  s_6112f11c106698::t_1d4507af5273b6 62,67,80
+  s_6112f11c106698::t_6b83633d2bea7a 1-3,13-15,17,28-31,40,53-60,63-65,68-73,75-78,120
+  s_6112f11c106698::t_1ae7e68bcde206 61
+  s_6112f11c106698::t_a3d537b6818852 66
+  s_6112f11c106698::t_00981495e84518 79
+docs/features/ai-platform/SLICE_4_PERSONAL_BYOK_LANE.md
+  s_6112f11c106698::t_4665ee60cef3cc 78
+  s_6112f11c106698::t_ea54769366f8d7 5,21,24,30-31
+test/e2e/settings_reauthentication_test.exs
+  s_6112f11c106698::t_95ceb02b011011 20,59-60,62-63,68-69,71-72
+  s_6112f11c106698::t_c4ab7023dc46fb 61,70
+  s_6112f11c106698::t_4361bc7e15ec39 24,73,75
+  s_6112f11c106698::t_57caf0f8669e44 74
+lib/storyarn/accounts/sessions.ex
+  s_6112f11c106698::t_6c6f7fbf0126c0 33-36
+assets/app/shared/command-palette/accountCommands.ts
+  s_6112f11c106698::t_4361bc7e15ec39 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "cbf46901496f73cdc8e6118f77edc9cf4df7d4c6",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
