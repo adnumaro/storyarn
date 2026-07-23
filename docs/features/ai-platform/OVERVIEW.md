@@ -24,6 +24,16 @@ Storyarn's AI strategy is **Storyarn AI by default, personal BYOK as the advance
 - **Tools:** structural analysis, dialogue, scratch VO, structure import, writing suggestions, and images.
 - **Commercial billing:** deliberately last, after beta telemetry proves value and unit economics.
 
+“My AI Team” exposes four personal roles: **General assistant** (`tasks`),
+**Writing assistant** (`suggestions`), **Illustrator** (`images`), and **Voice**
+(`speech`). General assistant covers explicit bounded work such as summaries,
+analysis explanations, text-to-structure, and registered command-palette
+actions; Writing assistant covers dialogue transformations and editor
+suggestions. Illustrator and Voice may be configured in Slice 5.2, but their
+media models remain `configuration_only` and cannot resolve an execution route
+until Slice 12 and Slice 9 respectively ship and validate their dedicated
+adapters.
+
 ## Slice index
 
 | #   | Slice                                              | Document                           | Depends on                             | Status                               |
@@ -50,7 +60,9 @@ Storyarn's AI strategy is **Storyarn AI by default, personal BYOK as the advance
 - Slice 3 makes Storyarn AI real with an internal beta allowance but deliberately excludes payments.
 - Slice 4 integrates the already-shipped personal connections as an explicit lane.
 - Slice 5.1 centralizes route resolution and workspace assignment before provider choice spreads into tools.
-- Slice 5.2 adds personal role/default preferences on top of that reviewed authorization boundary.
+- Slice 5.2 adds one personal primary for each of four roles per actor+workspace,
+  with no generic default, and separates advance media configuration from
+  executable routes.
 - Slice 6 creates bounded context without hidden model calls.
 - Slice 7 proves the deterministic moat; Slice 8 proves proposal/apply and becomes the first tightly bounded writing transformation.
 - Slice 9 ships a narrow, valuable VO preview using domain structures that already exist.
@@ -92,6 +104,15 @@ Every task requires base `:use_ai` and declares phase-specific domain permission
 
 Provider/model capabilities are curated and versioned per model. Provider discovery is an intersection input, not proof that a model supports a modality or endpoint.
 
+Catalog presence and role selection do not imply executability. A model entry's
+`implementation_status` is either `executable` or `configuration_only`. A
+configuration-only entry may be selected and persisted for advance setup, but
+the resolver excludes it from route references, consent, and operations. Only
+Slice 9 (`speech`) or Slice 12 (`images`) may promote the corresponding media
+entry after its dedicated adapter, output-validation/storage boundary, and
+contract tests pass. Catalog `implementation_status` is distinct from an
+operation's queued/running/terminal `execution_status`.
+
 ## Lane and credential policy
 
 ### `managed`
@@ -115,7 +136,12 @@ Provider/model capabilities are curated and versioned per model. Provider discov
 - Projects may reference an approved workspace route; they do not own duplicate secrets.
 - Explicitly out of the current sliced roadmap until enterprise demand exists.
 
-No lane silently falls back to another. Allowance exhaustion or route failure returns explicit choices/CTAs.
+No lane silently falls back to another. If Storyarn AI allowance is exhausted,
+no managed operation starts. The preflight may show an explicit **Use my own API
+key** CTA only when the actor can use a compatible workspace-scoped BYOK role
+preference. Choosing it opens the personal data/billing disclosure; a separate
+BYOK operation may start only after current capability-scoped consent. Closing
+or declining leaves the action blocked.
 
 ## Beta economics without payments
 
@@ -158,18 +184,19 @@ No lane silently falls back to another. Allowance exhaustion or route failure re
 
 ## Decisions locked by this rewrite
 
-| Decision                | Outcome                                                                                                                                              |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Beta payment system     | **Not required.** Internal allowance + metering only                                                                                                 |
-| Managed user charge     | Fixed, versioned task price; real provider cost stays internal                                                                                       |
-| Storyarn AI provider    | One active route; Fireworks primary, Together explicit alternative; verified ZDR + no-training, disclosed region, and no automatic provider fallback |
-| Personal key sharing    | Forbidden; only credential owner may execute                                                                                                         |
-| Automatic lane fallback | Forbidden; payer/provider changes require explicit choice                                                                                            |
-| DeepL migration         | Deferred; do not replace shared project config with personal preferences                                                                             |
-| Context summaries       | Deferred from Context Engine v1; no hidden paid calls                                                                                                |
-| Structural detectors    | Free deterministic product capability; AI explanation optional/gated                                                                                 |
-| Scratch VO              | One target-locale line, personal BYOK, OpenAI initial target behind a provider-review gate, catalog voices, preview→Asset, `recorded` not `approved` |
-| Commercial launch       | Subscription allowance first; top-ups only after separate evidence/approval                                                                          |
+| Decision                 | Outcome                                                                                                                                              |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Beta payment system      | **Not required.** Internal allowance + metering only                                                                                                 |
+| Managed user charge      | Fixed, versioned task price; real provider cost stays internal                                                                                       |
+| Storyarn AI provider     | One active route; Fireworks primary, Together explicit alternative; verified ZDR + no-training, disclosed region, and no automatic provider fallback |
+| Personal key sharing     | Forbidden; only credential owner may execute                                                                                                         |
+| Automatic lane fallback  | Forbidden; exhaustion may offer an explicit BYOK preflight, but consent and a separate operation are required                                        |
+| Media model readiness    | Image/speech entries are selectable `configuration_only` preferences until Slice 12/9 adapters make them executable                                  |
+| DeepL migration          | Deferred; do not replace shared project config with personal preferences                                                                             |
+| Hidden context summaries | Deferred from Context Engine v1; explicit user-launched summaries may use General assistant, but no hidden paid calls                                |
+| Structural detectors     | Free deterministic product capability; AI explanation optional/gated                                                                                 |
+| Scratch VO               | One target-locale line, personal BYOK, OpenAI initial target behind a provider-review gate, catalog voices, preview→Asset, `recorded` not `approved` |
+| Commercial launch        | Subscription allowance first; top-ups only after separate evidence/approval                                                                          |
 
 ## Explicitly deferred
 

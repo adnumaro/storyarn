@@ -5,19 +5,16 @@ defmodule Storyarn.AI.PersonalRuntimeConfigTest do
   alias Storyarn.AI.CredentialResolver.Composite
   alias Storyarn.AI.CredentialResolver.Personal
   alias Storyarn.AI.InferenceProviders
+  alias Storyarn.AI.InferenceProviders.Personal.Anthropic
+  alias Storyarn.AI.InferenceProviders.Personal.DeepSeek
+  alias Storyarn.AI.InferenceProviders.Personal.Google
+  alias Storyarn.AI.InferenceProviders.Personal.Mistral
+  alias Storyarn.AI.InferenceProviders.Personal.Moonshot
   alias Storyarn.AI.InferenceProviders.Personal.OpenAI
+  alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.PersonalProviders
   alias Storyarn.AI.RouteResolver
-
-  @provider_model_keys ~w(
-    STORYARN_AI_PERSONAL_ANTHROPIC_MODEL
-    STORYARN_AI_PERSONAL_OPENAI_MODEL
-    STORYARN_AI_PERSONAL_GOOGLE_MODEL
-    STORYARN_AI_PERSONAL_MOONSHOT_MODEL
-    STORYARN_AI_PERSONAL_MISTRAL_MODEL
-    STORYARN_AI_PERSONAL_DEEPSEEK_MODEL
-  )
 
   @provider_endpoint_keys ~w(
     STORYARN_AI_PERSONAL_ANTHROPIC_ENDPOINT
@@ -32,15 +29,13 @@ defmodule Storyarn.AI.PersonalRuntimeConfigTest do
           "STORYARN_AI_PERSONAL_BYOK_ENABLED",
           "STORYARN_AI_PERSONAL_CONSENT_VERSION",
           "STORYARN_AI_MANAGED_ENABLED"
-        ] ++ @provider_model_keys ++ @provider_endpoint_keys
+        ] ++ @provider_endpoint_keys
 
   setup do
     original = Map.new(@keys, &{&1, System.get_env(&1)})
     Enum.each(@keys, &System.delete_env/1)
 
-    System.put_env("STORYARN_AI_PERSONAL_BYOK_ENABLED", "true")
     System.put_env("STORYARN_AI_PERSONAL_CONSENT_VERSION", "personal-egress-v1")
-    System.put_env("STORYARN_AI_PERSONAL_OPENAI_MODEL", "gpt-personal-test")
 
     on_exit(fn ->
       Enum.each(original, fn
@@ -50,7 +45,7 @@ defmodule Storyarn.AI.PersonalRuntimeConfigTest do
     end)
   end
 
-  test "personal BYOK is configured independently with no managed route or task" do
+  test "personal BYOK is configured without a second runtime feature switch" do
     config = runtime_storyarn_config()
 
     assert Keyword.fetch!(config, CredentialResolver) == Composite
@@ -61,15 +56,35 @@ defmodule Storyarn.AI.PersonalRuntimeConfigTest do
 
     assert config
            |> Keyword.fetch!(InferenceProviders)
-           |> Keyword.fetch!(:providers) == %{"openai" => OpenAI}
+           |> Keyword.fetch!(:providers) == %{
+             "anthropic" => Anthropic,
+             "deepseek" => DeepSeek,
+             "google" => Google,
+             "mistral" => Mistral,
+             "moonshot" => Moonshot,
+             "openai" => OpenAI
+           }
 
     assert config
            |> Keyword.fetch!(PersonalProviders)
            |> Keyword.fetch!(:providers) == %{
+             "anthropic" => %{
+               processing_location: "provider-controlled"
+             },
+             "deepseek" => %{
+               processing_location: "provider-controlled"
+             },
+             "google" => %{
+               processing_location: "provider-controlled"
+             },
+             "mistral" => %{
+               processing_location: "provider-controlled"
+             },
+             "moonshot" => %{
+               processing_location: "provider-controlled"
+             },
              "openai" => %{
-               model: "gpt-personal-test",
-               processing_location: "provider-controlled",
-               response_mode: "json_schema"
+               processing_location: "provider-controlled"
              }
            }
 
@@ -81,26 +96,35 @@ defmodule Storyarn.AI.PersonalRuntimeConfigTest do
     assert openai_config[:endpoint] == "https://api.openai.com/v1/chat/completions"
     assert openai_config[:request_overrides] == %{store: false}
 
+    refute Keyword.has_key?(config, ModelCatalog)
     refute Keyword.has_key?(config, RouteResolver)
     refute Keyword.has_key?(config, Storyarn.AI.TaskRegistry)
   end
 
-  test "requires an explicit curated model when the personal lane is enabled" do
-    Enum.each(@provider_model_keys, &System.delete_env/1)
+  test "endpoint overrides do not select or replace a default model" do
+    System.put_env("STORYARN_AI_PERSONAL_OPENAI_ENDPOINT", "https://proxy.test/v1/chat/completions")
 
-    assert_raise RuntimeError, ~r/requires at least one STORYARN_AI_PERSONAL_<PROVIDER>_MODEL/, fn ->
-      runtime_storyarn_config()
-    end
+    config = runtime_storyarn_config()
+
+    assert config
+           |> Keyword.fetch!(OpenAI)
+           |> Keyword.fetch!(:endpoint) == "https://proxy.test/v1/chat/completions"
+
+    refute config
+           |> Keyword.fetch!(PersonalProviders)
+           |> Keyword.fetch!(:providers)
+           |> Map.fetch!("openai")
+           |> Map.has_key?(:model)
   end
 
-  test "a configured personal model does nothing while the lane switch is off" do
+  test "the removed legacy lane switch cannot disable personal provider configuration" do
     System.put_env("STORYARN_AI_PERSONAL_BYOK_ENABLED", "false")
     config = runtime_storyarn_config()
 
-    refute Keyword.has_key?(config, CredentialResolver)
-    refute Keyword.has_key?(config, InferenceProviders)
-    refute Keyword.has_key?(config, PersonalProviders)
-    refute Keyword.has_key?(config, PersonalConsents)
+    assert Keyword.fetch!(config, CredentialResolver) == Composite
+    assert Keyword.has_key?(config, InferenceProviders)
+    assert Keyword.has_key?(config, PersonalProviders)
+    assert Keyword.has_key?(config, PersonalConsents)
   end
 
   defp runtime_storyarn_config do

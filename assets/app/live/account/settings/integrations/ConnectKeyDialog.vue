@@ -13,16 +13,24 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 import { Label } from "@components/ui/label";
-import type { IntegrationCardData } from "./IntegrationCard.vue";
+
+interface ConnectableProvider {
+  provider: string;
+  name: string;
+  key_generation_url: string;
+  key_placeholder: string;
+}
 
 const {
   open,
   card,
   submitting = false,
+  mode = "connect",
 } = defineProps<{
   open: boolean;
-  card: IntegrationCardData;
+  card: ConnectableProvider;
   submitting?: boolean;
+  mode?: "connect" | "replace";
 }>();
 
 const emit = defineEmits<{
@@ -93,10 +101,10 @@ function blockDismissWhileSubmitting(event: Event): void {
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
           <KeyRound class="size-5 shrink-0 text-muted-foreground" />
-          {{ t("integrations.connect.title", { name: card.name }) }}
+          {{ t(`integrations.${mode}.title`, { name: card.name }) }}
         </DialogTitle>
         <DialogDescription>
-          {{ t("integrations.connect.description", { name: card.name }) }}
+          {{ t(`integrations.${mode}.description`, { name: card.name }) }}
         </DialogDescription>
       </DialogHeader>
 
@@ -122,7 +130,7 @@ function blockDismissWhileSubmitting(event: Event): void {
             data-live-link-exempt="external-provider-console"
             class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
           >
-            {{ t("integrations.connect.get_key") }}
+            {{ t(`integrations.${mode}.get_key`) }}
             <ExternalLink class="size-3" aria-hidden="true" />
           </a>
         </div>
@@ -138,11 +146,11 @@ function blockDismissWhileSubmitting(event: Event): void {
 
         <DialogFooter>
           <Button type="button" variant="outline" :disabled="submitting" @click="handleCancel">
-            {{ t("integrations.connect.cancel") }}
+            {{ t(`integrations.${mode}.cancel`) }}
           </Button>
           <Button type="submit" :disabled="!canSubmit">
             <LoaderCircle v-if="submitting" class="size-4 animate-spin" aria-hidden="true" />
-            {{ t("integrations.connect.submit") }}
+            {{ t(`integrations.${mode}.submit`) }}
           </Button>
         </DialogFooter>
       </form>

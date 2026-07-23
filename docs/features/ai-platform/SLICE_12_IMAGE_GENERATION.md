@@ -16,6 +16,13 @@ Generate one private image preview from a sheet gallery block using a capable pe
 ## Modality and capability contract
 
 - Add a modality-specific `ImageProvider.generate/2`; do not overload text or speech behaviours.
+- Slice 5.2 already exposes the reviewed OpenAI `gpt-image-2` and Google
+  `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, and
+  `gemini-3-pro-image` entries as selectable preferences with
+  `implementation_status = configuration_only`. Promote only exact entries
+  backed by an adapter and passing this slice's contract tests to
+  `implementation_status = executable`; unimplemented entries remain visibly
+  configured for future support.
 - Capability is curated/versioned per provider+model and validated at runtime; a connected key or model listing alone is insufficient.
 - No first-capable auto-pick and no Storyarn AI fallback.
 - Safety/capability/permission 403s do not revoke an otherwise valid key.

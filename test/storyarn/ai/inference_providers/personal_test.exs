@@ -62,6 +62,8 @@ defmodule Storyarn.AI.InferenceProviders.PersonalTest do
                "format" => %{"type" => "json_schema", "schema" => schema()}
              }
 
+      refute Map.has_key?(body, "temperature")
+
       Req.Test.json(conn, %{
         "id" => "anthropic-personal-request",
         "content" => [%{"type" => "text", "text" => ~s({"status":"ok"})}],

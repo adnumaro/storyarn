@@ -8,7 +8,7 @@ defmodule StoryarnTest.AI.ContractTask do
 
     %{
       id: "contract.echo",
-      capability: :suggestions,
+      capability: Keyword.get(config, :capability, :suggestions),
       data_scope: :project,
       required_domain_permissions: %{execute: :view, apply: :edit_content},
       allowed_lanes: Keyword.get(config, :allowed_lanes, [:managed]),

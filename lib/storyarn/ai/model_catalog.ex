@@ -7,13 +7,12 @@ defmodule Storyarn.AI.ModelCatalog do
   """
 
   alias Storyarn.AI.Integration
+  alias Storyarn.AI.ModelCatalog.Defaults
   alias Storyarn.AI.ModelCatalog.Entry
 
   @spec all() :: [Entry.t()]
   def all do
-    :storyarn
-    |> Application.get_env(__MODULE__, [])
-    |> Keyword.get(:models, [])
+    configured_models()
     |> Enum.flat_map(fn attrs ->
       case Entry.new(attrs) do
         {:ok, entry} -> [entry]
@@ -104,8 +103,12 @@ defmodule Storyarn.AI.ModelCatalog do
       model: entry.model,
       catalog_version: entry.catalog_version,
       capabilities: Enum.map(entry.capabilities, &Atom.to_string/1),
-      modalities: Enum.map(entry.modalities, &Atom.to_string/1),
+      input_modalities: Enum.map(entry.input_modalities, &Atom.to_string/1),
+      output_modalities: Enum.map(entry.output_modalities, &Atom.to_string/1),
       structured_output: Atom.to_string(entry.structured_output),
+      api_family: Atom.to_string(entry.api_family),
+      implementation_status: Atom.to_string(entry.implementation_status),
+      release_stage: Atom.to_string(entry.release_stage),
       context_window: entry.context_window,
       max_output_tokens: entry.max_output_tokens,
       processing_locations: entry.processing_locations,
@@ -121,6 +124,20 @@ defmodule Storyarn.AI.ModelCatalog do
   end
 
   defp normalize_discovered_model(_value), do: ""
+
+  defp configured_models do
+    case Application.get_env(:storyarn, __MODULE__) do
+      config when is_list(config) ->
+        case Keyword.fetch(config, :models) do
+          {:ok, models} when is_list(models) -> models
+          {:ok, _invalid} -> []
+          :error -> Defaults.models()
+        end
+
+      _not_configured ->
+        Defaults.models()
+    end
+  end
 
   defp current_entries do
     all()

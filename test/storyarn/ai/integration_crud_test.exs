@@ -7,6 +7,7 @@ defmodule Storyarn.AI.IntegrationCrudTest do
   alias Storyarn.AI.AuditEntry
   alias Storyarn.AI.Integration
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
 
   @stub StoryarnTest.AI.Anthropic
 
@@ -59,7 +60,7 @@ defmodule Storyarn.AI.IntegrationCrudTest do
           provider: "anthropic",
           api_key_encrypted: "sk-ant-api03-second-wxyz",
           key_last_four: "wxyz",
-          connected_at: Storyarn.Shared.TimeHelpers.now()
+          connected_at: TimeHelpers.now()
         })
 
       assert {:error, changeset} = Repo.insert(duplicate)
@@ -92,6 +93,191 @@ defmodule Storyarn.AI.IntegrationCrudTest do
 
     test "rejects unknown providers", %{user: user} do
       assert {:error, :unknown_provider} = AI.connect(user, :fictional, "whatever")
+    end
+  end
+
+  describe "credential maintenance" do
+    setup do
+      user = user_fixture()
+
+      Req.Test.stub(@stub, fn conn ->
+        Req.Test.json(conn, %{"data" => [%{"id" => "claude-old"}]})
+      end)
+
+      {:ok, integration} =
+        AI.connect(user, :anthropic, "sk-ant-api03-original-abcd")
+
+      old_validated_at = DateTime.add(TimeHelpers.now(), -60, :second)
+
+      integration =
+        integration
+        |> Ecto.Changeset.change(last_validated_at: old_validated_at)
+        |> Repo.update!()
+
+      %{
+        user: user,
+        integration: integration,
+        old_validated_at: old_validated_at
+      }
+    end
+
+    test "replace validates first and updates the same integration atomically", ctx do
+      Req.Test.stub(@stub, fn conn ->
+        assert Plug.Conn.get_req_header(conn, "x-api-key") ==
+                 ["sk-ant-api03-replacement-wxyz"]
+
+        Req.Test.json(conn, %{"data" => [%{"id" => "claude-new"}]})
+      end)
+
+      assert {:ok, replaced} =
+               AI.replace_integration_key(
+                 ctx.user,
+                 ctx.integration,
+                 "sk-ant-api03-replacement-wxyz"
+               )
+
+      assert replaced.id == ctx.integration.id
+      assert replaced.api_key_encrypted == "sk-ant-api03-replacement-wxyz"
+      assert replaced.key_last_four == "wxyz"
+      assert replaced.available_models == ["claude-new"]
+      assert DateTime.after?(replaced.last_validated_at, ctx.old_validated_at)
+      assert Repo.aggregate(Integration, :count) == 1
+
+      assert ["connected", "key_replaced"] ==
+               AuditEntry
+               |> Repo.all()
+               |> Enum.map(& &1.action)
+
+      audit = Repo.get_by!(AuditEntry, action: "key_replaced")
+      assert audit.metadata == %{"integration_id" => ctx.integration.id}
+    end
+
+    test "a rejected replacement preserves the prior credential and metadata", ctx do
+      Req.Test.stub(@stub, fn conn -> Plug.Conn.resp(conn, 401, "{}") end)
+
+      assert {:error, :invalid_key} =
+               AI.replace_integration_key(
+                 ctx.user,
+                 ctx.integration,
+                 "sk-ant-api03-invalid-wxyz"
+               )
+
+      unchanged = Repo.get!(Integration, ctx.integration.id)
+      assert unchanged.api_key_encrypted == ctx.integration.api_key_encrypted
+      assert unchanged.key_last_four == ctx.integration.key_last_four
+      assert unchanged.available_models == ctx.integration.available_models
+      assert unchanged.last_validated_at == ctx.old_validated_at
+      assert is_nil(unchanged.revoked_at)
+
+      assert ["connected", "validation_failed"] ==
+               AuditEntry
+               |> Repo.all()
+               |> Enum.map(& &1.action)
+    end
+
+    test "a slow replacement cannot overwrite a credential changed while it validates", ctx do
+      Req.Test.stub(@stub, fn conn ->
+        Integration
+        |> Repo.get!(ctx.integration.id)
+        |> Integration.replace_key_changeset(%{
+          api_key_encrypted: "sk-ant-api03-concurrent-race",
+          key_last_four: "race",
+          available_models: ["claude-concurrent"],
+          last_validated_at: TimeHelpers.now()
+        })
+        |> Repo.update!()
+
+        Req.Test.json(conn, %{"data" => [%{"id" => "claude-slow-response"}]})
+      end)
+
+      assert {:error, :integration_changed} =
+               AI.replace_integration_key(
+                 ctx.user,
+                 ctx.integration,
+                 "sk-ant-api03-slow-wxyz"
+               )
+
+      current = Repo.get!(Integration, ctx.integration.id)
+      assert current.api_key_encrypted == "sk-ant-api03-concurrent-race"
+      assert current.key_last_four == "race"
+      assert current.available_models == ["claude-concurrent"]
+      refute Repo.get_by(AuditEntry, action: "key_replaced")
+    end
+
+    test "revalidate refreshes metadata with the stored credential but never replaces it", ctx do
+      Req.Test.stub(@stub, fn conn ->
+        assert Plug.Conn.get_req_header(conn, "x-api-key") ==
+                 ["sk-ant-api03-original-abcd"]
+
+        Req.Test.json(conn, %{"data" => [%{"id" => "claude-refreshed"}]})
+      end)
+
+      assert {:ok, revalidated} =
+               AI.revalidate_integration(ctx.user, ctx.integration)
+
+      assert revalidated.id == ctx.integration.id
+      assert revalidated.api_key_encrypted == ctx.integration.api_key_encrypted
+      assert revalidated.key_last_four == ctx.integration.key_last_four
+      assert revalidated.available_models == ["claude-refreshed"]
+      assert DateTime.after?(revalidated.last_validated_at, ctx.old_validated_at)
+
+      assert ["connected", "revalidated"] ==
+               AuditEntry
+               |> Repo.all()
+               |> Enum.map(& &1.action)
+    end
+
+    test "a failed revalidation preserves the previous validation snapshot", ctx do
+      Req.Test.stub(@stub, fn conn -> Plug.Conn.resp(conn, 429, "{}") end)
+
+      assert {:error, :rate_limited} =
+               AI.revalidate_integration(ctx.user, ctx.integration)
+
+      unchanged = Repo.get!(Integration, ctx.integration.id)
+      assert unchanged.available_models == ctx.integration.available_models
+      assert unchanged.last_validated_at == ctx.old_validated_at
+      assert is_nil(unchanged.revoked_at)
+      assert %Integration{id: id} = AI.get_active(ctx.user, :anthropic)
+      assert id == ctx.integration.id
+
+      assert ["connected", "validation_failed"] ==
+               AuditEntry
+               |> Repo.all()
+               |> Enum.map(& &1.action)
+    end
+
+    test "an invalid stored key is auto-revoked", ctx do
+      Req.Test.stub(@stub, fn conn -> Plug.Conn.resp(conn, 401, "{}") end)
+
+      assert {:error, :invalid_key} =
+               AI.revalidate_integration(ctx.user, ctx.integration)
+
+      revoked = Repo.get!(Integration, ctx.integration.id)
+      assert %DateTime{} = revoked.revoked_at
+      assert is_nil(AI.get_active(ctx.user, :anthropic))
+
+      assert ["connected", "validation_failed", "auto_revoked"] ==
+               AuditEntry
+               |> Repo.all()
+               |> Enum.map(& &1.action)
+    end
+
+    test "credential mutations are actor-scoped", ctx do
+      other_user = user_fixture()
+
+      assert {:error, :unauthorized} =
+               AI.replace_integration_key(
+                 other_user,
+                 ctx.integration,
+                 "sk-ant-api03-foreign-wxyz"
+               )
+
+      assert {:error, :unauthorized} =
+               AI.revalidate_integration(other_user, ctx.integration)
+
+      unchanged = Repo.get!(Integration, ctx.integration.id)
+      assert unchanged.api_key_encrypted == ctx.integration.api_key_encrypted
+      assert unchanged.last_validated_at == ctx.old_validated_at
     end
   end
 

@@ -17,11 +17,17 @@ defmodule Storyarn.AI.Audit do
     :integration_id,
     :workspace_id,
     :assignment_id,
+    :preference_id,
+    :slot,
+    :model,
     "reason",
     "unexpected_status",
     "integration_id",
     "workspace_id",
-    "assignment_id"
+    "assignment_id",
+    "preference_id",
+    "slot",
+    "model"
   ]
   @max_value_bytes 200
 

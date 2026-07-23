@@ -2,12 +2,15 @@ defmodule Storyarn.AI.IntegrationAssignmentsTest do
   use Storyarn.DataCase, async: false
 
   import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.AI
   alias Storyarn.AI.AuditEntry
+  alias Storyarn.AI.IntegrationAssignments
   alias Storyarn.AI.IntegrationWorkspaceAssignment
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
 
   @stub StoryarnTest.AI.OpenAI
 
@@ -196,6 +199,54 @@ defmodule Storyarn.AI.IntegrationAssignmentsTest do
     assert is_nil(replacement.revoked_at)
   end
 
+  test "project-only access is visible but cannot assign, route, or unassign a connection", ctx do
+    project = project_fixture(ctx.owner, %{workspace: ctx.workspace})
+    project_user = user_fixture()
+    project_scope = user_scope_fixture(project_user)
+    membership_fixture(project, project_user, "editor")
+    FunWithFlags.enable(:ai_integrations, for_actor: project_user)
+
+    integration = connect_openai!(project_user, "sk-proj-project-only-wxyz")
+
+    assert {:ok, _policy} =
+             AI.update_workspace_policy(
+               ctx.owner_scope,
+               ctx.workspace.id,
+               ["personal_byok"]
+             )
+
+    assert {:error, :workspace_unavailable} =
+             AI.assign_integration(project_scope, integration.id, ctx.workspace.id)
+
+    [state] =
+      project_scope
+      |> AI.list_assignment_states(integration)
+      |> Enum.filter(&(&1.workspace_id == ctx.workspace.id))
+
+    refute state.can_assign
+    assert state.state == "blocked"
+    assert state.reason == "workspace_membership_required"
+
+    assert is_nil(
+             IntegrationAssignments.active_for(
+               project_user.id,
+               ctx.workspace.id,
+               integration.id
+             )
+           )
+
+    [state_after_denial] =
+      project_scope
+      |> AI.list_assignment_states(integration)
+      |> Enum.filter(&(&1.workspace_id == ctx.workspace.id))
+
+    refute state_after_denial.assigned
+    refute state_after_denial.can_assign
+
+    assert {:error, :workspace_unavailable} =
+             AI.unassign_integration(project_scope, integration.id, ctx.workspace.id)
+  end
+
   test "database guard rejects an assignment whose owner does not match the integration", ctx do
     integration = connect_openai!(ctx.owner)
 
@@ -207,7 +258,7 @@ defmodule Storyarn.AI.IntegrationAssignmentsTest do
           integration_id: integration.id,
           provider: integration.provider
         }
-        |> IntegrationWorkspaceAssignment.assign_changeset(Storyarn.Shared.TimeHelpers.now())
+        |> IntegrationWorkspaceAssignment.assign_changeset(TimeHelpers.now())
         |> Repo.insert!(mode: :savepoint)
       end)
     end

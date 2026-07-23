@@ -9,6 +9,12 @@ Let an editor rewrite one selected dialogue/response or generate a small set of 
 - One selected dialogue/response and one explicit output locale per operation.
 - Context is bounded to the selected text, speaker fields allowed by the task, and narrowly declared incoming condition/variable evidence. Never send the whole flow.
 - The exact context manifest, lane, provider/model, and managed price or BYOK payer are disclosed before generation.
+- If managed allowance is exhausted, generation does not start. The surface may
+  offer an explicit **Use my own API key** CTA only when a compatible Writing
+  assistant route exists. Choosing it opens the personal data/billing
+  disclosure and requires current capability-scoped consent before creating a
+  separate BYOK operation; it never silently reuses or switches the blocked
+  managed choice.
 - Generated variants are private to the actor until one is applied or deliberately shared.
 - Model output is a proposal; it never mutates project state directly.
 - Generation requires both `:use_ai` and `:edit_content` for the selected project entity; Apply reauthorizes both the mutation permission and current entity access.
@@ -19,6 +25,10 @@ Start with two bounded tasks:
 
 - `rewrite_dialogue`: one proposal following explicit direction;
 - `dialogue_variants`: at most three proposals with length/output caps.
+
+Both personal tasks use the Slice-5.2 Writing assistant primary and
+`suggestions` capability. General assistant, Illustrator, and Voice preferences
+are not eligible.
 
 Tasks preserve placeholders, technical ids, markup/schema constraints, and requested locale. Invalid variants are rejected rather than partially repaired silently.
 
@@ -58,8 +68,13 @@ Flow dialogue/response forms and mutation facades · collaboration locks/broadca
 
 ## Verification / Definition of Done
 
-- ExUnit: task/context caps, locale and placeholder preservation, schema rejection, permission, lock + revision guard, apply through facade, undo/broadcast, operation/item outcome semantics.
-- Vitest: proposal diff, per-variant selection, apply/dismiss/regenerate, stale state, managed price vs BYOK disclosure.
+- ExUnit: task/context caps, locale and placeholder preservation, schema
+  rejection, Writing-assistant role mapping, permission, lock + revision guard,
+  apply through facade, undo/broadcast, operation/item outcome semantics, and no
+  managed-to-personal fallback on exhausted allowance.
+- Vitest: proposal diff, per-variant selection, apply/dismiss/regenerate, stale
+  state, managed price vs BYOK disclosure, and explicit
+  allowance-exhausted → BYOK disclosure/consent flow.
 - Browser: two collaborators prove a proposal cannot overwrite a line changed after generation.
 - Palette command works from the dialogue editor and captures the correct selection.
 - User docs cover provider/cost, privacy, proposals, and stale behavior.

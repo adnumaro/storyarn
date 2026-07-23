@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import {
   Archive,
   BookOpen,
+  Bot,
   ChevronLeft,
   CircleHelp,
   Gauge,
@@ -84,6 +85,7 @@ const { t } = useI18n();
 const iconMap: Record<string, Component> = {
   archive: Archive,
   "book-open": BookOpen,
+  bot: Bot,
   "chevron-left": ChevronLeft,
   gauge: Gauge,
   "git-branch": GitBranch,
@@ -109,6 +111,17 @@ function showTutorial(): void {
 
 function routePath(path: string): string {
   return path.split("?", 1)[0] ?? path;
+}
+
+function settingsItemActive(path: string): boolean {
+  const currentRoute = routePath(currentPath);
+  const itemRoute = routePath(path);
+
+  if (itemRoute === "/users/settings/ai-team") {
+    return currentRoute === itemRoute || currentRoute.startsWith(`${itemRoute}/`);
+  }
+
+  return currentRoute === itemRoute;
 }
 
 const projectSettingsBasePath = computed(() => {
@@ -219,6 +232,12 @@ const sections = computed<SettingsSection[]>(() => {
       path: sensitiveSettingsPath("/users/settings/integrations", sudoGrant),
       icon: "plug",
     });
+
+    accountItems.push({
+      label: t("settings.nav.items.ai_team"),
+      path: sensitiveSettingsPath("/users/settings/ai-team", sudoGrant),
+      icon: "bot",
+    });
   }
 
   return [
@@ -261,6 +280,10 @@ const sections = computed<SettingsSection[]>(() => {
     })),
   ];
 });
+
+const contentWidthClass = computed(() =>
+  routePath(currentPath) === "/users/settings/ai-team" ? "max-w-6xl" : "max-w-3xl",
+);
 </script>
 
 <template>
@@ -291,9 +314,9 @@ const sections = computed<SettingsSection[]>(() => {
                 :to="item.path"
                 :class="[
                   'flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors',
-                  currentPath === routePath(item.path) &&
+                  settingsItemActive(item.path) &&
                     'bg-black/5 dark:bg-white/10 font-medium text-foreground',
-                  currentPath !== routePath(item.path) &&
+                  !settingsItemActive(item.path) &&
                     'text-foreground/80 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground',
                 ]"
               >
@@ -339,7 +362,7 @@ const sections = computed<SettingsSection[]>(() => {
       </div>
 
       <div class="flex-1 min-h-0 overflow-y-auto p-4 lg:p-8">
-        <div class="max-w-3xl mx-auto">
+        <div :class="[contentWidthClass, 'mx-auto']">
           <header v-if="title" class="flex items-start justify-between gap-4 pb-4">
             <div>
               <h1 class="text-lg font-semibold leading-8">{{ title }}</h1>

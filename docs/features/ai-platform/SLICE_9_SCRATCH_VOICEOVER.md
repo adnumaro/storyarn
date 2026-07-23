@@ -10,7 +10,11 @@ Generate an AI audition for one translated dialogue/response, let the user liste
 - `vo_eligible == true`, non-empty translated text, valid source, and both `:use_ai` and project `:edit_content` permission.
 - V0 requires `vo_asset_id == nil` and `vo_status in ["none", "needed"]`. It never replaces a recorded/approved/stale retained voice-over; the user must remove the existing VO through the normal audited workflow first.
 - Target locales only; source-language `data["audio_asset_id"]` asymmetry remains out of scope.
-- Initial implementation target: an OpenAI speech adapter using the actor's personal BYOK connection.
+- Initial implementation target: an OpenAI `/v1/audio/speech` adapter for the
+  reviewed [`tts-1`](https://developers.openai.com/api/docs/models/tts-1) and
+  [`tts-1-hd`](https://developers.openai.com/api/docs/models/tts-1-hd) entries
+  using the actor's personal BYOK connection. The UI presents the speed/quality
+  trade-off and never substitutes one for the other silently.
 - Curated catalog voices only; explicit provider/model/voice selection.
 - MP3-normalized private preview with play, accept, dismiss, and explicit regenerate.
 - Main surface: localization editor; contextual palette command `Generate scratch voice-over` uses palette v2 `launch` and creates no operation until its provider/model/voice preflight is confirmed.
@@ -20,7 +24,17 @@ Generate an AI audition for one translated dialogue/response, let the user liste
 
 Register `:scratch_voiceover` with capability `:speech`, lane `personal_byok` only, exact-entity context, one-line/character caps, temporary-audio output, async execution, and no scheduled/bulk execution.
 
-Extend `Storyarn.AI.Provider.capability()` with `:speech`, but advertise it in OpenAI metadata only after the speech adapter and its runtime contract pass integration tests. Add a versioned, adapter-owned catalog of supported speech models, voice ids, locales, and output formats; `GET /models` is neither a voice catalog nor proof that the account can call speech.
+Slice 5.2 already exposes reviewed speech entries as selectable preferences
+whose `implementation_status` is `configuration_only`. Promote each exact
+provider/model entry implemented here to `implementation_status = executable`
+and advertise it in provider metadata only after the speech adapter and that
+entry's runtime contract pass integration tests. Other speech entries, including
+Google
+[`gemini-3.1-flash-tts-preview`](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-tts-preview),
+remain configuration-only until their own adapter is implemented. Add a
+versioned, adapter-owned catalog of supported voice ids, locales, and output
+formats; `GET /models` is neither a voice catalog nor proof that the account can
+call speech.
 
 OpenAI is an implementation target, not an assumption. Before real-provider work starts, the owner must approve a current provider review covering target-language quality, voice/catalog stability, API access, output formats, regional processing, data retention/training terms, acceptable-use/disclosure requirements, and account eligibility. If the review fails, stop this slice and select a different initial provider explicitly; do not substitute one at runtime.
 

@@ -1,6 +1,7 @@
 defmodule Storyarn.AI.IntegrationCrud do
   @moduledoc """
-  Create / read / revoke operations for `Storyarn.AI.Integration`.
+  Create, validate, rotate, read and revoke operations for
+  `Storyarn.AI.Integration`.
 
   The `connect/3` function is the security-critical entry point: it validates
   the API key against the provider BEFORE persisting anything, records an
@@ -29,6 +30,14 @@ defmodule Storyarn.AI.IntegrationCrud do
   @type connect_error ::
           :unknown_provider
           | :already_connected
+          | Provider.validation_error()
+          | Ecto.Changeset.t()
+
+  @type credential_update_error ::
+          :unauthorized
+          | :integration_unavailable
+          | :integration_changed
+          | :unknown_provider
           | Provider.validation_error()
           | Ecto.Changeset.t()
 
@@ -75,6 +84,54 @@ defmodule Storyarn.AI.IntegrationCrud do
       persist_connection(user_id, adapter, api_key, account_info)
     end
   end
+
+  @doc """
+  Validate a replacement key before atomically updating the existing
+  integration in place.
+
+  Assignments, consents and preferences keep referring to the same integration
+  id. If validation or persistence fails, the previous credential and metadata
+  remain untouched.
+  """
+  @spec replace_key(User.t(), Integration.t(), String.t()) ::
+          {:ok, Integration.t()} | {:error, credential_update_error()}
+  def replace_key(%User{id: user_id}, %Integration{id: integration_id, user_id: user_id}, api_key)
+      when is_integer(integration_id) and is_binary(api_key) do
+    with {:ok, snapshot} <- owned_active_snapshot(user_id, integration_id),
+         {:ok, adapter} <- Providers.adapter_for(snapshot.provider),
+         {:ok, account_info} <- validate_key(user_id, adapter, api_key) do
+      persist_key_replacement(snapshot, adapter, api_key, account_info)
+    end
+  end
+
+  def replace_key(%User{}, %Integration{}, _api_key), do: {:error, :unauthorized}
+
+  @doc """
+  Revalidate the stored key and atomically refresh provider metadata.
+
+  An optimistic credential comparison prevents a slow revalidation response
+  from overwriting metadata produced by a concurrent key replacement.
+  """
+  @spec revalidate(User.t(), Integration.t()) ::
+          {:ok, Integration.t()} | {:error, credential_update_error()}
+  def revalidate(%User{id: user_id}, %Integration{id: integration_id, user_id: user_id})
+      when is_integer(integration_id) do
+    with {:ok, snapshot} <- owned_active_snapshot(user_id, integration_id),
+         {:ok, adapter} <- Providers.adapter_for(snapshot.provider) do
+      case validate_key(user_id, adapter, snapshot.api_key_encrypted) do
+        {:ok, account_info} ->
+          persist_revalidation(snapshot, adapter, account_info)
+
+        {:error, :invalid_key} ->
+          invalidate_rejected_connection(snapshot)
+
+        {:error, _reason} = error ->
+          error
+      end
+    end
+  end
+
+  def revalidate(%User{}, %Integration{}), do: {:error, :unauthorized}
 
   @doc """
   Mark an integration as revoked (user-initiated disconnect).
@@ -178,6 +235,123 @@ defmodule Storyarn.AI.IntegrationCrud do
     end
   end
 
+  defp persist_key_replacement(snapshot, adapter, api_key, account_info) do
+    fn ->
+      with %Integration{} = active <-
+             lock_owned_active(snapshot.user_id, snapshot.id, snapshot.provider),
+           true <-
+             active.api_key_encrypted == snapshot.api_key_encrypted ||
+               Repo.rollback(:integration_changed),
+           {:ok, updated} <-
+             active
+             |> Integration.replace_key_changeset(
+               account_info
+               |> account_attrs(TimeHelpers.now())
+               |> Map.merge(%{
+                 api_key_encrypted: api_key,
+                 key_last_four: last_four(api_key)
+               })
+             )
+             |> Repo.update() do
+        audit_integration_mutation!(updated, adapter, :key_replaced)
+      else
+        nil -> Repo.rollback(:integration_unavailable)
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end
+    |> Repo.transaction()
+    |> unwrap_transaction()
+  end
+
+  defp persist_revalidation(snapshot, adapter, account_info) do
+    fn ->
+      with %Integration{} = active <-
+             lock_owned_active(snapshot.user_id, snapshot.id, snapshot.provider),
+           true <-
+             active.api_key_encrypted == snapshot.api_key_encrypted ||
+               Repo.rollback(:integration_changed),
+           {:ok, updated} <-
+             active
+             |> Integration.revalidation_changeset(account_attrs(account_info, TimeHelpers.now()))
+             |> Repo.update() do
+        audit_integration_mutation!(updated, adapter, :revalidated)
+      else
+        nil -> Repo.rollback(:integration_unavailable)
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end
+    |> Repo.transaction()
+    |> unwrap_transaction()
+  end
+
+  defp invalidate_rejected_connection(snapshot) do
+    fn ->
+      case lock_owned_active(snapshot.user_id, snapshot.id, snapshot.provider) do
+        %Integration{} = active ->
+          revoke_revalidated_key(active, snapshot)
+
+        nil ->
+          Repo.rollback(:integration_unavailable)
+      end
+    end
+    |> Repo.transaction()
+    |> case do
+      {:ok, _revoked} -> {:error, :invalid_key}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp revoke_revalidated_key(active, snapshot) do
+    if active.api_key_encrypted == snapshot.api_key_encrypted,
+      do: revoke_locked!(active, :auto_revoked, TimeHelpers.now()),
+      else: Repo.rollback(:integration_changed)
+  end
+
+  defp owned_active_snapshot(user_id, integration_id) do
+    case Repo.one(
+           from(i in Integration,
+             where:
+               i.id == ^integration_id and i.user_id == ^user_id and
+                 is_nil(i.revoked_at)
+           )
+         ) do
+      %Integration{} = integration -> {:ok, integration}
+      nil -> {:error, :integration_unavailable}
+    end
+  end
+
+  defp lock_owned_active(user_id, integration_id, provider) do
+    Repo.one(
+      from(i in Integration,
+        where:
+          i.id == ^integration_id and i.user_id == ^user_id and
+            i.provider == ^provider and is_nil(i.revoked_at),
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp account_attrs(account_info, validated_at) do
+    %{
+      account_email: Map.get(account_info, :account_email),
+      account_display_name: Map.get(account_info, :account_display_name),
+      available_models: Map.get(account_info, :available_models),
+      last_validated_at: validated_at
+    }
+  end
+
+  defp audit_integration_mutation!(integration, adapter, action) do
+    case Audit.log(
+           integration.user_id,
+           adapter.metadata().id,
+           action,
+           %{integration_id: integration.id}
+         ) do
+      {:ok, _audit} -> integration
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
+  end
+
   defp audit_connection!(user_id, adapter, integration) do
     case Audit.log(user_id, adapter.metadata().id, :connected, %{}) do
       {:ok, _audit} -> integration
@@ -233,6 +407,9 @@ defmodule Storyarn.AI.IntegrationCrud do
   end
 
   defp normalize_insert_error(result), do: result
+
+  defp unwrap_transaction({:ok, result}), do: {:ok, result}
+  defp unwrap_transaction({:error, reason}), do: {:error, reason}
 
   defp last_four(api_key) when byte_size(api_key) >= 4 do
     String.slice(api_key, -4, 4)

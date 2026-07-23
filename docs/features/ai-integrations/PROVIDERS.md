@@ -1,6 +1,9 @@
 # AI Integrations — Provider Reference
 
-Internal reference for the AI Integrations feature. Covers the seven providers targeted for v1 (six LLM providers + DeepL, translation-only) and the authentication decisions behind them.
+Internal reference for the AI Integrations feature. Covers the six personal AI
+model providers targeted for v1 plus the legacy DeepL translation connection and
+the authentication decisions behind them. DeepL is not a new “My AI Team”
+preference target in the current plan.
 
 ## Model: BYOK (Bring Your Own Key)
 
@@ -26,7 +29,9 @@ The industry pattern in 2026 is BYOK for third-party wrappers. Cursor, Continue,
 
 ## Provider reference
 
-Each provider entry documents what Slice 1–4 adapters need. Where a value is marked `VERIFY`, confirm during that provider's adapter work — Slice 0 research covered high-level viability, not every endpoint detail.
+Each provider entry documents what the connection and personal-routing adapters
+need. Where a value is marked `VERIFY`, confirm during that provider's adapter
+work — Slice 0 research covered high-level viability, not every endpoint detail.
 
 ### Anthropic Claude
 
@@ -57,7 +62,7 @@ Each provider entry documents what Slice 1–4 adapters need. Where a value is m
 - **Key format**: `AIza...` (standard Google API key)
 - **Base URL**: `https://generativelanguage.googleapis.com`
 - **Auth**: `x-goog-api-key: <KEY>` header. Google also accepts `?key=<KEY>` as query param, but the header keeps the key out of URLs (proxy/access logs) — decided in Slice 3.
-- **Validation endpoint**: `GET /v1beta/models` → 200 with model list on valid key, **400** (`API_KEY_INVALID`) or 403 on invalid. Note: 400, not 401 — the adapter overrides the shared classification for this.
+- **Validation endpoint**: `GET /v1beta/models?pageSize=1000` → 200 with the account-visible model list on a valid key, **400** (`API_KEY_INVALID`) or 403 on invalid. Google returns only 50 models when `pageSize` is omitted; requesting the documented maximum prevents valid image or speech models from disappearing from Storyarn's curated intersection. Note: 400, not 401 — the adapter overrides the shared classification for this.
 - **Account info endpoint**: none. Display strategy: masked key.
 - **Billing model**: free tier available; paid via Google Cloud billing account attached to the AI Studio project.
 - **User docs to link**: https://ai.google.dev/gemini-api/docs/api-key
@@ -103,18 +108,31 @@ Each provider entry documents what Slice 1–4 adapters need. Where a value is m
 - **Auth header**: `Authorization: DeepL-Auth-Key <KEY>`
 - **Validation endpoint** (cheap, non-billing): `GET /v2/usage` → 200 with character counts on valid key, 401/403 on invalid. DeepL has **no models endpoint** — no model selector ever renders for DeepL (capability metadata drives this).
 - **Account info endpoint**: none. Masked key.
-- **Capabilities**: `[:translation]` only — the Translator role slot is its only assignment target (Slice 4 of the platform plan).
+- **Capabilities**: legacy provider-level `[:translation]` metadata only. The
+  personal Translator role is reserved and hidden; DeepL cannot be assigned in
+  “My AI Team” until a registered executable personal translation task and
+  adapter exist.
 - **Billing model**: Free tier 500K chars/month; Pro pay-per-character.
 - **User docs to link**: https://developers.deepl.com/docs
-- **Note**: the legacy per-project DeepL config (`translation_provider_configs`) remains the localization consumer until Slice 4's unification (owner-decided); this adapter only powers the BYOK connection card.
+- **Note**: the legacy per-project DeepL config
+  (`translation_provider_configs`) remains the localization consumer. The
+  current plan explicitly defers migration to personal preferences; an existing
+  legacy connection may remain visible for administration/disconnect, but it is
+  not a selectable personal execution route.
 
 ## Common security requirements (all providers)
 
 - **Storage**: `api_key_encrypted` column via `Storyarn.Shared.EncryptedBinary` (Cloak).
 - **Never in logs**: implement `Inspect` protocol on `AI.Integration` schema that redacts `api_key_encrypted`. Do not log the struct raw anywhere.
 - **Display**: only ever show `key_last_four` (last 4 chars of the plaintext key, captured at connect time and stored non-encrypted for display).
-- **Validation before persist**: on Connect, do a validation call to the provider's `models` endpoint. If it fails, reject with a clear error. Never store an unvalidated key.
-- **Revocation detection**: when the runtime API (Slice 5) receives 401/403 from a provider, mark the integration `revoked_at = now()` and surface a "Reconnect" prompt in the UI.
+- **Validation before persist**: on Connect, use the provider-specific
+  validation endpoint documented above (`models` where available; `/v2/usage`
+  for DeepL). If it fails, reject with a clear error. Never store an unvalidated
+  key.
+- **Revocation detection**: mark the integration revoked only for a
+  provider-specific authentication failure that proves the credential is
+  unusable. Generic authorization, capability, safety, or policy 403 responses
+  remain classified task errors and do not revoke an otherwise valid key.
 - **Rate limit on Connect**: 3 attempts / minute / user (Hammer or `:ets` counter) to avoid brute-force attempts against pasted-key validation.
 - **Audit trail**: every connect / disconnect / validation-failure / auto-revoke event → `ai_integration_audits` row (no key material stored in the audit).
 

@@ -2,50 +2,225 @@
   "integrations": {
     "page": {
       "title": "Integraciones IA",
-      "description": "Conecta tus cuentas personales de IA y elige en qué workspaces puede usarlas Storyarn. La facturación va directamente contigo y cada proveedor.",
+      "description": "Conecta una sola vez tus cuentas personales de proveedores, configura cada conexión y elige dónde puede ofrecerla Storyarn. Cada proveedor factura directamente a tu cuenta.",
       "providers_aria": "Proveedores de IA disponibles",
       "connected": {
-        "title": "Conectadas",
-        "description": "Revisa los modelos disponibles y elige dónde puede usarse cada conexión personal."
+        "title": "Proveedores conectados",
+        "description": "Abre un proveedor para gestionar su clave, los modelos soportados por Storyarn y el acceso por workspace."
       },
       "available": {
         "title": "Proveedores disponibles",
-        "description": "Conecta otra cuenta personal para poder utilizarla desde Storyarn."
+        "description": "Elige un proveedor para revisar los modelos soportados por Storyarn y conectar tu API key personal."
       }
+    },
+    "team": {
+      "title": "Mi equipo de IA",
+      "description": "Elige el proveedor y modelo principal de cada rol en cada workspace. Una misma clave puede tener configuraciones distintas en tus diferentes workspaces.",
+      "overview": {
+        "title": "Mi equipo de IA",
+        "description": "Consulta tus elecciones personales de proveedor y modelo en todos los workspaces a los que tienes acceso.",
+        "personal_scope_note": "Este resumen solo muestra tus propias conexiones de IA y elecciones de roles. Las claves y configuraciones de los demás miembros siguen siendo privadas.",
+        "list_title": "Configuración del equipo de IA por workspace",
+        "workspace": "Workspace",
+        "actions": "Acciones",
+        "workspace_roles": {
+          "owner": "Owner",
+          "admin": "Administrador",
+          "member": "Miembro",
+          "viewer": "Lector",
+          "limited": "Acceso a proyecto"
+        },
+        "policy_blocked": "La IA personal está bloqueada aquí",
+        "membership_required": "Debes ser miembro del workspace para configurar este equipo de IA.",
+        "no_role_support": "Aún no disponible",
+        "no_model": "Sin modelo principal",
+        "configured_hint": "Guardado ahora; la ejecución todavía está en desarrollo.",
+        "states": {
+          "ready": "Preparado",
+          "configured": "Configurado",
+          "broken": "Requiere atención",
+          "unconfigured": "Sin configurar",
+          "coming-soon": "Próximamente"
+        },
+        "configure": "Configurar",
+        "configure_workspace": "Configurar el equipo de IA de {workspace}",
+        "empty": {
+          "title": "No hay workspaces que mostrar",
+          "description": "Cuando crees un workspace o te unas a uno, la configuración de tu equipo personal de IA aparecerá aquí."
+        }
+      },
+      "configuration": {
+        "back": "Todas las configuraciones por workspace",
+        "title": "Configurar {workspace}",
+        "description": "Elige el proveedor personal y el modelo principal que utilizará cada rol disponible en este workspace."
+      },
+      "workspace": {
+        "title": "Configuración del workspace",
+        "description": "Cada workspace mantiene sus propias elecciones de roles y modelos."
+      },
+      "workspace_scope_note": "Estas elecciones solo se aplican a este workspace. Tus API keys siguen siendo conexiones personales de tu cuenta y puedes reutilizarlas en otros workspaces con modelos diferentes.",
+      "manage_integrations": "Gestionar conexiones de proveedores",
+      "policy_blocked": {
+        "title": "La IA personal está deshabilitada en este workspace",
+        "description": "El owner debe permitir la IA personal de los miembros antes de configurar estos roles. Las opciones existentes siguen visibles para poder repararlas y no se usan mientras estén bloqueadas."
+      },
+      "roles_section": {
+        "title": "Roles",
+        "description": "Configura un modelo principal para cada tipo de trabajo solicitado explícitamente. Si Storyarn AI alcanza su límite, el modelo personal solo se ofrece como continuación explícita; nunca se usa automáticamente."
+      },
+      "slots": {
+        "general_assistant": {
+          "title": "Asistente general",
+          "description": "Resúmenes y tareas estructuradas generales iniciadas desde la command palette y otras superficies compatibles."
+        },
+        "writing_assistant": {
+          "title": "Asistente de escritura",
+          "description": "Borradores, reescritura y sugerencias de texto narrativo."
+        },
+        "illustrator": {
+          "title": "Ilustrador",
+          "description": "Tareas de generación de imágenes cuando exista un adaptador personal compatible."
+        },
+        "voice": {
+          "title": "Voz",
+          "description": "Voces provisionales cuando esté disponible el soporte de síntesis de voz."
+        }
+      },
+      "status": {
+        "unconfigured": "Sin configurar",
+        "ready": "Preparado",
+        "configured": "Configurado",
+        "workspace_policy_denied": "Bloqueado por el workspace",
+        "provider_disconnected": "Conexión eliminada",
+        "assignment_required": "Falta acceso al workspace",
+        "model_unavailable": "Modelo no disponible",
+        "model_deprecated": "Modelo obsoleto",
+        "capability_mismatch": "Modelo incompatible"
+      },
+      "repairs": {
+        "workspace_policy_denied": "La política del workspace bloquea actualmente esta preferencia personal.",
+        "provider_disconnected": "Vuelve a conectar este proveedor o elige otra conexión elegible.",
+        "assignment_required": "Habilita esta conexión para el workspace antes de utilizarla aquí.",
+        "model_unavailable": "Tu clave ya no puede acceder a este modelo. Elige uno disponible.",
+        "model_deprecated": "Este modelo ya no se puede seleccionar. Elige un reemplazo compatible.",
+        "capability_mismatch": "Este modelo ya no cubre todo lo que necesita este rol."
+      },
+      "provider": "Proveedor",
+      "primary_model": "Modelo principal",
+      "primary_summary": "Principal: {provider} · {model}",
+      "choose_provider": "Elige un proveedor",
+      "choose_model": "Elige un modelo",
+      "selection_help": "Selecciona un proveedor elegible y su modelo principal.",
+      "no_compatible_options": "Todavía no hay una conexión con un modelo soportado habilitada para este workspace y rol.",
+      "configuration_only": {
+        "badge": "Herramienta futura",
+        "option_description": "Puedes guardar este modelo ahora, pero Storyarn todavía no puede ejecutar este rol. No se envían peticiones ni se generan cargos del proveedor.",
+        "saved_description": "Configuración guardada. Storyarn todavía no puede ejecutar este rol, así que no se envían peticiones ni se generan cargos del proveedor."
+      },
+      "personal_billing": "{provider} · tu clave. El proveedor factura directamente a tu cuenta.",
+      "assign": "Definir principal",
+      "assign_for_role": "Definir el modelo principal de {role}",
+      "update": "Actualizar principal",
+      "update_for_role": "Actualizar el modelo principal de {role}",
+      "remove": "Eliminar configuración del rol",
+      "remove_for_role": "Eliminar la configuración de {role}",
+      "no_roles": "Todavía no hay roles de IA configurables."
     },
     "empty": {
       "description": "Todavía no hay proveedores de IA disponibles."
     },
     "card": {
-      "connected_as": "Conectado como {identifier}",
+      "connected": "Conectado",
       "not_connected": "Sin conectar",
       "connect": "Conectar",
       "disconnect": "Desconectar",
       "docs": "Documentación API",
       "key_suffix": "Clave terminada en {suffix}",
-      "model_status": "Estado del modelo",
-      "routing_ready": "Disponible para el enrutamiento de IA",
-      "no_executable_model": "Esta conexión no ofrece ahora mismo un modelo compatible.",
-      "catalog_states": {
-        "catalog_ready": "Modelos disponibles después de conectar",
-        "connection_only": "Solo conexión",
-        "model_deprecated": "El modelo configurado está obsoleto",
-        "model_unavailable": "El modelo configurado no está disponible para esta clave"
+      "personal_connection": "Conexión personal",
+      "workspace_singular": "{count} workspace",
+      "workspace_plural": "{count} workspaces",
+      "model_singular": "{count} modelo soportado",
+      "model_plural": "{count} modelos soportados",
+      "configure": "Configurar proveedor",
+      "open_details": "Abrir la configuración de {name}",
+      "catalog_warnings": {
+        "connection_only": "Falta configurar",
+        "model_deprecated": "Hay que reparar un rol",
+        "model_unavailable": "Modelo no disponible"
       }
+    },
+    "detail": {
+      "back": "Todas las integraciones IA",
+      "description": "Gestiona tu conexión personal con {name}. El acceso por workspace y las elecciones de roles se mantienen separados.",
+      "never": "Nunca",
+      "unknown_date": "Desconocido",
+      "connection_saved": "Proveedor conectado y validado.",
+      "key_replaced": "La nueva clave se ha validado antes de sustituir la anterior.",
+      "revalidated": "Se han actualizado la conexión y la disponibilidad de modelos.",
+      "disconnected": "Proveedor desconectado.",
+      "connection": {
+        "title": "Conexión",
+        "connected_at": "Conectado el {date}",
+        "validated_at": "Validado el {date}",
+        "revalidate": "Revalidar",
+        "replace": "Sustituir clave",
+        "not_connected_title": "Conecta tu cuenta personal del proveedor",
+        "not_connected_description": "Storyarn valida la clave antes de guardarla. La clave pertenece a tu cuenta y nunca se comparte con un workspace."
+      },
+      "models": {
+        "title": "Modelos soportados por Storyarn",
+        "description": "Catálogo revisado por Storyarn para este proveedor. La disponibilidad final también depende de tu API key. Elige el modelo principal de cada rol y workspace en Mi equipo de IA.",
+        "compatible_count": "{count} disponibles para esta clave",
+        "empty": "Storyarn no ofrece ahora mismo un modelo soportado para este proveedor, por lo que esta conexión no se puede asignar a un rol.",
+        "configuration_only_description": "Este modelo se puede seleccionar para roles futuros, pero Storyarn todavía no puede ejecutarlo. No se envían peticiones ni se generan cargos del proveedor.",
+        "implementation": {
+          "executable": "Ejecutable",
+          "configuration_only": "Solo configuración"
+        },
+        "release_stage": {
+          "preview": "Preview"
+        },
+        "status": {
+          "available": "Disponible",
+          "unavailable": "No disponible para esta clave",
+          "unknown": "Disponibilidad por confirmar",
+          "deprecated": "Obsoleto"
+        }
+      },
+      "impacts": {
+        "title": "Roles que usan esta conexión",
+        "description": "Consulta exactamente qué roles y workspaces dependen de este proveedor. Los que requieren atención aparecen primero."
+      },
+      "disconnect": {
+        "title": "Desconectar proveedor",
+        "description": "Esto elimina la clave guardada y deshabilita todos los workspaces y roles que dependen de esta conexión."
+      }
+    },
+    "capabilities": {
+      "translation": "Traducción",
+      "suggestions": "Sugerencias",
+      "tasks": "Tareas estructuradas",
+      "images": "Imágenes",
+      "speech": "Voz"
     },
     "assignments": {
       "title": "Acceso por workspace",
-      "description": "Elige los workspaces donde Storyarn puede ofrecer esta conexión personal.",
+      "description": "Elige los workspaces donde Storyarn puede ofrecer esta conexión personal. Los habilitados aparecen primero.",
       "summary": "{assigned} de {total} workspaces habilitados",
+      "search": "Buscar workspaces",
       "allow": "Habilitar",
       "remove": "Deshabilitar",
+      "enable_for_workspace": "Habilitar esta conexión para {workspace}",
+      "disable_for_workspace": "Deshabilitar esta conexión para {workspace}",
       "blocked": "Bloqueado",
-      "consent_note": "Habilitar un workspace no ejecuta IA automáticamente. Storyarn seguirá pidiendo consentimiento explícito cuando una tarea vaya a enviar contenido del proyecto a este proveedor.",
+      "consent_note": "Habilitar un workspace no ejecuta IA automáticamente. Storyarn sigue pidiendo consentimiento explícito antes de enviar contenido del proyecto a este proveedor.",
       "no_workspaces": "Ahora mismo no tienes ningún workspace elegible para esta conexión.",
+      "no_search_results": "Ningún workspace coincide con esta búsqueda.",
       "reasons": {
         "owner_allowed": "Eres owner de este workspace",
         "member_policy_allowed": "El owner permite claves personales de IA",
-        "member_policy_disabled": "El owner ha deshabilitado las claves personales de IA"
+        "member_policy_disabled": "El owner ha deshabilitado las claves personales de IA",
+        "workspace_membership_required": "Necesitas ser miembro directo del workspace"
       }
     },
     "connect": {
@@ -56,9 +231,16 @@
       "submit": "Conectar",
       "cancel": "Cancelar"
     },
+    "replace": {
+      "title": "Sustituir la clave de {name}",
+      "description": "La clave actual seguirá activa si la nueva no supera la validación del proveedor.",
+      "get_key": "Consigue una nueva API key",
+      "submit": "Validar y sustituir",
+      "cancel": "Mantener la clave actual"
+    },
     "disconnect": {
       "title": "¿Desconectar {name}?",
-      "description": "Se eliminarán tu API key almacenada para {name}, sus asignaciones a workspaces y los consentimientos relacionados. Puedes reconectar cuando quieras.",
+      "description": "Se eliminarán tu API key almacenada para {name}, su acceso a workspaces y las configuraciones de roles que dependan de ella. Puedes reconectar cuando quieras.",
       "confirm": "Desconectar",
       "cancel": "Mantener"
     },
@@ -67,16 +249,24 @@
       "network_error": "No se pudo contactar al proveedor. Comprueba tu conexión e inténtalo de nuevo.",
       "provider_error": "El proveedor devolvió un error. Inténtalo de nuevo en un momento.",
       "rate_limited": "Demasiados intentos. Espera un minuto y vuelve a intentarlo.",
-      "already_connected": "Este proveedor ya está conectado. Desconéctalo primero para cambiar la clave.",
+      "already_connected": "Este proveedor ya está conectado.",
       "unknown_provider": "Este proveedor no está soportado.",
       "not_connected": "Este proveedor no está conectado.",
       "invalid_data": "El formato de la clave no es válido.",
+      "unauthorized": "Tu autorización reciente ha caducado. Confirma tu contraseña e inténtalo de nuevo.",
+      "integration_changed": "Esta conexión ha cambiado en otra sesión. Actualiza la página e inténtalo de nuevo.",
       "feature_disabled": "Las integraciones de IA no están disponibles en este momento.",
       "integration_unavailable": "Esta integración no está disponible para tu cuenta.",
       "workspace_unavailable": "Este workspace no está disponible para tu cuenta.",
       "workspace_policy_disabled": "El owner ha deshabilitado las claves personales de IA.",
       "provider_already_assigned": "Ya hay otra conexión personal de este proveedor habilitada en este workspace.",
       "assignment_not_found": "Esta asignación al workspace ya no existe.",
+      "assignment_required": "Habilita este proveedor para el workspace antes de asignarlo a un rol.",
+      "model_unavailable": "Este modelo no está disponible para tu cuenta del proveedor.",
+      "model_deprecated": "Este modelo está obsoleto y no se puede seleccionar.",
+      "capability_mismatch": "Este modelo no es compatible con ese rol.",
+      "invalid_preference_slot": "Este rol de IA todavía no se puede configurar.",
+      "preference_not_found": "Esta preferencia ya no existe.",
       "connection_lost": "Se perdió la conexión con el servidor. Reintenta.",
       "no_target": "No hay proveedor seleccionado.",
       "unknown_error": "Algo salió mal. Inténtalo de nuevo."

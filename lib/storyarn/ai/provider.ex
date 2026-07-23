@@ -17,7 +17,7 @@ defmodule Storyarn.AI.Provider do
   `docs/features/ai-integrations/PROVIDERS.md`). Consumed by role assignments
   and lane resolution in later slices of the AI platform plan.
   """
-  @type capability :: :translation | :suggestions | :tasks | :images
+  @type capability :: :translation | :suggestions | :tasks | :images | :speech
 
   @typedoc """
   Static metadata every adapter exposes for the UI and admin surfaces.

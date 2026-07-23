@@ -28,7 +28,9 @@ Unsupported editors do not register the command.
 
 ## Execution semantics
 
-- Task lane is `personal_byok` only; no Storyarn allowance or automatic fallback.
+- Task lane is `personal_byok` only and resolves through the Slice-5.2 Writing
+  assistant primary (`suggestions`). It never consumes or checks Storyarn
+  allowance and has no managed-to-personal transition.
 - Single in-flight request per editor; stale response tokens suppress obsolete UI.
 - Closing/blur does not claim to abort the external provider call.
 - `execution_status` can succeed while `user_disposition` later becomes abandoned; provider failure remains a technical failure and is not overwritten by blur.
@@ -41,7 +43,7 @@ The Slice-2 editable-context shortcut and async contract are hard prerequisites.
 
 ## Existing code to reuse
 
-Existing Tiptap plugin/extension architecture and editor commands · current rich-text serialization/validation · Slice-2 operations/palette v2 · Slice-4 BYOK/consent · Slice-5 Writing-assistant preference · Slice-6 bounded context · `Storyarn.RateLimiter` · i18n and Lucide conventions.
+Existing Tiptap plugin/extension architecture and editor commands · current rich-text serialization/validation · Slice-2 operations/palette v2 · Slice-4 BYOK/consent · Slice-5.2 Writing assistant (`suggestions`) preference · Slice-6 bounded context · `Storyarn.RateLimiter` · i18n and Lucide conventions.
 
 ## Non-goals
 
@@ -61,7 +63,9 @@ Existing Tiptap plugin/extension architecture and editor commands · current ric
 ## Verification / Definition of Done
 
 - Unit/Vitest per supported editor: trigger, decoration, accept insertion+undo, dismiss, re-trigger/stale suppression, blur semantics, Tab/key conflict, no pre-accept mutation.
-- ExUnit: BYOK-only/no ledger rows, policy/permission, context caps, rate limits, operation status vs disposition, no retry.
+- ExUnit: BYOK-only/no ledger rows, Writing-assistant route mapping, rejection
+  of General/media preferences, policy/permission, context caps, rate limits,
+  operation status vs disposition, and no retry.
 - Palette/browser: open from supported contenteditable despite Tiptap key handling; unsupported surfaces remain absent; real-key accept/dismiss path.
 - User docs list supported editors, shortcuts, billing, and cancellation semantics.
 - `just quality-lint` and full relevant suites green.

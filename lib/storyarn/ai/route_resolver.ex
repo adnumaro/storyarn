@@ -2,8 +2,8 @@ defmodule Storyarn.AI.RouteResolver do
   @moduledoc """
   Central provider-neutral route resolver.
 
-  It emits only immutable, explicit choices. Personal defaults and role
-  preferences remain a Slice-5.2 extension of this boundary.
+  It emits only immutable, explicit choices. Actor/workspace role preferences
+  select a primary personal route, but never trigger an automatic fallback.
   """
 
   alias Storyarn.AI.ConfigMap
@@ -13,30 +13,110 @@ defmodule Storyarn.AI.RouteResolver do
   alias Storyarn.AI.IntegrationCrud
   alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.PersonalConsents
+  alias Storyarn.AI.PersonalPreferences
   alias Storyarn.AI.PersonalProviders
   alias Storyarn.AI.PolicyDecision
   alias Storyarn.AI.Settlement
   alias Storyarn.AI.Task
 
+  @type resolution :: %{
+          routes: [ExecutionRoute.t()],
+          personal_choices: [map()],
+          personal_preference: map()
+        }
+
+  @spec preflight_options(PolicyDecision.t(), Task.t()) :: resolution()
+  def preflight_options(%PolicyDecision{} = decision, %Task{} = task) do
+    personal = personal_resolution(decision, task)
+
+    routes =
+      Enum.flat_map(decision.allowed_lanes, fn
+        :personal_byok ->
+          ready_personal_routes(personal.choices)
+
+        lane ->
+          route_for_lane(lane, decision, task)
+      end)
+
+    %{
+      routes: routes,
+      personal_choices: personal.choices,
+      personal_preference: personal.preference
+    }
+  end
+
   @spec routes(PolicyDecision.t(), Task.t()) :: [ExecutionRoute.t()]
   def routes(%PolicyDecision{} = decision, %Task{} = task) do
-    Enum.flat_map(decision.allowed_lanes, &route_for_lane(&1, decision, task))
+    preflight_options(decision, task).routes
   end
 
   @spec personal_choices(PolicyDecision.t(), Task.t()) :: [map()]
   def personal_choices(%PolicyDecision{} = decision, %Task{} = task) do
+    personal_resolution(decision, task).choices
+  end
+
+  @spec personal_preference(PolicyDecision.t(), Task.t()) :: map()
+  def personal_preference(%PolicyDecision{} = decision, %Task{} = task) do
+    personal_resolution(decision, task).preference
+  end
+
+  defp personal_resolution(%PolicyDecision{} = decision, %Task{} = task) do
     if :personal_byok in decision.allowed_lanes and task.personal_byok_allowed? and not decision.scheduled? do
+      preference = PersonalPreferences.resolve(decision.actor_id, decision.workspace_id, task)
+
       integrations =
         decision.actor_id
         |> IntegrationCrud.list_active()
         |> Map.new(&{&1.provider, &1})
 
-      task.capability
-      |> PersonalProviders.for_capability()
-      |> Enum.map(&personal_choice(&1, Map.get(integrations, &1.provider), decision, task))
+      choices =
+        task.capability
+        |> PersonalProviders.for_capability()
+        |> Enum.map(
+          &personal_choice(
+            &1,
+            Map.get(integrations, &1.provider),
+            decision,
+            task,
+            preference
+          )
+        )
+
+      %{choices: choices, preference: public_preference(preference, choices)}
     else
-      []
+      %{choices: [], preference: unavailable_personal_preference()}
     end
+  end
+
+  defp public_preference(resolution, choices) do
+    status =
+      case Enum.find(choices, &preference_choice?(&1, resolution)) do
+        nil -> resolution.status
+        choice -> choice.status
+      end
+
+    resolution
+    |> PersonalPreferences.public_resolution()
+    |> Map.put(:status, status)
+  end
+
+  defp unavailable_personal_preference do
+    %{
+      status: :not_available,
+      slot: nil,
+      assignment_source: nil,
+      preference_id: nil,
+      integration_id: nil,
+      provider: nil,
+      model: nil
+    }
+  end
+
+  defp ready_personal_routes(choices) do
+    Enum.flat_map(choices, fn
+      %{status: :ready, route: route} -> [route]
+      _blocked -> []
+    end)
   end
 
   @spec current?(PolicyDecision.t(), Task.t(), ExecutionRoute.t()) :: boolean()
@@ -102,23 +182,14 @@ defmodule Storyarn.AI.RouteResolver do
     end
   end
 
-  defp route_for_lane(:personal_byok, decision, task) do
-    decision
-    |> personal_choices(task)
-    |> Enum.flat_map(fn
-      %{status: :ready, route: route} -> [route]
-      _blocked -> []
-    end)
-  end
-
   defp route_for_lane(_lane, _decision, _task), do: []
 
-  defp personal_choice(config, nil, _decision, task) do
+  defp personal_choice(config, nil, _decision, task, preference) do
     status = if config.catalog.deprecated?, do: :model_deprecated, else: :connect_required
-    choice(config, task, status, nil, nil, nil)
+    choice(config, task, status, nil, nil, nil, preference)
   end
 
-  defp personal_choice(config, integration, decision, task) do
+  defp personal_choice(config, integration, decision, task, preference) do
     assignment =
       IntegrationAssignments.active_for(
         decision.actor_id,
@@ -127,30 +198,95 @@ defmodule Storyarn.AI.RouteResolver do
       )
 
     if is_nil(assignment) do
-      choice(config, task, :assignment_required, integration.id, nil, nil)
+      choice(config, task, :assignment_required, integration.id, nil, nil, preference)
     else
-      personal_choice_with_assignment(config, integration, assignment, decision, task)
+      personal_choice_with_assignment(
+        config,
+        integration,
+        assignment,
+        decision,
+        task,
+        preference
+      )
     end
   end
 
-  defp personal_choice_with_assignment(config, integration, assignment, decision, task) do
+  defp personal_choice_with_assignment(config, integration, assignment, decision, task, preference) do
     case PersonalProviders.model_status(config, integration) do
       :ready ->
-        case PersonalConsents.active_for(decision.actor_id, decision.workspace_id, integration.id, task) do
-          nil ->
-            choice(config, task, :consent_required, integration.id, assignment.id, nil)
-
-          consent ->
-            route = personal_route(config, integration, assignment, consent, decision, task)
-            choice(config, task, :ready, integration.id, assignment.id, route)
-        end
+        personal_choice_with_consent(
+          config,
+          integration,
+          assignment,
+          decision,
+          task,
+          preference
+        )
 
       status when status in [:model_deprecated, :model_unavailable] ->
-        choice(config, task, status, integration.id, assignment.id, nil)
+        choice(config, task, status, integration.id, assignment.id, nil, preference)
     end
   end
 
-  defp choice(config, task, status, integration_id, assignment_id, route) do
+  defp personal_choice_with_consent(config, integration, assignment, decision, task, preference) do
+    case PersonalConsents.active_for(decision.actor_id, decision.workspace_id, integration.id, task) do
+      nil ->
+        choice(
+          config,
+          task,
+          :consent_required,
+          integration.id,
+          assignment.id,
+          nil,
+          preference
+        )
+
+      consent ->
+        preferred_choice(
+          config,
+          integration,
+          assignment,
+          consent,
+          decision,
+          task,
+          preference
+        )
+    end
+  end
+
+  defp preferred_choice(config, integration, assignment, consent, decision, task, preference) do
+    assignment_source =
+      if preference_match?(preference, config, integration),
+        do: preference.assignment_source,
+        else: "explicit_invocation"
+
+    route =
+      personal_route(
+        config,
+        integration,
+        assignment,
+        consent,
+        decision,
+        task,
+        assignment_source,
+        preference
+      )
+
+    choice(
+      config,
+      task,
+      :ready,
+      integration.id,
+      assignment.id,
+      route,
+      preference
+    )
+  end
+
+  defp choice(config, task, status, integration_id, assignment_id, route, preference) do
+    preferred? =
+      preference_match?(preference, config, %{id: integration_id})
+
     %{
       lane: :personal_byok,
       provider: config.provider,
@@ -166,11 +302,13 @@ defmodule Storyarn.AI.RouteResolver do
       processing_location: config.processing_location,
       model_catalog: ModelCatalog.public_summary(config.catalog),
       consent_policy_version: PersonalConsents.policy_text_version(),
+      preferred: preferred?,
+      assignment_source: if(preferred?, do: preference.assignment_source, else: "explicit_invocation"),
       route: route
     }
   end
 
-  defp personal_route(config, integration, assignment, consent, decision, task) do
+  defp personal_route(config, integration, assignment, consent, decision, task, assignment_source, preference) do
     {:ok, credential_ref} = CredentialRef.new(:personal_byok, Integer.to_string(integration.id))
 
     %ExecutionRoute{
@@ -179,27 +317,54 @@ defmodule Storyarn.AI.RouteResolver do
       model: config.model,
       credential_ref: credential_ref,
       payer: "personal_provider_account",
-      assignment_source: "explicit_invocation",
+      assignment_source: assignment_source,
       consent_basis: "personal_consent:#{consent.id}:#{consent.policy_text_version}",
       policy_version: decision.policy_version,
       price_id: nil,
       price_version: nil,
       price_units: nil,
-      provider_configuration: %{
-        "personal_consent_id" => consent.id,
-        "personal_consent_version" => consent.policy_text_version,
-        "workspace_assignment_id" => assignment.id,
-        "integration_id" => integration.id,
-        "model_catalog_version" => config.catalog.catalog_version,
-        "model_pricing_version" => config.catalog.pricing_version,
-        "capability" => Atom.to_string(task.capability),
-        "cost_class" => task.personal_cost_class,
-        "data_scope" => Atom.to_string(task.data_scope),
-        "processing_location" => config.processing_location,
-        "response_mode" => config.response_mode
-      }
+      provider_configuration:
+        maybe_put_preference(
+          %{
+            "personal_consent_id" => consent.id,
+            "personal_consent_version" => consent.policy_text_version,
+            "workspace_assignment_id" => assignment.id,
+            "integration_id" => integration.id,
+            "model_catalog_version" => config.catalog.catalog_version,
+            "model_pricing_version" => config.catalog.pricing_version,
+            "capability" => Atom.to_string(task.capability),
+            "cost_class" => task.personal_cost_class,
+            "data_scope" => Atom.to_string(task.data_scope),
+            "processing_location" => config.processing_location,
+            "response_mode" => config.response_mode
+          },
+          preference,
+          assignment_source
+        )
     }
   end
+
+  defp preference_choice?(choice, resolution) do
+    not is_nil(resolution.preference_id) and
+      choice.provider == resolution.provider and
+      choice.model == resolution.model and
+      choice.integration_id == resolution.integration_id
+  end
+
+  defp preference_match?(preference, config, integration) do
+    not is_nil(preference.preference_id) and
+      preference.provider == config.provider and
+      preference.model == config.model and
+      preference.integration_id == integration.id
+  end
+
+  defp maybe_put_preference(configuration, preference, assignment_source) when assignment_source == "personal_role" do
+    configuration
+    |> Map.put("personal_preference_id", preference.preference_id)
+    |> Map.put("personal_preference_slot", Atom.to_string(preference.slot))
+  end
+
+  defp maybe_put_preference(configuration, _preference, _assignment_source), do: configuration
 
   defp config do
     Application.get_env(:storyarn, __MODULE__, [])

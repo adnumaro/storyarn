@@ -53,7 +53,7 @@ defmodule Storyarn.AI.ManagedRuntimeConfigTest do
 
     assert managed_route(config)[:provider] == "fireworks"
     assert managed_route(config)[:credential_ref] == "storyarn-managed-fireworks-v1"
-    assert provider_registry(config) == %{"fireworks" => Fireworks, "together" => Together}
+    assert managed_provider_registry(config) == %{"fireworks" => Fireworks, "together" => Together}
 
     assert credential_config(config)[:credentials] == %{
              "storyarn-managed-fireworks-v1" => "test-fireworks-key",
@@ -67,7 +67,7 @@ defmodule Storyarn.AI.ManagedRuntimeConfigTest do
 
     assert managed_route(config)[:provider] == "together"
     assert managed_route(config)[:credential_ref] == "storyarn-managed-together-v1"
-    assert provider_registry(config) == %{"fireworks" => Fireworks, "together" => Together}
+    assert managed_provider_registry(config) == %{"fireworks" => Fireworks, "together" => Together}
   end
 
   test "rejects unsupported providers and missing privacy attestations" do
@@ -97,10 +97,11 @@ defmodule Storyarn.AI.ManagedRuntimeConfigTest do
     |> Keyword.fetch!(:managed)
   end
 
-  defp provider_registry(config) do
+  defp managed_provider_registry(config) do
     config
     |> Keyword.fetch!(InferenceProviders)
     |> Keyword.fetch!(:providers)
+    |> Map.take(["fireworks", "together"])
   end
 
   defp credential_config(config), do: Keyword.fetch!(config, Managed)
