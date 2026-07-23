@@ -11,7 +11,18 @@ defmodule Storyarn.AI.Audit do
   alias Storyarn.Repo
 
   # Only these metadata keys are ever persisted. Extend deliberately.
-  @allowed_metadata_keys [:reason, :unexpected_status, "reason", "unexpected_status"]
+  @allowed_metadata_keys [
+    :reason,
+    :unexpected_status,
+    :integration_id,
+    :workspace_id,
+    :assignment_id,
+    "reason",
+    "unexpected_status",
+    "integration_id",
+    "workspace_id",
+    "assignment_id"
+  ]
   @max_value_bytes 200
 
   @doc """

@@ -18,14 +18,28 @@ defmodule Storyarn.AI.Providers.OpenAITest do
   end
 
   describe "validate_key/1" do
-    test "returns :ok with nil account info on 200 and sends bearer auth" do
+    test "returns discovered models with nil account info on 200 and sends bearer auth" do
       Req.Test.stub(@stub, fn conn ->
         assert conn.request_path == "/v1/models"
         assert Plug.Conn.get_req_header(conn, "authorization") == ["Bearer sk-proj-valid"]
-        Req.Test.json(conn, %{"data" => []})
+
+        Req.Test.json(conn, %{
+          "data" => [
+            %{"id" => "personal-deterministic-v1"},
+            %{"id" => "personal-deterministic-v1"},
+            %{"id" => "  another-model  "},
+            %{"id" => String.duplicate("m", 256)},
+            %{"missing" => "ignored"}
+          ]
+        })
       end)
 
-      assert {:ok, %{account_email: nil, account_display_name: nil}} =
+      assert {:ok,
+              %{
+                account_email: nil,
+                account_display_name: nil,
+                available_models: ["personal-deterministic-v1", "another-model"]
+              }} =
                OpenAI.validate_key("sk-proj-valid")
     end
 

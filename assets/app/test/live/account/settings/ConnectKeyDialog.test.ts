@@ -29,6 +29,7 @@ const dialogStubs = {
 
 function card(): IntegrationCardData {
   return {
+    integration_id: null,
     provider: "anthropic",
     name: "Anthropic Claude",
     key_generation_url: "https://example.com/keys",
@@ -39,6 +40,9 @@ function card(): IntegrationCardData {
     account_display_name: null,
     key_last_four: null,
     connected_at: null,
+    catalog_status: "connection_only",
+    models: [],
+    workspace_assignments: [],
   };
 }
 

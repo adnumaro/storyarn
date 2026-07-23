@@ -11,8 +11,8 @@ type ReplyCallback = (reply: { status?: string; error?: string }) => void;
 const IntegrationCardStub = defineComponent({
   name: "IntegrationCard",
   props: { card: { type: Object, required: true } },
-  emits: ["connect", "disconnect"],
-  template: `<div :data-testid="'card-' + card.provider" />`,
+  emits: ["connect", "disconnect", "toggle-workspace"],
+  template: `<div :data-testid="'card-' + card.provider" :data-status="card.status" />`,
 });
 
 const ConnectKeyDialogStub = defineComponent({
@@ -42,6 +42,7 @@ const ConfirmDialogStub = defineComponent({
 
 function card(provider: string): IntegrationCardData {
   return {
+    integration_id: null,
     provider,
     name: provider,
     key_generation_url: `https://example.com/${provider}/keys`,
@@ -52,6 +53,9 @@ function card(provider: string): IntegrationCardData {
     account_display_name: null,
     key_last_four: null,
     connected_at: null,
+    catalog_status: "connection_only",
+    models: [],
+    workspace_assignments: [],
   };
 }
 
@@ -63,10 +67,10 @@ function livePlugin(live: LiveInterface) {
   };
 }
 
-function mountPage() {
+function mountPage(cards: IntegrationCardData[] = [card("anthropic"), card("openai")]) {
   const live = createMockLive();
   const wrapper = mount(AccountSettingsIntegrations, {
-    props: { cards: [card("anthropic"), card("openai")] },
+    props: { cards },
     global: {
       plugins: [livePlugin(live)],
       provide: { _live_vue: live },
@@ -139,5 +143,82 @@ describe("AccountSettingsIntegrations", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="connect-dialog"]').exists()).toBe(false);
+  });
+
+  it("separates connected integrations from the available provider grid", () => {
+    const connected = card("openai");
+    connected.integration_id = 42;
+    connected.status = "connected";
+
+    const { wrapper } = mountPage([card("anthropic"), connected, card("google")]);
+    const connectedSection = wrapper.get("#connected-integrations");
+    const availableSection = wrapper.get("#available-integrations");
+
+    expect(connectedSection.text()).toContain("Connected");
+    expect(connectedSection.find('[data-testid="card-openai"]').exists()).toBe(true);
+    expect(connectedSection.find('[data-testid="card-anthropic"]').exists()).toBe(false);
+
+    expect(availableSection.text()).toContain("Available providers");
+    expect(availableSection.find('[data-testid="card-anthropic"]').exists()).toBe(true);
+    expect(availableSection.find('[data-testid="card-google"]').exists()).toBe(true);
+    expect(availableSection.find('[data-testid="card-openai"]').exists()).toBe(false);
+    expect(availableSection.get(".grid").classes()).toContain("sm:grid-cols-2");
+  });
+
+  it("assigns and unassigns the connected provider for the selected workspace", async () => {
+    const { live, wrapper } = mountPage();
+    const connected = card("openai");
+    connected.integration_id = 42;
+    connected.status = "connected";
+    connected.workspace_assignments = [
+      {
+        workspace_id: 9,
+        workspace_name: "Narrative team",
+        workspace_slug: "narrative-team",
+        role: "owner",
+        assigned: false,
+        assignment_id: null,
+        can_assign: true,
+        state: "available",
+        reason: "owner_allowed",
+      },
+    ];
+
+    await wrapper.setProps({ cards: [card("anthropic"), connected] });
+
+    const openaiCard = wrapper
+      .findAllComponents(IntegrationCardStub)
+      .find((component) => component.props("card").provider === "openai")!;
+    await openaiCard.vm.$emit("toggle-workspace", connected.workspace_assignments[0]);
+
+    const pushEventMock = live.pushEvent as unknown as {
+      mock: { calls: [string, unknown, ReplyCallback][] };
+    };
+
+    expect(pushEventMock.mock.calls[0]![0]).toBe("assign_workspace");
+    expect(pushEventMock.mock.calls[0]![1]).toEqual({
+      integration_id: 42,
+      workspace_id: 9,
+    });
+
+    pushEventMock.mock.calls[0]![2]({ status: "ok" });
+
+    connected.workspace_assignments[0] = {
+      ...connected.workspace_assignments[0]!,
+      assigned: true,
+      assignment_id: 81,
+      state: "assigned",
+    };
+    await wrapper.setProps({ cards: [card("anthropic"), { ...connected }] });
+    await wrapper
+      .findAllComponents(IntegrationCardStub)
+      .find((component) => component.props("card").provider === "openai")!
+      .vm.$emit("toggle-workspace", connected.workspace_assignments[0]);
+
+    expect(pushEventMock.mock.calls[1]![0]).toBe("unassign_workspace");
+    expect(pushEventMock.mock.calls[1]![1]).toEqual({
+      integration_id: 42,
+      workspace_id: 9,
+    });
   });
 });

@@ -16,9 +16,15 @@ defmodule Storyarn.AI.AuditEntry do
 
   alias Storyarn.Accounts.User
 
-  @actions ~w(connected disconnected validation_failed auto_revoked)
+  @actions ~w(connected disconnected validation_failed auto_revoked workspace_assigned workspace_unassigned)
 
-  @type action :: :connected | :disconnected | :validation_failed | :auto_revoked
+  @type action ::
+          :connected
+          | :disconnected
+          | :validation_failed
+          | :auto_revoked
+          | :workspace_assigned
+          | :workspace_unassigned
 
   @type t :: %__MODULE__{
           id: integer() | nil,

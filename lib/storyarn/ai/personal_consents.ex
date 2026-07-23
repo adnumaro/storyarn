@@ -7,6 +7,8 @@ defmodule Storyarn.AI.PersonalConsents do
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.Integration
+  alias Storyarn.AI.IntegrationAssignments
+  alias Storyarn.AI.IntegrationWorkspaceAssignment
   alias Storyarn.AI.PersonalConsent
   alias Storyarn.AI.PersonalProviders
   alias Storyarn.AI.PolicyDecision
@@ -35,7 +37,14 @@ defmodule Storyarn.AI.PersonalConsents do
              PolicyDecision.authorize(intent, task, :execute, lane: :personal_byok, lock_policy: true),
            true <- expected_policy_text_version == policy_text_version() || {:error, :consent_version_stale},
            %Integration{} = integration <- lock_owned_integration(integration_id, intent.scope.user.id),
-           {:ok, _provider} <- compatible_provider(integration.provider, task.capability) do
+           {:ok, %IntegrationWorkspaceAssignment{}} <-
+             active_assignment(
+               intent.scope.user.id,
+               intent.workspace_id,
+               integration.id,
+               lock: true
+             ),
+           {:ok, _provider} <- compatible_provider(integration.provider, task.capability, integration) do
         get_or_insert(intent, integration, task)
       else
         nil -> Repo.rollback(:integration_unavailable)
@@ -105,9 +114,17 @@ defmodule Storyarn.AI.PersonalConsents do
          {:ok, integration_id} <- integration_id(route.credential_ref),
          {:ok, integration} <-
            owned_integration(integration_id, operation.actor_id, route.provider, lock?),
-         {:ok, provider_config} <- compatible_provider(route.provider, task.capability),
+         {:ok, _assignment} <-
+           IntegrationAssignments.authorize_route(
+             operation.actor_id,
+             operation.workspace_id_snapshot,
+             integration,
+             route.provider_configuration,
+             lock: lock?
+           ),
+         {:ok, provider_config} <- compatible_provider(route.provider, task.capability, integration),
          true <- provider_config.model == route.model || {:error, :model_unavailable},
-         :ok <- validate_route_configuration(route.provider_configuration, integration, task),
+         :ok <- validate_route_configuration(route.provider_configuration, integration, task, provider_config),
          {:ok, consent} <-
            active_consent(operation.actor_id, operation.workspace_id_snapshot, integration.id, task, lock?),
          true <-
@@ -186,11 +203,15 @@ defmodule Storyarn.AI.PersonalConsents do
     end
   end
 
-  defp compatible_provider(provider, capability) do
+  defp compatible_provider(provider, capability, integration) do
     with {:ok, config} <- PersonalProviders.fetch(provider),
-         true <- capability in config.metadata.capabilities do
+         true <- capability in config.catalog.capabilities,
+         :ready <- PersonalProviders.model_status(config, integration) do
       {:ok, config}
     else
+      false -> {:error, :capability_mismatch}
+      {:error, reason} -> {:error, reason}
+      status when status in [:model_deprecated, :model_unavailable] -> {:error, status}
       _unavailable -> {:error, :capability_mismatch}
     end
   end
@@ -202,18 +223,37 @@ defmodule Storyarn.AI.PersonalConsents do
 
   defp attended_operation(_operation), do: :ok
 
-  defp validate_route_configuration(configuration, integration, task) when is_map(configuration) do
-    if configuration["personal_consent_version"] == policy_text_version() and
-         configuration["capability"] == Atom.to_string(task.capability) and
-         configuration["cost_class"] == task.personal_cost_class and
-         configuration["integration_id"] == integration.id do
+  defp active_assignment(user_id, workspace_id, integration_id, opts) do
+    case IntegrationAssignments.active_for(user_id, workspace_id, integration_id, opts) do
+      %IntegrationWorkspaceAssignment{} = assignment -> {:ok, assignment}
+      nil -> {:error, :assignment_required}
+    end
+  end
+
+  defp validate_route_configuration(configuration, integration, task, provider_config) when is_map(configuration) do
+    if route_configuration_valid?(configuration, integration, task, provider_config) do
       :ok
     else
       {:error, :consent_revoked}
     end
   end
 
-  defp validate_route_configuration(_configuration, _integration, _task), do: {:error, :consent_revoked}
+  defp validate_route_configuration(_configuration, _integration, _task, _provider_config), do: {:error, :consent_revoked}
+
+  defp route_configuration_valid?(configuration, integration, task, provider_config) do
+    Enum.all?([
+      configuration["personal_consent_version"] == policy_text_version(),
+      configuration["capability"] == Atom.to_string(task.capability),
+      configuration["cost_class"] == task.personal_cost_class,
+      configuration["integration_id"] == integration.id,
+      is_integer(configuration["workspace_assignment_id"]),
+      configuration["model_catalog_version"] == provider_config.catalog.catalog_version,
+      configuration["model_pricing_version"] == provider_config.catalog.pricing_version,
+      configuration["data_scope"] == Atom.to_string(task.data_scope),
+      configuration["processing_location"] == provider_config.processing_location,
+      configuration["response_mode"] == provider_config.response_mode
+    ])
+  end
 
   defp integration_id(%CredentialRef{kind: :personal_byok, reference: reference}) do
     case Integer.parse(reference) do

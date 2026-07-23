@@ -93,7 +93,8 @@ registered_tasks = []
         model_env: "STORYARN_AI_PERSONAL_ANTHROPIC_MODEL",
         endpoint_env: "STORYARN_AI_PERSONAL_ANTHROPIC_ENDPOINT",
         endpoint: "https://api.anthropic.com/v1/messages",
-        response_mode: "json_schema"
+        response_mode: "json_schema",
+        capabilities: [:translation, :suggestions, :tasks]
       },
       "openai" => %{
         adapter: PersonalOpenAI,
@@ -101,35 +102,40 @@ registered_tasks = []
         endpoint_env: "STORYARN_AI_PERSONAL_OPENAI_ENDPOINT",
         endpoint: "https://api.openai.com/v1/chat/completions",
         response_mode: "json_schema",
-        request_overrides: %{store: false}
+        request_overrides: %{store: false},
+        capabilities: [:translation, :suggestions, :tasks]
       },
       "google" => %{
         adapter: PersonalGoogle,
         model_env: "STORYARN_AI_PERSONAL_GOOGLE_MODEL",
         endpoint_env: "STORYARN_AI_PERSONAL_GOOGLE_ENDPOINT",
         endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-        response_mode: "json_schema"
+        response_mode: "json_schema",
+        capabilities: [:translation, :suggestions, :tasks]
       },
       "moonshot" => %{
         adapter: PersonalMoonshot,
         model_env: "STORYARN_AI_PERSONAL_MOONSHOT_MODEL",
         endpoint_env: "STORYARN_AI_PERSONAL_MOONSHOT_ENDPOINT",
         endpoint: "https://api.moonshot.ai/v1/chat/completions",
-        response_mode: "json_object"
+        response_mode: "json_object",
+        capabilities: [:translation, :suggestions, :tasks]
       },
       "mistral" => %{
         adapter: PersonalMistral,
         model_env: "STORYARN_AI_PERSONAL_MISTRAL_MODEL",
         endpoint_env: "STORYARN_AI_PERSONAL_MISTRAL_ENDPOINT",
         endpoint: "https://api.mistral.ai/v1/chat/completions",
-        response_mode: "json_schema"
+        response_mode: "json_schema",
+        capabilities: [:translation, :suggestions, :tasks]
       },
       "deepseek" => %{
         adapter: PersonalDeepSeek,
         model_env: "STORYARN_AI_PERSONAL_DEEPSEEK_MODEL",
         endpoint_env: "STORYARN_AI_PERSONAL_DEEPSEEK_ENDPOINT",
         endpoint: "https://api.deepseek.com/chat/completions",
-        response_mode: "json_object"
+        response_mode: "json_object",
+        capabilities: [:translation, :suggestions, :tasks]
       }
     }
 
@@ -166,6 +172,31 @@ registered_tasks = []
       Map.new(configured_personal_providers, fn {provider, _config} ->
         {provider, personal_provider_specs[provider].adapter}
       end)
+
+    personal_model_catalog =
+      Enum.map(configured_personal_providers, fn {provider, provider_config} ->
+        spec = personal_provider_specs[provider]
+
+        %{
+          provider: provider,
+          model: provider_config.model,
+          catalog_version: 1,
+          capabilities: spec.capabilities,
+          modalities: [:text],
+          structured_output:
+            if(provider_config.response_mode == "json_schema",
+              do: :json_schema,
+              else: :json_object
+            ),
+          context_window: nil,
+          max_output_tokens: nil,
+          processing_locations: [provider_config.processing_location],
+          pricing_version: nil,
+          deprecated: false
+        }
+      end)
+
+    config :storyarn, Storyarn.AI.ModelCatalog, models: personal_model_catalog
 
     config :storyarn, Storyarn.AI.PersonalConsents,
       policy_text_version: required_env.("STORYARN_AI_PERSONAL_CONSENT_VERSION")

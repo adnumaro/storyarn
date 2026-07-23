@@ -1,13 +1,15 @@
 defmodule Storyarn.AI.PersonalProviders do
   @moduledoc """
-  Curated Slice-4 provider routes.
+  Operator-configured personal provider routes backed by the model catalog.
 
   A connected account proves only that a key is valid. This registry is the
-  server-owned allowlist of providers, models and structured-output modes that
-  Storyarn is prepared to execute before Slice 5 adds a model catalog.
+  server-owned allowlist of endpoint/response-mode configuration, while
+  `Storyarn.AI.ModelCatalog` owns per-model capabilities and lifecycle.
   """
 
   alias Storyarn.AI.ConfigMap
+  alias Storyarn.AI.Integration
+  alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.Providers
 
   @response_modes ~w(json_schema json_object)
@@ -37,7 +39,7 @@ defmodule Storyarn.AI.PersonalProviders do
 
   defp provider_for_capability(provider, capability) do
     case fetch(provider) do
-      {:ok, %{metadata: %{capabilities: capabilities}} = config} ->
+      {:ok, %{catalog: %{capabilities: capabilities}} = config} ->
         if capability in capabilities, do: [config], else: []
 
       {:error, :provider_unavailable} ->
@@ -63,18 +65,36 @@ defmodule Storyarn.AI.PersonalProviders do
     response_mode = config["response_mode"]
     processing_location = config["processing_location"]
 
-    if nonempty?(model) and response_mode in @response_modes and nonempty?(processing_location) do
+    with true <- nonempty?(model),
+         true <- response_mode in @response_modes,
+         true <- nonempty?(processing_location),
+         {:ok, catalog} <- ModelCatalog.fetch(provider, model),
+         true <- response_mode_matches?(response_mode, catalog.structured_output),
+         true <- processing_location in catalog.processing_locations do
       {:ok,
        %{
          provider: provider,
          model: model,
          response_mode: response_mode,
-         processing_location: processing_location
+         processing_location: processing_location,
+         catalog: catalog
        }}
     else
-      {:error, :provider_unavailable}
+      _invalid -> {:error, :provider_unavailable}
     end
   end
+
+  @spec model_status(map(), Integration.t()) :: :ready | :model_deprecated | :model_unavailable
+  def model_status(%{catalog: catalog}, %Integration{} = integration) do
+    case ModelCatalog.authorize(catalog, integration) do
+      :ok -> :ready
+      {:error, reason} -> reason
+    end
+  end
+
+  defp response_mode_matches?("json_schema", :json_schema), do: true
+  defp response_mode_matches?("json_object", :json_object), do: true
+  defp response_mode_matches?(_response_mode, _structured_output), do: false
 
   defp nonempty?(value), do: is_binary(value) and String.trim(value) != ""
 end

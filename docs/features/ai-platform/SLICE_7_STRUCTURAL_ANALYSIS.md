@@ -71,4 +71,4 @@ Branch `feat/structural-analysis` from `main` → one PR containing both stages.
 
 ## Inputs from previous slices
 
-Slice 1 palette foundation; Slice 2 palette/operation contract; Slices 3–4 lanes; Slice 5 central route resolution; Slice 6 context for Stage B. Stage A remains ungated at runtime, but the single-PR delivery waits for every Stage-B dependency.
+Slice 1 palette foundation; Slice 2 palette/operation contract; Slices 3–4 lanes; Slice 5.1 central route resolution; Slice 5.2 personal preferences; Slice 6 context for Stage B. Stage A remains ungated at runtime, but the single-PR delivery waits for every Stage-B dependency.

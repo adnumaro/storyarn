@@ -17,7 +17,9 @@ defmodule Storyarn.AI.IntegrationCrudTest do
     end
 
     test "persists an active integration and audits the event on happy path", %{user: user} do
-      Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, %{"data" => []}) end)
+      Req.Test.stub(@stub, fn conn ->
+        Req.Test.json(conn, %{"data" => [%{"id" => "claude-test"}]})
+      end)
 
       assert {:ok, %Integration{} = integration} =
                AI.connect(user, :anthropic, "sk-ant-api03-valid-key-abcd")
@@ -28,6 +30,7 @@ defmodule Storyarn.AI.IntegrationCrudTest do
       assert is_nil(integration.revoked_at)
       assert integration.connected_at
       assert integration.last_validated_at
+      assert integration.available_models == ["claude-test"]
 
       assert [%AuditEntry{action: "connected"}] = Repo.all(AuditEntry)
     end

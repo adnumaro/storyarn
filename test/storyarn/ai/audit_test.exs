@@ -12,13 +12,23 @@ defmodule Storyarn.AI.AuditTest do
       input = %{
         reason: "invalid_key",
         unexpected_status: 418,
+        integration_id: 7,
+        workspace_id: 11,
+        assignment_id: 13,
         api_key: "sk-ant-leaked-secret",
         nested: %{api_key: "sk-deeper-leak"}
       }
 
       sanitized = Audit.sanitize_metadata(input)
 
-      assert sanitized == %{"reason" => "invalid_key", "unexpected_status" => 418}
+      assert sanitized == %{
+               "reason" => "invalid_key",
+               "unexpected_status" => 418,
+               "integration_id" => 7,
+               "workspace_id" => 11,
+               "assignment_id" => 13
+             }
+
       refute inspect(sanitized) =~ "leak"
     end
 

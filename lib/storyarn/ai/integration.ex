@@ -27,6 +27,7 @@ defmodule Storyarn.AI.Integration do
           key_last_four: String.t() | nil,
           account_email: String.t() | nil,
           account_display_name: String.t() | nil,
+          available_models: [String.t()] | nil,
           connected_at: DateTime.t() | nil,
           last_validated_at: DateTime.t() | nil,
           last_used_at: DateTime.t() | nil,
@@ -41,6 +42,7 @@ defmodule Storyarn.AI.Integration do
     field :key_last_four, :string
     field :account_email, :string
     field :account_display_name, :string
+    field :available_models, {:array, :string}
     field :connected_at, :utc_datetime
     field :last_validated_at, :utc_datetime
     field :last_used_at, :utc_datetime
@@ -64,6 +66,7 @@ defmodule Storyarn.AI.Integration do
       :key_last_four,
       :account_email,
       :account_display_name,
+      :available_models,
       :connected_at,
       :last_validated_at
     ])
@@ -78,6 +81,7 @@ defmodule Storyarn.AI.Integration do
     |> validate_length(:key_last_four, is: 4)
     |> validate_length(:account_email, max: 255)
     |> validate_length(:account_display_name, max: 255)
+    |> validate_available_models()
     |> foreign_key_constraint(:user_id)
     |> unique_constraint([:user_id, :provider],
       name: :ai_integrations_user_provider_active_index,
@@ -95,5 +99,23 @@ defmodule Storyarn.AI.Integration do
   defp validate_provider(changeset) do
     known = Enum.map(Providers.known_ids(), &to_string/1)
     validate_inclusion(changeset, :provider, known)
+  end
+
+  defp validate_available_models(changeset) do
+    validate_change(changeset, :available_models, fn :available_models, models ->
+      cond do
+        not is_list(models) ->
+          [available_models: "must be a list"]
+
+        length(models) > 500 ->
+          [available_models: "contains too many models"]
+
+        Enum.all?(models, &(is_binary(&1) and String.valid?(&1) and byte_size(&1) in 1..255)) ->
+          []
+
+        true ->
+          [available_models: "contains an invalid model identifier"]
+      end
+    end)
   end
 end

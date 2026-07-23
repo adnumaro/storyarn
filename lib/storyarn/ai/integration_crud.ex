@@ -17,6 +17,7 @@ defmodule Storyarn.AI.IntegrationCrud do
   alias Storyarn.Accounts.User
   alias Storyarn.AI.Audit
   alias Storyarn.AI.Integration
+  alias Storyarn.AI.IntegrationAssignments
   alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.Provider
   alias Storyarn.AI.Providers
@@ -150,6 +151,7 @@ defmodule Storyarn.AI.IntegrationCrud do
       key_last_four: last_four(api_key),
       account_email: Map.get(account_info, :account_email),
       account_display_name: Map.get(account_info, :account_display_name),
+      available_models: Map.get(account_info, :available_models),
       connected_at: now,
       last_validated_at: now
     }
@@ -206,6 +208,7 @@ defmodule Storyarn.AI.IntegrationCrud do
         set: [revoked_at: now, updated_at: now]
       )
 
+    IntegrationAssignments.revoke_for_integration(active.id, now)
     PersonalConsents.revoke_for_integration(active.id, now)
     audit_revocation!(active, action)
     %{active | revoked_at: now, updated_at: now}

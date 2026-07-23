@@ -44,12 +44,20 @@ defmodule Storyarn.AI.Providers.KeyValidation do
   @doc """
   Map a `Req` result to the `Storyarn.AI.Provider.validate_key/1` contract.
 
-  200 carries no account info by default — providers that expose account
-  details parse the body themselves before falling back to this.
+  200 carries no account identity by default. Model-list responses are
+  normalized into `:available_models`; providers without a models endpoint
+  leave discovery as `nil`.
   """
   @spec classify({:ok, Req.Response.t()} | {:error, Exception.t()}) ::
           {:ok, Provider.account_info()} | {:error, Provider.validation_error()}
-  def classify({:ok, %Req.Response{status: 200}}), do: {:ok, %{account_email: nil, account_display_name: nil}}
+  def classify({:ok, %Req.Response{status: 200, body: body}}) do
+    {:ok,
+     %{
+       account_email: nil,
+       account_display_name: nil,
+       available_models: available_models(body)
+     }}
+  end
 
   def classify({:ok, %Req.Response{status: status}}) when status in [401, 403], do: {:error, :invalid_key}
 
@@ -60,4 +68,36 @@ defmodule Storyarn.AI.Providers.KeyValidation do
   def classify({:ok, %Req.Response{status: status}}), do: {:error, {:unexpected_status, status}}
 
   def classify({:error, _reason}), do: {:error, :network_error}
+
+  defp available_models(%{"data" => models}) when is_list(models) do
+    extract_models(models, "id")
+  end
+
+  defp available_models(%{"models" => models}) when is_list(models) do
+    extract_models(models, "name")
+  end
+
+  defp available_models(_body), do: nil
+
+  defp extract_models(models, key) do
+    models
+    |> Enum.flat_map(fn
+      %{^key => model} when is_binary(model) -> [normalize_model(model)]
+      _invalid -> []
+    end)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.uniq()
+    |> Enum.take(500)
+  end
+
+  defp normalize_model(model) do
+    normalized =
+      model
+      |> String.trim()
+      |> String.replace_prefix("models/", "")
+
+    if String.valid?(normalized) and byte_size(normalized) in 1..255,
+      do: normalized,
+      else: ""
+  end
 end

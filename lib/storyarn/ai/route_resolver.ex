@@ -1,15 +1,17 @@
 defmodule Storyarn.AI.RouteResolver do
   @moduledoc """
-  Minimal Slice-2 route resolver.
+  Central provider-neutral route resolver.
 
-  It exposes only operator-configured routes. Slice 5 replaces the single
-  managed assignment with central routing and personal preferences.
+  It emits only immutable, explicit choices. Personal defaults and role
+  preferences remain a Slice-5.2 extension of this boundary.
   """
 
   alias Storyarn.AI.ConfigMap
   alias Storyarn.AI.CredentialRef
   alias Storyarn.AI.ExecutionRoute
+  alias Storyarn.AI.IntegrationAssignments
   alias Storyarn.AI.IntegrationCrud
+  alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.PersonalProviders
   alias Storyarn.AI.PolicyDecision
@@ -112,21 +114,43 @@ defmodule Storyarn.AI.RouteResolver do
   defp route_for_lane(_lane, _decision, _task), do: []
 
   defp personal_choice(config, nil, _decision, task) do
-    choice(config, task, :connect_required, nil, nil)
+    status = if config.catalog.deprecated?, do: :model_deprecated, else: :connect_required
+    choice(config, task, status, nil, nil, nil)
   end
 
   defp personal_choice(config, integration, decision, task) do
-    case PersonalConsents.active_for(decision.actor_id, decision.workspace_id, integration.id, task) do
-      nil ->
-        choice(config, task, :consent_required, integration.id, nil)
+    assignment =
+      IntegrationAssignments.active_for(
+        decision.actor_id,
+        decision.workspace_id,
+        integration.id
+      )
 
-      consent ->
-        route = personal_route(config, integration, consent, decision, task)
-        choice(config, task, :ready, integration.id, route)
+    if is_nil(assignment) do
+      choice(config, task, :assignment_required, integration.id, nil, nil)
+    else
+      personal_choice_with_assignment(config, integration, assignment, decision, task)
     end
   end
 
-  defp choice(config, task, status, integration_id, route) do
+  defp personal_choice_with_assignment(config, integration, assignment, decision, task) do
+    case PersonalProviders.model_status(config, integration) do
+      :ready ->
+        case PersonalConsents.active_for(decision.actor_id, decision.workspace_id, integration.id, task) do
+          nil ->
+            choice(config, task, :consent_required, integration.id, assignment.id, nil)
+
+          consent ->
+            route = personal_route(config, integration, assignment, consent, decision, task)
+            choice(config, task, :ready, integration.id, assignment.id, route)
+        end
+
+      status when status in [:model_deprecated, :model_unavailable] ->
+        choice(config, task, status, integration.id, assignment.id, nil)
+    end
+  end
+
+  defp choice(config, task, status, integration_id, assignment_id, route) do
     %{
       lane: :personal_byok,
       provider: config.provider,
@@ -135,16 +159,18 @@ defmodule Storyarn.AI.RouteResolver do
       payer: "personal_provider_account",
       status: status,
       integration_id: integration_id,
+      workspace_assignment_id: assignment_id,
       capability: task.capability,
       cost_class: task.personal_cost_class,
       data_scope: task.data_scope,
       processing_location: config.processing_location,
+      model_catalog: ModelCatalog.public_summary(config.catalog),
       consent_policy_version: PersonalConsents.policy_text_version(),
       route: route
     }
   end
 
-  defp personal_route(config, integration, consent, decision, task) do
+  defp personal_route(config, integration, assignment, consent, decision, task) do
     {:ok, credential_ref} = CredentialRef.new(:personal_byok, Integer.to_string(integration.id))
 
     %ExecutionRoute{
@@ -162,7 +188,10 @@ defmodule Storyarn.AI.RouteResolver do
       provider_configuration: %{
         "personal_consent_id" => consent.id,
         "personal_consent_version" => consent.policy_text_version,
+        "workspace_assignment_id" => assignment.id,
         "integration_id" => integration.id,
+        "model_catalog_version" => config.catalog.catalog_version,
+        "model_pricing_version" => config.catalog.pricing_version,
         "capability" => Atom.to_string(task.capability),
         "cost_class" => task.personal_cost_class,
         "data_scope" => Atom.to_string(task.data_scope),
