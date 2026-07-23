@@ -53,7 +53,7 @@ defmodule Storyarn.AI.ExecutionRoute do
          {:ok, credential_ref} <- CredentialRef.from_map(map["credential_ref"]),
          true <- Enum.all?(["provider", "model", "payer", "assignment_source", "consent_basis"], &is_binary(map[&1])),
          true <- is_integer(map["policy_version"]),
-         true <- is_integer(map["price_units"]) and map["price_units"] > 0,
+         true <- valid_price?(lane, map),
          true <- is_map(map["provider_configuration"]) do
       {:ok,
        %__MODULE__{
@@ -85,4 +85,13 @@ defmodule Storyarn.AI.ExecutionRoute do
   end
 
   defp lane(_value), do: {:error, :invalid_lane}
+
+  defp valid_price?(:managed, map) do
+    is_binary(map["price_id"]) and is_integer(map["price_version"]) and map["price_version"] > 0 and
+      is_integer(map["price_units"]) and map["price_units"] > 0
+  end
+
+  defp valid_price?(lane, map) when lane in [:personal_byok, :workspace_byok] do
+    is_nil(map["price_id"]) and is_nil(map["price_version"]) and is_nil(map["price_units"])
+  end
 end

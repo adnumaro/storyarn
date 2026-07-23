@@ -17,6 +17,7 @@ defmodule Storyarn.AI.IntegrationCrud do
   alias Storyarn.Accounts.User
   alias Storyarn.AI.Audit
   alias Storyarn.AI.Integration
+  alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.Provider
   alias Storyarn.AI.Providers
   alias Storyarn.Repo
@@ -69,10 +70,8 @@ defmodule Storyarn.AI.IntegrationCrud do
   def connect(%User{id: user_id} = _user, provider, api_key) when is_binary(api_key) do
     with {:ok, adapter} <- Providers.adapter_for(provider),
          :ok <- ensure_not_connected(user_id, adapter.metadata().id),
-         {:ok, account_info} <- validate_key(user_id, adapter, api_key),
-         {:ok, integration} <- insert_integration(user_id, adapter, api_key, account_info) do
-      Audit.log(user_id, adapter.metadata().id, :connected, %{})
-      {:ok, integration}
+         {:ok, account_info} <- validate_key(user_id, adapter, api_key) do
+      persist_connection(user_id, adapter, api_key, account_info)
     end
   end
 
@@ -83,32 +82,28 @@ defmodule Storyarn.AI.IntegrationCrud do
   another process already revoked it, and writes the audit row only on the
   actual transition.
   """
-  @spec revoke(Integration.t()) :: {:ok, Integration.t()} | {:error, :already_revoked}
-  def revoke(%Integration{} = integration), do: revoke_active(integration, :disconnected)
+  @spec revoke(User.t(), Integration.t()) ::
+          {:ok, Integration.t()} | {:error, :unauthorized | :already_revoked | Ecto.Changeset.t()}
+  def revoke(%User{id: user_id}, %Integration{user_id: user_id} = integration),
+    do: revoke_active(integration, :disconnected)
+
+  def revoke(%User{}, %Integration{}), do: {:error, :unauthorized}
 
   @doc """
   Conditional revoke shared by user disconnect (`:disconnected`) and runtime
-  auto-revocation (`:auto_revoked`). Audit failures are non-fatal — see
-  `Storyarn.AI.Audit`.
+  auto-revocation (`:auto_revoked`). The lifecycle transition, consent
+  revocation and audit row commit atomically.
   """
   @spec revoke_active(Integration.t(), :disconnected | :auto_revoked) ::
-          {:ok, Integration.t()} | {:error, :already_revoked}
+          {:ok, Integration.t()} | {:error, :already_revoked | Ecto.Changeset.t()}
   def revoke_active(%Integration{} = integration, action) do
     now = TimeHelpers.now()
 
-    {count, _} =
-      Repo.update_all(
-        from(i in Integration, where: i.id == ^integration.id and is_nil(i.revoked_at)),
-        set: [revoked_at: now, updated_at: now]
-      )
-
-    case count do
-      1 ->
-        Audit.log(integration.user_id, integration.provider, action, %{})
-        {:ok, %{integration | revoked_at: now}}
-
-      0 ->
-        {:error, :already_revoked}
+    fn -> revoke_active_transaction(integration, action, now) end
+    |> Repo.transaction()
+    |> case do
+      {:ok, revoked} -> {:ok, revoked}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -163,6 +158,64 @@ defmodule Storyarn.AI.IntegrationCrud do
     |> Integration.connect_changeset(attrs)
     |> Repo.insert()
     |> normalize_insert_error()
+  end
+
+  defp persist_connection(user_id, adapter, api_key, account_info) do
+    fn -> persist_connection_transaction(user_id, adapter, api_key, account_info) end
+    |> Repo.transaction()
+    |> case do
+      {:ok, integration} -> {:ok, integration}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp persist_connection_transaction(user_id, adapter, api_key, account_info) do
+    case insert_integration(user_id, adapter, api_key, account_info) do
+      {:ok, integration} -> audit_connection!(user_id, adapter, integration)
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp audit_connection!(user_id, adapter, integration) do
+    case Audit.log(user_id, adapter.metadata().id, :connected, %{}) do
+      {:ok, _audit} -> integration
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
+  end
+
+  defp revoke_active_transaction(integration, action, now) do
+    case lock_active(integration.id) do
+      %Integration{} = active -> revoke_locked!(active, action, now)
+      nil -> Repo.rollback(:already_revoked)
+    end
+  end
+
+  defp lock_active(integration_id) do
+    Repo.one(
+      from(i in Integration,
+        where: i.id == ^integration_id and is_nil(i.revoked_at),
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp revoke_locked!(active, action, now) do
+    {1, _} =
+      Repo.update_all(
+        from(i in Integration, where: i.id == ^active.id and is_nil(i.revoked_at)),
+        set: [revoked_at: now, updated_at: now]
+      )
+
+    PersonalConsents.revoke_for_integration(active.id, now)
+    audit_revocation!(active, action)
+    %{active | revoked_at: now, updated_at: now}
+  end
+
+  defp audit_revocation!(integration, action) do
+    case Audit.log(integration.user_id, integration.provider, action, %{}) do
+      {:ok, _audit} -> :ok
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
   end
 
   # Two connects racing past the pre-check hit the partial unique index; the

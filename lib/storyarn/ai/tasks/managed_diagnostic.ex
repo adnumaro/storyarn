@@ -26,6 +26,7 @@ defmodule Storyarn.AI.Tasks.ManagedDiagnostic do
       result_destination: %{type: :none},
       result_ttl_seconds: 300,
       personal_byok_allowed?: false,
+      personal_cost_class: nil,
       bulk_allowed?: false,
       scheduled_allowed?: false,
       result_visibility: :actor_private,

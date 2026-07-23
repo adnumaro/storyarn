@@ -18,6 +18,8 @@ function mountLayout(
     admin: "manage",
     member: "general",
   },
+  sudoGrant: string | null = null,
+  aiIntegrations = false,
 ) {
   vi.stubGlobal(
     "matchMedia",
@@ -33,6 +35,8 @@ function mountLayout(
       currentPath: "/users/settings",
       workspaces,
       workspaceSettingsAccess,
+      sudoGrant,
+      featureFlags: { aiIntegrations },
     },
     global: {
       stubs: {
@@ -72,5 +76,12 @@ describe("SettingsLayout workspace navigation", () => {
 
     expect(hrefs).toContain("/users/settings/workspaces/first/general");
     expect(hrefs).toContain("/users/settings/workspaces/second/general");
+  });
+
+  it("preserves the active sudo grant when navigating to AI integrations", () => {
+    const wrapper = mountLayout(undefined, undefined, "validated grant", true);
+    const hrefs = wrapper.findAll("a").map((link) => link.attributes("href"));
+
+    expect(hrefs).toContain("/users/settings/integrations?sudo_grant=validated+grant");
   });
 });

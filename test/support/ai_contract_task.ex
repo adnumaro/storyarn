@@ -11,7 +11,7 @@ defmodule StoryarnTest.AI.ContractTask do
       capability: :suggestions,
       data_scope: :project,
       required_domain_permissions: %{execute: :view, apply: :edit_content},
-      allowed_lanes: [:managed],
+      allowed_lanes: Keyword.get(config, :allowed_lanes, [:managed]),
       input_schema_version: "contract-input-v1",
       output_schema_version: "contract-output-v1",
       prompt_version: "contract-prompt-v1",
@@ -23,14 +23,34 @@ defmodule StoryarnTest.AI.ContractTask do
       result_type: "contract_echo",
       result_destination: %{type: :panel, id: "contract-result"},
       result_ttl_seconds: Keyword.get(config, :result_ttl_seconds, 86_400),
-      personal_byok_allowed?: false,
+      personal_byok_allowed?: Keyword.get(config, :personal_byok_allowed?, false),
+      personal_cost_class: Keyword.get(config, :personal_cost_class),
       bulk_allowed?: false,
-      scheduled_allowed?: false,
+      scheduled_allowed?: Keyword.get(config, :scheduled_allowed?, false),
       result_visibility: :actor_private,
       managed_price: Keyword.get(config, :managed_price, %{id: "contract-free", version: 1, units: 1}),
       enabled?: Keyword.get(config, :enabled, true),
       command_ids: ["ai.contract.echo"],
-      provider_options: %{scenario: Keyword.get(config, :scenario, :success)}
+      provider_options: %{
+        scenario: Keyword.get(config, :scenario, :success),
+        system_prompt: "Return only JSON matching the requested schema.",
+        schema_name: "contract_echo",
+        response_schema: %{
+          "type" => "object",
+          "properties" => %{
+            "echo" => %{
+              "type" => "object",
+              "properties" => %{"text" => %{"type" => "string"}},
+              "required" => ["text"],
+              "additionalProperties" => false
+            }
+          },
+          "required" => ["echo"],
+          "additionalProperties" => false
+        },
+        max_output_tokens: 512,
+        temperature: 0
+      }
     }
   end
 

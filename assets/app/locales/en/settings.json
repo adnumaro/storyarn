@@ -91,6 +91,15 @@
           "unavailable": "No allowance"
         }
       },
+      "personal_ai": {
+        "title": "Personal AI for members",
+        "badge": "Their own keys · billed by their provider",
+        "description": "The workspace owner can always use their own personal AI connections. Enable this policy to let other eligible members explicitly run supported tools with provider accounts they connected themselves. Their keys remain private and never consume this workspace's Storyarn AI allowance.",
+        "toggle_label": "Allow other members to use their personal AI keys in this workspace",
+        "owner_only": "Only the workspace owner can allow personal AI for other members.",
+        "disclosure": "Authorized project content leaves Storyarn and is processed under each member's provider account. Processing region, retention and possible model-training use depend on that provider and account; Storyarn cannot guarantee zero retention or no training for personal keys. Each member must review the disclosed data scope and consent before first use.",
+        "manage_keys": "Manage my provider connections"
+      },
       "appearance": {
         "title": "Appearance",
         "system": "System",

@@ -16,6 +16,7 @@ defmodule Storyarn.AI do
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.IntegrationCrud
   alias Storyarn.AI.Operations
+  alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.Policy
   alias Storyarn.AI.Providers
   alias Storyarn.AI.Results
@@ -26,17 +27,19 @@ defmodule Storyarn.AI do
   defdelegate list_active(user), to: IntegrationCrud
   defdelegate get_active(user, provider), to: IntegrationCrud
   defdelegate connect(user, provider, api_key), to: IntegrationCrud
-  defdelegate revoke(integration), to: IntegrationCrud
+  defdelegate revoke(user, integration), to: IntegrationCrud
 
   defdelegate provider_metadata(), to: Providers, as: :metadata_list
   defdelegate adapter_for(provider), to: Providers
 
-  defdelegate with_integration(user, provider, fun), to: Runtime
+  defdelegate with_personal_integration(user, provider, fun), to: Runtime
 
   defdelegate new_intent(scope, attrs), to: ExecutionIntent, as: :new
   defdelegate preflight(intent), to: Execution
   defdelegate execute(intent), to: Execution
   defdelegate cancel(scope, operation_id), to: Operations, as: :request_cancellation
+  defdelegate grant_personal_consent(intent, integration_id, policy_text_version), to: PersonalConsents, as: :grant
+  defdelegate revoke_personal_consent(scope, consent_id), to: PersonalConsents, as: :revoke
 
   defdelegate get_operation(scope, operation_id), to: Results
   defdelegate get_result(scope, operation_id), to: Results, as: :get

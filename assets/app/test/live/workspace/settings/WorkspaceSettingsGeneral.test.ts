@@ -100,6 +100,53 @@ describe("WorkspaceSettingsGeneral Storyarn AI policy", () => {
     );
   });
 
+  it("keeps member access to personal BYOK independent from managed Storyarn AI", async () => {
+    const live = createMockLive();
+    const wrapper = mount(WorkspaceSettingsGeneral, {
+      props: {
+        workspaceName: "Narrative Team",
+        sourceLocale: "en",
+        languageOptions: [],
+        isOwner: true,
+        ai: {
+          visible: true,
+          managedAllowed: true,
+          personalMembersAllowed: false,
+          allowance: { status: "active", availableUnits: 25 },
+        },
+      },
+      global: { provide: { _live_vue: live } },
+    });
+
+    expect(wrapper.get("#personal-ai-members-policy").text()).toContain("Personal AI for members");
+    expect(wrapper.get("#personal-ai-members-policy").text()).toContain(
+      "workspace owner can always",
+    );
+    expect(wrapper.get("#personal-ai-members-policy").text()).toContain("leaves Storyarn");
+    expect(wrapper.get("#personal-ai-members-policy").text()).toContain(
+      "cannot guarantee zero retention or no training",
+    );
+    expect(wrapper.get("#personal-ai-members-policy a").attributes("href")).toBe(
+      "/users/settings/integrations",
+    );
+
+    const [, personalSwitch] = wrapper.findAllComponents(Switch);
+    expect(personalSwitch.props("modelValue")).toBe(false);
+    personalSwitch.vm.$emit("update:modelValue", true);
+    await wrapper.vm.$nextTick();
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "update_personal_ai_members_policy",
+      { enabled: true },
+      undefined,
+    );
+    expect(live.pushEvent).not.toHaveBeenCalledWith(
+      "update_managed_ai_policy",
+      expect.anything(),
+      undefined,
+    );
+  });
+
   it("renders a disabled policy control for non-owners", () => {
     const live = createMockLive();
     const wrapper = mount(WorkspaceSettingsGeneral, {
@@ -117,7 +164,9 @@ describe("WorkspaceSettingsGeneral Storyarn AI policy", () => {
       global: { provide: { _live_vue: live } },
     });
 
-    expect(wrapper.getComponent(Switch).props("disabled")).toBe(true);
+    const switches = wrapper.findAllComponents(Switch);
+    expect(switches).toHaveLength(2);
+    expect(switches.every((control) => control.props("disabled") === true)).toBe(true);
     expect(live.pushEvent).not.toHaveBeenCalled();
   });
 });

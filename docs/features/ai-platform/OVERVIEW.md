@@ -20,7 +20,7 @@ Storyarn's AI strategy is **Storyarn AI by default, personal BYOK as the advance
 - **Command palette:** deterministic control surface and launcher. It never becomes a result store or grants the model arbitrary tool access.
 - **Execution kernel:** intent, policy, route, operation, provider attempts, results, and outcomes.
 - **Storyarn AI:** managed provider route, bounded allowance, fixed task prices, validation, and provenance.
-- **Personal BYOK:** actor-owned credential route with workspace egress policy and external billing disclosure.
+- **Personal BYOK:** actor-owned credential route with owner-controlled member egress and external billing disclosure.
 - **Tools:** structural analysis, dialogue, scratch VO, structure import, writing suggestions, and images.
 - **Commercial billing:** deliberately last, after beta telemetry proves value and unit economics.
 
@@ -31,8 +31,8 @@ Storyarn's AI strategy is **Storyarn AI by default, personal BYOK as the advance
 | 0   | Personal provider connections + AI flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md`      | —                                      | **merged** (PR #28)                  |
 | 1   | Command palette foundation (no AI)                 | `SLICE_1_COMMAND_PALETTE.md`        | —                                      | **merged** (F1 PR #30; F2/F3 PR #31) |
 | 2   | AI execution kernel + palette bridge               | `SLICE_2_AI_EXECUTION_KERNEL.md`    | 0, 1                                   | **merged** (PR #39)                  |
-| 3   | Storyarn AI beta + internal allowance              | `SLICE_3_STORYARN_AI_BETA.md`       | 2                                      | implemented; pending review/merge    |
-| 4   | Personal BYOK execution lane                       | `SLICE_4_PERSONAL_BYOK_LANE.md`     | 0, 2, 3                                | pending                              |
+| 3   | Storyarn AI beta + internal allowance              | `SLICE_3_STORYARN_AI_BETA.md`       | 2                                      | **merged** (PR #42)                  |
+| 4   | Personal BYOK execution lane                       | `SLICE_4_PERSONAL_BYOK_LANE.md`     | 0, 2, 3                                | implemented; pending review/merge    |
 | 5   | Central routing + personal AI preferences          | `SLICE_5_AI_ROUTING_PREFERENCES.md` | 2–4                                    | pending                              |
 | 6   | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`         | 2                                      | pending                              |
 | 7   | Structural analysis + optional AI explanation      | `SLICE_7_STRUCTURAL_ANALYSIS.md`    | 1–6                                    | pending                              |
@@ -103,7 +103,7 @@ Provider/model capabilities are curated and versioned per model. Provider discov
 
 - Only the initiating credential owner may execute.
 - No Storyarn allowance ledger mutation.
-- Workspace policy must allow personal-provider data egress.
+- Workspace owners may always choose their own personal route; other members require the owner-controlled personal-provider egress policy.
 - Provider billing, consent, and accepted-result sharing are disclosed before execution.
 - Personal credentials never power another member or unattended third-party automation.
 
@@ -127,7 +127,7 @@ No lane silently falls back to another. Allowance exhaustion or route failure re
 
 ## Data, permissions, and result ownership
 
-- Minimum policy supports AI off, Storyarn AI allowed, and personal BYOK allowed.
+- Minimum policy supports Storyarn AI allowed and personal BYOK allowed for members; workspace owners remain eligible to choose their own personal credential.
 - Introduce explicit AI permissions rather than assuming all editors may spend future shared resources: `:use_ai`, `:run_bulk_ai`, and later routing/credential/budget administration.
 - Reauthorize at operation creation, immediately before provider/credential access, and before apply/publish/attach.
 - Unaccepted previews are actor-private. Accepted changes/assets become project data with provenance.

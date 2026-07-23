@@ -22,12 +22,12 @@ defmodule Storyarn.AI.RuntimeTest do
     other_user = user_fixture()
 
     assert {:error, :not_connected} =
-             AI.with_integration(other_user, :anthropic, fn _key -> {:ok, :unused} end)
+             AI.with_personal_integration(other_user, :anthropic, fn _key -> {:ok, :unused} end)
   end
 
   test "runs fun with the decrypted plaintext key and passes the result through", %{user: user} do
     assert {:ok, received_key} =
-             AI.with_integration(user, :anthropic, fn key -> {:ok, key} end)
+             AI.with_personal_integration(user, :anthropic, fn key -> {:ok, key} end)
 
     assert received_key == @plaintext_key
   end
@@ -35,7 +35,7 @@ defmodule Storyarn.AI.RuntimeTest do
   test "touches last_used_at on success", %{user: user, integration: integration} do
     assert is_nil(integration.last_used_at)
 
-    {:ok, _} = AI.with_integration(user, :anthropic, fn _key -> {:ok, :done} end)
+    {:ok, _} = AI.with_personal_integration(user, :anthropic, fn _key -> {:ok, :done} end)
 
     assert %Integration{last_used_at: %DateTime{}} = Repo.get(Integration, integration.id)
   end
@@ -45,7 +45,7 @@ defmodule Storyarn.AI.RuntimeTest do
     integration: integration
   } do
     assert {:error, :unauthorized} =
-             AI.with_integration(user, :anthropic, fn _key -> {:error, :unauthorized} end)
+             AI.with_personal_integration(user, :anthropic, fn _key -> {:error, :unauthorized} end)
 
     reloaded = Repo.get(Integration, integration.id)
     assert %DateTime{} = reloaded.revoked_at
@@ -62,11 +62,11 @@ defmodule Storyarn.AI.RuntimeTest do
     alias Storyarn.AI.IntegrationCrud
 
     {:error, :unauthorized} =
-      AI.with_integration(user, :anthropic, fn _key -> {:error, :unauthorized} end)
+      AI.with_personal_integration(user, :anthropic, fn _key -> {:error, :unauthorized} end)
 
     # The integration is now revoked, so a second call cannot even start...
     assert {:error, :not_connected} =
-             AI.with_integration(user, :anthropic, fn _key -> {:error, :unauthorized} end)
+             AI.with_personal_integration(user, :anthropic, fn _key -> {:error, :unauthorized} end)
 
     # ...and even a direct conditional revoke (the concurrent-loser path)
     # cannot write another lifecycle event.
@@ -85,7 +85,7 @@ defmodule Storyarn.AI.RuntimeTest do
     integration: integration
   } do
     assert {:error, :timeout} =
-             AI.with_integration(user, :anthropic, fn _key -> {:error, :timeout} end)
+             AI.with_personal_integration(user, :anthropic, fn _key -> {:error, :timeout} end)
 
     reloaded = Repo.get(Integration, integration.id)
     assert is_nil(reloaded.revoked_at)
@@ -107,11 +107,15 @@ defmodule Storyarn.AI.RuntimeTest do
 
     on_exit(fn -> :telemetry.detach("runtime-test-#{inspect(ref)}") end)
 
-    {:ok, _} = AI.with_integration(user, :anthropic, fn _key -> {:ok, :done} end)
+    {:ok, _} = AI.with_personal_integration(user, :anthropic, fn _key -> {:ok, :done} end)
 
-    assert_receive {:telemetry, [:ai, :integration, :call, :start], %{provider: "anthropic", user_id: user_id}}
+    assert_receive {:telemetry, [:ai, :integration, :call, :start],
+                    %{provider: "anthropic", credential_kind: "personal_byok"} = start_metadata}
 
-    assert_receive {:telemetry, [:ai, :integration, :call, :stop], %{provider: "anthropic"}}
-    assert user_id == user.id
+    assert_receive {:telemetry, [:ai, :integration, :call, :stop],
+                    %{provider: "anthropic", credential_kind: "personal_byok"} = stop_metadata}
+
+    refute Map.has_key?(start_metadata, :user_id)
+    refute Map.has_key?(stop_metadata, :user_id)
   end
 end

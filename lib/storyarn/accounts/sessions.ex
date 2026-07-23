@@ -30,9 +30,10 @@ defmodule Storyarn.Accounts.Sessions do
   @doc """
   Re-authenticates one active session without changing its sudo timestamp.
 
-  Sudo elevation is represented by a separate, short-lived signed grant in the
-  web layer. Keeping the primary token unchanged ensures another browser holding
-  a copy of it does not inherit the password confirmation.
+  This verification step does not elevate the existing token. The web layer
+  exchanges a short-lived, session-bound handoff for a freshly authenticated
+  browser session, while the previous token remains un-elevated. A browser
+  holding a copy of the previous token therefore does not inherit confirmation.
   """
   def reauthenticate_user_session(%Scope{user: %User{} = user}, token, password)
       when is_binary(token) and is_binary(password) do
@@ -59,12 +60,53 @@ defmodule Storyarn.Accounts.Sessions do
 
   def session_token_active?(_scope, _token), do: false
 
+  @doc false
+  def generate_sudo_handoff_nonce(%User{} = user) do
+    Repo.delete_all(
+      from token in UserToken,
+        where: token.user_id == ^user.id,
+        where: token.context == "sudo_handoff",
+        where: token.inserted_at <= ago(2, "minute")
+    )
+
+    {nonce, user_token} = UserToken.build_sudo_handoff_nonce(user)
+    Repo.insert!(user_token)
+    nonce
+  end
+
+  @doc false
+  def sudo_handoff_nonce_active?(%Scope{user: %User{id: user_id}}, nonce) when is_binary(nonce) do
+    nonce
+    |> sudo_handoff_nonce_query(user_id)
+    |> Repo.exists?()
+  end
+
+  def sudo_handoff_nonce_active?(_scope, _nonce), do: false
+
+  @doc false
+  def consume_sudo_handoff_nonce(%Scope{user: %User{id: user_id}}, nonce) when is_binary(nonce) do
+    case Repo.delete_all(sudo_handoff_nonce_query(nonce, user_id)) do
+      {1, _rows} -> :ok
+      _missing_or_consumed -> :error
+    end
+  end
+
+  def consume_sudo_handoff_nonce(_scope, _nonce), do: :error
+
   @doc """
   Deletes the signed token with the given context.
   """
   def delete_user_session_token(token) do
     Repo.delete_all(from(UserToken, where: [token: ^token, context: "session"]))
     :ok
+  end
+
+  defp sudo_handoff_nonce_query(nonce, user_id) do
+    from token in UserToken,
+      where: token.token == ^nonce,
+      where: token.context == "sudo_handoff",
+      where: token.user_id == ^user_id,
+      where: token.inserted_at > ago(2, "minute")
   end
 
   @doc """

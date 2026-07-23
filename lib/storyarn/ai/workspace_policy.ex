@@ -7,7 +7,7 @@ defmodule Storyarn.AI.WorkspacePolicy do
   alias Storyarn.Accounts.User
   alias Storyarn.Workspaces.Workspace
 
-  @initial_lanes ~w(managed)
+  @initial_lanes ~w(managed personal_byok)
 
   schema "ai_workspace_policies" do
     field :allowed_lanes, {:array, :string}, default: []

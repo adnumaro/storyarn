@@ -3,7 +3,7 @@ defmodule Storyarn.AI.ResolvedCredential do
 
   @derive {Inspect, except: [:value]}
   @enforce_keys [:kind, :value]
-  defstruct [:kind, :value]
+  defstruct [:kind, :value, metadata: %{}]
 
-  @type t :: %__MODULE__{kind: atom(), value: term()}
+  @type t :: %__MODULE__{kind: atom(), value: term(), metadata: map()}
 end

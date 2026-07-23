@@ -128,3 +128,9 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired registration link."
 msgstr ""
+
+#: lib/storyarn_web/controllers/user_session_controller.ex:121
+#: lib/storyarn_web/controllers/user_session_controller.ex:137
+#, elixir-autogen, elixir-format
+msgid "Your access confirmation has expired. Please try again."
+msgstr ""

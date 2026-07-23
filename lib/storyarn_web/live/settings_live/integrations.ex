@@ -6,17 +6,19 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
   Gated by the `:ai_integrations` feature flag — direct URL access without the
   flag redirects to settings home (see `RequireFeatureFlag` hook).
 
-  ## Follow-up
-
-    * Slice 6 — wrap in `require_sudo_mode` for stronger auth. Not enabled in
-      v1 because the feature is beta-flagged and we want low-friction testing.
+  Credential mutation is sudo-protected at mount and rechecked for every
+  connect/disconnect event so a long-lived LiveView cannot outlive elevation.
   """
   use StoryarnWeb, :live_view
 
   alias Storyarn.AI
   alias Storyarn.RateLimiter
+  alias StoryarnWeb.UserAuth
 
   on_mount {StoryarnWeb.Live.Hooks.RequireFeatureFlag, :ai_integrations}
+  on_mount {UserAuth, {:require_sudo_mode, __MODULE__}}
+
+  def sudo_return_to(_params, _live_action), do: ~p"/users/settings/integrations"
 
   @impl true
   def mount(_params, _session, socket) do
@@ -40,6 +42,7 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
       managed_workspace_slugs={@managed_workspace_slugs}
       general_workspace_slugs={@general_workspace_slugs}
       current_path={@current_path}
+      sudo_grant={@sudo_grant}
     >
       <.vue
         v-component="live/account/settings/AccountSettingsIntegrations"
@@ -54,6 +57,14 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
 
   @impl true
   def handle_event("connect", %{"provider" => provider, "api_key" => api_key}, socket) do
+    with_sudo(socket, fn socket -> connect(socket, provider, api_key) end)
+  end
+
+  def handle_event("disconnect", %{"provider" => provider}, socket) do
+    with_sudo(socket, fn socket -> disconnect(socket, provider) end)
+  end
+
+  defp connect(socket, provider, api_key) do
     user = socket.assigns.current_scope.user
 
     with :ok <- RateLimiter.check_ai_integration_connect(user.id),
@@ -86,7 +97,7 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
     end
   end
 
-  def handle_event("disconnect", %{"provider" => provider}, socket) do
+  defp disconnect(socket, provider) do
     user = socket.assigns.current_scope.user
 
     case AI.get_active(user, provider) do
@@ -94,12 +105,30 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
         {:reply, error_reply("not_connected"), socket}
 
       integration ->
-        case AI.revoke(integration) do
+        case AI.revoke(socket.assigns.current_scope.user, integration) do
           # Concurrent revoke means the end state the user wanted is already
           # in place — treat it as success.
           {:ok, _revoked} -> {:reply, %{status: "ok"}, assign_cards(socket)}
           {:error, :already_revoked} -> {:reply, %{status: "ok"}, assign_cards(socket)}
+          {:error, %Ecto.Changeset{}} -> {:reply, error_reply("invalid_data"), socket}
         end
+    end
+  end
+
+  defp with_sudo(socket, fun) do
+    case UserAuth.authorize_sudo(
+           socket.assigns.current_scope.user,
+           socket.assigns.sudo_session_token,
+           socket.assigns.sudo_grant
+         ) do
+      {:ok, _grant} ->
+        fun.(socket)
+
+      :error ->
+        {:noreply,
+         push_navigate(socket,
+           to: UserAuth.sudo_confirmation_path(~p"/users/settings/integrations")
+         )}
     end
   end
 

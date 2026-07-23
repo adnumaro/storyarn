@@ -25,14 +25,14 @@ defmodule Storyarn.AI.CredentialResolverManagedTest do
     assert {:ok, fireworks_ref} = CredentialRef.new(:managed, "storyarn-managed-fireworks-v1")
     assert {:ok, together_ref} = CredentialRef.new(:managed, "storyarn-managed-together-v1")
 
-    assert {:ok, fireworks} = Managed.resolve(fireworks_ref)
-    assert {:ok, together} = Managed.resolve(together_ref)
+    assert {:ok, fireworks} = Managed.resolve(fireworks_ref, %{})
+    assert {:ok, together} = Managed.resolve(together_ref, %{})
     assert fireworks.value == "fireworks-secret"
     assert together.value == "together-secret"
   end
 
   test "fails closed for an unknown reference" do
     assert {:ok, ref} = CredentialRef.new(:managed, "storyarn-managed-unknown-v1")
-    assert {:error, :credential_unavailable} = Managed.resolve(ref)
+    assert {:error, :credential_unavailable} = Managed.resolve(ref, %{})
   end
 end

@@ -6,8 +6,12 @@ defmodule Storyarn.AI.RouteResolver do
   managed assignment with central routing and personal preferences.
   """
 
+  alias Storyarn.AI.ConfigMap
   alias Storyarn.AI.CredentialRef
   alias Storyarn.AI.ExecutionRoute
+  alias Storyarn.AI.IntegrationCrud
+  alias Storyarn.AI.PersonalConsents
+  alias Storyarn.AI.PersonalProviders
   alias Storyarn.AI.PolicyDecision
   alias Storyarn.AI.Settlement
   alias Storyarn.AI.Task
@@ -15,6 +19,22 @@ defmodule Storyarn.AI.RouteResolver do
   @spec routes(PolicyDecision.t(), Task.t()) :: [ExecutionRoute.t()]
   def routes(%PolicyDecision{} = decision, %Task{} = task) do
     Enum.flat_map(decision.allowed_lanes, &route_for_lane(&1, decision, task))
+  end
+
+  @spec personal_choices(PolicyDecision.t(), Task.t()) :: [map()]
+  def personal_choices(%PolicyDecision{} = decision, %Task{} = task) do
+    if :personal_byok in decision.allowed_lanes and task.personal_byok_allowed? and not decision.scheduled? do
+      integrations =
+        decision.actor_id
+        |> IntegrationCrud.list_active()
+        |> Map.new(&{&1.provider, &1})
+
+      task.capability
+      |> PersonalProviders.for_capability()
+      |> Enum.map(&personal_choice(&1, Map.get(integrations, &1.provider), decision, task))
+    else
+      []
+    end
   end
 
   @spec current?(PolicyDecision.t(), Task.t(), ExecutionRoute.t()) :: boolean()
@@ -80,8 +100,77 @@ defmodule Storyarn.AI.RouteResolver do
     end
   end
 
-  # Slice 4 adds the personal route through this same resolver contract.
+  defp route_for_lane(:personal_byok, decision, task) do
+    decision
+    |> personal_choices(task)
+    |> Enum.flat_map(fn
+      %{status: :ready, route: route} -> [route]
+      _blocked -> []
+    end)
+  end
+
   defp route_for_lane(_lane, _decision, _task), do: []
+
+  defp personal_choice(config, nil, _decision, task) do
+    choice(config, task, :connect_required, nil, nil)
+  end
+
+  defp personal_choice(config, integration, decision, task) do
+    case PersonalConsents.active_for(decision.actor_id, decision.workspace_id, integration.id, task) do
+      nil ->
+        choice(config, task, :consent_required, integration.id, nil)
+
+      consent ->
+        route = personal_route(config, integration, consent, decision, task)
+        choice(config, task, :ready, integration.id, route)
+    end
+  end
+
+  defp choice(config, task, status, integration_id, route) do
+    %{
+      lane: :personal_byok,
+      provider: config.provider,
+      provider_name: config.metadata.name,
+      model: config.model,
+      payer: "personal_provider_account",
+      status: status,
+      integration_id: integration_id,
+      capability: task.capability,
+      cost_class: task.personal_cost_class,
+      data_scope: task.data_scope,
+      processing_location: config.processing_location,
+      consent_policy_version: PersonalConsents.policy_text_version(),
+      route: route
+    }
+  end
+
+  defp personal_route(config, integration, consent, decision, task) do
+    {:ok, credential_ref} = CredentialRef.new(:personal_byok, Integer.to_string(integration.id))
+
+    %ExecutionRoute{
+      lane: :personal_byok,
+      provider: config.provider,
+      model: config.model,
+      credential_ref: credential_ref,
+      payer: "personal_provider_account",
+      assignment_source: "explicit_invocation",
+      consent_basis: "personal_consent:#{consent.id}:#{consent.policy_text_version}",
+      policy_version: decision.policy_version,
+      price_id: nil,
+      price_version: nil,
+      price_units: nil,
+      provider_configuration: %{
+        "personal_consent_id" => consent.id,
+        "personal_consent_version" => consent.policy_text_version,
+        "integration_id" => integration.id,
+        "capability" => Atom.to_string(task.capability),
+        "cost_class" => task.personal_cost_class,
+        "data_scope" => Atom.to_string(task.data_scope),
+        "processing_location" => config.processing_location,
+        "response_mode" => config.response_mode
+      }
+    }
+  end
 
   defp config do
     Application.get_env(:storyarn, __MODULE__, [])
@@ -90,8 +179,8 @@ defmodule Storyarn.AI.RouteResolver do
   defp provider_configuration(config) do
     endpoint = config[:endpoint]
     region = config[:region]
-    provider_price = normalize_map(config[:provider_price])
-    budget = normalize_map(config[:budget])
+    provider_price = ConfigMap.normalize(config[:provider_price])
+    budget = ConfigMap.normalize(config[:budget])
 
     with true <- valid_https_endpoint?(endpoint),
          true <- is_binary(region) and byte_size(region) > 0,
@@ -181,8 +270,4 @@ defmodule Storyarn.AI.RouteResolver do
 
   defp zero?(decimal), do: Decimal.compare(decimal, Decimal.new(0)) == :eq
   defp positive?(decimal), do: Decimal.compare(decimal, Decimal.new(0)) == :gt
-
-  defp normalize_map(value) when is_list(value), do: value |> Map.new() |> normalize_map()
-  defp normalize_map(value) when is_map(value), do: Map.new(value, fn {key, item} -> {to_string(key), item} end)
-  defp normalize_map(_value), do: %{}
 end

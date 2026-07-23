@@ -216,7 +216,7 @@ const sections = computed<SettingsSection[]>(() => {
   if (featureFlags.aiIntegrations) {
     accountItems.push({
       label: t("settings.nav.items.integrations"),
-      path: "/users/settings/integrations",
+      path: sensitiveSettingsPath("/users/settings/integrations", sudoGrant),
       icon: "plug",
     });
   }

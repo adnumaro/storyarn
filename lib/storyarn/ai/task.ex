@@ -31,6 +31,7 @@ defmodule Storyarn.AI.Task do
     :result_destination,
     :result_ttl_seconds,
     :personal_byok_allowed?,
+    :personal_cost_class,
     :bulk_allowed?,
     :scheduled_allowed?,
     :result_visibility,
@@ -56,6 +57,7 @@ defmodule Storyarn.AI.Task do
     :result_destination,
     :result_ttl_seconds,
     :personal_byok_allowed?,
+    :personal_cost_class,
     :bulk_allowed?,
     :scheduled_allowed?,
     :result_visibility,
@@ -137,6 +139,7 @@ defmodule Storyarn.AI.Task do
     |> require(valid_destination?(task.result_destination), :invalid_result_destination)
     |> require(positive_integer?(task.result_ttl_seconds), :invalid_result_ttl)
     |> require(is_boolean(task.personal_byok_allowed?), :invalid_personal_byok_flag)
+    |> require(valid_personal_cost_class?(task), :invalid_personal_cost_class)
     |> require(is_boolean(task.bulk_allowed?), :invalid_bulk_flag)
     |> require(is_boolean(task.scheduled_allowed?), :invalid_scheduled_flag)
     |> require(task.result_visibility in [:actor_private, :shareable], :invalid_result_visibility)
@@ -183,6 +186,19 @@ defmodule Storyarn.AI.Task do
   end
 
   defp valid_managed_price?(_task), do: false
+
+  defp valid_personal_cost_class?(%{personal_byok_allowed?: true, allowed_lanes: lanes, personal_cost_class: cost_class})
+       when is_list(lanes) do
+    :personal_byok in lanes and is_binary(cost_class) and String.valid?(cost_class) and byte_size(cost_class) > 0 and
+      byte_size(cost_class) <= 80
+  end
+
+  defp valid_personal_cost_class?(%{personal_byok_allowed?: false, allowed_lanes: lanes, personal_cost_class: nil})
+       when is_list(lanes) do
+    :personal_byok not in lanes
+  end
+
+  defp valid_personal_cost_class?(_task), do: false
 
   defp valid_command_ids?(ids) when is_list(ids) do
     Enum.uniq(ids) == ids and Enum.all?(ids, &(is_binary(&1) and Regex.match?(@id_format, &1)))

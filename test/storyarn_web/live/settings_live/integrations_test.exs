@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SettingsLive.IntegrationsTest do
   import Storyarn.AccountsFixtures
 
   alias Storyarn.AI
+  alias StoryarnWeb.UserAuth
 
   @stub StoryarnTest.AI.Anthropic
 
@@ -44,6 +45,19 @@ defmodule StoryarnWeb.SettingsLive.IntegrationsTest do
     assert anthropic["status"] == "not_connected"
     assert anthropic["name"] == "Anthropic Claude"
     assert anthropic["key_generation_url"] =~ "platform.claude.com"
+  end
+
+  test "requires fresh sudo authentication before exposing credential settings", %{conn: conn} do
+    user = with_ai_flag(user_fixture())
+    stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+
+    conn =
+      log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
+
+    assert {:error, {:live_redirect, %{to: to}}} =
+             live(conn, ~p"/users/settings/integrations")
+
+    assert to == UserAuth.sudo_confirmation_path(~p"/users/settings/integrations")
   end
 
   test "connect happy path stores the integration and reflects it in the grid", %{conn: conn} do

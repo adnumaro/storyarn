@@ -125,6 +125,15 @@ defmodule Storyarn.Accounts do
   @spec session_token_active?(Scope.t(), binary()) :: boolean()
   defdelegate session_token_active?(current_scope, token), to: Sessions
 
+  @doc false
+  defdelegate generate_sudo_handoff_nonce(user), to: Sessions
+
+  @doc false
+  defdelegate sudo_handoff_nonce_active?(current_scope, nonce), to: Sessions
+
+  @doc false
+  defdelegate consume_sudo_handoff_nonce(current_scope, nonce), to: Sessions
+
   @doc """
   Deletes the signed token with the given context.
   """

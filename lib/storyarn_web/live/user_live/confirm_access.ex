@@ -6,8 +6,9 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
   connections) and their session has expired the sudo mode window.
 
   Asks the user to re-enter their password and issues a short-lived signed
-  grant bound to the current user and session. The underlying session token is
-  not elevated, so another browser holding a copy does not inherit sudo access.
+  handoff bound to the current user and session. An authenticated HTTP POST
+  exchanges it for a freshly authenticated browser session; the previous token
+  remains un-elevated, so a browser holding a copy does not inherit sudo access.
   """
 
   use StoryarnWeb, :live_view
@@ -35,6 +36,11 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
         id="confirm-access-vue"
         email={@email}
         back-url={@back_url}
+        confirm-action={~p"/users/confirm-access"}
+        csrf-token={Plug.CSRFProtection.get_csrf_token()}
+        return-to={@return_to}
+        sudo-handoff={@sudo_handoff}
+        trigger-submit={@trigger_submit}
       />
     </StoryarnWeb.Components.AuthLayout.auth>
     """
@@ -57,7 +63,9 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
          return_to: return_to,
          back_url: UserAuth.signed_in_path(user),
          session_token: session["user_token"],
-         client_ip: ClientIp.from_socket(socket)
+         client_ip: ClientIp.from_socket(socket),
+         sudo_handoff: nil,
+         trigger_submit: false
        )}
     end
   end
@@ -83,10 +91,9 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
            password
          ) do
       {:ok, user} ->
-        sudo_grant = UserAuth.issue_sudo_grant(user, socket.assigns.session_token)
-        return_to = UserAuth.with_sudo_grant(socket.assigns.return_to, sudo_grant)
+        sudo_handoff = UserAuth.issue_sudo_handoff(user, socket.assigns.session_token)
 
-        {:noreply, push_navigate(socket, to: return_to, replace: true)}
+        {:noreply, assign(socket, sudo_handoff: sudo_handoff, trigger_submit: true)}
 
       {:error, :invalid_credentials} ->
         reply_error(socket, "invalid_password")
@@ -99,5 +106,7 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
     end
   end
 
-  defp reply_error(socket, error), do: {:reply, %{ok: false, error: error}, socket}
+  defp reply_error(socket, error) do
+    {:reply, %{ok: false, error: error}, assign(socket, sudo_handoff: nil, trigger_submit: false)}
+  end
 end

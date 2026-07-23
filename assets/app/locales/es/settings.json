@@ -91,6 +91,15 @@
           "unavailable": "Sin asignación"
         }
       },
+      "personal_ai": {
+        "title": "IA personal para miembros",
+        "badge": "Sus propias claves · facturado por su proveedor",
+        "description": "El propietario del espacio siempre puede usar sus propias conexiones de IA personal. Activa esta política para permitir que otros miembros autorizados ejecuten herramientas compatibles con las cuentas de proveedor que hayan conectado. Sus claves siguen siendo privadas y nunca consumen la asignación de Storyarn AI del espacio.",
+        "toggle_label": "Permitir que otros miembros usen sus claves personales de IA en este espacio",
+        "owner_only": "Solo el propietario del espacio puede permitir IA personal a otros miembros.",
+        "disclosure": "El contenido autorizado del proyecto sale de Storyarn y se procesa con la cuenta de proveedor de cada miembro. La región, la retención y el posible uso para entrenar modelos dependen de ese proveedor y esa cuenta; Storyarn no puede garantizar retención cero ni exclusión del entrenamiento con claves personales. Cada miembro debe revisar el alcance de datos y consentir antes del primer uso.",
+        "manage_keys": "Gestionar mis conexiones de proveedor"
+      },
       "appearance": {
         "title": "Apariencia",
         "system": "Sistema",

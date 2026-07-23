@@ -84,13 +84,12 @@ defmodule Storyarn.AI.RouteOption do
       :assignment_source,
       :consent_basis,
       :policy_version,
-      :price_units,
       :provider_configuration,
       :expires_at
     ])
     |> validate_inclusion(:lane, ~w(managed personal_byok workspace_byok))
     |> validate_number(:policy_version, greater_than: 0)
-    |> validate_number(:price_units, greater_than: 0)
+    |> validate_price()
     |> validate_subject()
     |> unique_constraint(:token_hash)
     |> foreign_key_constraint(:user_id)
@@ -113,6 +112,26 @@ defmodule Storyarn.AI.RouteOption do
       changeset
     else
       add_error(changeset, :subject_type, "must include type, id, and revision together")
+    end
+  end
+
+  defp validate_price(changeset) do
+    case get_field(changeset, :lane) do
+      "managed" ->
+        changeset
+        |> validate_required([:price_id, :price_version, :price_units])
+        |> validate_number(:price_version, greater_than: 0)
+        |> validate_number(:price_units, greater_than: 0)
+
+      lane when lane in ["personal_byok", "workspace_byok"] ->
+        if Enum.all?([:price_id, :price_version, :price_units], &is_nil(get_field(changeset, &1))) do
+          changeset
+        else
+          add_error(changeset, :price_units, "must be absent for an externally billed route")
+        end
+
+      _lane ->
+        changeset
     end
   end
 

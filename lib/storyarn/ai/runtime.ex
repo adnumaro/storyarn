@@ -24,8 +24,8 @@ defmodule Storyarn.AI.Runtime do
   ## Telemetry
 
   Emits `[:ai, :integration, :call, :start | :stop | :exception]` via
-  `:telemetry.span/3` with `%{provider: String.t(), user_id: integer()}`
-  metadata.
+  `:telemetry.span/3` with finite provider and credential-kind metadata. Raw
+  user ids are deliberately excluded.
   """
 
   alias Storyarn.Accounts.User
@@ -43,16 +43,16 @@ defmodule Storyarn.AI.Runtime do
   Returns `{:error, :not_connected}` when the user has no active integration
   for the provider; otherwise returns whatever `fun` returns.
   """
-  @spec with_integration(User.t() | integer(), Provider.id() | String.t(), (String.t() ->
-                                                                              call_result())) ::
+  @spec with_personal_integration(User.t() | integer(), Provider.id() | String.t(), (String.t() ->
+                                                                                       call_result())) ::
           {:error, :not_connected} | call_result()
-  def with_integration(user, provider, fun) when is_function(fun, 1) do
+  def with_personal_integration(user, provider, fun) when is_function(fun, 1) do
     case IntegrationCrud.get_active(user, provider) do
       nil ->
         {:error, :not_connected}
 
       %Integration{} = integration ->
-        metadata = %{provider: integration.provider, user_id: integration.user_id}
+        metadata = %{provider: integration.provider, credential_kind: "personal_byok"}
 
         :telemetry.span([:ai, :integration, :call], metadata, fn ->
           result = fun.(integration.api_key_encrypted)
