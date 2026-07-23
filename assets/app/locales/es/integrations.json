@@ -3,7 +3,15 @@
     "page": {
       "title": "Integraciones IA",
       "description": "Conecta tus cuentas personales de IA y elige en qué workspaces puede usarlas Storyarn. La facturación va directamente contigo y cada proveedor.",
-      "providers_aria": "Proveedores de IA"
+      "providers_aria": "Proveedores de IA disponibles",
+      "connected": {
+        "title": "Conectadas",
+        "description": "Revisa los modelos disponibles y elige dónde puede usarse cada conexión personal."
+      },
+      "available": {
+        "title": "Proveedores disponibles",
+        "description": "Conecta otra cuenta personal para poder utilizarla desde Storyarn."
+      }
     },
     "empty": {
       "description": "Todavía no hay proveedores de IA disponibles."
@@ -15,6 +23,7 @@
       "disconnect": "Desconectar",
       "docs": "Documentación API",
       "key_suffix": "Clave terminada en {suffix}",
+      "model_status": "Estado del modelo",
       "routing_ready": "Disponible para el enrutamiento de IA",
       "no_executable_model": "Esta conexión no ofrece ahora mismo un modelo compatible.",
       "catalog_states": {
@@ -25,6 +34,8 @@
       }
     },
     "assignments": {
+      "title": "Acceso por workspace",
+      "description": "Elige los workspaces donde Storyarn puede ofrecer esta conexión personal.",
       "summary": "{assigned} de {total} workspaces habilitados",
       "allow": "Habilitar",
       "remove": "Deshabilitar",

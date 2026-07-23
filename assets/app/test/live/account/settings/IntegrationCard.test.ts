@@ -41,6 +41,7 @@ describe("IntegrationCard", () => {
     expect(wrapper.text()).toContain("Not connected");
     expect(wrapper.get("button").text()).toBe("Connect");
     expect(wrapper.attributes("data-status")).toBe("not_connected");
+    expect(wrapper.attributes("data-layout")).toBe("available");
   });
 
   it("emits connect when the Connect button is clicked", async () => {
@@ -62,6 +63,7 @@ describe("IntegrationCard", () => {
     expect(wrapper.text()).toContain("Key ending in abcd");
     expect(wrapper.get("button").text()).toBe("Disconnect");
     expect(wrapper.attributes("data-status")).toBe("connected");
+    expect(wrapper.attributes("data-layout")).toBe("connected");
   });
 
   it("prefers the account email over the masked key when available", () => {

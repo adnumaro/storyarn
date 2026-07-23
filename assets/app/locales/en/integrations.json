@@ -3,7 +3,15 @@
     "page": {
       "title": "AI Integrations",
       "description": "Connect your personal AI accounts, then choose the workspaces where Storyarn may use them. You are billed directly by each provider.",
-      "providers_aria": "AI providers"
+      "providers_aria": "Available AI providers",
+      "connected": {
+        "title": "Connected",
+        "description": "Review model availability and choose where each personal connection may be used."
+      },
+      "available": {
+        "title": "Available providers",
+        "description": "Connect another personal provider account to make it available in Storyarn."
+      }
     },
     "empty": {
       "description": "No AI providers are available yet."
@@ -15,6 +23,7 @@
       "disconnect": "Disconnect",
       "docs": "API docs",
       "key_suffix": "Key ending in {suffix}",
+      "model_status": "Model status",
       "routing_ready": "Available for AI routing",
       "no_executable_model": "This connection does not currently expose a compatible model.",
       "catalog_states": {
@@ -25,6 +34,8 @@
       }
     },
     "assignments": {
+      "title": "Workspace access",
+      "description": "Choose the workspaces where Storyarn may offer this personal connection.",
       "summary": "{assigned} of {total} workspaces enabled",
       "allow": "Enable",
       "remove": "Disable",

@@ -2,11 +2,11 @@
 import {
   Building2,
   CheckCircle2,
-  ChevronDown,
   CircleAlert,
   Cpu,
   ExternalLink,
   Loader2,
+  ShieldCheck,
 } from "lucide-vue-next";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
@@ -103,63 +103,84 @@ function assignmentPending(workspaceId: number): boolean {
 
 <template>
   <article
-    class="flex flex-col gap-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:border-border hover:shadow-md"
+    v-if="isConnected"
+    class="overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm"
     :data-provider="card.provider"
     :data-status="card.status"
+    data-layout="connected"
   >
-    <header class="flex items-start justify-between gap-3">
+    <header class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
       <div class="flex items-center gap-3">
         <div
           aria-hidden="true"
-          class="flex size-10 items-center justify-center rounded-md bg-muted text-sm font-semibold text-muted-foreground"
+          class="flex size-11 items-center justify-center rounded-lg bg-muted text-sm font-semibold text-muted-foreground"
         >
           {{ initials }}
         </div>
-        <div>
-          <h2 class="text-sm font-semibold leading-tight">{{ card.name }}</h2>
-          <p
-            v-if="isConnected"
-            class="mt-0.5 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400"
-          >
-            <CheckCircle2 class="size-3" aria-hidden="true" />
-            <span>{{ t("integrations.card.connected_as", { identifier }) }}</span>
-          </p>
-          <p v-else class="mt-0.5 text-xs text-muted-foreground">
-            {{ t("integrations.card.not_connected") }}
+        <div class="min-w-0">
+          <h3 class="text-sm font-semibold leading-tight">{{ card.name }}</h3>
+          <p class="mt-1 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 class="size-3.5 shrink-0" aria-hidden="true" />
+            <span class="truncate">{{ t("integrations.card.connected_as", { identifier }) }}</span>
           </p>
         </div>
       </div>
+
+      <div class="flex items-center gap-2 self-end sm:self-auto">
+        <a
+          :href="card.docs_url"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-live-link-exempt="external-provider-docs"
+          class="inline-flex h-8 items-center gap-1 rounded-md px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          {{ t("integrations.card.docs") }}
+          <ExternalLink class="size-3" aria-hidden="true" />
+        </a>
+        <Button variant="outline" size="sm" @click="emit('disconnect')">
+          {{ t("integrations.card.disconnect") }}
+        </Button>
+      </div>
     </header>
 
-    <section v-if="isConnected" class="space-y-3 border-t border-border/50 pt-3">
-      <div class="flex items-start gap-2.5">
-        <Cpu class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <div class="min-w-0">
-          <p class="text-xs font-medium text-foreground">
+    <div class="grid border-t border-border/60 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)]">
+      <section class="space-y-3 bg-muted/15 p-5">
+        <div class="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <Cpu class="size-4" aria-hidden="true" />
+          <h4>{{ t("integrations.card.model_status") }}</h4>
+        </div>
+        <div class="space-y-1">
+          <p class="text-sm font-medium text-foreground">
             {{
               card.catalog_status === "ready"
                 ? t("integrations.card.routing_ready")
                 : t(`integrations.card.catalog_states.${card.catalog_status}`)
             }}
           </p>
-          <p v-if="card.models.length > 0" class="mt-0.5 truncate text-xs text-muted-foreground">
+          <p v-if="card.models.length > 0" class="text-xs leading-relaxed text-muted-foreground">
             {{ card.models.map((model) => model.model).join(", ") }}
           </p>
-          <p v-else class="mt-0.5 text-xs text-muted-foreground">
+          <p v-else class="text-xs leading-relaxed text-muted-foreground">
             {{ t("integrations.card.no_executable_model") }}
           </p>
         </div>
-      </div>
+      </section>
 
-      <details
-        v-if="card.workspace_assignments.length > 0"
-        class="group rounded-lg border border-border/50 bg-muted/20"
-      >
-        <summary
-          class="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-xs font-medium"
-        >
-          <span class="flex items-center gap-2">
-            <Building2 class="size-4 text-muted-foreground" aria-hidden="true" />
+      <section class="space-y-3 border-t border-border/60 p-5 lg:border-l lg:border-t-0">
+        <div class="flex items-start justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Building2 class="size-4" aria-hidden="true" />
+              <h4>{{ t("integrations.assignments.title") }}</h4>
+            </div>
+            <p class="text-xs leading-relaxed text-muted-foreground">
+              {{ t("integrations.assignments.description") }}
+            </p>
+          </div>
+          <span
+            v-if="card.workspace_assignments.length > 0"
+            class="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
+          >
             {{
               t("integrations.assignments.summary", {
                 assigned: assignedCount,
@@ -167,17 +188,16 @@ function assignmentPending(workspaceId: number): boolean {
               })
             }}
           </span>
-          <ChevronDown
-            class="size-4 text-muted-foreground transition-transform group-open:rotate-180"
-            aria-hidden="true"
-          />
-        </summary>
+        </div>
 
-        <div class="space-y-1 border-t border-border/50 p-2">
+        <div
+          v-if="card.workspace_assignments.length > 0"
+          class="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/60"
+        >
           <div
             v-for="workspace in card.workspace_assignments"
             :key="workspace.workspace_id"
-            class="flex items-center justify-between gap-3 rounded-md px-2 py-2 hover:bg-background/70"
+            class="flex items-center justify-between gap-4 bg-background/45 px-3 py-3 transition-colors hover:bg-background"
             :data-workspace-id="workspace.workspace_id"
             :data-assignment-state="workspace.state"
           >
@@ -226,34 +246,59 @@ function assignmentPending(workspaceId: number): boolean {
               {{ t("integrations.assignments.blocked") }}
             </span>
           </div>
+        </div>
 
-          <p class="px-2 pb-1 pt-1 text-[11px] leading-relaxed text-muted-foreground">
+        <p
+          v-else
+          class="rounded-lg border border-dashed border-border/60 px-3 py-4 text-xs text-muted-foreground"
+        >
+          {{ t("integrations.assignments.no_workspaces") }}
+        </p>
+
+        <div class="flex items-start gap-2 rounded-lg bg-muted/35 px-3 py-2.5">
+          <ShieldCheck class="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <p class="text-[11px] leading-relaxed text-muted-foreground">
             {{ t("integrations.assignments.consent_note") }}
           </p>
         </div>
-      </details>
+      </section>
+    </div>
+  </article>
 
-      <p v-else class="text-xs text-muted-foreground">
-        {{ t("integrations.assignments.no_workspaces") }}
-      </p>
-    </section>
+  <article
+    v-else
+    class="flex min-h-32 flex-col justify-between gap-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:border-border hover:shadow-md"
+    :data-provider="card.provider"
+    :data-status="card.status"
+    data-layout="available"
+  >
+    <header class="flex items-center gap-3">
+      <div
+        aria-hidden="true"
+        class="flex size-10 items-center justify-center rounded-lg bg-muted text-sm font-semibold text-muted-foreground"
+      >
+        {{ initials }}
+      </div>
+      <div>
+        <h3 class="text-sm font-semibold leading-tight">{{ card.name }}</h3>
+        <p class="mt-0.5 text-xs text-muted-foreground">
+          {{ t("integrations.card.not_connected") }}
+        </p>
+      </div>
+    </header>
 
-    <footer class="flex items-center justify-between gap-2">
+    <footer class="flex items-center justify-between gap-3">
       <a
         :href="card.docs_url"
         target="_blank"
         rel="noopener noreferrer"
         data-live-link-exempt="external-provider-docs"
-        class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+        class="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
       >
         {{ t("integrations.card.docs") }}
         <ExternalLink class="size-3" aria-hidden="true" />
       </a>
-
-      <Button v-if="isConnected" variant="outline" size="sm" @click="emit('disconnect')">
-        {{ t("integrations.card.disconnect") }}
-      </Button>
-      <Button v-else size="sm" @click="emit('connect')">
+      <Button size="sm" @click="emit('connect')">
         {{ t("integrations.card.connect") }}
       </Button>
     </footer>

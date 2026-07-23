@@ -22,6 +22,9 @@ const disconnecting = ref(false);
 const assignmentPending = ref<string | null>(null);
 const inlineError = ref<string | null>(null);
 
+const connectedCards = computed(() => cards.filter((card) => card.status === "connected"));
+const availableCards = computed(() => cards.filter((card) => card.status === "not_connected"));
+
 // Sequence tokens: replies from a cancelled/superseded request must not
 // mutate dialog state for a newer one. Bumped on every open/close/submit.
 let connectSeq = 0;
@@ -184,21 +187,62 @@ function toggleWorkspace(
       {{ t(`integrations.errors.${inlineError}`, t("integrations.errors.unknown_error")) }}
     </div>
 
-    <section
-      v-if="cards.length > 0"
-      class="grid grid-cols-1 gap-4 sm:grid-cols-2"
-      :aria-label="t('integrations.page.providers_aria')"
-    >
-      <IntegrationCard
-        v-for="card in cards"
-        :key="card.provider"
-        :card="card"
-        :assignment-pending-key="assignmentPending"
-        @connect="openConnect(card)"
-        @disconnect="openDisconnect(card)"
-        @toggle-workspace="toggleWorkspace(card, $event)"
-      />
-    </section>
+    <template v-if="cards.length > 0">
+      <section
+        v-if="connectedCards.length > 0"
+        id="connected-integrations"
+        class="space-y-3"
+        aria-labelledby="connected-integrations-title"
+      >
+        <div class="space-y-1">
+          <h2 id="connected-integrations-title" class="text-sm font-semibold text-foreground">
+            {{ t("integrations.page.connected.title") }}
+          </h2>
+          <p class="text-xs leading-relaxed text-muted-foreground">
+            {{ t("integrations.page.connected.description") }}
+          </p>
+        </div>
+
+        <div class="space-y-4">
+          <IntegrationCard
+            v-for="card in connectedCards"
+            :key="card.provider"
+            :card="card"
+            :assignment-pending-key="assignmentPending"
+            @disconnect="openDisconnect(card)"
+            @toggle-workspace="toggleWorkspace(card, $event)"
+          />
+        </div>
+      </section>
+
+      <section
+        v-if="availableCards.length > 0"
+        id="available-integrations"
+        class="space-y-3 border-t border-border/60 pt-6"
+        aria-labelledby="available-integrations-title"
+      >
+        <div class="space-y-1">
+          <h2 id="available-integrations-title" class="text-sm font-semibold text-foreground">
+            {{ t("integrations.page.available.title") }}
+          </h2>
+          <p class="text-xs leading-relaxed text-muted-foreground">
+            {{ t("integrations.page.available.description") }}
+          </p>
+        </div>
+
+        <div
+          class="grid grid-cols-1 gap-3 sm:grid-cols-2"
+          :aria-label="t('integrations.page.providers_aria')"
+        >
+          <IntegrationCard
+            v-for="card in availableCards"
+            :key="card.provider"
+            :card="card"
+            @connect="openConnect(card)"
+          />
+        </div>
+      </section>
+    </template>
 
     <div
       v-else
