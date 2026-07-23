@@ -1,0 +1,32 @@
+assets/app/live/account/settings/integrations/IntegrationCard.vue
+  s_6112f11c106698::t_651335e547c015 259
+  s_6112f11c106698::t_d2514c94ebba37 9,106-107,110,112,116,120-124,128-143,146-153,160,163,167,169-183,191,193-196,200,249-256,258,260,264-266,268-288,290,296,301
+assets/app/test/live/account/settings/AccountSettingsIntegrations.test.ts
+  s_6112f11c106698::t_fc446ce65d2bf9 15,70,73,148-167,189-191,214-215
+assets/app/live/account/settings/AccountSettingsIntegrations.vue
+  s_6112f11c106698::t_62a1dc9c92bb00 25-27,190-245
+assets/app/test/live/account/settings/IntegrationCard.test.ts
+  s_6112f11c106698::t_fc446ce65d2bf9 44,66
+assets/app/test/live/account/settings/ConnectKeyDialog.test.ts
+  s_6112f11c106698::t_828bd2c28262e1 32,43-45
+assets/app/locales/es/integrations.json
+  s_6112f11c106698::t_e5883baf8700c1 6-14,26,37-38
+assets/app/locales/en/integrations.json
+  s_6112f11c106698::t_e5883baf8700c1 6-14,26,37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "a511028e6d05ec8d41afad57dbd95c9a06013615",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
