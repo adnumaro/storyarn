@@ -1,0 +1,68 @@
+docs/features/ai-platform/SLICE_3_STORYARN_AI_BETA.md
+  s_6112f11c106698::t_4e64ef2ed2ee46 38-39,41,86
+lib/storyarn/ai/route_resolver.ex
+  s_6112f11c106698::t_6788a6cb1b4950 32,40-41,57,104
+lib/storyarn/ai/credential_resolver/managed.ex
+  s_6112f11c106698::t_6788a6cb1b4950 2,12-13
+docs/features/ai-platform/STORYARN_AI_OPERATIONS.md
+  s_6112f11c106698::t_a120f741925599 26
+  s_6112f11c106698::t_9fecc010c80470 28-50
+  s_6112f11c106698::t_4e64ef2ed2ee46 13-18,20-22,54-59,125
+  s_6112f11c106698::t_0f332689fee1ea 27
+test/storyarn/ai/managed_route_test.exs
+  s_6112f11c106698::t_e0361668c169e1 49,89-90
+test/storyarn/ai/inference_providers/fireworks_test.exs
+  s_6112f11c106698::t_a005987e507134 18
+  s_6112f11c106698::t_e0361668c169e1 1-17,19-48,59-97
+  s_6112f11c106698::t_9b96349ce3390f 49-58
+test/storyarn/ai/managed_runtime_config_test.exs
+  s_6112f11c106698::t_5fb8ae4c9c5870 1-107
+lib/storyarn/ai/inference_providers/fireworks.ex
+  s_6112f11c106698::t_6788a6cb1b4950 1-11
+test/storyarn/ai/credential_resolver_managed_test.exs
+  s_6112f11c106698::t_e0361668c169e1 1-38
+assets/app/live/workspace/settings/WorkspaceSettingsGeneral.vue
+  s_6112f11c106698::t_6788a6cb1b4950 38
+assets/app/locales/en/settings.json
+  s_6112f11c106698::t_80cba9f5a7ba89 87
+  s_6112f11c106698::t_4e64ef2ed2ee46 86
+lib/storyarn/ai/inference_providers/open_ai_compatible.ex
+  s_6112f11c106698::t_6788a6cb1b4950 1-67,70-142
+  s_6112f11c106698::t_9b96349ce3390f 68-69
+lib/storyarn/ai/inference_providers/together.ex
+  s_6112f11c106698::t_6788a6cb1b4950 2,5,8-9
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_6112f11c106698::t_6788a6cb1b4950 281-282
+.env.example
+  s_6112f11c106698::t_4e64ef2ed2ee46 102-143
+config/test.exs
+  s_6112f11c106698::t_ece658d8bae6b8 50-53,79
+test/storyarn/ai/inference_providers/together_test.exs
+  s_6112f11c106698::t_e0361668c169e1 81
+config/runtime.exs
+  s_6112f11c106698::t_ece658d8bae6b8 4,76-78,88-121,133-135,140,142,147-148,166
+  s_6112f11c106698::t_a005987e507134 123-124
+assets/app/test/live/workspace/settings/WorkspaceSettingsGeneral.test.ts
+  s_6112f11c106698::t_7f688e1f8a763c 79-81,83,91-92
+docs/features/ai-platform/OVERVIEW.md
+  s_6112f11c106698::t_4e64ef2ed2ee46 163
+assets/app/locales/es/settings.json
+  s_6112f11c106698::t_4e64ef2ed2ee46 86
+  s_6112f11c106698::t_80cba9f5a7ba89 87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "c3a086b78b3e3024b9dd5cecf8899df944a96f7b",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
