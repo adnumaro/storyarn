@@ -71,6 +71,23 @@ config :storyarn, Storyarn.AI.InferenceProviders.Together,
   endpoint: "https://fake.test/v1/chat/completions",
   req_options: [plug: {Req.Test, StoryarnTest.AI.Together}]
 
+config :storyarn, Storyarn.AI.ModelCatalog,
+  models: [
+    %{
+      provider: "openai",
+      model: "personal-deterministic-v1",
+      catalog_version: 1,
+      capabilities: [:translation, :suggestions, :tasks],
+      modalities: [:text],
+      structured_output: :json_schema,
+      context_window: 128_000,
+      max_output_tokens: 8_192,
+      processing_locations: ["provider-controlled"],
+      pricing_version: nil,
+      deprecated: false
+    }
+  ]
+
 config :storyarn, Storyarn.AI.PersonalConsents, policy_text_version: "personal-egress-test-v1"
 
 config :storyarn, Storyarn.AI.PersonalProviders,

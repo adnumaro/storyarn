@@ -19,12 +19,14 @@ const disconnectTarget = ref<IntegrationCardData | null>(null);
 const disconnectOpen = ref(false);
 const connecting = ref(false);
 const disconnecting = ref(false);
+const assignmentPending = ref<string | null>(null);
 const inlineError = ref<string | null>(null);
 
 // Sequence tokens: replies from a cancelled/superseded request must not
 // mutate dialog state for a newer one. Bumped on every open/close/submit.
 let connectSeq = 0;
 let disconnectSeq = 0;
+let assignmentSeq = 0;
 
 const disconnectDialogTitle = computed(() =>
   disconnectTarget.value
@@ -125,6 +127,42 @@ function cancelDisconnect(): void {
   disconnectSeq += 1;
   disconnectTarget.value = null;
 }
+
+function workspaceKey(card: IntegrationCardData, workspaceId: number): string {
+  return `${card.integration_id ?? "missing"}:${workspaceId}`;
+}
+
+function toggleWorkspace(
+  card: IntegrationCardData,
+  workspace: IntegrationCardData["workspace_assignments"][number],
+): void {
+  if (!card.integration_id || (!workspace.assigned && !workspace.can_assign)) return;
+
+  const seq = ++assignmentSeq;
+  const key = workspaceKey(card, workspace.workspace_id);
+  assignmentPending.value = key;
+  inlineError.value = null;
+
+  live.pushEvent(
+    workspace.assigned ? "unassign_workspace" : "assign_workspace",
+    {
+      integration_id: card.integration_id,
+      workspace_id: workspace.workspace_id,
+    },
+    (reply: EventReply) => {
+      if (seq !== assignmentSeq) return;
+      assignmentPending.value = null;
+      if (reply?.status !== "ok") {
+        inlineError.value = reply?.error ?? "unknown_error";
+      }
+    },
+    () => {
+      if (seq !== assignmentSeq) return;
+      assignmentPending.value = null;
+      inlineError.value = "connection_lost";
+    },
+  );
+}
 </script>
 
 <template>
@@ -155,8 +193,10 @@ function cancelDisconnect(): void {
         v-for="card in cards"
         :key="card.provider"
         :card="card"
+        :assignment-pending-key="assignmentPending"
         @connect="openConnect(card)"
         @disconnect="openDisconnect(card)"
+        @toggle-workspace="toggleWorkspace(card, $event)"
       />
     </section>
 

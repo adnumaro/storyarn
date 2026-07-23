@@ -43,4 +43,4 @@ Telemetry span `[:ai, :integration, :call]` · append-only audit trail (connect/
 
 ## Hand-off to later slices
 
-Slice 2 consumes the facade, feature flag, audit/telemetry, and testing conventions while keeping connectable providers separate from inference providers. Slice 4 consumes `Runtime.with_personal_integration/3` for actor-owned personal BYOK. Slice 5 keeps the personal Translator role hidden until an executable personal translation task exists; the legacy shared localization configuration is not removed.
+Slice 2 consumes the facade, feature flag, audit/telemetry, and testing conventions while keeping connectable providers separate from inference providers. Slice 4 consumes `Runtime.with_personal_integration/3` for actor-owned personal BYOK. Slice 5.2 keeps the personal Translator role hidden until an executable personal translation task exists; the legacy shared localization configuration is not removed.

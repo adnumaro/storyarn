@@ -64,6 +64,14 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
     with_sudo(socket, fn socket -> disconnect(socket, provider) end)
   end
 
+  def handle_event("assign_workspace", params, socket) do
+    with_sudo(socket, fn socket -> update_workspace_assignment(socket, params, :assign) end)
+  end
+
+  def handle_event("unassign_workspace", params, socket) do
+    with_sudo(socket, fn socket -> update_workspace_assignment(socket, params, :unassign) end)
+  end
+
   defp connect(socket, provider, api_key) do
     user = socket.assigns.current_scope.user
 
@@ -132,6 +140,35 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
     end
   end
 
+  defp update_workspace_assignment(socket, params, action) do
+    with {:ok, integration_id} <- positive_integer(params["integration_id"]),
+         {:ok, workspace_id} <- positive_integer(params["workspace_id"]),
+         {:ok, _assignment} <-
+           mutate_assignment(
+             action,
+             socket.assigns.current_scope,
+             integration_id,
+             workspace_id
+           ) do
+      {:reply, %{status: "ok"}, assign_cards(socket)}
+    else
+      {:error, :feature_disabled} -> {:reply, error_reply("feature_disabled"), socket}
+      {:error, :integration_unavailable} -> {:reply, error_reply("integration_unavailable"), socket}
+      {:error, :workspace_unavailable} -> {:reply, error_reply("workspace_unavailable"), socket}
+      {:error, :member_personal_ai_disabled} -> {:reply, error_reply("workspace_policy_disabled"), socket}
+      {:error, :provider_already_assigned} -> {:reply, error_reply("provider_already_assigned"), socket}
+      {:error, :assignment_not_found} -> {:reply, error_reply("assignment_not_found"), socket}
+      {:error, %Ecto.Changeset{}} -> {:reply, error_reply("invalid_data"), socket}
+      {:error, :invalid_id} -> {:reply, error_reply("invalid_data"), socket}
+    end
+  end
+
+  defp mutate_assignment(:assign, scope, integration_id, workspace_id),
+    do: AI.assign_integration(scope, integration_id, workspace_id)
+
+  defp mutate_assignment(:unassign, scope, integration_id, workspace_id),
+    do: AI.unassign_integration(scope, integration_id, workspace_id)
+
   defp assign_cards(socket) do
     user = socket.assigns.current_scope.user
 
@@ -143,14 +180,17 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
     cards =
       Enum.map(AI.provider_metadata(), fn metadata ->
         integration = Map.get(integrations_by_provider, Atom.to_string(metadata.id))
-        build_card(metadata, integration)
+        build_card(metadata, integration, socket.assigns.current_scope)
       end)
 
     assign(socket, :cards, cards)
   end
 
-  defp build_card(metadata, nil) do
+  defp build_card(metadata, nil, _scope) do
+    models = AI.models_for_provider(Atom.to_string(metadata.id))
+
     %{
+      integration_id: nil,
       provider: metadata.id,
       name: metadata.name,
       key_generation_url: metadata.key_generation_url,
@@ -160,12 +200,16 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
       account_email: nil,
       account_display_name: nil,
       key_last_four: nil,
-      connected_at: nil
+      connected_at: nil,
+      catalog_status: if(models == [], do: "connection_only", else: "catalog_ready"),
+      models: models,
+      workspace_assignments: []
     }
   end
 
-  defp build_card(metadata, %{} = integration) do
+  defp build_card(metadata, %{} = integration, scope) do
     %{
+      integration_id: integration.id,
       provider: metadata.id,
       name: metadata.name,
       key_generation_url: metadata.key_generation_url,
@@ -175,12 +219,26 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
       account_email: integration.account_email,
       account_display_name: integration.account_display_name,
       key_last_four: integration.key_last_four,
-      connected_at: integration.connected_at
+      connected_at: integration.connected_at,
+      catalog_status: Atom.to_string(AI.integration_model_status(integration)),
+      models: AI.models_for_provider(integration.provider),
+      workspace_assignments: AI.list_assignment_states(scope, integration)
     }
   end
 
   defp trim(value) when is_binary(value), do: String.trim(value)
   defp trim(_value), do: ""
+
+  defp positive_integer(value) when is_integer(value) and value > 0, do: {:ok, value}
+
+  defp positive_integer(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {integer, ""} when integer > 0 -> {:ok, integer}
+      _invalid -> {:error, :invalid_id}
+    end
+  end
+
+  defp positive_integer(_value), do: {:error, :invalid_id}
 
   defp error_reply(code), do: %{status: "error", error: code}
 end

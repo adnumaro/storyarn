@@ -20,6 +20,7 @@ defmodule Storyarn.AI.PersonalByokTest do
   alias Storyarn.AI.PersonalConsent
   alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.Result
+  alias Storyarn.AI.RouteOption
   alias Storyarn.AI.UsageEvent
   alias Storyarn.Repo
   alias StoryarnTest.AI.ContractTask
@@ -68,10 +69,12 @@ defmodule Storyarn.AI.PersonalByokTest do
     %{owner: owner, scope: scope, workspace: workspace, project: project}
   end
 
-  test "personal preflight discloses connection and consent gates before issuing a route", ctx do
+  test "personal preflight discloses connection, assignment and consent gates before issuing a route", ctx do
     intent = intent!(ctx, "draft")
 
-    assert {:ok, %{route_options: [], personal_choices: [choice]}} = AI.preflight(intent)
+    assert {:ok, %{route_options: [], personal_choices: [choice]}} =
+             AI.resolve_route(intent)
+
     assert choice.provider == "openai"
     assert choice.status == :connect_required
     assert choice.payer == "personal_provider_account"
@@ -81,9 +84,22 @@ defmodule Storyarn.AI.PersonalByokTest do
 
     integration = connect_openai!(ctx.owner)
 
-    assert {:ok, %{route_options: [], personal_choices: [choice]}} = AI.preflight(intent)
+    assert {:ok, %{route_options: [], personal_choices: [choice]}} =
+             AI.resolve_route(intent)
+
+    assert choice.status == :assignment_required
+    assert choice.integration_id == integration.id
+    assert is_nil(choice.workspace_assignment_id)
+
+    assert {:ok, assignment} =
+             AI.assign_integration(ctx.scope, integration.id, ctx.workspace.id)
+
+    assert {:ok, %{route_options: [], personal_choices: [choice]}} =
+             AI.resolve_route(intent)
+
     assert choice.status == :consent_required
     assert choice.integration_id == integration.id
+    assert choice.workspace_assignment_id == assignment.id
 
     assert {:ok, %PersonalConsent{} = consent} =
              AI.grant_personal_consent(intent, integration.id, PersonalConsents.policy_text_version())
@@ -94,7 +110,9 @@ defmodule Storyarn.AI.PersonalByokTest do
     assert consent.capability == "suggestions"
     assert consent.cost_class == "standard"
 
-    assert {:ok, %{route_options: [route], personal_choices: [ready]}} = AI.preflight(intent)
+    assert {:ok, %{route_options: [route], personal_choices: [ready]}} =
+             AI.resolve_route(intent)
+
     assert ready.status == :ready
     assert route.lane == :personal_byok
     assert route.provider == "openai"
@@ -103,6 +121,18 @@ defmodule Storyarn.AI.PersonalByokTest do
     assert is_nil(route.price_id)
     assert is_nil(route.price_version)
     assert is_nil(route.price_units)
+
+    route_option =
+      Repo.get_by!(RouteOption,
+        user_id: ctx.owner.id,
+        workspace_id: ctx.workspace.id,
+        lane: "personal_byok"
+      )
+
+    assert route_option.provider_configuration["workspace_assignment_id"] ==
+             assignment.id
+
+    assert route_option.provider_configuration["model_catalog_version"] == 1
   end
 
   test "workspace owner can use personal BYOK when member access is disabled", ctx do
@@ -139,6 +169,35 @@ defmodule Storyarn.AI.PersonalByokTest do
              |> AI.preflight()
 
     assert choice.status == :connect_required
+  end
+
+  test "provider discovery cannot route a configured model the key cannot access", ctx do
+    integration =
+      connect_openai!(
+        ctx.owner,
+        "sk-proj-limited-abcd",
+        ["provider-visible-but-unconfigured"]
+      )
+
+    assert {:ok, _assignment} =
+             AI.assign_integration(ctx.scope, integration.id, ctx.workspace.id)
+
+    intent = intent!(ctx, "limited account")
+
+    assert {:ok, %{route_options: [], personal_choices: [choice]}} =
+             AI.resolve_route(intent)
+
+    assert choice.status == :model_unavailable
+    assert choice.model == "personal-deterministic-v1"
+
+    assert {:error, :model_unavailable} =
+             AI.grant_personal_consent(
+               intent,
+               integration.id,
+               PersonalConsents.policy_text_version()
+             )
+
+    assert Repo.aggregate(PersonalConsent, :count) == 0
   end
 
   test "executes with only the actor key and never touches managed allowance", ctx do
@@ -226,11 +285,63 @@ defmodule Storyarn.AI.PersonalByokTest do
 
     replacement = connect_openai!(ctx.owner, "sk-proj-replacement-wxyz")
 
+    assert {:ok, _assignment} =
+             AI.assign_integration(ctx.scope, replacement.id, ctx.workspace.id)
+
     assert {:ok, %{route_options: [], personal_choices: [choice]}} =
              ctx |> intent!("fresh consent") |> AI.preflight()
 
     assert choice.status == :consent_required
     assert choice.integration_id == replacement.id
+  end
+
+  test "removing a workspace assignment invalidates queued routes and requires fresh consent", ctx do
+    Application.put_env(:storyarn, ContractTask,
+      scenario: :success,
+      execution_mode: :background,
+      allowed_lanes: [:personal_byok],
+      personal_byok_allowed?: true,
+      personal_cost_class: "standard",
+      managed_price: nil
+    )
+
+    integration = connect_openai!(ctx.owner)
+    intent = consented_intent!(ctx, integration, "workspace revoked")
+    route_ref = personal_route_ref!(intent)
+
+    assert {:ok, %Operation{execution_status: "queued"} = queued} =
+             ctx
+             |> execution_intent!("workspace revoked", route_ref, "assignment-queued")
+             |> AI.execute()
+
+    assert {:ok, revoked_assignment} =
+             AI.unassign_integration(ctx.scope, integration.id, ctx.workspace.id)
+
+    assert revoked_assignment.revoked_at
+    assert :ok = Executor.run(queued.id)
+
+    cancelled = Repo.get!(Operation, queued.id)
+    assert cancelled.execution_status == "cancelled"
+    assert cancelled.settlement_status == "not_applicable"
+    refute Repo.get_by(UsageEvent, operation_id: queued.id)
+    refute Repo.get_by(Result, operation_id: queued.id)
+    assert Repo.get_by!(PersonalConsent, integration_id: integration.id).revoked_at
+
+    assert {:ok, %{route_options: [], personal_choices: [choice]}} =
+             ctx |> intent!("assignment missing") |> AI.preflight()
+
+    assert choice.status == :assignment_required
+
+    assert {:ok, replacement_assignment} =
+             AI.assign_integration(ctx.scope, integration.id, ctx.workspace.id)
+
+    refute replacement_assignment.id == revoked_assignment.id
+
+    assert {:ok, %{route_options: [], personal_choices: [choice]}} =
+             ctx |> intent!("fresh consent") |> AI.preflight()
+
+    assert choice.status == :consent_required
+    assert choice.workspace_assignment_id == replacement_assignment.id
   end
 
   test "a stale consent policy version invalidates an already-issued personal route", ctx do
@@ -342,14 +453,22 @@ defmodule Storyarn.AI.PersonalByokTest do
     assert is_nil(Repo.get!(Operation, operation.id).user_disposition)
   end
 
-  defp connect_openai!(user, api_key \\ "sk-proj-personal-abcd") do
-    Req.Test.stub(@validation_stub, fn conn -> Req.Test.json(conn, %{"data" => []}) end)
+  defp connect_openai!(user, api_key \\ "sk-proj-personal-abcd", models \\ ["personal-deterministic-v1"]) do
+    Req.Test.stub(@validation_stub, fn conn ->
+      Req.Test.json(conn, %{"data" => Enum.map(models, &%{"id" => &1})})
+    end)
+
     assert {:ok, integration} = AI.connect(user, :openai, api_key)
     integration
   end
 
   defp consented_intent!(ctx, integration, text) do
     intent = intent!(ctx, text)
+
+    case AI.assign_integration(ctx.scope, integration.id, ctx.workspace.id) do
+      {:ok, _assignment} -> :ok
+      {:error, :provider_already_assigned} -> :ok
+    end
 
     assert {:ok, %PersonalConsent{}} =
              AI.grant_personal_consent(

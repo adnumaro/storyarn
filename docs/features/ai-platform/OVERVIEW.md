@@ -26,29 +26,31 @@ Storyarn's AI strategy is **Storyarn AI by default, personal BYOK as the advance
 
 ## Slice index
 
-| #   | Slice                                              | Document                            | Depends on                             | Status                               |
-| --- | -------------------------------------------------- | ----------------------------------- | -------------------------------------- | ------------------------------------ |
-| 0   | Personal provider connections + AI flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md`      | —                                      | **merged** (PR #28)                  |
-| 1   | Command palette foundation (no AI)                 | `SLICE_1_COMMAND_PALETTE.md`        | —                                      | **merged** (F1 PR #30; F2/F3 PR #31) |
-| 2   | AI execution kernel + palette bridge               | `SLICE_2_AI_EXECUTION_KERNEL.md`    | 0, 1                                   | **merged** (PR #39)                  |
-| 3   | Storyarn AI beta + internal allowance              | `SLICE_3_STORYARN_AI_BETA.md`       | 2                                      | **merged** (PR #42)                  |
-| 4   | Personal BYOK execution lane                       | `SLICE_4_PERSONAL_BYOK_LANE.md`     | 0, 2, 3                                | implemented; pending review/merge    |
-| 5   | Central routing + personal AI preferences          | `SLICE_5_AI_ROUTING_PREFERENCES.md` | 2–4                                    | pending                              |
-| 6   | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`         | 2                                      | pending                              |
-| 7   | Structural analysis + optional AI explanation      | `SLICE_7_STRUCTURAL_ANALYSIS.md`    | 1–6                                    | pending                              |
-| 8   | Dialogue rewrite/variants + proposal UX            | `SLICE_8_DIALOGUE_TOOLS.md`         | 2–6                                    | pending                              |
-| 9   | Multilingual scratch voice-over                    | `SLICE_9_SCRATCH_VOICEOVER.md`      | 0–5 + Localization/Assets              | pending                              |
-| 10  | Text → Storyarn structure                          | `SLICE_10_TEXT_TO_STRUCTURE.md`     | 2–6, 8                                 | pending                              |
-| 11  | Manual Tiptap writing suggestions                  | `SLICE_11_TIPTAP_SUGGESTIONS.md`    | 2, 4–6                                 | pending                              |
-| 12  | Image generation into sheet galleries              | `SLICE_12_IMAGE_GENERATION.md`      | 2, 4–6                                 | pending                              |
-| 13  | Commercial billing + paid allowances               | `SLICE_13_COMMERCIAL_BILLING.md`    | 3 + representative telemetry from 7–12 | deferred until data                  |
+| #   | Slice                                              | Document                           | Depends on                             | Status                               |
+| --- | -------------------------------------------------- | ---------------------------------- | -------------------------------------- | ------------------------------------ |
+| 0   | Personal provider connections + AI flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md`     | —                                      | **merged** (PR #28)                  |
+| 1   | Command palette foundation (no AI)                 | `SLICE_1_COMMAND_PALETTE.md`       | —                                      | **merged** (F1 PR #30; F2/F3 PR #31) |
+| 2   | AI execution kernel + palette bridge               | `SLICE_2_AI_EXECUTION_KERNEL.md`   | 0, 1                                   | **merged** (PR #39)                  |
+| 3   | Storyarn AI beta + internal allowance              | `SLICE_3_STORYARN_AI_BETA.md`      | 2                                      | **merged** (PR #42)                  |
+| 4   | Personal BYOK execution lane                       | `SLICE_4_PERSONAL_BYOK_LANE.md`    | 0, 2, 3                                | **merged** (PR #43)                  |
+| 5.1 | Central routing + workspace assignments            | `SLICE_5_1_ROUTING_ASSIGNMENTS.md` | 2–4                                    | pending                              |
+| 5.2 | Personal AI preferences (“My AI Team”)             | `SLICE_5_2_MY_AI_TEAM.md`          | 5.1                                    | pending                              |
+| 6   | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`        | 2                                      | pending                              |
+| 7   | Structural analysis + optional AI explanation      | `SLICE_7_STRUCTURAL_ANALYSIS.md`   | 1–6                                    | pending                              |
+| 8   | Dialogue rewrite/variants + proposal UX            | `SLICE_8_DIALOGUE_TOOLS.md`        | 2–6                                    | pending                              |
+| 9   | Multilingual scratch voice-over                    | `SLICE_9_SCRATCH_VOICEOVER.md`     | 0–5.2 + Localization/Assets            | pending                              |
+| 10  | Text → Storyarn structure                          | `SLICE_10_TEXT_TO_STRUCTURE.md`    | 2–6, 8                                 | pending                              |
+| 11  | Manual Tiptap writing suggestions                  | `SLICE_11_TIPTAP_SUGGESTIONS.md`   | 2, 4–6                                 | pending                              |
+| 12  | Image generation into sheet galleries              | `SLICE_12_IMAGE_GENERATION.md`     | 2, 4–6                                 | pending                              |
+| 13  | Commercial billing + paid allowances               | `SLICE_13_COMMERCIAL_BILLING.md`   | 3 + representative telemetry from 7–12 | deferred until data                  |
 
 ## Ordering rationale
 
 - Slice 2 defines one execution/result/command contract before any provider or tool can invent a competing shape.
 - Slice 3 makes Storyarn AI real with an internal beta allowance but deliberately excludes payments.
 - Slice 4 integrates the already-shipped personal connections as an explicit lane.
-- Slice 5 centralizes route resolution and personal preferences before tools depend on provider choice.
+- Slice 5.1 centralizes route resolution and workspace assignment before provider choice spreads into tools.
+- Slice 5.2 adds personal role/default preferences on top of that reviewed authorization boundary.
 - Slice 6 creates bounded context without hidden model calls.
 - Slice 7 proves the deterministic moat; Slice 8 proves proposal/apply and becomes the first tightly bounded writing transformation.
 - Slice 9 ships a narrow, valuable VO preview using domain structures that already exist.

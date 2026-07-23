@@ -5,16 +5,18 @@ defmodule Storyarn.AI do
   External callers (LiveViews, controllers, other contexts) must go through
   this module and never call `Storyarn.AI.*` submodules directly.
 
-  Slice 0 owns personal provider connections. Slice 2 adds registered tasks,
-  workspace policy, opaque route preflight, durable operations and temporary
-  actor-private results. Production inference routes remain unconfigured until
-  later slices.
+  Slice 0 owns personal provider connections. Slices 2–4 add registered tasks,
+  workspace policy, opaque route preflight, durable operations, managed
+  execution and personal BYOK. Slice 5.1 adds the central route-resolution,
+  model-catalog and workspace-assignment boundaries.
   """
 
   alias Storyarn.AI.Allowance
   alias Storyarn.AI.Execution
   alias Storyarn.AI.ExecutionIntent
+  alias Storyarn.AI.IntegrationAssignments
   alias Storyarn.AI.IntegrationCrud
+  alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.Operations
   alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.Policy
@@ -28,13 +30,22 @@ defmodule Storyarn.AI do
   defdelegate get_active(user, provider), to: IntegrationCrud
   defdelegate connect(user, provider, api_key), to: IntegrationCrud
   defdelegate revoke(user, integration), to: IntegrationCrud
+  defdelegate assign_integration(scope, integration_id, workspace_id), to: IntegrationAssignments, as: :assign
+  defdelegate unassign_integration(scope, integration_id, workspace_id), to: IntegrationAssignments, as: :unassign
+  defdelegate list_assignment_states(scope, integration), to: IntegrationAssignments, as: :list_states
 
   defdelegate provider_metadata(), to: Providers, as: :metadata_list
   defdelegate adapter_for(provider), to: Providers
+  defdelegate model_catalog(), to: ModelCatalog, as: :all
+  defdelegate models_for_provider(provider), to: ModelCatalog, as: :public_for_provider
+  defdelegate integration_model_status(integration), to: ModelCatalog, as: :provider_status
 
   defdelegate with_personal_integration(user, provider, fun), to: Runtime
 
   defdelegate new_intent(scope, attrs), to: ExecutionIntent, as: :new
+  defdelegate resolve_route(intent), to: Execution, as: :preflight
+
+  @doc "Backward-compatible name for route resolution; prefer `resolve_route/1` in new consumers."
   defdelegate preflight(intent), to: Execution
   defdelegate execute(intent), to: Execution
   defdelegate cancel(scope, operation_id), to: Operations, as: :request_cancellation

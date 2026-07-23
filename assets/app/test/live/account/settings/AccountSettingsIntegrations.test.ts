@@ -11,7 +11,7 @@ type ReplyCallback = (reply: { status?: string; error?: string }) => void;
 const IntegrationCardStub = defineComponent({
   name: "IntegrationCard",
   props: { card: { type: Object, required: true } },
-  emits: ["connect", "disconnect"],
+  emits: ["connect", "disconnect", "toggle-workspace"],
   template: `<div :data-testid="'card-' + card.provider" />`,
 });
 
@@ -42,6 +42,7 @@ const ConfirmDialogStub = defineComponent({
 
 function card(provider: string): IntegrationCardData {
   return {
+    integration_id: null,
     provider,
     name: provider,
     key_generation_url: `https://example.com/${provider}/keys`,
@@ -52,6 +53,9 @@ function card(provider: string): IntegrationCardData {
     account_display_name: null,
     key_last_four: null,
     connected_at: null,
+    catalog_status: "connection_only",
+    models: [],
+    workspace_assignments: [],
   };
 }
 
@@ -139,5 +143,59 @@ describe("AccountSettingsIntegrations", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="connect-dialog"]').exists()).toBe(false);
+  });
+
+  it("assigns and unassigns the connected provider for the selected workspace", async () => {
+    const { live, wrapper } = mountPage();
+    const connected = card("openai");
+    connected.integration_id = 42;
+    connected.status = "connected";
+    connected.workspace_assignments = [
+      {
+        workspace_id: 9,
+        workspace_name: "Narrative team",
+        workspace_slug: "narrative-team",
+        role: "owner",
+        assigned: false,
+        assignment_id: null,
+        can_assign: true,
+        state: "available",
+        reason: "owner_allowed",
+      },
+    ];
+
+    await wrapper.setProps({ cards: [card("anthropic"), connected] });
+
+    const openaiCard = wrapper.findAllComponents(IntegrationCardStub)[1]!;
+    await openaiCard.vm.$emit("toggle-workspace", connected.workspace_assignments[0]);
+
+    const pushEventMock = live.pushEvent as unknown as {
+      mock: { calls: [string, unknown, ReplyCallback][] };
+    };
+
+    expect(pushEventMock.mock.calls[0]![0]).toBe("assign_workspace");
+    expect(pushEventMock.mock.calls[0]![1]).toEqual({
+      integration_id: 42,
+      workspace_id: 9,
+    });
+
+    pushEventMock.mock.calls[0]![2]({ status: "ok" });
+
+    connected.workspace_assignments[0] = {
+      ...connected.workspace_assignments[0]!,
+      assigned: true,
+      assignment_id: 81,
+      state: "assigned",
+    };
+    await wrapper.setProps({ cards: [card("anthropic"), { ...connected }] });
+    await wrapper
+      .findAllComponents(IntegrationCardStub)[1]!
+      .vm.$emit("toggle-workspace", connected.workspace_assignments[0]);
+
+    expect(pushEventMock.mock.calls[1]![0]).toBe("unassign_workspace");
+    expect(pushEventMock.mock.calls[1]![1]).toEqual({
+      integration_id: 42,
+      workspace_id: 9,
+    });
   });
 });

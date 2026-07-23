@@ -25,7 +25,7 @@ Only the workspace owner changes this policy through the existing `:manage_works
 
 ## Consent and UX
 
-- The lane is selected explicitly for an action or by an explicit personal preference added in Slice 5.
+- The lane is selected explicitly for an action or by an explicit personal preference added in Slice 5.2.
 - First use is consented per workspace + integration/provider + capability/cost class + policy-text version.
 - Workspace settings state that the owner can always use their own personal connections and that the switch grants access only to other eligible members.
 - Copy states what project data scope will be sent, that the provider bills the user's account, and that processing region, retention, and possible model-training use depend on that member's provider account. Storyarn does not claim zero retention or no training for personal credentials.
@@ -57,7 +57,7 @@ Before broad rollout, close Slice-0 credential-security debt: connect/disconnect
 
 ## Non-goals
 
-- Personal role/model preferences (Slice 5).
+- Personal role/model preferences (Slice 5.2).
 - Workspace-owned credentials or enterprise provider policies.
 - Automatic fallback from Storyarn AI.
 - DeepL project-config migration.
@@ -83,7 +83,7 @@ The platform overview deliberately schedules the first end-user AI task for Slic
 
 ## Delivery
 
-Branch `codex/slice4-personal-byok-lane` from `main` → PR → merge before Slice 5. Keep `:ai_integrations` invite-only.
+Branch `codex/slice4-personal-byok-lane` from `main` → PR → merge before Slice 5.1. Keep `:ai_integrations` invite-only.
 
 ## Inputs from previous slices
 

@@ -2,7 +2,7 @@
   "integrations": {
     "page": {
       "title": "Integraciones IA",
-      "description": "Conecta tus cuentas de proveedores de IA para usarlas desde Storyarn. La facturación va directamente contigo y cada proveedor.",
+      "description": "Conecta tus cuentas personales de IA y elige en qué workspaces puede usarlas Storyarn. La facturación va directamente contigo y cada proveedor.",
       "providers_aria": "Proveedores de IA"
     },
     "empty": {
@@ -14,7 +14,28 @@
       "connect": "Conectar",
       "disconnect": "Desconectar",
       "docs": "Documentación API",
-      "key_suffix": "Clave terminada en {suffix}"
+      "key_suffix": "Clave terminada en {suffix}",
+      "routing_ready": "Disponible para el enrutamiento de IA",
+      "no_executable_model": "Esta conexión no ofrece ahora mismo un modelo compatible.",
+      "catalog_states": {
+        "catalog_ready": "Modelos disponibles después de conectar",
+        "connection_only": "Solo conexión",
+        "model_deprecated": "El modelo configurado está obsoleto",
+        "model_unavailable": "El modelo configurado no está disponible para esta clave"
+      }
+    },
+    "assignments": {
+      "summary": "{assigned} de {total} workspaces habilitados",
+      "allow": "Habilitar",
+      "remove": "Deshabilitar",
+      "blocked": "Bloqueado",
+      "consent_note": "Habilitar un workspace no ejecuta IA automáticamente. Storyarn seguirá pidiendo consentimiento explícito cuando una tarea vaya a enviar contenido del proyecto a este proveedor.",
+      "no_workspaces": "Ahora mismo no tienes ningún workspace elegible para esta conexión.",
+      "reasons": {
+        "owner_allowed": "Eres owner de este workspace",
+        "member_policy_allowed": "El owner permite claves personales de IA",
+        "member_policy_disabled": "El owner ha deshabilitado las claves personales de IA"
+      }
     },
     "connect": {
       "title": "Conectar {name}",
@@ -26,7 +47,7 @@
     },
     "disconnect": {
       "title": "¿Desconectar {name}?",
-      "description": "Se eliminará tu API key almacenada para {name}. Puedes reconectar cuando quieras.",
+      "description": "Se eliminarán tu API key almacenada para {name}, sus asignaciones a workspaces y los consentimientos relacionados. Puedes reconectar cuando quieras.",
       "confirm": "Desconectar",
       "cancel": "Mantener"
     },
@@ -39,6 +60,12 @@
       "unknown_provider": "Este proveedor no está soportado.",
       "not_connected": "Este proveedor no está conectado.",
       "invalid_data": "El formato de la clave no es válido.",
+      "feature_disabled": "Las integraciones de IA no están disponibles en este momento.",
+      "integration_unavailable": "Esta integración no está disponible para tu cuenta.",
+      "workspace_unavailable": "Este workspace no está disponible para tu cuenta.",
+      "workspace_policy_disabled": "El owner ha deshabilitado las claves personales de IA.",
+      "provider_already_assigned": "Ya hay otra conexión personal de este proveedor habilitada en este workspace.",
+      "assignment_not_found": "Esta asignación al workspace ya no existe.",
       "connection_lost": "Se perdió la conexión con el servidor. Reintenta.",
       "no_target": "No hay proveedor seleccionado.",
       "unknown_error": "Algo salió mal. Inténtalo de nuevo."

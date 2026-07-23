@@ -45,6 +45,7 @@ defmodule Storyarn.AI.Provider do
   not expose them via API — the UI falls back to the masked key.
   """
   @type account_info :: %{
+          optional(:available_models) => [String.t()] | nil,
           account_email: String.t() | nil,
           account_display_name: String.t() | nil
         }

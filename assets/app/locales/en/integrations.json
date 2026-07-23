@@ -2,7 +2,7 @@
   "integrations": {
     "page": {
       "title": "AI Integrations",
-      "description": "Connect your AI provider accounts to use them from Storyarn. You are billed directly by each provider.",
+      "description": "Connect your personal AI accounts, then choose the workspaces where Storyarn may use them. You are billed directly by each provider.",
       "providers_aria": "AI providers"
     },
     "empty": {
@@ -14,7 +14,28 @@
       "connect": "Connect",
       "disconnect": "Disconnect",
       "docs": "API docs",
-      "key_suffix": "Key ending in {suffix}"
+      "key_suffix": "Key ending in {suffix}",
+      "routing_ready": "Available for AI routing",
+      "no_executable_model": "This connection does not currently expose a compatible model.",
+      "catalog_states": {
+        "catalog_ready": "Models available after connecting",
+        "connection_only": "Connection only",
+        "model_deprecated": "Configured model is deprecated",
+        "model_unavailable": "Configured model is not available to this key"
+      }
+    },
+    "assignments": {
+      "summary": "{assigned} of {total} workspaces enabled",
+      "allow": "Enable",
+      "remove": "Disable",
+      "blocked": "Blocked",
+      "consent_note": "Enabling a workspace does not run AI automatically. Storyarn will still ask for explicit consent when a task sends project content to this provider.",
+      "no_workspaces": "You do not currently have an eligible workspace for this connection.",
+      "reasons": {
+        "owner_allowed": "You own this workspace",
+        "member_policy_allowed": "The workspace owner allows personal AI keys",
+        "member_policy_disabled": "The workspace owner has disabled personal AI keys"
+      }
     },
     "connect": {
       "title": "Connect {name}",
@@ -26,7 +47,7 @@
     },
     "disconnect": {
       "title": "Disconnect {name}?",
-      "description": "This removes your stored API key for {name}. You can reconnect anytime.",
+      "description": "This removes your stored API key for {name}, its workspace assignments, and related consents. You can reconnect anytime.",
       "confirm": "Disconnect",
       "cancel": "Keep connected"
     },
@@ -39,6 +60,12 @@
       "unknown_provider": "This provider is not supported.",
       "not_connected": "This provider is not connected.",
       "invalid_data": "The key format is invalid.",
+      "feature_disabled": "AI integrations are not available right now.",
+      "integration_unavailable": "This integration is not available to your account.",
+      "workspace_unavailable": "This workspace is not available to your account.",
+      "workspace_policy_disabled": "The workspace owner has disabled personal AI keys.",
+      "provider_already_assigned": "Another personal connection for this provider is already enabled in this workspace.",
+      "assignment_not_found": "This workspace assignment no longer exists.",
       "connection_lost": "Lost connection to the server. Please retry.",
       "no_target": "No provider selected.",
       "unknown_error": "Something went wrong. Please try again."
