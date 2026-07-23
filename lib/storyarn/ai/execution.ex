@@ -30,8 +30,9 @@ defmodule Storyarn.AI.Execution do
          {:ok, decision} <- PolicyDecision.authorize(intent, task, :execute),
          routes = RouteResolver.routes(decision, task),
          personal_choices = RouteResolver.personal_choices(decision, task),
+         personal_preference = RouteResolver.personal_preference(decision, task),
          true <- routes != [] or personal_choices != [] do
-      issue_preflight(intent, task, routes, personal_choices)
+      issue_preflight(intent, task, routes, personal_choices, personal_preference)
     else
       false -> {:error, :no_route}
       {:error, reason} -> {:error, reason}
@@ -63,12 +64,13 @@ defmodule Storyarn.AI.Execution do
     end
   end
 
-  defp issue_preflight(intent, task, routes, personal_choices) do
+  defp issue_preflight(intent, task, routes, personal_choices, personal_preference) do
     fn ->
       %{
         task_id: task.id,
         route_options: Enum.map(routes, &issue_route_option!(intent, task, &1)),
         personal_choices: Enum.map(personal_choices, &Map.delete(&1, :route)),
+        personal_preference: personal_preference,
         result_destination: task.result_destination,
         operation_created: false
       }

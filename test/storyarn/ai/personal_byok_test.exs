@@ -6,6 +6,7 @@ defmodule Storyarn.AI.PersonalByokTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.AI
+  alias Storyarn.AI.Allowance
   alias Storyarn.AI.AllowanceLedgerEntry
   alias Storyarn.AI.AllowanceReservation
   alias Storyarn.AI.CredentialResolver
@@ -16,13 +17,16 @@ defmodule Storyarn.AI.PersonalByokTest do
   alias Storyarn.AI.InferenceProviders.Fake
   alias Storyarn.AI.InferenceProviders.Personal.OpenAI, as: PersonalOpenAI
   alias Storyarn.AI.Integration
+  alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.Operation
   alias Storyarn.AI.PersonalConsent
   alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.Result
   alias Storyarn.AI.RouteOption
+  alias Storyarn.AI.Settlement
   alias Storyarn.AI.UsageEvent
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias StoryarnTest.AI.ContractTask
 
   @validation_stub StoryarnTest.AI.OpenAI
@@ -133,6 +137,283 @@ defmodule Storyarn.AI.PersonalByokTest do
              assignment.id
 
     assert route_option.provider_configuration["model_catalog_version"] == 1
+  end
+
+  test "a role primary is captured as explicit personal route provenance", ctx do
+    integration = connect_openai!(ctx.owner)
+    intent = consented_intent!(ctx, integration, "preferred route")
+
+    assert {:ok, _preference} =
+             AI.put_personal_preference(
+               ctx.scope,
+               ctx.workspace.id,
+               :writing_assistant,
+               integration.id,
+               "personal-deterministic-v1"
+             )
+
+    assert {:ok,
+            %{
+              personal_preference: %{
+                status: :ready,
+                slot: :writing_assistant,
+                assignment_source: "personal_role"
+              },
+              personal_choices: [%{preferred: true, assignment_source: "personal_role"}]
+            }} = AI.preflight(intent)
+
+    role_route =
+      Repo.get_by!(RouteOption,
+        user_id: ctx.owner.id,
+        workspace_id: ctx.workspace.id,
+        lane: "personal_byok",
+        assignment_source: "personal_role"
+      )
+
+    assert role_route.provider_configuration["personal_preference_slot"] ==
+             "writing_assistant"
+
+    assert {:ok, _deleted} =
+             AI.delete_personal_preference(
+               ctx.scope,
+               ctx.workspace.id,
+               :writing_assistant
+             )
+
+    assert {:ok,
+            %{
+              personal_preference: %{
+                status: :choose_required,
+                slot: :writing_assistant,
+                assignment_source: nil
+              },
+              personal_choices: [%{preferred: false, assignment_source: "explicit_invocation"}]
+            }} = AI.preflight(intent)
+  end
+
+  test "the general role serves tasks but never becomes a silent fallback when managed allowance is exhausted", ctx do
+    original_settlement = Application.get_env(:storyarn, Settlement)
+    Application.put_env(:storyarn, Settlement, Storyarn.AI.Settlement.Managed)
+    on_exit(fn -> restore_env(Settlement, original_settlement) end)
+
+    task_config =
+      :storyarn
+      |> Application.fetch_env!(ContractTask)
+      |> Keyword.merge(
+        capability: :tasks,
+        allowed_lanes: [:managed, :personal_byok],
+        personal_byok_allowed?: true,
+        personal_cost_class: "standard",
+        managed_price: %{id: "contract-free", version: 1, units: 1}
+      )
+
+    Application.put_env(:storyarn, ContractTask, task_config)
+
+    assert {:ok, _policy} =
+             AI.update_workspace_policy(
+               ctx.scope,
+               ctx.workspace.id,
+               ["managed", "personal_byok"]
+             )
+
+    assert {:ok, _expired_grant} =
+             Allowance.grant(ctx.workspace.id, ctx.owner.id, %{
+               grant_key: "general-managed-limit",
+               kind: "one_time",
+               units: 1,
+               expires_at: DateTime.add(TimeHelpers.now(), -1, :second)
+             })
+
+    integration = connect_openai!(ctx.owner)
+    intent = consented_intent!(ctx, integration, "general task")
+
+    assert {:ok, _writing_preference} =
+             AI.put_personal_preference(
+               ctx.scope,
+               ctx.workspace.id,
+               :writing_assistant,
+               integration.id,
+               "personal-deterministic-v1"
+             )
+
+    assert {:ok, _preference} =
+             AI.put_personal_preference(
+               ctx.scope,
+               ctx.workspace.id,
+               :general_assistant,
+               integration.id,
+               "personal-deterministic-v1"
+             )
+
+    assert {:ok,
+            %{
+              route_options: route_options,
+              personal_preference: %{
+                status: :ready,
+                slot: :general_assistant,
+                assignment_source: "personal_role"
+              },
+              personal_choices: [
+                %{preferred: true, assignment_source: "personal_role"}
+              ]
+            }} = AI.preflight(intent)
+
+    assert route_options |> Enum.map(& &1.lane) |> Enum.sort() ==
+             [:managed, :personal_byok]
+
+    managed_route = Enum.find(route_options, &(&1.lane == :managed))
+
+    assert {:error, :allowance_exhausted} =
+             ctx
+             |> execution_intent!(
+               "general task",
+               managed_route.requested_route_ref,
+               "managed-exhausted-no-fallback"
+             )
+             |> AI.execute()
+
+    assert Repo.aggregate(Operation, :count) == 0
+    assert is_nil(Repo.get!(Integration, integration.id).last_used_at)
+
+    personal_option =
+      Repo.get_by!(RouteOption,
+        user_id: ctx.owner.id,
+        workspace_id: ctx.workspace.id,
+        lane: "personal_byok"
+      )
+
+    assert personal_option.assignment_source == "personal_role"
+
+    assert personal_option.provider_configuration["personal_preference_slot"] ==
+             "general_assistant"
+  end
+
+  test "configuration-only multimedia preferences cannot create consent or execution routes", ctx do
+    original_catalog = Application.get_env(:storyarn, ModelCatalog, [])
+    image_model = "personal-image-v1"
+
+    Application.put_env(:storyarn, ModelCatalog,
+      models: [
+        personal_model("personal-deterministic-v1"),
+        configuration_only_media_model(
+          image_model,
+          :images,
+          :openai_images,
+          :image
+        )
+      ]
+    )
+
+    on_exit(fn -> Application.put_env(:storyarn, ModelCatalog, original_catalog) end)
+
+    task_config =
+      :storyarn
+      |> Application.fetch_env!(ContractTask)
+      |> Keyword.merge(
+        capability: :images,
+        allowed_lanes: [:personal_byok],
+        personal_byok_allowed?: true,
+        personal_cost_class: "standard",
+        managed_price: nil
+      )
+
+    Application.put_env(:storyarn, ContractTask, task_config)
+
+    integration =
+      connect_openai!(
+        ctx.owner,
+        "sk-proj-personal-abcd",
+        ["personal-deterministic-v1", image_model]
+      )
+
+    assert {:ok, _assignment} =
+             AI.assign_integration(ctx.scope, integration.id, ctx.workspace.id)
+
+    assert {:ok, _preference} =
+             AI.put_personal_preference(
+               ctx.scope,
+               ctx.workspace.id,
+               :illustrator,
+               integration.id,
+               image_model
+             )
+
+    intent = intent!(ctx, "future image")
+
+    assert {:error, :no_route} = AI.preflight(intent)
+
+    assert {:error, :capability_mismatch} =
+             AI.grant_personal_consent(
+               intent,
+               integration.id,
+               PersonalConsents.policy_text_version()
+             )
+
+    assert Repo.aggregate(PersonalConsent, :count) == 0
+    assert Repo.aggregate(RouteOption, :count) == 0
+    assert is_nil(Repo.get!(Integration, integration.id).last_used_at)
+  end
+
+  test "a broken role primary does not silently fall back to another ready model", ctx do
+    original_catalog = Application.get_env(:storyarn, ModelCatalog, [])
+    alternate_model = "personal-alternate-v1"
+
+    Application.put_env(
+      :storyarn,
+      ModelCatalog,
+      models: [
+        personal_model("personal-deterministic-v1"),
+        personal_model(alternate_model)
+      ]
+    )
+
+    on_exit(fn -> Application.put_env(:storyarn, ModelCatalog, original_catalog) end)
+
+    integration =
+      connect_openai!(
+        ctx.owner,
+        "sk-proj-personal-abcd",
+        ["personal-deterministic-v1", alternate_model]
+      )
+
+    intent = consented_intent!(ctx, integration, "broken role")
+
+    assert {:ok, _role} =
+             AI.put_personal_preference(
+               ctx.scope,
+               ctx.workspace.id,
+               :writing_assistant,
+               integration.id,
+               "personal-deterministic-v1"
+             )
+
+    integration
+    |> Ecto.Changeset.change(available_models: [alternate_model])
+    |> Repo.update!()
+
+    assert {:ok,
+            %{
+              personal_preference: %{
+                status: :model_unavailable,
+                slot: :writing_assistant,
+                assignment_source: "personal_role"
+              },
+              personal_choices: choices
+            }} = AI.preflight(intent)
+
+    alternate_choice = Enum.find(choices, &(&1.model == alternate_model))
+    assert alternate_choice.status == :ready
+    assert alternate_choice.preferred == false
+    assert alternate_choice.assignment_source == "explicit_invocation"
+
+    refute Repo.exists?(
+             from(option in RouteOption,
+               where:
+                 option.user_id == ^ctx.owner.id and
+                   option.workspace_id == ^ctx.workspace.id and
+                   option.assignment_source == "personal_role"
+             )
+           )
   end
 
   test "workspace owner can use personal BYOK when member access is disabled", ctx do
@@ -540,4 +821,44 @@ defmodule Storyarn.AI.PersonalByokTest do
 
   defp restore_env(module, nil), do: Application.delete_env(:storyarn, module)
   defp restore_env(module, value), do: Application.put_env(:storyarn, module, value)
+
+  defp personal_model(model) do
+    %{
+      provider: "openai",
+      model: model,
+      catalog_version: 1,
+      capabilities: [:translation, :suggestions, :tasks],
+      input_modalities: [:text],
+      output_modalities: [:text],
+      structured_output: :json_schema,
+      api_family: :structured_text,
+      implementation_status: :executable,
+      release_stage: :stable,
+      context_window: 128_000,
+      max_output_tokens: 8_192,
+      processing_locations: ["provider-controlled"],
+      pricing_version: nil,
+      deprecated: false
+    }
+  end
+
+  defp configuration_only_media_model(model, capability, api_family, output_modality) do
+    %{
+      provider: "openai",
+      model: model,
+      catalog_version: 1,
+      capabilities: [capability],
+      input_modalities: [:text],
+      output_modalities: [output_modality],
+      structured_output: :none,
+      api_family: api_family,
+      implementation_status: :configuration_only,
+      release_stage: :stable,
+      context_window: nil,
+      max_output_tokens: nil,
+      processing_locations: ["provider-controlled"],
+      pricing_version: nil,
+      deprecated: false
+    }
+  end
 end

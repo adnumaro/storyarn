@@ -122,8 +122,8 @@ defmodule Storyarn.AI.PersonalConsents do
              route.provider_configuration,
              lock: lock?
            ),
-         {:ok, provider_config} <- compatible_provider(route.provider, task.capability, integration),
-         true <- provider_config.model == route.model || {:error, :model_unavailable},
+         {:ok, provider_config} <-
+           compatible_provider(route.provider, route.model, task.capability, integration),
          :ok <- validate_route_configuration(route.provider_configuration, integration, task, provider_config),
          {:ok, consent} <-
            active_consent(operation.actor_id, operation.workspace_id_snapshot, integration.id, task, lock?),
@@ -204,16 +204,38 @@ defmodule Storyarn.AI.PersonalConsents do
   end
 
   defp compatible_provider(provider, capability, integration) do
-    with {:ok, config} <- PersonalProviders.fetch(provider),
+    configs =
+      capability
+      |> PersonalProviders.for_capability()
+      |> Enum.filter(&(&1.provider == provider))
+
+    case Enum.find(configs, &(PersonalProviders.model_status(&1, integration) == :ready)) do
+      nil -> {:error, unavailable_provider_reason(configs, integration)}
+      config -> {:ok, config}
+    end
+  end
+
+  defp compatible_provider(provider, model, capability, integration) do
+    with {:ok, config} <- PersonalProviders.fetch(provider, model),
          true <- capability in config.catalog.capabilities,
          :ready <- PersonalProviders.model_status(config, integration) do
       {:ok, config}
     else
       false -> {:error, :capability_mismatch}
-      {:error, reason} -> {:error, reason}
+      {:error, :provider_unavailable} -> {:error, :model_unavailable}
       status when status in [:model_deprecated, :model_unavailable] -> {:error, status}
       _unavailable -> {:error, :capability_mismatch}
     end
+  end
+
+  defp unavailable_provider_reason([], _integration), do: :capability_mismatch
+
+  defp unavailable_provider_reason(configs, integration) do
+    statuses = Enum.map(configs, &PersonalProviders.model_status(&1, integration))
+
+    if Enum.all?(statuses, &(&1 == :model_deprecated)),
+      do: :model_deprecated,
+      else: :model_unavailable
   end
 
   defp attended(%ExecutionIntent{scheduled?: false}), do: :ok

@@ -73,6 +73,18 @@ defmodule StoryarnWeb.E2E.SettingsReauthenticationTest do
     |> assert_path("/users/settings/integrations")
     |> assert_has("#settings-integrations-page")
     |> refute_has("#confirm-access-vue")
+    |> click("a[href='/users/settings/ai-team']")
+    |> assert_path("/users/settings/ai-team")
+    |> assert_has("#settings-ai-team-overview-page")
+    |> click("#configure-ai-team-#{workspace.slug}")
+    |> assert_path("/users/settings/ai-team/#{workspace.slug}")
+    |> assert_has("#settings-ai-team-page")
+    |> assert_has("[data-preference-slot='general_assistant']")
+    |> assert_has("[data-preference-slot='writing_assistant']")
+    |> assert_has("[data-preference-slot='illustrator']")
+    |> assert_has("[data-preference-slot='voice']")
+    |> refute_has("#ai-team-workspace-selector")
+    |> refute_has("#confirm-access-vue")
   end
 
   test "submits the real password form as POST and rotates the authenticated session", %{conn: conn} do

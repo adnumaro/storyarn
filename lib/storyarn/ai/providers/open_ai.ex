@@ -22,7 +22,7 @@ defmodule Storyarn.AI.Providers.OpenAI do
       key_generation_url: "https://platform.openai.com/api-keys",
       docs_url: "https://platform.openai.com/docs/api-reference/authentication",
       key_placeholder: "sk-proj-...",
-      capabilities: [:translation, :suggestions, :tasks, :images]
+      capabilities: [:translation, :suggestions, :tasks, :images, :speech]
     }
   end
 

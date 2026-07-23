@@ -78,8 +78,12 @@ config :storyarn, Storyarn.AI.ModelCatalog,
       model: "personal-deterministic-v1",
       catalog_version: 1,
       capabilities: [:translation, :suggestions, :tasks],
-      modalities: [:text],
+      input_modalities: [:text],
+      output_modalities: [:text],
       structured_output: :json_schema,
+      api_family: :structured_text,
+      implementation_status: :executable,
+      release_stage: :stable,
       context_window: 128_000,
       max_output_tokens: 8_192,
       processing_locations: ["provider-controlled"],
@@ -94,7 +98,6 @@ config :storyarn, Storyarn.AI.PersonalProviders,
   providers: %{
     "openai" => %{
       model: "personal-deterministic-v1",
-      response_mode: "json_schema",
       processing_location: "provider-controlled"
     }
   }

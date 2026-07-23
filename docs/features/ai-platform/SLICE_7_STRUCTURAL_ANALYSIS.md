@@ -20,6 +20,13 @@ Stage A is a normal deterministic product capability, not AI. It is not gated by
 - Registered task consumes only finding ids/evidence plus the minimal manifest from Slice 6.
 - Model output references finding ids; the UI renders deterministic facts separately from generated narrative.
 - Both `managed` and `personal_byok` lanes may be offered when policy/capability allows, with price/payer visible before execution.
+- Personal BYOK explanations resolve through the Slice-5.2 General assistant
+  primary (`tasks`). Writing and media role preferences are never candidates.
+- If managed allowance is exhausted, no operation starts. The preflight may
+  offer an explicit **Use my own API key** CTA only for a compatible General
+  assistant route; choosing it opens the BYOK disclosure and requires current
+  task consent before creating a separate personal operation. It never converts
+  the blocked managed choice into BYOK automatically.
 - Report is a private preview until explicitly shared/exported.
 - Rendering means `viewed`, never `accepted`.
 
@@ -59,7 +66,10 @@ FlowStats/HealthChecker · graph traversal and reference trackers · existing fl
 ## Verification / Definition of Done
 
 - ExUnit per detector: branches, cycles, deleted nodes, condition-edge cases, stable ids/evidence, persistence of dismiss/resolve state.
-- ExUnit AI: only known finding ids accepted, report cannot invent unreferenced findings, stale evidence rejection, managed/personal lane accounting.
+- ExUnit AI: only known finding ids accepted, report cannot invent unreferenced
+  findings, stale evidence rejection, General-assistant route mapping,
+  managed/personal lane accounting, and exhausted managed allowance producing
+  an explicit consent-gated BYOK CTA rather than fallback.
 - Vitest/browser: findings panel, evidence navigation, resolve/dismiss, optional AI explanation with price/lane, viewed is not accepted.
 - Palette commands verified on at least two authorized roles/surfaces.
 - Publish the AI guide section prepared in Slice 1 for all readers and remove its global docs gate across direct routes, navigation/search, sitemap, and `llms.txt`; the in-app AI explanation remains actor-gated. User docs clearly distinguish deterministic analysis from AI explanation.

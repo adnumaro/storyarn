@@ -45,7 +45,6 @@ defmodule Storyarn.AI.InferenceProviders.Personal.Anthropic do
          system: system_prompt,
          messages: [%{role: "user", content: input_json}],
          max_tokens: max_tokens,
-         temperature: option(options, :temperature) || 0,
          output_config: %{format: %{type: "json_schema", schema: response_schema}}
        }}
     else

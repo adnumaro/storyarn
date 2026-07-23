@@ -18,6 +18,7 @@ defmodule Storyarn.AI.IntegrationAssignments do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   @lock_namespace 981_006
 
@@ -46,7 +47,7 @@ defmodule Storyarn.AI.IntegrationAssignments do
   def unassign(%Scope{user: %{id: user_id}} = scope, integration_id, workspace_id)
       when is_integer(integration_id) and integration_id > 0 and is_integer(workspace_id) and workspace_id > 0 do
     transact_if_enabled(scope, fn ->
-      unassign_locked(user_id, integration_id, workspace_id)
+      unassign_locked(scope, user_id, integration_id, workspace_id)
     end)
   end
 
@@ -72,7 +73,7 @@ defmodule Storyarn.AI.IntegrationAssignments do
         role: role,
         assigned: not is_nil(assignment),
         assignment_id: assignment && assignment.id,
-        can_assign: eligibility != :blocked,
+        can_assign: eligibility in [:owner, :member],
         state: state(assignment, eligibility),
         reason: reason(eligibility)
       }
@@ -88,9 +89,14 @@ defmodule Storyarn.AI.IntegrationAssignments do
       when is_integer(user_id) and is_integer(workspace_id) and is_integer(integration_id) do
     query =
       from(assignment in IntegrationWorkspaceAssignment,
+        join: membership in WorkspaceMembership,
+        on:
+          membership.user_id == assignment.user_id and
+            membership.workspace_id == assignment.workspace_id,
         where:
           assignment.user_id == ^user_id and assignment.workspace_id == ^workspace_id and
-            assignment.integration_id == ^integration_id and is_nil(assignment.revoked_at)
+            assignment.integration_id == ^integration_id and is_nil(assignment.revoked_at),
+        select: assignment
       )
 
     query = if Keyword.get(opts, :lock, false), do: lock(query, "FOR UPDATE"), else: query
@@ -149,13 +155,18 @@ defmodule Storyarn.AI.IntegrationAssignments do
     end
   end
 
-  defp unassign_locked(user_id, integration_id, workspace_id) do
-    case lock_active(user_id, integration_id, workspace_id) do
-      %IntegrationWorkspaceAssignment{} = assignment ->
-        revoke_locked!(assignment, TimeHelpers.now())
+  defp unassign_locked(scope, user_id, integration_id, workspace_id) do
+    with {:ok, _workspace, membership} <- workspace_access(scope, workspace_id),
+         :ok <- require_workspace_membership(membership.role) do
+      case lock_active(user_id, integration_id, workspace_id) do
+        %IntegrationWorkspaceAssignment{} = assignment ->
+          revoke_locked!(assignment, TimeHelpers.now())
 
-      nil ->
-        Repo.rollback(:assignment_not_found)
+        nil ->
+          Repo.rollback(:assignment_not_found)
+      end
+    else
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 
@@ -249,25 +260,33 @@ defmodule Storyarn.AI.IntegrationAssignments do
   end
 
   defp eligible("owner", %WorkspacePolicy{}), do: :ok
+  defp eligible(nil, %WorkspacePolicy{}), do: {:error, :workspace_unavailable}
 
   defp eligible(_role, %WorkspacePolicy{allowed_lanes: lanes}) do
     if "personal_byok" in lanes, do: :ok, else: {:error, :member_personal_ai_disabled}
   end
 
   defp eligibility("owner", %WorkspacePolicy{}), do: :owner
+  defp eligibility(nil, %WorkspacePolicy{}), do: :workspace_membership_required
 
   defp eligibility(_role, %WorkspacePolicy{allowed_lanes: lanes}) do
     if "personal_byok" in lanes, do: :member, else: :blocked
   end
 
   defp state(%IntegrationWorkspaceAssignment{}, :blocked), do: "blocked"
+  defp state(%IntegrationWorkspaceAssignment{}, :workspace_membership_required), do: "blocked"
   defp state(%IntegrationWorkspaceAssignment{}, _eligibility), do: "assigned"
   defp state(nil, :blocked), do: "blocked"
+  defp state(nil, :workspace_membership_required), do: "blocked"
   defp state(nil, _eligibility), do: "available"
 
   defp reason(:owner), do: "owner_allowed"
   defp reason(:member), do: "member_policy_allowed"
   defp reason(:blocked), do: "member_policy_disabled"
+  defp reason(:workspace_membership_required), do: "workspace_membership_required"
+
+  defp require_workspace_membership(nil), do: {:error, :workspace_unavailable}
+  defp require_workspace_membership(role) when is_binary(role), do: :ok
 
   defp lock_owned_integration(integration_id, user_id) do
     Repo.one(
@@ -298,6 +317,10 @@ defmodule Storyarn.AI.IntegrationAssignments do
 
   defp assignments_by_workspace(user_id, integration_id, workspace_ids) do
     from(assignment in IntegrationWorkspaceAssignment,
+      join: membership in WorkspaceMembership,
+      on:
+        membership.user_id == assignment.user_id and
+          membership.workspace_id == assignment.workspace_id,
       where:
         assignment.user_id == ^user_id and assignment.integration_id == ^integration_id and
           assignment.workspace_id in ^workspace_ids and is_nil(assignment.revoked_at)

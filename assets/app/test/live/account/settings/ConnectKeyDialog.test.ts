@@ -2,7 +2,6 @@ import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it } from "vitest";
 import { defineComponent } from "vue";
 import ConnectKeyDialog from "../../../../live/account/settings/integrations/ConnectKeyDialog.vue";
-import type { IntegrationCardData } from "../../../../live/account/settings/integrations/IntegrationCard.vue";
 import { setTestLocale } from "../../../setup";
 
 const DialogStub = defineComponent({
@@ -27,26 +26,16 @@ const dialogStubs = {
   },
 };
 
-function card(): IntegrationCardData {
+function card() {
   return {
-    integration_id: null,
     provider: "anthropic",
     name: "Anthropic Claude",
     key_generation_url: "https://example.com/keys",
-    docs_url: "https://example.com/docs",
     key_placeholder: "sk-...",
-    status: "not_connected",
-    account_email: null,
-    account_display_name: null,
-    key_last_four: null,
-    connected_at: null,
-    catalog_status: "connection_only",
-    models: [],
-    workspace_assignments: [],
   };
 }
 
-function mountDialog(props: { submitting?: boolean } = {}) {
+function mountDialog(props: { submitting?: boolean; mode?: "connect" | "replace" } = {}) {
   return mount(ConnectKeyDialog, {
     props: { open: true, card: card(), ...props },
     global: { stubs: dialogStubs },
@@ -95,5 +84,13 @@ describe("ConnectKeyDialog", () => {
     wrapper.findComponent(DialogStub).vm.$emit("update:open", false);
 
     expect(wrapper.emitted("cancel")).toBeUndefined();
+  });
+
+  it("explains atomic validation when replacing an existing key", () => {
+    const wrapper = mountDialog({ mode: "replace" });
+
+    expect(wrapper.text()).toContain("Replace Anthropic Claude key");
+    expect(wrapper.text()).toContain("existing key remains active");
+    expect(wrapper.text()).toContain("Validate and replace");
   });
 });

@@ -8,7 +8,7 @@ defmodule Storyarn.AI.PersonalConsent do
   alias Storyarn.AI.Integration
   alias Storyarn.Workspaces.Workspace
 
-  @capabilities ~w(translation suggestions tasks images)
+  @capabilities ~w(translation suggestions tasks images speech)
 
   schema "ai_personal_consents" do
     field :provider, :string

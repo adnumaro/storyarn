@@ -89,6 +89,47 @@ defmodule Storyarn.AI.Integration do
     )
   end
 
+  @doc """
+  Replaces key material and provider metadata after the caller has validated
+  the new key. Identity, assignment and usage fields are intentionally not
+  writable through this changeset.
+  """
+  def replace_key_changeset(integration, attrs) do
+    integration
+    |> cast(attrs, [
+      :api_key_encrypted,
+      :key_last_four,
+      :account_email,
+      :account_display_name,
+      :available_models,
+      :last_validated_at
+    ])
+    |> validate_required([:api_key_encrypted, :key_last_four, :last_validated_at])
+    |> validate_length(:key_last_four, is: 4)
+    |> validate_length(:account_email, max: 255)
+    |> validate_length(:account_display_name, max: 255)
+    |> validate_available_models()
+  end
+
+  @doc """
+  Refreshes provider metadata after revalidating the currently stored key.
+
+  The credential itself is excluded so a revalidation can never replace it.
+  """
+  def revalidation_changeset(integration, attrs) do
+    integration
+    |> cast(attrs, [
+      :account_email,
+      :account_display_name,
+      :available_models,
+      :last_validated_at
+    ])
+    |> validate_required([:last_validated_at])
+    |> validate_length(:account_email, max: 255)
+    |> validate_length(:account_display_name, max: 255)
+    |> validate_available_models()
+  end
+
   @doc "Record a runtime API call. Called by `Storyarn.AI.Runtime` on success."
   def touch_usage_changeset(integration, at) do
     integration

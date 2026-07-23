@@ -19,6 +19,7 @@ defmodule Storyarn.AI do
   alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.Operations
   alias Storyarn.AI.PersonalConsents
+  alias Storyarn.AI.PersonalPreferences
   alias Storyarn.AI.Policy
   alias Storyarn.AI.Providers
   alias Storyarn.AI.Results
@@ -29,10 +30,23 @@ defmodule Storyarn.AI do
   defdelegate list_active(user), to: IntegrationCrud
   defdelegate get_active(user, provider), to: IntegrationCrud
   defdelegate connect(user, provider, api_key), to: IntegrationCrud
+  defdelegate replace_integration_key(user, integration, api_key), to: IntegrationCrud, as: :replace_key
+  defdelegate revalidate_integration(user, integration), to: IntegrationCrud, as: :revalidate
   defdelegate revoke(user, integration), to: IntegrationCrud
   defdelegate assign_integration(scope, integration_id, workspace_id), to: IntegrationAssignments, as: :assign
   defdelegate unassign_integration(scope, integration_id, workspace_id), to: IntegrationAssignments, as: :unassign
   defdelegate list_assignment_states(scope, integration), to: IntegrationAssignments, as: :list_states
+  defdelegate personal_preferences_overview(scope), to: PersonalPreferences, as: :overview
+  defdelegate personal_preferences(scope, workspace_id), to: PersonalPreferences, as: :summary
+  defdelegate personal_preference_impacts(scope, integration_id), to: PersonalPreferences, as: :impacts
+
+  defdelegate put_personal_preference(scope, workspace_id, slot, integration_id, model),
+    to: PersonalPreferences,
+    as: :put
+
+  defdelegate delete_personal_preference(scope, workspace_id, slot),
+    to: PersonalPreferences,
+    as: :delete
 
   defdelegate provider_metadata(), to: Providers, as: :metadata_list
   defdelegate adapter_for(provider), to: Providers

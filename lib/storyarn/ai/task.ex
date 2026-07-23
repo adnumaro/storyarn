@@ -3,7 +3,7 @@ defmodule Storyarn.AI.Task do
 
   alias Storyarn.AI.Operation
 
-  @capabilities [:translation, :suggestions, :tasks, :images]
+  @capabilities [:translation, :suggestions, :tasks, :images, :speech]
   @data_scopes [:workspace, :project, :entity]
   @lanes [:managed, :personal_byok, :workspace_byok]
   @phases [:execute, :apply, :attach]

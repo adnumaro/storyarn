@@ -36,7 +36,15 @@ Generation requires both `:use_ai` and project `:edit_content`; preview never we
 ## Lanes and visibility
 
 - Task may allow managed and personal BYOK with explicit choice; no silent switch.
+- Personal BYOK resolves through the Slice-5.2 General assistant primary
+  (`tasks`); Writing and media role preferences are not eligible.
 - Managed price is fixed for a declared input/output size band. Oversize is rejected before reservation.
+- If the managed allowance reservation fails because the allowance is
+  exhausted, no provider attempt or operation starts. A compatible personal
+  General-assistant route may be offered through an explicit **Use my own API
+  key** CTA; selecting it shows BYOK data/billing disclosure, requires current
+  task consent, and creates a separate personal operation. It never changes
+  lane or payer automatically.
 - BYOK shows provider billing and still obeys caps/rate limits.
 - Proposal remains private until applied or deliberately shared.
 - A valid generated proposal has `execution_status = succeeded`. Applying any non-empty valid subset sets `user_disposition = accepted`; discard-all sets `user_disposition = dismissed`; per-item choices are product events, not competing terminal outcomes.
@@ -67,8 +75,13 @@ The targeted inverse manifest and guarded inverse executor are **new infrastruct
 
 ## Verification / Definition of Done
 
-- ExUnit: caps, schema parsing, per-item validation, dependency selection, collisions, two-phase remap, single-Multi atomicity, revision guard, inverse manifest/undo, conflicting later edits, no cross-project ids.
-- Vitest: tree diff, warnings, dependency include/exclude, lane/cost disclosure, apply/discard/stale states.
+- ExUnit: caps, schema parsing, per-item validation, dependency selection,
+  collisions, General-assistant route mapping, two-phase remap, single-Multi
+  atomicity, revision guard, inverse manifest/undo, conflicting later edits, no
+  cross-project ids, and no automatic managed-to-personal fallback.
+- Vitest: tree diff, warnings, dependency include/exclude, lane/cost disclosure,
+  explicit allowance-exhausted → BYOK consent flow, and
+  apply/discard/stale states.
 - Browser: generate a small scene proposal, review, apply, edit a created entity, and prove unsafe undo is blocked rather than overwriting the edit.
 - User docs explain review, cost/provider, matching, apply, and undo limits.
 - `just quality-lint` and full relevant suites green.

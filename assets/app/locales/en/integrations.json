@@ -2,46 +2,220 @@
   "integrations": {
     "page": {
       "title": "AI Integrations",
-      "description": "Connect your personal AI accounts, then choose the workspaces where Storyarn may use them. You are billed directly by each provider.",
+      "description": "Connect your personal provider accounts once, then configure each connection and choose where Storyarn may offer it. Providers bill your account directly.",
       "providers_aria": "Available AI providers",
       "connected": {
-        "title": "Connected",
-        "description": "Review model availability and choose where each personal connection may be used."
+        "title": "Connected providers",
+        "description": "Open a provider to manage its key, Storyarn-supported models, and workspace access."
       },
       "available": {
         "title": "Available providers",
-        "description": "Connect another personal provider account to make it available in Storyarn."
+        "description": "Choose a provider to review Storyarn-supported models and connect your personal API key."
       }
+    },
+    "team": {
+      "title": "My AI Team",
+      "description": "Choose the primary provider and model for each role in each workspace. The same provider key can power different configurations across your workspaces.",
+      "overview": {
+        "title": "My AI Team",
+        "description": "Review your personal provider and model choices across every workspace you can access.",
+        "personal_scope_note": "This overview only shows your own AI connections and role choices. Other members keep their provider keys and configurations private.",
+        "list_title": "AI team configuration by workspace",
+        "workspace": "Workspace",
+        "actions": "Actions",
+        "workspace_roles": {
+          "owner": "Owner",
+          "admin": "Administrator",
+          "member": "Member",
+          "viewer": "Viewer",
+          "limited": "Project access"
+        },
+        "policy_blocked": "Personal AI is blocked here",
+        "membership_required": "Workspace membership is required to configure this AI team.",
+        "no_role_support": "Not available yet",
+        "no_model": "No primary model",
+        "configured_hint": "Saved now; execution support is still being built.",
+        "states": {
+          "ready": "Ready",
+          "configured": "Configured",
+          "broken": "Needs attention",
+          "unconfigured": "Not configured",
+          "coming-soon": "Coming soon"
+        },
+        "configure": "Configure",
+        "configure_workspace": "Configure the AI team for {workspace}",
+        "empty": {
+          "title": "No workspaces to show",
+          "description": "Once you join or create a workspace, its personal AI team configuration will appear here."
+        }
+      },
+      "configuration": {
+        "back": "All workspace configurations",
+        "title": "Configure {workspace}",
+        "description": "Choose the personal provider and primary model used by each supported role in this workspace."
+      },
+      "workspace": {
+        "title": "Workspace configuration",
+        "description": "Each workspace keeps its own role and model choices."
+      },
+      "workspace_scope_note": "These choices apply only to this workspace. Your API keys remain personal account connections and can be reused in other workspaces with different models.",
+      "manage_integrations": "Manage provider connections",
+      "policy_blocked": {
+        "title": "Personal AI is disabled in this workspace",
+        "description": "The workspace owner must allow member personal AI before these roles can be configured. Existing choices remain visible for repair and are never used while blocked."
+      },
+      "roles_section": {
+        "title": "Roles",
+        "description": "Set one primary model for each kind of explicitly requested work. If Storyarn AI reaches its limit, a personal model is only offered as an explicit continuation; it is never used automatically."
+      },
+      "slots": {
+        "general_assistant": {
+          "title": "General assistant",
+          "description": "Summaries and general structured tasks launched from the command palette and other supported surfaces."
+        },
+        "writing_assistant": {
+          "title": "Writing assistant",
+          "description": "Drafting, rewriting, and narrative text suggestions."
+        },
+        "illustrator": {
+          "title": "Illustrator",
+          "description": "Image-generation tasks once a compatible personal adapter is available."
+        },
+        "voice": {
+          "title": "Voice",
+          "description": "Scratch voice-over tasks once speech support is available."
+        }
+      },
+      "status": {
+        "unconfigured": "Not configured",
+        "ready": "Ready",
+        "configured": "Configured",
+        "workspace_policy_denied": "Blocked by workspace",
+        "provider_disconnected": "Connection removed",
+        "assignment_required": "Workspace access required",
+        "model_unavailable": "Model unavailable",
+        "model_deprecated": "Model deprecated",
+        "capability_mismatch": "Incompatible model"
+      },
+      "repairs": {
+        "workspace_policy_denied": "The workspace policy currently blocks this personal preference.",
+        "provider_disconnected": "Reconnect this provider or choose another eligible connection.",
+        "assignment_required": "Enable this connection for the workspace before using it here.",
+        "model_unavailable": "Your key can no longer access this model. Choose an available model.",
+        "model_deprecated": "This model can no longer be selected. Choose a supported replacement.",
+        "capability_mismatch": "This model no longer supports everything required by this role."
+      },
+      "provider": "Provider",
+      "primary_model": "Primary model",
+      "primary_summary": "Primary: {provider} · {model}",
+      "choose_provider": "Choose a provider",
+      "choose_model": "Choose a model",
+      "selection_help": "Select an eligible provider and its primary model.",
+      "no_compatible_options": "No connection with a supported model is enabled for this workspace and role yet.",
+      "configuration_only": {
+        "badge": "Future tool",
+        "option_description": "You can save this model now, but Storyarn cannot execute this role yet. No request is sent and no provider charge occurs.",
+        "saved_description": "Configuration saved. Storyarn cannot execute this role yet, so no request is sent and no provider charge occurs."
+      },
+      "personal_billing": "{provider} · your key. The provider bills your account directly.",
+      "assign": "Set primary",
+      "assign_for_role": "Set the primary model for {role}",
+      "update": "Update primary",
+      "update_for_role": "Update the primary model for {role}",
+      "remove": "Remove role configuration",
+      "remove_for_role": "Remove the {role} configuration",
+      "no_roles": "No configurable AI roles are available yet."
     },
     "empty": {
       "description": "No AI providers are available yet."
     },
     "card": {
-      "connected_as": "Connected as {identifier}",
+      "connected": "Connected",
       "not_connected": "Not connected",
       "connect": "Connect",
       "disconnect": "Disconnect",
       "docs": "API docs",
       "key_suffix": "Key ending in {suffix}",
-      "model_status": "Model status",
-      "routing_ready": "Available for AI routing",
-      "no_executable_model": "This connection does not currently expose a compatible model.",
-      "catalog_states": {
-        "catalog_ready": "Models available after connecting",
-        "connection_only": "Connection only",
-        "model_deprecated": "Configured model is deprecated",
-        "model_unavailable": "Configured model is not available to this key"
+      "personal_connection": "Personal connection",
+      "workspace_singular": "{count} workspace",
+      "workspace_plural": "{count} workspaces",
+      "model_singular": "{count} supported model",
+      "model_plural": "{count} supported models",
+      "configure": "Configure provider",
+      "open_details": "Open {name} settings",
+      "catalog_warnings": {
+        "connection_only": "Needs setup",
+        "model_deprecated": "Role needs repair",
+        "model_unavailable": "Model unavailable"
       }
+    },
+    "detail": {
+      "back": "All AI integrations",
+      "description": "Manage your personal {name} connection. Workspace access and role choices remain separate.",
+      "never": "Never",
+      "unknown_date": "Unknown",
+      "connection_saved": "Provider connected and validated.",
+      "key_replaced": "The new key was validated before replacing the previous one.",
+      "revalidated": "Connection and model availability refreshed.",
+      "disconnected": "Provider disconnected.",
+      "connection": {
+        "title": "Connection",
+        "connected_at": "Connected {date}",
+        "validated_at": "Validated {date}",
+        "revalidate": "Revalidate",
+        "replace": "Replace key",
+        "not_connected_title": "Connect your personal provider account",
+        "not_connected_description": "Storyarn validates the key before saving it. The key belongs to your account and is never shared with a workspace."
+      },
+      "models": {
+        "title": "Models supported by Storyarn",
+        "description": "Storyarn's reviewed catalog for this provider. Final availability also depends on your API key. Choose each workspace role's primary model in My AI Team.",
+        "compatible_count": "{count} available for this key",
+        "empty": "Storyarn does not currently support a model for this provider, so this connection cannot be assigned to a role.",
+        "configuration_only_description": "This model can be selected for future roles, but Storyarn cannot execute it yet. No request is sent and no provider charge occurs.",
+        "implementation": {
+          "executable": "Executable",
+          "configuration_only": "Configuration only"
+        },
+        "release_stage": {
+          "preview": "Preview"
+        },
+        "status": {
+          "available": "Available",
+          "unavailable": "Unavailable to this key",
+          "unknown": "Availability to confirm",
+          "deprecated": "Deprecated"
+        }
+      },
+      "impacts": {
+        "title": "Roles using this connection",
+        "description": "See exactly which workspace roles depend on this provider. Items needing attention appear first."
+      },
+      "disconnect": {
+        "title": "Disconnect provider",
+        "description": "This removes the stored key and disables every workspace and role that depends on this connection."
+      }
+    },
+    "capabilities": {
+      "translation": "Translation",
+      "suggestions": "Suggestions",
+      "tasks": "Structured tasks",
+      "images": "Images",
+      "speech": "Speech"
     },
     "assignments": {
       "title": "Workspace access",
-      "description": "Choose the workspaces where Storyarn may offer this personal connection.",
+      "description": "Choose the workspaces where Storyarn may offer this personal connection. Enabled workspaces appear first.",
       "summary": "{assigned} of {total} workspaces enabled",
+      "search": "Search workspaces",
       "allow": "Enable",
       "remove": "Disable",
+      "enable_for_workspace": "Enable this connection for {workspace}",
+      "disable_for_workspace": "Disable this connection for {workspace}",
       "blocked": "Blocked",
-      "consent_note": "Enabling a workspace does not run AI automatically. Storyarn will still ask for explicit consent when a task sends project content to this provider.",
+      "consent_note": "Enabling a workspace does not run AI automatically. Storyarn still asks for explicit consent before sending project content to this provider.",
       "no_workspaces": "You do not currently have an eligible workspace for this connection.",
+      "no_search_results": "No workspaces match this search.",
       "reasons": {
         "owner_allowed": "You own this workspace",
         "member_policy_allowed": "The workspace owner allows personal AI keys",
@@ -56,9 +230,16 @@
       "submit": "Connect",
       "cancel": "Cancel"
     },
+    "replace": {
+      "title": "Replace {name} key",
+      "description": "The existing key remains active unless the replacement passes provider validation.",
+      "get_key": "Get a new API key",
+      "submit": "Validate and replace",
+      "cancel": "Keep current key"
+    },
     "disconnect": {
       "title": "Disconnect {name}?",
-      "description": "This removes your stored API key for {name}, its workspace assignments, and related consents. You can reconnect anytime.",
+      "description": "This removes your stored API key for {name}, its workspace access, and role configurations that depend on it. You can reconnect anytime.",
       "confirm": "Disconnect",
       "cancel": "Keep connected"
     },
@@ -67,16 +248,24 @@
       "network_error": "Could not reach the provider. Check your connection and try again.",
       "provider_error": "The provider returned an error. Please try again in a moment.",
       "rate_limited": "Too many attempts. Wait a minute and try again.",
-      "already_connected": "This provider is already connected. Disconnect it first to change the key.",
+      "already_connected": "This provider is already connected.",
       "unknown_provider": "This provider is not supported.",
       "not_connected": "This provider is not connected.",
       "invalid_data": "The key format is invalid.",
+      "unauthorized": "Your recent authorization expired. Confirm your password and try again.",
+      "integration_changed": "This connection changed in another session. Refresh and try again.",
       "feature_disabled": "AI integrations are not available right now.",
       "integration_unavailable": "This integration is not available to your account.",
       "workspace_unavailable": "This workspace is not available to your account.",
       "workspace_policy_disabled": "The workspace owner has disabled personal AI keys.",
       "provider_already_assigned": "Another personal connection for this provider is already enabled in this workspace.",
       "assignment_not_found": "This workspace assignment no longer exists.",
+      "assignment_required": "Enable this provider for the workspace before assigning it to a role.",
+      "model_unavailable": "This model is not available to your provider account.",
+      "model_deprecated": "This model is deprecated and cannot be selected.",
+      "capability_mismatch": "This model is not compatible with that role.",
+      "invalid_preference_slot": "This AI role cannot be configured yet.",
+      "preference_not_found": "This preference no longer exists.",
       "connection_lost": "Lost connection to the server. Please retry.",
       "no_target": "No provider selected.",
       "unknown_error": "Something went wrong. Please try again."

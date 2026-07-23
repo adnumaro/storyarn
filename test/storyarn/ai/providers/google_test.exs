@@ -22,7 +22,8 @@ defmodule Storyarn.AI.Providers.GoogleTest do
       Req.Test.stub(@stub, fn conn ->
         assert conn.request_path == "/v1beta/models"
         assert Plug.Conn.get_req_header(conn, "x-goog-api-key") == ["AIza-valid"]
-        assert conn.query_string == ""
+        assert URI.decode_query(conn.query_string) == %{"pageSize" => "1000"}
+        refute conn.query_string =~ "AIza-valid"
         Req.Test.json(conn, %{"models" => []})
       end)
 

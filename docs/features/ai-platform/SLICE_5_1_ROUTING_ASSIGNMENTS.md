@@ -4,7 +4,7 @@
 
 Provide one central route-resolution boundary, a curated model-capability catalog, and an explicit assignment between each actor-owned AI connection and the workspaces where that actor chooses to use it.
 
-This slice does not introduce automatic personal role/default selection. Every execution still starts from an explicit route choice and never changes provider, lane, or payer silently.
+This slice does not introduce automatic personal role-primary selection. Every execution still starts from an explicit route choice and never changes provider, lane, or payer silently.
 
 ## Connection-to-workspace assignment
 
@@ -16,7 +16,7 @@ Personal credentials remain account-level, actor-owned connections. They are not
 - A non-owner may assign a connection only while the workspace permits member personal AI. Task permissions remain an execution-time requirement rather than granting a blanket workspace entitlement during assignment.
 - Central route resolution requires an active workspace assignment before offering or accepting a personal route.
 - Removing an assignment invalidates outstanding personal route references and consent eligibility for that connection/workspace without disconnecting the account-level credential.
-- The integrations UI shows each connection's assigned workspaces and explains permitted, blocked, and consent-required states.
+- The provider-detail UI shows each connection's assigned workspaces and explains permitted, blocked, and consent-required states. The catalog may show only a scalable count/summary.
 
 The initial UI keeps the Slice-4 limit of one active connection per provider and user. The assignment model references a connection id rather than embedding provider secrets so it can later support multiple labeled connections for the same provider. If that extension ships, at most one connection for a provider may be selected by one user in one workspace, while the same connection may still serve several workspaces.
 
@@ -39,16 +39,24 @@ Slice 5.1 preserves the existing explicit-choice flow:
 - `explicit_invocation` for a user-selected personal route;
 - `operator_default` for the configured Storyarn AI route.
 
-Personal role/default assignment sources are added only in Slice 5.2.
+Personal workspace-scoped role-primary assignment sources are added only in Slice 5.2.
 
 ## Model capability catalog
 
-- Capabilities are curated and versioned per provider+model, not only per provider.
-- Store structured-output support, modality, context/output limits, region constraints, deprecation, and pricing-version metadata where known.
+- Capabilities are curated and versioned per provider+model in the repository,
+  not supplied through model environment variables and not inferred from the
+  provider's full catalog.
+- Store structured-output support, modality, context/output limits, region
+  constraints, release stage, deprecation, `implementation_status`, and
+  pricing-version metadata where known. Model implementation readiness is not
+  an operation `execution_status`.
 - Key validation/model discovery returns what the account can see; Storyarn intersects that list with the curated catalog.
 - Listing a model does not prove endpoint access; runtime capability errors remain explicit.
 - Removed or deprecated models cannot produce new route references and require repair; there is no silent substitution.
 - DeepL retains provider-level translation metadata and has no model picker. It is not a selectable personal execution route until a registered executable personal translation task exists.
+- Review the shipped catalog every two or three months and when providers
+  announce removals or breaking contract changes. Catalog changes require code
+  review, tests, and deployment.
 
 ## Existing code to reuse
 
@@ -56,7 +64,7 @@ Slice-0 provider metadata/settings UI · Slice-2 TaskRegistry, route-option and 
 
 ## Non-goals
 
-- “My AI Team” roles or personal default-model preferences (Slice 5.2).
+- “My AI Team” workspace-scoped role-primary preferences (Slice 5.2).
 - Workspace/project-owned credentials or duplicated per-workspace secrets.
 - Shared project role assignments or per-language team routing.
 - Personal translation/DeepL execution tasks or adapters.

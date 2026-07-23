@@ -20,6 +20,7 @@ function mountLayout(
   },
   sudoGrant: string | null = null,
   aiIntegrations = false,
+  currentPath = "/users/settings",
 ) {
   vi.stubGlobal(
     "matchMedia",
@@ -32,7 +33,7 @@ function mountLayout(
 
   return mount(SettingsLayout, {
     props: {
-      currentPath: "/users/settings",
+      currentPath,
       workspaces,
       workspaceSettingsAccess,
       sudoGrant,
@@ -83,5 +84,42 @@ describe("SettingsLayout workspace navigation", () => {
     const hrefs = wrapper.findAll("a").map((link) => link.attributes("href"));
 
     expect(hrefs).toContain("/users/settings/integrations?sudo_grant=validated+grant");
+    expect(hrefs).toContain("/users/settings/ai-team?sudo_grant=validated+grant");
+  });
+
+  it("shows AI integrations and My AI Team as separate account destinations", () => {
+    const wrapper = mountLayout(undefined, undefined, null, true);
+    const hrefs = wrapper.findAll("a").map((link) => link.attributes("href"));
+
+    expect(hrefs).toContain("/users/settings/integrations");
+    expect(hrefs).toContain("/users/settings/ai-team");
+  });
+
+  it("keeps the AI team overview available before the actor has a workspace", () => {
+    const wrapper = mountLayout([], {}, null, true);
+    const hrefs = wrapper.findAll("a").map((link) => link.attributes("href"));
+
+    expect(hrefs).toContain("/users/settings/ai-team");
+  });
+
+  it("gives the cross-workspace overview enough room for the role summary", () => {
+    const wrapper = mountLayout(undefined, undefined, null, true, "/users/settings/ai-team");
+
+    expect(wrapper.find(".max-w-6xl").exists()).toBe(true);
+  });
+
+  it("highlights the overview item from a workspace editor without widening the editor", () => {
+    const wrapper = mountLayout(undefined, undefined, null, true, "/users/settings/ai-team/admin");
+    const teamLink = wrapper
+      .findAll("a")
+      .find((link) => link.attributes("href") === "/users/settings/ai-team");
+    const profileLink = wrapper
+      .findAll("a")
+      .find((link) => link.attributes("href") === "/users/settings");
+
+    expect(teamLink?.classes()).toContain("font-medium");
+    expect(profileLink?.classes()).not.toContain("font-medium");
+    expect(wrapper.find(".max-w-3xl").exists()).toBe(true);
+    expect(wrapper.find(".max-w-6xl").exists()).toBe(false);
   });
 });
