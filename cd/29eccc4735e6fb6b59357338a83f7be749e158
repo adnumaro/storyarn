@@ -1,0 +1,32 @@
+lib/storyarn_web/live/flow_live/show.ex
+  s_2797f64fb2d317::t_741610022932a0 463-466
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_2797f64fb2d317::t_4f4446980c5d59 212-217
+assets/app/modules/flows/editor/services/navigation.ts
+  s_2797f64fb2d317::t_9a9f9b9e2f0634 9,11,17-23,28
+  s_2797f64fb2d317::t_22672877523abb 84,87,100-119
+  s_2797f64fb2d317::t_fb65a6f07e1929 172-198
+assets/app/modules/flows/editor/composables/flowCanvasServerEvents.ts
+  s_2797f64fb2d317::t_73829071442cb5 159-166
+test/storyarn_web/live/flow_live/handlers/analysis_handlers_test.exs
+  s_2797f64fb2d317::t_bfe033d71bf70c 122-187
+lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex
+  s_2797f64fb2d317::t_eb9867934aa0cc 84-130
+  s_2797f64fb2d317::t_a5d427746255d9 235-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "cd29eccc4735e6fb6b59357338a83f7be749e158",
+  "prompts": {},
+  "sessions": {
+    "s_2797f64fb2d317": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b96a2b7-cbec-4b6b-8cc5-a83cf4dde660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
