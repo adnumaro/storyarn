@@ -11,6 +11,22 @@ defmodule Storyarn.AI.Settlement.Managed do
   def available?(:managed), do: true
   def available?(_lane), do: false
 
+  # Read-only preflight projection: a paused or exhausted account blocks the
+  # managed choice before an operation exists, instead of failing at reserve —
+  # and says WHICH, because "out of units" and "paused by an owner" are
+  # different situations for the actor.
+  @impl true
+  def preflight_status(:managed, workspace_id, units) do
+    case Allowance.projection(workspace_id) do
+      %{status: "active", available_units: available} when available >= units -> :ok
+      %{status: "active"} -> {:error, :allowance_exhausted}
+      %{status: "paused"} -> {:error, :allowance_paused}
+      _no_account -> {:error, :allowance_unavailable}
+    end
+  end
+
+  def preflight_status(_lane, _workspace_id, _units), do: {:error, :allowance_unavailable}
+
   @impl true
   def reserve(%Operation{} = operation) do
     with {:ok, route} <- ExecutionRoute.from_map(operation.execution_route),

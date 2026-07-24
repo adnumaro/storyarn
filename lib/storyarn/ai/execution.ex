@@ -33,20 +33,20 @@ defmodule Storyarn.AI.Execution do
          :ok <- RateLimiter.check_ai_preflight(intent.scope.user.id, task.id),
          {:ok, context} <- Context.prepare(intent.scope, task, intent),
          resolution = RouteResolver.preflight_options(decision, task),
-         true <- resolution.routes != [] or resolution.personal_choices != [] do
-      issue_preflight(
-        intent,
-        task,
-        resolution.routes,
-        resolution.personal_choices,
-        resolution.personal_preference,
-        context
-      )
+         :ok <- routable(resolution) do
+      issue_preflight(intent, task, resolution, context)
     else
       false -> {:error, :no_route}
       {:error, reason} -> {:error, reason}
     end
   end
+
+  # A lane blocked by settlement is a distinct, actionable state: the actor is
+  # told the workspace allowance ran out, not that no route exists at all.
+  defp routable(%{routes: [], personal_choices: [], blocked_lanes: [%{reason: reason} | _rest]}), do: {:error, reason}
+
+  defp routable(%{routes: [], personal_choices: []}), do: {:error, :no_route}
+  defp routable(_resolution), do: :ok
 
   @spec execute(ExecutionIntent.t()) :: {:ok, Operation.t()} | {:error, atom() | Ecto.Changeset.t()}
   def execute(%ExecutionIntent{idempotency_key: nil}), do: {:error, :idempotency_key_required}
@@ -73,12 +73,12 @@ defmodule Storyarn.AI.Execution do
     end
   end
 
-  defp issue_preflight(intent, task, routes, personal_choices, personal_preference, context) do
+  defp issue_preflight(intent, task, resolution, context) do
     fn ->
       {available_routes, blocked_routes} =
-        partition_routes_by_context_limits(intent, task, routes, context)
+        partition_routes_by_context_limits(intent, task, resolution.routes, context)
 
-      personal_choices = update_blocked_personal_choices(personal_choices, blocked_routes)
+      personal_choices = update_blocked_personal_choices(resolution.personal_choices, blocked_routes)
 
       if available_routes == [] and personal_choices == [] and blocked_routes != [] do
         Repo.rollback(preferred_context_limit_error(blocked_routes))
@@ -88,7 +88,11 @@ defmodule Storyarn.AI.Execution do
         task_id: task.id,
         route_options: Enum.map(available_routes, &issue_route_option!(intent, task, &1, context)),
         personal_choices: Enum.map(personal_choices, &Map.delete(&1, :route)),
-        personal_preference: update_blocked_personal_preference(personal_preference, personal_choices),
+        personal_preference: update_blocked_personal_preference(resolution.personal_preference, personal_choices),
+        # Lanes the actor may use but cannot use right now (exhausted or paused
+        # allowance). Reported, never silently dropped: hiding the managed
+        # choice would read as a payer substitution.
+        blocked_lanes: resolution.blocked_lanes,
         context_disclosure: context_disclosure(context),
         result_destination: task.result_destination,
         operation_created: false
