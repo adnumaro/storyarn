@@ -410,6 +410,60 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
     end
   end
 
+  describe "dashboard adapter equivalence" do
+    test "detect_flow_issues counts equal the canonical findings", %{
+      project: project,
+      flow: flow
+    } do
+      entry = entry_node(flow)
+      stuck = node_fixture(flow, %{type: "dialogue"})
+      node_fixture(flow, %{type: "dialogue"})
+      connection_fixture(flow, entry, stuck)
+
+      other_flow = flow_fixture(project)
+      soft_delete!(entry_node(other_flow))
+
+      issues = Flows.detect_flow_issues(project.id)
+      analyses = Flows.analyze_project_structure(project.id)
+
+      for analysis <- analyses,
+          {issue_type, rule_id} <- [
+            no_entry: "missing_entry",
+            disconnected_nodes: "isolated_node",
+            dead_end_nodes: "no_outgoing_connection"
+          ] do
+        canonical_count = Enum.count(analysis.findings, &(&1.rule_id == rule_id))
+
+        dashboard_count =
+          issues
+          |> Enum.find(&(&1.flow_id == analysis.flow_id and &1.issue_type == issue_type))
+          |> then(&((&1 && &1.count) || 0))
+
+        assert dashboard_count == canonical_count,
+               "#{issue_type} for flow #{analysis.flow_id}: dashboard=#{dashboard_count} canonical=#{canonical_count}"
+      end
+    end
+
+    test "hub connected only through a jump is not disconnected in the dashboard", %{
+      project: project,
+      flow: flow
+    } do
+      entry = entry_node(flow)
+      exit_n = exit_node(flow)
+      hub = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "camp", "color" => "violet"}})
+      jump = node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => "camp"}})
+      connection_fixture(flow, entry, jump)
+      connection_fixture(flow, hub, exit_n)
+
+      issues = Flows.detect_flow_issues(project.id)
+
+      refute Enum.any?(
+               issues,
+               &(&1.flow_id == flow.id and &1.issue_type == :disconnected_nodes)
+             )
+    end
+  end
+
   describe "parity with the editor serializer" do
     test "engine flags equal serializer flags on a drifted graph", %{
       project: project,
