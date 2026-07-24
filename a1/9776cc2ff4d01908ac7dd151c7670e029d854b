@@ -1,0 +1,64 @@
+assets/app/test/modules/flows/editor/navigation.test.ts
+  s_b2830ac6a53241::t_45e0428c105fee 1-158
+lib/storyarn/flows/finding_dismissals.ex
+  s_b2830ac6a53241::t_d3132f69392c29 147-151
+lib/storyarn/flows/structural_analysis/graph.ex
+  s_b2830ac6a53241::t_848823f98334e5 55
+  s_b2830ac6a53241::t_f8b9d8341feed5 257-263,265-270
+assets/app/modules/flows/editor/components/entities/rete/FlowConnection.vue
+  s_b2830ac6a53241::t_587042f23517a4 66-69
+  s_b2830ac6a53241::t_3185cb291820d5 57-60
+test/storyarn_web/live/flow_live/helpers/connection_helpers_test.exs
+  s_b2830ac6a53241::t_8c3dcde6193fc6 207-211,213-216
+  s_b2830ac6a53241::t_89d3c92f5bd962 204-205,212
+  s_b2830ac6a53241::t_da312f6567c7fd 188
+test/storyarn_web/live/flow_live/helpers/socket_helpers_test.exs
+  s_b2830ac6a53241::t_b41f8d4d67efd6 8,20,131
+  s_b2830ac6a53241::t_ac9e97978b9554 9-10
+  s_b2830ac6a53241::t_cebc28d89517c6 123-130,132-186
+test/storyarn/flows/finding_dismissals_test.exs
+  s_b2830ac6a53241::t_bcf8c38ec41ba8 198
+  s_b2830ac6a53241::t_4919d42ea893b5 112-116,121
+  s_b2830ac6a53241::t_d9a201a39f8158 190-197,199-231
+  s_b2830ac6a53241::t_c0ad6a0d2886c5 55-70
+lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+  s_b2830ac6a53241::t_002622f2724482 34,43
+  s_b2830ac6a53241::t_1588149afc7f4f 54-74
+lib/storyarn/flows/structural_analysis/topology.ex
+  s_b2830ac6a53241::t_d1fb3cb96ad866 79-80,84
+lib/storyarn_web/live/flow_live/show.ex
+  s_b2830ac6a53241::t_aede677cd6f75e 1352-1360
+  s_b2830ac6a53241::t_4d487c9d62ff0b 1361
+test/storyarn/flows/structural_analysis_test.exs
+  s_b2830ac6a53241::t_6a319833ae3e85 198-221
+priv/repo/migrations/20260724120000_create_flow_finding_dismissals.exs
+  s_b2830ac6a53241::t_866f73fbfc4927 7-9,12-19
+test/storyarn_web/live/flow_live/handlers/analysis_handlers_test.exs
+  s_b2830ac6a53241::t_2a03d8b7c005d4 2-4
+  s_b2830ac6a53241::t_32f03dce4f74a5 85-104
+assets/app/modules/flows/editor/services/navigation.ts
+  s_b2830ac6a53241::t_2a26aa2feca8eb 29
+  s_b2830ac6a53241::t_f18f705c8b02db 17-28
+  s_b2830ac6a53241::t_614f86715a6b38 193,203,209-214
+  s_b2830ac6a53241::t_c3ac92953b4b31 117
+  s_b2830ac6a53241::t_ca82a7a96e77de 115-116,122-123,126-128
+  s_b2830ac6a53241::t_862e86033c3f6d 191-192,194,196,198,201,204-205
+lib/storyarn/flows/node_connection_rules.ex
+  s_b2830ac6a53241::t_714e337198fcfc 112-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a19776cc2ff4d01908ac7dd151c7670e029d854b",
+  "prompts": {},
+  "sessions": {
+    "s_b2830ac6a53241": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58be1506-46da-4aa1-9bc6-39e527104326",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
