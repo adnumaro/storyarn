@@ -13,11 +13,12 @@ import {
   TriangleAlert,
   X,
 } from "lucide-vue-next";
-import { computed, ref } from "vue";
+import { computed, onUnmounted, ref } from "vue";
 import EditableText from "@components/forms/EditableText.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Badge } from "@components/ui/badge";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { useLive } from "@shared/composables/useLive";
 
 interface NavEntry {
@@ -90,6 +91,20 @@ const {
 const live = useLive();
 const sceneOpen = ref(false);
 const healthOpen = ref(false);
+
+// Ordinary non-AI palette command: registration lifetime scopes it to the
+// normal flow editor (the only v1 analysis surface). The server reauthorizes
+// the read when the panel opens.
+const unregisterPaletteCommands = registerPaletteCommands("flows", [
+  {
+    id: "flows.analyze",
+    labelKey: "flows.analysis.command",
+    groupKey: "palette.groups.actions",
+    icon: ScanSearch,
+    run: () => live.pushEvent("open_analysis_panel", {}),
+  },
+]);
+onUnmounted(unregisterPaletteCommands);
 
 const errorCount = computed(
   () => findingCount(flowHealth.errorNodes) + flowHealth.structural.errorCount,

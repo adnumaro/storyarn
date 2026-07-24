@@ -395,6 +395,7 @@
     },
     "analysis": {
       "title": "Structural analysis",
+      "command": "Analyze current flow",
       "open_from_health": "Structural analysis ({count})",
       "rerun": "Rerun analysis",
       "stale_banner": "The flow changed since this analysis. Results may be outdated.",

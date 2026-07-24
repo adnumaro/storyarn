@@ -395,6 +395,7 @@
     },
     "analysis": {
       "title": "Análisis estructural",
+      "command": "Analizar el flow actual",
       "open_from_health": "Análisis estructural ({count})",
       "rerun": "Reanalizar",
       "stale_banner": "El flow cambió desde este análisis. Los resultados pueden estar desactualizados.",

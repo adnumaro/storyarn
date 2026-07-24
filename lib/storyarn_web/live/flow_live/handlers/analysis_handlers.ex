@@ -18,6 +18,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   import Phoenix.LiveView, only: [put_flash: 3]
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Analytics
   alias Storyarn.Flows
   alias Storyarn.Shared.TimeHelpers
   alias StoryarnWeb.Helpers.Authorize
@@ -33,7 +34,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
     {:noreply,
      socket
      |> assign(:analysis_panel_open, true)
-     |> compute_snapshot()}
+     |> compute_snapshot("open")}
   end
 
   @spec handle_close_analysis_panel(map(), Socket.t()) :: result()
@@ -43,7 +44,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
 
   @spec handle_rerun_analysis(map(), Socket.t()) :: result()
   def handle_rerun_analysis(_params, socket) do
-    {:noreply, compute_snapshot(socket)}
+    {:noreply, compute_snapshot(socket, "rerun")}
   end
 
   # ===========================================================================
@@ -71,8 +72,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
       case params["dismissal_id"] do
         id when is_integer(id) ->
           case Flows.restore_finding_dismissal(flow, id, socket.assigns.current_scope.user.id) do
-            {:ok, _dismissal} -> {:noreply, compute_snapshot(socket)}
-            {:error, :not_found} -> {:noreply, stale_selection_flash(socket)}
+            {:ok, dismissal} ->
+              track(socket, "flow analysis finding restored", %{
+                rule_id: dismissal.rule_id,
+                reason_code: dismissal.reason_code
+              })
+
+              {:noreply, compute_snapshot(socket, "after_restore")}
+
+            {:error, :not_found} ->
+              {:noreply, stale_selection_flash(socket)}
           end
 
         _invalid ->
@@ -93,6 +102,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   @spec handle_navigate_evidence(map(), Socket.t()) :: result()
   def handle_navigate_evidence(%{"type" => "flow_node", "id" => id}, socket) when is_integer(id) do
     if Enum.any?(socket.assigns.flow.nodes, &(&1.id == id)) do
+      track(socket, "flow analysis evidence navigated", %{evidence_type: "flow_node"})
       {:noreply, Phoenix.LiveView.push_event(socket, "navigate_to_node", %{node_db_id: id})}
     else
       {:noreply, missing_evidence_flash(socket)}
@@ -114,6 +124,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
         {:noreply, missing_evidence_flash(socket)}
 
       conn ->
+        track(socket, "flow analysis evidence navigated", %{evidence_type: "flow_connection"})
+
         {:noreply,
          Phoenix.LiveView.push_event(socket, "navigate_to_connection", %{
            source_node_id: conn.source_node_id,
@@ -173,13 +185,23 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   # Private
   # ===========================================================================
 
-  defp compute_snapshot(socket) do
+  defp compute_snapshot(socket, source) do
     flow = socket.assigns.flow
+    started_at = System.monotonic_time()
 
     case Flows.analyze_flow_structure(flow.project_id, flow.id) do
       {:ok, analysis} ->
         dismissals = Flows.list_active_finding_dismissals(flow)
         {active, dismissed} = Flows.split_findings(analysis.findings, dismissals)
+
+        track(socket, "flow analysis run", %{
+          source: source,
+          finding_count: length(active),
+          dismissed_count: length(dismissed),
+          error_count: Enum.count(active, &(&1.severity == :error)),
+          warning_count: Enum.count(active, &(&1.severity == :warning)),
+          duration_bucket: duration_bucket(started_at)
+        })
 
         assign(socket, :analysis_snapshot, %{
           analysis: analysis,
@@ -196,6 +218,21 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
     end
   end
 
+  defp track(socket, event, properties) do
+    Analytics.track(socket.assigns.current_scope, event, properties)
+  end
+
+  defp duration_bucket(started_at) do
+    milliseconds = System.convert_time_unit(System.monotonic_time() - started_at, :native, :millisecond)
+
+    cond do
+      milliseconds < 100 -> "under_100ms"
+      milliseconds < 500 -> "100ms_to_500ms"
+      milliseconds < 2_000 -> "500ms_to_2s"
+      true -> "over_2s"
+    end
+  end
+
   defp dismiss_current_finding(socket, finding, params) do
     attrs = %{
       reason_code: params["reason_code"],
@@ -204,8 +241,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
     }
 
     case Flows.dismiss_finding(socket.assigns.flow, finding, attrs) do
-      {:ok, _dismissal} ->
-        {:noreply, compute_snapshot(socket)}
+      {:ok, dismissal} ->
+        track(socket, "flow analysis finding dismissed", %{
+          rule_id: finding.rule_id,
+          rule_version: finding.rule_version,
+          category: to_string(finding.category),
+          severity: to_string(finding.severity),
+          reason_code: dismissal.reason_code
+        })
+
+        {:noreply, compute_snapshot(socket, "after_dismiss")}
 
       {:error, changeset} ->
         message =
