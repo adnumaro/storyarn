@@ -1,0 +1,33 @@
+lib/storyarn/flows/finding_dismissals.ex
+  s_2797f64fb2d317::t_b509ce0235bed5 1-17,19-72,76,78-147,149
+  s_2797f64fb2d317::t_2256c2cb0bdd27 18
+  s_2797f64fb2d317::t_a54996697cbb54 73-75,77
+  s_2797f64fb2d317::t_4723c582c9e60d 148,150-152
+test/storyarn/flows/finding_dismissals_test.exs
+  s_2797f64fb2d317::t_c2d1b61674d571 1-197
+  s_2797f64fb2d317::t_75e7d69beddb17 198
+lib/storyarn/flows.ex
+  s_2797f64fb2d317::t_032ebe91492ba6 1039-1056
+  s_2797f64fb2d317::t_5dcaff11cec40a 24
+lib/storyarn/flows/finding_dismissal.ex
+  s_2797f64fb2d317::t_83195eeb6bf1e0 1-108
+  s_2797f64fb2d317::t_47a53c05a98c07 109
+priv/repo/migrations/20260724120000_create_flow_finding_dismissals.exs
+  s_2797f64fb2d317::t_3de349fa7d113f 1-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "8fbc0112b877092b5271e01d4b84d0afd06ee770",
+  "prompts": {},
+  "sessions": {
+    "s_2797f64fb2d317": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b96a2b7-cbec-4b6b-8cc5-a83cf4dde660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
