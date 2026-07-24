@@ -1,0 +1,58 @@
+test/support/ai_fake_settlement.ex
+  s_b2830ac6a53241::t_1e8d3eb5f1c60a 12
+  s_b2830ac6a53241::t_79260fdd7b0b79 10-11
+  s_b2830ac6a53241::t_2fbad2765a5ec7 9
+lib/storyarn/ai/settlement/unavailable.ex
+  s_b2830ac6a53241::t_1e8d3eb5f1c60a 10
+  s_b2830ac6a53241::t_79260fdd7b0b79 9
+  s_b2830ac6a53241::t_db699d5b386ca5 8
+lib/storyarn/ai/settlement/managed.ex
+  s_b2830ac6a53241::t_79260fdd7b0b79 14-17,19,21-24,28
+  s_b2830ac6a53241::t_1e8d3eb5f1c60a 18,20,25-27,29
+lib/storyarn/ai/settlement_adapter.ex
+  s_b2830ac6a53241::t_79260fdd7b0b79 7-8
+lib/storyarn/ai/route_resolver.ex
+  s_b2830ac6a53241::t_7df4c1a7daee7d 35-36,47-51
+  s_b2830ac6a53241::t_7b82e8d11e4739 74-80,83
+  s_b2830ac6a53241::t_79260fdd7b0b79 61-67,69-70,72
+  s_b2830ac6a53241::t_415a6e5610101b 22,26-27,34,37,42-43,52-58,68,71
+  s_b2830ac6a53241::t_2e610e31322810 59-60
+  s_b2830ac6a53241::t_48d50004ef9c59 73
+test/storyarn/ai/personal_byok_test.exs
+  s_b2830ac6a53241::t_2e610e31322810 265
+  s_b2830ac6a53241::t_7024014b540619 251,266
+  s_b2830ac6a53241::t_c0e74993ce6293 262-264
+lib/storyarn/ai/allowance.ex
+  s_b2830ac6a53241::t_582c06ef5dc5e9 37-60,65-68
+  s_b2830ac6a53241::t_daa64863cbf7ea 61-64
+lib/storyarn/ai/execution.ex
+  s_b2830ac6a53241::t_a5ac0cfa1a405c 36
+  s_b2830ac6a53241::t_1d05d92c173e85 44-45,47-50
+  s_b2830ac6a53241::t_2e610e31322810 46,91
+  s_b2830ac6a53241::t_c20b87d6a6afec 37,76,79,81,92-95
+test/storyarn/ai/allowance_test.exs
+  s_b2830ac6a53241::t_2e610e31322810 18,206,347
+  s_b2830ac6a53241::t_c0e74993ce6293 203-205,377-386
+  s_b2830ac6a53241::t_695e5fc9bd36ac 303-346,348-351,387
+  s_b2830ac6a53241::t_35673b60dde38c 388
+lib/storyarn/ai/settlement.ex
+  s_b2830ac6a53241::t_79260fdd7b0b79 5
+test/storyarn/ai/managed_route_test.exs
+  s_b2830ac6a53241::t_ceb58c3c7a898a 85-88,123-125,163-166,168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "70cd3ae768e9b0f882bee21622b6e731e8acb8f6",
+  "prompts": {},
+  "sessions": {
+    "s_b2830ac6a53241": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58be1506-46da-4aa1-9bc6-39e527104326",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
