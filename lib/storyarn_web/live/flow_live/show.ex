@@ -460,6 +460,10 @@ defmodule StoryarnWeb.FlowLive.Show do
     AnalysisHandlers.handle_restore_finding_dismissal(params, socket)
   end
 
+  def handle_event("analysis_navigate_evidence", params, socket) do
+    AnalysisHandlers.handle_navigate_evidence(params, socket)
+  end
+
   # ---------------------------------------------------------------------------
   # Version History handlers (Vue FlowVersionHistoryPanel)
   # ---------------------------------------------------------------------------

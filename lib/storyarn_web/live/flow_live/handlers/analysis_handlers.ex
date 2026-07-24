@@ -82,6 +82,53 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   end
 
   # ===========================================================================
+  # Evidence navigation
+  # ===========================================================================
+
+  @doc """
+  Navigates the canvas to a finding's evidence. The target is validated
+  against the authorized current flow; deleted or foreign evidence is shown
+  as stale and never navigated.
+  """
+  @spec handle_navigate_evidence(map(), Socket.t()) :: result()
+  def handle_navigate_evidence(%{"type" => "flow_node", "id" => id}, socket) when is_integer(id) do
+    if Enum.any?(socket.assigns.flow.nodes, &(&1.id == id)) do
+      {:noreply, Phoenix.LiveView.push_event(socket, "navigate_to_node", %{node_db_id: id})}
+    else
+      {:noreply, missing_evidence_flash(socket)}
+    end
+  end
+
+  def handle_navigate_evidence(%{"type" => "flow_connection", "id" => id}, socket) when is_integer(id) do
+    flow = socket.assigns.flow
+    active_node_ids = MapSet.new(flow.nodes, & &1.id)
+
+    connection =
+      Enum.find(flow.connections, fn conn ->
+        conn.id == id and MapSet.member?(active_node_ids, conn.source_node_id) and
+          MapSet.member?(active_node_ids, conn.target_node_id)
+      end)
+
+    case connection do
+      nil ->
+        {:noreply, missing_evidence_flash(socket)}
+
+      conn ->
+        {:noreply,
+         Phoenix.LiveView.push_event(socket, "navigate_to_connection", %{
+           source_node_id: conn.source_node_id,
+           source_pin: conn.source_pin,
+           target_node_id: conn.target_node_id,
+           target_pin: conn.target_pin
+         })}
+    end
+  end
+
+  def handle_navigate_evidence(_params, socket) do
+    {:noreply, missing_evidence_flash(socket)}
+  end
+
+  # ===========================================================================
   # Snapshot state (used by show.ex and SocketHelpers)
   # ===========================================================================
 
@@ -182,6 +229,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
       socket,
       :error,
       dgettext("flows", "This finding is no longer current. Rerun the analysis.")
+    )
+  end
+
+  defp missing_evidence_flash(socket) do
+    put_flash(
+      socket,
+      :error,
+      dgettext("flows", "This evidence is no longer available. Rerun the analysis.")
     )
   end
 

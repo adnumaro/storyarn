@@ -119,6 +119,72 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlersTest do
     end
   end
 
+  describe "evidence navigation" do
+    setup :register_and_log_in_user
+
+    setup %{user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Evidence Flow"})
+      %{project: project, flow: flow}
+    end
+
+    test "node evidence pushes navigate_to_node for a live node", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      stuck = seed_dead_end(flow)
+      view = mount_editor(conn, project, flow)
+
+      render_click(view, "analysis_navigate_evidence", %{"type" => "flow_node", "id" => stuck.id})
+
+      assert_push_event(view, "navigate_to_node", %{node_db_id: node_id})
+      assert node_id == stuck.id
+    end
+
+    test "connection evidence pushes navigate_to_connection with endpoints", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      entry = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
+      stuck = node_fixture(flow, %{type: "dialogue"})
+      connection = connection_fixture(flow, entry, stuck)
+
+      view = mount_editor(conn, project, flow)
+
+      render_click(view, "analysis_navigate_evidence", %{
+        "type" => "flow_connection",
+        "id" => connection.id
+      })
+
+      assert_push_event(view, "navigate_to_connection", payload)
+      assert payload.source_node_id == entry.id
+      assert payload.target_node_id == stuck.id
+      assert payload.source_pin == "output"
+    end
+
+    test "evidence outside the current flow is rejected as stale", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      other_flow = flow_fixture(project)
+      foreign_node = node_fixture(other_flow, %{type: "dialogue"})
+
+      view = mount_editor(conn, project, flow)
+
+      html =
+        render_click(view, "analysis_navigate_evidence", %{
+          "type" => "flow_node",
+          "id" => foreign_node.id
+        })
+
+      assert html =~ "no longer available"
+      refute_push_event(view, "navigate_to_node", %{})
+    end
+  end
+
   describe "dismiss and restore" do
     setup :register_and_log_in_user
 

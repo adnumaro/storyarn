@@ -6,16 +6,26 @@
  */
 
 import { AreaExtensions, type AreaPlugin } from "rete-area-plugin";
+import type { NodeEditor } from "rete";
 import type { FlowNode } from "../lib/flow-node";
+import { createFlowGraphQueries } from "../lib/flowGraphQueries";
 import { NODE_CONFIGS } from "../lib/node-configs";
 import type { FlowSchemes, FlowAreaExtra } from "../lib/rete-schemes";
 
 const HIGHLIGHT_DURATION = 2500;
 
+export interface ConnectionRef {
+  sourceDbId: number;
+  sourcePin: string | null;
+  targetDbId: number;
+  targetPin: string | null;
+}
+
 export interface NavigationHandler {
   navigateToHub(jumpDbId: number): void;
   navigateToNode(nodeDbId: number): void;
   navigateToJumps(hubDbId: number): void;
+  navigateToConnection(ref: ConnectionRef): void;
   clearHighlights(): void;
   destroy(): void;
 }
@@ -71,8 +81,10 @@ export function navigation(
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
   nodeMap: Map<string | number, FlowNode>,
   pushEvent: (event: string, payload: Record<string, unknown>) => void,
+  editor?: NodeEditor<FlowSchemes>,
 ): NavigationHandler {
   let highlightedElements: HTMLElement[] = [];
+  let highlightedConnectionEl: HTMLElement | null = null;
   let highlightTimer: ReturnType<typeof setTimeout> | null = null;
 
   function clearHighlights(): void {
@@ -85,6 +97,26 @@ export function navigation(
       el.style.removeProperty("--highlight-color");
     }
     highlightedElements = [];
+
+    if (highlightedConnectionEl) {
+      highlightedConnectionEl.style.removeProperty("--conn-stroke");
+      highlightedConnectionEl.style.removeProperty("--conn-stroke-width");
+      highlightedConnectionEl.style.removeProperty("--conn-dash");
+      highlightedConnectionEl.style.removeProperty("--conn-animation");
+      highlightedConnectionEl = null;
+    }
+  }
+
+  // Same CSS-variable mechanism the debug panel uses on FlowConnection.vue,
+  // scoped to a single finding-evidence highlight with auto-clear.
+  function highlightConnectionEl(viewEl: HTMLElement): void {
+    clearHighlights();
+    viewEl.style.setProperty("--conn-stroke", "var(--color-primary, #7c3aed)");
+    viewEl.style.setProperty("--conn-stroke-width", "3px");
+    viewEl.style.setProperty("--conn-dash", "8 4");
+    viewEl.style.setProperty("--conn-animation", "debug-flow 0.6s linear infinite");
+    highlightedConnectionEl = viewEl;
+    highlightTimer = setTimeout(clearHighlights, HIGHLIGHT_DURATION);
   }
 
   function highlightNodes(reteNodeIds: string[], hexColor: string): void {
@@ -135,6 +167,33 @@ export function navigation(
       AreaExtensions.zoomAt(area, [node]);
       highlightNodes([node.id], nodeColor(node));
       pushEvent("node_selected", { id: nodeDbId });
+    },
+
+    navigateToConnection(ref: ConnectionRef): void {
+      const sourceNode = nodeMap.get(ref.sourceDbId);
+      const targetNode = nodeMap.get(ref.targetDbId);
+      if (!sourceNode || !targetNode || !editor) {
+        return;
+      }
+
+      AreaExtensions.zoomAt(area, [sourceNode, targetNode]);
+
+      const graph = createFlowGraphQueries(editor.getNodes(), editor.getConnections());
+      const candidates = graph
+        .outgoingConnections(sourceNode.id)
+        .filter((conn) => conn.target === targetNode.id);
+      const connection =
+        candidates.find((conn) => !ref.sourcePin || conn.sourceOutput === ref.sourcePin) ??
+        candidates[0];
+
+      if (!connection) {
+        return;
+      }
+
+      const view = area.connectionViews.get(connection.id);
+      if (view) {
+        highlightConnectionEl(view.element as HTMLElement);
+      }
     },
 
     navigateToJumps(hubDbId: number): void {
