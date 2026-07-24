@@ -43,9 +43,9 @@ adapters.
 | 2   | AI execution kernel + palette bridge               | `SLICE_2_AI_EXECUTION_KERNEL.md`   | 0, 1                                   | **merged** (PR #39)                  |
 | 3   | Storyarn AI beta + internal allowance              | `SLICE_3_STORYARN_AI_BETA.md`      | 2                                      | **merged** (PR #42)                  |
 | 4   | Personal BYOK execution lane                       | `SLICE_4_PERSONAL_BYOK_LANE.md`    | 0, 2, 3                                | **merged** (PR #43)                  |
-| 5.1 | Central routing + workspace assignments            | `SLICE_5_1_ROUTING_ASSIGNMENTS.md` | 2–4                                    | pending                              |
-| 5.2 | Personal AI preferences (“My AI Team”)             | `SLICE_5_2_MY_AI_TEAM.md`          | 5.1                                    | pending                              |
-| 6   | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`        | 2                                      | pending                              |
+| 5.1 | Central routing + workspace assignments            | `SLICE_5_1_ROUTING_ASSIGNMENTS.md` | 2–4                                    | **merged** (PR #44)                  |
+| 5.2 | Personal AI preferences (“My AI Team”)             | `SLICE_5_2_MY_AI_TEAM.md`          | 5.1                                    | **merged** (PR #45)                  |
+| 6   | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`        | 2                                      | implemented; PR in review            |
 | 7   | Structural analysis + optional AI explanation      | `SLICE_7_STRUCTURAL_ANALYSIS.md`   | 1–6                                    | pending                              |
 | 8   | Dialogue rewrite/variants + proposal UX            | `SLICE_8_DIALOGUE_TOOLS.md`        | 2–6                                    | pending                              |
 | 9   | Multilingual scratch voice-over                    | `SLICE_9_SCRATCH_VOICEOVER.md`     | 0–5.2 + Localization/Assets            | pending                              |

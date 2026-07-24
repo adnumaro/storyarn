@@ -9,7 +9,7 @@ defmodule Storyarn.AI.ModelCatalogTest do
   test "ships a versioned catalog for every supported personal provider" do
     entries = entries_from(Defaults.models())
 
-    assert length(entries) == 22
+    assert length(entries) == 24
 
     assert entries
            |> Enum.group_by(& &1.provider)
@@ -21,6 +21,7 @@ defmodule Storyarn.AI.ModelCatalogTest do
                "claude-haiku-4-5-20251001"
              ],
              "deepseek" => ["deepseek-v4-pro", "deepseek-v4-flash"],
+             "fireworks" => ["accounts/fireworks/models/qwen3p7-plus"],
              "google" => [
                "gemini-3.6-flash",
                "gemini-3.5-flash-lite",
@@ -38,7 +39,8 @@ defmodule Storyarn.AI.ModelCatalogTest do
                "gpt-image-2",
                "tts-1",
                "tts-1-hd"
-             ]
+             ],
+             "together" => ["Qwen/Qwen3.7-Plus"]
            }
 
     text_entries = Enum.filter(entries, &(&1.api_family == :structured_text))
@@ -122,6 +124,19 @@ defmodule Storyarn.AI.ModelCatalogTest do
     |> assert_limits(200_000, 64_000)
 
     assert_limits(entries, "google", 1_048_576, 65_536)
+    assert_limits(entries, "fireworks", 262_144, 65_536)
+    assert_limits(entries, "together", 1_000_000, 65_536)
+
+    entries
+    |> Enum.filter(&(&1.provider == "moonshot" and &1.model == "kimi-k3"))
+    |> assert_limits(1_048_576, 131_072)
+
+    entries
+    |> Enum.filter(&(&1.provider == "moonshot" and &1.model == "kimi-k2.6"))
+    |> assert_limits(262_144, 32_768)
+
+    assert_limits(entries, "mistral", 262_144, 32_768)
+    assert_limits(entries, "deepseek", 1_000_000, 384_000)
   end
 
   test "uses shipped defaults unless application configuration explicitly overrides them" do

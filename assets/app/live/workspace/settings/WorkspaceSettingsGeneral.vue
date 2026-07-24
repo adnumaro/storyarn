@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-vue-next";
 import { ref, watch } from "vue";
+import LiveLink from "@components/navigation/LiveLink.vue";
 import ThemeSelector from "@components/ThemeSelector.vue";
 import { Button } from "@components/ui/button";
 import {
@@ -370,13 +371,13 @@ function updatePersonalAiMembersPolicy(enabled: boolean) {
             <p>{{ $t("settings.workspace.personal_ai.disclosure") }}</p>
           </div>
 
-          <a
-            href="/users/settings/integrations"
+          <LiveLink
+            to="/users/settings/integrations"
             class="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
           >
             {{ $t("settings.workspace.personal_ai.manage_keys") }}
             <ExternalLink class="size-3.5" />
-          </a>
+          </LiveLink>
         </div>
 
         <div class="flex shrink-0 flex-col items-end gap-2">

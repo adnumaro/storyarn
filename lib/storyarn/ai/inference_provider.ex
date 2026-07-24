@@ -7,6 +7,7 @@ defmodule Storyarn.AI.InferenceProvider do
           required(:task_id) => String.t(),
           required(:model) => String.t(),
           required(:input) => map() | list(),
+          required(:contextual?) => boolean(),
           required(:max_output_bytes) => pos_integer(),
           required(:provider_options) => map(),
           required(:provider_configuration) => map()
@@ -24,6 +25,9 @@ defmodule Storyarn.AI.InferenceProvider do
   @type error_reason ::
           :provider_error
           | :invalid_output
+          | :model_context_limits_unavailable
+          | :model_context_window_exceeded
+          | :model_output_limit_exceeded
           | :rate_limited
           | :unauthorized
           | {:unknown, atom()}

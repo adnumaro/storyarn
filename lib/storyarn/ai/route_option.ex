@@ -5,6 +5,7 @@ defmodule Storyarn.AI.RouteOption do
   import Ecto.Changeset
 
   alias Storyarn.Accounts.User
+  alias Storyarn.AI.Context.PersistenceContract
   alias Storyarn.AI.Operation
   alias Storyarn.Projects.Project
   alias Storyarn.Workspaces.Workspace
@@ -20,6 +21,9 @@ defmodule Storyarn.AI.RouteOption do
     field :subject_type, :string
     field :subject_id, :integer
     field :subject_revision, :string
+    field :context_hash, :string
+    field :context_manifest, :map
+    field :context_subject, :map
     field :lane, :string
     field :provider, :string
     field :model, :string
@@ -53,6 +57,9 @@ defmodule Storyarn.AI.RouteOption do
       :subject_type,
       :subject_id,
       :subject_revision,
+      :context_hash,
+      :context_manifest,
+      :context_subject,
       :lane,
       :provider,
       :model,
@@ -91,6 +98,8 @@ defmodule Storyarn.AI.RouteOption do
     |> validate_number(:policy_version, greater_than: 0)
     |> validate_price()
     |> validate_subject()
+    |> validate_context()
+    |> check_constraint(:context_hash, name: :ai_route_options_context_complete)
     |> unique_constraint(:token_hash)
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:workspace_id)
@@ -112,6 +121,22 @@ defmodule Storyarn.AI.RouteOption do
       changeset
     else
       add_error(changeset, :subject_type, "must include type, id, and revision together")
+    end
+  end
+
+  defp validate_context(changeset) do
+    hash = get_field(changeset, :context_hash)
+    manifest = get_field(changeset, :context_manifest)
+    subject = get_field(changeset, :context_subject)
+
+    if PersistenceContract.valid?(hash, manifest, subject) do
+      changeset
+    else
+      add_error(
+        changeset,
+        :context_hash,
+        "must include hash, manifest, and a scope-compatible subject together"
+      )
     end
   end
 

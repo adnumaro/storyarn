@@ -5,6 +5,7 @@ defmodule Storyarn.AI.Operation do
   import Ecto.Changeset
 
   alias Storyarn.Accounts.User
+  alias Storyarn.AI.Context.PersistenceContract
   alias Storyarn.AI.RouteOption
   alias Storyarn.Projects.Project
   alias Storyarn.Workspaces.Workspace
@@ -31,6 +32,9 @@ defmodule Storyarn.AI.Operation do
     field :subject_type, :string
     field :subject_id, :integer
     field :subject_revision, :string
+    field :context_hash, :string
+    field :context_manifest, :map
+    field :context_subject, :map
     field :input_hash, :string
     field :input_schema_version, :string
     field :output_schema_version, :string
@@ -66,6 +70,9 @@ defmodule Storyarn.AI.Operation do
       :subject_type,
       :subject_id,
       :subject_revision,
+      :context_hash,
+      :context_manifest,
+      :context_subject,
       :input_hash,
       :input_schema_version,
       :output_schema_version,
@@ -103,6 +110,8 @@ defmodule Storyarn.AI.Operation do
     |> validate_inclusion(:settlement_status, @settlement_statuses)
     |> validate_length(:idempotency_key, min: 1, max: 64)
     |> validate_subject()
+    |> validate_context()
+    |> check_constraint(:context_hash, name: :ai_operations_context_complete)
     |> unique_constraint([:actor_id, :task_id, :idempotency_key],
       name: :ai_operations_actor_task_idempotency_unique
     )
@@ -147,6 +156,22 @@ defmodule Storyarn.AI.Operation do
       changeset
     else
       add_error(changeset, :subject_type, "must include type, id, and revision together")
+    end
+  end
+
+  defp validate_context(changeset) do
+    hash = get_field(changeset, :context_hash)
+    manifest = get_field(changeset, :context_manifest)
+    subject = get_field(changeset, :context_subject)
+
+    if PersistenceContract.valid?(hash, manifest, subject) do
+      changeset
+    else
+      add_error(
+        changeset,
+        :context_hash,
+        "must include hash, manifest, and a scope-compatible subject together"
+      )
     end
   end
 

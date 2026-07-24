@@ -101,6 +101,7 @@ defmodule Storyarn.AI.InferenceProviders.PersonalTest do
       task_id: "contract.personal",
       model: model,
       input: %{"text" => "private content"},
+      contextual?: false,
       max_output_bytes: 1_024,
       provider_options: %{
         system_prompt: "Return JSON.",

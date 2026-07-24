@@ -4,6 +4,8 @@ defmodule Storyarn.AI.Results do
   import Ecto.Query
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.AI.Context
+  alias Storyarn.AI.Context.SourceLocks
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.Operation
   alias Storyarn.AI.PersonalConsents
@@ -77,12 +79,14 @@ defmodule Storyarn.AI.Results do
   Reauthorizes and applies a temporary result through a feature-owned mutation.
 
   `current_revision` must be read by the server-side feature immediately before
-  this call. The callback runs in the same database transaction and receives
-  decoded output plus content-free provenance.
+  this call. Context roots and source rows are locked before the final staleness
+  check. The callback runs while those locks remain held in the same database
+  transaction and receives decoded output plus content-free provenance.
   """
   @spec apply(Scope.t(), pos_integer(), String.t() | nil, (term(), map() -> {:ok, term()} | {:error, term()})) ::
           {:ok, term()} | {:error, term()}
-  def apply(%Scope{user: %{id: actor_id}}, operation_id, current_revision, apply_fun) when is_function(apply_fun, 2) do
+  def apply(%Scope{user: %{id: actor_id}} = scope, operation_id, current_revision, apply_fun)
+      when is_function(apply_fun, 2) do
     Repo.transaction(fn ->
       operation = lock_actor_operation(operation_id, actor_id)
 
@@ -91,6 +95,8 @@ defmodule Storyarn.AI.Results do
            {:ok, task} <- TaskRegistry.get(operation.task_id),
            :ok <- task_contract_current(operation, task),
            {:ok, _decision} <- PolicyDecision.reauthorize(operation, task, :apply, lock_policy: true),
+           :ok <- SourceLocks.acquire(operation),
+           :ok <- Context.operation_current?(scope, task, operation),
            {:ok, route} <- ExecutionRoute.from_map(operation.execution_route),
            :ok <- PersonalConsents.authorize_operation(operation, task, route, lock: true),
            %Result{} = result <- lock_result(operation.id),
@@ -194,6 +200,8 @@ defmodule Storyarn.AI.Results do
       output_schema_version: operation.output_schema_version,
       prompt_version: operation.prompt_version,
       context_version: operation.context_version,
+      context_hash: operation.context_hash,
+      context_manifest: operation.context_manifest,
       route: Map.take(operation.execution_route, ~w(lane provider model price_id price_version))
     }
   end

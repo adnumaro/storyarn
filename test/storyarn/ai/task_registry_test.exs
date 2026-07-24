@@ -51,6 +51,23 @@ defmodule Storyarn.AI.TaskRegistryTest do
              })
 
     assert :invalid_personal_cost_class in errors
+
+    assert {:error, errors} =
+             Task.new(ContractTask, %{
+               attrs
+               | data_scope: :workspace,
+                 context_policy: %{
+                   scope: :sheet,
+                   max_depth: 0,
+                   max_fan_out: 1,
+                   max_entities: 10,
+                   max_bytes: 4_096,
+                   tokenizer: nil,
+                   fields: %{}
+                 }
+             })
+
+    assert :invalid_context_data_scope in errors
   end
 
   test "canonical structured hashing ignores map insertion order and rejects structs" do

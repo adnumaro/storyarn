@@ -1,6 +1,8 @@
 defmodule Storyarn.AI.Task do
   @moduledoc "Immutable, validated definition of one AI product task."
 
+  alias Storyarn.AI.Context.Policy, as: ContextPolicy
+  alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.Operation
 
   @capabilities [:translation, :suggestions, :tasks, :images, :speech]
@@ -64,6 +66,7 @@ defmodule Storyarn.AI.Task do
     :managed_price,
     :enabled?,
     :command_ids,
+    :context_policy,
     provider_options: %{}
   ]
 
@@ -71,6 +74,7 @@ defmodule Storyarn.AI.Task do
 
   @spec new(module(), map()) :: {:ok, t()} | {:error, [atom()]}
   def new(module, attrs) when is_atom(module) and is_map(attrs) do
+    attrs = Map.put_new(attrs, :context_policy, %{scope: :none})
     task = struct(__MODULE__, Map.put(attrs, :module, module))
 
     case validation_errors(task) do
@@ -107,7 +111,7 @@ defmodule Storyarn.AI.Task do
     if function_exported?(module, :validate_output, 1), do: module.validate_output(output), else: :ok
   end
 
-  @spec authorize_subject(t(), Storyarn.Accounts.Scope.t(), Storyarn.AI.ExecutionIntent.t() | Operation.t(), atom()) ::
+  @spec authorize_subject(t(), Storyarn.Accounts.Scope.t(), ExecutionIntent.t() | Operation.t(), atom()) ::
           :ok | {:error, atom()}
   def authorize_subject(%__MODULE__{module: module, data_scope: :entity}, scope, intent_or_operation, phase) do
     module.authorize_subject(scope, intent_or_operation, phase)
@@ -117,7 +121,17 @@ defmodule Storyarn.AI.Task do
 
   @spec subject_current?(t(), Operation.t()) :: boolean()
   def subject_current?(%__MODULE__{module: module}, operation) do
-    if function_exported?(module, :subject_current?, 1), do: module.subject_current?(operation), else: true
+    not function_exported?(module, :subject_current?, 1) or module.subject_current?(operation) == true
+  end
+
+  @spec context_subject(t(), ExecutionIntent.t() | Operation.t()) ::
+          {:ok, Storyarn.AI.Context.SubjectRef.t()} | {:error, atom()}
+  def context_subject(%__MODULE__{context_policy: policy, module: module}, intent_or_operation) do
+    case ContextPolicy.new(policy) do
+      {:ok, %ContextPolicy{scope: :none}} -> {:error, :context_not_required}
+      {:ok, %ContextPolicy{}} -> module.context_subject(intent_or_operation)
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp validation_errors(task) do
@@ -147,10 +161,14 @@ defmodule Storyarn.AI.Task do
     |> require(is_boolean(task.enabled?) or is_function(task.enabled?, 0), :invalid_enabled)
     |> require(valid_command_ids?(task.command_ids), :invalid_command_ids)
     |> require(is_map(task.provider_options), :invalid_provider_options)
+    |> require(ContextPolicy.valid?(task.context_policy), :invalid_context_policy)
+    |> require(valid_context_data_scope?(task), :invalid_context_data_scope)
     |> require(
       task.data_scope != :entity or function_exported?(task.module, :authorize_subject, 3),
       :missing_subject_authorizer
     )
+    |> require(valid_context_builder?(task), :missing_context_subject_builder)
+    |> require(valid_context_staleness_check?(task), :missing_context_staleness_check)
   end
 
   defp valid_permissions?(permissions) when is_map(permissions) do
@@ -205,6 +223,35 @@ defmodule Storyarn.AI.Task do
   end
 
   defp valid_command_ids?(_ids), do: false
+
+  defp valid_context_builder?(%{context_policy: policy, module: module}) do
+    case ContextPolicy.new(policy) do
+      {:ok, %ContextPolicy{scope: :none}} -> true
+      {:ok, %ContextPolicy{}} -> function_exported?(module, :context_subject, 1)
+      {:error, _reason} -> false
+    end
+  end
+
+  defp valid_context_data_scope?(%{context_policy: policy, data_scope: data_scope}) do
+    case ContextPolicy.new(policy) do
+      {:ok, %ContextPolicy{scope: :none}} -> true
+      {:ok, %ContextPolicy{}} -> data_scope in [:project, :entity]
+      {:error, _reason} -> false
+    end
+  end
+
+  defp valid_context_staleness_check?(%{context_policy: policy, module: module}) do
+    case ContextPolicy.new(policy) do
+      {:ok, %ContextPolicy{scope: :structural_finding}} ->
+        function_exported?(module, :subject_current?, 1)
+
+      {:ok, %ContextPolicy{}} ->
+        true
+
+      {:error, _reason} ->
+        false
+    end
+  end
 
   defp version?(value), do: is_binary(value) and byte_size(value) > 0 and byte_size(value) <= 120
   defp positive_integer?(value), do: is_integer(value) and value > 0

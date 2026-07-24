@@ -5,6 +5,9 @@ defmodule Storyarn.AI.Execution do
 
   alias Storyarn.AI.Alerts
   alias Storyarn.AI.CanonicalJSON
+  alias Storyarn.AI.Context
+  alias Storyarn.AI.Context.ModelLimits
+  alias Storyarn.AI.Context.Package
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.Executor
@@ -26,8 +29,9 @@ defmodule Storyarn.AI.Execution do
   def preflight(%ExecutionIntent{} = intent) do
     with {:ok, task} <- TaskRegistry.fetch(intent.task_id),
          :ok <- validate_input(task, intent),
-         :ok <- RateLimiter.check_ai_preflight(intent.scope.user.id, task.id),
          {:ok, decision} <- PolicyDecision.authorize(intent, task, :execute),
+         :ok <- RateLimiter.check_ai_preflight(intent.scope.user.id, task.id),
+         {:ok, context} <- Context.prepare(intent.scope, task, intent),
          resolution = RouteResolver.preflight_options(decision, task),
          true <- resolution.routes != [] or resolution.personal_choices != [] do
       issue_preflight(
@@ -35,7 +39,8 @@ defmodule Storyarn.AI.Execution do
         task,
         resolution.routes,
         resolution.personal_choices,
-        resolution.personal_preference
+        resolution.personal_preference,
+        context
       )
     else
       false -> {:error, :no_route}
@@ -68,13 +73,23 @@ defmodule Storyarn.AI.Execution do
     end
   end
 
-  defp issue_preflight(intent, task, routes, personal_choices, personal_preference) do
+  defp issue_preflight(intent, task, routes, personal_choices, personal_preference, context) do
     fn ->
+      {available_routes, blocked_routes} =
+        partition_routes_by_context_limits(intent, task, routes, context)
+
+      personal_choices = update_blocked_personal_choices(personal_choices, blocked_routes)
+
+      if available_routes == [] and personal_choices == [] and blocked_routes != [] do
+        Repo.rollback(preferred_context_limit_error(blocked_routes))
+      end
+
       %{
         task_id: task.id,
-        route_options: Enum.map(routes, &issue_route_option!(intent, task, &1)),
+        route_options: Enum.map(available_routes, &issue_route_option!(intent, task, &1, context)),
         personal_choices: Enum.map(personal_choices, &Map.delete(&1, :route)),
-        personal_preference: personal_preference,
+        personal_preference: update_blocked_personal_preference(personal_preference, personal_choices),
+        context_disclosure: context_disclosure(context),
         result_destination: task.result_destination,
         operation_created: false
       }
@@ -83,8 +98,72 @@ defmodule Storyarn.AI.Execution do
     |> unwrap_transaction()
   end
 
-  defp issue_route_option!(intent, task, route) do
-    case RouteOptions.issue(intent, task, route) do
+  defp partition_routes_by_context_limits(intent, task, routes, context) do
+    routes
+    |> Enum.reduce(
+      {[], []},
+      &partition_route_by_context_limit(&1, &2, intent, task, context)
+    )
+    |> then(fn {available, blocked} ->
+      {Enum.reverse(available), Enum.reverse(blocked)}
+    end)
+  end
+
+  defp partition_route_by_context_limit(route, {available, blocked}, intent, task, context) do
+    case ModelLimits.validate_context(task, route, intent.input, context) do
+      :ok -> {[route | available], blocked}
+      {:error, reason} -> partition_blocked_route(route, reason, available, blocked)
+    end
+  end
+
+  defp partition_blocked_route(route, reason, available, blocked) do
+    if ModelLimits.context_limit_error?(reason) do
+      {available, [{route, reason} | blocked]}
+    else
+      Repo.rollback(reason)
+    end
+  end
+
+  defp update_blocked_personal_choices(personal_choices, blocked_routes) do
+    Enum.map(personal_choices, fn choice ->
+      case blocked_route_reason(choice[:route], blocked_routes) do
+        nil -> choice
+        reason -> Map.put(choice, :status, ModelLimits.public_status(reason))
+      end
+    end)
+  end
+
+  defp blocked_route_reason(nil, _blocked_routes), do: nil
+
+  defp blocked_route_reason(route, blocked_routes) do
+    Enum.find_value(blocked_routes, fn
+      {^route, reason} -> reason
+      {_other_route, _reason} -> nil
+    end)
+  end
+
+  defp update_blocked_personal_preference(personal_preference, personal_choices) do
+    case Enum.find(personal_choices, & &1.preferred) do
+      %{status: status} -> Map.put(personal_preference, :status, status)
+      nil -> personal_preference
+    end
+  end
+
+  defp preferred_context_limit_error(blocked_routes) do
+    reasons = MapSet.new(blocked_routes, fn {_route, reason} -> reason end)
+
+    Enum.find(
+      [
+        :model_context_window_exceeded,
+        :model_output_limit_exceeded,
+        :model_context_limits_unavailable
+      ],
+      &MapSet.member?(reasons, &1)
+    )
+  end
+
+  defp issue_route_option!(intent, task, route, context) do
+    case RouteOptions.issue(intent, task, route, context) do
       {:ok, option} -> option
       {:error, reason} -> Repo.rollback(reason)
     end
@@ -110,7 +189,9 @@ defmodule Storyarn.AI.Execution do
          true <- decision.policy_version == route.policy_version || {:error, :route_ref_stale},
          true <- RouteResolver.current?(decision, task, route) || {:error, :route_ref_stale},
          :ok <- RateLimiter.check_ai_execution(intent.scope.user.id, task.id),
-         {:ok, input} <- CanonicalJSON.encode(intent.input) do
+         {:ok, context} <- Context.prepare(intent.scope, task, intent),
+         :ok <- context_matches_option(context, route_option),
+         {:ok, input} <- context_input(intent.input, context) do
       subject = intent.subject || %{}
       settlement_status = if route.lane == :managed, do: "reserved", else: "not_applicable"
 
@@ -133,6 +214,9 @@ defmodule Storyarn.AI.Execution do
           subject_type: subject[:type],
           subject_id: subject[:id],
           subject_revision: subject[:revision],
+          context_hash: context_hash(context),
+          context_manifest: context_manifest(context),
+          context_subject: context_subject(context),
           input_hash: intent.input_hash,
           input_schema_version: task.input_schema_version,
           output_schema_version: task.output_schema_version,
@@ -154,6 +238,8 @@ defmodule Storyarn.AI.Execution do
         project_id: intent.project_id,
         input_encrypted: input,
         input_hash: intent.input_hash,
+        context_hash: context_hash(context),
+        context_manifest: context_manifest(context),
         task_id: task.id,
         prompt_version: task.prompt_version,
         context_version: task.context_version,
@@ -243,6 +329,41 @@ defmodule Storyarn.AI.Execution do
       {Atom.to_string(key), if(is_atom(value), do: Atom.to_string(value), else: value)}
     end)
   end
+
+  defp context_matches_option(nil, %{context_hash: nil, context_manifest: nil, context_subject: nil}), do: :ok
+
+  defp context_matches_option(%{package: %Package{} = package, subject: subject}, %{
+         context_hash: hash,
+         context_manifest: manifest,
+         context_subject: persisted_subject
+       }) do
+    if package.hash == hash and Package.provenance(package) == manifest and subject == persisted_subject,
+      do: :ok,
+      else: {:error, :stale_context}
+  end
+
+  defp context_matches_option(_context, _option), do: {:error, :stale_context}
+
+  defp context_input(input, nil), do: CanonicalJSON.encode(input)
+
+  defp context_input(input, %{package: %Package{} = package}) do
+    CanonicalJSON.encode(%{
+      "request" => input,
+      "context" => package.payload
+    })
+  end
+
+  defp context_hash(nil), do: nil
+  defp context_hash(%{package: %Package{hash: hash}}), do: hash
+
+  defp context_manifest(nil), do: nil
+  defp context_manifest(%{package: %Package{} = package}), do: Package.provenance(package)
+
+  defp context_subject(nil), do: nil
+  defp context_subject(%{subject: subject}), do: subject
+
+  defp context_disclosure(nil), do: nil
+  defp context_disclosure(%{package: %Package{} = package}), do: Package.disclosure(package)
 
   defp unwrap_transaction({:ok, result}), do: {:ok, result}
   defp unwrap_transaction({:error, reason}), do: {:error, reason}

@@ -25,6 +25,14 @@ defmodule Storyarn.AI.ModelCatalog.Defaults do
       text_model("anthropic", "claude-haiku-4-5-20251001", :json_schema, 200_000, 64_000),
       text_model("google", "gemini-3.6-flash", :json_schema, 1_048_576, 65_536),
       text_model("google", "gemini-3.5-flash-lite", :json_schema, 1_048_576, 65_536),
+      text_model(
+        "fireworks",
+        "accounts/fireworks/models/qwen3p7-plus",
+        :json_schema,
+        262_144,
+        65_536
+      ),
+      text_model("together", "Qwen/Qwen3.7-Plus", :json_schema, 1_000_000, 65_536),
       media_model(
         "google",
         "gemini-3.1-flash-lite-image",
@@ -58,16 +66,16 @@ defmodule Storyarn.AI.ModelCatalog.Defaults do
         :google_interactions_tts,
         :preview
       ),
-      text_model("moonshot", "kimi-k3", :json_object),
-      text_model("moonshot", "kimi-k2.6", :json_object),
-      text_model("mistral", "mistral-large-2512", :json_schema),
-      text_model("mistral", "mistral-small-2603", :json_schema),
-      text_model("deepseek", "deepseek-v4-pro", :json_object),
-      text_model("deepseek", "deepseek-v4-flash", :json_object)
+      text_model("moonshot", "kimi-k3", :json_object, 1_048_576, 131_072),
+      text_model("moonshot", "kimi-k2.6", :json_object, 262_144, 32_768),
+      text_model("mistral", "mistral-large-2512", :json_schema, 262_144, 32_768),
+      text_model("mistral", "mistral-small-2603", :json_schema, 262_144, 32_768),
+      text_model("deepseek", "deepseek-v4-pro", :json_object, 1_000_000, 384_000),
+      text_model("deepseek", "deepseek-v4-flash", :json_object, 1_000_000, 384_000)
     ]
   end
 
-  defp text_model(provider, model, structured_output, context_window \\ nil, max_output_tokens \\ nil) do
+  defp text_model(provider, model, structured_output, context_window, max_output_tokens) do
     %{
       provider: provider,
       model: model,

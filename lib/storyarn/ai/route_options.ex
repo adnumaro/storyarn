@@ -3,6 +3,8 @@ defmodule Storyarn.AI.RouteOptions do
 
   import Ecto.Query
 
+  alias Storyarn.AI.Context.ModelLimits
+  alias Storyarn.AI.Context.Package
   alias Storyarn.AI.CredentialRef
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.ExecutionRoute
@@ -13,8 +15,9 @@ defmodule Storyarn.AI.RouteOptions do
 
   @default_ttl_seconds 300
 
-  @spec issue(ExecutionIntent.t(), Task.t(), ExecutionRoute.t()) :: {:ok, map()} | {:error, Ecto.Changeset.t()}
-  def issue(%ExecutionIntent{} = intent, %Task{} = task, %ExecutionRoute{} = route) do
+  @spec issue(ExecutionIntent.t(), Task.t(), ExecutionRoute.t(), nil | map()) ::
+          {:ok, map()} | {:error, atom() | Ecto.Changeset.t()}
+  def issue(%ExecutionIntent{} = intent, %Task{} = task, %ExecutionRoute{} = route, context \\ nil) do
     token = 32 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
     subject = intent.subject || %{}
     expires_at = DateTime.add(TimeHelpers.now(), ttl_seconds(), :second)
@@ -31,6 +34,9 @@ defmodule Storyarn.AI.RouteOptions do
       subject_type: subject[:type],
       subject_id: subject[:id],
       subject_revision: subject[:revision],
+      context_hash: context_hash(context),
+      context_manifest: context_manifest(context),
+      context_subject: context_subject(context),
       lane: Atom.to_string(route.lane),
       provider: route.provider,
       model: route.model,
@@ -46,23 +52,20 @@ defmodule Storyarn.AI.RouteOptions do
       expires_at: expires_at
     }
 
-    case %RouteOption{} |> RouteOption.issue_changeset(attrs) |> Repo.insert() do
-      {:ok, _option} ->
-        {:ok,
-         %{
-           requested_route_ref: token,
-           lane: route.lane,
-           provider: route.provider,
-           model: route.model,
-           payer: route.payer,
-           price_id: route.price_id,
-           price_version: route.price_version,
-           price_units: route.price_units,
-           expires_at: expires_at
-         }}
-
-      {:error, changeset} ->
-        {:error, changeset}
+    with :ok <- ModelLimits.validate_context(task, route, intent.input, context),
+         {:ok, _option} <- %RouteOption{} |> RouteOption.issue_changeset(attrs) |> Repo.insert() do
+      {:ok,
+       %{
+         requested_route_ref: token,
+         lane: route.lane,
+         provider: route.provider,
+         model: route.model,
+         payer: route.payer,
+         price_id: route.price_id,
+         price_version: route.price_version,
+         price_units: route.price_units,
+         expires_at: expires_at
+       }}
     end
   end
 
@@ -155,6 +158,15 @@ defmodule Storyarn.AI.RouteOptions do
   end
 
   defp token_hash(token), do: :crypto.hash(:sha256, token)
+
+  defp context_hash(nil), do: nil
+  defp context_hash(%{package: %Package{hash: hash}}), do: hash
+
+  defp context_manifest(nil), do: nil
+  defp context_manifest(%{package: %Package{} = package}), do: Package.provenance(package)
+
+  defp context_subject(nil), do: nil
+  defp context_subject(%{subject: subject}), do: subject
 
   defp ttl_seconds do
     :storyarn

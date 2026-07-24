@@ -1,13 +1,20 @@
 defmodule Storyarn.AI.InferenceProviders.OpenAICompatible do
   @moduledoc false
 
+  alias Storyarn.AI.ConfigMap
+  alias Storyarn.AI.Context.ModelLimits
   alias Storyarn.AI.ResolvedCredential
+
+  @protected_override_keys ~w(model messages max_tokens response_format temperature)
 
   def generate(adapter, %ResolvedCredential{kind: :managed, value: api_key}, request)
       when is_atom(adapter) and is_binary(api_key) do
     with {:ok, endpoint} <- endpoint(adapter),
          {:ok, route_config} <- route_configuration(request.provider_configuration),
          {:ok, body} <- request_body(request, route_config.response_mode),
+         {:ok, body} <- apply_request_overrides(adapter, body),
+         {:ok, provider} <- provider(adapter),
+         :ok <- ModelLimits.validate_provider_request(provider, request, body),
          {:ok, response} <- post(adapter, endpoint, api_key, body),
          {:ok, output} <- extract_output(response.body),
          {:ok, metrics} <- metrics(response.body, route_config.price_snapshot) do
@@ -20,6 +27,9 @@ defmodule Storyarn.AI.InferenceProviders.OpenAICompatible do
     with {:ok, endpoint} <- endpoint(adapter),
          {:ok, route_config} <- route_configuration(request.provider_configuration),
          {:ok, body} <- request_body(request, route_config.response_mode),
+         {:ok, body} <- apply_request_overrides(adapter, body),
+         {:ok, provider} <- provider(adapter),
+         :ok <- ModelLimits.validate_provider_request(provider, request, body),
          {:ok, response} <- post(adapter, endpoint, api_key, body),
          {:ok, output} <- extract_output(response.body),
          {:ok, metrics} <- metrics(response.body, route_config.price_snapshot) do
@@ -89,7 +99,7 @@ defmodule Storyarn.AI.InferenceProviders.OpenAICompatible do
     options =
       [
         url: endpoint,
-        json: Map.merge(body, request_overrides(adapter)),
+        json: body,
         headers: [{"authorization", "Bearer #{api_key}"}],
         retry: false,
         redirect: false
@@ -154,6 +164,15 @@ defmodule Storyarn.AI.InferenceProviders.OpenAICompatible do
 
   defp option(options, key), do: Map.get(options, key, Map.get(options, Atom.to_string(key)))
 
+  defp provider(Storyarn.AI.InferenceProviders.Fireworks), do: {:ok, "fireworks"}
+  defp provider(Storyarn.AI.InferenceProviders.Together), do: {:ok, "together"}
+  defp provider(Storyarn.AI.InferenceProviders.Personal.DeepSeek), do: {:ok, "deepseek"}
+  defp provider(Storyarn.AI.InferenceProviders.Personal.Google), do: {:ok, "google"}
+  defp provider(Storyarn.AI.InferenceProviders.Personal.Mistral), do: {:ok, "mistral"}
+  defp provider(Storyarn.AI.InferenceProviders.Personal.Moonshot), do: {:ok, "moonshot"}
+  defp provider(Storyarn.AI.InferenceProviders.Personal.OpenAI), do: {:ok, "openai"}
+  defp provider(_adapter), do: {:error, :provider_error}
+
   defp decimal(%Decimal{} = value), do: {:ok, value}
 
   defp decimal(value) do
@@ -173,6 +192,16 @@ defmodule Storyarn.AI.InferenceProviders.OpenAICompatible do
     :storyarn
     |> Application.get_env(adapter, [])
     |> Keyword.get(:request_overrides, %{})
+  end
+
+  defp apply_request_overrides(adapter, body) do
+    overrides = adapter |> request_overrides() |> ConfigMap.normalize()
+
+    if Enum.any?(@protected_override_keys, &Map.has_key?(overrides, &1)) do
+      {:error, :provider_error}
+    else
+      {:ok, body |> ConfigMap.normalize() |> Map.merge(overrides)}
+    end
   end
 
   defp endpoint(adapter) do
