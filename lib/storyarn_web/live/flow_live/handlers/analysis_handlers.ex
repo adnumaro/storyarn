@@ -67,27 +67,28 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   @spec handle_restore_finding_dismissal(map(), Socket.t()) :: result()
   def handle_restore_finding_dismissal(params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      flow = socket.assigns.flow
-
       case params["dismissal_id"] do
-        id when is_integer(id) ->
-          case Flows.restore_finding_dismissal(flow, id, socket.assigns.current_scope.user.id) do
-            {:ok, dismissal} ->
-              track(socket, "flow analysis finding restored", %{
-                rule_id: dismissal.rule_id,
-                reason_code: dismissal.reason_code
-              })
-
-              {:noreply, compute_snapshot(socket, "after_restore")}
-
-            {:error, :not_found} ->
-              {:noreply, stale_selection_flash(socket)}
-          end
-
-        _invalid ->
-          {:noreply, stale_selection_flash(socket)}
+        id when is_integer(id) -> restore_by_id(socket, id)
+        _invalid -> {:noreply, stale_selection_flash(socket)}
       end
     end)
+  end
+
+  defp restore_by_id(socket, dismissal_id) do
+    flow = socket.assigns.flow
+
+    case Flows.restore_finding_dismissal(flow, dismissal_id, socket.assigns.current_scope.user.id) do
+      {:ok, dismissal} ->
+        track(socket, "flow analysis finding restored", %{
+          rule_id: dismissal.rule_id,
+          reason_code: dismissal.reason_code
+        })
+
+        {:noreply, compute_snapshot(socket, "after_restore")}
+
+      {:error, :not_found} ->
+        {:noreply, stale_selection_flash(socket)}
+    end
   end
 
   # ===========================================================================

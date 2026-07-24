@@ -6,7 +6,6 @@ defmodule Storyarn.AI.ContextTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Shared.CanonicalJSON
   alias Storyarn.AI.Context
   alias Storyarn.AI.Context.Entity
   alias Storyarn.AI.Context.Finalizer
@@ -16,6 +15,7 @@ defmodule Storyarn.AI.ContextTest do
   alias Storyarn.AI.Operation
   alias Storyarn.AI.Task
   alias Storyarn.Flows
+  alias Storyarn.Shared.CanonicalJSON
   alias Storyarn.Sheets.Block
   alias StoryarnTest.AI.ContextTask
   alias StoryarnTest.AI.ContextWithoutStalenessTask

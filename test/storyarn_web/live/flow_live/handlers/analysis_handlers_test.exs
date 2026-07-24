@@ -255,7 +255,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlersTest do
       props = analysis_props(view)
       assert props["open"] == true
       assert props["canEdit"] == false
-      assert length(props["active"]) > 0
+      assert props["active"] != []
 
       [finding | _] = props["active"]
 

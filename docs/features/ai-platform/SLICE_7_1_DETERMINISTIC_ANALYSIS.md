@@ -1,6 +1,10 @@
 # Slice 7.1 — Deterministic Structural Analysis
 
-**Status:** pending.
+**Status:** implemented on `codex/slice7-1-deterministic-analysis` (2026-07-24) —
+canonical engine `Storyarn.Flows.StructuralAnalysis` (editor serializer and
+dashboards converged on it), `flow_finding_dismissals` persistence, analysis
+panel with evidence navigation, `flows.analyze` palette command, analytics,
+en/es copy and user docs. Owner browser verification pending.
 
 ## Objective
 
