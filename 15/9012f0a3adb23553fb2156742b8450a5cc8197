@@ -1,0 +1,25 @@
+lib/storyarn/projects/dashboard.ex
+  s_2797f64fb2d317::t_b1c13ce1ea2f10 230-232,243-245,262-264
+  s_2797f64fb2d317::t_4fbc47f5dd26c1 108-109,111-113
+  s_2797f64fb2d317::t_7580ca41780373 227
+test/storyarn/flows/structural_analysis_test.exs
+  s_2797f64fb2d317::t_b80d783606bf3f 413-466
+lib/storyarn/flows/flow_stats.ex
+  s_2797f64fb2d317::t_53deb4d771d94e 8,53-61,63-64,68-69,72,74-78,81-84,86-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "159012f0a3adb23553fb2156742b8450a5cc8197",
+  "prompts": {},
+  "sessions": {
+    "s_2797f64fb2d317": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b96a2b7-cbec-4b6b-8cc5-a83cf4dde660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
