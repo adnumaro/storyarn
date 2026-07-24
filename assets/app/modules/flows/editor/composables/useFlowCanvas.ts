@@ -209,7 +209,12 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   function initHandlers(): void {
     runtime.editorHandlers = editorHandlers(hookProxy);
-    runtime.navigationHandler = navigation(runtime.area!, runtime.nodeMap, pushEvent);
+    runtime.navigationHandler = navigation(
+      runtime.area!,
+      runtime.nodeMap,
+      pushEvent,
+      hookProxy.editor,
+    );
     runtime.debugHandler = debug(hookProxy.area, hookProxy.editor, runtime.nodeMap, undefined);
 
     hookProxy.editorHandlers = runtime.editorHandlers;

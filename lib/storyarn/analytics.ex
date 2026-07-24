@@ -15,6 +15,11 @@ defmodule Storyarn.Analytics do
 
   @event_property_keys %{
     "asset uploaded" => MapSet.new(~w(asset_type content_type created_variant project_id purpose size_bucket)),
+    "flow analysis run" =>
+      MapSet.new(~w(source stale finding_count dismissed_count error_count warning_count duration_bucket)),
+    "flow analysis finding dismissed" => MapSet.new(~w(rule_id rule_version category severity reason_code)),
+    "flow analysis finding restored" => MapSet.new(~w(rule_id rule_version reason_code)),
+    "flow analysis evidence navigated" => MapSet.new(~w(evidence_type)),
     "flow debug started" => MapSet.new(~w(flow_id project_id)),
     "flow node created" => MapSet.new(~w(creation_method flow_id has_parent node_type project_id)),
     "flow player started" => MapSet.new(~w(flow_id project_id)),

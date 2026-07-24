@@ -1,12 +1,16 @@
 # Slice 7.1 — Deterministic Structural Analysis
 
-**Status:** pending.
+**Status:** implemented on `codex/slice7-1-deterministic-analysis` (2026-07-24) —
+canonical engine `Storyarn.Flows.StructuralAnalysis` (editor serializer and
+dashboards converged on it), `flow_finding_dismissals` persistence, analysis
+panel with evidence navigation, `flows.analyze` palette command, analytics,
+en/es copy and user docs. Owner browser verification pending.
 
 ## Objective
 
 Turn Storyarn's existing flow-health checks into a free, auditable product
 capability: canonical structural findings with stable identity, typed evidence,
-reversible false-positive dismissal, evidence navigation, and a dedicated
+reversible finding dismissal, evidence navigation, and a dedicated
 analysis panel.
 
 This slice contains no model call. It is not gated by `:ai_integrations`,
@@ -37,6 +41,11 @@ detector:
 
 - editor, dashboard, palette, and future AI explanation consume the same rule
   registry and finding contract;
+- the dashboard keeps its three legacy issue buckets with no UI change:
+  `missing_entry` → no-entry, `isolated_node` and `unreachable_node` →
+  disconnected (disconnected from Entry), `no_outgoing_connection` → dead ends;
+  dashboard counts subtract active dismissals exactly like the editor badge
+  (the dashboard's 30-second cache may delay a dismissal that long);
 - aggregate queries may optimize discovery, but must validate findings through
   the canonical rule semantics before presenting them;
 - every rule declares its inputs, graph/cycle semantics, category, severity,
@@ -48,6 +57,17 @@ Current authoring-health checks must be categorized. Slice 7.1 exposes
 panel. Editorial completeness warnings may remain in the existing health
 summary but are not silently promoted to structural claims or made eligible for
 Slice 7.2.
+
+The confirmed v1 boundary:
+
+- `structure`: missing/multiple Entry nodes, unreachable nodes, isolated
+  nodes, reachable non-terminal dead ends, required output pins without a valid
+  connection, invalid connection pins, orphan hubs.
+- `reference_integrity`: stale/missing jump, subflow, and exit references.
+- editorial (stays in the existing health summary, outside the panel):
+  dialogue/condition/instruction completeness warnings,
+  `stale_variable_reference`, `variable_type_mismatch`, and info-level
+  empty-content checks.
 
 ## Finding and evidence contract
 
@@ -64,13 +84,19 @@ Every finding exposes at least:
 | `evidence_fingerprint`     | Hash of the canonical rule inputs needed to reproduce this occurrence                |
 | `limitations`              | Localized explanation of what the rule does not prove                                |
 
-Evidence descriptors use the Slice-6 server loaders and supported project-owned
-types (`flow`, `flow_node`, `flow_connection`, and other explicitly added
-types). The client may select a current `finding_id`; it cannot supply finding
-content, evidence content, rule metadata, or project ids.
+Evidence descriptors use the project-owned types supported by the Slice-6
+context boundary (`flow`, `flow_node`, `flow_connection`, and other explicitly
+added types); Slice 7.2 loads their content through the Slice-6 server loaders
+when findings enter an AI context. The client may select a current
+`finding_id`; it cannot supply finding content, evidence content, rule
+metadata, or project ids.
 
 Negative graph claims include the relevant canonical topology state in the
-fingerprint. They do not require sending the whole graph to a future model.
+fingerprint (active nodes and types, stored connections, resolved jump→hub
+virtual edges, and per-node output pin sets; connection-optional node types
+— annotations and sequences — are excluded, as they cannot influence any
+rule). They do not require sending the
+whole graph to a future model.
 
 ## Initial rule semantics
 
@@ -110,16 +136,40 @@ The panel owns an explicit analysis snapshot:
   rather than silently merging old dispositions with new evidence;
 - a finding is **resolved** when a fresh analysis no longer emits that
   occurrence. Resolve is derived, not a manual mutation;
-- **Dismiss as false positive** is the only persisted manual disposition in v1;
+- **Dismiss finding** is the only persisted manual disposition in v1. The
+  action is deliberately not labeled "false positive": `intentional_design`
+  dismisses a correct detection the author accepts;
 - dismissal is project-shared, requires the relevant flow edit permission,
   records actor/time/reason, and is reversible;
 - dismissal applies only to the exact
   `finding_key + rule_version + evidence_fingerprint`. A changed rule or changed
   evidence reactivates the finding;
-- concurrent dismiss/restore requests are idempotent and uniqueness-constrained.
+- concurrent dismiss/restore requests are idempotent and uniqueness-constrained;
+- dismiss/restore broadcast a disposition change so other connected editors
+  re-split their open snapshot and badge (never a stale mark — the analysis
+  itself did not change), and local graph mutations announce themselves
+  project-wide so flows whose subflow/exit pins derive from the mutated flow
+  mark their open snapshots stale.
 
-A dismissal reason code is required. An optional bounded note is project data:
-it follows project authorization and never enters analytics, logs, or Slice-7.2
+A dismissal reason code is required. The v1 catalog is fixed (stable internal
+values, localized labels in the UI):
+
+| Code                  | Meaning                                                        |
+| --------------------- | -------------------------------------------------------------- |
+| `intentional_design`  | The detected structure exists and is deliberate                |
+| `rule_not_applicable` | Flow type or project conventions make the rule irrelevant here |
+| `missing_context`     | External or unmodeled context invalidates the conclusion       |
+| `incorrect_detection` | Given the available data, the evidence or conclusion is wrong  |
+| `duplicate_finding`   | Another finding already represents the same problem            |
+| `other`               | Escape hatch for unforeseen cases; requires a note             |
+
+Deliberately excluded: `fixed` (resolve is derived on rerun),
+`work_in_progress`/`not_now` (a future snooze feature, not a dismissal),
+`low_priority` (prioritization is not dismissal), `wont_fix` (risk acceptance
+deserves its own semantics if ever needed).
+
+An optional bounded note (required only for `other`) is project data: it
+follows project authorization and never enters analytics, logs, or Slice-7.2
 prompts.
 
 ## Permissions and isolation
@@ -188,7 +238,7 @@ content, optional notes, or raw project/entity ids in analytics.
 - Browser coverage exercises an editor and viewer, including the non-AI palette
   command.
 - en/es product copy and user documentation explain deterministic findings,
-  limitations, false-positive dismissal, and the absence of AI cost.
+  limitations, finding dismissal with reason codes, and the absence of AI cost.
 - `pnpm run fmt`, `just quality-lint`, relevant full suites, E2E, and
   `mix precommit` are green.
 

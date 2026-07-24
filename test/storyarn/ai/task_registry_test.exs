@@ -3,12 +3,12 @@ defmodule Storyarn.AI.TaskRegistryTest do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
-  alias Storyarn.AI.CanonicalJSON
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.InferenceProviders
   alias Storyarn.AI.Task
   alias Storyarn.AI.TaskRegistry
   alias Storyarn.AI.Telemetry
+  alias Storyarn.Shared.CanonicalJSON
   alias StoryarnTest.AI.ContractTask
 
   test "loads only registered validated tasks and derives palette ids" do

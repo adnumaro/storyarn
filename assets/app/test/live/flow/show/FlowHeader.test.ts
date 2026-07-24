@@ -17,6 +17,7 @@ interface TestFlowHealth {
   errorNodes: TestHealthNode[];
   warningNodes: TestHealthNode[];
   infoNodes: TestHealthNode[];
+  structural: { errorCount: number; warningCount: number };
 }
 
 function mountHeader(flowHealth: TestFlowHealth) {
@@ -62,6 +63,7 @@ describe("FlowHeader flow health", () => {
   it("counts findings from every reason and always labels each visible severity", () => {
     const { wrapper } = mountHeader({
       wordCount: 0,
+      structural: { errorCount: 0, warningCount: 0 },
       errorNodes: [
         {
           id: 11,
@@ -96,6 +98,7 @@ describe("FlowHeader flow health", () => {
   it("navigates to node findings but disables flow-level findings", async () => {
     const { live, wrapper } = mountHeader({
       wordCount: 0,
+      structural: { errorCount: 0, warningCount: 0 },
       errorNodes: [
         {
           id: null,

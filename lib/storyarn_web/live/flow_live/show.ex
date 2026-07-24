@@ -10,6 +10,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Versioning
+  alias StoryarnWeb.FlowLive.Handlers.AnalysisHandlers
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
@@ -102,7 +103,8 @@ defmodule StoryarnWeb.FlowLive.Show do
             wordCount: @flow_word_count,
             errorNodes: @flow_error_nodes,
             warningNodes: @flow_warning_nodes,
-            infoNodes: @flow_info_nodes
+            infoNodes: @flow_info_nodes,
+            structural: @flow_structural_summary
           }
         }
         scene-selected={%{name: @scene_name, inherited: @scene_inherited}}
@@ -182,6 +184,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
     if connected?(socket) do
       Collaboration.subscribe_restoration(project.id)
+      Collaboration.subscribe_flow_graph(project.id)
 
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
@@ -210,6 +213,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:flow_error_nodes, [])
       |> assign(:flow_warning_nodes, [])
       |> assign(:flow_info_nodes, [])
+      |> assign(:flow_structural_summary, %{errorCount: 0, warningCount: 0})
       |> assign(:save_status, :idle)
       |> assign(:save_status_reset_token, nil)
       |> assign(:selected_node, nil)
@@ -227,6 +231,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_var_changed_only, false)
       |> assign(:debug_step_limit_reached, false)
       |> assign(:versions_panel_open, false)
+      |> AnalysisHandlers.assign_initial_state()
       |> assign(:history_data, nil)
       |> assign(:all_sheets, [])
       |> assign(:dialogue_panel_data, nil)
@@ -434,6 +439,30 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("close_versions_panel", _params, socket) do
     {:noreply, assign(socket, :versions_panel_open, false)}
+  end
+
+  def handle_event("open_analysis_panel", params, socket) do
+    AnalysisHandlers.handle_open_analysis_panel(params, socket)
+  end
+
+  def handle_event("close_analysis_panel", params, socket) do
+    AnalysisHandlers.handle_close_analysis_panel(params, socket)
+  end
+
+  def handle_event("rerun_analysis", params, socket) do
+    AnalysisHandlers.handle_rerun_analysis(params, socket)
+  end
+
+  def handle_event("dismiss_finding", params, socket) do
+    AnalysisHandlers.handle_dismiss_finding(params, socket)
+  end
+
+  def handle_event("restore_finding_dismissal", params, socket) do
+    AnalysisHandlers.handle_restore_finding_dismissal(params, socket)
+  end
+
+  def handle_event("analysis_navigate_evidence", params, socket) do
+    AnalysisHandlers.handle_navigate_evidence(params, socket)
   end
 
   # ---------------------------------------------------------------------------
@@ -1246,6 +1275,13 @@ defmodule StoryarnWeb.FlowLive.Show do
     flow = data.flow
     user = socket.assigns.current_scope.user
 
+    # A panel opened during the async-load window (e.g. straight from the
+    # palette) must survive the load: recompute its snapshot for the same
+    # flow instead of silently discarding it.
+    preserve_analysis_panel? =
+      (socket.assigns[:analysis_panel_open] == true and socket.assigns.flow) &&
+        socket.assigns.flow.id == flow.id
+
     if !socket.assigns.compact do
       CollaborationHelpers.setup_collaboration(socket, flow, user)
     end
@@ -1288,6 +1324,13 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:preview_has_next, false)
       |> assign(:preview_history, [])
       |> assign(:versions_panel_open, false)
+      |> then(fn socket ->
+        if preserve_analysis_panel? do
+          AnalysisHandlers.recompute_open_snapshot(socket)
+        else
+          AnalysisHandlers.assign_initial_state(socket)
+        end
+      end)
       |> assign(:history_data, nil)
       |> assign(:collab_scope, {:flow, flow.id})
       |> assign(:online_users, online_users)
@@ -1339,7 +1382,22 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
   def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
   def handle_info({:open_flow, _flow_id}, socket), do: {:noreply, socket}
-  def handle_info({:tree_changed, :flows}, socket), do: {:noreply, socket}
+  # Cross-flow mutations (another flow deleted/restored) can change this
+  # flow's stale-reference findings, so an open analysis snapshot goes stale.
+  def handle_info({:tree_changed, :flows}, socket) do
+    {:noreply, AnalysisHandlers.mark_snapshot_stale(socket)}
+  end
+
+  # Another flow's graph mutated: this flow's subflow/exit pins (and thus
+  # findings and fingerprints) may derive from it — stale the open snapshot
+  # only when the current flow actually references the mutated one.
+  def handle_info({:flow_graph_changed, mutated_flow_id}, socket) do
+    if AnalysisHandlers.references_flow?(socket, mutated_flow_id) do
+      {:noreply, AnalysisHandlers.mark_snapshot_stale(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
 
   def handle_info({:entities_deleted, :flow, ids}, socket) do
     if socket.assigns.flow.id in ids do
@@ -1348,7 +1406,7 @@ defmodule StoryarnWeb.FlowLive.Show do
          to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows"
        )}
     else
-      {:noreply, socket}
+      {:noreply, AnalysisHandlers.mark_snapshot_stale(socket)}
     end
   end
 
@@ -1519,7 +1577,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       dialogue: flow_panels_dialogue(assigns),
       dialogueFullscreen: flow_panels_dialogue_fullscreen(assigns),
       sequence: flow_panels_sequence(assigns),
-      preview: PreviewHandlers.serialize_preview_state(assigns.socket)
+      preview: PreviewHandlers.serialize_preview_state(assigns.socket),
+      analysis: AnalysisHandlers.panel_props(assigns)
     }
   end
 

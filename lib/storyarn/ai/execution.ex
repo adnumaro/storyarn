@@ -4,7 +4,6 @@ defmodule Storyarn.AI.Execution do
   import Ecto.Query
 
   alias Storyarn.AI.Alerts
-  alias Storyarn.AI.CanonicalJSON
   alias Storyarn.AI.Context
   alias Storyarn.AI.Context.ModelLimits
   alias Storyarn.AI.Context.Package
@@ -21,6 +20,7 @@ defmodule Storyarn.AI.Execution do
   alias Storyarn.AI.TaskRegistry
   alias Storyarn.RateLimiter
   alias Storyarn.Repo
+  alias Storyarn.Shared.CanonicalJSON
   alias Storyarn.Workers.AIExecutionWorker
 
   @idempotency_lock_namespace 981_005

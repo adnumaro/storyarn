@@ -6,7 +6,7 @@ defmodule Storyarn.AI.Context.SubjectRef do
   registered task must derive it from its validated intent.
   """
 
-  alias Storyarn.AI.CanonicalJSON
+  alias Storyarn.Shared.CanonicalJSON
 
   @kinds [:dialogue, :flow_neighborhood, :sheet, :structural_finding]
   @evidence_types ~w(flow flow_node flow_connection sheet sheet_block)

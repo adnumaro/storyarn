@@ -3,10 +3,11 @@ defmodule Storyarn.Flows.FlowStats do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Flows.FindingDismissals
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.StructuralAnalysis
   alias Storyarn.Localization.LocalizableWords
-  alias Storyarn.Projects.Dashboard
   alias Storyarn.Repo
 
   # ===========================================================================
@@ -50,56 +51,60 @@ defmodule Storyarn.Flows.FlowStats do
   # Issue Detection
   # ===========================================================================
 
+  # Legacy dashboard buckets ← canonical rules. The three issue types keep
+  # their public contract while the counts come from the canonical engine, so
+  # dashboards cannot disagree with the editor about the same rule.
+  # `unreachable_node` folds into :disconnected_nodes (disconnected from
+  # Entry) so detached chains — which the old SQL surfaced as dead ends —
+  # keep dashboard coverage without a UI change.
+  @issue_type_rules [
+    no_entry: ["missing_entry"],
+    disconnected_nodes: ["isolated_node", "unreachable_node"],
+    dead_end_nodes: ["no_outgoing_connection"]
+  ]
+
   @doc """
-  Detects issues in flows for a project.
-  Returns `[%{flow_id, flow_name, issue_type, count}]`.
+  Detects issues in flows for a project through the canonical structural
+  analysis. Returns `[%{flow_id, flow_name, issue_type, count}]`.
 
   Issue types:
   - `:no_entry` — flow has no entry node
-  - `:disconnected_nodes` — flow has nodes with zero connections
-  - `:dead_end_nodes` — flow has connected nodes without outgoing connections
+  - `:disconnected_nodes` — flow has isolated or Entry-unreachable nodes
+  - `:dead_end_nodes` — flow has reachable nodes without outgoing connections
   """
   def detect_flow_issues(project_id) do
-    no_entry = detect_no_entry_issues(project_id)
-    disconnected = detect_disconnected_issues(project_id)
-    dead_end = detect_dead_end_issues(project_id)
+    analyses = StructuralAnalysis.analyze_project(project_id)
+    dismissals_by_flow = FindingDismissals.list_active_by_project(project_id)
 
-    no_entry ++ disconnected ++ dead_end
+    # Project-shared dismissals suppress dashboard counts exactly like the
+    # editor badge — the two adapters cannot disagree about the same rule.
+    # The dashboard ETS cache (30s TTL) may delay a dismissal that long.
+    active_by_flow =
+      Map.new(analyses, fn analysis ->
+        dismissals = Map.get(dismissals_by_flow, analysis.flow_id, [])
+        {active, _dismissed} = FindingDismissals.split_findings(analysis.findings, dismissals)
+        {analysis.flow_id, active}
+      end)
+
+    Enum.flat_map(@issue_type_rules, fn {issue_type, rule_ids} ->
+      analyses
+      |> Enum.map(&issue_row(&1, Map.fetch!(active_by_flow, &1.flow_id), issue_type, rule_ids))
+      |> Enum.reject(&is_nil/1)
+    end)
   end
 
-  # ===========================================================================
-  # Private
-  # ===========================================================================
+  defp issue_row(analysis, active_findings, issue_type, rule_ids) do
+    case Enum.count(active_findings, &(&1.rule_id in rule_ids)) do
+      0 ->
+        nil
 
-  defp detect_no_entry_issues(project_id) do
-    project_id
-    |> Dashboard.flows_without_entry()
-    |> Enum.map(&%{flow_id: &1.flow_id, flow_name: &1.flow_name, issue_type: :no_entry, count: 1})
-  end
-
-  defp detect_disconnected_issues(project_id) do
-    project_id
-    |> Dashboard.flows_with_disconnected_nodes()
-    |> Enum.map(
-      &%{
-        flow_id: &1.flow_id,
-        flow_name: &1.flow_name,
-        issue_type: :disconnected_nodes,
-        count: &1.count
-      }
-    )
-  end
-
-  defp detect_dead_end_issues(project_id) do
-    project_id
-    |> Dashboard.flows_with_dead_end_nodes()
-    |> Enum.map(
-      &%{
-        flow_id: &1.flow_id,
-        flow_name: &1.flow_name,
-        issue_type: :dead_end_nodes,
-        count: &1.count
-      }
-    )
+      count ->
+        %{
+          flow_id: analysis.flow_id,
+          flow_name: analysis.flow_name,
+          issue_type: issue_type,
+          count: count
+        }
+    end
   end
 end
