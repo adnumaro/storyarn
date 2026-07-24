@@ -24,7 +24,12 @@ defmodule Storyarn.Flows.NodeCrud do
   Lists all non-deleted nodes for a flow, ordered by insertion time.
   """
   def list_nodes(flow_id) do
-    Repo.all(from(n in FlowNode, where: n.flow_id == ^flow_id and is_nil(n.deleted_at), order_by: [asc: n.inserted_at]))
+    Repo.all(
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and is_nil(n.deleted_at),
+        order_by: [asc: n.inserted_at, asc: n.id]
+      )
+    )
   end
 
   @doc """
@@ -174,7 +179,7 @@ defmodule Storyarn.Flows.NodeCrud do
           outcome_color: fragment("coalesce(?->>'outcome_color', '#22c55e')", n.data),
           exit_mode: fragment("coalesce(?->>'exit_mode', 'terminal')", n.data)
         },
-        order_by: [asc: n.inserted_at]
+        order_by: [asc: n.inserted_at, asc: n.id]
       )
     )
   end
@@ -282,7 +287,7 @@ defmodule Storyarn.Flows.NodeCrud do
             outcome_color: fragment("coalesce(?->>'outcome_color', '#22c55e')", n.data),
             exit_mode: fragment("coalesce(?->>'exit_mode', 'terminal')", n.data)
           },
-          order_by: [asc: n.inserted_at]
+          order_by: [asc: n.inserted_at, asc: n.id]
         )
         |> Repo.all()
         |> Enum.group_by(& &1.flow_id)

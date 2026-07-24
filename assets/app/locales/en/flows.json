@@ -134,7 +134,9 @@
       "subflow": "Subflow",
       "sequence": "Sequence",
       "dialogue_toolbar_screenplay": "Screenplay editor",
-      "dialogue_toolbar_preview": "Preview"
+      "dialogue_toolbar_preview": "Preview",
+      "entry": "Entry",
+      "annotation": "Annotation"
     },
     "dock": {
       "select": "Select",
@@ -430,7 +432,7 @@
       "note_required_label": "Note (required)",
       "dismiss_confirm": "Dismiss",
       "dismiss_cancel": "Cancel",
-      "dismissed_meta": "{reason} · dismissed by {user}",
+      "dismissed_meta": "{reason} · dismissed by {user} · {time}",
       "restore": "Restore finding",
       "reasons": {
         "intentional_design": "Intentional design",
@@ -473,7 +475,9 @@
         "stale_subflow_reference": "Checks flow existence in this project; it does not inspect the referenced flow's content.",
         "missing_exit_flow_reference": "Checks the stored reference only.",
         "stale_exit_flow_reference": "Checks flow existence in this project; it does not inspect the referenced flow's content."
-      }
+      },
+      "close": "Close analysis panel",
+      "action_failed": "The action could not reach the server. Try again."
     }
   }
 }

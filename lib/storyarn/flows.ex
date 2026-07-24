@@ -1037,6 +1037,10 @@ defmodule Storyarn.Flows do
   @spec analyze_project_structure(integer()) :: [StructuralAnalysis.Analysis.t()]
   defdelegate analyze_project_structure(project_id), to: StructuralAnalysis, as: :analyze_project
 
+  @doc "Runs the canonical structural analysis on an already-loaded flow."
+  @spec analyze_loaded_flow_structure(flow()) :: StructuralAnalysis.Analysis.t()
+  defdelegate analyze_loaded_flow_structure(flow), to: StructuralAnalysis, as: :analyze_loaded
+
   @doc "Rule ids of the frozen structural-analysis catalog."
   @spec structural_rule_ids() :: [String.t()]
   defdelegate structural_rule_ids(), to: StructuralAnalysis.Rules, as: :rule_ids

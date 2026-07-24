@@ -20,7 +20,6 @@ defmodule Storyarn.Flows.FindingDismissal do
   import Ecto.Changeset
 
   alias Storyarn.Accounts.User
-  alias Storyarn.Shared.TimeHelpers
 
   @reason_codes ~w(intentional_design rule_not_applicable missing_context incorrect_detection duplicate_finding other)
   @max_note_length 2000
@@ -89,11 +88,6 @@ defmodule Storyarn.Flows.FindingDismissal do
     |> unique_constraint([:flow_id, :finding_key, :rule_version, :evidence_fingerprint],
       name: :flow_finding_dismissals_active_idx
     )
-  end
-
-  @doc false
-  def restore_changeset(dismissal, restored_by_id) do
-    change(dismissal, restored_at: TimeHelpers.now(), restored_by_id: restored_by_id)
   end
 
   defp validate_note_for_other(changeset) do

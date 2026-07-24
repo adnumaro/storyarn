@@ -377,6 +377,62 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
                end)
     end
 
+    test "retargeting a jump rotates reachability fingerprints", %{
+      project: project,
+      flow: flow
+    } do
+      entry = entry_node(flow)
+      exit_n = exit_node(flow)
+      hub_a = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "camp", "color" => "violet"}})
+      _hub_b = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "base", "color" => "violet"}})
+      jump = node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => "camp"}})
+      island_a = node_fixture(flow, %{type: "dialogue"})
+      island_b = node_fixture(flow, %{type: "dialogue"})
+
+      connection_fixture(flow, entry, jump)
+      connection_fixture(flow, hub_a, exit_n)
+      connection_fixture(flow, island_a, island_b)
+
+      [before_finding] =
+        project
+        |> analyze!(flow)
+        |> rule_findings("unreachable_node")
+        |> Enum.filter(&(&1.target.id == island_a.id))
+
+      # Rewiring the jump changes the virtual-edge topology: every negative
+      # graph claim must get a new evidence fingerprint even when its own
+      # target did not move.
+      force_data!(jump, %{"target_hub_id" => "base"})
+
+      [after_finding] =
+        project
+        |> analyze!(flow)
+        |> rule_findings("unreachable_node")
+        |> Enum.filter(&(&1.target.id == island_a.id))
+
+      assert before_finding.finding_key == after_finding.finding_key
+      assert before_finding.evidence_fingerprint != after_finding.evidence_fingerprint
+    end
+
+    test "blank hub ids never resolve a blank jump target", %{project: project, flow: flow} do
+      entry = entry_node(flow)
+      exit_n = exit_node(flow)
+      hub = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "camp", "color" => "violet"}})
+      jump = node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => "camp"}})
+      connection_fixture(flow, entry, jump)
+      connection_fixture(flow, hub, exit_n)
+
+      # Drift both ends to blank: no phantom virtual edge may connect them.
+      force_data!(hub, %{"hub_id" => "", "color" => "violet"})
+      force_data!(jump, %{"target_hub_id" => ""})
+
+      analysis = analyze!(project, flow)
+
+      assert [_missing] = rule_findings(analysis, "missing_jump_target")
+      unreachable_ids = analysis |> rule_findings("unreachable_node") |> Enum.map(& &1.target.id)
+      assert hub.id in unreachable_ids
+    end
+
     test "evidence change rotates finding_id but keeps finding_key", %{
       project: project,
       flow: flow
@@ -442,6 +498,22 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
         assert dashboard_count == canonical_count,
                "#{issue_type} for flow #{analysis.flow_id}: dashboard=#{dashboard_count} canonical=#{canonical_count}"
       end
+    end
+
+    test "a detached chain keeps dashboard coverage as disconnected nodes", %{
+      project: project,
+      flow: flow
+    } do
+      entry = entry_node(flow)
+      connection_fixture(flow, entry, exit_node(flow))
+      island_a = node_fixture(flow, %{type: "dialogue"})
+      island_b = node_fixture(flow, %{type: "dialogue"})
+      connection_fixture(flow, island_a, island_b)
+
+      issues = Flows.detect_flow_issues(project.id)
+
+      row = Enum.find(issues, &(&1.flow_id == flow.id and &1.issue_type == :disconnected_nodes))
+      assert row.count == 2
     end
 
     test "hub connected only through a jump is not disconnected in the dashboard", %{

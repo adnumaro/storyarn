@@ -25,6 +25,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
 
   @type result :: {:noreply, Socket.t()}
 
+  # Client-supplied ids above the PostgreSQL bigint range would raise on
+  # parameter encoding instead of failing closed (same guard as Hooks.Palette).
+  @max_pg_bigint 9_223_372_036_854_775_807
+
+  defguardp valid_database_id(value) when is_integer(value) and value > 0 and value <= @max_pg_bigint
+
   # ===========================================================================
   # Panel lifecycle
   # ===========================================================================
@@ -54,12 +60,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   @spec handle_dismiss_finding(map(), Socket.t()) :: result()
   def handle_dismiss_finding(params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case find_current_finding(socket, params["finding_id"]) do
-        nil ->
+      cond do
+        # Never record a disposition against evidence the user is no longer
+        # looking at — a stale snapshot must be rerun first, otherwise the
+        # dismissal row would match no future occurrence and become invisible.
+        match?(%{stale: true}, socket.assigns[:analysis_snapshot]) ->
           {:noreply, stale_selection_flash(socket)}
 
-        finding ->
+        finding = find_current_finding(socket, params["finding_id"]) ->
           dismiss_current_finding(socket, finding, params)
+
+        true ->
+          {:noreply, stale_selection_flash(socket)}
       end
     end)
   end
@@ -68,7 +80,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   def handle_restore_finding_dismissal(params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       case params["dismissal_id"] do
-        id when is_integer(id) -> restore_by_id(socket, id)
+        id when valid_database_id(id) -> restore_by_id(socket, id)
         _invalid -> {:noreply, stale_selection_flash(socket)}
       end
     end)
@@ -81,6 +93,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
       {:ok, dismissal} ->
         track(socket, "flow analysis finding restored", %{
           rule_id: dismissal.rule_id,
+          rule_version: dismissal.rule_version,
           reason_code: dismissal.reason_code
         })
 
@@ -101,8 +114,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   as stale and never navigated.
   """
   @spec handle_navigate_evidence(map(), Socket.t()) :: result()
-  def handle_navigate_evidence(%{"type" => "flow_node", "id" => id}, socket) when is_integer(id) do
-    if Enum.any?(socket.assigns.flow.nodes, &(&1.id == id)) do
+  def handle_navigate_evidence(%{"type" => "flow_node", "id" => id}, socket) when valid_database_id(id) do
+    flow = socket.assigns.flow
+
+    if graph_loaded?(flow) and Enum.any?(flow.nodes, &(&1.id == id)) do
       track(socket, "flow analysis evidence navigated", %{evidence_type: "flow_node"})
       {:noreply, Phoenix.LiveView.push_event(socket, "navigate_to_node", %{node_db_id: id})}
     else
@@ -110,15 +125,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
     end
   end
 
-  def handle_navigate_evidence(%{"type" => "flow_connection", "id" => id}, socket) when is_integer(id) do
+  def handle_navigate_evidence(%{"type" => "flow_connection", "id" => id}, socket) when valid_database_id(id) do
     flow = socket.assigns.flow
-    active_node_ids = MapSet.new(flow.nodes, & &1.id)
 
-    connection =
-      Enum.find(flow.connections, fn conn ->
-        conn.id == id and MapSet.member?(active_node_ids, conn.source_node_id) and
-          MapSet.member?(active_node_ids, conn.target_node_id)
-      end)
+    connection = if graph_loaded?(flow), do: find_live_connection(flow, id)
 
     case connection do
       nil ->
@@ -139,6 +149,21 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
 
   def handle_navigate_evidence(_params, socket) do
     {:noreply, missing_evidence_flash(socket)}
+  end
+
+  # The fully-preloaded flow only arrives after the async load; a navigate
+  # event racing that window must fail closed, not crash on NotLoaded.
+  defp graph_loaded?(flow) do
+    Ecto.assoc_loaded?(flow.nodes) and Ecto.assoc_loaded?(flow.connections)
+  end
+
+  defp find_live_connection(flow, connection_id) do
+    active_node_ids = MapSet.new(flow.nodes, & &1.id)
+
+    Enum.find(flow.connections, fn conn ->
+      conn.id == connection_id and MapSet.member?(active_node_ids, conn.source_node_id) and
+        MapSet.member?(active_node_ids, conn.target_node_id)
+    end)
   end
 
   # ===========================================================================
@@ -189,6 +214,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   defp compute_snapshot(socket, source) do
     flow = socket.assigns.flow
     started_at = System.monotonic_time()
+    was_stale = match?(%{stale: true}, socket.assigns[:analysis_snapshot])
 
     case Flows.analyze_flow_structure(flow.project_id, flow.id) do
       {:ok, analysis} ->
@@ -197,6 +223,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
 
         track(socket, "flow analysis run", %{
           source: source,
+          stale: was_stale,
           finding_count: length(active),
           dismissed_count: length(dismissed),
           error_count: Enum.count(active, &(&1.severity == :error)),

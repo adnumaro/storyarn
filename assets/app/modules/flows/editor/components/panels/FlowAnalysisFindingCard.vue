@@ -10,9 +10,7 @@ import {
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
-import { Label } from "@components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
-import { Textarea } from "@components/ui/textarea";
+import FlowAnalysisDismissForm from "./FlowAnalysisDismissForm.vue";
 import type { AnalysisFinding } from "./flowAnalysisTypes";
 
 const {
@@ -21,12 +19,14 @@ const {
   reasonCodes = [],
   maxNoteLength = 2000,
   dismissed = false,
+  actionError = null,
 } = defineProps<{
   finding: AnalysisFinding;
   canEdit?: boolean;
   reasonCodes?: string[];
   maxNoteLength?: number;
   dismissed?: boolean;
+  actionError?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -39,8 +39,6 @@ const { t, te } = useI18n();
 
 const expanded = ref(false);
 const dismissFormOpen = ref(false);
-const reasonCode = ref("");
-const note = ref("");
 
 const isError = computed(() => finding.severity === "error");
 
@@ -64,9 +62,12 @@ const detailChips = computed(() => {
   return chips;
 });
 
-const noteRequired = computed(() => reasonCode.value === "other");
-const canSubmitDismiss = computed(
-  () => reasonCode.value !== "" && (!noteRequired.value || note.value.trim() !== ""),
+const dismissedMeta = computed(() =>
+  t("flows.analysis.dismissed_meta", {
+    reason: t(`flows.analysis.reasons.${finding.reasonCode}`),
+    user: finding.dismissedBy ?? "—",
+    time: finding.dismissedAt ? new Date(finding.dismissedAt).toLocaleString() : "—",
+  }),
 );
 
 function evidenceLabel(type: string, id: number): string {
@@ -77,12 +78,11 @@ function navigable(type: string): boolean {
   return type === "flow_node" || type === "flow_connection";
 }
 
-function submitDismiss(): void {
-  if (!canSubmitDismiss.value) return;
-  emit("dismiss", finding.findingId, reasonCode.value, note.value.trim());
-  dismissFormOpen.value = false;
-  reasonCode.value = "";
-  note.value = "";
+// The form stays open on submit: on success this finding moves to the
+// dismissed list and the card unmounts; on a failed push the panel shows
+// the action error and the typed reason/note survive for a retry.
+function onDismissSubmit(reasonCode: string, note: string): void {
+  emit("dismiss", finding.findingId, reasonCode, note);
 }
 </script>
 
@@ -92,6 +92,7 @@ function submitDismiss(): void {
       type="button"
       class="flex w-full items-center gap-2 px-2.5 py-2 text-left text-sm hover:bg-muted/50"
       :data-testid="dismissed ? 'analysis-dismissed-finding' : 'analysis-finding'"
+      :aria-expanded="expanded"
       @click="expanded = !expanded"
     >
       <component
@@ -152,14 +153,7 @@ function submitDismiss(): void {
       </div>
 
       <div v-if="dismissed" class="space-y-2">
-        <p class="text-xs text-muted-foreground">
-          {{
-            t("flows.analysis.dismissed_meta", {
-              reason: t(`flows.analysis.reasons.${finding.reasonCode}`),
-              user: finding.dismissedBy ?? "—",
-            })
-          }}
-        </p>
+        <p class="text-xs text-muted-foreground">{{ dismissedMeta }}</p>
         <p v-if="finding.note" class="rounded bg-muted px-2 py-1 text-xs">{{ finding.note }}</p>
         <Button
           v-if="canEdit && finding.dismissalId != null"
@@ -186,46 +180,14 @@ function submitDismiss(): void {
           {{ t("flows.analysis.dismiss") }}
         </Button>
 
-        <div v-else class="space-y-2" data-testid="analysis-dismiss-form">
-          <p class="text-xs font-medium">{{ t("flows.analysis.dismiss_reason_label") }}</p>
-          <RadioGroup v-model="reasonCode" class="gap-1">
-            <Label
-              v-for="code in reasonCodes"
-              :key="code"
-              class="flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-xs font-normal"
-              :class="
-                reasonCode === code
-                  ? 'border-primary bg-primary/10'
-                  : 'border-border hover:bg-muted'
-              "
-            >
-              <RadioGroupItem :value="code" class="size-3.5" />
-              {{ t(`flows.analysis.reasons.${code}`) }}
-            </Label>
-          </RadioGroup>
-          <Label class="block text-xs font-medium">
-            {{
-              noteRequired
-                ? t("flows.analysis.note_required_label")
-                : t("flows.analysis.note_label")
-            }}
-            <Textarea v-model="note" :rows="2" :maxlength="maxNoteLength" class="mt-1 text-xs" />
-          </Label>
-          <div class="flex gap-2">
-            <Button
-              size="sm"
-              class="text-xs"
-              :disabled="!canSubmitDismiss"
-              data-testid="analysis-dismiss-confirm"
-              @click="submitDismiss"
-            >
-              {{ t("flows.analysis.dismiss_confirm") }}
-            </Button>
-            <Button variant="outline" size="sm" class="text-xs" @click="dismissFormOpen = false">
-              {{ t("flows.analysis.dismiss_cancel") }}
-            </Button>
-          </div>
-        </div>
+        <FlowAnalysisDismissForm
+          v-else
+          :reason-codes="reasonCodes"
+          :max-note-length="maxNoteLength"
+          :error="actionError"
+          @submit="onDismissSubmit"
+          @cancel="dismissFormOpen = false"
+        />
       </div>
     </div>
   </li>

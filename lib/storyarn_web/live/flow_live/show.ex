@@ -1368,7 +1368,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
   def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
   def handle_info({:open_flow, _flow_id}, socket), do: {:noreply, socket}
-  def handle_info({:tree_changed, :flows}, socket), do: {:noreply, socket}
+  # Cross-flow mutations (another flow deleted/restored) can change this
+  # flow's stale-reference findings, so an open analysis snapshot goes stale.
+  def handle_info({:tree_changed, :flows}, socket) do
+    {:noreply, AnalysisHandlers.mark_snapshot_stale(socket)}
+  end
 
   def handle_info({:entities_deleted, :flow, ids}, socket) do
     if socket.assigns.flow.id in ids do
@@ -1377,7 +1381,7 @@ defmodule StoryarnWeb.FlowLive.Show do
          to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows"
        )}
     else
-      {:noreply, socket}
+      {:noreply, AnalysisHandlers.mark_snapshot_stale(socket)}
     end
   end
 

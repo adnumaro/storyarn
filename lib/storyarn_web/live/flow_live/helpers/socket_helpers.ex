@@ -58,14 +58,20 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
       end)
 
     # The canonical structural rules live in the analysis panel; the header
-    # popover keeps only editorial completeness findings, plus a compact
-    # structural summary that opens the panel.
+    # popover keeps only editorial completeness findings. The compact
+    # structural summary comes from the SAME canonical engine as the panel
+    # (active findings only, dismissals subtracted) so the badge and the
+    # panel can never disagree about the same rule.
     structural_codes = Flows.structural_rule_ids()
 
-    {structural, editorial} =
+    editorial =
       flow_data
       |> HealthChecker.check()
-      |> Enum.split_with(&(to_string(&1.code) in structural_codes))
+      |> Enum.reject(&(to_string(&1.code) in structural_codes))
+
+    analysis = Flows.analyze_loaded_flow_structure(flow)
+    dismissals = Flows.list_active_finding_dismissals(flow)
+    {active, _dismissed} = Flows.split_findings(analysis.findings, dismissals)
 
     socket
     |> assign(:flow_word_count, word_count)
@@ -73,8 +79,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     |> assign(:flow_warning_nodes, health_payloads(editorial, :warning))
     |> assign(:flow_info_nodes, health_payloads(editorial, :info))
     |> assign(:flow_structural_summary, %{
-      errorCount: Enum.count(structural, &(&1.severity == :error)),
-      warningCount: Enum.count(structural, &(&1.severity == :warning))
+      errorCount: Enum.count(active, &(&1.severity == :error)),
+      warningCount: Enum.count(active, &(&1.severity == :warning))
     })
     |> AnalysisHandlers.mark_snapshot_stale()
   end

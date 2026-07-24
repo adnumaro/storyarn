@@ -142,16 +142,27 @@ defmodule Storyarn.Flows.StructuralAnalysis.Graph do
     end)
   end
 
-  # {jump node id, hub node id} pairs for jumps whose target hub exists.
-  defp resolved_jump_edges(nodes) do
+  @doc """
+  `{jump node id, hub node id}` pairs for jumps whose target hub exists.
+
+  Blank hub identifiers never form an edge (a jump with an empty target must
+  not resolve to a hub with an empty id — both are their own findings), and
+  duplicate hub identifiers resolve to the lowest hub node id so the result
+  is independent of load order.
+  """
+  @spec resolved_jump_edges([node_map()]) :: [{integer(), integer()}]
+  def resolved_jump_edges(nodes) do
     hubs_by_identifier =
       nodes
-      |> Enum.filter(&(&1.type == "hub"))
-      |> Map.new(&{&1.data["hub_id"], &1.id})
+      |> Enum.filter(&(&1.type == "hub" and &1.data["hub_id"] not in [nil, ""]))
+      |> Enum.sort_by(& &1.id)
+      |> Enum.reduce(%{}, fn hub, acc -> Map.put_new(acc, hub.data["hub_id"], hub.id) end)
 
     for jump <- nodes,
         jump.type == "jump",
-        hub_node_id = Map.get(hubs_by_identifier, jump.data["target_hub_id"]),
+        target = jump.data["target_hub_id"],
+        target not in [nil, ""],
+        hub_node_id = Map.get(hubs_by_identifier, target),
         not is_nil(hub_node_id),
         do: {jump.id, hub_node_id}
   end

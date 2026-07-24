@@ -63,6 +63,15 @@ defmodule Storyarn.Flows.StructuralAnalysis do
     end
   end
 
+  @doc """
+  Analyzes a flow whose nodes/connections associations are already loaded
+  (editor path — no node/connection re-query).
+  """
+  @spec analyze_loaded(Storyarn.Flows.Flow.t()) :: Analysis.t()
+  def analyze_loaded(flow) do
+    flow |> Topology.from_loaded() |> analyze()
+  end
+
   @doc "Loads and analyzes every active flow of a project (dashboard path)."
   @spec analyze_project(pos_integer()) :: [Analysis.t()]
   def analyze_project(project_id) do
@@ -344,12 +353,25 @@ defmodule Storyarn.Flows.StructuralAnalysis do
 
   # Canonical digest of the topology relevant to negative graph claims:
   # active nodes with their types and the stored connection tuples.
+  # Everything that shapes graph semantics belongs in the digest: stored
+  # edges, resolved jump→hub virtual edges, and each node's canonical output
+  # pin set (pin validity and required-pin claims derive from it). Rewiring a
+  # jump or removing a dialogue response must rotate reachability fingerprints.
   defp graph_digest(%Topology{} = topology) do
     CanonicalJSON.hash!(%{
       "nodes" => topology.nodes |> Enum.map(&[&1.id, &1.type]) |> Enum.sort(),
       "edges" =>
         topology.connections
         |> Enum.map(&[&1.source_node_id, &1.source_pin, &1.target_node_id, &1.target_pin])
+        |> Enum.sort(),
+      "virtual_edges" =>
+        topology.nodes
+        |> Graph.resolved_jump_edges()
+        |> Enum.map(fn {jump_id, hub_node_id} -> [jump_id, hub_node_id] end)
+        |> Enum.sort(),
+      "output_pins" =>
+        topology.nodes
+        |> Enum.map(&[&1.id, NodeConnectionRules.output_pins(&1.type, &1.data)])
         |> Enum.sort()
     })
   end

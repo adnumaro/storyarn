@@ -134,7 +134,9 @@
       "subflow": "Subflujo",
       "sequence": "Secuencia",
       "dialogue_toolbar_screenplay": "Editor de guión",
-      "dialogue_toolbar_preview": "Vista previa"
+      "dialogue_toolbar_preview": "Vista previa",
+      "entry": "Entry",
+      "annotation": "Anotación"
     },
     "dock": {
       "select": "Seleccionar",
@@ -430,7 +432,7 @@
       "note_required_label": "Nota (obligatoria)",
       "dismiss_confirm": "Descartar",
       "dismiss_cancel": "Cancelar",
-      "dismissed_meta": "{reason} · descartado por {user}",
+      "dismissed_meta": "{reason} · descartado por {user} · {time}",
       "restore": "Restaurar hallazgo",
       "reasons": {
         "intentional_design": "Diseño intencionado",
@@ -473,7 +475,9 @@
         "stale_subflow_reference": "Comprueba que el flow exista en este proyecto; no inspecciona su contenido.",
         "missing_exit_flow_reference": "Solo comprueba la referencia almacenada.",
         "stale_exit_flow_reference": "Comprueba que el flow exista en este proyecto; no inspecciona su contenido."
-      }
+      },
+      "close": "Cerrar panel de análisis",
+      "action_failed": "La acción no llegó al servidor. Inténtalo de nuevo."
     }
   }
 }

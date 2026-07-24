@@ -48,10 +48,15 @@ defmodule Storyarn.Flows.FindingDismissals do
         {:ok, dismissal}
 
       {:error, %Ecto.Changeset{errors: errors} = error_changeset} ->
-        if Keyword.has_key?(errors, :flow_id) and active_exists?(flow, finding) do
-          {:ok, fetch_active!(flow, finding)}
+        # Unique-violation on the active partial index lands on :flow_id (the
+        # composite's first field). A single fetch settles it: a concurrent
+        # restore racing between the violation and this read simply yields
+        # the original error instead of raising (no exists?/fetch! TOCTOU).
+        with true <- Keyword.has_key?(errors, :flow_id),
+             %FindingDismissal{} = existing <- fetch_active(flow, finding) do
+          {:ok, existing}
         else
-          {:error, error_changeset}
+          _no_active_row -> {:error, error_changeset}
         end
     end
   end
@@ -129,18 +134,8 @@ defmodule Storyarn.Flows.FindingDismissals do
     end
   end
 
-  defp active_exists?(flow, finding) do
-    Repo.exists?(
-      from(d in FindingDismissal,
-        where:
-          d.flow_id == ^flow.id and d.finding_key == ^finding.finding_key and d.rule_version == ^finding.rule_version and
-            d.evidence_fingerprint == ^finding.evidence_fingerprint and is_nil(d.restored_at)
-      )
-    )
-  end
-
-  defp fetch_active!(flow, finding) do
-    Repo.one!(
+  defp fetch_active(flow, finding) do
+    Repo.one(
       from(d in FindingDismissal,
         where:
           d.flow_id == ^flow.id and d.finding_key == ^finding.finding_key and d.rule_version == ^finding.rule_version and

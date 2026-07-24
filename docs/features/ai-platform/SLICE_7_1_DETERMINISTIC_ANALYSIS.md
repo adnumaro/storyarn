@@ -41,6 +41,9 @@ detector:
 
 - editor, dashboard, palette, and future AI explanation consume the same rule
   registry and finding contract;
+- the dashboard keeps its three legacy issue buckets with no UI change:
+  `missing_entry` → no-entry, `isolated_node` and `unreachable_node` →
+  disconnected (disconnected from Entry), `no_outgoing_connection` → dead ends;
 - aggregate queries may optimize discovery, but must validate findings through
   the canonical rule semantics before presenting them;
 - every rule declares its inputs, graph/cycle semantics, category, severity,
@@ -79,13 +82,17 @@ Every finding exposes at least:
 | `evidence_fingerprint`     | Hash of the canonical rule inputs needed to reproduce this occurrence                |
 | `limitations`              | Localized explanation of what the rule does not prove                                |
 
-Evidence descriptors use the Slice-6 server loaders and supported project-owned
-types (`flow`, `flow_node`, `flow_connection`, and other explicitly added
-types). The client may select a current `finding_id`; it cannot supply finding
-content, evidence content, rule metadata, or project ids.
+Evidence descriptors use the project-owned types supported by the Slice-6
+context boundary (`flow`, `flow_node`, `flow_connection`, and other explicitly
+added types); Slice 7.2 loads their content through the Slice-6 server loaders
+when findings enter an AI context. The client may select a current
+`finding_id`; it cannot supply finding content, evidence content, rule
+metadata, or project ids.
 
 Negative graph claims include the relevant canonical topology state in the
-fingerprint. They do not require sending the whole graph to a future model.
+fingerprint (active nodes and types, stored connections, resolved jump→hub
+virtual edges, and per-node output pin sets). They do not require sending the
+whole graph to a future model.
 
 ## Initial rule semantics
 

@@ -53,9 +53,12 @@ defmodule Storyarn.Flows.FlowStats do
   # Legacy dashboard buckets ← canonical rules. The three issue types keep
   # their public contract while the counts come from the canonical engine, so
   # dashboards cannot disagree with the editor about the same rule.
+  # `unreachable_node` folds into :disconnected_nodes (disconnected from
+  # Entry) so detached chains — which the old SQL surfaced as dead ends —
+  # keep dashboard coverage without a UI change.
   @issue_type_rules [
     no_entry: ["missing_entry"],
-    disconnected_nodes: ["isolated_node"],
+    disconnected_nodes: ["isolated_node", "unreachable_node"],
     dead_end_nodes: ["no_outgoing_connection"]
   ]
 
@@ -65,7 +68,7 @@ defmodule Storyarn.Flows.FlowStats do
 
   Issue types:
   - `:no_entry` — flow has no entry node
-  - `:disconnected_nodes` — flow has isolated nodes (no valid graph edges)
+  - `:disconnected_nodes` — flow has isolated or Entry-unreachable nodes
   - `:dead_end_nodes` — flow has reachable nodes without outgoing connections
   """
   def detect_flow_issues(project_id) do

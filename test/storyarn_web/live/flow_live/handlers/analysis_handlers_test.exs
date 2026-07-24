@@ -185,6 +185,33 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlersTest do
     end
   end
 
+  describe "surface limitation" do
+    setup :register_and_log_in_user
+
+    test "the compact editor renders neither the analysis panel nor its palette surface", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Compact Flow"})
+      seed_dead_end(flow)
+
+      {:ok, view, _html} = live(conn, flow_url(project, flow) <> "?layout=compact")
+      load_flow(view)
+
+      # V1 supports the normal flow editor only: compact mode mounts just the
+      # canvas — no FlowPanels (analysis panel) and no FlowHeader (which
+      # registers the flows palette surface with the analyze command).
+      assert_raise RuntimeError, fn ->
+        LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      end
+
+      assert_raise RuntimeError, fn ->
+        LiveVue.Test.get_vue(view, name: "live/flow/show/FlowHeader")
+      end
+    end
+  end
+
   describe "dismiss and restore" do
     setup :register_and_log_in_user
 
@@ -219,6 +246,63 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlersTest do
       props = analysis_props(view)
       assert Enum.any?(props["active"], &(&1["findingId"] == finding["findingId"]))
       assert props["dismissed"] == []
+    end
+
+    test "dismissing from a stale snapshot is rejected", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      render_click(view, "open_analysis_panel", %{})
+      [finding | _] = analysis_props(view)["active"]
+
+      render_hook(view, "add_node", %{
+        "type" => "dialogue",
+        "position_x" => 700.0,
+        "position_y" => 700.0
+      })
+
+      assert analysis_props(view)["stale"] == true
+
+      html =
+        render_click(view, "dismiss_finding", %{
+          "finding_id" => finding["findingId"],
+          "reason_code" => "intentional_design",
+          "note" => ""
+        })
+
+      assert html =~ "no longer current"
+      assert Flows.list_active_finding_dismissals(Flows.get_flow!(project.id, flow.id)) == []
+    end
+
+    test "restore with an out-of-range id fails closed", %{conn: conn, project: project, flow: flow} do
+      view = mount_editor(conn, project, flow)
+      render_click(view, "open_analysis_panel", %{})
+
+      html =
+        render_click(view, "restore_finding_dismissal", %{
+          "dismissal_id" => 99_999_999_999_999_999_999_999_999
+        })
+
+      assert html =~ "no longer current"
+      assert Process.alive?(view.pid)
+    end
+
+    test "navigating evidence before the flow graph loads fails closed", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      stuck = seed_dead_end(flow)
+      {:ok, view, _html} = live(conn, flow_url(project, flow))
+
+      # No render_async: the fully-preloaded flow has not arrived yet.
+      html =
+        render_click(view, "analysis_navigate_evidence", %{"type" => "flow_node", "id" => stuck.id})
+
+      assert html =~ "no longer available"
+      assert Process.alive?(view.pid)
     end
 
     test "unknown finding id shows a stale-selection flash, no disposition", %{

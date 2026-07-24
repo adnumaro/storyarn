@@ -56,24 +56,35 @@ const shownFindings = computed(() =>
   tab.value === "active" ? filteredActive.value : filteredDismissed.value,
 );
 
+// `pushEvent` never throws; a dropped push invokes the onError callback
+// and the panel surfaces it inline instead of failing silently.
+const actionError = ref<string | null>(null);
+
+function pushAction(event: string, payload: Record<string, unknown>): void {
+  actionError.value = null;
+  live.pushEvent(event, payload, undefined, () => {
+    actionError.value = t("flows.analysis.action_failed");
+  });
+}
+
 function close(): void {
-  live.pushEvent("close_analysis_panel", {});
+  pushAction("close_analysis_panel", {});
 }
 
 function rerun(): void {
-  live.pushEvent("rerun_analysis", {});
+  pushAction("rerun_analysis", {});
 }
 
 function onDismiss(findingId: string, reasonCode: string, note: string): void {
-  live.pushEvent("dismiss_finding", { finding_id: findingId, reason_code: reasonCode, note });
+  pushAction("dismiss_finding", { finding_id: findingId, reason_code: reasonCode, note });
 }
 
 function onRestore(dismissalId: number): void {
-  live.pushEvent("restore_finding_dismissal", { dismissal_id: dismissalId });
+  pushAction("restore_finding_dismissal", { dismissal_id: dismissalId });
 }
 
 function onNavigate(type: string, id: number): void {
-  live.pushEvent("analysis_navigate_evidence", { type, id });
+  pushAction("analysis_navigate_evidence", { type, id });
 }
 </script>
 
@@ -99,6 +110,7 @@ function onNavigate(type: string, id: number): void {
           <button
             type="button"
             class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            :aria-label="t('flows.analysis.close')"
             @click="close"
           >
             <X class="size-4" />
@@ -123,10 +135,12 @@ function onNavigate(type: string, id: number): void {
       <div class="flex rounded-md border border-border p-0.5 text-xs" role="tablist">
         <button
           v-for="option in ['active', 'dismissed'] as Tab[]"
+          :id="`analysis-tab-button-${option}`"
           :key="option"
           type="button"
           role="tab"
           :aria-selected="tab === option"
+          aria-controls="analysis-findings-list"
           class="flex-1 rounded px-2 py-1"
           :class="
             tab === option ? 'bg-muted font-medium' : 'text-muted-foreground hover:text-foreground'
@@ -140,11 +154,12 @@ function onNavigate(type: string, id: number): void {
       </div>
 
       <div class="flex flex-wrap items-center gap-2 text-xs">
-        <div class="flex rounded-md border border-border p-0.5">
+        <div class="flex rounded-md border border-border p-0.5" role="group">
           <button
             v-for="option in categoryOptions"
             :key="option"
             type="button"
+            :aria-pressed="categoryFilter === option"
             class="rounded px-1.5 py-0.5"
             :class="
               categoryFilter === option
@@ -156,11 +171,12 @@ function onNavigate(type: string, id: number): void {
             {{ t(`flows.analysis.filters.${option}`) }}
           </button>
         </div>
-        <div class="flex rounded-md border border-border p-0.5">
+        <div class="flex rounded-md border border-border p-0.5" role="group">
           <button
             v-for="option in severityOptions"
             :key="option"
             type="button"
+            :aria-pressed="severityFilter === option"
             class="rounded px-1.5 py-0.5"
             :class="
               severityFilter === option
@@ -178,7 +194,21 @@ function onNavigate(type: string, id: number): void {
         {{ t("flows.analysis.computed_at", { time: new Date(computedAt).toLocaleTimeString() }) }}
       </p>
 
-      <div class="min-h-0 flex-1 overflow-y-auto">
+      <p
+        v-if="actionError"
+        role="alert"
+        class="text-xs text-destructive"
+        data-testid="analysis-action-error"
+      >
+        {{ actionError }}
+      </p>
+
+      <div
+        id="analysis-findings-list"
+        role="tabpanel"
+        :aria-labelledby="`analysis-tab-button-${tab}`"
+        class="min-h-0 flex-1 overflow-y-auto"
+      >
         <p
           v-if="shownFindings.length === 0"
           class="px-1 py-6 text-center text-xs text-muted-foreground"
@@ -199,6 +229,7 @@ function onNavigate(type: string, id: number): void {
             :reason-codes="reasonCodes"
             :max-note-length="maxNoteLength"
             :dismissed="tab === 'dismissed'"
+            :action-error="actionError"
             @dismiss="onDismiss"
             @restore="onRestore"
             @navigate="onNavigate"

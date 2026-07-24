@@ -3,13 +3,17 @@ export interface AnalysisEvidence {
   id: number;
 }
 
+export type AnalysisCategory = "structure" | "reference_integrity";
+export type AnalysisSeverity = "error" | "warning";
+export type AnalysisTargetType = "flow" | "node";
+
 export interface AnalysisFinding {
   findingId: string;
   ruleId: string;
   ruleVersion: number;
-  category: string;
-  severity: string;
-  targetType: string;
+  category: AnalysisCategory;
+  severity: AnalysisSeverity;
+  targetType: AnalysisTargetType;
   targetId: number;
   nodeType?: string | null;
   pins: string[];

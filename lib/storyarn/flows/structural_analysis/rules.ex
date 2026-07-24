@@ -19,8 +19,16 @@ defmodule Storyarn.Flows.StructuralAnalysis.Rules do
           category: category(),
           severity: severity(),
           target: :flow | :node,
-          evidence: [atom()]
+          evidence: [atom()],
+          inputs: [atom()],
+          limitations_key: String.t()
         }
+
+  # Shared canonical-input sets. `:graph` = active nodes/types, stored
+  # connections, resolved jump virtual edges, and per-node output pin sets
+  # (the graph_digest contract in StructuralAnalysis).
+  @graph_inputs [:graph]
+  @node_data_inputs [:node_data]
 
   @rules %{
     "missing_entry" => %{
@@ -28,105 +36,135 @@ defmodule Storyarn.Flows.StructuralAnalysis.Rules do
       category: :structure,
       severity: :error,
       target: :flow,
-      evidence: [:flow]
+      evidence: [:flow],
+      inputs: @graph_inputs,
+      limitations_key: "flows.analysis.limitations.missing_entry"
     },
     "multiple_entries" => %{
       version: 1,
       category: :structure,
       severity: :error,
       target: :flow,
-      evidence: [:flow, :entry_nodes]
+      evidence: [:flow, :entry_nodes],
+      inputs: @graph_inputs,
+      limitations_key: "flows.analysis.limitations.multiple_entries"
     },
     "unreachable_node" => %{
       version: 1,
       category: :structure,
       severity: :warning,
       target: :node,
-      evidence: [:node]
+      evidence: [:node],
+      inputs: @graph_inputs,
+      limitations_key: "flows.analysis.limitations.unreachable_node"
     },
     "isolated_node" => %{
       version: 1,
       category: :structure,
       severity: :warning,
       target: :node,
-      evidence: [:node]
+      evidence: [:node],
+      inputs: @graph_inputs,
+      limitations_key: "flows.analysis.limitations.isolated_node"
     },
     "no_outgoing_connection" => %{
       version: 1,
       category: :structure,
       severity: :warning,
       target: :node,
-      evidence: [:node]
+      evidence: [:node],
+      inputs: @graph_inputs,
+      limitations_key: "flows.analysis.limitations.no_outgoing_connection"
     },
     "missing_output_connections" => %{
       version: 1,
       category: :structure,
       severity: :warning,
       target: :node,
-      evidence: [:node]
+      evidence: [:node],
+      inputs: @graph_inputs,
+      limitations_key: "flows.analysis.limitations.missing_output_connections"
     },
     "invalid_output_pins" => %{
       version: 1,
       category: :structure,
       severity: :error,
       target: :node,
-      evidence: [:node, :connections]
+      evidence: [:node, :connections],
+      inputs: @graph_inputs,
+      limitations_key: "flows.analysis.limitations.invalid_output_pins"
     },
     "invalid_input_pins" => %{
       version: 1,
       category: :structure,
       severity: :error,
       target: :node,
-      evidence: [:node, :connections]
+      evidence: [:node, :connections],
+      inputs: @graph_inputs,
+      limitations_key: "flows.analysis.limitations.invalid_input_pins"
     },
     "orphan_hub" => %{
       version: 1,
       category: :structure,
       severity: :warning,
       target: :node,
-      evidence: [:node]
+      evidence: [:node],
+      inputs: @graph_inputs,
+      limitations_key: "flows.analysis.limitations.orphan_hub"
     },
     "missing_jump_target" => %{
       version: 1,
       category: :reference_integrity,
       severity: :error,
       target: :node,
-      evidence: [:node]
+      evidence: [:node],
+      inputs: @node_data_inputs,
+      limitations_key: "flows.analysis.limitations.missing_jump_target"
     },
     "stale_jump_target" => %{
       version: 1,
       category: :reference_integrity,
       severity: :error,
       target: :node,
-      evidence: [:node]
+      evidence: [:node],
+      inputs: @node_data_inputs,
+      limitations_key: "flows.analysis.limitations.stale_jump_target"
     },
     "missing_subflow_reference" => %{
       version: 1,
       category: :reference_integrity,
       severity: :error,
       target: :node,
-      evidence: [:node]
+      evidence: [:node],
+      inputs: @node_data_inputs,
+      limitations_key: "flows.analysis.limitations.missing_subflow_reference"
     },
     "stale_subflow_reference" => %{
       version: 1,
       category: :reference_integrity,
       severity: :error,
       target: :node,
-      evidence: [:node]
+      evidence: [:node],
+      inputs: @node_data_inputs,
+      limitations_key: "flows.analysis.limitations.stale_subflow_reference"
     },
     "missing_exit_flow_reference" => %{
       version: 1,
       category: :reference_integrity,
       severity: :error,
       target: :node,
-      evidence: [:node]
+      evidence: [:node],
+      inputs: @node_data_inputs,
+      limitations_key: "flows.analysis.limitations.missing_exit_flow_reference"
     },
     "stale_exit_flow_reference" => %{
       version: 1,
       category: :reference_integrity,
       severity: :error,
       target: :node,
-      evidence: [:node]
+      evidence: [:node],
+      inputs: @node_data_inputs,
+      limitations_key: "flows.analysis.limitations.stale_exit_flow_reference"
     }
   }
 

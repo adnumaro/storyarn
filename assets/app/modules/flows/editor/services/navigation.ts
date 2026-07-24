@@ -182,7 +182,14 @@ export function navigation(
       const candidates = graph
         .outgoingConnections(sourceNode.id)
         .filter((conn) => conn.target === targetNode.id);
+      // Prefer the exact pin pair; parallel connections between the same
+      // node pair can differ by either endpoint's pin.
       const connection =
+        candidates.find(
+          (conn) =>
+            (!ref.sourcePin || conn.sourceOutput === ref.sourcePin) &&
+            (!ref.targetPin || conn.targetInput === ref.targetPin),
+        ) ??
         candidates.find((conn) => !ref.sourcePin || conn.sourceOutput === ref.sourcePin) ??
         candidates[0];
 
