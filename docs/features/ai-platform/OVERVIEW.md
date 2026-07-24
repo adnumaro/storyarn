@@ -46,8 +46,9 @@ adapters.
 | 5.1 | Central routing + workspace assignments            | `SLICE_5_1_ROUTING_ASSIGNMENTS.md`    | 2–4                                      | **merged** (PR #44)                  |
 | 5.2 | Personal AI preferences (“My AI Team”)             | `SLICE_5_2_MY_AI_TEAM.md`             | 5.1                                      | **merged** (PR #45)                  |
 | 6   | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`           | 2                                        | **merged** (PR #46)                  |
-| 7.1 | Deterministic structural analysis                  | `SLICE_7_1_DETERMINISTIC_ANALYSIS.md` | 1, 6                                     | pending                              |
-| 7.2 | Optional AI explanation                            | `SLICE_7_2_AI_EXPLANATION.md`         | 2–6, 7.1                                 | pending                              |
+| 7.1 | Deterministic structural analysis                  | `SLICE_7_1_DETERMINISTIC_ANALYSIS.md` | 1, 6                                     | **merged** (PR #48)                  |
+| 7.2a| Managed AI explanation                             | `SLICE_7_2A_MANAGED_EXPLANATION.md`   | 2, 3, 5.1, 6, 7.1                        | pending                              |
+| 7.2b| Personal BYOK lane + public AI docs                | `SLICE_7_2B_PERSONAL_LANE_AND_DOCS.md`| 4, 5.2, 7.2a                             | pending                              |
 | 8   | Dialogue rewrite/variants + proposal UX            | `SLICE_8_DIALOGUE_TOOLS.md`           | 2–6                                      | pending                              |
 | 9   | Multilingual scratch voice-over                    | `SLICE_9_SCRATCH_VOICEOVER.md`        | 0–5.2 + Localization/Assets              | pending                              |
 | 10  | Text → Storyarn structure                          | `SLICE_10_TEXT_TO_STRUCTURE.md`       | 2–6, 8                                   | pending                              |
@@ -66,7 +67,8 @@ adapters.
   executable routes.
 - Slice 6 creates bounded context without hidden model calls.
 - Slice 7.1 turns the deterministic moat into a standalone, free product capability with a stable finding/evidence lifecycle.
-- Slice 7.2 becomes the first end-user AI task and proves the full context → route → consent → operation → private-result path without mixing generated narrative with deterministic facts.
+- Slice 7.2a becomes the first end-user AI task and proves the full context → route → operation → private-result path on one lane, without mixing generated narrative with deterministic facts.
+- Slice 7.2b adds the second payer as an explicit choice, proving consent and personal accounting on an already-verified surface, and publishes the public AI documentation once payer choice is real.
 - Slice 8 proves proposal/apply and becomes the first tightly bounded writing transformation.
 - Slice 9 ships a narrow, valuable VO preview using domain structures that already exist.
 - Expensive/high-risk/broad tools follow only after the proposal, media, and execution contracts are proven.
@@ -76,7 +78,7 @@ adapters.
 
 1. One branch/PR per slice, cut from current `main`; merge hard dependencies before starting their consumer.
 2. Re-verify all named modules/APIs against `main` at implementation start; these documents are contracts, not proof that code still has the same shape.
-3. User-facing AI surfaces use the single product flag `:ai_integrations`, disabled by default and actor-targetable. Deterministic non-AI detectors may ship independently. Public documentation is not an entitlement boundary: invite-only AI beta relies on inline help, and Slice 7.2 publishes the AI guides for everyone when the first user-facing AI tool ships.
+3. User-facing AI surfaces use the single product flag `:ai_integrations`, disabled by default and actor-targetable. Deterministic non-AI detectors may ship independently. Public documentation is not an entitlement boundary: invite-only AI beta relies on inline help, and Slice 7.2b publishes the AI guides for everyone once the first user-facing AI tool offers both payers.
 4. Task/provider operational switches and circuit breakers are allowed and required; they are not additional product entitlements.
 5. Every user-facing slice ships en/es copy, user docs, browser verification, ExUnit/Vitest coverage, and the repository quality gate.
 6. Reuse facades, authorization, mutation, storage, collaboration, versioning, and component registries. AI never creates a second write path.
