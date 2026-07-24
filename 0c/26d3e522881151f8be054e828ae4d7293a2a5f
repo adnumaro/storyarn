@@ -1,0 +1,71 @@
+lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex
+  s_2797f64fb2d317::t_5b53f3c25792ee 281
+  s_2797f64fb2d317::t_e135795acaac51 208-256
+  s_2797f64fb2d317::t_6d3ae8d3b0e9cc 396
+  s_2797f64fb2d317::t_a6a08c0606ed1d 62
+  s_2797f64fb2d317::t_b53fa1848668ba 193-207
+  s_2797f64fb2d317::t_33a4adbb3fe42d 394-395,397-399
+  s_2797f64fb2d317::t_a382c76b3bd6d7 22
+  s_2797f64fb2d317::t_d274aeeafb9901 310-312,315,319,328-336
+  s_2797f64fb2d317::t_a48c454021f52e 98,338,391-393,400-401
+  s_2797f64fb2d317::t_3fa39101133f3f 80-85,87,89,96-97
+  s_2797f64fb2d317::t_d9bd7beafb734c 418-431,433
+  s_2797f64fb2d317::t_a2644bedaa01a4 371
+  s_2797f64fb2d317::t_3f6c4635c92c3c 111
+  s_2797f64fb2d317::t_5e507e90409210 99,337
+lib/storyarn/flows/finding_dismissals.ex
+  s_2797f64fb2d317::t_fa56e2df60fa5a 92-101
+lib/storyarn/flows/structural_analysis.ex
+  s_2797f64fb2d317::t_6dab5eec6dfc89 75-83
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  s_2797f64fb2d317::t_5833f641df7714 16
+  s_2797f64fb2d317::t_e67f3bc8feca52 121-127,129-131,134
+lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+  s_2797f64fb2d317::t_cbaf7c33f970c4 80-82,91
+  s_2797f64fb2d317::t_d385ed0f6662bb 18
+  s_2797f64fb2d317::t_497de401ce5128 32-33,39-44
+  s_2797f64fb2d317::t_a6a23cc4a8e24e 45
+lib/storyarn_web/live/flow_live/show.ex
+  s_2797f64fb2d317::t_8a501baf659663 187
+  s_2797f64fb2d317::t_e87fba99d79f80 1378-1388
+lib/storyarn/flows.ex
+  s_2797f64fb2d317::t_8b6c6bd6f1c2e3 1045-1050
+  s_2797f64fb2d317::t_cb9d844c8f2f2b 1070-1074
+  s_2797f64fb2d317::t_2821727b121960 743,746
+  s_2797f64fb2d317::t_e6204e4c591ae5 874
+lib/storyarn/collaboration.ex
+  s_2797f64fb2d317::t_74b3453abd3c45 256-278
+  s_2797f64fb2d317::t_bb32edb722a750 255
+test/storyarn_web/live/flow_live/handlers/analysis_handlers_test.exs
+  s_2797f64fb2d317::t_9816db769e84ea 188-210,213-221,224,226-228,230-255,257,259-283
+  s_2797f64fb2d317::t_526b8e3302fd13 211-212,222-223,225,229,256,258
+test/storyarn/flows/structural_analysis_test.exs
+  s_2797f64fb2d317::t_0cdd5828e1a908 539-578
+lib/storyarn/flows/flow_stats.ex
+  s_2797f64fb2d317::t_2edb949c0c2cca 6
+  s_2797f64fb2d317::t_05849e6871ed6d 77-87,91,96-97
+lib/storyarn/flows/structural_analysis/topology.ex
+  s_2797f64fb2d317::t_039ab20388b2e5 42,47-59
+  s_2797f64fb2d317::t_a7b76da442d643 60-61,120,127,134-143,149
+  s_2797f64fb2d317::t_d4e65360997f1d 62
+lib/storyarn/flows/node_crud.ex
+  s_2797f64fb2d317::t_056534a72bfda8 368-413,452
+  s_2797f64fb2d317::t_a0e11b0fea0c92 442-443,447-451
+  s_2797f64fb2d317::t_a84bb8e9060cb8 453
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "0c26d3e522881151f8be054e828ae4d7293a2a5f",
+  "prompts": {},
+  "sessions": {
+    "s_2797f64fb2d317": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b96a2b7-cbec-4b6b-8cc5-a83cf4dde660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
