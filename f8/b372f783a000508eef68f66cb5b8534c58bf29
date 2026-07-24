@@ -1,0 +1,39 @@
+lib/storyarn_web/live/hooks/palette.ex
+  s_2797f64fb2d317::t_2a6f5f123bf471 47
+lib/storyarn/analytics.ex
+  s_2797f64fb2d317::t_18f485f4310487 18-21
+lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex
+  s_2797f64fb2d317::t_fc0e672de009d6 188
+  s_2797f64fb2d317::t_466bd5a06d86b8 190,197-205,221-232,234
+  s_2797f64fb2d317::t_a01f44769a111d 37,47
+  s_2797f64fb2d317::t_3bd0c5151be949 75-84
+  s_2797f64fb2d317::t_acb70b0747ee27 244-253
+  s_2797f64fb2d317::t_27e338e99fe74d 105
+  s_2797f64fb2d317::t_382b91660e2299 21
+  s_2797f64fb2d317::t_1f8325b97245ee 127-128
+  s_2797f64fb2d317::t_20d338db8f7325 233
+  s_2797f64fb2d317::t_2ecc38033f3756 235
+assets/app/live/flow/show/FlowHeader.vue
+  s_2797f64fb2d317::t_cc137be65ba6d0 95-108
+  s_2797f64fb2d317::t_1667081c70c103 16,21
+assets/app/locales/en/flows.json
+  s_2797f64fb2d317::t_71ec58ef169d02 398
+assets/app/locales/es/flows.json
+  s_2797f64fb2d317::t_71ec58ef169d02 398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f8b372f783a000508eef68f66cb5b8534c58bf29",
+  "prompts": {},
+  "sessions": {
+    "s_2797f64fb2d317": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b96a2b7-cbec-4b6b-8cc5-a83cf4dde660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
