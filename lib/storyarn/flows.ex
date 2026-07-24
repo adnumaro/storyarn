@@ -21,6 +21,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.Evaluator.EngineHelpers
   alias Storyarn.Flows.Evaluator.Helpers
   alias Storyarn.Flows.Evaluator.InstructionExec
+  alias Storyarn.Flows.FindingDismissals
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowCrud
@@ -1034,6 +1035,24 @@ defmodule Storyarn.Flows do
   @doc "Runs the canonical structural analysis for every active flow of a project."
   @spec analyze_project_structure(integer()) :: [StructuralAnalysis.Analysis.t()]
   defdelegate analyze_project_structure(project_id), to: StructuralAnalysis, as: :analyze_project
+
+  # =============================================================================
+  # Structural Finding Dismissals
+  # =============================================================================
+
+  @doc "Dismisses a server-computed structural finding for a flow. Idempotent."
+  defdelegate dismiss_finding(flow, finding, attrs), to: FindingDismissals, as: :dismiss
+
+  @doc "Restores an active finding dismissal of a flow. Idempotent."
+  defdelegate restore_finding_dismissal(flow, dismissal_id, restored_by_id),
+    to: FindingDismissals,
+    as: :restore
+
+  @doc "Active finding dismissals of a flow."
+  defdelegate list_active_finding_dismissals(flow), to: FindingDismissals, as: :list_active
+
+  @doc "Splits findings into {active, dismissed} against active dismissals."
+  defdelegate split_findings(findings, active_dismissals), to: FindingDismissals
 
   @doc "Counts non-deleted flow nodes across all flows in a project."
   defdelegate count_nodes_for_project(project_id), to: FlowCrud
