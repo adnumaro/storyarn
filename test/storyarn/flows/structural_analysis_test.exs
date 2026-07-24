@@ -536,6 +536,46 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
     end
   end
 
+  describe "from_serialized parity" do
+    test "serializer-fed analysis equals the DB path finding for finding", %{
+      project: project,
+      flow: flow
+    } do
+      entry = entry_node(flow)
+      exit_n = exit_node(flow)
+      target_flow = flow_fixture(project)
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Choose", "responses" => [%{"id" => "r1", "text" => "Yes"}]}
+        })
+
+      subflow =
+        node_fixture(flow, %{type: "subflow", data: %{"referenced_flow_id" => target_flow.id}})
+
+      hub = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "camp", "color" => "violet"}})
+      jump = node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => "camp"}})
+      node_fixture(flow, %{type: "annotation", data: %{"text" => "note"}})
+
+      connection_fixture(flow, entry, jump)
+      connection_fixture(flow, hub, dialogue)
+      connection_fixture(flow, dialogue, exit_n, %{source_pin: "r1"})
+      _ = subflow
+
+      loaded = Flows.get_flow!(project.id, flow.id)
+      flow_data = Flows.serialize_for_canvas(loaded)
+
+      from_serialized = Flows.analyze_serialized_flow_structure(flow_data, project.id)
+      {:ok, from_db} = Flows.analyze_flow_structure(project.id, flow.id)
+
+      assert from_serialized.graph_digest == from_db.graph_digest
+
+      assert Enum.map(from_serialized.findings, &{&1.finding_id, &1.finding_key}) ==
+               Enum.map(from_db.findings, &{&1.finding_id, &1.finding_key})
+    end
+  end
+
   describe "parity with the editor serializer" do
     test "engine flags equal serializer flags on a drifted graph", %{
       project: project,

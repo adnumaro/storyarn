@@ -15,6 +15,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   import Phoenix.Component, only: [assign: 3]
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.HealthChecker
   alias Storyarn.Localization.SourceContract
@@ -28,12 +29,19 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   Refreshes `:flow`, `:flow_data`, `:flow_hubs`, `:flow_word_count`,
   `:flow_error_nodes`, `:flow_warning_nodes`, and `:flow_info_nodes`.
   """
-  @spec reload_flow_data(Socket.t()) :: Socket.t()
-  def reload_flow_data(socket) do
+  @spec reload_flow_data(Socket.t(), keyword()) :: Socket.t()
+  def reload_flow_data(socket, opts \\ []) do
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
 
     flow_data = Flows.serialize_for_canvas(flow)
     flow_hubs = Flows.list_hubs(flow.id)
+
+    # Local graph mutations announce themselves project-wide so flows whose
+    # subflow/exit pins derive from this one can stale their open analysis
+    # snapshots. Remote-change receivers pass notify_project: false.
+    if Keyword.get(opts, :notify_project, true) do
+      Collaboration.broadcast_flow_graph_changed_from(self(), flow.project_id, flow.id)
+    end
 
     socket
     |> assign(:flow, flow)
@@ -69,7 +77,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
       |> HealthChecker.check()
       |> Enum.reject(&(to_string(&1.code) in structural_codes))
 
-    analysis = Flows.analyze_loaded_flow_structure(flow)
+    # Zero extra node queries: the analysis reuses the serializer's already
+    # resolved flow_data (from_serialized==DB parity is test-guarded).
+    analysis = Flows.analyze_serialized_flow_structure(flow_data, flow.project_id)
     dismissals = Flows.list_active_finding_dismissals(flow)
     {active, _dismissed} = Flows.split_findings(analysis.findings, dismissals)
 
@@ -78,10 +88,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     |> assign(:flow_error_nodes, health_payloads(editorial, :error))
     |> assign(:flow_warning_nodes, health_payloads(editorial, :warning))
     |> assign(:flow_info_nodes, health_payloads(editorial, :info))
-    |> assign(:flow_structural_summary, %{
-      errorCount: Enum.count(active, &(&1.severity == :error)),
-      warningCount: Enum.count(active, &(&1.severity == :warning))
-    })
+    |> assign(:flow_structural_summary, AnalysisHandlers.structural_summary(active))
     |> AnalysisHandlers.mark_snapshot_stale()
   end
 

@@ -3,6 +3,7 @@ defmodule Storyarn.Flows.FlowStats do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Flows.FindingDismissals
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.StructuralAnalysis
@@ -73,16 +74,27 @@ defmodule Storyarn.Flows.FlowStats do
   """
   def detect_flow_issues(project_id) do
     analyses = StructuralAnalysis.analyze_project(project_id)
+    dismissals_by_flow = FindingDismissals.list_active_by_project(project_id)
+
+    # Project-shared dismissals suppress dashboard counts exactly like the
+    # editor badge — the two adapters cannot disagree about the same rule.
+    # The dashboard ETS cache (30s TTL) may delay a dismissal that long.
+    active_by_flow =
+      Map.new(analyses, fn analysis ->
+        dismissals = Map.get(dismissals_by_flow, analysis.flow_id, [])
+        {active, _dismissed} = FindingDismissals.split_findings(analysis.findings, dismissals)
+        {analysis.flow_id, active}
+      end)
 
     Enum.flat_map(@issue_type_rules, fn {issue_type, rule_ids} ->
       analyses
-      |> Enum.map(&issue_row(&1, issue_type, rule_ids))
+      |> Enum.map(&issue_row(&1, Map.fetch!(active_by_flow, &1.flow_id), issue_type, rule_ids))
       |> Enum.reject(&is_nil/1)
     end)
   end
 
-  defp issue_row(analysis, issue_type, rule_ids) do
-    case Enum.count(analysis.findings, &(&1.rule_id in rule_ids)) do
+  defp issue_row(analysis, active_findings, issue_type, rule_ids) do
+    case Enum.count(active_findings, &(&1.rule_id in rule_ids)) do
       0 ->
         nil
 

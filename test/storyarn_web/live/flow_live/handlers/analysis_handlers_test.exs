@@ -185,6 +185,102 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlersTest do
     end
   end
 
+  describe "badge and disposition sync" do
+    setup :register_and_log_in_user
+
+    setup %{user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Sync Flow"})
+      seed_dead_end(flow)
+      %{project: project, flow: flow}
+    end
+
+    defp badge(view) do
+      header = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowHeader")
+      header.props["flow-health"]["structural"]
+    end
+
+    test "badge subtracts dismissals immediately and on restore", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      render_click(view, "open_analysis_panel", %{})
+
+      # Two warnings: the seeded dead end + the auto-created exit (isolated).
+      assert badge(view)["warningCount"] == 2
+
+      [finding | _] = analysis_props(view)["active"]
+
+      render_click(view, "dismiss_finding", %{
+        "finding_id" => finding["findingId"],
+        "reason_code" => "intentional_design",
+        "note" => ""
+      })
+
+      # The engine still emits both findings; only the disposition changed.
+      assert badge(view)["warningCount"] == 1
+      {:ok, analysis} = Flows.analyze_flow_structure(project.id, flow.id)
+      assert length(analysis.findings) == 2
+
+      [dismissed] = analysis_props(view)["dismissed"]
+      render_click(view, "restore_finding_dismissal", %{"dismissal_id" => dismissed["dismissalId"]})
+      assert badge(view)["warningCount"] == 2
+    end
+
+    test "a remote disposition change re-splits the open snapshot without staling it", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      render_click(view, "open_analysis_panel", %{})
+      [finding_props_map | _] = analysis_props(view)["active"]
+
+      # Another editor dismisses the same finding directly through the context.
+      loaded_flow = Flows.get_flow!(project.id, flow.id)
+      {:ok, analysis} = Flows.analyze_flow_structure(project.id, flow.id)
+      finding = Enum.find(analysis.findings, &(&1.finding_id == finding_props_map["findingId"]))
+
+      {:ok, _} =
+        Flows.dismiss_finding(loaded_flow, finding, %{
+          reason_code: "intentional_design",
+          dismissed_by_id: user_fixture().id
+        })
+
+      send(view.pid, {:remote_change, :finding_disposition_changed, %{}})
+
+      props = analysis_props(view)
+      assert props["stale"] == false
+      assert length(props["active"]) == 1
+      assert [_] = props["dismissed"]
+      assert badge(view)["warningCount"] == 1
+    end
+
+    test "cross-flow graph changes stale the snapshot only for referencing flows", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      referenced = flow_fixture(project)
+
+      _subflow =
+        node_fixture(flow, %{type: "subflow", data: %{"referenced_flow_id" => referenced.id}})
+
+      view = mount_editor(conn, project, flow)
+      render_click(view, "open_analysis_panel", %{})
+      assert analysis_props(view)["stale"] == false
+
+      unrelated = flow_fixture(project)
+      send(view.pid, {:flow_graph_changed, unrelated.id})
+      assert analysis_props(view)["stale"] == false
+
+      send(view.pid, {:flow_graph_changed, referenced.id})
+      assert analysis_props(view)["stale"] == true
+    end
+  end
+
   describe "surface limitation" do
     setup :register_and_log_in_user
 

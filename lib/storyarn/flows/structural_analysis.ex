@@ -72,6 +72,15 @@ defmodule Storyarn.Flows.StructuralAnalysis do
     flow |> Topology.from_loaded() |> analyze()
   end
 
+  @doc """
+  Analyzes `Flows.serialize_for_canvas/2` output — zero extra queries, node
+  data is already resolved. Identical results to the DB path (parity test).
+  """
+  @spec analyze_serialized(map(), pos_integer()) :: Analysis.t()
+  def analyze_serialized(flow_data, project_id) do
+    flow_data |> Topology.from_serialized(project_id) |> analyze()
+  end
+
   @doc "Loads and analyzes every active flow of a project (dashboard path)."
   @spec analyze_project(pos_integer()) :: [Analysis.t()]
   def analyze_project(project_id) do

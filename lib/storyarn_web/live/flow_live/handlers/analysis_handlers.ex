@@ -19,6 +19,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Analytics
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Shared.TimeHelpers
   alias StoryarnWeb.Helpers.Authorize
@@ -58,7 +59,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   # ===========================================================================
 
   @spec handle_dismiss_finding(map(), Socket.t()) :: result()
-  def handle_dismiss_finding(params, socket) do
+  def handle_dismiss_finding(%{"finding_id" => _} = params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       cond do
         # Never record a disposition against evidence the user is no longer
@@ -76,14 +77,24 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
     end)
   end
 
+  # Hostile non-map payloads (a JSON array is valid over the wire) must fail
+  # closed instead of crashing on params["..."].
+  def handle_dismiss_finding(_params, socket) do
+    {:noreply, stale_selection_flash(socket)}
+  end
+
   @spec handle_restore_finding_dismissal(map(), Socket.t()) :: result()
-  def handle_restore_finding_dismissal(params, socket) do
+  def handle_restore_finding_dismissal(%{"dismissal_id" => dismissal_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case params["dismissal_id"] do
+      case dismissal_id do
         id when valid_database_id(id) -> restore_by_id(socket, id)
         _invalid -> {:noreply, stale_selection_flash(socket)}
       end
     end)
+  end
+
+  def handle_restore_finding_dismissal(_params, socket) do
+    {:noreply, stale_selection_flash(socket)}
   end
 
   defp restore_by_id(socket, dismissal_id) do
@@ -97,6 +108,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
           reason_code: dismissal.reason_code
         })
 
+        broadcast_disposition_change(socket)
         {:noreply, compute_snapshot(socket, "after_restore")}
 
       {:error, :not_found} ->
@@ -179,6 +191,70 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   end
 
   @doc """
+  Whether the current flow has a subflow/exit node referencing `flow_id`
+  (in-memory check — used to scope cross-flow stale marking).
+  """
+  @spec references_flow?(Socket.t(), integer()) :: boolean()
+  def references_flow?(socket, flow_id) do
+    flow = socket.assigns[:flow]
+
+    flow != nil and Ecto.assoc_loaded?(flow.nodes) and
+      Enum.any?(flow.nodes, fn node ->
+        node.type in ~w(subflow exit) and
+          Storyarn.Shared.MapUtils.parse_int((node.data || %{})["referenced_flow_id"]) == flow_id
+      end)
+  end
+
+  @doc "Badge counts for the given ACTIVE findings (dismissals already subtracted)."
+  @spec structural_summary([struct()]) :: map()
+  def structural_summary(active_findings) do
+    %{
+      errorCount: Enum.count(active_findings, &(&1.severity == :error)),
+      warningCount: Enum.count(active_findings, &(&1.severity == :warning))
+    }
+  end
+
+  @doc """
+  Re-splits the current snapshot (and badge) against fresh dismissals after a
+  local or remote disposition change. The analysis itself did not change, so
+  this never recomputes findings and never marks the snapshot stale.
+  """
+  @spec refresh_dispositions(Socket.t()) :: Socket.t()
+  def refresh_dispositions(socket) do
+    flow = socket.assigns.flow
+    dismissals = Flows.list_active_finding_dismissals(flow)
+
+    case socket.assigns[:analysis_snapshot] do
+      %{findings: findings} = snapshot ->
+        {active, dismissed} = Flows.split_findings(findings, dismissals)
+
+        socket
+        |> assign(:analysis_snapshot, %{
+          snapshot
+          | active: active,
+            dismissed: dismissed,
+            orphaned: orphaned_by_key(dismissals, dismissed)
+        })
+        |> assign(:flow_structural_summary, structural_summary(active))
+
+      _no_snapshot ->
+        refresh_badge_only(socket, flow, dismissals)
+    end
+  end
+
+  defp refresh_badge_only(socket, flow, dismissals) do
+    case socket.assigns[:flow_data] do
+      nil ->
+        socket
+
+      flow_data ->
+        analysis = Flows.analyze_serialized_flow_structure(flow_data, flow.project_id)
+        {active, _dismissed} = Flows.split_findings(analysis.findings, dismissals)
+        assign(socket, :flow_structural_summary, structural_summary(active))
+    end
+  end
+
+  @doc """
   Marks the current snapshot stale after a relevant flow mutation. Never
   recomputes — the user chooses when to rerun.
   """
@@ -202,7 +278,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
       computedAt: snapshot && DateTime.to_iso8601(snapshot.computed_at),
       reasonCodes: Flows.finding_dismissal_reason_codes(),
       maxNoteLength: Flows.finding_dismissal_max_note_length(),
-      active: (snapshot && Enum.map(snapshot.active, &finding_props/1)) || [],
+      active: (snapshot && Enum.map(snapshot.active, &finding_props(&1, snapshot.orphaned))) || [],
       dismissed: (snapshot && Enum.map(snapshot.dismissed, &dismissed_finding_props/1)) || []
     }
   end
@@ -231,19 +307,33 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
           duration_bucket: duration_bucket(started_at)
         })
 
-        assign(socket, :analysis_snapshot, %{
-          analysis: analysis,
+        socket
+        |> assign(:analysis_snapshot, %{
+          findings: analysis.findings,
           active: active,
           dismissed: dismissed,
+          orphaned: orphaned_by_key(dismissals, dismissed),
           stale: false,
           computed_at: TimeHelpers.now()
         })
+        |> assign(:flow_structural_summary, structural_summary(active))
 
       {:error, :not_found} ->
         socket
         |> assign(:analysis_snapshot, nil)
         |> put_flash(:error, dgettext("flows", "Flow is no longer available"))
     end
+  end
+
+  # Active dismissal rows whose exact occurrence no longer matches any
+  # current finding, keyed by finding_key — surfaced as a "previously
+  # dismissed" hint when the same finding_key reactivates with new evidence.
+  defp orphaned_by_key(dismissals, dismissed_pairs) do
+    matched_ids = MapSet.new(dismissed_pairs, fn {_finding, dismissal} -> dismissal.id end)
+
+    dismissals
+    |> Enum.reject(&MapSet.member?(matched_ids, &1.id))
+    |> Map.new(&{&1.finding_key, &1})
   end
 
   defp track(socket, event, properties) do
@@ -278,6 +368,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
           reason_code: dismissal.reason_code
         })
 
+        broadcast_disposition_change(socket)
         {:noreply, compute_snapshot(socket, "after_dismiss")}
 
       {:error, changeset} ->
@@ -297,6 +388,17 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
     end
   end
 
+  # Dispositions are project-shared: other connected editors re-split their
+  # snapshot and badge (never a stale mark — the analysis did not change).
+  defp broadcast_disposition_change(socket) do
+    Collaboration.broadcast_change_from(
+      self(),
+      {:flow, socket.assigns.flow.id},
+      :finding_disposition_changed,
+      %{}
+    )
+  end
+
   defp stale_selection_flash(socket) do
     put_flash(
       socket,
@@ -313,8 +415,22 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
     )
   end
 
-  defp finding_props(finding) do
+  defp finding_props(finding, orphaned \\ %{}) do
+    previous =
+      case Map.get(orphaned, finding.finding_key) do
+        nil ->
+          nil
+
+        dismissal ->
+          %{
+            reasonCode: dismissal.reason_code,
+            dismissedBy: dismissal.dismissed_by && dismissal.dismissed_by.email,
+            dismissedAt: dismissal.inserted_at && DateTime.to_iso8601(dismissal.inserted_at)
+          }
+      end
+
     %{
+      previousDismissal: previous,
       findingId: finding.finding_id,
       ruleId: finding.rule_id,
       ruleVersion: finding.rule_version,

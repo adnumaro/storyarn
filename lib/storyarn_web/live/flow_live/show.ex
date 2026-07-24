@@ -184,6 +184,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
     if connected?(socket) do
       Collaboration.subscribe_restoration(project.id)
+      Collaboration.subscribe_flow_graph(project.id)
 
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
@@ -1372,6 +1373,17 @@ defmodule StoryarnWeb.FlowLive.Show do
   # flow's stale-reference findings, so an open analysis snapshot goes stale.
   def handle_info({:tree_changed, :flows}, socket) do
     {:noreply, AnalysisHandlers.mark_snapshot_stale(socket)}
+  end
+
+  # Another flow's graph mutated: this flow's subflow/exit pins (and thus
+  # findings and fingerprints) may derive from it — stale the open snapshot
+  # only when the current flow actually references the mutated one.
+  def handle_info({:flow_graph_changed, mutated_flow_id}, socket) do
+    if AnalysisHandlers.references_flow?(socket, mutated_flow_id) do
+      {:noreply, AnalysisHandlers.mark_snapshot_stale(socket)}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info({:entities_deleted, :flow, ids}, socket) do

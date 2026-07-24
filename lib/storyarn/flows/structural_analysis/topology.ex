@@ -34,14 +34,29 @@ defmodule Storyarn.Flows.StructuralAnalysis.Topology do
   @spec from_loaded(Flow.t()) :: t()
   def from_loaded(%Flow{} = flow) do
     nodes = Enum.map(flow.nodes, &%{id: &1.id, type: &1.type, data: &1.data || %{}})
-    subflow_cache = NodeCrud.batch_resolve_subflow_data(nodes, flow.project_id)
 
     build(
       flow.project_id,
       flow.id,
       flow.name,
-      resolve_nodes(nodes, subflow_cache, flow.project_id),
+      resolve_nodes(nodes, flow.project_id),
       Enum.map(flow.connections, &normalize_connection/1)
+    )
+  end
+
+  @doc """
+  Builds the topology from `Flows.serialize_for_canvas/2` output — node data
+  is ALREADY resolved there (same `NodeCrud` resolution), so this path issues
+  zero queries. Guarded by the from_serialized==DB parity test.
+  """
+  @spec from_serialized(map(), pos_integer()) :: t()
+  def from_serialized(%{id: flow_id, name: flow_name, nodes: nodes, connections: connections}, project_id) do
+    build(
+      project_id,
+      flow_id,
+      flow_name,
+      Enum.map(nodes, &%{id: &1.id, type: &1.type, data: &1.data || %{}}),
+      Enum.map(connections, &normalize_connection/1)
     )
   end
 
@@ -102,26 +117,36 @@ defmodule Storyarn.Flows.StructuralAnalysis.Topology do
 
     all_nodes = nodes_by_flow |> Map.values() |> List.flatten()
     subflow_cache = NodeCrud.batch_resolve_subflow_data(all_nodes, project_id)
+    exit_cache = NodeCrud.batch_resolve_exit_data(all_nodes, project_id)
 
     for {flow_id, flow_name} <- flows do
       nodes =
         nodes_by_flow
         |> Map.get(flow_id, [])
         |> Enum.map(&%{id: &1.id, type: &1.type, data: &1.data})
-        |> resolve_nodes(subflow_cache, project_id)
+        |> resolve_nodes(project_id, subflow_cache, exit_cache)
 
       connections = Map.get(connections_by_flow, flow_id, [])
       build(project_id, flow_id, flow_name, nodes, connections)
     end
   end
 
-  defp resolve_nodes(nodes, subflow_cache, project_id) do
+  defp resolve_nodes(nodes, project_id) do
+    resolve_nodes(
+      nodes,
+      project_id,
+      NodeCrud.batch_resolve_subflow_data(nodes, project_id),
+      NodeCrud.batch_resolve_exit_data(nodes, project_id)
+    )
+  end
+
+  defp resolve_nodes(nodes, project_id, subflow_cache, exit_cache) do
     Enum.map(nodes, fn
       %{type: "subflow"} = node ->
         %{node | data: NodeCrud.resolve_subflow_data(node.data, subflow_cache)}
 
       %{type: "exit"} = node ->
-        %{node | data: NodeCrud.resolve_exit_data(node.data, project_id)}
+        %{node | data: NodeCrud.resolve_exit_data(node.data, project_id, exit_cache)}
 
       node ->
         node

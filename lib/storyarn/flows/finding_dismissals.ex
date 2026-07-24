@@ -89,6 +89,16 @@ defmodule Storyarn.Flows.FindingDismissals do
     end
   end
 
+  @doc "Active dismissals of every flow in a project, grouped by flow id (dashboard path)."
+  @spec list_active_by_project(pos_integer()) :: %{integer() => [FindingDismissal.t()]}
+  def list_active_by_project(project_id) do
+    from(d in FindingDismissal,
+      where: d.project_id == ^project_id and is_nil(d.restored_at)
+    )
+    |> Repo.all()
+    |> Enum.group_by(& &1.flow_id)
+  end
+
   @doc "Active dismissals for a flow, keyed for suppression lookups."
   @spec list_active(Flow.t()) :: [FindingDismissal.t()]
   def list_active(%Flow{} = flow) do

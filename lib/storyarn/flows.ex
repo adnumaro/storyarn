@@ -740,9 +740,10 @@ defmodule Storyarn.Flows do
     active_connections = active_graph_connections(nodes, flow.connections)
 
     subflow_cache = NodeCrud.batch_resolve_subflow_data(flow.nodes, flow.project_id)
+    exit_cache = NodeCrud.batch_resolve_exit_data(flow.nodes, flow.project_id)
     referencing_flows = NodeCrud.list_nodes_referencing_flow(flow.id, flow.project_id)
 
-    cache = %{subflow: subflow_cache, project_id: flow.project_id}
+    cache = %{subflow: subflow_cache, exit: exit_cache, project_id: flow.project_id}
 
     resolved_node_data =
       Map.new(nodes, fn node ->
@@ -870,7 +871,7 @@ defmodule Storyarn.Flows do
   end
 
   def resolve_node_colors("exit", data, cache) do
-    NodeCrud.resolve_exit_data(data, Map.get(cache, :project_id))
+    NodeCrud.resolve_exit_data(data, Map.get(cache, :project_id), Map.get(cache, :exit, %{}))
   end
 
   def resolve_node_colors(_type, data, _cache), do: data
@@ -1041,6 +1042,12 @@ defmodule Storyarn.Flows do
   @spec analyze_loaded_flow_structure(flow()) :: StructuralAnalysis.Analysis.t()
   defdelegate analyze_loaded_flow_structure(flow), to: StructuralAnalysis, as: :analyze_loaded
 
+  @doc "Runs the canonical structural analysis on serialize_for_canvas output (no queries)."
+  @spec analyze_serialized_flow_structure(map(), integer()) :: StructuralAnalysis.Analysis.t()
+  defdelegate analyze_serialized_flow_structure(flow_data, project_id),
+    to: StructuralAnalysis,
+    as: :analyze_serialized
+
   @doc "Rule ids of the frozen structural-analysis catalog."
   @spec structural_rule_ids() :: [String.t()]
   defdelegate structural_rule_ids(), to: StructuralAnalysis.Rules, as: :rule_ids
@@ -1059,6 +1066,11 @@ defmodule Storyarn.Flows do
 
   @doc "Active finding dismissals of a flow."
   defdelegate list_active_finding_dismissals(flow), to: FindingDismissals, as: :list_active
+
+  @doc "Active finding dismissals of a project, grouped by flow id."
+  defdelegate list_active_finding_dismissals_by_project(project_id),
+    to: FindingDismissals,
+    as: :list_active_by_project
 
   @doc "Splits findings into {active, dismissed} against active dismissals."
   defdelegate split_findings(findings, active_dismissals), to: FindingDismissals
