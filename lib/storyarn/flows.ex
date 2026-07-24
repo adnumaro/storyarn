@@ -1048,6 +1048,37 @@ defmodule Storyarn.Flows do
     to: StructuralAnalysis,
     as: :analyze_serialized
 
+  @doc """
+  Loads one CURRENT structural finding by its exact occurrence identity.
+
+  `{:error, :unknown_finding}` when the key is gone, `{:error, :stale_finding}`
+  when its rule version or evidence moved.
+  """
+  @spec fetch_current_structural_finding(integer(), integer(), StructuralAnalysis.Finding.identity()) ::
+          {:ok, StructuralAnalysis.Finding.t()}
+          | {:error, :not_found | :unknown_finding | :stale_finding}
+  defdelegate fetch_current_structural_finding(project_id, flow_id, identity),
+    to: StructuralAnalysis,
+    as: :fetch_current_finding
+
+  @doc "The exact occurrence triple identifying a structural finding."
+  @spec structural_finding_identity(StructuralAnalysis.Finding.t()) :: StructuralAnalysis.Finding.identity()
+  defdelegate structural_finding_identity(finding), to: StructuralAnalysis.Finding, as: :identity
+
+  @doc "Durable single-string encoding of a structural finding identity."
+  @spec encode_structural_finding_identity(StructuralAnalysis.Finding.t() | StructuralAnalysis.Finding.identity()) ::
+          String.t()
+  defdelegate encode_structural_finding_identity(finding), to: StructuralAnalysis.Finding, as: :encode_identity
+
+  @doc "Parses `encode_structural_finding_identity/1`. Fails closed."
+  @spec decode_structural_finding_identity(term()) ::
+          {:ok, StructuralAnalysis.Finding.identity()} | {:error, :invalid_finding_identity}
+  defdelegate decode_structural_finding_identity(encoded), to: StructuralAnalysis.Finding, as: :decode_identity
+
+  @doc "CanonicalJSON-safe map of a finding, for the AI context boundary."
+  @spec structural_finding_context_map(StructuralAnalysis.Finding.t()) :: map()
+  defdelegate structural_finding_context_map(finding), to: StructuralAnalysis.Finding, as: :to_context_map
+
   @doc "Rule ids of the frozen structural-analysis catalog."
   @spec structural_rule_ids() :: [String.t()]
   defdelegate structural_rule_ids(), to: StructuralAnalysis.Rules, as: :rule_ids

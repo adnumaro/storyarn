@@ -81,6 +81,35 @@ defmodule Storyarn.Flows.StructuralAnalysis do
     flow_data |> Topology.from_serialized(project_id) |> analyze()
   end
 
+  @doc """
+  Loads one CURRENT finding of a flow by its exact occurrence identity.
+
+  The single definition of "current" shared by every disposition that binds to
+  a finding (AI explanation, and any future one): a key that no longer exists
+  is `:unknown_finding`, and a key whose rule version or evidence moved is
+  `:stale_finding` — never a silent substitution onto different evidence.
+  """
+  @spec fetch_current_finding(pos_integer(), pos_integer(), Finding.identity()) ::
+          {:ok, Finding.t()} | {:error, :not_found | :unknown_finding | :stale_finding}
+  def fetch_current_finding(project_id, flow_id, %{
+        finding_key: finding_key,
+        rule_version: rule_version,
+        evidence_fingerprint: evidence_fingerprint
+      }) do
+    with {:ok, analysis} <- analyze_flow(project_id, flow_id) do
+      case Enum.find(analysis.findings, &(&1.finding_key == finding_key)) do
+        nil ->
+          {:error, :unknown_finding}
+
+        %Finding{rule_version: ^rule_version, evidence_fingerprint: ^evidence_fingerprint} = finding ->
+          {:ok, finding}
+
+        %Finding{} ->
+          {:error, :stale_finding}
+      end
+    end
+  end
+
   @doc "Loads and analyzes every active flow of a project (dashboard path)."
   @spec analyze_project(pos_integer()) :: [Analysis.t()]
   def analyze_project(project_id) do

@@ -82,7 +82,12 @@ managed_ai_enabled? = config_env() != :test and env.("STORYARN_AI_MANAGED_ENABLE
 
 inference_providers = %{}
 credential_adapters = %{}
-registered_tasks = []
+# The structural-finding explanation registers regardless of provider
+# configuration: a deployment without a managed provider must still offer the
+# command and report an honest blocked state instead of hiding it. The test
+# environment owns its own registry in config/test.exs.
+registered_tasks =
+  if config_env() == :test, do: [], else: [Storyarn.AI.Tasks.FlowFindingExplanation]
 
 {inference_providers, credential_adapters} =
   if config_env() == :test do

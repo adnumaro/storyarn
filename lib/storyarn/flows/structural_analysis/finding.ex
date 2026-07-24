@@ -22,6 +22,8 @@ defmodule Storyarn.Flows.StructuralAnalysis.Finding do
   alias Storyarn.Shared.CanonicalJSON
 
   @id_scheme "sf1"
+  @identity_separator "|"
+  @fingerprint_format ~r/^[0-9a-f]{64}$/
 
   @enforce_keys [:rule_id, :rule_version, :category, :severity, :flow_id, :target]
   defstruct [
@@ -40,6 +42,11 @@ defmodule Storyarn.Flows.StructuralAnalysis.Finding do
 
   @type target :: %{type: :flow | :node, id: integer()}
   @type evidence_item :: %{type: String.t(), id: integer()}
+  @type identity :: %{
+          finding_key: String.t(),
+          rule_version: pos_integer(),
+          evidence_fingerprint: String.t()
+        }
   @type t :: %__MODULE__{}
 
   @doc """
@@ -86,6 +93,52 @@ defmodule Storyarn.Flows.StructuralAnalysis.Finding do
       finding_id: finding_id
     }
   end
+
+  @doc """
+  The exact occurrence triple that identifies one finding.
+
+  A dismissal, an AI explanation, or any other disposition binds to this triple
+  and to nothing else: a changed rule version or changed evidence is a
+  different occurrence, never a silent substitution.
+  """
+  @spec identity(t()) :: identity()
+  def identity(%__MODULE__{} = finding) do
+    %{
+      finding_key: finding.finding_key,
+      rule_version: finding.rule_version,
+      evidence_fingerprint: finding.evidence_fingerprint
+    }
+  end
+
+  @doc """
+  Durable single-string encoding of `identity/1`.
+
+  Used where a store only offers one opaque revision field (the AI operation
+  `subject_revision`). `finding_key` is built from rule id, flow id and target,
+  none of which can contain the separator.
+  """
+  @spec encode_identity(t() | identity()) :: String.t()
+  def encode_identity(%__MODULE__{} = finding), do: finding |> identity() |> encode_identity()
+
+  def encode_identity(%{finding_key: key, rule_version: version, evidence_fingerprint: fingerprint}) do
+    "#{key}#{@identity_separator}#{version}#{@identity_separator}#{fingerprint}"
+  end
+
+  @doc "Parses `encode_identity/1`. Fails closed on anything else."
+  @spec decode_identity(term()) :: {:ok, identity()} | {:error, :invalid_finding_identity}
+  def decode_identity(encoded) when is_binary(encoded) do
+    with [key, version, fingerprint] <- String.split(encoded, @identity_separator),
+         true <- key != "",
+         {version, ""} <- Integer.parse(version),
+         true <- version > 0,
+         true <- fingerprint =~ @fingerprint_format do
+      {:ok, %{finding_key: key, rule_version: version, evidence_fingerprint: fingerprint}}
+    else
+      _invalid -> {:error, :invalid_finding_identity}
+    end
+  end
+
+  def decode_identity(_encoded), do: {:error, :invalid_finding_identity}
 
   @doc """
   CanonicalJSON-safe representation (string keys and values only) — the form
