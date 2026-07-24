@@ -1,7 +1,7 @@
 defmodule Storyarn.AI.Context.Finalizer do
   @moduledoc false
 
-  alias Storyarn.AI.CanonicalJSON
+  alias Storyarn.Shared.CanonicalJSON
   alias Storyarn.AI.Context.Entity
   alias Storyarn.AI.Context.Package
   alias Storyarn.AI.Context.Policy

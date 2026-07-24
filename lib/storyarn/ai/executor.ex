@@ -1,7 +1,7 @@
 defmodule Storyarn.AI.Executor do
   @moduledoc "Runs one operation with zero automatic provider retries."
 
-  alias Storyarn.AI.CanonicalJSON
+  alias Storyarn.Shared.CanonicalJSON
   alias Storyarn.AI.CredentialResolver
   alias Storyarn.AI.InferenceProviders
   alias Storyarn.AI.Operations

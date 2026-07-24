@@ -6,7 +6,7 @@
 
 Turn Storyarn's existing flow-health checks into a free, auditable product
 capability: canonical structural findings with stable identity, typed evidence,
-reversible false-positive dismissal, evidence navigation, and a dedicated
+reversible finding dismissal, evidence navigation, and a dedicated
 analysis panel.
 
 This slice contains no model call. It is not gated by `:ai_integrations`,
@@ -48,6 +48,17 @@ Current authoring-health checks must be categorized. Slice 7.1 exposes
 panel. Editorial completeness warnings may remain in the existing health
 summary but are not silently promoted to structural claims or made eligible for
 Slice 7.2.
+
+The confirmed v1 boundary:
+
+- `structure`: missing/multiple Entry nodes, unreachable nodes, isolated
+  nodes, reachable non-terminal dead ends, required output pins without a valid
+  connection, invalid connection pins, orphan hubs.
+- `reference_integrity`: stale/missing jump, subflow, and exit references.
+- editorial (stays in the existing health summary, outside the panel):
+  dialogue/condition/instruction completeness warnings,
+  `stale_variable_reference`, `variable_type_mismatch`, and info-level
+  empty-content checks.
 
 ## Finding and evidence contract
 
@@ -110,7 +121,9 @@ The panel owns an explicit analysis snapshot:
   rather than silently merging old dispositions with new evidence;
 - a finding is **resolved** when a fresh analysis no longer emits that
   occurrence. Resolve is derived, not a manual mutation;
-- **Dismiss as false positive** is the only persisted manual disposition in v1;
+- **Dismiss finding** is the only persisted manual disposition in v1. The
+  action is deliberately not labeled "false positive": `intentional_design`
+  dismisses a correct detection the author accepts;
 - dismissal is project-shared, requires the relevant flow edit permission,
   records actor/time/reason, and is reversible;
 - dismissal applies only to the exact
@@ -118,8 +131,25 @@ The panel owns an explicit analysis snapshot:
   evidence reactivates the finding;
 - concurrent dismiss/restore requests are idempotent and uniqueness-constrained.
 
-A dismissal reason code is required. An optional bounded note is project data:
-it follows project authorization and never enters analytics, logs, or Slice-7.2
+A dismissal reason code is required. The v1 catalog is fixed (stable internal
+values, localized labels in the UI):
+
+| Code                  | Meaning                                                            |
+| --------------------- | ------------------------------------------------------------------ |
+| `intentional_design`  | The detected structure exists and is deliberate                    |
+| `rule_not_applicable` | Flow type or project conventions make the rule irrelevant here     |
+| `missing_context`     | External or unmodeled context invalidates the conclusion           |
+| `incorrect_detection` | Given the available data, the evidence or conclusion is wrong      |
+| `duplicate_finding`   | Another finding already represents the same problem                |
+| `other`               | Escape hatch for unforeseen cases; requires a note                 |
+
+Deliberately excluded: `fixed` (resolve is derived on rerun),
+`work_in_progress`/`not_now` (a future snooze feature, not a dismissal),
+`low_priority` (prioritization is not dismissal), `wont_fix` (risk acceptance
+deserves its own semantics if ever needed).
+
+An optional bounded note (required only for `other`) is project data: it
+follows project authorization and never enters analytics, logs, or Slice-7.2
 prompts.
 
 ## Permissions and isolation
@@ -188,7 +218,7 @@ content, optional notes, or raw project/entity ids in analytics.
 - Browser coverage exercises an editor and viewer, including the non-AI palette
   command.
 - en/es product copy and user documentation explain deterministic findings,
-  limitations, false-positive dismissal, and the absence of AI cost.
+  limitations, finding dismissal with reason codes, and the absence of AI cost.
 - `pnpm run fmt`, `just quality-lint`, relevant full suites, E2E, and
   `mix precommit` are green.
 

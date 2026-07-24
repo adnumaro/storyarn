@@ -33,6 +33,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.SceneResolver
   alias Storyarn.Flows.SequenceCrud
+  alias Storyarn.Flows.StructuralAnalysis
   alias Storyarn.Flows.TreeOperations
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
@@ -746,21 +747,10 @@ defmodule Storyarn.Flows do
         {node.id, resolve_node_colors(node.type, node.data, cache)}
       end)
 
-    {health_connections, invalid_output_pins, invalid_input_pins} =
-      classify_health_connections(nodes, active_connections, resolved_node_data)
+    graph_nodes =
+      Enum.map(nodes, &%{id: &1.id, type: &1.type, data: Map.fetch!(resolved_node_data, &1.id)})
 
-    connected_output_pins =
-      Enum.reduce(health_connections, %{}, fn connection, acc ->
-        Map.update(
-          acc,
-          connection.source_node_id,
-          MapSet.new([connection.source_pin]),
-          &MapSet.put(&1, connection.source_pin)
-        )
-      end)
-
-    unreachable_ids = compute_unreachable_ids(nodes, health_connections)
-    dead_end_ids = compute_dead_end_ids(nodes, health_connections)
+    graph = StructuralAnalysis.Graph.compute(graph_nodes, active_connections)
 
     %{
       id: flow.id,
@@ -773,11 +763,11 @@ defmodule Storyarn.Flows do
             stale_node_ids: stale_node_ids,
             project_variables: project_variables,
             referencing_flows: referencing_flows,
-            unreachable_ids: unreachable_ids,
-            dead_end_ids: dead_end_ids,
-            connected_output_pins: connected_output_pins,
-            invalid_output_pins: invalid_output_pins,
-            invalid_input_pins: invalid_input_pins
+            unreachable_ids: graph.unreachable_ids,
+            dead_end_ids: graph.dead_end_ids,
+            connected_output_pins: graph.connected_output_pins,
+            invalid_output_pins: graph.invalid_output_pins,
+            invalid_input_pins: graph.invalid_input_pins
           })
         end),
       connections:
@@ -800,59 +790,6 @@ defmodule Storyarn.Flows do
     Enum.filter(connections, fn conn ->
       MapSet.member?(node_ids, conn.source_node_id) and
         MapSet.member?(node_ids, conn.target_node_id)
-    end)
-  end
-
-  defp classify_health_connections(nodes, connections, resolved_node_data) do
-    nodes_by_id = Map.new(nodes, &{&1.id, &1})
-
-    connections
-    |> Enum.reduce({[], %{}, %{}}, fn connection, {valid, invalid_outputs, invalid_inputs} ->
-      source = Map.fetch!(nodes_by_id, connection.source_node_id)
-      target = Map.fetch!(nodes_by_id, connection.target_node_id)
-      source_data = Map.get(resolved_node_data, source.id, source.data)
-
-      valid_output? =
-        NodeConnectionRules.valid_output_pin?(
-          source.type,
-          source_data,
-          connection.source_pin
-        )
-
-      valid_input? = NodeConnectionRules.valid_input_pin?(target.type, connection.target_pin)
-
-      invalid_outputs =
-        maybe_add_invalid_pin(
-          invalid_outputs,
-          source.id,
-          connection.source_pin,
-          !valid_output?
-        )
-
-      invalid_inputs =
-        maybe_add_invalid_pin(
-          invalid_inputs,
-          target.id,
-          connection.target_pin,
-          !valid_input?
-        )
-
-      if valid_output? and valid_input? do
-        {[connection | valid], invalid_outputs, invalid_inputs}
-      else
-        {valid, invalid_outputs, invalid_inputs}
-      end
-    end)
-    |> then(fn {valid, invalid_outputs, invalid_inputs} ->
-      {Enum.reverse(valid), invalid_outputs, invalid_inputs}
-    end)
-  end
-
-  defp maybe_add_invalid_pin(pins, _node_id, _pin, false), do: pins
-
-  defp maybe_add_invalid_pin(pins, node_id, pin, true) do
-    Map.update(pins, node_id, [pin], fn existing ->
-      [pin | existing] |> Enum.uniq() |> Enum.sort()
     end)
   end
 
@@ -1028,65 +965,6 @@ defmodule Storyarn.Flows do
   defp maybe_put_non_empty(data, _key, []), do: data
   defp maybe_put_non_empty(data, key, values), do: Map.put(data, key, values)
 
-  defp compute_unreachable_ids(nodes, connections) do
-    entry_ids = for n <- nodes, n.type == "entry", do: n.id
-
-    if entry_ids == [] do
-      MapSet.new()
-    else
-      physical_adj =
-        Enum.reduce(connections, %{}, fn c, acc ->
-          Map.update(acc, c.source_node_id, [c.target_node_id], &[c.target_node_id | &1])
-        end)
-
-      adj = add_jump_edges(physical_adj, nodes)
-      reachable = bfs(entry_ids, adj, MapSet.new(entry_ids))
-      all_ids = MapSet.new(nodes, & &1.id)
-      MapSet.difference(all_ids, reachable)
-    end
-  end
-
-  defp add_jump_edges(adj, nodes) do
-    hubs_by_identifier =
-      nodes
-      |> Enum.filter(&(&1.type == "hub"))
-      |> Map.new(&{&1.data["hub_id"], &1.id})
-
-    nodes
-    |> Enum.filter(&(&1.type == "jump"))
-    |> Enum.reduce(adj, fn jump, acc ->
-      case Map.get(hubs_by_identifier, jump.data["target_hub_id"]) do
-        nil -> acc
-        hub_node_id -> Map.update(acc, jump.id, [hub_node_id], &[hub_node_id | &1])
-      end
-    end)
-  end
-
-  defp compute_dead_end_ids(nodes, connections) do
-    source_ids = MapSet.new(connections, & &1.source_node_id)
-
-    for n <- nodes,
-        NodeConnectionRules.needs_outgoing_connection?(n.type),
-        not MapSet.member?(source_ids, n.id),
-        into: MapSet.new(),
-        do: n.id
-  end
-
-  defp bfs([], _adj, visited), do: visited
-
-  defp bfs(queue, adj, visited) do
-    next =
-      queue
-      |> Enum.flat_map(fn id ->
-        adj
-        |> Map.get(id, [])
-        |> Enum.reject(&MapSet.member?(visited, &1))
-      end)
-      |> Enum.uniq()
-
-    bfs(next, adj, MapSet.union(visited, MapSet.new(next)))
-  end
-
   # =============================================================================
   # Condition
   # =============================================================================
@@ -1144,6 +1022,18 @@ defmodule Storyarn.Flows do
 
   @doc "Detects issues in flows for a project. Returns [%{flow_id, flow_name, issue_type, count}]."
   defdelegate detect_flow_issues(project_id), to: FlowStats
+
+  @doc """
+  Runs the canonical structural analysis for one flow.
+  Returns `{:ok, %StructuralAnalysis.Analysis{}}` with deterministic findings.
+  """
+  @spec analyze_flow_structure(integer(), integer()) ::
+          {:ok, StructuralAnalysis.Analysis.t()} | {:error, :not_found}
+  defdelegate analyze_flow_structure(project_id, flow_id), to: StructuralAnalysis, as: :analyze_flow
+
+  @doc "Runs the canonical structural analysis for every active flow of a project."
+  @spec analyze_project_structure(integer()) :: [StructuralAnalysis.Analysis.t()]
+  defdelegate analyze_project_structure(project_id), to: StructuralAnalysis, as: :analyze_project
 
   @doc "Counts non-deleted flow nodes across all flows in a project."
   defdelegate count_nodes_for_project(project_id), to: FlowCrud

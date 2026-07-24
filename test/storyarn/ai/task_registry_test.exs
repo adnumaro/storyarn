@@ -3,7 +3,7 @@ defmodule Storyarn.AI.TaskRegistryTest do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
-  alias Storyarn.AI.CanonicalJSON
+  alias Storyarn.Shared.CanonicalJSON
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.InferenceProviders
   alias Storyarn.AI.Task

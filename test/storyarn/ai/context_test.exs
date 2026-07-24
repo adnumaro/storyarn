@@ -6,7 +6,7 @@ defmodule Storyarn.AI.ContextTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.AI.CanonicalJSON
+  alias Storyarn.Shared.CanonicalJSON
   alias Storyarn.AI.Context
   alias Storyarn.AI.Context.Entity
   alias Storyarn.AI.Context.Finalizer

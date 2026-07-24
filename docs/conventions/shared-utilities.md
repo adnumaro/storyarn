@@ -204,6 +204,21 @@ field :api_key_encrypted, Storyarn.Shared.EncryptedBinary
 
 ---
 
+## `Storyarn.Shared.CanonicalJSON`
+
+**File:** `lib/storyarn/shared/canonical_json.ex`
+
+Deterministic canonical JSON encoding and SHA-256 hashing. Sorted object keys, rejects structs/duplicate-normalized-keys/improper lists. Used for AI context hashing and structural-analysis finding fingerprints — the two MUST share this implementation so Slice-7.2 explanations reference identical fingerprints.
+
+| Function    | Purpose                                                        |
+| ----------- | -------------------------------------------------------------- |
+| `encode/1`  | `{:ok, canonical_json}` or `{:error, :invalid_structured_input}` |
+| `encode!/1` | Raising variant                                                |
+| `hash/1`    | `{:ok, lowercase_hex_sha256}` of the canonical encoding        |
+| `hash!/1`   | Raising variant                                                |
+
+---
+
 ## `Storyarn.Shared.HtmlSanitizer`
 
 **File:** `lib/storyarn/shared/html_sanitizer.ex`
