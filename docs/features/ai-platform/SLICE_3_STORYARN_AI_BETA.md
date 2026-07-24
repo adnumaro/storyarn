@@ -17,7 +17,7 @@ During beta:
 - task prices are fixed and versioned;
 - provider cost is internal accounting and never changes the published task price;
 - the Storyarn operator controls which actors/workspaces receive grants;
-- no public user-facing AI task ships merely to demonstrate infrastructure; an operator-only diagnostic exercises the production provider until Slice 7/8 adds real tools.
+- no public user-facing AI task ships merely to demonstrate infrastructure; an operator-only diagnostic exercises the production provider until Slice 7.2/8 adds real tools.
 
 ## Allowance and ledger contract
 
