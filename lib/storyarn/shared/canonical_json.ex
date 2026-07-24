@@ -1,4 +1,4 @@
-defmodule Storyarn.AI.CanonicalJSON do
+defmodule Storyarn.Shared.CanonicalJSON do
   @moduledoc false
 
   @spec encode(term()) :: {:ok, binary()} | {:error, :invalid_structured_input}
@@ -24,6 +24,11 @@ defmodule Storyarn.AI.CanonicalJSON do
     with {:ok, encoded} <- encode(value) do
       {:ok, :sha256 |> :crypto.hash(encoded) |> Base.encode16(case: :lower)}
     end
+  end
+
+  @spec hash!(term()) :: String.t()
+  def hash!(value) do
+    :sha256 |> :crypto.hash(encode!(value)) |> Base.encode16(case: :lower)
   end
 
   defp encode_value(nil), do: "null"

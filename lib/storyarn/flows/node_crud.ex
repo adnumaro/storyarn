@@ -24,7 +24,12 @@ defmodule Storyarn.Flows.NodeCrud do
   Lists all non-deleted nodes for a flow, ordered by insertion time.
   """
   def list_nodes(flow_id) do
-    Repo.all(from(n in FlowNode, where: n.flow_id == ^flow_id and is_nil(n.deleted_at), order_by: [asc: n.inserted_at]))
+    Repo.all(
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and is_nil(n.deleted_at),
+        order_by: [asc: n.inserted_at, asc: n.id]
+      )
+    )
   end
 
   @doc """
@@ -174,7 +179,7 @@ defmodule Storyarn.Flows.NodeCrud do
           outcome_color: fragment("coalesce(?->>'outcome_color', '#22c55e')", n.data),
           exit_mode: fragment("coalesce(?->>'exit_mode', 'terminal')", n.data)
         },
-        order_by: [asc: n.inserted_at]
+        order_by: [asc: n.inserted_at, asc: n.id]
       )
     )
   end
@@ -282,7 +287,7 @@ defmodule Storyarn.Flows.NodeCrud do
             outcome_color: fragment("coalesce(?->>'outcome_color', '#22c55e')", n.data),
             exit_mode: fragment("coalesce(?->>'exit_mode', 'terminal')", n.data)
           },
-          order_by: [asc: n.inserted_at]
+          order_by: [asc: n.inserted_at, asc: n.id]
         )
         |> Repo.all()
         |> Enum.group_by(& &1.flow_id)
@@ -361,6 +366,52 @@ defmodule Storyarn.Flows.NodeCrud do
   end
 
   @doc """
+  Batch-resolves the flows referenced by `flow_reference` exit nodes in one
+  query. Returns `%{flow_id => %Flow{} | nil}` for `resolve_exit_data/3`.
+  Mirrors `batch_resolve_subflow_data/2` — avoids a per-exit-node query.
+  """
+  def batch_resolve_exit_data(nodes, project_id \\ nil) do
+    ref_ids =
+      nodes
+      |> Enum.filter(&(&1.type == "exit" and (&1.data || %{})["exit_mode"] == "flow_reference"))
+      |> Enum.map(& &1.data["referenced_flow_id"])
+      |> Enum.reject(&(is_nil(&1) or &1 == ""))
+      |> Enum.map(&safe_to_integer/1)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    if ref_ids == [] do
+      %{}
+    else
+      query = from(f in Flow, where: f.id in ^ref_ids and is_nil(f.deleted_at))
+      query = if project_id, do: where(query, [f], f.project_id == ^project_id), else: query
+
+      found = query |> Repo.all() |> Map.new(&{&1.id, &1})
+      Map.new(ref_ids, &{&1, Map.get(found, &1)})
+    end
+  end
+
+  @doc """
+  Resolves exit reference data from a pre-fetched `batch_resolve_exit_data/2`
+  cache; ids absent from the cache fall back to a direct query.
+  """
+  def resolve_exit_data(%{"exit_mode" => "flow_reference"} = data, project_id, exit_cache) do
+    case safe_to_integer(data["referenced_flow_id"]) do
+      nil ->
+        resolve_exit_data(data, project_id)
+
+      int_id ->
+        case Map.fetch(exit_cache, int_id) do
+          {:ok, nil} -> mark_stale_reference(data)
+          {:ok, flow} -> enrich_exit_reference(data, flow)
+          :error -> resolve_exit_data(data, project_id)
+        end
+    end
+  end
+
+  def resolve_exit_data(data, _project_id, _exit_cache), do: data
+
+  @doc """
   Resolves exit node data by enriching it with referenced flow info when exit_mode is flow_reference.
   """
   def resolve_exit_data(data), do: resolve_exit_data(data, nil)
@@ -388,15 +439,16 @@ defmodule Storyarn.Flows.NodeCrud do
     query = if project_id, do: where(query, [f], f.project_id == ^project_id), else: query
 
     case Repo.one(query) do
-      nil ->
-        mark_stale_reference(data)
-
-      flow ->
-        data
-        |> Map.put("stale_reference", false)
-        |> Map.put("referenced_flow_name", flow.name)
-        |> Map.put("referenced_flow_shortcut", flow.shortcut)
+      nil -> mark_stale_reference(data)
+      flow -> enrich_exit_reference(data, flow)
     end
+  end
+
+  defp enrich_exit_reference(data, flow) do
+    data
+    |> Map.put("stale_reference", false)
+    |> Map.put("referenced_flow_name", flow.name)
+    |> Map.put("referenced_flow_shortcut", flow.shortcut)
   end
 
   defp mark_stale_reference(data) do

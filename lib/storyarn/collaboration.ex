@@ -253,6 +253,30 @@ defmodule Storyarn.Collaboration do
   # =============================================================================
 
   @doc false
+  def flow_graph_topic(project_id), do: "project:#{project_id}:flow_graph"
+
+  @doc """
+  Subscribes to project-wide flow graph-change notifications (used by the
+  structural-analysis panel to stale cross-flow snapshots — subflow pins
+  derive from other flows' exit nodes).
+  """
+  def subscribe_flow_graph(project_id) do
+    PubSub.subscribe(Storyarn.PubSub, flow_graph_topic(project_id))
+  end
+
+  @doc """
+  Notifies the project (except the sender) that a flow's graph mutated.
+  """
+  def broadcast_flow_graph_changed_from(pid, project_id, flow_id) do
+    PubSub.broadcast_from(
+      Storyarn.PubSub,
+      pid,
+      flow_graph_topic(project_id),
+      {:flow_graph_changed, flow_id}
+    )
+  end
+
+  @doc false
   def restoration_topic(project_id), do: "project:#{project_id}:restoration"
 
   @doc """

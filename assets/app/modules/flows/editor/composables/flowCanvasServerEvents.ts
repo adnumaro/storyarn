@@ -156,6 +156,14 @@ function setupNavigationEvents(runtime: FlowCanvasRuntime): void {
   handleEvent("navigate_to_jumps", (data) =>
     runtime.navigationHandler!.navigateToJumps(data.hub_db_id as number),
   );
+  handleEvent("navigate_to_connection", (data) =>
+    runtime.navigationHandler!.navigateToConnection({
+      sourceDbId: data.source_node_id as number,
+      sourcePin: (data.source_pin as string | null) ?? null,
+      targetDbId: data.target_node_id as number,
+      targetPin: (data.target_pin as string | null) ?? null,
+    }),
+  );
 }
 
 function setupDebugEvents(runtime: FlowCanvasRuntime): void {

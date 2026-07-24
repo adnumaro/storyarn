@@ -13,6 +13,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   alias Phoenix.LiveView.Socket
   alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias StoryarnWeb.FlowLive.Handlers.AnalysisHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
@@ -117,11 +118,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     refresh_sequence_panel_if_open(socket, payload.sequence_id)
   end
 
+  # A shared disposition moved (dismiss/restore by another editor): re-split
+  # this LV's snapshot and badge without reloading the graph or marking the
+  # snapshot stale — the analysis itself did not change.
+  def handle_remote_change(:finding_disposition_changed, _payload, socket) do
+    {:noreply, AnalysisHandlers.refresh_dispositions(socket)}
+  end
+
   def handle_remote_change(action, payload, socket) do
-    # No echo guard needed — broadcast_from already prevents self-delivery
+    # No echo guard needed — broadcast_from already prevents self-delivery.
+    # notify_project: false — only LOCAL mutations announce graph changes to
+    # the project topic, otherwise every receiver would re-broadcast.
     socket =
       socket
-      |> SocketHelpers.reload_flow_data()
+      |> SocketHelpers.reload_flow_data(notify_project: false)
       |> CollaborationHelpers.push_remote_change_event(action, payload)
       |> CollaborationHelpers.show_collab_toast(action, payload)
 

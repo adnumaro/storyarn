@@ -6,16 +6,39 @@
  */
 
 import { AreaExtensions, type AreaPlugin } from "rete-area-plugin";
+import type { NodeEditor } from "rete";
 import type { FlowNode } from "../lib/flow-node";
+import { createFlowGraphQueries } from "../lib/flowGraphQueries";
 import { NODE_CONFIGS } from "../lib/node-configs";
 import type { FlowSchemes, FlowAreaExtra } from "../lib/rete-schemes";
 
 const HIGHLIGHT_DURATION = 2500;
 
+/**
+ * Evidence-highlight styling. Deliberately its OWN layer of custom properties:
+ * FlowConnection.vue resolves --conn-evidence-* over the debug panel's
+ * --conn-* variables, so an expiring evidence highlight cannot wipe an active
+ * debug highlight (and vice versa).
+ */
+const CONN_EVIDENCE_PROPS: Record<string, string> = {
+  "--conn-evidence-stroke": "var(--color-primary, #7c3aed)",
+  "--conn-evidence-stroke-width": "3px",
+  "--conn-evidence-dash": "8 4",
+  "--conn-evidence-animation": "debug-flow 0.6s linear infinite",
+};
+
+export interface ConnectionRef {
+  sourceDbId: number;
+  sourcePin: string | null;
+  targetDbId: number;
+  targetPin: string | null;
+}
+
 export interface NavigationHandler {
   navigateToHub(jumpDbId: number): void;
   navigateToNode(nodeDbId: number): void;
   navigateToJumps(hubDbId: number): void;
+  navigateToConnection(ref: ConnectionRef): void;
   clearHighlights(): void;
   destroy(): void;
 }
@@ -71,8 +94,10 @@ export function navigation(
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
   nodeMap: Map<string | number, FlowNode>,
   pushEvent: (event: string, payload: Record<string, unknown>) => void,
+  editor?: NodeEditor<FlowSchemes>,
 ): NavigationHandler {
   let highlightedElements: HTMLElement[] = [];
+  let highlightedConnectionEl: HTMLElement | null = null;
   let highlightTimer: ReturnType<typeof setTimeout> | null = null;
 
   function clearHighlights(): void {
@@ -85,6 +110,24 @@ export function navigation(
       el.style.removeProperty("--highlight-color");
     }
     highlightedElements = [];
+
+    if (highlightedConnectionEl) {
+      for (const prop of Object.keys(CONN_EVIDENCE_PROPS)) {
+        highlightedConnectionEl.style.removeProperty(prop);
+      }
+      highlightedConnectionEl = null;
+    }
+  }
+
+  // Finding-evidence highlight with auto-clear, on its own styling layer so a
+  // running debug session keeps its own connection styling.
+  function highlightConnectionEl(viewEl: HTMLElement): void {
+    clearHighlights();
+    for (const [prop, value] of Object.entries(CONN_EVIDENCE_PROPS)) {
+      viewEl.style.setProperty(prop, value);
+    }
+    highlightedConnectionEl = viewEl;
+    highlightTimer = setTimeout(clearHighlights, HIGHLIGHT_DURATION);
   }
 
   function highlightNodes(reteNodeIds: string[], hexColor: string): void {
@@ -135,6 +178,41 @@ export function navigation(
       AreaExtensions.zoomAt(area, [node]);
       highlightNodes([node.id], nodeColor(node));
       pushEvent("node_selected", { id: nodeDbId });
+    },
+
+    navigateToConnection(ref: ConnectionRef): void {
+      const sourceNode = nodeMap.get(ref.sourceDbId);
+      const targetNode = nodeMap.get(ref.targetDbId);
+      if (!sourceNode || !targetNode || !editor) {
+        return;
+      }
+
+      const graph = createFlowGraphQueries(editor.getNodes(), editor.getConnections());
+      // Only the exact pin pair identifies the evidence: parallel connections
+      // between the same node pair differ by pin, so a laxer match would
+      // highlight a DIFFERENT edge than the finding is about.
+      const connection = graph
+        .outgoingConnections(sourceNode.id)
+        .find(
+          (conn) =>
+            conn.target === targetNode.id &&
+            (!ref.sourcePin || conn.sourceOutput === ref.sourcePin) &&
+            (!ref.targetPin || conn.targetInput === ref.targetPin),
+        );
+
+      const view = connection ? area.connectionViews.get(connection.id) : undefined;
+
+      AreaExtensions.zoomAt(area, [sourceNode, targetNode]);
+
+      if (view) {
+        highlightConnectionEl(view.element as HTMLElement);
+      } else {
+        // The edge has no rendered geometry — a source pin that no longer
+        // exists has no socket to draw from, which is precisely what these
+        // findings report. Point at both endpoints (evidence of the same
+        // finding) rather than at some other edge between them.
+        highlightNodes([sourceNode.id, targetNode.id], nodeColor(sourceNode));
+      }
     },
 
     navigateToJumps(hubDbId: number): void {

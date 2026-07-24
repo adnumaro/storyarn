@@ -15,10 +15,12 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   import Phoenix.Component, only: [assign: 3]
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.HealthChecker
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Shared.WordCount
+  alias StoryarnWeb.FlowLive.Handlers.AnalysisHandlers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   @doc """
@@ -27,12 +29,20 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   Refreshes `:flow`, `:flow_data`, `:flow_hubs`, `:flow_word_count`,
   `:flow_error_nodes`, `:flow_warning_nodes`, and `:flow_info_nodes`.
   """
-  @spec reload_flow_data(Socket.t()) :: Socket.t()
-  def reload_flow_data(socket) do
+  @spec reload_flow_data(Socket.t(), keyword()) :: Socket.t()
+  def reload_flow_data(socket, opts \\ []) do
+    previous_flow = socket.assigns[:flow]
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
 
     flow_data = Flows.serialize_for_canvas(flow)
     flow_hubs = Flows.list_hubs(flow.id)
+
+    # Local graph mutations announce themselves project-wide so flows whose
+    # subflow/exit pins derive from this one can stale their open analysis
+    # snapshots. Remote-change receivers pass notify_project: false.
+    if Keyword.get(opts, :notify_project, true) and exit_surface_changed?(previous_flow, flow) do
+      Collaboration.broadcast_flow_graph_changed_from(self(), flow.project_id, flow.id)
+    end
 
     socket
     |> assign(:flow, flow)
@@ -40,6 +50,27 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     |> assign(:flow_hubs, flow_hubs)
     |> assign_flow_stats(flow, flow_data)
   end
+
+  # Other flows only ever derive from THIS flow's exit nodes: a subflow node
+  # exposes one output pin per referenced-flow exit node
+  # (`NodeCrud.batch_resolve_subflow_data/2` → `exit_<exit node id>`), and an
+  # exit node in flow-reference mode resolves against the flow's existence.
+  # Content-only edits (dialogue text, positions, connections inside this
+  # flow) change nothing another flow can observe, so they must not stale
+  # anyone else's snapshot. An unloaded association is treated as changed —
+  # over-notifying is recoverable, missing a real pin change is not.
+  defp exit_surface_changed?(previous_flow, flow) do
+    case exit_node_ids(previous_flow) do
+      nil -> true
+      previous_ids -> previous_ids != exit_node_ids(flow)
+    end
+  end
+
+  defp exit_node_ids(%{nodes: nodes}) when is_list(nodes) do
+    for node <- nodes, node.type == "exit", into: MapSet.new(), do: node.id
+  end
+
+  defp exit_node_ids(_flow), do: nil
 
   @doc """
   Computes flow-level stats and health findings grouped by severity.
@@ -56,13 +87,31 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
         total + WordCount.for_node_data(node.type, node.data)
       end)
 
-    findings = HealthChecker.check(flow_data)
+    # The canonical structural rules live in the analysis panel; the header
+    # popover keeps only editorial completeness findings. The compact
+    # structural summary comes from the SAME canonical engine as the panel
+    # (active findings only, dismissals subtracted) so the badge and the
+    # panel can never disagree about the same rule.
+    structural_codes = Flows.structural_rule_ids()
+
+    editorial =
+      flow_data
+      |> HealthChecker.check()
+      |> Enum.reject(&(to_string(&1.code) in structural_codes))
+
+    # Zero extra node queries: the analysis reuses the serializer's already
+    # resolved flow_data (from_serialized==DB parity is test-guarded).
+    analysis = Flows.analyze_serialized_flow_structure(flow_data, flow.project_id)
+    dismissals = Flows.list_active_finding_dismissals(flow)
+    {active, _dismissed} = Flows.split_findings(analysis.findings, dismissals)
 
     socket
     |> assign(:flow_word_count, word_count)
-    |> assign(:flow_error_nodes, health_payloads(findings, :error))
-    |> assign(:flow_warning_nodes, health_payloads(findings, :warning))
-    |> assign(:flow_info_nodes, health_payloads(findings, :info))
+    |> assign(:flow_error_nodes, health_payloads(editorial, :error))
+    |> assign(:flow_warning_nodes, health_payloads(editorial, :warning))
+    |> assign(:flow_info_nodes, health_payloads(editorial, :info))
+    |> assign(:flow_structural_summary, AnalysisHandlers.structural_summary(active))
+    |> AnalysisHandlers.mark_snapshot_stale()
   end
 
   defp health_payloads(findings, severity) do

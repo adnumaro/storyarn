@@ -44,7 +44,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   @static_command_ids MapSet.new(
                         ~w(account.profile account.security account.tutorials account.integrations
                            workspace.toggle-sidebar flows.toggle-minimap
-                           flows.fit-to-view scenes.fit-to-view
+                           flows.fit-to-view flows.analyze scenes.fit-to-view
                            create.project create.sheet create.flow create.scene
                            delete.sheet delete.flow delete.scene) ++
                           Enum.map(

@@ -54,16 +54,19 @@ const labelWidth = computed<number>(() =>
       stroke-width="20"
       class="pointer-events-auto [&:hover+path]:stroke-primary! [&:hover+path]:stroke-[3px]!"
     />
-    <!-- Visible line -->
+    <!-- Visible line. Two independent styling layers: --conn-evidence-*
+         (analysis-panel evidence, transient) takes precedence over --conn-*
+         (debug session, owned by the debug lifecycle), so clearing either one
+         never erases the other. -->
     <path
       :d="path"
       fill="none"
       class="pointer-events-none transition-[stroke,stroke-width] duration-150"
       :style="{
-        stroke: 'var(--conn-stroke, hsl(var(--foreground) / 0.4))',
-        strokeWidth: 'var(--conn-stroke-width, 2px)',
-        strokeDasharray: 'var(--conn-dash, none)',
-        animation: 'var(--conn-animation, none)',
+        stroke: 'var(--conn-evidence-stroke, var(--conn-stroke, hsl(var(--foreground) / 0.4)))',
+        strokeWidth: 'var(--conn-evidence-stroke-width, var(--conn-stroke-width, 2px))',
+        strokeDasharray: 'var(--conn-evidence-dash, var(--conn-dash, none))',
+        animation: 'var(--conn-evidence-animation, var(--conn-animation, none))',
       }"
     />
     <!-- Label at midpoint -->

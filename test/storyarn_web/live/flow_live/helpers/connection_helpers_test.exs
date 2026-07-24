@@ -185,6 +185,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
 
     test "deletes connection between nodes", %{
       socket: socket,
+      project: project,
       entry_node: entry,
       dialogue_node: dialogue
     } do
@@ -199,9 +200,20 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
                c.source_node_id == entry.id && c.target_node_id == dialogue.id
              end)
 
-      warning_node = Enum.find(result.assigns.flow_warning_nodes, &(&1.id == entry.id))
+      # Structural findings moved to the analysis panel: the deletion leaves
+      # the entry with no edge at all, and the compact summary counts exactly
+      # the canonical engine's warnings — not merely "at least one".
+      refute Enum.any?(result.assigns.flow_warning_nodes, &(&1.id == entry.id))
 
-      assert "No outgoing connection" in warning_node.reasons
+      {:ok, analysis} = Flows.analyze_flow_structure(project.id, result.assigns.flow.id)
+
+      assert Enum.any?(
+               analysis.findings,
+               &(&1.rule_id == "isolated_node" and &1.target.id == entry.id)
+             )
+
+      assert result.assigns.flow_structural_summary.warningCount ==
+               Enum.count(analysis.findings, &(&1.severity == :warning))
     end
 
     test "resyncs and reports a non-existent connection without marking a save", %{

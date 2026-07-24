@@ -109,6 +109,28 @@ defmodule Storyarn.Flows.NodeConnectionRules do
 
   def accepted_output_pins(type, data), do: output_pins(type, data)
 
+  @doc """
+  Maps a stored source pin onto the node's canonical output pin.
+
+  Legacy dialogue connections persist accepted aliases of a response pin
+  (`response_<id>`, `resp_<id>`). Connectivity claims must credit the
+  canonical pin, otherwise a response that IS connected through an alias is
+  reported as a missing output connection. Pins that match nothing are
+  returned unchanged (they are their own `invalid_output_pins` finding).
+  """
+  @spec canonical_output_pin(String.t(), map(), String.t()) :: String.t()
+  def canonical_output_pin("dialogue", data, source_pin) when is_map(data) do
+    pins = output_pins("dialogue", data)
+
+    if source_pin in pins do
+      source_pin
+    else
+      Enum.find(pins, source_pin, &(source_pin in dialogue_pin_aliases(&1)))
+    end
+  end
+
+  def canonical_output_pin(_type, _data, source_pin), do: source_pin
+
   @doc "Returns true when a stored source pin still exists on the node."
   @spec valid_output_pin?(String.t(), map(), String.t()) :: boolean()
   def valid_output_pin?(type, data, source_pin) do

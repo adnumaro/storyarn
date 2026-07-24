@@ -1,7 +1,7 @@
 defmodule Storyarn.AI.Context.Entity do
   @moduledoc false
 
-  alias Storyarn.AI.CanonicalJSON
+  alias Storyarn.Shared.CanonicalJSON
 
   @enforce_keys [:type, :id, :content, :required?, :priority, :revision, :hash, :serialized_bytes]
   defstruct [:type, :id, :content, :required?, :priority, :revision, :hash, :serialized_bytes]
