@@ -1,0 +1,37 @@
+docs/features/ai-platform/SLICE_1_COMMAND_PALETTE.md
+  s_6112f11c106698::t_30f9b6cf81c437 11
+  s_6112f11c106698::t_2413822b6bc1bb 36,70
+docs/features/ai-platform/OVERVIEW.md
+  s_6112f11c106698::t_f80ca46cea1c77 39-48,51-56
+  s_6112f11c106698::t_2413822b6bc1bb 49-50,68-70,79
+docs/features/ai-platform/SLICE_7_STRUCTURAL_ANALYSIS.md
+  s_6112f11c106698::t_2413822b6bc1bb 1,3,5,7-8,15-18,20,22-30,32-33
+  s_6112f11c106698::t_f80ca46cea1c77 10-13
+docs/features/ai-platform/SLICE_4_PERSONAL_BYOK_LANE.md
+  s_6112f11c106698::t_2413822b6bc1bb 75
+docs/features/ai-platform/SLICE_13_COMMERCIAL_BILLING.md
+  s_6112f11c106698::t_2413822b6bc1bb 105
+docs/features/ai-platform/SLICE_7_1_DETERMINISTIC_ANALYSIS.md
+  s_6112f11c106698::t_2413822b6bc1bb 1-55,66-208
+  s_6112f11c106698::t_f80ca46cea1c77 56-65
+docs/features/ai-platform/SLICE_3_STORYARN_AI_BETA.md
+  s_6112f11c106698::t_2413822b6bc1bb 20
+docs/features/ai-platform/SLICE_7_2_AI_EXPLANATION.md
+  s_6112f11c106698::t_2413822b6bc1bb 1-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "25f76a3db606ac86f496868b18648fd8663690f6",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
