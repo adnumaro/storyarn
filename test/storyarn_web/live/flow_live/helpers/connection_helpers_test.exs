@@ -199,9 +199,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
                c.source_node_id == entry.id && c.target_node_id == dialogue.id
              end)
 
-      warning_node = Enum.find(result.assigns.flow_warning_nodes, &(&1.id == entry.id))
-
-      assert "No outgoing connection" in warning_node.reasons
+      # Structural findings moved to the analysis panel: the deletion leaves
+      # the entry as a structural dead end, counted in the compact summary.
+      refute Enum.any?(result.assigns.flow_warning_nodes, &(&1.id == entry.id))
+      assert result.assigns.flow_structural_summary.warningCount >= 1
     end
 
     test "resyncs and reports a non-existent connection without marking a save", %{

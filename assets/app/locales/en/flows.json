@@ -392,6 +392,87 @@
       "restart": "Restart",
       "toggle_mode": "Switch between player mode and review of blocked or conditional responses",
       "no_content": "No content to display."
+    },
+    "analysis": {
+      "title": "Structural analysis",
+      "open_from_health": "Structural analysis ({count})",
+      "rerun": "Rerun analysis",
+      "stale_banner": "The flow changed since this analysis. Results may be outdated.",
+      "computed_at": "Analyzed at {time}",
+      "tabs": {
+        "active": "Active",
+        "dismissed": "Dismissed"
+      },
+      "filters": {
+        "all": "All",
+        "structure": "Structure",
+        "reference_integrity": "References",
+        "error": "Errors",
+        "warning": "Warnings"
+      },
+      "empty_active": "No active findings. The flow structure looks sound.",
+      "empty_dismissed": "No dismissed findings.",
+      "target_flow": "Flow",
+      "pins_chip": "Pins: {pins}",
+      "count_chip": "Count: {count}",
+      "hub_chip": "Hub: {hub}",
+      "evidence_title": "Evidence",
+      "evidence_go_to": "Go to",
+      "evidence_types": {
+        "flow": "Flow",
+        "flow_node": "Node",
+        "flow_connection": "Connection"
+      },
+      "dismiss": "Dismiss finding",
+      "dismiss_reason_label": "Reason",
+      "note_label": "Note (optional)",
+      "note_required_label": "Note (required)",
+      "dismiss_confirm": "Dismiss",
+      "dismiss_cancel": "Cancel",
+      "dismissed_meta": "{reason} · dismissed by {user}",
+      "restore": "Restore finding",
+      "reasons": {
+        "intentional_design": "Intentional design",
+        "rule_not_applicable": "Rule not applicable here",
+        "missing_context": "Missing context",
+        "incorrect_detection": "Incorrect detection",
+        "duplicate_finding": "Duplicate finding",
+        "other": "Other reason"
+      },
+      "rules": {
+        "missing_entry": "Flow has no Entry node",
+        "multiple_entries": "Flow has multiple Entry nodes",
+        "unreachable_node": "Node is unreachable from Entry",
+        "isolated_node": "Node has no connections",
+        "no_outgoing_connection": "Node has no outgoing connection",
+        "missing_output_connections": "Output pins without a connection",
+        "invalid_output_pins": "Connection on a removed output pin",
+        "invalid_input_pins": "Connection on an invalid input pin",
+        "orphan_hub": "Hub is never reached by connection or jump",
+        "missing_jump_target": "Jump has no target hub",
+        "stale_jump_target": "Jump targets a missing hub",
+        "missing_subflow_reference": "Subflow has no referenced flow",
+        "stale_subflow_reference": "Subflow references a deleted flow",
+        "missing_exit_flow_reference": "Exit has no referenced flow",
+        "stale_exit_flow_reference": "Exit references a deleted flow"
+      },
+      "limitations": {
+        "missing_entry": "Checks node types only; it does not judge where the story should start.",
+        "multiple_entries": "Reachability is computed from all entries; it does not decide which entry is correct.",
+        "unreachable_node": "Topological only: conditions are not evaluated, so a reachable node may still be unreachable in play.",
+        "isolated_node": "Counts valid connections and jump links only; it does not know if the node is a draft kept on purpose.",
+        "no_outgoing_connection": "Does not evaluate conditions; an intentional ending modeled without an Exit node still triggers this.",
+        "missing_output_connections": "Reports unconnected required pins; it cannot tell whether the branch is unfinished or abandoned.",
+        "invalid_output_pins": "Compares stored connections against current pins; it cannot recover what the removed pin meant.",
+        "invalid_input_pins": "Compares stored connections against current inputs; it cannot recover the original intent.",
+        "orphan_hub": "Only in-flow connections and jumps are considered; hubs used by other means are not detected.",
+        "missing_jump_target": "Checks the stored target id only.",
+        "stale_jump_target": "Hubs are matched by id within this flow only.",
+        "missing_subflow_reference": "Checks the stored reference only.",
+        "stale_subflow_reference": "Checks flow existence in this project; it does not inspect the referenced flow's content.",
+        "missing_exit_flow_reference": "Checks the stored reference only.",
+        "stale_exit_flow_reference": "Checks flow existence in this project; it does not inspect the referenced flow's content."
+      }
     }
   }
 }

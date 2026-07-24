@@ -134,14 +134,14 @@ The panel owns an explicit analysis snapshot:
 A dismissal reason code is required. The v1 catalog is fixed (stable internal
 values, localized labels in the UI):
 
-| Code                  | Meaning                                                            |
-| --------------------- | ------------------------------------------------------------------ |
-| `intentional_design`  | The detected structure exists and is deliberate                    |
-| `rule_not_applicable` | Flow type or project conventions make the rule irrelevant here     |
-| `missing_context`     | External or unmodeled context invalidates the conclusion           |
-| `incorrect_detection` | Given the available data, the evidence or conclusion is wrong      |
-| `duplicate_finding`   | Another finding already represents the same problem                |
-| `other`               | Escape hatch for unforeseen cases; requires a note                 |
+| Code                  | Meaning                                                        |
+| --------------------- | -------------------------------------------------------------- |
+| `intentional_design`  | The detected structure exists and is deliberate                |
+| `rule_not_applicable` | Flow type or project conventions make the rule irrelevant here |
+| `missing_context`     | External or unmodeled context invalidates the conclusion       |
+| `incorrect_detection` | Given the available data, the evidence or conclusion is wrong  |
+| `duplicate_finding`   | Another finding already represents the same problem            |
+| `other`               | Escape hatch for unforeseen cases; requires a note             |
 
 Deliberately excluded: `fixed` (resolve is derived on rerun),
 `work_in_progress`/`not_now` (a future snooze feature, not a dismissal),

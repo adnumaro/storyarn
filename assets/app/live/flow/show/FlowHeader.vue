@@ -8,6 +8,7 @@ import {
   CircleCheck,
   Info,
   Map as MapIcon,
+  ScanSearch,
   Text,
   TriangleAlert,
   X,
@@ -35,11 +36,17 @@ interface HealthNode {
   reasons?: string[];
 }
 
+interface StructuralSummary {
+  errorCount: number;
+  warningCount: number;
+}
+
 interface FlowHealth {
   wordCount: number;
   errorNodes: HealthNode[];
   warningNodes: HealthNode[];
   infoNodes: HealthNode[];
+  structural: StructuralSummary;
 }
 
 interface SceneSelected {
@@ -59,7 +66,13 @@ const {
   canEdit = false,
   saveStatus = "idle",
   navHistory = { back: null, forward: null },
-  flowHealth = { wordCount: 0, errorNodes: [], warningNodes: [], infoNodes: [] },
+  flowHealth = {
+    wordCount: 0,
+    errorNodes: [],
+    warningNodes: [],
+    infoNodes: [],
+    structural: { errorCount: 0, warningCount: 0 },
+  },
   sceneSelected = { name: null, inherited: false },
   projectScenes = [],
 } = defineProps<{
@@ -78,9 +91,16 @@ const live = useLive();
 const sceneOpen = ref(false);
 const healthOpen = ref(false);
 
-const errorCount = computed(() => findingCount(flowHealth.errorNodes));
-const warningCount = computed(() => findingCount(flowHealth.warningNodes));
+const errorCount = computed(
+  () => findingCount(flowHealth.errorNodes) + flowHealth.structural.errorCount,
+);
+const warningCount = computed(
+  () => findingCount(flowHealth.warningNodes) + flowHealth.structural.warningCount,
+);
 const infoCount = computed(() => findingCount(flowHealth.infoNodes));
+const structuralCount = computed(
+  () => flowHealth.structural.errorCount + flowHealth.structural.warningCount,
+);
 const showScene = computed(() => canEdit || sceneSelected.name != null);
 
 function nodeReasons(node: HealthNode): string[] {
@@ -108,6 +128,11 @@ function selectScene(sceneId: number | string | null): void {
 function navigateToNode(nodeId: number | string | null): void {
   if (nodeId == null) return;
   live.pushEvent("navigate_to_node", { id: nodeId });
+  healthOpen.value = false;
+}
+
+function openAnalysisPanel(): void {
+  live.pushEvent("open_analysis_panel", {});
   healthOpen.value = false;
 }
 </script>
@@ -262,6 +287,18 @@ function navigateToNode(nodeId: number | string | null): void {
             </ToolbarTooltip>
           </PopoverAnchor>
           <PopoverContent side="bottom" :side-offset="4" class="w-max max-h-60 overflow-y-auto p-1">
+            <button
+              v-if="structuralCount > 0"
+              type="button"
+              data-testid="flow-health-open-analysis"
+              class="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs transition-colors hover:bg-accent"
+              @click="openAnalysisPanel"
+            >
+              <ScanSearch class="size-3.5 shrink-0" />
+              <span class="flex-1 text-left">
+                {{ $t("flows.analysis.open_from_health", { count: structuralCount }) }}
+              </span>
+            </button>
             <div v-if="flowHealth.errorNodes.length > 0">
               <div
                 data-testid="flow-health-errors"

@@ -19,6 +19,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   alias Storyarn.Flows.HealthChecker
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Shared.WordCount
+  alias StoryarnWeb.FlowLive.Handlers.AnalysisHandlers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   @doc """
@@ -56,13 +57,26 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
         total + WordCount.for_node_data(node.type, node.data)
       end)
 
-    findings = HealthChecker.check(flow_data)
+    # The canonical structural rules live in the analysis panel; the header
+    # popover keeps only editorial completeness findings, plus a compact
+    # structural summary that opens the panel.
+    structural_codes = Flows.structural_rule_ids()
+
+    {structural, editorial} =
+      flow_data
+      |> HealthChecker.check()
+      |> Enum.split_with(&(to_string(&1.code) in structural_codes))
 
     socket
     |> assign(:flow_word_count, word_count)
-    |> assign(:flow_error_nodes, health_payloads(findings, :error))
-    |> assign(:flow_warning_nodes, health_payloads(findings, :warning))
-    |> assign(:flow_info_nodes, health_payloads(findings, :info))
+    |> assign(:flow_error_nodes, health_payloads(editorial, :error))
+    |> assign(:flow_warning_nodes, health_payloads(editorial, :warning))
+    |> assign(:flow_info_nodes, health_payloads(editorial, :info))
+    |> assign(:flow_structural_summary, %{
+      errorCount: Enum.count(structural, &(&1.severity == :error)),
+      warningCount: Enum.count(structural, &(&1.severity == :warning))
+    })
+    |> AnalysisHandlers.mark_snapshot_stale()
   end
 
   defp health_payloads(findings, severity) do

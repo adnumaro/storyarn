@@ -107,8 +107,12 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
 
       assert "Missing dialogue text" in warning_node.reasons
       assert "Missing dialogue speaker" in warning_node.reasons
-      assert "Not reachable from any entry node" in warning_node.reasons
-      assert "No outgoing connection" in warning_node.reasons
+      # Structural findings (unreachable, no outgoing connection) moved to the
+      # analysis panel: the popover keeps editorial reasons only, the compact
+      # summary carries the structural counts.
+      refute "Not reachable from any entry node" in warning_node.reasons
+      refute "No outgoing connection" in warning_node.reasons
+      assert result.assigns.flow_structural_summary.warningCount >= 2
       refute Enum.any?(result.assigns.flow_error_nodes, &(&1.id == dialogue.id))
       refute Enum.any?(result.assigns.flow_info_nodes, &(&1.id == dialogue.id))
     end

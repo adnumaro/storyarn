@@ -392,6 +392,87 @@
       "restart": "Reiniciar",
       "toggle_mode": "Alternar entre reproductor y revisión de respuestas bloqueadas o condicionadas",
       "no_content": "No hay contenido que mostrar."
+    },
+    "analysis": {
+      "title": "Análisis estructural",
+      "open_from_health": "Análisis estructural ({count})",
+      "rerun": "Reanalizar",
+      "stale_banner": "El flow cambió desde este análisis. Los resultados pueden estar desactualizados.",
+      "computed_at": "Analizado a las {time}",
+      "tabs": {
+        "active": "Activos",
+        "dismissed": "Descartados"
+      },
+      "filters": {
+        "all": "Todos",
+        "structure": "Estructura",
+        "reference_integrity": "Referencias",
+        "error": "Errores",
+        "warning": "Avisos"
+      },
+      "empty_active": "Sin hallazgos activos. La estructura del flow parece correcta.",
+      "empty_dismissed": "Sin hallazgos descartados.",
+      "target_flow": "Flow",
+      "pins_chip": "Pins: {pins}",
+      "count_chip": "Total: {count}",
+      "hub_chip": "Hub: {hub}",
+      "evidence_title": "Evidencia",
+      "evidence_go_to": "Ir a",
+      "evidence_types": {
+        "flow": "Flow",
+        "flow_node": "Nodo",
+        "flow_connection": "Conexión"
+      },
+      "dismiss": "Descartar hallazgo",
+      "dismiss_reason_label": "Motivo",
+      "note_label": "Nota (opcional)",
+      "note_required_label": "Nota (obligatoria)",
+      "dismiss_confirm": "Descartar",
+      "dismiss_cancel": "Cancelar",
+      "dismissed_meta": "{reason} · descartado por {user}",
+      "restore": "Restaurar hallazgo",
+      "reasons": {
+        "intentional_design": "Diseño intencionado",
+        "rule_not_applicable": "La regla no aplica aquí",
+        "missing_context": "Falta contexto",
+        "incorrect_detection": "Detección incorrecta",
+        "duplicate_finding": "Hallazgo duplicado",
+        "other": "Otro motivo"
+      },
+      "rules": {
+        "missing_entry": "El flow no tiene nodo Entry",
+        "multiple_entries": "El flow tiene varios nodos Entry",
+        "unreachable_node": "Nodo inalcanzable desde Entry",
+        "isolated_node": "Nodo sin conexiones",
+        "no_outgoing_connection": "Nodo sin conexión de salida",
+        "missing_output_connections": "Pins de salida sin conexión",
+        "invalid_output_pins": "Conexión en un pin de salida eliminado",
+        "invalid_input_pins": "Conexión en un pin de entrada inválido",
+        "orphan_hub": "Hub nunca alcanzado por conexión o jump",
+        "missing_jump_target": "Jump sin hub de destino",
+        "stale_jump_target": "Jump apunta a un hub inexistente",
+        "missing_subflow_reference": "Subflow sin flow referenciado",
+        "stale_subflow_reference": "Subflow referencia un flow eliminado",
+        "missing_exit_flow_reference": "Exit sin flow referenciado",
+        "stale_exit_flow_reference": "Exit referencia un flow eliminado"
+      },
+      "limitations": {
+        "missing_entry": "Solo comprueba tipos de nodo; no juzga dónde debería empezar la historia.",
+        "multiple_entries": "La alcanzabilidad se calcula desde todas las entries; no decide cuál es la correcta.",
+        "unreachable_node": "Solo topológico: no evalúa condiciones, así que un nodo alcanzable puede seguir siendo inalcanzable al jugar.",
+        "isolated_node": "Solo cuenta conexiones válidas y enlaces de jump; no sabe si el nodo es un borrador mantenido a propósito.",
+        "no_outgoing_connection": "No evalúa condiciones; un final intencionado modelado sin nodo Exit también lo activa.",
+        "missing_output_connections": "Informa de pins obligatorios sin conectar; no distingue si la rama está sin terminar o abandonada.",
+        "invalid_output_pins": "Compara conexiones almacenadas con los pins actuales; no puede recuperar qué significaba el pin eliminado.",
+        "invalid_input_pins": "Compara conexiones almacenadas con las entradas actuales; no puede recuperar la intención original.",
+        "orphan_hub": "Solo considera conexiones y jumps dentro del flow; no detecta hubs usados por otros medios.",
+        "missing_jump_target": "Solo comprueba el id de destino almacenado.",
+        "stale_jump_target": "Los hubs se comparan por id solo dentro de este flow.",
+        "missing_subflow_reference": "Solo comprueba la referencia almacenada.",
+        "stale_subflow_reference": "Comprueba que el flow exista en este proyecto; no inspecciona su contenido.",
+        "missing_exit_flow_reference": "Solo comprueba la referencia almacenada.",
+        "stale_exit_flow_reference": "Comprueba que el flow exista en este proyecto; no inspecciona su contenido."
+      }
     }
   }
 }

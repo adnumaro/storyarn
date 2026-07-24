@@ -21,6 +21,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.Evaluator.EngineHelpers
   alias Storyarn.Flows.Evaluator.Helpers
   alias Storyarn.Flows.Evaluator.InstructionExec
+  alias Storyarn.Flows.FindingDismissal
   alias Storyarn.Flows.FindingDismissals
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
@@ -1036,6 +1037,10 @@ defmodule Storyarn.Flows do
   @spec analyze_project_structure(integer()) :: [StructuralAnalysis.Analysis.t()]
   defdelegate analyze_project_structure(project_id), to: StructuralAnalysis, as: :analyze_project
 
+  @doc "Rule ids of the frozen structural-analysis catalog."
+  @spec structural_rule_ids() :: [String.t()]
+  defdelegate structural_rule_ids(), to: StructuralAnalysis.Rules, as: :rule_ids
+
   # =============================================================================
   # Structural Finding Dismissals
   # =============================================================================
@@ -1053,6 +1058,12 @@ defmodule Storyarn.Flows do
 
   @doc "Splits findings into {active, dismissed} against active dismissals."
   defdelegate split_findings(findings, active_dismissals), to: FindingDismissals
+
+  @doc "Stable dismissal reason codes, in display order."
+  defdelegate finding_dismissal_reason_codes(), to: FindingDismissal, as: :reason_codes
+
+  @doc "Maximum accepted dismissal note length."
+  defdelegate finding_dismissal_max_note_length(), to: FindingDismissal, as: :max_note_length
 
   @doc "Counts non-deleted flow nodes across all flows in a project."
   defdelegate count_nodes_for_project(project_id), to: FlowCrud

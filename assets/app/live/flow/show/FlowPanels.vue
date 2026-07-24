@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import FlowAnalysisPanel from "@modules/flows/editor/components/panels/FlowAnalysisPanel.vue";
+import type { FlowAnalysisPanelState } from "@modules/flows/editor/components/panels/flowAnalysisTypes";
 import FlowBuilderPanel from "@modules/flows/editor/components/panels/FlowBuilderPanel.vue";
 import FlowDebugPanel from "@modules/flows/editor/components/panels/FlowDebugPanel.vue";
 import FlowDialogueFullscreenEditor from "@modules/flows/editor/components/panels/FlowDialogueFullscreenEditor.vue";
@@ -62,6 +64,7 @@ interface FlowPanels {
   dialogueFullscreen: FlowPanelState;
   sequence: FlowPanelState;
   preview: FlowPreviewPanel;
+  analysis: FlowAnalysisPanelState;
 }
 
 const { panels } = defineProps<{
@@ -139,6 +142,19 @@ const { panels } = defineProps<{
         :responses="panels.preview.responses"
         :has-next="panels.preview.hasNext"
         :has-history="panels.preview.hasHistory"
+      />
+    </div>
+
+    <div id="flow-analysis-panel" class="contents">
+      <FlowAnalysisPanel
+        :open="panels.analysis.open"
+        :can-edit="panels.analysis.canEdit"
+        :stale="panels.analysis.stale"
+        :computed-at="panels.analysis.computedAt"
+        :reason-codes="panels.analysis.reasonCodes"
+        :max-note-length="panels.analysis.maxNoteLength"
+        :active="panels.analysis.active"
+        :dismissed="panels.analysis.dismissed"
       />
     </div>
   </div>
