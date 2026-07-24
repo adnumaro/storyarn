@@ -1,0 +1,51 @@
+test/storyarn_web/live/flow_live/handlers/analysis_handlers_test.exs
+  s_2797f64fb2d317::t_a8bc50fcf62497 258
+assets/app/test/modules/flows/editor/components/panels/FlowAnalysisPanel.test.ts
+  s_2797f64fb2d317::t_874c35359b71f3 94,177
+  s_2797f64fb2d317::t_31e2a8d3a406d0 74,117-121,154-158,167-171
+  s_2797f64fb2d317::t_71c370a2d8965b 1-73,75-93,95-116,122-153,159-166,172-176,178-179
+priv/docs/en/narrative-design/05-structural-analysis.md
+  s_2797f64fb2d317::t_874c35359b71f3 32,45-47,49-52
+  s_2797f64fb2d317::t_3c22319be3cb5a 1-31,33-44,48,53-60
+docs/features/ai-platform/SLICE_7_1_DETERMINISTIC_ANALYSIS.md
+  s_2797f64fb2d317::t_30215dc3ab4f7c 3-7
+test/e2e/flow_analysis_test.exs
+  s_2797f64fb2d317::t_a964683e833bd1 22-25
+  s_2797f64fb2d317::t_cd02f8e63f2663 62
+  s_2797f64fb2d317::t_900121406c8823 57
+  s_2797f64fb2d317::t_26cf578fd6e03c 87-88
+  s_2797f64fb2d317::t_27d7ad111e02f6 1-21,26-56,58-61,63-86,89-91
+lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex
+  s_2797f64fb2d317::t_56ed24d08db091 71-75,77-78,80-85,87-91
+test/storyarn/ai/task_registry_test.exs
+  s_2797f64fb2d317::t_874c35359b71f3 11
+lib/storyarn/ai/context/finalizer.ex
+  s_2797f64fb2d317::t_874c35359b71f3 7
+test/storyarn_web/live/docs_live/show_test.exs
+  s_2797f64fb2d317::t_a38c9ea00054db 124-125
+lib/storyarn/ai/executor.ex
+  s_2797f64fb2d317::t_874c35359b71f3 10
+lib/storyarn/ai/execution.ex
+  s_2797f64fb2d317::t_874c35359b71f3 23
+priv/docs/es/narrative-design/05-structural-analysis.md
+  s_2797f64fb2d317::t_7af4283f4f65ce 1-31,33-44,48,53-60
+  s_2797f64fb2d317::t_874c35359b71f3 32,45-47,49-52
+test/storyarn/ai/context_test.exs
+  s_2797f64fb2d317::t_874c35359b71f3 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "95a0d408c93d87b58a3a25a3e39e66c486b371f0",
+  "prompts": {},
+  "sessions": {
+    "s_2797f64fb2d317": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b96a2b7-cbec-4b6b-8cc5-a83cf4dde660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
