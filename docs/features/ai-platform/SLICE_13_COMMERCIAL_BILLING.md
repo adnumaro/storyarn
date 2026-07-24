@@ -102,4 +102,4 @@ Stage A is a product/finance memo. Stage B uses branch `feat/ai-commercial-billi
 
 ## Inputs from previous slices
 
-Slice 3 allowance/ledger plus representative production-like telemetry from Slices 7–12.
+Slice 3 allowance/ledger plus representative production-like telemetry from Slices 7.2–12.

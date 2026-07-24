@@ -8,7 +8,7 @@ A global command palette (`Meta+K` on macOS, `Ctrl+K` on Windows/Linux — both 
 
 ## Problem & proposed solution
 
-**Problem:** (a) feature discoverability — capabilities buried in per-surface toolbars/menus; (b) the later AI tool catalog (Slices 7–12) needs a home that is not an open chat; (c) several distinct editor surfaces make users re-learn UI per tool.
+**Problem:** (a) feature discoverability — capabilities buried in per-surface toolbars/menus; (b) the later AI tool catalog (Slices 7.2–12) needs a home that is not an open chat; (c) several distinct editor surfaces make users re-learn UI per tool.
 **Solution:** one palette, one interaction model. Typed input filters registered commands and authorized destinations. AI is never an automatic free-text fallback: Slice 2 adds an explicit async descriptor that maps only to allowlisted tasks. Commands declare surface scope, so the palette offers only what applies where the user is.
 
 ## Architectural direction
@@ -33,7 +33,7 @@ TypeScript strict, no `any`, destructured prop defaults · emits over callback p
 ## User documentation (deliverable of this slice)
 
 - **Platform guide page for the palette** (user docs system, `Storyarn.Docs`): what it is, how to open it per platform (Meta+K / Ctrl+K), command scopes per surface. Ships visible with the slice.
-- **AI docs skeleton prepared but not published yet**: public docs cannot use the actor-targeted `:ai_integrations` entitlement because unauthenticated readers have no actor. During invite-only infrastructure beta, AI surfaces provide inline help. Slice 7 publishes the AI guide section for everyone when the first user-facing AI tool ships; the product surface remains actor-gated. Documentation is not a security boundary, and no second product feature flag is introduced merely to hide it.
+- **AI docs skeleton prepared but not published yet**: public docs cannot use the actor-targeted `:ai_integrations` entitlement because unauthenticated readers have no actor. During invite-only infrastructure beta, AI surfaces provide inline help. Slice 7.2 publishes the AI guide section for everyone when the first user-facing AI tool ships; the product surface remains actor-gated. Documentation is not a security boundary, and no second product feature flag is introduced merely to hide it.
 
 ## Observability & error handling
 
@@ -67,7 +67,7 @@ The hardened registry supports typed navigation and Promise-aware local actions,
   - Client (`components/command-palette/` + `shared/command-palette/`): registry with lifetime-scoped registrations (mount/unmount IS the surface scoping), debounced `palette_nav` with stale-token invalidation on each keystroke, entity `shortcut` in an `sr-only` span so cmdk's textContent filter matches shortcut hits, failing `run()` keeps the palette open with a localized `role="alert"` (no client toast API exists in the repo) and only successful runs emit the executed event.
 - **Static commands**: project tool navigation (`layout.tools.*`) + the 8 project-settings sections (`project_settings.nav.items.*`) + account commands (shared `accountCommands.ts` builder on BOTH layouts, `settings.nav.items.*`) + flows minimap toggle/fit (`flows.minimap.*`) + scenes fit (`scenes.canvas.fit_view`) + workspace sidebar toggle (registered ONLY below the desktop breakpoint where it can execute — the dashboard sidebar is force-open on desktop — with stateful `layout.main_sidebar.show/hide_panel` labels).
 - **Naming rule (owner, verbatim): "Todo concepto tiene que tener el mismo nombre da igual donde esté situado"** — every palette label reuses the concept's EXISTING i18n key; inventing parallel labels broke search ("profile" found nothing). New keys only for genuinely new concepts, in the owning domain's locale file.
-- Analytics and the en/es palette guide shipped. The AI guide skeleton also shipped behind the existing **global** docs visibility path across direct URLs, navigation/search, sitemap, and `llms.txt`; it remains globally hidden during infrastructure beta. This rewrite supersedes that mechanism as the eventual product policy: Slice 7 removes the docs gate and publishes the guides publicly, while the in-app AI surfaces remain actor-gated.
+- Analytics and the en/es palette guide shipped. The AI guide skeleton also shipped behind the existing **global** docs visibility path across direct URLs, navigation/search, sitemap, and `llms.txt`; it remains globally hidden during infrastructure beta. This rewrite supersedes that mechanism as the eventual product policy: Slice 7.2 removes the docs gate and publishes the guides publicly, while the in-app AI surfaces remain actor-gated.
 - Shipped conventions: key hints use `CommandShortcut`, icons use direct named `lucide-vue-next` imports, and the registry combines local commands with server-authorized navigation. “AI Integrations” remains absent until availability can check its flag; a listed-but-erroring command violates only-list-what-executes.
 
 ### Shipped — F2 creation + F3 deletion (2026-07-21, PR #31)
