@@ -44,6 +44,8 @@ detector:
 - the dashboard keeps its three legacy issue buckets with no UI change:
   `missing_entry` → no-entry, `isolated_node` and `unreachable_node` →
   disconnected (disconnected from Entry), `no_outgoing_connection` → dead ends;
+  dashboard counts subtract active dismissals exactly like the editor badge
+  (the dashboard's 30-second cache may delay a dismissal that long);
 - aggregate queries may optimize discovery, but must validate findings through
   the canonical rule semantics before presenting them;
 - every rule declares its inputs, graph/cycle semantics, category, severity,
@@ -91,7 +93,9 @@ metadata, or project ids.
 
 Negative graph claims include the relevant canonical topology state in the
 fingerprint (active nodes and types, stored connections, resolved jump→hub
-virtual edges, and per-node output pin sets). They do not require sending the
+virtual edges, and per-node output pin sets; connection-optional node types
+— annotations and sequences — are excluded, as they cannot influence any
+rule). They do not require sending the
 whole graph to a future model.
 
 ## Initial rule semantics
@@ -140,7 +144,12 @@ The panel owns an explicit analysis snapshot:
 - dismissal applies only to the exact
   `finding_key + rule_version + evidence_fingerprint`. A changed rule or changed
   evidence reactivates the finding;
-- concurrent dismiss/restore requests are idempotent and uniqueness-constrained.
+- concurrent dismiss/restore requests are idempotent and uniqueness-constrained;
+- dismiss/restore broadcast a disposition change so other connected editors
+  re-split their open snapshot and badge (never a stale mark — the analysis
+  itself did not change), and local graph mutations announce themselves
+  project-wide so flows whose subflow/exit pins derive from the mutated flow
+  mark their open snapshots stale.
 
 A dismissal reason code is required. The v1 catalog is fixed (stable internal
 values, localized labels in the UI):

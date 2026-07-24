@@ -454,6 +454,24 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
       assert before_finding.finding_id != after_finding.finding_id
     end
 
+    test "adding an annotation does not rotate reachability fingerprints", %{
+      project: project,
+      flow: flow
+    } do
+      entry = entry_node(flow)
+      stuck = node_fixture(flow, %{type: "dialogue"})
+      connection_fixture(flow, entry, stuck)
+
+      [before_finding] = rule_findings(analyze!(project, flow), "no_outgoing_connection")
+
+      node_fixture(flow, %{type: "annotation", data: %{"text" => "just a note"}})
+
+      [after_finding] = rule_findings(analyze!(project, flow), "no_outgoing_connection")
+
+      assert before_finding.evidence_fingerprint == after_finding.evidence_fingerprint
+      assert before_finding.finding_id == after_finding.finding_id
+    end
+
     test "every emitted rule id belongs to the frozen catalog", %{project: project, flow: flow} do
       soft_delete!(entry_node(flow))
       node_fixture(flow, %{type: "dialogue"})
@@ -533,6 +551,113 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
                issues,
                &(&1.flow_id == flow.id and &1.issue_type == :disconnected_nodes)
              )
+    end
+  end
+
+  describe "frozen catalog contract" do
+    test "Rules.all/0 equals the hand-written v1 catalog" do
+      expected = %{
+        "missing_entry" => {1, :structure, :error, :flow},
+        "multiple_entries" => {1, :structure, :error, :flow},
+        "unreachable_node" => {1, :structure, :warning, :node},
+        "isolated_node" => {1, :structure, :warning, :node},
+        "no_outgoing_connection" => {1, :structure, :warning, :node},
+        "missing_output_connections" => {1, :structure, :warning, :node},
+        "invalid_output_pins" => {1, :structure, :error, :node},
+        "invalid_input_pins" => {1, :structure, :error, :node},
+        "orphan_hub" => {1, :structure, :warning, :node},
+        "missing_jump_target" => {1, :reference_integrity, :error, :node},
+        "stale_jump_target" => {1, :reference_integrity, :error, :node},
+        "missing_subflow_reference" => {1, :reference_integrity, :error, :node},
+        "stale_subflow_reference" => {1, :reference_integrity, :error, :node},
+        "missing_exit_flow_reference" => {1, :reference_integrity, :error, :node},
+        "stale_exit_flow_reference" => {1, :reference_integrity, :error, :node}
+      }
+
+      actual =
+        Map.new(Rules.all(), fn {id, rule} ->
+          {id, {rule.version, rule.category, rule.severity, rule.target}}
+        end)
+
+      assert actual == expected
+    end
+
+    test "every rule declares a non-empty limitations key resolvable in en/es" do
+      for {rule_id, rule} <- Rules.all() do
+        assert rule.limitations_key == "flows.analysis.limitations.#{rule_id}"
+        assert rule.inputs != []
+      end
+
+      for lang <- ~w(en es) do
+        doc =
+          "assets/app/locales/#{lang}/flows.json" |> File.read!() |> Jason.decode!()
+
+        analysis = doc["flows"]["analysis"]
+
+        for rule_id <- Rules.rule_ids() do
+          assert is_binary(analysis["rules"][rule_id]), "#{lang} missing rules.#{rule_id}"
+
+          assert is_binary(analysis["limitations"][rule_id]),
+                 "#{lang} missing limitations.#{rule_id}"
+        end
+
+        for code <- Storyarn.Flows.FindingDismissal.reason_codes() do
+          assert is_binary(analysis["reasons"][code]), "#{lang} missing reasons.#{code}"
+        end
+      end
+    end
+
+    test "structural rule ids partition HealthChecker codes with the editorial set" do
+      editorial =
+        ~w(stale_variable_reference variable_type_mismatch response_type_mismatch
+           missing_dialogue_text missing_dialogue_speaker empty_dialogue_response
+           incomplete_response_condition incomplete_response_assignment incomplete_condition
+           incomplete_instruction_assignment empty_instruction empty_condition)
+
+      structural = Rules.rule_ids()
+
+      assert MapSet.disjoint?(MapSet.new(structural), MapSet.new(editorial))
+
+      # Every code HealthChecker can emit is classified exactly once.
+      health_codes =
+        ~w(missing_entry multiple_entries stale_variable_reference missing_subflow_reference
+           stale_subflow_reference missing_jump_target stale_jump_target
+           missing_exit_flow_reference stale_exit_flow_reference invalid_output_pins
+           invalid_input_pins variable_type_mismatch response_type_mismatch
+           missing_dialogue_text missing_dialogue_speaker empty_dialogue_response
+           incomplete_response_condition incomplete_response_assignment incomplete_condition
+           incomplete_instruction_assignment unreachable_node no_outgoing_connection
+           missing_output_connections empty_instruction empty_condition)
+
+      classified = MapSet.union(MapSet.new(structural), MapSet.new(editorial))
+
+      for code <- health_codes do
+        assert MapSet.member?(classified, code) or code in structural,
+               "HealthChecker code #{code} is unclassified"
+      end
+    end
+
+    test "to_context_map/1 is accepted by the Slice-6 subject boundary", %{
+      project: project,
+      flow: flow
+    } do
+      entry = entry_node(flow)
+      stuck = node_fixture(flow, %{type: "dialogue"})
+      connection_fixture(flow, entry, stuck)
+
+      [finding] = rule_findings(analyze!(project, flow), "no_outgoing_connection")
+      context_map = Storyarn.Flows.StructuralAnalysis.Finding.to_context_map(finding)
+
+      assert {:ok, _hash} = Storyarn.Shared.CanonicalJSON.hash(context_map)
+
+      assert {:ok, _ref} =
+               Storyarn.AI.Context.SubjectRef.structural_finding(
+                 1,
+                 project.id,
+                 finding.finding_id,
+                 context_map,
+                 Enum.map(finding.evidence, &%{type: &1.type, id: &1.id})
+               )
     end
   end
 

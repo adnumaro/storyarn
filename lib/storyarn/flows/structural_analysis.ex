@@ -258,7 +258,7 @@ defmodule Storyarn.Flows.StructuralAnalysis do
     findings =
       for node <- graph.nodes, MapSet.member?(graph.orphan_hub_ids, node.id) do
         Finding.build("orphan_hub", topology.flow_id, %{type: :node, id: node.id},
-          details: %{hub_id: node.data["hub_id"]},
+          details: %{node_type: "hub", hub_id: node.data["hub_id"]},
           evidence: [node_evidence(node.id)],
           fingerprint_inputs: %{
             "node_id" => node.id,
@@ -367,8 +367,14 @@ defmodule Storyarn.Flows.StructuralAnalysis do
   # pin set (pin validity and required-pin claims derive from it). Rewiring a
   # jump or removing a dialogue response must rotate reachability fingerprints.
   defp graph_digest(%Topology{} = topology) do
+    # Connection-optional types (annotation, sequence) cannot influence any
+    # rule — excluding them keeps dismissal fingerprints stable across
+    # purely visual edits.
+    digest_nodes =
+      Enum.reject(topology.nodes, &NodeConnectionRules.connection_optional_type?(&1.type))
+
     CanonicalJSON.hash!(%{
-      "nodes" => topology.nodes |> Enum.map(&[&1.id, &1.type]) |> Enum.sort(),
+      "nodes" => digest_nodes |> Enum.map(&[&1.id, &1.type]) |> Enum.sort(),
       "edges" =>
         topology.connections
         |> Enum.map(&[&1.source_node_id, &1.source_pin, &1.target_node_id, &1.target_pin])
@@ -379,7 +385,7 @@ defmodule Storyarn.Flows.StructuralAnalysis do
         |> Enum.map(fn {jump_id, hub_node_id} -> [jump_id, hub_node_id] end)
         |> Enum.sort(),
       "output_pins" =>
-        topology.nodes
+        digest_nodes
         |> Enum.map(&[&1.id, NodeConnectionRules.output_pins(&1.type, &1.data)])
         |> Enum.sort()
     })

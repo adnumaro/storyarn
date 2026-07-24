@@ -60,6 +60,9 @@ defmodule StoryarnWeb.E2E.FlowAnalysisTest do
     |> click("label", "Intentional design")
     |> click("[data-testid='analysis-dismiss-confirm']")
     |> refute_has("[data-testid='analysis-finding']", text: "Node has no outgoing connection")
+    |> unwrap(fn _ ->
+      assert Repo.aggregate(Storyarn.Flows.FindingDismissal, :count) == 1
+    end)
     # The disposition lives in the dismissed tab and is reversible.
     |> click("[data-testid='analysis-tab-dismissed']")
     |> assert_has("[data-testid='analysis-dismissed-finding']")
@@ -86,6 +89,8 @@ defmodule StoryarnWeb.E2E.FlowAnalysisTest do
     |> assert_has("[data-testid='analysis-panel']")
     |> assert_has("[data-testid='analysis-finding']", text: "Node has no outgoing connection")
     |> click("[data-testid='analysis-finding']", "Node has no outgoing connection")
+    # Positive proof of expansion before refuting the disposition action.
+    |> assert_has("[data-testid='analysis-evidence-navigate']")
     |> refute_has("[data-testid='analysis-dismiss']")
   end
 end

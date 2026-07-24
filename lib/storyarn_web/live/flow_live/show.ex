@@ -1275,6 +1275,13 @@ defmodule StoryarnWeb.FlowLive.Show do
     flow = data.flow
     user = socket.assigns.current_scope.user
 
+    # A panel opened during the async-load window (e.g. straight from the
+    # palette) must survive the load: recompute its snapshot for the same
+    # flow instead of silently discarding it.
+    preserve_analysis_panel? =
+      (socket.assigns[:analysis_panel_open] == true and socket.assigns.flow) &&
+        socket.assigns.flow.id == flow.id
+
     if !socket.assigns.compact do
       CollaborationHelpers.setup_collaboration(socket, flow, user)
     end
@@ -1317,7 +1324,13 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:preview_has_next, false)
       |> assign(:preview_history, [])
       |> assign(:versions_panel_open, false)
-      |> AnalysisHandlers.assign_initial_state()
+      |> then(fn socket ->
+        if preserve_analysis_panel? do
+          AnalysisHandlers.recompute_open_snapshot(socket)
+        else
+          AnalysisHandlers.assign_initial_state(socket)
+        end
+      end)
       |> assign(:history_data, nil)
       |> assign(:collab_scope, {:flow, flow.id})
       |> assign(:online_users, online_users)

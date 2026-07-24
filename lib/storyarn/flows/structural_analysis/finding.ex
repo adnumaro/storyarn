@@ -87,6 +87,25 @@ defmodule Storyarn.Flows.StructuralAnalysis.Finding do
     }
   end
 
+  @doc """
+  CanonicalJSON-safe representation (string keys and values only) — the form
+  Slice 7.2 passes to `SubjectRef.structural_finding/5`.
+  """
+  @spec to_context_map(t()) :: map()
+  def to_context_map(%__MODULE__{} = finding) do
+    %{
+      "finding_key" => finding.finding_key,
+      "rule_id" => finding.rule_id,
+      "rule_version" => finding.rule_version,
+      "category" => to_string(finding.category),
+      "severity" => to_string(finding.severity),
+      "flow_id" => finding.flow_id,
+      "target" => %{"type" => to_string(finding.target.type), "id" => finding.target.id},
+      "evidence_fingerprint" => finding.evidence_fingerprint,
+      "details" => Map.new(finding.details, fn {k, v} -> {to_string(k), v} end)
+    }
+  end
+
   @category_order %{structure: 0, reference_integrity: 1}
   @severity_order %{error: 0, warning: 1}
 

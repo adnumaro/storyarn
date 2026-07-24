@@ -477,7 +477,11 @@
         "stale_exit_flow_reference": "Checks flow existence in this project; it does not inspect the referenced flow's content."
       },
       "close": "Close analysis panel",
-      "action_failed": "The action could not reach the server. Try again."
+      "action_failed": "The action could not reach the server. Try again.",
+      "open_from_health_clean": "Structural analysis",
+      "previously_dismissed": "Previously dismissed: {reason} · {user}",
+      "empty_filtered": "No findings match the current filters.",
+      "clear_filters": "Clear filters"
     }
   }
 }

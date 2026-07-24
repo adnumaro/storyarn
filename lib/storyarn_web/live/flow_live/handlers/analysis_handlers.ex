@@ -66,7 +66,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
         # looking at — a stale snapshot must be rerun first, otherwise the
         # dismissal row would match no future occurrence and become invisible.
         match?(%{stale: true}, socket.assigns[:analysis_snapshot]) ->
-          {:noreply, stale_selection_flash(socket)}
+          {:noreply, stale_snapshot_flash(socket)}
 
         finding = find_current_finding(socket, params["finding_id"]) ->
           dismiss_current_finding(socket, finding, params)
@@ -188,6 +188,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
     socket
     |> assign(:analysis_panel_open, false)
     |> assign(:analysis_snapshot, nil)
+  end
+
+  @doc "Keeps an already-open panel across the async flow load (fresh snapshot)."
+  @spec recompute_open_snapshot(Socket.t()) :: Socket.t()
+  def recompute_open_snapshot(socket) do
+    socket
+    |> assign(:analysis_panel_open, true)
+    |> compute_snapshot("refresh")
   end
 
   @doc """
@@ -399,6 +407,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
     )
   end
 
+  # The SNAPSHOT is outdated (the finding may still be perfectly current) —
+  # distinct copy from a genuinely vanished finding id.
+  defp stale_snapshot_flash(socket) do
+    put_flash(
+      socket,
+      :error,
+      dgettext("flows", "The flow changed since this analysis — rerun before dismissing.")
+    )
+  end
+
   defp stale_selection_flash(socket) do
     put_flash(
       socket,
@@ -439,6 +457,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
       targetType: to_string(finding.target.type),
       targetId: finding.target.id,
       nodeType: finding.details[:node_type],
+      limitationsKey: Flows.structural_rule_limitations_key(finding.rule_id),
       pins: finding.details[:pins] || [],
       count: finding.details[:count],
       hubId: finding.details[:hub_id],

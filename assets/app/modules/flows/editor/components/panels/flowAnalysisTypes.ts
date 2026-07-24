@@ -19,6 +19,12 @@ export interface AnalysisFinding {
   pins: string[];
   count?: number | null;
   hubId?: string | null;
+  limitationsKey?: string | null;
+  previousDismissal?: {
+    reasonCode: string;
+    dismissedBy: string | null;
+    dismissedAt: string | null;
+  } | null;
   evidence: AnalysisEvidence[];
   // Present only on dismissed findings
   dismissalId?: number;

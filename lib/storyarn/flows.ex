@@ -1052,6 +1052,10 @@ defmodule Storyarn.Flows do
   @spec structural_rule_ids() :: [String.t()]
   defdelegate structural_rule_ids(), to: StructuralAnalysis.Rules, as: :rule_ids
 
+  @doc "The declared i18n limitations key of a structural rule."
+  @spec structural_rule_limitations_key(String.t()) :: String.t()
+  def structural_rule_limitations_key(rule_id), do: StructuralAnalysis.Rules.fetch!(rule_id).limitations_key
+
   # =============================================================================
   # Structural Finding Dismissals
   # =============================================================================

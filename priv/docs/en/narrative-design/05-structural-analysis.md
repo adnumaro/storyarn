@@ -15,7 +15,7 @@ Analysis is a **free capability**: it makes no AI calls, consumes no AI allowanc
 
 ## Running an analysis
 
-Open the panel from the **health indicator** in the flow editor toolbar, or run **Analyze current flow** from the command palette. Both compute a fresh snapshot of findings for the current flow.
+Open the panel from the **health indicator** in the flow editor toolbar — the entry is always there, and on a clean flow the green check itself opens the panel — or run **Analyze current flow** from the command palette. Both compute a fresh snapshot of findings for the current flow.
 
 The panel splits findings into two categories:
 
@@ -51,7 +51,7 @@ Sometimes the detection is correct but the structure is intentional, or the rule
 | Duplicate finding        | Another finding already covers the same problem               |
 | Other                    | Anything else — requires a note                               |
 
-Dismissals are **reversible** (restore them from the Dismissed tab), shared with the whole project, and recorded with who dismissed and why. A dismissal applies to the exact occurrence it was made on: if the rule is updated or the surrounding structure changes, the finding reactivates on the next analysis.
+Dismissals are **reversible** (restore them from the Dismissed tab), shared with the whole project — other editors' open panels update immediately — and recorded with who dismissed, when, and why. If a dismissed finding later reactivates because the structure around it changed, its card shows a _previously dismissed_ hint with the original reason. A dismissal applies to the exact occurrence it was made on: if the rule is updated or the surrounding structure changes, the finding reactivates on the next analysis.
 
 Dismissing and restoring require edit permission on the flow. Viewers can open the panel, inspect findings, and navigate evidence, but cannot change dispositions.
 

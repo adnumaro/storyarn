@@ -43,7 +43,18 @@ const dismissFormOpen = ref(false);
 const isError = computed(() => finding.severity === "error");
 
 const ruleLabel = computed(() => t(`flows.analysis.rules.${finding.ruleId}`));
-const limitations = computed(() => t(`flows.analysis.limitations.${finding.ruleId}`));
+const limitations = computed(() =>
+  t(finding.limitationsKey ?? `flows.analysis.limitations.${finding.ruleId}`),
+);
+
+const previouslyDismissed = computed(() => {
+  const prev = finding.previousDismissal;
+  if (!prev) return null;
+  return t("flows.analysis.previously_dismissed", {
+    reason: t(`flows.analysis.reasons.${prev.reasonCode}`),
+    user: prev.dismissedBy ?? "—",
+  });
+});
 
 const targetLabel = computed(() => {
   if (finding.targetType === "flow") return t("flows.analysis.target_flow");
@@ -125,6 +136,14 @@ function onDismissSubmit(reasonCode: string, note: string): void {
       </div>
 
       <p class="text-xs text-muted-foreground">{{ limitations }}</p>
+
+      <p
+        v-if="previouslyDismissed"
+        class="rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-600 dark:text-amber-400"
+        data-testid="analysis-previously-dismissed"
+      >
+        {{ previouslyDismissed }}
+      </p>
 
       <div v-if="finding.evidence.length > 0">
         <p class="mb-1 text-xs font-medium text-muted-foreground">

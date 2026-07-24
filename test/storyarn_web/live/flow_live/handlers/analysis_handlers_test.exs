@@ -281,6 +281,109 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlersTest do
     end
   end
 
+  describe "analytics" do
+    defmodule TestAdapter do
+      @moduledoc false
+      def capture(payload) do
+        send(Application.get_env(:storyarn, :analytics_test_pid), {:analytics_capture, payload})
+        :ok
+      end
+
+      def identify(_payload), do: :ok
+    end
+
+    setup :register_and_log_in_user
+
+    setup %{user: user} do
+      original_adapter = Application.get_env(:storyarn, :analytics_adapter)
+      Application.put_env(:storyarn, :analytics_test_pid, self())
+      Application.put_env(:storyarn, :analytics_adapter, TestAdapter)
+
+      on_exit(fn ->
+        Application.delete_env(:storyarn, :analytics_test_pid)
+
+        if original_adapter do
+          Application.put_env(:storyarn, :analytics_adapter, original_adapter)
+        else
+          Application.delete_env(:storyarn, :analytics_adapter)
+        end
+      end)
+
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Analytics Flow"})
+      seed_dead_end(flow)
+      %{project: project, flow: flow}
+    end
+
+    test "the four analysis events fire with allowlisted properties only", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+
+      render_click(view, "open_analysis_panel", %{})
+
+      assert_receive {:analytics_capture, %{event: "flow analysis run", properties: run_props}}
+      assert run_props["source"] == "open"
+      assert run_props["stale"] == false
+      assert run_props["finding_count"] == 2
+      assert is_binary(run_props["duration_bucket"])
+      refute Map.has_key?(run_props, "flow_id")
+
+      [finding | _] = analysis_props(view)["active"]
+      stuck_id = finding["targetId"]
+
+      render_click(view, "analysis_navigate_evidence", %{"type" => "flow_node", "id" => stuck_id})
+
+      assert_receive {:analytics_capture, %{event: "flow analysis evidence navigated", properties: nav_props}}
+
+      assert nav_props == %{"evidence_type" => "flow_node"}
+
+      render_click(view, "dismiss_finding", %{
+        "finding_id" => finding["findingId"],
+        "reason_code" => "intentional_design",
+        "note" => "secret note"
+      })
+
+      assert_receive {:analytics_capture, %{event: "flow analysis finding dismissed", properties: dis_props}}
+
+      assert dis_props["rule_id"] == finding["ruleId"]
+      assert dis_props["reason_code"] == "intentional_design"
+      refute Map.has_key?(dis_props, "note")
+
+      [dismissed] = analysis_props(view)["dismissed"]
+      render_click(view, "restore_finding_dismissal", %{"dismissal_id" => dismissed["dismissalId"]})
+
+      assert_receive {:analytics_capture, %{event: "flow analysis finding restored", properties: res_props}}
+
+      assert res_props["rule_id"] == finding["ruleId"]
+      assert res_props["rule_version"] == 1
+    end
+
+    test "rerun from a stale snapshot records stale: true", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      render_click(view, "open_analysis_panel", %{})
+      assert_receive {:analytics_capture, %{event: "flow analysis run"}}
+
+      render_hook(view, "add_node", %{
+        "type" => "dialogue",
+        "position_x" => 900.0,
+        "position_y" => 900.0
+      })
+
+      render_click(view, "rerun_analysis", %{})
+
+      assert_receive {:analytics_capture, %{event: "flow analysis run", properties: props}}
+      assert props["source"] == "rerun"
+      assert props["stale"] == true
+    end
+  end
+
   describe "surface limitation" do
     setup :register_and_log_in_user
 
@@ -368,7 +471,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlersTest do
           "note" => ""
         })
 
-      assert html =~ "no longer current"
+      assert html =~ "rerun before dismissing"
       assert Flows.list_active_finding_dismissals(Flows.get_flow!(project.id, flow.id)) == []
     end
 

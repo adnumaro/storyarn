@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RotateCw, ScanSearch, X } from "lucide-vue-next";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import Sidebar from "../../../../../shell/Sidebar.vue";
@@ -51,6 +51,14 @@ function applyFilters(findings: AnalysisFinding[]): AnalysisFinding[] {
 }
 
 const filteredActive = computed(() => applyFilters(active));
+const filtersActive = computed(
+  () => categoryFilter.value !== "all" || severityFilter.value !== "all",
+);
+
+function clearFilters(): void {
+  categoryFilter.value = "all";
+  severityFilter.value = "all";
+}
 const filteredDismissed = computed(() => applyFilters(dismissed));
 const shownFindings = computed(() =>
   tab.value === "active" ? filteredActive.value : filteredDismissed.value,
@@ -59,10 +67,20 @@ const shownFindings = computed(() =>
 // `pushEvent` never throws; a dropped push invokes the onError callback
 // and the panel surfaces it inline instead of failing silently.
 const actionError = ref<string | null>(null);
+const pending = ref(false);
+
+// A fresh snapshot always changes computedAt; clear the pending state then.
+watch(
+  () => computedAt,
+  () => {
+    pending.value = false;
+  },
+);
 
 function pushAction(event: string, payload: Record<string, unknown>): void {
   actionError.value = null;
   live.pushEvent(event, payload, undefined, () => {
+    pending.value = false;
     actionError.value = t("flows.analysis.action_failed");
   });
 }
@@ -72,6 +90,7 @@ function close(): void {
 }
 
 function rerun(): void {
+  pending.value = true;
   pushAction("rerun_analysis", {});
 }
 
@@ -102,9 +121,10 @@ function onNavigate(type: string, id: number): void {
             size="sm"
             class="h-7 gap-1.5 px-2 text-xs"
             data-testid="analysis-rerun"
+            :disabled="pending"
             @click="rerun"
           >
-            <RotateCw class="size-3.5" />
+            <RotateCw class="size-3.5" :class="pending && 'animate-spin'" />
             {{ t("flows.analysis.rerun") }}
           </Button>
           <button
@@ -126,8 +146,14 @@ function onNavigate(type: string, id: number): void {
         data-testid="analysis-stale-banner"
       >
         <span>{{ t("flows.analysis.stale_banner") }}</span>
-        <Button size="sm" variant="outline" class="h-6 shrink-0 gap-1 px-2 text-xs" @click="rerun">
-          <RotateCw class="size-3" />
+        <Button
+          size="sm"
+          variant="outline"
+          class="h-6 shrink-0 gap-1 px-2 text-xs"
+          :disabled="pending"
+          @click="rerun"
+        >
+          <RotateCw class="size-3" :class="pending && 'animate-spin'" />
           {{ t("flows.analysis.rerun") }}
         </Button>
       </div>
@@ -209,17 +235,27 @@ function onNavigate(type: string, id: number): void {
         :aria-labelledby="`analysis-tab-button-${tab}`"
         class="min-h-0 flex-1 overflow-y-auto"
       >
-        <p
+        <div
           v-if="shownFindings.length === 0"
           class="px-1 py-6 text-center text-xs text-muted-foreground"
           data-testid="analysis-empty"
         >
-          {{
-            tab === "active"
-              ? t("flows.analysis.empty_active")
-              : t("flows.analysis.empty_dismissed")
-          }}
-        </p>
+          <template
+            v-if="filtersActive && (tab === 'active' ? active.length : dismissed.length) > 0"
+          >
+            <p>{{ t("flows.analysis.empty_filtered") }}</p>
+            <Button variant="outline" size="sm" class="mt-2 text-xs" @click="clearFilters">
+              {{ t("flows.analysis.clear_filters") }}
+            </Button>
+          </template>
+          <p v-else>
+            {{
+              tab === "active"
+                ? t("flows.analysis.empty_active")
+                : t("flows.analysis.empty_dismissed")
+            }}
+          </p>
+        </div>
         <ul v-else class="space-y-1.5">
           <FlowAnalysisFindingCard
             v-for="finding in shownFindings"

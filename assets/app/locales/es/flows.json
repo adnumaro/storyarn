@@ -477,7 +477,11 @@
         "stale_exit_flow_reference": "Comprueba que el flow exista en este proyecto; no inspecciona su contenido."
       },
       "close": "Cerrar panel de análisis",
-      "action_failed": "La acción no llegó al servidor. Inténtalo de nuevo."
+      "action_failed": "La acción no llegó al servidor. Inténtalo de nuevo.",
+      "open_from_health_clean": "Análisis estructural",
+      "previously_dismissed": "Descartado anteriormente: {reason} · {user}",
+      "empty_filtered": "Ningún hallazgo coincide con los filtros actuales.",
+      "clear_filters": "Limpiar filtros"
     }
   }
 }

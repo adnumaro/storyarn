@@ -303,7 +303,6 @@ function openAnalysisPanel(): void {
           </PopoverAnchor>
           <PopoverContent side="bottom" :side-offset="4" class="w-max max-h-60 overflow-y-auto p-1">
             <button
-              v-if="structuralCount > 0"
               type="button"
               data-testid="flow-health-open-analysis"
               class="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs transition-colors hover:bg-accent"
@@ -311,7 +310,11 @@ function openAnalysisPanel(): void {
             >
               <ScanSearch class="size-3.5 shrink-0" />
               <span class="flex-1 text-left">
-                {{ $t("flows.analysis.open_from_health", { count: structuralCount }) }}
+                {{
+                  structuralCount > 0
+                    ? $t("flows.analysis.open_from_health", { count: structuralCount })
+                    : $t("flows.analysis.open_from_health_clean")
+                }}
               </span>
             </button>
             <div v-if="flowHealth.errorNodes.length > 0">
@@ -399,9 +402,14 @@ function openAnalysisPanel(): void {
         </Popover>
       </template>
       <ToolbarTooltip v-else :label="$t('flows.header.looks_great')" side="bottom">
-        <div class="toolbar-btn text-green-500/60">
+        <button
+          type="button"
+          class="toolbar-btn text-green-500/60"
+          data-testid="flow-health-clean-open-analysis"
+          @click="openAnalysisPanel"
+        >
           <CircleCheck class="size-3.5" />
-        </div>
+        </button>
       </ToolbarTooltip>
     </div>
 

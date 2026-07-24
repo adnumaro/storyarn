@@ -15,7 +15,7 @@ El análisis es una **capacidad gratuita**: no hace ninguna llamada a IA, no con
 
 ## Ejecutar un análisis
 
-Abre el panel desde el **indicador de salud** en la barra del editor de flows, o ejecuta **Analizar el flow actual** desde la paleta de comandos. Ambos calculan una instantánea fresca de hallazgos del flow actual.
+Abre el panel desde el **indicador de salud** en la barra del editor de flows — la entrada está siempre disponible y, con un flow limpio, el propio check verde abre el panel — o ejecuta **Analizar el flow actual** desde la paleta de comandos. Ambos calculan una instantánea fresca de hallazgos del flow actual.
 
 El panel separa los hallazgos en dos categorías:
 
@@ -51,7 +51,7 @@ A veces la detección es correcta pero la estructura es intencionada, o la regla
 | Hallazgo duplicado      | Otro hallazgo ya cubre el mismo problema                                   |
 | Otro motivo             | Cualquier otro caso — requiere una nota                                    |
 
-Los descartes son **reversibles** (restáuralos desde la pestaña Descartados), compartidos con todo el proyecto y registrados con quién descartó y por qué. Un descarte aplica a la ocurrencia exacta sobre la que se hizo: si la regla se actualiza o la estructura circundante cambia, el hallazgo se reactiva en el siguiente análisis.
+Los descartes son **reversibles** (restáuralos desde la pestaña Descartados), compartidos con todo el proyecto — los paneles abiertos de otros editores se actualizan al instante — y registrados con quién descartó, cuándo y por qué. Si un hallazgo descartado se reactiva porque la estructura a su alrededor cambió, su tarjeta muestra un aviso de _descartado anteriormente_ con el motivo original. Un descarte aplica a la ocurrencia exacta sobre la que se hizo: si la regla se actualiza o la estructura circundante cambia, el hallazgo se reactiva en el siguiente análisis.
 
 Descartar y restaurar requieren permiso de edición sobre el flow. Los usuarios con rol de lectura pueden abrir el panel, inspeccionar hallazgos y navegar la evidencia, pero no cambiar disposiciones.
 
