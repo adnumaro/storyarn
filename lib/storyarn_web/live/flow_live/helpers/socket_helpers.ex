@@ -31,6 +31,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   """
   @spec reload_flow_data(Socket.t(), keyword()) :: Socket.t()
   def reload_flow_data(socket, opts \\ []) do
+    previous_flow = socket.assigns[:flow]
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
 
     flow_data = Flows.serialize_for_canvas(flow)
@@ -39,7 +40,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     # Local graph mutations announce themselves project-wide so flows whose
     # subflow/exit pins derive from this one can stale their open analysis
     # snapshots. Remote-change receivers pass notify_project: false.
-    if Keyword.get(opts, :notify_project, true) do
+    if Keyword.get(opts, :notify_project, true) and exit_surface_changed?(previous_flow, flow) do
       Collaboration.broadcast_flow_graph_changed_from(self(), flow.project_id, flow.id)
     end
 
@@ -49,6 +50,27 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     |> assign(:flow_hubs, flow_hubs)
     |> assign_flow_stats(flow, flow_data)
   end
+
+  # Other flows only ever derive from THIS flow's exit nodes: a subflow node
+  # exposes one output pin per referenced-flow exit node
+  # (`NodeCrud.batch_resolve_subflow_data/2` → `exit_<exit node id>`), and an
+  # exit node in flow-reference mode resolves against the flow's existence.
+  # Content-only edits (dialogue text, positions, connections inside this
+  # flow) change nothing another flow can observe, so they must not stale
+  # anyone else's snapshot. An unloaded association is treated as changed —
+  # over-notifying is recoverable, missing a real pin change is not.
+  defp exit_surface_changed?(previous_flow, flow) do
+    case exit_node_ids(previous_flow) do
+      nil -> true
+      previous_ids -> previous_ids != exit_node_ids(flow)
+    end
+  end
+
+  defp exit_node_ids(%{nodes: nodes}) when is_list(nodes) do
+    for node <- nodes, node.type == "exit", into: MapSet.new(), do: node.id
+  end
+
+  defp exit_node_ids(_flow), do: nil
 
   @doc """
   Computes flow-level stats and health findings grouped by severity.

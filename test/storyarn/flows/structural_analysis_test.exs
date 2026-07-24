@@ -195,6 +195,30 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
       assert finding.target.id == dialogue.id
       assert finding.details.pins == ["r2"]
     end
+
+    test "response connected through a legacy pin alias is not reported missing", %{
+      project: project,
+      flow: flow
+    } do
+      entry = entry_node(flow)
+      exit_n = exit_node(flow)
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Choose", "responses" => [%{"id" => "r1", "text" => "Yes"}]}
+        })
+
+      connection_fixture(flow, entry, dialogue)
+      # Legacy rows persist an accepted alias of the canonical `r1` pin.
+      connection_fixture(flow, dialogue, exit_n, %{source_pin: "response_r1"})
+
+      analysis = analyze!(project, flow)
+
+      assert rule_findings(analysis, "missing_output_connections") == []
+      assert rule_findings(analysis, "invalid_output_pins") == []
+      assert rule_findings(analysis, "no_outgoing_connection") == []
+    end
   end
 
   describe "pin validity rules" do

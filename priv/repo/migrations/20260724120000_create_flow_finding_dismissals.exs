@@ -4,9 +4,19 @@ defmodule Storyarn.Repo.Migrations.CreateFlowFindingDismissals do
   @reason_codes ~w(intentional_design rule_not_applicable missing_context incorrect_detection duplicate_finding other)
 
   def change do
+    # FK target for the composite (flow_id, project_id) reference below.
+    create unique_index(:flows, [:id, :project_id], name: :flows_id_project_id_index)
+
     create table(:flow_finding_dismissals) do
       add :project_id, references(:projects, on_delete: :delete_all), null: false
-      add :flow_id, references(:flows, on_delete: :delete_all), null: false
+
+      # Composite FK: (flow_id, project_id) must match a real flow, so a
+      # dismissal can never be attributed to a project that does not own the
+      # flow it dismisses a finding for — cross-project leakage is impossible
+      # at the storage layer, not just in the CRUD path.
+      add :flow_id,
+          references(:flows, with: [project_id: :project_id], on_delete: :delete_all),
+          null: false
 
       add :finding_key, :string, null: false, size: 500
       add :rule_id, :string, null: false, size: 100

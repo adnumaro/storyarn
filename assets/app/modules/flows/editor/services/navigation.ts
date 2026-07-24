@@ -14,6 +14,19 @@ import type { FlowSchemes, FlowAreaExtra } from "../lib/rete-schemes";
 
 const HIGHLIGHT_DURATION = 2500;
 
+/**
+ * Evidence-highlight styling. Deliberately its OWN layer of custom properties:
+ * FlowConnection.vue resolves --conn-evidence-* over the debug panel's
+ * --conn-* variables, so an expiring evidence highlight cannot wipe an active
+ * debug highlight (and vice versa).
+ */
+const CONN_EVIDENCE_PROPS: Record<string, string> = {
+  "--conn-evidence-stroke": "var(--color-primary, #7c3aed)",
+  "--conn-evidence-stroke-width": "3px",
+  "--conn-evidence-dash": "8 4",
+  "--conn-evidence-animation": "debug-flow 0.6s linear infinite",
+};
+
 export interface ConnectionRef {
   sourceDbId: number;
   sourcePin: string | null;
@@ -99,22 +112,20 @@ export function navigation(
     highlightedElements = [];
 
     if (highlightedConnectionEl) {
-      highlightedConnectionEl.style.removeProperty("--conn-stroke");
-      highlightedConnectionEl.style.removeProperty("--conn-stroke-width");
-      highlightedConnectionEl.style.removeProperty("--conn-dash");
-      highlightedConnectionEl.style.removeProperty("--conn-animation");
+      for (const prop of Object.keys(CONN_EVIDENCE_PROPS)) {
+        highlightedConnectionEl.style.removeProperty(prop);
+      }
       highlightedConnectionEl = null;
     }
   }
 
-  // Same CSS-variable mechanism the debug panel uses on FlowConnection.vue,
-  // scoped to a single finding-evidence highlight with auto-clear.
+  // Finding-evidence highlight with auto-clear, on its own styling layer so a
+  // running debug session keeps its own connection styling.
   function highlightConnectionEl(viewEl: HTMLElement): void {
     clearHighlights();
-    viewEl.style.setProperty("--conn-stroke", "var(--color-primary, #7c3aed)");
-    viewEl.style.setProperty("--conn-stroke-width", "3px");
-    viewEl.style.setProperty("--conn-dash", "8 4");
-    viewEl.style.setProperty("--conn-animation", "debug-flow 0.6s linear infinite");
+    for (const [prop, value] of Object.entries(CONN_EVIDENCE_PROPS)) {
+      viewEl.style.setProperty(prop, value);
+    }
     highlightedConnectionEl = viewEl;
     highlightTimer = setTimeout(clearHighlights, HIGHLIGHT_DURATION);
   }
@@ -176,30 +187,31 @@ export function navigation(
         return;
       }
 
-      AreaExtensions.zoomAt(area, [sourceNode, targetNode]);
-
       const graph = createFlowGraphQueries(editor.getNodes(), editor.getConnections());
-      const candidates = graph
+      // Only the exact pin pair identifies the evidence: parallel connections
+      // between the same node pair differ by pin, so a laxer match would
+      // highlight a DIFFERENT edge than the finding is about.
+      const connection = graph
         .outgoingConnections(sourceNode.id)
-        .filter((conn) => conn.target === targetNode.id);
-      // Prefer the exact pin pair; parallel connections between the same
-      // node pair can differ by either endpoint's pin.
-      const connection =
-        candidates.find(
+        .find(
           (conn) =>
+            conn.target === targetNode.id &&
             (!ref.sourcePin || conn.sourceOutput === ref.sourcePin) &&
             (!ref.targetPin || conn.targetInput === ref.targetPin),
-        ) ??
-        candidates.find((conn) => !ref.sourcePin || conn.sourceOutput === ref.sourcePin) ??
-        candidates[0];
+        );
 
-      if (!connection) {
-        return;
-      }
+      const view = connection ? area.connectionViews.get(connection.id) : undefined;
 
-      const view = area.connectionViews.get(connection.id);
+      AreaExtensions.zoomAt(area, [sourceNode, targetNode]);
+
       if (view) {
         highlightConnectionEl(view.element as HTMLElement);
+      } else {
+        // The edge has no rendered geometry — a source pin that no longer
+        // exists has no socket to draw from, which is precisely what these
+        // findings report. Point at both endpoints (evidence of the same
+        // finding) rather than at some other edge between them.
+        highlightNodes([sourceNode.id, targetNode.id], nodeColor(sourceNode));
       }
     },
 

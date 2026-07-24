@@ -144,6 +144,11 @@ defmodule Storyarn.Flows.FindingDismissals do
     end
   end
 
+  # A hostile client can send any JSON value (array, object, number) as the
+  # note. Non-text values are handed to the changeset untouched so they fail
+  # closed as a cast error instead of raising out of the LiveView.
+  defp normalize_note(note), do: note
+
   defp fetch_active(flow, finding) do
     Repo.one(
       from(d in FindingDismissal,

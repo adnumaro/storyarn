@@ -52,7 +52,7 @@ defmodule Storyarn.Flows.StructuralAnalysis.Graph do
     entry_ids = for n <- nodes, n.type == "entry", do: n.id
     unreachable_ids = compute_unreachable_ids(nodes, valid_connections, entry_ids)
     dead_end_ids = compute_dead_end_ids(nodes, valid_connections)
-    connected_output_pins = connected_output_pins(valid_connections)
+    connected_output_pins = connected_output_pins(nodes, valid_connections)
 
     %__MODULE__{
       nodes: nodes,
@@ -254,14 +254,20 @@ defmodule Storyarn.Flows.StructuralAnalysis.Graph do
     end
   end
 
-  defp connected_output_pins(connections) do
+  # Stored pins are normalized to their canonical output pin first: a legacy
+  # dialogue connection persisted under an accepted alias (`response_<id>`)
+  # connects the canonical response pin, so crediting the raw alias would
+  # report the very pin it connects as missing.
+  defp connected_output_pins(nodes, connections) do
+    nodes_by_id = Map.new(nodes, &{&1.id, &1})
+
     Enum.reduce(connections, %{}, fn connection, acc ->
-      Map.update(
-        acc,
-        connection.source_node_id,
-        MapSet.new([connection.source_pin]),
-        &MapSet.put(&1, connection.source_pin)
-      )
+      source = Map.fetch!(nodes_by_id, connection.source_node_id)
+
+      pin =
+        NodeConnectionRules.canonical_output_pin(source.type, source.data, connection.source_pin)
+
+      Map.update(acc, connection.source_node_id, MapSet.new([pin]), &MapSet.put(&1, pin))
     end)
   end
 end

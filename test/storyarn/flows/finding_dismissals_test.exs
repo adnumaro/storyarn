@@ -52,6 +52,22 @@ defmodule Storyarn.Flows.FindingDismissalsTest do
       assert dismissal.restored_at == nil
     end
 
+    test "rejects a non-text note instead of raising", %{flow: flow, finding: finding, user: user} do
+      # A hostile client can put any JSON value in the note field.
+      for hostile_note <- [["a"], %{"a" => 1}, 42] do
+        assert {:error, changeset} =
+                 Flows.dismiss_finding(flow, finding, %{
+                   reason_code: "intentional_design",
+                   note: hostile_note,
+                   dismissed_by_id: user.id
+                 })
+
+        assert %{note: [_]} = errors_on(changeset)
+      end
+
+      assert Repo.aggregate(FindingDismissal, :count) == 0
+    end
+
     test "rejects unknown reason codes", %{flow: flow, finding: finding, user: user} do
       assert {:error, changeset} =
                Flows.dismiss_finding(flow, finding, %{
@@ -93,11 +109,16 @@ defmodule Storyarn.Flows.FindingDismissalsTest do
       finding: finding,
       user: user
     } do
+      # The sandbox connection is owned by the TEST process — capturing it out
+      # here is what makes `allow/3` grant it to each worker (inside the task
+      # `self()` is the worker itself, which owns nothing).
+      test_pid = self()
+
       results =
         1..8
         |> Task.async_stream(
           fn _i ->
-            Ecto.Adapters.SQL.Sandbox.allow(Repo, self(), self())
+            Ecto.Adapters.SQL.Sandbox.allow(Repo, test_pid, self())
 
             Flows.dismiss_finding(flow, finding, %{
               reason_code: "intentional_design",
@@ -165,6 +186,48 @@ defmodule Storyarn.Flows.FindingDismissalsTest do
       other_flow = Flows.get_flow!(other_project.id, flow_fixture(other_project).id)
 
       assert Flows.list_active_finding_dismissals(other_flow) == []
+    end
+
+    test "the database refuses a project_id that does not own the flow", %{
+      flow: flow,
+      finding: finding,
+      user: user
+    } do
+      foreign_project = project_fixture(user_fixture())
+
+      assert_raise Ecto.ConstraintError, ~r/flow_finding_dismissals_flow_id_fkey/, fn ->
+        Repo.insert!(%FindingDismissal{
+          project_id: foreign_project.id,
+          flow_id: flow.id,
+          finding_key: finding.finding_key,
+          rule_id: finding.rule_id,
+          rule_version: finding.rule_version,
+          evidence_fingerprint: finding.evidence_fingerprint,
+          reason_code: "intentional_design",
+          dismissed_by_id: user.id
+        })
+      end
+    end
+  end
+
+  describe "reason code catalog" do
+    @locales ~w(en es)
+
+    test "every reason code has a label in every locale" do
+      for locale <- @locales do
+        labels =
+          "assets/app/locales/#{locale}/flows.json"
+          |> File.read!()
+          |> Jason.decode!()
+          |> get_in(["flows", "analysis", "reasons"])
+
+        assert is_map(labels), "missing flows.analysis.reasons in #{locale}"
+
+        for code <- Flows.finding_dismissal_reason_codes() do
+          assert Map.has_key?(labels, code),
+                 "reason code #{code} has no #{locale} label — the dismiss form would render the raw i18n key"
+        end
+      end
     end
   end
 

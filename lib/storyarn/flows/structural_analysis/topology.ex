@@ -76,9 +76,12 @@ defmodule Storyarn.Flows.StructuralAnalysis.Topology do
   """
   @spec load_project(pos_integer(), keyword()) :: [t()]
   def load_project(project_id, opts \\ []) do
+    # Deterministic flow order: project-level analysis results (dashboards)
+    # must not reorder between runs on `Repo.all`'s unspecified order.
     flows_query =
       from(f in Flow,
         where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        order_by: [asc: f.name, asc: f.id],
         select: {f.id, f.name}
       )
 

@@ -5,6 +5,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Phoenix.LiveView.Socket
+  alias Storyarn.Collaboration
+  alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
 
   # ── reload_flow_data/1 ────────────────────────────────────────────
@@ -14,7 +17,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
       project = project_fixture(user_fixture())
       flow = flow_fixture(project)
 
-      socket = %Phoenix.LiveView.Socket{
+      socket = %Socket{
         assigns: %{
           __changed__: %{},
           project: project,
@@ -115,6 +118,70 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
       assert result.assigns.flow_structural_summary.warningCount >= 2
       refute Enum.any?(result.assigns.flow_error_nodes, &(&1.id == dialogue.id))
       refute Enum.any?(result.assigns.flow_info_nodes, &(&1.id == dialogue.id))
+    end
+  end
+
+  # ── project-wide graph notification ───────────────────────────────
+
+  describe "reload_flow_data/2 project notification" do
+    setup do
+      project = project_fixture(user_fixture())
+      flow = Flows.get_flow!(project.id, flow_fixture(project).id)
+
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          project: project,
+          flow: flow,
+          flow_data: nil,
+          flow_hubs: []
+        }
+      }
+
+      Collaboration.subscribe_flow_graph(project.id)
+
+      %{project: project, flow: flow, socket: socket}
+    end
+
+    # The broadcast excludes its sender, so the reload has to run off the test
+    # process for the subscription to see it.
+    defp reload_from_other_process(socket, opts \\ []) do
+      test_pid = self()
+
+      Task.await(
+        Task.async(fn ->
+          Ecto.Adapters.SQL.Sandbox.allow(Repo, test_pid, self())
+          SocketHelpers.reload_flow_data(socket, opts)
+        end)
+      )
+    end
+
+    test "content-only mutations do not stale other flows' snapshots", %{
+      flow: flow,
+      socket: socket
+    } do
+      node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+
+      reload_from_other_process(socket)
+
+      refute_receive {:flow_graph_changed, _flow_id}, 100
+    end
+
+    test "an exit-node change notifies the project", %{flow: flow, socket: socket} do
+      node_fixture(flow, %{type: "exit", data: %{"label" => "Second ending"}})
+
+      reload_from_other_process(socket)
+
+      flow_id = flow.id
+      assert_receive {:flow_graph_changed, ^flow_id}, 500
+    end
+
+    test "notify_project: false never notifies", %{flow: flow, socket: socket} do
+      node_fixture(flow, %{type: "exit", data: %{"label" => "Second ending"}})
+
+      reload_from_other_process(socket, notify_project: false)
+
+      refute_receive {:flow_graph_changed, _flow_id}, 100
     end
   end
 end

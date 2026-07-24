@@ -1,5 +1,7 @@
 defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlersTest do
-  use StoryarnWeb.ConnCase, async: true
+  # Analytics capture swaps the process-GLOBAL adapter config, so these tests
+  # cannot run concurrently with anything else that emits analytics events.
+  use StoryarnWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
@@ -78,6 +80,26 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlersTest do
       assert finding["severity"] == "warning"
       assert [%{"id" => evidence_id, "type" => "flow_node"}] = finding["evidence"]
       assert evidence_id == stuck.id
+    end
+
+    test "a panel opened during the async load survives it with a fresh snapshot", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      stuck = seed_dead_end(flow)
+
+      # Opened BEFORE the flow load lands (the palette path): the load
+      # recomputes the snapshot, so the user must not be told to rerun the
+      # analysis the load itself just produced.
+      {:ok, view, _html} = live(conn, flow_url(project, flow))
+      render_click(view, "open_analysis_panel", %{})
+      load_flow(view)
+
+      props = analysis_props(view)
+      assert props["open"] == true
+      assert props["stale"] == false
+      assert Enum.any?(props["active"], &(&1["targetId"] == stuck.id))
     end
 
     test "a relevant mutation marks the open snapshot stale and rerun refreshes", %{

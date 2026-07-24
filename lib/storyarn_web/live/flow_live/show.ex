@@ -1324,13 +1324,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:preview_has_next, false)
       |> assign(:preview_history, [])
       |> assign(:versions_panel_open, false)
-      |> then(fn socket ->
-        if preserve_analysis_panel? do
-          AnalysisHandlers.recompute_open_snapshot(socket)
-        else
-          AnalysisHandlers.assign_initial_state(socket)
-        end
-      end)
       |> assign(:history_data, nil)
       |> assign(:collab_scope, {:flow, flow.id})
       |> assign(:online_users, online_users)
@@ -1355,6 +1348,16 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:loading, false)
       |> assign_scene_info(flow)
       |> SocketHelpers.assign_flow_stats(flow, data.flow_data)
+
+    # AFTER assign_flow_stats/3: that call marks any open snapshot stale, so
+    # recomputing here is what leaves the preserved panel with a fresh,
+    # non-stale snapshot instead of prompting a rerun of the load's own work.
+    socket =
+      if preserve_analysis_panel? do
+        AnalysisHandlers.recompute_open_snapshot(socket)
+      else
+        AnalysisHandlers.assign_initial_state(socket)
+      end
 
     socket =
       socket
