@@ -47,6 +47,8 @@ adapters.
 | 5.2  | Personal AI preferences (“My AI Team”)             | `SLICE_5_2_MY_AI_TEAM.md`              | 5.1                                      | **merged** (PR #45)                  |
 | 6    | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`            | 2                                        | **merged** (PR #46)                  |
 | 7.1  | Deterministic structural analysis                  | `SLICE_7_1_DETERMINISTIC_ANALYSIS.md`  | 1, 6                                     | **merged** (PR #48)                  |
+| 7.1a.1 | Palette operations + health contract + 4 rules    | `SLICE_7_1A_1_PALETTE_OPERATIONS.md`   | 1, 7.1                                   | specified                            |
+| 7.1a.2 | Natural-language door over the operations        | `SLICE_7_1A_2_NATURAL_LANGUAGE_DOOR.md` | 2, 3, 5.1, 6, 7.2a, 7.1a.1              | specified                            |
 | 7.2a | Managed AI explanation                             | `SLICE_7_2A_MANAGED_EXPLANATION.md`    | 2, 3, 5.1, 6, 7.1                        | **implemented** (PR #49)             |
 | 7.2b | Personal BYOK lane + public AI docs                | `SLICE_7_2B_PERSONAL_LANE_AND_DOCS.md` | 4, 5.2, 7.2a                             | pending                              |
 | 8    | Dialogue rewrite/variants + proposal UX            | `SLICE_8_DIALOGUE_TOOLS.md`            | 2–6                                      | pending                              |
@@ -67,7 +69,9 @@ adapters.
   executable routes.
 - Slice 6 creates bounded context without hidden model calls.
 - Slice 7.1 turns the deterministic moat into a standalone, free product capability with a stable finding/evidence lifecycle.
-- Slice 7.2a becomes the first end-user AI task and proves the full context → route → operation → private-result path on one lane, without mixing generated narrative with deterministic facts.
+- Slice 7.2a becomes the first end-user AI task and proves the full context → route → operation → private-result path on one lane, without mixing generated narrative with deterministic facts. Its explanation task is a weak demo of a strong pipeline: for all 15 deterministic rules the finding IS the explanation, so the reusable kernel is the deliverable and the task should not lead the product surface.
+- Slice 7.1a.1 turns the command palette into the product's control surface: an operation registry, a typed language over the dotted references designers already read all day, and the deterministic answers behind it — the flow health contract (the dashboard currently collapses 15 rules into 3 buckets) plus the four checks that were mistaken for AI work. One registry serves three goals: translation target, capability index, and the completeness invariant that makes hiding the sidebars viable later.
+- Slice 7.1a.2 adds the natural-language door over that registry. The model translates text into one operation and never touches the data; it composes digests only from figures the platform computed. This is the anchor every later AI capability plugs into — lore, chapter summaries, ticket verification and task-manager integrations all arrive as operations, not as new surfaces.
 - Slice 7.2b adds the second payer as an explicit choice, proving consent and personal accounting on an already-verified surface, and publishes the public AI documentation once payer choice is real.
 - Slice 8 proves proposal/apply and becomes the first tightly bounded writing transformation.
 - Slice 9 ships a narrow, valuable VO preview using domain structures that already exist.
