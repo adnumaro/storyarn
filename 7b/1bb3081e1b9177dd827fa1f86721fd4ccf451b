@@ -1,0 +1,25 @@
+docs/features/ai-platform/OBAN_AI_QUEUE_HARDENING.md
+  s_fc3546b2264bba::t_9bc5bd53649cea 315-318
+  s_fc3546b2264bba::t_ebfc8dce384a25 69-70
+  s_fc3546b2264bba::t_e130e0480145c9 194-196
+  s_fc3546b2264bba::t_f23e4865ae601c 382-383,385-387
+  s_fc3546b2264bba::t_a1e61a353cd1c6 1-10,17-68,71-193,197-314,319-381,384,388-427,429-430
+  s_fc3546b2264bba::t_6b76f96d9e8f89 11-16
+  s_fc3546b2264bba::t_128681c4dab18a 428
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7b1bb3081e1b9177dd827fa1f86721fd4ccf451b",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
