@@ -24,7 +24,10 @@ launch, are Slice 7.2b.
   generated explanation.
 - The result is an actor-private temporary preview. V1 has no apply, attach,
   share, or persisted-report mutation.
-- Opening/rendering a result records `viewed`, never `accepted`.
+- Opening/rendering a result records `viewed`, never `accepted`. It is recorded
+  as its own `viewed_at` stamp rather than a fourth `user_disposition` value:
+  disposition holds one terminal outcome, and its `IS NULL` precondition is what
+  keeps dismiss, apply and expiry-abandonment reachable.
 - Managed execution is an explicit choice. There is no silent fallback,
   provider/model substitution, or payer change.
 
@@ -95,7 +98,14 @@ automatic retry.
 
 The panel owns operation/result state:
 
-- preflight, ready, queued/running, succeeded, failed, unknown, and expired;
+- `idle`, `preflight`, `blocked`, `queued`, `running`, `detached`, `succeeded`,
+  `failed`, and `expired`. Two of these were named differently while planning:
+  there is no distinct `ready` (a resolved preflight IS the ready state), and
+  `unknown` is an error class inside `failed` rather than a state of its own,
+  because the panel offers the same affordance either way. `blocked` covers a
+  route the actor may use but cannot use now, and `detached` means the panel
+  stopped watching a run that is still executing — reporting that as `failed`
+  would push the actor toward paying twice for work still in flight;
 - reopening or polling uses the actor-authorized result APIs, not palette state;
 - result presentation revalidates the Slice-7.1 finding fingerprint and Slice-6
   provenance;

@@ -270,6 +270,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   end
 
   defp replayed(socket, finding, attempt, output, operation) do
+    AI.record_result_view(socket.assigns.current_scope, operation.id)
+
     track(socket, "flow explanation result viewed", %{
       rule_id: finding.rule_id,
       stale: not finding_current?(socket.assigns, finding.finding_id)
@@ -418,6 +420,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
 
     case AI.get_result(scope, operation.id) do
       {:ok, output, _operation} ->
+        # Durable counterpart of the product event below: it is what lets expiry
+        # tell viewed-then-abandoned from never-opened.
+        AI.record_result_view(scope, operation.id)
+
         track(socket, "flow explanation result viewed", %{
           rule_id: explanation.rule_id,
           stale: not finding_current?(socket.assigns, explanation.finding_id)

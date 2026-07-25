@@ -82,6 +82,32 @@ defmodule Storyarn.AI.Results do
     decode_row(row)
   end
 
+  @doc """
+  Records that the actor saw this result.
+
+  The slice contract asks for `viewed`, never `accepted`, so this is deliberately
+  NOT a disposition: it leaves `user_disposition` nil, which keeps dismiss, apply
+  and expiry-abandonment reachable. Idempotent and silent — a surface rendering a
+  result must not fail because the stamp could not be written.
+  """
+  @spec record_view(Scope.t(), pos_integer()) :: :ok
+  def record_view(%Scope{user: %{id: actor_id}}, operation_id) do
+    case Repo.one(
+           from(operation in Operation,
+             where:
+               operation.id == ^operation_id and operation.actor_id == ^actor_id and
+                 operation.execution_status == "succeeded" and is_nil(operation.viewed_at)
+           )
+         ) do
+      %Operation{} = operation ->
+        operation |> Operation.viewed_changeset() |> Repo.update()
+        :ok
+
+      nil ->
+        :ok
+    end
+  end
+
   @spec dismiss(Scope.t(), pos_integer()) :: {:ok, Operation.t()} | {:error, atom()}
   def dismiss(%Scope{user: %{id: actor_id}}, operation_id) do
     Repo.transaction(fn ->

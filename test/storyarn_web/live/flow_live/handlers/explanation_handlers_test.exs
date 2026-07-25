@@ -449,6 +449,33 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       refute Map.has_key?(props["result"], "finding_id")
     end
 
+    test "rendering a result records `viewed` and never a disposition", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      drain_execution!()
+
+      # Succeeded but not yet rendered: nothing recorded.
+      operation = Repo.one!(Operation)
+      assert is_nil(operation.viewed_at)
+      assert is_nil(operation.user_disposition)
+
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+
+      viewed = Repo.one!(Operation)
+      assert viewed.viewed_at
+      # The contract is explicit: viewing is never acceptance, and leaving
+      # disposition nil is what keeps dismiss/apply/abandon reachable.
+      assert is_nil(viewed.user_disposition)
+    end
+
     test "the result is readable only by its initiating actor", %{
       conn: conn,
       project: project,
