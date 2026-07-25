@@ -200,6 +200,26 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanationTest do
                )
     end
 
+    test "an unknown rule id is rejected as a missing finding, not a stale one", context do
+      # `finding_key` is "<rule_id>:<flow_id>:<target_type>:<target_id>", so a rule
+      # the frozen catalog never had is well-formed but resolves to nothing. It
+      # must fail as :unknown_finding — distinct from :stale_finding, which means
+      # the rule DID fire and its evidence moved.
+      "no_outgoing_connection:" <> target = context.finding.finding_key
+
+      unknown_rule =
+        Flows.encode_structural_finding_identity(%{
+          finding_key: "rule_that_never_existed:" <> target,
+          rule_version: context.finding.rule_version,
+          evidence_fingerprint: context.finding.evidence_fingerprint
+        })
+
+      assert {:error, :unknown_finding} =
+               FlowFindingExplanation.context_subject(
+                 intent(context, %{subject: %{type: "flow_finding", id: context.flow.id, revision: unknown_rule}})
+               )
+    end
+
     test "a foreign flow id cannot borrow this project's authorization", context do
       other_project = project_fixture(user_fixture())
       other_flow = flow_fixture(other_project)

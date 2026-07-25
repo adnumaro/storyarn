@@ -4,13 +4,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
   use StoryarnWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
+  import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.AI
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.RouteOption
   alias Storyarn.AI.Tasks.FlowFindingExplanation
+  alias Storyarn.AI.UsageEvent
   alias Storyarn.Flows
   alias Storyarn.Repo
   alias Storyarn.Workers.AIExecutionWorker
@@ -111,6 +114,35 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       assert props["status"] == "blocked"
       assert props["error"] == "task_disabled"
       assert Repo.aggregate(Operation, :count) == 0
+    end
+
+    test "a viewer cannot see the surface OR reach it over the socket", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      viewer = user_fixture()
+      membership_fixture(project, viewer, "viewer")
+      FunWithFlags.enable(:ai_integrations, for_actor: viewer)
+      on_exit(fn -> FunWithFlags.disable(:ai_integrations, for_actor: viewer) end)
+
+      view = conn |> log_in_user(viewer) |> mount_editor(project, flow)
+      finding = open_panel_and_finding(view)
+
+      # `viewer` has :view and nothing else, so the surface is hidden.
+      assert explanation(view)["available"] == false
+
+      # And hiding is NOT the boundary — the slice says so explicitly. Pushing the
+      # events directly must spend nothing, at either layer.
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      render_click(view, "execute_explanation", %{"route_ref" => "forged-route-ref"})
+
+      assert explanation(view)["status"] == "idle"
+      assert Repo.aggregate(Operation, :count) == 0
+      assert Repo.aggregate(RouteOption, :count) == 0
+      # The provider proxy: one usage-event row exists per attempt, so none means
+      # nothing ever reached a provider.
+      assert Repo.aggregate(UsageEvent, :count) == 0
     end
 
     test "an eligible editor sees an idle surface", %{conn: conn, project: project, flow: flow} do
@@ -250,6 +282,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       assert Repo.aggregate(Operation, :count) == 1
       assert explanation(first)["status"] == "queued"
       assert explanation(second)["status"] == "queued"
+
+      drain_execution!()
+
+      # And exactly ONE provider attempt happened. ai_usage_events has a unique
+      # index on operation_id and is inserted immediately before the provider
+      # call, so this counts real attempts — a replay reuses the original row.
+      assert Repo.aggregate(UsageEvent, :count) == 1
     end
 
     test "closing the surface releases the operation nobody will read", %{
