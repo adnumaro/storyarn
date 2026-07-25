@@ -68,6 +68,11 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanation do
 
   @impl true
   def definition do
+    # Overridable so tests can flip the operational switch and assert the honest
+    # blocked state. There is deliberately NO env-var surface for it: the product
+    # gate is the `:ai_integrations` feature flag, which is per-actor and needs no
+    # redeploy, and a second switch would only be a worse version of it. A price
+    # change is a billing artifact that belongs in a reviewed commit, not in env.
     config = Application.get_env(:storyarn, __MODULE__, [])
 
     %{
