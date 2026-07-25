@@ -1,0 +1,19 @@
+lib/storyarn/ai/tasks/flow_finding_explanation.ex
+  s_fc3546b2264bba::t_33275bd8162868 71-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cd22b5baae810c9db35661d7f0f558b05bd28733",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
