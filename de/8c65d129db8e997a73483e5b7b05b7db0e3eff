@@ -1,0 +1,23 @@
+docs/features/SHARED_HELPER_EXTRACTIONS.md
+  s_fc3546b2264bba::t_cb98b315ef85dd 28-34
+docs/features/GETTEXT_EXTRACTION_DEBT.md
+  s_fc3546b2264bba::t_cb98b315ef85dd 30,106-107
+docs/features/ai-platform/OBAN_AI_QUEUE_HARDENING.md
+  s_fc3546b2264bba::t_cb98b315ef85dd 41-48,55-59,96-103,116,126,277,296,308,351,380,391,425
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "de8c65d129db8e997a73483e5b7b05b7db0e3eff",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
