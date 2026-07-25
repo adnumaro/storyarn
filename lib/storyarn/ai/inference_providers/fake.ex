@@ -87,6 +87,10 @@ defmodule Storyarn.AI.InferenceProviders.Fake do
 
   defp schema_instance(_schema), do: :error
 
+  # An enum names the only accepted values, so generic text would fail the task's
+  # own validator. Enum specs also declare a type, hence the clause order.
+  defp property_instance(%{"enum" => [value | _rest]}, _key), do: {:ok, value}
+
   defp property_instance(%{"type" => "string"} = spec, key), do: {:ok, bounded_text(key, spec["maxLength"])}
 
   defp property_instance(%{"type" => "array", "items" => %{"type" => "string"} = items}, key),
