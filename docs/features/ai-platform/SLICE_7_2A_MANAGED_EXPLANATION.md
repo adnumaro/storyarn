@@ -155,6 +155,7 @@ The panel owns operation/result state:
 The day one exists, the default should invert: the actor asked for the explanation,
 so "charge and notify" beats "cancel". Charging without telling anyone is the only
 incoherent option, which is what the retention below protects against.
+
 - result presentation revalidates the Slice-7.1 finding fingerprint. Slice-6
   provenance is NOT revalidated or displayed: `Results.provenance/1` is reached
   only from `apply/4`, which this slice never calls;
