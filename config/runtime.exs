@@ -11,6 +11,7 @@ alias Storyarn.AI.InferenceProviders.Personal.Mistral, as: PersonalMistral
 alias Storyarn.AI.InferenceProviders.Personal.Moonshot, as: PersonalMoonshot
 alias Storyarn.AI.InferenceProviders.Personal.OpenAI, as: PersonalOpenAI
 alias Storyarn.AI.InferenceProviders.Together
+alias Storyarn.AI.Tasks.FlowFindingExplanation
 alias Storyarn.AI.Tasks.ManagedDiagnostic
 
 env = fn key ->
@@ -87,7 +88,19 @@ credential_adapters = %{}
 # command and report an honest blocked state instead of hiding it. The test
 # environment owns its own registry in config/test.exs.
 registered_tasks =
-  if config_env() == :test, do: [], else: [Storyarn.AI.Tasks.FlowFindingExplanation]
+  if config_env() == :test, do: [], else: [FlowFindingExplanation]
+
+# The first user-facing PAID task needs an operational switch that does not
+# require a redeploy: registration is unconditional above precisely so a
+# deployment can report a blocked state, and this is what flips it. Price
+# defaults live in the task, so an operator only sets these to override.
+if config_env() != :test do
+  config :storyarn, FlowFindingExplanation,
+    enabled: env.("STORYARN_AI_EXPLANATION_ENABLED") not in ~w(false 0),
+    price_id: env.("STORYARN_AI_EXPLANATION_PRICE_ID") || "flow-explanation-beta",
+    price_version: String.to_integer(env.("STORYARN_AI_EXPLANATION_PRICE_VERSION") || "1"),
+    price_units: String.to_integer(env.("STORYARN_AI_EXPLANATION_PRICE_UNITS") || "1")
+end
 
 {inference_providers, credential_adapters} =
   if config_env() == :test do

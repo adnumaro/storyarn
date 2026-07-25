@@ -146,6 +146,19 @@ function onToggleFinding(findingId: string, expanded: boolean): void {
   }
 }
 
+/**
+ * The selection must be a CURRENT finding, not merely an expanded card.
+ *
+ * `onToggleFinding` also fires from the dismissed tab, and a stale snapshot
+ * means every occurrence id is provisional. The server refuses both, so this is
+ * about not offering a command that is guaranteed to fail.
+ */
+const explainableFindingId = computed(() => {
+  const findingId = selectedFindingId.value;
+  if (findingId == null || stale) return null;
+  return active.some((finding) => finding.findingId === findingId) ? findingId : null;
+});
+
 function explainCommand(findingId: string): PaletteCommand {
   return {
     kind: "ai",
@@ -168,7 +181,7 @@ function explainCommand(findingId: string): PaletteCommand {
 }
 
 watchEffect((onCleanup) => {
-  const findingId = selectedFindingId.value;
+  const findingId = explainableFindingId.value;
   const eligible = explanation?.available === true && findingId != null;
 
   const unregister = registerPaletteCommands(

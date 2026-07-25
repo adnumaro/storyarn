@@ -24,7 +24,6 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanation do
 
   @task_id "flows.explain_finding"
   @subject_type "flow_finding"
-  @locales ~w(en es)
   @input_keys ~w(finding_key rule_version evidence_fingerprint locale)
   @output_keys ~w(summary why_it_triggers implications suggested_checks)
 
@@ -84,9 +83,16 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanation do
       prompt_version: "flow-finding-explanation-prompt-v1",
       context_version: "structural-finding-v1",
       # The builder loads one finding plus its typed evidence and traverses
-      # nothing. max_fan_out matches SubjectRef's own 50-evidence cap so the
-      # two bounds cannot disagree; anything above max_bytes is truncated and
-      # reported in the preflight disclosure rather than silently dropped.
+      # nothing. max_fan_out matches SubjectRef's own 50-evidence cap so the two
+      # bounds cannot disagree.
+      #
+      # NOTE: oversize context FAILS, it does not truncate. Builders.StructuralFinding
+      # marks every entity `required: true`, so Finalizer has nothing droppable and
+      # returns :context_too_large — a finding whose node carries a very long
+      # `data` blob is refused at preflight. That is the honest behaviour for this
+      # task (a partial evidence set would change what the narrative explains),
+      # but it is NOT graceful degradation; if that is ever wanted, the builder has
+      # to mark something optional first.
       context_policy: %{
         scope: :structural_finding,
         max_depth: 1,
@@ -94,6 +100,11 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanation do
         max_entities: 64,
         max_bytes: 32_768
       },
+      # `max_input_bytes` bounds `intent.input` only — the four-key identity map,
+      # ~200 bytes — so it cannot trip in practice. The effective input bound is
+      # `context_policy.max_bytes` above, which is what the provider payload is
+      # actually measured against. Kept as a floor against a future input schema
+      # that grows, not as a live guard.
       max_input_bytes: 1_024,
       max_output_bytes: 8_192,
       execution_mode: :background,
@@ -179,7 +190,7 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanation do
   @impl true
   def validate_input(%{"locale" => locale} = input) when is_map(input) do
     with true <- Enum.sort(Map.keys(input)) == Enum.sort(@input_keys),
-         true <- locale in @locales,
+         true <- locale in Gettext.known_locales(Storyarn.Gettext),
          {:ok, _identity} <- decode_input_identity(input) do
       :ok
     else

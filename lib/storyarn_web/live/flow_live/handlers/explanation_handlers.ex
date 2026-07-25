@@ -15,6 +15,21 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   The generated narrative is a temporary, actor-private preview: it is never
   written into the flow, never turned into a finding, and never survives its
   TTL.
+
+  ## What Slice 7.2b must touch here
+
+  The slice contract says 7.2b "flips that flag and adds the personal cost class
+  without changing any other field". True of the task; NOT true of this module.
+  `AI.preflight/1` already returns `personal_choices` and `personal_preference`,
+  and `panel_props/1` serializes neither, because only a `:ready` personal choice
+  becomes a route. So with `personal_byok_allowed?: true` an actor whose key needs
+  consent would see an empty panel: no route, no blocked lane, no reason.
+
+  Enabling the personal lane therefore also means serializing those two into the
+  panel props and rendering them in `FlowAnalysisExplanation.vue`. The TS type and
+  both `flows.json` catalogs already carry `lanes.personal_byok`; only this
+  boundary is missing. Deliberately not built ahead of time — an unreachable
+  branch is what this slice's audit spent its time deleting.
   """
 
   use Gettext, backend: Storyarn.Gettext
@@ -24,7 +39,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.AI
-  alias Storyarn.AI.Tasks.FlowFindingExplanation
   alias Storyarn.Analytics
   alias Storyarn.FeatureFlags
   alias Storyarn.Projects
@@ -40,7 +54,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   # provider timeout is terminal and never consumes an attempt. See
   # docs/features/ai-platform/OBAN_AI_QUEUE_HARDENING.md.
   @poll_deadline_ms 180_000
-  @locales ~w(en es)
   # Statuses the panel stops polling on. "queued" and "running" are the two it
   # keeps watching.
   @terminal_statuses ~w(succeeded failed unknown cancelled)
@@ -90,20 +103,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     |> then(&assign(&1, :explanation_available, available?(&1)))
   end
 
-  @doc """
-  Drops any explanation state bound to findings that no longer apply.
-
-  Called whenever the analysis snapshot is recomputed or marked stale: an
-  explanation belongs to one exact occurrence, so it must not outlive it.
-  """
-  @spec reset_for_new_snapshot(Socket.t()) :: Socket.t()
-  def reset_for_new_snapshot(socket) do
-    case socket.assigns[:explanation] do
-      nil -> socket
-      _explanation -> assign_initial_state(socket)
-    end
-  end
-
   @doc "Whether this actor may see the explanation surface at all."
   @spec available?(Socket.t()) :: boolean()
   def available?(socket) do
@@ -114,7 +113,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     # Only an unregistered task (a deployment without it) hides it.
     FeatureFlags.enabled?(:ai_integrations, for: user) and
       role_can_use_ai?(socket) and
-      match?({:ok, _task}, AI.get_task(FlowFindingExplanation.task_id()))
+      AI.flow_finding_explanation_registered?()
   end
 
   # ===========================================================================
@@ -256,14 +255,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   # its TTL. Only the attempt being opened is probed — a rerun raises `attempt`,
   # and its own reopen probes its own key.
   defp replayable_result(socket, finding, attempt) do
-    key =
-      FlowFindingExplanation.idempotency_key(
-        socket.assigns.current_scope.user.id,
-        finding,
-        attempt
-      )
+    scope = socket.assigns.current_scope
+    key = AI.flow_finding_explanation_key(scope, finding, attempt)
 
-    case AI.get_replayable_result(socket.assigns.current_scope, FlowFindingExplanation.task_id(), key) do
+    case AI.get_replayable_result(scope, AI.flow_finding_explanation_task_id(), key) do
       {:ok, output, operation} -> {:ok, output, operation}
       {:error, _reason} -> :none
     end
@@ -324,18 +319,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     end
   end
 
+  # The task's wire format lives behind the facade; this only supplies the
+  # authorized finding and the actor's own choices.
   defp build_intent(socket, finding, overrides) do
     %{flow: flow, project: project, current_scope: scope} = socket.assigns
 
-    AI.new_intent(
+    AI.flow_finding_explanation_intent(
       scope,
       Map.merge(
         %{
           workspace_id: project.workspace_id,
           project_id: project.id,
-          task_id: FlowFindingExplanation.task_id(),
-          input: FlowFindingExplanation.input(finding, locale(socket)),
-          subject: FlowFindingExplanation.subject(flow.id, finding)
+          flow_id: flow.id,
+          finding: finding,
+          locale: locale(socket)
         },
         overrides
       )
@@ -351,15 +348,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
 
     track(socket, "flow explanation route selected", %{lane: to_string(lane)})
 
-    overrides = %{
-      requested_route_ref: route_ref,
-      idempotency_key:
-        FlowFindingExplanation.idempotency_key(
-          socket.assigns.current_scope.user.id,
-          finding,
-          explanation.attempt
-        )
-    }
+    overrides = %{route_ref: route_ref, attempt: explanation.attempt}
 
     with {:ok, intent} <- build_intent(socket, finding, overrides),
          {:ok, operation} <- AI.execute(intent) do
@@ -687,7 +676,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
 
   defp locale(socket) do
     locale = socket.assigns[:locale]
-    if locale in @locales, do: locale, else: "en"
+    if locale in Gettext.known_locales(Storyarn.Gettext), do: locale, else: "en"
   end
 
   @doc """

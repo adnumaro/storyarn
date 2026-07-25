@@ -225,6 +225,37 @@ describe("FlowAnalysisPanel", () => {
       expect(explainCommands()).toHaveLength(0);
     });
 
+    it("stays hidden while the snapshot is stale", async () => {
+      // Every occurrence id is provisional until the analysis is recomputed, so
+      // the command would launch straight into a refusal.
+      const { wrapper } = mountPanel({ stale: true, explanation: explanationState });
+      wrappers.push(wrapper);
+
+      const card = wrapper.find("[data-testid='analysis-finding']");
+      expect(card.exists()).toBe(true);
+      await card.trigger("click");
+
+      expect(explainCommands()).toHaveLength(0);
+    });
+
+    it("stays hidden for a dismissed finding", async () => {
+      // Expanding a card in the dismissed tab also sets the selection, but a
+      // dismissed occurrence is not in the active set the server resolves against.
+      const { wrapper } = mountPanel({
+        active: [],
+        dismissed: [finding({ dismissalId: 7, reasonCode: "other" })],
+        explanation: explanationState,
+      });
+      wrappers.push(wrapper);
+
+      await wrapper.find("[data-testid='analysis-tab-dismissed']").trigger("click");
+      const card = wrapper.find("[data-testid='analysis-dismissed-finding']");
+      expect(card.exists()).toBe(true);
+      await card.trigger("click");
+
+      expect(explainCommands()).toHaveLength(0);
+    });
+
     it("stays hidden when the actor cannot use AI", async () => {
       const { wrapper } = mountPanel({
         explanation: { ...explanationState, available: false },
