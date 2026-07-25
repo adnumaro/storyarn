@@ -1,0 +1,40 @@
+lib/storyarn/ai.ex
+  s_fc3546b2264bba::t_cabfb44bb73315 150-153
+  s_fc3546b2264bba::t_aeeadb62cce829 154
+test/storyarn_web/live/flow_live/handlers/explanation_handlers_test.exs
+  s_fc3546b2264bba::t_8b49976eb4fca0 19,458,622
+  s_fc3546b2264bba::t_bd472a59917951 284-290,292-293
+  s_fc3546b2264bba::t_150e03884a914d 385-395,398-455,459-467
+  s_fc3546b2264bba::t_ca71c3c6d2585b 396-397,456-457
+assets/app/locales/es/flows.json
+  s_fc3546b2264bba::t_c73b6e74463b7d 532-542
+assets/app/locales/en/flows.json
+  s_fc3546b2264bba::t_c73b6e74463b7d 532-542
+lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex
+  s_fc3546b2264bba::t_3d12fd020bea24 287-302,305-310,314-318,322,324,326,328,331-335,347,606-616,618-625
+  s_fc3546b2264bba::t_8be2bc12507d81 323,346,351-353
+  s_fc3546b2264bba::t_c73b6e74463b7d 96-98,104,106,113-114,119-122
+  s_fc3546b2264bba::t_cabfb44bb73315 88,303-304,311-313,336-345,354-374
+  s_fc3546b2264bba::t_a7b324adde33a0 165
+  s_fc3546b2264bba::t_8763156cc4ddec 325,375
+lib/storyarn/ai/results.ex
+  s_fc3546b2264bba::t_aeeadb62cce829 87,94,97,99-106
+  s_fc3546b2264bba::t_cabfb44bb73315 86,88-93,95-96,98
+  s_fc3546b2264bba::t_864f3dc03376a7 85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d7459be331b2f6ccf485acc300de2da779b5d903",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
