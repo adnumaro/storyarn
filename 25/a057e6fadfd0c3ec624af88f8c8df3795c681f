@@ -1,0 +1,19 @@
+docs/features/SHARED_HELPER_EXTRACTIONS.md
+  s_fc3546b2264bba::t_4001b58e5327cb 1-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "25a057e6fadfd0c3ec624af88f8c8df3795c681f",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
