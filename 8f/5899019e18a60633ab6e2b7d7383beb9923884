@@ -1,0 +1,38 @@
+docs/features/ai-platform/SLICE_7_2A_MANAGED_EXPLANATION.md
+  s_fc3546b2264bba::t_82a6bb2db117f9 3-7,86-93,122-124,186-190,193-198
+test/e2e/flow_analysis_test.exs
+  s_fc3546b2264bba::t_c9ff1262647077 90
+assets/app/test/modules/flows/editor/components/panels/FlowAnalysisExplanation.test.ts
+  s_fc3546b2264bba::t_05ce5ffcf776be 153,155-182
+  s_fc3546b2264bba::t_9bfd69258328a7 154
+assets/app/locales/es/flows.json
+  s_fc3546b2264bba::t_c9ff1262647077 522
+docs/features/ai-platform/OBAN_AI_QUEUE_HARDENING.md
+  s_fc3546b2264bba::t_05da4db6a7df24 11-18,70,76-77,153,180,194,196,312
+lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex
+  s_fc3546b2264bba::t_c9ff1262647077 9-18
+test/storyarn_web/live/flow_live/handlers/explanation_handlers_test.exs
+  s_fc3546b2264bba::t_c9ff1262647077 666,678-680
+lib/storyarn/ai/results.ex
+  s_fc3546b2264bba::t_c9ff1262647077 2
+docs/features/ai-platform/OVERVIEW.md
+  s_fc3546b2264bba::t_82a6bb2db117f9 50
+lib/storyarn/ai.ex
+  s_fc3546b2264bba::t_c9ff1262647077 11-13,137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8f5899019e18a60633ab6e2b7d7383beb9923884",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
