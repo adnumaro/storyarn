@@ -125,22 +125,30 @@ defmodule Storyarn.RateLimiterTest do
     end
   end
 
+  # A configured URL is the ONLY thing that selects Redis, so "Redis without a
+  # URL" is not a state a test can set up either.
+  defp with_redis_url(url, fun) do
+    original = Application.get_env(:storyarn, :rate_limiter_redis_url)
+    Application.put_env(:storyarn, :rate_limiter_redis_url, url)
+
+    try do
+      fun.()
+    after
+      if original,
+        do: Application.put_env(:storyarn, :rate_limiter_redis_url, original),
+        else: Application.delete_env(:storyarn, :rate_limiter_redis_url)
+    end
+  end
+
   describe "backend/0" do
     test "defaults to ETS backend" do
       assert RateLimiter.backend() == ETSBackend
     end
 
-    test "returns Redis backend when configured" do
-      original = Application.get_env(:storyarn, :rate_limiter_backend)
-      Application.put_env(:storyarn, :rate_limiter_backend, :redis)
-
-      try do
+    test "returns Redis backend when a URL is configured" do
+      with_redis_url("redis://example.test:6379", fn ->
         assert RateLimiter.backend() == RedisBackend
-      after
-        if original,
-          do: Application.put_env(:storyarn, :rate_limiter_backend, original),
-          else: Application.delete_env(:storyarn, :rate_limiter_backend)
-      end
+      end)
     end
   end
 
@@ -151,19 +159,15 @@ defmodule Storyarn.RateLimiterTest do
       assert Keyword.has_key?(opts, :clean_period)
     end
 
-    test "returns Redis child spec when configured" do
-      original = Application.get_env(:storyarn, :rate_limiter_backend)
-      Application.put_env(:storyarn, :rate_limiter_backend, :redis)
-
-      try do
+    test "passes the configured URL straight through to the Redis backend" do
+      with_redis_url("redis://example.test:6379", fn ->
         {module, opts} = RateLimiter.child_spec_for_backend()
         assert module == RedisBackend
-        assert Keyword.has_key?(opts, :url)
-      after
-        if original,
-          do: Application.put_env(:storyarn, :rate_limiter_backend, original),
-          else: Application.delete_env(:storyarn, :rate_limiter_backend)
-      end
+        # config/runtime.exs is the only reader of REDIS_URL and it trims and
+        # rejects blanks, so the value that selected the backend is the value the
+        # backend gets. There is no second, raw read to disagree with it.
+        assert opts[:url] == "redis://example.test:6379"
+      end)
     end
   end
 end

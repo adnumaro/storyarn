@@ -2,8 +2,11 @@ defmodule Storyarn.RateLimiter do
   @moduledoc """
   Rate limiting service using Hammer v7.
 
-  Uses ETS backend by default and Redis backend in production when
-  REDIS_URL is configured (for multi-node support).
+  Uses the ETS backend by default, and the Redis backend in production when
+  `REDIS_URL` is set (for multi-node support). `config/runtime.exs` is the only
+  reader of that variable and resolves it into `:rate_limiter_redis_url`; a
+  configured URL is what selects the backend, so the value that makes the choice
+  is always the value the backend receives.
 
   ## Rate Limits
 
@@ -20,9 +23,9 @@ defmodule Storyarn.RateLimiter do
 
       config :storyarn, Storyarn.RateLimiter, enabled: false
 
-  Backend selection (set in runtime.exs for prod):
+  Backend selection is derived from the URL alone (set in runtime.exs for prod):
 
-      config :storyarn, :rate_limiter_backend, :redis
+      config :storyarn, :rate_limiter_redis_url, "redis://host:6379"
 
   ## Usage
 
@@ -152,10 +155,7 @@ defmodule Storyarn.RateLimiter do
   Returns the backend module to use for rate limiting.
   """
   def backend do
-    case Application.get_env(:storyarn, :rate_limiter_backend) do
-      :redis -> RedisBackend
-      _ -> ETSBackend
-    end
+    if redis_url(), do: RedisBackend, else: ETSBackend
   end
 
   @doc """
@@ -163,15 +163,17 @@ defmodule Storyarn.RateLimiter do
   Called from Application.start/2.
   """
   def child_spec_for_backend do
-    case Application.get_env(:storyarn, :rate_limiter_backend) do
-      :redis ->
-        redis_url = System.get_env("REDIS_URL") || "redis://localhost:6379"
-        {RedisBackend, url: redis_url}
-
-      _ ->
-        {ETSBackend, clean_period: to_timeout(minute: 10)}
+    case redis_url() do
+      url when is_binary(url) -> {RedisBackend, url: url}
+      nil -> {ETSBackend, clean_period: to_timeout(minute: 10)}
     end
   end
+
+  # The single source of truth for both readers above. `config/runtime.exs` is the
+  # only place that touches REDIS_URL, so there is no second normalization to
+  # disagree with — and because presence alone selects the backend, there is no
+  # "Redis configured without a URL" state to detect or paper over.
+  defp redis_url, do: Application.get_env(:storyarn, :rate_limiter_redis_url)
 
   # Private
 

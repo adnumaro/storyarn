@@ -335,8 +335,12 @@ end
 # Rate limiting with Redis for production (multi-node support)
 # Development and test use ETS backend (started in application.ex)
 if config_env() == :prod do
-  if env.("REDIS_URL") do
-    config :storyarn, :rate_limiter_backend, :redis
+  # ONE key: a configured URL is what selects the Redis backend, so "Redis
+  # without a URL" is not a representable state. `env.()` trims and maps "" to
+  # nil, and nothing downstream re-reads the raw variable, so the value that
+  # selects the backend is always the value the backend receives.
+  if redis_url = env.("REDIS_URL") do
+    config :storyarn, :rate_limiter_redis_url, redis_url
   end
 
   # Cloak encryption key for sensitive database fields
