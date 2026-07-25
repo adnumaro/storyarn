@@ -23,9 +23,17 @@ defmodule Storyarn.AI.Context.SourceLocksTest do
   # re-verification `SourceLocks` performed ran only for the non-persistable
   # structural scope, precisely because that scope could not be rebuilt from a
   # persisted subject. Every surviving scope is checked more strongly one layer up,
-  # where `Context.operation_current?/3` rebuilds the package and compares hashes —
-  # covered in `context_test.exs`. Asserting staleness here would only prove the
-  # test was aspirational; it did, before this comment existed.
+  # by rebuilding the package and comparing hashes:
+  #
+  #   * `context_test.exs`, "detects a source revision change through the stable
+  #     context hash" and "a warning-only context change invalidates the stable
+  #     hash" — `Context.current?/4`, the comparison itself;
+  #   * `context_execution_test.exs` — the same check reached through
+  #     `Context.operation_current?/3` on a persisted operation, plus the
+  #     `stale_context` classification at execution time.
+  #
+  # Asserting staleness here would only prove the test was aspirational; it did,
+  # before this comment existed.
 
   setup do
     user = user_fixture()

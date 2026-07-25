@@ -84,10 +84,18 @@ defmodule Storyarn.Flows.StructuralAnalysis do
   @doc """
   Loads one CURRENT finding of a flow by its exact occurrence identity.
 
-  The single definition of "current" shared by every disposition that binds to
-  a finding (AI explanation, and any future one): a key that no longer exists
-  is `:unknown_finding`, and a key whose rule version or evidence moved is
-  `:stale_finding` — never a silent substitution onto different evidence.
+  The single definition of "current" for any disposition that binds to one
+  finding occurrence: a key that no longer exists is `:unknown_finding`, and a
+  key whose rule version or evidence moved is `:stale_finding` — never a silent
+  substitution onto different evidence.
+
+  > #### No caller in `lib/` today {: .info}
+  >
+  > Slice 7.1a.0 removed its only consumer (the AI explanation) and deliberately
+  > kept this, together with `Finding.identity/1` and the encode/decode pair,
+  > because Slice 7.1a.1's `findings` palette operation wants a stable identity
+  > for deep-linking. Covered by `structural_analysis_test.exs`. Delete it if
+  > 7.1a.1 settles on a different shape — do not assume it is live.
   """
   @spec fetch_current_finding(pos_integer(), pos_integer(), Finding.identity()) ::
           {:ok, Finding.t()} | {:error, :not_found | :unknown_finding | :stale_finding}

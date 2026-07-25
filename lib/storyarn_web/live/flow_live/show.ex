@@ -1377,7 +1377,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   # Linked helper processes can terminate normally during flow transitions.
   # Ignore those exits so the editor does not remount while switching flows.
   @impl true
-
   def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
 
   # Shell topic messages (forwarded by FlowSidebarLive / PresenceLive).

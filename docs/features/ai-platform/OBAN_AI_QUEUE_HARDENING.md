@@ -8,6 +8,15 @@ nothing under **Proposed change** exists in the codebase yet.
 `1355095c`, Oban `2.22.1` (`mix.lock:66`). Every claim below was read from
 source; `deps/` citations are to the vendored Oban of that exact version.
 
+> **Slice 7.1a.0 (2026-07-25) deleted two of the files cited here**,
+> `explanation_handlers.ex` and `flow_finding_explanation.ex`. The measurements
+> taken from them at `1355095c` stand as evidence and are marked **[removed]**
+> where they appear; the code is not there to re-read. One consequence is
+> material rather than editorial: **no registered task enqueues a background job
+> any more**, so every hazard below is now latent instead of live. That lowers
+> the urgency and changes nothing about the analysis — the first background task
+> to register re-arms all of it at once, with no warning and no failing test.
+
 Citations into files that were, or later became, subject to concurrent edit are
 given by **function or module-attribute name** rather than by line:
 `explanation_handlers.ex`, `flow_finding_explanation.ex`, `ai/execution.ex`,
@@ -65,12 +74,13 @@ Citations: `lib/storyarn/workers/ai_execution_worker.ex:3`,
 `lib/storyarn/workers/reconcile_ai_reservations_worker.ex:3`,
 `lib/storyarn/workers/expire_ai_results_worker.ex:3`.
 
-Only one registered task reaches the queue today. `ManagedDiagnostic` is
-`execution_mode: :inline` (`lib/storyarn/ai/tasks/managed_diagnostic.ex:23`) and
-runs in the caller's process (`Execution.maybe_run_inline/3`).
-`FlowFindingExplanation` is `execution_mode: :background` with
-`timeout_ms: 60_000` (`Storyarn.AI.Tasks.FlowFindingExplanation.definition/1`),
-and
+**No registered task reaches the queue today** (was: exactly one, before 7.1a.0).
+`ManagedDiagnostic` is `execution_mode: :inline`
+(`lib/storyarn/ai/tasks/managed_diagnostic.ex:23`) and runs in the caller's
+process (`Execution.maybe_run_inline/3`). The only background task was
+~~`FlowFindingExplanation`~~ **[removed in 7.1a.0]**, `execution_mode: :background`
+with `timeout_ms: 60_000` — the numbers this document is sized against, and the
+shape any replacement will have. When it existed,
 `Execution.create_operation/2` enqueues `AIExecutionWorker` **inside the same
 transaction** that inserts the operation, its `ai_results` row and its allowance
 reservation (`Execution.create_operation/2`, which enqueues `AIExecutionWorker`
@@ -195,9 +205,9 @@ only for the managed lane. `Execution.create_operation/2` sets
 `Settlement.reserve/1` for `%ExecutionRoute{lane: :managed}`, returning `:ok`
 untouched for every other lane (`Execution.reserve!/2`).
 
-Today this is harmless: both registered tasks are managed-only —
-`FlowFindingExplanation.definition/1` declares `allowed_lanes: [:managed]` and
-`personal_byok_allowed?: false`, same as `managed_diagnostic.ex:28` — so every
+Today this is harmless: the only registered task is managed-only
+(`managed_diagnostic.ex:28`; the removed `FlowFindingExplanation` declared the
+same `allowed_lanes: [:managed]` and `personal_byok_allowed?: false`), so every
 operation that exists reserves and every operation is reachable by the reaper.
 
 But the `:personal_byok` lane already exists end-to-end in
@@ -316,10 +326,10 @@ backlog holding one slot continuously while a `*/15` tick — where the `*/5` an
 `*/15` schedules align — puts the reconciler in the other, leaving **zero
 capacity for user-facing execution**.
 
-This is already acknowledged, indirectly, in product code: the comment above
-`@poll_deadline_ms` in
-`lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex` records that
-"queue wait is unbounded by design (concurrency 2)".
+This was acknowledged, indirectly, in product code: the comment above
+`@poll_deadline_ms` in ~~`…/handlers/explanation_handlers.ex`~~ **[removed in
+7.1a.0]** recorded that "queue wait is unbounded by design (concurrency 2)". No
+surviving code states it, which is precisely why it is written down here.
 
 ### Proposed change
 
@@ -383,8 +393,10 @@ shorten the window to something unambiguously below the schedule, e.g.
 
 Any UI that polls an operation must size its own deadline against the _kernel's_
 worst case, not against `timeout_ms`. Slice 7.2a's explanation panel learned
-this the hard way; `StoryarnWeb.FlowLive.Handlers.ExplanationHandlers` now
-encodes the lesson:
+this the hard way, and ~~`StoryarnWeb.FlowLive.Handlers.ExplanationHandlers`~~
+**[removed in 7.1a.0]** encoded the lesson as follows — **the next polling
+surface must re-derive all of it, since there is no longer an implementation to
+copy**:
 
 - `@poll_interval_ms 1_000` and `@poll_deadline_ms 180_000` (the latter overridable per-deployment via a `:poll_deadline_ms` option);
 - the deadline is measured from the first observed `"running"`, not from `execute` — `polling_since` is `nil` while queued and is stamped on the first `"running"` observation by `started_at/1`;
@@ -429,6 +441,6 @@ instance, or drives the plugin's `handle_info/2` directly against seeded rows.
 - Changing `:ai` concurrency, the 900 s staleness window, `timeout_ms`, or `max_attempts` on any worker. The recovery bound is a contract; this change makes it _reachable_, not tighter.
 - Adding retries to provider calls. The kernel's zero-automatic-retry stance (`lib/storyarn/ai/executor.ex:2`, `lib/storyarn/workers/ai_execution_worker.ex:1`) is deliberate and unchanged.
 - Introducing `Oban.Pro` / `DynamicLifeline`. Noted in the Oban docs as the accurate alternative (`deps/oban/lib/oban/plugins/lifeline.ex:13-17`); it is a paid dependency and out of scope.
-- Broadcasting operation completion. The panel polls because the kernel emits no completion event (stated in the `ExplanationHandlers` moduledoc); changing that is a separate product decision.
+- Broadcasting operation completion. The kernel emits no completion event, which is why the (now removed) panel polled at all; changing that is a separate product decision, and a live one now that no surface exists to constrain the design.
 - Widening the layer-2 query for non-reserving lanes. Documented above under **What layer 2 does not cover** as a prerequisite for whoever enables a background `:personal_byok` task — it is not part of this change.
 - Any alteration to allowance, settlement, or alert semantics.

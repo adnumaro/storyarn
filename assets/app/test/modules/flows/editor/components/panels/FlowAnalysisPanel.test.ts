@@ -1,7 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it } from "vitest";
-import { isAIPaletteCommand } from "@shared/command-palette/aiCommands";
-import { paletteGroups } from "@shared/command-palette/registry";
+import { describe, expect, it } from "vitest";
 import FlowAnalysisPanel from "@modules/flows/editor/components/panels/FlowAnalysisPanel.vue";
 import type { AnalysisFinding } from "@modules/flows/editor/components/panels/flowAnalysisTypes.ts";
 import { createMockLive } from "@app/test/setup.ts";

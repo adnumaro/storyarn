@@ -1053,6 +1053,9 @@ defmodule Storyarn.Flows do
 
   `{:error, :unknown_finding}` when the key is gone, `{:error, :stale_finding}`
   when its rule version or evidence moved.
+
+  No caller in `lib/` since Slice 7.1a.0 removed the AI explanation; kept for
+  7.1a.1's `findings` operation. See `StructuralAnalysis.fetch_current_finding/3`.
   """
   @spec fetch_current_structural_finding(integer(), integer(), StructuralAnalysis.Finding.identity()) ::
           {:ok, StructuralAnalysis.Finding.t()}
@@ -1061,7 +1064,12 @@ defmodule Storyarn.Flows do
     to: StructuralAnalysis,
     as: :fetch_current_finding
 
-  @doc "The exact occurrence triple identifying a structural finding."
+  @doc """
+  The exact occurrence triple identifying a structural finding.
+
+  This and the encode/decode pair below share the caller status of
+  `fetch_current_structural_finding/3`: tests only, kept for 7.1a.1.
+  """
   @spec structural_finding_identity(StructuralAnalysis.Finding.t()) :: StructuralAnalysis.Finding.identity()
   defdelegate structural_finding_identity(finding), to: StructuralAnalysis.Finding, as: :identity
 

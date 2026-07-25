@@ -1,5 +1,3 @@
-import type { ContextDisclosureData } from "@components/ai/ContextDisclosure.vue";
-
 export interface AnalysisEvidence {
   type: string;
   id: number;

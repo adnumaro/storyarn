@@ -11,7 +11,7 @@ grep-to-zero and Kept-table checks rather than by reading:
    generic kernel machinery, so it was **rewritten** against `dialogue` and
    `flow_neighborhood` rather than deleted.
 2. Removing the scope made `SourceLocks.verify_evidence_entries/2` and
-   `Context.EvidenceLoader` unreachable — that re-verification ran *only* for the
+   `Context.EvidenceLoader` unreachable — that re-verification ran _only_ for the
    non-persistable scope, because it was the one that could not be rebuilt from a
    persisted subject. Every surviving scope is checked more strongly one layer up,
    where `Context.operation_current?/3` rebuilds the package and compares hashes.
@@ -117,6 +117,41 @@ the task.
 the identity encode/decode pair lose their only caller here, but 7.1a.1's `findings`
 operation plausibly wants a stable finding identity for deep-linking. Decide when
 7.1a.1's operation shapes are settled; until then, keep them and mark them.
+**Resolved:** kept, and marked at both the facade and
+`StructuralAnalysis.fetch_current_finding/3` with the caller status, the reason and
+the condition for deleting them. `release_if_unstarted/2` and `created_operation?/3`
+carry the same marker for the same reason.
+
+## What the audit caught after the implementation was "done"
+
+Owner audited the finished branch. Every gate was green and re-verified — ExUnit
+8291/0, E2E 64/0, Vitest 767/767, credo, format, `compile --warnings-as-errors`,
+vue-tsc, knip — and four leftovers survived all of them. **The Kept-table loop
+protects what stays; nothing was checking that what should go actually went.**
+
+1. **A Removed row that was never removed.** `Results.readable_subject_revisions/3`
+   was still in `lib/`, with no caller and no test, while this document listed it
+   under Removed _and_ the migration dropping its index asserted in its own comment
+   that the function was gone. Deleted now, which makes both statements true.
+   **Loop the Removed table exactly like the Kept table: grep every row, investigate
+   every non-zero hit.** A removal document is a claim until something checks it.
+2. **`pnpm run lint` was never run** and was red: four imports orphaned where the
+   deleted code used to use them. `mix format`, credo, knip and vue-tsc all pass
+   through unused imports. Removals are exactly what oxlint catches.
+3. **Gettext drifts in the removal direction too.** Deleting a module leaves its
+   msgids in the `.pot` and every `.po`; the parity guard compares those to each
+   other, never to the source, so it stays green while pointing at a deleted file.
+   `flows` was the one fully-extracted domain and this PR dirtied it. Fixed with
+   `gettext.extract --merge`, reverting every domain but `flows`.
+4. **A dynamic i18n key survived every symbol grep.**
+   `integrations.context_disclosure.scopes.structural_finding` lived on in `en` and
+   `es` because `ContextDisclosure.vue` builds the key by interpolation. **Grep the
+   removed string values, not only module and function names.**
+
+Also corrected: a moduledoc still naming the deleted feature as its live consumer,
+a test comment citing the wrong function for coverage it defers to, and two Kept
+documents (`SHARED_HELPER_EXTRACTIONS.md`, `OBAN_AI_QUEUE_HARDENING.md`) whose
+call-site citations had become dead references.
 
 ## Consequences elsewhere
 
@@ -134,6 +169,14 @@ operation plausibly wants a stable finding identity for deep-linking. Decide whe
   the removed tests and no other change.
 - `mix compile --warnings-as-errors` clean — no orphaned aliases or unused functions.
 - `mix credo --strict`, `vue-tsc`, `mix format`, `oxfmt` clean.
+- **`pnpm run lint` clean** — the only gate that sees an import left dangling by a
+  deletion.
+- **`mix gettext.extract --merge`, then revert every domain but the one this PR
+  touches** — deleting a module with user-facing strings orphans msgids that the
+  `.po`↔`.pot` parity test cannot see.
+- **Every row of the Removed table greps to zero**, in `lib/`, `test/`, `priv/` and
+  `assets/` — including the removed _string values_ (context scopes, destination ids,
+  i18n keys built by interpolation), not just module and function names.
 - Zero grep hits for `flow_finding_explanation`, `explanation_handlers`,
   `structural_finding` context, `hasExplanation` or `flows.explanation.` outside this
   document and the 7.2a spec's historical note.

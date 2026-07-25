@@ -346,6 +346,11 @@ defmodule Storyarn.AI.Operations do
   The decision cannot be made by reading the status first and cancelling second —
   a worker can stamp `external_attempt_started_at` in between — so it is taken
   here, under the same `FOR UPDATE` lock as the transition.
+
+  No caller in `lib/` since Slice 7.1a.0 removed the first AI surface. Kept on
+  purpose: every surface that can be closed mid-operation needs it, and it is the
+  only place where "give up for free" is decided atomically. Covered by
+  `test/storyarn/ai/kernel_spend_guarantees_test.exs`.
   """
   @spec release_if_unstarted(Scope.t(), pos_integer()) ::
           {:ok, :released | :started | :settled} | {:error, atom()}

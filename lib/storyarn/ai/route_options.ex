@@ -127,6 +127,11 @@ defmodule Storyarn.AI.RouteOptions do
   at the moment of creation, and keep the answer; it is not a durable record of
   who bought an operation, and nothing here can be, since two sessions of one
   actor are indistinguishable in the database.
+
+  No caller in `lib/` since Slice 7.1a.0 removed the first AI surface. Kept on
+  purpose: it is the only reliable answer to "did I buy this operation, or did my
+  `execute/1` replay someone else's", which `release_if_unstarted/2` depends on.
+  Covered by `test/storyarn/ai/kernel_spend_guarantees_test.exs`.
   """
   @spec created_operation?(map(), String.t(), pos_integer()) :: boolean()
   def created_operation?(%{user: %{id: actor_id}}, route_ref, operation_id)
