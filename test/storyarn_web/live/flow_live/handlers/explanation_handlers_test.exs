@@ -1,0 +1,319 @@
+defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
+  # Feature flags, workspace policy and the settlement adapter are all
+  # process-global.
+  use StoryarnWeb.ConnCase, async: false
+
+  import Phoenix.LiveViewTest
+  import Storyarn.FlowsFixtures
+  import Storyarn.ProjectsFixtures
+
+  alias Storyarn.AI
+  alias Storyarn.AI.Operation
+  alias Storyarn.Flows
+  alias Storyarn.Repo
+  alias Storyarn.Workers.AIExecutionWorker
+  alias StoryarnTest.AI.FakeSettlement
+
+  setup :register_and_log_in_user
+
+  setup %{user: user} do
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    flow = flow_fixture(project, %{name: "Explained Flow"})
+
+    entry = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
+    stuck = node_fixture(flow, %{type: "dialogue"})
+    connection_fixture(flow, entry, stuck)
+
+    FunWithFlags.enable(:ai_integrations, for_actor: user)
+    scope = Storyarn.Accounts.Scope.for_user(user)
+    {:ok, _policy} = AI.update_workspace_policy(scope, project.workspace_id, ["managed"])
+
+    original_settlement = Application.get_env(:storyarn, FakeSettlement, [])
+
+    on_exit(fn ->
+      FunWithFlags.disable(:ai_integrations, for_actor: user)
+      Application.put_env(:storyarn, FakeSettlement, original_settlement)
+    end)
+
+    %{project: project, flow: flow, stuck: stuck}
+  end
+
+  defp flow_url(project, flow) do
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+  end
+
+  defp mount_editor(conn, project, flow) do
+    {:ok, view, _html} = live(conn, flow_url(project, flow))
+    render_async(view, 2000)
+    view
+  end
+
+  defp panels(view) do
+    LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels").props["panels"]
+  end
+
+  defp explanation(view), do: panels(view)["explanation"]
+
+  # The seeded flow also has an isolated exit node, so the finding under test
+  # is selected by rule rather than by position.
+  defp open_panel_and_finding(view) do
+    render_click(view, "open_analysis_panel", %{})
+
+    finding =
+      Enum.find(panels(view)["analysis"]["active"], &(&1["ruleId"] == "no_outgoing_connection"))
+
+    assert finding, "expected a no_outgoing_connection finding in the snapshot"
+    finding
+  end
+
+  # The worker runs only when drained: :background + Oban testing: :manual.
+  defp drain_execution! do
+    assert %{success: 1, failure: 0} =
+             Oban.drain_queue(queue: AIExecutionWorker.__opts__()[:queue] || :ai, with_safety: false)
+  end
+
+  describe "availability" do
+    test "the surface is unavailable without the product flag", %{
+      conn: conn,
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      FunWithFlags.disable(:ai_integrations, for_actor: user)
+
+      view = mount_editor(conn, project, flow)
+
+      assert explanation(view)["available"] == false
+      assert explanation(view)["status"] == "idle"
+    end
+
+    test "an eligible editor sees an idle surface", %{conn: conn, project: project, flow: flow} do
+      view = mount_editor(conn, project, flow)
+
+      assert explanation(view)["available"] == true
+      assert explanation(view)["status"] == "idle"
+      assert explanation(view)["routes"] == []
+    end
+  end
+
+  describe "preflight" do
+    test "discloses route, payer, price and context WITHOUT creating an operation", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+
+      props = explanation(view)
+      assert props["status"] == "preflight"
+      assert props["findingId"] == finding["findingId"]
+
+      assert [%{"lane" => "managed", "payer" => "storyarn", "priceUnits" => 1, "routeRef" => route_ref}] =
+               props["routes"]
+
+      assert is_binary(route_ref)
+      assert props["disclosure"]["scope"] == "structural_finding"
+      assert props["disclosure"]["included_count"] >= 1
+
+      # Preflight never charges and never creates an operation.
+      assert Repo.aggregate(Operation, :count) == 0
+    end
+
+    test "a stale snapshot refuses to explain", %{conn: conn, project: project, flow: flow} do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+
+      # A structural mutation marks the snapshot stale without recomputing it.
+      render_hook(view, "add_node", %{"type" => "dialogue", "position_x" => 10.0, "position_y" => 10.0})
+      assert panels(view)["analysis"]["stale"] == true
+
+      html = render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+
+      assert html =~ "rerun before explaining"
+      assert explanation(view)["status"] == "idle"
+      assert Repo.aggregate(Operation, :count) == 0
+    end
+
+    test "an unknown or forged finding id is refused", %{conn: conn, project: project, flow: flow} do
+      view = mount_editor(conn, project, flow)
+      open_panel_and_finding(view)
+
+      html = render_click(view, "open_explanation", %{"finding_id" => "sf1_forged"})
+
+      assert html =~ "no longer current"
+      assert explanation(view)["status"] == "idle"
+      assert Repo.aggregate(Operation, :count) == 0
+    end
+
+    test "an exhausted allowance blocks with its own reason", %{conn: conn, project: project, flow: flow} do
+      Application.put_env(:storyarn, FakeSettlement, preflight_status: {:error, :allowance_exhausted})
+
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+
+      props = explanation(view)
+      assert props["status"] == "blocked"
+      assert props["error"] == "allowance_exhausted"
+      assert props["routes"] == []
+      assert Repo.aggregate(Operation, :count) == 0
+    end
+  end
+
+  describe "execution and result" do
+    test "an explicitly chosen route produces an actor-private narrative", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      assert explanation(view)["status"] == "running"
+
+      operation = Repo.one!(Operation)
+      assert operation.task_id == "flows.explain_finding"
+      assert operation.subject_type == "flow_finding"
+      assert operation.subject_id == flow.id
+      assert operation.result_destination == %{"type" => "panel", "id" => "flow_analysis"}
+
+      drain_execution!()
+
+      # The panel polls; nothing is pushed to it.
+      send(view.pid, :poll_explanation)
+
+      props = explanation(view)
+      assert props["status"] == "succeeded"
+      assert props["stale"] == false
+      assert props["result"] |> Map.keys() |> Enum.sort() == ~w(implications suggested_checks summary why_it_triggers)
+      refute Map.has_key?(props["result"], "finding_id")
+    end
+
+    test "a forged route reference never reaches the kernel", %{conn: conn, project: project, flow: flow} do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+
+      render_click(view, "execute_explanation", %{"route_ref" => "forged-reference"})
+
+      assert explanation(view)["status"] == "preflight"
+      assert Repo.aggregate(Operation, :count) == 0
+    end
+
+    test "a result whose finding moved is marked obsolete, never regenerated", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+
+      # The flow changes and the analysis is rerun: the same finding_key now
+      # carries a different fingerprint, so the narrative describes evidence
+      # that no longer stands.
+      render_hook(view, "add_node", %{"type" => "dialogue", "position_x" => 10.0, "position_y" => 10.0})
+      render_click(view, "rerun_analysis", %{})
+
+      props = explanation(view)
+      assert props["status"] == "succeeded"
+      assert props["stale"] == true
+      assert Repo.aggregate(Operation, :count) == 1
+    end
+
+    test "closing drops the surface without touching the operation", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+
+      render_click(view, "close_explanation", %{})
+
+      assert explanation(view)["status"] == "idle"
+      assert explanation(view)["result"] == nil
+      assert Repo.aggregate(Operation, :count) == 1
+    end
+  end
+
+  describe "analytics" do
+    defmodule TestAdapter do
+      @moduledoc false
+      def capture(payload) do
+        send(Application.get_env(:storyarn, :analytics_test_pid), {:analytics_capture, payload})
+        :ok
+      end
+
+      def identify(_payload), do: :ok
+    end
+
+    setup do
+      original_adapter = Application.get_env(:storyarn, :analytics_adapter)
+      Application.put_env(:storyarn, :analytics_test_pid, self())
+      Application.put_env(:storyarn, :analytics_adapter, TestAdapter)
+
+      on_exit(fn ->
+        Application.delete_env(:storyarn, :analytics_test_pid)
+
+        if original_adapter do
+          Application.put_env(:storyarn, :analytics_adapter, original_adapter)
+        else
+          Application.delete_env(:storyarn, :analytics_adapter)
+        end
+      end)
+
+      :ok
+    end
+
+    test "the explanation events carry allowlisted properties only", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+
+      assert_receive {:analytics_capture, %{event: "flow explanation preflight shown", properties: preflight}}
+      assert preflight["rule_id"] == "no_outgoing_connection"
+      assert preflight["route_count"] == 1
+      assert preflight["blocked"] == false
+
+      assert_receive {:analytics_capture, %{event: "flow explanation route selected", properties: %{"lane" => "managed"}}}
+
+      assert_receive {:analytics_capture, %{event: "flow explanation execution started", properties: started}}
+      assert started["lane"] == "managed"
+
+      assert_receive {:analytics_capture, %{event: "flow explanation result viewed", properties: viewed}}
+      assert viewed["stale"] == false
+
+      # No narrative, no ids, no prompt reach analytics.
+      for properties <- [preflight, started, viewed] do
+        refute Map.has_key?(properties, "summary")
+        refute Map.has_key?(properties, "finding_id")
+        refute Map.has_key?(properties, "operation_id")
+      end
+    end
+  end
+end

@@ -14,6 +14,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
+  alias StoryarnWeb.FlowLive.Handlers.ExplanationHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Handlers.NavigationHandlers
   alias StoryarnWeb.FlowLive.Handlers.PreviewHandlers
@@ -232,6 +233,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_step_limit_reached, false)
       |> assign(:versions_panel_open, false)
       |> AnalysisHandlers.assign_initial_state()
+      |> ExplanationHandlers.assign_initial_state()
       |> assign(:history_data, nil)
       |> assign(:all_sheets, [])
       |> assign(:dialogue_panel_data, nil)
@@ -455,6 +457,22 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("dismiss_finding", params, socket) do
     AnalysisHandlers.handle_dismiss_finding(params, socket)
+  end
+
+  def handle_event("open_explanation", params, socket) do
+    ExplanationHandlers.handle_open_explanation(params, socket)
+  end
+
+  def handle_event("execute_explanation", params, socket) do
+    ExplanationHandlers.handle_execute_explanation(params, socket)
+  end
+
+  def handle_event("rerun_explanation", params, socket) do
+    ExplanationHandlers.handle_rerun_explanation(params, socket)
+  end
+
+  def handle_event("close_explanation", params, socket) do
+    ExplanationHandlers.handle_close_explanation(params, socket)
   end
 
   def handle_event("restore_finding_dismissal", params, socket) do
@@ -1359,6 +1377,10 @@ defmodule StoryarnWeb.FlowLive.Show do
         AnalysisHandlers.assign_initial_state(socket)
       end
 
+    # An explanation belongs to one exact finding occurrence, so a reloaded
+    # flow (new snapshot) never inherits one.
+    socket = ExplanationHandlers.assign_initial_state(socket)
+
     socket =
       socket
       |> maybe_restore_nav_history()
@@ -1377,6 +1399,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   # Linked helper processes can terminate normally during flow transitions.
   # Ignore those exits so the editor does not remount while switching flows.
   @impl true
+  def handle_info(:poll_explanation, socket), do: ExplanationHandlers.handle_poll(socket)
+
   def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
 
   # Shell topic messages (forwarded by FlowSidebarLive / PresenceLive).
@@ -1581,7 +1605,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       dialogueFullscreen: flow_panels_dialogue_fullscreen(assigns),
       sequence: flow_panels_sequence(assigns),
       preview: PreviewHandlers.serialize_preview_state(assigns.socket),
-      analysis: AnalysisHandlers.panel_props(assigns)
+      analysis: AnalysisHandlers.panel_props(assigns),
+      explanation: ExplanationHandlers.panel_props(assigns)
     }
   end
 

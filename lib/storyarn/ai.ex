@@ -77,5 +77,9 @@ defmodule Storyarn.AI do
   defdelegate managed_provenance(), to: RouteResolver
 
   defdelegate registered_tasks(), to: TaskRegistry, as: :all
+
+  @doc "Fetches one ENABLED registered task; `:task_disabled` when its switch is off."
+  defdelegate fetch_task(task_id), to: TaskRegistry, as: :fetch
+
   defdelegate ai_command_id?(command_id), to: TaskRegistry, as: :command_id?
 end
