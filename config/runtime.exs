@@ -32,6 +32,13 @@ required_env = fn key ->
     """
 end
 
+# Every boolean switch reads through here. Before this, 18 sites open-coded
+# `in ~w(true 1)` while only 3 went through the trimming `env.()` — so
+# `TRUST_PROXY=" true"` silently read as OFF while
+# `STORYARN_AI_MANAGED_ENABLED=" true"` read as ON. Unset is always false: a
+# switch that turns on by accident is not a switch.
+bool_env = fn key -> String.downcase(env.(key) || "") in ~w(true 1) end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
@@ -53,33 +60,27 @@ if System.get_env("PHX_SERVER") do
 end
 
 # Block search engine indexing (staging environments)
-if System.get_env("NOINDEX") in ~w(true 1) do
+if bool_env.("NOINDEX") do
   config :storyarn, noindex: true
-end
-
-if admin_email = System.get_env("ADMIN_EMAIL") do
-  config :storyarn, :admin_email, admin_email
 end
 
 if config_env() != :test do
   config :storyarn, Storyarn.Versioning.RestorePolicy,
-    sheet_version_restore: System.get_env("SHEET_VERSION_RESTORE_ENABLED") in ~w(true 1),
-    flow_version_restore: System.get_env("FLOW_VERSION_RESTORE_ENABLED") in ~w(true 1),
-    scene_version_restore: System.get_env("SCENE_VERSION_RESTORE_ENABLED") in ~w(true 1),
-    project_snapshot_restore: System.get_env("PROJECT_SNAPSHOT_RESTORE_ENABLED") in ~w(true 1),
-    deleted_project_recovery: System.get_env("DELETED_PROJECT_RECOVERY_ENABLED") in ~w(true 1)
+    sheet_version_restore: bool_env.("SHEET_VERSION_RESTORE_ENABLED"),
+    flow_version_restore: bool_env.("FLOW_VERSION_RESTORE_ENABLED"),
+    scene_version_restore: bool_env.("SCENE_VERSION_RESTORE_ENABLED"),
+    project_snapshot_restore: bool_env.("PROJECT_SNAPSHOT_RESTORE_ENABLED"),
+    deleted_project_recovery: bool_env.("DELETED_PROJECT_RECOVERY_ENABLED")
 
-  config :storyarn, Storyarn.Workers.DailySnapshotWorker,
-    pruning_enabled: System.get_env("AUTO_SNAPSHOT_PRUNING_ENABLED") in ~w(true 1)
+  config :storyarn, Storyarn.Workers.DailySnapshotWorker, pruning_enabled: bool_env.("AUTO_SNAPSHOT_PRUNING_ENABLED")
 
   config :storyarn, Storyarn.Workers.SnapshotRetentionWorker,
-    enabled: System.get_env("DELETED_PROJECT_SNAPSHOT_RETENTION_ENABLED") in ~w(true 1)
+    enabled: bool_env.("DELETED_PROJECT_SNAPSHOT_RETENTION_ENABLED")
 
-  config :storyarn, Storyarn.Workers.TrashRetentionWorker,
-    enabled: System.get_env("ENTITY_TRASH_RETENTION_ENABLED") in ~w(true 1)
+  config :storyarn, Storyarn.Workers.TrashRetentionWorker, enabled: bool_env.("ENTITY_TRASH_RETENTION_ENABLED")
 end
 
-managed_ai_enabled? = config_env() != :test and env.("STORYARN_AI_MANAGED_ENABLED") in ~w(true 1)
+managed_ai_enabled? = config_env() != :test and bool_env.("STORYARN_AI_MANAGED_ENABLED")
 
 inference_providers = %{}
 credential_adapters = %{}
@@ -161,8 +162,8 @@ registered_tasks =
 
 {inference_providers, credential_adapters, registered_tasks} =
   if managed_ai_enabled? do
-    if env.("STORYARN_AI_MANAGED_ZDR_VERIFIED") not in ~w(true 1) or
-         env.("STORYARN_AI_MANAGED_NO_TRAINING_VERIFIED") not in ~w(true 1) do
+    if not bool_env.("STORYARN_AI_MANAGED_ZDR_VERIFIED") or
+         not bool_env.("STORYARN_AI_MANAGED_NO_TRAINING_VERIFIED") do
       raise "managed AI requires explicit ZDR and no-training verification"
     end
 
@@ -170,6 +171,24 @@ registered_tasks =
       case Integer.parse(required_env.(key)) do
         {value, ""} when value > 0 -> value
         _invalid -> raise "environment variable #{key} must be a positive integer"
+      end
+    end
+
+    # Prices and caps were stored as raw strings and only rejected later, by
+    # RouteResolver's valid_provider_price?/valid_budget? on the first route
+    # resolution — so a typo'd decimal booted green and failed on the actor's
+    # first AI operation. Validate here: a bad price is a boot failure.
+    decimal_env = fn key ->
+      value = required_env.(key)
+
+      case Decimal.parse(value) do
+        {decimal, ""} ->
+          if Decimal.negative?(decimal),
+            do: raise("environment variable #{key} must not be negative, got #{value}"),
+            else: value
+
+        _invalid ->
+          raise "environment variable #{key} must be a decimal number, got #{value}"
       end
     end
 
@@ -236,14 +255,14 @@ registered_tasks =
         provider_price: [
           version: positive_integer.("STORYARN_AI_PROVIDER_PRICE_VERSION"),
           currency: required_env.("STORYARN_AI_PROVIDER_PRICE_CURRENCY"),
-          input_per_million: required_env.("STORYARN_AI_PROVIDER_INPUT_PER_MILLION"),
-          output_per_million: required_env.("STORYARN_AI_PROVIDER_OUTPUT_PER_MILLION"),
-          max_estimated_cost: required_env.("STORYARN_AI_PROVIDER_MAX_OPERATION_COST")
+          input_per_million: decimal_env.("STORYARN_AI_PROVIDER_INPUT_PER_MILLION"),
+          output_per_million: decimal_env.("STORYARN_AI_PROVIDER_OUTPUT_PER_MILLION"),
+          max_estimated_cost: decimal_env.("STORYARN_AI_PROVIDER_MAX_OPERATION_COST")
         ],
         budget: [
-          global_daily: required_env.("STORYARN_AI_PROVIDER_GLOBAL_DAILY_CAP"),
-          global_monthly: required_env.("STORYARN_AI_PROVIDER_GLOBAL_MONTHLY_CAP"),
-          workspace_daily: required_env.("STORYARN_AI_PROVIDER_WORKSPACE_DAILY_CAP")
+          global_daily: decimal_env.("STORYARN_AI_PROVIDER_GLOBAL_DAILY_CAP"),
+          global_monthly: decimal_env.("STORYARN_AI_PROVIDER_GLOBAL_MONTHLY_CAP"),
+          workspace_daily: decimal_env.("STORYARN_AI_PROVIDER_WORKSPACE_DAILY_CAP")
         ]
       ]
 
@@ -328,7 +347,7 @@ end
 # Trust X-Forwarded-For header when behind a reverse proxy (CloudFlare, AWS ELB, etc.)
 # Only enable this in production when you're certain you're behind a trusted proxy
 # Without this, rate limiting uses the direct connection IP (more secure default)
-if System.get_env("TRUST_PROXY") in ~w(true 1) do
+if bool_env.("TRUST_PROXY") do
   config :storyarn, trust_proxy: true
 end
 
@@ -350,7 +369,7 @@ if config_env() == :prod do
 
   database_url = required_env.("DATABASE_URL")
 
-  maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
+  maybe_ipv6 = if bool_env.("ECTO_IPV6"), do: [:inet6], else: []
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you

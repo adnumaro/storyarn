@@ -189,7 +189,6 @@ config :storyarn, StoryarnWeb.Endpoint,
 # Automatic trash hard-deletion is frozen while restore and referential
 # integrity are being hardened.
 config :storyarn, TrashRetentionWorker, enabled: false
-config :storyarn, :admin_email, "adan@storyarn.com"
 
 config :storyarn,
        :import_idempotency_secret,
