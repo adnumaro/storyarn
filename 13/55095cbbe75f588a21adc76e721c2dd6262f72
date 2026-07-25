@@ -1,0 +1,68 @@
+test/storyarn_web/live/flow_live/handlers/explanation_handlers_test.exs
+  s_b2830ac6a53241::t_523d7f0e62181a 220-222
+  s_b2830ac6a53241::t_6175e2c897e543 13,30,92-112
+  s_b2830ac6a53241::t_d1dada216501f4 113,227-241,243-273
+  s_b2830ac6a53241::t_ab7b7a76a46d2d 10,114,223,242
+assets/app/test/modules/flows/editor/components/panels/FlowAnalysisExplanation.test.ts
+  s_b2830ac6a53241::t_bcb3bad8e68e36 58,60
+  s_b2830ac6a53241::t_402ba27bb49697 10,16,65-70,83,179-192
+test/storyarn/ai/inference_providers/fake_test.exs
+  s_b2830ac6a53241::t_37b0524fb88917 52-53,55-63,65-115
+  s_b2830ac6a53241::t_ed953495ba84fb 5,54,64
+lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex
+  s_b2830ac6a53241::t_2ff58952438900 73-75,78,116-117,389-402
+  s_b2830ac6a53241::t_cc070efbd36a20 167,316,365,380
+  s_b2830ac6a53241::t_8f2c77b998fec7 35-37,134-138,150-153,175,227,281-285,324
+  s_b2830ac6a53241::t_481db49ad368ec 286
+assets/app/test/modules/flows/editor/components/panels/FlowAnalysisPanel.test.ts
+  s_4569ce34f0e5b0::t_5d2d9fe7d074a2 5
+  s_b2830ac6a53241::t_d319404362822c 258-259
+  s_b2830ac6a53241::t_a226f9cd8cc5d1 2-4,182-245,253-257,260-265
+  s_b2830ac6a53241::t_d463e8b4655173 6-7,21,246-252,266
+lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex
+  s_b2830ac6a53241::t_cc070efbd36a20 453-455
+assets/app/modules/flows/editor/components/panels/flowAnalysisTypes.ts
+  s_b2830ac6a53241::t_bcb3bad8e68e36 78,80
+  s_b2830ac6a53241::t_229d9d1c9e3bec 12-13,86
+assets/app/test/shared/command-palette/aiCommands.test.ts
+  s_b2830ac6a53241::t_f22f4b50c3c959 183-195
+assets/app/shared/command-palette/aiDestinationRouter.ts
+  s_b2830ac6a53241::t_f22f4b50c3c959 21-25
+assets/app/modules/flows/editor/components/panels/FlowAnalysisExplanation.vue
+  s_b2830ac6a53241::t_bcb3bad8e68e36 149,161,166
+  s_b2830ac6a53241::t_a41b0bdd21d3e2 9,11-12,25-30
+test/e2e/flow_analysis_test.exs
+  s_b2830ac6a53241::t_89f982d7d25b6b 111-113
+  s_b2830ac6a53241::t_4fc8737cdf66db 17-18,21,43-56,90-108,110,114-140,142
+  s_b2830ac6a53241::t_862c0b8dc3dce0 109,141,143
+lib/storyarn/ai.ex
+  s_b2830ac6a53241::t_bcb3bad8e68e36 84-86
+assets/app/modules/flows/editor/components/panels/FlowAnalysisFindingCard.vue
+  s_b2830ac6a53241::t_718d76c1b2a138 190
+assets/app/modules/flows/editor/components/panels/FlowAnalysisPanel.vue
+  s_b2830ac6a53241::t_7f7113d57bcc0e 328-330,334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1355095cbbe75f588a21adc76e721c2dd6262f72",
+  "prompts": {},
+  "sessions": {
+    "s_4569ce34f0e5b0": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1784807769531",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_b2830ac6a53241": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58be1506-46da-4aa1-9bc6-39e527104326",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
