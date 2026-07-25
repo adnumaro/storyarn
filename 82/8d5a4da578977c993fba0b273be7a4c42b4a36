@@ -1,0 +1,29 @@
+test/storyarn/ai/inference_providers/fake_test.exs
+  s_fc3546b2264bba::t_7a2fa698ca2d4d 6
+  s_fc3546b2264bba::t_bbce815a9899d9 40
+  s_fc3546b2264bba::t_b1ac049a0ebdf2 51-63
+  s_fc3546b2264bba::t_1031b2b82d13c6 102-103,110
+  s_fc3546b2264bba::t_1592c069e05c1c 11,15,21
+  s_fc3546b2264bba::t_18c6d7214365de 104
+  s_fc3546b2264bba::t_511e36401b0b87 105-108,111
+  s_fc3546b2264bba::t_5e251899d97622 64-65
+lib/storyarn/ai/inference_providers/fake.ex
+  s_fc3546b2264bba::t_87e6f42e3ae011 90,92-93
+  s_fc3546b2264bba::t_7b2422220849ad 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "828d5a4da578977c993fba0b273be7a4c42b4a36",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
