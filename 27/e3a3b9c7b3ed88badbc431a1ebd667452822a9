@@ -1,0 +1,61 @@
+lib/storyarn/flows.ex
+  s_fc3546b2264bba::t_46241efb5c5ba0 1056-1058
+  s_fc3546b2264bba::t_1725364769eb42 1067-1072
+docs/features/SHARED_HELPER_EXTRACTIONS.md
+  s_fc3546b2264bba::t_826c879ff35f0b 103
+  s_fc3546b2264bba::t_bcd476c693fb39 43
+  s_fc3546b2264bba::t_837fbfa5809816 57-61
+  s_fc3546b2264bba::t_222dd31fcd4b9d 33
+  s_fc3546b2264bba::t_fa49e6bd1a9fbf 179-182
+  s_fc3546b2264bba::t_57183f5aeeba11 10-18
+  s_fc3546b2264bba::t_9e5d8f287c9d22 45,48-51
+  s_fc3546b2264bba::t_de4e30febbab9e 68-70
+  s_fc3546b2264bba::t_9fca6639b3b62b 80
+assets/app/test/modules/flows/editor/components/panels/FlowAnalysisPanel.test.ts
+  s_fc3546b2264bba::t_6c6c5bae47bd60 2
+lib/storyarn/ai/operations.ex
+  s_fc3546b2264bba::t_1f225cae336f24 349-353
+assets/app/locales/en/integrations.json
+  s_fc3546b2264bba::t_3a610a17332786 262
+docs/features/ai-platform/SLICE_7_1A_0_REMOVE_FINDING_EXPLANATION.md
+  s_fc3546b2264bba::t_9bf173cab4c2a0 120-133,135-154
+  s_fc3546b2264bba::t_745578451b7c21 172-177,179
+  s_fc3546b2264bba::t_bcd476c693fb39 14,134,178
+test/storyarn/ai/context_source_locks_test.exs
+  s_fc3546b2264bba::t_3115badd37cc98 26-36
+priv/gettext/flows.pot
+  s_fc3546b2264bba::t_35429bd4f246d0 53,114,216,226,418,456,461,466,471
+docs/features/ai-platform/OBAN_AI_QUEUE_HARDENING.md
+  s_fc3546b2264bba::t_bc869b34f80bb2 396-399
+  s_fc3546b2264bba::t_0658eec0d9d3dc 444
+  s_fc3546b2264bba::t_ef004bd716850a 77-83
+  s_fc3546b2264bba::t_cb366df6ae6742 208-210
+  s_fc3546b2264bba::t_a91b417a88aebe 329-332
+  s_fc3546b2264bba::t_8460df4e96187a 11-19
+assets/app/locales/es/integrations.json
+  s_fc3546b2264bba::t_e9f47c0bda410d 262
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_fc3546b2264bba::t_35429bd4f246d0 53,114,216,226,418,456,461,466,471
+lib/storyarn/ai/route_options.ex
+  s_fc3546b2264bba::t_e956ef678a1d2b 130-134
+lib/storyarn/flows/structural_analysis.ex
+  s_fc3546b2264bba::t_2c96fa0dfaee9f 87-98
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_fc3546b2264bba::t_35429bd4f246d0 53,114,216,226,418,456,461,466,471
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "27e3a3b9c7b3ed88badbc431a1ebd667452822a9",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
