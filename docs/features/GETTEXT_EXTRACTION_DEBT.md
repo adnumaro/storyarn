@@ -27,7 +27,7 @@ completeness. `assert_complete_gettext_catalog/3` (`:70-84`) asserts that each
 
 That is the right assertion. It does not help, because **nothing checks the
 `.pot` against the source code.** A `dgettext` call that was never extracted is
-absent from the `.pot` *and* from every `.po`, so the sets match and the test is
+absent from the `.pot` _and_ from every `.po`, so the sets match and the test is
 green while the string renders in English for Spanish users.
 
 So the work is not "translate some strings". It is:
@@ -103,8 +103,8 @@ For each domain:
 
 **Translation conventions** (from `docs/conventions/` and existing catalogs):
 
-- Keep English product/technical terms untranslated: *flow*, *sheet*, *scene*,
-  *workspace*, *hub*, *jump*, *subflow*, *entry*, *exit*, *sequence*, *API key*.
+- Keep English product/technical terms untranslated: _flow_, _sheet_, _scene_,
+  _workspace_, _hub_, _jump_, _subflow_, _entry_, _exit_, _sequence_, _API key_.
 - Preserve every interpolation exactly, including the `%{name}` form and plural
   indexes. A dropped placeholder is a runtime crash, not a typo.
 - Match the register of the surrounding catalog — the existing Spanish uses

@@ -38,25 +38,25 @@ started from `lib/storyarn/application.ex:26`. **No environment overrides it.**
 key at all; `config/test.exs:48` is the only override and it only sets
 `testing: :manual`.
 
-| Setting                    | Value                                                       | Citation                |
-| -------------------------- | ----------------------------------------------------------- | ----------------------- |
-| `engine`                   | `Oban.Engines.Basic`                                        | `config/config.exs:91`  |
-| `:ai` queue concurrency    | `2`                                                         | `config/config.exs:101` |
-| `plugins`                  | `Pruner` (7-day `max_age`) and `Cron` — **and nothing else** | `config/config.exs:104-116` |
-| `*/15` AI crontab entry    | `ExpireAIResultsWorker`                                     | `config/config.exs:112` |
-| `*/5` AI crontab entry     | `ReconcileAIReservationsWorker`                             | `config/config.exs:113` |
-| `shutdown_grace_period`    | not set → Oban default `15_000` ms                          | `deps/oban/lib/oban/config.ex:45` |
+| Setting                 | Value                                                        | Citation                          |
+| ----------------------- | ------------------------------------------------------------ | --------------------------------- |
+| `engine`                | `Oban.Engines.Basic`                                         | `config/config.exs:91`            |
+| `:ai` queue concurrency | `2`                                                          | `config/config.exs:101`           |
+| `plugins`               | `Pruner` (7-day `max_age`) and `Cron` — **and nothing else** | `config/config.exs:104-116`       |
+| `*/15` AI crontab entry | `ExpireAIResultsWorker`                                      | `config/config.exs:112`           |
+| `*/5` AI crontab entry  | `ReconcileAIReservationsWorker`                              | `config/config.exs:113`           |
+| `shutdown_grace_period` | not set → Oban default `15_000` ms                           | `deps/oban/lib/oban/config.ex:45` |
 
 `grep -rn "Lifeline"` over the repository (excluding `deps/` and `_build/`)
 returns nothing.
 
 ### Three workers share the two `:ai` slots
 
-| Worker                                                   | Declaration                                        | Enqueued by                                   |
-| -------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------- |
-| `Storyarn.Workers.AIExecutionWorker`                     | `queue: :ai, max_attempts: 3`                      | `Execution.create_operation/2`                |
-| `Storyarn.Workers.ReconcileAIReservationsWorker`         | `queue: :ai, max_attempts: 1, unique: [period: 300]` | `Cron`, `*/5`                                 |
-| `Storyarn.Workers.ExpireAIResultsWorker`                 | `queue: :ai, max_attempts: 3`                      | `Cron`, `*/15`, **plus its own follow-ups**   |
+| Worker                                           | Declaration                                          | Enqueued by                                 |
+| ------------------------------------------------ | ---------------------------------------------------- | ------------------------------------------- |
+| `Storyarn.Workers.AIExecutionWorker`             | `queue: :ai, max_attempts: 3`                        | `Execution.create_operation/2`              |
+| `Storyarn.Workers.ReconcileAIReservationsWorker` | `queue: :ai, max_attempts: 1, unique: [period: 300]` | `Cron`, `*/5`                               |
+| `Storyarn.Workers.ExpireAIResultsWorker`         | `queue: :ai, max_attempts: 3`                        | `Cron`, `*/15`, **plus its own follow-ups** |
 
 Citations: `lib/storyarn/workers/ai_execution_worker.ex:3`,
 `lib/storyarn/workers/reconcile_ai_reservations_worker.ex:3`,
@@ -93,14 +93,14 @@ after a failed, raised or thrown execution
 (`lib/storyarn/ai/operations.ex:220-237`) takes a `FOR UPDATE` lock and
 dispatches on `recover_locked/1` (`operations.ex:272-296`):
 
-| Locked row                                                | Transition                                                                                    | `error_classification`               | Returns  |
-| --------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------ | -------- |
-| missing                                                   | none                                                                                          | —                                    | `:ok`    |
-| `queued`                                                  | none — the operation may still be executed                                                    | —                                    | `:ready` |
-| `running`, `external_attempt_started_at` **nil**          | release allowance, delete result row, → `failed` (`operations.ex:275-285`)                     | `worker_interrupted_before_attempt`  | `:ok`    |
-| `running`, attempt started, usage row still `running`     | finish usage `unknown` + critical `unknown_operation` alert, release, delete result, → `unknown` (`operations.ex:298-300`, `467-494`) | `worker_interrupted` | `:ok`    |
-| `running`, attempt started, usage row already finished    | release, delete result, → `unknown` (`operations.ex:302-310`) — **no alert on this branch**     | `worker_interrupted`                 | `:ok`    |
-| any terminal status                                       | none                                                                                          | —                                    | `:ok`    |
+| Locked row                                             | Transition                                                                                                                            | `error_classification`              | Returns  |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------- |
+| missing                                                | none                                                                                                                                  | —                                   | `:ok`    |
+| `queued`                                               | none — the operation may still be executed                                                                                            | —                                   | `:ready` |
+| `running`, `external_attempt_started_at` **nil**       | release allowance, delete result row, → `failed` (`operations.ex:275-285`)                                                            | `worker_interrupted_before_attempt` | `:ok`    |
+| `running`, attempt started, usage row still `running`  | finish usage `unknown` + critical `unknown_operation` alert, release, delete result, → `unknown` (`operations.ex:298-300`, `467-494`) | `worker_interrupted`                | `:ok`    |
+| `running`, attempt started, usage row already finished | release, delete result, → `unknown` (`operations.ex:302-310`) — **no alert on this branch**                                           | `worker_interrupted`                | `:ok`    |
+| any terminal status                                    | none                                                                                                                                  | —                                   | `:ok`    |
 
 `:ok` means "already terminal, stop"; the worker returns `:ok` and the job
 completes. `:ready` means "still `queued`". On the final attempt `:ready` routes
@@ -113,7 +113,7 @@ result row and transitions `queued → failed` with
 
 **The load-bearing consequence:** the retry ladder only advances while the row
 is still `queued`. Every `running` state — with or without a started attempt —
-resolves *terminally* inside `recover_interrupted/1`. A provider timeout is
+resolves _terminally_ inside `recover_interrupted/1`. A provider timeout is
 likewise terminal: `Executor` maps it to `{:error, {:unknown, :timeout}}` and
 `finalize/5` calls `Operations.finish_unknown/4`, after which
 `Executor.run/1` returns `:ok`
@@ -123,7 +123,7 @@ reached when `Operations.claim/1` itself could not commit — a database error o
 lock failure — which is a sub-second failure.
 
 There is no custom `backoff/1` on either worker, so Oban's default applies. In
-`2.22.1` that default is *not* the `attempt^4 + 15` formula from the
+`2.22.1` that default is _not_ the `attempt^4 + 15` formula from the
 `Oban.Worker` docstring example (`deps/oban/lib/oban/worker.ex:180-182`); the
 real implementation is `deps/oban/lib/oban/worker.ex:525-536`, which for
 `max_attempts <= 20` computes
@@ -274,7 +274,7 @@ genuinely `executing` and cause duplicate execution"
 specifically, that hazard is **bounded but not zero**:
 
 - It **cannot** buy a second provider call. `start_attempt_locked/3` rolls back with `:duplicate_external_attempt` if any `UsageEvent` already exists for the operation (`lib/storyarn/ai/operations.ex:93-99`), backed by `create unique_index(:ai_usage_events, [:operation_id])` (`priv/repo/migrations/20260722190000_create_ai_execution_kernel.exs:181`), and the attempt raises a `critical` `duplicate_attempt` alert (`operations.ex:54-57`, `446-465`). Allowance cannot be double-spent.
-- It **can** destroy a good result. A rescued job re-enters at attempt > 1, calls `recover_interrupted/1`, sees `running` + a `running` usage row, and terminalizes the *still-live* operation as `unknown` while the real attempt is in flight. When the genuine worker returns, `lock_running_attempt!/2` no longer matches and rolls back `:invalid_transition` (`operations.ex:385-396`), so a successful generation is discarded, the reservation is released, and a spurious `critical` `unknown_operation` alert is filed. Storyarn absorbs the provider cost — consistent with the documented invariant in `STORYARN_AI_OPERATIONS.md:92`, but the user sees a failure for work that succeeded.
+- It **can** destroy a good result. A rescued job re-enters at attempt > 1, calls `recover_interrupted/1`, sees `running` + a `running` usage row, and terminalizes the _still-live_ operation as `unknown` while the real attempt is in flight. When the genuine worker returns, `lock_running_attempt!/2` no longer matches and rolls back `:invalid_transition` (`operations.ex:385-396`), so a successful generation is discarded, the reservation is released, and a spurious `critical` `unknown_operation` alert is filed. Storyarn absorbs the provider cost — consistent with the documented invariant in `STORYARN_AI_OPERATIONS.md:92`, but the user sees a failure for work that succeeded.
 
 That is precisely why `rescue_after` must sit above the 60 s attempt ceiling,
 and why this finding needs its own verification pass rather than riding along
@@ -293,7 +293,7 @@ producer as the work it is supposed to rescue.
 producer never starts, then neither layer 1 (an `AIExecutionWorker` retry) nor
 layer 2 (the reconciler) can run. An operation stays `"queued"` indefinitely,
 its allowance stays reserved, and no alert is ever filed — the alert is written
-*by* the worker that cannot run. Nothing in the repo pauses a queue today
+_by_ the worker that cannot run. Nothing in the repo pauses a queue today
 (`grep -rn "pause_queue\|scale_queue" lib/ test/` is empty), so this is a
 latent operational trap rather than a live bug; note that `Cron` runs on the
 leader independently of queue state, so reconciler jobs would still accumulate
@@ -305,7 +305,7 @@ three ways:
 
 - Two concurrent explanations (each up to 60 s) delay the reconciler tick by up to a full attempt.
 - The reconciler occupies 1 of the 2 slots whenever it runs, **halving execution capacity on every `*/5` tick**.
-- `ExpireAIResultsWorker` is the sharper edge. It also sits on `:ai` (`expire_ai_results_worker.ex:3`), processes 100 rows per batch (`lib/storyarn/ai/results.ex:19`, `121-146`), and **self-reschedules a follow-up with `schedule_in: 1` for as long as `more?` is true** (`expire_ai_results_worker.ex:54`, `74-78`). A backlog of *N* expired results produces a chain of `ceil(N/100)` `:ai` jobs at one-second intervals, each holding a slot. It also declares `max_attempts: 3` with no `unique`, so retries and follow-ups can coexist.
+- `ExpireAIResultsWorker` is the sharper edge. It also sits on `:ai` (`expire_ai_results_worker.ex:3`), processes 100 rows per batch (`lib/storyarn/ai/results.ex:19`, `121-146`), and **self-reschedules a follow-up with `schedule_in: 1` for as long as `more?` is true** (`expire_ai_results_worker.ex:54`, `74-78`). A backlog of _N_ expired results produces a chain of `ceil(N/100)` `:ai` jobs at one-second intervals, each holding a slot. It also declares `max_attempts: 3` with no `unique`, so retries and follow-ups can coexist.
 
 The worst realistic case is not "the reconciler is a bit late": it is an expiry
 backlog holding one slot continuously while a `*/15` tick — where the `*/5` and
@@ -348,7 +348,7 @@ no job semantics, and makes layer 2 independent of the queue it reaps.
 Costs to state explicitly:
 
 - One more queue means one more producer and its polling overhead. Concurrency `1` is correct: both workers are serial sweeps and `ExpireAIResultsWorker`'s follow-up chain must not fan out.
-- The reconciler stops being incidentally serialized against execution. It never relied on that — every transition it performs takes a `FOR UPDATE` lock on the operation row (`operations.ex:374`) — but the change does mean the reaper can now run *concurrently* with an in-flight attempt on the same operation. That path is already exercised: it is the same interleaving the 900 s staleness window produces today whenever a long attempt outlives the cutoff.
+- The reconciler stops being incidentally serialized against execution. It never relied on that — every transition it performs takes a `FOR UPDATE` lock on the operation row (`operations.ex:374`) — but the change does mean the reaper can now run _concurrently_ with an in-flight attempt on the same operation. That path is already exercised: it is the same interleaving the 900 s staleness window produces today whenever a long attempt outlives the cutoff.
 - Rejected alternative: raising `ai: 2` to a higher concurrency. It does not fix the dependency (a producerless `:ai` queue still strands both layers), and it raises provider-call concurrency, which the beta cost ceilings deliberately bound (`STORYARN_AI_OPERATIONS.md:44-47`).
 
 ## Finding 3 (incidental, found while verifying) — the reconciler's own `unique` window can drop a tick
@@ -377,7 +377,7 @@ shorten the window to something unambiguously below the schedule, e.g.
 
 ## Downstream consumer constraint
 
-Any UI that polls an operation must size its own deadline against the *kernel's*
+Any UI that polls an operation must size its own deadline against the _kernel's_
 worst case, not against `timeout_ms`. Slice 7.2a's explanation panel learned
 this the hard way; `StoryarnWeb.FlowLive.Handlers.ExplanationHandlers` now
 encodes the lesson:
@@ -388,7 +388,7 @@ encodes the lesson:
 
 Two constraints follow for any future consumer:
 
-1. **Do not size the deadline as `timeout_ms`.** The conservative envelope is `timeout_ms × max_attempts + summed backoff`. For this task that reads ~140–220 s, which is where the panel's 180 s comes from. As established under Layer 1, the true exposure is smaller — a provider timeout is terminal and never retries, so two 60 s attempts cannot occur in one job — but the conservative figure is the right one to design against: it is safe, and it is stable against future workers that *do* retry mid-attempt.
+1. **Do not size the deadline as `timeout_ms`.** The conservative envelope is `timeout_ms × max_attempts + summed backoff`. For this task that reads ~140–220 s, which is where the panel's 180 s comes from. As established under Layer 1, the true exposure is smaller — a provider timeout is terminal and never retries, so two 60 s attempts cannot occur in one job — but the conservative figure is the right one to design against: it is safe, and it is stable against future workers that _do_ retry mid-attempt.
 2. **Queue wait is a separate, unbounded term.** With concurrency 2 shared three ways (Finding 2), `"queued"` can last minutes, and only layer 2 terminalizes it — at ≤ 20 minutes. A consumer that keeps polling `"queued"` indefinitely is making a deliberate bet on the reaper. If it instead imposes a queued-side deadline, that deadline must be ≥ the layer-2 bound, or the UI will report failure on operations that are still going to succeed.
 
 Fixing Finding 2 shortens term 2 materially. It does not remove it, and this
@@ -422,7 +422,7 @@ instance, or drives the plugin's `handle_info/2` directly against seeded rows.
 
 ## Non-goals
 
-- Changing `:ai` concurrency, the 900 s staleness window, `timeout_ms`, or `max_attempts` on any worker. The recovery bound is a contract; this change makes it *reachable*, not tighter.
+- Changing `:ai` concurrency, the 900 s staleness window, `timeout_ms`, or `max_attempts` on any worker. The recovery bound is a contract; this change makes it _reachable_, not tighter.
 - Adding retries to provider calls. The kernel's zero-automatic-retry stance (`lib/storyarn/ai/executor.ex:2`, `lib/storyarn/workers/ai_execution_worker.ex:1`) is deliberate and unchanged.
 - Introducing `Oban.Pro` / `DynamicLifeline`. Noted in the Oban docs as the accurate alternative (`deps/oban/lib/oban/plugins/lifeline.ex:13-17`); it is a paid dependency and out of scope.
 - Broadcasting operation completion. The panel polls because the kernel emits no completion event (stated in the `ExplanationHandlers` moduledoc); changing that is a separate product decision.

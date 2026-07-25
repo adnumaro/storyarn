@@ -25,13 +25,13 @@ another.
 
 ### Current state
 
-| Where | Ref storage | Token guard | Cancels |
-| --- | --- | --- | --- |
-| `lib/storyarn_web/helpers/save_status_timer.ex:9` | **no ref** — only `:save_status_reset_token` | ✅ `make_ref()` | never; the guard replaces cancellation |
-| `lib/storyarn_web/helpers/auto_snapshot.ex:27,37` | two sibling assigns: `:auto_snapshot_timer` + `:auto_snapshot_ref` | ✅ | ✅ |
-| `lib/storyarn_web/live/flow_live/handlers/debug_execution_handlers.ex:180-197` | one assign `:debug_auto_timer` | ❌ | ✅ |
-| `lib/storyarn_web/live/flow_live/show.ex:274` | same assign, **re-implemented inline** during debug-session restore | ❌ | ❌ |
-| `lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex` | **process dictionary** (`@timer_key`) | ❌ | ✅ |
+| Where                                                                          | Ref storage                                                         | Token guard     | Cancels                                |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------- | --------------- | -------------------------------------- |
+| `lib/storyarn_web/helpers/save_status_timer.ex:9`                              | **no ref** — only `:save_status_reset_token`                        | ✅ `make_ref()` | never; the guard replaces cancellation |
+| `lib/storyarn_web/helpers/auto_snapshot.ex:27,37`                              | two sibling assigns: `:auto_snapshot_timer` + `:auto_snapshot_ref`  | ✅              | ✅                                     |
+| `lib/storyarn_web/live/flow_live/handlers/debug_execution_handlers.ex:180-197` | one assign `:debug_auto_timer`                                      | ❌              | ✅                                     |
+| `lib/storyarn_web/live/flow_live/show.ex:274`                                  | same assign, **re-implemented inline** during debug-session restore | ❌              | ❌                                     |
+| `lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex`             | **process dictionary** (`@timer_key`)                               | ❌              | ✅                                     |
 
 The explanation handler is the odd one out on purpose: `show.ex` passes the whole
 `assigns` to its prop builders, which strong-taints the template, so writing a
