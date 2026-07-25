@@ -7,6 +7,15 @@ their own PR with their own verification.
 
 **Measured against:** `codex/slice7-2a-managed-explanation` at `31ebb29e`.
 
+> **Re-pointed after Slice 7.1a.0 (2026-07-25).** That slice deleted
+> `explanation_handlers.ex` and `flow_finding_explanation.ex`, which this document
+> cited as call sites. Every such citation below is marked **[removed]** and the
+> counts are restated. The extractions themselves survive the removal: their case
+> never rested on the AI feature, only on sites that still exist. What IS lost is
+> the exemplar — the explanation handler was the only implementation that got the
+> process-dictionary lesson and the deadline-bearing poll right, so those two
+> requirements now come from this document rather than from code you can read.
+
 ## Why these three are different
 
 Every other duplication finding was local: one file, or two files in the same
@@ -21,7 +30,7 @@ another.
 
 ---
 
-## 1. `LiveTimer` — cancel-then-reschedule, implemented five times
+## 1. `LiveTimer` — cancel-then-reschedule, implemented four times (five before 7.1a.0)
 
 ### Current state
 
@@ -31,31 +40,34 @@ another.
 | `lib/storyarn_web/helpers/auto_snapshot.ex:27,37`                              | two sibling assigns: `:auto_snapshot_timer` + `:auto_snapshot_ref`  | ✅              | ✅                                     |
 | `lib/storyarn_web/live/flow_live/handlers/debug_execution_handlers.ex:180-197` | one assign `:debug_auto_timer`                                      | ❌              | ✅                                     |
 | `lib/storyarn_web/live/flow_live/show.ex:274`                                  | same assign, **re-implemented inline** during debug-session restore | ❌              | ❌                                     |
-| `lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex`             | **process dictionary** (`@timer_key`)                               | ❌              | ✅                                     |
+| ~~`…/handlers/explanation_handlers.ex`~~ **[removed in 7.1a.0]**               | **process dictionary** (`@timer_key`)                               | ❌              | ✅                                     |
 
-The explanation handler is the odd one out on purpose: `show.ex` passes the whole
+The explanation handler was the odd one out on purpose: `show.ex` passes the whole
 `assigns` to its prop builders, which strong-taints the template, so writing a
 timer ref into an assign cost a full canvas re-encode per tick (~250 KB at 500
-nodes). See commit `36ae9f45`. **That constraint applies to any timer in the flow
-editor**, which is the strongest argument for a shared helper: the other two flow
-timers still store their refs in assigns.
+nodes). See commit `36ae9f45`; the code is gone, the measurement is not.
+**That constraint applies to any timer in the flow editor**, which is the strongest
+argument for a shared helper: all three surviving flow timers store their refs in
+assigns, so the editor currently has NO correct implementation left to copy.
 
 ### What a shared helper must support
 
 1. Ref in the process dictionary by default (the render-cost lesson), with the
    token in the message when the caller wants stale-tick rejection.
-2. Optional token: two sites send `{atom, token}` and guard; two send a bare atom
-   — and **tests poke the bare atoms directly**
-   (`explanation_handlers_test.exs` does `send(view.pid, :poll_explanation)`), so
-   forcing tokens everywhere breaks them. Support both or plan the test change.
+2. Optional token: two sites send `{atom, token}` and guard; the rest send a bare
+   atom — and **tests poke the bare atoms directly**, so forcing tokens everywhere
+   breaks them. Support both or plan the test change. (The clearest example,
+   `explanation_handlers_test.exs` doing `send(view.pid, :poll_explanation)`, went
+   with 7.1a.0; grep `send(view.pid` for the surviving ones before deciding.)
 3. Cancel-then-reschedule as one call; 3 of 5 sites do exactly that.
 4. A no-ref variant: `SaveStatusTimer` deliberately allows overlapping timers and
    relies on the token alone. Forcing it to store a ref is a behaviour change.
 5. Per-call interval — `debug_execution_handlers` reads `assigns.debug_speed`, not
    a module attribute.
 6. Recurring self-rescheduling polls with an independent wall-clock deadline
-   (`polling_since` + a configurable deadline). Only the explanation handler has
-   this today; leaving it out means keeping two half-mechanisms.
+   (`polling_since` + a configurable deadline). **No surviving site has this** —
+   the explanation handler was the only one, and 7.1a.0 removed it. Build it from
+   this requirement, or the first surface that needs a bounded poll re-derives it.
 
 ### Verification
 
@@ -65,7 +77,7 @@ Each converted site keeps its existing tests. Add one asserting a timer ref is
 
 ---
 
-## 2. `Validations.bounded_text?` — six private validators, two semantics
+## 2. `Validations.bounded_text?` — five private validators, two semantics (six before 7.1a.0)
 
 ### Current state
 
@@ -88,7 +100,7 @@ kind there, so decide deliberately whether it belongs in `Validations` or in a n
 - `lib/storyarn/versioning/builders/flow_builder.ex:3839-3841` — `optional_bounded_string?/2`, **does not reject `""`**
 - `flow_builder.ex:3843-3845` — `bounded_nonempty_string?/2`, non-empty via `String.trim/1`
 - `flow_builder.ex:3906-3907` — `valid_snapshot_string?/2`, non-empty via `!= ""`, so whitespace-only passes
-- `lib/storyarn/ai/tasks/flow_finding_explanation.ex` — `bounded_text?/1`, **arity 1, max baked in**, `String.length` on purpose to mirror the JSON-schema `maxLength` the model is held to
+- ~~`lib/storyarn/ai/tasks/flow_finding_explanation.ex` — `bounded_text?/1`~~ **[removed in 7.1a.0]**, **arity 1, max baked in**, `String.length` on purpose to mirror the JSON-schema `maxLength` the model is held to. Kept in this list because the next AI task validating model output will need exactly that semantic, and it is the only reason a shared predicate must offer `String.length` at all beyond `flow_builder.ex`
 
 ### The variant matrix any shared predicate must cover
 
@@ -164,6 +176,7 @@ destination behaves like the command registry.
   duplication.
 - The duplicated Gettext msgid the audit flagged. Two call sites of one msgid is
   how Gettext works — the catalog has a single entry.
-- Splitting `explanation_handlers.ex` to meet the 200-line limit. Related but
-  separate: it needs three modules (presenter / poll mechanics / transitions), see
-  `079f4dec`.
+- ~~Splitting `explanation_handlers.ex` to meet the 200-line limit.~~ **Void:**
+  7.1a.0 deleted the file. The shape it needed (presenter / poll mechanics /
+  transitions, see `079f4dec`) is the precedent for the next handler that grows
+  past the limit, not work anyone still owes.

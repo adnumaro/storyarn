@@ -18,7 +18,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   import Phoenix.LiveView, only: [put_flash: 3]
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.AI
   alias Storyarn.Analytics
   alias Storyarn.Collaboration
   alias Storyarn.Flows
@@ -279,7 +278,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
   @spec panel_props(map()) :: map()
   def panel_props(assigns) do
     snapshot = assigns[:analysis_snapshot]
-    explained = explained_identities(assigns, snapshot)
 
     %{
       open: assigns[:analysis_panel_open] || false,
@@ -288,29 +286,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
       computedAt: snapshot && DateTime.to_iso8601(snapshot.computed_at),
       reasonCodes: Flows.finding_dismissal_reason_codes(),
       maxNoteLength: Flows.finding_dismissal_max_note_length(),
-      active:
-        (snapshot && Enum.map(snapshot.active, &finding_props(&1, snapshot.orphaned, explained))) ||
-          [],
+      active: (snapshot && Enum.map(snapshot.active, &finding_props(&1, snapshot.orphaned))) || [],
       dismissed: (snapshot && Enum.map(snapshot.dismissed, &dismissed_finding_props/1)) || []
     }
-  end
-
-  # Explanations the actor already paid for and may not have come back to.
-  #
-  # An explanation outlives the surface that bought it, so without this the actor
-  # has to guess which finding to reopen. Computed here rather than cached in an
-  # assign: one indexed lookup is cheaper than the four invalidation points a cache
-  # would need (snapshot load, rerun, result arrival, expiry), and it can never go
-  # stale. Skipped entirely while the panel is closed, since nothing shows it.
-  defp explained_identities(assigns, snapshot) do
-    if assigns[:analysis_panel_open] && snapshot && assigns[:explanation_available] do
-      AI.flow_finding_explanations_ready(
-        assigns.current_scope,
-        Enum.map(snapshot.active, &Flows.encode_structural_finding_identity/1)
-      )
-    else
-      MapSet.new()
-    end
   end
 
   # ===========================================================================
@@ -455,7 +433,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
     )
   end
 
-  defp finding_props(finding, orphaned \\ %{}, explained \\ nil) do
+  defp finding_props(finding, orphaned \\ %{}) do
     previous =
       case Map.get(orphaned, finding.finding_key) do
         nil ->
@@ -471,9 +449,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
 
     %{
       previousDismissal: previous,
-      # An explanation this actor already bought and can still read. Survives the
-      # surface that bought it, so the card is where they find it again.
-      hasExplanation: explained != nil and MapSet.member?(explained, Flows.encode_structural_finding_identity(finding)),
       findingId: finding.finding_id,
       # Stable across evidence changes for the same rule+target: the anchor
       # the explanation surface uses so a rerun cannot make it vanish.

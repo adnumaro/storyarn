@@ -50,7 +50,7 @@ msgstr ""
 msgid "Could not delete flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1291
+#: lib/storyarn_web/live/flow_live/show.ex:1269
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr ""
@@ -111,7 +111,7 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/index.ex:290
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:225
 #: lib/storyarn_web/live/flow_live/player_live.ex:87
-#: lib/storyarn_web/live/flow_live/show.ex:353
+#: lib/storyarn_web/live/flow_live/show.ex:351
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr ""
@@ -213,7 +213,7 @@ msgstr ""
 msgid "Could not restore flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1776
+#: lib/storyarn_web/live/flow_live/show.ex:1748
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr ""
@@ -223,7 +223,7 @@ msgstr ""
 msgid "Could not update node positions."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1012
+#: lib/storyarn_web/live/flow_live/show.ex:990
 #, elixir-autogen, elixir-format
 msgid "Could not update scene map."
 msgstr ""
@@ -415,7 +415,7 @@ msgstr ""
 msgid "Renamed flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:951
+#: lib/storyarn_web/live/flow_live/show.ex:929
 #, elixir-autogen, elixir-format
 msgid "Node not found."
 msgstr ""
@@ -453,22 +453,22 @@ msgid "Debug session started"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:150
-#: lib/storyarn_web/live/flow_live/show.ex:1215
+#: lib/storyarn_web/live/flow_live/show.ex:1193
 #, elixir-autogen, elixir-format
 msgid "Could not create sequence"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1211
+#: lib/storyarn_web/live/flow_live/show.ex:1189
 #, elixir-autogen, elixir-format
 msgid "Nodes must belong to the same container"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1204
+#: lib/storyarn_web/live/flow_live/show.ex:1182
 #, elixir-autogen, elixir-format
 msgid "Select at least one node first"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1201
+#: lib/storyarn_web/live/flow_live/show.ex:1179
 #, elixir-autogen, elixir-format
 msgid "Sequence created"
 msgstr ""
@@ -579,11 +579,6 @@ msgstr ""
 msgid "Condition has no rules"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex:555
-#, elixir-autogen, elixir-format
-msgid "AI explanations are not available for your account."
-msgstr ""
-
 #: lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex:386
 #, elixir-autogen, elixir-format
 msgid "Could not dismiss finding: %{reason}"
@@ -604,18 +599,12 @@ msgstr ""
 msgid "The flow changed since this analysis — rerun before dismissing."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex:558
-#, elixir-autogen, elixir-format
-msgid "The flow changed since this analysis — rerun before explaining."
-msgstr ""
-
 #: lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex:432
 #, elixir-autogen, elixir-format
 msgid "This evidence is no longer available. Rerun the analysis."
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex:424
-#: lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex:560
 #, elixir-autogen, elixir-format
 msgid "This finding is no longer current. Rerun the analysis."
 msgstr ""

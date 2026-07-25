@@ -50,7 +50,7 @@ msgstr "No se pudo crear la ficha."
 msgid "Could not delete flow."
 msgstr "No se pudo eliminar el flujo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1291
+#: lib/storyarn_web/live/flow_live/show.ex:1269
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr "No se pudieron cargar los datos del flujo."
@@ -111,7 +111,7 @@ msgstr "Flujo movido a la papelera."
 #: lib/storyarn_web/live/flow_live/index.ex:290
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:225
 #: lib/storyarn_web/live/flow_live/player_live.ex:87
-#: lib/storyarn_web/live/flow_live/show.ex:353
+#: lib/storyarn_web/live/flow_live/show.ex:351
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr "Flujo no encontrado."
@@ -213,7 +213,7 @@ msgstr "El flujo destino no tiene nodo de entrada."
 msgid "Could not restore flow name."
 msgstr "No se pudo restaurar el nombre del flujo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1776
+#: lib/storyarn_web/live/flow_live/show.ex:1748
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr "No se pudo crear el flujo enlazado."
@@ -223,7 +223,7 @@ msgstr "No se pudo crear el flujo enlazado."
 msgid "Could not update node positions."
 msgstr "No se pudieron actualizar las posiciones de los nodos."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1012
+#: lib/storyarn_web/live/flow_live/show.ex:990
 #, elixir-autogen, elixir-format
 msgid "Could not update scene map."
 msgstr "No se pudo actualizar la escena."
@@ -415,7 +415,7 @@ msgstr "Conexión eliminada"
 msgid "Renamed flow"
 msgstr "Flujo renombrado"
 
-#: lib/storyarn_web/live/flow_live/show.ex:951
+#: lib/storyarn_web/live/flow_live/show.ex:929
 #, elixir-autogen, elixir-format
 msgid "Node not found."
 msgstr "Nodo no encontrado."
@@ -453,22 +453,22 @@ msgid "Debug session started"
 msgstr "Sesión de depuración iniciada"
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:150
-#: lib/storyarn_web/live/flow_live/show.ex:1215
+#: lib/storyarn_web/live/flow_live/show.ex:1193
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not create sequence"
 msgstr "No se pudo crear la ficha."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1211
+#: lib/storyarn_web/live/flow_live/show.ex:1189
 #, elixir-autogen, elixir-format
 msgid "Nodes must belong to the same container"
 msgstr "Los nodos deben pertenecer al mismo contenedor"
 
-#: lib/storyarn_web/live/flow_live/show.ex:1204
+#: lib/storyarn_web/live/flow_live/show.ex:1182
 #, elixir-autogen, elixir-format
 msgid "Select at least one node first"
 msgstr "Selecciona al menos un nodo primero"
 
-#: lib/storyarn_web/live/flow_live/show.ex:1201
+#: lib/storyarn_web/live/flow_live/show.ex:1179
 #, elixir-autogen, elixir-format
 msgid "Sequence created"
 msgstr "Secuencia creada"
@@ -579,11 +579,6 @@ msgstr "Sin asignaciones de instrucción"
 msgid "Condition has no rules"
 msgstr "La condición no tiene reglas"
 
-#: lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex:555
-#, elixir-autogen, elixir-format
-msgid "AI explanations are not available for your account."
-msgstr "Las explicaciones con IA no están disponibles para tu cuenta."
-
 #: lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex:386
 #, elixir-autogen, elixir-format
 msgid "Could not dismiss finding: %{reason}"
@@ -604,18 +599,12 @@ msgstr "Fila de localización #%{n} — voz en off"
 msgid "The flow changed since this analysis — rerun before dismissing."
 msgstr "El flow ha cambiado desde este análisis — vuelve a analizarlo antes de descartar."
 
-#: lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex:558
-#, elixir-autogen, elixir-format
-msgid "The flow changed since this analysis — rerun before explaining."
-msgstr "El flow ha cambiado desde este análisis — vuelve a analizarlo antes de explicar."
-
 #: lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex:432
 #, elixir-autogen, elixir-format
 msgid "This evidence is no longer available. Rerun the analysis."
 msgstr "Esta evidencia ya no está disponible. Vuelve a ejecutar el análisis."
 
 #: lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex:424
-#: lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex:560
 #, elixir-autogen, elixir-format
 msgid "This finding is no longer current. Rerun the analysis."
 msgstr "Este hallazgo ya no es actual. Vuelve a ejecutar el análisis."

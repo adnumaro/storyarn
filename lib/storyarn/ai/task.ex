@@ -168,7 +168,6 @@ defmodule Storyarn.AI.Task do
       :missing_subject_authorizer
     )
     |> require(valid_context_builder?(task), :missing_context_subject_builder)
-    |> require(valid_context_staleness_check?(task), :missing_context_staleness_check)
   end
 
   defp valid_permissions?(permissions) when is_map(permissions) do
@@ -237,19 +236,6 @@ defmodule Storyarn.AI.Task do
       {:ok, %ContextPolicy{scope: :none}} -> true
       {:ok, %ContextPolicy{}} -> data_scope in [:project, :entity]
       {:error, _reason} -> false
-    end
-  end
-
-  defp valid_context_staleness_check?(%{context_policy: policy, module: module}) do
-    case ContextPolicy.new(policy) do
-      {:ok, %ContextPolicy{scope: :structural_finding}} ->
-        function_exported?(module, :subject_current?, 1)
-
-      {:ok, %ContextPolicy{}} ->
-        true
-
-      {:error, _reason} ->
-        false
     end
   end
 

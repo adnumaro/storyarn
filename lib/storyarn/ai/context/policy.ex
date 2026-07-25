@@ -6,7 +6,7 @@ defmodule Storyarn.AI.Context.Policy do
   context scope declared by the registered task.
   """
 
-  @scopes [:none, :dialogue, :flow_neighborhood, :sheet, :structural_finding]
+  @scopes [:none, :dialogue, :flow_neighborhood, :sheet]
   @field_groups [:dialogue, :speaker_blocks, :sheet_blocks]
   @hard_limits %{
     max_depth: 12,
@@ -26,7 +26,7 @@ defmodule Storyarn.AI.Context.Policy do
     fields: %{}
   ]
 
-  @type scope :: :none | :dialogue | :flow_neighborhood | :sheet | :structural_finding
+  @type scope :: :none | :dialogue | :flow_neighborhood | :sheet
   @type t :: %__MODULE__{}
 
   @spec new(map() | t()) :: {:ok, t()} | {:error, :invalid_context_policy}

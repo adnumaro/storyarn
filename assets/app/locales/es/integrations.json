@@ -259,8 +259,7 @@
       "scopes": {
         "dialogue": "Diálogo",
         "flow_neighborhood": "Entorno del flow",
-        "sheet": "Sheet",
-        "structural_finding": "Hallazgo estructural"
+        "sheet": "Sheet"
       },
       "warnings": {
         "optional_context_truncated": "Se ha omitido contexto opcional para respetar el límite de la tarea.",
