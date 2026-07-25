@@ -20,6 +20,7 @@ function state(overrides: Partial<FlowExplanationState> = {}): FlowExplanationSt
     routes: [],
     blockedLanes: [],
     disclosure: null,
+    retentionSeconds: null,
     result: null,
     ...overrides,
   };

@@ -31,6 +31,8 @@ const { t, te } = useI18n();
 const mine = computed(() => explanation.findingKey === findingKey);
 const status = computed<ExplanationStatus>(() => (mine.value ? explanation.status : "idle"));
 
+const retentionMinutes = computed(() => Math.round((explanation.retentionSeconds ?? 0) / 60));
+
 const errorMessage = computed(() => {
   const key = `flows.explanation.errors.${explanation.error}`;
   return te(key) ? t(key) : t("flows.explanation.errors.unknown");
@@ -70,6 +72,14 @@ function blockedLaneLabel(lane: string, reason: string): string {
       <p class="text-xs font-medium">{{ t("flows.explanation.preflight_title") }}</p>
 
       <ContextDisclosure v-if="explanation.disclosure" :disclosure="explanation.disclosure" />
+
+      <p
+        v-if="explanation.retentionSeconds"
+        class="text-xs text-muted-foreground"
+        data-testid="explanation-retention"
+      >
+        {{ t("flows.explanation.retention", { minutes: retentionMinutes }) }}
+      </p>
 
       <ul class="space-y-1.5">
         <li

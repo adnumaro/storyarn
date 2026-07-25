@@ -93,6 +93,8 @@ export interface FlowExplanationState {
   routes: ExplanationRoute[];
   blockedLanes: ExplanationBlockedLane[];
   disclosure: ExplanationDisclosure | null;
+  /** How long a produced result stays readable. Disclosed BEFORE spending. */
+  retentionSeconds: number | null;
   result: ExplanationResult | null;
 }
 

@@ -22,7 +22,9 @@ defmodule Storyarn.Analytics do
     "flow analysis evidence navigated" => MapSet.new(~w(evidence_type)),
     # AI explanation product events. Low-cardinality classes only: no prompt,
     # no narrative, no finding/evidence/operation ids.
-    "flow explanation preflight shown" => MapSet.new(~w(rule_id rule_version route_count blocked)),
+    "flow explanation preflight shown" => MapSet.new(~w(rule_id rule_version route_count)),
+    "flow explanation preflight blocked" => MapSet.new(~w(rule_id rule_version error_class)),
+    "flow explanation stale rerun" => MapSet.new(~w(rule_id rule_version)),
     "flow explanation route selected" => MapSet.new(~w(lane)),
     "flow explanation execution started" => MapSet.new(~w(lane rule_id)),
     "flow explanation result viewed" => MapSet.new(~w(rule_id stale)),

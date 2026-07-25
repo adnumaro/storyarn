@@ -47,6 +47,30 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   @watched_statuses [:queued, :running]
   @timer_key :explanation_poll_timer
 
+  # See `error_classes/0`. Kept sorted so a diff shows an addition clearly.
+  @error_classes ~w(
+    allowance_exhausted
+    allowance_paused
+    allowance_unavailable
+    input_too_large
+    invalid_context_subject
+    invalid_explanation_output
+    invalid_result
+    missing_use_ai
+    model_context_window_exceeded
+    no_route
+    operation_not_found
+    output_too_large
+    provider_error
+    rate_limited
+    result_timeout
+    stale_finding
+    task_disabled
+    unknown
+    unknown_finding
+    unknown_flow
+  )
+
   # ===========================================================================
   # Lifecycle
   # ===========================================================================
@@ -127,9 +151,22 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   """
   @spec handle_rerun_explanation(map(), Socket.t()) :: result()
   def handle_rerun_explanation(_params, socket) do
-    with %{finding_id: finding_id, attempt: attempt} <- socket.assigns[:explanation],
+    with %{finding_key: finding_key, attempt: attempt} = explanation <- socket.assigns[:explanation],
          true <- available?(socket) || {:error, :unavailable},
-         {:ok, finding} <- current_finding(socket.assigns, finding_id) do
+         # By the STABLE key, not the occurrence id: a rerun is offered precisely
+         # when the flow moved, and the occurrence id rotates with the evidence
+         # fingerprint. Resolving by id would refuse the rerun exactly when the
+         # actor needs it — the case the whole stale affordance exists for.
+         {:ok, finding} <- current_finding_by_key(socket.assigns, finding_key) do
+      # A rerun driven by staleness is the product outcome the slice cares about
+      # — the actor saw an obsolete narrative and chose to pay for a current one.
+      if explanation.status == :succeeded and not finding_current?(socket.assigns, explanation.finding_id) do
+        track(socket, "flow explanation stale rerun", %{
+          rule_id: finding.rule_id,
+          rule_version: finding.rule_version
+        })
+      end
+
       preflight(socket, finding, attempt + 1)
     else
       {:error, reason} -> {:noreply, refused(socket, reason)}
@@ -247,6 +284,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       routes: [],
       blocked_lanes: [],
       disclosure: nil,
+      retention_seconds: nil,
       operation_id: operation.id,
       result: output,
       error: nil,
@@ -260,8 +298,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       track(socket, "flow explanation preflight shown", %{
         rule_id: finding.rule_id,
         rule_version: finding.rule_version,
-        route_count: length(preflight.route_options),
-        blocked: blocked_reason(preflight) != nil
+        route_count: length(preflight.route_options)
       })
 
       {:noreply,
@@ -274,6 +311,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
          routes: preflight.route_options,
          blocked_lanes: preflight.blocked_lanes,
          disclosure: preflight.context_disclosure,
+         retention_seconds: preflight.result_ttl_seconds,
          operation_id: nil,
          result: nil,
          error: nil,
@@ -389,11 +427,17 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
         |> cancel_poll()
         |> assign(:explanation, %{explanation | status: :succeeded, result: output})
 
-      # Succeeded but unreadable means the actor-private TTL already elapsed.
-      {:error, _reason} ->
+      # Succeeded but not found means the actor-private TTL already elapsed.
+      # Any other reason is a real failure and must not be dressed up as expiry:
+      # a corrupt stored output would otherwise read as "no longer available"
+      # and never reach the operator as its own class.
+      {:error, :not_found} ->
         socket
         |> cancel_poll()
         |> assign(:explanation, %{explanation | status: :expired, result: nil})
+
+      {:error, reason} ->
+        failed(socket, explanation, reason)
     end
   end
 
@@ -436,6 +480,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   # ===========================================================================
 
   defp blocked(socket, finding, attempt, reason) do
+    # `routable/1` turns "every lane blocked" into an error before the preflight
+    # payload is built, so this is the ONLY place the blocked case is observable.
+    track(socket, "flow explanation preflight blocked", %{
+      rule_id: finding.rule_id,
+      rule_version: finding.rule_version,
+      error_class: error_class(reason)
+    })
+
     assign(socket, :explanation, %{
       status: :blocked,
       finding_id: finding.finding_id,
@@ -445,6 +497,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       routes: [],
       blocked_lanes: [],
       disclosure: nil,
+      retention_seconds: nil,
       operation_id: nil,
       result: nil,
       error: error_class(reason),
@@ -519,6 +572,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       routes: [],
       blockedLanes: [],
       disclosure: nil,
+      retentionSeconds: nil,
       result: nil
     }
   end
@@ -536,6 +590,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       routes: Enum.map(explanation.routes, &route_props/1),
       blockedLanes: Enum.map(explanation.blocked_lanes, &blocked_lane_props/1),
       disclosure: explanation.disclosure,
+      retentionSeconds: explanation[:retention_seconds],
       result: result_props(explanation.result)
     }
   end
@@ -588,6 +643,24 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     end
   end
 
+  # Same rule as `current_finding/2`, keyed on the stable rule+target identity so
+  # a rotated occurrence still resolves.
+  defp current_finding_by_key(assigns, finding_key) do
+    case assigns[:analysis_snapshot] do
+      %{stale: true} ->
+        {:error, :stale_snapshot}
+
+      %{active: active} ->
+        case Enum.find(active, &(&1.finding_key == finding_key)) do
+          nil -> {:error, :stale_selection}
+          finding -> {:ok, finding}
+        end
+
+      _no_snapshot ->
+        {:error, :stale_selection}
+    end
+  end
+
   defp finding_current?(assigns, finding_id) do
     match?({:ok, _finding}, current_finding(assigns, finding_id))
   end
@@ -598,9 +671,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       route -> route.lane
     end
   end
-
-  defp blocked_reason(%{blocked_lanes: [%{reason: reason} | _rest]}), do: reason
-  defp blocked_reason(_preflight), do: nil
 
   defp role_can_use_ai?(socket) do
     case socket.assigns[:membership] do
@@ -614,10 +684,26 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     if locale in @locales, do: locale, else: "en"
   end
 
+  @doc """
+  Every error class this surface can render, and therefore must have copy for.
+
+  Declared rather than derived: reasons reach here from the kernel, the task,
+  the Flows domain and this module, so an open-ended passthrough plus the Vue
+  `te()` fallback made a missing translation invisible — the actor saw the
+  generic sentence and no test could fail. Anything not listed is deliberately
+  reported as `unknown`; adding a class here without copy in both locales fails
+  `explanation_handlers_test.exs`.
+  """
+  @spec error_classes() :: [String.t()]
+  def error_classes, do: @error_classes
+
   # Low-cardinality error classes only: never a message, never an id.
-  defp error_class(reason) when is_atom(reason), do: Atom.to_string(reason)
-  defp error_class(reason) when is_binary(reason), do: reason
+  defp error_class(reason) when is_atom(reason), do: reason |> Atom.to_string() |> known_class()
+  defp error_class(reason) when is_binary(reason), do: known_class(reason)
   defp error_class(_reason), do: "unknown"
+
+  defp known_class(class) when class in @error_classes, do: class
+  defp known_class(_class), do: "unknown"
 
   defp track(socket, event, properties) do
     Analytics.track(socket.assigns.current_scope, event, properties)

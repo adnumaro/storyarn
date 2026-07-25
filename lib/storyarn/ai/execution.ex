@@ -95,6 +95,9 @@ defmodule Storyarn.AI.Execution do
         blocked_lanes: resolution.blocked_lanes,
         context_disclosure: context_disclosure(context),
         result_destination: task.result_destination,
+        # Retention belongs in the disclosure: the actor decides whether to spend
+        # partly on how long the result survives.
+        result_ttl_seconds: task.result_ttl_seconds,
         operation_created: false
       }
     end

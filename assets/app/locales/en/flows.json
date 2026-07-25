@@ -486,6 +486,7 @@
     "explanation": {
       "explain_action": "Explain with AI",
       "preflight_title": "Before running",
+      "retention": "Kept for {minutes} minutes, then deleted.",
       "run_action": "Run",
       "cancel_action": "Cancel",
       "close_action": "Close",
@@ -515,12 +516,20 @@
         "allowance_unavailable": "no AI allowance is configured for this workspace",
         "no_route": "no AI provider is available for this task",
         "task_disabled": "AI explanations are temporarily disabled",
-        "unknown_task": "AI explanations are not available in this deployment",
         "missing_use_ai": "your role cannot run AI tasks in this project",
         "provider_error": "the AI provider could not complete the request",
         "invalid_explanation_output": "the AI response did not match the expected format",
         "model_context_window_exceeded": "this finding's evidence is too large for the available model",
         "operation_not_found": "this run is no longer available",
+        "stale_finding": "the flow changed, so this finding's evidence is no longer the one analysed",
+        "unknown_finding": "this finding is no longer part of the current analysis",
+        "unknown_flow": "this flow is no longer available",
+        "result_timeout": "this run took longer than expected",
+        "rate_limited": "too many AI requests in a short time — wait a moment",
+        "input_too_large": "this request is larger than the task allows",
+        "output_too_large": "the AI response was longer than the task allows",
+        "invalid_context_subject": "this finding's identity could not be verified",
+        "invalid_result": "the stored explanation could not be read",
         "unknown": "the explanation could not be produced"
       }
     }

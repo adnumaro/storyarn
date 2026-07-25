@@ -143,6 +143,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       assert is_binary(route_ref)
       assert props["disclosure"]["scope"] == "structural_finding"
       assert props["disclosure"]["included_count"] >= 1
+      # Retention is part of the spend decision, so it is disclosed before it.
+      assert props["retentionSeconds"] == 1_800
 
       # Preflight never charges and never creates an operation.
       assert Repo.aggregate(Operation, :count) == 0
@@ -187,6 +189,43 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       assert props["error"] == "allowance_exhausted"
       assert props["routes"] == []
       assert Repo.aggregate(Operation, :count) == 0
+    end
+  end
+
+  describe "error class catalog" do
+    @locales ~w(en es)
+
+    test "every renderable error class has copy in every locale" do
+      for locale <- @locales do
+        errors =
+          "assets/app/locales/#{locale}/flows.json"
+          |> File.read!()
+          |> Jason.decode!()
+          |> get_in(["flows", "explanation", "errors"])
+
+        assert is_map(errors), "missing flows.explanation.errors in #{locale}"
+
+        for class <- ExplanationHandlers.error_classes() do
+          assert is_binary(errors[class]) and errors[class] != "",
+                 "error class #{class} has no #{locale} copy — the panel would fall back to the " <>
+                   "generic sentence and no test would notice"
+        end
+      end
+    end
+
+    test "the catalog ships no copy the panel can never render" do
+      declared = MapSet.new(ExplanationHandlers.error_classes())
+
+      translated =
+        "assets/app/locales/en/flows.json"
+        |> File.read!()
+        |> Jason.decode!()
+        |> get_in(["flows", "explanation", "errors"])
+        |> Map.keys()
+        |> MapSet.new()
+
+      assert translated |> MapSet.difference(declared) |> MapSet.to_list() == [],
+             "dead error copy: these keys are translated but error_class/1 can never emit them"
     end
   end
 
@@ -542,6 +581,55 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       :ok
     end
 
+    test "a blocked preflight is reported, not silently dropped", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      Application.put_env(:storyarn, FakeSettlement, preflight_status: {:error, :allowance_exhausted})
+
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+
+      # It is its own event: `routable/1` errors before a preflight payload
+      # exists, so "preflight shown" cannot carry the blocked case.
+      assert_receive {:analytics_capture, %{event: "flow explanation preflight blocked", properties: props}}
+      assert props["error_class"] == "allowance_exhausted"
+      assert props["rule_id"] == "no_outgoing_connection"
+      refute_receive {:analytics_capture, %{event: "flow explanation preflight shown"}}
+    end
+
+    test "rerunning an obsolete narrative is recorded as a stale rerun", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+
+      # Change the flow, then recompute: the occurrence id rotates with the new
+      # evidence fingerprint, so the narrative on screen is obsolete while the
+      # rule still fires on the same target.
+      render_hook(view, "add_node", %{"type" => "dialogue", "position_x" => 10.0, "position_y" => 10.0})
+      render_click(view, "rerun_analysis", %{})
+      assert explanation(view)["stale"] == true
+
+      # The rerun must resolve by the STABLE key: keyed on the rotated occurrence
+      # id it would be refused here, which is the one moment it has to work.
+      render_click(view, "rerun_explanation", %{})
+      assert explanation(view)["status"] == "preflight"
+
+      assert_receive {:analytics_capture, %{event: "flow explanation stale rerun", properties: props}}
+      assert props["rule_id"] == "no_outgoing_connection"
+    end
+
     test "the explanation events carry allowlisted properties only", %{
       conn: conn,
       project: project,
@@ -559,7 +647,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       assert_receive {:analytics_capture, %{event: "flow explanation preflight shown", properties: preflight}}
       assert preflight["rule_id"] == "no_outgoing_connection"
       assert preflight["route_count"] == 1
-      assert preflight["blocked"] == false
+      # The blocked case is its own event: `routable/1` errors before a preflight
+      # payload exists, so "preflight shown" can never describe a blocked lane.
+      refute Map.has_key?(preflight, "blocked")
 
       assert_receive {:analytics_capture, %{event: "flow explanation route selected", properties: %{"lane" => "managed"}}}
 
