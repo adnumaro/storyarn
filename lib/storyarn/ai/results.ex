@@ -40,16 +40,46 @@ defmodule Storyarn.AI.Results do
         )
       )
 
-    case row do
-      {%Operation{} = operation, output} ->
-        case Jason.decode(output) do
-          {:ok, decoded} -> {:ok, decoded, operation}
-          {:error, _reason} -> {:error, :invalid_result}
-        end
+    decode_row(row)
+  end
 
-      nil ->
-        {:error, :not_found}
+  defp decode_row({%Operation{} = operation, output}) do
+    case Jason.decode(output) do
+      {:ok, decoded} -> {:ok, decoded, operation}
+      {:error, _reason} -> {:error, :invalid_result}
     end
+  end
+
+  defp decode_row(nil), do: {:error, :not_found}
+
+  @doc """
+  Reads a still-readable result by the idempotency key that produced it.
+
+  Lets a surface that forgot its operation id recover the result the actor
+  already paid for, instead of offering to buy the same thing twice. Covered by
+  `ai_operations_actor_task_idempotency_unique`, so it is one index lookup.
+  """
+  @spec get_by_idempotency_key(Scope.t(), String.t(), String.t()) ::
+          {:ok, map() | list(), Operation.t()} | {:error, atom()}
+  def get_by_idempotency_key(%Scope{user: %{id: actor_id}}, task_id, idempotency_key)
+      when is_binary(task_id) and is_binary(idempotency_key) do
+    now = TimeHelpers.now()
+
+    row =
+      Repo.one(
+        from(operation in Operation,
+          join: result in Result,
+          on: result.operation_id == operation.id,
+          where:
+            operation.actor_id == ^actor_id and operation.task_id == ^task_id and
+              operation.idempotency_key == ^idempotency_key and
+              operation.execution_status == "succeeded" and result.expires_at > ^now and
+              not is_nil(result.output_encrypted),
+          select: {operation, result.output_encrypted}
+        )
+      )
+
+    decode_row(row)
   end
 
   @spec dismiss(Scope.t(), pos_integer()) :: {:ok, Operation.t()} | {:error, atom()}

@@ -208,6 +208,53 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     # read it: release it before its state map (and timer) is replaced.
     socket = socket |> cancel_watched_operation() |> cancel_poll()
 
+    case replayable_result(socket, finding, attempt) do
+      {:ok, output, operation} -> {:noreply, replayed(socket, finding, attempt, output, operation)}
+      :none -> issue_preflight(socket, finding, attempt)
+    end
+  end
+
+  # Reopening the surface must not offer to buy what the actor already owns: the
+  # deterministic key means this attempt's result may still be readable inside
+  # its TTL. Only the attempt being opened is probed — a rerun raises `attempt`,
+  # and its own reopen probes its own key.
+  defp replayable_result(socket, finding, attempt) do
+    key =
+      FlowFindingExplanation.idempotency_key(
+        socket.assigns.current_scope.user.id,
+        finding,
+        attempt
+      )
+
+    case AI.get_replayable_result(socket.assigns.current_scope, FlowFindingExplanation.task_id(), key) do
+      {:ok, output, operation} -> {:ok, output, operation}
+      {:error, _reason} -> :none
+    end
+  end
+
+  defp replayed(socket, finding, attempt, output, operation) do
+    track(socket, "flow explanation result viewed", %{
+      rule_id: finding.rule_id,
+      stale: not finding_current?(socket.assigns, finding.finding_id)
+    })
+
+    assign(socket, :explanation, %{
+      status: :succeeded,
+      finding_id: finding.finding_id,
+      finding_key: finding.finding_key,
+      rule_id: finding.rule_id,
+      attempt: attempt,
+      routes: [],
+      blocked_lanes: [],
+      disclosure: nil,
+      operation_id: operation.id,
+      result: output,
+      error: nil,
+      polling_since: nil
+    })
+  end
+
+  defp issue_preflight(socket, finding, attempt) do
     with {:ok, intent} <- build_intent(socket, finding, %{}),
          {:ok, preflight} <- AI.preflight(intent) do
       track(socket, "flow explanation preflight shown", %{

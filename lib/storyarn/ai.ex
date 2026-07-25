@@ -68,6 +68,12 @@ defmodule Storyarn.AI do
 
   defdelegate get_operation(scope, operation_id), to: Results
   defdelegate get_result(scope, operation_id), to: Results, as: :get
+
+  @doc "Recovers a still-readable result by the idempotency key that produced it."
+  defdelegate get_replayable_result(scope, task_id, idempotency_key),
+    to: Results,
+    as: :get_by_idempotency_key
+
   defdelegate dismiss_result(scope, operation_id), to: Results, as: :dismiss
   defdelegate apply_result(scope, operation_id, current_revision, apply_fun), to: Results, as: :apply
 

@@ -270,16 +270,39 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       render_click(view, "close_explanation", %{})
       assert explanation(view)["status"] == "idle"
 
-      # Reopening resets `attempt` to 0, so the deterministic key resolves to the
-      # operation already paid for and the kernel replays it.
+      # Reopening probes this attempt's key and shows the result straight away:
+      # no preflight, no route picker, no second charge.
       render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => reopened_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => reopened_ref})
+
+      props = explanation(view)
+      assert props["status"] == "succeeded"
+      assert props["result"]["summary"]
+      assert props["routes"] == []
+      assert Repo.aggregate(Operation, :count) == 1
+    end
+
+    test "a rerun after reopening still buys its own operation", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      drain_execution!()
       send(view.pid, :poll_explanation)
 
+      render_click(view, "close_explanation", %{})
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
       assert explanation(view)["status"] == "succeeded"
-      assert explanation(view)["result"]["summary"]
-      assert Repo.aggregate(Operation, :count) == 1
+
+      # The probe must not make the surface read-only: attempt 1 is a real
+      # preflight again, because it is a purchase the actor has not made.
+      render_click(view, "rerun_explanation", %{})
+      assert explanation(view)["status"] == "preflight"
+      assert [%{"routeRef" => _}] = explanation(view)["routes"]
     end
 
     test "a poll tick that changes nothing re-renders nothing", %{
