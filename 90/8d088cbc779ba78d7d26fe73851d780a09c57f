@@ -1,0 +1,72 @@
+lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex
+  s_fc3546b2264bba::t_3e921d25f97b7f 306
+  s_fc3546b2264bba::t_a03041048693b9 21
+  s_fc3546b2264bba::t_9dc82cd2915de4 282,291-293,298-305,307-313
+  s_fc3546b2264bba::t_68bde65d16bf91 458,474-476
+  s_fc3546b2264bba::t_0a35770d1abf82 314-315
+lib/storyarn/ai/tasks/flow_finding_explanation.ex
+  s_fc3546b2264bba::t_1dd0a97daf29cc 119-126
+assets/app/modules/flows/editor/components/panels/flowAnalysisTypes.ts
+  s_fc3546b2264bba::t_f3efdd195bb586 27-28
+test/storyarn_web/live/flow_live/handlers/explanation_handlers_test.exs
+  s_fc3546b2264bba::t_1bbd10d284c1f6 395-446
+  s_fc3546b2264bba::t_48948678bb029e 771-772
+  s_fc3546b2264bba::t_d963115037136f 331-333,509-510,586-587
+  s_fc3546b2264bba::t_4fc6459d317774 87-90,92-96,98-99,102-111
+  s_fc3546b2264bba::t_214841c9a86844 23,91,97,100-101,113,447-453,455-460,462,464-487
+  s_fc3546b2264bba::t_f1be74a0a9cd7a 112,463,488
+  s_fc3546b2264bba::t_e6b8e56a93fa25 218
+  s_fc3546b2264bba::t_2fca848a330235 454,461,489-490
+assets/app/test/modules/flows/editor/components/panels/FlowAnalysisExplanation.test.ts
+  s_fc3546b2264bba::t_e6b8e56a93fa25 177,182-191
+assets/app/locales/es/flows.json
+  s_fc3546b2264bba::t_bff541cc2425e0 405
+  s_fc3546b2264bba::t_9a8b0181ea98f5 490-491
+lib/storyarn_web/live/flow_live/show.ex
+  s_fc3546b2264bba::t_214841c9a86844 1557-1561
+test/storyarn/ai/tasks/flow_finding_explanation_test.exs
+  s_fc3546b2264bba::t_e6b8e56a93fa25 80
+assets/app/locales/en/flows.json
+  s_fc3546b2264bba::t_bff541cc2425e0 405
+  s_fc3546b2264bba::t_9a8b0181ea98f5 490-491
+lib/storyarn/ai/results.ex
+  s_fc3546b2264bba::t_f5360fcd66e020 86-111
+  s_fc3546b2264bba::t_6fbb7ae58dc4dd 85
+assets/app/modules/flows/editor/components/panels/FlowAnalysisExplanation.vue
+  s_fc3546b2264bba::t_b9f130cb1ae2f9 93
+  s_fc3546b2264bba::t_eb5a4a95118d20 34-46
+docs/features/ai-platform/SLICE_7_2A_MANAGED_EXPLANATION.md
+  s_fc3546b2264bba::t_276dd378a1751b 141-157
+  s_fc3546b2264bba::t_33dd002a08b443 31-36
+lib/storyarn/ai/route_options.ex
+  s_fc3546b2264bba::t_214841c9a86844 123-129
+assets/app/test/modules/flows/editor/components/panels/FlowAnalysisPanel.test.ts
+  s_fc3546b2264bba::t_78e56ee5d97aad 326,335
+  s_fc3546b2264bba::t_83dfe05b899a75 323-325,327-334,336-341
+lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex
+  s_fc3546b2264bba::t_9308f1cdc09112 177-178
+  s_fc3546b2264bba::t_214841c9a86844 162-176,179-181
+lib/storyarn/ai.ex
+  s_fc3546b2264bba::t_ea85c6285c391e 175-188
+  s_fc3546b2264bba::t_a7af7a71fcb153 174
+priv/repo/migrations/20260725170000_index_ai_operations_by_subject_revision.exs
+  s_fc3546b2264bba::t_34bdcc4176b441 1-14
+assets/app/modules/flows/editor/components/panels/FlowAnalysisFindingCard.vue
+  s_fc3546b2264bba::t_0e167a97b2ca00 7,135-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "908d088cbc779ba78d7d26fe73851d780a09c57f",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
