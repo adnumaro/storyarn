@@ -85,6 +85,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   # keeps watching.
   @terminal_statuses ~w(succeeded failed unknown cancelled)
   @watched_statuses [:queued, :running]
+  @watchable_statuses ~w(queued running)
   @timer_key :explanation_poll_timer
 
   # See `error_classes/0`. Kept sorted so a diff shows an addition clearly.
@@ -92,23 +93,33 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     allowance_exhausted
     allowance_paused
     allowance_unavailable
+    attempts_exhausted
+    context_too_large
+    duplicate_external_attempt
     input_too_large
     invalid_context_subject
     invalid_explanation_output
     invalid_result
     missing_use_ai
+    model_context_limits_unavailable
     model_context_window_exceeded
+    model_output_limit_exceeded
     no_route
     operation_not_found
     output_too_large
     provider_error
     rate_limited
-    result_timeout
     stale_finding
+    stale_reservation
+    task_contract_changed
     task_disabled
     unknown
     unknown_finding
     unknown_flow
+    user_cancelled
+    worker_interrupted
+    worker_interrupted_before_attempt
+    worker_retries_exhausted
   )
 
   # ===========================================================================
@@ -151,7 +162,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   def handle_open_explanation(%{"finding_id" => finding_id}, socket) when is_binary(finding_id) do
     if available?(socket) do
       case current_finding(socket.assigns, finding_id) do
-        {:ok, finding} -> preflight(socket, finding, 0)
+        {:ok, finding} -> open_for(socket, finding)
         {:error, reason} -> {:noreply, refused(socket, reason)}
       end
     else
@@ -273,25 +284,94 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     # read it: release it before its state map (and timer) is replaced.
     socket = socket |> cancel_watched_operation() |> cancel_poll()
 
-    case replayable_result(socket, finding, attempt) do
-      {:ok, output, operation} -> {:noreply, replayed(socket, finding, attempt, output, operation)}
-      :none -> issue_preflight(socket, finding, attempt)
+    issue_preflight(socket, finding, attempt)
+  end
+
+  # How many attempts a reopen will walk before giving up. Each is one indexed
+  # lookup; reruns are rare, so this is generous rather than tuned.
+  @max_attempts 20
+
+  @doc false
+  # Opening must not assume attempt 0. A key is spent PERMANENTLY by the first
+  # operation that used it, even after that operation stops being readable —
+  # cancelled, expired, or failed — and `Execution.execute/1` would then replay
+  # the dead row forever instead of creating anything. So walk the actor's
+  # attempts for this occurrence:
+  #
+  #   * the NEWEST readable result wins, so a reopen after a rerun shows what the
+  #     actor last paid for rather than the narrative they replaced;
+  #   * an operation still in flight is ATTACHED to, which is also how two panels
+  #     on one finding end up watching a single paid operation;
+  #   * otherwise the FIRST unspent key is what a purchase may consume.
+  defp open_for(socket, finding) do
+    case resolve_attempt(socket, finding, 0, :none) do
+      {:replay, attempt, output, operation} ->
+        {:noreply, replayed(socket, finding, attempt, output, operation)}
+
+      {:watch, attempt, operation} ->
+        {:noreply, watching(socket, finding, attempt, operation)}
+
+      {:preflight, attempt} ->
+        preflight(socket, finding, attempt)
+
+      :exhausted ->
+        {:noreply, blocked(socket, finding, @max_attempts, :attempts_exhausted)}
     end
   end
 
-  # Reopening the surface must not offer to buy what the actor already owns: the
-  # deterministic key means this attempt's result may still be readable inside
-  # its TTL. Only the attempt being opened is probed — a rerun raises `attempt`,
-  # and its own reopen probes its own key.
-  defp replayable_result(socket, finding, attempt) do
+  defp resolve_attempt(_socket, _finding, attempt, newest) when attempt >= @max_attempts do
+    settle(newest, :exhausted)
+  end
+
+  defp resolve_attempt(socket, finding, attempt, newest) do
     scope = socket.assigns.current_scope
+    task_id = AI.flow_finding_explanation_task_id()
     key = AI.flow_finding_explanation_key(scope, finding, locale(socket), attempt)
 
-    case AI.get_replayable_result(scope, AI.flow_finding_explanation_task_id(), key) do
-      {:ok, output, operation} -> {:ok, output, operation}
-      {:error, _reason} -> :none
+    case AI.get_replayable_result(scope, task_id, key) do
+      {:ok, output, operation} ->
+        resolve_attempt(socket, finding, attempt + 1, {:replay, attempt, output, operation})
+
+      {:error, _reason} ->
+        case AI.get_operation_by_key(scope, task_id, key) do
+          # Still coming: attach rather than sell a second copy of it.
+          %{execution_status: status} = operation when status in @watchable_statuses ->
+            {:watch, attempt, operation}
+
+          # Spent and terminal without a readable result: this key is a dead end.
+          %{} ->
+            resolve_attempt(socket, finding, attempt + 1, newest)
+
+          nil ->
+            settle(newest, {:preflight, attempt})
+        end
     end
   end
+
+  # A readable result already found higher up always wins over the fallback.
+  defp settle({:replay, _attempt, _output, _operation} = replay, _on_none), do: replay
+  defp settle(:none, on_none), do: on_none
+
+  # Re-attaches the surface to an operation someone already paid for.
+  defp watching(socket, finding, attempt, operation) do
+    socket
+    |> assign(:explanation, %Explanation{
+      status: watch_status(operation),
+      finding_id: finding.finding_id,
+      finding_key: finding.finding_key,
+      rule_id: finding.rule_id,
+      attempt: attempt,
+      operation_id: operation.id,
+      polling_since: watch_started_at(operation)
+    })
+    |> schedule_poll()
+  end
+
+  defp watch_status(%{execution_status: "running"}), do: :running
+  defp watch_status(_operation), do: :queued
+
+  defp watch_started_at(%{execution_status: "running"}), do: System.monotonic_time(:millisecond)
+  defp watch_started_at(_operation), do: nil
 
   defp replayed(socket, finding, attempt, output, operation) do
     AI.record_result_view(socket.assigns.current_scope, operation.id)
@@ -523,17 +603,26 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     |> assign(:explanation, %{explanation | status: :detached})
   end
 
-  # Releases an operation the actor stops waiting for. Best effort: the kernel
-  # refuses once it has settled, and a settled operation needs no release.
+  # Releases an operation ONLY while cancelling still prevents the spend.
+  #
+  # Once a provider attempt has started, `Operations.request_cancellation/2` can
+  # only stamp a flag: the call is in flight, `finish_success/4` commits the unit
+  # regardless, and the sole effect of cancelling is that it DELETES the output
+  # the actor just paid for. Letting it finish instead leaves the result readable
+  # inside its TTL, so a reopen recovers it.
+  #
+  # `"queued"` is therefore the whole window. It is read from the database rather
+  # than from panel state, because the operation may have started since the last
+  # poll tick.
   defp cancel_watched_operation(socket) do
-    case socket.assigns[:explanation] do
-      %{status: status, operation_id: operation_id}
-      when status in [:queued, :running, :detached] and is_integer(operation_id) ->
-        AI.cancel(socket.assigns.current_scope, operation_id)
-        socket
-
-      _settled_or_absent ->
-        socket
+    with %{status: status, operation_id: operation_id} <- socket.assigns[:explanation],
+         true <- status in [:queued, :running, :detached] and is_integer(operation_id),
+         scope = socket.assigns.current_scope,
+         %{execution_status: "queued"} <- AI.get_operation(scope, operation_id) do
+      AI.cancel(scope, operation_id)
+      socket
+    else
+      _nothing_to_release -> socket
     end
   end
 

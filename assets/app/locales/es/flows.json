@@ -524,12 +524,22 @@
         "stale_finding": "el flow ha cambiado, así que la evidencia de este hallazgo ya no es la analizada",
         "unknown_finding": "este hallazgo ya no forma parte del análisis actual",
         "unknown_flow": "este flow ya no está disponible",
-        "result_timeout": "esta ejecución ha tardado más de lo previsto",
         "rate_limited": "demasiadas peticiones de IA en poco tiempo — espera un momento",
         "input_too_large": "esta petición es mayor de lo que permite la tarea",
         "output_too_large": "la respuesta de la IA excede lo que permite la tarea",
         "invalid_context_subject": "no se ha podido verificar la identidad de este hallazgo",
         "invalid_result": "no se ha podido leer la explicación almacenada",
+        "attempts_exhausted": "demasiadas explicaciones de este hallazgo — cambia el flow o espera a que caduquen las actuales",
+        "context_too_large": "la evidencia de este hallazgo es demasiado grande para enviarla",
+        "duplicate_external_attempt": "esta ejecución ya se había intentado",
+        "model_context_limits_unavailable": "no se conocen los límites del modelo disponible, así que no se envió",
+        "model_output_limit_exceeded": "esta tarea pide más salida de la que permite el modelo disponible",
+        "stale_reservation": "esta ejecución se recuperó tras quedarse encallada",
+        "task_contract_changed": "la tarea de explicación cambió mientras esta ejecución estaba pendiente",
+        "user_cancelled": "esta ejecución se canceló",
+        "worker_interrupted": "esta ejecución se interrumpió antes de terminar",
+        "worker_interrupted_before_attempt": "esta ejecución se interrumpió antes de empezar",
+        "worker_retries_exhausted": "no se ha podido iniciar esta ejecución",
         "unknown": "no se ha podido generar la explicación"
       }
     }

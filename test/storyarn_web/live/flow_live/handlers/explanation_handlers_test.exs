@@ -16,6 +16,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
   alias Storyarn.AI.UsageEvent
   alias Storyarn.Flows
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workers.AIExecutionWorker
   alias StoryarnTest.AI.FakeSettlement
   alias StoryarnWeb.FlowLive.Handlers.ExplanationHandlers
@@ -280,18 +281,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       first = mount_editor(conn, project, flow)
       second = mount_editor(conn, project, flow)
 
-      for view <- [first, second] do
-        finding = open_panel_and_finding(view)
-        render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-        [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-        render_click(view, "execute_explanation", %{"route_ref" => route_ref})
-      end
+      execute_explanation!(first)
 
-      # Both surfaces watch the SAME operation: the deterministic idempotency
-      # key makes the second execute a replay, not a second purchase.
+      # The second surface finds the operation already in flight for this exact
+      # occurrence and ATTACHES to it: no preflight, no route picker, so it is
+      # never even offered the purchase.
+      finding = open_panel_and_finding(second)
+      render_click(second, "open_explanation", %{"finding_id" => finding["findingId"]})
+
+      assert explanation(second)["status"] == "queued"
+      assert explanation(second)["routes"] == []
       assert Repo.aggregate(Operation, :count) == 1
       assert explanation(first)["status"] == "queued"
-      assert explanation(second)["status"] == "queued"
 
       drain_execution!()
 
@@ -379,6 +380,89 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       render_click(view, "rerun_explanation", %{})
       assert explanation(view)["status"] == "preflight"
       assert [%{"routeRef" => _}] = explanation(view)["routes"]
+    end
+
+    test "a spent-but-dead key does not brick the finding", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = execute_explanation!(view)
+
+      # Simulate the operation ending without a readable result — a cancel that
+      # landed mid-attempt, or a lapsed TTL. Its key stays spent forever, so
+      # re-running at the same attempt would replay the dead row every time.
+      Operation
+      |> Repo.one!()
+      |> Ecto.Changeset.change(execution_status: "cancelled", error_classification: "user_cancelled")
+      |> Repo.update!()
+
+      render_click(view, "close_explanation", %{})
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+
+      # Opening walks past the dead key to the first unspent one, so the actor is
+      # offered a real purchase instead of a permanently broken Run button.
+      assert explanation(view)["status"] == "preflight"
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+
+      assert explanation(view)["status"] == "queued"
+      assert Repo.aggregate(Operation, :count) == 2
+    end
+
+    test "reopening after a rerun shows the narrative last paid for", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = execute_explanation!(view)
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+
+      # Mark attempt 0's stored output so it is distinguishable.
+      superseded = Repo.one!(Operation)
+
+      render_click(view, "rerun_explanation", %{})
+      [%{"routeRef" => rerun_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => rerun_ref})
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+
+      render_click(view, "close_explanation", %{})
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+
+      # The NEWEST readable attempt wins. Probing a fixed attempt 0 would have
+      # resurrected the narrative the actor replaced.
+      assert explanation(view)["status"] == "succeeded"
+      newest = Operation |> Repo.all() |> Enum.max_by(& &1.id)
+      refute newest.id == superseded.id
+      assert Repo.aggregate(Operation, :count) == 2
+    end
+
+    test "closing while the provider attempt is running does not destroy paid output", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      execute_explanation!(view)
+
+      # Once an attempt has started, cancelling cannot stop the provider call and
+      # the unit is committed regardless — it would only delete the output the
+      # actor paid for. So the panel must leave it alone.
+      Operation
+      |> Repo.one!()
+      |> Ecto.Changeset.change(execution_status: "running", external_attempt_started_at: TimeHelpers.now())
+      |> Repo.update!()
+
+      render_click(view, "close_explanation", %{})
+
+      operation = Repo.one!(Operation)
+      assert operation.execution_status == "running"
+      assert is_nil(operation.cancellation_requested_at)
     end
 
     test "a poll tick that changes nothing re-renders nothing", %{
@@ -535,7 +619,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       # panel polled for the narrative.
       Storyarn.AI.Result
       |> Repo.one!()
-      |> Ecto.Changeset.change(expires_at: DateTime.add(Storyarn.Shared.TimeHelpers.now(), -1, :second))
+      |> Ecto.Changeset.change(expires_at: DateTime.add(TimeHelpers.now(), -1, :second))
       |> Repo.update!()
 
       send(view.pid, :poll_explanation)

@@ -147,6 +147,11 @@ defmodule Storyarn.AI do
     to: Results,
     as: :get_by_idempotency_key
 
+  @doc "The operation that spent an idempotency key, in whatever state it ended up."
+  defdelegate get_operation_by_key(scope, task_id, idempotency_key),
+    to: Results,
+    as: :get_operation_by_idempotency_key
+
   @doc "Records that the actor saw a result. Never a disposition — see Results.record_view/2."
   defdelegate record_result_view(scope, operation_id), to: Results, as: :record_view
 

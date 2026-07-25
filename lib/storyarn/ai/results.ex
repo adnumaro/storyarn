@@ -83,6 +83,28 @@ defmodule Storyarn.AI.Results do
   end
 
   @doc """
+  The operation that spent an idempotency key, whatever became of it.
+
+  A key is consumed permanently by the first operation that used it, even after
+  that operation stops being readable — cancelled, expired, or failed — because
+  `Execution.execute/1` replays the row rather than creating anything. A caller
+  choosing which key to spend next needs the row's STATUS, not merely its
+  existence: still in flight means "attach to it", terminal-and-unreadable means
+  "this key can never produce anything again".
+  """
+  @spec get_operation_by_idempotency_key(Scope.t(), String.t(), String.t()) :: Operation.t() | nil
+  def get_operation_by_idempotency_key(%Scope{user: %{id: actor_id}}, task_id, idempotency_key)
+      when is_binary(task_id) and is_binary(idempotency_key) do
+    Repo.one(
+      from(operation in Operation,
+        where:
+          operation.actor_id == ^actor_id and operation.task_id == ^task_id and
+            operation.idempotency_key == ^idempotency_key
+      )
+    )
+  end
+
+  @doc """
   Records that the actor saw this result.
 
   The slice contract asks for `viewed`, never `accepted`, so this is deliberately
