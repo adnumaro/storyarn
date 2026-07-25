@@ -54,15 +54,23 @@ defmodule Storyarn.AI.Allowance do
 
   defp spendable_units(account_id) do
     Repo.one(
-      from(grant in AllowanceGrant,
-        where:
-          grant.account_id == ^account_id and grant.remaining_units > 0 and
-            (is_nil(grant.expires_at) or grant.expires_at > ^TimeHelpers.now()),
+      from(grant in spendable_grants(account_id, TimeHelpers.now()),
         # Postgres sums integers into numeric; without the cast this would come
         # back as a Decimal struct and every `>=` against a unit count would be
         # struct-vs-integer term comparison, which is silently always true.
         select: type(coalesce(sum(grant.remaining_units), 0), :integer)
       )
+    )
+  end
+
+  # ONE definition of "spendable", shared by the read-only projection and the
+  # locking allocator. If these two ever disagreed, preflight would advertise
+  # units `reserve/1` cannot actually allocate — the projection's whole contract.
+  defp spendable_grants(account_id, now) do
+    from(grant in AllowanceGrant,
+      where:
+        grant.account_id == ^account_id and grant.remaining_units > 0 and
+          (is_nil(grant.expires_at) or grant.expires_at > ^now)
     )
   end
 
@@ -394,10 +402,7 @@ defmodule Storyarn.AI.Allowance do
 
   defp lock_spendable_grants(account_id, now) do
     Repo.all(
-      from(grant in AllowanceGrant,
-        where:
-          grant.account_id == ^account_id and grant.remaining_units > 0 and
-            (is_nil(grant.expires_at) or grant.expires_at > ^now),
+      from(grant in spendable_grants(account_id, now),
         order_by: [asc_nulls_last: grant.expires_at, asc: grant.id],
         lock: "FOR UPDATE"
       )

@@ -33,6 +33,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   """
 
   use Gettext, backend: Storyarn.Gettext
+  use StoryarnWeb.Helpers.Authorize
 
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
@@ -41,7 +42,33 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   alias Storyarn.AI
   alias Storyarn.Analytics
   alias Storyarn.FeatureFlags
-  alias Storyarn.Projects
+
+  defmodule Explanation do
+    @moduledoc """
+    The panel's own view of one explanation.
+
+    A struct rather than a bare map because every transition previously respelled
+    all thirteen keys, so adding a state meant editing three literals and a typo
+    was silent.
+    """
+    defstruct [
+      :status,
+      :finding_id,
+      :finding_key,
+      :rule_id,
+      :attempt,
+      :disclosure,
+      :retention_seconds,
+      :operation_id,
+      :result,
+      :error,
+      :polling_since,
+      routes: [],
+      blocked_lanes: []
+    ]
+
+    @type t :: %__MODULE__{}
+  end
 
   @type result :: {:noreply, Socket.t()}
 
@@ -112,7 +139,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     # an honest blocked state rather than a command that silently disappears.
     # Only an unregistered task (a deployment without it) hides it.
     FeatureFlags.enabled?(:ai_integrations, for: user) and
-      role_can_use_ai?(socket) and
+      authorize(socket, :use_ai) == :ok and
       AI.flow_finding_explanation_registered?()
   end
 
@@ -122,11 +149,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
 
   @spec handle_open_explanation(map(), Socket.t()) :: result()
   def handle_open_explanation(%{"finding_id" => finding_id}, socket) when is_binary(finding_id) do
-    with true <- available?(socket) || {:error, :unavailable},
-         {:ok, finding} <- current_finding(socket.assigns, finding_id) do
-      preflight(socket, finding, 0)
+    if available?(socket) do
+      case current_finding(socket.assigns, finding_id) do
+        {:ok, finding} -> preflight(socket, finding, 0)
+        {:error, reason} -> {:noreply, refused(socket, reason)}
+      end
     else
-      {:error, reason} -> {:noreply, refused(socket, reason)}
+      {:noreply, refused(socket, :unavailable)}
     end
   end
 
@@ -272,20 +301,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       stale: not finding_current?(socket.assigns, finding.finding_id)
     })
 
-    assign(socket, :explanation, %{
+    assign(socket, :explanation, %Explanation{
       status: :succeeded,
       finding_id: finding.finding_id,
       finding_key: finding.finding_key,
       rule_id: finding.rule_id,
       attempt: attempt,
-      routes: [],
-      blocked_lanes: [],
-      disclosure: nil,
-      retention_seconds: nil,
       operation_id: operation.id,
-      result: output,
-      error: nil,
-      polling_since: nil
+      result: output
     })
   end
 
@@ -299,7 +322,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       })
 
       {:noreply,
-       assign(socket, :explanation, %{
+       assign(socket, :explanation, %Explanation{
          status: :preflight,
          finding_id: finding.finding_id,
          finding_key: finding.finding_key,
@@ -308,11 +331,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
          routes: preflight.route_options,
          blocked_lanes: preflight.blocked_lanes,
          disclosure: preflight.context_disclosure,
-         retention_seconds: preflight.result_ttl_seconds,
-         operation_id: nil,
-         result: nil,
-         error: nil,
-         polling_since: nil
+         retention_seconds: preflight.result_ttl_seconds
        })}
     else
       {:error, reason} -> {:noreply, blocked(socket, finding, attempt, reason)}
@@ -483,20 +502,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       error_class: error_class(reason)
     })
 
-    assign(socket, :explanation, %{
+    assign(socket, :explanation, %Explanation{
       status: :blocked,
       finding_id: finding.finding_id,
       finding_key: finding.finding_key,
       rule_id: finding.rule_id,
       attempt: attempt,
-      routes: [],
-      blocked_lanes: [],
-      disclosure: nil,
-      retention_seconds: nil,
-      operation_id: nil,
-      result: nil,
-      error: error_class(reason),
-      polling_since: nil
+      error: error_class(reason)
     })
   end
 
@@ -585,7 +597,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       routes: Enum.map(explanation.routes, &route_props/1),
       blockedLanes: Enum.map(explanation.blocked_lanes, &blocked_lane_props/1),
       disclosure: explanation.disclosure,
-      retentionSeconds: explanation[:retention_seconds],
+      retentionSeconds: explanation.retention_seconds,
       result: result_props(explanation.result)
     }
   end
@@ -604,6 +616,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   end
 
   defp blocked_lane_props(%{lane: lane, reason: reason}), do: %{lane: to_string(lane), reason: to_string(reason)}
+
+  # A shape the kernel does not produce today. Rendering must not raise over it:
+  # the panel's job is to show what it can, and `error_class/1` already maps an
+  # unrecognised reason to "unknown".
+  defp blocked_lane_props(_lane), do: %{lane: "unknown", reason: "unknown"}
 
   defp route_props(route) do
     %{
@@ -667,13 +684,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     end
   end
 
-  defp role_can_use_ai?(socket) do
-    case socket.assigns[:membership] do
-      %{role: role} when is_binary(role) -> Projects.can?(role, :use_ai)
-      _absent -> false
-    end
-  end
-
   defp locale(socket) do
     locale = socket.assigns[:locale]
     if locale in Gettext.known_locales(Storyarn.Gettext), do: locale, else: "en"
@@ -697,10 +707,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   defp error_class(reason) when is_binary(reason), do: known_class(reason)
   defp error_class(_reason), do: "unknown"
 
-  defp known_class(class) when class in @error_classes, do: class
-  defp known_class(_class), do: "unknown"
-
+  # Left as a private wrapper in both analysis handlers on purpose: importing a
+  # 3-line shim across handler modules would buy a dependency for less than it
+  # costs.
   defp track(socket, event, properties) do
     Analytics.track(socket.assigns.current_scope, event, properties)
   end
+
+  defp known_class(class) when class in @error_classes, do: class
+  defp known_class(_class), do: "unknown"
 end

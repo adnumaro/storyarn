@@ -72,6 +72,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
     finding
   end
 
+  # Drives the surface from an open panel to a queued operation — the prelude
+  # almost every execution test needs before it can assert anything.
+  defp execute_explanation!(view) do
+    finding = open_panel_and_finding(view)
+    render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+    [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+    render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+    finding
+  end
+
   # The worker runs only when drained: :background + Oban testing: :manual.
   defp drain_execution! do
     assert %{success: 1, failure: 0} =
@@ -297,10 +307,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      execute_explanation!(view)
 
       render_click(view, "close_explanation", %{})
 
@@ -314,10 +321,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      execute_explanation!(view)
       drain_execution!()
       send(view.pid, :poll_explanation)
       assert explanation(view)["status"] == "succeeded"
@@ -337,10 +341,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      finding = execute_explanation!(view)
       drain_execution!()
       send(view.pid, :poll_explanation)
       assert explanation(view)["status"] == "succeeded"
@@ -365,10 +366,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      finding = execute_explanation!(view)
       drain_execution!()
       send(view.pid, :poll_explanation)
 
@@ -389,10 +387,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      execute_explanation!(view)
 
       # show.ex hands the whole `assigns` to its prop builders, which strong-taints
       # the template: one changed assign re-encodes flow_data for the entire
@@ -433,10 +428,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       end)
 
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      execute_explanation!(view)
 
       # Observed running, so the deadline clock starts; the next tick exceeds it.
       Operation |> Repo.one!() |> Ecto.Changeset.change(execution_status: "running") |> Repo.update!()
@@ -494,10 +486,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      execute_explanation!(view)
       drain_execution!()
 
       # Succeeded but not yet rendered: nothing recorded.
@@ -521,10 +510,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      execute_explanation!(view)
       drain_execution!()
       send(view.pid, :poll_explanation)
       assert explanation(view)["status"] == "succeeded"
@@ -542,10 +528,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      execute_explanation!(view)
       drain_execution!()
 
       # The operation succeeded but its actor-private window closed before the
@@ -579,10 +562,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      execute_explanation!(view)
       drain_execution!()
       send(view.pid, :poll_explanation)
       assert explanation(view)["status"] == "succeeded"
@@ -605,10 +585,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      execute_explanation!(view)
 
       render_click(view, "close_explanation", %{})
 
@@ -672,10 +649,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      execute_explanation!(view)
       drain_execution!()
       send(view.pid, :poll_explanation)
       assert explanation(view)["status"] == "succeeded"
@@ -702,10 +676,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       flow: flow
     } do
       view = mount_editor(conn, project, flow)
-      finding = open_panel_and_finding(view)
-      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
-      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
-      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      execute_explanation!(view)
       drain_execution!()
       send(view.pid, :poll_explanation)
       assert explanation(view)["status"] == "succeeded"

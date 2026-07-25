@@ -23,7 +23,7 @@ defmodule Storyarn.Flows.StructuralAnalysis.Finding do
 
   @id_scheme "sf1"
   @identity_separator "|"
-  @fingerprint_format ~r/^[0-9a-f]{64}$/
+  @fingerprint_format ~r/\A[0-9a-f]{64}\z/
 
   @enforce_keys [:rule_id, :rule_version, :category, :severity, :flow_id, :target]
   defstruct [

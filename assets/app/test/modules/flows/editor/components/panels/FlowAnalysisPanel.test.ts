@@ -200,12 +200,12 @@ describe("FlowAnalysisPanel", () => {
         .filter((command) => command.id === "flows.explain_finding");
     }
 
+    const wrappers: ReturnType<typeof mountPanel>["wrapper"][] = [];
+
     afterEach(() => {
       wrappers.forEach((wrapper) => wrapper.unmount());
       wrappers.length = 0;
     });
-
-    const wrappers: ReturnType<typeof mountPanel>["wrapper"][] = [];
 
     it("is hidden while no finding is selected", () => {
       const { wrapper } = mountPanel({ explanation: explanationState });

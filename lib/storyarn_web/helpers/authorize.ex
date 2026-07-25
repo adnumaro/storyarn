@@ -153,6 +153,18 @@ defmodule StoryarnWeb.Helpers.Authorize do
     end
   end
 
+  # AI execution: a distinct action because a viewer may read content but must
+  # never spend a workspace's AI allowance.
+  def authorize(%{assigns: assigns}, :use_ai) do
+    case Map.get(assigns, :membership) do
+      %{role: role} when is_binary(role) ->
+        if Projects.can?(role, :use_ai), do: :ok, else: {:error, :unauthorized}
+
+      _ ->
+        {:error, :unauthorized}
+    end
+  end
+
   # Project management (settings, deletion)
   def authorize(%{assigns: assigns}, :manage_project) do
     case Map.get(assigns, :membership) do

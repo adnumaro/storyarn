@@ -1,3 +1,5 @@
+import type { ContextDisclosureData } from "@components/ai/ContextDisclosure.vue";
+
 export interface AnalysisEvidence {
   type: string;
   id: number;
@@ -63,18 +65,6 @@ export interface ExplanationBlockedLane {
   reason: string;
 }
 
-export interface ExplanationDisclosure {
-  version: string;
-  context_version: string;
-  scope: string;
-  serialized_bytes: number;
-  token_count: number | null;
-  included_count: number;
-  excluded_count: number;
-  truncated: boolean;
-  warnings: string[];
-}
-
 /** Bounded narrative. Never carries ids, severities, or actions. */
 export interface ExplanationResult {
   summary: string;
@@ -92,7 +82,7 @@ export interface FlowExplanationState {
   stale: boolean;
   routes: ExplanationRoute[];
   blockedLanes: ExplanationBlockedLane[];
-  disclosure: ExplanationDisclosure | null;
+  disclosure: ContextDisclosureData | null;
   /** How long a produced result stays readable. Disclosed BEFORE spending. */
   retentionSeconds: number | null;
   result: ExplanationResult | null;
