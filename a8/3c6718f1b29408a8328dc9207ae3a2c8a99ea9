@@ -1,0 +1,23 @@
+test/storyarn_web/live/flow_live/handlers/explanation_handlers_test.exs
+  s_fc3546b2264bba::t_c947f8d3d6ad97 119-147
+  s_fc3546b2264bba::t_972e52c94bea60 285-291
+  s_fc3546b2264bba::t_b6b20f3ce6a1aa 7,14,16
+test/storyarn/ai/tasks/flow_finding_explanation_test.exs
+  s_fc3546b2264bba::t_343cbbb0dca257 203-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a83c6718f1b29408a8328dc9207ae3a2c8a99ea9",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
