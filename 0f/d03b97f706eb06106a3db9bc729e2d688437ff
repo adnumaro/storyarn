@@ -1,0 +1,28 @@
+config/runtime.exs
+  s_fc3546b2264bba::t_b09189a91399eb 338-341
+  s_fc3546b2264bba::t_dee7119190873e 342-343
+test/storyarn/rate_limiter_test.exs
+  s_fc3546b2264bba::t_984e91edd23ad2 128-142,148-149,151,162-163,166-168,170
+  s_fc3546b2264bba::t_ed22ed22347b69 169
+lib/storyarn/rate_limiter.ex
+  s_fc3546b2264bba::t_dee7119190873e 5-6
+  s_fc3546b2264bba::t_984e91edd23ad2 26,28
+  s_fc3546b2264bba::t_b09189a91399eb 7-9,158,166-168,172-176
+  s_fc3546b2264bba::t_24a924a5de1cdf 177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0fd03b97f706eb06106a3db9bc729e2d688437ff",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
