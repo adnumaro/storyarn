@@ -1,0 +1,36 @@
+lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex
+  s_fc3546b2264bba::t_4ba08bca8d7349 36,142
+  s_fc3546b2264bba::t_cd6d56ca170e4e 46-71,304,311,325,334,505,511,600
+  s_fc3546b2264bba::t_e50091c3aca85f 710-712
+  s_fc3546b2264bba::t_4c6205a0db945b 152-156,158,620-624
+  s_fc3546b2264bba::t_3c86cd33316b94 45,716-718
+lib/storyarn/ai/allowance.ex
+  s_fc3546b2264bba::t_4c6205a0db945b 57,66-76,405
+assets/app/modules/flows/editor/components/panels/flowAnalysisTypes.ts
+  s_fc3546b2264bba::t_4178aa823969d8 1-2
+  s_fc3546b2264bba::t_4ba08bca8d7349 85
+lib/storyarn/flows/structural_analysis/finding.ex
+  s_fc3546b2264bba::t_4c6205a0db945b 26
+lib/storyarn_web/helpers/authorize.ex
+  s_fc3546b2264bba::t_4ba08bca8d7349 156-167
+assets/app/test/modules/flows/editor/components/panels/FlowAnalysisPanel.test.ts
+  s_fc3546b2264bba::t_65b81d5bcecbaa 203-204
+test/storyarn_web/live/flow_live/handlers/explanation_handlers_test.exs
+  s_fc3546b2264bba::t_4ce64867556fab 75-84,310,324,344,369,390,431,489,513,531,565,588,652,679
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "31ebb29e2d7897a99e2d44b60f86de1a0b237bc1",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
