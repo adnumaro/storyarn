@@ -74,7 +74,7 @@ mode this design can have, and asking is what removes it.
 
 ### On a tie, offer both
 
-*"Where is variable X defined"* and *"where is X used"* differ only in read-vs-write
+_"Where is variable X defined"_ and _"where is X used"_ differ only in read-vs-write
 intent. Picking wrong yields a well-formed, wrong-shaped answer. When two
 operations score close, the surface **presents both instead of choosing**.
 
@@ -99,10 +99,10 @@ already holding. It is enforced by the corpus below, not by hope.
 
 Two operations, both fed exclusively with platform-computed data:
 
-| Operation | Question |
-|---|---|
-| `digest(period, scope)` | *"¿qué ha cambiado esta semana?"* |
-| `explain_gaps(scope)` | *"¿qué falta por implementar?"* |
+| Operation               | Question                          |
+| ----------------------- | --------------------------------- |
+| `digest(period, scope)` | _"¿qué ha cambiado esta semana?"_ |
+| `explain_gaps(scope)`   | _"¿qué falta por implementar?"_   |
 
 Every number and every item in the output comes from `findings`, `incomplete`,
 `localization_gaps` and version history — computed by 7.1a.1's operations. The model
@@ -166,17 +166,17 @@ initial catalog is designed against real questions rather than my guesses.
 
 ## Estimate
 
-| Phase | Hours |
-|---|---|
-| 0 Re-verify the registry contract and kernel refs | 0.5 |
-| 1 Corpus (startable before 7.1a.1 lands) | 4-6 |
-| 2 Translation task: contract, prompt, structured output, validation | 10-14 |
-| 3 Palette integration: operation display, clarification, tie handling | 8-12 |
-| 4 Phrasing cache | 4-6 |
-| 5 `digest` + `explain_gaps` composition | 8-12 |
-| 6 Tests, accuracy measurement, i18n | 8-11 |
-| 7 Browser verification | 2-3 |
-| **Total** | **45-64** |
+| Phase                                                                 | Hours     |
+| --------------------------------------------------------------------- | --------- |
+| 0 Re-verify the registry contract and kernel refs                     | 0.5       |
+| 1 Corpus (startable before 7.1a.1 lands)                              | 4-6       |
+| 2 Translation task: contract, prompt, structured output, validation   | 10-14     |
+| 3 Palette integration: operation display, clarification, tie handling | 8-12      |
+| 4 Phrasing cache                                                      | 4-6       |
+| 5 `digest` + `explain_gaps` composition                               | 8-12      |
+| 6 Tests, accuracy measurement, i18n                                   | 8-11      |
+| 7 Browser verification                                                | 2-3       |
+| **Total**                                                             | **45-64** |
 
 Phase 1 is the gate. If the corpus shows most real questions have no operation to
 resolve to, the answer is more operations in 7.1a.1 — not a cleverer prompt.

@@ -10,8 +10,8 @@ Make the command palette able to answer questions about the project, through a
 typed language the designer can write directly, and make the deterministic
 knowledge the platform already holds reachable from it.
 
-A designer should never have to think *"where did X happen"*, *"where is the sheet
-for Y"*, or *"where is the option to do Z"*. This slice removes the first and third
+A designer should never have to think _"where did X happen"_, _"where is the sheet
+for Y"_, or _"where is the option to do Z"_. This slice removes the first and third
 for the cases that need no model.
 
 ## Why this shape
@@ -21,7 +21,7 @@ registry:
 
 1. it is what the guided door inserts templates from;
 2. it is the generated help surface, so "what can I do here" can never go stale;
-3. it is what the natural-language door in 7.1a.2 translates *into*;
+3. it is what the natural-language door in 7.1a.2 translates _into_;
 4. it is the completeness check that makes **hiding the sidebars** viable for
    advanced users later. That is a hard invariant: an action absent from the
    registry becomes unreachable the moment chrome is hidden.
@@ -55,8 +55,8 @@ verbs: no error recovery over half-typed input, no per-locale tokenization.
 
 Interaction rules, each of which exists to stop the user getting lost:
 
-- **each parameter is atomic.** Deleting inside a filled parameter clears *that
-  parameter* and returns focus to it, placeholder restored. The input can never hold
+- **each parameter is atomic.** Deleting inside a filled parameter clears _that
+  parameter_ and returns focus to it, placeholder restored. The input can never hold
   broken syntax, and correcting one parameter never costs the others. Wiping the whole
   template on any deletion was considered and rejected: correction is the most
   frequent user action, and punishing it is exactly what makes a tool noticeable.
@@ -112,7 +112,7 @@ the only path would kill the expert user the product is trying to create.
 
 ### Identifiers and content must look different
 
-Matching a *name* and matching *prose inside nodes* are different searches over
+Matching a _name_ and matching _prose inside nodes_ are different searches over
 different indexes, and a syntax that blurs them will be misread forever:
 
 ```
@@ -190,18 +190,18 @@ thing.
 
 Backed by data that already exists:
 
-| Operation | Answers |
-|---|---|
-| `goto` | sheets, flows, scenes, projects by name |
-| `variable_definition` | which block defines this variable |
-| `variable_usages` | where it is read / written |
-| `entity_usages` | backlinks for any entity |
-| `flow_callers` | which subflow/exit nodes reference this flow |
-| `findings` | structural + sheet/scene health findings in a scope |
-| `incomplete` | empty dialogue text, empty blocks, missing localizations |
-| `localization_gaps` | untranslated text in a scope |
-| `create` / `delete` | mutating, reauthorized per call |
-| `run_command` / `open_panel` | the capability index itself |
+| Operation                    | Answers                                                  |
+| ---------------------------- | -------------------------------------------------------- |
+| `goto`                       | sheets, flows, scenes, projects by name                  |
+| `variable_definition`        | which block defines this variable                        |
+| `variable_usages`            | where it is read / written                               |
+| `entity_usages`              | backlinks for any entity                                 |
+| `flow_callers`               | which subflow/exit nodes reference this flow             |
+| `findings`                   | structural + sheet/scene health findings in a scope      |
+| `incomplete`                 | empty dialogue text, empty blocks, missing localizations |
+| `localization_gaps`          | untranslated text in a scope                             |
+| `create` / `delete`          | mutating, reauthorized per call                          |
+| `run_command` / `open_panel` | the capability index itself                              |
 
 Needs one new index:
 
@@ -270,7 +270,7 @@ inside a subflow, so rule 3 is the checkable form of that idea.
   later slice behind the same operation.
 - Generative analysis (digests, gap narratives) — 7.1a.2.
 - Task-manager integrations.
-- Actually hiding the sidebars. This slice only makes it *possible* later.
+- Actually hiding the sidebars. This slice only makes it _possible_ later.
 
 ## Verification / Definition of Done
 
@@ -308,19 +308,19 @@ inside a subflow, so rule 3 is the checkable form of that idea.
 
 ## Estimate
 
-| Phase | Hours |
-|---|---|
-| 0 Re-verify current state against main | 0.5 |
-| 1 Operation registry + router + latency classes | 8-12 |
-| 2 Guided door: template insertion, focus model, atomic parameters | 10-14 |
-| 2b Pattern door: grammar extension (`**`, `?`, quotes) | 4-6 |
-| 2c Help view: empty state, grouping, description search | 5-7 |
-| 3 `content_search` index and operation | 8-12 |
-| 4 Lookup/navigation operations over existing data | 6-9 |
-| 5 Health contract + `findings`/`incomplete`/`localization_gaps` | 8-12 |
-| 6 The four rules | 12-17 |
-| 7 i18n, latency tests, catalog pinning, dashboard test updates | 6-8 |
-| **Total** | **68-97** |
+| Phase                                                             | Hours     |
+| ----------------------------------------------------------------- | --------- |
+| 0 Re-verify current state against main                            | 0.5       |
+| 1 Operation registry + router + latency classes                   | 8-12      |
+| 2 Guided door: template insertion, focus model, atomic parameters | 10-14     |
+| 2b Pattern door: grammar extension (`**`, `?`, quotes)            | 4-6       |
+| 2c Help view: empty state, grouping, description search           | 5-7       |
+| 3 `content_search` index and operation                            | 8-12      |
+| 4 Lookup/navigation operations over existing data                 | 6-9       |
+| 5 Health contract + `findings`/`incomplete`/`localization_gaps`   | 8-12      |
+| 6 The four rules                                                  | 12-17     |
+| 7 i18n, latency tests, catalog pinning, dashboard test updates    | 6-8       |
+| **Total**                                                         | **68-97** |
 
 Phases 1, 2 and 2c are the substrate and are separable: shipping them with `goto`
 and the lookup operations is already user-testable — a designer can open the palette,
