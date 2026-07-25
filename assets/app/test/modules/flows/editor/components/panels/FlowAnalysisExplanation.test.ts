@@ -7,11 +7,13 @@ import type {
 } from "../../../../../../modules/flows/editor/components/panels/flowAnalysisTypes";
 
 const FINDING_ID = "sf1_abc";
+const FINDING_KEY = "no_outgoing_connection:1:node:42";
 
 function state(overrides: Partial<FlowExplanationState> = {}): FlowExplanationState {
   return {
     available: true,
     findingId: FINDING_ID,
+    findingKey: FINDING_KEY,
     status: "idle" as ExplanationStatus,
     error: null,
     stale: false,
@@ -53,15 +55,19 @@ function disclosure(overrides = {}) {
 function result(overrides = {}) {
   return {
     summary: "The dialogue node has no outgoing connection.",
-    why_it_triggers: "Every non-terminal node needs an outgoing edge.",
+    whyItTriggers: "Every non-terminal node needs an outgoing edge.",
     implications: ["Players reaching it cannot continue."],
-    suggested_checks: ["Check whether an exit node is missing."],
+    suggestedChecks: ["Check whether an exit node is missing."],
     ...overrides,
   };
 }
 
-function mountExplanation(explanation: FlowExplanationState, findingId = FINDING_ID) {
-  return mount(FlowAnalysisExplanation, { props: { findingId, explanation } });
+function mountExplanation(
+  explanation: FlowExplanationState,
+  findingKey = FINDING_KEY,
+  findingId = FINDING_ID,
+) {
+  return mount(FlowAnalysisExplanation, { props: { findingId, findingKey, explanation } });
 }
 
 describe("FlowAnalysisExplanation", () => {
@@ -74,7 +80,7 @@ describe("FlowAnalysisExplanation", () => {
   it("stays idle on every card except the selected finding", () => {
     const wrapper = mountExplanation(
       state({ status: "succeeded", result: result() }),
-      "sf1_other_finding",
+      "isolated_node:1:node:99",
     );
 
     expect(wrapper.find("[data-testid='explanation-result']").exists()).toBe(false);
@@ -168,6 +174,20 @@ describe("FlowAnalysisExplanation", () => {
     expect(unknown.find("[data-testid='explanation-error']").text()).toContain(
       "could not be produced",
     );
+  });
+
+  it("survives a rerun that rotates the occurrence id", () => {
+    // Same rule+target, new evidence fingerprint: the card is a different
+    // findingId but the same findingKey, and the narrative stays visible —
+    // marked obsolete rather than vanishing.
+    const wrapper = mountExplanation(
+      state({ status: "succeeded", result: result(), stale: true }),
+      FINDING_KEY,
+      "sf1_rotated_occurrence",
+    );
+
+    expect(wrapper.find("[data-testid='explanation-result']").exists()).toBe(true);
+    expect(wrapper.find("[data-testid='explanation-stale']").exists()).toBe(true);
   });
 
   it("offers a rerun after the result TTL elapsed", () => {

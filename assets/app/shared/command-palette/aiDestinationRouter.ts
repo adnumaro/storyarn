@@ -17,12 +17,12 @@ export function registerAIDestination(
   handler: DestinationHandler,
 ): () => void {
   const key = destinationKey(destination);
-
-  if (handlers.has(key)) {
-    throw new Error(`AI destination already registered: ${key}`);
-  }
-
   const token = Symbol(key);
+
+  // Last registration wins. A LiveVue remount runs the incoming component's
+  // setup BEFORE the outgoing one's onUnmounted, so refusing a duplicate would
+  // crash the surface on every remount. The token check below is what stops
+  // the outgoing instance's cleanup from removing the incoming registration.
   handlers.set(key, { token, handler });
 
   return () => {

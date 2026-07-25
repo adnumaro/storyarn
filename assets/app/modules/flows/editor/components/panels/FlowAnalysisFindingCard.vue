@@ -187,6 +187,7 @@ function onDismissSubmit(reasonCode: string, note: string): void {
       <FlowAnalysisExplanation
         v-if="!dismissed && explanation"
         :finding-id="finding.findingId"
+        :finding-key="finding.findingKey"
         :explanation="explanation"
         @explain="emit('explain', $event)"
         @execute="emit('execute', $event)"

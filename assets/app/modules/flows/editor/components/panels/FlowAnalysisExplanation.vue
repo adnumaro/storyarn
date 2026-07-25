@@ -6,8 +6,10 @@ import ContextDisclosure from "@components/ai/ContextDisclosure.vue";
 import { Button } from "@components/ui/button";
 import type { ExplanationStatus, FlowExplanationState } from "./flowAnalysisTypes";
 
-const { findingId, explanation } = defineProps<{
+const { findingId, findingKey, explanation } = defineProps<{
   findingId: string;
+  /** Stable anchor: a rerun rotates findingId, and the surface must survive it. */
+  findingKey: string;
   explanation: FlowExplanationState;
 }>();
 
@@ -20,8 +22,12 @@ const emit = defineEmits<{
 
 const { t, te } = useI18n();
 
-/** The surface belongs to ONE finding at a time; every other card stays idle. */
-const mine = computed(() => explanation.findingId === findingId);
+/**
+ * The surface belongs to ONE finding at a time. It matches on the stable key,
+ * not the occurrence id: rerunning the analysis rotates every findingId, and
+ * an explanation that vanished on rerun would be worse than one marked stale.
+ */
+const mine = computed(() => explanation.findingKey === findingKey);
 const status = computed<ExplanationStatus>(() => (mine.value ? explanation.status : "idle"));
 
 const errorMessage = computed(() => {
@@ -140,7 +146,7 @@ function blockedLaneLabel(lane: string, reason: string): string {
           <p class="text-xs font-medium text-muted-foreground">
             {{ t("flows.explanation.why_title") }}
           </p>
-          <p class="text-xs">{{ explanation.result.why_it_triggers }}</p>
+          <p class="text-xs">{{ explanation.result.whyItTriggers }}</p>
         </div>
 
         <div v-if="explanation.result.implications.length > 0">
@@ -152,12 +158,12 @@ function blockedLaneLabel(lane: string, reason: string): string {
           </ul>
         </div>
 
-        <div v-if="explanation.result.suggested_checks.length > 0">
+        <div v-if="explanation.result.suggestedChecks.length > 0">
           <p class="text-xs font-medium text-muted-foreground">
             {{ t("flows.explanation.checks_title") }}
           </p>
           <ul class="list-disc space-y-0.5 pl-4 text-xs">
-            <li v-for="item in explanation.result.suggested_checks" :key="item">{{ item }}</li>
+            <li v-for="item in explanation.result.suggestedChecks" :key="item">{{ item }}</li>
           </ul>
         </div>
 

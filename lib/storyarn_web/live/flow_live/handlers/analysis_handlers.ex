@@ -450,6 +450,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.AnalysisHandlers do
     %{
       previousDismissal: previous,
       findingId: finding.finding_id,
+      # Stable across evidence changes for the same rule+target: the anchor
+      # the explanation surface uses so a rerun cannot make it vanish.
+      findingKey: finding.finding_key,
       ruleId: finding.rule_id,
       ruleVersion: finding.rule_version,
       category: to_string(finding.category),

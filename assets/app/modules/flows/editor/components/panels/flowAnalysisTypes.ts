@@ -9,6 +9,8 @@ export type AnalysisTargetType = "flow" | "node";
 
 export interface AnalysisFinding {
   findingId: string;
+  /** Stable for rule+target across evidence changes; anchors the AI surface. */
+  findingKey: string;
   ruleId: string;
   ruleVersion: number;
   category: AnalysisCategory;
@@ -73,14 +75,15 @@ export interface ExplanationDisclosure {
 /** Bounded narrative. Never carries ids, severities, or actions. */
 export interface ExplanationResult {
   summary: string;
-  why_it_triggers: string;
+  whyItTriggers: string;
   implications: string[];
-  suggested_checks: string[];
+  suggestedChecks: string[];
 }
 
 export interface FlowExplanationState {
   available: boolean;
   findingId: string | null;
+  findingKey: string | null;
   status: ExplanationStatus;
   error: string | null;
   stale: boolean;

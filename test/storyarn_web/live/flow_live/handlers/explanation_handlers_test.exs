@@ -7,8 +7,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Accounts.Scope
   alias Storyarn.AI
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.Tasks.FlowFindingExplanation
   alias Storyarn.Flows
   alias Storyarn.Repo
   alias Storyarn.Workers.AIExecutionWorker
@@ -25,7 +27,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
     connection_fixture(flow, entry, stuck)
 
     FunWithFlags.enable(:ai_integrations, for_actor: user)
-    scope = Storyarn.Accounts.Scope.for_user(user)
+    scope = Scope.for_user(user)
     {:ok, _policy} = AI.update_workspace_policy(scope, project.workspace_id, ["managed"])
 
     original_settlement = Application.get_env(:storyarn, FakeSettlement, [])
@@ -85,6 +87,29 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
 
       assert explanation(view)["available"] == false
       assert explanation(view)["status"] == "idle"
+    end
+
+    test "an operationally disabled task is blocked, not hidden", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      original = Application.get_env(:storyarn, FlowFindingExplanation, [])
+      Application.put_env(:storyarn, FlowFindingExplanation, Keyword.put(original, :enabled, false))
+      on_exit(fn -> Application.put_env(:storyarn, FlowFindingExplanation, original) end)
+
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+
+      # The surface stays visible and says why, instead of vanishing.
+      assert explanation(view)["available"] == true
+
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+
+      props = explanation(view)
+      assert props["status"] == "blocked"
+      assert props["error"] == "task_disabled"
+      assert Repo.aggregate(Operation, :count) == 0
     end
 
     test "an eligible editor sees an idle surface", %{conn: conn, project: project, flow: flow} do
@@ -192,8 +217,58 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       props = explanation(view)
       assert props["status"] == "succeeded"
       assert props["stale"] == false
-      assert props["result"] |> Map.keys() |> Enum.sort() == ~w(implications suggested_checks summary why_it_triggers)
+      # camelCase at the Vue boundary: the model's snake_case stops server-side.
+      assert props["result"] |> Map.keys() |> Enum.sort() ==
+               ~w(implications suggestedChecks summary whyItTriggers)
+
       refute Map.has_key?(props["result"], "finding_id")
+    end
+
+    test "the result is readable only by its initiating actor", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+
+      operation = Repo.one!(Operation)
+      other_scope = Scope.for_user(Storyarn.AccountsFixtures.user_fixture())
+
+      assert {:error, :not_found} = AI.get_result(other_scope, operation.id)
+      assert AI.get_operation(other_scope, operation.id) == nil
+    end
+
+    test "a result past its TTL is reported as expired, never re-fetched", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      drain_execution!()
+
+      # The operation succeeded but its actor-private window closed before the
+      # panel polled for the narrative.
+      Storyarn.AI.Result
+      |> Repo.one!()
+      |> Ecto.Changeset.change(expires_at: DateTime.add(Storyarn.Shared.TimeHelpers.now(), -1, :second))
+      |> Repo.update!()
+
+      send(view.pid, :poll_explanation)
+
+      props = explanation(view)
+      assert props["status"] == "expired"
+      assert props["result"] == nil
     end
 
     test "a forged route reference never reaches the kernel", %{conn: conn, project: project, flow: flow} do

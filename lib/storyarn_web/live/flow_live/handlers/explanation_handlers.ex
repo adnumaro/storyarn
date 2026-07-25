@@ -32,6 +32,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   @type result :: {:noreply, Socket.t()}
 
   @poll_interval_ms 1_000
+  # The task's own timeout plus room for the queue; a stuck operation must not
+  # poll this LiveView forever.
+  @poll_deadline_ms 120_000
   @locales ~w(en es)
   @terminal_statuses ~w(succeeded failed unknown cancelled)
 
@@ -67,9 +70,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   def available?(socket) do
     user = socket.assigns.current_scope.user
 
+    # An operationally DISABLED task still shows the surface: the slice asks for
+    # an honest blocked state rather than a command that silently disappears.
+    # Only an unregistered task (a deployment without it) hides it.
     FeatureFlags.enabled?(:ai_integrations, for: user) and
       role_can_use_ai?(socket) and
-      match?({:ok, _task}, AI.fetch_task(FlowFindingExplanation.task_id()))
+      match?({:ok, _task}, AI.get_task(FlowFindingExplanation.task_id()))
   end
 
   # ===========================================================================
@@ -107,7 +113,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   """
   @spec handle_execute_explanation(map(), Socket.t()) :: result()
   def handle_execute_explanation(%{"route_ref" => route_ref}, socket) when is_binary(route_ref) do
-    with %{status: :preflight, routes: routes} = explanation <- socket.assigns[:explanation],
+    with true <- available?(socket) || {:error, :unavailable},
+         %{status: :preflight, routes: routes} = explanation <- socket.assigns[:explanation],
          true <- Enum.any?(routes, &(&1.requested_route_ref == route_ref)),
          {:ok, finding} <- current_finding(socket.assigns, explanation.finding_id) do
       execute(socket, explanation, finding, route_ref)
@@ -124,7 +131,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   def handle_poll(socket) do
     case socket.assigns[:explanation] do
       %{status: :running, operation_id: operation_id} = explanation ->
-        {:noreply, poll_operation(socket, explanation, operation_id)}
+        if poll_expired?(explanation) do
+          {:noreply, failed(socket, explanation, :result_timeout)}
+        else
+          {:noreply, poll_operation(socket, explanation, operation_id)}
+        end
 
       _settled_or_absent ->
         {:noreply, cancel_poll(socket)}
@@ -136,6 +147,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   # ===========================================================================
 
   defp preflight(socket, finding) do
+    # Any in-flight poll belongs to the previous run: cancel it before the
+    # state map (and its timer reference) is replaced.
+    socket = cancel_poll(socket)
+
     with {:ok, intent} <- build_intent(socket, finding, %{}),
          {:ok, preflight} <- AI.preflight(intent) do
       track(socket, "flow explanation preflight shown", %{
@@ -149,6 +164,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
        assign(socket, :explanation, %{
          status: :preflight,
          finding_id: finding.finding_id,
+         finding_key: finding.finding_key,
          rule_id: finding.rule_id,
          routes: preflight.route_options,
          blocked_lanes: preflight.blocked_lanes,
@@ -156,6 +172,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
          operation_id: nil,
          result: nil,
          error: nil,
+         polling_since: nil,
          timer_ref: nil
        })}
     else
@@ -207,6 +224,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
         explanation
         | status: :running,
           operation_id: operation.id,
+          polling_since: System.monotonic_time(:millisecond),
           error: nil
       })
       |> schedule_poll()
@@ -260,6 +278,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     end
   end
 
+  defp poll_expired?(%{polling_since: since}) when is_integer(since) do
+    System.monotonic_time(:millisecond) - since >= @poll_deadline_ms
+  end
+
+  defp poll_expired?(_explanation), do: false
+
   defp schedule_poll(socket) do
     socket = cancel_poll(socket)
     timer_ref = Process.send_after(self(), :poll_explanation, @poll_interval_ms)
@@ -289,6 +313,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     assign(socket, :explanation, %{
       status: :blocked,
       finding_id: finding.finding_id,
+      finding_key: finding.finding_key,
       rule_id: finding.rule_id,
       routes: [],
       blocked_lanes: [],
@@ -296,6 +321,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       operation_id: nil,
       result: nil,
       error: error_class(reason),
+      polling_since: nil,
       timer_ref: nil
     })
   end
@@ -336,6 +362,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     %{
       available: assigns[:explanation_available] || false,
       findingId: nil,
+      findingKey: nil,
       status: "idle",
       error: nil,
       stale: false,
@@ -350,6 +377,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     %{
       available: assigns[:explanation_available] || false,
       findingId: explanation.finding_id,
+      findingKey: explanation.finding_key,
       status: to_string(explanation.status),
       error: explanation.error,
       # Revalidated at PRESENTATION time: a result whose finding moved after it
@@ -358,7 +386,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       routes: Enum.map(explanation.routes, &route_props/1),
       blockedLanes: Enum.map(explanation.blocked_lanes, &blocked_lane_props/1),
       disclosure: explanation.disclosure,
-      result: explanation.result
+      result: result_props(explanation.result)
+    }
+  end
+
+  # The model answers in the task's schema (snake_case); Vue props are
+  # camelCase, and the boundary is here — not in the component.
+  defp result_props(nil), do: nil
+
+  defp result_props(result) do
+    %{
+      summary: result["summary"],
+      whyItTriggers: result["why_it_triggers"],
+      implications: result["implications"] || [],
+      suggestedChecks: result["suggested_checks"] || []
     }
   end
 

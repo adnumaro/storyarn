@@ -180,6 +180,19 @@ describe("AI command-palette contract", () => {
     );
   });
 
+  it("survives a remount that registers before the old instance cleans up", async () => {
+    const destination = { type: "panel", id: "translation-preflight" } as const;
+    const outgoing = registerAIDestination(destination, vi.fn());
+
+    // Vue mounts the incoming instance first, then unmounts the outgoing one.
+    const incomingHandler = vi.fn();
+    registerAIDestination(destination, incomingHandler);
+    outgoing();
+
+    await openAIDestination(destination, context);
+    expect(incomingHandler).toHaveBeenCalledOnce();
+  });
+
   it("does not let a stale unregister callback remove a newer registration", async () => {
     const destination = { type: "panel", id: "translation-preflight" } as const;
     const unregisterFirst = registerAIDestination(destination, vi.fn());

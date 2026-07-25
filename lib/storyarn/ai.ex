@@ -81,5 +81,8 @@ defmodule Storyarn.AI do
   @doc "Fetches one ENABLED registered task; `:task_disabled` when its switch is off."
   defdelegate fetch_task(task_id), to: TaskRegistry, as: :fetch
 
+  @doc "Fetches a registered task regardless of its operational switch."
+  defdelegate get_task(task_id), to: TaskRegistry, as: :get
+
   defdelegate ai_command_id?(command_id), to: TaskRegistry, as: :command_id?
 end

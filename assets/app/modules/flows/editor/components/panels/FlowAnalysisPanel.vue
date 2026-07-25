@@ -325,10 +325,13 @@ watchEffect((onCleanup) => {
             }}
           </p>
         </div>
+        <!-- Keyed by findingKey, not findingId: the id rotates with the
+             evidence fingerprint, so keying on it would collapse every
+             expanded card (and drop its AI surface) on each rerun. -->
         <ul v-else class="space-y-1.5">
           <FlowAnalysisFindingCard
             v-for="finding in shownFindings"
-            :key="finding.findingId"
+            :key="finding.findingKey"
             :finding="finding"
             :can-edit="canEdit"
             :reason-codes="reasonCodes"

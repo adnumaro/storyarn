@@ -1,8 +1,10 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
-import FlowAnalysisPanel from "../../../../../../modules/flows/editor/components/panels/FlowAnalysisPanel.vue";
-import type { AnalysisFinding } from "../../../../../../modules/flows/editor/components/panels/flowAnalysisTypes";
-import { createMockLive } from "../../../../../setup";
+import { afterEach, describe, expect, it } from "vitest";
+import { isAIPaletteCommand } from "@shared/command-palette/aiCommands";
+import { paletteGroups } from "@shared/command-palette/registry";
+import FlowAnalysisPanel from "@modules/flows/editor/components/panels/FlowAnalysisPanel.vue";
+import type { AnalysisFinding } from "@modules/flows/editor/components/panels/flowAnalysisTypes.ts";
+import { createMockLive } from "@app/test/setup.ts";
 
 const REASON_CODES = [
   "intentional_design",
@@ -16,6 +18,7 @@ const REASON_CODES = [
 function finding(overrides: Partial<AnalysisFinding> = {}): AnalysisFinding {
   return {
     findingId: "sf1_abc",
+    findingKey: "no_outgoing_connection:1:node:42",
     ruleId: "no_outgoing_connection",
     ruleVersion: 1,
     category: "structure",
@@ -175,5 +178,90 @@ describe("FlowAnalysisPanel", () => {
     const { wrapper } = mountPanel({ active: [] });
 
     expect(wrapper.get('[data-testid="analysis-empty"]').text()).toContain("No active findings");
+  });
+
+  describe("AI palette command", () => {
+    const explanationState = {
+      available: true,
+      findingId: null,
+      findingKey: null,
+      status: "idle" as const,
+      error: null,
+      stale: false,
+      routes: [],
+      blockedLanes: [],
+      disclosure: null,
+      result: null,
+    };
+
+    function explainCommands() {
+      return paletteGroups.value
+        .flatMap((group) => group.commands)
+        .filter((command) => command.id === "flows.explain_finding");
+    }
+
+    afterEach(() => {
+      wrappers.forEach((wrapper) => wrapper.unmount());
+      wrappers.length = 0;
+    });
+
+    const wrappers: ReturnType<typeof mountPanel>["wrapper"][] = [];
+
+    it("is hidden while no finding is selected", () => {
+      const { wrapper } = mountPanel({ explanation: explanationState });
+      wrappers.push(wrapper);
+
+      expect(explainCommands()).toHaveLength(0);
+    });
+
+    it("appears for the expanded finding and disappears when it collapses", async () => {
+      const { wrapper } = mountPanel({ explanation: explanationState });
+      wrappers.push(wrapper);
+
+      await wrapper.find("[data-testid='analysis-finding']").trigger("click");
+      expect(explainCommands()).toHaveLength(1);
+
+      await wrapper.find("[data-testid='analysis-finding']").trigger("click");
+      expect(explainCommands()).toHaveLength(0);
+    });
+
+    it("stays hidden when the actor cannot use AI", async () => {
+      const { wrapper } = mountPanel({
+        explanation: { ...explanationState, available: false },
+      });
+      wrappers.push(wrapper);
+
+      await wrapper.find("[data-testid='analysis-finding']").trigger("click");
+
+      expect(explainCommands()).toHaveLength(0);
+    });
+
+    it("launches the panel preflight for the selected finding", async () => {
+      const { live, wrapper } = mountPanel({ explanation: explanationState });
+      wrappers.push(wrapper);
+
+      await wrapper.find("[data-testid='analysis-finding']").trigger("click");
+      const [command] = explainCommands();
+
+      // Narrowing through the exported guard is also the assertion that the
+      // command registers as an AI command and not as an ordinary one.
+      expect(isAIPaletteCommand(command)).toBe(true);
+      if (!isAIPaletteCommand(command) || command.mode !== "launch") {
+        throw new Error("expected an AI launch command");
+      }
+
+      // Cost is disclosed by the panel, never by the palette.
+      expect(command.cost).toEqual({ kind: "deferred_to_preflight" });
+
+      await command.launch();
+
+      // The useLive wrapper consumes the onError callback, so the raw mock
+      // sees three arguments.
+      expect(live.pushEvent).toHaveBeenCalledWith(
+        "open_explanation",
+        { finding_id: "sf1_abc" },
+        undefined,
+      );
+    });
   });
 });
