@@ -253,6 +253,35 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       assert keys == Enum.uniq(keys)
     end
 
+    test "reopening inside the TTL replays the paid result instead of buying another", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+
+      render_click(view, "close_explanation", %{})
+      assert explanation(view)["status"] == "idle"
+
+      # Reopening resets `attempt` to 0, so the deterministic key resolves to the
+      # operation already paid for and the kernel replays it.
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => reopened_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => reopened_ref})
+      send(view.pid, :poll_explanation)
+
+      assert explanation(view)["status"] == "succeeded"
+      assert explanation(view)["result"]["summary"]
+      assert Repo.aggregate(Operation, :count) == 1
+    end
+
     test "a poll tick that changes nothing re-renders nothing", %{
       conn: conn,
       project: project,
