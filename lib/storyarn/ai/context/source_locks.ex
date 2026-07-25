@@ -3,8 +3,6 @@ defmodule Storyarn.AI.Context.SourceLocks do
 
   import Ecto.Query
 
-  alias Storyarn.AI.Context.Entity
-  alias Storyarn.AI.Context.EvidenceLoader
   alias Storyarn.AI.Operation
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
@@ -14,7 +12,7 @@ defmodule Storyarn.AI.Context.SourceLocks do
   alias Storyarn.Sheets.Sheet
 
   @persisted_types ~w(flow flow_node flow_connection sheet sheet_block)
-  @virtual_types ~w(dialogue_response structural_finding)
+  @virtual_types ~w(dialogue_response)
   @max_included_sources 500
 
   @type source_ids :: %{String.t() => MapSet.t(pos_integer())}
@@ -36,8 +34,7 @@ defmodule Storyarn.AI.Context.SourceLocks do
          {:ok, roots} <- resolve_roots(project_id, source_ids),
          :ok <- lock_roots(project_id, roots),
          {:ok, locked_children} <- lock_children(source_ids, roots),
-         :ok <- included_sources_locked(source_ids, roots, locked_children),
-         :ok <- verify_structural_evidence(project_id, manifest) do
+         :ok <- included_sources_locked(source_ids, roots, locked_children) do
       :ok
     else
       _error -> {:error, :stale_context}
@@ -317,56 +314,6 @@ defmodule Storyarn.AI.Context.SourceLocks do
     ]
 
     if Enum.all?(checks), do: :ok, else: {:error, :context_missing}
-  end
-
-  defp verify_structural_evidence(project_id, manifest) do
-    if value(manifest, :scope) == "structural_finding" do
-      verify_evidence_entries(project_id, value(manifest, :included))
-    else
-      :ok
-    end
-  end
-
-  defp verify_evidence_entries(project_id, included) do
-    evidence_entries =
-      Enum.filter(included, &(value(&1, :type) in @persisted_types))
-
-    descriptors =
-      Enum.map(evidence_entries, fn item ->
-        %{"type" => value(item, :type), "id" => value(item, :id)}
-      end)
-
-    with {:ok, evidence} <- EvidenceLoader.load(project_id, descriptors),
-         true <- length(evidence) == length(evidence_entries),
-         :ok <- evidence_matches_manifest(evidence, evidence_entries) do
-      :ok
-    else
-      _error -> {:error, :stale_context}
-    end
-  end
-
-  defp evidence_matches_manifest(evidence, entries) do
-    expected = Map.new(entries, &{{value(&1, :type), value(&1, :id)}, &1})
-
-    if Enum.all?(evidence, &evidence_matches_entry?(&1, expected)) do
-      :ok
-    else
-      {:error, :stale_context}
-    end
-  end
-
-  defp evidence_matches_entry?(item, expected) do
-    entity =
-      Entity.new(item.type, item.id, item.content, revision: item.revision)
-
-    case {entity, Map.get(expected, {item.type, item.id})} do
-      {{:ok, entity}, %{} = manifest_entry} ->
-        entity.hash == value(manifest_entry, :hash) and
-          entity.revision == value(manifest_entry, :revision)
-
-      _missing ->
-        false
-    end
   end
 
   defp exact_ids(locked_ids, expected_ids) do

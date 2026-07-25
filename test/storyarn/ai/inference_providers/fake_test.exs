@@ -2,8 +2,8 @@ defmodule Storyarn.AI.InferenceProviders.FakeTest do
   use ExUnit.Case, async: true
 
   alias Storyarn.AI.InferenceProviders.Fake
-  alias Storyarn.AI.Tasks.FlowFindingExplanation
   alias Storyarn.AI.Tasks.ManagedDiagnostic
+  alias StoryarnTest.AI.ContractTask
 
   test "unwraps only the exact context envelope emitted by execution" do
     request = %{"text" => "Use bounded context"}
@@ -33,19 +33,20 @@ defmodule Storyarn.AI.InferenceProviders.FakeTest do
 
   describe "schema-derived output" do
     test "answers a registered task with a minimal instance of its own contract" do
-      %{provider_options: options} = FlowFindingExplanation.definition()
+      # Exercised through a fixture task since Slice 7.1a.0 removed the production
+      # one this used to use. What matters is unchanged: the schema scenario must
+      # produce something the task's OWN validator accepts.
+      %{provider_options: options} = ContractTask.definition()
 
       assert {:ok, %{output: output}} =
                Fake.generate(nil, %{
-                 input: contextual_input(%{"locale" => "en"}, scope: "structural_finding"),
+                 input: contextual_input(%{"text" => "hello"}, scope: "dialogue"),
                  contextual?: true,
                  provider_options: options
                })
 
-      # The point of the schema scenario: the task's OWN validator accepts it.
-      assert :ok = FlowFindingExplanation.validate_output(output)
-      assert Enum.sort(Map.keys(output)) == ~w(implications suggested_checks summary why_it_triggers)
-      refute Map.has_key?(output, "finding_id")
+      assert :ok = ContractTask.validate_output(output)
+      assert Map.keys(output) == ["echo"]
     end
 
     # The operator diagnostic is the health check for the managed path: a

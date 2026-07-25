@@ -760,29 +760,6 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
                "HealthChecker code #{code} is unclassified"
       end
     end
-
-    test "to_context_map/1 is accepted by the Slice-6 subject boundary", %{
-      project: project,
-      flow: flow
-    } do
-      entry = entry_node(flow)
-      stuck = node_fixture(flow, %{type: "dialogue"})
-      connection_fixture(flow, entry, stuck)
-
-      [finding] = rule_findings(analyze!(project, flow), "no_outgoing_connection")
-      context_map = Storyarn.Flows.StructuralAnalysis.Finding.to_context_map(finding)
-
-      assert {:ok, _hash} = Storyarn.Shared.CanonicalJSON.hash(context_map)
-
-      assert {:ok, _ref} =
-               Storyarn.AI.Context.SubjectRef.structural_finding(
-                 1,
-                 project.id,
-                 finding.finding_id,
-                 context_map,
-                 Enum.map(finding.evidence, &%{type: &1.type, id: &1.id})
-               )
-    end
   end
 
   describe "from_serialized parity" do

@@ -1075,10 +1075,6 @@ defmodule Storyarn.Flows do
           {:ok, StructuralAnalysis.Finding.identity()} | {:error, :invalid_finding_identity}
   defdelegate decode_structural_finding_identity(encoded), to: StructuralAnalysis.Finding, as: :decode_identity
 
-  @doc "CanonicalJSON-safe map of a finding, for the AI context boundary."
-  @spec structural_finding_context_map(StructuralAnalysis.Finding.t()) :: map()
-  defdelegate structural_finding_context_map(finding), to: StructuralAnalysis.Finding, as: :to_context_map
-
   @doc "Rule ids of the frozen structural-analysis catalog."
   @spec structural_rule_ids() :: [String.t()]
   defdelegate structural_rule_ids(), to: StructuralAnalysis.Rules, as: :rule_ids

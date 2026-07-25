@@ -4,7 +4,6 @@ import {
   ChevronRight,
   CircleAlert,
   Crosshair,
-  Sparkles,
   TriangleAlert,
   Undo2,
 } from "lucide-vue-next";
@@ -12,8 +11,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import FlowAnalysisDismissForm from "./FlowAnalysisDismissForm.vue";
-import FlowAnalysisExplanation from "./FlowAnalysisExplanation.vue";
-import type { AnalysisFinding, FlowExplanationState } from "./flowAnalysisTypes";
+import type { AnalysisFinding } from "./flowAnalysisTypes";
 
 const {
   finding,
@@ -22,7 +20,6 @@ const {
   maxNoteLength = 2000,
   dismissed = false,
   actionError = null,
-  explanation = null,
 } = defineProps<{
   finding: AnalysisFinding;
   canEdit?: boolean;
@@ -30,7 +27,6 @@ const {
   maxNoteLength?: number;
   dismissed?: boolean;
   actionError?: string | null;
-  explanation?: FlowExplanationState | null;
 }>();
 
 const emit = defineEmits<{
@@ -38,11 +34,6 @@ const emit = defineEmits<{
   restore: [dismissalId: number];
   navigate: [type: string, id: number];
   toggle: [findingId: string, expanded: boolean];
-  explain: [findingId: string];
-  execute: [routeRef: string];
-  rerunExplanation: [];
-  resumeExplanation: [];
-  closeExplanation: [];
 }>();
 
 const { t, te } = useI18n();
@@ -132,13 +123,6 @@ function onDismissSubmit(reasonCode: string, note: string): void {
       >
         {{ ruleLabel }}
       </span>
-      <Sparkles
-        v-if="finding.hasExplanation"
-        class="size-3.5 shrink-0 text-primary"
-        role="img"
-        :aria-label="t('flows.analysis.has_explanation')"
-        data-testid="analysis-has-explanation"
-      />
       <span class="shrink-0 text-xs text-muted-foreground">{{ targetLabel }}</span>
       <component
         :is="expanded ? ChevronDown : ChevronRight"
@@ -192,18 +176,6 @@ function onDismissSubmit(reasonCode: string, note: string): void {
           </li>
         </ul>
       </div>
-
-      <FlowAnalysisExplanation
-        v-if="!dismissed && explanation"
-        :finding-id="finding.findingId"
-        :finding-key="finding.findingKey"
-        :explanation="explanation"
-        @explain="emit('explain', $event)"
-        @execute="emit('execute', $event)"
-        @rerun="emit('rerunExplanation')"
-        @resume="emit('resumeExplanation')"
-        @close="emit('closeExplanation')"
-      />
 
       <div v-if="dismissed" class="space-y-2">
         <p class="text-xs text-muted-foreground">{{ dismissedMeta }}</p>

@@ -1,7 +1,29 @@
 # Slice 7.1a.0 — Remove the structural-finding AI explanation
 
-**Status:** specified, not started. An independent PR, **merged before 7.1a.1
-begins**. Slice 7.2a merges first, unchanged.
+**Status:** implemented on `codex/slice7-1a-0-remove-finding-explanation`. Slice 7.2a
+merged first, unchanged (PR #49). This PR lands before 7.1a.1 begins.
+
+**Four things the inventory below did not anticipate**, all found by the
+grep-to-zero and Kept-table checks rather than by reading:
+
+1. `context_test.exs` had ~10 sites bound to the structural scope, and
+   `context_source_locks_test.exs` was built entirely on it. The latter tests
+   generic kernel machinery, so it was **rewritten** against `dialogue` and
+   `flow_neighborhood` rather than deleted.
+2. Removing the scope made `SourceLocks.verify_evidence_entries/2` and
+   `Context.EvidenceLoader` unreachable — that re-verification ran *only* for the
+   non-persistable scope, because it was the one that could not be rebuilt from a
+   persisted subject. Every surviving scope is checked more strongly one layer up,
+   where `Context.operation_current?/3` rebuilds the package and compares hashes.
+   No capability was lost; both were deleted as dead code.
+3. The DB CHECK constraints on `ai_route_options` and `ai_operations` still named
+   `structural_finding`, so the schema would have kept accepting a shape the
+   application can no longer produce. A migration narrows both.
+4. **Five Kept rows lost all coverage** when the panel's 38 tests went:
+   `release_if_unstarted/2`, `created_operation?/3`, the two idempotency-key
+   lookups and `record_view/2`. `test/storyarn/ai/kernel_spend_guarantees_test.exs`
+   restores it against the fixture task — 14 tests, each verified by breaking the
+   production code and watching the right one fail.
 
 ## Why a feature that shipped is being removed
 

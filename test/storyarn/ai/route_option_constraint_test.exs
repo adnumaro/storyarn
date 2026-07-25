@@ -17,7 +17,6 @@ defmodule Storyarn.AI.RouteOptionConstraintTest do
         ] do
       definition = constraint_definition(constraint_name)
 
-      assert definition =~ "structural_finding"
       assert definition =~ "dialogue"
       assert definition =~ "flow_neighborhood"
       assert definition =~ "sheet"
@@ -30,8 +29,6 @@ defmodule Storyarn.AI.RouteOptionConstraintTest do
   test "route option changesets enforce context subject persistence by scope" do
     assert route_option_changeset("sheet", context_subject()).valid?
     refute route_option_changeset("sheet", nil).valid?
-    assert route_option_changeset("structural_finding", nil).valid?
-    refute route_option_changeset("structural_finding", context_subject()).valid?
     refute route_option_changeset(nil, nil).valid?
     refute route_option_changeset("unknown", context_subject()).valid?
 
@@ -44,8 +41,6 @@ defmodule Storyarn.AI.RouteOptionConstraintTest do
   test "operation changesets enforce context subject persistence by scope" do
     assert operation_changeset("dialogue", context_subject()).valid?
     refute operation_changeset("dialogue", nil).valid?
-    assert operation_changeset("structural_finding", nil).valid?
-    refute operation_changeset("structural_finding", context_subject()).valid?
     refute operation_changeset(nil, nil).valid?
     refute operation_changeset("unknown", context_subject()).valid?
 

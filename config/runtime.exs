@@ -11,7 +11,6 @@ alias Storyarn.AI.InferenceProviders.Personal.Mistral, as: PersonalMistral
 alias Storyarn.AI.InferenceProviders.Personal.Moonshot, as: PersonalMoonshot
 alias Storyarn.AI.InferenceProviders.Personal.OpenAI, as: PersonalOpenAI
 alias Storyarn.AI.InferenceProviders.Together
-alias Storyarn.AI.Tasks.FlowFindingExplanation
 alias Storyarn.AI.Tasks.ManagedDiagnostic
 
 env = fn key ->
@@ -84,12 +83,10 @@ managed_ai_enabled? = config_env() != :test and bool_env.("STORYARN_AI_MANAGED_E
 
 inference_providers = %{}
 credential_adapters = %{}
-# The structural-finding explanation registers regardless of provider
-# configuration: a deployment without a managed provider must still offer the
-# command and report an honest blocked state instead of hiding it. The test
-# environment owns its own registry in config/test.exs.
-registered_tasks =
-  if config_env() == :test, do: [], else: [FlowFindingExplanation]
+# No production task registers unconditionally today: the managed diagnostic is
+# appended below only when a managed provider is configured. The test environment
+# owns its own registry in config/test.exs.
+registered_tasks = []
 
 {inference_providers, credential_adapters} =
   if config_env() == :test do

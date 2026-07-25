@@ -82,7 +82,7 @@ defmodule Storyarn.AI.Context.ModelLimits do
         } = input
       )
       when map_size(input) == 2 and map_size(context) == 3 and (is_map(request) or is_list(request)) and
-             scope in ["dialogue", "flow_neighborhood", "sheet", "structural_finding"] and is_list(entities), do: true
+             scope in ["dialogue", "flow_neighborhood", "sheet"] and is_list(entities), do: true
 
   def contextual_input?(_input), do: false
 

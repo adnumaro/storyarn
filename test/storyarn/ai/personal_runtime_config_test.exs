@@ -99,12 +99,10 @@ defmodule Storyarn.AI.PersonalRuntimeConfigTest do
     refute Keyword.has_key?(config, ModelCatalog)
     refute Keyword.has_key?(config, RouteResolver)
 
-    # Slice 7.2a: the end-user task registers even with no managed provider, so
-    # a BYOK-only deployment reports an honest blocked state instead of hiding
-    # the command. Only the operator diagnostic stays managed-gated.
-    assert config
-           |> Keyword.fetch!(Storyarn.AI.TaskRegistry)
-           |> Keyword.fetch!(:tasks) == [Storyarn.AI.Tasks.FlowFindingExplanation]
+    # No production task registers unconditionally since Slice 7.1a.0 removed the
+    # end-user explanation. The operator diagnostic is managed-gated, so a
+    # BYOK-only deployment registers nothing at all.
+    refute Keyword.has_key?(config, Storyarn.AI.TaskRegistry)
   end
 
   test "endpoint overrides do not select or replace a default model" do

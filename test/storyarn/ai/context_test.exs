@@ -18,7 +18,6 @@ defmodule Storyarn.AI.ContextTest do
   alias Storyarn.Shared.CanonicalJSON
   alias Storyarn.Sheets.Block
   alias StoryarnTest.AI.ContextTask
-  alias StoryarnTest.AI.ContextWithoutStalenessTask
 
   setup do
     scope = user_scope_fixture()
@@ -590,122 +589,6 @@ defmodule Storyarn.AI.ContextTest do
       assert length(package.manifest.included) == 2
     end
 
-    test "builds a structural finding only when all required evidence fits", %{
-      scope: scope,
-      project: project
-    } do
-      flow = flow_fixture(project)
-      first_node = node_fixture(flow, %{data: %{"text" => "Loaded from the project"}})
-      second_node = node_fixture(flow)
-
-      task =
-        task(%{
-          scope: :structural_finding,
-          max_depth: 0,
-          max_fan_out: 1,
-          max_entities: 3,
-          max_bytes: 8_192,
-          tokenizer: nil,
-          fields: %{}
-        })
-
-      {:ok, ref} =
-        SubjectRef.structural_finding(
-          project.workspace_id,
-          project.id,
-          "orphan-node",
-          %{"severity" => "warning"},
-          [%{"type" => "flow_node", "id" => first_node.id}]
-        )
-
-      assert {:ok, package} = Context.build_context(scope, task, ref)
-      assert length(package.manifest.included) == 2
-      assert hd(package.payload["entities"])["type"] == "structural_finding"
-
-      assert Enum.any?(package.payload["entities"], fn entity ->
-               entity["type"] == "flow_node" and entity["id"] == first_node.id and
-                 entity["content"]["data"]["text"] == "Loaded from the project"
-             end)
-
-      {:ok, oversized_ref} =
-        SubjectRef.structural_finding(
-          project.workspace_id,
-          project.id,
-          "orphan-node",
-          %{"severity" => "warning"},
-          [
-            %{"type" => "flow_node", "id" => first_node.id},
-            %{"type" => "flow_node", "id" => second_node.id}
-          ]
-        )
-
-      assert {:error, :context_too_large} = Context.build_context(scope, task, oversized_ref)
-    end
-
-    test "rejects duplicate structural evidence identities", %{project: project} do
-      evidence = [
-        %{"type" => "flow_node", "id" => 42},
-        %{"type" => "flow_node", "id" => 42}
-      ]
-
-      assert {:error, :invalid_context_subject} =
-               SubjectRef.structural_finding(
-                 project.workspace_id,
-                 project.id,
-                 "duplicate-evidence",
-                 %{"severity" => "warning"},
-                 evidence
-               )
-
-      assert {:error, :invalid_context_subject} =
-               SubjectRef.structural_finding(
-                 project.workspace_id,
-                 project.id,
-                 "invalid-evidence",
-                 %{"severity" => "warning"},
-                 [:invalid]
-               )
-
-      assert {:error, :invalid_context_subject} =
-               SubjectRef.structural_finding(
-                 project.workspace_id,
-                 project.id,
-                 "caller-content",
-                 %{"severity" => "warning"},
-                 [%{"type" => "flow_node", "id" => 42, "content" => %{"secret" => true}}]
-               )
-    end
-
-    test "structural evidence cannot cross project boundaries", %{scope: scope, project: project} do
-      foreign_project = project_fixture(scope.user)
-      foreign_flow = flow_fixture(foreign_project)
-      foreign_node = node_fixture(foreign_flow, %{data: %{"text" => "Must stay private"}})
-
-      {:ok, ref} =
-        SubjectRef.structural_finding(
-          project.workspace_id,
-          project.id,
-          "foreign-node",
-          %{"severity" => "warning"},
-          [%{"type" => "flow_node", "id" => foreign_node.id}]
-        )
-
-      assert {:error, :context_missing} =
-               Context.build_context(
-                 scope,
-                 task(%{
-                   scope: :structural_finding,
-                   max_depth: 0,
-                   max_fan_out: 1,
-                   max_entities: 3,
-                   max_bytes: 8_192,
-                   tokenizer: nil,
-                   fields: %{}
-                 }),
-                 ref
-               )
-    end
-
     test "rejects task policies that could request project-scale context" do
       refute Policy.valid?(%{
                scope: :flow_neighborhood,
@@ -716,50 +599,6 @@ defmodule Storyarn.AI.ContextTest do
                tokenizer: nil,
                fields: %{}
              })
-    end
-
-    test "requires a durable staleness callback for non-persistable structural context" do
-      assert {:error, errors} =
-               Task.new(ContextWithoutStalenessTask, ContextWithoutStalenessTask.definition())
-
-      assert :missing_context_staleness_check in errors
-    end
-
-    test "structural staleness callbacks fail closed unless they return exactly true", %{
-      scope: scope
-    } do
-      task =
-        task(%{
-          scope: :structural_finding,
-          max_depth: 0,
-          max_fan_out: 1,
-          max_entities: 3,
-          max_bytes: 8_192,
-          tokenizer: nil,
-          fields: %{}
-        })
-
-      operation = %Operation{
-        context_hash: String.duplicate("0", 64),
-        context_manifest: %{},
-        context_subject: nil
-      }
-
-      key = {ContextTask, :subject_current?}
-
-      try do
-        for callback_result <- [false, nil, :unknown, {:error, :unavailable}] do
-          Process.put(key, callback_result)
-          refute Task.subject_current?(task, operation)
-          assert {:error, :stale_context} = Context.operation_current?(scope, task, operation)
-        end
-
-        Process.put(key, true)
-        assert Task.subject_current?(task, operation)
-        assert :ok = Context.operation_current?(scope, task, operation)
-      after
-        Process.delete(key)
-      end
     end
 
     test "final serialization and hash are invariant to builder entity order" do

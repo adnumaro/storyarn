@@ -123,7 +123,6 @@ defmodule Storyarn.AI.Context do
   defp builder(:dialogue), do: Storyarn.AI.Context.Builders.Dialogue
   defp builder(:flow_neighborhood), do: Storyarn.AI.Context.Builders.FlowNeighborhood
   defp builder(:sheet), do: Storyarn.AI.Context.Builders.Sheet
-  defp builder(:structural_finding), do: Storyarn.AI.Context.Builders.StructuralFinding
 
   defp prepare_context(scope, task, intent_or_operation) do
     with {:ok, subject_ref} <- Task.context_subject(task, intent_or_operation),
@@ -152,10 +151,8 @@ defmodule Storyarn.AI.Context do
   defp matching_owner(%SubjectRef{}, _intent_or_operation), do: {:error, :invalid_context_subject}
 
   defp persistable_subject(subject_ref) do
-    case SubjectRef.persisted_map(subject_ref) do
-      {:ok, persisted} -> persisted
-      {:error, :context_subject_not_persistable} -> nil
-    end
+    {:ok, persisted} = SubjectRef.persisted_map(subject_ref)
+    persisted
   end
 
   defp emit_telemetry(task, result, started) do

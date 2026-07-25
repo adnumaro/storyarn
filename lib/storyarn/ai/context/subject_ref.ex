@@ -6,11 +6,7 @@ defmodule Storyarn.AI.Context.SubjectRef do
   registered task must derive it from its validated intent.
   """
 
-  alias Storyarn.Shared.CanonicalJSON
-
-  @kinds [:dialogue, :flow_neighborhood, :sheet, :structural_finding]
-  @evidence_types ~w(flow flow_node flow_connection sheet sheet_block)
-  @max_evidence_items 50
+  @kinds [:dialogue, :flow_neighborhood, :sheet]
   @max_bigint 9_223_372_036_854_775_807
 
   @enforce_keys [:kind, :workspace_id, :project_id, :subject_id]
@@ -20,9 +16,7 @@ defmodule Storyarn.AI.Context.SubjectRef do
     :project_id,
     :subject_id,
     :response_id,
-    :finding,
-    block_ids: [],
-    evidence: []
+    block_ids: []
   ]
 
   @type t :: %__MODULE__{}
@@ -49,20 +43,11 @@ defmodule Storyarn.AI.Context.SubjectRef do
     })
   end
 
-  @spec structural_finding(pos_integer(), pos_integer(), String.t(), map(), [map()]) ::
-          {:ok, t()} | {:error, :invalid_context_subject}
-  def structural_finding(workspace_id, project_id, finding_id, finding, evidence \\ []) do
-    build(:structural_finding, workspace_id, project_id, finding_id, %{
-      finding: finding,
-      evidence: evidence
-    })
-  end
-
   @spec validate(t()) :: {:ok, t()} | {:error, :invalid_context_subject}
   def validate(%__MODULE__{} = ref) do
     if ref.kind in @kinds and valid_id?(ref.workspace_id) and valid_id?(ref.project_id) and
          valid_subject_id?(ref.kind, ref.subject_id) and valid_response_id?(ref.response_id) and
-         valid_ids?(ref.block_ids) and valid_finding?(ref) and valid_evidence?(ref.evidence) do
+         valid_ids?(ref.block_ids) do
       {:ok, ref}
     else
       {:error, :invalid_context_subject}
@@ -71,10 +56,12 @@ defmodule Storyarn.AI.Context.SubjectRef do
 
   def validate(_ref), do: {:error, :invalid_context_subject}
 
+  # Every kind is persistable today. Slice 7.1a.0 removed the one that was not
+  # (`:structural_finding`, whose id was a string), and with it the task-contract
+  # guard that forced such a kind to implement `subject_current?/1` for staleness.
+  # A future non-persistable kind must restore both halves together.
   @doc "Returns the content-free portion that may be persisted with an operation."
   @spec persisted_map(t()) :: {:ok, map()} | {:error, :context_subject_not_persistable}
-  def persisted_map(%__MODULE__{kind: :structural_finding}), do: {:error, :context_subject_not_persistable}
-
   def persisted_map(%__MODULE__{} = ref) do
     {:ok,
      %{
@@ -110,41 +97,9 @@ defmodule Storyarn.AI.Context.SubjectRef do
       project_id: project_id,
       subject_id: subject_id,
       response_id: Map.get(attrs, :response_id),
-      block_ids: Map.get(attrs, :block_ids, []),
-      finding: Map.get(attrs, :finding),
-      evidence: Map.get(attrs, :evidence, [])
+      block_ids: Map.get(attrs, :block_ids, [])
     })
   end
-
-  defp valid_finding?(%__MODULE__{kind: :structural_finding, finding: finding}) when is_map(finding),
-    do: serializable?(finding)
-
-  defp valid_finding?(%__MODULE__{kind: :structural_finding}), do: false
-  defp valid_finding?(%__MODULE__{finding: nil}), do: true
-  defp valid_finding?(_ref), do: false
-
-  defp valid_evidence?(evidence) when is_list(evidence) do
-    if length(evidence) <= @max_evidence_items and Enum.all?(evidence, &valid_evidence_item?/1) do
-      keys = Enum.map(evidence, &{value(&1, :type), value(&1, :id)})
-      Enum.uniq(keys) == keys
-    else
-      false
-    end
-  end
-
-  defp valid_evidence?(_evidence), do: false
-
-  defp valid_evidence_item?(%{} = item) do
-    normalized_keys = Enum.map(Map.keys(item), &normalize_evidence_key/1)
-
-    Enum.sort(normalized_keys) == ["id", "type"] and
-      value(item, :type) in @evidence_types and
-      valid_subject_id?(:evidence, value(item, :id))
-  end
-
-  defp valid_evidence_item?(_item), do: false
-
-  defp serializable?(value), do: match?({:ok, _encoded}, CanonicalJSON.encode(value))
 
   defp valid_ids?(ids) when is_list(ids),
     do: length(ids) <= 1_000 and Enum.uniq(ids) == ids and Enum.all?(ids, &valid_id?/1)
@@ -152,17 +107,10 @@ defmodule Storyarn.AI.Context.SubjectRef do
   defp valid_ids?(_ids), do: false
   defp valid_id?(value), do: is_integer(value) and value > 0 and value <= @max_bigint
 
-  defp valid_subject_id?(:structural_finding, value),
-    do: is_binary(value) and byte_size(value) > 0 and byte_size(value) <= 200
-
   defp valid_subject_id?(_kind, value), do: valid_id?(value)
 
   defp valid_response_id?(nil), do: true
   defp valid_response_id?(value), do: is_binary(value) and byte_size(value) > 0 and byte_size(value) <= 200
-
-  defp normalize_evidence_key(key) when is_atom(key), do: Atom.to_string(key)
-  defp normalize_evidence_key(key) when is_binary(key), do: key
-  defp normalize_evidence_key(_key), do: :invalid
 
   defp value(attrs, key), do: Map.get(attrs, key, Map.get(attrs, Atom.to_string(key)))
 

@@ -13,7 +13,6 @@ defmodule Storyarn.AI do
   a panel needs to recover or attach to an operation it already paid for.
   """
 
-  alias Storyarn.Accounts.Scope
   alias Storyarn.AI.Allowance
   alias Storyarn.AI.Execution
   alias Storyarn.AI.ExecutionIntent
@@ -30,7 +29,6 @@ defmodule Storyarn.AI do
   alias Storyarn.AI.RouteResolver
   alias Storyarn.AI.Runtime
   alias Storyarn.AI.TaskRegistry
-  alias Storyarn.AI.Tasks.FlowFindingExplanation
 
   defdelegate list_active(user), to: IntegrationCrud
   defdelegate get_active(user, provider), to: IntegrationCrud
@@ -63,76 +61,6 @@ defmodule Storyarn.AI do
 
   defdelegate new_intent(scope, attrs), to: ExecutionIntent, as: :new
 
-  @doc """
-  Whether the flow-finding explanation task is registered at all.
-
-  Ignores the operational switch: a disabled task still shows an honest blocked
-  state, only an unregistered one (a deployment without it) hides the surface.
-  """
-  @spec flow_finding_explanation_registered?() :: boolean()
-  def flow_finding_explanation_registered? do
-    match?({:ok, _task}, get_task(FlowFindingExplanation.task_id()))
-  end
-
-  @doc """
-  Builds the intent for explaining ONE authorized structural finding.
-
-  The task's wire format — input shape, subject identity, idempotency key — stays
-  inside this context. A caller supplies the finding it already authorized plus
-  the attempt counter, so bumping `input_schema_version` cannot leave a LiveView
-  silently behind: there is nothing to bump out there.
-
-  `attempt` is what buys a second explanation of the same occurrence; 0 replays
-  whatever the actor already paid for.
-  """
-  @spec flow_finding_explanation_intent(Scope.t(), map()) ::
-          {:ok, ExecutionIntent.t()} | {:error, atom()}
-  def flow_finding_explanation_intent(scope, %{} = params) do
-    %{
-      workspace_id: workspace_id,
-      project_id: project_id,
-      flow_id: flow_id,
-      finding: finding,
-      locale: locale
-    } = params
-
-    attrs = %{
-      workspace_id: workspace_id,
-      project_id: project_id,
-      task_id: FlowFindingExplanation.task_id(),
-      input: FlowFindingExplanation.input(finding, locale),
-      subject: FlowFindingExplanation.subject(flow_id, finding)
-    }
-
-    attrs =
-      case params do
-        %{route_ref: route_ref, attempt: attempt} ->
-          Map.merge(attrs, %{
-            requested_route_ref: route_ref,
-            idempotency_key: FlowFindingExplanation.idempotency_key(scope.user.id, finding, locale, attempt)
-          })
-
-        _preflight_only ->
-          attrs
-      end
-
-    ExecutionIntent.new(scope, attrs)
-  end
-
-  @doc """
-  The idempotency key an explanation attempt would use, for a replay probe.
-
-  Takes the locale because the key includes it: probing without it would surface a
-  narrative in the wrong language.
-  """
-  @spec flow_finding_explanation_key(Scope.t(), term(), String.t(), non_neg_integer()) :: String.t()
-  def flow_finding_explanation_key(scope, finding, locale, attempt) do
-    FlowFindingExplanation.idempotency_key(scope.user.id, finding, locale, attempt)
-  end
-
-  @doc "The registered id of the flow-finding explanation task."
-  @spec flow_finding_explanation_task_id() :: String.t()
-  defdelegate flow_finding_explanation_task_id(), to: FlowFindingExplanation, as: :task_id
   defdelegate resolve_route(intent), to: Execution, as: :preflight
 
   @doc "Resolves routes and builds the Slice-6 disclosure without creating an operation."
@@ -170,21 +98,6 @@ defmodule Storyarn.AI do
   defdelegate get_replayable_result(scope, task_id, idempotency_key),
     to: Results,
     as: :get_by_idempotency_key
-
-  @doc """
-  Which flow-finding identities this actor already holds a readable explanation for.
-
-  Lets the analysis panel point at results the actor paid for and never came back
-  to — the one case abandoning a surface cannot recover on its own.
-  """
-  @spec flow_finding_explanations_ready(Scope.t(), [String.t()]) :: MapSet.t(String.t())
-  def flow_finding_explanations_ready(scope, subject_revisions) do
-    Results.readable_subject_revisions(
-      scope,
-      FlowFindingExplanation.task_id(),
-      subject_revisions
-    )
-  end
 
   @doc """
   The operations that spent any of these idempotency keys, keyed by key.
