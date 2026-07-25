@@ -1,6 +1,17 @@
 # Slice 7.2a — Managed AI Explanation
 
-**Status:** implemented on `codex/slice7-2a-managed-explanation` (2026-07-25), PR #49 —
+**Status:** implemented and merged (PR #49) — **then superseded by Slice 7.1a.0, which
+removes the task and its surface.** The acceptance criteria below were met as written;
+what was discovered afterwards is that they aimed at the wrong thing, because the
+structural analysis of a flow IS the health check and for all 15 rules the finding
+already is the explanation. The reusable deliverable was never this task but the
+kernel hardening it forced — spend guarantees, allowance projection, config
+validation, operator diagnostics — all of which 7.1a.0 keeps deliberately. Read this
+document as the historical record of a contract that was honoured, not of a feature
+that survives.
+
+Original status line: implemented on `codex/slice7-2a-managed-explanation`
+(2026-07-25), PR #49 —
 task `Storyarn.AI.Tasks.FlowFindingExplanation`, panel lifecycle in
 `StoryarnWeb.FlowLive.Handlers.ExplanationHandlers`, palette command registered
 from `FlowAnalysisPanel.vue`. Owner browser verification against a real provider
