@@ -316,6 +316,51 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       assert explanation(view)["status"] == "idle"
     end
 
+    test "closing an ATTACHED surface leaves the operation its buyer is waiting for", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      buyer = mount_editor(conn, project, flow)
+      watcher = mount_editor(conn, project, flow)
+
+      execute_explanation!(buyer)
+
+      finding = open_panel_and_finding(watcher)
+      render_click(watcher, "open_explanation", %{"finding_id" => finding["findingId"]})
+      assert explanation(watcher)["status"] == "queued"
+
+      # The watcher never bought this operation, so walking away releases
+      # nothing: cancelling here would fail the surface that is still waiting.
+      render_click(watcher, "close_explanation", %{})
+
+      assert Repo.one!(Operation).execution_status == "queued"
+      assert explanation(buyer)["status"] == "queued"
+
+      # And the buyer still gets what it paid for.
+      drain_execution!()
+      send(buyer.pid, :poll_explanation)
+      assert explanation(buyer)["status"] == "succeeded"
+    end
+
+    test "closing releases an operation that is running but has not called the provider", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      execute_explanation!(view)
+
+      # The window between claim and the provider call: the worker owns the row,
+      # yet nothing has been spent, so releasing is still free. Reached here by
+      # hand because the drained worker passes through it without pausing.
+      {1, _} = Repo.update_all(Operation, set: [execution_status: "running", started_at: TimeHelpers.now()])
+
+      render_click(view, "close_explanation", %{})
+
+      assert Repo.one!(Operation).execution_status == "cancelled"
+    end
+
     test "an explicit rerun buys a second operation with its own key", %{
       conn: conn,
       project: project,
@@ -440,6 +485,74 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       newest = Operation |> Repo.all() |> Enum.max_by(& &1.id)
       refute newest.id == superseded.id
       assert Repo.aggregate(Operation, :count) == 2
+    end
+
+    test "a paid result is not hidden by a lower attempt whose key was never spent", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+
+      # Attempt 0 is offered and abandoned, so its key stays UNSPENT. The panel
+      # reaches this state whenever a route is blocked and the actor retries.
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      assert explanation(view)["status"] == "preflight"
+
+      render_click(view, "rerun_explanation", %{})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+
+      render_click(view, "close_explanation", %{})
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+
+      # Stopping the scan at the attempt-0 gap would offer a purchase here and
+      # charge a second unit for a narrative the actor is already holding.
+      assert explanation(view)["status"] == "succeeded"
+      assert explanation(view)["routes"] == []
+      assert Repo.aggregate(Operation, :count) == 1
+    end
+
+    test "a rerun stops at the last attempt a reopen can still find", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+
+      # Reruns raise the attempt without buying anything, so this walks the
+      # counter up to the ceiling. 19 is @max_attempts - 1: the two must move
+      # together, because an attempt a rerun can create but a reopen cannot reach
+      # is a result the actor pays for and can never see again.
+      Enum.each(1..19, fn _rerun ->
+        render_click(view, "rerun_explanation", %{})
+        assert explanation(view)["status"] == "preflight"
+      end)
+
+      # The last reachable attempt is still a real purchase.
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+
+      # And reopening finds it, which is what the ceiling exists to guarantee.
+      render_click(view, "close_explanation", %{})
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      assert explanation(view)["status"] == "succeeded"
+
+      # One past it is refused instead of sold.
+      render_click(view, "rerun_explanation", %{})
+
+      assert explanation(view)["status"] == "blocked"
+      assert explanation(view)["error"] == "attempts_exhausted"
+      assert Repo.aggregate(Operation, :count) == 1
     end
 
     test "closing while the provider attempt is running does not destroy paid output", %{

@@ -26,6 +26,7 @@ defmodule Storyarn.AI do
   alias Storyarn.AI.Policy
   alias Storyarn.AI.Providers
   alias Storyarn.AI.Results
+  alias Storyarn.AI.RouteOptions
   alias Storyarn.AI.RouteResolver
   alias Storyarn.AI.Runtime
   alias Storyarn.AI.TaskRegistry
@@ -138,6 +139,27 @@ defmodule Storyarn.AI do
   defdelegate preflight(intent), to: Execution
   defdelegate execute(intent), to: Execution
   defdelegate cancel(scope, operation_id), to: Operations, as: :request_cancellation
+
+  @doc """
+  Gives up an operation the actor walked away from, but never one already paid for.
+
+  Unlike `cancel/2` this never stamps a cancellation on a started provider
+  attempt: it releases the reservation while nothing has been spent and
+  otherwise leaves the run alone, reporting which of the two happened.
+  """
+  defdelegate release_if_unstarted(scope, operation_id), to: Operations
+
+  @doc """
+  Whether `route_ref` is the purchase decision that CREATED `operation_id`.
+
+  Only the creating path consumes a route option, so a surface whose `execute`
+  replayed an existing idempotency key leaves its own option unconsumed. That
+  makes this the one reliable answer to "did I buy this operation, or attach to
+  one that already existed" — a distinction a surface cannot infer on its own,
+  because two panels can resolve preflight for the same unspent key and both
+  call `execute/1`.
+  """
+  defdelegate created_operation?(scope, route_ref, operation_id), to: RouteOptions
   defdelegate grant_personal_consent(intent, integration_id, policy_text_version), to: PersonalConsents, as: :grant
   defdelegate revoke_personal_consent(scope, consent_id), to: PersonalConsents, as: :revoke
 
@@ -149,10 +171,15 @@ defmodule Storyarn.AI do
     to: Results,
     as: :get_by_idempotency_key
 
-  @doc "The operation that spent an idempotency key, in whatever state it ended up."
-  defdelegate get_operation_by_key(scope, task_id, idempotency_key),
+  @doc """
+  The operations that spent any of these idempotency keys, keyed by key.
+
+  Reports each one in whatever state it ended up, so a caller can tell a run
+  still coming from a dead end, and an absent key from a spent one.
+  """
+  defdelegate get_operations_by_keys(scope, task_id, idempotency_keys),
     to: Results,
-    as: :get_operation_by_idempotency_key
+    as: :operations_by_idempotency_keys
 
   @doc "Records that the actor saw a result. Never a disposition — see Results.record_view/2."
   defdelegate record_result_view(scope, operation_id), to: Results, as: :record_view

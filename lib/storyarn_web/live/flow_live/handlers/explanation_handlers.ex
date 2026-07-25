@@ -69,7 +69,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       :error,
       :polling_since,
       routes: [],
-      blocked_lanes: []
+      blocked_lanes: [],
+      # Whether THIS surface's purchase created `operation_id`, as opposed to
+      # attaching to a run someone else started. Only a buyer may release.
+      owns_operation?: false
     ]
 
     @type t :: %__MODULE__{}
@@ -92,6 +95,15 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   @watched_statuses [:queued, :running]
   @watchable_statuses ~w(queued running)
   @timer_key :explanation_poll_timer
+
+  # Attempts one actor may spend on one occurrence, counted from 0. Enforced at
+  # BOTH ends and it has to be: a reopen walks the attempts to find what was
+  # already paid for, so an attempt a rerun can create but a reopen would never
+  # reach is a result the actor bought and can never see again. Reruns are rare
+  # (each is an explicit purchase of the same narrative, and any edit to the flow
+  # rotates the fingerprint and resets the count), so this is generous rather
+  # than tuned.
+  @max_attempts 20
 
   # See `error_classes/0`. Kept sorted so a diff shows an addition clearly.
   @error_classes ~w(
@@ -134,8 +146,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   @doc """
   Initial assigns for the explanation surface.
 
-  Also releases an operation nobody is left to read — this runs on close and on
-  every flow reload, and an abandoned managed operation would still bill.
+  Also releases an operation this surface bought and nobody is left to read —
+  this runs on close and on every flow reload, and an abandoned managed operation
+  would still bill. See `cancel_watched_operation/1` for what it will not touch.
   """
   @spec assign_initial_state(Socket.t()) :: Socket.t()
   def assign_initial_state(socket) do
@@ -178,10 +191,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   def handle_open_explanation(_params, socket), do: {:noreply, refused(socket, :stale_selection)}
 
   @doc """
-  Closes the surface, releasing any operation the actor stops waiting for.
+  Closes the surface, releasing an operation it bought and stops waiting for.
 
   An abandoned managed operation would still settle and bill a unit nobody ever
-  reads, so dropping the surface cancels it.
+  reads. It releases only what releasing is still free for, and only what this
+  surface paid for — see `cancel_watched_operation/1`.
   """
   @spec handle_close_explanation(map(), Socket.t()) :: result()
   def handle_close_explanation(_params, socket), do: {:noreply, assign_initial_state(socket)}
@@ -191,11 +205,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
 
   Raising `attempt` is the ONLY way to a second charge: without it the
   deterministic idempotency key replays the operation this actor already paid
-  for.
+  for. It stops at `@max_attempts`, which is what a reopen can walk back to —
+  selling an attempt no reopen could ever find would take the actor's unit for a
+  narrative that disappears the moment they close the panel.
   """
   @spec handle_rerun_explanation(map(), Socket.t()) :: result()
   def handle_rerun_explanation(_params, socket) do
     with %{finding_key: finding_key, attempt: attempt} = explanation <- socket.assigns[:explanation],
+         true <- attempt + 1 < @max_attempts || {:exhausted, explanation},
          true <- available?(socket) || {:error, :unavailable},
          # By the STABLE key, not the occurrence id: a rerun is offered precisely
          # when the flow moved, and the occurrence id rotates with the evidence
@@ -213,9 +230,23 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
 
       preflight(socket, finding, attempt + 1)
     else
+      {:exhausted, explanation} -> {:noreply, exhausted(socket, explanation)}
       {:error, reason} -> {:noreply, refused(socket, reason)}
       _absent -> {:noreply, refused(socket, :stale_selection)}
     end
+  end
+
+  # Says the same thing a reopen at the ceiling says, through the same declared
+  # error class, rather than a flash with copy of its own. The last narrative is
+  # not lost with it: reopening the panel replays the newest readable result.
+  defp exhausted(socket, explanation) do
+    assign(socket, :explanation, %{
+      explanation
+      | status: :blocked,
+        attempt: @max_attempts,
+        result: nil,
+        error: error_class(:attempts_exhausted)
+    })
   end
 
   @doc """
@@ -292,24 +323,25 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     issue_preflight(socket, finding, attempt)
   end
 
-  # How many attempts a reopen will walk before giving up. Each is one indexed
-  # lookup; reruns are rare, so this is generous rather than tuned.
-  @max_attempts 20
-
   @doc false
   # Opening must not assume attempt 0. A key is spent PERMANENTLY by the first
   # operation that used it, even after that operation stops being readable —
   # cancelled, expired, or failed — and `Execution.execute/1` would then replay
-  # the dead row forever instead of creating anything. So walk the actor's
-  # attempts for this occurrence:
+  # the dead row forever instead of creating anything. So consider every attempt
+  # this occurrence could have:
   #
-  #   * the NEWEST readable result wins, so a reopen after a rerun shows what the
-  #     actor last paid for rather than the narrative they replaced;
-  #   * an operation still in flight is ATTACHED to, which is also how two panels
-  #     on one finding end up watching a single paid operation;
-  #   * otherwise the FIRST unspent key is what a purchase may consume.
+  #   * the NEWEST attempt with something to show wins, so a reopen after a rerun
+  #     shows what the actor last paid for rather than the narrative they
+  #     replaced, and a run still in flight is ATTACHED to — which is also how
+  #     two panels on one finding end up watching a single paid operation;
+  #   * only then may a purchase consume the LOWEST key nobody has spent.
+  #
+  # Attempts are not necessarily spent in order, which is why the scan cannot
+  # stop at the first gap: a blocked route and an abandoned preflight both raise
+  # the attempt without creating anything, so stopping there would offer to buy a
+  # narrative the actor is already holding one attempt above.
   defp open_for(socket, finding) do
-    case resolve_attempt(socket, finding, 0, :none) do
+    case resolve_attempt(socket, finding) do
       {:replay, attempt, output, operation} ->
         {:noreply, replayed(socket, finding, attempt, output, operation)}
 
@@ -324,38 +356,63 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     end
   end
 
-  defp resolve_attempt(_socket, _finding, attempt, newest) when attempt >= @max_attempts do
-    settle(newest, :exhausted)
-  end
-
-  defp resolve_attempt(socket, finding, attempt, newest) do
+  defp resolve_attempt(socket, finding) do
     scope = socket.assigns.current_scope
     task_id = AI.flow_finding_explanation_task_id()
-    key = AI.flow_finding_explanation_key(scope, finding, locale(socket), attempt)
 
-    case AI.get_replayable_result(scope, task_id, key) do
-      {:ok, output, operation} ->
-        resolve_attempt(socket, finding, attempt + 1, {:replay, attempt, output, operation})
+    keys =
+      Map.new(0..(@max_attempts - 1), fn attempt ->
+        {attempt, AI.flow_finding_explanation_key(scope, finding, locale(socket), attempt)}
+      end)
 
-      {:error, _reason} ->
-        case AI.get_operation_by_key(scope, task_id, key) do
-          # Still coming: attach rather than sell a second copy of it.
-          %{execution_status: status} = operation when status in @watchable_statuses ->
-            {:watch, attempt, operation}
+    spent = AI.get_operations_by_keys(scope, task_id, Map.values(keys))
+    newest = Enum.sort(Map.keys(keys), :desc)
 
-          # Spent and terminal without a readable result: this key is a dead end.
-          %{} ->
-            resolve_attempt(socket, finding, attempt + 1, newest)
+    resolved =
+      newest(
+        replayable(scope, task_id, keys, spent, newest),
+        watchable(keys, spent, newest)
+      )
 
-          nil ->
-            settle(newest, {:preflight, attempt})
-        end
+    resolved || unspent(keys, spent)
+  end
+
+  defp replayable(scope, task_id, keys, spent, newest_first) do
+    Enum.find_value(newest_first, fn attempt ->
+      with %{execution_status: "succeeded"} <- spent[keys[attempt]],
+           {:ok, output, operation} <- AI.get_replayable_result(scope, task_id, keys[attempt]) do
+        {:replay, attempt, output, operation}
+      else
+        _unreadable -> nil
+      end
+    end)
+  end
+
+  defp watchable(keys, spent, newest_first) do
+    Enum.find_value(newest_first, fn attempt ->
+      case spent[keys[attempt]] do
+        %{execution_status: status} = operation when status in @watchable_statuses ->
+          {:watch, attempt, operation}
+
+        _settled_or_absent ->
+          nil
+      end
+    end)
+  end
+
+  defp unspent(keys, spent) do
+    case Enum.find(Enum.sort(Map.keys(keys)), &is_nil(spent[keys[&1]])) do
+      nil -> :exhausted
+      attempt -> {:preflight, attempt}
     end
   end
 
-  # A readable result already found higher up always wins over the fallback.
-  defp settle({:replay, _attempt, _output, _operation} = replay, _on_none), do: replay
-  defp settle(:none, on_none), do: on_none
+  # A run still in flight outranks any completed result BELOW it: the actor reran
+  # and is waiting, so attaching beats replaying what they chose to replace.
+  defp newest(nil, other), do: other
+  defp newest(other, nil), do: other
+  defp newest(replay, watch) when elem(replay, 1) > elem(watch, 1), do: replay
+  defp newest(_replay, watch), do: watch
 
   # Re-attaches the surface to an operation someone already paid for.
   defp watching(socket, finding, attempt, operation) do
@@ -467,7 +524,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
         | status: :queued,
           operation_id: operation.id,
           polling_since: nil,
-          error: nil
+          error: nil,
+          # Asked, not assumed: `AI.execute/1` REPLAYS a spent key, so a second
+          # panel that reached preflight for the same key before either ran gets
+          # this operation back without having bought it.
+          owns_operation?: AI.created_operation?(socket.assigns.current_scope, route_ref, operation.id)
       })
       |> schedule_poll()
       |> then(&{:noreply, &1})
@@ -608,23 +669,27 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     |> assign(:explanation, %{explanation | status: :detached})
   end
 
-  # Releases an operation ONLY while cancelling still prevents the spend.
+  # Gives up an operation this surface bought and stopped waiting for.
   #
-  # Once a provider attempt has started, `Operations.request_cancellation/2` can
-  # only stamp a flag: the call is in flight, `finish_success/4` commits the unit
-  # regardless, and the sole effect of cancelling is that it DELETES the output
-  # the actor just paid for. Letting it finish instead leaves the result readable
-  # inside its TTL, so a reopen recovers it.
+  # Two things the panel must NOT do, both delegated to the kernel instead of
+  # decided here:
   #
-  # `"queued"` is therefore the whole window. It is read from the database rather
-  # than from panel state, because the operation may have started since the last
-  # poll tick.
+  #   * cancel a started provider attempt. `finish_success/4` commits the unit
+  #     regardless, so cancelling then only DELETES the output the actor paid
+  #     for; letting it finish leaves the result readable inside its TTL, where a
+  #     reopen recovers it. Deciding that from a status read here would race the
+  #     worker, so `AI.release_if_unstarted/2` decides under its own lock;
+  #   * release an operation it merely ATTACHED to. Another panel is watching a
+  #     run it paid for, and cancelling would fail that panel while it waits.
+  #
+  # Residual, and deliberate: when the buyer closes first, a panel still attached
+  # to that run does lose it. Releasing what you bought is the owner's stated
+  # policy, and "is anyone else still watching" is not knowable from here.
   defp cancel_watched_operation(socket) do
-    with %{status: status, operation_id: operation_id} <- socket.assigns[:explanation],
-         true <- status in [:queued, :running, :detached] and is_integer(operation_id),
-         scope = socket.assigns.current_scope,
-         %{execution_status: "queued"} <- AI.get_operation(scope, operation_id) do
-      AI.cancel(scope, operation_id)
+    with %{status: status, operation_id: operation_id, owns_operation?: true} <-
+           socket.assigns[:explanation],
+         true <- status in [:queued, :running, :detached] and is_integer(operation_id) do
+      AI.release_if_unstarted(socket.assigns.current_scope, operation_id)
       socket
     else
       _nothing_to_release -> socket

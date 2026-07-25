@@ -87,10 +87,16 @@ Before execution the panel:
    its TTL is rendered directly, with no preflight and no route options: the
    surface must never ask for a purchase decision that has no cost. An operation
    still in flight is attached to, which is also how two panels on one finding
-   end up watching a single paid operation. Only when no attempt is readable or
-   running does the preflight below run, and then against the first unspent
-   idempotency key — a key is consumed permanently by the first operation that
-   uses it, even after that operation stops being readable;
+   end up watching a single paid operation. Only when no attempt has either does
+   the preflight below run, and then against the lowest unspent idempotency key —
+   a key is consumed permanently by the first operation that uses it, even after
+   that operation stops being readable. Every attempt is considered, because they
+   are not necessarily spent in order: a blocked route and an abandoned preflight
+   both raise the attempt without creating anything, and stopping at that gap
+   would sell a narrative the actor already holds one attempt above. Attempts are
+   capped, and the cap binds the rerun too — an attempt a rerun could create but
+   a reopen could never reach would be a result the actor pays for and then loses
+   on close;
 1. reauthorizes the actor and reloads the selected finding by server-issued id;
 2. verifies the rule version and evidence fingerprint are still current;
 3. builds the Slice-6 disclosure without calling a provider;
@@ -119,6 +125,13 @@ The panel owns operation/result state:
   stopped watching a run that is still executing — reporting that as `failed`
   would push the actor toward paying twice for work still in flight;
 - reopening or polling uses the actor-authorized result APIs, not palette state;
+- abandoning the surface releases an operation it BOUGHT, while releasing is
+  still free — decided under the kernel's own lock rather than from a status
+  read, because the worker can start a provider attempt in between. It never
+  releases one it only attached to, since another panel is waiting on that run,
+  and never cancels a started attempt: that bills the unit anyway and destroys
+  the output. The residual is deliberate — when the buyer closes first, a panel
+  still attached does lose the run;
 - result presentation revalidates the Slice-7.1 finding fingerprint. Slice-6
   provenance is NOT revalidated or displayed: `Results.provenance/1` is reached
   only from `apply/4`, which this slice never calls;

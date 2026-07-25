@@ -113,6 +113,29 @@ defmodule Storyarn.AI.RouteOptions do
     |> Repo.update()
   end
 
+  @doc """
+  Whether `route_ref` is the option that `consume/2` bound to `operation_id`.
+
+  `consume/2` runs inside the operation-creating transaction and only there, so a
+  surface whose `execute/1` replayed an existing idempotency key still holds an
+  unconsumed option. Scoped to the actor so one actor's reference can never
+  answer for another's.
+  """
+  @spec created_operation?(map(), String.t(), pos_integer()) :: boolean()
+  def created_operation?(%{user: %{id: actor_id}}, route_ref, operation_id)
+      when is_binary(route_ref) and is_integer(operation_id) do
+    Repo.exists?(
+      from(option in RouteOption,
+        where:
+          option.token_hash == ^token_hash(route_ref) and
+            option.actor_id == ^actor_id and
+            option.consumed_by_operation_id == ^operation_id
+      )
+    )
+  end
+
+  def created_operation?(_scope, _route_ref, _operation_id), do: false
+
   @spec delete_expired(DateTime.t()) :: non_neg_integer()
   def delete_expired(now \\ TimeHelpers.now()) do
     {count, _} = Repo.delete_all(from(option in RouteOption, where: option.expires_at <= ^now))

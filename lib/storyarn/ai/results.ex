@@ -83,25 +83,32 @@ defmodule Storyarn.AI.Results do
   end
 
   @doc """
-  The operation that spent an idempotency key, whatever became of it.
+  Every operation of this actor that spent one of `idempotency_keys`, keyed by key.
 
   A key is consumed permanently by the first operation that used it, even after
   that operation stops being readable — cancelled, expired, or failed — because
-  `Execution.execute/1` replays the row rather than creating anything. A caller
-  choosing which key to spend next needs the row's STATUS, not merely its
+  `Execution.execute/1` replays the row rather than creating anything. So a caller
+  choosing which key to spend next needs each row's STATUS, not merely its
   existence: still in flight means "attach to it", terminal-and-unreadable means
-  "this key can never produce anything again".
+  "this key can never produce anything again", and absent means "free to spend".
+
+  One query rather than one per candidate key, because such a caller has to
+  consider ALL of them: an attempt that never spent its key — an abandoned
+  preflight, or a route blocked before it could create anything — leaves a gap
+  that must not hide a paid result above it.
   """
-  @spec get_operation_by_idempotency_key(Scope.t(), String.t(), String.t()) :: Operation.t() | nil
-  def get_operation_by_idempotency_key(%Scope{user: %{id: actor_id}}, task_id, idempotency_key)
-      when is_binary(task_id) and is_binary(idempotency_key) do
-    Repo.one(
-      from(operation in Operation,
-        where:
-          operation.actor_id == ^actor_id and operation.task_id == ^task_id and
-            operation.idempotency_key == ^idempotency_key
-      )
+  @spec operations_by_idempotency_keys(Scope.t(), String.t(), [String.t()]) ::
+          %{String.t() => Operation.t()}
+  def operations_by_idempotency_keys(%Scope{user: %{id: actor_id}}, task_id, idempotency_keys)
+      when is_binary(task_id) and is_list(idempotency_keys) do
+    from(operation in Operation,
+      where:
+        operation.actor_id == ^actor_id and
+          operation.task_id == ^task_id and
+          operation.idempotency_key in ^idempotency_keys
     )
+    |> Repo.all()
+    |> Map.new(&{&1.idempotency_key, &1})
   end
 
   @doc """

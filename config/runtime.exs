@@ -178,6 +178,13 @@ registered_tasks =
     # RouteResolver's valid_provider_price?/valid_budget? on the first route
     # resolution — so a typo'd decimal booted green and failed on the actor's
     # first AI operation. Validate here: a bad price is a boot failure.
+    #
+    # Non-negative is NOT the whole contract. `valid_budget?/1` requires every
+    # cap to be strictly positive and `valid_provider_price?/1` requires a
+    # positive max estimate unless both rates are zero, so a `0` cap boots green
+    # and then blocks every managed preflight — exactly the failure shape these
+    # closures exist to prevent. Those two predicates are the authority; keep
+    # this mirror in step with them.
     decimal_env = fn key ->
       value = required_env.(key)
 
@@ -190,6 +197,16 @@ registered_tasks =
         _invalid ->
           raise "environment variable #{key} must be a decimal number, got #{value}"
       end
+    end
+
+    positive_decimal_env = fn key ->
+      value = decimal_env.(key)
+
+      {decimal, ""} = Decimal.parse(value)
+
+      if Decimal.positive?(decimal),
+        do: value,
+        else: raise("environment variable #{key} must be greater than zero, got #{value}")
     end
 
     provider_configs = %{
@@ -230,6 +247,16 @@ registered_tasks =
     managed_inference_providers =
       Map.new(provider_configs, fn {name, provider} -> {name, provider.adapter} end)
 
+    input_per_million = decimal_env.("STORYARN_AI_PROVIDER_INPUT_PER_MILLION")
+    output_per_million = decimal_env.("STORYARN_AI_PROVIDER_OUTPUT_PER_MILLION")
+
+    # A free route (both rates zero) needs no cost ceiling; a paid one is
+    # unusable without a positive estimate, so demand it only where it bites.
+    max_operation_cost =
+      if Enum.all?([input_per_million, output_per_million], &Decimal.eq?(Decimal.new(&1), 0)),
+        do: decimal_env.("STORYARN_AI_PROVIDER_MAX_OPERATION_COST"),
+        else: positive_decimal_env.("STORYARN_AI_PROVIDER_MAX_OPERATION_COST")
+
     config :storyarn, Fireworks, endpoint: provider_configs["fireworks"].endpoint
     config :storyarn, Managed, credentials: credentials
 
@@ -255,14 +282,14 @@ registered_tasks =
         provider_price: [
           version: positive_integer.("STORYARN_AI_PROVIDER_PRICE_VERSION"),
           currency: required_env.("STORYARN_AI_PROVIDER_PRICE_CURRENCY"),
-          input_per_million: decimal_env.("STORYARN_AI_PROVIDER_INPUT_PER_MILLION"),
-          output_per_million: decimal_env.("STORYARN_AI_PROVIDER_OUTPUT_PER_MILLION"),
-          max_estimated_cost: decimal_env.("STORYARN_AI_PROVIDER_MAX_OPERATION_COST")
+          input_per_million: input_per_million,
+          output_per_million: output_per_million,
+          max_estimated_cost: max_operation_cost
         ],
         budget: [
-          global_daily: decimal_env.("STORYARN_AI_PROVIDER_GLOBAL_DAILY_CAP"),
-          global_monthly: decimal_env.("STORYARN_AI_PROVIDER_GLOBAL_MONTHLY_CAP"),
-          workspace_daily: decimal_env.("STORYARN_AI_PROVIDER_WORKSPACE_DAILY_CAP")
+          global_daily: positive_decimal_env.("STORYARN_AI_PROVIDER_GLOBAL_DAILY_CAP"),
+          global_monthly: positive_decimal_env.("STORYARN_AI_PROVIDER_GLOBAL_MONTHLY_CAP"),
+          workspace_daily: positive_decimal_env.("STORYARN_AI_PROVIDER_WORKSPACE_DAILY_CAP")
         ]
       ]
 
