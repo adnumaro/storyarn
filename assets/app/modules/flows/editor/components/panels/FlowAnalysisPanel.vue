@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { RotateCw, ScanSearch, X } from "lucide-vue-next";
-import { computed, ref, watch } from "vue";
+import { RotateCw, ScanSearch, Sparkles, X } from "lucide-vue-next";
+import { computed, ref, watch, watchEffect } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
+import { FLOW_ANALYSIS_DESTINATION } from "@shared/command-palette/aiDestinations";
+import type { PaletteCommand } from "@shared/command-palette/registry";
+import { registerPaletteCommands } from "@shared/command-palette/registry";
 import Sidebar from "../../../../../shell/Sidebar.vue";
 import { useLive } from "../../../../../shared/composables/useLive";
 import FlowAnalysisFindingCard from "./FlowAnalysisFindingCard.vue";
-import type { AnalysisFinding } from "./flowAnalysisTypes";
+import type { AnalysisFinding, FlowExplanationState } from "./flowAnalysisTypes";
 
 const {
   open = false,
@@ -17,6 +20,7 @@ const {
   maxNoteLength = 2000,
   active = [],
   dismissed = [],
+  explanation = null,
 } = defineProps<{
   open?: boolean;
   canEdit?: boolean;
@@ -26,6 +30,7 @@ const {
   maxNoteLength?: number;
   active?: AnalysisFinding[];
   dismissed?: AnalysisFinding[];
+  explanation?: FlowExplanationState | null;
 }>();
 
 const { t } = useI18n();
@@ -105,6 +110,70 @@ function onRestore(dismissalId: number): void {
 function onNavigate(type: string, id: number): void {
   pushAction("analysis_navigate_evidence", { type, id });
 }
+
+function onExplain(findingId: string): void {
+  pushAction("open_explanation", { finding_id: findingId });
+}
+
+function onExecuteExplanation(routeRef: string): void {
+  pushAction("execute_explanation", { route_ref: routeRef });
+}
+
+function onRerunExplanation(): void {
+  pushAction("rerun_explanation", {});
+}
+
+function onCloseExplanation(): void {
+  pushAction("close_explanation", {});
+}
+
+// ── Palette v2 AI command ────────────────────────────────────────────────
+// The command is a `launch`: it starts the panel preflight and opens the
+// panel destination (owned by the panel host). Route and cost resolution stay
+// in the panel, never in the palette.
+/** The expanded card IS the selection; with none, the command has no referent. */
+const selectedFindingId = ref<string | null>(null);
+
+function onToggleFinding(findingId: string, expanded: boolean): void {
+  if (expanded) {
+    selectedFindingId.value = findingId;
+  } else if (selectedFindingId.value === findingId) {
+    selectedFindingId.value = null;
+  }
+}
+
+function explainCommand(findingId: string): PaletteCommand {
+  return {
+    kind: "ai",
+    mode: "launch",
+    // Cost is disclosed by the panel preflight, never by the palette.
+    cost: { kind: "deferred_to_preflight" },
+    id: "flows.explain_finding",
+    labelKey: "flows.explanation.explain_action",
+    groupKey: "palette.groups.actions",
+    icon: Sparkles,
+    taskId: "flows.explain_finding",
+    context: { surface: "flows", selection: { type: "flow_finding", id: findingId } },
+    availability: { state: "ready" },
+    destination: FLOW_ANALYSIS_DESTINATION,
+    launch: async () => {
+      pushAction("open_explanation", { finding_id: findingId });
+      return { status: "launched" };
+    },
+  };
+}
+
+watchEffect((onCleanup) => {
+  const findingId = selectedFindingId.value;
+  const eligible = explanation?.available === true && findingId != null;
+
+  const unregister = registerPaletteCommands(
+    "flows",
+    eligible && findingId ? [explainCommand(findingId)] : [],
+  );
+
+  onCleanup(unregister);
+});
 </script>
 
 <template>
@@ -266,9 +335,15 @@ function onNavigate(type: string, id: number): void {
             :max-note-length="maxNoteLength"
             :dismissed="tab === 'dismissed'"
             :action-error="actionError"
+            :explanation="explanation"
             @dismiss="onDismiss"
             @restore="onRestore"
             @navigate="onNavigate"
+            @toggle="onToggleFinding"
+            @explain="onExplain"
+            @execute="onExecuteExplanation"
+            @rerun-explanation="onRerunExplanation"
+            @close-explanation="onCloseExplanation"
           />
         </ul>
       </div>

@@ -482,6 +482,44 @@
       "previously_dismissed": "Previously dismissed: {reason} · {user}",
       "empty_filtered": "No findings match the current filters.",
       "clear_filters": "Clear filters"
+    },
+    "explanation": {
+      "explain_action": "Explain with AI",
+      "preflight_title": "Before running",
+      "run_action": "Run",
+      "cancel_action": "Cancel",
+      "close_action": "Close",
+      "rerun_action": "Explain again",
+      "retry_action": "Try again",
+      "running": "Generating explanation…",
+      "generated_label": "AI-generated",
+      "generated_note": "Generated text, not a Storyarn finding. Storyarn's analysis above is deterministic.",
+      "why_title": "Why this rule triggered",
+      "implications_title": "What to consider",
+      "checks_title": "Suggested checks",
+      "stale": "The flow changed after this explanation was generated. Explain again for the current evidence.",
+      "expired": "This explanation is no longer available. Explain again to generate a new one.",
+      "payer": "paid by {payer}",
+      "price_units": "{count} unit | {count} units",
+      "lane_blocked": "{lane} unavailable: {reason}",
+      "lanes": {
+        "managed": "Storyarn AI",
+        "personal_byok": "My API key"
+      },
+      "errors": {
+        "allowance_exhausted": "this workspace has no AI units left",
+        "allowance_paused": "an owner paused AI spending for this workspace",
+        "allowance_unavailable": "no AI allowance is configured for this workspace",
+        "no_route": "no AI provider is available for this task",
+        "task_disabled": "AI explanations are temporarily disabled",
+        "unknown_task": "AI explanations are not available in this deployment",
+        "missing_use_ai": "your role cannot run AI tasks in this project",
+        "provider_error": "the AI provider could not complete the request",
+        "invalid_explanation_output": "the AI response did not match the expected format",
+        "model_context_window_exceeded": "this finding's evidence is too large for the available model",
+        "operation_not_found": "this run is no longer available",
+        "unknown": "the explanation could not be produced"
+      }
     }
   }
 }

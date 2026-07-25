@@ -482,6 +482,44 @@
       "previously_dismissed": "Descartado anteriormente: {reason} · {user}",
       "empty_filtered": "Ningún hallazgo coincide con los filtros actuales.",
       "clear_filters": "Limpiar filtros"
+    },
+    "explanation": {
+      "explain_action": "Explicar con IA",
+      "preflight_title": "Antes de ejecutar",
+      "run_action": "Ejecutar",
+      "cancel_action": "Cancelar",
+      "close_action": "Cerrar",
+      "rerun_action": "Explicar de nuevo",
+      "retry_action": "Reintentar",
+      "running": "Generando explicación…",
+      "generated_label": "Generado con IA",
+      "generated_note": "Texto generado, no es un hallazgo de Storyarn. El análisis de arriba es determinista.",
+      "why_title": "Por qué se activa la regla",
+      "implications_title": "Qué tener en cuenta",
+      "checks_title": "Comprobaciones sugeridas",
+      "stale": "El flow cambió después de generar esta explicación. Vuelve a explicarlo con la evidencia actual.",
+      "expired": "Esta explicación ya no está disponible. Vuelve a explicarlo para generar una nueva.",
+      "payer": "lo paga {payer}",
+      "price_units": "{count} unidad | {count} unidades",
+      "lane_blocked": "{lane} no disponible: {reason}",
+      "lanes": {
+        "managed": "Storyarn AI",
+        "personal_byok": "Mi API key"
+      },
+      "errors": {
+        "allowance_exhausted": "este workspace se ha quedado sin unidades de IA",
+        "allowance_paused": "un propietario ha pausado el gasto de IA de este workspace",
+        "allowance_unavailable": "este workspace no tiene asignación de IA configurada",
+        "no_route": "no hay ningún proveedor de IA disponible para esta tarea",
+        "task_disabled": "las explicaciones con IA están desactivadas temporalmente",
+        "unknown_task": "las explicaciones con IA no están disponibles en esta instalación",
+        "missing_use_ai": "tu rol no puede ejecutar tareas de IA en este proyecto",
+        "provider_error": "el proveedor de IA no pudo completar la petición",
+        "invalid_explanation_output": "la respuesta de la IA no cumplió el formato esperado",
+        "model_context_window_exceeded": "la evidencia de este hallazgo excede el modelo disponible",
+        "operation_not_found": "esta ejecución ya no está disponible",
+        "unknown": "no se ha podido generar la explicación"
+      }
     }
   }
 }

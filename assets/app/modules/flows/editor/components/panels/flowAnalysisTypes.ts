@@ -34,6 +34,62 @@ export interface AnalysisFinding {
   dismissedAt?: string | null;
 }
 
+/** Optional AI explanation of ONE finding (Slice 7.2a). */
+export type ExplanationStatus =
+  | "idle"
+  | "preflight"
+  | "blocked"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "expired";
+
+export interface ExplanationRoute {
+  routeRef: string;
+  lane: string;
+  provider: string;
+  model: string;
+  payer: string;
+  priceUnits: number;
+}
+
+export interface ExplanationBlockedLane {
+  lane: string;
+  reason: string;
+}
+
+export interface ExplanationDisclosure {
+  version: string;
+  context_version: string;
+  scope: string;
+  serialized_bytes: number;
+  token_count: number | null;
+  included_count: number;
+  excluded_count: number;
+  truncated: boolean;
+  warnings: string[];
+}
+
+/** Bounded narrative. Never carries ids, severities, or actions. */
+export interface ExplanationResult {
+  summary: string;
+  why_it_triggers: string;
+  implications: string[];
+  suggested_checks: string[];
+}
+
+export interface FlowExplanationState {
+  available: boolean;
+  findingId: string | null;
+  status: ExplanationStatus;
+  error: string | null;
+  stale: boolean;
+  routes: ExplanationRoute[];
+  blockedLanes: ExplanationBlockedLane[];
+  disclosure: ExplanationDisclosure | null;
+  result: ExplanationResult | null;
+}
+
 export interface FlowAnalysisPanelState {
   open: boolean;
   canEdit: boolean;

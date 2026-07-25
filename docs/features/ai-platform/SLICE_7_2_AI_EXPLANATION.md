@@ -9,10 +9,10 @@ execution lane, a separate consent subsystem, and the public documentation
 launch. Splitting by **execution lane** keeps each half independently
 verifiable end to end:
 
-| Slice | Product boundary                                                              | Lane            | Document                                |
-| ----- | ----------------------------------------------------------------------------- | --------------- | --------------------------------------- |
-| 7.2a  | Explain one selected finding through Storyarn AI, preflight to private result | `managed`       | `SLICE_7_2A_MANAGED_EXPLANATION.md`     |
-| 7.2b  | Same task offered through the actor's own key, plus public AI documentation   | `personal_byok` | `SLICE_7_2B_PERSONAL_LANE_AND_DOCS.md`  |
+| Slice | Product boundary                                                              | Lane            | Document                               |
+| ----- | ----------------------------------------------------------------------------- | --------------- | -------------------------------------- |
+| 7.2a  | Explain one selected finding through Storyarn AI, preflight to private result | `managed`       | `SLICE_7_2A_MANAGED_EXPLANATION.md`    |
+| 7.2b  | Same task offered through the actor's own key, plus public AI documentation   | `personal_byok` | `SLICE_7_2B_PERSONAL_LANE_AND_DOCS.md` |
 
 Slice 7.2a must merge first. It registers the task, owns the panel operation
 lifecycle, and establishes the preflight/result contract that Slice 7.2b

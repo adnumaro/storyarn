@@ -11,7 +11,8 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import FlowAnalysisDismissForm from "./FlowAnalysisDismissForm.vue";
-import type { AnalysisFinding } from "./flowAnalysisTypes";
+import FlowAnalysisExplanation from "./FlowAnalysisExplanation.vue";
+import type { AnalysisFinding, FlowExplanationState } from "./flowAnalysisTypes";
 
 const {
   finding,
@@ -20,6 +21,7 @@ const {
   maxNoteLength = 2000,
   dismissed = false,
   actionError = null,
+  explanation = null,
 } = defineProps<{
   finding: AnalysisFinding;
   canEdit?: boolean;
@@ -27,12 +29,18 @@ const {
   maxNoteLength?: number;
   dismissed?: boolean;
   actionError?: string | null;
+  explanation?: FlowExplanationState | null;
 }>();
 
 const emit = defineEmits<{
   dismiss: [findingId: string, reasonCode: string, note: string];
   restore: [dismissalId: number];
   navigate: [type: string, id: number];
+  toggle: [findingId: string, expanded: boolean];
+  explain: [findingId: string];
+  execute: [routeRef: string];
+  rerunExplanation: [];
+  closeExplanation: [];
 }>();
 
 const { t, te } = useI18n();
@@ -41,6 +49,11 @@ const expanded = ref(false);
 const dismissFormOpen = ref(false);
 
 const isError = computed(() => finding.severity === "error");
+
+function toggleExpanded(): void {
+  expanded.value = !expanded.value;
+  emit("toggle", finding.findingId, expanded.value);
+}
 
 const ruleLabel = computed(() => t(`flows.analysis.rules.${finding.ruleId}`));
 const limitations = computed(() =>
@@ -104,7 +117,7 @@ function onDismissSubmit(reasonCode: string, note: string): void {
       class="flex w-full items-center gap-2 px-2.5 py-2 text-left text-sm hover:bg-muted/50"
       :data-testid="dismissed ? 'analysis-dismissed-finding' : 'analysis-finding'"
       :aria-expanded="expanded"
-      @click="expanded = !expanded"
+      @click="toggleExpanded"
     >
       <component
         :is="isError ? CircleAlert : TriangleAlert"
@@ -170,6 +183,16 @@ function onDismissSubmit(reasonCode: string, note: string): void {
           </li>
         </ul>
       </div>
+
+      <FlowAnalysisExplanation
+        v-if="!dismissed && explanation"
+        :finding-id="finding.findingId"
+        :explanation="explanation"
+        @explain="emit('explain', $event)"
+        @execute="emit('execute', $event)"
+        @rerun="emit('rerunExplanation')"
+        @close="emit('closeExplanation')"
+      />
 
       <div v-if="dismissed" class="space-y-2">
         <p class="text-xs text-muted-foreground">{{ dismissedMeta }}</p>
