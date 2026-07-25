@@ -253,6 +253,44 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       assert keys == Enum.uniq(keys)
     end
 
+    test "a poll tick that changes nothing re-renders nothing", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+
+      # show.ex hands the whole `assigns` to its prop builders, which strong-taints
+      # the template: one changed assign re-encodes flow_data for the entire
+      # canvas. A silent tick must therefore touch no assign at all.
+      test_pid = self()
+      handler = {__MODULE__, :render_probe}
+
+      :telemetry.attach(
+        handler,
+        [:phoenix, :live_view, :render, :stop],
+        fn _event, _measures, _meta, _config -> send(test_pid, :rendered) end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(handler) end)
+
+      send(view.pid, :poll_explanation)
+      send(view.pid, :poll_explanation)
+      # Round-trip to be sure both ticks were processed before asserting.
+      assert explanation(view)["status"] == "queued"
+
+      refute_received :rendered
+
+      # Positive control: the probe is live, so the assertion above can fail.
+      render_click(view, "close_explanation", %{})
+      assert_received :rendered
+    end
+
     test "the execution deadline detaches instead of failing, and resuming buys nothing", %{
       conn: conn,
       project: project,

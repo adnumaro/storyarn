@@ -150,8 +150,7 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanation do
   own key and can never collide with a stale intent.
   """
   @spec idempotency_key(pos_integer(), Finding.t(), non_neg_integer()) :: String.t()
-  def idempotency_key(actor_id, finding, attempt)
-      when is_integer(actor_id) and is_integer(attempt) and attempt >= 0 do
+  def idempotency_key(actor_id, finding, attempt) when is_integer(actor_id) and is_integer(attempt) and attempt >= 0 do
     CanonicalJSON.hash!(%{
       "actor_id" => actor_id,
       "task_id" => @task_id,

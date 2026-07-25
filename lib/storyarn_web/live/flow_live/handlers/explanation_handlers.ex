@@ -32,16 +32,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   @type result :: {:noreply, Socket.t()}
 
   @poll_interval_ms 1_000
-  # Measured from the moment the operation starts EXECUTING, not from execute:
-  # queue wait is unbounded by design (concurrency 2), so including it made the
-  # deadline fire on operations that had not begun. Sized past one Oban retry
-  # cycle (60s attempt + ~16-26s default backoff + 60s attempt).
+  # Measured from the moment the operation starts EXECUTING, never from execute:
+  # queue wait is unbounded by design (`:ai` concurrency 2, shared with the
+  # maintenance workers), so counting it made the deadline fire on operations
+  # that had not begun. Comfortably past the 60s provider timeout plus the
+  # ~37-39s Oban retry ladder, which is the kernel's real worst case — a
+  # provider timeout is terminal and never consumes an attempt. See
+  # docs/features/ai-platform/OBAN_AI_QUEUE_HARDENING.md.
   @poll_deadline_ms 180_000
   @locales ~w(en es)
   # Statuses the panel stops polling on. "queued" and "running" are the two it
   # keeps watching.
   @terminal_statuses ~w(succeeded failed unknown cancelled)
   @watched_statuses [:queued, :running]
+  @timer_key :explanation_poll_timer
 
   # ===========================================================================
   # Lifecycle
@@ -226,8 +230,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
          operation_id: nil,
          result: nil,
          error: nil,
-         polling_since: nil,
-         timer_ref: nil
+         polling_since: nil
        })}
     else
       {:error, reason} -> {:noreply, blocked(socket, finding, attempt, reason)}
@@ -337,13 +340,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
 
         socket
         |> cancel_poll()
-        |> assign(:explanation, %{explanation | status: :succeeded, result: output, timer_ref: nil})
+        |> assign(:explanation, %{explanation | status: :succeeded, result: output})
 
       # Succeeded but unreadable means the actor-private TTL already elapsed.
       {:error, _reason} ->
         socket
         |> cancel_poll()
-        |> assign(:explanation, %{explanation | status: :expired, result: nil, timer_ref: nil})
+        |> assign(:explanation, %{explanation | status: :expired, result: nil})
     end
   end
 
@@ -361,25 +364,24 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     |> Keyword.get(:poll_deadline_ms, @poll_deadline_ms)
   end
 
+  # The timer reference lives in the process dictionary, NOT in an assign.
+  # `show.ex` passes the whole `assigns` to its prop builders, which strong-taints
+  # the template: any assign change re-encodes flow_data for the entire canvas
+  # (~250 KB at 500 nodes). Re-arming a poll must therefore touch no assign at
+  # all, or a silent tick would cost a full editor re-render every second.
   defp schedule_poll(socket) do
-    socket = cancel_poll(socket)
-    timer_ref = Process.send_after(self(), :poll_explanation, @poll_interval_ms)
-
-    case socket.assigns[:explanation] do
-      nil -> socket
-      explanation -> assign(socket, :explanation, %{explanation | timer_ref: timer_ref})
-    end
+    cancel_poll(socket)
+    Process.put(@timer_key, Process.send_after(self(), :poll_explanation, @poll_interval_ms))
+    socket
   end
 
   defp cancel_poll(socket) do
-    case socket.assigns[:explanation] do
-      %{timer_ref: ref} = explanation when is_reference(ref) ->
-        Process.cancel_timer(ref)
-        assign(socket, :explanation, %{explanation | timer_ref: nil})
-
-      _absent ->
-        socket
+    case Process.delete(@timer_key) do
+      ref when is_reference(ref) -> Process.cancel_timer(ref)
+      nil -> :ok
     end
+
+    socket
   end
 
   # ===========================================================================
@@ -399,8 +401,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       operation_id: nil,
       result: nil,
       error: error_class(reason),
-      polling_since: nil,
-      timer_ref: nil
+      polling_since: nil
     })
   end
 
@@ -412,7 +413,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
 
     socket
     |> cancel_poll()
-    |> assign(:explanation, %{explanation | status: :detached, timer_ref: nil})
+    |> assign(:explanation, %{explanation | status: :detached})
   end
 
   # Releases an operation the actor stops waiting for. Best effort: the kernel
@@ -437,8 +438,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     |> assign(:explanation, %{
       explanation
       | status: :failed,
-        error: error_class(reason),
-        timer_ref: nil
+        error: error_class(reason)
     })
   end
 
