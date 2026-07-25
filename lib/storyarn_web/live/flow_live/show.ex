@@ -471,6 +471,10 @@ defmodule StoryarnWeb.FlowLive.Show do
     ExplanationHandlers.handle_rerun_explanation(params, socket)
   end
 
+  def handle_event("resume_explanation", params, socket) do
+    ExplanationHandlers.handle_resume_explanation(params, socket)
+  end
+
   def handle_event("close_explanation", params, socket) do
     ExplanationHandlers.handle_close_explanation(params, socket)
   end

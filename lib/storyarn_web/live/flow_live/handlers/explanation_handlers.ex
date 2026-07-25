@@ -32,20 +32,31 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   @type result :: {:noreply, Socket.t()}
 
   @poll_interval_ms 1_000
-  # The task's own timeout plus room for the queue; a stuck operation must not
-  # poll this LiveView forever.
-  @poll_deadline_ms 120_000
+  # Measured from the moment the operation starts EXECUTING, not from execute:
+  # queue wait is unbounded by design (concurrency 2), so including it made the
+  # deadline fire on operations that had not begun. Sized past one Oban retry
+  # cycle (60s attempt + ~16-26s default backoff + 60s attempt).
+  @poll_deadline_ms 180_000
   @locales ~w(en es)
+  # Statuses the panel stops polling on. "queued" and "running" are the two it
+  # keeps watching.
   @terminal_statuses ~w(succeeded failed unknown cancelled)
+  @watched_statuses [:queued, :running]
 
   # ===========================================================================
   # Lifecycle
   # ===========================================================================
 
-  @doc "Initial assigns for the explanation surface."
+  @doc """
+  Initial assigns for the explanation surface.
+
+  Also releases an operation nobody is left to read — this runs on close and on
+  every flow reload, and an abandoned managed operation would still bill.
+  """
   @spec assign_initial_state(Socket.t()) :: Socket.t()
   def assign_initial_state(socket) do
     socket
+    |> cancel_watched_operation()
     |> cancel_poll()
     |> assign(:explanation, nil)
     |> then(&assign(&1, :explanation_available, available?(&1)))
@@ -86,7 +97,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   def handle_open_explanation(%{"finding_id" => finding_id}, socket) when is_binary(finding_id) do
     with true <- available?(socket) || {:error, :unavailable},
          {:ok, finding} <- current_finding(socket.assigns, finding_id) do
-      preflight(socket, finding)
+      preflight(socket, finding, 0)
     else
       {:error, reason} -> {:noreply, refused(socket, reason)}
     end
@@ -94,14 +105,56 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
 
   def handle_open_explanation(_params, socket), do: {:noreply, refused(socket, :stale_selection)}
 
+  @doc """
+  Closes the surface, releasing any operation the actor stops waiting for.
+
+  An abandoned managed operation would still settle and bill a unit nobody ever
+  reads, so dropping the surface cancels it.
+  """
   @spec handle_close_explanation(map(), Socket.t()) :: result()
   def handle_close_explanation(_params, socket), do: {:noreply, assign_initial_state(socket)}
 
+  @doc """
+  Explicitly buys a fresh explanation of the same finding.
+
+  Raising `attempt` is the ONLY way to a second charge: without it the
+  deterministic idempotency key replays the operation this actor already paid
+  for.
+  """
   @spec handle_rerun_explanation(map(), Socket.t()) :: result()
   def handle_rerun_explanation(_params, socket) do
-    case socket.assigns[:explanation] do
-      %{finding_id: finding_id} -> handle_open_explanation(%{"finding_id" => finding_id}, socket)
+    with %{finding_id: finding_id, attempt: attempt} <- socket.assigns[:explanation],
+         true <- available?(socket) || {:error, :unavailable},
+         {:ok, finding} <- current_finding(socket.assigns, finding_id) do
+      preflight(socket, finding, attempt + 1)
+    else
+      {:error, reason} -> {:noreply, refused(socket, reason)}
       _absent -> {:noreply, refused(socket, :stale_selection)}
+    end
+  end
+
+  @doc """
+  Resumes watching an operation the panel stopped polling at the deadline.
+
+  Creates nothing and buys nothing: the operation was still executing, so this
+  only re-arms the poll against the id the panel already holds.
+  """
+  @spec handle_resume_explanation(map(), Socket.t()) :: result()
+  def handle_resume_explanation(_params, socket) do
+    case socket.assigns[:explanation] do
+      %{status: :detached, operation_id: operation_id} = explanation when is_integer(operation_id) ->
+        socket
+        |> assign(:explanation, %{
+          explanation
+          | status: :running,
+            error: nil,
+            polling_since: System.monotonic_time(:millisecond)
+        })
+        |> schedule_poll()
+        |> then(&{:noreply, &1})
+
+      _absent ->
+        {:noreply, refused(socket, :stale_selection)}
     end
   end
 
@@ -130,9 +183,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   @spec handle_poll(Socket.t()) :: result()
   def handle_poll(socket) do
     case socket.assigns[:explanation] do
-      %{status: :running, operation_id: operation_id} = explanation ->
+      %{status: status, operation_id: operation_id} = explanation when status in @watched_statuses ->
         if poll_expired?(explanation) do
-          {:noreply, failed(socket, explanation, :result_timeout)}
+          {:noreply, detached(socket, explanation)}
         else
           {:noreply, poll_operation(socket, explanation, operation_id)}
         end
@@ -146,10 +199,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   # Preflight
   # ===========================================================================
 
-  defp preflight(socket, finding) do
-    # Any in-flight poll belongs to the previous run: cancel it before the
-    # state map (and its timer reference) is replaced.
-    socket = cancel_poll(socket)
+  defp preflight(socket, finding, attempt) do
+    # Any operation still in flight belongs to the previous run and nobody will
+    # read it: release it before its state map (and timer) is replaced.
+    socket = socket |> cancel_watched_operation() |> cancel_poll()
 
     with {:ok, intent} <- build_intent(socket, finding, %{}),
          {:ok, preflight} <- AI.preflight(intent) do
@@ -166,6 +219,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
          finding_id: finding.finding_id,
          finding_key: finding.finding_key,
          rule_id: finding.rule_id,
+         attempt: attempt,
          routes: preflight.route_options,
          blocked_lanes: preflight.blocked_lanes,
          disclosure: preflight.context_disclosure,
@@ -176,7 +230,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
          timer_ref: nil
        })}
     else
-      {:error, reason} -> {:noreply, blocked(socket, finding, reason)}
+      {:error, reason} -> {:noreply, blocked(socket, finding, attempt, reason)}
     end
   end
 
@@ -209,7 +263,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
 
     overrides = %{
       requested_route_ref: route_ref,
-      idempotency_key: Ecto.UUID.generate()
+      idempotency_key:
+        FlowFindingExplanation.idempotency_key(
+          socket.assigns.current_scope.user.id,
+          finding,
+          explanation.attempt
+        )
     }
 
     with {:ok, intent} <- build_intent(socket, finding, overrides),
@@ -222,9 +281,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       socket
       |> assign(:explanation, %{
         explanation
-        | status: :running,
+        | status: :queued,
           operation_id: operation.id,
-          polling_since: System.monotonic_time(:millisecond),
+          polling_since: nil,
           error: nil
       })
       |> schedule_poll()
@@ -248,13 +307,23 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       %{execution_status: status} = operation when status in @terminal_statuses ->
         failed(socket, explanation, operation.error_classification || status)
 
-      %{execution_status: _pending} ->
+      # The deadline measures EXECUTION, so it only starts once a worker picked
+      # the operation up. Queue wait is bounded by capacity, not by this panel.
+      %{execution_status: "running"} ->
+        socket
+        |> assign(:explanation, %{explanation | status: :running, polling_since: started_at(explanation)})
+        |> schedule_poll()
+
+      %{execution_status: _queued} ->
         schedule_poll(socket)
 
       nil ->
         failed(socket, explanation, :operation_not_found)
     end
   end
+
+  defp started_at(%{polling_since: since}) when is_integer(since), do: since
+  defp started_at(_explanation), do: System.monotonic_time(:millisecond)
 
   defp load_result(socket, explanation, operation) do
     scope = socket.assigns.current_scope
@@ -279,10 +348,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   end
 
   defp poll_expired?(%{polling_since: since}) when is_integer(since) do
-    System.monotonic_time(:millisecond) - since >= @poll_deadline_ms
+    System.monotonic_time(:millisecond) - since >= poll_deadline_ms()
   end
 
   defp poll_expired?(_explanation), do: false
+
+  # Operational knob: a deployment with a slower provider can widen it, and
+  # tests can collapse it without waiting three minutes.
+  defp poll_deadline_ms do
+    :storyarn
+    |> Application.get_env(__MODULE__, [])
+    |> Keyword.get(:poll_deadline_ms, @poll_deadline_ms)
+  end
 
   defp schedule_poll(socket) do
     socket = cancel_poll(socket)
@@ -309,12 +386,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   # State transitions
   # ===========================================================================
 
-  defp blocked(socket, finding, reason) do
+  defp blocked(socket, finding, attempt, reason) do
     assign(socket, :explanation, %{
       status: :blocked,
       finding_id: finding.finding_id,
       finding_key: finding.finding_key,
       rule_id: finding.rule_id,
+      attempt: attempt,
       routes: [],
       blocked_lanes: [],
       disclosure: nil,
@@ -324,6 +402,31 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
       polling_since: nil,
       timer_ref: nil
     })
+  end
+
+  # Stopped WATCHING, not failed. The operation is alive and already paid for,
+  # so the surface keeps its id and offers to resume: reporting a failure here
+  # would push the actor toward a rerun that buys a second unit for nothing.
+  defp detached(socket, explanation) do
+    track(socket, "flow explanation detached", %{rule_id: explanation.rule_id})
+
+    socket
+    |> cancel_poll()
+    |> assign(:explanation, %{explanation | status: :detached, timer_ref: nil})
+  end
+
+  # Releases an operation the actor stops waiting for. Best effort: the kernel
+  # refuses once it has settled, and a settled operation needs no release.
+  defp cancel_watched_operation(socket) do
+    case socket.assigns[:explanation] do
+      %{status: status, operation_id: operation_id}
+      when status in [:queued, :running, :detached] and is_integer(operation_id) ->
+        AI.cancel(socket.assigns.current_scope, operation_id)
+        socket
+
+      _settled_or_absent ->
+        socket
+    end
   end
 
   defp failed(socket, explanation, reason) do

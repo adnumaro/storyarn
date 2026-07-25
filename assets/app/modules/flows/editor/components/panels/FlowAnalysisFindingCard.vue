@@ -40,6 +40,7 @@ const emit = defineEmits<{
   explain: [findingId: string];
   execute: [routeRef: string];
   rerunExplanation: [];
+  resumeExplanation: [];
   closeExplanation: [];
 }>();
 
@@ -192,6 +193,7 @@ function onDismissSubmit(reasonCode: string, note: string): void {
         @explain="emit('explain', $event)"
         @execute="emit('execute', $event)"
         @rerun="emit('rerunExplanation')"
+        @resume="emit('resumeExplanation')"
         @close="emit('closeExplanation')"
       />
 

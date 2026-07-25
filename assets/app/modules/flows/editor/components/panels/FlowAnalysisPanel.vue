@@ -123,6 +123,10 @@ function onRerunExplanation(): void {
   pushAction("rerun_explanation", {});
 }
 
+function onResumeExplanation(): void {
+  pushAction("resume_explanation", {});
+}
+
 function onCloseExplanation(): void {
   pushAction("close_explanation", {});
 }
@@ -346,6 +350,7 @@ watchEffect((onCleanup) => {
             @explain="onExplain"
             @execute="onExecuteExplanation"
             @rerun-explanation="onRerunExplanation"
+            @resume-explanation="onResumeExplanation"
             @close-explanation="onCloseExplanation"
           />
         </ul>

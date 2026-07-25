@@ -41,7 +41,10 @@ export type ExplanationStatus =
   | "idle"
   | "preflight"
   | "blocked"
+  | "queued"
   | "running"
+  /** Still executing; the panel stopped watching at its deadline. Not a failure. */
+  | "detached"
   | "succeeded"
   | "failed"
   | "expired";

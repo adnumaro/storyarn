@@ -17,6 +17,7 @@ const emit = defineEmits<{
   explain: [findingId: string];
   execute: [routeRef: string];
   rerun: [];
+  resume: [];
   close: [];
 }>();
 
@@ -109,16 +110,36 @@ function blockedLaneLabel(lane: string, reason: string): string {
       </Button>
     </div>
 
-    <!-- Running -->
+    <!-- Waiting for a slot, then generating -->
     <p
-      v-else-if="status === 'running'"
+      v-else-if="status === 'queued' || status === 'running'"
       class="flex items-center gap-2 text-xs text-muted-foreground"
       role="status"
-      data-testid="explanation-running"
+      :data-testid="status === 'queued' ? 'explanation-queued' : 'explanation-running'"
     >
       <Loader2 class="size-3.5 animate-spin" />
-      {{ t("flows.explanation.running") }}
+      {{ status === "queued" ? t("flows.explanation.queued") : t("flows.explanation.running") }}
     </p>
+
+    <!-- Stopped watching, NOT failed: the run is alive and already paid for -->
+    <div v-else-if="status === 'detached'" class="space-y-2" data-testid="explanation-detached">
+      <p class="text-xs text-muted-foreground">{{ t("flows.explanation.detached") }}</p>
+      <div class="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          class="h-6 gap-1 px-2 text-xs"
+          data-testid="explanation-resume"
+          @click="emit('resume')"
+        >
+          <Loader2 class="size-3" />
+          {{ t("flows.explanation.resume_action") }}
+        </Button>
+        <Button variant="ghost" size="sm" class="h-6 px-2 text-xs" @click="emit('close')">
+          {{ t("flows.explanation.close_action") }}
+        </Button>
+      </div>
+    </div>
 
     <!-- Result: visually separated from every deterministic fact above -->
     <div v-else-if="status === 'succeeded' && explanation.result" class="space-y-2">

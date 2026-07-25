@@ -20,6 +20,7 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanation do
   alias Storyarn.AI.Operation
   alias Storyarn.Flows
   alias Storyarn.Flows.StructuralAnalysis.Finding
+  alias Storyarn.Shared.CanonicalJSON
 
   @task_id "flows.explain_finding"
   @subject_type "flow_finding"
@@ -135,6 +136,28 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanation do
       id: flow_id,
       revision: Flows.encode_structural_finding_identity(finding)
     }
+  end
+
+  @doc """
+  The deterministic idempotency key for one explanation attempt.
+
+  Derived from the actor plus the exact occurrence, so two surfaces racing on
+  the same finding replay ONE operation instead of buying two: the kernel's
+  `replay_or_create` returns the existing row when the intent matches. Paying
+  again requires raising `attempt`, which only an explicit rerun does.
+
+  The subject revision is part of the key, so an occurrence that moved gets its
+  own key and can never collide with a stale intent.
+  """
+  @spec idempotency_key(pos_integer(), Finding.t(), non_neg_integer()) :: String.t()
+  def idempotency_key(actor_id, finding, attempt)
+      when is_integer(actor_id) and is_integer(attempt) and attempt >= 0 do
+    CanonicalJSON.hash!(%{
+      "actor_id" => actor_id,
+      "task_id" => @task_id,
+      "subject_revision" => Flows.encode_structural_finding_identity(finding),
+      "attempt" => attempt
+    })
   end
 
   @doc "The validated request payload for one finding in one locale."

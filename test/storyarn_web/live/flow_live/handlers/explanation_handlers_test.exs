@@ -15,6 +15,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
   alias Storyarn.Repo
   alias Storyarn.Workers.AIExecutionWorker
   alias StoryarnTest.AI.FakeSettlement
+  alias StoryarnWeb.FlowLive.Handlers.ExplanationHandlers
 
   setup :register_and_log_in_user
 
@@ -189,6 +190,99 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
     end
   end
 
+  describe "spending" do
+    test "two surfaces on the same finding replay ONE paid operation", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      first = mount_editor(conn, project, flow)
+      second = mount_editor(conn, project, flow)
+
+      for view <- [first, second] do
+        finding = open_panel_and_finding(view)
+        render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+        [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+        render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      end
+
+      # Both surfaces watch the SAME operation: the deterministic idempotency
+      # key makes the second execute a replay, not a second purchase.
+      assert Repo.aggregate(Operation, :count) == 1
+      assert explanation(first)["status"] == "queued"
+      assert explanation(second)["status"] == "queued"
+    end
+
+    test "closing the surface releases the operation nobody will read", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+
+      render_click(view, "close_explanation", %{})
+
+      assert Repo.one!(Operation).execution_status == "cancelled"
+      assert explanation(view)["status"] == "idle"
+    end
+
+    test "an explicit rerun buys a second operation with its own key", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+
+      render_click(view, "rerun_explanation", %{})
+      [%{"routeRef" => rerun_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => rerun_ref})
+
+      keys = Operation |> Repo.all() |> Enum.map(& &1.idempotency_key)
+      assert length(keys) == 2
+      assert keys == Enum.uniq(keys)
+    end
+
+    test "the execution deadline detaches instead of failing, and resuming buys nothing", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      Application.put_env(:storyarn, ExplanationHandlers, poll_deadline_ms: 0)
+
+      on_exit(fn ->
+        Application.delete_env(:storyarn, ExplanationHandlers)
+      end)
+
+      view = mount_editor(conn, project, flow)
+      finding = open_panel_and_finding(view)
+      render_click(view, "open_explanation", %{"finding_id" => finding["findingId"]})
+      [%{"routeRef" => route_ref}] = explanation(view)["routes"]
+      render_click(view, "execute_explanation", %{"route_ref" => route_ref})
+
+      # Observed running, so the deadline clock starts; the next tick exceeds it.
+      Operation |> Repo.one!() |> Ecto.Changeset.change(execution_status: "running") |> Repo.update!()
+      send(view.pid, :poll_explanation)
+      send(view.pid, :poll_explanation)
+
+      assert explanation(view)["status"] == "detached"
+
+      render_click(view, "resume_explanation", %{})
+      assert explanation(view)["status"] == "running"
+      assert Repo.aggregate(Operation, :count) == 1
+    end
+  end
+
   describe "execution and result" do
     test "an explicitly chosen route produces an actor-private narrative", %{
       conn: conn,
@@ -201,7 +295,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       [%{"routeRef" => route_ref}] = explanation(view)["routes"]
 
       render_click(view, "execute_explanation", %{"route_ref" => route_ref})
-      assert explanation(view)["status"] == "running"
+      # Queued, not running: the execution deadline only starts once a worker
+      # picks the operation up, so queue wait cannot consume it.
+      assert explanation(view)["status"] == "queued"
 
       operation = Repo.one!(Operation)
       assert operation.task_id == "flows.explain_finding"

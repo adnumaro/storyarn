@@ -26,6 +26,7 @@ defmodule Storyarn.Analytics do
     "flow explanation route selected" => MapSet.new(~w(lane)),
     "flow explanation execution started" => MapSet.new(~w(lane rule_id)),
     "flow explanation result viewed" => MapSet.new(~w(rule_id stale)),
+    "flow explanation detached" => MapSet.new(~w(rule_id)),
     "flow explanation failed" => MapSet.new(~w(error_class)),
     "flow debug started" => MapSet.new(~w(flow_id project_id)),
     "flow node created" => MapSet.new(~w(creation_method flow_id has_parent node_type project_id)),
