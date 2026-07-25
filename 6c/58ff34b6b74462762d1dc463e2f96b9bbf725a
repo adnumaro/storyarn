@@ -1,0 +1,49 @@
+docs/features/ai-platform/OVERVIEW.md
+  s_b2830ac6a53241::t_668e841627024d 39-57
+assets/app/modules/flows/editor/components/panels/flowAnalysisTypes.ts
+  s_b2830ac6a53241::t_37162599de7db2 37-92
+assets/app/modules/flows/editor/components/panels/FlowAnalysisExplanation.vue
+  s_b2830ac6a53241::t_c227608995e5cc 1-207
+assets/app/locales/en/flows.json
+  s_b2830ac6a53241::t_d211c2ba232856 485-522
+docs/features/ai-platform/SLICE_7_2_AI_EXPLANATION.md
+  s_b2830ac6a53241::t_668e841627024d 12-15
+assets/app/live/flow/show/FlowPanels.vue
+  s_b2830ac6a53241::t_823fc24dd0495f 2-5,81-90
+  s_b2830ac6a53241::t_62ec530b3b11e8 7-10
+  s_b2830ac6a53241::t_d29c091f0f4dc8 75,176
+assets/app/modules/flows/editor/components/panels/FlowAnalysisPanel.vue
+  s_b2830ac6a53241::t_d29c091f0f4dc8 12
+  s_b2830ac6a53241::t_751a6125e96962 7,145,149-150
+  s_b2830ac6a53241::t_195a59c38a47e2 2,8,129-131,134-144,146-148,151-157,159-176,342
+  s_b2830ac6a53241::t_1bdfd887ffa74b 3,6,132-133,158
+  s_b2830ac6a53241::t_c99be44134767e 23,33,113-128,338,343-346
+assets/app/locales/es/flows.json
+  s_b2830ac6a53241::t_d211c2ba232856 485-522
+assets/app/test/modules/flows/editor/components/panels/FlowAnalysisExplanation.test.ts
+  s_b2830ac6a53241::t_89e5aa6752c9ef 1-139,141-156,160-181
+  s_b2830ac6a53241::t_94a3ca659b0d38 140,157-159
+assets/app/shared/command-palette/aiDestinations.ts
+  s_b2830ac6a53241::t_d322bc18588073 11-14
+  s_b2830ac6a53241::t_1bdfd887ffa74b 1-10
+assets/app/modules/flows/editor/components/panels/FlowAnalysisFindingCard.vue
+  s_b2830ac6a53241::t_dc3fb99930ab6e 14-15,24,32,40-43,187-195
+  s_b2830ac6a53241::t_195a59c38a47e2 39,53-57,120
+  s_b2830ac6a53241::t_890521e9c33883 196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6c58ff34b6b74462762d1dc463e2f96b9bbf725a",
+  "prompts": {},
+  "sessions": {
+    "s_b2830ac6a53241": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58be1506-46da-4aa1-9bc6-39e527104326",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
