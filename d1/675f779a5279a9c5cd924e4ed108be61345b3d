@@ -1,0 +1,40 @@
+lib/storyarn/flows/structural_analysis/finding.ex
+  s_fc3546b2264bba::t_c5ea50feb52c8d 132-138
+test/storyarn/flows/structural_analysis_test.exs
+  s_fc3546b2264bba::t_1f84250bb63fd5 445-464
+lib/storyarn/ai.ex
+  s_fc3546b2264bba::t_8d71beba302cda 119-124,126-127
+  s_fc3546b2264bba::t_449d92589f15c0 109
+  s_fc3546b2264bba::t_dd5abf8fdeba58 125
+lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex
+  s_fc3546b2264bba::t_5a7b3c5fc0a198 288
+lib/storyarn/ai/inference_providers/fake.ex
+  s_fc3546b2264bba::t_2e7e62109dade0 90-100
+  s_fc3546b2264bba::t_c5ea50feb52c8d 18
+  s_fc3546b2264bba::t_b5b8b91d64caa1 101
+assets/app/test/modules/flows/editor/components/panels/FlowAnalysisPanel.test.ts
+  s_fc3546b2264bba::t_ce4ae89116307f 243-244,246-250
+  s_fc3546b2264bba::t_d9472625d77d26 228-242,245,251-252
+test/storyarn/ai/tasks/flow_finding_explanation_test.exs
+  s_fc3546b2264bba::t_1f84250bb63fd5 223-236
+lib/storyarn/ai/tasks/flow_finding_explanation.ex
+  s_fc3546b2264bba::t_5a7b3c5fc0a198 167-171,173-175,180
+assets/app/modules/flows/editor/components/panels/FlowAnalysisPanel.vue
+  s_fc3546b2264bba::t_0b772abb0c160e 138-153,156-157,159-161,166,168-171,174-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d1675f779a5279a9c5cd924e4ed108be61345b3d",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
