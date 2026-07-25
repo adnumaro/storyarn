@@ -248,6 +248,7 @@ defmodule Storyarn.AI.PersonalByokTest do
     assert {:ok,
             %{
               route_options: route_options,
+              blocked_lanes: blocked_lanes,
               personal_preference: %{
                 status: :ready,
                 slot: :general_assistant,
@@ -258,19 +259,11 @@ defmodule Storyarn.AI.PersonalByokTest do
               ]
             }} = AI.preflight(intent)
 
-    assert route_options |> Enum.map(& &1.lane) |> Enum.sort() ==
-             [:managed, :personal_byok]
-
-    managed_route = Enum.find(route_options, &(&1.lane == :managed))
-
-    assert {:error, :allowance_exhausted} =
-             ctx
-             |> execution_intent!(
-               "general task",
-               managed_route.requested_route_ref,
-               "managed-exhausted-no-fallback"
-             )
-             |> AI.execute()
+    # The exhausted managed lane is BLOCKED, not silently replaced: it is still
+    # reported to the actor as an unavailable choice, and only the personal
+    # route is executable. Nothing selects the personal payer on its own.
+    assert Enum.map(route_options, & &1.lane) == [:personal_byok]
+    assert blocked_lanes == [%{lane: :managed, reason: :allowance_exhausted}]
 
     assert Repo.aggregate(Operation, :count) == 0
     assert is_nil(Repo.get!(Integration, integration.id).last_used_at)

@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { RotateCw, ScanSearch, X } from "lucide-vue-next";
-import { computed, ref, watch } from "vue";
+import { RotateCw, ScanSearch, Sparkles, X } from "lucide-vue-next";
+import { computed, ref, watch, watchEffect } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
+import { FLOW_ANALYSIS_DESTINATION } from "@shared/command-palette/aiDestinations";
+import type { PaletteCommand } from "@shared/command-palette/registry";
+import { registerPaletteCommands } from "@shared/command-palette/registry";
 import Sidebar from "../../../../../shell/Sidebar.vue";
 import { useLive } from "../../../../../shared/composables/useLive";
 import FlowAnalysisFindingCard from "./FlowAnalysisFindingCard.vue";
-import type { AnalysisFinding } from "./flowAnalysisTypes";
+import type { AnalysisFinding, FlowExplanationState } from "./flowAnalysisTypes";
 
 const {
   open = false,
@@ -17,6 +20,7 @@ const {
   maxNoteLength = 2000,
   active = [],
   dismissed = [],
+  explanation = null,
 } = defineProps<{
   open?: boolean;
   canEdit?: boolean;
@@ -26,6 +30,7 @@ const {
   maxNoteLength?: number;
   active?: AnalysisFinding[];
   dismissed?: AnalysisFinding[];
+  explanation?: FlowExplanationState | null;
 }>();
 
 const { t } = useI18n();
@@ -105,6 +110,104 @@ function onRestore(dismissalId: number): void {
 function onNavigate(type: string, id: number): void {
   pushAction("analysis_navigate_evidence", { type, id });
 }
+
+function onExplain(findingId: string): void {
+  pushAction("open_explanation", { finding_id: findingId });
+}
+
+function onExecuteExplanation(routeRef: string): void {
+  pushAction("execute_explanation", { route_ref: routeRef });
+}
+
+function onRerunExplanation(): void {
+  pushAction("rerun_explanation", {});
+}
+
+function onResumeExplanation(): void {
+  pushAction("resume_explanation", {});
+}
+
+function onCloseExplanation(): void {
+  pushAction("close_explanation", {});
+}
+
+// ── Palette v2 AI command ────────────────────────────────────────────────
+// The command is a `launch`: it starts the panel preflight and opens the
+// panel destination (owned by the panel host). Route and cost resolution stay
+// in the panel, never in the palette.
+/**
+ * The expanded card IS the selection, tracked by its STABLE key.
+ *
+ * The occurrence id rotates with the evidence fingerprint, and cards are keyed on
+ * findingKey so they survive a rerun expanded. Tracking the id here would drop the
+ * command out from under a card the user still has open — the same defect the
+ * server-side rerun had.
+ */
+const selectedFindingKey = ref<string | null>(null);
+
+function findingKeyFor(findingId: string): string | null {
+  const match =
+    active.find((finding) => finding.findingId === findingId) ??
+    dismissed.find((finding) => finding.findingId === findingId);
+  return match?.findingKey ?? null;
+}
+
+function onToggleFinding(findingId: string, expanded: boolean): void {
+  const key = findingKeyFor(findingId);
+
+  if (expanded) {
+    selectedFindingKey.value = key;
+  } else if (selectedFindingKey.value === key) {
+    selectedFindingKey.value = null;
+  }
+}
+
+/**
+ * Resolves the selection back to a CURRENT occurrence id.
+ *
+ * Returns null for a stale snapshot (every id is provisional until recomputed)
+ * and for a dismissed selection, since `onToggleFinding` also fires from that
+ * tab. The server refuses both, so this is about not offering a command that is
+ * guaranteed to fail.
+ */
+const explainableFindingId = computed(() => {
+  const key = selectedFindingKey.value;
+  if (key == null || stale) return null;
+  return active.find((finding) => finding.findingKey === key)?.findingId ?? null;
+});
+
+function explainCommand(findingId: string): PaletteCommand {
+  return {
+    kind: "ai",
+    mode: "launch",
+    // Cost is disclosed by the panel preflight, never by the palette.
+    cost: { kind: "deferred_to_preflight" },
+    id: "flows.explain_finding",
+    labelKey: "flows.explanation.explain_action",
+    groupKey: "palette.groups.actions",
+    icon: Sparkles,
+    taskId: "flows.explain_finding",
+    context: { surface: "flows", selection: { type: "flow_finding", id: findingId } },
+    availability: { state: "ready" },
+    destination: FLOW_ANALYSIS_DESTINATION,
+    launch: async () => {
+      pushAction("open_explanation", { finding_id: findingId });
+      return { status: "launched" };
+    },
+  };
+}
+
+watchEffect((onCleanup) => {
+  const findingId = explainableFindingId.value;
+  const eligible = explanation?.available === true && findingId != null;
+
+  const unregister = registerPaletteCommands(
+    "flows",
+    eligible && findingId ? [explainCommand(findingId)] : [],
+  );
+
+  onCleanup(unregister);
+});
 </script>
 
 <template>
@@ -256,19 +359,29 @@ function onNavigate(type: string, id: number): void {
             }}
           </p>
         </div>
+        <!-- Keyed by findingKey, not findingId: the id rotates with the
+             evidence fingerprint, so keying on it would collapse every
+             expanded card (and drop its AI surface) on each rerun. -->
         <ul v-else class="space-y-1.5">
           <FlowAnalysisFindingCard
             v-for="finding in shownFindings"
-            :key="finding.findingId"
+            :key="finding.findingKey"
             :finding="finding"
             :can-edit="canEdit"
             :reason-codes="reasonCodes"
             :max-note-length="maxNoteLength"
             :dismissed="tab === 'dismissed'"
             :action-error="actionError"
+            :explanation="explanation"
             @dismiss="onDismiss"
             @restore="onRestore"
             @navigate="onNavigate"
+            @toggle="onToggleFinding"
+            @explain="onExplain"
+            @execute="onExecuteExplanation"
+            @rerun-explanation="onRerunExplanation"
+            @resume-explanation="onResumeExplanation"
+            @close-explanation="onCloseExplanation"
           />
         </ul>
       </div>

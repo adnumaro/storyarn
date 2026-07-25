@@ -11,6 +11,7 @@ alias Storyarn.AI.InferenceProviders.Personal.Mistral, as: PersonalMistral
 alias Storyarn.AI.InferenceProviders.Personal.Moonshot, as: PersonalMoonshot
 alias Storyarn.AI.InferenceProviders.Personal.OpenAI, as: PersonalOpenAI
 alias Storyarn.AI.InferenceProviders.Together
+alias Storyarn.AI.Tasks.FlowFindingExplanation
 alias Storyarn.AI.Tasks.ManagedDiagnostic
 
 env = fn key ->
@@ -30,6 +31,13 @@ required_env = fn key ->
     environment variable #{key} is missing.
     """
 end
+
+# Every boolean switch reads through here. Before this, 18 sites open-coded
+# `in ~w(true 1)` while only 3 went through the trimming `env.()` — so
+# `TRUST_PROXY=" true"` silently read as OFF while
+# `STORYARN_AI_MANAGED_ENABLED=" true"` read as ON. Unset is always false: a
+# switch that turns on by accident is not a switch.
+bool_env = fn key -> String.downcase(env.(key) || "") in ~w(true 1) end
 
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
@@ -52,37 +60,36 @@ if System.get_env("PHX_SERVER") do
 end
 
 # Block search engine indexing (staging environments)
-if System.get_env("NOINDEX") in ~w(true 1) do
+if bool_env.("NOINDEX") do
   config :storyarn, noindex: true
-end
-
-if admin_email = System.get_env("ADMIN_EMAIL") do
-  config :storyarn, :admin_email, admin_email
 end
 
 if config_env() != :test do
   config :storyarn, Storyarn.Versioning.RestorePolicy,
-    sheet_version_restore: System.get_env("SHEET_VERSION_RESTORE_ENABLED") in ~w(true 1),
-    flow_version_restore: System.get_env("FLOW_VERSION_RESTORE_ENABLED") in ~w(true 1),
-    scene_version_restore: System.get_env("SCENE_VERSION_RESTORE_ENABLED") in ~w(true 1),
-    project_snapshot_restore: System.get_env("PROJECT_SNAPSHOT_RESTORE_ENABLED") in ~w(true 1),
-    deleted_project_recovery: System.get_env("DELETED_PROJECT_RECOVERY_ENABLED") in ~w(true 1)
+    sheet_version_restore: bool_env.("SHEET_VERSION_RESTORE_ENABLED"),
+    flow_version_restore: bool_env.("FLOW_VERSION_RESTORE_ENABLED"),
+    scene_version_restore: bool_env.("SCENE_VERSION_RESTORE_ENABLED"),
+    project_snapshot_restore: bool_env.("PROJECT_SNAPSHOT_RESTORE_ENABLED"),
+    deleted_project_recovery: bool_env.("DELETED_PROJECT_RECOVERY_ENABLED")
 
-  config :storyarn, Storyarn.Workers.DailySnapshotWorker,
-    pruning_enabled: System.get_env("AUTO_SNAPSHOT_PRUNING_ENABLED") in ~w(true 1)
+  config :storyarn, Storyarn.Workers.DailySnapshotWorker, pruning_enabled: bool_env.("AUTO_SNAPSHOT_PRUNING_ENABLED")
 
   config :storyarn, Storyarn.Workers.SnapshotRetentionWorker,
-    enabled: System.get_env("DELETED_PROJECT_SNAPSHOT_RETENTION_ENABLED") in ~w(true 1)
+    enabled: bool_env.("DELETED_PROJECT_SNAPSHOT_RETENTION_ENABLED")
 
-  config :storyarn, Storyarn.Workers.TrashRetentionWorker,
-    enabled: System.get_env("ENTITY_TRASH_RETENTION_ENABLED") in ~w(true 1)
+  config :storyarn, Storyarn.Workers.TrashRetentionWorker, enabled: bool_env.("ENTITY_TRASH_RETENTION_ENABLED")
 end
 
-managed_ai_enabled? = config_env() != :test and env.("STORYARN_AI_MANAGED_ENABLED") in ~w(true 1)
+managed_ai_enabled? = config_env() != :test and bool_env.("STORYARN_AI_MANAGED_ENABLED")
 
 inference_providers = %{}
 credential_adapters = %{}
-registered_tasks = []
+# The structural-finding explanation registers regardless of provider
+# configuration: a deployment without a managed provider must still offer the
+# command and report an honest blocked state instead of hiding it. The test
+# environment owns its own registry in config/test.exs.
+registered_tasks =
+  if config_env() == :test, do: [], else: [FlowFindingExplanation]
 
 {inference_providers, credential_adapters} =
   if config_env() == :test do
@@ -155,8 +162,8 @@ registered_tasks = []
 
 {inference_providers, credential_adapters, registered_tasks} =
   if managed_ai_enabled? do
-    if env.("STORYARN_AI_MANAGED_ZDR_VERIFIED") not in ~w(true 1) or
-         env.("STORYARN_AI_MANAGED_NO_TRAINING_VERIFIED") not in ~w(true 1) do
+    if not bool_env.("STORYARN_AI_MANAGED_ZDR_VERIFIED") or
+         not bool_env.("STORYARN_AI_MANAGED_NO_TRAINING_VERIFIED") do
       raise "managed AI requires explicit ZDR and no-training verification"
     end
 
@@ -165,6 +172,41 @@ registered_tasks = []
         {value, ""} when value > 0 -> value
         _invalid -> raise "environment variable #{key} must be a positive integer"
       end
+    end
+
+    # Prices and caps were stored as raw strings and only rejected later, by
+    # RouteResolver's valid_provider_price?/valid_budget? on the first route
+    # resolution — so a typo'd decimal booted green and failed on the actor's
+    # first AI operation. Validate here: a bad price is a boot failure.
+    #
+    # Non-negative is NOT the whole contract. `valid_budget?/1` requires every
+    # cap to be strictly positive and `valid_provider_price?/1` requires a
+    # positive max estimate unless both rates are zero, so a `0` cap boots green
+    # and then blocks every managed preflight — exactly the failure shape these
+    # closures exist to prevent. Those two predicates are the authority; keep
+    # this mirror in step with them.
+    decimal_env = fn key ->
+      value = required_env.(key)
+
+      case Decimal.parse(value) do
+        {decimal, ""} ->
+          if Decimal.negative?(decimal),
+            do: raise("environment variable #{key} must not be negative, got #{value}"),
+            else: value
+
+        _invalid ->
+          raise "environment variable #{key} must be a decimal number, got #{value}"
+      end
+    end
+
+    positive_decimal_env = fn key ->
+      value = decimal_env.(key)
+
+      {decimal, ""} = Decimal.parse(value)
+
+      if Decimal.positive?(decimal),
+        do: value,
+        else: raise("environment variable #{key} must be greater than zero, got #{value}")
     end
 
     provider_configs = %{
@@ -205,6 +247,16 @@ registered_tasks = []
     managed_inference_providers =
       Map.new(provider_configs, fn {name, provider} -> {name, provider.adapter} end)
 
+    input_per_million = decimal_env.("STORYARN_AI_PROVIDER_INPUT_PER_MILLION")
+    output_per_million = decimal_env.("STORYARN_AI_PROVIDER_OUTPUT_PER_MILLION")
+
+    # A free route (both rates zero) needs no cost ceiling; a paid one is
+    # unusable without a positive estimate, so demand it only where it bites.
+    max_operation_cost =
+      if Enum.all?([input_per_million, output_per_million], &Decimal.eq?(Decimal.new(&1), 0)),
+        do: decimal_env.("STORYARN_AI_PROVIDER_MAX_OPERATION_COST"),
+        else: positive_decimal_env.("STORYARN_AI_PROVIDER_MAX_OPERATION_COST")
+
     config :storyarn, Fireworks, endpoint: provider_configs["fireworks"].endpoint
     config :storyarn, Managed, credentials: credentials
 
@@ -230,14 +282,14 @@ registered_tasks = []
         provider_price: [
           version: positive_integer.("STORYARN_AI_PROVIDER_PRICE_VERSION"),
           currency: required_env.("STORYARN_AI_PROVIDER_PRICE_CURRENCY"),
-          input_per_million: required_env.("STORYARN_AI_PROVIDER_INPUT_PER_MILLION"),
-          output_per_million: required_env.("STORYARN_AI_PROVIDER_OUTPUT_PER_MILLION"),
-          max_estimated_cost: required_env.("STORYARN_AI_PROVIDER_MAX_OPERATION_COST")
+          input_per_million: input_per_million,
+          output_per_million: output_per_million,
+          max_estimated_cost: max_operation_cost
         ],
         budget: [
-          global_daily: required_env.("STORYARN_AI_PROVIDER_GLOBAL_DAILY_CAP"),
-          global_monthly: required_env.("STORYARN_AI_PROVIDER_GLOBAL_MONTHLY_CAP"),
-          workspace_daily: required_env.("STORYARN_AI_PROVIDER_WORKSPACE_DAILY_CAP")
+          global_daily: positive_decimal_env.("STORYARN_AI_PROVIDER_GLOBAL_DAILY_CAP"),
+          global_monthly: positive_decimal_env.("STORYARN_AI_PROVIDER_GLOBAL_MONTHLY_CAP"),
+          workspace_daily: positive_decimal_env.("STORYARN_AI_PROVIDER_WORKSPACE_DAILY_CAP")
         ]
       ]
 
@@ -322,15 +374,19 @@ end
 # Trust X-Forwarded-For header when behind a reverse proxy (CloudFlare, AWS ELB, etc.)
 # Only enable this in production when you're certain you're behind a trusted proxy
 # Without this, rate limiting uses the direct connection IP (more secure default)
-if System.get_env("TRUST_PROXY") in ~w(true 1) do
+if bool_env.("TRUST_PROXY") do
   config :storyarn, trust_proxy: true
 end
 
 # Rate limiting with Redis for production (multi-node support)
 # Development and test use ETS backend (started in application.ex)
 if config_env() == :prod do
-  if env.("REDIS_URL") do
-    config :storyarn, :rate_limiter_backend, :redis
+  # ONE key: a configured URL is what selects the Redis backend, so "Redis
+  # without a URL" is not a representable state. `env.()` trims and maps "" to
+  # nil, and nothing downstream re-reads the raw variable, so the value that
+  # selects the backend is always the value the backend receives.
+  if redis_url = env.("REDIS_URL") do
+    config :storyarn, :rate_limiter_redis_url, redis_url
   end
 
   # Cloak encryption key for sensitive database fields
@@ -340,7 +396,7 @@ if config_env() == :prod do
 
   database_url = required_env.("DATABASE_URL")
 
-  maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
+  maybe_ipv6 = if bool_env.("ECTO_IPV6"), do: [:inet6], else: []
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you

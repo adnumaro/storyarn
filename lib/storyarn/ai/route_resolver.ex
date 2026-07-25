@@ -19,35 +19,68 @@ defmodule Storyarn.AI.RouteResolver do
   alias Storyarn.AI.Settlement
   alias Storyarn.AI.Task
 
+  @type blocked_lane :: %{lane: atom(), reason: atom()}
   @type resolution :: %{
           routes: [ExecutionRoute.t()],
           personal_choices: [map()],
-          personal_preference: map()
+          personal_preference: map(),
+          blocked_lanes: [blocked_lane()]
         }
 
   @spec preflight_options(PolicyDecision.t(), Task.t()) :: resolution()
   def preflight_options(%PolicyDecision{} = decision, %Task{} = task) do
     personal = personal_resolution(decision, task)
 
-    routes =
-      Enum.flat_map(decision.allowed_lanes, fn
-        :personal_byok ->
-          ready_personal_routes(personal.choices)
-
-        lane ->
-          route_for_lane(lane, decision, task)
-      end)
+    {routes, blocked_lanes} =
+      decision
+      |> lane_routes(task, personal)
+      |> partition_by_settlement(decision)
 
     %{
       routes: routes,
       personal_choices: personal.choices,
-      personal_preference: personal.preference
+      personal_preference: personal.preference,
+      blocked_lanes: blocked_lanes
     }
   end
 
+  defp lane_routes(decision, task, personal) do
+    Enum.flat_map(decision.allowed_lanes, fn
+      :personal_byok -> ready_personal_routes(personal.choices)
+      lane -> route_for_lane(lane, decision, task)
+    end)
+  end
+
+  # Preflight only. `routes/2` (and therefore the execute-time `current?/3`
+  # staleness check) stays settlement-blind, so an allowance that runs out
+  # between preflight and execute still surfaces as its own reservation error
+  # instead of being reported as a stale route reference.
+  defp partition_by_settlement(routes, decision) do
+    routes
+    |> Enum.reduce({[], []}, fn route, {available, blocked} ->
+      case settlement_status(route, decision) do
+        :ok -> {[route | available], blocked}
+        {:error, reason} -> {available, [%{lane: route.lane, reason: reason} | blocked]}
+      end
+    end)
+    |> then(fn {available, blocked} -> {Enum.reverse(available), Enum.reverse(blocked)} end)
+  end
+
+  defp settlement_status(%ExecutionRoute{lane: :managed, price_units: units}, decision),
+    do: Settlement.preflight_status(:managed, decision.workspace_id, units)
+
+  defp settlement_status(%ExecutionRoute{}, _decision), do: :ok
+
+  @doc """
+  Every route the policy allows, settlement-BLIND on purpose.
+
+  This feeds `current?/3` at execute time: an allowance that runs out between
+  preflight and execution must surface as its own reservation error, not as a
+  stale route reference.
+  """
   @spec routes(PolicyDecision.t(), Task.t()) :: [ExecutionRoute.t()]
   def routes(%PolicyDecision{} = decision, %Task{} = task) do
-    preflight_options(decision, task).routes
+    lane_routes(decision, task, personal_resolution(decision, task))
   end
 
   @spec personal_choices(PolicyDecision.t(), Task.t()) :: [map()]

@@ -1,5 +1,5 @@
 defmodule Storyarn.AI.Results do
-  @moduledoc "Actor-private result reads, disposition and authorized apply boundary."
+  @moduledoc "Actor-private result reads, view stamping, disposition and authorized apply boundary."
 
   import Ecto.Query
 
@@ -40,15 +40,127 @@ defmodule Storyarn.AI.Results do
         )
       )
 
-    case row do
-      {%Operation{} = operation, output} ->
-        case Jason.decode(output) do
-          {:ok, decoded} -> {:ok, decoded, operation}
-          {:error, _reason} -> {:error, :invalid_result}
-        end
+    decode_row(row)
+  end
+
+  defp decode_row({%Operation{} = operation, output}) do
+    case Jason.decode(output) do
+      {:ok, decoded} -> {:ok, decoded, operation}
+      {:error, _reason} -> {:error, :invalid_result}
+    end
+  end
+
+  defp decode_row(nil), do: {:error, :not_found}
+
+  @doc """
+  Reads a still-readable result by the idempotency key that produced it.
+
+  Lets a surface that forgot its operation id recover the result the actor
+  already paid for, instead of offering to buy the same thing twice. Covered by
+  `ai_operations_actor_task_idempotency_unique`, so it is one index lookup.
+  """
+  @spec get_by_idempotency_key(Scope.t(), String.t(), String.t()) ::
+          {:ok, map() | list(), Operation.t()} | {:error, atom()}
+  def get_by_idempotency_key(%Scope{user: %{id: actor_id}}, task_id, idempotency_key)
+      when is_binary(task_id) and is_binary(idempotency_key) do
+    now = TimeHelpers.now()
+
+    row =
+      Repo.one(
+        from(operation in Operation,
+          join: result in Result,
+          on: result.operation_id == operation.id,
+          where:
+            operation.actor_id == ^actor_id and operation.task_id == ^task_id and
+              operation.idempotency_key == ^idempotency_key and
+              operation.execution_status == "succeeded" and result.expires_at > ^now and
+              not is_nil(result.output_encrypted),
+          select: {operation, result.output_encrypted}
+        )
+      )
+
+    decode_row(row)
+  end
+
+  @doc """
+  Which of `subject_revisions` this actor already holds a readable result for.
+
+  Answers "is there something waiting for me here" for a whole list at once, so a
+  surface can point at paid results the actor has not come back to. Actor-scoped
+  and expiry-aware, exactly like `get_by_idempotency_key/3` — a revision only
+  appears if this actor could actually open it right now.
+  """
+  @spec readable_subject_revisions(Scope.t(), String.t(), [String.t()]) :: MapSet.t(String.t())
+  def readable_subject_revisions(%Scope{user: %{id: actor_id}}, task_id, subject_revisions)
+      when is_binary(task_id) and is_list(subject_revisions) do
+    now = TimeHelpers.now()
+
+    from(operation in Operation,
+      join: result in Result,
+      on: result.operation_id == operation.id,
+      where:
+        operation.actor_id == ^actor_id and operation.task_id == ^task_id and
+          operation.subject_revision in ^subject_revisions and
+          operation.execution_status == "succeeded" and result.expires_at > ^now and
+          not is_nil(result.output_encrypted),
+      select: operation.subject_revision
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc """
+  Every operation of this actor that spent one of `idempotency_keys`, keyed by key.
+
+  A key is consumed permanently by the first operation that used it, even after
+  that operation stops being readable — cancelled, expired, or failed — because
+  `Execution.execute/1` replays the row rather than creating anything. So a caller
+  choosing which key to spend next needs each row's STATUS, not merely its
+  existence: still in flight means "attach to it", terminal-and-unreadable means
+  "this key can never produce anything again", and absent means "free to spend".
+
+  One query rather than one per candidate key, because such a caller has to
+  consider ALL of them: an attempt that never spent its key — an abandoned
+  preflight, or a route blocked before it could create anything — leaves a gap
+  that must not hide a paid result above it.
+  """
+  @spec operations_by_idempotency_keys(Scope.t(), String.t(), [String.t()]) ::
+          %{String.t() => Operation.t()}
+  def operations_by_idempotency_keys(%Scope{user: %{id: actor_id}}, task_id, idempotency_keys)
+      when is_binary(task_id) and is_list(idempotency_keys) do
+    from(operation in Operation,
+      where:
+        operation.actor_id == ^actor_id and
+          operation.task_id == ^task_id and
+          operation.idempotency_key in ^idempotency_keys
+    )
+    |> Repo.all()
+    |> Map.new(&{&1.idempotency_key, &1})
+  end
+
+  @doc """
+  Records that the actor saw this result.
+
+  The slice contract asks for `viewed`, never `accepted`, so this is deliberately
+  NOT a disposition: it leaves `user_disposition` nil, which keeps dismiss, apply
+  and expiry-abandonment reachable. Idempotent and silent — a surface rendering a
+  result must not fail because the stamp could not be written.
+  """
+  @spec record_view(Scope.t(), pos_integer()) :: :ok
+  def record_view(%Scope{user: %{id: actor_id}}, operation_id) do
+    case Repo.one(
+           from(operation in Operation,
+             where:
+               operation.id == ^operation_id and operation.actor_id == ^actor_id and
+                 operation.execution_status == "succeeded" and is_nil(operation.viewed_at)
+           )
+         ) do
+      %Operation{} = operation ->
+        operation |> Operation.viewed_changeset() |> Repo.update()
+        :ok
 
       nil ->
-        {:error, :not_found}
+        :ok
     end
   end
 

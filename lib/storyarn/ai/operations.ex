@@ -334,6 +334,52 @@ defmodule Storyarn.AI.Operations do
     end)
   end
 
+  @doc """
+  Releases an operation only while releasing it is still free.
+
+  `request_cancellation/2` stamps `cancellation_requested_at` once a provider
+  attempt has started, which charges the unit anyway and destroys the output the
+  actor paid for. A surface that is merely walking away wants the opposite: give
+  up the reservation if nothing has been spent, and otherwise leave the run
+  strictly alone so its result stays readable inside its TTL.
+
+  The decision cannot be made by reading the status first and cancelling second —
+  a worker can stamp `external_attempt_started_at` in between — so it is taken
+  here, under the same `FOR UPDATE` lock as the transition.
+  """
+  @spec release_if_unstarted(Scope.t(), pos_integer()) ::
+          {:ok, :released | :started | :settled} | {:error, atom()}
+  def release_if_unstarted(%{user: %{id: actor_id}}, operation_id) do
+    Repo.transaction(fn ->
+      operation =
+        Repo.one(
+          from(operation in Operation,
+            where: operation.id == ^operation_id and operation.actor_id == ^actor_id,
+            lock: "FOR UPDATE"
+          )
+        )
+
+      case operation do
+        %Operation{execution_status: "queued"} ->
+          cancel_locked(operation, :user_cancelled)
+          :released
+
+        %Operation{execution_status: "running", external_attempt_started_at: nil} ->
+          cancel_locked(operation, :user_cancelled)
+          :released
+
+        %Operation{execution_status: "running"} ->
+          :started
+
+        %Operation{} ->
+          :settled
+
+        nil ->
+          Repo.rollback(:not_found)
+      end
+    end)
+  end
+
   defp request_running_cancellation(%Operation{external_attempt_started_at: nil} = operation) do
     cancel_locked(operation, :user_cancelled)
   end

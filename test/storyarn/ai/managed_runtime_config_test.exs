@@ -70,6 +70,36 @@ defmodule Storyarn.AI.ManagedRuntimeConfigTest do
     assert managed_provider_registry(config) == %{"fireworks" => Fireworks, "together" => Together}
   end
 
+  # RouteResolver requires every cap to be strictly positive and, on a paid rate,
+  # a positive cost ceiling. Accepting zero here boots green and then blocks every
+  # managed preflight — the exact late failure this validation exists to prevent.
+  test "rejects budget caps and cost ceilings that would block every route" do
+    System.put_env("STORYARN_AI_MANAGED_PROVIDER", "fireworks")
+
+    for key <- [
+          "STORYARN_AI_PROVIDER_GLOBAL_DAILY_CAP",
+          "STORYARN_AI_PROVIDER_GLOBAL_MONTHLY_CAP",
+          "STORYARN_AI_PROVIDER_WORKSPACE_DAILY_CAP",
+          "STORYARN_AI_PROVIDER_MAX_OPERATION_COST"
+        ] do
+      original = System.get_env(key)
+      System.put_env(key, "0")
+
+      assert_raise RuntimeError, ~r/#{key} must be greater than zero/, fn ->
+        runtime_storyarn_config()
+      end
+
+      System.put_env(key, original)
+    end
+
+    # And the shape that legitimately has no ceiling still boots: a free route.
+    System.put_env("STORYARN_AI_PROVIDER_INPUT_PER_MILLION", "0")
+    System.put_env("STORYARN_AI_PROVIDER_OUTPUT_PER_MILLION", "0")
+    System.put_env("STORYARN_AI_PROVIDER_MAX_OPERATION_COST", "0")
+
+    assert managed_route(runtime_storyarn_config())[:provider_price][:max_estimated_cost] == "0"
+  end
+
   test "rejects unsupported providers and missing privacy attestations" do
     System.put_env("STORYARN_AI_MANAGED_PROVIDER", "unsupported")
 

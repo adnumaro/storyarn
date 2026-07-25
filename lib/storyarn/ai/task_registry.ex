@@ -27,7 +27,13 @@ defmodule Storyarn.AI.TaskRegistry do
 
   def fetch(_task_id), do: {:error, :unknown_task}
 
-  @doc false
+  @doc """
+  Fetches a registered task IGNORING its operational switch.
+
+  Exposed through `Storyarn.AI.get_task/1` so a surface can render an honest
+  "temporarily disabled" state. Never use it to authorize execution — that path
+  goes through `fetch/1`, which enforces the switch.
+  """
   @spec get(String.t()) :: {:ok, Task.t()} | {:error, :unknown_task}
   def get(task_id) when is_binary(task_id) do
     case Enum.find(all(), &(&1.id == task_id)) do

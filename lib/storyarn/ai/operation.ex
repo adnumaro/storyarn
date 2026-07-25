@@ -8,6 +8,7 @@ defmodule Storyarn.AI.Operation do
   alias Storyarn.AI.Context.PersistenceContract
   alias Storyarn.AI.RouteOption
   alias Storyarn.Projects.Project
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workspaces.Workspace
 
   @execution_statuses ~w(queued running succeeded failed cancelled unknown)
@@ -28,6 +29,10 @@ defmodule Storyarn.AI.Operation do
     field :idempotency_key, :string
     field :execution_status, :string
     field :user_disposition, :string
+    # When the actor actually looked at the result. Distinct from
+    # `user_disposition`, which holds a terminal outcome: a viewed result can
+    # still be dismissed, applied, or abandoned on expiry.
+    field :viewed_at, :utc_datetime
     field :settlement_status, :string, default: "not_applicable"
     field :subject_type, :string
     field :subject_id, :integer
@@ -145,6 +150,20 @@ defmodule Storyarn.AI.Operation do
       if operation.execution_status == "succeeded", do: [], else: [user_disposition: "requires a successful result"]
     end)
   end
+
+  @doc """
+  Stamps the first time the actor saw the result.
+
+  Separate from `disposition_changeset/2` on purpose: viewing is an event, not an
+  outcome, so it must not consume the `user_disposition IS NULL` precondition
+  that dismiss, apply and expiry-abandonment all depend on. Idempotent — the
+  first view is the one that matters.
+  """
+  def viewed_changeset(%__MODULE__{viewed_at: nil, execution_status: "succeeded"} = operation) do
+    change(operation, viewed_at: TimeHelpers.now())
+  end
+
+  def viewed_changeset(%__MODULE__{} = operation), do: change(operation, %{})
 
   def execution_statuses, do: @execution_statuses
   def dispositions, do: @dispositions

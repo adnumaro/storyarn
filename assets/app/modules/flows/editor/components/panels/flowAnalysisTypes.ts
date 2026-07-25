@@ -1,3 +1,5 @@
+import type { ContextDisclosureData } from "@components/ai/ContextDisclosure.vue";
+
 export interface AnalysisEvidence {
   type: string;
   id: number;
@@ -9,6 +11,8 @@ export type AnalysisTargetType = "flow" | "node";
 
 export interface AnalysisFinding {
   findingId: string;
+  /** Stable for rule+target across evidence changes; anchors the AI surface. */
+  findingKey: string;
   ruleId: string;
   ruleVersion: number;
   category: AnalysisCategory;
@@ -20,6 +24,8 @@ export interface AnalysisFinding {
   count?: number | null;
   hubId?: string | null;
   limitationsKey?: string | null;
+  /** An AI explanation this actor already paid for and can still open. */
+  hasExplanation?: boolean;
   previousDismissal?: {
     reasonCode: string;
     dismissedBy: string | null;
@@ -32,6 +38,56 @@ export interface AnalysisFinding {
   note?: string | null;
   dismissedBy?: string | null;
   dismissedAt?: string | null;
+}
+
+/** Optional AI explanation of ONE finding (Slice 7.2a). */
+export type ExplanationStatus =
+  | "idle"
+  | "preflight"
+  | "blocked"
+  | "queued"
+  | "running"
+  /** Still executing; the panel stopped watching at its deadline. Not a failure. */
+  | "detached"
+  | "succeeded"
+  | "failed"
+  | "expired";
+
+export interface ExplanationRoute {
+  routeRef: string;
+  lane: string;
+  provider: string;
+  model: string;
+  payer: string;
+  priceUnits: number;
+}
+
+export interface ExplanationBlockedLane {
+  lane: string;
+  reason: string;
+}
+
+/** Bounded narrative. Never carries ids, severities, or actions. */
+export interface ExplanationResult {
+  summary: string;
+  whyItTriggers: string;
+  implications: string[];
+  suggestedChecks: string[];
+}
+
+export interface FlowExplanationState {
+  available: boolean;
+  findingId: string | null;
+  findingKey: string | null;
+  status: ExplanationStatus;
+  error: string | null;
+  stale: boolean;
+  routes: ExplanationRoute[];
+  blockedLanes: ExplanationBlockedLane[];
+  disclosure: ContextDisclosureData | null;
+  /** How long a produced result stays readable. Disclosed BEFORE spending. */
+  retentionSeconds: number | null;
+  result: ExplanationResult | null;
 }
 
 export interface FlowAnalysisPanelState {

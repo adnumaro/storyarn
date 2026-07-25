@@ -36,24 +36,28 @@ adapters.
 
 ## Slice index
 
-| #   | Slice                                              | Document                              | Depends on                               | Status                               |
-| --- | -------------------------------------------------- | ------------------------------------- | ---------------------------------------- | ------------------------------------ |
-| 0   | Personal provider connections + AI flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md`        | —                                        | **merged** (PR #28)                  |
-| 1   | Command palette foundation (no AI)                 | `SLICE_1_COMMAND_PALETTE.md`          | —                                        | **merged** (F1 PR #30; F2/F3 PR #31) |
-| 2   | AI execution kernel + palette bridge               | `SLICE_2_AI_EXECUTION_KERNEL.md`      | 0, 1                                     | **merged** (PR #39)                  |
-| 3   | Storyarn AI beta + internal allowance              | `SLICE_3_STORYARN_AI_BETA.md`         | 2                                        | **merged** (PR #42)                  |
-| 4   | Personal BYOK execution lane                       | `SLICE_4_PERSONAL_BYOK_LANE.md`       | 0, 2, 3                                  | **merged** (PR #43)                  |
-| 5.1 | Central routing + workspace assignments            | `SLICE_5_1_ROUTING_ASSIGNMENTS.md`    | 2–4                                      | **merged** (PR #44)                  |
-| 5.2 | Personal AI preferences (“My AI Team”)             | `SLICE_5_2_MY_AI_TEAM.md`             | 5.1                                      | **merged** (PR #45)                  |
-| 6   | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`           | 2                                        | **merged** (PR #46)                  |
-| 7.1 | Deterministic structural analysis                  | `SLICE_7_1_DETERMINISTIC_ANALYSIS.md` | 1, 6                                     | pending                              |
-| 7.2 | Optional AI explanation                            | `SLICE_7_2_AI_EXPLANATION.md`         | 2–6, 7.1                                 | pending                              |
-| 8   | Dialogue rewrite/variants + proposal UX            | `SLICE_8_DIALOGUE_TOOLS.md`           | 2–6                                      | pending                              |
-| 9   | Multilingual scratch voice-over                    | `SLICE_9_SCRATCH_VOICEOVER.md`        | 0–5.2 + Localization/Assets              | pending                              |
-| 10  | Text → Storyarn structure                          | `SLICE_10_TEXT_TO_STRUCTURE.md`       | 2–6, 8                                   | pending                              |
-| 11  | Manual Tiptap writing suggestions                  | `SLICE_11_TIPTAP_SUGGESTIONS.md`      | 2, 4–6                                   | pending                              |
-| 12  | Image generation into sheet galleries              | `SLICE_12_IMAGE_GENERATION.md`        | 2, 4–6                                   | pending                              |
-| 13  | Commercial billing + paid allowances               | `SLICE_13_COMMERCIAL_BILLING.md`      | 3 + representative telemetry from 7.2–12 | deferred until data                  |
+| #      | Slice                                              | Document                                     | Depends on                               | Status                               |
+| ------ | -------------------------------------------------- | -------------------------------------------- | ---------------------------------------- | ------------------------------------ |
+| 0      | Personal provider connections + AI flag foundation | `SLICE_0_BYOK_INTEGRATIONS.md`               | —                                        | **merged** (PR #28)                  |
+| 1      | Command palette foundation (no AI)                 | `SLICE_1_COMMAND_PALETTE.md`                 | —                                        | **merged** (F1 PR #30; F2/F3 PR #31) |
+| 2      | AI execution kernel + palette bridge               | `SLICE_2_AI_EXECUTION_KERNEL.md`             | 0, 1                                     | **merged** (PR #39)                  |
+| 3      | Storyarn AI beta + internal allowance              | `SLICE_3_STORYARN_AI_BETA.md`                | 2                                        | **merged** (PR #42)                  |
+| 4      | Personal BYOK execution lane                       | `SLICE_4_PERSONAL_BYOK_LANE.md`              | 0, 2, 3                                  | **merged** (PR #43)                  |
+| 5.1    | Central routing + workspace assignments            | `SLICE_5_1_ROUTING_ASSIGNMENTS.md`           | 2–4                                      | **merged** (PR #44)                  |
+| 5.2    | Personal AI preferences (“My AI Team”)             | `SLICE_5_2_MY_AI_TEAM.md`                    | 5.1                                      | **merged** (PR #45)                  |
+| 6      | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`                  | 2                                        | **merged** (PR #46)                  |
+| 7.1    | Deterministic structural analysis                  | `SLICE_7_1_DETERMINISTIC_ANALYSIS.md`        | 1, 6                                     | **merged** (PR #48)                  |
+| 7.1a.0 | Remove the finding-explanation AI task             | `SLICE_7_1A_0_REMOVE_FINDING_EXPLANATION.md` | 7.2a                                     | specified                            |
+| 7.1a.1 | Palette operations + health contract + 4 rules     | `SLICE_7_1A_1_PALETTE_OPERATIONS.md`         | 1, 7.1, 7.1a.0                           | specified                            |
+| 7.1a.2 | Natural-language door over the operations          | `SLICE_7_1A_2_NATURAL_LANGUAGE_DOOR.md`      | 2, 3, 5.1, 6, 7.2a, 7.1a.1               | specified                            |
+| 7.2a   | Managed AI explanation                             | `SLICE_7_2A_MANAGED_EXPLANATION.md`          | 2, 3, 5.1, 6, 7.1                        | **implemented** (PR #49)             |
+| 7.2b   | Personal BYOK lane + public AI docs                | `SLICE_7_2B_PERSONAL_LANE_AND_DOCS.md`       | 4, 5.2, 7.2a                             | pending                              |
+| 8      | Dialogue rewrite/variants + proposal UX            | `SLICE_8_DIALOGUE_TOOLS.md`                  | 2–6                                      | pending                              |
+| 9      | Multilingual scratch voice-over                    | `SLICE_9_SCRATCH_VOICEOVER.md`               | 0–5.2 + Localization/Assets              | pending                              |
+| 10     | Text → Storyarn structure                          | `SLICE_10_TEXT_TO_STRUCTURE.md`              | 2–6, 8                                   | pending                              |
+| 11     | Manual Tiptap writing suggestions                  | `SLICE_11_TIPTAP_SUGGESTIONS.md`             | 2, 4–6                                   | pending                              |
+| 12     | Image generation into sheet galleries              | `SLICE_12_IMAGE_GENERATION.md`               | 2, 4–6                                   | pending                              |
+| 13     | Commercial billing + paid allowances               | `SLICE_13_COMMERCIAL_BILLING.md`             | 3 + representative telemetry from 7.2–12 | deferred until data                  |
 
 ## Ordering rationale
 
@@ -66,7 +70,11 @@ adapters.
   executable routes.
 - Slice 6 creates bounded context without hidden model calls.
 - Slice 7.1 turns the deterministic moat into a standalone, free product capability with a stable finding/evidence lifecycle.
-- Slice 7.2 becomes the first end-user AI task and proves the full context → route → consent → operation → private-result path without mixing generated narrative with deterministic facts.
+- Slice 7.2a becomes the first end-user AI task and proves the full context → route → operation → private-result path on one lane, without mixing generated narrative with deterministic facts. Its explanation task is a weak demo of a strong pipeline: for all 15 deterministic rules the finding IS the explanation, so the reusable kernel is the deliverable and the task should not lead the product surface.
+- Slice 7.1a.0 removes the structural-finding explanation. Slice 7.2a met its acceptance criteria, but the criteria aimed at the wrong thing: the structural analysis of a flow IS the health check, and for all 15 rules the finding already is the explanation. Its reusable deliverable — the kernel's spend, allowance, config and diagnostic hardening — is explicitly kept; only the task and its surface go. An independent PR before 7.1a.1, so the removal does not interleave with the additions on the same files.
+- Slice 7.1a.1 turns the command palette into the product's control surface: an operation registry, a typed language over the dotted references designers already read all day, and the deterministic answers behind it — the flow health contract (the dashboard currently collapses 15 rules into 3 buckets) plus the four checks that were mistaken for AI work. One registry serves three goals: translation target, capability index, and the completeness invariant that makes hiding the sidebars viable later.
+- Slice 7.1a.2 adds the natural-language door over that registry. The model translates text into one operation and never touches the data; it composes digests only from figures the platform computed. This is the anchor every later AI capability plugs into — lore, chapter summaries, ticket verification and task-manager integrations all arrive as operations, not as new surfaces.
+- Slice 7.2b adds the second payer as an explicit choice, proving consent and personal accounting on an already-verified surface, and publishes the public AI documentation once payer choice is real.
 - Slice 8 proves proposal/apply and becomes the first tightly bounded writing transformation.
 - Slice 9 ships a narrow, valuable VO preview using domain structures that already exist.
 - Expensive/high-risk/broad tools follow only after the proposal, media, and execution contracts are proven.
@@ -76,7 +84,7 @@ adapters.
 
 1. One branch/PR per slice, cut from current `main`; merge hard dependencies before starting their consumer.
 2. Re-verify all named modules/APIs against `main` at implementation start; these documents are contracts, not proof that code still has the same shape.
-3. User-facing AI surfaces use the single product flag `:ai_integrations`, disabled by default and actor-targetable. Deterministic non-AI detectors may ship independently. Public documentation is not an entitlement boundary: invite-only AI beta relies on inline help, and Slice 7.2 publishes the AI guides for everyone when the first user-facing AI tool ships.
+3. User-facing AI surfaces use the single product flag `:ai_integrations`, disabled by default and actor-targetable. Deterministic non-AI detectors may ship independently. Public documentation is not an entitlement boundary: invite-only AI beta relies on inline help, and Slice 7.2b publishes the AI guides for everyone once the first user-facing AI tool offers both payers.
 4. Task/provider operational switches and circuit breakers are allowed and required; they are not additional product entitlements.
 5. Every user-facing slice ships en/es copy, user docs, browser verification, ExUnit/Vitest coverage, and the repository quality gate.
 6. Reuse facades, authorization, mutation, storage, collaboration, versioning, and component registries. AI never creates a second write path.

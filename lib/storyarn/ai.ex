@@ -8,9 +8,12 @@ defmodule Storyarn.AI do
   Slice 0 owns personal provider connections. Slices 2–4 add registered tasks,
   workspace policy, opaque route preflight, durable operations, managed
   execution and personal BYOK. Slice 5.1 adds the central route-resolution,
-  model-catalog and workspace-assignment boundaries.
+  model-catalog and workspace-assignment boundaries. Slice 7.2a adds the
+  flow-finding explanation seam — intent building, its replay key, and the reads
+  a panel needs to recover or attach to an operation it already paid for.
   """
 
+  alias Storyarn.Accounts.Scope
   alias Storyarn.AI.Allowance
   alias Storyarn.AI.Execution
   alias Storyarn.AI.ExecutionIntent
@@ -23,9 +26,11 @@ defmodule Storyarn.AI do
   alias Storyarn.AI.Policy
   alias Storyarn.AI.Providers
   alias Storyarn.AI.Results
+  alias Storyarn.AI.RouteOptions
   alias Storyarn.AI.RouteResolver
   alias Storyarn.AI.Runtime
   alias Storyarn.AI.TaskRegistry
+  alias Storyarn.AI.Tasks.FlowFindingExplanation
 
   defdelegate list_active(user), to: IntegrationCrud
   defdelegate get_active(user, provider), to: IntegrationCrud
@@ -57,17 +62,143 @@ defmodule Storyarn.AI do
   defdelegate with_personal_integration(user, provider, fun), to: Runtime
 
   defdelegate new_intent(scope, attrs), to: ExecutionIntent, as: :new
+
+  @doc """
+  Whether the flow-finding explanation task is registered at all.
+
+  Ignores the operational switch: a disabled task still shows an honest blocked
+  state, only an unregistered one (a deployment without it) hides the surface.
+  """
+  @spec flow_finding_explanation_registered?() :: boolean()
+  def flow_finding_explanation_registered? do
+    match?({:ok, _task}, get_task(FlowFindingExplanation.task_id()))
+  end
+
+  @doc """
+  Builds the intent for explaining ONE authorized structural finding.
+
+  The task's wire format — input shape, subject identity, idempotency key — stays
+  inside this context. A caller supplies the finding it already authorized plus
+  the attempt counter, so bumping `input_schema_version` cannot leave a LiveView
+  silently behind: there is nothing to bump out there.
+
+  `attempt` is what buys a second explanation of the same occurrence; 0 replays
+  whatever the actor already paid for.
+  """
+  @spec flow_finding_explanation_intent(Scope.t(), map()) ::
+          {:ok, ExecutionIntent.t()} | {:error, atom()}
+  def flow_finding_explanation_intent(scope, %{} = params) do
+    %{
+      workspace_id: workspace_id,
+      project_id: project_id,
+      flow_id: flow_id,
+      finding: finding,
+      locale: locale
+    } = params
+
+    attrs = %{
+      workspace_id: workspace_id,
+      project_id: project_id,
+      task_id: FlowFindingExplanation.task_id(),
+      input: FlowFindingExplanation.input(finding, locale),
+      subject: FlowFindingExplanation.subject(flow_id, finding)
+    }
+
+    attrs =
+      case params do
+        %{route_ref: route_ref, attempt: attempt} ->
+          Map.merge(attrs, %{
+            requested_route_ref: route_ref,
+            idempotency_key: FlowFindingExplanation.idempotency_key(scope.user.id, finding, locale, attempt)
+          })
+
+        _preflight_only ->
+          attrs
+      end
+
+    ExecutionIntent.new(scope, attrs)
+  end
+
+  @doc """
+  The idempotency key an explanation attempt would use, for a replay probe.
+
+  Takes the locale because the key includes it: probing without it would surface a
+  narrative in the wrong language.
+  """
+  @spec flow_finding_explanation_key(Scope.t(), term(), String.t(), non_neg_integer()) :: String.t()
+  def flow_finding_explanation_key(scope, finding, locale, attempt) do
+    FlowFindingExplanation.idempotency_key(scope.user.id, finding, locale, attempt)
+  end
+
+  @doc "The registered id of the flow-finding explanation task."
+  @spec flow_finding_explanation_task_id() :: String.t()
+  defdelegate flow_finding_explanation_task_id(), to: FlowFindingExplanation, as: :task_id
   defdelegate resolve_route(intent), to: Execution, as: :preflight
 
-  @doc "Backward-compatible name for route resolution; prefer `resolve_route/1` in new consumers."
+  @doc "Resolves routes and builds the Slice-6 disclosure without creating an operation."
   defdelegate preflight(intent), to: Execution
   defdelegate execute(intent), to: Execution
   defdelegate cancel(scope, operation_id), to: Operations, as: :request_cancellation
+
+  @doc """
+  Gives up an operation the actor walked away from, but never one already paid for.
+
+  Unlike `cancel/2` this never stamps a cancellation on a started provider
+  attempt: it releases the reservation while nothing has been spent and
+  otherwise leaves the run alone, reporting which of the two happened.
+  """
+  defdelegate release_if_unstarted(scope, operation_id), to: Operations
+
+  @doc """
+  Whether `route_ref` is the purchase decision that CREATED `operation_id`.
+
+  Only the creating path consumes a route option, so a surface whose `execute`
+  replayed an existing idempotency key leaves its own option unconsumed. That
+  makes this the one reliable answer to "did I buy this operation, or attach to
+  one that already existed" — a distinction a surface cannot infer on its own,
+  because two panels can resolve preflight for the same unspent key and both
+  call `execute/1`.
+  """
+  defdelegate created_operation?(scope, route_ref, operation_id), to: RouteOptions
   defdelegate grant_personal_consent(intent, integration_id, policy_text_version), to: PersonalConsents, as: :grant
   defdelegate revoke_personal_consent(scope, consent_id), to: PersonalConsents, as: :revoke
 
   defdelegate get_operation(scope, operation_id), to: Results
   defdelegate get_result(scope, operation_id), to: Results, as: :get
+
+  @doc "Recovers a still-readable result by the idempotency key that produced it."
+  defdelegate get_replayable_result(scope, task_id, idempotency_key),
+    to: Results,
+    as: :get_by_idempotency_key
+
+  @doc """
+  Which flow-finding identities this actor already holds a readable explanation for.
+
+  Lets the analysis panel point at results the actor paid for and never came back
+  to — the one case abandoning a surface cannot recover on its own.
+  """
+  @spec flow_finding_explanations_ready(Scope.t(), [String.t()]) :: MapSet.t(String.t())
+  def flow_finding_explanations_ready(scope, subject_revisions) do
+    Results.readable_subject_revisions(
+      scope,
+      FlowFindingExplanation.task_id(),
+      subject_revisions
+    )
+  end
+
+  @doc """
+  The operations that spent any of these idempotency keys, keyed by key.
+
+  Reports each one in whatever state it ended up, so a caller can tell a run
+  still coming from a dead end, and an absent key from a spent one.
+  """
+  defdelegate get_operations_by_keys(scope, task_id, idempotency_keys),
+    to: Results,
+    as: :operations_by_idempotency_keys
+
+  @doc "Records that the actor saw a result. Never a disposition — see Results.record_view/2."
+  defdelegate record_result_view(scope, operation_id), to: Results, as: :record_view
+
   defdelegate dismiss_result(scope, operation_id), to: Results, as: :dismiss
   defdelegate apply_result(scope, operation_id, current_revision, apply_fun), to: Results, as: :apply
 
@@ -77,5 +208,9 @@ defmodule Storyarn.AI do
   defdelegate managed_provenance(), to: RouteResolver
 
   defdelegate registered_tasks(), to: TaskRegistry, as: :all
+
+  @doc "Fetches a registered task regardless of its operational switch."
+  defdelegate get_task(task_id), to: TaskRegistry, as: :get
+
   defdelegate ai_command_id?(command_id), to: TaskRegistry, as: :command_id?
 end

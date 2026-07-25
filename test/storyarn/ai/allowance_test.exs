@@ -15,6 +15,7 @@ defmodule Storyarn.AI.AllowanceTest do
   alias Storyarn.AI.Operations
   alias Storyarn.AI.OperatorAlert
   alias Storyarn.AI.ProviderBudgetReservation
+  alias Storyarn.AI.RouteOption
   alias Storyarn.AI.Settlement
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
@@ -199,7 +200,10 @@ defmodule Storyarn.AI.AllowanceTest do
     assert summary.available_units == 0
     assert ledger_kinds(ctx.workspace.id) == ["grant", "expiry"]
 
-    assert {:error, :allowance_exhausted} = execute(ctx, "expired", "expired-operation")
+    # Expired units are excluded by the read-only projection, so the block
+    # happens at preflight — before a route option or operation exists.
+    assert {:error, :allowance_exhausted} = preflight(ctx, "expired")
+    assert Repo.aggregate(RouteOption, :count) == 0
     assert Repo.aggregate(Operation, :count) == 0
   end
 
@@ -296,6 +300,55 @@ defmodule Storyarn.AI.AllowanceTest do
     assert Enum.map(entries, & &1.kind) == ["grant", "reserve", "release", "expiry"]
   end
 
+  describe "projection/1 (preflight)" do
+    test "reports spendable units without touching the ledger", ctx do
+      grant!(ctx, 3, "projection")
+
+      assert %{status: "active", available_units: 3} = Allowance.projection(ctx.workspace.id)
+
+      # A read-only projection must not sweep, reserve or write anything.
+      assert Repo.aggregate(AllowanceLedgerEntry, :count) == 1
+      assert Repo.aggregate(AllowanceReservation, :count) == 0
+    end
+
+    test "excludes grants past their expiry before the sweeper runs", ctx do
+      grant = grant!(ctx, 4, "expiring")
+
+      grant
+      |> Ecto.Changeset.change(expires_at: DateTime.add(TimeHelpers.now(), -60, :second))
+      |> Repo.update!()
+
+      assert %{available_units: 0} = Allowance.projection(ctx.workspace.id)
+    end
+
+    test "surfaces a paused account and an unknown workspace", ctx do
+      grant!(ctx, 2, "paused-projection")
+      assert {:ok, _account} = Allowance.set_status(ctx.workspace.id, "paused")
+
+      assert %{status: "paused", available_units: 2} = Allowance.projection(ctx.workspace.id)
+      assert %{status: "unavailable", available_units: 0} = Allowance.projection(ctx.workspace.id + 100_000)
+    end
+
+    test "an exhausted allowance blocks the managed choice at preflight", ctx do
+      configure_price(2)
+      grant!(ctx, 1, "too-few-units")
+
+      {:ok, intent} =
+        AI.new_intent(ctx.scope, %{
+          workspace_id: ctx.workspace.id,
+          project_id: ctx.project.id,
+          task_id: "contract.echo",
+          input: %{"text" => "blocked"}
+        })
+
+      assert {:error, :allowance_exhausted} = AI.preflight(intent)
+
+      # Blocked BEFORE anything is issued: no route option, no operation.
+      assert Repo.aggregate(RouteOption, :count) == 0
+      assert Repo.aggregate(Operation, :count) == 0
+    end
+  end
+
   defp configure_price(units) do
     Application.put_env(:storyarn, ContractTask,
       scenario: :success,
@@ -319,6 +372,18 @@ defmodule Storyarn.AI.AllowanceTest do
     ctx
     |> execution_intent(text, idempotency_key)
     |> AI.execute()
+  end
+
+  defp preflight(ctx, text) do
+    assert {:ok, intent} =
+             AI.new_intent(ctx.scope, %{
+               workspace_id: ctx.workspace.id,
+               project_id: ctx.project.id,
+               task_id: "contract.echo",
+               input: %{"text" => text}
+             })
+
+    AI.preflight(intent)
   end
 
   defp execution_intent(ctx, text, idempotency_key) do

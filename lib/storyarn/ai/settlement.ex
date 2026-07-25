@@ -2,6 +2,7 @@ defmodule Storyarn.AI.Settlement do
   @moduledoc false
 
   def available?(lane), do: adapter().available?(lane)
+  def preflight_status(lane, workspace_id, units), do: adapter().preflight_status(lane, workspace_id, units)
   def reserve(operation), do: adapter().reserve(operation)
   def commit(operation), do: adapter().commit(operation)
   def release(operation), do: adapter().release(operation)

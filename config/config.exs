@@ -124,8 +124,9 @@ config :storyarn, Storyarn.AI.RouteOptions, ttl_seconds: 300
 config :storyarn, Storyarn.AI.RouteResolver, managed: nil
 config :storyarn, Storyarn.AI.Settlement, Storyarn.AI.Settlement.Unavailable
 
-# Slice 2 defines execution contracts but deliberately ships with no
-# production task, route, credential resolver, or allowance implementation.
+# Route, credential resolver and allowance stay unavailable until runtime
+# configuration provides them. The task list is owned by config/runtime.exs;
+# dev/test override it explicitly.
 config :storyarn, Storyarn.AI.TaskRegistry, tasks: []
 
 # Configure Gettext locales
@@ -188,7 +189,6 @@ config :storyarn, StoryarnWeb.Endpoint,
 # Automatic trash hard-deletion is frozen while restore and referential
 # integrity are being hardened.
 config :storyarn, TrashRetentionWorker, enabled: false
-config :storyarn, :admin_email, "adan@storyarn.com"
 
 config :storyarn,
        :import_idempotency_secret,

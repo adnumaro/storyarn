@@ -34,6 +34,46 @@ defmodule Storyarn.AI.Allowance do
     end
   end
 
+  @doc """
+  Read-only projection of a workspace's spendable units, for preflight.
+
+  Never locks and never expires grants: showing a route must not mutate ledger
+  state. Grants past their expiry are excluded from the sum even when the
+  sweeper has not run yet, so the projection can only be pessimistic — the
+  authoritative check stays `reserve/1`.
+  """
+  @spec projection(pos_integer()) :: summary()
+  def projection(workspace_id) when is_integer(workspace_id) do
+    case Repo.get_by(AllowanceAccount, workspace_id: workspace_id) do
+      nil -> empty_summary()
+      account -> %{account_summary(account) | available_units: spendable_units(account.id)}
+    end
+  end
+
+  def projection(_workspace_id), do: empty_summary()
+
+  defp spendable_units(account_id) do
+    Repo.one(
+      from(grant in spendable_grants(account_id, TimeHelpers.now()),
+        # Postgres sums integers into numeric; without the cast this would come
+        # back as a Decimal struct and every `>=` against a unit count would be
+        # struct-vs-integer term comparison, which is silently always true.
+        select: type(coalesce(sum(grant.remaining_units), 0), :integer)
+      )
+    )
+  end
+
+  # ONE definition of "spendable", shared by the read-only projection and the
+  # locking allocator. If these two ever disagreed, preflight would advertise
+  # units `reserve/1` cannot actually allocate — the projection's whole contract.
+  defp spendable_grants(account_id, now) do
+    from(grant in AllowanceGrant,
+      where:
+        grant.account_id == ^account_id and grant.remaining_units > 0 and
+          (is_nil(grant.expires_at) or grant.expires_at > ^now)
+    )
+  end
+
   @doc "Issues an idempotent operator grant; this is intentionally not exposed by the AI facade."
   @spec grant(pos_integer(), pos_integer(), map()) ::
           {:ok, AllowanceGrant.t()} | {:error, atom() | Changeset.t()}
@@ -362,10 +402,7 @@ defmodule Storyarn.AI.Allowance do
 
   defp lock_spendable_grants(account_id, now) do
     Repo.all(
-      from(grant in AllowanceGrant,
-        where:
-          grant.account_id == ^account_id and grant.remaining_units > 0 and
-            (is_nil(grant.expires_at) or grant.expires_at > ^now),
+      from(grant in spendable_grants(account_id, now),
         order_by: [asc_nulls_last: grant.expires_at, asc: grant.id],
         lock: "FOR UPDATE"
       )

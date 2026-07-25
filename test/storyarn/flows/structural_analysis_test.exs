@@ -364,6 +364,106 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
     end
   end
 
+  describe "fetch_current_finding/3" do
+    setup %{project: project, flow: flow} do
+      entry = entry_node(flow)
+      stuck = node_fixture(flow, %{type: "dialogue"})
+      connection_fixture(flow, entry, stuck)
+
+      [finding] = rule_findings(analyze!(project, flow), "no_outgoing_connection")
+      %{finding: finding, stuck: stuck}
+    end
+
+    test "returns the finding for its exact identity", %{project: project, flow: flow, finding: finding} do
+      identity = Flows.structural_finding_identity(finding)
+
+      assert {:ok, fetched} = Flows.fetch_current_structural_finding(project.id, flow.id, identity)
+      assert fetched.finding_id == finding.finding_id
+    end
+
+    test "a key that no longer exists is unknown, not stale", %{project: project, flow: flow, finding: finding} do
+      identity = %{Flows.structural_finding_identity(finding) | finding_key: "no_outgoing_connection:#{flow.id}:node:0"}
+
+      assert {:error, :unknown_finding} =
+               Flows.fetch_current_structural_finding(project.id, flow.id, identity)
+    end
+
+    test "the same key on moved evidence is stale, never substituted", %{
+      project: project,
+      flow: flow,
+      finding: finding,
+      stuck: stuck
+    } do
+      identity = Flows.structural_finding_identity(finding)
+
+      # A new node changes the graph digest, so the same key rotates fingerprint.
+      node_fixture(flow, %{type: "dialogue"})
+
+      assert {:error, :stale_finding} =
+               Flows.fetch_current_structural_finding(project.id, flow.id, identity)
+
+      # The current occurrence of that same target is fetchable again.
+      [current] = rule_findings(analyze!(project, flow), "no_outgoing_connection")
+      assert current.target.id == stuck.id
+
+      assert {:ok, _finding} =
+               Flows.fetch_current_structural_finding(
+                 project.id,
+                 flow.id,
+                 Flows.structural_finding_identity(current)
+               )
+    end
+
+    test "a rule version bump invalidates the identity", %{project: project, flow: flow, finding: finding} do
+      identity = %{Flows.structural_finding_identity(finding) | rule_version: finding.rule_version + 1}
+
+      assert {:error, :stale_finding} =
+               Flows.fetch_current_structural_finding(project.id, flow.id, identity)
+    end
+
+    test "a foreign or missing flow is not found", %{project: project, flow: flow, finding: finding} do
+      identity = Flows.structural_finding_identity(finding)
+      other_project = project_fixture(user_fixture())
+
+      assert {:error, :not_found} =
+               Flows.fetch_current_structural_finding(other_project.id, flow.id, identity)
+
+      assert {:error, :not_found} =
+               Flows.fetch_current_structural_finding(project.id, flow.id + 100_000, identity)
+    end
+
+    test "identity encoding round-trips and fails closed", %{finding: finding} do
+      encoded = Flows.encode_structural_finding_identity(finding)
+
+      assert {:ok, decoded} = Flows.decode_structural_finding_identity(encoded)
+      assert decoded == Flows.structural_finding_identity(finding)
+
+      for hostile <- ["", "a|b|c", "key|0|#{String.duplicate("f", 64)}", "key|1|short", encoded <> "|extra", 42] do
+        assert {:error, :invalid_finding_identity} = Flows.decode_structural_finding_identity(hostile)
+      end
+    end
+
+    test "a key no encoder could produce is refused, not decoded" do
+      fingerprint = String.duplicate("a", 64)
+
+      # None of these raise — String.split is byte-oriented and the fingerprint
+      # regex has no /u — so before the guard they all decoded to {:ok, ...} and
+      # only failed later, on a snapshot lookup that could never match.
+      unencodable = [
+        {"invalid utf8", <<0xFF, 0xFE>>},
+        {"lone surrogate", <<0xED, 0xA0, 0x80>>},
+        {"truncated utf8", <<0xC3>>},
+        {"embedded NUL", "rule\0key"}
+      ]
+
+      for {label, key} <- unencodable do
+        assert {:error, :invalid_finding_identity} =
+                 Flows.decode_structural_finding_identity(key <> "|1|" <> fingerprint),
+               "expected #{label} to fail closed at the boundary"
+      end
+    end
+  end
+
   describe "determinism and identity" do
     test "findings are identical and identically ordered across runs", %{
       project: project,

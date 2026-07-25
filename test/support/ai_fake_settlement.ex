@@ -7,6 +7,10 @@ defmodule StoryarnTest.AI.FakeSettlement do
   def available?(_lane), do: false
 
   @impl true
+  def preflight_status(:managed, _workspace_id, _units), do: configured_result(:preflight_status)
+  def preflight_status(_lane, _workspace_id, _units), do: {:error, :allowance_unavailable}
+
+  @impl true
   def reserve(_operation), do: :ok
 
   @impl true

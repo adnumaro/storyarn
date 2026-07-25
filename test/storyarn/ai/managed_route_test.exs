@@ -82,6 +82,10 @@ defmodule Storyarn.AI.ManagedRouteTest do
   end
 
   test "provider endpoints stay in server configuration and are not persisted", ctx do
+    # Preflight now projects the allowance read-only, so an offered managed
+    # route implies spendable units.
+    grant!(ctx, 1, "endpoint-at-rest")
+
     assert {:ok, %{route_options: [_route]}} = ctx |> preflight_intent("no-endpoint-at-rest") |> AI.preflight()
 
     route_option = Repo.one!(RouteOption)
@@ -116,6 +120,9 @@ defmodule Storyarn.AI.ManagedRouteTest do
 
     configure_route(ctx.route, [])
     assert {:ok, _account} = Allowance.set_status(ctx.workspace.id, "paused")
+
+    # A paused account is reported as paused (not "exhausted") and blocks at
+    # preflight, before any operation exists.
     assert {:error, :allowance_paused} = execute(ctx, "paused", "paused-operation")
 
     assert Repo.aggregate(Operation, :count) == 0
@@ -153,8 +160,12 @@ defmodule Storyarn.AI.ManagedRouteTest do
                input: %{"text" => text}
              })
 
-    assert {:ok, %{route_options: [%{requested_route_ref: route_ref}]}} = AI.preflight(intent)
+    with {:ok, %{route_options: [%{requested_route_ref: route_ref}]}} <- AI.preflight(intent) do
+      execute_with_route(ctx, text, idempotency_key, route_ref)
+    end
+  end
 
+  defp execute_with_route(ctx, text, idempotency_key, route_ref) do
     assert {:ok, execute_intent} =
              AI.new_intent(ctx.scope, %{
                workspace_id: ctx.workspace.id,
