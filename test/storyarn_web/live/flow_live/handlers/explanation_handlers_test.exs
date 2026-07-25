@@ -663,7 +663,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       assert Repo.aggregate(Operation, :count) == 1
     end
 
-    test "closing drops the surface without touching the operation", %{
+    test "closing drops the surface but keeps the operation row", %{
       conn: conn,
       project: project,
       flow: flow
@@ -675,6 +675,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
 
       assert explanation(view)["status"] == "idle"
       assert explanation(view)["result"] == nil
+      # The row survives — closing cancels a queued operation (asserted where the
+      # spending guarantees are) but never deletes it, so the reopen probe can
+      # still see the key was spent.
       assert Repo.aggregate(Operation, :count) == 1
     end
   end

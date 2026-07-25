@@ -87,7 +87,7 @@ defmodule StoryarnWeb.E2E.FlowAnalysisTest do
     |> assert_has("[data-testid='analysis-restore']")
   end
 
-  test "editor explains a finding with Storyarn AI and reruns it when the flow moves", %{conn: conn} do
+  test "editor explains a finding, and the narrative is marked stale when the flow moves with Storyarn AI", %{conn: conn} do
     user = user_fixture()
     project = user |> project_fixture() |> Repo.preload(:workspace)
     flow = seed_flow(project)

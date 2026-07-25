@@ -519,7 +519,7 @@
         "missing_use_ai": "tu rol no puede ejecutar tareas de IA en este proyecto",
         "provider_error": "el proveedor de IA no pudo completar la petición",
         "invalid_explanation_output": "la respuesta de la IA no cumplió el formato esperado",
-        "model_context_window_exceeded": "la evidencia de este hallazgo excede el modelo disponible",
+        "model_context_window_exceeded": "la evidencia de este hallazgo excede la capacidad del modelo disponible",
         "operation_not_found": "esta ejecución ya no está disponible",
         "stale_finding": "el flow ha cambiado, así que la evidencia de este hallazgo ya no es la analizada",
         "unknown_finding": "este hallazgo ya no forma parte del análisis actual",

@@ -8,11 +8,14 @@ nothing under **Proposed change** exists in the codebase yet.
 `1355095c`, Oban `2.22.1` (`mix.lock:66`). Every claim below was read from
 source; `deps/` citations are to the vendored Oban of that exact version.
 
-Line citations into `lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex`
-and `lib/storyarn/ai/tasks/flow_finding_explanation.ex` are deliberately given
-by module attribute or function name rather than by line: both files were under
-concurrent edit when this document was written. Everything else — config,
-workers, `Operations`, `Execution`, `Executor`, migrations — is cited by line.
+Citations into files that were, or later became, subject to concurrent edit are
+given by **function or module-attribute name** rather than by line:
+`explanation_handlers.ex`, `flow_finding_explanation.ex`, `ai/execution.ex`,
+`ai/results.ex` and `ai/allowance.ex`. The last three earned that treatment the
+hard way — the Slice-7.2a remediation moved them twice after this spec landed,
+and every line cite into them had already drifted. Everything else — config,
+workers, `Operations`, `Executor`, migrations — is cited by line and those cites
+were re-verified at `d7459be3`.
 
 ## Objective
 
@@ -64,13 +67,14 @@ Citations: `lib/storyarn/workers/ai_execution_worker.ex:3`,
 
 Only one registered task reaches the queue today. `ManagedDiagnostic` is
 `execution_mode: :inline` (`lib/storyarn/ai/tasks/managed_diagnostic.ex:23`) and
-runs in the caller's process (`lib/storyarn/ai/execution.ex:311-314`).
+runs in the caller's process (`Execution.maybe_run_inline/3`).
 `FlowFindingExplanation` is `execution_mode: :background` with
 `timeout_ms: 60_000` (`Storyarn.AI.Tasks.FlowFindingExplanation.definition/1`),
 and
 `Execution.create_operation/2` enqueues `AIExecutionWorker` **inside the same
 transaction** that inserts the operation, its `ai_results` row and its allowance
-reservation (`lib/storyarn/ai/execution.ex:254`, `261-265`). The job therefore
+reservation (`Execution.create_operation/2`, which enqueues `AIExecutionWorker`
+inside the same `Repo.transaction`). The job therefore
 becomes visible only if the money side committed.
 
 The 60-second bound is enforced by the kernel, not by Oban: `Executor` runs the
@@ -146,7 +150,7 @@ in the only state that retries.
 
 Runs `*/5` (`config/config.exs:113`). Each run first calls
 `Allowance.expire_due()` (`reconcile_ai_reservations_worker.ex:19`;
-`lib/storyarn/ai/allowance.ex:115-126`), then selects stale operations
+`Allowance.expire_due/0`), then selects stale operations
 (`reconcile_ai_reservations_worker.ex:25-38`) with an **inner join**:
 
 - `Operation` joined to `AllowanceReservation` on `reservation.operation_id == operation.id`;
@@ -173,7 +177,7 @@ index work is needed for this change.
 ### The resulting bound
 
 The staleness clock starts at `reservation.inserted_at`, which is the same
-transaction that inserted the operation (`lib/storyarn/ai/execution.ex:202-254`)
+transaction that inserted the operation (`Execution.create_operation/2`)
 — effectively the moment the actor pressed the button. So:
 
 > **900 s staleness + ≤ 300 s cron granularity ≈ ≤ 20 minutes** from request to
@@ -187,9 +191,9 @@ a way it can silently stretch to ≈ 25 minutes today.
 The join to `AllowanceReservation` is an inner join, and a reservation exists
 only for the managed lane. `Execution.create_operation/2` sets
 `settlement_status = if route.lane == :managed, do: "reserved", else: "not_applicable"`
-(`lib/storyarn/ai/execution.ex:200`) and `reserve!/2` only calls
+(`Execution.create_operation/2`) and `Execution.reserve!/2` only calls
 `Settlement.reserve/1` for `%ExecutionRoute{lane: :managed}`, returning `:ok`
-untouched for every other lane (`lib/storyarn/ai/execution.ex:302-309`).
+untouched for every other lane (`Execution.reserve!/2`).
 
 Today this is harmless: both registered tasks are managed-only —
 `FlowFindingExplanation.definition/1` declares `allowed_lanes: [:managed]` and
@@ -305,7 +309,7 @@ three ways:
 
 - Two concurrent explanations (each up to 60 s) delay the reconciler tick by up to a full attempt.
 - The reconciler occupies 1 of the 2 slots whenever it runs, **halving execution capacity on every `*/5` tick**.
-- `ExpireAIResultsWorker` is the sharper edge. It also sits on `:ai` (`expire_ai_results_worker.ex:3`), processes 100 rows per batch (`lib/storyarn/ai/results.ex:19`, `121-146`), and **self-reschedules a follow-up with `schedule_in: 1` for as long as `more?` is true** (`expire_ai_results_worker.ex:54`, `74-78`). A backlog of _N_ expired results produces a chain of `ceil(N/100)` `:ai` jobs at one-second intervals, each holding a slot. It also declares `max_attempts: 3` with no `unique`, so retries and follow-ups can coexist.
+- `ExpireAIResultsWorker` is the sharper edge. It also sits on `:ai` (`expire_ai_results_worker.ex:3`), processes 100 rows per batch (`Results.@default_expiration_batch_size` and `Results.expire/2`), and **self-reschedules a follow-up with `schedule_in: 1` for as long as `more?` is true** (`expire_ai_results_worker.ex:54`, `74-78`). A backlog of _N_ expired results produces a chain of `ceil(N/100)` `:ai` jobs at one-second intervals, each holding a slot. It also declares `max_attempts: 3` with no `unique`, so retries and follow-ups can coexist.
 
 The worst realistic case is not "the reconciler is a bit late": it is an expiry
 backlog holding one slot continuously while a `*/15` tick — where the `*/5` and

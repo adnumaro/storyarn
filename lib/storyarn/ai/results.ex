@@ -1,5 +1,5 @@
 defmodule Storyarn.AI.Results do
-  @moduledoc "Actor-private result reads, disposition and authorized apply boundary."
+  @moduledoc "Actor-private result reads, view stamping, disposition and authorized apply boundary."
 
   import Ecto.Query
 

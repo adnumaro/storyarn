@@ -6,11 +6,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   route reference. Everything else — the finding, its evidence, the prompt, the
   payer, the price — is resolved server-side from the authorized snapshot.
 
-  Opening the surface creates no operation: preflight resolves routes and the
-  Slice-6 disclosure without calling a provider, and an operation exists only
-  after the actor picks a route. The kernel emits no completion event, so the
-  panel polls its own operation while it is open and stops as soon as the
-  operation settles or the panel closes.
+  Opening the surface creates no operation, and may create no preflight either:
+  it first resolves which attempt to act on, so a result already paid for and
+  still inside its TTL is rendered directly and an operation still in flight is
+  attached to. Only otherwise does preflight resolve routes and the Slice-6
+  disclosure without calling a provider, and an operation then exists only after
+  the actor picks a route.
+
+  The kernel emits no completion event, so the panel polls its own operation while
+  it is open. Polling stops when the operation settles, when the panel closes, or
+  at the execution deadline — which means "stopped watching", not "failed".
 
   The generated narrative is a temporary, actor-private preview: it is never
   written into the flow, never turned into a finding, and never survives its

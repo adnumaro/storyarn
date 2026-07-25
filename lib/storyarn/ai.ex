@@ -8,7 +8,9 @@ defmodule Storyarn.AI do
   Slice 0 owns personal provider connections. Slices 2–4 add registered tasks,
   workspace policy, opaque route preflight, durable operations, managed
   execution and personal BYOK. Slice 5.1 adds the central route-resolution,
-  model-catalog and workspace-assignment boundaries.
+  model-catalog and workspace-assignment boundaries. Slice 7.2a adds the
+  flow-finding explanation seam — intent building, its replay key, and the reads
+  a panel needs to recover or attach to an operation it already paid for.
   """
 
   alias Storyarn.Accounts.Scope
@@ -132,7 +134,7 @@ defmodule Storyarn.AI do
   defdelegate flow_finding_explanation_task_id(), to: FlowFindingExplanation, as: :task_id
   defdelegate resolve_route(intent), to: Execution, as: :preflight
 
-  @doc "Backward-compatible name for route resolution; prefer `resolve_route/1` in new consumers."
+  @doc "Resolves routes and builds the Slice-6 disclosure without creating an operation."
   defdelegate preflight(intent), to: Execution
   defdelegate execute(intent), to: Execution
   defdelegate cancel(scope, operation_id), to: Operations, as: :request_cancellation

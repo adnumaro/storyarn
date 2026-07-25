@@ -1,6 +1,10 @@
 # Slice 7.2a — Managed AI Explanation
 
-**Status:** pending; blocked on merged Slice 7.1.
+**Status:** implemented on `codex/slice7-2a-managed-explanation` (2026-07-25), PR #49 —
+task `Storyarn.AI.Tasks.FlowFindingExplanation`, panel lifecycle in
+`StoryarnWeb.FlowLive.Handlers.ExplanationHandlers`, palette command registered
+from `FlowAnalysisPanel.vue`. Owner browser verification against a real provider
+pending; E2E proves the deterministic fake only.
 
 ## Objective
 
@@ -79,6 +83,14 @@ operation.
 
 Before execution the panel:
 
+0. resolves which attempt to act on. A result already paid for and still inside
+   its TTL is rendered directly, with no preflight and no route options: the
+   surface must never ask for a purchase decision that has no cost. An operation
+   still in flight is attached to, which is also how two panels on one finding
+   end up watching a single paid operation. Only when no attempt is readable or
+   running does the preflight below run, and then against the first unspent
+   idempotency key — a key is consumed permanently by the first operation that
+   uses it, even after that operation stops being readable;
 1. reauthorizes the actor and reloads the selected finding by server-issued id;
 2. verifies the rule version and evidence fingerprint are still current;
 3. builds the Slice-6 disclosure without calling a provider;
@@ -107,8 +119,9 @@ The panel owns operation/result state:
   stopped watching a run that is still executing — reporting that as `failed`
   would push the actor toward paying twice for work still in flight;
 - reopening or polling uses the actor-authorized result APIs, not palette state;
-- result presentation revalidates the Slice-7.1 finding fingerprint and Slice-6
-  provenance;
+- result presentation revalidates the Slice-7.1 finding fingerprint. Slice-6
+  provenance is NOT revalidated or displayed: `Results.provenance/1` is reached
+  only from `apply/4`, which this slice never calls;
 - a stale result is clearly marked obsolete and offers an explicit rerun; it is
   never silently regenerated;
 - retry/rerun creates a new explicit operation with a new idempotency key;
@@ -170,13 +183,19 @@ provenance, and locks · Slice-7.1 finding registry/lifecycle/panel ·
 
 - Canonical AI operation/usage events record task, lane, provider/model, units,
   price/cost, latency, status, versions, and low-cardinality error class.
-- Product events record preflight shown, route selected, execution started,
-  result viewed, evidence navigation, stale rerun, and deterministic
-  disposition outcome.
+- Product events record preflight shown, preflight blocked, route selected,
+  execution started, result viewed, detached (the panel stopped watching a run
+  still in flight), failed, evidence navigation, stale rerun, and deterministic
+  disposition outcome. `Storyarn.Analytics`'s allowlist is the authority on the
+  exact names.
 - Content, credentials, optional notes, prompts, and raw ids are excluded.
 - Classify unknown/stale finding, permission/policy denial, no route, allowance
-  exhausted, provider/validation/unknown failure, result expired, and
-  unsupported model.
+  exhausted, oversize context, and provider/validation/unknown failure.
+  `ExplanationHandlers.error_classes/0` is the declared set, and a test asserts
+  every member has copy in both locales. Expiry is a STATE, not an error class;
+  there is deliberately no "unsupported model" class — the model limit failures
+  are `model_context_window_exceeded`, `model_output_limit_exceeded` and
+  `model_context_limits_unavailable`.
 
 ## Verification / Definition of Done
 

@@ -152,6 +152,36 @@ describe("FlowAnalysisExplanation", () => {
     expect(wrapper.emitted("rerun")).toHaveLength(1);
   });
 
+  it("distinguishes waiting for a slot from generating", () => {
+    const queued = mountExplanation(state({ status: "queued" }));
+    expect(queued.find("[data-testid='explanation-queued']").exists()).toBe(true);
+    expect(queued.find("[data-testid='explanation-running']").exists()).toBe(false);
+    expect(queued.text()).toContain("Waiting for a free slot");
+  });
+
+  it("offers to keep waiting when the panel stopped watching a live run", async () => {
+    // `detached` is not a failure: the run is alive and already paid for, so the
+    // affordance must be "keep waiting", never a rerun that buys a second unit.
+    const wrapper = mountExplanation(state({ status: "detached" }));
+
+    expect(wrapper.find("[data-testid='explanation-detached']").exists()).toBe(true);
+    expect(wrapper.find("[data-testid='explanation-rerun']").exists()).toBe(false);
+    expect(wrapper.text()).toContain("nothing extra will be charged");
+
+    await wrapper.find("[data-testid='explanation-resume']").trigger("click");
+    expect(wrapper.emitted("resume")).toHaveLength(1);
+  });
+
+  it("discloses how long a result is kept, before it is bought", () => {
+    const wrapper = mountExplanation(
+      state({ status: "preflight", routes: [route()], retentionSeconds: 1800 }),
+    );
+
+    const retention = wrapper.find("[data-testid='explanation-retention']");
+    expect(retention.exists()).toBe(true);
+    expect(retention.text()).toContain("30 minutes");
+  });
+
   it("shows a running state while the operation is in flight", () => {
     const wrapper = mountExplanation(state({ status: "running" }));
 

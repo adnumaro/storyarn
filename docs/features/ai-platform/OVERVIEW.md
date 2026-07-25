@@ -47,7 +47,7 @@ adapters.
 | 5.2  | Personal AI preferences (“My AI Team”)             | `SLICE_5_2_MY_AI_TEAM.md`              | 5.1                                      | **merged** (PR #45)                  |
 | 6    | Deterministic context engine v1                    | `SLICE_6_CONTEXT_ENGINE.md`            | 2                                        | **merged** (PR #46)                  |
 | 7.1  | Deterministic structural analysis                  | `SLICE_7_1_DETERMINISTIC_ANALYSIS.md`  | 1, 6                                     | **merged** (PR #48)                  |
-| 7.2a | Managed AI explanation                             | `SLICE_7_2A_MANAGED_EXPLANATION.md`    | 2, 3, 5.1, 6, 7.1                        | pending                              |
+| 7.2a | Managed AI explanation                             | `SLICE_7_2A_MANAGED_EXPLANATION.md`    | 2, 3, 5.1, 6, 7.1                        | **implemented** (PR #49)             |
 | 7.2b | Personal BYOK lane + public AI docs                | `SLICE_7_2B_PERSONAL_LANE_AND_DOCS.md` | 4, 5.2, 7.2a                             | pending                              |
 | 8    | Dialogue rewrite/variants + proposal UX            | `SLICE_8_DIALOGUE_TOOLS.md`            | 2–6                                      | pending                              |
 | 9    | Multilingual scratch voice-over                    | `SLICE_9_SCRATCH_VOICEOVER.md`         | 0–5.2 + Localization/Assets              | pending                              |
