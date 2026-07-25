@@ -1,0 +1,56 @@
+lib/storyarn/ai/results.ex
+  s_fc3546b2264bba::t_1076fa185d1420 94,100-108,110-111
+  s_fc3546b2264bba::t_94a405c33c3a9f 86,90-91,93,95-98
+test/storyarn/ai/managed_runtime_config_test.exs
+  s_fc3546b2264bba::t_ea727aab29a68b 73-101
+  s_fc3546b2264bba::t_dc1911154f7212 72
+docs/features/ai-platform/SLICE_7_2A_MANAGED_EXPLANATION.md
+  s_fc3546b2264bba::t_3f37664ee9eb2c 90-99
+  s_fc3546b2264bba::t_bc4e92930b79f9 128-134
+lib/storyarn_web/live/flow_live/handlers/explanation_handlers.ex
+  s_fc3546b2264bba::t_fb0a52bf98fb84 149-151
+  s_fc3546b2264bba::t_bd572a38cec453 99-107
+  s_fc3546b2264bba::t_648fce92c3a39a 194,197-198
+  s_fc3546b2264bba::t_dc14e82080211c 527-531
+  s_fc3546b2264bba::t_2ac38dba208800 233,239-249
+  s_fc3546b2264bba::t_4c6a330d738d63 250,330-337,339-342,344,359,363-369,371-375,378,380-406,410-415
+  s_fc3546b2264bba::t_6a600399b38f91 689
+  s_fc3546b2264bba::t_b48fdfc13af540 72-75
+  s_fc3546b2264bba::t_c2c857c38ff204 215
+  s_fc3546b2264bba::t_520aa94e7d205a 377
+  s_fc3546b2264bba::t_e8ab05e6490485 672-675,677-683,685-687,690
+  s_fc3546b2264bba::t_5e92f892a8fef8 691-692
+  s_fc3546b2264bba::t_08b650bdab1edc 208-210
+  s_fc3546b2264bba::t_2d484c18396ad9 251
+test/storyarn_web/live/flow_live/handlers/explanation_handlers_test.exs
+  s_fc3546b2264bba::t_8dcdb9965e3236 490-557
+  s_fc3546b2264bba::t_e8046000e8086a 319-363
+lib/storyarn/ai/operations.ex
+  s_fc3546b2264bba::t_44813d9064feaa 337-382
+config/runtime.exs
+  s_fc3546b2264bba::t_de9e71c01fc7df 181-187,202-204,207-208
+  s_fc3546b2264bba::t_4d2aeef2219d4f 250-259,285-287,290-292
+  s_fc3546b2264bba::t_c9aa834f7aac6a 205-206,209-211
+lib/storyarn/ai.ex
+  s_fc3546b2264bba::t_bddc0c834dc9e2 174-180,182
+  s_fc3546b2264bba::t_5cc6e9c5254a88 29
+  s_fc3546b2264bba::t_ac4e6deb33edc6 142-162
+lib/storyarn/ai/route_options.ex
+  s_fc3546b2264bba::t_eda075011a33b2 116-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5e943e397f6464f0566f3ef6753e083678a2d13d",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
