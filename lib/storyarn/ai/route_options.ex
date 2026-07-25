@@ -120,6 +120,13 @@ defmodule Storyarn.AI.RouteOptions do
   surface whose `execute/1` replayed an existing idempotency key still holds an
   unconsumed option. Scoped to the actor so one actor's reference can never
   answer for another's.
+
+  Only answers within the option's TTL. `delete_expired/1` removes consumed rows
+  too — `expires_at` is stamped at issue and never extended — so this reports
+  `false` for a real creator once `ExpireAIResultsWorker` has swept. Ask it once,
+  at the moment of creation, and keep the answer; it is not a durable record of
+  who bought an operation, and nothing here can be, since two sessions of one
+  actor are indistinguishable in the database.
   """
   @spec created_operation?(map(), String.t(), pos_integer()) :: boolean()
   def created_operation?(%{user: %{id: actor_id}}, route_ref, operation_id)

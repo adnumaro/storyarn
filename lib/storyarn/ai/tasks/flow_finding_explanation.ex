@@ -116,7 +116,14 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanation do
       timeout_ms: 60_000,
       result_type: "flow_finding_explanation_v1",
       result_destination: %{type: :panel, id: "flow_analysis"},
-      result_ttl_seconds: 1_800,
+      # 24h, not 30 minutes. The actor pays the moment the provider call starts, and
+      # they are not necessarily present when it finishes — a closed tab, a dropped
+      # socket or a closed laptop all leave a paid narrative waiting. A retention
+      # shorter than a human absence turns "come back and read it" into a silent
+      # loss, which is the one case the abandon handling cannot recover. Still an
+      # actor-private temporary preview: disclosed at preflight, swept by
+      # ExpireAIResultsWorker, never persisted into the flow.
+      result_ttl_seconds: 86_400,
       personal_byok_allowed?: false,
       personal_cost_class: nil,
       bulk_allowed?: false,

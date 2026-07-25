@@ -1554,6 +1554,11 @@ defmodule StoryarnWeb.FlowLive.Show do
         Process.cancel_timer(ref)
       end
 
+      # Release an AI operation this surface bought and is walking away from.
+      # Ownership lives in the assigns, so it dies with this process: leaving a
+      # queued operation behind makes it unreleasable by anyone.
+      ExplanationHandlers.release_on_teardown(socket)
+
       # Teardown collaboration (unsubscribe, untrack, release locks)
       if scope = socket.assigns[:collab_scope] do
         user_id = socket.assigns.current_scope.user.id

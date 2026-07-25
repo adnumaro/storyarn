@@ -402,6 +402,7 @@
       "rerun": "Reanalizar",
       "stale_banner": "El flow cambió desde este análisis. Los resultados pueden estar desactualizados.",
       "computed_at": "Analizado a las {time}",
+      "has_explanation": "Tienes una explicación de IA ya pagada y lista para leer.",
       "tabs": {
         "active": "Activos",
         "dismissed": "Descartados"
@@ -486,7 +487,8 @@
     "explanation": {
       "explain_action": "Explicar con IA",
       "preflight_title": "Antes de ejecutar",
-      "retention": "Se conserva {minutes} minutos y luego se elimina.",
+      "retention_hours": "Se conserva {hours} horas y luego se elimina.",
+      "retention_minutes": "Se conserva {minutes} minutos y luego se elimina.",
       "run_action": "Ejecutar",
       "cancel_action": "Cancelar",
       "close_action": "Cerrar",

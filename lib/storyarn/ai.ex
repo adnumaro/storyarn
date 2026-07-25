@@ -172,6 +172,21 @@ defmodule Storyarn.AI do
     as: :get_by_idempotency_key
 
   @doc """
+  Which flow-finding identities this actor already holds a readable explanation for.
+
+  Lets the analysis panel point at results the actor paid for and never came back
+  to — the one case abandoning a surface cannot recover on its own.
+  """
+  @spec flow_finding_explanations_ready(Scope.t(), [String.t()]) :: MapSet.t(String.t())
+  def flow_finding_explanations_ready(scope, subject_revisions) do
+    Results.readable_subject_revisions(
+      scope,
+      FlowFindingExplanation.task_id(),
+      subject_revisions
+    )
+  end
+
+  @doc """
   The operations that spent any of these idempotency keys, keyed by key.
 
   Reports each one in whatever state it ended up, so a caller can tell a run

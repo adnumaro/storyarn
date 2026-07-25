@@ -24,6 +24,8 @@ export interface AnalysisFinding {
   count?: number | null;
   hubId?: string | null;
   limitationsKey?: string | null;
+  /** An AI explanation this actor already paid for and can still open. */
+  hasExplanation?: boolean;
   previousDismissal?: {
     reasonCode: string;
     dismissedBy: string | null;

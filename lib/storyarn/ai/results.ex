@@ -83,6 +83,33 @@ defmodule Storyarn.AI.Results do
   end
 
   @doc """
+  Which of `subject_revisions` this actor already holds a readable result for.
+
+  Answers "is there something waiting for me here" for a whole list at once, so a
+  surface can point at paid results the actor has not come back to. Actor-scoped
+  and expiry-aware, exactly like `get_by_idempotency_key/3` — a revision only
+  appears if this actor could actually open it right now.
+  """
+  @spec readable_subject_revisions(Scope.t(), String.t(), [String.t()]) :: MapSet.t(String.t())
+  def readable_subject_revisions(%Scope{user: %{id: actor_id}}, task_id, subject_revisions)
+      when is_binary(task_id) and is_list(subject_revisions) do
+    now = TimeHelpers.now()
+
+    from(operation in Operation,
+      join: result in Result,
+      on: result.operation_id == operation.id,
+      where:
+        operation.actor_id == ^actor_id and operation.task_id == ^task_id and
+          operation.subject_revision in ^subject_revisions and
+          operation.execution_status == "succeeded" and result.expires_at > ^now and
+          not is_nil(result.output_encrypted),
+      select: operation.subject_revision
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc """
   Every operation of this actor that spent one of `idempotency_keys`, keyed by key.
 
   A key is consumed permanently by the first operation that used it, even after

@@ -28,6 +28,12 @@ launch, are Slice 7.2b.
   generated explanation.
 - The result is an actor-private temporary preview. V1 has no apply, attach,
   share, or persisted-report mutation.
+- Retention is 24h, not the 30 minutes first planned. The actor is charged when
+  the provider call starts and is not necessarily present when it finishes, so a
+  window shorter than a human absence turns a paid narrative into a silent loss —
+  the one case abandoning a surface cannot recover. Still a temporary preview:
+  disclosed before the purchase, swept by `ExpireAIResultsWorker`, never persisted
+  into the flow.
 - Opening/rendering a result records `viewed`, never `accepted`. It is recorded
   as its own `viewed_at` stamp rather than a fourth `user_disposition` value:
   disposition holds one terminal outcome, and its `IS NULL` precondition is what
@@ -132,6 +138,23 @@ The panel owns operation/result state:
   and never cancels a started attempt: that bills the unit anyway and destroys
   the output. The residual is deliberate — when the buyer closes first, a panel
   still attached does lose the run;
+- the release also runs from `terminate/2`, not only on close. Ownership is a
+  property of the buying session — two tabs of one actor are indistinguishable in
+  the database — so it cannot outlive the process holding it: a refresh or dropped
+  socket would otherwise orphan the operation, leaving every later surface able
+  only to attach and nobody able to release. A hard crash still skips it, which
+  costs the release and not the result;
+- a paid result outliving its surface is advertised where the actor will return:
+  the analysis panel marks each finding it can still open an explanation for. This
+  is the counterpart to releasing — an operation whose provider call already
+  started is charged and kept, so the actor must be able to find it without
+  remembering which card to reopen. Actor-private, expiry-aware, one indexed
+  lookup while the panel is open.
+
+**Releasing on abandon is correct because there is no notification surface yet.**
+The day one exists, the default should invert: the actor asked for the explanation,
+so "charge and notify" beats "cancel". Charging without telling anyone is the only
+incoherent option, which is what the retention below protects against.
 - result presentation revalidates the Slice-7.1 finding fingerprint. Slice-6
   provenance is NOT revalidated or displayed: `Results.provenance/1` is reached
   only from `apply/4`, which this slice never calls;

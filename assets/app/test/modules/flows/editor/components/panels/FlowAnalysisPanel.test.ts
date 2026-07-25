@@ -320,4 +320,23 @@ describe("FlowAnalysisPanel", () => {
       );
     });
   });
+
+  describe("explanation already paid for", () => {
+    it("marks a finding whose explanation is still readable", () => {
+      const { wrapper } = mountPanel({ active: [finding({ hasExplanation: true })] });
+
+      const marker = wrapper.find("[data-testid='analysis-has-explanation']");
+      expect(marker.exists()).toBe(true);
+      // Visible without expanding the card: the actor is not there to be told twice.
+      expect(marker.attributes("aria-label")).toContain("already paid for");
+    });
+
+    it("marks nothing when there is no readable explanation", () => {
+      const { wrapper } = mountPanel({ active: [finding()] });
+
+      // Positive control above proves this selector can match, so the absence is real.
+      expect(wrapper.find("[data-testid='analysis-finding']").exists()).toBe(true);
+      expect(wrapper.find("[data-testid='analysis-has-explanation']").exists()).toBe(false);
+    });
+  });
 });

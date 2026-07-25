@@ -159,6 +159,26 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
     |> then(&assign(&1, :explanation_available, available?(&1)))
   end
 
+  @doc """
+  Releases a bought, unstarted operation as the LiveView goes away.
+
+  Ownership is a property of THIS surface's session — two tabs of one actor are
+  indistinguishable in the database — so it cannot outlive the process that holds
+  it. A process that dies still holding a queued operation would orphan it: every
+  later surface can only ATTACH to that operation, so nothing would ever release
+  it and it would settle against the allowance for a narrative nobody reads.
+
+  Called from `terminate/2`, so it covers the ordinary ways a surface disappears
+  without closing the panel — refresh, navigation, socket drop. A hard crash skips
+  `terminate/2` and still orphans; that costs the release, not the result, since
+  reopening attaches to the run or replays it inside its TTL.
+  """
+  @spec release_on_teardown(Socket.t()) :: :ok
+  def release_on_teardown(socket) do
+    cancel_watched_operation(socket)
+    :ok
+  end
+
   @doc "Whether this actor may see the explanation surface at all."
   @spec available?(Socket.t()) :: boolean()
   def available?(socket) do

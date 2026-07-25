@@ -174,12 +174,21 @@ describe("FlowAnalysisExplanation", () => {
 
   it("discloses how long a result is kept, before it is bought", () => {
     const wrapper = mountExplanation(
-      state({ status: "preflight", routes: [route()], retentionSeconds: 1800 }),
+      state({ status: "preflight", routes: [route()], retentionSeconds: 86400 }),
     );
 
     const retention = wrapper.find("[data-testid='explanation-retention']");
     expect(retention.exists()).toBe(true);
-    expect(retention.text()).toContain("30 minutes");
+    // The shipped TTL. "1440 minutes" would be correct and unreadable.
+    expect(retention.text()).toContain("24 hours");
+  });
+
+  it("still reads naturally for a retention shorter than an hour", () => {
+    const wrapper = mountExplanation(
+      state({ status: "preflight", routes: [route()], retentionSeconds: 1800 }),
+    );
+
+    expect(wrapper.find("[data-testid='explanation-retention']").text()).toContain("30 minutes");
   });
 
   it("shows a running state while the operation is in flight", () => {

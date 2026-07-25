@@ -402,6 +402,7 @@
       "rerun": "Rerun analysis",
       "stale_banner": "The flow changed since this analysis. Results may be outdated.",
       "computed_at": "Analyzed at {time}",
+      "has_explanation": "An AI explanation you already paid for is ready to read.",
       "tabs": {
         "active": "Active",
         "dismissed": "Dismissed"
@@ -486,7 +487,8 @@
     "explanation": {
       "explain_action": "Explain with AI",
       "preflight_title": "Before running",
-      "retention": "Kept for {minutes} minutes, then deleted.",
+      "retention_hours": "Kept for {hours} hours, then deleted.",
+      "retention_minutes": "Kept for {minutes} minutes, then deleted.",
       "run_action": "Run",
       "cancel_action": "Cancel",
       "close_action": "Close",

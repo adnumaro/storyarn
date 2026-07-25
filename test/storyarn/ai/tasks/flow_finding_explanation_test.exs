@@ -77,7 +77,7 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanationTest do
       assert task.execution_mode == :background
       assert task.result_visibility == :actor_private
       assert task.result_destination == %{type: :panel, id: "flow_analysis"}
-      assert task.result_ttl_seconds == 1_800
+      assert task.result_ttl_seconds == 86_400
       assert task.managed_price.units == 1
       refute task.personal_byok_allowed?
       refute task.bulk_allowed?

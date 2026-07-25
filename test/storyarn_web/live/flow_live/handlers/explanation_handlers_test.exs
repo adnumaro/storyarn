@@ -20,6 +20,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
   alias Storyarn.Workers.AIExecutionWorker
   alias StoryarnTest.AI.FakeSettlement
   alias StoryarnWeb.FlowLive.Handlers.ExplanationHandlers
+  alias StoryarnWeb.FlowLive.Show
 
   setup :register_and_log_in_user
 
@@ -82,6 +83,33 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
     render_click(view, "execute_explanation", %{"route_ref" => route_ref})
     finding
   end
+
+  # Runs the teardown a refresh or a dropped socket triggers, through `terminate/2`
+  # and against the mounted surface's REAL socket. Killing the process instead takes
+  # the test with it, since LiveViewTest links its proxy, so only the exit is
+  # simulated.
+  #
+  # `collab_scope` is nulled because `Collab.teardown/2` calls
+  # `Presence.untrack(self(), ...)`, and `self()` is the TEST process here rather
+  # than the LiveView — untracking the wrong process drops the sandbox connection.
+  # Collaboration teardown has its own coverage, and a released AI operation does
+  # not depend on it.
+  defp tear_down!(view) do
+    socket = :sys.get_state(view.pid).socket
+    Show.terminate(:shutdown, %{socket | assigns: Map.put(socket.assigns, :collab_scope, nil)})
+  end
+
+  # Ends a test that would otherwise exit with a purchased operation still live in a
+  # mounted surface.
+  #
+  # Since `terminate/2` now releases such an operation, a LiveView killed by the test
+  # process exiting opens a DB transaction as it dies — on the connection the sandbox
+  # is checking back in, which disconnects it and fails the NEXT test in its
+  # `on_exit` with a `DBConnection.OwnershipError`. Confirmed by making the release a
+  # no-op: the ownership errors vanish. Closing is also what a real user does, so
+  # nothing is papered over — leaving an in-flight AI operation dangling at exit was
+  # always sloppy, it just used to be invisible.
+  defp close_panel!(view), do: render_click(view, "close_explanation", %{})
 
   # The worker runs only when drained: :background + Oban testing: :manual.
   defp drain_execution! do
@@ -187,7 +215,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       assert props["disclosure"]["scope"] == "structural_finding"
       assert props["disclosure"]["included_count"] >= 1
       # Retention is part of the spend decision, so it is disclosed before it.
-      assert props["retentionSeconds"] == 1_800
+      assert props["retentionSeconds"] == 86_400
 
       # Preflight never charges and never creates an operation.
       assert Repo.aggregate(Operation, :count) == 0
@@ -300,6 +328,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       # index on operation_id and is inserted immediately before the provider
       # call, so this counts real attempts — a replay reuses the original row.
       assert Repo.aggregate(UsageEvent, :count) == 1
+
+      close_panel!(first)
+      close_panel!(second)
     end
 
     test "closing the surface releases the operation nobody will read", %{
@@ -361,6 +392,102 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       assert Repo.one!(Operation).execution_status == "cancelled"
     end
 
+    test "the panel marks a finding whose paid explanation is still waiting", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      finding = execute_explanation!(view)
+
+      # Nothing to advertise before the result exists.
+      refute Enum.any?(panels(view)["analysis"]["active"], & &1["hasExplanation"])
+
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+
+      # The mark survives the surface that bought it, which is the whole point: an
+      # actor who walked away has no other way to know the narrative is waiting.
+      close_panel!(view)
+
+      card =
+        Enum.find(panels(view)["analysis"]["active"], &(&1["findingKey"] == finding["findingKey"]))
+
+      assert card["hasExplanation"] == true
+
+      # And it is scoped to the finding that was explained, not to the panel.
+      others = Enum.reject(panels(view)["analysis"]["active"], &(&1["findingKey"] == finding["findingKey"]))
+      refute Enum.any?(others, & &1["hasExplanation"])
+    end
+
+    test "the mark is private to the actor who paid", %{conn: conn, project: project, flow: flow} do
+      view = mount_editor(conn, project, flow)
+      finding = execute_explanation!(view)
+      drain_execution!()
+      send(view.pid, :poll_explanation)
+      assert explanation(view)["status"] == "succeeded"
+      close_panel!(view)
+
+      other = user_fixture()
+      membership_fixture(project, other, "editor")
+      FunWithFlags.enable(:ai_integrations, for_actor: other)
+      on_exit(fn -> FunWithFlags.disable(:ai_integrations, for_actor: other) end)
+
+      their_view = conn |> log_in_user(other) |> mount_editor(project, flow)
+      render_click(their_view, "open_analysis_panel", %{})
+
+      their_card =
+        Enum.find(panels(their_view)["analysis"]["active"], &(&1["findingKey"] == finding["findingKey"]))
+
+      assert their_card, "expected the same finding in the other actor's snapshot"
+      refute their_card["hasExplanation"]
+    end
+
+    test "a surface that dies without closing still releases what it bought", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      view = mount_editor(conn, project, flow)
+      execute_explanation!(view)
+
+      # Refresh, navigate away, socket drop: the panel never closes, the process
+      # just goes. Ownership lives in its assigns, so it has to release here —
+      # every later surface can only ATTACH to this operation, and an operation
+      # nobody can release settles against the allowance for nothing.
+      tear_down!(view)
+
+      assert Repo.one!(Operation).execution_status == "cancelled"
+
+      close_panel!(view)
+    end
+
+    test "a surface that dies while ATTACHED leaves the buyer's operation alone", %{
+      conn: conn,
+      project: project,
+      flow: flow
+    } do
+      buyer = mount_editor(conn, project, flow)
+      watcher = mount_editor(conn, project, flow)
+
+      execute_explanation!(buyer)
+
+      finding = open_panel_and_finding(watcher)
+      render_click(watcher, "open_explanation", %{"finding_id" => finding["findingId"]})
+      assert explanation(watcher)["status"] == "queued"
+
+      tear_down!(watcher)
+
+      assert Repo.one!(Operation).execution_status == "queued"
+
+      drain_execution!()
+      send(buyer.pid, :poll_explanation)
+      assert explanation(buyer)["status"] == "succeeded"
+
+      close_panel!(watcher)
+    end
+
     test "an explicit rerun buys a second operation with its own key", %{
       conn: conn,
       project: project,
@@ -379,6 +506,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       keys = Operation |> Repo.all() |> Enum.map(& &1.idempotency_key)
       assert length(keys) == 2
       assert keys == Enum.uniq(keys)
+
+      close_panel!(view)
     end
 
     test "reopening inside the TTL replays the paid result instead of buying another", %{
@@ -454,6 +583,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
 
       assert explanation(view)["status"] == "queued"
       assert Repo.aggregate(Operation, :count) == 2
+
+      close_panel!(view)
     end
 
     test "reopening after a rerun shows the narrative last paid for", %{
@@ -637,6 +768,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlersTest do
       render_click(view, "resume_explanation", %{})
       assert explanation(view)["status"] == "running"
       assert Repo.aggregate(Operation, :count) == 1
+
+      close_panel!(view)
     end
   end
 

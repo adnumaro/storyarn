@@ -4,6 +4,7 @@ import {
   ChevronRight,
   CircleAlert,
   Crosshair,
+  Sparkles,
   TriangleAlert,
   Undo2,
 } from "lucide-vue-next";
@@ -131,6 +132,13 @@ function onDismissSubmit(reasonCode: string, note: string): void {
       >
         {{ ruleLabel }}
       </span>
+      <Sparkles
+        v-if="finding.hasExplanation"
+        class="size-3.5 shrink-0 text-primary"
+        role="img"
+        :aria-label="t('flows.analysis.has_explanation')"
+        data-testid="analysis-has-explanation"
+      />
       <span class="shrink-0 text-xs text-muted-foreground">{{ targetLabel }}</span>
       <component
         :is="expanded ? ChevronDown : ChevronRight"
