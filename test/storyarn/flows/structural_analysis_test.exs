@@ -442,6 +442,26 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
         assert {:error, :invalid_finding_identity} = Flows.decode_structural_finding_identity(hostile)
       end
     end
+
+    test "a key no encoder could produce is refused, not decoded" do
+      fingerprint = String.duplicate("a", 64)
+
+      # None of these raise — String.split is byte-oriented and the fingerprint
+      # regex has no /u — so before the guard they all decoded to {:ok, ...} and
+      # only failed later, on a snapshot lookup that could never match.
+      unencodable = [
+        {"invalid utf8", <<0xFF, 0xFE>>},
+        {"lone surrogate", <<0xED, 0xA0, 0x80>>},
+        {"truncated utf8", <<0xC3>>},
+        {"embedded NUL", "rule\0key"}
+      ]
+
+      for {label, key} <- unencodable do
+        assert {:error, :invalid_finding_identity} =
+                 Flows.decode_structural_finding_identity(key <> "|1|" <> fingerprint),
+               "expected #{label} to fail closed at the boundary"
+      end
+    end
   end
 
   describe "determinism and identity" do

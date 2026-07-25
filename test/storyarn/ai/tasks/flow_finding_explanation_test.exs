@@ -220,6 +220,20 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanationTest do
                )
     end
 
+    test "the idempotency key separates locales", context do
+      # The locale is part of the validated input, so a key that ignored it would
+      # map two different requests onto one operation: reopening under a second
+      # locale would replay the first language, and executing would blow up with
+      # :idempotency_conflict when same_intent?/2 compared the input hashes.
+      en = FlowFindingExplanation.idempotency_key(1, context.finding, "en", 0)
+      es = FlowFindingExplanation.idempotency_key(1, context.finding, "es", 0)
+
+      refute en == es
+      assert en == FlowFindingExplanation.idempotency_key(1, context.finding, "en", 0)
+      refute en == FlowFindingExplanation.idempotency_key(1, context.finding, "en", 1)
+      refute en == FlowFindingExplanation.idempotency_key(2, context.finding, "en", 0)
+    end
+
     test "a foreign flow id cannot borrow this project's authorization", context do
       other_project = project_fixture(user_fixture())
       other_flow = flow_fixture(other_project)

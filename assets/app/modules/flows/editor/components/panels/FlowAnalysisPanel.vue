@@ -135,28 +135,45 @@ function onCloseExplanation(): void {
 // The command is a `launch`: it starts the panel preflight and opens the
 // panel destination (owned by the panel host). Route and cost resolution stay
 // in the panel, never in the palette.
-/** The expanded card IS the selection; with none, the command has no referent. */
-const selectedFindingId = ref<string | null>(null);
+/**
+ * The expanded card IS the selection, tracked by its STABLE key.
+ *
+ * The occurrence id rotates with the evidence fingerprint, and cards are keyed on
+ * findingKey so they survive a rerun expanded. Tracking the id here would drop the
+ * command out from under a card the user still has open — the same defect the
+ * server-side rerun had.
+ */
+const selectedFindingKey = ref<string | null>(null);
+
+function findingKeyFor(findingId: string): string | null {
+  const match =
+    active.find((finding) => finding.findingId === findingId) ??
+    dismissed.find((finding) => finding.findingId === findingId);
+  return match?.findingKey ?? null;
+}
 
 function onToggleFinding(findingId: string, expanded: boolean): void {
+  const key = findingKeyFor(findingId);
+
   if (expanded) {
-    selectedFindingId.value = findingId;
-  } else if (selectedFindingId.value === findingId) {
-    selectedFindingId.value = null;
+    selectedFindingKey.value = key;
+  } else if (selectedFindingKey.value === key) {
+    selectedFindingKey.value = null;
   }
 }
 
 /**
- * The selection must be a CURRENT finding, not merely an expanded card.
+ * Resolves the selection back to a CURRENT occurrence id.
  *
- * `onToggleFinding` also fires from the dismissed tab, and a stale snapshot
- * means every occurrence id is provisional. The server refuses both, so this is
- * about not offering a command that is guaranteed to fail.
+ * Returns null for a stale snapshot (every id is provisional until recomputed)
+ * and for a dismissed selection, since `onToggleFinding` also fires from that
+ * tab. The server refuses both, so this is about not offering a command that is
+ * guaranteed to fail.
  */
 const explainableFindingId = computed(() => {
-  const findingId = selectedFindingId.value;
-  if (findingId == null || stale) return null;
-  return active.some((finding) => finding.findingId === findingId) ? findingId : null;
+  const key = selectedFindingKey.value;
+  if (key == null || stale) return null;
+  return active.find((finding) => finding.findingKey === key)?.findingId ?? null;
 });
 
 function explainCommand(findingId: string): PaletteCommand {

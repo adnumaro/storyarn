@@ -106,7 +106,7 @@ defmodule Storyarn.AI do
         %{route_ref: route_ref, attempt: attempt} ->
           Map.merge(attrs, %{
             requested_route_ref: route_ref,
-            idempotency_key: FlowFindingExplanation.idempotency_key(scope.user.id, finding, attempt)
+            idempotency_key: FlowFindingExplanation.idempotency_key(scope.user.id, finding, locale, attempt)
           })
 
         _preflight_only ->
@@ -116,10 +116,15 @@ defmodule Storyarn.AI do
     ExecutionIntent.new(scope, attrs)
   end
 
-  @doc "The idempotency key an explanation attempt would use, for a replay probe."
-  @spec flow_finding_explanation_key(Scope.t(), term(), non_neg_integer()) :: String.t()
-  def flow_finding_explanation_key(scope, finding, attempt) do
-    FlowFindingExplanation.idempotency_key(scope.user.id, finding, attempt)
+  @doc """
+  The idempotency key an explanation attempt would use, for a replay probe.
+
+  Takes the locale because the key includes it: probing without it would surface a
+  narrative in the wrong language.
+  """
+  @spec flow_finding_explanation_key(Scope.t(), term(), String.t(), non_neg_integer()) :: String.t()
+  def flow_finding_explanation_key(scope, finding, locale, attempt) do
+    FlowFindingExplanation.idempotency_key(scope.user.id, finding, locale, attempt)
   end
 
   @doc "The registered id of the flow-finding explanation task."

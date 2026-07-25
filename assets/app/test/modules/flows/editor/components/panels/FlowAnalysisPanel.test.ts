@@ -225,6 +225,31 @@ describe("FlowAnalysisPanel", () => {
       expect(explainCommands()).toHaveLength(0);
     });
 
+    it("survives a rerun that rotates the occurrence id", async () => {
+      const { wrapper } = mountPanel({ explanation: explanationState });
+      wrappers.push(wrapper);
+
+      await wrapper.find("[data-testid='analysis-finding']").trigger("click");
+      expect(explainCommands()).toHaveLength(1);
+
+      // A recompute keeps the card expanded (cards key on findingKey) but issues a
+      // new occurrence id. Tracking the id would drop the command here.
+      await wrapper.setProps({
+        active: [finding({ findingId: "sf1_rotated" })],
+        computedAt: "2026-07-24T12:05:00Z",
+      });
+
+      expect(explainCommands()).toHaveLength(1);
+
+      // Narrow through the exported guard, as the launch test does.
+      const [command] = explainCommands();
+      expect(isAIPaletteCommand(command)).toBe(true);
+      if (!isAIPaletteCommand(command)) return;
+
+      // The command now points at the NEW occurrence, not the one it was born with.
+      expect(command.context.selection?.id).toBe("sf1_rotated");
+    });
+
     it("stays hidden while the snapshot is stale", async () => {
       // Every occurrence id is provisional until the analysis is recomputed, so
       // the command would launch straight into a refusal.

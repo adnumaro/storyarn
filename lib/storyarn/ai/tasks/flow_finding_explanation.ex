@@ -164,13 +164,20 @@ defmodule Storyarn.AI.Tasks.FlowFindingExplanation do
 
   The subject revision is part of the key, so an occurrence that moved gets its
   own key and can never collide with a stale intent.
+
+  So is the locale: it is part of the validated input, so a key that omitted it
+  would map two different requests onto one operation. Reopening under a second
+  locale would then replay the first language, and executing would fail with
+  `:idempotency_conflict` when `same_intent?/2` compared the input hashes.
   """
-  @spec idempotency_key(pos_integer(), Finding.t(), non_neg_integer()) :: String.t()
-  def idempotency_key(actor_id, finding, attempt) when is_integer(actor_id) and is_integer(attempt) and attempt >= 0 do
+  @spec idempotency_key(pos_integer(), Finding.t(), String.t(), non_neg_integer()) :: String.t()
+  def idempotency_key(actor_id, finding, locale, attempt)
+      when is_integer(actor_id) and is_binary(locale) and is_integer(attempt) and attempt >= 0 do
     CanonicalJSON.hash!(%{
       "actor_id" => actor_id,
       "task_id" => @task_id,
       "subject_revision" => Flows.encode_structural_finding_identity(finding),
+      "locale" => locale,
       "attempt" => attempt
     })
   end

@@ -129,6 +129,13 @@ defmodule Storyarn.Flows.StructuralAnalysis.Finding do
   def decode_identity(encoded) when is_binary(encoded) do
     with [key, version, fingerprint] <- String.split(encoded, @identity_separator),
          true <- key != "",
+         # `encode_identity/1` only ever emits a printable key built from a rule
+         # id and integers. Invalid UTF-8, a lone surrogate or an embedded NUL
+         # does not crash the helpers below — String.split is byte-oriented and
+         # the fingerprint regex has no /u — it just decodes to something no
+         # snapshot can match. This makes the documented "fails closed" true at
+         # the boundary instead of relying on a later equality check.
+         true <- String.valid?(key) and String.printable?(key),
          {version, ""} <- Integer.parse(version),
          true <- version > 0,
          true <- fingerprint =~ @fingerprint_format do

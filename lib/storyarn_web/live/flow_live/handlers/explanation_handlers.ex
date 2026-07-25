@@ -285,7 +285,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.ExplanationHandlers do
   # and its own reopen probes its own key.
   defp replayable_result(socket, finding, attempt) do
     scope = socket.assigns.current_scope
-    key = AI.flow_finding_explanation_key(scope, finding, attempt)
+    key = AI.flow_finding_explanation_key(scope, finding, locale(socket), attempt)
 
     case AI.get_replayable_result(scope, AI.flow_finding_explanation_task_id(), key) do
       {:ok, output, operation} -> {:ok, output, operation}

@@ -15,7 +15,7 @@ defmodule Storyarn.AI.InferenceProviders.Fake do
   def generate(_credential, %{input: input, contextual?: contextual?, provider_options: options})
       when is_boolean(contextual?) do
     with {:ok, echo_input} <- unwrap_context_input(input, contextual?) do
-      case Map.get(options, :scenario, Map.get(options, "scenario", :schema)) do
+      case Map.get(options, :scenario, Map.get(options, "scenario", default_scenario(options))) do
         # A task that declares a response schema and no test scenario gets a
         # minimal instance OF ITS OWN CONTRACT back, so a deterministic run
         # exercises the real validate_output/1 instead of an echo shape no
@@ -86,6 +86,18 @@ defmodule Storyarn.AI.InferenceProviders.Fake do
   end
 
   defp schema_instance(_schema), do: :error
+
+  # Answering a task's own contract is only possible when it declares one. A task
+  # that declares NO schema keeps the echo success it always had; defaulting to
+  # :schema there would fail closed for no reason.
+  #
+  # Presence, not truthiness: `response_schema: nil` is a malformed declaration,
+  # not an absent one, and must still fail closed.
+  defp default_scenario(options) do
+    if Map.has_key?(options, :response_schema) or Map.has_key?(options, "response_schema"),
+      do: :schema,
+      else: :success
+  end
 
   # An enum names the only accepted values, so generic text would fail the task's
   # own validator. Enum specs also declare a type, hence the clause order.
