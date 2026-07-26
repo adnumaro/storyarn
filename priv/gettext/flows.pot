@@ -468,3 +468,8 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} warning(s)"
 msgstr ""
+
+#: lib/storyarn_web/live/flow_live/index.ex:193
+#, elixir-autogen, elixir-format
+msgid "Could not load dashboard data. Reload the page to try again."
+msgstr ""

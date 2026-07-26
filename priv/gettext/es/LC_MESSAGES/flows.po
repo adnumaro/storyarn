@@ -412,9 +412,9 @@ msgstr "Sesión de depuración iniciada"
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:150
 #: lib/storyarn_web/live/flow_live/show.ex:1154
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Could not create sequence"
-msgstr "No se pudo crear la ficha."
+msgstr "No se pudo crear la secuencia"
 
 #: lib/storyarn_web/live/flow_live/show.ex:1150
 #, elixir-autogen, elixir-format
@@ -432,9 +432,9 @@ msgid "Sequence created"
 msgstr "Secuencia creada"
 
 #: lib/storyarn/projects/dashboard.ex:295
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} node(s) without outgoing connection"
-msgstr "El flujo \"%{name}\" tiene %{count} nodo(s) desconectado(s)"
+msgstr "El flujo \"%{name}\" tiene %{count} nodo(s) sin conexión de salida"
 
 #: lib/storyarn/versioning/builders/flow_builder.ex:5052
 #, elixir-autogen, elixir-format
@@ -460,11 +460,16 @@ msgid "Localization row #%{n} — voice-over"
 msgstr "Fila de localización #%{n} — voz en off"
 
 #: lib/storyarn/projects/dashboard.ex:305
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} error(s)"
 msgstr "El flujo \"%{name}\" tiene %{count} error(es)"
 
 #: lib/storyarn/projects/dashboard.ex:309
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} warning(s)"
 msgstr "El flujo \"%{name}\" tiene %{count} advertencia(s)"
+
+#: lib/storyarn_web/live/flow_live/index.ex:193
+#, elixir-autogen, elixir-format
+msgid "Could not load dashboard data. Reload the page to try again."
+msgstr "No se pudieron cargar los datos del panel. Recarga la página para intentarlo de nuevo."

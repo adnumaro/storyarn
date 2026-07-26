@@ -837,3 +837,33 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr ""
+
+#: lib/storyarn_web/live/scene_live/index.ex:190
+#, elixir-autogen, elixir-format
+msgid "Could not load dashboard data. Reload the page to try again."
+msgstr ""
+
+#: lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex:22
+#, elixir-autogen, elixir-format
+msgid "Scene"
+msgstr ""
+
+#: lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex:22
+#, elixir-autogen, elixir-format
+msgid "Layer"
+msgstr ""
+
+#: lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex:22
+#, elixir-autogen, elixir-format
+msgid "Ambient flow"
+msgstr ""
+
+#: lib/storyarn_web/live/scene_live/helpers/health_helpers.ex:125
+#, elixir-autogen, elixir-format
+msgid "Item"
+msgstr ""
+
+#: lib/storyarn_web/live/scene_live/helpers/health_helpers.ex:125
+#, elixir-autogen, elixir-format
+msgid "%{type} #%{id}"
+msgstr ""

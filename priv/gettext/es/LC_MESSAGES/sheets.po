@@ -349,3 +349,83 @@ msgstr "Fila"
 #, elixir-autogen, elixir-format
 msgid "Sheet"
 msgstr "Ficha"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:90
+#, elixir-autogen, elixir-format
+msgid "%{type} #%{id}"
+msgstr "%{type} n.º %{id}"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:85
+#, elixir-autogen, elixir-format
+msgid "Block"
+msgstr "Bloque"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:80
+#, elixir-autogen, elixir-format
+msgid "Boolean"
+msgstr "Booleano"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:99
+#, elixir-autogen, elixir-format
+msgid "Column #%{id}"
+msgstr "Columna n.º %{id}"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:79
+#, elixir-autogen, elixir-format
+msgid "Date"
+msgstr "Fecha"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:84
+#, elixir-autogen, elixir-format
+msgid "Formula"
+msgstr "Fórmula"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:83
+#, elixir-autogen, elixir-format
+msgid "Gallery"
+msgstr "Galería"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:78
+#, elixir-autogen, elixir-format
+msgid "Multi Select"
+msgstr "Selección múltiple"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:76
+#, elixir-autogen, elixir-format
+msgid "Number"
+msgstr "Número"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:81
+#, elixir-autogen, elixir-format
+msgid "Reference"
+msgstr "Referencia"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:75
+#, elixir-autogen, elixir-format
+msgid "Rich Text"
+msgstr "Texto enriquecido"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:95
+#, elixir-autogen, elixir-format
+msgid "Row #%{id}"
+msgstr "Fila n.º %{id}"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:77
+#, elixir-autogen, elixir-format
+msgid "Select"
+msgstr "Selección"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:82
+#, elixir-autogen, elixir-format
+msgid "Table"
+msgstr "Tabla"
+
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:74
+#, elixir-autogen, elixir-format
+msgid "Text"
+msgstr "Texto"
+
+#: lib/storyarn_web/live/sheet_live/index.ex:186
+#, elixir-autogen, elixir-format
+msgid "Could not load dashboard data. Reload the page to try again."
+msgstr "No se pudieron cargar los datos del panel. Recarga la página para intentarlo de nuevo."

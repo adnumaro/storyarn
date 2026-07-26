@@ -686,3 +686,43 @@ msgstr "The template or workspace is no longer available."
 #, elixir-autogen, elixir-format
 msgid "You no longer have permission to install this template."
 msgstr "You no longer have permission to install this template."
+
+#: lib/storyarn/exports/validator.ex:642
+#, elixir-autogen, elixir-format
+msgid "Flow \"%{name}\" has more than one Entry node"
+msgstr "Flow \"%{name}\" has more than one Entry node"
+
+#: lib/storyarn/exports/validator.ex:666
+#, elixir-autogen, elixir-format
+msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no outgoing connection"
+msgstr "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no outgoing connection"
+
+#: lib/storyarn/exports/validator.ex:676
+#, elixir-autogen, elixir-format
+msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" leaves one or more outputs unconnected"
+msgstr "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" leaves one or more outputs unconnected"
+
+#: lib/storyarn/exports/validator.ex:686
+#, elixir-autogen, elixir-format
+msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on input pins it no longer has"
+msgstr "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on input pins it no longer has"
+
+#: lib/storyarn/exports/validator.ex:696
+#, elixir-autogen, elixir-format
+msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on output pins it no longer has"
+msgstr "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on output pins it no longer has"
+
+#: lib/storyarn/exports/validator.ex:706
+#, elixir-autogen, elixir-format
+msgid "Hub node (id: %{node_id}) in flow \"%{flow_name}\" is never targeted by a Jump"
+msgstr "Hub node (id: %{node_id}) in flow \"%{flow_name}\" is never targeted by a Jump"
+
+#: lib/storyarn/exports/validator.ex:715
+#, elixir-autogen, elixir-format
+msgid "Exit node (id: %{node_id}) in flow \"%{flow_name}\" has no return flow set"
+msgstr "Exit node (id: %{node_id}) in flow \"%{flow_name}\" has no return flow set"
+
+#: lib/storyarn/exports/validator.ex:724
+#, elixir-autogen, elixir-format
+msgid "Exit node (id: %{node_id}) in flow \"%{flow_name}\" returns to a flow that no longer exists"
+msgstr "Exit node (id: %{node_id}) in flow \"%{flow_name}\" returns to a flow that no longer exists"

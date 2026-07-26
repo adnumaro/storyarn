@@ -14,7 +14,7 @@ msgstr ""
 #: lib/storyarn_web/live/asset_live/index.ex:304
 #, elixir-autogen, elixir-format
 msgid "Asset deleted."
-msgstr "Proyecto eliminado."
+msgstr "Recurso eliminado."
 
 #: lib/storyarn_web/live/asset_live/index.ex:267
 #, elixir-autogen, elixir-format
@@ -24,7 +24,7 @@ msgstr "Perfil actualizado exitosamente."
 #: lib/storyarn_web/live/asset_live/index.ex:307
 #, elixir-autogen, elixir-format
 msgid "Could not delete asset."
-msgstr "No se pudo eliminar la ficha."
+msgstr "No se pudo eliminar el recurso."
 
 #: lib/storyarn_web/live/asset_live/index.ex:277
 #, elixir-autogen, elixir-format
