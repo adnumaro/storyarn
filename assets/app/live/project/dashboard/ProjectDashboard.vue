@@ -14,7 +14,6 @@ import {
 } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed } from "vue";
-import { useLive } from "@shared/composables/useLive";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 import DashboardContent from "@shell/DashboardContent.vue";
 
@@ -65,7 +64,6 @@ const {
   issues = [],
   localization = [],
   activity = [],
-  canEdit = false,
   workspaceSlug,
   projectSlug,
   loading = false,
@@ -81,8 +79,6 @@ const {
   projectSlug: string;
   loading?: boolean;
 }>();
-
-const live = useLive();
 
 const statCards = computed(() => {
   if (!stats) return [];

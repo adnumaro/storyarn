@@ -74,7 +74,6 @@ makeDroppable(
       :items="localRows"
       :group="rowGroup"
       :data-sheet-row-id="row.id"
-      v-slot="{ isDragOver }"
     >
       <!-- ══ Row label cell ══ -->
       <td class="sticky left-0 z-10 bg-card/60 font-medium text-foreground text-sm">

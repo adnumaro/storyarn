@@ -151,7 +151,11 @@ defmodule Storyarn.MixProject do
         "format",
         "convention.check",
         "credo --strict",
-        "test"
+        # `--warnings-as-errors` here covers the `.exs` test files, which the
+        # `compile` step above never sees: `elixirc_paths(:test)` is
+        # `["lib", "test/support"]`, so a warning inside a test file passed every
+        # gate. Three did, on this branch alone.
+        "test --warnings-as-errors"
       ],
       dialyzer: ["dialyzer --format short"]
     ]

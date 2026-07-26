@@ -66,7 +66,7 @@ defmodule StoryarnWeb.UserLive.RegistrationTest do
       assert {:error, {:redirect, %{to: "/es", flash: flash}}} =
                live(conn, ~p"/users/register/invalid-token?locale=es")
 
-      assert flash["error"] =~ "Invalid or expired registration link"
+      assert flash["error"] =~ "El enlace de registro no es válido o ha caducado."
     end
 
     test "keeps validation errors in the public form", %{conn: conn} do

@@ -58,7 +58,12 @@ const listRef = ref<ComponentPublicInstance | null>(null);
 const searchResults = ref<ReferenceSearchResult[]>([]);
 let savedScrollTop = 0;
 
-const { query, loading, search, reset } = useServerSearch({
+// NOTE: `search` is deliberately not bound — the server's `search_references`
+// handler needs a `block-id` in the payload to resolve `allowed_types`, and
+// `useServerSearch` only sends `{ query }`. `onSearchInput` pushes directly
+// instead, which is why `query`/`loading` never update and the 300ms debounce
+// below never applies. See the report accompanying this change.
+const { query, loading, reset } = useServerSearch({
   searchEvent: "search_references",
   debounceMs: 300,
 });
@@ -122,13 +127,12 @@ function typeColor(type: string | undefined): string {
   return type === "flow" ? "text-violet-500 bg-violet-500/10" : "text-primary bg-primary/10";
 }
 
-// ── Infinite scroll ──
+// ── Scroll position preservation ──
+// Reference search returns all results in one payload, so there is no
+// pagination / infinite-scroll trigger here — only scroll restore across
+// result updates.
 function getListEl(): HTMLElement | null {
   return (listRef.value?.$el ?? listRef.value) as HTMLElement | null;
-}
-
-function onScroll(): void {
-  // Reference search returns all results (no pagination needed for now)
 }
 
 onBeforeUpdate(() => {

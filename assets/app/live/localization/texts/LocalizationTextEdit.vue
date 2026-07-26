@@ -40,13 +40,12 @@ interface TranslationForm {
   params?: TranslationFormParams;
 }
 
-const {
-  text,
-  form,
-  hasProvider = false,
-  canEdit = false,
-  backUrl,
-} = defineProps<{
+// NOTE: `canEdit` is part of the contract (edit.ex passes `can-edit`) but
+// nothing in this component gates on it — the translation form and its Save /
+// DeepL buttons render enabled for viewers too. The server-side handlers are
+// authorized (`Authorize.with_authorization(socket, :edit_content, ...)`), so
+// this is a UI gap, not an authorization hole.
+const { text, form, hasProvider = false, backUrl } = defineProps<{
   text: LocalizedText;
   form: TranslationForm;
   hasProvider?: boolean;

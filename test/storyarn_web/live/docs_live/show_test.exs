@@ -122,7 +122,7 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
                "Condition Editor",
                "Instruction Editor",
                "Debug Mode",
-               "Structural Analysis"
+               "Flow Health"
              ]
 
       content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")

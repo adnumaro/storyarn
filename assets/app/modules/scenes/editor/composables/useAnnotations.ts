@@ -5,7 +5,6 @@ import { useHiddenLayerIds, type LayerData } from "../../canvas/composables/useL
 const FOLD_SIZE = 12;
 const DEFAULT_COLOR = "#fbbf24";
 const BG_OPACITY = 0.75;
-const _TEXT_COLOR = "#111827";
 
 interface AnnotationSizeDims {
   width: number;

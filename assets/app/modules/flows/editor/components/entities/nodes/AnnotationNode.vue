@@ -10,13 +10,10 @@ interface AnnotationNodeData {
   font_size?: "sm" | "md" | "lg";
 }
 
-const {
-  data,
-  emit,
-  config,
-  color,
-  nodeDataOverride = null,
-} = defineProps<{
+// `emit`, `config` and `color` are part of the uniform rete node contract
+// (every node component receives them) but this node renders its own
+// annotation chrome, so it binds none of them.
+const { data, nodeDataOverride = null } = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;

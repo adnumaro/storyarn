@@ -55,6 +55,46 @@ defmodule Storyarn.Publication.LocalesTest do
     assert_complete_blog()
   end
 
+  # The test above guards the PUBLIC surface (marketing, docs, blog) and has
+  # always checked those three domains for fuzzy and missing translations. This
+  # one extends the same two guarantees to every other domain, because the app's
+  # own UI is where an unreviewed translation actually reaches a designer: a
+  # `fuzzy` msgstr is a merge guess that Gettext serves to users verbatim, with
+  # no visual difference from a reviewed one.
+  #
+  # It is not folded into the test above because that one also asserts each
+  # catalog contains EXACTLY the messages of its `.pot`, and the non-public
+  # `.pot` files drift from source (see `docs/features/GETTEXT_EXTRACTION_DEBT.md`).
+  # Blocking on translation quality is affordable today; blocking on extraction
+  # debt is not, and conflating them would mean deleting both guards the next
+  # time someone hits the second one.
+  test "no localized catalog ships a fuzzy or missing translation" do
+    for locale <- Locales.localized_locales(), path <- gettext_catalogs(locale) do
+      catalog = parse_po!(path)
+
+      fuzzy = Enum.filter(catalog.messages, &Message.has_flag?(&1, "fuzzy"))
+
+      assert fuzzy == [],
+             "#{path} ships #{length(fuzzy)} fuzzy translation(s): " <>
+               inspect(Enum.map(fuzzy, &message_key/1)) <>
+               ". A fuzzy entry is an unreviewed merge guess and Gettext serves it to users."
+
+      untranslated = Enum.reject(catalog.messages, &translated?(&1, catalog))
+
+      assert untranslated == [],
+             "#{path} leaves #{length(untranslated)} message(s) untranslated: " <>
+               inspect(Enum.map(untranslated, &message_key/1)) <>
+               ". An empty msgstr falls back to English mid-interface."
+    end
+  end
+
+  defp gettext_catalogs(locale) do
+    @project_root
+    |> Path.join("priv/gettext/#{locale}/LC_MESSAGES/*.po")
+    |> Path.wildcard()
+    |> Enum.map(&Path.relative_to(&1, @project_root))
+  end
+
   defp assert_complete_gettext_catalogs do
     Enum.each(@public_gettext_domains, fn domain ->
       template = parse_po!("priv/gettext/#{domain}.pot")

@@ -118,14 +118,6 @@ function onFreeTextInput(e: Event) {
 function onFreeTextBlur(e: Event) {
   emit("update:modelValue", (e.target as HTMLInputElement).value);
 }
-
-/** Auto-size an input based on content */
-function autoSize(el: HTMLInputElement | null) {
-  if (!el) return;
-  const text = el.value || el.placeholder || "";
-  const charCount = Math.max(text.length, 3);
-  el.style.width = `${charCount + 2}ch`;
-}
 </script>
 
 <template>

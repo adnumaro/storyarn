@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowRight, Check } from "lucide-vue-next";
+import { useTemplateRef } from "vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import { useRevealOnScroll } from "../../composables/useRevealOnScroll";
 
@@ -7,7 +8,8 @@ defineProps<{
   registrationUrl: string;
 }>();
 
-const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
+const sectionRef = useTemplateRef<HTMLElement>("sectionRef");
+const { isRevealed } = useRevealOnScroll(sectionRef);
 </script>
 
 <template>

@@ -29,7 +29,7 @@ const containerRef = ref<HTMLElement | null>(null);
 const live = useLive();
 let initialized = false;
 
-const { init, toolbarState, editor, area, setToolbarProps } = useFlowCanvas({
+const { init, editor, area, setToolbarProps } = useFlowCanvas({
   pushEvent: live.pushEvent,
   handleEvent: live.handleEvent,
 });

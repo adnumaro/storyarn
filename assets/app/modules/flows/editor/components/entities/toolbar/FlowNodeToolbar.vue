@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Component, CSSProperties } from "vue";
+import type { Component } from "vue";
 import { computed } from "vue";
 
 defineOptions({ inheritAttrs: false });

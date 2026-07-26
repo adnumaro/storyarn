@@ -4,11 +4,9 @@ import { computed } from "vue";
 import { useLive } from "@shared/composables/useLive.ts";
 import type { FlowSlide } from "../composables/useExplorationKeyboard";
 
-const {
-  slide = null,
-  flowName = null,
-  showContinue = false,
-} = defineProps<{
+// `flowName` stays part of the contract — ScenePlayer passes it — but the
+// overlay does not render it; ExplorationToolbar is what shows the flow name.
+const { slide = null, showContinue = false } = defineProps<{
   slide?: FlowSlide | null;
   flowName?: string | null;
   showContinue?: boolean;

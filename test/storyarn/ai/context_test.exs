@@ -12,7 +12,6 @@ defmodule Storyarn.AI.ContextTest do
   alias Storyarn.AI.Context.Package
   alias Storyarn.AI.Context.Policy
   alias Storyarn.AI.Context.SubjectRef
-  alias Storyarn.AI.Operation
   alias Storyarn.AI.Task
   alias Storyarn.Flows
   alias Storyarn.Shared.CanonicalJSON
