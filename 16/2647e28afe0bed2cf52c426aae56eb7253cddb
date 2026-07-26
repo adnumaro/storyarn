@@ -1,0 +1,36 @@
+AGENTS.md
+  s_fa8817de2fb0a5::t_d5a6b77e5f3dab 233
+  s_e059091a477d9a::t_0cfea9ebfe3693 15-16,18-20,35-43,63,359-386,394-395,413-416,418-423,429,440
+CLAUDE.md
+  s_fa8817de2fb0a5::t_fb86c3cd261b1a 118-121
+docs/conventions/component-registry.md
+  s_fa8817de2fb0a5::t_5d39021d9b897f 16-19,27-29,52-60,73-79,106-125,140-150,158-161,173-176
+docs/conventions/domain-patterns.md
+  s_fa8817de2fb0a5::t_acd709d594999e 29-31,34,39,47-55,277-281
+docs/conventions/shared-utilities.md
+  s_fa8817de2fb0a5::t_591d5cf56aeab6 11-17,40-41,67-78,138-145,255-259,261-268,322-328,342-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "162647e28afe0bed2cf52c426aae56eb7253cddb",
+  "prompts": {},
+  "sessions": {
+    "s_e059091a477d9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3623d072-d019-4c2b-9c08-57987c0f0e86",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_fa8817de2fb0a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1356cce-e163-4082-ad61-02e65be2ac3f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
