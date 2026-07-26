@@ -1,0 +1,185 @@
+assets/app/components/health/HealthStatusPopover.vue
+  s_e059091a477d9a::t_38945d3d79c11f 7,61
+assets/app/components/health/health-details.ts
+  s_e059091a477d9a::t_3ad44d827c49d7 1-25
+assets/app/live/flow/show/FlowHeader.vue
+  s_e059091a477d9a::t_9c68caf5593114 11
+assets/app/locales/en/flows.json
+  s_e059091a477d9a::t_89693942ed8b0d 401,405-408
+assets/app/locales/es/flows.json
+  s_e059091a477d9a::t_28cafdaaf75eae 401,405-408
+assets/app/test/components/health/FlowDashboardHealthLabels.test.ts
+  s_e059091a477d9a::t_cbf05c65d058f8 1-58
+assets/app/test/components/health/HealthStatusPopover.test.ts
+  s_e059091a477d9a::t_6151167fd1e74b 1-98
+assets/app/test/live/sheet/show/SheetHealthStatus.test.ts
+  s_e059091a477d9a::t_47ed5656ace1af 40-41,51-52,62-63,96-97,107-108
+lib/storyarn/exports/serializers/flow_control_resolver.ex
+  s_e059091a477d9a::t_74360416fc1808 11,142,197-199
+lib/storyarn/exports/serializers/godot_dialogic.ex
+  s_e059091a477d9a::t_72741d034658eb 23,321
+lib/storyarn/exports/serializers/ink.ex
+  s_e059091a477d9a::t_a216923016d8fa 23,414
+lib/storyarn/exports/serializers/unity_json.ex
+  s_e059091a477d9a::t_936a8f98e10c11 18,132
+lib/storyarn/exports/serializers/yarn.ex
+  s_e059091a477d9a::t_f10a2af5dd5818 25,402
+lib/storyarn/flows.ex
+  s_e059091a477d9a::t_117649aa9da67d 735-739,771,827,907-909,911-912,917,923,926,933,940,950,1016,1020-1022
+lib/storyarn/flows/flow_stats.ex
+  s_e059091a477d9a::t_afda9e770c7356 69-72,76-82,96
+lib/storyarn/flows/health_checker.ex
+  s_e059091a477d9a::t_15de9c3812b86a 21,93,95-101,104-107,112-117,120-121,124,126,131-132,145,152,154-155,158-159,163-164,188,245
+lib/storyarn/flows/instruction.ex
+  s_e059091a477d9a::t_de4bf6aa74da8b 118-134,137-142,144-145,147,160-164
+lib/storyarn/flows/structural_analysis.ex
+  s_e059091a477d9a::t_085a0ea77a6bbc 8-14,29-30,44-46,80-85,118-119,127-130,132-133,141,150,156,169,174,190,200,222,229,242,270-272,280-281,289-290,298-300,304-308
+lib/storyarn/flows/structural_analysis/graph.ex
+  s_e059091a477d9a::t_80a94e38c024b2 6-8
+lib/storyarn/flows/structural_analysis/topology.ex
+  s_e059091a477d9a::t_d007a0de9dec06 10-11,65-69,106-112,167-175
+lib/storyarn/flows/variable_reference.ex
+  s_e059091a477d9a::t_daf7b3f673c0e5 20-24
+lib/storyarn/references.ex
+  s_e059091a477d9a::t_a23b85489e3cdc 48-50
+lib/storyarn/scenes/health_checker.ex
+  s_e059091a477d9a::t_b7a69586c21010 92-105,590-595,705-709,712
+lib/storyarn/scenes/health_snapshots.ex
+  s_e059091a477d9a::t_cf36cb2d80bf9c 20,22,96-103,163-168,191-194,197-199,201
+lib/storyarn/scenes/pin_crud.ex
+  s_e059091a477d9a::t_cef46f7acad3a7 9,66-70,90,118,150
+lib/storyarn/scenes/scene_crud.ex
+  s_e059091a477d9a::t_9e67be281d5029 32-37,43,283-307,553-554,558
+lib/storyarn/scenes/zone_crud.ex
+  s_e059091a477d9a::t_a7077a440e7e6c 9,62-66,93,122,155
+lib/storyarn/shared/severity.ex
+  s_e059091a477d9a::t_b1eda5a52f34be 1-48
+lib/storyarn/shared/string_utils.ex
+  s_e059091a477d9a::t_38d24f71363f3f 1-53
+lib/storyarn/sheets.ex
+  s_e059091a477d9a::t_b695c12a1db606 1007,1010,1013,1073-1087
+lib/storyarn/sheets/health_checker.ex
+  s_e059091a477d9a::t_d5e4729c047856 16-29,33-34,83,93-95,99-103,105-106,113-116
+lib/storyarn/sheets/sheet_queries.ex
+  s_e059091a477d9a::t_fd34db2c38dad9 11-13,676,712-716,767-770,815-817,939-941,1162-1163,1184-1186,1225-1229,1231,1233,1237-1240,1242,1244-1245,1247-1248
+lib/storyarn/sheets/table_crud.ex
+  s_e059091a477d9a::t_c3c62975ef4308 6,46,49-51,90,93-95,157,178-180,188,215-217,321,354-356,361,397-399,406,428-430,435,448-450,476,487-489,494-534
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  s_e059091a477d9a::t_d4405ba119a1f5 124
+lib/storyarn_web/live/flow_live/helpers/health_helpers.ex
+  s_e059091a477d9a::t_221b0fbef9bbe2 19,51,56
+lib/storyarn_web/live/flow_live/helpers/node_helpers.ex
+  s_e059091a477d9a::t_084fbc54e2bfdc 373-383,389,392,399,406,416
+lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+  s_e059091a477d9a::t_2660a09b4f5dbf 29-30,33-39,41
+lib/storyarn_web/live/flow_live/index.ex
+  s_e059091a477d9a::t_a5b8e36aba44c6 19,24-25,70,126,179,183-194,244-246,343-348,366-367,373,376-391
+lib/storyarn_web/live/flow_live/show.ex
+  s_e059091a477d9a::t_e8647e7d28bb4e 205,330-348,351-362,1336-1338
+lib/storyarn_web/live/scene_live/helpers/health_helpers.ex
+  s_e059091a477d9a::t_6dfcd28627876d 11-12,16-17,108-121,126-127,130-134,140,142,149,167,184-190
+lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex
+  s_e059091a477d9a::t_d6b8c02fbfd4a3 22-43,69,75,81,87
+lib/storyarn_web/live/scene_live/index.ex
+  s_e059091a477d9a::t_7704765371ad80 21-22,24-26,179-195,307,310-315,317-321
+lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex
+  s_e059091a477d9a::t_26b050e320b5cf 3-9,12-13,16,24,26-28,33,37,39-42,44,48-54,66-67,69-72,74-95,98-105,116-120,134-135,137-138,140-142,144,149,153-154,159,166-168
+lib/storyarn_web/live/sheet_live/index.ex
+  s_e059091a477d9a::t_10ef09844248ee 20,23-25,175-191,311,327-330,332-334,336,338-339,341-342,344-345
+test/storyarn/flows/dashboard_health_coverage_test.exs
+  s_e059091a477d9a::t_468ce4b015f995 1-425
+test/storyarn/flows/health_checker_test.exs
+  s_e059091a477d9a::t_68eda225c76033 329-359
+test/storyarn/flows/health_consolidation_test.exs
+  s_e059091a477d9a::t_ab37b1b908d9e9 24,28,37-40,42-43,54-77,137-300,381
+test/storyarn/flows/structural_analysis_test.exs
+  s_e059091a477d9a::t_4e644e76dfb4e7 9,25-34,249,258-344,549-551,629-632,636-637
+test/storyarn/flows/variable_reference_test.exs
+  s_e059091a477d9a::t_ed6ba676fa12fd 1-49
+test/storyarn/references/variable_usage_delegation_test.exs
+  s_e059091a477d9a::t_153ee8db3daafd 1-153
+test/storyarn/scenes/dashboard_health_coverage_test.exs
+  s_e059091a477d9a::t_cf46e16d598b26 109-148,159-171,213-230
+test/storyarn/scenes/dashboard_invalidation_test.exs
+  s_e059091a477d9a::t_b944ae02f43b64 1-127
+test/storyarn/shared/severity_test.exs
+  s_e059091a477d9a::t_cdd46010d872cc 1-73
+test/storyarn/shared/string_utils_test.exs
+  s_e059091a477d9a::t_b6110b4cd35371 1-69
+test/storyarn/sheets/dashboard_health_coverage_test.exs
+  s_e059091a477d9a::t_03577c3e9a7fdc 17,227-232,241-247,263-343,404
+test/storyarn/sheets/health_checker_test.exs
+  s_e059091a477d9a::t_62935d95b4bab1 23-24,33-60
+test/storyarn/sheets/sheet_queries_test.exs
+  s_e059091a477d9a::t_1a2e1609e53e70 1678-1788
+test/storyarn/sheets/sheet_stats_test.exs
+  s_e059091a477d9a::t_9c153f0d5118dc 7,12,403-505
+test/storyarn/sheets/table_crud_test.exs
+  s_e059091a477d9a::t_23f679783aa4e6 8,695-752
+test/storyarn_web/live/flow_live/helpers/socket_helpers_test.exs
+  s_e059091a477d9a::t_1070737f99901d 25-28
+test/storyarn_web/live/flow_live/index_test.exs
+  s_e059091a477d9a::t_57989cf8f31eae 4,10-11,13,139-228
+test/storyarn_web/live/flow_live/show_test.exs
+  s_e059091a477d9a::t_8d6a95ee9361a0 100-188
+test/storyarn_web/live/scene_live/helpers/health_helpers_test.exs
+  s_e059091a477d9a::t_68566f10467b8d 1-131
+test/storyarn_web/live/scene_live/index_test.exs
+  s_e059091a477d9a::t_a8a74e390a0dbf 4,12-14,332-381
+test/storyarn_web/live/sheet_live/helpers/health_helpers_test.exs
+  s_e059091a477d9a::t_75d255845f3f72 1-127
+test/storyarn_web/live/sheet_live/index_test.exs
+  s_e059091a477d9a::t_d90e3841d5b85b 10,96-117
+assets/app/live/flow/dashboard/FlowDashboard.vue
+  s_d3892dadf47887::t_0400579e481f1a 23,107
+assets/app/modules/sheets/types.ts
+  s_ecb9241a541038::t_cfd548ee09dc37 123-130
+lib/storyarn/sheets/health_snapshots.ex
+  s_ecb9241a541038::t_67f1269bb3532d 3-20,27,34-75,105,116-118,182,194-204
+lib/storyarn/sheets/property_inheritance.ex
+  s_d3892dadf47887::t_fa5e2986a354c7 52-57
+test/storyarn/scenes/health_sweep_determinism_test.exs
+  s_64d2cd496323fc::t_d18b231d072026 1-94
+test/storyarn/sheets/property_inheritance_test.exs
+  s_e059091a477d9a::t_a3d6eb9dab3ab0 89-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3a667a43765ec3d364cd6459498458054259caac",
+  "prompts": {},
+  "sessions": {
+    "s_64d2cd496323fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aExec-Scenes-452b3bdcca8e310c",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_d3892dadf47887": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aExec-I18n-0c88b2422c8b095f",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_e059091a477d9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3623d072-d019-4c2b-9c08-57987c0f0e86",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_ecb9241a541038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aExec-Sheets-a1796c26931d5cb4",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
