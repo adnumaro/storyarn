@@ -1,205 +1,168 @@
 # Component Registry
 
-## Auto-imported Components
+The UI is Vue. HEEx is reduced to layout shells, the SEO head, and a handful of
+public-page partials; every interactive surface is a `<.vue>` boundary rendering
+a component from `assets/app/`.
 
-These are available in ALL HEEx templates without explicit import (via `StoryarnWeb`):
+## Auto-imported HEEx Components
+
+These are the only components available in ALL HEEx templates without an explicit
+import (see `html_helpers/0` in `lib/storyarn_web.ex`):
 
 ### CoreComponents (`core_components.ex`)
 
-| Component           | Purpose                   | Key Attributes                                                                                                                                 |
-| ------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<.button>`         | Button (nav-aware)        | `variant` (primary/error), `href`/`navigate`/`patch`                                                                                           |
-| `<.input>`          | Form input wrapper        | `field`, `type` (text/textarea/select/checkbox + 13 more HTML5 types), `label`, `errors`                                                       |
-| `<.icon>`           | Lucide icon               | `name` (string, required), `class`                                                                                                             |
-| `<.modal>`          | Dialog modal              | `id`, `show`, `on_cancel`                                                                                                                      |
-| `ConfirmDialog.vue` | Confirmation dialog (Vue) | `open` (v-model), `title`, `description`, `confirmText`, `cancelText`, `variant` (default/destructive/warning), `icon` — `@confirm`, `@cancel` |
-| `<.table>`          | Data table                | `rows`, `row_id`, `row_click`, `:col` slot, `:action` slot                                                                                     |
-| `<.list>`           | Key-value list            | `:item` slot (with title)                                                                                                                      |
-| `<.flash>`          | Flash notification        | `kind`, `flash`                                                                                                                                |
-| `<.back>`           | Back link                 | `navigate`                                                                                                                                     |
-| `<.block_label>`    | Block field label         | `label`, `is_constant`                                                                                                                         |
+No components — two `Phoenix.LiveView.JS` helpers only:
 
-**Helper functions:**
+| Function             | Purpose               |
+| -------------------- | --------------------- |
+| `show(js, selector)` | Fade/slide in, 300ms  |
+| `hide(js, selector)` | Fade/slide out, 200ms |
 
-- `show(js, selector)` / `hide(js, selector)` — JS visibility commands
-- `show_modal(js \\ %JS{}, id)` / `hide_modal(js \\ %JS{}, id)` — Modal open/close
-- `translate_error(error_tuple)` / `translate_errors(errors, field)` — Ecto error to string
+There is no `<.button>`, `<.input>`, `<.modal>`, `<.table>`, `<.list>`, `<.flash>`,
+`<.back>` or `<.block_label>` — use the Vue equivalents in `assets/app/components/ui/`.
+Flash is rendered by `<Layouts.flash_group>`, which mounts `live/layouts/flash/FlashGroup`.
 
-### UIComponents (`ui_components.ex`)
+### IconComponents (`icon_components.ex`)
 
-| Component         | Purpose             | Key Attributes                                                             |
-| ----------------- | ------------------- | -------------------------------------------------------------------------- |
-| `<.role_badge>`   | Role indicator      | `role` (owner/admin/editor/member/viewer)                                  |
-| `<.kbd>`          | Keyboard shortcut   | `inner_block` (content slot), `size` (xs/sm/md)                            |
-| `<.empty_state>`  | Empty content state | `icon`, `title`, `inner_block` (description), `:action` slot               |
-| `<.search_input>` | Search field        | `size` (xs/sm/md/lg), global: `name`, `value`, `placeholder`, `phx-change` |
-| `<.avatar_group>` | Avatar cluster      | `size` (xs/sm/md/lg), `max`, `total`, `:avatar` slot (src/alt/fallback)    |
-| `<.theme_toggle>` | Theme switcher      | —                                                                          |
+| Component | Purpose     | Key Attributes                                                  |
+| --------- | ----------- | --------------------------------------------------------------- |
+| `<.icon>` | Lucide icon | `name` (required), `class` (default `"size-4"`), `:rest` global |
+
+`name` is looked up in a hardcoded `@icons` path map with `Map.fetch!/2` — **an
+unlisted name raises at render time.** Currently: `arrow-left`, `arrow-right`,
+`book-open`, `check`, `chevron-down`, `mail`, `menu`, `newspaper`,
+`panels-top-left`, `sparkles`, `x`. Add the Lucide path data to that map before
+using a new icon in HEEx.
 
 ---
 
-## Domain-Specific Components (require import)
+## Layouts (7 independent, NOT nested)
 
-### MemberComponents
-
-```elixir
-import StoryarnWeb.Components.MemberComponents
-```
-
-| Component           | Purpose                                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------------- |
-| `<.user_avatar>`    | Avatar with initials fallback. Attrs: `user`, `email`, `size` (sm/md/lg)                          |
-| `<.member_row>`     | Member list item. Attrs: `member`, `current_user_id`, `can_manage`, `on_remove`, `on_role_change` |
-| `<.invitation_row>` | Invitation list item. Attrs: `invitation`, `can_revoke`, `on_revoke`                              |
-
-### BlockComponents (facade)
+Each is its own module under `lib/storyarn_web/components/`, invoked by full path
+(no import or alias at the call site):
 
 ```elixir
-import StoryarnWeb.Components.BlockComponents
-```
-
-| Component            | Purpose                                                                                                                |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `<.block_component>` | Renders any block by type. Attrs: `block`, `can_edit`, `editing_block_id`, `target`, `table_data`, `reference_options` |
-| `<.block_menu>`      | Block type selector dropdown                                                                                           |
-| `<.config_panel>`    | Block configuration sidebar                                                                                            |
-
-Submodules: `TextBlocks`, `SelectBlocks`, `LayoutBlocks`, `BooleanBlocks`, `ReferenceBlocks`, `TableBlocks`
-
-### CollaborationComponents
-
-```elixir
-import StoryarnWeb.Components.CollaborationComponents
-```
-
-| Component         | Purpose                                                                           |
-| ----------------- | --------------------------------------------------------------------------------- |
-| `<.collab_toast>` | Collaboration event toast. Attrs: `action`, `user_email`, `user_color`, `details` |
-
-### SaveIndicator
-
-```elixir
-import StoryarnWeb.Components.SaveIndicator
-```
-
-| Component           | Purpose                                                                                    |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| `<.save_indicator>` | Save status display. Attrs: `status` (:idle/:saving/:saved), `variant` (:inline/:floating) |
-
-### ConditionBuilder
-
-```elixir
-import StoryarnWeb.Components.ConditionBuilder
-```
-
-| Component              | Purpose                                                                                                              |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `<.condition_builder>` | Variable condition editor. Attrs: `id`, `condition`, `variables`, `can_edit`, `switch_mode`, `event_name`, `context` |
-
-### InstructionBuilder
-
-```elixir
-import StoryarnWeb.Components.InstructionBuilder
-```
-
-| Component                | Purpose                                                                                                  |
-| ------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `<.instruction_builder>` | Variable assignment editor. Attrs: `id`, `assignments`, `variables`, `can_edit`, `event_name`, `context` |
-
-### ColorPicker
-
-```elixir
-import StoryarnWeb.Components.ColorPicker
-```
-
-| Component         | Purpose                                                                                                                         |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `<.color_picker>` | Color selection. Attrs: `id` (required), `color` (default "#8b5cf6"), `event` (required), `field` (default "color"), `disabled` |
-
-### AudioPicker (LiveComponent)
-
-```elixir
-# LiveComponent — use live_component, NOT import
-<.live_component module={StoryarnWeb.Components.AudioPicker} id="audio" ... />
-```
-
-| Component     | Purpose                                                                         |
-| ------------- | ------------------------------------------------------------------------------- |
-| `AudioPicker` | Audio asset selector for dialogue nodes (LiveComponent, not function component) |
-
-### TreeComponents (`tree.ex`)
-
-```elixir
-import StoryarnWeb.Components.TreeComponents
-```
-
-Components: `<.tree_node>`, `<.tree_leaf>`, `<.tree_section>`, `<.tree_link>`
-
-### Sidebar Trees (per-domain)
-
-```elixir
-import StoryarnWeb.Components.Sidebar.SheetTree
-import StoryarnWeb.Components.Sidebar.FlowTree
-import StoryarnWeb.Components.Sidebar.ScreenplayTree
-import StoryarnWeb.Components.Sidebar.SceneTree
-```
-
-### Other Shared Components
-
-| Module               | Import                                             | Components                                          |
-| -------------------- | -------------------------------------------------- | --------------------------------------------------- |
-| `ExpressionEditor`   | `import StoryarnWeb.Components.ExpressionEditor`   | `<.expression_editor>` — tabbed Builder/Code editor |
-| `SheetComponents`    | `import StoryarnWeb.Components.SheetComponents`    | `<.sheet_avatar>`                                   |
-| `Sidebar`            | `import StoryarnWeb.Components.Sidebar`            | `<.sidebar>` — workspace navigation                 |
-| `CanvasToolbar`      | `import StoryarnWeb.Components.CanvasToolbar`      | Canvas-aware toolbar component                      |
-| `CanvasDock`         | `import StoryarnWeb.Components.CanvasDock`         | Dockable panels for canvas views                    |
-| `ToolbarColorPicker` | `import StoryarnWeb.Components.ToolbarColorPicker` | Toolbar-specific color picker                       |
-| `VersionsSection`    | `import StoryarnWeb.Components.VersionsSection`    | Version history display                             |
-| `FocusLayout`        | `import StoryarnWeb.Components.FocusLayout`        | Focus layout helper components                      |
-| `AuthLayout`         | `alias StoryarnWeb.Components.AuthLayout`          | Authentication LiveVue layout boundary              |
-| `PublicLayout`       | `alias StoryarnWeb.Components.PublicLayout`        | Public marketing/invitation LiveVue layout boundary |
-| `DocsLayout`         | `alias StoryarnWeb.Components.DocsLayout`          | Documentation LiveVue layout boundary               |
-| `SettingsLayout`     | `alias StoryarnWeb.Components.SettingsLayout`      | Settings LiveVue layout boundary                    |
-
-### Shared Live Helpers
-
-| Module             | Import                                            | Purpose                                                 |
-| ------------------ | ------------------------------------------------- | ------------------------------------------------------- |
-| `DashboardHelpers` | `import StoryarnWeb.Live.Shared.DashboardHelpers` | Sort, pagination, and reload helpers for Vue dashboards |
-
----
-
-## Layouts (6 independent, NOT nested)
-
-```elixir
-<Layouts.workspace flash={@flash} current_scope={@current_scope} current_workspace={@workspace}
-  workspaces={@workspaces}>
-  # Workspace dashboard/new-workspace shell with workspace sidebar
-</Layouts.workspace>
-
-<StoryarnWeb.Components.ProjectLayout.project_layout socket={@socket} flash={@flash}
+<StoryarnWeb.Components.ProjectLayout.project socket={@socket} flash={@flash}
   project={@project} workspace={@workspace} current_scope={@current_scope}
-  current_user={@current_user} urls={@urls}>
+  current_user={@current_user} membership={@membership} urls={@urls}>
   # Project tools shell with navbar and optional sticky sidebar
-</StoryarnWeb.Components.ProjectLayout.project_layout>
-
-<AuthLayout.auth flash={@flash}>
-  # Centered auth pages (login/register)
-</AuthLayout.auth>
-
-<PublicLayout.public flash={@flash}>
-  # Public pages (landing, marketing)
-</PublicLayout.public>
-
-<SettingsLayout.settings flash={@flash} current_scope={@current_scope} current_path={@current_path}
-  workspaces={@workspaces} workspace={@workspace} project={@project}>
-  # Account, workspace, and project settings shell with sidebar nav. Slots: :title, :subtitle
-</SettingsLayout.settings>
-
-<DocsLayout.docs flash={@flash}>
-  # Documentation layout with sidebar nav and TOC right rail
-</DocsLayout.docs>
+</StoryarnWeb.Components.ProjectLayout.project>
 ```
+
+| Module            | Function      | Required attrs                                                                          | Optional attrs / slots                                                                                                            |
+| ----------------- | ------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `AuthLayout`      | `auth/1`      | `flash`, `socket`, `seo_metadata`                                                       | `current_scope`                                                                                                                   |
+| `PublicLayout`    | `public/1`    | `flash`, `socket`, `seo_metadata`                                                       | `current_scope`, `theme`, `landing`, `language_links`                                                                             |
+| `DocsLayout`      | `docs/1`      | `flash`, `socket`, `seo_metadata`, `categories`, `guides`, `locale`                     | `guide`, `expanded_categories`, `search_query`, `search_results`, `prev`, `next`, `sidebar_open`, `language_links`                |
+| `SettingsLayout`  | `settings/1`  | `flash`, `socket`, `current_scope`, `current_path`                                      | `workspaces`, `workspace`, `project`, `sudo_grant`, `onboarding*`, slots `:title`, `:subtitle`                                    |
+| `ProjectLayout`   | `project/1`   | `socket`, `project`, `workspace`, `current_scope`, `current_user`, `membership`, `urls` | `id`, `flash`, `active_tool`, `is_super_admin`, `online_users`, `sidebar_module`, `sidebar_session`, `canvas_mode`, `onboarding*` |
+| `WorkspaceLayout` | `workspace/1` | `flash`, `socket`                                                                       | `current_scope`, `current_workspace`, `workspaces`, `onboarding*`                                                                 |
+| `CompareLayout`   | `compare/1`   | `flash`, `socket`                                                                       | `id`, `panel_title`, `panel_open`, `content_class`                                                                                |
+
+All but `PublicLayout` mount a LiveVue shell (`v-component="live/layouts/{name}/Layout"`).
+`PublicLayout` is HEEx-native and composes `PublicHeader.header` / `PublicFooter.footer`.
+
+**`Layouts` (`layouts.ex`) is not a layout.** It provides the pieces the layouts
+embed: `<Layouts.flash_group>`, `<Layouts.command_palette>`, `<Layouts.live_seo>`
+and the `seo_*` head components, plus `absolute_url/1`.
+
+---
+
+## Other HEEx Components
+
+| Module                   | Components                                                                               | Notes                                            |
+| ------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `PublicHeader`           | `<.header>` — `dark`, `landing`, `signed_in`, `urls`, `current_locale`, `language_links` | Used by `PublicLayout`                           |
+| `PublicFooter`           | `<.footer>` — `landing`, `urls`                                                          | Used by `PublicLayout`                           |
+| `PublicNavigation`       | `<.section_link>` — `landing`, `home_url`, `section`, `class`                            | Anchor links on marketing pages                  |
+| `PublicMobileNavigation` | `<.navigation>` — same attrs as `PublicHeader`                                           | Paired with the `PublicMobileNavigation` JS hook |
+| `PublicLanguageSwitcher` | `<.switcher>` — `id`, `current_locale`, `links`, `compact`, `on_navigate`                | Locale picker for public pages                   |
+
+**Unused — do not build on these:** `SheetComponents` (`<.sheet_avatar>`,
+`<.sheet_breadcrumb>`), `CollaborationComponents` (`<.collab_toast>`),
+`TextComponents` (`widont/1`) and `Sidebar.TreeHelpers` have no call sites.
+Collab toasts are pushed with `push_event("collab_toast", …)` and rendered by
+`assets/app/components/collab/CollabToast.vue`.
+
+---
+
+## Vue UI Primitives (`assets/app/components/ui/`)
+
+shadcn-vue components over reka-ui. Import via the `@components` alias, always from
+the directory barrel: `import { Button } from "@components/ui/button"`.
+
+`avatar` `badge` `button` `checkbox` `collapsible` `command` `context-menu` `dialog`
+`dropdown-menu` `input` `label` `popover` `progress` `radio-group` `scroll-area`
+`select` `separator` `sheet` `slider` `switch` `table` `tabs` `textarea` `toggle`
+`toggle-group` `tooltip`
+
+These are vendored — **treat them as generated**. Restyle via Tailwind classes at
+the call site, not by editing the primitive.
+
+---
+
+## Shared Vue Components (`assets/app/components/`)
+
+| Path                  | Components                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ConfirmDialog.vue`   | The confirmation dialog. See Dialog Policy below                                                                                                                   |
+| `SaveIndicator.vue`   | `status` (`"idle" \| "saving" \| "saved"`, default `"idle"`)                                                                                                       |
+| `UserAvatar.vue`      | `email`, `displayName`, `size` (`xs\|sm\|md\|lg`), `color` — initials fallback                                                                                     |
+| `ThemeSelector.vue`   | Theme switcher                                                                                                                                                     |
+| `ai/`                 | `ContextDisclosure.vue`                                                                                                                                            |
+| `builders/`           | `ConditionBuilder.vue`, `InstructionBuilder.vue` (+ `condition/`, `instruction/` internals, `types.ts`)                                                            |
+| `collab/`             | `CollabToast.vue` — `actionLabels`; toast data arrives via `live.handleEvent("collab_toast")`, not props                                                           |
+| `command-palette/`    | `CommandPalette.vue`, `PaletteEmpty.vue`                                                                                                                           |
+| `forms/`              | `EditableText.vue`, `ColorPicker.vue`, `ColorPickerPopover.vue`, `ExpressionEditor.vue`, `VariableCombobox.vue`, `BooleanToggle.vue`, `PasswordInput.vue`          |
+| `forms/fields/`       | `TextField`, `NumberField`, `SelectField`, `ToggleField`, `SliderField`, `ButtonGroupField`, `EntityCombobox` (barrel `index.ts`)                                  |
+| `forms/assets/`       | `AssetPicker`, `AssetUploadButton`, `AudioAsset`, `ImageAsset`, `ImageFit`, `ImagePosition`                                                                        |
+| `health/`             | `HealthStatusPopover.vue`                                                                                                                                          |
+| `invitations/`        | `InvitationResponse.vue`                                                                                                                                           |
+| `language/`           | `LanguageFlag.vue`, `LanguagePicker.vue`                                                                                                                           |
+| `navigation/`         | `LiveLink.vue` — `to`, `mode` (`navigate\|patch\|external`), `state` (`push\|replace`). Use instead of a raw `<a>` so scroll position survives navigation          |
+| `onboarding/`         | `OnboardingDialog.vue`, `onboardingGuides.ts`                                                                                                                      |
+| `toolbar/`            | `ToolbarBase`, `ToolbarButton`, `ToolbarSeparator`, `ToolbarSizePicker`, `ToolbarColorPicker`, `ToolbarTooltip` (barrel `index.ts`)                                |
+| `versioning/history/` | `VersionHistory.vue`, `CreateVersionDialog`, `DeleteVersionDialog`, `PromoteVersionDialog`, `RestorePreviewDialog`, `UnsavedChangesDialog`, `useVersionHistory.ts` |
+
+`assets/app/shell/` holds app chrome, not reusable widgets: `Sidebar.vue`,
+`SidebarFrame.vue`, `MainSidebar.vue`, `WorkspaceSidebar.vue`, `DashboardContent.vue`,
+`ProjectNavbarContext.vue`, `ProjectNavbarAccount.vue`.
+
+`assets/app/shared/components/assets/AssetUploadDecisionDialog.vue` is the one
+shared component living outside `components/`.
+
+---
+
+## Dialog Policy
+
+`ConfirmDialog.vue` (`assets/app/components/ConfirmDialog.vue`):
+
+| Prop / event  | Type                                      |
+| ------------- | ----------------------------------------- |
+| `open`        | `v-model`, `boolean`, **required**        |
+| `title`       | `string`, **required**                    |
+| `description` | `string?`                                 |
+| `confirmText` | `string?` (default `"Confirm"`)           |
+| `cancelText`  | `string?` (default `"Cancel"`)            |
+| `variant`     | `"default" \| "destructive" \| "warning"` |
+| `icon`        | `Component?` (a `lucide-vue-next` icon)   |
+| `@confirm`    | emitted, then `open` is set to `false`    |
+| `@cancel`     | emitted                                   |
+
+NEVER use `window.confirm/alert/prompt` or `data-confirm`.
+
+---
+
+## Shared Live Helpers
+
+| Module              | Import                                            | Purpose                                                 |
+| ------------------- | ------------------------------------------------- | ------------------------------------------------------- |
+| `DashboardHelpers`  | `import StoryarnWeb.Live.Shared.DashboardHelpers` | Sort, pagination, and reload helpers for Vue dashboards |
+| `DashboardHandlers` | `use StoryarnWeb.Live.Shared.DashboardHandlers`   | Injects the shared dashboard `handle_event` clauses     |
+
+The rest of `lib/storyarn_web/live/shared/` (`CollaborationHelpers`,
+`InvitationHelpers`, `OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`,
+`RestorationHandlers`) is listed in @docs/conventions/shared-utilities.md.
 
 ---
 
@@ -207,9 +170,9 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 
 **File:** `lib/storyarn/scenes/changeset_helpers.ex`
 
-| Function                 | Purpose                                                    |
-| ------------------------ | ---------------------------------------------------------- |
-| `validate_target_pair/2` | Ensures target_type and target_id are both set or both nil |
-| `validate_color/2`       | Validates hex color format (#RGB, #RRGGBB, #RRGGBBAA)      |
+| Function                          | Purpose                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------ |
+| `validate_target_pair(cs, types)` | Ensures target_type/target_id are both set or both nil, and that target_type is in `types` |
+| `validate_color(cs, field)`       | Validates hex color format (#RGB, #RRGGBB, #RRGGBBAA) on `field`                           |
 
 These are Scenes-specific but could be promoted to `Storyarn.Shared` if needed elsewhere.
