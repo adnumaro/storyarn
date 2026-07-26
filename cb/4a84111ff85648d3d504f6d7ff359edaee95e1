@@ -1,0 +1,23 @@
+assets/app/test/live/versioning/VersionViewerError.test.ts
+  s_7d17843f59d188::t_c44e187f42709a 5,26-27,29-30,34-35
+test/storyarn_web/live/version_viewer_live_test.exs
+  s_7d17843f59d188::t_c44e187f42709a 54,57,67,108
+assets/app/live/versioning/viewer/VersionViewerError.vue
+  s_7d17843f59d188::t_c44e187f42709a 3,5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cb4a84111ff85648d3d504f6d7ff359edaee95e1",
+  "prompts": {},
+  "sessions": {
+    "s_7d17843f59d188": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fbf-1c01-7451-82e0-8923d01cb5fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
