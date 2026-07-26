@@ -1,0 +1,77 @@
+assets/app/modules/sheets/components/panels/tabs/SheetTabs.vue
+  s_e059091a477d9a::t_7830f3dde42b45 9
+assets/app/modules/public/landing/composables/useRevealOnScroll.ts
+  s_32e1ca88b42a6b::t_7ea915065842af 16-19,21-24,51
+test/storyarn/publication/locales_test.exs
+  s_e059091a477d9a::t_bd7a1b4606ad85 58-97
+test/storyarn_web/live/docs_live/show_test.exs
+  s_e059091a477d9a::t_6145bfe19a4553 125
+assets/app/modules/sheets/components/entities/blocks/fields/ReferenceBlock.vue
+  s_e059091a477d9a::t_294ee78f6df5e8 61-66,130-133
+assets/app/modules/flows/editor/components/panels/FlowPreview.vue
+  s_e059091a477d9a::t_11a36d5223c012 2
+assets/app/live/flow/show/FlowCanvas.vue
+  s_e059091a477d9a::t_78e435322f78e1 32
+assets/app/modules/flows/editor/components/chrome/FlowFloatingToolbar.vue
+  s_e059091a477d9a::t_2d71b3ef227ba2 3
+mix.exs
+  s_32e1ca88b42a6b::t_0dc37266fc6ccb 154-158
+assets/app/modules/scenes/exploration/components/FlowOverlay.vue
+  s_e059091a477d9a::t_6d7299c63342b6 7-9
+assets/app/modules/public/landing/sections/cta/CtaSignup.vue
+  s_32e1ca88b42a6b::t_fca155a92ca9a3 3,11-12
+assets/app/modules/flows/editor/components/entities/nodes/AnnotationNode.vue
+  s_e059091a477d9a::t_3ba7963a5ab215 13-16
+assets/app/modules/sheets/components/entities/blocks/fields/table/THeadMenu.vue
+  s_e059091a477d9a::t_851f12231159f4 2
+assets/app/components/forms/ColorPicker.vue
+  s_e059091a477d9a::t_98a5b81cf465f7 2
+test/storyarn_web/live/user_live/registration_test.exs
+  s_e059091a477d9a::t_39fc137caf987d 69
+tsconfig.json
+  s_e059091a477d9a::t_31c44e230162b6 7
+assets/app/modules/flows/editor/components/entities/toolbar/FlowNodeToolbar.vue
+  s_e059091a477d9a::t_d5ed30c86a5a96 2
+assets/app/modules/flows/editor/components/chrome/FlowCursors.vue
+  s_e059091a477d9a::t_2a5ea5ef00bee7 3
+test/storyarn/health_label_parity_test.exs
+  s_d3892dadf47887::t_63bc7ac4b5bf6b 1-143
+test/storyarn/health_severity_catalog_test.exs
+  s_e059091a477d9a::t_b21224a64f0e52 1-167
+assets/app/live/localization/texts/LocalizationTextEdit.vue
+  s_e059091a477d9a::t_44d85a1a9a2a5a 43-48
+assets/app/test/modules/public/CtaSignup.test.ts
+  s_e059091a477d9a::t_2a61d4525c2221 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ab0bf094fcc6242f0876c94b9272c62dff5f5db2",
+  "prompts": {},
+  "sessions": {
+    "s_32e1ca88b42a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aExec-Unused-e61e2bb240233811",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_d3892dadf47887": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aExec-I18n-0c88b2422c8b095f",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_e059091a477d9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3623d072-d019-4c2b-9c08-57987c0f0e86",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
