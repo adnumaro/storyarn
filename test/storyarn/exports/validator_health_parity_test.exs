@@ -123,6 +123,32 @@ defmodule Storyarn.Exports.ValidatorHealthParityTest do
     end
   end
 
+  describe "D4 — an UNCONFIGURED jump and subflow" do
+    # The case no other fixture reaches: every jump in this file targets a hub
+    # that exists. A blank target is not a dangling reference, so
+    # `check_broken_references/2` cannot see it — its predicates skip blanks by
+    # design — which is why the health code is the only reporter and must NOT be
+    # excluded from the comparison the way the `stale_*` codes are.
+    setup %{project: project} do
+      flow = flow_fixture(project, %{name: "D4"})
+      jump = node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => ""}})
+      subflow = node_fixture(flow, %{type: "subflow", data: %{"referenced_flow_id" => nil}})
+
+      %{flow: flow, jump: jump, subflow: subflow}
+    end
+
+    test "the validator agrees with the health engine node for node", %{project: project} do
+      assert structural_rules(project.id) == health_structural_codes(project.id)
+    end
+
+    test "both unconfigured references reach the export report", context do
+      rules = structural_rules(context.project.id)
+
+      assert {:missing_jump_target, context.jump.id} in rules
+      assert {:missing_subflow_reference, context.subflow.id} in rules
+    end
+  end
+
   describe "what the consolidation does not change" do
     test "a flow with no entry node is still a blocking error", %{project: project} do
       flow = flow_fixture(project, %{name: "No entry"})
@@ -243,8 +269,16 @@ defmodule Storyarn.Exports.ValidatorHealthParityTest do
     ]
   end
 
-  # Already reported by the validator's own `check_broken_references/2`, at :error.
+  # ONLY the codes the validator's own `check_broken_references/2` also reports,
+  # at :error and under the `:broken_references` rule — which `structural_rules/1`
+  # rejects on the export side. Excluding a code here that the export DOES emit
+  # under its own name makes the two sides asymmetric and this comparison lies.
+  #
+  # The `missing_*` codes are deliberately absent: a blank reference is not a
+  # dangling one, `has_broken_hub_ref?/2` and `has_broken_ref?/3` both skip
+  # blanks, so health is their only reporter on both sides. D4 is the fixture
+  # that holds this honest.
   defp reference_codes do
-    [:missing_jump_target, :stale_jump_target, :missing_subflow_reference, :stale_subflow_reference]
+    [:stale_jump_target, :stale_subflow_reference]
   end
 end

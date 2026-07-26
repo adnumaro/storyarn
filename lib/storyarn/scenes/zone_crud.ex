@@ -67,8 +67,8 @@ defmodule Storyarn.Scenes.ZoneCrud do
   def create_zone(scene_id, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(
-      scene_id,
+    scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(
       [project_lock: :update],
       fn scene ->
         zone = %SceneZone{scene_id: scene.id}
@@ -96,8 +96,8 @@ defmodule Storyarn.Scenes.ZoneCrud do
   def update_zone(%SceneZone{} = zone, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(
-      zone.scene_id,
+    zone.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(
       [project_lock: :update],
       fn scene ->
         with {:ok, locked_zone} <- lock_zone_for_scene(zone.id, scene.id),
@@ -146,7 +146,8 @@ defmodule Storyarn.Scenes.ZoneCrud do
   end
 
   def delete_zone(%SceneZone{} = zone) do
-    SceneReferenceIntegrity.with_active_scene_lock(zone.scene_id, fn scene ->
+    zone.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_zone} <- lock_zone_for_scene(zone.id, scene.id),
            :ok <- delete_zone_references(locked_zone.id) do
         Repo.delete(locked_zone)

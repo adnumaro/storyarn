@@ -204,10 +204,19 @@ defmodule Storyarn.Exports.Validator do
   }
 
   # `check_broken_references/2` already reports these, at :error. Surfacing them
-  # again at :warning would report one broken jump twice.
+  # again at :warning would report one broken reference twice.
+  #
+  # ONLY the `stale_*` half. The split is: a reference that is SET but dangling
+  # is the legacy check's ("references non-existent hub/flow"); a reference that
+  # was never configured is health's, because the legacy check cannot see it —
+  # `has_broken_hub_ref?/2` requires `target != nil and target != ""` and
+  # `has_broken_ref?/3` requires `target != nil`. Since an unconfigured jump
+  # stores `""` (`Nodes.Jump.Node.default_data/0`) and an unconfigured subflow
+  # stores `nil` (`Nodes.Subflow.Node.default_data/0`), filtering `missing_*` here
+  # meant an unconfigured node produced NO export finding at all, from either
+  # side. Nothing double-reports: the two predicates skip exactly the blanks
+  # health claims.
   @health_codes_reported_elsewhere [
-    :missing_jump_target,
-    :missing_subflow_reference,
     :stale_jump_target,
     :stale_subflow_reference
   ]
@@ -721,6 +730,24 @@ defmodule Storyarn.Exports.Validator do
     dgettext(
       "projects",
       "Hub node (id: %{node_id}) in flow \"%{flow_name}\" is never targeted by a Jump",
+      node_id: finding.entity_id,
+      flow_name: flow.name
+    )
+  end
+
+  defp health_message(%{code: :missing_jump_target} = finding, flow) do
+    dgettext(
+      "projects",
+      "Jump node (id: %{node_id}) in flow \"%{flow_name}\" has no target hub set",
+      node_id: finding.entity_id,
+      flow_name: flow.name
+    )
+  end
+
+  defp health_message(%{code: :missing_subflow_reference} = finding, flow) do
+    dgettext(
+      "projects",
+      "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" has no referenced flow set",
       node_id: finding.entity_id,
       flow_name: flow.name
     )

@@ -185,6 +185,36 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
     end
   end
 
+  describe "deleting the last flow" do
+    setup :register_and_log_in_user
+
+    # Vue decides between the empty state and the spinner with
+    # `isEmpty = pagination.total === 0 && !stats`. Deleting the last flow clears
+    # `stats`, and `reload_dashboard/6` does NOT re-trigger the load when no
+    # entities remain — so if `total` keeps the count it had before the delete,
+    # neither branch is empty and the dashboard spins forever.
+    test "leaves a zero total so the empty state renders, not the skeleton", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Only Flow"})
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
+
+      await_async(view)
+
+      # Positive control: the total is non-zero BEFORE the delete, so the
+      # assertion below is actually observing the reset.
+      assert get_dashboard_vue(view).props["pagination"]["total"] == 1
+
+      render_click(view, "delete", %{"id" => to_string(flow.id)})
+
+      props = get_dashboard_vue(view).props
+      assert props["pagination"]["total"] == 0
+      assert props["stats"] == nil
+      assert props["table-data"] == []
+    end
+  end
+
   describe "dashboard load failure" do
     # `{:exit, _reason}` was swallowed silently, so `dashboard_stats` stayed nil
     # and Vue renders a skeleton while it is nil: a crashed load presented as a

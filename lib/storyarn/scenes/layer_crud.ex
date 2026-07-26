@@ -7,6 +7,7 @@ defmodule Storyarn.Scenes.LayerCrud do
   alias Storyarn.Repo
   alias Storyarn.Scenes.PositionUtils
   alias Storyarn.Scenes.SceneAnnotation
+  alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneReferenceIntegrity
@@ -29,26 +30,36 @@ defmodule Storyarn.Scenes.LayerCrud do
     Repo.one!(from(l in SceneLayer, where: l.scene_id == ^scene_id and l.id == ^layer_id))
   end
 
+  # Layer existence and `is_default` are read by `missing_scene_layer`,
+  # `missing_default_layer` and `multiple_default_layers`, and deleting a layer
+  # nilifies the `layer_id` that `invalid_layer_reference` checks — so these three
+  # writes change the scenes dashboard and must invalidate its cache, exactly as
+  # pin and zone writes do. `toggle_layer_visibility/1` and `reorder_layers/2` are
+  # deliberately NOT wired: no finding reads `visible` or `position`.
   def create_layer(scene_id, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(scene_id, fn scene ->
+    scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       position = PositionUtils.next_position(SceneLayer, scene.id)
 
       %SceneLayer{scene_id: scene.id}
       |> SceneLayer.create_changeset(Map.put(attrs, "position", position))
       |> Repo.insert()
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(scene_id)
   end
 
   def update_layer(%SceneLayer{} = layer, attrs) do
-    SceneReferenceIntegrity.with_active_scene_lock(layer.scene_id, fn scene ->
+    layer.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_layer} <- lock_layer_for_scene(layer.id, scene.id) do
         locked_layer
         |> SceneLayer.update_changeset(attrs)
         |> Repo.update()
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(layer.scene_id)
   end
 
   @doc """
@@ -69,10 +80,12 @@ defmodule Storyarn.Scenes.LayerCrud do
   When deleted, zones and pins on this layer have their layer_id set to nil (via FK nilify_all).
   """
   def delete_layer(%SceneLayer{} = layer) do
-    SceneReferenceIntegrity.with_active_scene_lock(layer.scene_id, fn scene ->
+    layer.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       layers = lock_layers_for_scene(scene.id)
       delete_locked_layer(layers, layer.id)
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(layer.scene_id)
   end
 
   defp delete_locked_layer(layers, layer_id) do

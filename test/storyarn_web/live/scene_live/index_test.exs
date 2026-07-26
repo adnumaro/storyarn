@@ -7,6 +7,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Scene
@@ -349,7 +350,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     test "a crashed dashboard load surfaces instead of hanging on the skeleton", %{user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
 
-      socket = %Phoenix.LiveView.Socket{
+      socket = %Socket{
         assigns: %{__changed__: %{}, project: project, dashboard_stats: nil, flash: %{}}
       }
 
@@ -357,7 +358,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
       # Vue renders the skeleton for as long as stats are nil, so leaving them nil
       # is what turned a crash into "loading forever".
-      refute is_nil(result.assigns.dashboard_stats)
+      assert result.assigns.dashboard_stats
       assert result.assigns.dashboard_stats.scene_count == 0
 
       assert Phoenix.Flash.get(result.assigns.flash, :error) =~ "dashboard"
@@ -366,7 +367,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     test "and the reason reaches the log rather than being swallowed", %{user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
 
-      socket = %Phoenix.LiveView.Socket{
+      socket = %Socket{
         assigns: %{__changed__: %{}, project: project, dashboard_stats: nil, flash: %{}}
       }
 

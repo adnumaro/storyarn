@@ -71,7 +71,8 @@ defmodule Storyarn.Scenes.PinCrud do
   def create_pin(scene_id, attrs) do
     attrs = enforce_leader_constraints(%ScenePin{scene_id: scene_id}, attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(scene_id, fn scene ->
+    scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       pin = %ScenePin{scene_id: scene.id}
 
       with :ok <-
@@ -93,7 +94,8 @@ defmodule Storyarn.Scenes.PinCrud do
   def update_pin(%ScenePin{} = pin, attrs) do
     attrs = enforce_leader_constraints(pin, attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(pin.scene_id, fn scene ->
+    pin.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_pin} <- lock_pin_for_scene(pin.id, scene.id),
            :ok <-
              PositionUtils.lock_requested_layer_for_scene(
@@ -141,7 +143,8 @@ defmodule Storyarn.Scenes.PinCrud do
   end
 
   def delete_pin(%ScenePin{} = pin) do
-    SceneReferenceIntegrity.with_active_scene_lock(pin.scene_id, fn scene ->
+    pin.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_pin} <- lock_pin_for_scene(pin.id, scene.id),
            :ok <- delete_pin_references(locked_pin.id) do
         Repo.delete(locked_pin)

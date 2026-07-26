@@ -288,9 +288,14 @@ defmodule Storyarn.Scenes.SceneCrud do
   rather than copied into every child CRUD. Callers pass the whole result and
   get it back unchanged, so this can sit at the end of a pipeline.
 
-  It matters beyond the ≤30s cache TTL: pin and zone shortcuts ARE referenceable
-  variables (`Flows.list_referenceable_variables/1`), so a write that adds or
-  removes one changes the vocabulary every health surface type-checks against.
+  It matters beyond the ≤30s cache TTL, for two different reasons depending on
+  the child table. Pin and zone shortcuts ARE referenceable variables
+  (`Flows.list_referenceable_variables/1`), so a write that adds or removes one
+  changes the vocabulary every health surface type-checks against. Layers carry
+  no shortcut and are not vocabulary, but their existence and `is_default` are
+  finding inputs (`missing_scene_layer`, `missing_default_layer`,
+  `multiple_default_layers`), and deleting one nilifies the `layer_id` behind
+  `invalid_layer_reference`.
   """
   @spec broadcast_scene_dashboard_result(term(), term()) :: term()
   def broadcast_scene_dashboard_result(result, scene_id)

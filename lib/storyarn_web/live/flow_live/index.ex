@@ -335,7 +335,15 @@ defmodule StoryarnWeb.FlowLive.Index do
   defp reload_flows(socket) do
     project_id = socket.assigns.project.id
 
-    reload_dashboard(socket, :flows, :all_flow_table_data, :flow_table_data, :flow_issues, fn s ->
+    # `:total_flows` has to be zeroed HERE and not left to the next
+    # `:load_dashboard_data`, because deleting the last flow means there is no
+    # next one: `reload_dashboard/6` only re-triggers the load when the entity
+    # list is non-empty. Vue reads `isEmpty = total === 0 && !stats`, so a stale
+    # non-zero total plus the nil stats it just cleared renders the loading
+    # skeleton forever instead of the empty state.
+    socket
+    |> assign(:total_flows, 0)
+    |> reload_dashboard(:flows, :all_flow_table_data, :flow_table_data, :flow_issues, fn s ->
       assign(s, :flows, Flows.list_flows(project_id))
     end)
   end

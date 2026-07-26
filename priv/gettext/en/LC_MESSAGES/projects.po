@@ -717,7 +717,17 @@ msgstr "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections o
 msgid "Hub node (id: %{node_id}) in flow \"%{flow_name}\" is never targeted by a Jump"
 msgstr "Hub node (id: %{node_id}) in flow \"%{flow_name}\" is never targeted by a Jump"
 
-#: lib/storyarn/exports/validator.ex:715
+#: lib/storyarn/exports/validator.ex:741
+#, elixir-autogen, elixir-format
+msgid "Jump node (id: %{node_id}) in flow \"%{flow_name}\" has no target hub set"
+msgstr "Jump node (id: %{node_id}) in flow \"%{flow_name}\" has no target hub set"
+
+#: lib/storyarn/exports/validator.ex:750
+#, elixir-autogen, elixir-format
+msgid "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" has no referenced flow set"
+msgstr "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" has no referenced flow set"
+
+#: lib/storyarn/exports/validator.ex:759
 #, elixir-autogen, elixir-format
 msgid "Exit node (id: %{node_id}) in flow \"%{flow_name}\" has no return flow set"
 msgstr "Exit node (id: %{node_id}) in flow \"%{flow_name}\" has no return flow set"

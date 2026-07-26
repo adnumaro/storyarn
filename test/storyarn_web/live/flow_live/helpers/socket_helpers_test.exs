@@ -110,6 +110,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
 
       health = result.assigns.flow_health
       item = Enum.find(health.warningItems, &(&1.entityId == dialogue.id))
+
+      assert item, "no warning item for the dialogue node; got #{inspect(health.warningItems)}"
+
       codes = Enum.map(item.reasons, & &1.code)
 
       # Reasons travel as CODES for Vue to translate; the server no longer renders

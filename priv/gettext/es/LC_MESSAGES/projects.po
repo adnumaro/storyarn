@@ -717,7 +717,17 @@ msgstr "El nodo %{type} (id: %{node_id}) del flujo \"%{flow_name}\" tiene conexi
 msgid "Hub node (id: %{node_id}) in flow \"%{flow_name}\" is never targeted by a Jump"
 msgstr "Ningún Jump apunta al nodo Hub (id: %{node_id}) del flujo \"%{flow_name}\""
 
-#: lib/storyarn/exports/validator.ex:715
+#: lib/storyarn/exports/validator.ex:741
+#, elixir-autogen, elixir-format
+msgid "Jump node (id: %{node_id}) in flow \"%{flow_name}\" has no target hub set"
+msgstr "El nodo Jump (id: %{node_id}) del flujo \"%{flow_name}\" no tiene hub de destino configurado"
+
+#: lib/storyarn/exports/validator.ex:750
+#, elixir-autogen, elixir-format
+msgid "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" has no referenced flow set"
+msgstr "El nodo Subflow (id: %{node_id}) del flujo \"%{flow_name}\" no tiene flujo referenciado configurado"
+
+#: lib/storyarn/exports/validator.ex:759
 #, elixir-autogen, elixir-format
 msgid "Exit node (id: %{node_id}) in flow \"%{flow_name}\" has no return flow set"
 msgstr "El nodo Exit (id: %{node_id}) del flujo \"%{flow_name}\" no tiene flujo de retorno configurado"

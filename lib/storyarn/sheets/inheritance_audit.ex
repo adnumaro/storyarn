@@ -73,8 +73,17 @@ defmodule Storyarn.Sheets.InheritanceAudit do
         )
       )
 
+    # Grouped ONCE, not re-scanned per block: the per-block helpers below each
+    # walk the whole loaded set, so calling them in this loop made the sweep
+    # O(blocks x (columns + rows)) on a project's every table. The queries above
+    # already order by `block_id, position, id` and `Enum.group_by/2` preserves
+    # input order within a group, so the grouped lists are the same lists the
+    # helpers' `sort_by` produced.
+    columns_by_block = Enum.group_by(columns, & &1.block_id)
+    rows_by_block = Enum.group_by(rows, & &1.block_id)
+
     Map.new(block_ids, fn block_id ->
-      {block_id, {columns_for_block(columns, block_id), rows_for_block(rows, block_id)}}
+      {block_id, {Map.get(columns_by_block, block_id, []), Map.get(rows_by_block, block_id, [])}}
     end)
   end
 
