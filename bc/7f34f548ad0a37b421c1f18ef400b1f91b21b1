@@ -1,0 +1,47 @@
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_e059091a477d9a::t_1987ab2a6c6341 471-475
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_e059091a477d9a::t_399f5d6066c552 689-728
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_e059091a477d9a::t_0a8bf02b8e2cd5 840-869
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_e059091a477d9a::t_53298278c3c713 352-431
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_e059091a477d9a::t_e3b29bbfe10dd6 17,27
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_e059091a477d9a::t_d97efd448106cc 415,417,435,437,463,468,471-475
+priv/gettext/es/LC_MESSAGES/identity.po
+  s_e059091a477d9a::t_b07d566ecb9e0a 125,130
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_e059091a477d9a::t_7157fa0d17ee4f 689-728
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_e059091a477d9a::t_96eeee889c175a 65,75,80,91,96,102,114,119,124,129,134,144,164,169,199,204,305,310,840-869
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_e059091a477d9a::t_c103eaad3fd02b 352-431
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_e059091a477d9a::t_4cf770efbd7173 23-24,147-148,154-155,161-162,168-169,175-176,185,187,194,198,200,203,205
+priv/gettext/flows.pot
+  s_e059091a477d9a::t_44f0a8514fc4ea 471-475
+priv/gettext/projects.pot
+  s_e059091a477d9a::t_de223f4aac1950 1026-1065
+priv/gettext/scenes.pot
+  s_e059091a477d9a::t_35da2a4058ef5c 855-884
+priv/gettext/sheets.pot
+  s_e059091a477d9a::t_de11080a5873c5 352-431
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bc7f34f548ad0a37b421c1f18ef400b1f91b21b1",
+  "prompts": {},
+  "sessions": {
+    "s_e059091a477d9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3623d072-d019-4c2b-9c08-57987c0f0e86",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
