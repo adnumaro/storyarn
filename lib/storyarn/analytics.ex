@@ -15,21 +15,6 @@ defmodule Storyarn.Analytics do
 
   @event_property_keys %{
     "asset uploaded" => MapSet.new(~w(asset_type content_type created_variant project_id purpose size_bucket)),
-    "flow analysis run" =>
-      MapSet.new(~w(source stale finding_count dismissed_count error_count warning_count duration_bucket)),
-    "flow analysis finding dismissed" => MapSet.new(~w(rule_id rule_version category severity reason_code)),
-    "flow analysis finding restored" => MapSet.new(~w(rule_id rule_version reason_code)),
-    "flow analysis evidence navigated" => MapSet.new(~w(evidence_type)),
-    # AI explanation product events. Low-cardinality classes only: no prompt,
-    # no narrative, no finding/evidence/operation ids.
-    "flow explanation preflight shown" => MapSet.new(~w(rule_id rule_version route_count)),
-    "flow explanation preflight blocked" => MapSet.new(~w(rule_id rule_version error_class)),
-    "flow explanation stale rerun" => MapSet.new(~w(rule_id rule_version)),
-    "flow explanation route selected" => MapSet.new(~w(lane)),
-    "flow explanation execution started" => MapSet.new(~w(lane rule_id)),
-    "flow explanation result viewed" => MapSet.new(~w(rule_id stale)),
-    "flow explanation detached" => MapSet.new(~w(rule_id)),
-    "flow explanation failed" => MapSet.new(~w(error_class)),
     "flow debug started" => MapSet.new(~w(flow_id project_id)),
     "flow node created" => MapSet.new(~w(creation_method flow_id has_parent node_type project_id)),
     "flow player started" => MapSet.new(~w(flow_id project_id)),

@@ -224,12 +224,30 @@ invokes**, not as internal tidying. Same work, a reason the user can feel.
 
 Decisions carried over unchanged:
 
-- **one contract, two catalogs** — structural and reference-integrity codes stay
-  owned by the frozen rules catalog (versioned, fingerprinted, dismissible);
-  editorial codes stay owned by the per-node health checker. Merging is rejected:
-  fingerprints and dismissals are defined only for structural rules;
 - dashboard numbers **will change** as reference-integrity errors start counting.
   That is the correction, not a regression.
+
+Decision REVERSED in PR-1 — recorded here because the reasoning changed, not the
+goal:
+
+- **"one contract, two catalogs" is now one contract, one catalog.** The plan kept
+  structural and reference-integrity codes in a frozen rules catalog — versioned,
+  fingerprinted, dismissible — separate from the per-node editorial checker, and
+  rejected merging them on the grounds that fingerprints and dismissals are
+  defined only for structural rules. Slice 7.1a.0 removed the AI explanation and
+  PR-1 removed the dismissal lifecycle, which deleted both consumers of the
+  fingerprints and of the rule versions. With nothing left to anchor to an exact
+  occurrence, the only argument for two catalogs was gone, and keeping them was
+  paying for a split that bought nothing.
+  All 27 codes now live in one `@severity_by_code` in
+  `Storyarn.Flows.HealthChecker` (15 structural, 12 editorial), with `finding/2`
+  as the only constructor — identical to `Sheets.HealthChecker` and
+  `Scenes.HealthChecker`, neither of which ever had fingerprints or dismissals.
+  Detection stays split by what it needs (`HealthChecker` reads one node,
+  `StructuralAnalysis` reads the graph); the vocabulary and the severities are
+  owned in one place. This is what makes it impossible for the editor and the
+  dashboard to word the same finding differently, which was the point of the
+  split in the first place.
 
 ## The four deterministic rules
 
@@ -253,9 +271,25 @@ They exist so `incomplete` and `findings` have something worth returning.
    flow, scene-zone and scene-pin references, or a variable used only in a scene
    zone is reported unused.
 
-Vocabulary note: there is **no `back_to_caller` exit mode** — only `terminal` and
-`flow_reference`. Returning to the caller is what a terminal exit does implicitly
-inside a subflow, so rule 3 is the checkable form of that idea.
+Vocabulary note (**corrected — the original claim was wrong**): there are **three**
+exit modes, not two. `lib/storyarn_web/live/flow_live/nodes/exit/node.ex:16`
+declares `~w(terminal flow_reference caller_return)`, and `caller_return` is live
+end to end — the evaluator pops the call stack
+(`flows/evaluator/node_evaluators/exit_evaluator.ex`), the Ink, Yarn and Dialogic
+exporters each emit it, and the Yarn importer produces it. The spelling
+`back_to_caller` never existed; the mode does.
+
+This does not change rule 3's detection. `uncalled_flow` asks who points AT a flow
+— a subflow node, or an exit in `flow_reference` mode — and a `caller_return` exit
+points at no one by design: switching an exit to that mode clears
+`referenced_flow_id` (`node.ex:152-156`), because the destination is whoever called
+it at runtime. What changes is the justification. Returning to the caller is not
+merely implicit in a terminal exit; it is a mode the author selects. So a flow
+containing a `caller_return` exit is stated evidence that the author intends it to
+be called as a subflow, which makes an uncalled one a stronger signal rather than a
+weaker one. If the rule proves noisy on Veilbreak, that is the first calibration to
+try: report uncalled flows that declare a `caller_return` exit, before reporting
+the rest.
 
 ## Non-goals
 
@@ -276,11 +310,16 @@ inside a subflow, so rule 3 is the checkable form of that idea.
 
 - ExUnit: every operation authorizes independently; a viewer reaches no mutating
   operation over the socket, asserted by row counts rather than UI state.
-- ExUnit: each new rule detected; fingerprint stable across an unrelated edit and
-  rotated by a relevant one. `inescapable_cycle` covered for a self-loop, a
+- ExUnit: each new rule detected. There is no fingerprint to pin any more — a
+  finding is identified by its code plus its location (`entity_type` +
+  `entity_id`). `inescapable_cycle` covered for a self-loop, a
   two-node loop, a loop with an unreachable exit, and a loop whose exit is
   reachable only via a jump (must not fire).
-- ExUnit: the frozen catalog test still fails on a severity or category swap.
+- ExUnit: the catalog stays single-sourced — every code the checker can emit has a
+  declared severity, and an unknown code raises instead of defaulting to one
+  (`test/storyarn/flows/health_consolidation_test.exs`, "the vocabulary is
+  single-sourced", which replaced the frozen catalog test when the two catalogs
+  were merged; the sheets and scenes coverage tests carry the same pair).
 - ExUnit: unused-variable detection unions all three reference sources — a variable
   used only in a scene zone is not reported.
 - ExUnit: dashboard and editor cannot disagree for the same flow, including the

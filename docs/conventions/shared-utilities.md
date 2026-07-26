@@ -150,6 +150,38 @@ MapUtils.parse_to_number(nil)   # => 0.0
 
 ---
 
+## `Storyarn.Shared.Severity`
+
+**File:** `lib/storyarn/shared/severity.ex`
+
+The single ordering of the health severity catalog. Five modules hand-rolled it: the flows/sheets/scenes dashboards rank the **strings** that cross the LiveVue boundary, `StructuralAnalysis` and `Projects.Dashboard` rank the **atoms**.
+
+| Function    | Purpose                                                       |
+| ----------- | ------------------------------------------------------------- |
+| `rank/1`    | Sort key: `:error`/`"error"` → 0, `:warning` → 1, `:info` → 2 |
+| `catalog/0` | `[:error, :warning, :info]`, in rank order                    |
+
+Strict by design: severity is a closed catalog, so `rank/1` raises `ArgumentError` on anything else rather than silently sorting it last.
+
+```elixir
+Enum.sort_by(findings, &Severity.rank(&1.severity))
+```
+
+---
+
+## `Storyarn.Shared.StringUtils`
+
+**File:** `lib/storyarn/shared/string_utils.ex`
+
+| Function          | Purpose                                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------------------- |
+| `blank?/1`        | `nil` or `""` → true. **Does NOT trim.**                                                                        |
+| `present_label/2` | `value` if it has a non-whitespace char, else `fallback`. Trims to decide presence; returns the value untouched. |
+
+`blank?/1` replaced eight byte-equivalent private copies. **Three modules keep a different, trimming `blank?/1` and must not be folded in** — `Sheets.HealthChecker`, `Scenes.HealthChecker`, `Localization.GlossarySync`: for them a whitespace-only label counts as empty, and changing that changes which findings the health sweeps report.
+
+---
+
 ## `Storyarn.Shared.SearchHelpers`
 
 **File:** `lib/storyarn/shared/search_helpers.ex`
@@ -208,7 +240,7 @@ field :api_key_encrypted, Storyarn.Shared.EncryptedBinary
 
 **File:** `lib/storyarn/shared/canonical_json.ex`
 
-Deterministic canonical JSON encoding and SHA-256 hashing. Sorted object keys, rejects structs/duplicate-normalized-keys/improper lists. Used for AI context hashing and structural-analysis finding fingerprints — the two MUST share this implementation so Slice-7.2 explanations reference identical fingerprints.
+Deterministic canonical JSON encoding and SHA-256 hashing. Sorted object keys, rejects structs/duplicate-normalized-keys/improper lists. Its only consumers are in `lib/storyarn/ai/`: context payload and entity content hashing, the execution-intent input hash that makes a repeated AI request replay instead of re-spending, and output encoding for the size cap and stored result. Any new hash over structured data MUST go through this module — two encoders mean two hashes for the same input, and the spend guarantee is exactly that identical input yields an identical key.
 
 | Function    | Purpose                                                          |
 | ----------- | ---------------------------------------------------------------- |
