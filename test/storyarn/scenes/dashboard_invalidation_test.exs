@@ -27,6 +27,7 @@ defmodule Storyarn.Scenes.DashboardInvalidationTest do
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
+  alias Storyarn.Repo
   alias Storyarn.Scenes
 
   setup do
@@ -198,6 +199,35 @@ defmodule Storyarn.Scenes.DashboardInvalidationTest do
         DashboardCache.fetch(project.id, :scene_health, fn -> Scenes.list_dashboard_health_findings(project.id) end)
 
       assert Enum.any?(refreshed, &(&1.code == :element_outside_canvas and &1.entity_id == pin.id))
+    end
+
+    test "drag invalidation reuses the project id already locked by the transaction", %{scene: scene} do
+      pin = pin_fixture(scene, %{"label" => "Guard"})
+      zone = zone_fixture(scene, %{"name" => "Gate"})
+      handler_id = "scene-drag-owner-lookup-#{System.unique_integer([:positive])}"
+      marker = make_ref()
+      test_pid = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :repo, :query],
+          fn _event, _measurements, %{query: query}, {pid, ref} ->
+            if self() == pid and
+                 not Repo.in_transaction?() and
+                 String.contains?(query, ~s(FROM "scenes")) do
+              send(pid, {ref, query})
+            end
+          end,
+          {test_pid, marker}
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:ok, _pin} = Scenes.move_pin(pin, 30.0, 40.0)
+      assert {:ok, _zone} = Scenes.update_zone_vertices(zone, %{"vertices" => triangle()})
+
+      refute_receive {^marker, _redundant_owner_lookup}
     end
   end
 

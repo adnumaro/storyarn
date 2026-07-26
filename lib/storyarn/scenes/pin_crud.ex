@@ -131,16 +131,18 @@ defmodule Storyarn.Scenes.PinCrud do
                scene,
                locked_pin,
                %{}
-             ) do
-        locked_pin
-        |> ScenePin.move_changeset(%{
-          position_x: position_x,
-          position_y: position_y
-        })
-        |> Repo.update()
+             ),
+           {:ok, updated_pin} <-
+             locked_pin
+             |> ScenePin.move_changeset(%{
+               position_x: position_x,
+               position_y: position_y
+             })
+             |> Repo.update() do
+        {:ok, {updated_pin, scene.project_id}}
       end
     end)
-    |> SceneCrud.broadcast_scene_dashboard_result(pin.scene_id)
+    |> SceneCrud.broadcast_scene_dashboard_project_result()
   end
 
   def delete_pin(%ScenePin{} = pin) do

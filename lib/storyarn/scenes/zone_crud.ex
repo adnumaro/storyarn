@@ -135,14 +135,16 @@ defmodule Storyarn.Scenes.ZoneCrud do
                  scene,
                  locked_zone,
                  %{}
-               ) do
-          locked_zone
-          |> SceneZone.update_vertices_changeset(attrs)
-          |> Repo.update()
+               ),
+             {:ok, updated_zone} <-
+               locked_zone
+               |> SceneZone.update_vertices_changeset(attrs)
+               |> Repo.update() do
+          {:ok, {updated_zone, scene.project_id}}
         end
       end
     )
-    |> SceneCrud.broadcast_scene_dashboard_result(zone.scene_id)
+    |> SceneCrud.broadcast_scene_dashboard_project_result()
   end
 
   def delete_zone(%SceneZone{} = zone) do

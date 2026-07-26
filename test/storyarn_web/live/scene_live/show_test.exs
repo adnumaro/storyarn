@@ -9,6 +9,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Versioning
@@ -575,6 +576,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
+      Collaboration.subscribe_dashboard(project.id)
+
       render_hook(view, "move_pin", %{
         "id" => to_string(pin.id),
         "position_x" => 80.0,
@@ -584,6 +587,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       updated = Scenes.get_pin!(pin.id)
       assert_in_delta updated.position_x, 80.0, 0.01
       assert_in_delta updated.position_y, 90.0, 0.01
+      assert_receive {:dashboard_invalidate, :scenes}
+      refute_receive {:dashboard_invalidate, :scenes}
     end
   end
 
@@ -1855,6 +1860,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
+      Collaboration.subscribe_dashboard(project.id)
+
       new_vertices = [
         %{"x" => 20.0, "y" => 20.0},
         %{"x" => 80.0, "y" => 20.0},
@@ -1869,6 +1876,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       updated = Scenes.get_zone!(zone.id)
       assert length(updated.vertices) == 4
+      assert_receive {:dashboard_invalidate, :scenes}
+      refute_receive {:dashboard_invalidate, :scenes}
     end
 
     test "rejects vertices with fewer than 3 points", %{conn: conn, user: user} do

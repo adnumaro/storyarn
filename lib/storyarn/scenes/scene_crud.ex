@@ -310,6 +310,15 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   def broadcast_scene_dashboard_result(result, _scene_id), do: result
 
+  @doc false
+  @spec broadcast_scene_dashboard_project_result(term()) :: term()
+  def broadcast_scene_dashboard_project_result({:ok, {value, project_id}}) do
+    Collaboration.broadcast_dashboard_change(project_id, :scenes)
+    {:ok, value}
+  end
+
+  def broadcast_scene_dashboard_project_result(result), do: result
+
   @doc """
   Creates a scene with auto-generated shortcut and default layer.
   Auto-assigns position if not provided.
