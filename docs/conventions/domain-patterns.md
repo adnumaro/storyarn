@@ -20,28 +20,47 @@ lib/storyarn/{context}/
 - Submodules can call each other within the same context
 - Cross-context calls go through the facade: `Sheets.get_sheet/2`, not `Sheets.SheetCrud.get_sheet/2`
 
+`mix convention.check` enforces this as the `facade_bypass` rule, but only for a
+hardcoded submodule list (`@facade_submodules` in `lib/mix/tasks/convention_check.ex`)
+and only under `lib/storyarn_web/`. The rule above is broader than the linter.
+
 ### Contexts and their submodules
 
-| Context       | Facade                    | Key Submodules                                                                                                                                                              |
-| ------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts      | `Storyarn.Accounts`       | `Users`, `Registration`, `Sessions`, `MagicLinks`, `Emails`, `Passwords`, `Profiles`                                                                                        |
-| Workspaces    | `Storyarn.Workspaces`     | `WorkspaceCrud`, `Memberships`, `Invitations` (schemas: `WorkspaceMembership`, `WorkspaceInvitation`)                                                                       |
-| Projects      | `Storyarn.Projects`       | `ProjectCrud`, `Memberships`, `Invitations` (schemas: `ProjectMembership`, `ProjectInvitation`)                                                                             |
-| Sheets        | `Storyarn.Sheets`         | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `PropertyInheritance`, `ReferenceTracker`, `Versioning`, `TreeOperations`                                            |
-| Flows         | `Storyarn.Flows`          | `FlowCrud`, `NodeCrud` (-> `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`                           |
-| Scenes        | `Storyarn.Scenes`         | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `TreeOperations`                                                                       |
-| Screenplays   | `Storyarn.Screenplays`    | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`, `FlowSync`, `LinkedPageCrud`, `AutoDetect`, `Export.Fountain`, `Import.Fountain` |
-| Localization  | `Storyarn.Localization`\* | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`                                                                   |
-| Collaboration | `Storyarn.Collaboration`  | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                              |
-| Assets        | `Storyarn.Assets`         | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`                                                                                    |
-| Billing       | `Storyarn.Billing`        | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`                                                                                                                        |
-| Docs          | `Storyarn.Docs`           | `Guide`, `GuideBuilder`                                                                                                                                                     |
-| Exports       | `Storyarn.Exports`        | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`                                                                   |
-| Imports       | `Storyarn.Imports`        | Parsers                                                                                                                                                                     |
-| Versioning    | `Storyarn.Versioning`     | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`                                                                                                        |
-| Shortcuts     | `Storyarn.Shortcuts`      | Centralized shortcut generation for all entity types                                                                                                                        |
+| Context          | Facade                      | Key Submodules                                                                                                                                                                                          |
+| ---------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts         | `Storyarn.Accounts`         | `Users`, `Registration`, `Sessions`, `Emails`, `Passwords`, `Profiles`, `Scope`, `UserNotifier`, `UserToken`                                                                         |
+| Workspaces       | `Storyarn.Workspaces`       | `WorkspaceCrud`, `Memberships`, `Invitations` (schemas: `WorkspaceMembership`, `WorkspaceInvitation`)                                                                                                    |
+| Projects         | `Storyarn.Projects`         | `ProjectCrud`, `Memberships`, `Invitations`, `Dashboard`, `ProjectTrash` (schemas: `ProjectMembership`, `ProjectInvitation`)                                                                             |
+| Sheets           | `Storyarn.Sheets`           | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `GalleryCrud`, `AvatarCrud`, `PropertyInheritance`, `ReferenceTracker`, `TreeOperations`, `HealthChecker`, `FormulaResolver`   |
+| Flows            | `Storyarn.Flows`            | `FlowCrud`, `NodeCrud` (-> `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `SequenceCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`, `HealthChecker`, `StructuralAnalysis` |
+| Scenes           | `Storyarn.Scenes`           | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `AmbientFlowCrud`, `ExplorationSessionCrud`, `TreeOperations`, `HealthChecker`, `ChangesetHelpers`                  |
+| Screenplays      | `Storyarn.Screenplays`      | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`, `FlowSync`, `LinkedPageCrud`, `AutoDetect`, `Export.Fountain`, `Import.Fountain`                              |
+| Localization     | `Storyarn.Localization`     | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`, `TranslationRunCrud`, `Providers.*`                                                           |
+| Collaboration    | `Storyarn.Collaboration`    | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                                                          |
+| Assets           | `Storyarn.Assets`           | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`, `BlobStore`, `UploadPolicy`                                                                                    |
+| AI               | `Storyarn.AI`               | `Operations`, `Execution`, `Executor`, `Allowance`, `Context`, `Audit`, `IntegrationCrud`, `InferenceProviders`, `ModelCatalog`, `CredentialResolver`                                                    |
+| References       | `Storyarn.References`       | `Backlinks`, `EntityTracker`, `VariableTracker`, `VariableUsage`, `ProjectReferenceIntegrity`, `AvatarIntegrity`                                                                                         |
+| ProjectTemplates | `Storyarn.ProjectTemplates` | `Installation`, `PortableExport`, `PortableImport`, `PublicationRunner`, `TemplateQueries`, `Deletion`, `Authorization`, `Audit`                                                                         |
+| Versioning       | `Storyarn.Versioning`       | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`, `ProjectSnapshotCrud`, `SnapshotDiff`, `ConflictDetector`, `RestorePolicy`, `ProjectRecovery`                                      |
+| Exports          | `Storyarn.Exports`          | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`, `SizeGuard`, `LocalizationCatalog`                                                            |
+| Imports          | `Storyarn.Imports`          | `Parser`, `ParserRegistry`, `Parsers.*`, `ImportPlan`, `PlanStorage`, `ErrorDeduplicator`                                                                                                                |
+| Billing          | `Storyarn.Billing`          | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`                                                                                                                                                    |
+| CommandPalette   | `Storyarn.CommandPalette`   | `Operation`                                                                                                                                                                                             |
+| GlobalSearch     | `Storyarn.GlobalSearch`     | `Destinations`                                                                                                                                                                                          |
+| Onboarding       | `Storyarn.Onboarding`       | `TutorialProgress`                                                                                                                                                                                      |
+| Docs             | `Storyarn.Docs`             | `Guide`, `GuideBuilder`                                                                                                                                                                                 |
+| Blog             | `Storyarn.Blog`             | `Post`, `PostBuilder`                                                                                                                                                                                   |
+| Analytics        | `Storyarn.Analytics`        | `PostHogAdapter`, `NoopAdapter`                                                                                                                                                                         |
+| RateLimiter      | `Storyarn.RateLimiter`      | `ETSBackend`, `RedisBackend`                                                                                                                                                                            |
+| Shortcuts        | `Storyarn.Shortcuts`        | Centralized shortcut generation for all entity types (single module, no submodules)                                                                                                                     |
 
-\*Localization facade lives at `lib/storyarn/localization/localization.ex` (non-standard path).
+Facade-less directories — call the module directly, do not invent a facade:
+`lib/storyarn/dashboards/` (`Cache`), `lib/storyarn/emails/` (`Layout`, `Templates`),
+`lib/storyarn/product_metrics/` (`Taxonomy`), `lib/storyarn/publication/`,
+`lib/storyarn/workers/` (Oban workers).
+
+Single-module contexts with no directory: `Storyarn.FeatureFlags`, `Storyarn.Urls`,
+`Storyarn.Vault`, `Storyarn.LiveVueEncoders`.
 
 ---
 
@@ -54,6 +73,9 @@ defmodule Storyarn.{Context}.{Entity}Crud do
   import Ecto.Query
   alias Storyarn.Repo
   alias Storyarn.{Context}.{Entity}
+  # Each context has its OWN TreeOperations wrapper — alias the local one,
+  # not Storyarn.Shared.TreeOperations:
+  alias Storyarn.{Context}.TreeOperations
   # Import only what you need — not all CRUD modules use the same set:
   alias Storyarn.Shared.{MapUtils, ShortcutHelpers, SoftDelete}
   alias Storyarn.Shared.SearchHelpers  # only if search is needed
@@ -82,6 +104,7 @@ defmodule Storyarn.{Context}.{Entity}Crud do
     attrs = attrs
       |> MapUtils.stringify_keys()
       |> ShortcutHelpers.maybe_generate_shortcut(project.id, nil, &Shortcuts.generate_{entity}_shortcut/3)
+      # position_fn is called as fn.(project_id, parent_id) — arity 2
       |> ShortcutHelpers.maybe_assign_position(project.id, parent_id, &TreeOperations.next_position/2)
 
     %Entity{project_id: project.id}
@@ -110,6 +133,9 @@ defmodule Storyarn.{Context}.{Entity}Crud do
 end
 ```
 
+`Storyarn.Shared.TreeOperations.next_position/3` takes `(schema, project_id, parent_id)`.
+Each context's local `TreeOperations` closes over the schema and exposes `next_position/2`.
+
 ---
 
 ## Schema Pattern
@@ -136,6 +162,10 @@ end
 
 **Validation:** Use `Storyarn.Shared.Validations.validate_shortcut/2` for shortcut fields.
 
+**Do not re-implement the standard changesets** — `Storyarn.Shared.HierarchicalSchema`
+already provides `delete_changeset/1`, `restore_changeset/1`, `move_changeset/2`,
+`validate_core_fields/1`, `validate_description/1`, `deleted?/1`.
+
 ---
 
 ## LiveView Organization
@@ -147,20 +177,23 @@ lib/storyarn_web/live/{domain}_live/
 ├── handlers/                  # Event handler modules
 │   ├── {feature}_handlers.ex
 │   └── ...
-├── helpers/                   # Pure helper functions
-│   ├── {feature}_helpers.ex
-│   └── ...
-└── components/                # LiveComponents specific to this domain
-    ├── {feature}_section.ex
+└── helpers/                   # Pure helper functions
+    ├── {feature}_helpers.ex
     └── ...
 ```
 
 **Rules:**
 
-- `show.ex` dispatches to handler modules — avoid growing past 300 lines
+- `show.ex` dispatches to handler modules — keep new code out of it
 - Handler modules receive `(params, socket)` and return `{:noreply, socket}`
 - Helpers are pure functions (no socket mutation)
-- Components use LiveComponent pattern with `use StoryarnWeb, :live_component`
+- Rendering is Vue: `show.ex` serializes props and renders a single `<.vue>` boundary.
+  There is no per-domain `components/` directory except `project_live/components/`
+  (`settings_components.ex`); everything else lives in `assets/app/`.
+
+The three canvas/editor dispatchers are far over any reasonable size budget
+(`sheet_live/show.ex` 1108 lines, `flow_live/show.ex` 1699, `scene_live/show.ex` 2139).
+Extract into `handlers/` or `helpers/` rather than adding to them.
 
 ---
 
@@ -205,21 +238,29 @@ end
 
 **Match the existing pattern in the file** — some files use `with_authorization`, others use a private `with_auth` wrapper.
 
+Actions: `:edit_content`, `:use_ai`, `:manage_project`, `:manage_members`,
+`:manage_workspace`, `:manage_workspace_members`.
+
+Roles: project = `owner | editor | viewer`; workspace = `owner | admin | member | viewer`.
+
 ---
 
 ## PubSub Pattern
 
-All real-time features use `Phoenix.PubSub` through the `Collaboration` context:
+All real-time features use `Phoenix.PubSub` through the `Collaboration` context.
+Every editor function takes a **scope tuple** `{type, id}` where type is an atom —
+`{:flow, flow.id}`, `{:sheet, sheet.id}`, `{:scene, scene.id}`, `{:project, project.id}`
+— not a bare id.
 
 ```elixir
 # Subscribe in mount
-Collaboration.subscribe_presence(flow_id)
-Collaboration.subscribe_changes(flow_id)
-Collaboration.subscribe_locks(flow_id)
-Collaboration.subscribe_cursors(flow_id)
+Collaboration.subscribe_presence(scope)
+Collaboration.subscribe_changes(scope)
+Collaboration.subscribe_locks(scope)
+Collaboration.subscribe_cursors(scope)
 
-# Broadcast changes
-Collaboration.broadcast_change(flow_id, :node_updated, %{node_id: id})
+# Broadcast changes — prefer the _from variants in handle_event to avoid echo
+Collaboration.broadcast_change_from(self(), scope, :node_updated, %{node_id: id})
 
 # Handle in LiveView
 def handle_info({:remote_change, action, payload}, socket), do: ...
@@ -228,17 +269,27 @@ def handle_info({:cursor_update, data}, socket), do: ...
 def handle_info({:cursor_leave, user_id}, socket), do: ...
 ```
 
-Topic format: `"flow:{flow_id}:{channel}"` where channel is `presence`, `changes`, `locks`, or `cursors`.
+Topic format: `"{type}:{id}:{channel}"` where channel is `presence`, `changes`,
+`locks`, or `cursors`.
+
+Project-wide channels take a bare `project_id`, not a scope tuple:
+
+| Channel     | Subscribe                             | Topic                          |
+| ----------- | ------------------------------------- | ------------------------------ |
+| Flow graph  | `subscribe_flow_graph/1`              | `project:{id}:flow_graph`      |
+| Restoration | `subscribe_restoration/1`             | `project:{id}:restoration`     |
+| Dashboard   | `subscribe_dashboard/1`               | `project:{id}:dashboard`       |
 
 ---
 
 ## Gettext Convention
 
-All user-facing text uses domain-specific Gettext:
+All user-facing text uses domain-specific Gettext. One domain per `.pot` file in
+`priv/gettext/`:
 
 | Domain       | Function                                    | Example               |
 | ------------ | ------------------------------------------- | --------------------- |
-| Generic      | `gettext("Saved")`                          | Default domain        |
+| Generic      | `gettext("Saved")`                          | `default` domain      |
 | Sheets       | `dgettext("sheets", "Untitled")`            | Sheet-specific        |
 | Flows        | `dgettext("flows", "Add node")`             | Flow-specific         |
 | Scenes       | `dgettext("scenes", "Default Layer")`       | Scene-specific        |
@@ -246,8 +297,26 @@ All user-facing text uses domain-specific Gettext:
 | Localization | `dgettext("localization", "Pending")`       | Localization-specific |
 | Identity     | `dgettext("identity", "Sign in")`           | Auth/user-specific    |
 | Settings     | `dgettext("settings", "General")`           | Settings-specific     |
+| Projects     | `dgettext("projects", "New Project")`       | Project-specific      |
+| Workspaces   | `dgettext("workspaces", "Members")`         | Workspace-specific    |
+| Assets       | `dgettext("assets", "Upload")`              | Asset library         |
+| Versioning   | `dgettext("versioning", "Restore")`         | Versions & snapshots  |
+| Integrations | `dgettext("integrations", "Provider")`      | AI integrations       |
+| Drafts       | `dgettext("drafts", "Draft")`               | Draft surfaces        |
+| Public       | `dgettext("public", "Pricing")`             | Marketing pages       |
+| Docs         | `dgettext("docs", "Guides")`                | Documentation         |
+| Blog         | `dgettext("blog", "Read more")`             | Blog                  |
+| Emails       | `dgettext("emails", "Welcome")`             | Transactional email   |
+| Errors       | — **dormant**                               | See note below        |
 
-**NEVER use hardcoded strings for user-facing text.**
+**NEVER use hardcoded strings for user-facing text.** `mix convention.check` catches
+only the `put_flash` case (`put_flash_without_gettext`, web files only).
+
+`priv/gettext/errors.pot` still exists but **nothing calls `dgettext("errors", …)`**.
+`translate_error/1` was deleted from `core_components.ex`; changeset errors are now
+interpolated raw (`String.replace` over `%{key}` — see `format_changeset_error/1` in
+`lib/storyarn/versioning/builders/sheet_builder.ex:1273`) and ship untranslated.
+Do not route new error text through that domain expecting translation.
 
 ---
 
@@ -268,18 +337,14 @@ from(e in Entity, where: ilike(e.name, ^"%#{sanitized}%"))
 
 ### Tree building (in-memory from flat list):
 
+Use `Storyarn.Shared.TreeOperations.build_tree_from_flat_list/1-2` — it groups once
+instead of filtering the full list at every level:
+
 ```elixir
 def list_tree(project_id) do
-  entities = list_all(project_id)
-  build_tree(entities, nil)  # nil = root level
-end
-
-defp build_tree(all, parent_id) do
-  all
-  |> Enum.filter(&(&1.parent_id == parent_id))
-  |> Enum.map(fn entity ->
-    %{entity | children: build_tree(all, entity.id)}
-  end)
+  project_id
+  |> list_all()
+  |> TreeOperations.build_tree_from_flat_list()  # nil root by default
 end
 ```
 
@@ -303,6 +368,10 @@ Storyarn.Assets.Storage.get_url(key)
 key = Assets.generate_key(project, filename)
 # => "projects/{project_id}/assets/{id}/{sanitized_filename}"
 ```
+
+Full behaviour: `upload/3`, `put_if_absent/3`, `delete/1`, `get_url/1`, `download/1`,
+`stat/1`, `stream/4`, `presigned_upload_url/3`, `copy/2`, `copy_if_absent/2`,
+`key_from_url/1`.
 
 Adapters: `Storage.Local` (dev) and `Storage.R2` (prod, Cloudflare R2/S3-compatible).
 Application code always goes through the `Storage` facade so deletion safety
