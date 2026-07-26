@@ -10,7 +10,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Versioning
-  alias StoryarnWeb.FlowLive.Handlers.AnalysisHandlers
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
@@ -21,6 +20,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
   alias StoryarnWeb.FlowLive.Helpers.DebugSerializer
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
+  alias StoryarnWeb.FlowLive.Helpers.HealthHelpers
   alias StoryarnWeb.FlowLive.Helpers.NavigationHistory
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
   alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
@@ -98,15 +98,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             forward: @nav_history && NavigationHistory.peek_forward(@nav_history)
           }
         }
-        flow-health={
-          %{
-            wordCount: @flow_word_count,
-            errorNodes: @flow_error_nodes,
-            warningNodes: @flow_warning_nodes,
-            infoNodes: @flow_info_nodes,
-            structural: @flow_structural_summary
-          }
-        }
+        flow-health={%{wordCount: @flow_word_count, health: @flow_health}}
         scene-selected={%{name: @scene_name, inherited: @scene_inherited}}
         project-scenes={Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))}
       />
@@ -210,9 +202,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:scene_inherited, false)
       |> assign(:available_scenes, [])
       |> assign(:flow_word_count, 0)
-      |> assign(:flow_error_nodes, [])
-      |> assign(:flow_warning_nodes, [])
-      |> assign(:flow_info_nodes, [])
+      |> assign(:flow_health, HealthHelpers.empty_health())
       |> assign(:flow_structural_summary, %{errorCount: 0, warningCount: 0})
       |> assign(:save_status, :idle)
       |> assign(:save_status_reset_token, nil)
@@ -231,7 +221,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_var_changed_only, false)
       |> assign(:debug_step_limit_reached, false)
       |> assign(:versions_panel_open, false)
-      |> AnalysisHandlers.assign_initial_state()
       |> assign(:history_data, nil)
       |> assign(:all_sheets, [])
       |> assign(:dialogue_panel_data, nil)
@@ -440,34 +429,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("close_versions_panel", _params, socket) do
     {:noreply, assign(socket, :versions_panel_open, false)}
   end
-
-  def handle_event("open_analysis_panel", params, socket) do
-    AnalysisHandlers.handle_open_analysis_panel(params, socket)
-  end
-
-  def handle_event("close_analysis_panel", params, socket) do
-    AnalysisHandlers.handle_close_analysis_panel(params, socket)
-  end
-
-  def handle_event("rerun_analysis", params, socket) do
-    AnalysisHandlers.handle_rerun_analysis(params, socket)
-  end
-
-  def handle_event("dismiss_finding", params, socket) do
-    AnalysisHandlers.handle_dismiss_finding(params, socket)
-  end
-
-  def handle_event("restore_finding_dismissal", params, socket) do
-    AnalysisHandlers.handle_restore_finding_dismissal(params, socket)
-  end
-
-  def handle_event("analysis_navigate_evidence", params, socket) do
-    AnalysisHandlers.handle_navigate_evidence(params, socket)
-  end
-
-  # ---------------------------------------------------------------------------
-  # Version History handlers (Vue FlowVersionHistoryPanel)
-  # ---------------------------------------------------------------------------
 
   def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
     VersionEventHelpers.handle_create(%{"title" => title, "description" => description}, socket, flow_version_config())
@@ -1275,13 +1236,6 @@ defmodule StoryarnWeb.FlowLive.Show do
     flow = data.flow
     user = socket.assigns.current_scope.user
 
-    # A panel opened during the async-load window (e.g. straight from the
-    # palette) must survive the load: recompute its snapshot for the same
-    # flow instead of silently discarding it.
-    preserve_analysis_panel? =
-      (socket.assigns[:analysis_panel_open] == true and socket.assigns.flow) &&
-        socket.assigns.flow.id == flow.id
-
     if !socket.assigns.compact do
       CollaborationHelpers.setup_collaboration(socket, flow, user)
     end
@@ -1349,16 +1303,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign_scene_info(flow)
       |> SocketHelpers.assign_flow_stats(flow, data.flow_data)
 
-    # AFTER assign_flow_stats/3: that call marks any open snapshot stale, so
-    # recomputing here is what leaves the preserved panel with a fresh,
-    # non-stale snapshot instead of prompting a rerun of the load's own work.
-    socket =
-      if preserve_analysis_panel? do
-        AnalysisHandlers.recompute_open_snapshot(socket)
-      else
-        AnalysisHandlers.assign_initial_state(socket)
-      end
-
     socket =
       socket
       |> maybe_restore_nav_history()
@@ -1385,22 +1329,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
   def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
   def handle_info({:open_flow, _flow_id}, socket), do: {:noreply, socket}
-  # Cross-flow mutations (another flow deleted/restored) can change this
-  # flow's stale-reference findings, so an open analysis snapshot goes stale.
-  def handle_info({:tree_changed, :flows}, socket) do
-    {:noreply, AnalysisHandlers.mark_snapshot_stale(socket)}
-  end
-
-  # Another flow's graph mutated: this flow's subflow/exit pins (and thus
-  # findings and fingerprints) may derive from it — stale the open snapshot
-  # only when the current flow actually references the mutated one.
-  def handle_info({:flow_graph_changed, mutated_flow_id}, socket) do
-    if AnalysisHandlers.references_flow?(socket, mutated_flow_id) do
-      {:noreply, AnalysisHandlers.mark_snapshot_stale(socket)}
-    else
-      {:noreply, socket}
-    end
-  end
+  # Health is recomputed from this flow's own data on every edit, like sheets
+  # and scenes. A cross-flow mutation can change this flow's stale-reference
+  # findings, and they refresh on its next save rather than eagerly.
+  def handle_info({:tree_changed, :flows}, socket), do: {:noreply, socket}
+  def handle_info({:flow_graph_changed, _mutated_flow_id}, socket), do: {:noreply, socket}
 
   def handle_info({:entities_deleted, :flow, ids}, socket) do
     if socket.assigns.flow.id in ids do
@@ -1409,7 +1342,7 @@ defmodule StoryarnWeb.FlowLive.Show do
          to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows"
        )}
     else
-      {:noreply, AnalysisHandlers.mark_snapshot_stale(socket)}
+      {:noreply, socket}
     end
   end
 
@@ -1580,8 +1513,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       dialogue: flow_panels_dialogue(assigns),
       dialogueFullscreen: flow_panels_dialogue_fullscreen(assigns),
       sequence: flow_panels_sequence(assigns),
-      preview: PreviewHandlers.serialize_preview_state(assigns.socket),
-      analysis: AnalysisHandlers.panel_props(assigns)
+      preview: PreviewHandlers.serialize_preview_state(assigns.socket)
     }
   end
 

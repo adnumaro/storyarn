@@ -16,6 +16,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Flows
+  alias StoryarnWeb.FlowLive.NodeTypeRegistry
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
@@ -191,7 +192,7 @@ defmodule StoryarnWeb.FlowLive.Index do
 
     issues =
       DashboardCache.fetch(project_id, :flow_issues, fn ->
-        Flows.detect_flow_issues(project_id)
+        Flows.list_dashboard_health_findings(project_id)
       end)
 
     table_data =
@@ -331,36 +332,31 @@ defmodule StoryarnWeb.FlowLive.Index do
     }
   end
 
-  defp format_flow_issues(issues, workspace, project) do
-    Enum.map(issues, fn issue ->
-      {severity, message} =
-        case issue.issue_type do
-          :no_entry ->
-            {:error, dgettext("flows", "Flow \"%{name}\" has no entry node", name: issue.flow_name)}
-
-          :disconnected_nodes ->
-            {:warning,
-             dgettext("flows", "Flow \"%{name}\" has %{count} disconnected node(s)",
-               name: issue.flow_name,
-               count: issue.count
-             )}
-
-          :dead_end_nodes ->
-            {:warning,
-             dgettext("flows", "Flow \"%{name}\" has %{count} node(s) without outgoing connection",
-               name: issue.flow_name,
-               count: issue.count
-             )}
-
-          _ ->
-            {:info, gettext("Issue detected")}
-        end
-
+  # One row per finding, with the CODE — never a rendered sentence. Vue resolves
+  # it against `flows.health.findings.*`, the same catalog the editor popover
+  # uses, exactly as `SheetDashboard.vue` does. That is what makes the dashboard
+  # and the editor incapable of wording the same finding differently, and it is
+  # why this needs no server-side copy at all.
+  defp format_flow_issues(findings, workspace, project) do
+    Enum.map(findings, fn finding ->
       %{
-        severity: severity,
-        message: message,
-        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{issue.flow_id}"
+        severity: Atom.to_string(finding.severity),
+        code: to_string(finding.code),
+        label: issue_label(finding),
+        details: finding.details,
+        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{finding.flow_id}"
       }
     end)
+  end
+
+  # Location only, like sheets' "Ancient Tome · type": the flow, plus the node
+  # when the finding belongs to one.
+  defp issue_label(%{entity_type: "flow", details: details}) do
+    Map.get(details, :flow_name, dgettext("flows", "Flow"))
+  end
+
+  defp issue_label(%{entity_type: type, entity_id: id, details: details}) do
+    flow_name = Map.get(details, :flow_name, dgettext("flows", "Flow"))
+    "#{flow_name} · #{NodeTypeRegistry.label(type)} ##{id}"
   end
 end

@@ -482,6 +482,42 @@
       "previously_dismissed": "Previously dismissed: {reason} · {user}",
       "empty_filtered": "No findings match the current filters.",
       "clear_filters": "Clear filters"
+    },
+    "health": {
+      "review": "Review flow health",
+      "looks_great": "This flow looks great!",
+      "errors": "Errors",
+      "warnings": "Warnings",
+      "info": "Info",
+      "findings": {
+        "missing_entry": "Flow has no Entry node",
+        "multiple_entries": "Flow has multiple Entry nodes",
+        "unreachable_node": "Node is unreachable from Entry",
+        "isolated_node": "Node has no connections",
+        "no_outgoing_connection": "Node has no outgoing connection",
+        "missing_output_connections": "Output pins without a connection",
+        "invalid_output_pins": "Connection on a removed output pin",
+        "invalid_input_pins": "Connection on an invalid input pin",
+        "orphan_hub": "Hub is never reached by connection or jump",
+        "missing_jump_target": "Jump has no target hub",
+        "stale_jump_target": "Jump targets a missing hub",
+        "missing_subflow_reference": "Subflow has no referenced flow",
+        "stale_subflow_reference": "Subflow references a deleted flow",
+        "missing_exit_flow_reference": "Exit has no referenced flow",
+        "stale_exit_flow_reference": "Exit references a deleted flow",
+        "stale_variable_reference": "Stale variable reference",
+        "variable_type_mismatch": "Variable type warning",
+        "response_type_mismatch": "Response assignment type warning",
+        "missing_dialogue_text": "Missing dialogue text",
+        "missing_dialogue_speaker": "Missing dialogue speaker",
+        "empty_dialogue_response": "Empty dialogue response",
+        "incomplete_response_condition": "Incomplete response condition",
+        "incomplete_response_assignment": "Incomplete response assignment",
+        "incomplete_condition": "Incomplete condition",
+        "incomplete_instruction_assignment": "Incomplete instruction assignment",
+        "empty_instruction": "No instruction assignments",
+        "empty_condition": "Condition has no rules"
+      }
     }
   }
 }

@@ -3,12 +3,15 @@ defmodule Storyarn.Flows.FlowStats do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.FindingDismissals
+  alias Storyarn.Flows
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.StructuralAnalysis
+  alias Storyarn.Flows.StructuralAnalysis.Topology
   alias Storyarn.Localization.LocalizableWords
+  alias Storyarn.References
   alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   # ===========================================================================
   # Stats
@@ -52,59 +55,36 @@ defmodule Storyarn.Flows.FlowStats do
   # ===========================================================================
 
   # Legacy dashboard buckets ← canonical rules. The three issue types keep
-  # their public contract while the counts come from the canonical engine, so
-  # dashboards cannot disagree with the editor about the same rule.
-  # `unreachable_node` folds into :disconnected_nodes (disconnected from
-  # Entry) so detached chains — which the old SQL surfaced as dead ends —
-  # keep dashboard coverage without a UI change.
-  @issue_type_rules [
-    no_entry: ["missing_entry"],
-    disconnected_nodes: ["isolated_node", "unreachable_node"],
-    dead_end_nodes: ["no_outgoing_connection"]
-  ]
-
   @doc """
-  Detects issues in flows for a project through the canonical structural
-  analysis. Returns `[%{flow_id, flow_name, issue_type, count}]`.
+  Project-wide flow health findings for the dashboard.
 
-  Issue types:
-  - `:no_entry` — flow has no entry node
-  - `:disconnected_nodes` — flow has isolated or Entry-unreachable nodes
-  - `:dead_end_nodes` — flow has reachable nodes without outgoing connections
+  The sibling of `Sheets.list_dashboard_health_findings/2` and
+  `Scenes.list_dashboard_health_findings/1`, and it reads the SAME findings the
+  editor shows through the SAME composition point
+  (`StructuralAnalysis.findings/1`) — the dashboard reimplements nothing of the
+  vocabulary, so the two surfaces cannot disagree.
+
+  This replaced `detect_flow_issues/1`, which mapped 4 of the 15 structural rules
+  into 3 coarse buckets, dropped every reference-integrity error, and never ran
+  the editorial checks at all. Counts therefore go UP: that is the correction.
+
+  Cost: one project-variable query plus two stale-reference queries per flow. The
+  dashboard caches this for 30s, which is what makes that acceptable.
   """
-  def detect_flow_issues(project_id) do
-    analyses = StructuralAnalysis.analyze_project(project_id)
-    dismissals_by_flow = FindingDismissals.list_active_by_project(project_id)
+  def list_dashboard_health_findings(project_id) do
+    project_variables = Sheets.list_project_variables(project_id)
 
-    # Project-shared dismissals suppress dashboard counts exactly like the
-    # editor badge — the two adapters cannot disagree about the same rule.
-    # The dashboard ETS cache (30s TTL) may delay a dismissal that long.
-    active_by_flow =
-      Map.new(analyses, fn analysis ->
-        dismissals = Map.get(dismissals_by_flow, analysis.flow_id, [])
-        {active, _dismissed} = FindingDismissals.split_findings(analysis.findings, dismissals)
-        {analysis.flow_id, active}
-      end)
+    project_id
+    |> Topology.load_project()
+    |> Enum.flat_map(fn topology ->
+      stale_node_ids = References.list_stale_node_ids(topology.flow_id)
+      nodes = Flows.add_health_flags(topology.nodes, stale_node_ids, project_variables)
 
-    Enum.flat_map(@issue_type_rules, fn {issue_type, rule_ids} ->
-      analyses
-      |> Enum.map(&issue_row(&1, Map.fetch!(active_by_flow, &1.flow_id), issue_type, rule_ids))
-      |> Enum.reject(&is_nil/1)
+      %{topology | nodes: nodes}
+      |> StructuralAnalysis.findings()
+      # The flow name rides in `details` so the caller needs no second query;
+      # `sheet_stats.ex` does the same with `sheet_name`.
+      |> Enum.map(&%{&1 | details: Map.put(&1.details, :flow_name, topology.flow_name)})
     end)
-  end
-
-  defp issue_row(analysis, active_findings, issue_type, rule_ids) do
-    case Enum.count(active_findings, &(&1.rule_id in rule_ids)) do
-      0 ->
-        nil
-
-      count ->
-        %{
-          flow_id: analysis.flow_id,
-          flow_name: analysis.flow_name,
-          issue_type: issue_type,
-          count: count
-        }
-    end
   end
 end

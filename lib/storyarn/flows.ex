@@ -21,8 +21,6 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.Evaluator.EngineHelpers
   alias Storyarn.Flows.Evaluator.Helpers
   alias Storyarn.Flows.Evaluator.InstructionExec
-  alias Storyarn.Flows.FindingDismissal
-  alias Storyarn.Flows.FindingDismissals
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowCrud
@@ -892,6 +890,27 @@ defmodule Storyarn.Flows do
 
   defp maybe_add_referencing_flows(data, _type, _referencing_flows), do: data
 
+  @doc """
+  Adds the health flags `serialize_for_canvas/2` injects, for callers reading
+  nodes straight from the database.
+
+  The editorial checks in `HealthChecker` read `has_stale_refs` and
+  `has_type_warnings` off a node's data. The canvas serializer computes them; a
+  project-wide sweep does not go through it, so it applies them here instead —
+  otherwise the dashboard would silently miss three codes the editor reports.
+  """
+  @spec add_health_flags([map()], MapSet.t(), [map()]) :: [map()]
+  def add_health_flags(nodes, stale_node_ids, project_variables) do
+    Enum.map(nodes, fn node ->
+      data =
+        node.data
+        |> maybe_add_stale_flag(node.id, stale_node_ids)
+        |> maybe_add_type_warning_flag(node.type, project_variables)
+
+      %{node | data: data}
+    end)
+  end
+
   defp maybe_add_type_warning_flag(data, "instruction", project_variables) do
     assignments = data["assignments"] || []
 
@@ -1023,8 +1042,8 @@ defmodule Storyarn.Flows do
   @doc "Returns per-flow localizable word counts from runtime flow-node fields. %{flow_id => word_count}."
   defdelegate flow_word_counts(project_id), to: FlowStats
 
-  @doc "Detects issues in flows for a project. Returns [%{flow_id, flow_name, issue_type, count}]."
-  defdelegate detect_flow_issues(project_id), to: FlowStats
+  @doc "Project-wide flow health findings for the dashboard (canonical shape)."
+  defdelegate list_dashboard_health_findings(project_id), to: FlowStats
 
   @doc """
   Runs the canonical structural analysis for one flow.
@@ -1049,76 +1068,18 @@ defmodule Storyarn.Flows do
     as: :analyze_serialized
 
   @doc """
-  Loads one CURRENT structural finding by its exact occurrence identity.
+  Every health finding of a flow from already-serialized canvas data.
 
-  `{:error, :unknown_finding}` when the key is gone, `{:error, :stale_finding}`
-  when its rule version or evidence moved.
-
-  No caller in `lib/` since Slice 7.1a.0 removed the AI explanation; kept for
-  7.1a.1's `findings` operation. See `StructuralAnalysis.fetch_current_finding/3`.
+  The editor's entry into the single composition point the dashboard also uses
+  (`StructuralAnalysis.findings/1`). Zero extra node queries: the serializer's
+  output is already resolved and already carries the health flags.
   """
-  @spec fetch_current_structural_finding(integer(), integer(), StructuralAnalysis.Finding.identity()) ::
-          {:ok, StructuralAnalysis.Finding.t()}
-          | {:error, :not_found | :unknown_finding | :stale_finding}
-  defdelegate fetch_current_structural_finding(project_id, flow_id, identity),
-    to: StructuralAnalysis,
-    as: :fetch_current_finding
-
-  @doc """
-  The exact occurrence triple identifying a structural finding.
-
-  This and the encode/decode pair below share the caller status of
-  `fetch_current_structural_finding/3`: tests only, kept for 7.1a.1.
-  """
-  @spec structural_finding_identity(StructuralAnalysis.Finding.t()) :: StructuralAnalysis.Finding.identity()
-  defdelegate structural_finding_identity(finding), to: StructuralAnalysis.Finding, as: :identity
-
-  @doc "Durable single-string encoding of a structural finding identity."
-  @spec encode_structural_finding_identity(StructuralAnalysis.Finding.t() | StructuralAnalysis.Finding.identity()) ::
-          String.t()
-  defdelegate encode_structural_finding_identity(finding), to: StructuralAnalysis.Finding, as: :encode_identity
-
-  @doc "Parses `encode_structural_finding_identity/1`. Fails closed."
-  @spec decode_structural_finding_identity(term()) ::
-          {:ok, StructuralAnalysis.Finding.identity()} | {:error, :invalid_finding_identity}
-  defdelegate decode_structural_finding_identity(encoded), to: StructuralAnalysis.Finding, as: :decode_identity
-
-  @doc "Rule ids of the frozen structural-analysis catalog."
-  @spec structural_rule_ids() :: [String.t()]
-  defdelegate structural_rule_ids(), to: StructuralAnalysis.Rules, as: :rule_ids
-
-  @doc "The declared i18n limitations key of a structural rule."
-  @spec structural_rule_limitations_key(String.t()) :: String.t()
-  def structural_rule_limitations_key(rule_id), do: StructuralAnalysis.Rules.fetch!(rule_id).limitations_key
-
-  # =============================================================================
-  # Structural Finding Dismissals
-  # =============================================================================
-
-  @doc "Dismisses a server-computed structural finding for a flow. Idempotent."
-  defdelegate dismiss_finding(flow, finding, attrs), to: FindingDismissals, as: :dismiss
-
-  @doc "Restores an active finding dismissal of a flow. Idempotent."
-  defdelegate restore_finding_dismissal(flow, dismissal_id, restored_by_id),
-    to: FindingDismissals,
-    as: :restore
-
-  @doc "Active finding dismissals of a flow."
-  defdelegate list_active_finding_dismissals(flow), to: FindingDismissals, as: :list_active
-
-  @doc "Active finding dismissals of a project, grouped by flow id."
-  defdelegate list_active_finding_dismissals_by_project(project_id),
-    to: FindingDismissals,
-    as: :list_active_by_project
-
-  @doc "Splits findings into {active, dismissed} against active dismissals."
-  defdelegate split_findings(findings, active_dismissals), to: FindingDismissals
-
-  @doc "Stable dismissal reason codes, in display order."
-  defdelegate finding_dismissal_reason_codes(), to: FindingDismissal, as: :reason_codes
-
-  @doc "Maximum accepted dismissal note length."
-  defdelegate finding_dismissal_max_note_length(), to: FindingDismissal, as: :max_note_length
+  @spec flow_health_findings(map(), integer()) :: [map()]
+  def flow_health_findings(flow_data, project_id) do
+    flow_data
+    |> StructuralAnalysis.Topology.from_serialized(project_id)
+    |> StructuralAnalysis.findings()
+  end
 
   @doc "Counts non-deleted flow nodes across all flows in a project."
   defdelegate count_nodes_for_project(project_id), to: FlowCrud

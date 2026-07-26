@@ -1,25 +1,13 @@
 <script setup lang="ts">
-import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  ChevronDown,
-  CircleCheck,
-  Info,
-  Map as MapIcon,
-  ScanSearch,
-  Text,
-  TriangleAlert,
-  X,
-} from "lucide-vue-next";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Map as MapIcon, Text, X } from "lucide-vue-next";
 import { computed, onUnmounted, ref } from "vue";
 import EditableText from "@components/forms/EditableText.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Badge } from "@components/ui/badge";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@components/ui/popover";
-import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { useLive } from "@shared/composables/useLive";
+import type { FlowHealth } from "@modules/flows/types/health";
+import FlowHealthStatus from "@modules/flows/editor/components/chrome/header/FlowHealthStatus.vue";
 
 interface NavEntry {
   flow_name: string;
@@ -30,24 +18,9 @@ interface NavHistory {
   forward: NavEntry | null;
 }
 
-interface HealthNode {
-  id: number | string | null;
-  label: string;
-  reason?: string;
-  reasons?: string[];
-}
-
-interface StructuralSummary {
-  errorCount: number;
-  warningCount: number;
-}
-
-interface FlowHealth {
+interface FlowHealthProp {
   wordCount: number;
-  errorNodes: HealthNode[];
-  warningNodes: HealthNode[];
-  infoNodes: HealthNode[];
-  structural: StructuralSummary;
+  health: FlowHealth;
 }
 
 interface SceneSelected {
@@ -69,10 +42,7 @@ const {
   navHistory = { back: null, forward: null },
   flowHealth = {
     wordCount: 0,
-    errorNodes: [],
-    warningNodes: [],
-    infoNodes: [],
-    structural: { errorCount: 0, warningCount: 0 },
+    health: { errorItems: [], warningItems: [], infoItems: [] },
   },
   sceneSelected = { name: null, inherited: false },
   projectScenes = [],
@@ -83,49 +53,14 @@ const {
   canEdit: boolean;
   saveStatus: string;
   navHistory: NavHistory;
-  flowHealth: FlowHealth;
+  flowHealth: FlowHealthProp;
   sceneSelected: SceneSelected;
   projectScenes: ProjectScene[];
 }>();
 
 const live = useLive();
 const sceneOpen = ref(false);
-const healthOpen = ref(false);
-
-// Ordinary non-AI palette command: registration lifetime scopes it to the
-// normal flow editor (the only v1 analysis surface). The server reauthorizes
-// the read when the panel opens.
-const unregisterPaletteCommands = registerPaletteCommands("flows", [
-  {
-    id: "flows.analyze",
-    labelKey: "flows.analysis.command",
-    groupKey: "palette.groups.actions",
-    icon: ScanSearch,
-    run: () => live.pushEvent("open_analysis_panel", {}),
-  },
-]);
-onUnmounted(unregisterPaletteCommands);
-
-const errorCount = computed(
-  () => findingCount(flowHealth.errorNodes) + flowHealth.structural.errorCount,
-);
-const warningCount = computed(
-  () => findingCount(flowHealth.warningNodes) + flowHealth.structural.warningCount,
-);
-const infoCount = computed(() => findingCount(flowHealth.infoNodes));
-const structuralCount = computed(
-  () => flowHealth.structural.errorCount + flowHealth.structural.warningCount,
-);
 const showScene = computed(() => canEdit || sceneSelected.name != null);
-
-function nodeReasons(node: HealthNode): string[] {
-  if (node.reasons?.length) return node.reasons;
-  return node.reason ? [node.reason] : [];
-}
-
-function findingCount(nodes: HealthNode[]): number {
-  return nodes.reduce((count, node) => count + nodeReasons(node).length, 0);
-}
 
 function saveName(name: string): void {
   live.pushEvent("save_name", { name });
@@ -138,17 +73,6 @@ function saveShortcut(shortcut: string): void {
 function selectScene(sceneId: number | string | null): void {
   live.pushEvent("update_scene", { scene_id: sceneId || "" });
   sceneOpen.value = false;
-}
-
-function navigateToNode(nodeId: number | string | null): void {
-  if (nodeId == null) return;
-  live.pushEvent("navigate_to_node", { id: nodeId });
-  healthOpen.value = false;
-}
-
-function openAnalysisPanel(): void {
-  live.pushEvent("open_analysis_panel", {});
-  healthOpen.value = false;
 }
 </script>
 
@@ -271,146 +195,8 @@ function openAnalysisPanel(): void {
         </div>
       </ToolbarTooltip>
 
-      <!-- Flow health indicator -->
-      <template v-if="errorCount > 0 || warningCount > 0 || infoCount > 0">
-        <Popover v-model:open="healthOpen">
-          <PopoverAnchor as-child>
-            <ToolbarTooltip :label="$t('flows.header.flow_health')" side="bottom">
-              <PopoverTrigger data-testid="flow-health-trigger" class="toolbar-btn gap-0">
-                <span v-if="errorCount > 0" class="flex items-center gap-1.5 text-destructive">
-                  <TriangleAlert class="size-3.5" />
-                  <span data-testid="flow-health-error-count">{{ errorCount }}</span>
-                </span>
-                <span
-                  v-if="warningCount > 0"
-                  class="flex items-center gap-1.5 text-yellow-500"
-                  :class="{ 'ml-2': errorCount > 0 }"
-                >
-                  <AlertTriangle class="size-3.5" />
-                  <span data-testid="flow-health-warning-count">{{ warningCount }}</span>
-                </span>
-                <span
-                  v-if="infoCount > 0"
-                  class="flex items-center gap-1.5 text-blue-500"
-                  :class="{ 'ml-2': errorCount > 0 || warningCount > 0 }"
-                >
-                  <Info class="size-3.5" />
-                  <span data-testid="flow-health-info-count">{{ infoCount }}</span>
-                </span>
-                <ChevronDown class="size-3 opacity-50 ml-1" />
-              </PopoverTrigger>
-            </ToolbarTooltip>
-          </PopoverAnchor>
-          <PopoverContent side="bottom" :side-offset="4" class="w-max max-h-60 overflow-y-auto p-1">
-            <button
-              type="button"
-              data-testid="flow-health-open-analysis"
-              class="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs transition-colors hover:bg-accent"
-              @click="openAnalysisPanel"
-            >
-              <ScanSearch class="size-3.5 shrink-0" />
-              <span class="flex-1 text-left">
-                {{
-                  structuralCount > 0
-                    ? $t("flows.analysis.open_from_health", { count: structuralCount })
-                    : $t("flows.analysis.open_from_health_clean")
-                }}
-              </span>
-            </button>
-            <div v-if="flowHealth.errorNodes.length > 0">
-              <div
-                data-testid="flow-health-errors"
-                class="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase"
-              >
-                {{ $t("flows.header.errors") }}
-              </div>
-              <button
-                v-for="(node, index) in flowHealth.errorNodes"
-                :key="'e-' + (node.id ?? `flow-${index}`)"
-                type="button"
-                :data-health-node-id="node.id"
-                data-health-severity="error"
-                :disabled="node.id == null"
-                class="w-full flex flex-col items-start gap-0.5 px-2 py-1.5 rounded-md text-xs transition-colors enabled:hover:bg-accent disabled:cursor-default"
-                @click="navigateToNode(node.id)"
-              >
-                <span class="truncate">{{ node.label }}</span>
-                <span
-                  v-for="reason in nodeReasons(node)"
-                  :key="reason"
-                  class="text-[11px] text-muted-foreground"
-                >
-                  {{ reason }}
-                </span>
-              </button>
-            </div>
-            <div v-if="flowHealth.warningNodes.length > 0">
-              <div
-                data-testid="flow-health-warnings"
-                class="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase mt-1"
-              >
-                {{ $t("flows.header.warnings") }}
-              </div>
-              <button
-                v-for="(node, index) in flowHealth.warningNodes"
-                :key="'w-' + (node.id ?? `flow-${index}`)"
-                type="button"
-                :data-health-node-id="node.id"
-                data-health-severity="warning"
-                :disabled="node.id == null"
-                class="w-full flex flex-col items-start gap-0.5 px-2 py-1.5 rounded-md text-xs transition-colors enabled:hover:bg-accent disabled:cursor-default"
-                @click="navigateToNode(node.id)"
-              >
-                <span class="truncate">{{ node.label }}</span>
-                <span
-                  v-for="reason in nodeReasons(node)"
-                  :key="reason"
-                  class="text-[11px] text-muted-foreground"
-                >
-                  {{ reason }}
-                </span>
-              </button>
-            </div>
-            <div v-if="flowHealth.infoNodes.length > 0">
-              <div
-                data-testid="flow-health-info"
-                class="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase mt-1"
-              >
-                {{ $t("flows.header.info") }}
-              </div>
-              <button
-                v-for="(node, index) in flowHealth.infoNodes"
-                :key="'i-' + (node.id ?? `flow-${index}`)"
-                type="button"
-                :data-health-node-id="node.id"
-                data-health-severity="info"
-                :disabled="node.id == null"
-                class="w-full flex flex-col items-start gap-0.5 px-2 py-1.5 rounded-md text-xs transition-colors enabled:hover:bg-accent disabled:cursor-default"
-                @click="navigateToNode(node.id)"
-              >
-                <span class="truncate">{{ node.label }}</span>
-                <span
-                  v-for="reason in nodeReasons(node)"
-                  :key="reason"
-                  class="text-[11px] text-muted-foreground"
-                >
-                  {{ reason }}
-                </span>
-              </button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </template>
-      <ToolbarTooltip v-else :label="$t('flows.header.looks_great')" side="bottom">
-        <button
-          type="button"
-          class="toolbar-btn text-green-500/60"
-          data-testid="flow-health-clean-open-analysis"
-          @click="openAnalysisPanel"
-        >
-          <CircleCheck class="size-3.5" />
-        </button>
-      </ToolbarTooltip>
+      <!-- Flow health: the shared popover, same as sheets and scenes -->
+      <FlowHealthStatus :health="flowHealth.health" />
     </div>
 
     <!-- Save indicator -->

@@ -14,6 +14,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
   alias Storyarn.Flows
   alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
+  alias StoryarnWeb.FlowLive.Helpers.HealthHelpers
 
   require Logger
 
@@ -206,9 +207,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
           |> assign(:flow_data, empty_flow_data)
           |> assign(:flow_hubs, [])
           |> assign(:flow_word_count, 0)
-          |> assign(:flow_error_nodes, [])
-          |> assign(:flow_warning_nodes, [])
-          |> assign(:flow_info_nodes, [])
+          |> assign(:flow_health, HealthHelpers.empty_health())
 
         error in [DBConnection.ConnectionError, Postgrex.Error] ->
           Logger.warning(

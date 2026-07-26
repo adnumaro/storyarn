@@ -105,12 +105,10 @@ defmodule Storyarn.Projects.Dashboard do
     workspace_slug = Keyword.fetch!(opts, :workspace_slug)
     project_slug = Keyword.fetch!(opts, :project_slug)
 
-    flow_issues = Flows.detect_flow_issues(project_id)
+    flow_findings = Flows.list_dashboard_health_findings(project_id)
 
     [
-      detect_flows_without_entry(flow_issues, workspace_slug, project_slug),
-      detect_disconnected_nodes(flow_issues, workspace_slug, project_slug),
-      detect_dead_end_nodes(flow_issues, workspace_slug, project_slug),
+      detect_flow_health(flow_findings, workspace_slug, project_slug),
       detect_empty_sheets(project_id, workspace_slug, project_slug),
       detect_untranslated_content(project_id, workspace_slug, project_slug)
     ]
@@ -227,55 +225,31 @@ defmodule Storyarn.Projects.Dashboard do
   # Issue Detectors (formatters over the canonical flow analysis)
   # ---------------------------------------------------------------------------
 
-  defp detect_flows_without_entry(flow_issues, workspace_slug, project_slug) do
-    flow_issues
-    |> Enum.filter(&(&1.issue_type == :no_entry))
-    |> Enum.map(fn flow ->
+  # One row per flow and severity. This used to be three hand-written rows over
+  # three coarse buckets covering 4 of the 15 rules; grouping keeps the overview
+  # short while every rule now counts, including the reference-integrity errors
+  # the dashboard never showed.
+  defp detect_flow_health(findings, workspace_slug, project_slug) do
+    findings
+    |> Enum.filter(&(&1.severity in [:error, :warning]))
+    |> Enum.group_by(&{&1.flow_id, &1.severity})
+    |> Enum.map(fn {{flow_id, severity}, grouped} ->
       %{
-        severity: :error,
-        message: dgettext("flows", "Flow \"%{name}\" has no entry node", name: flow.flow_name),
-        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow.flow_id}",
-        count: 1
+        severity: severity,
+        message: flow_health_message(severity, hd(grouped).details[:flow_name], length(grouped)),
+        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow_id}",
+        count: length(grouped)
       }
     end)
+    |> Enum.sort_by(& &1.message)
   end
 
-  defp detect_disconnected_nodes(flow_issues, workspace_slug, project_slug) do
-    flow_issues
-    |> Enum.filter(&(&1.issue_type == :disconnected_nodes))
-    |> Enum.map(fn row ->
-      %{
-        severity: :warning,
-        message:
-          dgettext(
-            "flows",
-            "Flow \"%{name}\" has %{count} disconnected node(s)",
-            name: row.flow_name,
-            count: row.count
-          ),
-        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{row.flow_id}",
-        count: row.count
-      }
-    end)
+  defp flow_health_message(:error, flow_name, count) do
+    dgettext("flows", "Flow \"%{name}\" has %{count} error(s)", name: flow_name, count: count)
   end
 
-  defp detect_dead_end_nodes(flow_issues, workspace_slug, project_slug) do
-    flow_issues
-    |> Enum.filter(&(&1.issue_type == :dead_end_nodes))
-    |> Enum.map(fn row ->
-      %{
-        severity: :warning,
-        message:
-          dgettext(
-            "flows",
-            "Flow \"%{name}\" has %{count} node(s) without outgoing connection",
-            name: row.flow_name,
-            count: row.count
-          ),
-        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{row.flow_id}",
-        count: row.count
-      }
-    end)
+  defp flow_health_message(:warning, flow_name, count) do
+    dgettext("flows", "Flow \"%{name}\" has %{count} warning(s)", name: flow_name, count: count)
   end
 
   defp detect_empty_sheets(project_id, workspace_slug, project_slug) do

@@ -1,10 +1,4 @@
 <script setup lang="ts">
-import { onUnmounted } from "vue";
-import { useLive } from "@shared/composables/useLive";
-import { FLOW_ANALYSIS_DESTINATION } from "@shared/command-palette/aiDestinations";
-import { registerAIDestination } from "@shared/command-palette/aiDestinationRouter";
-import FlowAnalysisPanel from "@modules/flows/editor/components/panels/FlowAnalysisPanel.vue";
-import type { FlowAnalysisPanelState } from "@modules/flows/editor/components/panels/flowAnalysisTypes";
 import FlowBuilderPanel from "@modules/flows/editor/components/panels/FlowBuilderPanel.vue";
 import FlowDebugPanel from "@modules/flows/editor/components/panels/FlowDebugPanel.vue";
 import FlowDialogueFullscreenEditor from "@modules/flows/editor/components/panels/FlowDialogueFullscreenEditor.vue";
@@ -68,22 +62,12 @@ interface FlowPanels {
   dialogueFullscreen: FlowPanelState;
   sequence: FlowPanelState;
   preview: FlowPreviewPanel;
-  analysis: FlowAnalysisPanelState;
 }
 
 const { panels } = defineProps<{
   panels: FlowPanels;
 }>();
 
-// The panel host owns the destination: exactly one owner per editor, so a
-// palette `launch` always has somewhere to land.
-const live = useLive();
-
-onUnmounted(
-  registerAIDestination(FLOW_ANALYSIS_DESTINATION, () => {
-    live.pushEvent("open_analysis_panel", {});
-  }),
-);
 </script>
 
 <template>
@@ -159,17 +143,5 @@ onUnmounted(
       />
     </div>
 
-    <div id="flow-analysis-panel" class="contents">
-      <FlowAnalysisPanel
-        :open="panels.analysis.open"
-        :can-edit="panels.analysis.canEdit"
-        :stale="panels.analysis.stale"
-        :computed-at="panels.analysis.computedAt"
-        :reason-codes="panels.analysis.reasonCodes"
-        :max-note-length="panels.analysis.maxNoteLength"
-        :active="panels.analysis.active"
-        :dismissed="panels.analysis.dismissed"
-      />
-    </div>
   </div>
 </template>

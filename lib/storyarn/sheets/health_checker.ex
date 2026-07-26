@@ -60,6 +60,17 @@ defmodule Storyarn.Sheets.HealthChecker do
   @spec severity_for(atom()) :: severity()
   def severity_for(code), do: Map.fetch!(@severity_by_code, code)
 
+  @doc """
+  Every code this checker can emit.
+
+  The dashboard's coverage is asserted against this in
+  `test/storyarn/dashboard_health_coverage_test.exs`: a code the checker can
+  produce but the dashboard cannot is a finding a user only sees inside one
+  entity, which is the discrimination that test exists to prevent.
+  """
+  @spec codes() :: [atom()]
+  def codes, do: Map.keys(@severity_by_code)
+
   @doc "Builds a canonical finding for adapters that detect health in bulk."
   @spec finding(atom(), map()) :: finding()
   def finding(code, attrs \\ %{}) when is_atom(code) and is_map(attrs) do
