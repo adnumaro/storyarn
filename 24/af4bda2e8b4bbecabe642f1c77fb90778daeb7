@@ -1,0 +1,21 @@
+lib/storyarn_web/live/sheet_live/helpers/formula_helpers.ex
+  s_e059091a477d9a::t_f6d57519a16bc4 235-245
+lib/storyarn/shared/formula_engine.ex
+  s_e059091a477d9a::t_2797ba6f35c8bb 60-74,78-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "24af4bda2e8b4bbecabe642f1c77fb90778daeb7",
+  "prompts": {},
+  "sessions": {
+    "s_e059091a477d9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3623d072-d019-4c2b-9c08-57987c0f0e86",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
