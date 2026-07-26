@@ -66,6 +66,24 @@
       "next_version": "Versión siguiente",
       "current": "Actual"
     },
+    "version_viewer_error": {
+      "not_found": {
+        "title": "Versión no encontrada",
+        "description": "Esta versión ya no existe, o no tienes acceso a ella."
+      },
+      "unverified_legacy": {
+        "title": "Esta versión no se puede abrir",
+        "description": "Se guardó antes de que Storyarn registrara sumas de verificación de integridad, así que su contenido no se puede verificar contra el registro. Sigue en el historial, pero no se puede ver ni restaurar."
+      },
+      "integrity": {
+        "title": "Esta versión no ha superado la verificación de integridad",
+        "description": "El snapshot almacenado no coincide con lo que describe el registro de la versión, así que no se mostrará."
+      },
+      "unreadable": {
+        "title": "No se pudo cargar esta versión",
+        "description": "No se pudo leer el snapshot. Inténtalo de nuevo — si sigue fallando, el archivo almacenado puede estar dañado."
+      }
+    },
     "color_picker": {
       "change_color": "Cambiar color",
       "pick_from_screen": "Seleccionar color de la pantalla",

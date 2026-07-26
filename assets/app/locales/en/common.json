@@ -66,6 +66,24 @@
       "next_version": "Next version",
       "current": "Current"
     },
+    "version_viewer_error": {
+      "not_found": {
+        "title": "Version not found",
+        "description": "This version no longer exists, or you don't have access to it."
+      },
+      "unverified_legacy": {
+        "title": "This version can't be opened",
+        "description": "It was saved before Storyarn recorded integrity checksums, so its contents can't be verified against the record. It stays in the history, but it can't be viewed or restored."
+      },
+      "integrity": {
+        "title": "This version failed its integrity check",
+        "description": "The stored snapshot does not match what the version record describes, so it will not be shown."
+      },
+      "unreadable": {
+        "title": "Couldn't load this version",
+        "description": "The snapshot could not be read. Try again — if it keeps failing, the stored file may be damaged."
+      }
+    },
     "color_picker": {
       "change_color": "Change color",
       "pick_from_screen": "Pick color from screen",
