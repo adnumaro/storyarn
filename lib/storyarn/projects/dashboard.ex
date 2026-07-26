@@ -18,7 +18,6 @@ defmodule Storyarn.Projects.Dashboard do
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Sheets
-  alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
 
   # ===========================================================================
@@ -315,45 +314,34 @@ defmodule Storyarn.Projects.Dashboard do
     "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow_id}"
   end
 
+  # Reads the canonical sheet findings instead of running a fourth sheet-health
+  # detector with its own SQL. That detector counted EVERY empty sheet while the
+  # checker's `empty_leaf_sheet` only counts leaves, so the overview over-reported
+  # against the sheets dashboard for any empty parent sheet.
   defp detect_empty_sheets(project_id, workspace_slug, project_slug) do
-    sheets_with_blocks_ids =
-      from(b in Block,
-        join: s in Sheet,
-        on: b.sheet_id == s.id,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
-        select: s.id
-      )
+    count =
+      project_id
+      |> Sheets.list_dashboard_health_findings()
+      |> Enum.count(&(&1.code == :empty_leaf_sheet))
 
-    empty_sheets =
-      Repo.all(
-        from(s in Sheet,
-          where: s.project_id == ^project_id and is_nil(s.deleted_at) and s.id not in subquery(sheets_with_blocks_ids),
-          select: %{id: s.id, name: s.name}
-        )
-      )
-
-    case empty_sheets do
-      [] ->
-        []
-
-      sheets ->
-        count = length(sheets)
-
-        [
-          %{
-            severity: :info,
-            message:
-              dngettext(
-                "sheets",
-                "%{count} sheet has no blocks defined",
-                "%{count} sheets have no blocks defined",
-                count,
-                count: count
-              ),
-            href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets",
-            count: count
-          }
-        ]
+    if count == 0 do
+      []
+    else
+      [
+        %{
+          severity: :info,
+          message:
+            dngettext(
+              "sheets",
+              "%{count} sheet has no blocks defined",
+              "%{count} sheets have no blocks defined",
+              count,
+              count: count
+            ),
+          href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets",
+          count: count
+        }
+      ]
     end
   end
 

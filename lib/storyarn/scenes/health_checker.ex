@@ -82,8 +82,8 @@ defmodule Storyarn.Scenes.HealthChecker do
   Every code this checker can emit.
 
   The dashboard's coverage is asserted against this in
-  `test/storyarn/dashboard_health_coverage_test.exs`: a code the checker can
-  produce but the dashboard cannot is a finding a user only sees inside one
+  `test/storyarn/scenes/dashboard_health_coverage_test.exs`: a code the checker
+  can produce but the dashboard cannot is a finding a user only sees inside one
   entity, which is the discrimination that test exists to prevent.
   """
   @spec codes() :: [atom()]

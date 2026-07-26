@@ -276,7 +276,8 @@ defmodule StoryarnWeb.SheetLive.Index do
   end
 
   defp format_dashboard_health(findings, workspace, project) do
-    Enum.map(findings, fn finding ->
+    findings
+    |> Enum.map(fn finding ->
       %{
         severity: Atom.to_string(finding.severity),
         code: Atom.to_string(finding.code),
@@ -285,17 +286,42 @@ defmodule StoryarnWeb.SheetLive.Index do
         href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{finding.sheet_id}"
       }
     end)
+    # The list is rendered in the order it arrives, and now that every code reaches
+    # it, errors would otherwise sit behind hundreds of info findings.
+    |> Enum.sort_by(&{severity_rank(&1.severity), &1.label, &1.code})
   end
 
+  defp severity_rank("error"), do: 0
+  defp severity_rank("warning"), do: 1
+  defp severity_rank(_info), do: 2
+
+  # Location only — never a rendered sentence. The code carries the meaning and Vue
+  # resolves it from `sheets.health.findings.*`, the same catalog the editor popover
+  # uses, so the two surfaces cannot word a finding differently.
   defp dashboard_health_label(finding) do
-    sheet_name = Map.get(finding.details, :sheet_name, "Sheet")
-
-    case Map.get(finding.details, :variable_name) do
-      variable_name when is_binary(variable_name) and variable_name != "" ->
-        "#{sheet_name} · #{variable_name}"
-
-      _other ->
-        sheet_name
-    end
+    Enum.join([sheet_label(finding) | block_labels(finding)], " · ")
   end
+
+  defp sheet_label(finding) do
+    Map.get(finding.details, :sheet_name) || dgettext("sheets", "Sheet")
+  end
+
+  defp block_labels(%{block_id: nil}), do: []
+
+  defp block_labels(finding) do
+    block = Map.get(finding.details, :block_label) || block_identifier(finding)
+    row = Map.get(finding.details, :row_label) || axis_identifier(dgettext("sheets", "Row"), finding.row_id)
+    column = Map.get(finding.details, :column_label) || axis_identifier(dgettext("sheets", "Column"), finding.column_id)
+
+    Enum.reject([block, row, column], &is_nil/1)
+  end
+
+  defp block_identifier(%{block_type: type, block_id: id}) when is_binary(type) do
+    "#{type |> String.replace("_", " ") |> String.capitalize()} ##{id}"
+  end
+
+  defp block_identifier(%{block_id: id}), do: "##{id}"
+
+  defp axis_identifier(_label, nil), do: nil
+  defp axis_identifier(label, id), do: "#{label} ##{id}"
 end

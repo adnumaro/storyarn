@@ -18,6 +18,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   alias Storyarn.Sheets.BlockCrud
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.FormulaBindingRewriter
+  alias Storyarn.Sheets.InheritanceAudit
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetQueries
@@ -89,13 +90,89 @@ defmodule Storyarn.Sheets.PropertyInheritance do
       |> active_inherited_instances()
       |> Enum.reject(&MapSet.member?(hidden_source_ids, &1.inherited_from_block_id))
 
-    sources_by_id = Map.new(eligible_sources, &{&1.id, &1})
-    instances_by_source = Enum.group_by(instances, & &1.inherited_from_block_id)
-    table_structures = inheritance_table_structures(eligible_sources, instances)
+    InheritanceAudit.issues(
+      eligible_sources,
+      instances,
+      InheritanceAudit.table_structures(eligible_sources ++ instances)
+    )
+  end
 
-    missing_instance_issues(eligible_sources, instances_by_source) ++
-      duplicate_instance_issues(instances_by_source) ++
-      instance_health_issues(instances, sources_by_id, table_structures)
+  @doc """
+  Runs `list_health_issues/1` for every sheet of a project in a fixed number of
+  queries, resolving the ancestor chains in memory.
+
+  Sheet-at-a-time auditing costs six queries per sheet, which is what made the
+  project-wide health sweep unaffordable before. Same audit, same verdicts:
+  `dashboard_health_coverage_test.exs` pins that against the per-sheet path.
+
+  Returns `%{sheet_id => issues}`, with an entry for every sheet in `sheets`.
+  """
+  @spec list_project_health_issues([Sheet.t()]) :: %{integer() => [map()]}
+  def list_project_health_issues([]), do: %{}
+
+  def list_project_health_issues(sheets) do
+    sheets_by_id = Map.new(sheets, &{&1.id, &1})
+    ancestors_by_sheet = Map.new(sheets, &{&1.id, ancestor_chain(&1, sheets_by_id)})
+
+    sources_by_sheet =
+      sheets
+      |> Enum.map(& &1.id)
+      |> load_children_scope_blocks_for_sheets()
+      |> Enum.group_by(& &1.sheet_id)
+
+    instances_by_sheet =
+      sheets
+      |> Enum.map(& &1.id)
+      |> active_inherited_instances_for_sheets()
+      |> Enum.group_by(& &1.sheet_id)
+
+    resolved =
+      Map.new(sheets, fn sheet ->
+        ancestors = Map.get(ancestors_by_sheet, sheet.id, [])
+        hidden_source_ids = MapSet.new(collect_hidden_block_ids([sheet | ancestors]))
+
+        sources =
+          ancestors
+          |> Enum.flat_map(&Map.get(sources_by_sheet, &1.id, []))
+          |> Enum.reject(&MapSet.member?(hidden_source_ids, &1.id))
+
+        instances =
+          instances_by_sheet
+          |> Map.get(sheet.id, [])
+          |> Enum.reject(&MapSet.member?(hidden_source_ids, &1.inherited_from_block_id))
+
+        {sheet.id, {sources, instances}}
+      end)
+
+    structures =
+      resolved
+      |> Enum.flat_map(fn {_sheet_id, {sources, instances}} -> sources ++ instances end)
+      |> Enum.uniq_by(& &1.id)
+      |> InheritanceAudit.table_structures()
+
+    Map.new(resolved, fn {sheet_id, {sources, instances}} ->
+      {sheet_id, InheritanceAudit.issues(sources, instances, structures)}
+    end)
+  end
+
+  # Nearest ancestor first, mirroring `SheetQueries.list_ancestors/1`, so eligible
+  # source order — and therefore issue order — is identical on both paths.
+  defp ancestor_chain(sheet, sheets_by_id, seen \\ [])
+
+  defp ancestor_chain(%Sheet{parent_id: nil}, _sheets_by_id, _seen), do: []
+
+  defp ancestor_chain(%Sheet{} = sheet, sheets_by_id, seen) do
+    case Map.get(sheets_by_id, sheet.parent_id) do
+      nil ->
+        []
+
+      parent ->
+        if parent.id in seen do
+          []
+        else
+          [parent | ancestor_chain(parent, sheets_by_id, [parent.id | seen])]
+        end
+    end
   end
 
   defp active_inherited_instances(sheet_id) do
@@ -110,105 +187,16 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     )
   end
 
-  defp missing_instance_issues(eligible_sources, instances_by_source) do
-    eligible_sources
-    |> Enum.reject(&Map.has_key?(instances_by_source, &1.id))
-    |> Enum.map(&inheritance_issue("missing_instance", nil, &1.id))
-  end
-
-  defp duplicate_instance_issues(instances_by_source) do
-    Enum.flat_map(instances_by_source, fn {source_id, instances} ->
-      if length(instances) > 1 do
-        [
-          inheritance_issue("duplicate_instances", hd(instances).id, source_id, %{
-            instance_ids: Enum.map(instances, & &1.id)
-          })
-        ]
-      else
-        []
-      end
-    end)
-  end
-
-  defp instance_health_issues(instances, sources_by_id, table_structures) do
-    Enum.flat_map(instances, fn instance ->
-      source = Map.get(sources_by_id, instance.inherited_from_block_id)
-
-      cond do
-        is_nil(source) ->
-          [inheritance_issue("source_not_eligible", instance.id, instance.inherited_from_block_id)]
-
-        not inherited_definition_current?(source, instance) ->
-          [inheritance_issue("stale_definition", instance.id, source.id)]
-
-        not inherited_table_structure_current?(source, instance, table_structures) ->
-          [inheritance_issue("stale_table_structure", instance.id, source.id)]
-
-        true ->
-          []
-      end
-    end)
-  end
-
-  defp inherited_definition_current?(source, instance) do
-    instance.type == source.type and
-      instance.config == source.config and
-      instance.required == source.required and
-      instance.is_constant == source.is_constant and
-      instance.scope == "self"
-  end
-
-  defp inheritance_table_structures(sources, instances) do
-    block_ids =
-      (sources ++ instances)
-      |> Enum.filter(&(&1.type == "table"))
-      |> Enum.map(& &1.id)
-
-    columns =
-      Repo.all(
-        from(column in TableColumn,
-          where: column.block_id in ^block_ids,
-          order_by: [asc: column.block_id, asc: column.position, asc: column.id]
-        )
+  defp active_inherited_instances_for_sheets(sheet_ids) do
+    Repo.all(
+      from(block in Block,
+        where:
+          block.sheet_id in ^sheet_ids and
+            not is_nil(block.inherited_from_block_id) and
+            block.detached == false and is_nil(block.deleted_at),
+        order_by: [asc: block.id]
       )
-
-    rows =
-      Repo.all(
-        from(row in TableRow,
-          where: row.block_id in ^block_ids,
-          order_by: [asc: row.block_id, asc: row.position, asc: row.id]
-        )
-      )
-
-    Map.new(block_ids, fn block_id ->
-      {block_id, {table_columns_for_block(columns, block_id), table_rows_for_block(rows, block_id)}}
-    end)
-  end
-
-  defp inherited_table_structure_current?(%Block{type: "table"} = source, instance, structures) do
-    {source_columns, source_rows} = Map.get(structures, source.id, {[], []})
-    {instance_columns, instance_rows} = Map.get(structures, instance.id, {[], []})
-
-    Enum.map(source_columns, &table_column_signature/1) ==
-      Enum.map(instance_columns, &table_column_signature/1) and
-      Enum.map(source_rows, &table_row_signature/1) ==
-        Enum.map(instance_rows, &table_row_signature/1) and
-      inherited_cell_keys_current?(source_columns, instance_rows)
-  end
-
-  defp inherited_table_structure_current?(_source, _instance, _structures), do: true
-
-  defp inherited_cell_keys_current?(source_columns, instance_rows) do
-    expected_cell_keys = MapSet.new(source_columns, & &1.slug)
-    Enum.all?(instance_rows, &(MapSet.new(Map.keys(&1.cells || %{})) == expected_cell_keys))
-  end
-
-  defp inheritance_issue(reason, block_id, source_block_id, details \\ %{}) do
-    Map.merge(details, %{
-      reason: reason,
-      block_id: block_id,
-      source_block_id: source_block_id
-    })
+    )
   end
 
   @doc """
@@ -853,14 +841,9 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   end
 
   defp verify_inherited_definition!(source, instance) do
-    current? =
-      instance.type == source.type and
-        instance.config == source.config and
-        instance.required == source.required and
-        instance.is_constant == source.is_constant and
-        instance.scope == "self"
-
-    if !current?, do: Repo.rollback({:stale_inherited_definition, instance.id})
+    if !InheritanceAudit.definition_current?(source, instance) do
+      Repo.rollback({:stale_inherited_definition, instance.id})
+    end
   end
 
   defp verify_inherited_table_structure!(%Block{type: "table"} = source, %Block{type: "table"} = instance) do
@@ -884,58 +867,26 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         )
       )
 
-    source_columns = table_columns_for_block(columns, source.id)
-    instance_columns = table_columns_for_block(columns, instance.id)
-    source_rows = table_rows_for_block(rows, source.id)
-    instance_rows = table_rows_for_block(rows, instance.id)
+    source_columns = InheritanceAudit.columns_for_block(columns, source.id)
+    instance_columns = InheritanceAudit.columns_for_block(columns, instance.id)
+    source_rows = InheritanceAudit.rows_for_block(rows, source.id)
+    instance_rows = InheritanceAudit.rows_for_block(rows, instance.id)
 
     column_definitions_match? =
-      Enum.map(source_columns, &table_column_signature/1) ==
-        Enum.map(instance_columns, &table_column_signature/1)
+      Enum.map(source_columns, &InheritanceAudit.column_signature/1) ==
+        Enum.map(instance_columns, &InheritanceAudit.column_signature/1)
 
     row_definitions_match? =
-      Enum.map(source_rows, &table_row_signature/1) ==
-        Enum.map(instance_rows, &table_row_signature/1)
+      Enum.map(source_rows, &InheritanceAudit.row_signature/1) ==
+        Enum.map(instance_rows, &InheritanceAudit.row_signature/1)
 
-    expected_cell_keys = MapSet.new(source_columns, & &1.slug)
-
-    cell_keys_match? =
-      Enum.all?(instance_rows, fn row ->
-        MapSet.new(Map.keys(row.cells || %{})) == expected_cell_keys
-      end)
-
-    if !column_definitions_match? or !row_definitions_match? or !cell_keys_match? do
+    if !column_definitions_match? or !row_definitions_match? or
+         !InheritanceAudit.cell_keys_current?(source_columns, instance_rows) do
       Repo.rollback({:stale_inherited_table, instance.id})
     end
   end
 
   defp verify_inherited_table_structure!(_source, _instance), do: :ok
-
-  defp table_columns_for_block(columns, block_id) do
-    columns
-    |> Enum.filter(&(&1.block_id == block_id))
-    |> Enum.sort_by(&{&1.position, &1.id})
-  end
-
-  defp table_rows_for_block(rows, block_id) do
-    rows
-    |> Enum.filter(&(&1.block_id == block_id))
-    |> Enum.sort_by(&{&1.position, &1.id})
-  end
-
-  defp table_column_signature(column) do
-    {
-      column.slug,
-      column.name,
-      column.type,
-      column.is_constant,
-      column.required,
-      column.position,
-      column.config
-    }
-  end
-
-  defp table_row_signature(row), do: {row.slug, row.name, row.position}
 
   defp normalize_inheritance_target_ids!(sheet_ids) do
     if Enum.all?(sheet_ids, &(is_integer(&1) and &1 > 0)) and

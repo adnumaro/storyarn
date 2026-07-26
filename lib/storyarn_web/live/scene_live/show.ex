@@ -704,10 +704,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
         project_flows: Storyarn.Flows.list_flows(project.id),
         project_variables: VariableHelpers.list_all_variables(project.id),
-        project_asset_ids:
-          project.id
-          |> Assets.list_assets(images_only: true)
-          |> Enum.map(& &1.id)
+        project_asset_ids: Assets.list_asset_ids(project.id, images_only: true)
       }
     end)
   end

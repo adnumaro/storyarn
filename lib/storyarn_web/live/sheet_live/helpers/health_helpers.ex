@@ -18,28 +18,50 @@ defmodule StoryarnWeb.SheetLive.Helpers.HealthHelpers do
 
   @doc "Enriches the current sheet snapshot, checks it, and assigns its UI payload."
   def assign_sheet_health(socket) do
-    %{sheet: sheet, project: project, blocks: own_blocks, inherited_groups: inherited_groups} = socket.assigns
+    snapshot = sheet_snapshot(socket.assigns)
+    findings = HealthChecker.check(snapshot)
 
+    assign(
+      socket,
+      :sheet_health,
+      health_payload(findings, snapshot.sheet, snapshot.blocks, snapshot.table_data)
+    )
+  end
+
+  @doc """
+  Builds the checker snapshot for the sheet currently open in the editor.
+
+  This is the reference snapshot: the project-wide sweep behind the sheets
+  dashboard must produce an equivalent one per sheet, which
+  `test/storyarn/sheets/dashboard_health_coverage_test.exs` pins by checking both
+  and comparing the findings. Public so that test can drive the real builder
+  instead of a copy of it.
+  """
+  def sheet_snapshot(%{sheet: sheet, project: project, blocks: own_blocks, inherited_groups: inherited_groups} = assigns) do
     all_blocks = Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
     block_ids = Enum.map(all_blocks, & &1.id)
-    referenced_block_ids = Flows.referenced_block_ids(block_ids)
 
-    snapshot = %{
+    # Project-wide on purpose: a variable bound by a table formula IS used, and
+    # `Flows.referenced_block_ids/1` — which only sees tracked variable references —
+    # does not know that, so this header used to claim "no internal usages" for a
+    # block the dashboard correctly reported as used. One source of truth for both.
+    referenced_block_ids = Sheets.referenced_block_ids_for_project(project.id)
+
+    %{
       sheet: sheet,
       blocks: all_blocks,
-      table_data: socket.assigns.table_data,
-      gallery_data: socket.assigns.gallery_data,
+      table_data: assigns.table_data,
+      gallery_data: assigns.gallery_data,
       has_children: Sheets.has_children?(sheet.id),
       inheritance_issues: Sheets.list_inheritance_health_issues(sheet.id),
       referenced_block_ids: referenced_block_ids,
       stale_variable_reference_counts: stale_variable_reference_counts(all_blocks, referenced_block_ids, project.id),
       stale_entity_reference_block_ids: Sheets.list_stale_block_reference_source_ids(project.id, block_ids),
       reference_targets: reference_targets(all_blocks, project.id),
-      project_variable_types: project_variable_types(project.id)
+      # Not rebuilt here: the reference format this map is keyed by decides whether
+      # a formula binding is valid, and the dashboard sweep must key it identically.
+      project_variable_types: Sheets.health_variable_types(project.id)
     }
-
-    findings = HealthChecker.check(snapshot)
-    assign(socket, :sheet_health, health_payload(findings, sheet, all_blocks, socket.assigns.table_data))
   end
 
   @doc "Serializes checker findings into stable, grouped UI payloads."
@@ -77,15 +99,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.HealthHelpers do
 
     Map.new(references, fn {block_id, target_type, target_id} ->
       {block_id, Map.get(targets, {target_type, target_id})}
-    end)
-  end
-
-  defp project_variable_types(project_id) do
-    project_id
-    |> Sheets.list_project_variables()
-    |> Map.new(fn variable ->
-      reference = "#{variable.sheet_shortcut}.#{variable.variable_name}"
-      {reference, variable.block_type}
     end)
   end
 

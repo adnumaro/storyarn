@@ -25,7 +25,9 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.BlockCrud
   alias Storyarn.Sheets.Constraints.Number
   alias Storyarn.Sheets.ContextQueries
+  alias Storyarn.Sheets.FormulaResolver
   alias Storyarn.Sheets.GalleryCrud
+  alias Storyarn.Sheets.HealthSnapshots
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
@@ -633,6 +635,9 @@ defmodule Storyarn.Sheets do
   defdelegate update_table_cells(row, cells_map), to: TableCrud, as: :update_cells
   defdelegate batch_load_table_data(block_ids), to: TableCrud
 
+  @doc "Injects computed formula results (`__result`/`__resolved`) into batched table data."
+  defdelegate enrich_table_formulas(table_data, project_id), to: FormulaResolver, as: :enrich_table_data
+
   # =============================================================================
   # Gallery Images
   # =============================================================================
@@ -1000,6 +1005,8 @@ defmodule Storyarn.Sheets do
   defdelegate list_variable_refs_with_block_info_for_repair(project_id), to: SheetQueries
 
   @doc "Lists stale regular (non-table) node IDs in a flow."
+  defdelegate list_stale_node_ids_by_flow(flow_ids), to: SheetQueries
+
   defdelegate list_stale_regular_node_ids(flow_id), to: SheetQueries
 
   @doc "Lists stale table node IDs in a flow."
@@ -1061,6 +1068,12 @@ defmodule Storyarn.Sheets do
 
   @doc "Returns the canonical sheet health findings used by the project dashboard overview."
   defdelegate list_dashboard_health_findings(project_id, referenced_ids \\ nil), to: SheetStats
+
+  @doc """
+  Returns `%{variable_reference => block_type}` for the project — the vocabulary
+  both health surfaces type-check formula bindings against.
+  """
+  defdelegate health_variable_types(project_id), to: HealthSnapshots, as: :variable_types
 
   defp broadcast_block_dashboard_result({:ok, _value} = result, %Block{} = block) do
     case Repo.get(Sheet, block.sheet_id) do

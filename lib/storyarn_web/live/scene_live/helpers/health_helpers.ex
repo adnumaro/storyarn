@@ -2,11 +2,15 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
   @moduledoc """
   Builds the enriched snapshot used by the scene health checker and serializes
   its findings for the Vue header.
+
+  The check itself runs through `Scenes.scene_health_findings/3` — the same
+  composition point the project-wide dashboard sweep enters — so the editor and
+  the dashboard cannot feed the checker differently for the same scene.
   """
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Scenes.HealthChecker
+  alias Storyarn.Scenes
 
   @empty_health %{errorItems: [], warningItems: [], infoItems: []}
 
@@ -19,8 +23,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
   def assign_scene_health(socket) do
     assigns = socket.assigns
     collections = scene_collections(assigns)
-    snapshot = health_snapshot(assigns, collections)
-    findings = HealthChecker.check(snapshot)
+    findings = Scenes.scene_health_findings(assigns.scene, collections, health_references(assigns))
 
     assign(
       socket,
@@ -49,25 +52,21 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
     }
   end
 
-  defp health_snapshot(assigns, collections) do
-    %{
-      scene: assigns.scene,
-      layers: collections.layers,
-      zones: collections.zones,
-      pins: collections.pins,
-      connections: collections.connections,
-      annotations: collections.annotations,
-      ambient_flows: collections.ambient_flows,
-      scene_layer_ids: MapSet.new(collections.layers, & &1.id),
-      scene_pin_ids: MapSet.new(collections.pins, & &1.id),
-      references_loaded: assigns.health_references_loaded,
-      valid_scene_ids: MapSet.new(list(assigns.project_scenes), & &1.id),
-      valid_sheet_ids: assigns.project_sheets |> flatten_tree() |> MapSet.new(& &1.id),
-      valid_flow_ids: MapSet.new(list(assigns.project_flows), & &1.id),
-      valid_asset_ids: MapSet.new(list(assigns.project_asset_ids)),
-      project_variables: list(assigns.project_variables)
-    }
+  # `health_references_loaded` stays the gate: until the async sidebar load
+  # lands, every project reference set is empty and reporting them as stale
+  # would flag the whole scene.
+  defp health_references(assigns) do
+    Scenes.scene_health_references(%{
+      loaded?: assigns.health_references_loaded,
+      scene_ids: entity_ids(assigns.project_scenes),
+      sheet_ids: assigns.project_sheets |> flatten_tree() |> Enum.map(& &1.id),
+      flow_ids: entity_ids(assigns.project_flows),
+      asset_ids: list(assigns.project_asset_ids),
+      variables: list(assigns.project_variables)
+    })
   end
+
+  defp entity_ids(entities), do: entities |> list() |> Enum.map(& &1.id)
 
   @doc "Serializes checker findings into stable, grouped UI payloads."
   def health_payload(findings, scene, layers, zones, pins, connections, annotations, ambient_flows) do

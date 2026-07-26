@@ -23,7 +23,7 @@ defmodule Storyarn.Sheets.FormulaResolver do
   Returns `%{row_id => %{column_slug => result}}` where result is `number | nil`.
   Returns an empty map if there are no formula columns.
   """
-  @spec compute_all(list(), list(), binary()) :: map()
+  @spec compute_all(list(), list(), integer()) :: map()
   def compute_all(columns, rows, project_id) do
     formula_cols = Enum.filter(columns, &(&1.type == "formula"))
 
@@ -33,6 +33,68 @@ defmodule Storyarn.Sheets.FormulaResolver do
       cross_values = resolve_cross_values(formula_cols, rows, project_id)
       compute_all_rows(formula_cols, rows, columns, cross_values)
     end
+  end
+
+  @doc """
+  Injects `__result` and `__resolved` into every formula cell of a batch of table
+  data, as returned by `Sheets.batch_load_table_data/1`.
+
+  `__resolved` is what the health checker evaluates formulas against, so a caller
+  that skips this enrichment silently loses `formula_evaluation_failed` — and, on
+  rows whose formula cell was never written, reports a phantom
+  `invalid_table_structure` the editor does not. Both the editor and the
+  project-wide health sweep therefore go through here.
+
+  Cross-sheet variable references are resolved once for the whole batch, so the
+  cost is the same for one table as for a project's worth of them.
+  """
+  @spec enrich_table_data(map(), integer()) :: map()
+  def enrich_table_data(table_data, project_id) do
+    cross_values = resolve_batch_cross_values(table_data, project_id)
+
+    Map.new(table_data, fn {block_id, data} -> {block_id, enrich_table(data, cross_values)} end)
+  end
+
+  defp resolve_batch_cross_values(table_data, project_id) do
+    cross_refs =
+      table_data
+      |> Enum.flat_map(fn {_block_id, %{columns: columns, rows: rows}} ->
+        columns
+        |> Enum.filter(&(&1.type == "formula"))
+        |> MapSet.new(& &1.slug)
+        |> collect_cross_sheet_refs(rows)
+      end)
+      |> Enum.uniq()
+
+    if cross_refs == [], do: %{}, else: Sheets.resolve_variable_values(project_id, cross_refs)
+  end
+
+  defp enrich_table(%{columns: columns, rows: rows} = data, cross_values) do
+    formula_cols = Enum.filter(columns, &(&1.type == "formula"))
+
+    if formula_cols == [] do
+      data
+    else
+      computed = compute_all_rows(formula_cols, rows, columns, cross_values)
+      %{data | rows: Enum.map(rows, &enrich_row(&1, Map.get(computed, &1.id, %{})))}
+    end
+  end
+
+  defp enrich_row(row, results) do
+    cells =
+      Enum.reduce(results, row.cells, fn {slug, computed}, cells ->
+        Map.put(cells, slug, enrich_cell(Map.get(cells, slug), computed))
+      end)
+
+    %{row | cells: cells}
+  end
+
+  defp enrich_cell(current, %{result: result, resolved: resolved}) when is_map(current) do
+    current |> Map.put("__result", result) |> Map.put("__resolved", resolved)
+  end
+
+  defp enrich_cell(_current, %{result: result, resolved: resolved}) do
+    %{"__result" => result, "__resolved" => resolved}
   end
 
   defp resolve_cross_values(formula_cols, rows, project_id) do

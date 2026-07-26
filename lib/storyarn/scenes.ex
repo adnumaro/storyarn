@@ -24,6 +24,7 @@ defmodule Storyarn.Scenes do
   alias Storyarn.Scenes.AnnotationCrud
   alias Storyarn.Scenes.ConnectionCrud
   alias Storyarn.Scenes.ExplorationSessionCrud
+  alias Storyarn.Scenes.HealthSnapshots
   alias Storyarn.Scenes.LayerCrud
   alias Storyarn.Scenes.PinCrud
   alias Storyarn.Scenes.Scene
@@ -658,8 +659,14 @@ defmodule Storyarn.Scenes do
   @doc "Returns the count of scenes that have a background image."
   defdelegate scenes_with_background_count(project_id), to: SceneStats
 
-  @doc "Returns the canonical project-wide scene health overview findings."
+  @doc "Returns the canonical project-wide scene health findings, one checker run per scene."
   defdelegate list_dashboard_health_findings(project_id), to: SceneStats
+
+  @doc "Normalizes the project-wide reference sets a scene health check needs."
+  defdelegate scene_health_references(attrs), to: HealthSnapshots, as: :references
+
+  @doc "Returns the canonical health findings for one scene and its elements."
+  defdelegate scene_health_findings(scene, collections, references), to: HealthSnapshots, as: :findings
 
   # =============================================================================
   # Exploration Sessions

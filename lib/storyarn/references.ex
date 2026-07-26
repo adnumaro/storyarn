@@ -45,5 +45,6 @@ defmodule Storyarn.References do
 
   defdelegate check_stale_variable_references(block_id, project_id), to: VariableUsage
   defdelegate repair_stale_variable_references(project_id), to: VariableUsage
+  defdelegate list_stale_node_ids_by_flow(flow_ids), to: VariableUsage
   defdelegate list_stale_node_ids(flow_id), to: VariableUsage
 end

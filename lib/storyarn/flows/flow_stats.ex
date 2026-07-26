@@ -75,10 +75,18 @@ defmodule Storyarn.Flows.FlowStats do
     # warnings on any assignment to a scene pin or zone property.
     project_variables = Flows.list_referenceable_variables(project_id)
 
-    project_id
-    |> Topology.load_project()
-    |> Enum.flat_map(fn topology ->
-      stale_node_ids = References.list_stale_node_ids(topology.flow_id)
+    topologies = Topology.load_project(project_id)
+
+    # Batched, like the sheets and scenes sweeps: the per-flow pair of
+    # stale-reference queries made this O(N) — 2 queries per flow — while the
+    # other two domains are flat. Two queries total now.
+    stale_by_flow =
+      topologies
+      |> Enum.map(& &1.flow_id)
+      |> References.list_stale_node_ids_by_flow()
+
+    Enum.flat_map(topologies, fn topology ->
+      stale_node_ids = Map.get(stale_by_flow, topology.flow_id, MapSet.new())
       nodes = Flows.add_health_flags(topology.nodes, stale_node_ids, project_variables)
 
       %{topology | nodes: nodes}
