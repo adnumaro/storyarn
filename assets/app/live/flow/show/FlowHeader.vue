@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Map as MapIcon, Text, X } from "lucide-vue-next";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  Map as MapIcon,
+  Text,
+  X,
+} from "lucide-vue-next";
 import { computed, onUnmounted, ref } from "vue";
 import EditableText from "@components/forms/EditableText.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";

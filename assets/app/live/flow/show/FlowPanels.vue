@@ -67,7 +67,6 @@ interface FlowPanels {
 const { panels } = defineProps<{
   panels: FlowPanels;
 }>();
-
 </script>
 
 <template>
@@ -142,6 +141,5 @@ const { panels } = defineProps<{
         :has-history="panels.preview.hasHistory"
       />
     </div>
-
   </div>
 </template>

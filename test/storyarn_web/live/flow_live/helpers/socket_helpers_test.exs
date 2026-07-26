@@ -106,18 +106,19 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
 
       result = SocketHelpers.reload_flow_data(socket)
 
-      warning_node = Enum.find(result.assigns.flow_warning_nodes, &(&1.id == dialogue.id))
+      health = result.assigns.flow_health
+      item = Enum.find(health.warningItems, &(&1.entityId == dialogue.id))
+      codes = Enum.map(item.reasons, & &1.code)
 
-      assert "Missing dialogue text" in warning_node.reasons
-      assert "Missing dialogue speaker" in warning_node.reasons
-      # Structural findings (unreachable, no outgoing connection) moved to the
-      # analysis panel: the popover keeps editorial reasons only, the compact
-      # summary carries the structural counts.
-      refute "Not reachable from any entry node" in warning_node.reasons
-      refute "No outgoing connection" in warning_node.reasons
-      assert result.assigns.flow_structural_summary.warningCount >= 2
-      refute Enum.any?(result.assigns.flow_error_nodes, &(&1.id == dialogue.id))
-      refute Enum.any?(result.assigns.flow_info_nodes, &(&1.id == dialogue.id))
+      # Reasons travel as CODES for Vue to translate; the server no longer renders
+      # the sentence. Editorial and structural now share one surface, so the
+      # isolated-node finding belongs here too.
+      assert "missing_dialogue_text" in codes
+      assert "missing_dialogue_speaker" in codes
+      assert "isolated_node" in codes
+      assert item.entityType == "dialogue"
+      refute Enum.any?(health.errorItems, &(&1.entityId == dialogue.id))
+      refute Enum.any?(health.infoItems, &(&1.entityId == dialogue.id))
     end
   end
 

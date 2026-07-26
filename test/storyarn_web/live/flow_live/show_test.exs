@@ -57,12 +57,15 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       render_async(view, 2000)
 
       header = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowHeader")
-      health = header.props["flow-health"]
-      warning_node = Enum.find(health["warningNodes"], &(&1["id"] == dialogue.id))
+      health = header.props["flow-health"]["health"]
+      item = Enum.find(health["warningItems"], &(&1["entityId"] == dialogue.id))
+      codes = Enum.map(item["reasons"], & &1["code"])
 
-      assert "Missing dialogue text" in warning_node["reasons"]
-      assert "Missing dialogue speaker" in warning_node["reasons"]
-      refute Enum.any?(health["errorNodes"], &(&1["id"] == dialogue.id))
+      # Codes cross the wire, not sentences: Vue resolves them against
+      # `flows.health.findings.*`, the same catalog the dashboard uses.
+      assert "missing_dialogue_text" in codes
+      assert "missing_dialogue_speaker" in codes
+      refute Enum.any?(health["errorItems"], &(&1["entityId"] == dialogue.id))
     end
 
     test "compact route keeps the canvas boundary mounted while data loads",

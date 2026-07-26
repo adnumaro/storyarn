@@ -1,27 +1,21 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import FlowHeader from "../../../../live/flow/show/FlowHeader.vue";
-import { createMockLive } from "../../../setup";
+import FlowHeader from "@app/live/flow/show/FlowHeader.vue";
+import type { FlowHealth } from "@modules/flows/types/health";
+import { createMockLive } from "@app/test/setup";
+
+// Health itself is covered in FlowHealthStatus.test.ts — the header stopped
+// owning a popover when flows moved onto the shared component. What is left to
+// prove here is that the header still renders the pieces it owns and hands the
+// health payload down untouched.
 
 const passthrough = { template: "<div><slot /></div>" };
 
-interface TestHealthNode {
-  id: number | string | null;
-  label: string;
-  reason?: string;
-  reasons?: string[];
-}
+const EMPTY_HEALTH: FlowHealth = { errorItems: [], warningItems: [], infoItems: [] };
 
-interface TestFlowHealth {
-  wordCount: number;
-  errorNodes: TestHealthNode[];
-  warningNodes: TestHealthNode[];
-  infoNodes: TestHealthNode[];
-  structural: { errorCount: number; warningCount: number };
-}
-
-function mountHeader(flowHealth: TestFlowHealth) {
+function mountHeader(health: FlowHealth = EMPTY_HEALTH, wordCount = 330) {
   const live = createMockLive();
+
   const wrapper = mount(FlowHeader, {
     props: {
       flowName: "Opening",
@@ -30,14 +24,12 @@ function mountHeader(flowHealth: TestFlowHealth) {
       canEdit: false,
       saveStatus: "idle",
       navHistory: { back: null, forward: null },
-      flowHealth,
+      flowHealth: { wordCount, health },
       sceneSelected: { name: null, inherited: false },
       projectScenes: [],
     },
     global: {
-      provide: {
-        _live_vue: live,
-      },
+      provide: { _live_vue: live },
       stubs: {
         Badge: passthrough,
         EditableText: passthrough,
@@ -48,9 +40,7 @@ function mountHeader(flowHealth: TestFlowHealth) {
         },
         PopoverAnchor: passthrough,
         PopoverContent: passthrough,
-        PopoverTrigger: {
-          template: '<button type="button"><slot /></button>',
-        },
+        PopoverTrigger: { template: '<button type="button"><slot /></button>' },
         ToolbarTooltip: passthrough,
       },
     },
@@ -59,69 +49,32 @@ function mountHeader(flowHealth: TestFlowHealth) {
   return { live, wrapper };
 }
 
-describe("FlowHeader flow health", () => {
-  it("counts findings from every reason and always labels each visible severity", () => {
-    const { wrapper } = mountHeader({
-      wordCount: 0,
-      structural: { errorCount: 0, warningCount: 0 },
-      errorNodes: [
-        {
-          id: 11,
-          label: "Dialogue #11",
-          reasons: ["Broken reference", "Missing dialogue text"],
-        },
-      ],
-      warningNodes: [
-        {
-          id: 12,
-          label: "Subflow #12",
-          reason: "No outgoing connection",
-        },
-      ],
-      infoNodes: [
-        {
-          id: 13,
-          label: "Dialogue #13",
-          reasons: ["Optional metadata", "Draft content"],
-        },
-      ],
-    });
+describe("FlowHeader", () => {
+  it("renders the word count", () => {
+    const { wrapper } = mountHeader();
 
-    expect(wrapper.get('[data-testid="flow-health-error-count"]').text()).toBe("2");
-    expect(wrapper.get('[data-testid="flow-health-warning-count"]').text()).toBe("1");
-    expect(wrapper.get('[data-testid="flow-health-info-count"]').text()).toBe("2");
-    expect(wrapper.get('[data-testid="flow-health-errors"]').text()).toBe("Errors");
-    expect(wrapper.get('[data-testid="flow-health-warnings"]').text()).toBe("Warnings");
-    expect(wrapper.get('[data-testid="flow-health-info"]').text()).toBe("Info");
+    expect(wrapper.text()).toContain("330");
   });
 
-  it("navigates to node findings but disables flow-level findings", async () => {
-    const { live, wrapper } = mountHeader({
-      wordCount: 0,
-      structural: { errorCount: 0, warningCount: 0 },
-      errorNodes: [
+  it("delegates health to the shared status component", () => {
+    const health: FlowHealth = {
+      errorItems: [],
+      warningItems: [
         {
-          id: null,
-          label: "Opening",
-          reasons: ["Flow has no entry node"],
+          entityType: "dialogue",
+          entityId: 42,
+          label: "Dialogue #42",
+          reasons: [{ code: "missing_dialogue_speaker" }],
         },
       ],
-      warningNodes: [
-        {
-          id: 42,
-          label: "Subflow #42",
-          reasons: ["No outgoing connection"],
-        },
-      ],
-      infoNodes: [],
-    });
+      infoItems: [],
+    };
 
-    const flowFinding = wrapper.get('[data-health-severity="error"]');
-    expect(flowFinding.attributes()).toHaveProperty("disabled");
-    await flowFinding.trigger("click");
-    expect(live.pushEvent).not.toHaveBeenCalled();
+    const { wrapper } = mountHeader(health);
 
-    await wrapper.get('[data-health-node-id="42"]').trigger("click");
-    expect(live.pushEvent).toHaveBeenCalledWith("navigate_to_node", { id: 42 }, undefined);
+    // The badge and its count come from the shared popover, so seeing them here
+    // is proof the payload arrived intact.
+    expect(wrapper.get('[data-testid="flow-health-warning-count"]').text()).toBe("1");
+    expect(wrapper.find('[data-testid="flow-health-error-count"]').exists()).toBe(false);
   });
 });

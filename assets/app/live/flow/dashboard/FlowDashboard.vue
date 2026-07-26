@@ -66,7 +66,6 @@ interface FlowPagination {
   total: number;
 }
 
-
 interface StatCard {
   icon: Component;
   label: string;

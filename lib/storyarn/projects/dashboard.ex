@@ -225,31 +225,94 @@ defmodule Storyarn.Projects.Dashboard do
   # Issue Detectors (formatters over the canonical flow analysis)
   # ---------------------------------------------------------------------------
 
-  # One row per flow and severity. This used to be three hand-written rows over
-  # three coarse buckets covering 4 of the 15 rules; grouping keeps the overview
-  # short while every rule now counts, including the reference-integrity errors
-  # the dashboard never showed.
+  # The project overview is a CURATED cross-domain summary, not full coverage:
+  # every domain contributes a few high-signal rows with a written sentence
+  # (`detect_empty_sheets` does exactly this for sheets). So flows keeps specific
+  # copy here — but driven by the canonical findings, so it cannot drift from the
+  # flows dashboard the way the old bucket mapping did.
+  #
+  # Anything outside the curated set still gets a row per flow and severity, so no
+  # finding is silently dropped from the overview.
+  @curated_codes %{
+    missing_entry: :no_entry,
+    isolated_node: :disconnected,
+    unreachable_node: :disconnected,
+    no_outgoing_connection: :dead_end
+  }
+
   defp detect_flow_health(findings, workspace_slug, project_slug) do
-    findings
-    |> Enum.filter(&(&1.severity in [:error, :warning]))
-    |> Enum.group_by(&{&1.flow_id, &1.severity})
-    |> Enum.map(fn {{flow_id, severity}, grouped} ->
-      %{
-        severity: severity,
-        message: flow_health_message(severity, hd(grouped).details[:flow_name], length(grouped)),
-        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow_id}",
-        count: length(grouped)
-      }
-    end)
-    |> Enum.sort_by(& &1.message)
+    {curated, rest} = Enum.split_with(findings, &Map.has_key?(@curated_codes, &1.code))
+
+    curated_rows =
+      curated
+      |> Enum.group_by(&{&1.flow_id, Map.fetch!(@curated_codes, &1.code)})
+      |> Enum.map(fn {{flow_id, kind}, group} ->
+        flow_health_row(kind, hd(group), length(group), flow_id, workspace_slug, project_slug)
+      end)
+
+    other_rows =
+      rest
+      |> Enum.filter(&(&1.severity in [:error, :warning]))
+      |> Enum.group_by(&{&1.flow_id, &1.severity})
+      |> Enum.map(fn {{flow_id, severity}, group} ->
+        %{
+          severity: severity,
+          message: other_flow_health_message(severity, flow_name(hd(group)), length(group)),
+          href: flow_href(workspace_slug, project_slug, flow_id),
+          count: length(group)
+        }
+      end)
+
+    Enum.sort_by(curated_rows ++ other_rows, & &1.message)
   end
 
-  defp flow_health_message(:error, flow_name, count) do
+  defp flow_health_row(:no_entry, finding, _count, flow_id, workspace_slug, project_slug) do
+    %{
+      severity: :error,
+      message: dgettext("flows", "Flow \"%{name}\" has no entry node", name: flow_name(finding)),
+      href: flow_href(workspace_slug, project_slug, flow_id),
+      count: 1
+    }
+  end
+
+  defp flow_health_row(:disconnected, finding, count, flow_id, workspace_slug, project_slug) do
+    %{
+      severity: :warning,
+      message:
+        dgettext("flows", "Flow \"%{name}\" has %{count} disconnected node(s)",
+          name: flow_name(finding),
+          count: count
+        ),
+      href: flow_href(workspace_slug, project_slug, flow_id),
+      count: count
+    }
+  end
+
+  defp flow_health_row(:dead_end, finding, count, flow_id, workspace_slug, project_slug) do
+    %{
+      severity: :warning,
+      message:
+        dgettext("flows", "Flow \"%{name}\" has %{count} node(s) without outgoing connection",
+          name: flow_name(finding),
+          count: count
+        ),
+      href: flow_href(workspace_slug, project_slug, flow_id),
+      count: count
+    }
+  end
+
+  defp other_flow_health_message(:error, flow_name, count) do
     dgettext("flows", "Flow \"%{name}\" has %{count} error(s)", name: flow_name, count: count)
   end
 
-  defp flow_health_message(:warning, flow_name, count) do
+  defp other_flow_health_message(:warning, flow_name, count) do
     dgettext("flows", "Flow \"%{name}\" has %{count} warning(s)", name: flow_name, count: count)
+  end
+
+  defp flow_name(finding), do: Map.get(finding.details, :flow_name, dgettext("flows", "Flow"))
+
+  defp flow_href(workspace_slug, project_slug, flow_id) do
+    "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow_id}"
   end
 
   defp detect_empty_sheets(project_id, workspace_slug, project_slug) do

@@ -106,6 +106,57 @@ defmodule Storyarn.Flows.HealthConsolidationTest do
     end
   end
 
+  describe "the dashboard discriminates against nothing" do
+    test "an info-severity finding reaches the dashboard", %{project: project} do
+      flow = flow_fixture(project)
+      # `empty_condition` is :info — the old three-bucket dashboard could not
+      # express info at all, so this is the severity most likely to be dropped.
+      condition = node_fixture(flow, %{type: "condition", data: %{"condition" => %{}}})
+
+      findings = Flows.list_dashboard_health_findings(project.id)
+
+      assert Enum.any?(
+               findings,
+               &(&1.code == :empty_condition and &1.entity_id == condition.id and &1.severity == :info)
+             )
+    end
+
+    test "the dashboard's code set equals the editor's, per flow", %{project: project} do
+      flow = flow_fixture(project)
+      entry = Enum.find(Flows.list_nodes(flow.id), &(&1.type == "entry"))
+      dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => ""}})
+      connection_fixture(flow, entry, dialogue)
+      # The CRUD writer refuses a dangling jump, so this drift state goes in at the
+      # Repo level — the same idiom `structural_analysis_test.exs` uses.
+      %Storyarn.Flows.FlowNode{flow_id: flow.id}
+      |> Ecto.Changeset.change(%{
+        type: "jump",
+        data: %{"target_hub_id" => "nowhere"},
+        position_x: 0.0,
+        position_y: 0.0
+      })
+      |> Repo.insert!()
+
+      node_fixture(flow, %{type: "instruction", data: %{"assignments" => []}})
+
+      editor = flow |> editor_findings(project.id) |> Enum.map(& &1.code) |> Enum.uniq() |> Enum.sort()
+
+      dashboard =
+        project.id
+        |> Flows.list_dashboard_health_findings()
+        |> Enum.filter(&(&1.flow_id == flow.id))
+        |> Enum.map(& &1.code)
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      assert dashboard == editor
+      # Errors, warnings AND info all present, so this is not passing on a
+      # single-severity fixture.
+      severities = editor |> Enum.map(&Flows.HealthChecker.severity_for/1) |> Enum.uniq() |> Enum.sort()
+      assert severities == [:error, :info, :warning]
+    end
+  end
+
   describe "the vocabulary is single-sourced" do
     test "every code the checker can emit has a declared severity" do
       for code <- Flows.HealthChecker.codes() do

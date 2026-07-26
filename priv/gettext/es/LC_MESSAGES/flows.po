@@ -44,13 +44,13 @@ msgstr "No se pudo crear el flujo."
 msgid "Could not create sheet."
 msgstr "No se pudo crear la ficha."
 
-#: lib/storyarn_web/live/flow_live/index.ex:273
+#: lib/storyarn_web/live/flow_live/index.ex:274
 #: lib/storyarn_web/live/flow_sidebar_live.ex:199
 #, elixir-autogen, elixir-format
 msgid "Could not delete flow."
 msgstr "No se pudo eliminar el flujo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1269
+#: lib/storyarn_web/live/flow_live/show.ex:1230
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr "No se pudieron cargar los datos del flujo."
@@ -71,7 +71,7 @@ msgstr "No se pudo guardar el nombre del flujo."
 msgid "Could not save shortcut."
 msgstr "No se pudo guardar el atajo."
 
-#: lib/storyarn_web/live/flow_live/index.ex:293
+#: lib/storyarn_web/live/flow_live/index.ex:294
 #: lib/storyarn_web/live/flow_sidebar_live.ex:128
 #, elixir-autogen, elixir-format
 msgid "Could not set main flow."
@@ -100,23 +100,23 @@ msgstr "Entrada"
 msgid "Exit"
 msgstr "Salida"
 
-#: lib/storyarn_web/live/flow_live/index.ex:266
+#: lib/storyarn_web/live/flow_live/index.ex:267
 #: lib/storyarn_web/live/flow_sidebar_live.ex:198
 #, elixir-autogen, elixir-format
 msgid "Flow moved to trash."
 msgstr "Flujo movido a la papelera."
 
 #: lib/storyarn_web/live/flow_live/handlers/navigation_handlers.ex:24
-#: lib/storyarn_web/live/flow_live/index.ex:270
-#: lib/storyarn_web/live/flow_live/index.ex:290
+#: lib/storyarn_web/live/flow_live/index.ex:271
+#: lib/storyarn_web/live/flow_live/index.ex:291
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:225
 #: lib/storyarn_web/live/flow_live/player_live.ex:87
-#: lib/storyarn_web/live/flow_live/show.ex:351
+#: lib/storyarn_web/live/flow_live/show.ex:340
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr "Flujo no encontrado."
 
-#: lib/storyarn_web/live/flow_live/index.ex:286
+#: lib/storyarn_web/live/flow_live/index.ex:287
 #, elixir-autogen, elixir-format
 msgid "Flow set as main."
 msgstr "Flujo establecido como principal."
@@ -213,7 +213,7 @@ msgstr "El flujo destino no tiene nodo de entrada."
 msgid "Could not restore flow name."
 msgstr "No se pudo restaurar el nombre del flujo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1748
+#: lib/storyarn_web/live/flow_live/show.ex:1679
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr "No se pudo crear el flujo enlazado."
@@ -223,55 +223,15 @@ msgstr "No se pudo crear el flujo enlazado."
 msgid "Could not update node positions."
 msgstr "No se pudieron actualizar las posiciones de los nodos."
 
-#: lib/storyarn_web/live/flow_live/show.ex:990
+#: lib/storyarn_web/live/flow_live/show.ex:951
 #, elixir-autogen, elixir-format
 msgid "Could not update scene map."
 msgstr "No se pudo actualizar la escena."
 
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:139
+#: lib/storyarn_web/live/flow_live/helpers/health_helpers.ex:62
 #, elixir-autogen, elixir-format
 msgid "%{type} #%{id}"
 msgstr "%{type} #%{id}"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:187
-#, elixir-autogen, elixir-format
-msgid "No outgoing connection"
-msgstr "Sin conexión de salida"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:185
-#, elixir-autogen, elixir-format
-msgid "Not reachable from any entry node"
-msgstr "No alcanzable desde ningún nodo de entrada"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:170
-#, elixir-autogen, elixir-format
-msgid "Missing dialogue text"
-msgstr "Sin texto de diálogo"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:149
-#, elixir-autogen, elixir-format
-msgid "Missing subflow reference"
-msgstr "Sin referencia de subflujo"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:168
-#, elixir-autogen, elixir-format
-msgid "Response assignment type warning"
-msgstr "Advertencia de tipo en asignación de respuesta"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:151
-#, elixir-autogen, elixir-format
-msgid "Stale subflow reference"
-msgstr "Referencia de subflujo obsoleta"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:147
-#, elixir-autogen, elixir-format
-msgid "Stale variable reference"
-msgstr "Referencia de variable obsoleta"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:166
-#, elixir-autogen, elixir-format
-msgid "Variable type warning"
-msgstr "Advertencia de tipo de variable"
 
 #: lib/storyarn_web/live/flow_live/nodes/annotation/node.ex:20
 #, elixir-autogen, elixir-format
@@ -308,14 +268,12 @@ msgstr "Insertar otro flujo como nodo"
 msgid "End point of a flow"
 msgstr "Punto de salida de un flujo"
 
-#: lib/storyarn/projects/dashboard.ex:250
-#: lib/storyarn_web/live/flow_live/index.ex:343
+#: lib/storyarn/projects/dashboard.ex:282
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} disconnected node(s)"
 msgstr "El flujo \"%{name}\" tiene %{count} nodo(s) desconectado(s)"
 
-#: lib/storyarn/projects/dashboard.ex:236
-#: lib/storyarn_web/live/flow_live/index.ex:339
+#: lib/storyarn/projects/dashboard.ex:272
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has no entry node"
 msgstr "El flujo \"%{name}\" no tiene nodo de entrada"
@@ -415,7 +373,7 @@ msgstr "Conexión eliminada"
 msgid "Renamed flow"
 msgstr "Flujo renombrado"
 
-#: lib/storyarn_web/live/flow_live/show.ex:929
+#: lib/storyarn_web/live/flow_live/show.ex:890
 #, elixir-autogen, elixir-format
 msgid "Node not found."
 msgstr "Nodo no encontrado."
@@ -453,28 +411,27 @@ msgid "Debug session started"
 msgstr "Sesión de depuración iniciada"
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:150
-#: lib/storyarn_web/live/flow_live/show.ex:1193
+#: lib/storyarn_web/live/flow_live/show.ex:1154
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not create sequence"
 msgstr "No se pudo crear la ficha."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1189
+#: lib/storyarn_web/live/flow_live/show.ex:1150
 #, elixir-autogen, elixir-format
 msgid "Nodes must belong to the same container"
 msgstr "Los nodos deben pertenecer al mismo contenedor"
 
-#: lib/storyarn_web/live/flow_live/show.ex:1182
+#: lib/storyarn_web/live/flow_live/show.ex:1143
 #, elixir-autogen, elixir-format
 msgid "Select at least one node first"
 msgstr "Selecciona al menos un nodo primero"
 
-#: lib/storyarn_web/live/flow_live/show.ex:1179
+#: lib/storyarn_web/live/flow_live/show.ex:1140
 #, elixir-autogen, elixir-format
 msgid "Sequence created"
 msgstr "Secuencia creada"
 
-#: lib/storyarn/projects/dashboard.ex:269
-#: lib/storyarn_web/live/flow_live/index.ex:350
+#: lib/storyarn/projects/dashboard.ex:295
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Flow \"%{name}\" has %{count} node(s) without outgoing connection"
 msgstr "El flujo \"%{name}\" tiene %{count} nodo(s) desconectado(s)"
@@ -489,122 +446,25 @@ msgstr "Nodo #%{n} pista de secuencia #%{track} — audio"
 msgid "Node #%{n} sequence visual layer #%{layer}"
 msgstr "Nodo #%{n} capa visual de secuencia #%{layer}"
 
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:136
+#: lib/storyarn/projects/dashboard.ex:312
+#: lib/storyarn_web/live/flow_live/helpers/health_helpers.ex:59
+#: lib/storyarn_web/live/flow_live/index.ex:355
+#: lib/storyarn_web/live/flow_live/index.ex:359
 #, elixir-autogen, elixir-format
 msgid "Flow"
 msgstr "Flujo"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:142
-#, elixir-autogen, elixir-format
-msgid "Missing entry node"
-msgstr "Falta el nodo de entrada"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:145
-#, elixir-autogen, elixir-format
-msgid "Flow has %{count} entry nodes"
-msgstr "El flujo tiene %{count} nodos de entrada"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:153
-#, elixir-autogen, elixir-format
-msgid "Missing jump target"
-msgstr "Falta el destino del salto"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:154
-#, elixir-autogen, elixir-format
-msgid "Jump target does not exist"
-msgstr "El destino del salto no existe"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:156
-#, elixir-autogen, elixir-format
-msgid "Missing exit flow reference"
-msgstr "Falta la referencia de flujo de la salida"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:158
-#, elixir-autogen, elixir-format
-msgid "Exit flow reference does not exist"
-msgstr "La referencia de flujo de la salida no existe"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:161
-#, elixir-autogen, elixir-format
-msgid "Invalid output connection pin(s): %{pins}"
-msgstr "Pines de conexión de salida no válidos: %{pins}"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:164
-#, elixir-autogen, elixir-format
-msgid "Invalid input connection pin(s): %{pins}"
-msgstr "Pines de conexión de entrada no válidos: %{pins}"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:172
-#, elixir-autogen, elixir-format
-msgid "Missing dialogue speaker"
-msgstr "Falta el personaje del diálogo"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:174
-#, elixir-autogen, elixir-format
-msgid "Empty dialogue response"
-msgstr "Respuesta de diálogo vacía"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:176
-#, elixir-autogen, elixir-format
-msgid "Incomplete response condition"
-msgstr "Condición de respuesta incompleta"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:178
-#, elixir-autogen, elixir-format
-msgid "Incomplete response assignment"
-msgstr "Asignación de respuesta incompleta"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:180
-#, elixir-autogen, elixir-format
-msgid "Incomplete condition"
-msgstr "Condición incompleta"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:183
-#, elixir-autogen, elixir-format
-msgid "Incomplete instruction assignment"
-msgstr "Asignación de instrucción incompleta"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:190
-#, elixir-autogen, elixir-format
-msgid "Output(s) without connection: %{pins}"
-msgstr "Salidas sin conexión: %{pins}"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:192
-#, elixir-autogen, elixir-format
-msgid "No instruction assignments"
-msgstr "Sin asignaciones de instrucción"
-
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:194
-#, elixir-autogen, elixir-format
-msgid "Condition has no rules"
-msgstr "La condición no tiene reglas"
-
-#: lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex:386
-#, elixir-autogen, elixir-format
-msgid "Could not dismiss finding: %{reason}"
-msgstr "No se ha podido descartar el hallazgo: %{reason}"
-
-#: lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex:332
-#, elixir-autogen, elixir-format
-msgid "Flow is no longer available"
-msgstr "El flow ya no está disponible"
 
 #: lib/storyarn/versioning/builders/flow_builder.ex:5092
 #, elixir-autogen, elixir-format
 msgid "Localization row #%{n} — voice-over"
 msgstr "Fila de localización #%{n} — voz en off"
 
-#: lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex:416
-#, elixir-autogen, elixir-format
-msgid "The flow changed since this analysis — rerun before dismissing."
-msgstr "El flow ha cambiado desde este análisis — vuelve a analizarlo antes de descartar."
+#: lib/storyarn/projects/dashboard.ex:305
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Flow \"%{name}\" has %{count} error(s)"
+msgstr "El flujo \"%{name}\" tiene %{count} error(es)"
 
-#: lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex:432
-#, elixir-autogen, elixir-format
-msgid "This evidence is no longer available. Rerun the analysis."
-msgstr "Esta evidencia ya no está disponible. Vuelve a ejecutar el análisis."
-
-#: lib/storyarn_web/live/flow_live/handlers/analysis_handlers.ex:424
-#, elixir-autogen, elixir-format
-msgid "This finding is no longer current. Rerun the analysis."
-msgstr "Este hallazgo ya no es actual. Vuelve a ejecutar el análisis."
+#: lib/storyarn/projects/dashboard.ex:309
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Flow \"%{name}\" has %{count} warning(s)"
+msgstr "El flujo \"%{name}\" tiene %{count} advertencia(s)"
