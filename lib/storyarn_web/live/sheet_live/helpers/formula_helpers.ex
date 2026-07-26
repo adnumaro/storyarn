@@ -232,13 +232,20 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
 
   The enrichment itself lives in `Sheets.enrich_table_formulas/2` because the
   project-wide health sweep must enrich identically — an unenriched table reports
-  different findings. Formula computation must never take the sheet down, so a
-  raise here degrades to unenriched data.
+  different findings.
+
+  There is deliberately no `rescue` here. It used to swallow every error and
+  return the table unenriched, which is the shape that makes the two surfaces
+  disagree: the editor silently lost `formula_evaluation_failed` and gained a
+  phantom `invalid_table_structure`, while the sweep — which never had a rescue —
+  took the whole project's dashboard down. The one raise a designer could
+  actually author, float overflow, is now an `{:error, _}` inside
+  `FormulaEngine.evaluate/2`, so the checker reports it as
+  `formula_evaluation_failed` on both surfaces. Anything still raising past that
+  is a real bug and must not be hidden.
   """
   def compute_formulas(table_data, project_id) do
     Sheets.enrich_table_formulas(table_data, project_id)
-  rescue
-    _error -> table_data
   end
 
   defp numeric_formula_variable?(variable) do
