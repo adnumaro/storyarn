@@ -12,9 +12,11 @@ defmodule Storyarn.Scenes.DashboardInvalidationTest do
   are finding inputs and deleting one nilifies the `layer_id` that
   `invalid_layer_reference` reads.
 
-  What these tests pin is the invalidation itself: the cached sweep must not
-  survive a write that moved either of those under it — and, just as
-  deliberately, that the writes which move neither stay silent.
+  Coordinates and vertices are findings inputs too: they drive
+  `element_outside_canvas` and `invalid_zone_geometry`. What these tests pin is
+  the invalidation itself: the cached sweep must not survive any write that
+  changes one of those inputs — and, just as deliberately, writes which move no
+  finding input stay silent.
   """
 
   use Storyarn.DataCase, async: true
@@ -140,7 +142,7 @@ defmodule Storyarn.Scenes.DashboardInvalidationTest do
     end
   end
 
-  describe "the drag paths stay quiet on purpose" do
+  describe "health-neutral writes stay quiet" do
     test "reorder_layers/2 and toggle_layer_visibility/1 write no finding input", %{scene: scene} do
       first = layer_fixture(scene, %{"name" => "Background"})
       second = layer_fixture(scene, %{"name" => "Foreground"})
@@ -153,18 +155,49 @@ defmodule Storyarn.Scenes.DashboardInvalidationTest do
       # the thing that has to fail.
       refute_receive {:dashboard_invalidate, :scenes}
     end
+  end
 
-    test "move_pin/3 and update_zone_vertices/2 write coordinates, not vocabulary", %{scene: scene} do
+  describe "coordinate writes invalidate the scenes dashboard" do
+    test "move_pin/3 invalidates because position drives element_outside_canvas", %{scene: scene} do
       pin = pin_fixture(scene, %{"label" => "Guard"})
+      flush()
+
+      {:ok, _} = Scenes.move_pin(pin, 120.0, 20.0)
+
+      assert_receive {:dashboard_invalidate, :scenes}
+    end
+
+    test "update_zone_vertices/2 invalidates because vertices drive geometry findings", %{scene: scene} do
       zone = zone_fixture(scene, %{"name" => "Gate"})
       flush()
 
-      {:ok, _} = Scenes.move_pin(pin, 20.0, 20.0)
-      {:ok, _} = Scenes.update_zone_vertices(zone, %{"vertices" => triangle()})
+      {:ok, _} =
+        Scenes.update_zone_vertices(zone, %{
+          "vertices" => [
+            %{"x" => 5.0, "y" => 5.0},
+            %{"x" => 140.0, "y" => 5.0},
+            %{"x" => 20.0, "y" => 40.0}
+          ]
+        })
 
-      # These fire on every drag. Their staleness is bounded by the dashboard's
-      # own 30s cache; broadcasting per frame is not worth it.
-      refute_receive {:dashboard_invalidate, :scenes}
+      assert_receive {:dashboard_invalidate, :scenes}
+    end
+
+    test "moving a pin outside the canvas drops the cached health sweep", %{project: project, scene: scene} do
+      pin = pin_fixture(scene, %{"label" => "Guard", "position_x" => 20.0, "position_y" => 20.0})
+      flush()
+
+      initial =
+        DashboardCache.fetch(project.id, :scene_health, fn -> Scenes.list_dashboard_health_findings(project.id) end)
+
+      refute Enum.any?(initial, &(&1.code == :element_outside_canvas and &1.entity_id == pin.id))
+
+      {:ok, _} = Scenes.move_pin(pin, 120.0, 20.0)
+
+      refreshed =
+        DashboardCache.fetch(project.id, :scene_health, fn -> Scenes.list_dashboard_health_findings(project.id) end)
+
+      assert Enum.any?(refreshed, &(&1.code == :element_outside_canvas and &1.entity_id == pin.id))
     end
   end
 

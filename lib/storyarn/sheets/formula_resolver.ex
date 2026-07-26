@@ -135,23 +135,22 @@ defmodule Storyarn.Sheets.FormulaResolver do
     end
   end
 
-  defp resolve_bindings(bindings, row_cells, _columns, cross_values) do
-    Map.new(bindings, fn {symbol, binding} ->
-      value =
-        case binding do
-          %{"type" => "same_row", "column_slug" => slug} ->
-            MapUtils.parse_to_number(row_cells[slug])
+  defp resolve_bindings(bindings, row_cells, _columns, cross_values) when is_map(bindings) do
+    Enum.reduce(bindings, %{}, fn
+      {symbol, %{"type" => "same_row", "column_slug" => slug}}, values
+      when is_binary(symbol) and is_binary(slug) and slug != "" ->
+        Map.put(values, symbol, MapUtils.parse_to_number(row_cells[slug]))
 
-          %{"type" => "variable", "ref" => ref} ->
-            MapUtils.parse_to_number(Map.get(cross_values, ref))
+      {symbol, %{"type" => "variable", "ref" => ref}}, values
+      when is_binary(symbol) and is_binary(ref) and ref != "" ->
+        Map.put(values, symbol, MapUtils.parse_to_number(Map.get(cross_values, ref)))
 
-          _ ->
-            0.0
-        end
-
-      {symbol, value}
+      _invalid_binding, values ->
+        values
     end)
   end
+
+  defp resolve_bindings(_bindings, _row_cells, _columns, _cross_values), do: %{}
 
   defp collect_cross_sheet_refs(formula_slugs, rows) do
     rows
@@ -164,10 +163,16 @@ defmodule Storyarn.Sheets.FormulaResolver do
   end
 
   defp extract_variable_refs(cell_value) when is_map(cell_value) do
-    (cell_value["bindings"] || %{})
-    |> Map.values()
-    |> Enum.filter(&(is_map(&1) and &1["type"] == "variable"))
-    |> Enum.map(& &1["ref"])
+    case cell_value["bindings"] do
+      bindings when is_map(bindings) ->
+        Enum.flat_map(bindings, fn
+          {_symbol, %{"type" => "variable", "ref" => ref}} when is_binary(ref) and ref != "" -> [ref]
+          _invalid_binding -> []
+        end)
+
+      _invalid_bindings ->
+        []
+    end
   end
 
   defp extract_variable_refs(_), do: []

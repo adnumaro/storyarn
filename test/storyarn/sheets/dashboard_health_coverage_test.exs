@@ -111,6 +111,27 @@ defmodule Storyarn.Sheets.DashboardHealthCoverageTest do
       assert_agree(sheet, project)
     end
 
+    test "on a malformed formula binding that must be reported instead of crashing", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Imported Formula"})
+      table = table_block_fixture(sheet, %{label: "Calculations"})
+      formula = table_column_fixture(table, %{name: "Total", type: "formula"})
+      row = table.table_rows |> hd() |> Repo.reload!()
+
+      cells =
+        Map.put(row.cells, formula.slug, %{
+          "expression" => "amount + 1",
+          "bindings" => []
+        })
+
+      Repo.update_all(from(r in TableRow, where: r.id == ^row.id), set: [cells: cells])
+
+      editor = editor_findings(sheet, project)
+      dashboard = dashboard_findings(sheet, project)
+
+      assert Enum.any?(editor, &(&1.code == :invalid_formula_binding))
+      assert comparable(editor) == comparable(dashboard)
+    end
+
     test "on a variable used only by a table formula binding", %{project: project} do
       target = sheet_fixture(project, %{name: "Target", shortcut: "target"})
       used = block_fixture(target, %{type: "number", config: %{"label" => "Damage"}})

@@ -137,4 +137,58 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
                nil
     end
   end
+
+  describe "enrich_table_data/2" do
+    test "preserves a non-map bindings value for health while skipping evaluation", ctx do
+      table_data = %{
+        ctx.block.id => %{
+          columns: [%{slug: ctx.formula_col.slug, type: "formula"}],
+          rows: [
+            %{
+              id: ctx.row1.id,
+              cells: %{
+                ctx.formula_col.slug => %{
+                  "expression" => "a + 1",
+                  "bindings" => []
+                }
+              }
+            }
+          ]
+        }
+      }
+
+      enriched = FormulaResolver.enrich_table_data(table_data, ctx.project.id)
+      cell = enriched[ctx.block.id].rows |> hd() |> then(& &1.cells[ctx.formula_col.slug])
+
+      assert cell["bindings"] == []
+      assert cell["__resolved"] == %{}
+      assert cell["__result"] == nil
+    end
+
+    test "ignores a variable binding without a binary ref instead of resolving it", ctx do
+      table_data = %{
+        ctx.block.id => %{
+          columns: [%{slug: ctx.formula_col.slug, type: "formula"}],
+          rows: [
+            %{
+              id: ctx.row1.id,
+              cells: %{
+                ctx.formula_col.slug => %{
+                  "expression" => "a + 1",
+                  "bindings" => %{"a" => %{"type" => "variable"}}
+                }
+              }
+            }
+          ]
+        }
+      }
+
+      enriched = FormulaResolver.enrich_table_data(table_data, ctx.project.id)
+      cell = enriched[ctx.block.id].rows |> hd() |> then(& &1.cells[ctx.formula_col.slug])
+
+      assert cell["bindings"] == %{"a" => %{"type" => "variable"}}
+      assert cell["__resolved"] == %{}
+      assert cell["__result"] == nil
+    end
+  end
 end

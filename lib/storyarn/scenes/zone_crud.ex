@@ -61,9 +61,8 @@ defmodule Storyarn.Scenes.ZoneCrud do
 
   # A zone's shortcut is a referenceable variable, so create/update/delete change
   # the vocabulary every health surface type-checks against — not just the zone
-  # count. `update_zone_vertices/2` deliberately does NOT broadcast: it writes
-  # geometry only, fires on every drag, and the staleness it leaves is bounded by
-  # the dashboard's own 30s cache.
+  # count. Vertices are also health inputs (`invalid_zone_geometry` and
+  # `element_outside_canvas`), so the optimized drag path must invalidate too.
   def create_zone(scene_id, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
@@ -126,8 +125,8 @@ defmodule Storyarn.Scenes.ZoneCrud do
   Updates only vertices (optimized for drag operations).
   """
   def update_zone_vertices(%SceneZone{} = zone, attrs) do
-    SceneReferenceIntegrity.with_active_scene_lock(
-      zone.scene_id,
+    zone.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(
       [project_lock: :update],
       fn scene ->
         with {:ok, locked_zone} <- lock_zone_for_scene(zone.id, scene.id),
@@ -143,6 +142,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
         end
       end
     )
+    |> SceneCrud.broadcast_scene_dashboard_result(zone.scene_id)
   end
 
   def delete_zone(%SceneZone{} = zone) do
