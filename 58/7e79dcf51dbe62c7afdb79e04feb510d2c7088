@@ -1,0 +1,24 @@
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_7337fae2006063::t_767946c6c723a9 203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "587e79dcf51dbe62c7afdb79e04feb510d2c7088",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_7337fae2006063": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9ffb-b5ec-7450-90bf-0cbbe07969af",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
