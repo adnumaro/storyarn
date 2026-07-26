@@ -1,0 +1,54 @@
+test/storyarn_web/live/flow_live/helpers/socket_helpers_test.exs
+  s_fc3546b2264bba::t_71717640fc042b 109-121
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_fc3546b2264bba::t_b27d4f7eba9660 47,53,74,103,110-111,114,119,216,226,231,271,276,376,414,419,424,429,434,449-452,462-464,467-469
+assets/app/test/live/flow/show/FlowHeader.test.ts
+  s_fc3546b2264bba::t_a871ca16e7222e 3-5,7-10,12,14,16,18,27,32,43,52-54,56,60-62,64-67,70-71,73
+  s_fc3546b2264bba::t_c71393688706e0 59,75-78
+assets/app/test/live/flow/dashboard/FlowDashboard.test.ts
+  s_fc3546b2264bba::t_a028113b632692 25-27,30-32,37-39,44-46
+test/storyarn/flows/health_consolidation_test.exs
+  s_fc3546b2264bba::t_d89dff2a16d56f 109-159
+assets/app/live/flow/show/FlowHeader.vue
+  s_fc3546b2264bba::t_c71393688706e0 2-10
+test/storyarn/flows/flow_crud_test.exs
+  s_fc3546b2264bba::t_45b1c316139f0b 1223,1231-1232,1234-1235,1244-1249,1251-1252,1265-1272,1289-1292,1294-1296,1310-1317
+test/storyarn_web/live/flow_live/helpers/connection_helpers_test.exs
+  s_fc3546b2264bba::t_215b5251344914 203-205,208-212
+test/storyarn/flows/health_checker_test.exs
+  s_fc3546b2264bba::t_29de1722475d13 351-359,364-368,371
+  s_fc3546b2264bba::t_eee536522ee4a2 335,346
+  s_fc3546b2264bba::t_f9e85d4858a5b6 155-157,164,181-182
+  s_fc3546b2264bba::t_64a1f7c6f06339 20-24,62,125
+test/storyarn_web/live/flow_live/show_test.exs
+  s_fc3546b2264bba::t_9de65ce31bd9e2 60-62,64-68
+test/storyarn/flows/structural_analysis_test.exs
+  s_fc3546b2264bba::t_c0eefb464a8530 10,35-37,67,71-73,78-80,112,127,155,167,194,244,260,291,303,325,337,360,380,384-385,388-391,393-396,414,418,426,430-434,446-449,451-455,457,459-462,466,473-476,478-479,482,493-495,532-533
+lib/storyarn/projects/dashboard.ex
+  s_fc3546b2264bba::t_a8be969c595131 228-242,244-288,291-304,308,312-317
+priv/gettext/flows.pot
+  s_fc3546b2264bba::t_b27d4f7eba9660 47,53,74,103,110-111,114,119,216,226,231,271,276,376,414,419,424,429,434,449-452,462,464,467,469
+test/e2e/flow_health_test.exs
+  s_fc3546b2264bba::t_08c561e253176d 1-104
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_fc3546b2264bba::t_05f613c5534659 465,470
+  s_fc3546b2264bba::t_b27d4f7eba9660 47,53,74,103,110-111,114,119,216,226,231,271,276,376,414,419,424,429,434,449-452,462-464,467-469
+assets/app/test/live/flow/show/FlowHealthStatus.test.ts
+  s_fc3546b2264bba::t_273eeb33f57592 1-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3c71a44a28abb71049aad66e793129a0c944d31f",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
