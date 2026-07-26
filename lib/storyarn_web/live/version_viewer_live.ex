@@ -11,7 +11,24 @@ defmodule StoryarnWeb.VersionViewerLive do
   alias Storyarn.Versioning
   alias StoryarnWeb.PrivateMedia
 
+  require Logger
+
   @impl true
+  def render(%{view_error: _} = assigns) do
+    ~H"""
+    <StoryarnWeb.Components.CompareLayout.compare socket={@socket} flash={@flash}>
+      <.vue
+        v-component="live/versioning/viewer/VersionViewerError"
+        v-socket={@socket}
+        v-inject="compare-layout"
+        id="version-viewer-error"
+        class="w-full h-full"
+        reason={@view_error}
+      />
+    </StoryarnWeb.Components.CompareLayout.compare>
+    """
+  end
+
   def render(%{entity_type: :flow} = assigns) do
     ~H"""
     <StoryarnWeb.Components.CompareLayout.compare socket={@socket} flash={@flash}>
@@ -84,38 +101,82 @@ defmodule StoryarnWeb.VersionViewerLive do
       ) do
     entity_type = socket.assigns.live_action
 
-    with {:ok, entity_id} <- parse_id(entity_id_str),
-         {:ok, version_number} <- parse_id(version_number_str),
-         {:ok, project, _membership} <-
-           Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug),
-         {:ok, entity} <- fetch_entity(entity_type, project.id, entity_id),
-         version when not is_nil(version) <-
-           Versioning.get_version(to_string(entity_type), entity_id, version_number),
-         {:ok, snapshot} <- Versioning.load_version_snapshot(version) do
-      socket =
-        socket
-        |> assign(:entity_type, entity_type)
-        |> assign(:entity_id, entity_id)
-        |> assign(:version_number, version_number)
-        |> assign(:project, project)
-        |> assign(:workspace, project.workspace)
-        |> assign(:page_title, version_label(version))
-        |> assign_viewer(entity_type, entity, snapshot)
+    case load_version_view(socket, entity_type, workspace_slug, project_slug, entity_id_str, version_number_str) do
+      {:ok, loaded_socket} ->
+        {:ok, loaded_socket, layout: false}
 
-      {:ok, socket, layout: false}
-    else
-      _ ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("versioning", "Version not found"))
-         |> redirect(to: ~p"/workspaces"), layout: false}
+      {:error, reason} ->
+        # This view is embedded in the compare page's iframe. Redirecting away
+        # would render an unrelated page inside the pane, so the failure has to
+        # be shown in place — and logged, because the pane cannot show why.
+        {:ok, assign_view_error(socket, entity_type, entity_id_str, version_number_str, reason), layout: false}
     end
   end
 
-  defp parse_id(value) do
+  defp load_version_view(socket, entity_type, workspace_slug, project_slug, entity_id_str, version_number_str) do
+    with {:ok, entity_id} <- parse_id(entity_id_str, :invalid_entity_id),
+         {:ok, version_number} <- parse_id(version_number_str, :invalid_version_number),
+         {:ok, project, _membership} <-
+           Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug),
+         {:ok, entity} <- fetch_entity(entity_type, project.id, entity_id),
+         {:ok, version} <- fetch_version(entity_type, entity_id, version_number),
+         {:ok, snapshot} <- Versioning.load_version_snapshot(version) do
+      {:ok,
+       socket
+       |> assign(:entity_type, entity_type)
+       |> assign(:entity_id, entity_id)
+       |> assign(:version_number, version_number)
+       |> assign(:project, project)
+       |> assign(:workspace, project.workspace)
+       |> assign(:page_title, version_label(version))
+       |> assign_viewer(entity_type, entity, snapshot)}
+    end
+  end
+
+  defp assign_view_error(socket, entity_type, entity_id_str, version_number_str, reason) do
+    kind = view_error_kind(reason)
+    log_view_error(kind, entity_type, entity_id_str, version_number_str, reason)
+
+    socket
+    |> assign(:view_error, to_string(kind))
+    |> assign(:page_title, view_error_title(kind))
+  end
+
+  defp view_error_kind({:invalid_expected_checksum, _}), do: :integrity
+  defp view_error_kind({:checksum_mismatch, _expected, _actual}), do: :integrity
+  defp view_error_kind({:compressed_size_mismatch, _expected, _actual}), do: :integrity
+  defp view_error_kind({:invalid_expected_compressed_size, _}), do: :integrity
+  defp view_error_kind(:entity_version_storage_key_mismatch), do: :integrity
+
+  defp view_error_kind(reason)
+       when reason in [
+              :invalid_entity_id,
+              :invalid_version_number,
+              :entity_not_found,
+              :version_not_found,
+              :entity_version_not_found,
+              :not_found
+            ], do: :not_found
+
+  defp view_error_kind(_reason), do: :unreadable
+
+  defp log_view_error(:not_found, entity_type, entity_id_str, version_number_str, reason) do
+    Logger.info("Version viewer: no #{entity_type} #{entity_id_str} v#{version_number_str} to show (#{inspect(reason)})")
+  end
+
+  defp log_view_error(kind, entity_type, entity_id_str, version_number_str, reason) do
+    Logger.warning(
+      "Version viewer: #{entity_type} #{entity_id_str} v#{version_number_str} is #{kind} (#{inspect(reason)})"
+    )
+  end
+
+  defp view_error_title(:not_found), do: dgettext("versioning", "Version not found")
+  defp view_error_title(_kind), do: dgettext("versioning", "Version unavailable")
+
+  defp parse_id(value, error_reason) do
     case Integer.parse(value) do
       {id, ""} -> {:ok, id}
-      _ -> :error
+      _ -> {:error, error_reason}
     end
   end
 
@@ -123,8 +184,15 @@ defmodule StoryarnWeb.VersionViewerLive do
   defp fetch_entity(:scene, project_id, entity_id), do: fetch_present(Scenes.get_scene_brief(project_id, entity_id))
   defp fetch_entity(:sheet, project_id, entity_id), do: fetch_present(Sheets.get_sheet(project_id, entity_id))
 
-  defp fetch_present(nil), do: :error
+  defp fetch_present(nil), do: {:error, :entity_not_found}
   defp fetch_present(entity), do: {:ok, entity}
+
+  defp fetch_version(entity_type, entity_id, version_number) do
+    case Versioning.get_version(to_string(entity_type), entity_id, version_number) do
+      nil -> {:error, :version_not_found}
+      version -> {:ok, version}
+    end
+  end
 
   defp assign_viewer(socket, :flow, _flow, snapshot) do
     referenced_sheets = snapshot["referenced_sheets"] || %{}
