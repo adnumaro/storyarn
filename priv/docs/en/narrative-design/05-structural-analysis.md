@@ -19,11 +19,11 @@ Every check is deterministic: the same flow always produces the same findings, c
 
 The indicator lives in the **flow editor header**, right after the word count -- the same widget sheets and scenes use. It counts findings by severity:
 
-| Severity    | Meaning                                                 |
-| ----------- | ------------------------------------------------------- |
+| Severity    | Meaning                                                  |
+| ----------- | -------------------------------------------------------- |
 | **Error**   | Invalid configuration -- the flow cannot run as authored |
-| **Warning** | Incomplete or risky authoring                           |
-| **Info**    | Valid, but the node will do nothing at runtime          |
+| **Warning** | Incomplete or risky authoring                            |
+| **Info**    | Valid, but the node will do nothing at runtime           |
 
 When a flow has no findings at all, the indicator collapses to a green check.
 
@@ -39,23 +39,23 @@ The indicator is part of the normal flow editor. Compact and comparison views do
 
 These need the whole graph -- structure and the targets your nodes point at.
 
-| Finding                                                | Severity | What it means                                                    |
-| ------------------------------------------------------ | -------- | ---------------------------------------------------------------- |
-| Flow has no Entry node                                 | Error    | Nothing declares where playback starts                           |
-| Flow has _N_ Entry nodes                               | Error    | More than one start; reachability is computed from all of them   |
-| Connection on a removed output pin: _pins_             | Error    | The pin the connection starts from no longer exists              |
-| Connection on an invalid input pin: _pins_             | Error    | The pin the connection arrives at is no longer valid             |
-| Jump has no target hub                                 | Error    | The Jump was never pointed at anything                           |
-| Jump targets a missing hub                             | Error    | Its target hub is not in this flow any more                      |
-| Subflow has no referenced flow                         | Error    | The Subflow node was never pointed at a flow                     |
-| Subflow references a deleted flow                      | Error    | The referenced flow is gone                                      |
-| Exit has no referenced flow                            | Error    | An Exit in **Flow Reference** mode with no destination           |
-| Exit references a deleted flow                         | Error    | The destination flow is gone                                     |
-| Node is unreachable from Entry                         | Warning  | No path of connections or jumps leads to it                      |
-| Node has no connections                                | Warning  | Isolated on the canvas, in neither direction                     |
-| Node has no outgoing connection                        | Warning  | A reachable dead end that is not an Exit                         |
-| Output pins without a connection: _pins_               | Warning  | A branch was left dangling -- a condition's False pin, a response |
-| Hub "_hub id_" is never reached by connection or jump  | Warning  | Nothing targets the Hub, so nothing can converge on it           |
+| Finding                                               | Severity | What it means                                                     |
+| ----------------------------------------------------- | -------- | ----------------------------------------------------------------- |
+| Flow has no Entry node                                | Error    | Nothing declares where playback starts                            |
+| Flow has _N_ Entry nodes                              | Error    | More than one start; reachability is computed from all of them    |
+| Connection on a removed output pin: _pins_            | Error    | The pin the connection starts from no longer exists               |
+| Connection on an invalid input pin: _pins_            | Error    | The pin the connection arrives at is no longer valid              |
+| Jump has no target hub                                | Error    | The Jump was never pointed at anything                            |
+| Jump targets a missing hub                            | Error    | Its target hub is not in this flow any more                       |
+| Subflow has no referenced flow                        | Error    | The Subflow node was never pointed at a flow                      |
+| Subflow references a deleted flow                     | Error    | The referenced flow is gone                                       |
+| Exit has no referenced flow                           | Error    | An Exit in **Flow Reference** mode with no destination            |
+| Exit references a deleted flow                        | Error    | The destination flow is gone                                      |
+| Node is unreachable from Entry                        | Warning  | No path of connections or jumps leads to it                       |
+| Node has no connections                               | Warning  | Isolated on the canvas, in neither direction                      |
+| Node has no outgoing connection                       | Warning  | A reachable dead end that is not an Exit                          |
+| Output pins without a connection: _pins_              | Warning  | A branch was left dangling -- a condition's False pin, a response |
+| Hub "_hub id_" is never reached by connection or jump | Warning  | Nothing targets the Hub, so nothing can converge on it            |
 
 Findings shown here in _italics_ fill that part in with your own data: the number of Entry nodes, the names of the affected pins, the hub's id. The message names the exact pin or hub, so you do not have to hunt for it on the canvas.
 
@@ -94,23 +94,23 @@ These read one node's own data.
 
 Every finding states a fact about your data. None of them reads your intent, and several are narrower than they look. Knowing where each check stops is what keeps a finding useful instead of reading as an accusation.
 
-| Check                                | What it does **not** do                                                                                |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| Flow has no Entry node               | Checks node types only; it does not judge where the story should start.                                 |
-| Flow has several Entry nodes         | Reachability is computed from all entries; it does not decide which entry is correct.                   |
-| Node is unreachable from Entry       | Topological only: conditions are not evaluated, so a reachable node may still be unreachable in play.   |
-| Node has no connections              | Counts valid connections and jump links only; it does not know if the node is a draft kept on purpose.  |
-| Node has no outgoing connection      | Does not evaluate conditions; an intentional ending modeled without an Exit node still triggers this.   |
-| Output pins without a connection     | Reports unconnected required pins; it cannot tell whether the branch is unfinished or abandoned.        |
-| Connection on a removed output pin   | Compares stored connections against current pins; it cannot recover what the removed pin meant.         |
-| Connection on an invalid input pin   | Compares stored connections against current inputs; it cannot recover the original intent.              |
-| Hub is never reached                 | Only in-flow connections and jumps are considered; hubs used by other means are not detected.           |
-| Jump has no target hub               | Checks the stored target id only.                                                                        |
-| Jump targets a missing hub           | Hubs are matched by id within this flow only.                                                            |
-| Subflow has no referenced flow       | Checks the stored reference only.                                                                        |
-| Subflow references a deleted flow    | Checks flow existence in this project; it does not inspect the referenced flow's content.               |
-| Exit has no referenced flow          | Checks the stored reference only.                                                                        |
-| Exit references a deleted flow       | Checks flow existence in this project; it does not inspect the referenced flow's content.               |
+| Check                              | What it does **not** do                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Flow has no Entry node             | Checks node types only; it does not judge where the story should start.                                |
+| Flow has several Entry nodes       | Reachability is computed from all entries; it does not decide which entry is correct.                  |
+| Node is unreachable from Entry     | Topological only: conditions are not evaluated, so a reachable node may still be unreachable in play.  |
+| Node has no connections            | Counts valid connections and jump links only; it does not know if the node is a draft kept on purpose. |
+| Node has no outgoing connection    | Does not evaluate conditions; an intentional ending modeled without an Exit node still triggers this.  |
+| Output pins without a connection   | Reports unconnected required pins; it cannot tell whether the branch is unfinished or abandoned.       |
+| Connection on a removed output pin | Compares stored connections against current pins; it cannot recover what the removed pin meant.        |
+| Connection on an invalid input pin | Compares stored connections against current inputs; it cannot recover the original intent.             |
+| Hub is never reached               | Only in-flow connections and jumps are considered; hubs used by other means are not detected.          |
+| Jump has no target hub             | Checks the stored target id only.                                                                      |
+| Jump targets a missing hub         | Hubs are matched by id within this flow only.                                                          |
+| Subflow has no referenced flow     | Checks the stored reference only.                                                                      |
+| Subflow references a deleted flow  | Checks flow existence in this project; it does not inspect the referenced flow's content.              |
+| Exit has no referenced flow        | Checks the stored reference only.                                                                      |
+| Exit references a deleted flow     | Checks flow existence in this project; it does not inspect the referenced flow's content.              |
 
 Content checks are literal in the same way: an empty dialogue line is reported whether it is a placeholder or a deliberate silent beat, and a type warning compares declared types, not the value that will exist at runtime.
 

@@ -173,9 +173,9 @@ Enum.sort_by(findings, &Severity.rank(&1.severity))
 
 **File:** `lib/storyarn/shared/string_utils.ex`
 
-| Function          | Purpose                                                                                                         |
-| ----------------- | --------------------------------------------------------------------------------------------------------------- |
-| `blank?/1`        | `nil` or `""` → true. **Does NOT trim.**                                                                        |
+| Function          | Purpose                                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `blank?/1`        | `nil` or `""` → true. **Does NOT trim.**                                                                         |
 | `present_label/2` | `value` if it has a non-whitespace char, else `fallback`. Trims to decide presence; returns the value untouched. |
 
 `blank?/1` replaced eight byte-equivalent private copies. **Three modules keep a different, trimming `blank?/1` and must not be folded in** — `Sheets.HealthChecker`, `Scenes.HealthChecker`, `Localization.GlossarySync`: for them a whitespace-only label counts as empty, and changing that changes which findings the health sweeps report.

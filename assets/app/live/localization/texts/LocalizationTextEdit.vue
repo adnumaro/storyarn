@@ -45,7 +45,12 @@ interface TranslationForm {
 // DeepL buttons render enabled for viewers too. The server-side handlers are
 // authorized (`Authorize.with_authorization(socket, :edit_content, ...)`), so
 // this is a UI gap, not an authorization hole.
-const { text, form, hasProvider = false, backUrl } = defineProps<{
+const {
+  text,
+  form,
+  hasProvider = false,
+  backUrl,
+} = defineProps<{
   text: LocalizedText;
   form: TranslationForm;
   hasProvider?: boolean;
