@@ -1,0 +1,23 @@
+lib/storyarn/exports/validator.ex
+  s_e059091a477d9a::t_17401c6ea0fdca 14,117,139,180,182-221,225-232,235,237-247,250,252-255,259,261-286,323,644-745
+test/storyarn/exports/validator_health_parity_test.exs
+  s_e059091a477d9a::t_75aa5216b06881 1-250
+test/storyarn/exports/validator_test.exs
+  s_e059091a477d9a::t_e6bcd3ea5464c7 107-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a92eb3d61fb4339222382c8baad000c568b8cba8",
+  "prompts": {},
+  "sessions": {
+    "s_e059091a477d9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3623d072-d019-4c2b-9c08-57987c0f0e86",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
