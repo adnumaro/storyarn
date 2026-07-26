@@ -7,6 +7,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Repo
   alias Storyarn.Sheets
 
@@ -91,6 +92,28 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
                Enum.find(issues, &(&1["code"] == "no_internal_variable_usages"))
 
       assert String.starts_with?(label, "Unused Variable · ")
+    end
+
+    test "surfaces a failed dashboard load instead of a permanent skeleton", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet_fixture(project, %{name: "Any Sheet"})
+
+      # The dashboard renders a skeleton until `stats` is non-nil, so ANY crash in
+      # the async load used to show as "still loading", forever, with nothing in
+      # the error tracker. How it crashes is incidental — poisoning one cached
+      # value is just the cheapest way to make the real code path raise.
+      DashboardCache.fetch(project.id, :sheet_issues, fn -> :not_a_list_of_findings end)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
+
+      await_async(view)
+
+      stats = get_dashboard_vue(view).props["stats"]
+
+      refute is_nil(stats), "a nil `stats` keeps the skeleton spinning with nothing to act on"
+      assert stats["sheet_count"] == 0
+      assert render(view) =~ "Could not load dashboard data."
     end
   end
 

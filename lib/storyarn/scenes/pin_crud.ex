@@ -6,6 +6,7 @@ defmodule Storyarn.Scenes.PinCrud do
   alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Scenes.PositionUtils
+  alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Shared.MapUtils
@@ -62,6 +63,11 @@ defmodule Storyarn.Scenes.PinCrud do
     )
   end
 
+  # A pin's shortcut is a referenceable variable, so create/update/delete change
+  # the vocabulary every health surface type-checks against — not just the pin
+  # count. `move_pin/3` deliberately does NOT broadcast: it writes coordinates
+  # only, fires on every drag, and the staleness it leaves is bounded by the
+  # dashboard's own 30s cache.
   def create_pin(scene_id, attrs) do
     attrs = enforce_leader_constraints(%ScenePin{scene_id: scene_id}, attrs)
 
@@ -81,6 +87,7 @@ defmodule Storyarn.Scenes.PinCrud do
         |> persist_pin_with_references(scene.project_id)
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(scene_id)
   end
 
   def update_pin(%ScenePin{} = pin, attrs) do
@@ -108,6 +115,7 @@ defmodule Storyarn.Scenes.PinCrud do
         |> persist_pin_with_references(scene.project_id)
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(pin.scene_id)
   end
 
   @doc """
@@ -139,6 +147,7 @@ defmodule Storyarn.Scenes.PinCrud do
         Repo.delete(locked_pin)
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(pin.scene_id)
   end
 
   def change_pin(%ScenePin{} = pin, attrs \\ %{}) do

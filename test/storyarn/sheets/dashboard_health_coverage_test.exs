@@ -14,7 +14,7 @@ defmodule Storyarn.Sheets.DashboardHealthCoverageTest do
 
   Both surfaces now go through `Sheets.HealthChecker.check/1`. What this pins is
   that they also FEED it equivalently: the editor from
-  `SheetLive.Helpers.HealthHelpers.sheet_snapshot/1` (live socket assigns), the
+  `Sheets.HealthSnapshots.snapshot/1` (the material the live socket holds), the
   dashboard from `Sheets.HealthSnapshots.load_project/2` (one batched read of
   the whole project). Slicing a project-wide enrichment is not the same as
   re-deriving it per sheet, and a field that drifts silently changes verdicts.
@@ -37,7 +37,6 @@ defmodule Storyarn.Sheets.DashboardHealthCoverageTest do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
-  alias StoryarnWeb.SheetLive.Helpers.HealthHelpers
 
   setup do
     user = user_fixture()
@@ -225,6 +224,12 @@ defmodule Storyarn.Sheets.DashboardHealthCoverageTest do
       row = hd(table.table_rows)
       Repo.update_all(from(c in TableColumn, where: c.id == ^column.id), set: [name: ""])
 
+      # `table_block_fixture/2` creates its column with `required: false`, so
+      # nothing in the original fixture was located by ROW at all — both halves of
+      # the old `code == :required_table_cell_empty or row_id == row.id` finder
+      # were nil and the label assertion below was never reached.
+      required = table_column_fixture(table, %{name: "Quantity", type: "number", required: true})
+
       findings = Sheets.list_dashboard_health_findings(project.id)
 
       assert Enum.all?(findings, &(Map.get(&1.details, :sheet_name) == "Located"))
@@ -233,8 +238,13 @@ defmodule Storyarn.Sheets.DashboardHealthCoverageTest do
       assert axis.details.block_label == "Inventory"
       refute Map.has_key?(axis.details, :column_label), "a blank name must not become a label"
 
-      cell = Enum.find(findings, &(&1.code == :required_table_cell_empty or &1.row_id == row.id))
-      assert is_nil(cell) or cell.details.row_label == row.name
+      cell = Enum.find(findings, &(&1.code == :required_table_cell_empty and &1.row_id == row.id))
+
+      assert cell, "the fixture must produce a row-scoped finding, or the labels below are never checked"
+      assert cell.column_id == required.id
+      assert cell.details.block_label == "Inventory"
+      assert cell.details.row_label == row.name
+      assert cell.details.column_label == "Quantity"
     end
 
     test "the unused-variable rule reports every occurrence, not the first ten", %{project: project} do
@@ -248,6 +258,87 @@ defmodule Storyarn.Sheets.DashboardHealthCoverageTest do
 
       assert length(unused) == 12
     end
+  end
+
+  describe "tied block positions" do
+    # `invalid_block_layout` names one block of the broken column group — `hd/1` of
+    # the group in block order. Two blocks CAN share a position (see the fixture),
+    # and `ORDER BY position` alone leaves which one comes first to the plan: the
+    # editor's per-sheet read can walk `blocks_sheet_id_position_index` while the
+    # project sweep sorts, and PostgreSQL promises no stable tiebreak for either.
+    # Both queries therefore order by `id` last, which is what these assertions pin.
+    test "attribute an invalid layout to the lowest id, on both surfaces", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Tied"})
+
+      # Enough rows that the two surfaces are not comparing four-row result sets,
+      # where any plan agrees with any other by luck.
+      for index <- 1..40, do: block_fixture(sheet, %{type: "text", config: %{"label" => "Filler #{index}"}})
+
+      first = block_fixture(sheet, %{type: "text", config: %{"label" => "First"}})
+      second = block_fixture(sheet, %{type: "text", config: %{"label" => "Second"}})
+      third = block_fixture(sheet, %{type: "text", config: %{"label" => "Third"}})
+
+      {:ok, _group_id} = Sheets.create_column_group(sheet.id, [first.id, second.id, third.id])
+
+      # The tie needs no raw SQL: deleting a block compacts the positions of
+      # everything after it, and restoring it from its snapshot brings back the
+      # position it held BEFORE the compaction. No unique index stops the overlap.
+      {:ok, deleted} = Sheets.delete_block(Sheets.get_block(first.id))
+
+      {:ok, _blocks} = Sheets.reorder_blocks_with_columns(sheet.id, layout_items(sheet.id))
+      {:ok, _restored} = Sheets.create_block_from_snapshot(sheet, deleted)
+
+      assert tied_block_ids(sheet.id) == Enum.sort([first.id, second.id]),
+             "the fixture must actually put these two blocks at one position"
+
+      editor = layout_finding_block_ids(editor_findings(sheet, project))
+      dashboard = layout_finding_block_ids(dashboard_findings(sheet, project))
+
+      # Not "whatever the heap happens to return": `first` is the restored row, so
+      # it is physically LAST in the table and an unordered read puts `second`
+      # first. Only the id tiebreak makes the answer a function of the data.
+      assert editor == [first.id]
+      assert dashboard == [first.id]
+    end
+  end
+
+  # Current active blocks in position order, each keeping the column membership it
+  # already has — the shape `reorder_blocks_with_columns/2` validates.
+  defp layout_items(sheet_id) do
+    sheet_id
+    |> Sheets.list_blocks()
+    |> Enum.sort_by(& &1.position)
+    |> Enum.map(fn block -> %{id: block.id, column_group_id: block.column_group_id, column_index: block.column_index} end)
+    |> renumber_column_indexes()
+  end
+
+  # A group that lost a member keeps the column indexes of the survivors, which
+  # the layout contract rejects; renumber in place, leaving the order untouched.
+  defp renumber_column_indexes(items) do
+    {renumbered, _seen} =
+      Enum.map_reduce(items, %{}, fn
+        %{column_group_id: nil} = item, seen ->
+          {item, seen}
+
+        item, seen ->
+          index = Map.get(seen, item.column_group_id, 0)
+          {%{item | column_index: index}, Map.put(seen, item.column_group_id, index + 1)}
+      end)
+
+    renumbered
+  end
+
+  defp tied_block_ids(sheet_id) do
+    sheet_id
+    |> Sheets.list_blocks()
+    |> Enum.group_by(& &1.position)
+    |> Enum.filter(fn {_position, blocks} -> length(blocks) > 1 end)
+    |> Enum.flat_map(fn {_position, blocks} -> Enum.map(blocks, & &1.id) end)
+    |> Enum.sort()
+  end
+
+  defp layout_finding_block_ids(findings) do
+    findings |> Enum.filter(&(&1.code == :invalid_block_layout)) |> Enum.map(& &1.block_id) |> Enum.sort()
   end
 
   describe "the vocabulary is single-sourced" do
@@ -310,7 +401,7 @@ defmodule Storyarn.Sheets.DashboardHealthCoverageTest do
     gallery_ids = for block <- all_blocks, block.type == "gallery", do: block.id
     table_ids = for block <- all_blocks, block.type == "table", do: block.id
 
-    HealthHelpers.sheet_snapshot(%{
+    Sheets.sheet_health_snapshot(%{
       sheet: sheet,
       project: project,
       blocks: own_blocks,

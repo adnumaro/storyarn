@@ -8,9 +8,13 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
   the dashboard cannot feed the checker differently for the same scene.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Phoenix.Component, only: [assign: 3]
 
   alias Storyarn.Scenes
+  alias Storyarn.Shared.StringUtils
+  alias StoryarnWeb.SceneLive.Helpers.SceneHelpers
 
   @empty_health %{errorItems: [], warningItems: [], infoItems: []}
 
@@ -101,46 +105,48 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
 
   defp health_label(%{entity_type: "scene"}, context), do: context.scene_name
 
-  defp health_label(%{entity_type: entity_type, entity_id: entity_id, details: details}, context) do
-    case entity_type do
-      "collection_item" ->
-        item_label = Map.get(context.collection_items, entity_id, "Item #{entity_id}")
-        zone_label = Map.get(context.zones, details[:zone_id] || details["zone_id"], "Collection")
-        "#{zone_label} · #{item_label}"
+  # `Storyarn.Scenes.HealthChecker` builds every `details` map with atom keys —
+  # `finding/2` is its only constructor and no caller outside it supplies one —
+  # so `details[:zone_id]` is the whole access, not half of it.
+  defp health_label(%{entity_type: "collection_item", entity_id: entity_id, details: details}, context) do
+    zone_id = details[:zone_id]
+    item_label = Map.get(context.collection_items, entity_id, element_label("collection_item", entity_id))
+    zone_label = Map.get(context.zones, zone_id, element_label("zone", zone_id))
+    "#{zone_label} · #{item_label}"
+  end
 
-      _ ->
-        context.labels
-        |> Map.get(entity_type, %{})
-        |> Map.get(entity_id, fallback_label(entity_type, entity_id))
-    end
+  defp health_label(%{entity_type: entity_type, entity_id: entity_id}, context) do
+    context.labels
+    |> Map.get(entity_type, %{})
+    |> Map.get(entity_id, element_label(entity_type, entity_id))
   end
 
   defp label_context(scene, layers, zones, pins, connections, annotations, ambient_flows) do
     %{
-      scene_name: present_label(scene.name, "Scene"),
-      zones: label_map(zones, :name, "Zone"),
+      scene_name: StringUtils.present_label(scene.name, SceneHelpers.element_type_label("scene")),
+      zones: label_map(zones, :name, "zone"),
       collection_items: collection_item_labels(zones),
       labels: %{
-        "layer" => label_map(layers, :name, "Layer"),
-        "zone" => label_map(zones, :name, "Zone"),
-        "pin" => label_map(pins, :label, "Pin"),
-        "connection" => label_map(connections, :label, "Connection"),
-        "annotation" => label_map(annotations, :text, "Annotation"),
+        "layer" => label_map(layers, :name, "layer"),
+        "zone" => label_map(zones, :name, "zone"),
+        "pin" => label_map(pins, :label, "pin"),
+        "connection" => label_map(connections, :label, "connection"),
+        "annotation" => label_map(annotations, :text, "annotation"),
         "ambient_flow" => ambient_flow_labels(ambient_flows)
       }
     }
   end
 
-  defp label_map(items, field, fallback) do
+  defp label_map(items, field, entity_type) do
     Map.new(items || [], fn item ->
-      {item.id, present_label(Map.get(item, field), "#{fallback} ##{item.id}")}
+      {item.id, StringUtils.present_label(Map.get(item, field), element_label(entity_type, item.id))}
     end)
   end
 
   defp ambient_flow_labels(ambient_flows) do
     Map.new(ambient_flows || [], fn ambient_flow ->
       flow_name = get_in(ambient_flow, [Access.key(:flow), Access.key(:name)])
-      {ambient_flow.id, present_label(flow_name, "Ambient flow ##{ambient_flow.id}")}
+      {ambient_flow.id, StringUtils.present_label(flow_name, element_label("ambient_flow", ambient_flow.id))}
     end)
   end
 
@@ -158,7 +164,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
     |> Enum.filter(&is_map/1)
     |> Map.new(fn item ->
       id = item["id"]
-      {id, present_label(item["label"], "Item #{id}")}
+      {id, StringUtils.present_label(item["label"], element_label("collection_item", id))}
     end)
   end
 
@@ -175,13 +181,12 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
   defp list(value) when is_list(value), do: value
   defp list(_value), do: []
 
-  defp present_label(value, fallback) when is_binary(value) do
-    if String.trim(value) == "", do: fallback, else: value
-  end
-
-  defp present_label(_value, fallback), do: fallback
-
-  defp fallback_label(entity_type, entity_id) do
-    entity_type |> String.replace("_", " ") |> String.capitalize() |> Kernel.<>(" ##{entity_id}")
+  # "Zona #12" — the element's type plus its id, for anything the author never
+  # named. Same shape as the flows sibling's `"%{type} #%{id}"`.
+  defp element_label(entity_type, entity_id) do
+    dgettext("scenes", "%{type} #%{id}",
+      type: SceneHelpers.element_type_label(entity_type),
+      id: entity_id
+    )
   end
 end

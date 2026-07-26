@@ -4,10 +4,12 @@ defmodule Storyarn.Sheets.SheetStatsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
+  alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
@@ -398,5 +400,108 @@ defmodule Storyarn.Sheets.SheetStatsTest do
       assert finding.severity == HealthChecker.severity_for(:missing_sheet_shortcut)
       assert finding.details.sheet_name == "No Shortcut"
     end
+
+    # `no_internal_variable_usages` must union all THREE reference sources — flow
+    # node, scene zone, scene pin. The tests above cover the flow-node and
+    # formula-binding routes only, so dropping `"scene_zone"`/`"scene_pin"` rows
+    # from `referenced_block_ids_for_project/1` would leave them all green while
+    # every scene-only variable started reporting as unused.
+    #
+    # The two scene sources reach a variable differently and so need different
+    # fixtures: a zone carries `action_type: "display"` with a `variable_ref`,
+    # while `ScenePin` has no `action_*` column at all — its only route is the
+    # visibility `condition`.
+    test "does not report a variable used only in a scene zone", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      block = block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+      scene = scene_fixture(project, %{name: "Village"})
+
+      assert block.id in unused_variable_block_ids(project), "positive control: no reference yet"
+
+      {:ok, _zone} =
+        Scenes.update_zone(zone_fixture(scene), %{
+          "action_type" => "display",
+          "action_data" => %{"variable_ref" => "#{sheet.shortcut}.#{block.variable_name}"}
+        })
+
+      assert reference_source_types(block) == ["scene_zone"]
+      refute block.id in unused_variable_block_ids(project)
+    end
+
+    test "does not report a variable used only in a scene pin condition", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      block = block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+      scene = scene_fixture(project, %{name: "Village"})
+
+      assert block.id in unused_variable_block_ids(project), "positive control: no reference yet"
+
+      {:ok, _pin} =
+        Scenes.update_pin(pin_fixture(scene), %{"condition" => variable_condition(sheet, block)})
+
+      assert reference_source_types(block) == ["scene_pin"]
+      refute block.id in unused_variable_block_ids(project)
+    end
+
+    test "reports a variable again once the only scene reference points elsewhere", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      block = block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+      other = block_fixture(sheet, %{type: "number", config: %{"label" => "Mana"}})
+      scene = scene_fixture(project, %{name: "Village"})
+
+      {:ok, zone} =
+        Scenes.update_zone(zone_fixture(scene), %{
+          "action_type" => "display",
+          "action_data" => %{"variable_ref" => "#{sheet.shortcut}.#{block.variable_name}"}
+        })
+
+      refute block.id in unused_variable_block_ids(project)
+
+      # Re-pointing, not deleting: this is what proves the scene half of the union
+      # is live rather than a constant that happens to read true.
+      {:ok, _zone} =
+        Scenes.update_zone(zone, %{
+          "action_data" => %{"variable_ref" => "#{sheet.shortcut}.#{other.variable_name}"}
+        })
+
+      assert reference_source_types(block) == []
+      assert reference_source_types(other) == ["scene_zone"]
+
+      unused = unused_variable_block_ids(project)
+      assert block.id in unused
+      refute other.id in unused
+    end
+  end
+
+  defp unused_variable_block_ids(project) do
+    project.id
+    |> SheetStats.list_dashboard_health_findings()
+    |> Enum.filter(&(&1.code == :no_internal_variable_usages))
+    |> MapSet.new(& &1.block_id)
+  end
+
+  defp reference_source_types(block) do
+    Repo.all(from(vr in VariableReference, where: vr.block_id == ^block.id, select: vr.source_type))
+  end
+
+  defp variable_condition(sheet, block) do
+    %{
+      "logic" => "all",
+      "blocks" => [
+        %{
+          "id" => Ecto.UUID.generate(),
+          "type" => "block",
+          "logic" => "all",
+          "rules" => [
+            %{
+              "id" => Ecto.UUID.generate(),
+              "sheet" => sheet.shortcut,
+              "variable" => block.variable_name,
+              "operator" => "greater_than",
+              "value" => "0"
+            }
+          ]
+        }
+      ]
+    }
   end
 end

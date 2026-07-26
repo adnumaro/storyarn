@@ -116,15 +116,35 @@ defmodule Storyarn.Flows.Instruction do
   def known_keys, do: @known_keys
 
   @doc """
-  Returns true if any assignment has an operator incompatible with its variable type.
-  """
-  @spec has_type_warnings?(list(), list()) :: boolean()
-  def has_type_warnings?(assignments, project_variables) when is_list(assignments) do
-    type_map =
-      Map.new(project_variables, fn v ->
-        {"#{v.sheet_shortcut}.#{v.variable_name}", v.block_type}
-      end)
+  The `"shortcut.name" => block_type` lookup the type-warning check reads.
 
+  Built from an ALREADY-LOADED variable list, never from a project id: there are
+  three legitimate variable sets behind one key format — sheets only
+  (`Sheets.health_variable_types/1`), sheets plus scene pins and zones
+  (`Flows.list_referenceable_variables/1`), and whatever a scene snapshot
+  carries — and picking the wrong one makes `variable_type_mismatch` appear and
+  disappear depending on which surface asked.
+  """
+  @spec variable_type_map([map()]) :: %{String.t() => String.t()}
+  def variable_type_map(project_variables) when is_list(project_variables) do
+    Map.new(project_variables, fn v ->
+      {"#{v.sheet_shortcut}.#{v.variable_name}", v.block_type}
+    end)
+  end
+
+  @doc """
+  Returns true if any assignment has an operator incompatible with its variable type.
+
+  Takes the PREPARED map, not the variable list. Building it here meant rebuilding
+  it once per instruction node and once per dialogue response — 96% of the entire
+  project health sweep at 4000 variables, and a 15× penalty on every flow open.
+  With a map argument a per-node rebuild is not representable without someone
+  writing `variable_type_map/1` at the call site, which is the point.
+  """
+  @spec has_type_warnings?(list(), %{String.t() => String.t()}) :: boolean()
+  def has_type_warnings?([], type_map) when is_map(type_map), do: false
+
+  def has_type_warnings?(assignments, type_map) when is_list(assignments) and is_map(type_map) do
     Enum.any?(assignments, fn a ->
       with sheet when is_binary(sheet) <- a["sheet"],
            var when is_binary(var) <- a["variable"],
@@ -137,7 +157,11 @@ defmodule Storyarn.Flows.Instruction do
     end)
   end
 
-  def has_type_warnings?(_, _), do: false
+  # Deliberately NOT a catch-all over the second argument: passing the variable
+  # LIST used to be the API, and swallowing it as `false` would silently drop
+  # every type warning instead of pointing at the call site that must build the
+  # map once.
+  def has_type_warnings?(_assignments, type_map) when is_map(type_map), do: false
 
   @doc """
   Creates a new empty assignments list.

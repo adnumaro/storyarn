@@ -8,7 +8,7 @@ import {
   Text,
   X,
 } from "lucide-vue-next";
-import { computed, onUnmounted, ref } from "vue";
+import { computed, ref } from "vue";
 import EditableText from "@components/forms/EditableText.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Badge } from "@components/ui/badge";

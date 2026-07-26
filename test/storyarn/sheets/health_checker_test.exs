@@ -20,6 +20,8 @@ defmodule Storyarn.Sheets.HealthCheckerTest do
       assert finding == %{
                severity: :info,
                code: :no_internal_variable_usages,
+               entity_type: "number",
+               entity_id: 11,
                sheet_id: 7,
                block_id: 11,
                block_type: "number",
@@ -27,6 +29,34 @@ defmodule Storyarn.Sheets.HealthCheckerTest do
                column_id: nil,
                details: %{sheet_name: "Hero"}
              }
+    end
+
+    # `entity_type`/`entity_id` is what flows and scenes findings carry, and a
+    # cross-domain reader must be able to say what a finding is about without
+    # knowing that sheets have blocks. Derived from the block, never passed in:
+    # a caller able to set them could contradict `block_id`/`block_type`.
+    test "locate every finding the way flows and scenes findings are located" do
+      sheet_level = HealthChecker.finding(:missing_sheet_shortcut, %{sheet_id: 7})
+
+      assert sheet_level.entity_type == "sheet"
+      assert sheet_level.entity_id == nil
+
+      cell =
+        HealthChecker.finding(:required_table_cell_empty, %{
+          sheet_id: 7,
+          block_id: 11,
+          block_type: "table",
+          row_id: 3,
+          column_id: 4
+        })
+
+      assert cell.entity_type == "table"
+      assert cell.entity_id == 11
+      assert {cell.row_id, cell.column_id} == {3, 4}, "the cell stays addressable BELOW the entity"
+
+      typeless = HealthChecker.finding(:invalid_block_layout, %{sheet_id: 7, block_id: 11})
+      assert typeless.entity_type == "block"
+      assert typeless.entity_id == 11
     end
   end
 

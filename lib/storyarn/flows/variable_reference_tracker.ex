@@ -462,15 +462,6 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   @doc """
-  Stale node ids for MANY flows, keyed by flow — two queries instead of 2N.
-
-  The project-wide sweep behind the flows dashboard. `list_stale_node_ids/1` stays
-  for the single-flow editor path.
-  """
-  @spec list_stale_node_ids_by_flow([integer()]) :: %{integer() => MapSet.t()}
-  defdelegate list_stale_node_ids_by_flow(flow_ids), to: Storyarn.Sheets
-
-  @doc """
   Returns a MapSet of node IDs in a flow that have at least one stale reference.
   Uses pure SQL comparison — no JSON scanning in Elixir.
   """

@@ -20,6 +20,28 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
   }
 
   # ---------------------------------------------------------------------------
+  # Element vocabulary
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  The word the scenes UI uses for an element type.
+
+  One place, so search results and the health popover cannot call the same thing
+  two names — an annotation is a "Note" on both. Explicit per type on purpose:
+  `String.capitalize` on a DB enum yields a string Gettext can never translate,
+  and a type with no clause here must fail loudly rather than leak the enum.
+  """
+  @spec element_type_label(String.t()) :: String.t()
+  def element_type_label("scene"), do: dgettext("scenes", "Scene")
+  def element_type_label("layer"), do: dgettext("scenes", "Layer")
+  def element_type_label("zone"), do: dgettext("scenes", "Zone")
+  def element_type_label("pin"), do: dgettext("scenes", "Pin")
+  def element_type_label("connection"), do: dgettext("scenes", "Connection")
+  def element_type_label("annotation"), do: dgettext("scenes", "Note")
+  def element_type_label("ambient_flow"), do: dgettext("scenes", "Ambient flow")
+  def element_type_label("collection_item"), do: dgettext("scenes", "Item")
+
+  # ---------------------------------------------------------------------------
   # Search helpers
   # ---------------------------------------------------------------------------
 
@@ -44,25 +66,25 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
   def search_pins(pins, q) do
     pins
     |> Enum.filter(&matches_text?(&1.label, q))
-    |> Enum.map(&%{type: "pin", id: &1.id, label: &1.label || dgettext("scenes", "Pin")})
+    |> Enum.map(&%{type: "pin", id: &1.id, label: &1.label || element_type_label("pin")})
   end
 
   def search_zones(zones, q) do
     zones
     |> Enum.filter(&matches_text?(&1.name, q))
-    |> Enum.map(&%{type: "zone", id: &1.id, label: &1.name || dgettext("scenes", "Zone")})
+    |> Enum.map(&%{type: "zone", id: &1.id, label: &1.name || element_type_label("zone")})
   end
 
   def search_annotations(annotations, q) do
     annotations
     |> Enum.filter(&matches_text?(&1.text, q))
-    |> Enum.map(&%{type: "annotation", id: &1.id, label: &1.text || dgettext("scenes", "Note")})
+    |> Enum.map(&%{type: "annotation", id: &1.id, label: &1.text || element_type_label("annotation")})
   end
 
   def search_connections(connections, q) do
     connections
     |> Enum.filter(&matches_text?(&1.label, q))
-    |> Enum.map(&%{type: "connection", id: &1.id, label: &1.label || dgettext("scenes", "Connection")})
+    |> Enum.map(&%{type: "connection", id: &1.id, label: &1.label || element_type_label("connection")})
   end
 
   def matches_text?(nil, _q), do: false

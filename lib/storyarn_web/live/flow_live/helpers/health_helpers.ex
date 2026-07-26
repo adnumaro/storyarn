@@ -16,6 +16,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.HealthHelpers do
 
   use Gettext, backend: Storyarn.Gettext
 
+  alias Storyarn.Shared.StringUtils
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   @empty_health %{errorItems: [], warningItems: [], infoItems: []}
@@ -47,24 +48,14 @@ defmodule StoryarnWeb.FlowLive.Helpers.HealthHelpers do
       label: health_label(finding, flow_name),
       reasons:
         Enum.map(findings, fn item ->
-          %{code: code_string(item.code), details: item.details}
+          %{code: Atom.to_string(item.code), details: item.details}
         end)
     }
   end
 
-  # Editorial codes are atoms; structural rule ids are already strings.
-  defp code_string(code) when is_atom(code), do: Atom.to_string(code)
-  defp code_string(code) when is_binary(code), do: code
-
-  defp health_label(%{entity_id: nil}, flow_name), do: present_label(flow_name, dgettext("flows", "Flow"))
+  defp health_label(%{entity_id: nil}, flow_name), do: StringUtils.present_label(flow_name, dgettext("flows", "Flow"))
 
   defp health_label(%{entity_type: type, entity_id: id}, _flow_name) do
     dgettext("flows", "%{type} #%{id}", type: NodeTypeRegistry.label(type), id: id)
   end
-
-  defp present_label(value, fallback) when is_binary(value) do
-    if String.trim(value) == "", do: fallback, else: value
-  end
-
-  defp present_label(_value, fallback), do: fallback
 end

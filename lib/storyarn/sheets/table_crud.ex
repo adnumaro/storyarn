@@ -3,6 +3,7 @@ defmodule Storyarn.Sheets.TableCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
@@ -42,10 +43,12 @@ defmodule Storyarn.Sheets.TableCrud do
   def create_column(%Block{type: "table"} = block, attrs) do
     attrs = maybe_force_formula_constant(attrs)
 
-    Repo.transaction(fn ->
+    fn ->
       scope = lock_table_scope!(block)
       create_column_in_scope!(scope, attrs)
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_table_result(block.id)
   end
 
   defp create_column_in_scope!(scope, attrs) do
@@ -84,10 +87,12 @@ defmodule Storyarn.Sheets.TableCrud do
   def update_column(%TableColumn{} = column, attrs) do
     attrs = maybe_force_formula_constant(attrs)
 
-    Repo.transaction(fn ->
+    fn ->
       {scope, persisted_column} = lock_table_scope_from_column!(column)
       update_column_in_scope!(scope, persisted_column, attrs)
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_table_result(column.block_id)
   end
 
   defp update_column_in_scope!(scope, column, attrs) do
@@ -149,7 +154,7 @@ defmodule Storyarn.Sheets.TableCrud do
   Removes the column's cell key from all rows.
   """
   def delete_column(%TableColumn{} = column) do
-    Repo.transaction(fn ->
+    fn ->
       {scope, persisted_column} = lock_table_scope_from_column!(column)
 
       if length(parent_columns(scope)) <= 1 do
@@ -170,7 +175,9 @@ defmodule Storyarn.Sheets.TableCrud do
         {:error, reason} ->
           Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_table_result(column.block_id)
   end
 
   @doc """
@@ -178,7 +185,7 @@ defmodule Storyarn.Sheets.TableCrud do
   Also restores cell values for the column across all rows.
   """
   def create_column_from_snapshot(block_id, snapshot, cell_values) do
-    Repo.transaction(fn ->
+    fn ->
       scope = lock_table_scope!(block_id)
       validate_snapshot_owner!(snapshot, block_id)
 
@@ -205,7 +212,9 @@ defmodule Storyarn.Sheets.TableCrud do
         {:error, reason} ->
           Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_table_result(block_id)
   end
 
   defp restore_column_cell_values!(scope, column_slug, cell_values) when is_list(cell_values) do
@@ -309,7 +318,7 @@ defmodule Storyarn.Sheets.TableCrud do
   Auto-generates slug, auto-assigns position, initializes cells for all columns.
   """
   def create_row(%Block{type: "table"} = block, attrs) do
-    Repo.transaction(fn ->
+    fn ->
       scope = lock_table_scope!(block)
       block_id = scope.block.id
       position = attrs[:position] || attrs["position"] || next_row_position(block_id)
@@ -342,12 +351,14 @@ defmodule Storyarn.Sheets.TableCrud do
         {:error, reason} ->
           Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_table_result(block.id)
   end
 
   @doc "Updates a row (rename → re-slug)."
   def update_row(%TableRow{} = row, attrs) do
-    Repo.transaction(fn ->
+    fn ->
       {scope, persisted_row} = lock_table_scope_from_row!(row)
       old_slug = persisted_row.slug
 
@@ -383,14 +394,16 @@ defmodule Storyarn.Sheets.TableCrud do
         {:error, reason} ->
           Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_table_result(row.block_id)
   end
 
   @doc """
   Recreates a row from a snapshot map (for undo/redo).
   """
   def create_row_from_snapshot(block_id, snapshot, cells) do
-    Repo.transaction(fn ->
+    fn ->
       scope = lock_table_scope!(block_id)
       validate_snapshot_owner!(snapshot, block_id)
       validate_cell_keys!(scope, cells, enforce_required: false)
@@ -412,12 +425,14 @@ defmodule Storyarn.Sheets.TableCrud do
         {:error, reason} ->
           Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_table_result(block_id)
   end
 
   @doc "Deletes a row. Prevents deletion of the last row."
   def delete_row(%TableRow{} = row) do
-    Repo.transaction(fn ->
+    fn ->
       {scope, persisted_row} = lock_table_scope_from_row!(row)
 
       if length(parent_rows(scope)) <= 1 do
@@ -430,7 +445,9 @@ defmodule Storyarn.Sheets.TableCrud do
         {:ok, deleted} -> deleted
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_table_result(row.block_id)
   end
 
   @doc "Reorders rows by updating their positions."
@@ -456,7 +473,7 @@ defmodule Storyarn.Sheets.TableCrud do
 
   @doc "Batch updates multiple cells in a row."
   def update_cells(%TableRow{} = row, cells_map) when is_map(cells_map) do
-    Repo.transaction(fn ->
+    fn ->
       {scope, persisted_row} = lock_table_scope_from_row!(row)
       validate_cell_keys!(scope, cells_map, enforce_required: true)
       new_cells = Map.merge(persisted_row.cells || %{}, cells_map)
@@ -467,10 +484,53 @@ defmodule Storyarn.Sheets.TableCrud do
         {:ok, updated} -> updated
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_table_result(row.block_id)
   end
 
   def update_cells(_row, _cells_map), do: {:error, :invalid_table_cells}
+
+  # =============================================================================
+  # Dashboard broadcast helpers
+  # =============================================================================
+
+  # A table cell IS a project variable — `sheet.table.row_slug.column_slug` — so
+  # every column, row and cell write above changes the same project-wide data the
+  # sheets dashboard reads, exactly as `SheetCrud` and `BlockCrud` writes do.
+  # Without this the dashboard served a stale cache for up to its 30 s TTL; the
+  # moment anything caches the VARIABLE VOCABULARY (the obvious next optimisation
+  # for the editor's health recompute) a missed bust stops being a delay and
+  # starts being a wrong answer.
+  #
+  # `reorder_columns/2` and `reorder_rows/2` deliberately do NOT broadcast: axis
+  # ORDER appears in no dashboard number, no variable reference, and no health
+  # finding — every rule keys off slugs and cell keys.
+  defp broadcast_table_result(result, block_id)
+
+  defp broadcast_table_result({:ok, _value} = result, block_id) do
+    broadcast_table_change(block_id)
+    result
+  end
+
+  defp broadcast_table_result(result, _block_id), do: result
+
+  # One broadcast for the whole project even when the write cascaded into
+  # inherited instances on child sheets: those live in the same project, and the
+  # dashboard cache is keyed per project.
+  defp broadcast_table_change(block_id) do
+    project_id =
+      Repo.one(
+        from(block in Block,
+          join: sheet in Sheet,
+          on: sheet.id == block.sheet_id,
+          where: block.id == ^block_id,
+          select: sheet.project_id
+        )
+      )
+
+    if project_id, do: Collaboration.broadcast_dashboard_change(project_id, :sheets)
+  end
 
   # =============================================================================
   # Child Sync (Table Inheritance) — Private

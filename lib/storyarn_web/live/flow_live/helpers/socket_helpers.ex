@@ -15,7 +15,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   import Phoenix.Component, only: [assign: 3]
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Shared.WordCount
@@ -27,20 +26,19 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   Refreshes `:flow`, `:flow_data`, `:flow_hubs`, `:flow_word_count` and
   `:flow_health`.
   """
-  @spec reload_flow_data(Socket.t(), keyword()) :: Socket.t()
-  def reload_flow_data(socket, opts \\ []) do
-    previous_flow = socket.assigns[:flow]
+  @spec reload_flow_data(Socket.t()) :: Socket.t()
+  def reload_flow_data(socket) do
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
 
-    flow_data = Flows.serialize_for_canvas(flow)
-    flow_hubs = Flows.list_hubs(flow.id)
+    # Once the flow is loaded the socket already holds the FULL referenceable
+    # set; omitting it made the serializer re-query it (8 queries / 49.7 ms vs
+    # 4 / 18.7 ms). `nil` before the async load lands is fine and NOT a fallback
+    # to a different vocabulary: `serialize_for_canvas/2` then computes the very
+    # same `list_referenceable_variables/1` set, just at the cost of the query.
+    flow_data =
+      Flows.serialize_for_canvas(flow, project_variables: socket.assigns[:project_variables])
 
-    # Local graph mutations announce themselves project-wide so flows whose
-    # subflow/exit pins derive from this one can stale their open analysis
-    # snapshots. Remote-change receivers pass notify_project: false.
-    if Keyword.get(opts, :notify_project, true) and exit_surface_changed?(previous_flow, flow) do
-      Collaboration.broadcast_flow_graph_changed_from(self(), flow.project_id, flow.id)
-    end
+    flow_hubs = Flows.list_hubs(flow.id)
 
     socket
     |> assign(:flow, flow)
@@ -48,27 +46,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     |> assign(:flow_hubs, flow_hubs)
     |> assign_flow_stats(flow, flow_data)
   end
-
-  # Other flows only ever derive from THIS flow's exit nodes: a subflow node
-  # exposes one output pin per referenced-flow exit node
-  # (`NodeCrud.batch_resolve_subflow_data/2` → `exit_<exit node id>`), and an
-  # exit node in flow-reference mode resolves against the flow's existence.
-  # Content-only edits (dialogue text, positions, connections inside this
-  # flow) change nothing another flow can observe, so they must not stale
-  # anyone else's snapshot. An unloaded association is treated as changed —
-  # over-notifying is recoverable, missing a real pin change is not.
-  defp exit_surface_changed?(previous_flow, flow) do
-    case exit_node_ids(previous_flow) do
-      nil -> true
-      previous_ids -> previous_ids != exit_node_ids(flow)
-    end
-  end
-
-  defp exit_node_ids(%{nodes: nodes}) when is_list(nodes) do
-    for node <- nodes, node.type == "exit", into: MapSet.new(), do: node.id
-  end
-
-  defp exit_node_ids(_flow), do: nil
 
   @doc """
   Computes flow-level stats and health findings grouped by severity.

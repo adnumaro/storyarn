@@ -6,6 +6,7 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Flows
+  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.HealthChecker
 
@@ -19,6 +20,16 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
 
   defp force_data!(node, data) do
     node |> Ecto.Changeset.change(data: data) |> Repo.update!()
+  end
+
+  defp force_connection!(flow, source, target, source_pin, target_pin) do
+    Repo.insert!(%FlowConnection{
+      flow_id: flow.id,
+      source_node_id: source.id,
+      target_node_id: target.id,
+      source_pin: source_pin,
+      target_pin: target_pin
+    })
   end
 
   defp soft_delete!(node) do
@@ -235,7 +246,7 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
         })
 
       connection_fixture(flow, entry, dialogue)
-      stale_conn = connection_fixture(flow, dialogue, exit_n, %{source_pin: "r1"})
+      connection_fixture(flow, dialogue, exit_n, %{source_pin: "r1"})
       force_data!(dialogue, %{"text" => "Choose", "responses" => []})
 
       analysis = analyze!(project, flow)
@@ -243,6 +254,93 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
       assert [finding] = rule_findings(analysis, "invalid_output_pins")
       assert finding.entity_id == dialogue.id
       assert finding.details.pins == ["r1"]
+    end
+
+    # `invalid_input_pins` is an `:error` and had no detection test anywhere on
+    # this branch: `main` asserted it off a node's own serialized data, and the
+    # consolidation moved detection into `Graph.classify_connections/2`, where
+    # `health_checker_test.exs` cannot reach it (its `composed_findings/1` sets
+    # `connections: []`, so no pin error is derivable there by construction).
+    test "a target pin the node does not expose emits invalid_input_pins", %{
+      project: project,
+      flow: flow
+    } do
+      entry = entry_node(flow)
+      exit_n = exit_node(flow)
+
+      # The productive writer refuses this, so only drift can produce it — the
+      # same reason the output-pin test above writes at the Repo level.
+      assert {:error, :invalid_target_pin} =
+               Flows.create_connection(flow, entry, exit_n, %{
+                 source_pin: "output",
+                 target_pin: "legacy-input"
+               })
+
+      force_connection!(flow, entry, exit_n, "output", "legacy-input")
+
+      analysis = analyze!(project, flow)
+
+      assert [finding] = rule_findings(analysis, "invalid_input_pins")
+      assert finding.severity == :error
+      assert finding.entity_id == exit_n.id
+      assert finding.entity_type == "exit"
+      assert finding.details.pins == ["legacy-input"]
+
+      # The bad wire is not counted as an edge either, so the rule cannot be
+      # satisfied by naming the pin and keeping the connection.
+      assert Enum.any?(rule_findings(analysis, "isolated_node"), &(&1.entity_id == exit_n.id))
+    end
+
+    test "an entry node can never be a connection target", %{project: project, flow: flow} do
+      entry = entry_node(flow)
+      exit_n = exit_node(flow)
+
+      # "input" is the canonical pin name, but `entry` exposes no input at all.
+      force_connection!(flow, exit_n, entry, "output", "input")
+
+      analysis = analyze!(project, flow)
+
+      assert [finding] = rule_findings(analysis, "invalid_input_pins")
+      assert finding.entity_id == entry.id
+      assert finding.details.pins == ["input"]
+    end
+
+    test "the dashboard reports the same input-pin error as the editor", %{
+      project: project,
+      flow: flow
+    } do
+      entry = entry_node(flow)
+      exit_n = exit_node(flow)
+      force_connection!(flow, entry, exit_n, "output", "legacy-input")
+
+      dashboard =
+        project.id
+        |> Flows.list_dashboard_health_findings()
+        |> Enum.filter(&(&1.code == :invalid_input_pins))
+
+      assert [finding] = dashboard
+      assert finding.severity == :error
+      assert finding.flow_id == flow.id
+      assert finding.entity_id == exit_n.id
+      assert finding.details.pins == ["legacy-input"]
+    end
+
+    test "the editor serializer stamps the invalid pin onto the node", %{
+      project: project,
+      flow: flow
+    } do
+      entry = entry_node(flow)
+      exit_n = exit_node(flow)
+      force_connection!(flow, entry, exit_n, "output", "legacy-input")
+
+      node =
+        project.id
+        |> Flows.get_flow!(flow.id)
+        |> Flows.serialize_for_canvas()
+        |> Map.fetch!(:nodes)
+        |> Enum.find(&(&1.id == exit_n.id))
+
+      assert node.data["invalid_input_pins"] == ["legacy-input"]
     end
   end
 
@@ -448,7 +546,9 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
         |> Flows.list_dashboard_health_findings()
         |> Enum.group_by(& &1.flow_id, &{&1.severity, &1.code, &1.entity_type, &1.entity_id})
 
-      for analysis <- Flows.analyze_project_structure(project.id) do
+      for project_flow <- Flows.list_flows(project.id) do
+        analysis = analyze!(project, project_flow)
+
         editor =
           analysis.findings
           |> Enum.map(&{&1.severity, &1.code, &1.entity_type, &1.entity_id})
@@ -526,8 +626,14 @@ defmodule Storyarn.Flows.StructuralAnalysisTest do
       loaded = Flows.get_flow!(project.id, flow.id)
       flow_data = Flows.serialize_for_canvas(loaded)
 
+      # The two live builders: `from_serialized/2` is the editor path
+      # (`Flows.flow_health_findings/2`), `load_flow/2` is `load_project/2`
+      # narrowed to one id — the dashboard sweep. Delete either side and this
+      # stops proving the branch's central premise.
       from_serialized = Flows.analyze_serialized_flow_structure(flow_data, project.id)
       {:ok, from_db} = Flows.analyze_flow_structure(project.id, flow.id)
+
+      assert from_serialized.findings != []
 
       assert Enum.map(from_serialized.findings, &{&1.code, &1.entity_type, &1.entity_id}) ==
                Enum.map(from_db.findings, &{&1.code, &1.entity_type, &1.entity_id})

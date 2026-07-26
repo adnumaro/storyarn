@@ -1,30 +1,77 @@
 defmodule Storyarn.Sheets.HealthSnapshots do
   @moduledoc """
-  Builds the enriched snapshots `Sheets.HealthChecker` consumes, for every sheet
-  in a project.
+  Builds the enriched snapshots `Sheets.HealthChecker` consumes — for the one
+  sheet open in the editor, and for every sheet in a project.
 
-  The checker is a pure function over a snapshot, so the dashboard can run the
-  exact same 26 rules the editor runs instead of reimplementing a handful of them
-  as aggregate SQL. What made that unaffordable was the snapshot, not the checker:
-  built one sheet at a time it costs ~21 queries per sheet (713 for a 34-sheet
-  project, measured). Every field below is therefore loaded ONCE for the whole
-  project and sliced per sheet — a fixed ~20 queries, whatever the sheet count.
+  BOTH builders live here on purpose. The checker is a pure function over a
+  snapshot, so the dashboard runs the exact same 26 rules the editor runs instead
+  of reimplementing a handful of them as aggregate SQL; what decides the verdicts
+  is then the snapshot, and two builders in two layers is how the two surfaces
+  come to disagree about the same sheet. The editor enters through
+  `Sheets.sheet_health_findings/1`, the dashboard through `load_project/2`, and
+  the enrichment below is written once for both.
 
-  Slicing is not the same as re-deriving: a snapshot field the sweep computes
-  differently from the editor silently changes verdicts. That equivalence is what
-  `test/storyarn/sheets/dashboard_health_coverage_test.exs` pins, sheet by sheet,
-  against `SheetLive.Helpers.HealthHelpers` — the editor's builder.
+  They differ only in how much they read at a time. Built one sheet at a time the
+  snapshot costs ~21 queries (713 for a 34-sheet project, measured), so
+  `load_project/2` loads every field ONCE for the whole project and slices it per
+  sheet — a fixed ~20 queries, whatever the sheet count. Slicing is not the same
+  as re-deriving, which is why
+  `test/storyarn/sheets/dashboard_health_coverage_test.exs` pins the two against
+  each other sheet by sheet.
   """
 
   alias Storyarn.Flows
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.FormulaResolver
   alias Storyarn.Sheets.GalleryCrud
+  alias Storyarn.Sheets.HealthChecker
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.SheetQueries
   alias Storyarn.Sheets.SheetStats
   alias Storyarn.Sheets.TableCrud
+
+  @doc """
+  Checks the sheet open in the editor: build its snapshot, then run the checker.
+  """
+  @spec findings(map()) :: [HealthChecker.finding()]
+  def findings(material), do: material |> snapshot() |> HealthChecker.check()
+
+  @doc """
+  One checker-ready snapshot from the material the sheet editor already holds:
+  `:sheet`, `:project`, the sheet's own `:blocks`, its `:inherited_groups`, and
+  the `:table_data` and `:gallery_data` already loaded to render it. Nothing on
+  screen is read a second time.
+
+  What it does fetch is the project-wide enrichment the checker needs beyond that
+  material — the same enrichment `load_project/2` fetches once for every sheet.
+  Public because the agreement test drives this builder rather than a copy of it.
+  """
+  @spec snapshot(map()) :: map()
+  def snapshot(%{sheet: sheet, project: project, blocks: own_blocks, inherited_groups: inherited_groups} = material) do
+    blocks = visible_blocks({inherited_groups, own_blocks})
+    block_ids = Enum.map(blocks, & &1.id)
+
+    # Project-wide on purpose: a variable bound by a table formula IS used, and
+    # `Flows.referenced_block_ids/1` — which only sees tracked variable references —
+    # does not know that, so the editor header used to claim "no internal usages"
+    # for a block the dashboard correctly reported as used.
+    referenced_block_ids = SheetStats.referenced_block_ids_for_project(project.id)
+
+    %{
+      sheet: sheet,
+      blocks: blocks,
+      table_data: Map.get(material, :table_data) || %{},
+      gallery_data: Map.get(material, :gallery_data) || %{},
+      has_children: SheetQueries.has_children?(sheet.id),
+      inheritance_issues: PropertyInheritance.list_health_issues(sheet.id),
+      referenced_block_ids: referenced_block_ids,
+      stale_variable_reference_counts: stale_variable_reference_counts(blocks, referenced_block_ids, project.id),
+      stale_entity_reference_block_ids: ReferenceTracker.list_stale_block_reference_source_ids(project.id, block_ids),
+      reference_targets: reference_targets(blocks, project.id),
+      project_variable_types: variable_types(project.id)
+    }
+  end
 
   @doc """
   Returns one checker-ready snapshot per active sheet of the project.
@@ -55,7 +102,7 @@ defmodule Storyarn.Sheets.HealthSnapshots do
     enrichment = enrichment(project_id, sheets, all_blocks, referenced_ids)
 
     Enum.map(sheets, fn sheet ->
-      snapshot(sheet, Map.get(blocks_by_sheet, sheet.id, []), enrichment)
+      sliced_snapshot(sheet, Map.get(blocks_by_sheet, sheet.id, []), enrichment)
     end)
   end
 
@@ -66,7 +113,9 @@ defmodule Storyarn.Sheets.HealthSnapshots do
     Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
   end
 
-  defp snapshot(sheet, blocks, enrichment) do
+  # The project sweep's per-sheet slice of the shared enrichment. Field for field
+  # the same map `snapshot/1` builds for the editor — that is the contract.
+  defp sliced_snapshot(sheet, blocks, enrichment) do
     block_ids = Enum.map(blocks, & &1.id)
 
     %{
@@ -130,15 +179,7 @@ defmodule Storyarn.Sheets.HealthSnapshots do
     references =
       blocks
       |> Enum.filter(&(&1.type == "reference"))
-      |> Enum.map(fn block ->
-        # A non-map value is already an `invalid_block_value` to the checker, and it
-        # reads no target out of one either. One corrupt row must not take down the
-        # sweep for every other sheet in the project.
-        case block.value do
-          value when is_map(value) -> {block.id, Map.get(value, "target_type"), Map.get(value, "target_id")}
-          _other -> {block.id, nil, nil}
-        end
-      end)
+      |> Enum.map(&reference_target_key/1)
 
     targets =
       references
@@ -149,6 +190,17 @@ defmodule Storyarn.Sheets.HealthSnapshots do
       {block_id, Map.get(targets, {target_type, target_id})}
     end)
   end
+
+  # `nil` is the ONLY non-map `value` that can reach here — the column is nullable
+  # — because `Block` declares `field :value, :map` and Ecto's loader raises on a
+  # jsonb scalar (verified for strings, numbers, booleans, arrays and
+  # `'null'::jsonb`) long before a row reaches this function. A catch-all for
+  # shapes the schema cannot produce would hide a loader change, not survive one.
+  defp reference_target_key(%{id: id, value: value}) when is_map(value) do
+    {id, Map.get(value, "target_type"), Map.get(value, "target_id")}
+  end
+
+  defp reference_target_key(%{id: id, value: nil}), do: {id, nil, nil}
 
   @doc """
   The vocabulary the health checker type-checks formula bindings against:

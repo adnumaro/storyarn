@@ -86,6 +86,32 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
 
       assert PropertyInheritance.list_health_issues(child.id) == []
     end
+
+    test "ignores hidden instances on a sheet with no ancestors too", %{parent: parent, child: child} do
+      source = inheritable_block_fixture(parent, label: "Hidden")
+      instance = inherited_instance!(child.id, source.id)
+
+      assert {:ok, _hidden_sheet} = PropertyInheritance.hide_for_children(child, source.id)
+
+      # Straight to the DB because no facade call can reach this state:
+      # `Sheets.move_sheet/3` recalculates inheritance and detaches the instance,
+      # which is the opposite of what this pins. What is being pinned is the
+      # CONTRACT of the two audits — `list_health_issues/1` and
+      # `list_project_health_issues/1` must agree on any state, not only on states
+      # the UI can produce — because the editor runs one and the dashboard the
+      # other over the same sheet.
+      Repo.update_all(from(sheet in Sheet, where: sheet.id == ^child.id), set: [parent_id: nil])
+      Repo.update_all(from(block in Block, where: block.id == ^instance.id), set: [detached: false])
+
+      root = Repo.get!(Sheet, child.id)
+      assert is_nil(root.parent_id), "the sheet must actually have lost its ancestors"
+      assert source.id in root.hidden_inherited_block_ids
+
+      project_issues = [root] |> PropertyInheritance.list_project_health_issues() |> Map.fetch!(root.id)
+
+      assert PropertyInheritance.list_health_issues(root.id) == project_issues
+      assert project_issues == []
+    end
   end
 
   # ===========================================================================

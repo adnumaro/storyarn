@@ -732,7 +732,11 @@ defmodule Storyarn.Flows do
     # Defaults to the FULL referenceable set, not just sheet blocks: a caller that
     # forgets the option would otherwise silently type-check against a smaller
     # vocabulary than the editor uses, and report different findings for it.
-    project_variables = opts[:project_variables] || list_referenceable_variables(flow.project_id)
+    # ONE map for the whole flow. Built per node this was 96% of the project
+    # health sweep and a 15× penalty on flow open; the option still takes the
+    # variable LIST because that is what callers already hold.
+    variable_types =
+      Instruction.variable_type_map(opts[:project_variables] || list_referenceable_variables(flow.project_id))
 
     # Sequences now live in flow.nodes with type='sequence'. Preload their
     # 1:1 config to expose name/width/height alongside the base fields.
@@ -764,7 +768,7 @@ defmodule Storyarn.Flows do
             cache: cache,
             resolved_node_data: resolved_node_data,
             stale_node_ids: stale_node_ids,
-            project_variables: project_variables,
+            variable_types: variable_types,
             referencing_flows: referencing_flows,
             unreachable_ids: graph.unreachable_ids,
             dead_end_ids: graph.dead_end_ids,
@@ -820,7 +824,7 @@ defmodule Storyarn.Flows do
       ctx.resolved_node_data
       |> Map.fetch!(node.id)
       |> maybe_add_stale_flag(node.id, ctx.stale_node_ids)
-      |> maybe_add_type_warning_flag(node.type, ctx.project_variables)
+      |> maybe_add_type_warning_flag(node.type, ctx.variable_types)
       |> maybe_add_referencing_flows(node.type, ctx.referencing_flows)
       |> maybe_add_unreachable_flag(node.id, node.type, ctx.unreachable_ids)
       |> maybe_add_dead_end_flag(node.id, node.type, ctx.dead_end_ids)
@@ -900,37 +904,40 @@ defmodule Storyarn.Flows do
   `has_type_warnings` off a node's data. The canvas serializer computes them; a
   project-wide sweep does not go through it, so it applies them here instead —
   otherwise the dashboard would silently miss three codes the editor reports.
+
+  Takes the PREPARED type map (`variable_type_map/1`), not the variable list, so
+  a project-wide sweep builds it once for every flow instead of once per node.
   """
-  @spec add_health_flags([map()], MapSet.t(), [map()]) :: [map()]
-  def add_health_flags(nodes, stale_node_ids, project_variables) do
+  @spec add_health_flags([map()], MapSet.t(), %{String.t() => String.t()}) :: [map()]
+  def add_health_flags(nodes, stale_node_ids, variable_types) do
     Enum.map(nodes, fn node ->
       data =
         node.data
         |> maybe_add_stale_flag(node.id, stale_node_ids)
-        |> maybe_add_type_warning_flag(node.type, project_variables)
+        |> maybe_add_type_warning_flag(node.type, variable_types)
 
       %{node | data: data}
     end)
   end
 
-  defp maybe_add_type_warning_flag(data, "instruction", project_variables) do
+  defp maybe_add_type_warning_flag(data, "instruction", variable_types) do
     assignments = data["assignments"] || []
 
-    if Instruction.has_type_warnings?(assignments, project_variables) do
+    if Instruction.has_type_warnings?(assignments, variable_types) do
       Map.put(data, "has_type_warnings", true)
     else
       data
     end
   end
 
-  defp maybe_add_type_warning_flag(data, "dialogue", project_variables) do
+  defp maybe_add_type_warning_flag(data, "dialogue", variable_types) do
     responses = data["responses"] || []
 
     updated =
       Enum.map(responses, fn response ->
         assignments = response["instruction_assignments"] || []
 
-        if Instruction.has_type_warnings?(assignments, project_variables) do
+        if Instruction.has_type_warnings?(assignments, variable_types) do
           Map.put(response, "has_type_warnings", true)
         else
           response
@@ -940,7 +947,7 @@ defmodule Storyarn.Flows do
     Map.put(data, "responses", updated)
   end
 
-  defp maybe_add_type_warning_flag(data, _type, _project_variables), do: data
+  defp maybe_add_type_warning_flag(data, _type, _variable_types), do: data
 
   defp maybe_add_stale_flag(data, node_id, stale_node_ids) do
     if MapSet.member?(stale_node_ids, node_id) do
@@ -1006,9 +1013,12 @@ defmodule Storyarn.Flows do
   defdelegate instruction_sanitize(assignments), to: Instruction, as: :sanitize
   defdelegate instruction_format_short(assignment), to: Instruction, as: :format_assignment_short
 
-  defdelegate instruction_has_type_warnings?(assignments, variables),
+  defdelegate instruction_has_type_warnings?(assignments, variable_types),
     to: Instruction,
     as: :has_type_warnings?
+
+  @doc "Builds the `\"shortcut.name\" => block_type` map the type-warning check reads."
+  defdelegate variable_type_map(project_variables), to: Instruction
 
   # =============================================================================
   # DebugSessionStore
@@ -1054,10 +1064,6 @@ defmodule Storyarn.Flows do
   @spec analyze_flow_structure(integer(), integer()) ::
           {:ok, StructuralAnalysis.Analysis.t()} | {:error, :not_found}
   defdelegate analyze_flow_structure(project_id, flow_id), to: StructuralAnalysis, as: :analyze_flow
-
-  @doc "Runs the canonical structural analysis for every active flow of a project."
-  @spec analyze_project_structure(integer()) :: [StructuralAnalysis.Analysis.t()]
-  defdelegate analyze_project_structure(project_id), to: StructuralAnalysis, as: :analyze_project
 
   @doc "Runs the canonical structural analysis on an already-loaded flow."
   @spec analyze_loaded_flow_structure(flow()) :: StructuralAnalysis.Analysis.t()

@@ -119,11 +119,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
 
   def handle_remote_change(action, payload, socket) do
     # No echo guard needed — broadcast_from already prevents self-delivery.
-    # notify_project: false — only LOCAL mutations announce graph changes to
-    # the project topic, otherwise every receiver would re-broadcast.
     socket =
       socket
-      |> SocketHelpers.reload_flow_data(notify_project: false)
+      |> SocketHelpers.reload_flow_data()
       |> CollaborationHelpers.push_remote_change_event(action, payload)
       |> CollaborationHelpers.show_collab_toast(action, payload)
 

@@ -326,6 +326,37 @@ defmodule Storyarn.Flows.HealthCheckerTest do
     end
   end
 
+  describe "attribution" do
+    # A project-wide sweep groups by `flow_id`. A checker that cannot fill its own
+    # findings' flow forces every caller to patch them afterwards, and the one that
+    # forgets collapses every flow under a nil key.
+    test "every finding carries the flow the snapshot names" do
+      findings =
+        Flows.HealthChecker.check(%{
+          flow_id: 4242,
+          nodes: [
+            health_node(1, "instruction", %{"assignments" => []}),
+            health_node(2, "dialogue", %{"text" => ""})
+          ]
+        })
+
+      # Positive control: the fixture really does emit findings from both halves
+      # of the editorial catalog.
+      assert :empty_instruction in Enum.map(findings, & &1.code)
+      assert :missing_dialogue_text in Enum.map(findings, & &1.code)
+
+      assert Enum.all?(findings, &(&1.flow_id == 4242)),
+             "flow ids: #{inspect(Enum.map(findings, &{&1.code, &1.flow_id}))}"
+    end
+
+    test "a snapshot without a flow still checks, attributing to no flow" do
+      findings = Flows.HealthChecker.check(%{nodes: [health_node(1, "instruction", %{"assignments" => []})]})
+
+      assert Enum.map(findings, & &1.code) == [:empty_instruction]
+      assert Enum.all?(findings, &is_nil(&1.flow_id))
+    end
+  end
+
   defp check_flow(project, flow) do
     flow_data =
       project.id

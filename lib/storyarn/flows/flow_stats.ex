@@ -53,7 +53,6 @@ defmodule Storyarn.Flows.FlowStats do
   # Issue Detection
   # ===========================================================================
 
-  # Legacy dashboard buckets ← canonical rules. The three issue types keep
   @doc """
   Project-wide flow health findings for the dashboard.
 
@@ -67,13 +66,20 @@ defmodule Storyarn.Flows.FlowStats do
   into 3 coarse buckets, dropped every reference-integrity error, and never ran
   the editorial checks at all. Counts therefore go UP: that is the correction.
 
-  Cost: one project-variable query plus two stale-reference queries per flow. The
-  dashboard caches this for 30s, which is what makes that acceptable.
+  Cost is flat in flow count, like the sheets and scenes sweeps: one
+  project-variable query, the topology load, and ONE batched stale-reference
+  query for every flow at once. The per-flow pair this used to issue is what
+  made it the only O(N) sweep of the three. The dashboard also caches it for 30s.
   """
   def list_dashboard_health_findings(project_id) do
     # The SAME set the editor uses, or the two surfaces disagree about type
-    # warnings on any assignment to a scene pin or zone property.
-    project_variables = Flows.list_referenceable_variables(project_id)
+    # warnings on any assignment to a scene pin or zone property. Keyed ONCE for
+    # the whole sweep: rebuilt per node this was 1599 ms of a 1666 ms sweep at
+    # 200 flows / 4000 variables — 96% of it.
+    variable_types =
+      project_id
+      |> Flows.list_referenceable_variables()
+      |> Flows.variable_type_map()
 
     topologies = Topology.load_project(project_id)
 
@@ -87,7 +93,7 @@ defmodule Storyarn.Flows.FlowStats do
 
     Enum.flat_map(topologies, fn topology ->
       stale_node_ids = Map.get(stale_by_flow, topology.flow_id, MapSet.new())
-      nodes = Flows.add_health_flags(topology.nodes, stale_node_ids, project_variables)
+      nodes = Flows.add_health_flags(topology.nodes, stale_node_ids, variable_types)
 
       %{topology | nodes: nodes}
       |> StructuralAnalysis.findings()

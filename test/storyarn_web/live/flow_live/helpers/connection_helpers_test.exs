@@ -185,7 +185,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
 
     test "deletes connection between nodes", %{
       socket: socket,
-      project: project,
       entry_node: entry,
       dialogue_node: dialogue
     } do

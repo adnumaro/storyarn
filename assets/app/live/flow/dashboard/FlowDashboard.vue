@@ -20,6 +20,7 @@ import type { Component } from "vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { FlowDashboardIssue } from "@modules/flows/types/health";
+import { interpolatableDetails } from "@components/health/health-details";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import {
@@ -103,7 +104,7 @@ const { t } = useI18n();
 // The dashboard translates the SAME `flows.health.findings.*` keys the editor
 // popover uses, so the two surfaces cannot word the same finding differently.
 function healthFindingLabel(issue: FlowDashboardIssue): string {
-  return t(`flows.health.findings.${issue.code}`, issue.details || {});
+  return t(`flows.health.findings.${issue.code}`, interpolatableDetails(issue.details));
 }
 const live = useLive();
 

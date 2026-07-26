@@ -7,6 +7,8 @@ defmodule Storyarn.Flows.StructuralAnalysis.Topology do
   serializer uses (`resolve_subflow_data`/`resolve_exit_data`), so subflow
   exit pins and `stale_reference` flags — the inputs of pin validation and
   reference-integrity rules — cannot drift between the editor and this path.
+  Sequence nodes carry no data at all here, because they carry none the editor
+  can see either — same reason.
 
   Unlike `Flows.serialize_for_canvas/2` it loads none of the editorial
   material (project variables, resolved colors, referencing flows, sequence
@@ -60,7 +62,11 @@ defmodule Storyarn.Flows.StructuralAnalysis.Topology do
     )
   end
 
-  @doc "Loads the topology for a single flow (panel rerun path)."
+  @doc """
+  Loads the topology for a single flow — `load_project/2` narrowed to one id, so
+  it is the same builder the dashboard sweep uses. That is what makes it the DB
+  side of the `from_serialized == DB` parity test.
+  """
   @spec load_flow(pos_integer(), pos_integer()) :: {:ok, t()} | {:error, :not_found}
   def load_flow(project_id, flow_id) do
     case load_project(project_id, flow_id: flow_id) do
@@ -97,6 +103,13 @@ defmodule Storyarn.Flows.StructuralAnalysis.Topology do
     nodes_by_flow =
       from(n in FlowNode,
         where: n.flow_id in ^flow_ids and is_nil(n.deleted_at),
+        # Same reason as the flows query above, and it was missing here: with no
+        # `order_by` Postgres returns whatever the plan happens to produce — a
+        # forced seqscan after an UPDATE reorders these rows, verified. The
+        # composed sort in `StructuralAnalysis.findings/1` is what the surfaces
+        # actually depend on; this keeps the INPUT stable too, so `Analysis.graph`
+        # and anything that reads `topology.nodes` positionally cannot drift.
+        order_by: [asc: n.flow_id, asc: n.id],
         select: %{id: n.id, flow_id: n.flow_id, type: n.type, data: n.data}
       )
       |> Repo.all()
@@ -150,6 +163,15 @@ defmodule Storyarn.Flows.StructuralAnalysis.Topology do
 
       %{type: "exit"} = node ->
         %{node | data: NodeCrud.resolve_exit_data(node.data, project_id, exit_cache)}
+
+      # A sequence node is a visual container. `Flows.serialize_for_canvas/2`
+      # discards its row `data` and rebuilds it from `sequence_config`
+      # (`name`/`width`/`height`), so on the editor's side a sequence node
+      # carries no editorial surface at all — and no health rule reads any of
+      # those three. Passing the row through here is what let the dashboard emit
+      # findings off a flag the editor cannot even see.
+      %{type: "sequence"} = node ->
+        %{node | data: %{}}
 
       node ->
         node

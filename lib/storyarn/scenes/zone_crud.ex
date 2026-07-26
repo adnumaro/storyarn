@@ -6,6 +6,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
   alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Scenes.PositionUtils
+  alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.MapUtils
@@ -58,6 +59,11 @@ defmodule Storyarn.Scenes.ZoneCrud do
     Repo.one!(from(z in SceneZone, where: z.scene_id == ^scene_id and z.id == ^zone_id, preload: [:label_icon_asset]))
   end
 
+  # A zone's shortcut is a referenceable variable, so create/update/delete change
+  # the vocabulary every health surface type-checks against — not just the zone
+  # count. `update_zone_vertices/2` deliberately does NOT broadcast: it writes
+  # geometry only, fires on every drag, and the staleness it leaves is bounded by
+  # the dashboard's own 30s cache.
   def create_zone(scene_id, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
@@ -84,6 +90,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
         end
       end
     )
+    |> SceneCrud.broadcast_scene_dashboard_result(scene_id)
   end
 
   def update_zone(%SceneZone{} = zone, attrs) do
@@ -112,6 +119,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
         end
       end
     )
+    |> SceneCrud.broadcast_scene_dashboard_result(zone.scene_id)
   end
 
   @doc """
@@ -144,6 +152,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
         Repo.delete(locked_zone)
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(zone.scene_id)
   end
 
   def change_zone(%SceneZone{} = zone, attrs \\ %{}) do

@@ -5,7 +5,13 @@ defmodule Storyarn.Flows.StructuralAnalysis do
   The graph-derived half of flow health. Editorial checks that only need one
   node live in `Storyarn.Flows.HealthChecker`; the checks here need the whole
   graph, and both emit through `HealthChecker.finding/2` so the editor and the
-  dashboard share one vocabulary, deterministically ordered.
+  dashboard share one vocabulary.
+
+  Order is part of that contract: `findings/1` returns the COMPOSED list sorted
+  by severity, then location, then code — errors first, on every surface, from
+  one place. Composing two already-sorted halves does not produce a sorted
+  whole, which is exactly how every `:info` used to arrive ahead of every
+  `:error`.
 
   Reachability is topological, never symbolic condition evaluation:
 
@@ -20,6 +26,8 @@ defmodule Storyarn.Flows.StructuralAnalysis do
   alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Flows.StructuralAnalysis.Graph
   alias Storyarn.Flows.StructuralAnalysis.Topology
+  alias Storyarn.Shared.Severity
+  alias Storyarn.Shared.StringUtils
 
   defmodule Analysis do
     @moduledoc false
@@ -33,6 +41,9 @@ defmodule Storyarn.Flows.StructuralAnalysis do
   def analyze(%Topology{} = topology) do
     graph = Graph.compute(topology.nodes, topology.connections)
 
+    # Sorted here too: `Analysis.findings` is a published shape of its own
+    # (`Flows.analyze_flow_structure/2`), so it cannot depend on a caller
+    # composing it. `findings/1` re-sorts because sorted ++ sorted is not sorted.
     findings =
       []
       |> entry_findings(topology, graph)
@@ -66,15 +77,12 @@ defmodule Storyarn.Flows.StructuralAnalysis do
   """
   @spec findings(Topology.t()) :: [map()]
   def findings(%Topology{} = topology) do
-    # `check/1` sees only the nodes, so it cannot know the flow. Stamping it here
-    # is what lets a project-wide sweep attribute an editorial finding to its
-    # flow — without it they all collapse under a nil key.
-    editorial =
-      %{nodes: topology.nodes}
-      |> HealthChecker.check()
-      |> Enum.map(&%{&1 | flow_id: topology.flow_id})
+    editorial = HealthChecker.check(%{flow_id: topology.flow_id, nodes: topology.nodes})
 
-    editorial ++ analyze(topology).findings
+    # Both halves arrive sorted, and that is not enough: concatenating them puts
+    # every editorial `:info` ahead of every structural `:error`. The composed
+    # list is what both surfaces render, so the composed list is what gets sorted.
+    sort_findings(editorial ++ analyze(topology).findings)
   end
 
   @doc "Loads and analyzes a single flow."
@@ -103,20 +111,12 @@ defmodule Storyarn.Flows.StructuralAnalysis do
     flow_data |> Topology.from_serialized(project_id) |> analyze()
   end
 
-  @doc "Loads and analyzes every active flow of a project (dashboard path)."
-  @spec analyze_project(pos_integer()) :: [Analysis.t()]
-  def analyze_project(project_id) do
-    project_id
-    |> Topology.load_project()
-    |> Enum.map(&analyze/1)
-  end
-
   # Every rule here emits through the ONE flow-health vocabulary. There is no
   # occurrence identity and no evidence fingerprint any more: both existed to
   # anchor a dismissal or an AI explanation to an exact occurrence, and both are
   # gone. Sheets and Scenes never had them either.
-  defp finding(code, topology, :flow, _id, details) do
-    HealthChecker.finding(atom_code(code), %{
+  defp flow_finding(code, topology, details) do
+    HealthChecker.finding(code, %{
       flow_id: topology.flow_id,
       entity_type: "flow",
       entity_id: nil,
@@ -124,55 +124,36 @@ defmodule Storyarn.Flows.StructuralAnalysis do
     })
   end
 
-  defp finding(code, topology, :node, node_id, details) do
-    HealthChecker.finding(atom_code(code), %{
+  # Takes the node, not its id: every emitting rule already holds it, so the
+  # `entity_type` is a field read rather than a scan of every node per finding.
+  defp node_finding(code, topology, node, details) do
+    HealthChecker.finding(code, %{
       flow_id: topology.flow_id,
-      entity_type: node_type(topology, node_id),
-      entity_id: node_id,
+      entity_type: node.type,
+      entity_id: node.id,
       details: details
     })
-  end
-
-  # The reference rules derive their code at runtime; an unknown one must raise
-  # rather than invent a severity.
-  defp atom_code(code) when is_atom(code), do: code
-  defp atom_code(code) when is_binary(code), do: String.to_existing_atom(code)
-
-  defp node_type(topology, node_id) do
-    Enum.find_value(topology.nodes, "node", fn node -> if node.id == node_id, do: node.type end)
   end
 
   # Deterministic order for a stable UI: severity, then location, then code.
   defp sort_findings(findings) do
     Enum.sort_by(findings, fn finding ->
-      {severity_rank(finding.severity), finding.entity_id || 0, to_string(finding.code)}
+      {Severity.rank(finding.severity), finding.entity_id || 0, to_string(finding.code)}
     end)
   end
-
-  defp severity_rank(:error), do: 0
-  defp severity_rank(:warning), do: 1
-  defp severity_rank(:info), do: 2
 
   # ===========================================================================
   # Entry rules
   # ===========================================================================
 
   defp entry_findings(acc, topology, %Graph{entry_ids: []} = _graph) do
-    finding =
-      finding(:missing_entry, topology, :flow, topology.flow_id, %{})
-
-    [finding | acc]
+    [flow_finding(:missing_entry, topology, %{}) | acc]
   end
 
   defp entry_findings(acc, _topology, %Graph{entry_ids: [_single]}), do: acc
 
   defp entry_findings(acc, topology, %Graph{entry_ids: entry_ids}) do
-    sorted = Enum.sort(entry_ids)
-
-    finding =
-      finding(:multiple_entries, topology, :flow, topology.flow_id, %{count: length(sorted)})
-
-    [finding | acc]
+    [flow_finding(:multiple_entries, topology, %{count: length(entry_ids)}) | acc]
   end
 
   # ===========================================================================
@@ -185,12 +166,12 @@ defmodule Storyarn.Flows.StructuralAnalysis do
           NodeConnectionRules.can_be_unreachable?(node.type),
           MapSet.member?(graph.unreachable_ids, node.id),
           not MapSet.member?(graph.isolated_ids, node.id) do
-        finding(:unreachable_node, topology, :node, node.id, %{node_type: node.type})
+        node_finding(:unreachable_node, topology, node, %{node_type: node.type})
       end
 
     isolated =
       for node <- graph.nodes, MapSet.member?(graph.isolated_ids, node.id) do
-        finding(:isolated_node, topology, :node, node.id, %{node_type: node.type})
+        node_finding(:isolated_node, topology, node, %{node_type: node.type})
       end
 
     unreachable ++ isolated ++ acc
@@ -206,7 +187,7 @@ defmodule Storyarn.Flows.StructuralAnalysis do
           MapSet.member?(graph.dead_end_ids, node.id),
           not MapSet.member?(graph.isolated_ids, node.id),
           claimed_reachable?(graph, node.id) do
-        finding(:no_outgoing_connection, topology, :node, node.id, %{node_type: node.type})
+        node_finding(:no_outgoing_connection, topology, node, %{node_type: node.type})
       end
 
     missing_pins =
@@ -216,7 +197,7 @@ defmodule Storyarn.Flows.StructuralAnalysis do
           not MapSet.member?(graph.dead_end_ids, node.id),
           not MapSet.member?(graph.isolated_ids, node.id),
           claimed_reachable?(graph, node.id) do
-        finding(:missing_output_connections, topology, :node, node.id, %{node_type: node.type, pins: pins})
+        node_finding(:missing_output_connections, topology, node, %{node_type: node.type, pins: pins})
       end
 
     dead_ends ++ missing_pins ++ acc
@@ -238,14 +219,14 @@ defmodule Storyarn.Flows.StructuralAnalysis do
       for {node_id, pins} <- graph.invalid_output_pins do
         node = Map.fetch!(nodes_by_id, node_id)
 
-        finding(:invalid_output_pins, topology, :node, node_id, %{node_type: node.type, pins: pins})
+        node_finding(:invalid_output_pins, topology, node, %{node_type: node.type, pins: pins})
       end
 
     inputs =
       for {node_id, pins} <- graph.invalid_input_pins do
         node = Map.fetch!(nodes_by_id, node_id)
 
-        finding(:invalid_input_pins, topology, :node, node_id, %{node_type: node.type, pins: pins})
+        node_finding(:invalid_input_pins, topology, node, %{node_type: node.type, pins: pins})
       end
 
     outputs ++ inputs ++ acc
@@ -258,7 +239,7 @@ defmodule Storyarn.Flows.StructuralAnalysis do
   defp orphan_hub_findings(acc, topology, graph) do
     findings =
       for node <- graph.nodes, MapSet.member?(graph.orphan_hub_ids, node.id) do
-        finding(:orphan_hub, topology, :node, node.id, %{node_type: "hub", hub_id: node.data["hub_id"]})
+        node_finding(:orphan_hub, topology, node, %{node_type: "hub", hub_id: node.data["hub_id"]})
       end
 
     findings ++ acc
@@ -286,19 +267,9 @@ defmodule Storyarn.Flows.StructuralAnalysis do
     target = node.data["target_hub_id"]
 
     cond do
-      blank?(target) ->
-        [reference_finding("missing_jump_target", topology, node, %{})]
-
-      target not in hub_ids ->
-        [
-          reference_finding("stale_jump_target", topology, node, %{
-            "target_hub_id" => target,
-            "flow_hub_ids" => hub_ids
-          })
-        ]
-
-      true ->
-        []
+      StringUtils.blank?(target) -> [reference_finding(:missing_jump_target, topology, node)]
+      target not in hub_ids -> [reference_finding(:stale_jump_target, topology, node)]
+      true -> []
     end
   end
 
@@ -306,8 +277,8 @@ defmodule Storyarn.Flows.StructuralAnalysis do
     reference_state_findings(
       node,
       topology,
-      "missing_subflow_reference",
-      "stale_subflow_reference"
+      :missing_subflow_reference,
+      :stale_subflow_reference
     )
   end
 
@@ -315,39 +286,25 @@ defmodule Storyarn.Flows.StructuralAnalysis do
     reference_state_findings(
       node,
       topology,
-      "missing_exit_flow_reference",
-      "stale_exit_flow_reference"
+      :missing_exit_flow_reference,
+      :stale_exit_flow_reference
     )
   end
 
   defp node_reference_findings(_node, _topology, _hub_ids), do: []
 
   defp reference_state_findings(node, topology, missing_rule, stale_rule) do
-    ref_id = node.data["referenced_flow_id"]
-
     cond do
-      blank?(ref_id) ->
-        [reference_finding(missing_rule, topology, node, %{})]
-
-      node.data["stale_reference"] == true ->
-        [
-          reference_finding(stale_rule, topology, node, %{
-            "referenced_flow_id" => to_string(ref_id)
-          })
-        ]
-
-      true ->
-        []
+      StringUtils.blank?(node.data["referenced_flow_id"]) -> [reference_finding(missing_rule, topology, node)]
+      node.data["stale_reference"] == true -> [reference_finding(stale_rule, topology, node)]
+      true -> []
     end
   end
 
-  defp reference_finding(rule_id, topology, node, _extra_inputs) do
-    finding(rule_id, topology, :node, node.id, %{node_type: node.type})
+  # These rules pick their code at runtime, which is the whole reason they used
+  # to travel as strings. Atoms end to end means the catalog lookup in
+  # `HealthChecker.finding/2` is the only thing that can reject an unknown one.
+  defp reference_finding(code, topology, node) do
+    node_finding(code, topology, node, %{node_type: node.type})
   end
-
-  # ===========================================================================
-  # Shared helpers
-  # ===========================================================================
-
-  defp blank?(value), do: value in [nil, ""]
 end

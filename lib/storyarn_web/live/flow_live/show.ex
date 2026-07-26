@@ -176,7 +176,6 @@ defmodule StoryarnWeb.FlowLive.Show do
 
     if connected?(socket) do
       Collaboration.subscribe_restoration(project.id)
-      Collaboration.subscribe_flow_graph(project.id)
 
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
@@ -203,7 +202,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:available_scenes, [])
       |> assign(:flow_word_count, 0)
       |> assign(:flow_health, HealthHelpers.empty_health())
-      |> assign(:flow_structural_summary, %{errorCount: 0, warningCount: 0})
+      |> assign(:pending_highlight_node_id, nil)
       |> assign(:save_status, :idle)
       |> assign(:save_status_reset_token, nil)
       |> assign(:selected_node, nil)
@@ -328,8 +327,38 @@ defmodule StoryarnWeb.FlowLive.Show do
       {:active_flow, flow_id}
     )
 
-    {:noreply, socket}
+    {:noreply, apply_highlight(socket, params["highlight"])}
   end
+
+  # The flows dashboard links a node-level health finding as
+  # `?highlight=node:<id>` — the same shape the scenes dashboard uses. The canvas
+  # already knows how to focus a node; this only routes the param to it.
+  defp apply_highlight(socket, "node:" <> node_id) do
+    case Integer.parse(node_id) do
+      {id, ""} -> focus_highlighted_node(socket, id)
+      _ -> socket
+    end
+  end
+
+  defp apply_highlight(socket, _highlight), do: socket
+
+  # Arriving from the dashboard, the canvas is not on the page yet, so the event
+  # would land on nothing. Hold the target until the flow data does.
+  defp focus_highlighted_node(%{assigns: %{loading: true}} = socket, node_id) do
+    assign(socket, :pending_highlight_node_id, node_id)
+  end
+
+  defp focus_highlighted_node(socket, node_id) do
+    push_event(socket, "navigate_to_node", %{node_db_id: node_id})
+  end
+
+  defp flush_pending_highlight(%{assigns: %{pending_highlight_node_id: node_id}} = socket) when is_integer(node_id) do
+    socket
+    |> assign(:pending_highlight_node_id, nil)
+    |> push_event("navigate_to_node", %{node_db_id: node_id})
+  end
+
+  defp flush_pending_highlight(socket), do: socket
 
   defp load_flow(socket, flow_id) do
     %{project: project} = socket.assigns
@@ -1303,12 +1332,10 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign_scene_info(flow)
       |> SocketHelpers.assign_flow_stats(flow, data.flow_data)
 
-    socket =
-      socket
-      |> maybe_restore_nav_history()
-      |> maybe_restore_debug_session()
-
     socket
+    |> maybe_restore_nav_history()
+    |> maybe_restore_debug_session()
+    |> flush_pending_highlight()
   end
 
   defp stale_flow_load?(socket, loaded_flow) do
@@ -1333,7 +1360,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   # and scenes. A cross-flow mutation can change this flow's stale-reference
   # findings, and they refresh on its next save rather than eagerly.
   def handle_info({:tree_changed, :flows}, socket), do: {:noreply, socket}
-  def handle_info({:flow_graph_changed, _mutated_flow_id}, socket), do: {:noreply, socket}
 
   def handle_info({:entities_deleted, :flow, ids}, socket) do
     if socket.assigns.flow.id in ids do

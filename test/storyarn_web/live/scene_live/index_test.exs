@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.SceneLive.IndexTest do
   use StoryarnWeb.ConnCase, async: true
 
+  import Ecto.Query, only: [from: 2]
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
@@ -8,6 +9,9 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
   alias Storyarn.Repo
   alias Storyarn.Scenes
+  alias Storyarn.Scenes.Scene
+  alias StoryarnWeb.SceneLive.Helpers.SceneHelpers
+  alias StoryarnWeb.SceneLive.Index
 
   defp scenes_path(project) do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
@@ -323,6 +327,56 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
       assert %{"severity" => "info", "code" => "empty_scene"} =
                Enum.find(issues, &(&1["code"] == "empty_scene"))
+    end
+
+    test "names a scene the author never named the way the editor does", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Temporary"})
+      # A name the changeset would refuse but the column accepts, which is what a
+      # blank name looks like once it is in the database.
+      Repo.update_all(from(s in Scene, where: s.id == ^scene.id), set: [name: "   "])
+
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      _ = await_async(view)
+
+      issue = Enum.find(get_dashboard_vue(view).props["issues"], &(&1["code"] == "missing_background"))
+
+      # The editor popover falls back to the scene word; a dashboard row that
+      # rendered the raw blank would name the same scene differently.
+      assert issue["label"] == SceneHelpers.element_type_label("scene")
+    end
+
+    test "a crashed dashboard load surfaces instead of hanging on the skeleton", %{user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{__changed__: %{}, project: project, dashboard_stats: nil, flash: %{}}
+      }
+
+      {:noreply, result} = Index.handle_async(:load_dashboard_data, {:exit, :boom}, socket)
+
+      # Vue renders the skeleton for as long as stats are nil, so leaving them nil
+      # is what turned a crash into "loading forever".
+      refute is_nil(result.assigns.dashboard_stats)
+      assert result.assigns.dashboard_stats.scene_count == 0
+
+      assert Phoenix.Flash.get(result.assigns.flash, :error) =~ "dashboard"
+    end
+
+    test "and the reason reaches the log rather than being swallowed", %{user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{__changed__: %{}, project: project, dashboard_stats: nil, flash: %{}}
+      }
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          Index.handle_async(:load_dashboard_data, {:exit, {:badarg, []}}, socket)
+        end)
+
+      assert log =~ "Scene dashboard load failed for project #{project.id}"
+      assert log =~ "badarg"
     end
 
     test "sort_scenes event toggles table order", %{conn: conn, user: user} do

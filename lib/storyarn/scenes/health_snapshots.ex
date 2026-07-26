@@ -17,7 +17,9 @@ defmodule Storyarn.Scenes.HealthSnapshots do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets
+  alias Storyarn.Flows
   alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.Instruction
   alias Storyarn.Repo
   alias Storyarn.Scenes.HealthChecker
   alias Storyarn.Scenes.Scene
@@ -28,7 +30,6 @@ defmodule Storyarn.Scenes.HealthSnapshots do
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
-  alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
 
   @collection_keys [:layers, :zones, :pins, :connections, :annotations, :ambient_flows]
@@ -92,7 +93,14 @@ defmodule Storyarn.Scenes.HealthSnapshots do
       valid_sheet_ids: references.sheet_ids,
       valid_flow_ids: references.flow_ids,
       valid_asset_ids: references.asset_ids,
-      project_variables: references.variables
+      project_variables: references.variables,
+      # Built ONCE per scene rather than once per zone, pin and collection item:
+      # the checker's `variable_types/1` reads this key when it is present, and
+      # `Instruction.has_type_warnings?/2` now takes the prepared map for the
+      # same reason. `Instruction.variable_type_map/1` is the one builder — the
+      # key format decides whether a reference is stale, so both scene surfaces
+      # and the flow checkers must spell it identically.
+      variable_types: Instruction.variable_type_map(references.variables)
     }
   end
 
@@ -152,17 +160,13 @@ defmodule Storyarn.Scenes.HealthSnapshots do
       sheet_ids: active_ids(Sheet, project_id),
       flow_ids: Map.keys(flow_names),
       asset_ids: Assets.list_asset_ids(project_id, images_only: true),
-      variables: project_variables(project_id)
+      # The ONE definition of what a reference can point at: sheet block and
+      # table variables plus the pin and zone boolean properties. The editor
+      # reaches it through `VariableHelpers.list_all_variables/1`, which
+      # delegates to the same function; a surface that only read sheet variables
+      # would report every pin/zone property reference as stale.
+      variables: Flows.list_referenceable_variables(project_id)
     })
-  end
-
-  # The editor's variable set, verbatim: sheet block and table variables plus
-  # the pin and zone boolean properties. A dashboard that only read sheet
-  # variables would report every pin/zone property reference as stale.
-  defp project_variables(project_id) do
-    Sheets.list_project_variables(project_id) ++
-      SceneCrud.list_pin_variables(project_id) ++
-      SceneCrud.list_zone_variables(project_id)
   end
 
   defp active_ids(schema, project_id) do
@@ -184,13 +188,17 @@ defmodule Storyarn.Scenes.HealthSnapshots do
 
   defp load_collections([]), do: %{}
 
+  # Every order ends in `:id`. `position` is not unique — elements created
+  # together share it — and findings are emitted in element order, so without a
+  # total order two equally named elements swap their dashboard rows, and their
+  # deep links with them, between runs.
   defp load_collections(scene_ids) do
     %{
-      layers: grouped(SceneLayer, scene_ids, asc: :position),
-      zones: grouped(SceneZone, scene_ids, asc: :position),
-      pins: grouped(ScenePin, scene_ids, asc: :position),
+      layers: grouped(SceneLayer, scene_ids, asc: :position, asc: :id),
+      zones: grouped(SceneZone, scene_ids, asc: :position, asc: :id),
+      pins: grouped(ScenePin, scene_ids, asc: :position, asc: :id),
       connections: grouped(SceneConnection, scene_ids, asc: :id),
-      annotations: grouped(SceneAnnotation, scene_ids, asc: :position),
+      annotations: grouped(SceneAnnotation, scene_ids, asc: :position, asc: :id),
       ambient_flows: grouped(SceneAmbientFlow, scene_ids, asc: :position, desc: :priority, asc: :id)
     }
   end

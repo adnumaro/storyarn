@@ -49,7 +49,12 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     ancestors = build_ancestor_list(sheet)
 
     if ancestors == [] do
-      {[], MapSet.new()}
+      # No ancestors means no eligible sources, but NOT an empty hidden set: the
+      # sheet's own `hidden_inherited_block_ids` still suppress instances left
+      # behind by an ancestor it no longer has. `list_project_health_issues/1`
+      # always collects `[sheet | ancestors]`, and the two must return the same
+      # verdicts — the editor runs this one, the dashboard the other.
+      {[], MapSet.new(collect_hidden_block_ids([sheet]))}
     else
       # Collect hidden block IDs from intermediate sheets (the current sheet and all ancestors except root)
       all_sheets = [sheet | ancestors]

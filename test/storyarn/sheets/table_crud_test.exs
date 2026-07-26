@@ -5,6 +5,7 @@ defmodule Storyarn.Sheets.TableCrudTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Sheets
 
@@ -689,6 +690,64 @@ defmodule Storyarn.Sheets.TableCrudTest do
 
       # Plain cell values should be passed through unchanged
       assert synced_row.cells["value"] == 42
+    end
+  end
+
+  # ===========================================================================
+  # Dashboard invalidation
+  # ===========================================================================
+
+  describe "dashboard invalidation" do
+    setup :setup_table
+
+    # A table cell is a project variable (`sheet.table.row_slug.column_slug`), so
+    # every write here changes what the sheets dashboard reads. Sheet and block
+    # writes have always broadcast; table writes did not, which left the dashboard
+    # serving a cache up to its TTL old — and would be a wrong answer, not a late
+    # one, the moment the variable vocabulary itself gets cached.
+    test "every column write invalidates the sheets dashboard", %{project: project, block: block} do
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, column} = Sheets.create_table_column(block, %{name: "Damage", type: "number"})
+      assert_received {:dashboard_invalidate, :sheets}
+
+      assert {:ok, _column} = Sheets.update_table_column(column, %{name: "Damage Dealt"})
+      assert_received {:dashboard_invalidate, :sheets}
+
+      assert {:ok, _column} = Sheets.delete_table_column(column)
+      assert_received {:dashboard_invalidate, :sheets}
+    end
+
+    test "every row write invalidates the sheets dashboard", %{project: project, block: block} do
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, row} = Sheets.create_table_row(block, %{name: "Strength"})
+      assert_received {:dashboard_invalidate, :sheets}
+
+      assert {:ok, row} = Sheets.update_table_row(row, %{name: "Might"})
+      assert_received {:dashboard_invalidate, :sheets}
+
+      assert {:ok, _row} = Sheets.delete_table_row(row)
+      assert_received {:dashboard_invalidate, :sheets}
+    end
+
+    test "a cell write invalidates the sheets dashboard", %{project: project, block: block} do
+      column = hd(block.table_columns)
+      row = hd(block.table_rows)
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, _row} = Sheets.update_table_cell(row, column.slug, 7)
+      assert_received {:dashboard_invalidate, :sheets}
+    end
+
+    test "a rejected write invalidates nothing", %{project: project, block: block} do
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      # The last column cannot be deleted. Broadcasting on a rolled-back
+      # transaction would bust the cache for a change that never happened.
+      assert {:error, :last_column} = Sheets.delete_table_column(hd(block.table_columns))
+
+      refute_received {:dashboard_invalidate, :sheets}
     end
   end
 end

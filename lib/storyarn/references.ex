@@ -45,6 +45,8 @@ defmodule Storyarn.References do
 
   defdelegate check_stale_variable_references(block_id, project_id), to: VariableUsage
   defdelegate repair_stale_variable_references(project_id), to: VariableUsage
-  defdelegate list_stale_node_ids_by_flow(flow_ids), to: VariableUsage
+  # The batched sweep is a sheet-blocks query; it goes straight to Sheets rather
+  # than detouring through a Flows submodule that only forwarded it back here.
+  defdelegate list_stale_node_ids_by_flow(flow_ids), to: Storyarn.Sheets
   defdelegate list_stale_node_ids(flow_id), to: VariableUsage
 end

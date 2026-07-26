@@ -8,6 +8,7 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
   """
 
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Shared.StringUtils
 
   @doc """
   Builds a lookup from flow shortcut to flow id.
@@ -138,7 +139,7 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
     refs = [hub.id, to_string(hub.id), hub.data["hub_id"]]
 
     refs
-    |> Enum.reject(&blank?/1)
+    |> Enum.reject(&StringUtils.blank?/1)
     |> Enum.map(&{&1, {hub.id, label}})
   end
 
@@ -193,9 +194,7 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
     |> Enum.map(&%{"id" => &1, "value" => &1, "label" => String.capitalize(&1)})
   end
 
-  defp present?(value), do: not blank?(value)
-
-  defp blank?(nil), do: true
-  defp blank?(""), do: true
-  defp blank?(_value), do: false
+  # The exact complement of `StringUtils.blank?/1`, deliberately NOT the trimming
+  # reading: a shortcut of `" "` is a real (if odd) shortcut for export purposes.
+  defp present?(value), do: not StringUtils.blank?(value)
 end

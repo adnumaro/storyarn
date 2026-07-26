@@ -22,6 +22,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   alias Storyarn.Localization.ExportPolicy
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.RuntimeKey
+  alias Storyarn.Shared.StringUtils
 
   @impl true
   def content_type, do: "text/plain"
@@ -398,7 +399,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
       (flow.nodes || [])
       |> Enum.filter(&(&1.type == "subflow"))
       |> Enum.map(&resolve_flow_shortcut(&1.data || %{}, flow_shortcuts_by_id))
-      |> Enum.reject(&blank?/1)
+      |> Enum.reject(&StringUtils.blank?/1)
     end)
     |> MapSet.new()
   end
@@ -412,10 +413,6 @@ defmodule Storyarn.Exports.Serializers.Yarn do
       data["referenced_flow_shortcut"] ||
       flow_shortcuts_by_id[to_string(data["referenced_flow_id"])]
   end
-
-  defp blank?(nil), do: true
-  defp blank?(""), do: true
-  defp blank?(_value), do: false
 
   defp indent(0), do: ""
   defp indent(n), do: String.duplicate("    ", n)

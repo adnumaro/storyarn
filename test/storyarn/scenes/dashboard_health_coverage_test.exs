@@ -106,6 +106,46 @@ defmodule Storyarn.Scenes.DashboardHealthCoverageTest do
     end
   end
 
+  describe "the referenceable-variable set is single-sourced" do
+    # Pin and zone shortcuts are variables. Both scene surfaces read the set from
+    # `Flows.list_referenceable_variables/1` — the ONE definition — so they cannot
+    # drift APART from each other, but they can still drift TOGETHER: narrowing
+    # that function back to sheet variables would leave both surfaces equal and
+    # both wrong, calling every pin/zone property reference stale. This is what
+    # fails when that happens.
+    test "a zone that displays a pin or zone property is not reported stale", %{
+      project: project,
+      world: world
+    } do
+      stale = stale_references(project, world, "Zones")
+
+      refute "guard.hidden" in stale,
+             "a reference to a scene PIN property was reported stale, so the variable set the " <>
+               "checker was fed had lost its pin half"
+
+      refute "gate.hidden" in stale,
+             "a reference to a scene ZONE property was reported stale, so the variable set the " <>
+               "checker was fed had lost its zone half"
+
+      # Positive control: the same surface, the same scene, the same code — so a
+      # `stale_variable_reference` that never fires cannot make this pass.
+      assert "hero.nope" in stale
+    end
+
+    test "and the editor agrees, from its own assigns", %{project: project, world: world} do
+      scene = Enum.find(world.scenes, &(&1.name == "Zones"))
+      editor = editor_tuples(project, scene)
+
+      stale_zone_ids =
+        for {_severity, "stale_variable_reference", "zone", zone_id} <- editor, do: zone_id
+
+      property_zone_ids = zone_ids_named(project, scene, ["Shows Pin Property", "Shows Zone Property"])
+
+      assert property_zone_ids != []
+      assert Enum.all?(property_zone_ids, &(&1 not in stale_zone_ids))
+    end
+  end
+
   describe "the vocabulary is single-sourced" do
     test "every code the checker can emit has a declared severity" do
       for code <- HealthChecker.codes() do
@@ -115,6 +155,19 @@ defmodule Storyarn.Scenes.DashboardHealthCoverageTest do
 
     test "an unknown code raises instead of defaulting to a severity" do
       assert_raise KeyError, fn -> HealthChecker.severity_for(:not_a_real_code) end
+    end
+
+    test "every location a finding lands on is declared", %{project: project} do
+      emitted =
+        project.id
+        |> Scenes.list_dashboard_health_findings()
+        |> MapSet.new(& &1.entity_type)
+
+      undeclared = emitted |> MapSet.difference(MapSet.new(HealthChecker.entity_types())) |> MapSet.to_list()
+
+      assert undeclared == [],
+             "#{inspect(undeclared)} reaches the UI with no entry in `entity_types/0`, so nothing " <>
+               "forces `SceneHelpers.element_type_label/1` to have a word for it"
     end
   end
 
@@ -155,6 +208,24 @@ defmodule Storyarn.Scenes.DashboardHealthCoverageTest do
       end
 
     Enum.sort(for_result)
+  end
+
+  defp stale_references(project, world, scene_name) do
+    scene = Enum.find(world.scenes, &(&1.name == scene_name))
+
+    for finding <- Scenes.list_dashboard_health_findings(project.id),
+        finding.scene_id == scene.id,
+        finding.code == :stale_variable_reference,
+        reference <- List.wrap(finding.details[:reference] || finding.details[:references]),
+        do: reference
+  end
+
+  defp zone_ids_named(project, scene, names) do
+    project.id
+    |> Scenes.get_scene(scene.id)
+    |> then(& &1.zones)
+    |> Enum.filter(&(&1.name in names))
+    |> Enum.map(& &1.id)
   end
 
   defp dashboard_tuples(findings, scene_id) do

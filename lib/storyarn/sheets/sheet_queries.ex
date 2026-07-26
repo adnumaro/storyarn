@@ -8,6 +8,9 @@ defmodule Storyarn.Sheets.SheetQueries do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
   alias Storyarn.Shared.FormulaEngine
   alias Storyarn.Shared.MapUtils
@@ -670,7 +673,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   Returns `{:ok, entity}` or `{:error, reason}`.
   """
   @spec validate_reference_target(String.t(), integer(), integer()) ::
-          {:ok, Sheet.t() | Storyarn.Flows.Flow.t()} | {:error, :not_found | :invalid_type}
+          {:ok, Sheet.t() | Flow.t()} | {:error, :not_found | :invalid_type}
   def validate_reference_target(target_type, target_id, project_id) do
     case target_type do
       "sheet" ->
@@ -706,7 +709,11 @@ defmodule Storyarn.Sheets.SheetQueries do
       Repo.all(
         from(b in Block,
           where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
-          order_by: [asc: b.position],
+          # `id` last is not decoration: two blocks can share a position (delete a
+          # block, reorder the survivors, restore it from its snapshot) and block
+          # ORDER decides which one an `invalid_block_layout` finding names.
+          # Without it the answer is whatever plan PostgreSQL picked.
+          order_by: [asc: b.position, asc: b.id],
           preload: [:inherited_from_block]
         )
       )
@@ -757,7 +764,10 @@ defmodule Storyarn.Sheets.SheetQueries do
     blocks_by_sheet =
       from(b in Block,
         where: b.sheet_id in ^sheet_ids and is_nil(b.deleted_at),
-        order_by: [asc: b.sheet_id, asc: b.position],
+        # Same tiebreak as `get_sheet_blocks_grouped/1`, and for the same reason —
+        # the two must slice the same sheet into the same block order or the sweep
+        # and the editor blame different blocks for one broken column group.
+        order_by: [asc: b.sheet_id, asc: b.position, asc: b.id],
         preload: [:inherited_from_block]
       )
       |> Repo.all()
@@ -802,7 +812,9 @@ defmodule Storyarn.Sheets.SheetQueries do
     Repo.all(
       from(b in Block,
         where: b.sheet_id == ^sheet_id and b.scope == "children" and is_nil(b.deleted_at),
-        order_by: [asc: b.position]
+        # Positions tie, so `id` decides the order inherited instances are created
+        # in rather than the plan.
+        order_by: [asc: b.position, asc: b.id]
       )
     )
   end
@@ -924,7 +936,9 @@ defmodule Storyarn.Sheets.SheetQueries do
       from(b in Block,
         where: is_nil(b.deleted_at),
         preload: [:table_columns, :table_rows],
-        order_by: [asc: b.position]
+        # An export is a file people diff. Two blocks at one position would
+        # otherwise swap places between runs with nothing having changed.
+        order_by: [asc: b.position, asc: b.id]
       )
 
     query =
@@ -1034,10 +1048,6 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Flows.VariableReferenceTracker for stale reference detection.
   """
   def check_stale_flow_node_variable_references(block_id, project_id) do
-    alias Storyarn.Flows.Flow
-    alias Storyarn.Flows.FlowNode
-    alias Storyarn.Flows.VariableReference
-
     Repo.all(
       from(vr in VariableReference,
         join: n in FlowNode,
@@ -1101,10 +1111,6 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Flows.VariableReferenceTracker for stale reference repair.
   """
   def list_variable_refs_with_block_info_for_repair(project_id) do
-    alias Storyarn.Flows.Flow
-    alias Storyarn.Flows.FlowNode
-    alias Storyarn.Flows.VariableReference
-
     Repo.all(
       from(vr in VariableReference,
         join: n in FlowNode,
@@ -1153,10 +1159,9 @@ defmodule Storyarn.Sheets.SheetQueries do
     |> Map.new(fn {flow_id, node_ids} -> {flow_id, MapSet.new(node_ids)} end)
   end
 
+  # A reference is stale when the shortcut it was written against no longer names
+  # its sheet, or the variable no longer carries its name.
   defp stale_regular_pairs(flow_ids) do
-    alias Storyarn.Flows.FlowNode
-    alias Storyarn.Flows.VariableReference
-
     Repo.all(
       from(vr in VariableReference,
         join: n in FlowNode,
@@ -1176,10 +1181,10 @@ defmodule Storyarn.Sheets.SheetQueries do
     )
   end
 
+  # A table reference spells its own path — `variable.row_slug.column_slug` — so
+  # its second staleness cause is a row or column that no longer exists, which no
+  # column on `variable_references` can answer. Hence the correlated subquery.
   defp stale_table_pairs(flow_ids) do
-    alias Storyarn.Flows.FlowNode
-    alias Storyarn.Flows.VariableReference
-
     table_cell_exists =
       from(tr in TableRow,
         join: tc in TableColumn,
@@ -1217,78 +1222,30 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   @doc """
-  Lists stale regular (non-table) node IDs in a flow.
-  Joins variable_references with flow_nodes, blocks, and sheets.
-  Returns node IDs where stored source_sheet/source_variable don't match current values.
-  Used by the Flows.VariableReferenceTracker for stale node detection.
-  """
-  def list_stale_regular_node_ids(flow_id) do
-    alias Storyarn.Flows.FlowNode
-    alias Storyarn.Flows.VariableReference
+  Stale regular (non-table) node IDs in ONE flow, for the flow editor.
 
-    from(vr in VariableReference,
-      join: n in FlowNode,
-      on: vr.source_type == "flow_node" and n.id == vr.source_id,
-      join: b in Block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: n.flow_id == ^flow_id,
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      where: b.type != "table",
-      where: vr.source_sheet != s.shortcut or vr.source_variable != b.variable_name,
-      distinct: true,
-      select: n.id
-    )
-    |> Repo.all()
-    |> MapSet.new()
+  The batched builder restricted to a single flow rather than a second copy of the
+  same SQL: two hand-maintained spellings of one rule drift, and nothing compares
+  them at runtime — the editor reads one, the dashboard the other.
+  """
+  @spec list_stale_regular_node_ids(integer()) :: MapSet.t()
+  def list_stale_regular_node_ids(flow_id) do
+    [flow_id] |> stale_regular_pairs() |> node_ids_for_flow(flow_id)
   end
 
   @doc """
-  Lists stale table node IDs in a flow.
-  Joins variable_references with flow_nodes, blocks, sheets, table_rows, and table_columns.
-  Returns node IDs where stored source references don't match current table cell paths.
-  Used by the Flows.VariableReferenceTracker for stale node detection.
+  Stale table node IDs in ONE flow, for the flow editor.
+
+  Same restriction of `stale_table_pairs/1`, for the same reason as
+  `list_stale_regular_node_ids/1`.
   """
+  @spec list_stale_table_node_ids(integer()) :: MapSet.t()
   def list_stale_table_node_ids(flow_id) do
-    alias Storyarn.Flows.FlowNode
-    alias Storyarn.Flows.VariableReference
+    [flow_id] |> stale_table_pairs() |> node_ids_for_flow(flow_id)
+  end
 
-    table_cell_exists =
-      from(tr in TableRow,
-        join: tc in TableColumn,
-        on: tc.block_id == tr.block_id,
-        where:
-          parent_as(:vr).source_variable ==
-            fragment(
-              "? || '.' || ? || '.' || ?",
-              parent_as(:block).variable_name,
-              tr.slug,
-              tc.slug
-            ),
-        select: 1
-      )
-
-    from(vr in VariableReference,
-      as: :vr,
-      join: n in FlowNode,
-      on: vr.source_type == "flow_node" and n.id == vr.source_id,
-      join: b in Block,
-      as: :block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: n.flow_id == ^flow_id,
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      where: b.type == "table",
-      where: vr.source_sheet != s.shortcut or not exists(table_cell_exists),
-      distinct: true,
-      select: n.id
-    )
-    |> Repo.all()
-    |> MapSet.new()
+  defp node_ids_for_flow(pairs, flow_id) do
+    for {^flow_id, node_id} <- pairs, into: MapSet.new(), do: node_id
   end
 
   @doc """
@@ -1346,8 +1303,6 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the export Validator for orphan sheet detection.
   """
   def list_variable_referenced_sheet_ids(project_id) do
-    alias Storyarn.Flows.VariableReference
-
     from(vr in VariableReference,
       join: b in Block,
       on: vr.block_id == b.id,
