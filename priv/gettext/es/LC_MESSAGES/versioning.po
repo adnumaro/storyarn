@@ -200,7 +200,7 @@ msgid "Version restored."
 msgstr "Versión restaurada."
 
 #: lib/storyarn_web/live/version_viewer_live.ex:177
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Version not found"
 msgstr "Versión no encontrada."
 
