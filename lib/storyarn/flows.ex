@@ -729,8 +729,10 @@ defmodule Storyarn.Flows do
   def serialize_for_canvas(%Flow{} = flow, opts \\ []) do
     stale_node_ids = References.list_stale_node_ids(flow.id)
 
-    project_variables =
-      opts[:project_variables] || Storyarn.Sheets.list_project_variables(flow.project_id)
+    # Defaults to the FULL referenceable set, not just sheet blocks: a caller that
+    # forgets the option would otherwise silently type-check against a smaller
+    # vocabulary than the editor uses, and report different findings for it.
+    project_variables = opts[:project_variables] || list_referenceable_variables(flow.project_id)
 
     # Sequences now live in flow.nodes with type='sequence'. Preload their
     # 1:1 config to expose name/width/height alongside the base fields.
@@ -1066,6 +1068,22 @@ defmodule Storyarn.Flows do
   defdelegate analyze_serialized_flow_structure(flow_data, project_id),
     to: StructuralAnalysis,
     as: :analyze_serialized
+
+  @doc """
+  Every variable a flow can reference: sheet blocks, scene pins and scene zones.
+
+  The ONE definition, because the health checkers compare a node's assignments
+  against it and the editor and the dashboard must not be looking at different
+  sets — a flow that assigns to a pin property would otherwise get a type warning
+  on one surface and not the other. `VariableHelpers.list_all_variables/1`
+  delegates here.
+  """
+  @spec list_referenceable_variables(integer()) :: [map()]
+  def list_referenceable_variables(project_id) do
+    Storyarn.Sheets.list_project_variables(project_id) ++
+      Storyarn.Scenes.list_pin_variables(project_id) ++
+      Storyarn.Scenes.list_zone_variables(project_id)
+  end
 
   @doc """
   Every health finding of a flow from already-serialized canvas data.

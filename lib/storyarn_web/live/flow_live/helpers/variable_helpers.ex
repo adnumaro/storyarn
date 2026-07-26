@@ -1,19 +1,16 @@
 defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpers do
   @moduledoc false
 
-  alias Storyarn.Scenes
+  alias Storyarn.Flows
   alias Storyarn.Shared.FormulaRuntime
-  alias Storyarn.Sheets
 
   @doc """
   Returns the flat list of all variable descriptors (sheets + pins + zones).
   Used by LiveViews that pass variables to condition/instruction builders.
+
+  Delegates so this set cannot drift from the one the health checkers use.
   """
-  def list_all_variables(project_id) do
-    Sheets.list_project_variables(project_id) ++
-      Scenes.list_pin_variables(project_id) ++
-      Scenes.list_zone_variables(project_id)
-  end
+  defdelegate list_all_variables(project_id), to: Flows, as: :list_referenceable_variables
 
   def build_variables(project_id) do
     variables =

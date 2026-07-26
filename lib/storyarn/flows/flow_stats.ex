@@ -11,7 +11,6 @@ defmodule Storyarn.Flows.FlowStats do
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Sheets
 
   # ===========================================================================
   # Stats
@@ -72,7 +71,9 @@ defmodule Storyarn.Flows.FlowStats do
   dashboard caches this for 30s, which is what makes that acceptable.
   """
   def list_dashboard_health_findings(project_id) do
-    project_variables = Sheets.list_project_variables(project_id)
+    # The SAME set the editor uses, or the two surfaces disagree about type
+    # warnings on any assignment to a scene pin or zone property.
+    project_variables = Flows.list_referenceable_variables(project_id)
 
     project_id
     |> Topology.load_project()

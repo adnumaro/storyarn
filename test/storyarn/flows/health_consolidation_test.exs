@@ -21,6 +21,7 @@ defmodule Storyarn.Flows.HealthConsolidationTest do
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures, only: [scene_fixture: 1, scene_fixture: 2, pin_fixture: 2]
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
@@ -103,6 +104,62 @@ defmodule Storyarn.Flows.HealthConsolidationTest do
 
       assert comparable(editor_findings(flow, project.id)) ==
                comparable(Flows.list_dashboard_health_findings(project.id))
+    end
+  end
+
+  describe "both surfaces see the same variables" do
+    # Found by the scenes consolidation: the dashboard used only
+    # `Sheets.list_project_variables/1` while the editor composes sheets + scene
+    # pins + scene zones. A flow assigning to a pin property was therefore
+    # type-checked against different vocabularies on the two surfaces.
+    test "a flow assigning to a scene pin property agrees on both surfaces", %{project: project} do
+      scene = scene_fixture(project)
+      _pin = pin_fixture(scene, %{"label" => "Guard", "shortcut" => "guard"})
+      flow = flow_fixture(project)
+
+      node_fixture(flow, %{
+        type: "instruction",
+        data: %{
+          "assignments" => [
+            # `hidden` is a BOOLEAN pin property, and `add` is not one of its
+            # operators — a mismatch only a checker that KNOWS pin variables can
+            # see. With sheet variables alone the reference is unknown and no
+            # warning is possible, which is exactly the divergence being locked.
+            %{
+              "sheet" => "guard",
+              "variable" => "hidden",
+              "operator" => "add",
+              "value" => "1"
+            }
+          ]
+        }
+      })
+
+      editor = editor_findings(flow, project.id)
+      # Positive control: the editor must actually SEE the mismatch, or the
+      # agreement below would hold by both sides reporting nothing.
+      assert Enum.any?(editor, &(&1.code == :variable_type_mismatch))
+
+      assert comparable(editor) == comparable(Flows.list_dashboard_health_findings(project.id))
+    end
+
+    test "the referenceable set is sheets plus pins plus zones", %{project: project} do
+      scene = scene_fixture(project)
+      pin_fixture(scene, %{"label" => "Guard", "shortcut" => "guard"})
+      sheet = sheet_fixture(project, %{name: "Hero", shortcut: "hero"})
+      block_fixture(sheet, %{type: "number", variable_name: "hp", config: %{"label" => "HP"}})
+
+      sources =
+        project.id
+        |> Flows.list_referenceable_variables()
+        # Sheet variables carry no `source_type`; only the scene ones do, which is
+        # itself the tell that they come from different contexts.
+        |> Enum.map(&Map.get(&1, :source_type, "sheet"))
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      assert "pin" in sources
+      assert "sheet" in sources
     end
   end
 
