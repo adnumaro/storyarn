@@ -10,8 +10,8 @@ defmodule Storyarn.Exports.Validator do
 
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Flows
-  alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Localization
+  alias Storyarn.Shared.StringUtils
   alias Storyarn.Sheets
 
   defmodule ValidationResult do
@@ -114,9 +114,7 @@ defmodule Storyarn.Exports.Validator do
 
   defp run_checks_with_data(project_id, opts, flows_data, sheets) do
     checks = [
-      fn -> check_missing_entry(flows_data) end,
-      fn -> check_orphan_nodes(flows_data) end,
-      fn -> check_unreachable_nodes(flows_data) end,
+      fn -> check_flow_health(flows_data) end,
       fn -> check_empty_dialogue(flows_data) end,
       fn -> check_missing_speakers(flows_data) end,
       fn -> check_circular_subflows(flows_data) end,
@@ -138,9 +136,7 @@ defmodule Storyarn.Exports.Validator do
     sheets = load_sheets(project_id, opts)
 
     checks = [
-      fn -> check_missing_entry(flows_data) end,
-      fn -> check_orphan_nodes(flows_data) end,
-      fn -> check_unreachable_nodes(flows_data) end,
+      fn -> check_flow_health(flows_data) end,
       fn -> check_empty_dialogue(flows_data) end,
       fn -> check_missing_speakers(flows_data) end,
       fn -> check_circular_subflows(flows_data) end,
@@ -181,102 +177,113 @@ defmodule Storyarn.Exports.Validator do
   end
 
   # =============================================================================
-  # Check: missing_entry (error)
+  # Check: flow health (structural) — routed through the health engine
   # =============================================================================
+  #
+  # This used to be three hand-rolled checks — missing_entry, orphan_nodes and
+  # unreachable_nodes — with their own raw-connection BFS. They disagreed with
+  # the health engine on real flows, always in the direction of noise:
+  #
+  #   * the orphan check skipped `entry` and `exit`, so a flow with no
+  #     connections at all reported zero orphans;
+  #   * the BFS walked connection rows, so it never resolved a jump -> hub
+  #     virtual edge and called everything behind a jump unreachable;
+  #   * it counted connections sitting on pins the node no longer has as real
+  #     wiring, so a stale response pin looked connected.
+  #
+  # There is one flow-health vocabulary now and the export path reads it rather
+  # than reimplementing it. `analyze_loaded_flow_structure/1` is the structural
+  # half; it re-uses the flows the validator already preloaded.
 
-  defp check_missing_entry(flows) do
-    flows
-    |> Enum.reject(fn flow ->
-      Enum.any?(flow.nodes, &(&1.type == "entry"))
+  # The rules whose names predate the consolidation. Consumers match on these
+  # atoms, so the health code is renamed rather than the finding re-labelled.
+  @export_rule_by_health_code %{
+    missing_entry: :missing_entry,
+    isolated_node: :orphan_nodes,
+    unreachable_node: :unreachable_nodes
+  }
+
+  # `check_broken_references/2` already reports these, at :error. Surfacing them
+  # again at :warning would report one broken jump twice.
+  @health_codes_reported_elsewhere [
+    :missing_jump_target,
+    :missing_subflow_reference,
+    :stale_jump_target,
+    :stale_subflow_reference
+  ]
+
+  defp check_flow_health(flows) do
+    Enum.flat_map(flows, fn flow ->
+      flow
+      |> Flows.analyze_loaded_flow_structure()
+      |> Map.fetch!(:findings)
+      |> Enum.reject(&(&1.code in @health_codes_reported_elsewhere))
+      |> Enum.map(&health_finding(&1, flow))
     end)
-    |> Enum.map(fn flow ->
+  end
+
+  # Only `missing_entry` blocks an export, exactly as before. Every code the
+  # consolidation newly surfaces lands at :warning: whether any of them should
+  # block is a product decision, and making it here would stop exports that
+  # succeed today.
+  defp health_finding(%{code: :missing_entry} = finding, flow) do
+    finding
+    |> base_health_finding(flow)
+    |> Map.put(:level, :error)
+  end
+
+  defp health_finding(finding, flow), do: base_health_finding(finding, flow)
+
+  defp base_health_finding(finding, flow) do
+    maybe_put_node(
       %{
-        level: :error,
-        rule: :missing_entry,
-        message: dgettext("projects", "Flow \"%{name}\" has no Entry node", name: flow.name),
+        level: :warning,
+        rule: Map.get(@export_rule_by_health_code, finding.code, finding.code),
+        message: health_message(finding, flow),
         flow_id: flow.id,
         flow_name: flow.name
-      }
-    end)
+      },
+      finding
+    )
+  end
+
+  defp maybe_put_node(export_finding, %{entity_id: nil}), do: export_finding
+
+  defp maybe_put_node(export_finding, finding) do
+    export_finding
+    |> Map.put(:node_id, finding.entity_id)
+    |> Map.put(:node_type, finding.entity_type)
   end
 
   # =============================================================================
-  # Check: orphan_nodes (warning) — nodes with no connections at all
+  # Check: empty_dialogue / missing_speakers (warning)
   # =============================================================================
-
-  defp check_orphan_nodes(flows) do
-    Enum.flat_map(flows, fn flow ->
-      connected_ids = connected_node_ids(flow.connections)
-
-      flow.nodes
-      |> Enum.reject(&(orphan_check_skipped?(&1.type) or MapSet.member?(connected_ids, &1.id)))
-      |> Enum.map(fn node ->
-        %{
-          level: :warning,
-          rule: :orphan_nodes,
-          message:
-            dgettext(
-              "projects",
-              "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no connections",
-              type: node.type,
-              node_id: node.id,
-              flow_name: flow.name
-            ),
-          flow_id: flow.id,
-          flow_name: flow.name,
-          node_id: node.id,
-          node_type: node.type
-        }
-      end)
-    end)
-  end
-
-  # =============================================================================
-  # Check: unreachable_nodes (warning) — not reachable from Entry
-  # =============================================================================
-
-  defp check_unreachable_nodes(flows) do
-    Enum.flat_map(flows, &find_unreachable_in_flow/1)
-  end
-
-  defp find_unreachable_in_flow(flow) do
-    entry_nodes = Enum.filter(flow.nodes, &(&1.type == "entry"))
-
-    if entry_nodes == [] do
-      []
-    else
-      reachable = reachable_from_entries(entry_nodes, flow.connections)
-      all_node_ids = MapSet.new(flow.nodes, & &1.id)
-      unreachable_ids = MapSet.difference(all_node_ids, reachable)
-
-      flow.nodes
-      |> Enum.filter(&(MapSet.member?(unreachable_ids, &1.id) and NodeConnectionRules.can_be_unreachable?(&1.type)))
-      |> Enum.map(fn node ->
-        %{
-          level: :warning,
-          rule: :unreachable_nodes,
-          message:
-            dgettext(
-              "projects",
-              "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" is not reachable from Entry",
-              type: node.type,
-              node_id: node.id,
-              flow_name: flow.name
-            ),
-          flow_id: flow.id,
-          flow_name: flow.name,
-          node_id: node.id,
-          node_type: node.type
-        }
-      end)
-    end
-  end
-
-  defp orphan_check_skipped?(type), do: type in ["entry", "exit"] or NodeConnectionRules.connection_optional_type?(type)
-
-  # =============================================================================
-  # Check: empty_dialogue (warning)
-  # =============================================================================
+  #
+  # These two are the EDITORIAL half of flow health (`HealthChecker`'s
+  # `missing_dialogue_text` and `missing_dialogue_speaker`) and the predicates
+  # below are already identical to the checker's. They stay here only because
+  # `Flows.analyze_loaded_flow_structure/1` is the structural half: no facade
+  # function composes both halves for an already-loaded flow, and reaching into
+  # `StructuralAnalysis`/`HealthChecker` directly would break the context facade.
+  # They do NOT diverge from health today — unlike the three structural rules
+  # that were removed.
+  #
+  # To fold them into `check_flow_health/1`, `Flows` needs a composed reading for
+  # a loaded flow. **Do not write the obvious version.** `Topology.from_loaded/1`
+  # resolves subflow/exit data but does NOT apply `Flows.add_health_flags/3`, and
+  # the editorial checks read `has_type_warnings` / `has_stale_refs` straight off
+  # a node's `data`. Measured on a flow with a live type mismatch:
+  #
+  #     from_loaded |> StructuralAnalysis.findings()
+  #       => [:incomplete_instruction_assignment, :isolated_node]
+  #     the editor path
+  #       => [:incomplete_instruction_assignment, :isolated_node, :variable_type_mismatch]
+  #
+  # So the naive helper would buy the two codes below and silently lose
+  # `variable_type_mismatch` — and `stale_variable_reference` with it, by
+  # construction, since it rides the same flag. A correct helper has to do the
+  # sweep's two loads (`References.list_stale_node_ids/1` plus the project
+  # variable set) and pass them through `add_health_flags/3` first.
 
   defp check_empty_dialogue(flows) do
     Enum.flat_map(flows, fn flow ->
@@ -313,7 +320,7 @@ defmodule Storyarn.Exports.Validator do
       flow.nodes
       |> Enum.filter(fn node ->
         node.type == "dialogue" and
-          node.data |> get_in(["speaker_sheet_id"]) |> nil_or_empty?()
+          node.data |> get_in(["speaker_sheet_id"]) |> StringUtils.blank?()
       end)
       |> Enum.map(fn node ->
         %{
@@ -610,42 +617,6 @@ defmodule Storyarn.Exports.Validator do
   # Graph helpers
   # =============================================================================
 
-  defp connected_node_ids(connections) do
-    Enum.reduce(connections, MapSet.new(), fn conn, acc ->
-      acc
-      |> MapSet.put(conn.source_node_id)
-      |> MapSet.put(conn.target_node_id)
-    end)
-  end
-
-  defp reachable_from_entries(entry_nodes, connections) do
-    # Build adjacency map: source_node_id → [target_node_ids]
-    adj =
-      Enum.reduce(connections, %{}, fn conn, acc ->
-        Map.update(acc, conn.source_node_id, [conn.target_node_id], &[conn.target_node_id | &1])
-      end)
-
-    # BFS from all entry nodes
-    entry_ids = Enum.map(entry_nodes, & &1.id)
-    bfs(entry_ids, adj, MapSet.new(entry_ids))
-  end
-
-  defp bfs([], _adj, visited), do: visited
-
-  defp bfs(queue, adj, visited) do
-    next_queue =
-      queue
-      |> Enum.flat_map(fn node_id ->
-        adj
-        |> Map.get(node_id, [])
-        |> Enum.reject(&MapSet.member?(visited, &1))
-      end)
-      |> Enum.uniq()
-
-    new_visited = Enum.reduce(next_queue, visited, &MapSet.put(&2, &1))
-    bfs(next_queue, adj, new_visited)
-  end
-
   defp has_cycle?(start_id, graph, visited) do
     if MapSet.member?(visited, start_id) do
       true
@@ -670,7 +641,106 @@ defmodule Storyarn.Exports.Validator do
 
   defp strip_html(text), do: Storyarn.Shared.HtmlUtils.strip_html(text)
 
-  defp nil_or_empty?(nil), do: true
-  defp nil_or_empty?(""), do: true
-  defp nil_or_empty?(_), do: false
+  # =============================================================================
+  # Health finding messages
+  # =============================================================================
+  #
+  # Rebuilt from the finding's own code, entity and flow name. The three rules
+  # that predate the consolidation keep their exact original strings so existing
+  # translations still match.
+
+  defp health_message(%{code: :missing_entry}, flow) do
+    dgettext("projects", "Flow \"%{name}\" has no Entry node", name: flow.name)
+  end
+
+  defp health_message(%{code: :multiple_entries}, flow) do
+    dgettext("projects", "Flow \"%{name}\" has more than one Entry node", name: flow.name)
+  end
+
+  defp health_message(%{code: :isolated_node} = finding, flow) do
+    dgettext(
+      "projects",
+      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no connections",
+      type: finding.entity_type,
+      node_id: finding.entity_id,
+      flow_name: flow.name
+    )
+  end
+
+  defp health_message(%{code: :unreachable_node} = finding, flow) do
+    dgettext(
+      "projects",
+      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" is not reachable from Entry",
+      type: finding.entity_type,
+      node_id: finding.entity_id,
+      flow_name: flow.name
+    )
+  end
+
+  defp health_message(%{code: :no_outgoing_connection} = finding, flow) do
+    dgettext(
+      "projects",
+      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no outgoing connection",
+      type: finding.entity_type,
+      node_id: finding.entity_id,
+      flow_name: flow.name
+    )
+  end
+
+  defp health_message(%{code: :missing_output_connections} = finding, flow) do
+    dgettext(
+      "projects",
+      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" leaves one or more outputs unconnected",
+      type: finding.entity_type,
+      node_id: finding.entity_id,
+      flow_name: flow.name
+    )
+  end
+
+  defp health_message(%{code: :invalid_input_pins} = finding, flow) do
+    dgettext(
+      "projects",
+      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on input pins it no longer has",
+      type: finding.entity_type,
+      node_id: finding.entity_id,
+      flow_name: flow.name
+    )
+  end
+
+  defp health_message(%{code: :invalid_output_pins} = finding, flow) do
+    dgettext(
+      "projects",
+      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on output pins it no longer has",
+      type: finding.entity_type,
+      node_id: finding.entity_id,
+      flow_name: flow.name
+    )
+  end
+
+  defp health_message(%{code: :orphan_hub} = finding, flow) do
+    dgettext(
+      "projects",
+      "Hub node (id: %{node_id}) in flow \"%{flow_name}\" is never targeted by a Jump",
+      node_id: finding.entity_id,
+      flow_name: flow.name
+    )
+  end
+
+  defp health_message(%{code: :missing_exit_flow_reference} = finding, flow) do
+    dgettext(
+      "projects",
+      "Exit node (id: %{node_id}) in flow \"%{flow_name}\" has no return flow set",
+      node_id: finding.entity_id,
+      flow_name: flow.name
+    )
+  end
+
+  defp health_message(%{code: :stale_exit_flow_reference} = finding, flow) do
+    dgettext(
+      "projects",
+      "Exit node (id: %{node_id}) in flow \"%{flow_name}\" returns to a flow that no longer exists",
+      node_id: finding.entity_id,
+      flow_name: flow.name
+    )
+  end
 end

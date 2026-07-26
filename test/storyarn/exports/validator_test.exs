@@ -104,8 +104,13 @@ defmodule Storyarn.Exports.ValidatorTest do
 
       result = Validator.validate_project(project.id)
       orphan_warnings = Enum.filter(result.warnings, &(&1.rule == :orphan_nodes))
-      assert length(orphan_warnings) == 1
-      assert hd(orphan_warnings).node_type == "dialogue"
+
+      # The fixture's auto-created entry and exit are disconnected too. The
+      # validator's own orphan check used to skip both node types outright, so
+      # this flow reported one orphan instead of three; the health engine reports
+      # every node that has no connection, whatever its type.
+      assert Enum.sort(Enum.map(orphan_warnings, & &1.node_type)) == ["dialogue", "entry", "exit"]
+      assert Enum.all?(orphan_warnings, &(&1.flow_id == flow.id))
     end
 
     test "ignores annotations and sequences with no graph connections", %{project: project} do
