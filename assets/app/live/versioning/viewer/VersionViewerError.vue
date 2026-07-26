@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { FileQuestion, ShieldAlert, ShieldOff, TriangleAlert } from "lucide-vue-next";
+import { FileQuestion, ShieldAlert, TriangleAlert } from "lucide-vue-next";
 
-type ViewerErrorReason = "not_found" | "unverified_legacy" | "integrity" | "unreadable";
+type ViewerErrorReason = "not_found" | "integrity" | "unreadable";
 
 const { reason } = defineProps<{
   reason: ViewerErrorReason;
@@ -10,7 +10,6 @@ const { reason } = defineProps<{
 
 const ICONS = {
   not_found: FileQuestion,
-  unverified_legacy: ShieldOff,
   integrity: ShieldAlert,
   unreadable: TriangleAlert,
 } as const;

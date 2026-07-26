@@ -71,10 +71,6 @@
         "title": "Versión no encontrada",
         "description": "Esta versión ya no existe, o no tienes acceso a ella."
       },
-      "unverified_legacy": {
-        "title": "Esta versión no se puede abrir",
-        "description": "Se guardó antes de que Storyarn registrara sumas de verificación de integridad, así que su contenido no se puede verificar contra el registro. Sigue en el historial, pero no se puede ver ni restaurar."
-      },
       "integrity": {
         "title": "Esta versión no ha superado la verificación de integridad",
         "description": "El snapshot almacenado no coincide con lo que describe el registro de la versión, así que no se mostrará."

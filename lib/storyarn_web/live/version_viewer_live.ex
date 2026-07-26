@@ -142,10 +142,6 @@ defmodule StoryarnWeb.VersionViewerLive do
     |> assign(:page_title, view_error_title(kind))
   end
 
-  # A snapshot that predates the checksum column can never be verified: the
-  # migration that added it left existing rows NULL on purpose.
-  defp view_error_kind({:invalid_expected_checksum, nil}), do: :unverified_legacy
-
   defp view_error_kind({:invalid_expected_checksum, _}), do: :integrity
   defp view_error_kind({:checksum_mismatch, _expected, _actual}), do: :integrity
   defp view_error_kind({:compressed_size_mismatch, _expected, _actual}), do: :integrity

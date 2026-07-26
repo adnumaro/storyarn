@@ -51,10 +51,10 @@ defmodule StoryarnWeb.VersionViewerLiveTest do
       # The regression: mount used to redirect to /workspaces, which rendered
       # the workspace dashboard inside the compare pane.
       assert {:ok, view, _html} = live(conn, viewer_path(project, flow, 1))
-      assert error_reason(view) == "unverified_legacy"
+      assert error_reason(view) == "integrity"
     end
 
-    test "names a pre-checksum snapshot as unverifiable rather than missing", %{
+    test "reports a missing checksum as an integrity failure", %{
       conn: conn,
       project: project,
       flow: flow,
@@ -64,7 +64,7 @@ defmodule StoryarnWeb.VersionViewerLiveTest do
 
       {:ok, view, _html} = live(conn, viewer_path(project, flow, 1))
 
-      assert error_reason(view) == "unverified_legacy"
+      assert error_reason(view) == "integrity"
       refute render(view) =~ "FlowCanvas"
     end
 
@@ -105,7 +105,7 @@ defmodule StoryarnWeb.VersionViewerLiveTest do
         end)
 
       assert log =~ "Version viewer"
-      assert log =~ "unverified_legacy"
+      assert log =~ "integrity"
       assert log =~ "invalid_expected_checksum"
     end
   end
