@@ -1,0 +1,37 @@
+test/storyarn/sheets/dashboard_health_coverage_test.exs
+  s_7337fae2006063::t_67b4c7d1831d88 114-134
+test/storyarn/sheets/formula_resolver_test.exs
+  s_7337fae2006063::t_67b4c7d1831d88 140-193
+lib/storyarn/scenes/zone_crud.ex
+  s_7337fae2006063::t_26e6c406597023 64-65,128-129,145
+lib/storyarn/scenes/pin_crud.ex
+  s_7337fae2006063::t_26e6c406597023 68-69,126-127,143
+test/storyarn/scenes/dashboard_invalidation_test.exs
+  s_7337fae2006063::t_26e6c406597023 15-19,145,158,160-161,163-170,174-181,183-200
+lib/storyarn_web/live/scene_live/show.ex
+  s_7337fae2006063::t_84029b06feb177 1142-1144,1353-1355,1942-1944,1952-1954
+lib/storyarn/sheets/formula_resolver.ex
+  s_7337fae2006063::t_67b4c7d1831d88 139-149,153-154,166-175
+  s_7337fae2006063::t_13e3b077deb457 138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "767a7be3768754cfb80770a73b240f3c117cc556",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_7337fae2006063": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9ffb-b5ec-7450-90bf-0cbbe07969af",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
