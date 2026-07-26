@@ -1,0 +1,151 @@
+lib/storyarn_web/live/sheet_live/helpers/formula_helpers.ex
+  s_fc3546b2264bba::t_1edce81c2389ad 232-236,239-241
+assets/app/test/live/flow/dashboard/FlowDashboard.test.ts
+  s_fc3546b2264bba::t_a028113b632692 25-27,30-32,37-39,44-46
+lib/storyarn/sheets.ex
+  s_fc3546b2264bba::t_1debdc6bb3a4a6 637-639
+  s_fc3546b2264bba::t_3b604a4c48ab73 28
+lib/storyarn/scenes.ex
+  s_fc3546b2264bba::t_a7116ecf1387b3 662,665-669
+  s_fc3546b2264bba::t_8621f1ea28218e 27
+  s_fc3546b2264bba::t_c42476f7e56115 670
+lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex
+  s_fc3546b2264bba::t_568bdac58e5735 44-47
+  s_fc3546b2264bba::t_f2697f64b04f17 48
+  s_fc3546b2264bba::t_cb352cbba77afa 21-32,34-40,50,53-54
+  s_fc3546b2264bba::t_10cc8cd97d8978 49
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_fc3546b2264bba::t_b27d4f7eba9660 47,53,74,103,110-111,114,119,216,226,231,271,276,376,414,419,424,429,434,449-452,462-464,467-469
+lib/storyarn_web/live/scene_live/helpers/health_helpers.ex
+  s_fc3546b2264bba::t_611dcfc1bc3915 5
+  s_fc3546b2264bba::t_f4ce16260e7fb6 55-58,60-66,69
+  s_fc3546b2264bba::t_32ee3bacea3db0 6-8,13,26,59
+  s_fc3546b2264bba::t_3dca14e4e17bca 70
+lib/storyarn/scenes/scene_stats.ex
+  s_fc3546b2264bba::t_e17c1fe7c1b0bd 97-100
+  s_fc3546b2264bba::t_2601957f26e0e1 77-78
+  s_fc3546b2264bba::t_81e210729a0a72 7
+  s_fc3546b2264bba::t_c22ac5936e57b0 61,63-71,74-76,79-80,83-89,91,93,96
+  s_fc3546b2264bba::t_d091c3e5f803e8 90
+lib/storyarn/sheets/inheritance_audit.ex
+  s_fc3546b2264bba::t_a2811b636dbb39 1-192
+lib/storyarn/sheets/sheet_queries.ex
+  s_fc3546b2264bba::t_6ecd68f4a992d5 758-761,763
+  s_fc3546b2264bba::t_3301c501a91f26 950-965
+  s_fc3546b2264bba::t_b10d26c38c3397 722,734-757,762,764-781,784-785,787,789,794-795,949
+  s_fc3546b2264bba::t_8081594009c7c8 716-718
+  s_fc3546b2264bba::t_266a5ee926750a 796
+lib/storyarn/assets.ex
+  s_fc3546b2264bba::t_78ab43dd1c0f5b 88-108
+assets/app/test/live/flow/show/FlowHeader.test.ts
+  s_fc3546b2264bba::t_c71393688706e0 59,75-78
+  s_fc3546b2264bba::t_a871ca16e7222e 3-5,7-10,12,14,16,18,27,32,43,52-54,56,60-62,64-67,70-71,73
+lib/storyarn/sheets/property_inheritance.ex
+  s_fc3546b2264bba::t_78621f935e71bf 21
+  s_fc3546b2264bba::t_9588dcb4d6eb1b 870-873,876-877,880-881,883-884
+  s_fc3546b2264bba::t_59f224737c94f7 93-96,100-102,104-106,108-111,113-115,117-121,123-127,129-132,134-137,139-142,144-145,147-151,153-154,158-160,162,164-167,169-175,178-199
+  s_fc3546b2264bba::t_6ecd68f4a992d5 844
+  s_fc3546b2264bba::t_ecfbd1010894cf 845-846
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_fc3546b2264bba::t_ad63f18c5c4a7e 14,19,24,29,34-35,40,45,50,55,60,65,70,75,80,86-87,92,97,102,107,112,117,122-124,209,214,219,224,229-230,235,240,245,250,255,260,265,270,275,280,285-286,291,296,301,306,312-351
+test/storyarn/flows/health_checker_test.exs
+  s_fc3546b2264bba::t_29de1722475d13 351-359,364-368,371
+  s_fc3546b2264bba::t_f9e85d4858a5b6 155-157,164,181-182
+  s_fc3546b2264bba::t_64a1f7c6f06339 20-24,62,125
+  s_fc3546b2264bba::t_eee536522ee4a2 335,346
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_fc3546b2264bba::t_ad63f18c5c4a7e 14,19,24,29,34-35,40,45,50,55,60,65,70,75,80,86-87,92,97,102,107,112,117,122-124,209,214,219,224,229-230,235,240,245,250,255,260,265,270,275,280,285-286,291,296,301,306,312-351
+lib/storyarn/sheets/formula_resolver.ex
+  s_fc3546b2264bba::t_049e326f94ba5e 26,38-98
+  s_fc3546b2264bba::t_b940b3d1c3dca2 99
+lib/storyarn_web/live/sheet_live/index.ex
+  s_fc3546b2264bba::t_5afbfce4729373 298-300,303,305-307,309-320,322-326
+  s_fc3546b2264bba::t_6ecd68f4a992d5 302
+  s_fc3546b2264bba::t_d99c6de150348f 279-280,289-291,294-296
+  s_fc3546b2264bba::t_11b0b48dffbae5 297
+assets/app/live/flow/show/FlowHeader.vue
+  s_fc3546b2264bba::t_c71393688706e0 2-10
+lib/storyarn/sheets/health_snapshots.ex
+  s_fc3546b2264bba::t_97272af2b28373 67,72-73,79
+  s_fc3546b2264bba::t_d718b92c8c3591 63
+  s_fc3546b2264bba::t_306aa6163d796e 131-137
+  s_fc3546b2264bba::t_0f146ae73bc901 104
+  s_fc3546b2264bba::t_afaaaae0eea05c 1-62,64-66,68-71,74-78,80-91,93-103,105-130,138-157
+  s_fc3546b2264bba::t_3402f40ebbd886 92
+assets/app/test/live/flow/show/FlowHealthStatus.test.ts
+  s_fc3546b2264bba::t_273eeb33f57592 1-118
+lib/storyarn_web/live/scene_live/show.ex
+  s_fc3546b2264bba::t_e76bf5c487a170 707
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_fc3546b2264bba::t_05f613c5534659 465,470
+  s_fc3546b2264bba::t_b27d4f7eba9660 47,53,74,103,110-111,114,119,216,226,231,271,276,376,414,419,424,429,434,449-452,462-464,467-469
+priv/gettext/sheets.pot
+  s_fc3546b2264bba::t_ad63f18c5c4a7e 14,19,24,70,86-87,102,107,112,123,219,224,229-230,235,240,245,250,255,260,265,275,280,285-286,296,301,306,313,318,322-351
+test/storyarn/sheets/dashboard_health_coverage_test.exs
+  s_fc3546b2264bba::t_4c8caa558c8d57 97,100-108
+  s_fc3546b2264bba::t_353339add8faca 156,158,160-161
+  s_fc3546b2264bba::t_42da0c0c60d959 459,464-467,475-478
+  s_fc3546b2264bba::t_dceb1d923b63ed 1-30,32-86,88-96,98-99,109-113,136-155,157,159,162-379,397,413-458,460-463,468-474,479-480
+  s_fc3546b2264bba::t_19e280f29f44b7 31
+  s_fc3546b2264bba::t_d3bbba94b03cd4 87
+  s_fc3546b2264bba::t_38f303273cc9a9 114-135
+  s_fc3546b2264bba::t_59cefc46bf57bc 380-396,398-412
+lib/storyarn/scenes/health_checker.ex
+  s_fc3546b2264bba::t_176877a8a2c15b 85-86
+lib/storyarn/scenes/health_snapshots.ex
+  s_fc3546b2264bba::t_cc51a9f4a696ab 194
+  s_fc3546b2264bba::t_62a1ad0331d6c9 3-4,6-9,22
+  s_fc3546b2264bba::t_c71393688706e0 150
+  s_fc3546b2264bba::t_97476ed9544089 55-60,63,71-76
+  s_fc3546b2264bba::t_105130964b7271 1-2,5,10,15-21,23-54,61-62,64-70,77-99,101-118,121-126,128-136,139-149,151-162,166-193,195-265
+  s_fc3546b2264bba::t_7621a77358ccfe 119-120,137-138
+  s_fc3546b2264bba::t_a0c7b01ccc307e 163-165
+  s_fc3546b2264bba::t_a44ba24eadcc2e 11-14,100,127
+test/e2e/flow_health_test.exs
+  s_fc3546b2264bba::t_08c561e253176d 1-104
+test/storyarn/scenes/dashboard_health_coverage_test.exs
+  s_fc3546b2264bba::t_8d756811bdef7d 1-52,54,58-149,158-177,180,182-191,193,195-250,258-266,273-282,284-294,297-335,337-338,340-355,364-394,398,400-406,409-425,432-490
+  s_fc3546b2264bba::t_0cca8694c4aeb9 267-272,283,295-296
+  s_fc3546b2264bba::t_4e05576f902c70 356-363
+  s_fc3546b2264bba::t_6751a43504911b 395-397,407-408
+  s_fc3546b2264bba::t_e885d75fccdbb1 150-157,399
+  s_fc3546b2264bba::t_6fde2bf5be4fb2 251-257
+  s_fc3546b2264bba::t_fb5375af2dae34 53,55-57
+  s_fc3546b2264bba::t_df7938aba0ba73 178-179,181,192,194,336,339,426-431
+lib/storyarn/sheets/sheet_stats.ex
+  s_fc3546b2264bba::t_7089c1a63b3557 118,120-123,125-127,129-134,137-145,152-154,156-160,163-164,166-178,181-185
+  s_fc3546b2264bba::t_f340a22aa57bba 11
+  s_fc3546b2264bba::t_6bc07d744d2f50 155,186
+priv/gettext/flows.pot
+  s_fc3546b2264bba::t_b27d4f7eba9660 47,53,74,103,110-111,114,119,216,226,231,271,276,376,414,419,424,429,434,449-452,462,464,467,469
+lib/storyarn/projects/dashboard.ex
+  s_fc3546b2264bba::t_a8be969c595131 228-242,244-288,291-304,308,312-317
+test/storyarn/flows/flow_crud_test.exs
+  s_fc3546b2264bba::t_45b1c316139f0b 1223,1231-1232,1234-1235,1244-1249,1251-1252,1265-1272,1289-1292,1294-1296,1310-1317
+test/storyarn/flows/health_consolidation_test.exs
+  s_fc3546b2264bba::t_d89dff2a16d56f 109-159
+test/storyarn/flows/structural_analysis_test.exs
+  s_fc3546b2264bba::t_c0eefb464a8530 10,35-37,67,71-73,78-80,112,127,155,167,194,244,260,291,303,325,337,360,380,384-385,388-391,393-396,414,418,426,430-434,446-449,451-455,457,459-462,466,473-476,478-479,482,493-495,532-533
+test/storyarn_web/live/flow_live/helpers/connection_helpers_test.exs
+  s_fc3546b2264bba::t_215b5251344914 203-205,208-212
+test/storyarn_web/live/flow_live/helpers/socket_helpers_test.exs
+  s_fc3546b2264bba::t_71717640fc042b 109-121
+test/storyarn_web/live/flow_live/show_test.exs
+  s_fc3546b2264bba::t_9de65ce31bd9e2 60-62,64-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c0ec20ff3e720293392ab6e26b54af0238e4ca52",
+  "prompts": {},
+  "sessions": {
+    "s_fc3546b2264bba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f8e7dfe0-82c5-4822-91bf-5fa376a93dc2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
