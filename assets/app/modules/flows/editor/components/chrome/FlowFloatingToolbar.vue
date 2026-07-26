@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component, CSSProperties } from "vue";
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { useElementSize } from "@vueuse/core";
 import type { NodeData } from "../../lib/node-configs";
 import {

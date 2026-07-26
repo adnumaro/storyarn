@@ -1,10 +1,43 @@
 # Slice 7.1 — Deterministic Structural Analysis
 
-**Status:** implemented on `codex/slice7-1-deterministic-analysis` (2026-07-24) —
-canonical engine `Storyarn.Flows.StructuralAnalysis` (editor serializer and
-dashboards converged on it), `flow_finding_dismissals` persistence, analysis
-panel with evidence navigation, `flows.analyze` palette command, analytics,
-en/es copy and user docs. Owner browser verification pending.
+**Status:** implemented and merged (PR #48) — **then partly reversed by Slices
+7.1a.0 and 7.1a.1.**
+
+What survives: the canonical engine `Storyarn.Flows.StructuralAnalysis`, with the
+editor serializer and both dashboards converged on it; the rule catalog and its
+semantics as described below; and the reachability rules (topological, never
+symbolic; entry/no-entry/multi-entry handling; cycle-safe traversal; jump→hub
+virtual edges). `StructuralAnalysis.findings/1` is now the single composition
+point both surfaces call.
+
+What was unwound: everything built to anchor a finding to an exact occurrence —
+the frozen rules catalog with its versions, the evidence fingerprints, the typed
+evidence payloads, the whole finding-disposition lifecycle and its schema, the
+analysis panel with evidence navigation, and the `flows.analyze` palette command.
+Their only consumers were the dismissal lifecycle and the 7.2a AI explanation;
+both are gone, so the identity machinery had nothing left to identify for.
+
+Note on the database: the `flow_finding_dismissals` **table itself was not
+dropped**. `20260724120000_create_flow_finding_dismissals.exs` is still in
+`priv/repo/migrations/`, and no code in `lib/` or `test/` reads or writes it. It
+is an orphaned table awaiting its own decision, not evidence that any of this
+still ships.
+
+The 15 structural codes were merged into the single
+`@severity_by_code` catalog in `Storyarn.Flows.HealthChecker` alongside the 12
+editorial ones, and they are surfaced in the flow editor's header health
+indicator and in the Flows dashboard instead of a dedicated panel.
+
+Read the identity, evidence and disposition sections below as the historical
+record of a design that was built and then deliberately unwound. The rule catalog
+and the reachability semantics are still live.
+
+Original status line, kept verbatim: implemented on
+`codex/slice7-1-deterministic-analysis` (2026-07-24) — canonical engine
+`Storyarn.Flows.StructuralAnalysis` (editor serializer and dashboards converged
+on it), `flow_finding_dismissals` persistence, analysis panel with evidence
+navigation, `flows.analyze` palette command, analytics, en/es copy and user docs.
+Owner browser verification pending.
 
 ## Objective
 

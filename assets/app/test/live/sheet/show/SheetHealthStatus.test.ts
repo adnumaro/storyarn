@@ -37,6 +37,8 @@ describe("SheetHealthStatus", () => {
     const wrapper = mountStatus({
       errorItems: [
         {
+          entityType: "rich_text",
+          entityId: 11,
           blockId: 11,
           rowId: null,
           columnId: null,
@@ -46,6 +48,8 @@ describe("SheetHealthStatus", () => {
       ],
       warningItems: [
         {
+          entityType: "select",
+          entityId: 12,
           blockId: 12,
           rowId: null,
           columnId: null,
@@ -55,6 +59,8 @@ describe("SheetHealthStatus", () => {
       ],
       infoItems: [
         {
+          entityType: "number",
+          entityId: 13,
           blockId: 13,
           rowId: null,
           columnId: null,
@@ -87,6 +93,8 @@ describe("SheetHealthStatus", () => {
     const wrapper = mountStatus({
       errorItems: [
         {
+          entityType: "sheet",
+          entityId: null,
           blockId: null,
           rowId: null,
           columnId: null,
@@ -96,6 +104,8 @@ describe("SheetHealthStatus", () => {
       ],
       warningItems: [
         {
+          entityType: "table",
+          entityId: 42,
           blockId: 42,
           rowId: 7,
           columnId: 9,

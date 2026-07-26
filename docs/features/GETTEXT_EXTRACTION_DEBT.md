@@ -124,10 +124,20 @@ a test that extraction is up to date. Two viable shapes:
   certain, but it mutates the working tree, so it belongs in CI rather than in
   `mix test`.
 
-Either way the failure message must name the consequence, following the
-precedent at `test/storyarn/flows/finding_dismissals_test.exs:213-232` — that
-test says a missing label means "the dismiss form would render the raw i18n key",
-which is why it is actionable.
+Either way the failure message must name the consequence rather than the
+mismatch. The precedent used to be
+`test/storyarn/flows/finding_dismissals_test.exs:213-232`, whose per-locale label
+check failed with "the dismiss form would render the raw i18n key"; it was deleted
+with the dismissal lifecycle in Slice 7.1a.1, and **no surviving test checks
+per-locale label coverage at all** — this guard would be the first again.
+
+The surviving example of the shape is
+`test/storyarn/flows/health_consolidation_test.exs:74`, which fails with
+"editorial detection is the half the dashboard used to miss" instead of printing a
+set difference. Contrast it with
+`test/storyarn/publication/locales_test.exs:75,95,101` — "must contain exactly
+the messages from `<domain>.pot`", "must contain the same keys as en" — which are
+the mismatch-naming form this guard should not copy.
 
 ## Verification / Definition of Done
 

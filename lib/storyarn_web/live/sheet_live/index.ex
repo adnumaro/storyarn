@@ -17,8 +17,12 @@ defmodule StoryarnWeb.SheetLive.Index do
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
+  alias Storyarn.Shared.Severity
   alias Storyarn.Sheets
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+  alias StoryarnWeb.SheetLive.Helpers.HealthHelpers
+
+  require Logger
 
   @impl true
   def render(assigns) do
@@ -168,7 +172,23 @@ defmodule StoryarnWeb.SheetLive.Index do
      |> assign(:sheet_issues, data.formatted_issues)}
   end
 
-  def handle_async(:load_dashboard_data, {:exit, _reason}, socket), do: {:noreply, socket}
+  # Swallowing the reason left `dashboard_stats` nil forever, and Vue renders a
+  # skeleton until it is set: a crash in here presented to the author as a
+  # dashboard that simply never finished loading, with nothing to click and
+  # nothing in the error tracker. That is how a formula overflow raising inside
+  # the health sweep looked in production.
+  def handle_async(:load_dashboard_data, {:exit, reason}, socket) do
+    Logger.error("Sheet dashboard load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
+
+    {:noreply,
+     socket
+     |> assign(:dashboard_stats, empty_dashboard_stats())
+     |> put_flash(:error, dgettext("sheets", "Could not load dashboard data. Reload the page to try again."))}
+  end
+
+  defp empty_dashboard_stats do
+    %{sheet_count: 0, block_count: 0, variable_count: 0, variables_in_use: 0, word_count: 0}
+  end
 
   defp load_dashboard_data_async(project_id, workspace, project, sort_by, sort_dir) do
     sheets = Sheets.list_all_sheets(project_id)
@@ -276,7 +296,8 @@ defmodule StoryarnWeb.SheetLive.Index do
   end
 
   defp format_dashboard_health(findings, workspace, project) do
-    Enum.map(findings, fn finding ->
+    findings
+    |> Enum.map(fn finding ->
       %{
         severity: Atom.to_string(finding.severity),
         code: Atom.to_string(finding.code),
@@ -285,17 +306,41 @@ defmodule StoryarnWeb.SheetLive.Index do
         href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{finding.sheet_id}"
       }
     end)
+    # The list is rendered in the order it arrives, and now that every code reaches
+    # it, errors would otherwise sit behind hundreds of info findings.
+    |> Enum.sort_by(&{Severity.rank(&1.severity), &1.label, &1.code})
   end
 
+  # Location only — never a rendered sentence. The code carries the meaning and Vue
+  # resolves it from `sheets.health.findings.*`, the same catalog the editor popover
+  # uses, so the two surfaces cannot word a finding differently.
   defp dashboard_health_label(finding) do
-    sheet_name = Map.get(finding.details, :sheet_name, "Sheet")
-
-    case Map.get(finding.details, :variable_name) do
-      variable_name when is_binary(variable_name) and variable_name != "" ->
-        "#{sheet_name} · #{variable_name}"
-
-      _other ->
-        sheet_name
-    end
+    Enum.join([sheet_label(finding) | block_labels(finding)], " · ")
   end
+
+  defp sheet_label(finding) do
+    Map.get(finding.details, :sheet_name) || dgettext("sheets", "Sheet")
+  end
+
+  defp block_labels(%{block_id: nil}), do: []
+
+  # The identifiers come from `HealthHelpers`, which the editor popover uses for
+  # the same blocks: two spellings of "the block with no label" is two names for
+  # one thing, and `String.capitalize/1` over a DB enum cannot be translated at
+  # all — Spanish read "Multi select" here and "Selección múltiple" one click away.
+  defp block_labels(finding) do
+    block =
+      Map.get(finding.details, :block_label) ||
+        HealthHelpers.block_identifier(finding.block_type, finding.block_id)
+
+    row = Map.get(finding.details, :row_label) || axis_identifier(finding.row_id, &HealthHelpers.row_identifier/1)
+
+    column =
+      Map.get(finding.details, :column_label) || axis_identifier(finding.column_id, &HealthHelpers.column_identifier/1)
+
+    Enum.reject([block, row, column], &is_nil/1)
+  end
+
+  defp axis_identifier(nil, _identifier), do: nil
+  defp axis_identifier(id, identifier), do: identifier.(id)
 end

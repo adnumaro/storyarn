@@ -29,13 +29,18 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   @doc """
   Lists all non-deleted scenes for a project.
-  Returns scenes ordered by position then name.
+  Returns scenes ordered by position, then name, then id.
+
+  The id is a tiebreak, not decoration: siblings created together share a
+  position and may share a name, and this feeds the project-wide health sweep —
+  whose results must not reorder between runs on `Repo.all`'s unspecified order.
+  Same reasoning as `Flows.StructuralAnalysis.Topology.load_project/2`.
   """
   def list_scenes(project_id) do
     Repo.all(
       from(m in Scene,
         where: m.project_id == ^project_id and is_nil(m.deleted_at),
-        order_by: [asc: m.position, asc: m.name]
+        order_by: [asc: m.position, asc: m.name, asc: m.id]
       )
     )
   end
@@ -274,6 +279,45 @@ defmodule Storyarn.Scenes.SceneCrud do
       )
     )
   end
+
+  @doc """
+  Invalidates the scenes dashboard for the project owning `scene_id`, after a
+  successful write to one of a scene's child tables.
+
+  Child tables carry no `project_id`, so the owning project is resolved here
+  rather than copied into every child CRUD. Callers pass the whole result and
+  get it back unchanged, so this can sit at the end of a pipeline.
+
+  It matters beyond the ≤30s cache TTL, for two different reasons depending on
+  the child table. Pin and zone shortcuts ARE referenceable variables
+  (`Flows.list_referenceable_variables/1`), so a write that adds or removes one
+  changes the vocabulary every health surface type-checks against. Layers carry
+  no shortcut and are not vocabulary, but their existence and `is_default` are
+  finding inputs (`missing_scene_layer`, `missing_default_layer`,
+  `multiple_default_layers`), and deleting one nilifies the `layer_id` behind
+  `invalid_layer_reference`.
+  """
+  @spec broadcast_scene_dashboard_result(term(), term()) :: term()
+  def broadcast_scene_dashboard_result(result, scene_id)
+
+  def broadcast_scene_dashboard_result({:ok, _value} = result, scene_id) do
+    project_id = Repo.one(from(s in Scene, where: s.id == ^scene_id, select: s.project_id))
+
+    if project_id, do: Collaboration.broadcast_dashboard_change(project_id, :scenes)
+
+    result
+  end
+
+  def broadcast_scene_dashboard_result(result, _scene_id), do: result
+
+  @doc false
+  @spec broadcast_scene_dashboard_project_result(term()) :: term()
+  def broadcast_scene_dashboard_project_result({:ok, {value, project_id}}) do
+    Collaboration.broadcast_dashboard_change(project_id, :scenes)
+    {:ok, value}
+  end
+
+  def broadcast_scene_dashboard_project_result(result), do: result
 
   @doc """
   Creates a scene with auto-generated shortcut and default layer.
@@ -520,10 +564,12 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   # Private functions
 
+  # Same total order as `list_scenes/1`, so the sidebar tree and the dashboard
+  # cannot present siblings that share a position in two different orders.
   defp base_scenes_query(project_id) do
     from(m in Scene,
       where: m.project_id == ^project_id and is_nil(m.deleted_at),
-      order_by: [asc: m.position, asc: m.name]
+      order_by: [asc: m.position, asc: m.name, asc: m.id]
     )
   end
 

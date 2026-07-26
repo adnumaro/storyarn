@@ -185,7 +185,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
 
     test "deletes connection between nodes", %{
       socket: socket,
-      project: project,
       entry_node: entry,
       dialogue_node: dialogue
     } do
@@ -200,20 +199,17 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
                c.source_node_id == entry.id && c.target_node_id == dialogue.id
              end)
 
-      # Structural findings moved to the analysis panel: the deletion leaves
-      # the entry with no edge at all, and the compact summary counts exactly
-      # the canonical engine's warnings — not merely "at least one".
-      refute Enum.any?(result.assigns.flow_warning_nodes, &(&1.id == entry.id))
-
-      {:ok, analysis} = Flows.analyze_flow_structure(project.id, result.assigns.flow.id)
+      # One health surface now: deleting the only edge leaves the entry isolated,
+      # and that finding shows up in the same payload the popover renders.
+      health = result.assigns.flow_health
 
       assert Enum.any?(
-               analysis.findings,
-               &(&1.rule_id == "isolated_node" and &1.target.id == entry.id)
+               health.warningItems,
+               fn item ->
+                 item.entityId == entry.id and
+                   Enum.any?(item.reasons, &(&1.code == "isolated_node"))
+               end
              )
-
-      assert result.assigns.flow_structural_summary.warningCount ==
-               Enum.count(analysis.findings, &(&1.severity == :warning))
     end
 
     test "resyncs and reports a non-existent connection without marking a save", %{

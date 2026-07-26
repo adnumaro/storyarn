@@ -7,7 +7,6 @@ import type { Block } from "../../../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import { useId } from "reka-ui";
-import { generateId } from "../../../../../../shared/domain/variables.ts";
 
 const {
   block,

@@ -22,19 +22,28 @@ function mountDashboard() {
         total: 1,
       },
       issues: [
+        // The server sends a CODE and the location; Vue resolves the sentence
+        // against `flows.health.findings.*`, the same catalog the editor popover
+        // uses. Sheets' dashboard has always worked this way.
         {
           severity: "error",
-          message: 'Flow "Opening" has no entry node',
+          code: "missing_entry",
+          label: "Opening",
+          details: {},
           href: "/workspaces/ws/projects/story/flows/1",
         },
         {
           severity: "warning",
-          message: 'Flow "Opening" has a disconnected node',
+          code: "isolated_node",
+          label: "Opening · Dialogue #42",
+          details: {},
           href: "/workspaces/ws/projects/story/flows/1",
         },
         {
           severity: "info",
-          message: "Review optional metadata",
+          code: "empty_condition",
+          label: "Opening · Condition #7",
+          details: {},
           href: "/workspaces/ws/projects/story/flows/1",
         },
       ],

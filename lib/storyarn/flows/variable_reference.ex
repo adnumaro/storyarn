@@ -17,7 +17,11 @@ defmodule Storyarn.Flows.VariableReference do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Sheets.Block
 
-  @source_types ~w(flow_node map_zone)
+  # What `VariableReferenceTracker.replace_references/4` actually writes.
+  # `"map_zone"` was here from before the Maps→Scenes rename and matches no row;
+  # the mismatch is invisible today only because the write path is
+  # `Repo.insert_all/3` and never builds this changeset.
+  @source_types ~w(flow_node scene_zone scene_pin)
 
   @type t :: %__MODULE__{
           id: integer() | nil,

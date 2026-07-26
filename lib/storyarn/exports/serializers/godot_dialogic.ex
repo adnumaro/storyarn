@@ -20,6 +20,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
   alias Storyarn.Localization.SourceContract
+  alias Storyarn.Shared.StringUtils
 
   @impl true
   def content_type, do: "text/plain"
@@ -317,7 +318,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
       (flow.nodes || [])
       |> Enum.filter(&(&1.type == "subflow"))
       |> Enum.map(&resolve_flow_shortcut(&1.data || %{}, flow_shortcuts_by_id))
-      |> Enum.reject(&blank?/1)
+      |> Enum.reject(&StringUtils.blank?/1)
     end)
     |> MapSet.new()
   end
@@ -331,10 +332,6 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
       data["referenced_flow_shortcut"] ||
       flow_shortcuts_by_id[to_string(data["referenced_flow_id"])]
   end
-
-  defp blank?(nil), do: true
-  defp blank?(""), do: true
-  defp blank?(_value), do: false
 
   # Dialogic uses TAB characters for indentation
   defp indent(0), do: ""

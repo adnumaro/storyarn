@@ -15,34 +15,30 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   import Phoenix.Component, only: [assign: 3]
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
-  alias Storyarn.Flows.HealthChecker
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Shared.WordCount
-  alias StoryarnWeb.FlowLive.Handlers.AnalysisHandlers
-  alias StoryarnWeb.FlowLive.NodeTypeRegistry
+  alias StoryarnWeb.FlowLive.Helpers.HealthHelpers
 
   @doc """
   Reloads flow data from the database and updates socket assigns.
 
-  Refreshes `:flow`, `:flow_data`, `:flow_hubs`, `:flow_word_count`,
-  `:flow_error_nodes`, `:flow_warning_nodes`, and `:flow_info_nodes`.
+  Refreshes `:flow`, `:flow_data`, `:flow_hubs`, `:flow_word_count` and
+  `:flow_health`.
   """
-  @spec reload_flow_data(Socket.t(), keyword()) :: Socket.t()
-  def reload_flow_data(socket, opts \\ []) do
-    previous_flow = socket.assigns[:flow]
+  @spec reload_flow_data(Socket.t()) :: Socket.t()
+  def reload_flow_data(socket) do
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
 
-    flow_data = Flows.serialize_for_canvas(flow)
-    flow_hubs = Flows.list_hubs(flow.id)
+    # Once the flow is loaded the socket already holds the FULL referenceable
+    # set; omitting it made the serializer re-query it (8 queries / 49.7 ms vs
+    # 4 / 18.7 ms). `nil` before the async load lands is fine and NOT a fallback
+    # to a different vocabulary: `serialize_for_canvas/2` then computes the very
+    # same `list_referenceable_variables/1` set, just at the cost of the query.
+    flow_data =
+      Flows.serialize_for_canvas(flow, project_variables: socket.assigns[:project_variables])
 
-    # Local graph mutations announce themselves project-wide so flows whose
-    # subflow/exit pins derive from this one can stale their open analysis
-    # snapshots. Remote-change receivers pass notify_project: false.
-    if Keyword.get(opts, :notify_project, true) and exit_surface_changed?(previous_flow, flow) do
-      Collaboration.broadcast_flow_graph_changed_from(self(), flow.project_id, flow.id)
-    end
+    flow_hubs = Flows.list_hubs(flow.id)
 
     socket
     |> assign(:flow, flow)
@@ -50,27 +46,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
     |> assign(:flow_hubs, flow_hubs)
     |> assign_flow_stats(flow, flow_data)
   end
-
-  # Other flows only ever derive from THIS flow's exit nodes: a subflow node
-  # exposes one output pin per referenced-flow exit node
-  # (`NodeCrud.batch_resolve_subflow_data/2` → `exit_<exit node id>`), and an
-  # exit node in flow-reference mode resolves against the flow's existence.
-  # Content-only edits (dialogue text, positions, connections inside this
-  # flow) change nothing another flow can observe, so they must not stale
-  # anyone else's snapshot. An unloaded association is treated as changed —
-  # over-notifying is recoverable, missing a real pin change is not.
-  defp exit_surface_changed?(previous_flow, flow) do
-    case exit_node_ids(previous_flow) do
-      nil -> true
-      previous_ids -> previous_ids != exit_node_ids(flow)
-    end
-  end
-
-  defp exit_node_ids(%{nodes: nodes}) when is_list(nodes) do
-    for node <- nodes, node.type == "exit", into: MapSet.new(), do: node.id
-  end
-
-  defp exit_node_ids(_flow), do: nil
 
   @doc """
   Computes flow-level stats and health findings grouped by severity.
@@ -87,109 +62,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
         total + WordCount.for_node_data(node.type, node.data)
       end)
 
-    # The canonical structural rules live in the analysis panel; the header
-    # popover keeps only editorial completeness findings. The compact
-    # structural summary comes from the SAME canonical engine as the panel
-    # (active findings only, dismissals subtracted) so the badge and the
-    # panel can never disagree about the same rule.
-    structural_codes = Flows.structural_rule_ids()
-
-    editorial =
-      flow_data
-      |> HealthChecker.check()
-      |> Enum.reject(&(to_string(&1.code) in structural_codes))
-
-    # Zero extra node queries: the analysis reuses the serializer's already
-    # resolved flow_data (from_serialized==DB parity is test-guarded).
-    analysis = Flows.analyze_serialized_flow_structure(flow_data, flow.project_id)
-    dismissals = Flows.list_active_finding_dismissals(flow)
-    {active, _dismissed} = Flows.split_findings(analysis.findings, dismissals)
+    # ONE health surface, and the SAME composition point the dashboard calls, so
+    # the two cannot disagree. Zero extra node queries: the serializer's output is
+    # already resolved (from_serialized==DB parity is test-guarded).
+    findings = Flows.flow_health_findings(flow_data, flow.project_id)
 
     socket
     |> assign(:flow_word_count, word_count)
-    |> assign(:flow_error_nodes, health_payloads(editorial, :error))
-    |> assign(:flow_warning_nodes, health_payloads(editorial, :warning))
-    |> assign(:flow_info_nodes, health_payloads(editorial, :info))
-    |> assign(:flow_structural_summary, AnalysisHandlers.structural_summary(active))
-    |> AnalysisHandlers.mark_snapshot_stale()
+    |> assign(:flow_health, HealthHelpers.health_payload(findings, flow.name))
   end
-
-  defp health_payloads(findings, severity) do
-    findings
-    |> Enum.filter(&(&1.severity == severity))
-    |> Enum.chunk_by(&{&1.node_id, &1.node_type})
-    |> Enum.map(&health_payload/1)
-  end
-
-  defp health_payload([finding | _] = findings) do
-    reasons = Enum.map(findings, &finding_message/1)
-
-    %{
-      id: finding.node_id,
-      type: finding.node_type || "flow",
-      label: health_label(finding),
-      reason: Enum.join(reasons, " · "),
-      reasons: reasons
-    }
-  end
-
-  defp health_label(%{node_id: nil}), do: dgettext("flows", "Flow")
-
-  defp health_label(%{node_id: id, node_type: type}) do
-    dgettext("flows", "%{type} #%{id}", type: NodeTypeRegistry.label(type), id: id)
-  end
-
-  defp finding_message(%{code: :missing_entry}), do: dgettext("flows", "Missing entry node")
-
-  defp finding_message(%{code: :multiple_entries, details: %{count: count}}),
-    do: dgettext("flows", "Flow has %{count} entry nodes", count: count)
-
-  defp finding_message(%{code: :stale_variable_reference}), do: dgettext("flows", "Stale variable reference")
-
-  defp finding_message(%{code: :missing_subflow_reference}), do: dgettext("flows", "Missing subflow reference")
-
-  defp finding_message(%{code: :stale_subflow_reference}), do: dgettext("flows", "Stale subflow reference")
-
-  defp finding_message(%{code: :missing_jump_target}), do: dgettext("flows", "Missing jump target")
-  defp finding_message(%{code: :stale_jump_target}), do: dgettext("flows", "Jump target does not exist")
-
-  defp finding_message(%{code: :missing_exit_flow_reference}), do: dgettext("flows", "Missing exit flow reference")
-
-  defp finding_message(%{code: :stale_exit_flow_reference}), do: dgettext("flows", "Exit flow reference does not exist")
-
-  defp finding_message(%{code: :invalid_output_pins, details: %{pins: pins}}),
-    do: dgettext("flows", "Invalid output connection pin(s): %{pins}", pins: Enum.join(pins, ", "))
-
-  defp finding_message(%{code: :invalid_input_pins, details: %{pins: pins}}),
-    do: dgettext("flows", "Invalid input connection pin(s): %{pins}", pins: Enum.join(pins, ", "))
-
-  defp finding_message(%{code: :variable_type_mismatch}), do: dgettext("flows", "Variable type warning")
-
-  defp finding_message(%{code: :response_type_mismatch}), do: dgettext("flows", "Response assignment type warning")
-
-  defp finding_message(%{code: :missing_dialogue_text}), do: dgettext("flows", "Missing dialogue text")
-
-  defp finding_message(%{code: :missing_dialogue_speaker}), do: dgettext("flows", "Missing dialogue speaker")
-
-  defp finding_message(%{code: :empty_dialogue_response}), do: dgettext("flows", "Empty dialogue response")
-
-  defp finding_message(%{code: :incomplete_response_condition}), do: dgettext("flows", "Incomplete response condition")
-
-  defp finding_message(%{code: :incomplete_response_assignment}), do: dgettext("flows", "Incomplete response assignment")
-
-  defp finding_message(%{code: :incomplete_condition}), do: dgettext("flows", "Incomplete condition")
-
-  defp finding_message(%{code: :incomplete_instruction_assignment}),
-    do: dgettext("flows", "Incomplete instruction assignment")
-
-  defp finding_message(%{code: :unreachable_node}), do: dgettext("flows", "Not reachable from any entry node")
-
-  defp finding_message(%{code: :no_outgoing_connection}), do: dgettext("flows", "No outgoing connection")
-
-  defp finding_message(%{code: :missing_output_connections, details: %{pins: pins}}),
-    do: dgettext("flows", "Output(s) without connection: %{pins}", pins: Enum.join(pins, ", "))
-
-  defp finding_message(%{code: :empty_instruction}), do: dgettext("flows", "No instruction assignments")
-
-  defp finding_message(%{code: :empty_condition}), do: dgettext("flows", "Condition has no rules")
 end

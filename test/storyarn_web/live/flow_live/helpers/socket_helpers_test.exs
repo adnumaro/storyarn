@@ -6,7 +6,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
   import Storyarn.ProjectsFixtures
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
 
@@ -23,7 +22,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
           project: project,
           flow: flow,
           flow_data: nil,
-          flow_hubs: []
+          flow_hubs: [],
+          # The editor holds the FULL referenceable set; `reload_flow_data/1`
+          # passes it to the serializer instead of letting it re-query a smaller one.
+          project_variables: Flows.list_referenceable_variables(project.id)
         }
       }
 
@@ -106,82 +108,22 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
 
       result = SocketHelpers.reload_flow_data(socket)
 
-      warning_node = Enum.find(result.assigns.flow_warning_nodes, &(&1.id == dialogue.id))
+      health = result.assigns.flow_health
+      item = Enum.find(health.warningItems, &(&1.entityId == dialogue.id))
 
-      assert "Missing dialogue text" in warning_node.reasons
-      assert "Missing dialogue speaker" in warning_node.reasons
-      # Structural findings (unreachable, no outgoing connection) moved to the
-      # analysis panel: the popover keeps editorial reasons only, the compact
-      # summary carries the structural counts.
-      refute "Not reachable from any entry node" in warning_node.reasons
-      refute "No outgoing connection" in warning_node.reasons
-      assert result.assigns.flow_structural_summary.warningCount >= 2
-      refute Enum.any?(result.assigns.flow_error_nodes, &(&1.id == dialogue.id))
-      refute Enum.any?(result.assigns.flow_info_nodes, &(&1.id == dialogue.id))
-    end
-  end
+      assert item, "no warning item for the dialogue node; got #{inspect(health.warningItems)}"
 
-  # ── project-wide graph notification ───────────────────────────────
+      codes = Enum.map(item.reasons, & &1.code)
 
-  describe "reload_flow_data/2 project notification" do
-    setup do
-      project = project_fixture(user_fixture())
-      flow = Flows.get_flow!(project.id, flow_fixture(project).id)
-
-      socket = %Socket{
-        assigns: %{
-          __changed__: %{},
-          project: project,
-          flow: flow,
-          flow_data: nil,
-          flow_hubs: []
-        }
-      }
-
-      Collaboration.subscribe_flow_graph(project.id)
-
-      %{project: project, flow: flow, socket: socket}
-    end
-
-    # The broadcast excludes its sender, so the reload has to run off the test
-    # process for the subscription to see it.
-    defp reload_from_other_process(socket, opts \\ []) do
-      test_pid = self()
-
-      Task.await(
-        Task.async(fn ->
-          Ecto.Adapters.SQL.Sandbox.allow(Repo, test_pid, self())
-          SocketHelpers.reload_flow_data(socket, opts)
-        end)
-      )
-    end
-
-    test "content-only mutations do not stale other flows' snapshots", %{
-      flow: flow,
-      socket: socket
-    } do
-      node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
-
-      reload_from_other_process(socket)
-
-      refute_receive {:flow_graph_changed, _flow_id}, 100
-    end
-
-    test "an exit-node change notifies the project", %{flow: flow, socket: socket} do
-      node_fixture(flow, %{type: "exit", data: %{"label" => "Second ending"}})
-
-      reload_from_other_process(socket)
-
-      flow_id = flow.id
-      assert_receive {:flow_graph_changed, ^flow_id}, 500
-    end
-
-    test "notify_project: false never notifies", %{flow: flow, socket: socket} do
-      node_fixture(flow, %{type: "exit", data: %{"label" => "Second ending"}})
-
-      reload_from_other_process(socket, notify_project: false)
-
-      refute_receive {:flow_graph_changed, _flow_id}, 100
+      # Reasons travel as CODES for Vue to translate; the server no longer renders
+      # the sentence. Editorial and structural now share one surface, so the
+      # isolated-node finding belongs here too.
+      assert "missing_dialogue_text" in codes
+      assert "missing_dialogue_speaker" in codes
+      assert "isolated_node" in codes
+      assert item.entityType == "dialogue"
+      refute Enum.any?(health.errorItems, &(&1.entityId == dialogue.id))
+      refute Enum.any?(health.infoItems, &(&1.entityId == dialogue.id))
     end
   end
 end

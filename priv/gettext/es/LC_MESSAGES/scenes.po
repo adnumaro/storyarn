@@ -62,7 +62,7 @@ msgstr "Escena hija creada. Añade una imagen de fondo para continuar."
 #: lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex:64
 #, elixir-autogen, elixir-format
 msgid "Connection"
-msgstr "Conectar"
+msgstr "Conexión"
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:1052
 #, elixir-autogen, elixir-format
@@ -72,12 +72,12 @@ msgstr "Conexión eliminada. Pulsa Ctrl+Z para deshacer."
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:1036
 #, elixir-autogen, elixir-format
 msgid "Could not clear waypoints."
-msgstr "No se pudo crear el flujo."
+msgstr "No se pudieron borrar los waypoints."
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:639
 #, elixir-autogen, elixir-format
 msgid "Could not create annotation."
-msgstr "No se pudo crear la versión."
+msgstr "No se pudo crear la anotación."
 
 #: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:58
 #: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:149
@@ -88,18 +88,18 @@ msgstr "No se pudo crear la escena hija."
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:563
 #, elixir-autogen, elixir-format
 msgid "Could not create connection."
-msgstr "No se pudo crear la ficha."
+msgstr "No se pudo crear la conexión."
 
 #: lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex:31
 #, elixir-autogen, elixir-format
 msgid "Could not create layer."
-msgstr "No se pudo crear el flujo."
+msgstr "No se pudo crear la capa."
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:150
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:766
 #, elixir-autogen, elixir-format
 msgid "Could not create pin."
-msgstr "No se pudo crear la versión."
+msgstr "No se pudo crear el marcador."
 
 #: lib/storyarn_web/live/scene_sidebar_live.ex:130
 #: lib/storyarn_web/live/scene_sidebar_live.ex:147
@@ -111,27 +111,27 @@ msgstr "No se pudo crear la escena."
 #: lib/storyarn_web/live/scene_live/helpers/scene_serializer.ex:212
 #, elixir-autogen, elixir-format
 msgid "Could not create zone."
-msgstr "No se pudo crear el flujo."
+msgstr "No se pudo crear la zona."
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:1121
 #, elixir-autogen, elixir-format
 msgid "Could not delete annotation."
-msgstr "No se pudo eliminar la versión."
+msgstr "No se pudo eliminar la anotación."
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:1056
 #, elixir-autogen, elixir-format
 msgid "Could not delete connection."
-msgstr "No se pudo eliminar la ficha."
+msgstr "No se pudo eliminar la conexión."
 
 #: lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex:260
 #, elixir-autogen, elixir-format
 msgid "Could not delete layer."
-msgstr "No se pudo eliminar el flujo."
+msgstr "No se pudo eliminar la capa."
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:820
 #, elixir-autogen, elixir-format
 msgid "Could not delete pin."
-msgstr "No se pudo eliminar la versión."
+msgstr "No se pudo eliminar el marcador."
 
 #: lib/storyarn_web/live/scene_sidebar_live.ex:174
 #, elixir-autogen, elixir-format
@@ -141,7 +141,7 @@ msgstr "No se pudo eliminar la escena."
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:978
 #, elixir-autogen, elixir-format
 msgid "Could not delete zone."
-msgstr "No se pudo eliminar el flujo."
+msgstr "No se pudo eliminar la zona."
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:1184
 #, elixir-autogen, elixir-format
@@ -161,12 +161,12 @@ msgstr "No se pudo actualizar el contenido."
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:1094
 #, elixir-autogen, elixir-format
 msgid "Could not move annotation."
-msgstr "No se pudo mover el flujo."
+msgstr "No se pudo mover la anotación."
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:786
 #, elixir-autogen, elixir-format
 msgid "Could not move pin."
-msgstr "No se pudo mover el flujo."
+msgstr "No se pudo mover el marcador."
 
 #: lib/storyarn_web/live/scene_sidebar_live.ex:197
 #, elixir-autogen, elixir-format
@@ -196,12 +196,12 @@ msgstr "No se pudo eliminar el banner."
 #: lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex:162
 #, elixir-autogen, elixir-format
 msgid "Could not remove pin icon."
-msgstr "No se pudo eliminar el banner."
+msgstr "No se pudo eliminar el icono del marcador."
 
 #: lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex:200
 #, elixir-autogen, elixir-format
 msgid "Could not rename layer."
-msgstr "No se pudo eliminar el banner."
+msgstr "No se pudo renombrar la capa."
 
 #: lib/storyarn_web/live/scene_live/handlers/canvas_event_handlers.ex:33
 #, elixir-autogen, elixir-format
@@ -302,12 +302,12 @@ msgstr "Zona no válida: %{reason}"
 #: lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex:27
 #, elixir-autogen, elixir-format
 msgid "Layer created."
-msgstr "Versión creada."
+msgstr "Capa creada."
 
 #: lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex:253
 #, elixir-autogen, elixir-format
 msgid "Layer deleted."
-msgstr "Versión eliminada."
+msgstr "Capa eliminada."
 
 #: lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex:196
 #, elixir-autogen, elixir-format
@@ -837,3 +837,33 @@ msgstr "Demasiados subflujos anidados. Deteniendo la ejecución."
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr "No tienes permiso para editar."
+
+#: lib/storyarn_web/live/scene_live/index.ex:190
+#, elixir-autogen, elixir-format
+msgid "Could not load dashboard data. Reload the page to try again."
+msgstr "No se pudieron cargar los datos del panel. Recarga la página para intentarlo de nuevo."
+
+#: lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex:22
+#, elixir-autogen, elixir-format
+msgid "Scene"
+msgstr "Escena"
+
+#: lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex:22
+#, elixir-autogen, elixir-format
+msgid "Layer"
+msgstr "Capa"
+
+#: lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex:22
+#, elixir-autogen, elixir-format
+msgid "Ambient flow"
+msgstr "Flujo ambiental"
+
+#: lib/storyarn_web/live/scene_live/helpers/health_helpers.ex:125
+#, elixir-autogen, elixir-format
+msgid "Item"
+msgstr "Elemento"
+
+#: lib/storyarn_web/live/scene_live/helpers/health_helpers.ex:125
+#, elixir-autogen, elixir-format
+msgid "%{type} #%{id}"
+msgstr "%{type} n.º %{id}"

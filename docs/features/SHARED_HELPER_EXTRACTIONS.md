@@ -119,7 +119,7 @@ Also nearby, so you do not add a seventh: `flow_builder.ex:3835`
 
 ---
 
-## 3. `usePaletteCommands` — three idioms across eight call sites
+## 3. `usePaletteCommands` — three idioms across six call sites
 
 ### Current state
 
@@ -129,17 +129,25 @@ There is **no** composable wrapping `registerPaletteCommands`; nothing named
 CLAUDE.md's tree is stale on this).
 
 - **(A) `watchEffect` + `onCleanup`**, 11 lines, no mutable local, no
-  `onUnmounted` — `modules/flows/editor/components/panels/FlowAnalysisPanel.vue`.
-  This is the best of the three and the one to promote.
+  `onUnmounted`. This was
+  `modules/flows/editor/components/panels/FlowAnalysisPanel.vue`, deleted with the
+  structural-analysis panel in Slice 7.1a.1 — **no call site uses the shape today**
+  (`grep watchEffect assets/app` returns nothing). It is still the one to promote:
+  cleanup is bound to the effect rather than to a mutable local every component has
+  to remember to clear. Recover the exact 11 lines from
+  `git show fdf6774b^:assets/app/modules/flows/editor/components/panels/FlowAnalysisPanel.vue`.
 - **(B)/(C) `let unregister` + `watch(..., {immediate: true})` + `onUnmounted`**,
   25 lines each, structurally identical to each other —
   `live/workspace/dashboard/WorkspaceDashboard.vue:227-251` and
-  `live/layouts/workspace/Layout.vue:33-57`.
-- **(D) static**, 5 sites: `live/flow/show/FlowHeader.vue:98-107`,
+  `live/layouts/workspace/Layout.vue:33-57`. These are the only surviving dynamic
+  registrations, so they are what the composable must actually replace.
+- **(D) static**, 4 sites:
   `modules/flows/editor/components/chrome/FlowMinimapToggle.vue:36-53`,
   `modules/scenes/editor/components/canvas/SceneCanvas.vue:171-181`,
   `live/layouts/CommandPalette.vue:18-28`,
-  `live/layouts/project/Layout.vue:131-136`.
+  `live/layouts/project/Layout.vue:131-136`. A fifth,
+  `live/flow/show/FlowHeader.vue:98-107`, registered `flows.analyze` and went with
+  the panel.
 
 ### What the composable must handle
 
@@ -154,9 +162,11 @@ Two traps to preserve:
 - `paletteGroups` dedups by id and **first registration wins**
   (`registry.ts:74`), so a stale registration outliving its replacement silently
   shadows the new one. The composable must unregister before re-registering.
-- (A) registers an **empty array** when ineligible rather than skipping
-  registration, keeping `"flows"` an active surface for `primarySurface`. Preserve
-  that; it is not an accident.
+- (A) registered an **empty array** when ineligible rather than skipping
+  registration, keeping `"flows"` an active surface for `primarySurface`
+  (`registry.ts:95`). That was not an accident, and it is the one behaviour worth
+  carrying forward from a component that no longer exists: skipping registration
+  entirely changes which surface the palette considers primary.
 
 ### Also consider
 
@@ -171,9 +181,12 @@ destination behaves like the command registry.
 ## Non-goals
 
 - Anything already landed in `31ebb29e`.
-- `track/3` in the two flow analysis handlers. A 3-line wrapper over
+- ~~`track/3` in the two flow analysis handlers. A 3-line wrapper over
   `Analytics.track/3`; importing it across handler modules costs more than the
-  duplication.
+  duplication.~~ **Void:** 7.1a.1 deleted `analysis_handlers.ex`, and no
+  `defp track/3` wrapper survives anywhere under `lib/storyarn_web/`. The
+  surviving flow handlers call `Analytics.track/3` directly, which was the
+  conclusion anyway.
 - The duplicated Gettext msgid the audit flagged. Two call sites of one msgid is
   how Gettext works — the catalog has a single entry.
 - ~~Splitting `explanation_handlers.ex` to meet the 200-line limit.~~ **Void:**

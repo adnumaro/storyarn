@@ -8,6 +8,9 @@ defmodule Storyarn.Sheets.SheetQueries do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
   alias Storyarn.Shared.FormulaEngine
   alias Storyarn.Shared.MapUtils
@@ -670,7 +673,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   Returns `{:ok, entity}` or `{:error, reason}`.
   """
   @spec validate_reference_target(String.t(), integer(), integer()) ::
-          {:ok, Sheet.t() | Storyarn.Flows.Flow.t()} | {:error, :not_found | :invalid_type}
+          {:ok, Sheet.t() | Flow.t()} | {:error, :not_found | :invalid_type}
   def validate_reference_target(target_type, target_id, project_id) do
     case target_type do
       "sheet" ->
@@ -706,29 +709,24 @@ defmodule Storyarn.Sheets.SheetQueries do
       Repo.all(
         from(b in Block,
           where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
-          order_by: [asc: b.position],
+          # `id` last is not decoration: two blocks can share a position (delete a
+          # block, reorder the survivors, restore it from its snapshot) and block
+          # ORDER decides which one an `invalid_block_layout` finding names.
+          # Without it the answer is whatever plan PostgreSQL picked.
+          order_by: [asc: b.position, asc: b.id],
           preload: [:inherited_from_block]
         )
       )
 
-    {inherited, own} =
-      Enum.split_with(blocks, fn b ->
-        Block.inherited?(b)
-      end)
-
     # Batch-load all source sheets to avoid N+1
     source_sheet_ids =
-      inherited
-      |> Enum.map(fn b ->
-        case b.inherited_from_block do
-          nil -> nil
-          source -> source.sheet_id
-        end
-      end)
+      blocks
+      |> Enum.filter(&Block.inherited?/1)
+      |> Enum.map(&inherited_source_sheet_id/1)
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
 
-    source_sheets_map =
+    source_sheets_by_id =
       if source_sheet_ids == [] do
         %{}
       else
@@ -740,23 +738,71 @@ defmodule Storyarn.Sheets.SheetQueries do
         |> Map.new(fn s -> {s.id, s} end)
       end
 
-    # Group inherited blocks by source sheet
+    group_blocks(blocks, source_sheets_by_id)
+  end
+
+  @doc """
+  Loads every active block of a project, grouped per sheet exactly as
+  `get_sheet_blocks_grouped/1` groups one sheet's.
+
+  Two queries for a whole project instead of two per sheet. `sheets` supplies the
+  inheritance sources, so a sheet whose source sheet is absent from it drops its
+  inherited blocks — the same way the per-sheet loader drops blocks whose source
+  sheet was deleted.
+
+  Returns `%{sheet_id => {inherited_groups, own_blocks}}`, with an entry for every
+  sheet in `sheets`.
+  """
+  @spec list_project_blocks_grouped([Sheet.t()]) ::
+          %{integer() => {[%{source_sheet: Sheet.t(), blocks: [Block.t()]}], [Block.t()]}}
+  def list_project_blocks_grouped([]), do: %{}
+
+  def list_project_blocks_grouped(sheets) do
+    sheet_ids = Enum.map(sheets, & &1.id)
+    source_sheets_by_id = Map.new(sheets, &{&1.id, &1})
+
+    blocks_by_sheet =
+      from(b in Block,
+        where: b.sheet_id in ^sheet_ids and is_nil(b.deleted_at),
+        # Same tiebreak as `get_sheet_blocks_grouped/1`, and for the same reason —
+        # the two must slice the same sheet into the same block order or the sweep
+        # and the editor blame different blocks for one broken column group.
+        order_by: [asc: b.sheet_id, asc: b.position, asc: b.id],
+        preload: [:inherited_from_block]
+      )
+      |> Repo.all()
+      |> Enum.group_by(& &1.sheet_id)
+
+    Map.new(sheet_ids, fn sheet_id ->
+      {sheet_id, group_blocks(Map.get(blocks_by_sheet, sheet_id, []), source_sheets_by_id)}
+    end)
+  end
+
+  @doc """
+  Splits one sheet's blocks into inherited groups and own blocks.
+
+  Inherited blocks whose source block or source sheet is gone are dropped: they
+  are reported as inheritance issues, not rendered as fields.
+  """
+  @spec group_blocks([Block.t()], %{integer() => Sheet.t()}) ::
+          {[%{source_sheet: Sheet.t(), blocks: [Block.t()]}], [Block.t()]}
+  def group_blocks(blocks, source_sheets_by_id) do
+    {inherited, own} = Enum.split_with(blocks, &Block.inherited?/1)
+
     inherited_groups =
       inherited
-      |> Enum.group_by(fn b ->
-        case b.inherited_from_block do
-          nil -> nil
-          source -> source.sheet_id
-        end
-      end)
-      |> Enum.reject(fn {k, _} -> is_nil(k) end)
+      |> Enum.group_by(&inherited_source_sheet_id/1)
+      |> Enum.reject(fn {source_sheet_id, _blocks} -> is_nil(source_sheet_id) end)
       |> Enum.map(fn {source_sheet_id, blocks} ->
-        %{source_sheet: Map.get(source_sheets_map, source_sheet_id), blocks: blocks}
+        %{source_sheet: Map.get(source_sheets_by_id, source_sheet_id), blocks: blocks}
       end)
-      |> Enum.reject(fn g -> is_nil(g.source_sheet) end)
+      |> Enum.reject(fn group -> is_nil(group.source_sheet) end)
 
     {inherited_groups, own}
   end
+
+  defp inherited_source_sheet_id(%Block{inherited_from_block: %Block{sheet_id: sheet_id}}), do: sheet_id
+  defp inherited_source_sheet_id(_block), do: nil
 
   @doc """
   Lists all blocks with `scope: "children"` for a sheet.
@@ -766,7 +812,9 @@ defmodule Storyarn.Sheets.SheetQueries do
     Repo.all(
       from(b in Block,
         where: b.sheet_id == ^sheet_id and b.scope == "children" and is_nil(b.deleted_at),
-        order_by: [asc: b.position]
+        # Positions tie, so `id` decides the order inherited instances are created
+        # in rather than the plan.
+        order_by: [asc: b.position, asc: b.id]
       )
     )
   end
@@ -888,7 +936,9 @@ defmodule Storyarn.Sheets.SheetQueries do
       from(b in Block,
         where: is_nil(b.deleted_at),
         preload: [:table_columns, :table_rows],
-        order_by: [asc: b.position]
+        # An export is a file people diff. Two blocks at one position would
+        # otherwise swap places between runs with nothing having changed.
+        order_by: [asc: b.position, asc: b.id]
       )
 
     query =
@@ -908,6 +958,23 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   def count_sheets(project_id) do
     Repo.aggregate(from(s in Sheet, where: s.project_id == ^project_id and is_nil(s.deleted_at)), :count)
+  end
+
+  @doc """
+  Lists active project sheets with no preloads, in tree order.
+
+  For project-wide sweeps that need sheet identity and tree shape (`parent_id`,
+  `hidden_inherited_block_ids`) but never render a sheet — `list_all_sheets/1`
+  costs three extra queries for avatars and banners nothing there looks at.
+  """
+  @spec list_sheets_unpreloaded(integer()) :: [Sheet.t()]
+  def list_sheets_unpreloaded(project_id) do
+    Repo.all(
+      from(s in Sheet,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        order_by: [asc: s.position, asc: s.name]
+      )
+    )
   end
 
   @doc """
@@ -981,10 +1048,6 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Flows.VariableReferenceTracker for stale reference detection.
   """
   def check_stale_flow_node_variable_references(block_id, project_id) do
-    alias Storyarn.Flows.Flow
-    alias Storyarn.Flows.FlowNode
-    alias Storyarn.Flows.VariableReference
-
     Repo.all(
       from(vr in VariableReference,
         join: n in FlowNode,
@@ -1048,10 +1111,6 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Flows.VariableReferenceTracker for stale reference repair.
   """
   def list_variable_refs_with_block_info_for_repair(project_id) do
-    alias Storyarn.Flows.Flow
-    alias Storyarn.Flows.FlowNode
-    alias Storyarn.Flows.VariableReference
-
     Repo.all(
       from(vr in VariableReference,
         join: n in FlowNode,
@@ -1082,44 +1141,50 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   @doc """
-  Lists stale regular (non-table) node IDs in a flow.
-  Joins variable_references with flow_nodes, blocks, and sheets.
-  Returns node IDs where stored source_sheet/source_variable don't match current values.
-  Used by the Flows.VariableReferenceTracker for stale node detection.
-  """
-  def list_stale_regular_node_ids(flow_id) do
-    alias Storyarn.Flows.FlowNode
-    alias Storyarn.Flows.VariableReference
+  Stale node ids for MANY flows at once, keyed by flow — the project-wide sweep.
 
-    from(vr in VariableReference,
-      join: n in FlowNode,
-      on: vr.source_type == "flow_node" and n.id == vr.source_id,
-      join: b in Block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: n.flow_id == ^flow_id,
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      where: b.type != "table",
-      where: vr.source_sheet != s.shortcut or vr.source_variable != b.variable_name,
-      distinct: true,
-      select: n.id
-    )
-    |> Repo.all()
-    |> MapSet.new()
+  The per-flow pair costs two queries each, so a dashboard over N flows paid 2N.
+  These two return the same sets in two queries total. `flow_nodes` carries no
+  `project_id`, hence the id list rather than a project filter.
+  """
+  @spec list_stale_node_ids_by_flow([integer()]) :: %{integer() => MapSet.t()}
+  def list_stale_node_ids_by_flow([]), do: %{}
+
+  def list_stale_node_ids_by_flow(flow_ids) do
+    regular = stale_regular_pairs(flow_ids)
+    table = stale_table_pairs(flow_ids)
+
+    (regular ++ table)
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Map.new(fn {flow_id, node_ids} -> {flow_id, MapSet.new(node_ids)} end)
   end
 
-  @doc """
-  Lists stale table node IDs in a flow.
-  Joins variable_references with flow_nodes, blocks, sheets, table_rows, and table_columns.
-  Returns node IDs where stored source references don't match current table cell paths.
-  Used by the Flows.VariableReferenceTracker for stale node detection.
-  """
-  def list_stale_table_node_ids(flow_id) do
-    alias Storyarn.Flows.FlowNode
-    alias Storyarn.Flows.VariableReference
+  # A reference is stale when the shortcut it was written against no longer names
+  # its sheet, or the variable no longer carries its name.
+  defp stale_regular_pairs(flow_ids) do
+    Repo.all(
+      from(vr in VariableReference,
+        join: n in FlowNode,
+        on: vr.source_type == "flow_node" and n.id == vr.source_id,
+        join: b in Block,
+        on: b.id == vr.block_id,
+        join: s in Sheet,
+        on: s.id == b.sheet_id,
+        where: n.flow_id in ^flow_ids,
+        where: is_nil(s.deleted_at),
+        where: is_nil(b.deleted_at),
+        where: b.type != "table",
+        where: vr.source_sheet != s.shortcut or vr.source_variable != b.variable_name,
+        distinct: true,
+        select: {n.flow_id, n.id}
+      )
+    )
+  end
 
+  # A table reference spells its own path — `variable.row_slug.column_slug` — so
+  # its second staleness cause is a row or column that no longer exists, which no
+  # column on `variable_references` can answer. Hence the correlated subquery.
+  defp stale_table_pairs(flow_ids) do
     table_cell_exists =
       from(tr in TableRow,
         join: tc in TableColumn,
@@ -1135,25 +1200,52 @@ defmodule Storyarn.Sheets.SheetQueries do
         select: 1
       )
 
-    from(vr in VariableReference,
-      as: :vr,
-      join: n in FlowNode,
-      on: vr.source_type == "flow_node" and n.id == vr.source_id,
-      join: b in Block,
-      as: :block,
-      on: b.id == vr.block_id,
-      join: s in Sheet,
-      on: s.id == b.sheet_id,
-      where: n.flow_id == ^flow_id,
-      where: is_nil(s.deleted_at),
-      where: is_nil(b.deleted_at),
-      where: b.type == "table",
-      where: vr.source_sheet != s.shortcut or not exists(table_cell_exists),
-      distinct: true,
-      select: n.id
+    Repo.all(
+      from(vr in VariableReference,
+        as: :vr,
+        join: n in FlowNode,
+        on: vr.source_type == "flow_node" and n.id == vr.source_id,
+        join: b in Block,
+        as: :block,
+        on: b.id == vr.block_id,
+        join: s in Sheet,
+        on: s.id == b.sheet_id,
+        where: n.flow_id in ^flow_ids,
+        where: is_nil(s.deleted_at),
+        where: is_nil(b.deleted_at),
+        where: b.type == "table",
+        where: vr.source_sheet != s.shortcut or not exists(table_cell_exists),
+        distinct: true,
+        select: {n.flow_id, n.id}
+      )
     )
-    |> Repo.all()
-    |> MapSet.new()
+  end
+
+  @doc """
+  Stale regular (non-table) node IDs in ONE flow, for the flow editor.
+
+  The batched builder restricted to a single flow rather than a second copy of the
+  same SQL: two hand-maintained spellings of one rule drift, and nothing compares
+  them at runtime — the editor reads one, the dashboard the other.
+  """
+  @spec list_stale_regular_node_ids(integer()) :: MapSet.t()
+  def list_stale_regular_node_ids(flow_id) do
+    [flow_id] |> stale_regular_pairs() |> node_ids_for_flow(flow_id)
+  end
+
+  @doc """
+  Stale table node IDs in ONE flow, for the flow editor.
+
+  Same restriction of `stale_table_pairs/1`, for the same reason as
+  `list_stale_regular_node_ids/1`.
+  """
+  @spec list_stale_table_node_ids(integer()) :: MapSet.t()
+  def list_stale_table_node_ids(flow_id) do
+    [flow_id] |> stale_table_pairs() |> node_ids_for_flow(flow_id)
+  end
+
+  defp node_ids_for_flow(pairs, flow_id) do
+    for {^flow_id, node_id} <- pairs, into: MapSet.new(), do: node_id
   end
 
   @doc """
@@ -1211,8 +1303,6 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the export Validator for orphan sheet detection.
   """
   def list_variable_referenced_sheet_ids(project_id) do
-    alias Storyarn.Flows.VariableReference
-
     from(vr in VariableReference,
       join: b in Block,
       on: vr.block_id == b.id,

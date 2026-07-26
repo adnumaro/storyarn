@@ -18,7 +18,12 @@ defmodule StoryarnWeb.SceneLive.Index do
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Scenes
+  alias Storyarn.Shared.Severity
+  alias Storyarn.Shared.StringUtils
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+  alias StoryarnWeb.SceneLive.Helpers.SceneHelpers
+
+  require Logger
 
   @impl true
   def render(assigns) do
@@ -171,7 +176,23 @@ defmodule StoryarnWeb.SceneLive.Index do
      |> assign(:scene_issues, data.formatted_issues)}
   end
 
-  def handle_async(:load_dashboard_data, {:exit, _reason}, socket), do: {:noreply, socket}
+  # Swallowing the reason left `dashboard_stats` nil forever, and Vue renders a
+  # skeleton until it is set: a crash in here presented to the author as a
+  # dashboard that simply never finished loading, with nothing to read, nothing
+  # to click, and nothing in the error tracker. Log it, break the skeleton, and
+  # say what to do — the same shape the flows and sheets dashboards use.
+  def handle_async(:load_dashboard_data, {:exit, reason}, socket) do
+    Logger.error("Scene dashboard load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
+
+    {:noreply,
+     socket
+     |> assign(:dashboard_stats, empty_dashboard_stats())
+     |> put_flash(:error, dgettext("scenes", "Could not load dashboard data. Reload the page to try again."))}
+  end
+
+  defp empty_dashboard_stats do
+    %{scene_count: 0, zone_count: 0, pin_count: 0, background_count: 0}
+  end
 
   defp load_dashboard_data_async(project_id, workspace, project, sort_by, sort_dir) do
     scenes = Scenes.list_scenes(project_id)
@@ -283,11 +304,21 @@ defmodule StoryarnWeb.SceneLive.Index do
         href: scene_health_href(issue, workspace, project)
       }
     end)
-    |> Enum.sort_by(&{severity_rank(&1.severity), &1.label, &1.code})
+    |> Enum.sort_by(&{Severity.rank(&1.severity), &1.label, &1.code})
   end
 
+  # Location only — never a rendered sentence. The code carries the meaning and
+  # Vue resolves it from `scenes.health.findings.*`, the same catalog the editor
+  # popover uses, exactly as the sheets and flows dashboards do.
+  #
+  # The blank-name fallback matches `SceneLive.Helpers.HealthHelpers` so a scene
+  # nobody named reads the same on both surfaces.
   defp scene_health_label(issue) do
-    scene_name = Map.get(issue.details, :scene_name, "Scene")
+    scene_name =
+      StringUtils.present_label(
+        Map.get(issue.details, :scene_name),
+        SceneHelpers.element_type_label("scene")
+      )
 
     case Map.get(issue.details, :entity_label) do
       label when is_binary(label) and label != "" -> "#{scene_name} · #{label}"
@@ -304,8 +335,4 @@ defmodule StoryarnWeb.SceneLive.Index do
       base
     end
   end
-
-  defp severity_rank("error"), do: 0
-  defp severity_rank("warning"), do: 1
-  defp severity_rank("info"), do: 2
 end

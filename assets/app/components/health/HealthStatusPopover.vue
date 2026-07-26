@@ -4,6 +4,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import { interpolatableDetails } from "@components/health/health-details";
 import type {
   HealthStatus,
   HealthStatusItem,
@@ -57,7 +58,7 @@ function itemsFor(severity: HealthStatusSeverity): HealthStatusItem[] {
 }
 
 function reasonLabel(reason: HealthStatusReason): string {
-  return t(`${translationPrefix}.findings.${reason.code}`, reason.details || {});
+  return t(`${translationPrefix}.findings.${reason.code}`, interpolatableDetails(reason.details));
 }
 
 function sectionTranslationKey(severity: HealthStatusSeverity): string {

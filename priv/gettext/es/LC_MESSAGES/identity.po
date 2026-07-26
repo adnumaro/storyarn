@@ -122,12 +122,12 @@ msgstr "Proveedor de autenticación desconocido."
 #: lib/storyarn_web/live/user_live/registration.ex:96
 #, elixir-autogen, elixir-format
 msgid "Account created successfully! Welcome."
-msgstr ""
+msgstr "¡Cuenta creada correctamente! Te damos la bienvenida."
 
 #: lib/storyarn_web/live/user_live/registration.ex:54
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired registration link."
-msgstr ""
+msgstr "El enlace de registro no es válido o ha caducado."
 
 #: lib/storyarn_web/live/user_live/reset_password.ex:20
 #, elixir-autogen, elixir-format

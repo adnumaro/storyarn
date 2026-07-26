@@ -6,6 +6,7 @@ defmodule Storyarn.Scenes.PinCrud do
   alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Scenes.PositionUtils
+  alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Shared.MapUtils
@@ -62,10 +63,15 @@ defmodule Storyarn.Scenes.PinCrud do
     )
   end
 
+  # A pin's shortcut is a referenceable variable, so create/update/delete change
+  # the vocabulary every health surface type-checks against — not just the pin
+  # count. Coordinates are also health inputs (`element_outside_canvas`), so the
+  # optimized move path must participate in the same invalidation contract.
   def create_pin(scene_id, attrs) do
     attrs = enforce_leader_constraints(%ScenePin{scene_id: scene_id}, attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(scene_id, fn scene ->
+    scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       pin = %ScenePin{scene_id: scene.id}
 
       with :ok <-
@@ -81,12 +87,14 @@ defmodule Storyarn.Scenes.PinCrud do
         |> persist_pin_with_references(scene.project_id)
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(scene_id)
   end
 
   def update_pin(%ScenePin{} = pin, attrs) do
     attrs = enforce_leader_constraints(pin, attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(pin.scene_id, fn scene ->
+    pin.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_pin} <- lock_pin_for_scene(pin.id, scene.id),
            :ok <-
              PositionUtils.lock_requested_layer_for_scene(
@@ -108,37 +116,44 @@ defmodule Storyarn.Scenes.PinCrud do
         |> persist_pin_with_references(scene.project_id)
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(pin.scene_id)
   end
 
   @doc """
   Moves a pin to a new position (position_x/position_y only — drag optimization).
   """
   def move_pin(%ScenePin{} = pin, position_x, position_y) do
-    SceneReferenceIntegrity.with_active_scene_lock(pin.scene_id, fn scene ->
+    pin.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_pin} <- lock_pin_for_scene(pin.id, scene.id),
            {:ok, _attrs} <-
              SceneReferenceIntegrity.lock_pin_references(
                scene,
                locked_pin,
                %{}
-             ) do
-        locked_pin
-        |> ScenePin.move_changeset(%{
-          position_x: position_x,
-          position_y: position_y
-        })
-        |> Repo.update()
+             ),
+           {:ok, updated_pin} <-
+             locked_pin
+             |> ScenePin.move_changeset(%{
+               position_x: position_x,
+               position_y: position_y
+             })
+             |> Repo.update() do
+        {:ok, {updated_pin, scene.project_id}}
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_project_result()
   end
 
   def delete_pin(%ScenePin{} = pin) do
-    SceneReferenceIntegrity.with_active_scene_lock(pin.scene_id, fn scene ->
+    pin.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_pin} <- lock_pin_for_scene(pin.id, scene.id),
            :ok <- delete_pin_references(locked_pin.id) do
         Repo.delete(locked_pin)
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(pin.scene_id)
   end
 
   def change_pin(%ScenePin{} = pin, attrs \\ %{}) do

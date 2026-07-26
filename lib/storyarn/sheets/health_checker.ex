@@ -13,9 +13,25 @@ defmodule Storyarn.Sheets.HealthChecker do
   alias Storyarn.Sheets.Block
 
   @type severity :: :error | :warning | :info
+
+  @typedoc """
+  One finding, located two ways on purpose.
+
+  `entity_type`/`entity_id` is the shape flows and scenes findings carry — a
+  cross-domain reader (the palette, an AI explanation, a project-wide list) can
+  say WHAT a finding is about without knowing sheets exist. `entity_type` is
+  `"sheet"` for a sheet-level finding and the block's type otherwise.
+
+  `block_id`/`row_id`/`column_id` stay because sheets locate more finely than the
+  other two domains do: a finding lands on a cell, and `entity_id` alone cannot
+  say which. They are the sub-location, not a second identity — `entity_id` IS
+  `block_id` whenever there is one.
+  """
   @type finding :: %{
           required(:severity) => severity(),
           required(:code) => atom(),
+          required(:entity_type) => String.t(),
+          required(:entity_id) => integer() | nil,
           required(:sheet_id) => integer() | nil,
           required(:block_id) => integer() | nil,
           required(:block_type) => String.t() | nil,
@@ -60,20 +76,43 @@ defmodule Storyarn.Sheets.HealthChecker do
   @spec severity_for(atom()) :: severity()
   def severity_for(code), do: Map.fetch!(@severity_by_code, code)
 
+  @doc """
+  Every code this checker can emit.
+
+  The dashboard's coverage is asserted against this in
+  `test/storyarn/sheets/dashboard_health_coverage_test.exs`: a code the checker can
+  produce but the dashboard cannot is a finding a user only sees inside one
+  entity, which is the discrimination that test exists to prevent.
+  """
+  @spec codes() :: [atom()]
+  def codes, do: Map.keys(@severity_by_code)
+
   @doc "Builds a canonical finding for adapters that detect health in bulk."
   @spec finding(atom(), map()) :: finding()
   def finding(code, attrs \\ %{}) when is_atom(code) and is_map(attrs) do
+    block_id = Map.get(attrs, :block_id)
+    block_type = Map.get(attrs, :block_type)
+
     %{
       severity: severity_for(code),
       code: code,
+      # Derived, never passed in: an `entity_type` that could disagree with
+      # `block_type`, or an `entity_id` with `block_id`, is two answers to one
+      # question. See the `t:finding/0` doc for why both spellings exist.
+      entity_type: entity_type(block_id, block_type),
+      entity_id: block_id,
       sheet_id: Map.get(attrs, :sheet_id),
-      block_id: Map.get(attrs, :block_id),
-      block_type: Map.get(attrs, :block_type),
+      block_id: block_id,
+      block_type: block_type,
       row_id: Map.get(attrs, :row_id),
       column_id: Map.get(attrs, :column_id),
       details: Map.get(attrs, :details, %{})
     }
   end
+
+  defp entity_type(nil, _block_type), do: "sheet"
+  defp entity_type(_block_id, block_type) when is_binary(block_type), do: block_type
+  defp entity_type(_block_id, _block_type), do: "block"
 
   @spec check(map()) :: [finding()]
   def check(%{sheet: sheet} = snapshot) when is_map(sheet) do

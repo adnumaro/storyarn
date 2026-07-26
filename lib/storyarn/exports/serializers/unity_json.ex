@@ -15,6 +15,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.Helpers
   alias Storyarn.Localization.ExportPolicy
+  alias Storyarn.Shared.StringUtils
 
   @text_type 0
   @boolean_type 2
@@ -128,7 +129,7 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
     refs =
       assets
       |> Enum.map(&asset_file_reference/1)
-      |> Enum.reject(&blank?/1)
+      |> Enum.reject(&StringUtils.blank?/1)
 
     "[#{Enum.join(refs, ",")}]"
   end
@@ -1215,10 +1216,6 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   defp field_value(value) when is_boolean(value), do: boolean_string(value)
   defp field_value(value) when is_atom(value), do: Atom.to_string(value)
   defp field_value(value), do: to_string(value)
-
-  defp blank?(nil), do: true
-  defp blank?(""), do: true
-  defp blank?(_value), do: false
 
   defp boolean_string(true), do: "True"
   defp boolean_string(false), do: "False"

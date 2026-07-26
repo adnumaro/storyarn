@@ -6,237 +6,162 @@ defmodule Storyarn.Flows.HealthChecker do
   risky authoring (`:warning`), and valid but noteworthy no-op/default
   behavior (`:info`). It operates on `Flows.serialize_for_canvas/2` output so
   resolved references and graph-derived flags share one contract.
+
+  Same shape as `Storyarn.Sheets.HealthChecker` and `Storyarn.Scenes.HealthChecker`:
+  severity is declared once in `@severity_by_code` rather than at each detection
+  site, and `finding/2` is the only constructor, so a bulk adapter (the dashboard)
+  cannot invent its own vocabulary. `entity_type` is `"flow"` for flow-level
+  findings and the node's type for node-level ones, exactly as Scenes uses
+  `"scene"` for its container and the element kind for everything else.
   """
 
   alias Storyarn.Flows.Condition
   alias Storyarn.Flows.Instruction
   alias Storyarn.Shared.HtmlUtils
+  alias Storyarn.Shared.StringUtils
 
   @type severity :: :error | :warning | :info
   @type finding :: %{
           required(:severity) => severity(),
           required(:code) => atom(),
-          required(:node_id) => integer() | nil,
-          required(:node_type) => String.t() | nil,
-          optional(:details) => map()
+          required(:flow_id) => integer() | nil,
+          required(:entity_type) => String.t(),
+          required(:entity_id) => integer() | nil,
+          required(:details) => map()
         }
 
-  @spec check(map()) :: [finding()]
-  def check(%{nodes: nodes} = flow_data) when is_list(nodes) do
-    context = %{
-      hub_ids:
-        nodes
-        |> Enum.filter(&(&1.type == "hub"))
-        |> MapSet.new(& &1.data["hub_id"])
-    }
+  # ONE catalog for flow health, exactly like sheets and scenes. Detection is
+  # split by what it needs — editorial checks read a node in isolation and live
+  # in this module; structural checks need the whole graph and live in
+  # `StructuralAnalysis`, which emits through `finding/2` — but the vocabulary,
+  # the severities and the shape are owned here and nowhere else. That is what
+  # stops the editor and the dashboard from disagreeing.
+  @severity_by_code %{
+    # Structural — detected by `StructuralAnalysis` from the graph.
+    invalid_input_pins: :error,
+    invalid_output_pins: :error,
+    missing_entry: :error,
+    missing_exit_flow_reference: :error,
+    missing_jump_target: :error,
+    missing_subflow_reference: :error,
+    multiple_entries: :error,
+    stale_exit_flow_reference: :error,
+    stale_jump_target: :error,
+    stale_subflow_reference: :error,
+    isolated_node: :warning,
+    missing_output_connections: :warning,
+    no_outgoing_connection: :warning,
+    orphan_hub: :warning,
+    unreachable_node: :warning,
+    # Editorial — detected here, from one node's own data.
+    stale_variable_reference: :error,
+    empty_dialogue_response: :warning,
+    incomplete_condition: :warning,
+    incomplete_instruction_assignment: :warning,
+    incomplete_response_assignment: :warning,
+    incomplete_response_condition: :warning,
+    missing_dialogue_speaker: :warning,
+    missing_dialogue_text: :warning,
+    response_type_mismatch: :warning,
+    variable_type_mismatch: :warning,
+    empty_condition: :info,
+    empty_instruction: :info
+  }
 
-    entry_findings(nodes) ++ Enum.flat_map(nodes, &node_findings(&1, context, flow_data))
+  @doc "Returns the canonical severity for a flow health finding code."
+  @spec severity_for(atom()) :: severity()
+  def severity_for(code), do: Map.fetch!(@severity_by_code, code)
+
+  @doc "Every code this checker can emit, for adapters that need the catalog."
+  @spec codes() :: [atom()]
+  def codes, do: Map.keys(@severity_by_code)
+
+  @doc "Builds a canonical finding for adapters that detect health in bulk."
+  @spec finding(atom(), map()) :: finding()
+  def finding(code, attrs \\ %{}) when is_atom(code) and is_map(attrs) do
+    %{
+      severity: severity_for(code),
+      code: code,
+      flow_id: Map.get(attrs, :flow_id),
+      entity_type: Map.get(attrs, :entity_type, "flow"),
+      entity_id: Map.get(attrs, :entity_id),
+      details: Map.get(attrs, :details, %{})
+    }
+  end
+
+  @doc """
+  Editorial findings for a flow snapshot: `%{flow_id: id, nodes: nodes}`.
+
+  Structure and reference integrity are NOT checked here — they need the whole
+  graph and live in `StructuralAnalysis`, which emits through `finding/2`, so
+  both halves share this module's vocabulary and severities.
+
+  The snapshot carries the flow, exactly as the sheets and scenes checkers take
+  theirs, so a project-wide sweep can group by `flow_id` without the caller
+  patching every finding afterwards.
+  """
+  @spec check(map()) :: [finding()]
+  def check(%{nodes: nodes} = snapshot) when is_list(nodes) do
+    flow_id = Map.get(snapshot, :flow_id)
+
+    Enum.flat_map(nodes, &node_findings(&1, flow_id))
   end
 
   def check(_flow_data), do: []
 
-  defp entry_findings(nodes) do
-    case Enum.count(nodes, &(&1.type == "entry")) do
-      0 -> [finding(:error, :missing_entry, nil, nil)]
-      1 -> []
-      count -> [finding(:error, :multiple_entries, nil, nil, %{count: count})]
-    end
+  # Detection yields CODES; construction happens once, where the flow is known.
+  # That is what keeps `flow_id` out of every detection site.
+  defp node_findings(%{type: type} = node, flow_id) do
+    codes = error_codes(node) ++ warning_codes(node) ++ info_codes(node, type)
+
+    Enum.map(codes, &node_finding(&1, node, flow_id))
   end
 
-  defp node_findings(%{type: type} = node, context, _flow_data) do
-    error_findings(node, context) ++
-      warning_findings(node) ++
-      info_findings(node, type)
+  defp error_codes(%{data: data}) do
+    maybe_add([], data["has_stale_refs"] == true, :stale_variable_reference)
   end
 
-  defp error_findings(%{data: data, type: type} = node, context) do
+  defp warning_codes(%{data: data, type: type}) do
     []
-    |> maybe_add(data["has_stale_refs"] == true, node, :error, :stale_variable_reference)
-    |> add_reference_errors(node, type, context)
-    |> add_connection_pin_errors(node, data)
-  end
-
-  defp add_reference_errors(findings, %{data: data} = node, "subflow", _context) do
-    findings
-    |> maybe_add(
-      blank?(data["referenced_flow_id"]),
-      node,
-      :error,
-      :missing_subflow_reference
-    )
-    |> maybe_add(
-      data["stale_reference"] == true,
-      node,
-      :error,
-      :stale_subflow_reference
-    )
-  end
-
-  defp add_reference_errors(findings, %{data: data} = node, "jump", context) do
-    findings
-    |> maybe_add(
-      blank?(data["target_hub_id"]),
-      node,
-      :error,
-      :missing_jump_target
-    )
-    |> maybe_add(
-      !blank?(data["target_hub_id"]) and
-        !MapSet.member?(context.hub_ids, data["target_hub_id"]),
-      node,
-      :error,
-      :stale_jump_target
-    )
-  end
-
-  defp add_reference_errors(findings, %{data: %{"exit_mode" => "flow_reference"} = data} = node, "exit", _context) do
-    findings
-    |> maybe_add(
-      blank?(data["referenced_flow_id"]),
-      node,
-      :error,
-      :missing_exit_flow_reference
-    )
-    |> maybe_add(
-      data["stale_reference"] == true,
-      node,
-      :error,
-      :stale_exit_flow_reference
-    )
-  end
-
-  defp add_reference_errors(findings, _node, _type, _context), do: findings
-
-  defp add_connection_pin_errors(findings, node, data) do
-    findings
-    |> maybe_add_with_details(
-      non_empty_list?(data["invalid_output_pins"]),
-      node,
-      :error,
-      :invalid_output_pins,
-      %{pins: data["invalid_output_pins"] || []}
-    )
-    |> maybe_add_with_details(
-      non_empty_list?(data["invalid_input_pins"]),
-      node,
-      :error,
-      :invalid_input_pins,
-      %{pins: data["invalid_input_pins"] || []}
-    )
-  end
-
-  defp warning_findings(%{data: data, type: type} = node) do
-    []
-    |> maybe_add(data["has_type_warnings"] == true, node, :warning, :variable_type_mismatch)
+    |> maybe_add(data["has_type_warnings"] == true, :variable_type_mismatch)
     |> maybe_add(
       type == "dialogue" and response_type_warning?(data["responses"]),
-      node,
-      :warning,
       :response_type_mismatch
     )
-    |> maybe_add(
-      type == "dialogue" and dialogue_text_empty?(data),
-      node,
-      :warning,
-      :missing_dialogue_text
-    )
-    |> maybe_add(
-      type == "dialogue" and blank?(data["speaker_sheet_id"]),
-      node,
-      :warning,
-      :missing_dialogue_speaker
-    )
+    |> maybe_add(type == "dialogue" and dialogue_text_empty?(data), :missing_dialogue_text)
+    |> maybe_add(type == "dialogue" and StringUtils.blank?(data["speaker_sheet_id"]), :missing_dialogue_speaker)
     |> maybe_add(
       type == "dialogue" and empty_response_text?(data["responses"]),
-      node,
-      :warning,
       :empty_dialogue_response
     )
     |> maybe_add(
       type == "dialogue" and incomplete_response_condition?(data["responses"]),
-      node,
-      :warning,
       :incomplete_response_condition
     )
     |> maybe_add(
       type == "dialogue" and incomplete_response_assignment?(data["responses"]),
-      node,
-      :warning,
       :incomplete_response_assignment
     )
-    |> maybe_add(
-      type == "condition" and condition_incomplete?(data["condition"]),
-      node,
-      :warning,
-      :incomplete_condition
-    )
+    |> maybe_add(type == "condition" and condition_incomplete?(data["condition"]), :incomplete_condition)
     |> maybe_add(
       type == "instruction" and assignments_incomplete?(data["assignments"]),
-      node,
-      :warning,
       :incomplete_instruction_assignment
     )
-    |> maybe_add(data["unreachable"] == true, node, :warning, :unreachable_node)
-    |> add_output_findings(node)
   end
 
-  defp info_findings(%{data: data} = node, type) do
+  defp info_codes(%{data: data}, type) do
     []
-    |> maybe_add(
-      type == "instruction" and empty_list?(data["assignments"]),
-      node,
-      :info,
-      :empty_instruction
-    )
-    |> maybe_add(
-      type == "condition" and condition_empty?(data["condition"]),
-      node,
-      :info,
-      :empty_condition
-    )
+    |> maybe_add(type == "instruction" and empty_list?(data["assignments"]), :empty_instruction)
+    |> maybe_add(type == "condition" and condition_empty?(data["condition"]), :empty_condition)
   end
 
-  defp add_output_findings(findings, %{data: %{"dead_end" => true}} = node) do
-    [finding(:warning, :no_outgoing_connection, node.id, node.type) | findings]
-  end
+  defp maybe_add(codes, true, code), do: [code | codes]
+  defp maybe_add(codes, false, _code), do: codes
 
-  defp add_output_findings(findings, %{data: data} = node) do
-    if non_empty_list?(data["missing_output_pins"]) do
-      [
-        finding(
-          :warning,
-          :missing_output_connections,
-          node.id,
-          node.type,
-          %{pins: data["missing_output_pins"]}
-        )
-        | findings
-      ]
-    else
-      findings
-    end
-  end
-
-  defp maybe_add(findings, true, node, severity, code) do
-    [finding(severity, code, node.id, node.type) | findings]
-  end
-
-  defp maybe_add(findings, false, _node, _severity, _code), do: findings
-
-  defp maybe_add_with_details(findings, true, node, severity, code, details) do
-    [finding(severity, code, node.id, node.type, details) | findings]
-  end
-
-  defp maybe_add_with_details(findings, false, _node, _severity, _code, _details), do: findings
-
-  defp finding(severity, code, node_id, node_type, details \\ %{}) do
-    %{
-      severity: severity,
-      code: code,
-      node_id: node_id,
-      node_type: node_type,
-      details: details
-    }
+  # The node's own type is the `entity_type`, exactly as Scenes uses the element
+  # kind — it is what the label helper and the popover render.
+  defp node_finding(code, node, flow_id) do
+    finding(code, %{flow_id: flow_id, entity_type: node.type, entity_id: node.id})
   end
 
   defp response_type_warning?(responses) when is_list(responses) do
@@ -260,7 +185,7 @@ defmodule Storyarn.Flows.HealthChecker do
   defp incomplete_response_condition?(responses) when is_list(responses) do
     Enum.any?(responses, fn response ->
       condition = response["condition"]
-      !blank?(condition) and condition_incomplete?(condition)
+      !StringUtils.blank?(condition) and condition_incomplete?(condition)
     end)
   end
 
@@ -316,8 +241,6 @@ defmodule Storyarn.Flows.HealthChecker do
   defp assignments_incomplete?(_assignments), do: false
 
   defp empty_list?(value), do: !is_list(value) or value == []
-  defp non_empty_list?(value), do: is_list(value) and value != []
 
-  defp blank?(value), do: value in [nil, ""]
-  defp present?(value), do: not blank?(value)
+  defp present?(value), do: not StringUtils.blank?(value)
 end

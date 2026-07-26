@@ -104,8 +104,13 @@ defmodule Storyarn.Exports.ValidatorTest do
 
       result = Validator.validate_project(project.id)
       orphan_warnings = Enum.filter(result.warnings, &(&1.rule == :orphan_nodes))
-      assert length(orphan_warnings) == 1
-      assert hd(orphan_warnings).node_type == "dialogue"
+
+      # The fixture's auto-created entry and exit are disconnected too. The
+      # validator's own orphan check used to skip both node types outright, so
+      # this flow reported one orphan instead of three; the health engine reports
+      # every node that has no connection, whatever its type.
+      assert Enum.sort(Enum.map(orphan_warnings, & &1.node_type)) == ["dialogue", "entry", "exit"]
+      assert Enum.all?(orphan_warnings, &(&1.flow_id == flow.id))
     end
 
     test "ignores annotations and sequences with no graph connections", %{project: project} do
@@ -268,6 +273,56 @@ defmodule Storyarn.Exports.ValidatorTest do
         Enum.filter(result.errors, &(&1.rule == :broken_references && &1[:ref_type] == :flow))
 
       assert length(broken) == 1
+    end
+  end
+
+  # =============================================================================
+  # An UNCONFIGURED reference is nobody else's job
+  # =============================================================================
+  #
+  # `check_broken_references/2` only sees a reference that is SET but dangling:
+  # `has_broken_hub_ref?/2` skips nil and "", `has_broken_ref?/3` skips nil. So
+  # filtering the `missing_*` health codes out of `check_flow_health/1` — on the
+  # belief that the legacy check already reported them — made a node the author
+  # simply never configured produce NO export finding at all, from either side.
+  # These are the defaults: a fresh jump stores "" and a fresh subflow stores nil.
+
+  describe "unconfigured references still reach the export report" do
+    setup [:setup_project]
+
+    test "a jump with a blank target is reported", %{project: project} do
+      flow = flow_fixture(project, %{name: "Unset Jump"})
+      _jump = node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => ""}})
+
+      result = Validator.validate_project(project.id)
+
+      assert Enum.any?(result.warnings, &(&1.rule == :missing_jump_target)),
+             "an unconfigured jump vanished from the report entirely"
+
+      # Still not double-reported: the legacy check must stay silent on blanks.
+      refute Enum.any?(result.errors, &(&1.rule == :broken_references))
+    end
+
+    test "a subflow with no referenced flow is reported", %{project: project} do
+      flow = flow_fixture(project, %{name: "Unset Subflow"})
+      _subflow = node_fixture(flow, %{type: "subflow", data: %{"referenced_flow_id" => nil}})
+
+      result = Validator.validate_project(project.id)
+
+      assert Enum.any?(result.warnings, &(&1.rule == :missing_subflow_reference)),
+             "an unconfigured subflow vanished from the report entirely"
+
+      refute Enum.any?(result.errors, &(&1.rule == :broken_references))
+    end
+
+    test "a dangling reference is still reported once, by the legacy check only", %{project: project} do
+      flow = flow_fixture(project, %{name: "Dangling Jump"})
+      _jump = corrupt_node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => "ghost"}})
+
+      result = Validator.validate_project(project.id)
+
+      assert Enum.count(result.errors, &(&1.rule == :broken_references)) == 1
+      refute Enum.any?(result.warnings, &(&1.rule == :stale_jump_target))
     end
   end
 

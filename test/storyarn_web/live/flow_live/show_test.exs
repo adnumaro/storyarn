@@ -57,12 +57,15 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       render_async(view, 2000)
 
       header = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowHeader")
-      health = header.props["flow-health"]
-      warning_node = Enum.find(health["warningNodes"], &(&1["id"] == dialogue.id))
+      health = header.props["flow-health"]["health"]
+      item = Enum.find(health["warningItems"], &(&1["entityId"] == dialogue.id))
+      codes = Enum.map(item["reasons"], & &1["code"])
 
-      assert "Missing dialogue text" in warning_node["reasons"]
-      assert "Missing dialogue speaker" in warning_node["reasons"]
-      refute Enum.any?(health["errorNodes"], &(&1["id"] == dialogue.id))
+      # Codes cross the wire, not sentences: Vue resolves them against
+      # `flows.health.findings.*`, the same catalog the dashboard uses.
+      assert "missing_dialogue_text" in codes
+      assert "missing_dialogue_speaker" in codes
+      refute Enum.any?(health["errorItems"], &(&1["entityId"] == dialogue.id))
     end
 
     test "compact route keeps the canvas boundary mounted while data loads",
@@ -91,6 +94,95 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       assert loaded_canvas.props["loading"] == false
       assert loaded_canvas.props["flow-data"] =~ "Compact Flow"
       assert loaded_canvas.props["canvas-id"] == "flow-canvas-#{flow.id}"
+    end
+  end
+
+  describe "canvas navigation events" do
+    setup :register_and_log_in_user
+
+    setup %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Navigation Flow"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hi", "responses" => []}})
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
+
+      render_async(view, 2000)
+
+      %{view: view, node: node}
+    end
+
+    # The Vitest test asserts only that the health popover SENDS `navigate_to_node`.
+    # Nothing asserted the server ANSWERS it, so deleting the handler would have
+    # broken nothing that `mix precommit` runs. Each of the three handlers uses a
+    # DIFFERENT payload key, so swapping two of them is silent today.
+    test "navigate_to_node answers with the node's db id", %{view: view, node: node} do
+      node_id = node.id
+
+      render_hook(view, "navigate_to_node", %{"id" => node_id})
+
+      assert_push_event(view, "navigate_to_node", %{node_db_id: ^node_id})
+    end
+
+    test "navigate_to_node accepts the id as a string", %{view: view, node: node} do
+      node_id = node.id
+
+      render_hook(view, "navigate_to_node", %{"id" => to_string(node_id)})
+
+      assert_push_event(view, "navigate_to_node", %{node_db_id: ^node_id})
+    end
+
+    test "navigate_to_node ignores an unparseable id without crashing", %{view: view} do
+      render_hook(view, "navigate_to_node", %{"id" => "42abc"})
+
+      assert render(view) =~ "Navigation Flow"
+      refute_push_event(view, "navigate_to_node", %{})
+    end
+
+    test "navigate_to_hub and navigate_to_jumps keep their own payload keys", %{
+      view: view,
+      node: node
+    } do
+      node_id = node.id
+
+      render_hook(view, "navigate_to_hub", %{"id" => node_id})
+      assert_push_event(view, "navigate_to_hub", %{jump_db_id: ^node_id})
+
+      render_hook(view, "navigate_to_jumps", %{"id" => node_id})
+      assert_push_event(view, "navigate_to_jumps", %{hub_db_id: ^node_id})
+    end
+  end
+
+  describe "dashboard deep link" do
+    setup :register_and_log_in_user
+
+    test "?highlight=node:<id> focuses the offending node", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Highlighted Flow"})
+      dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => ""}})
+      base = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+
+      {:ok, view, _html} = live(conn, base)
+      render_async(view, 2000)
+
+      render_patch(view, "#{base}?highlight=node:#{dialogue.id}")
+
+      dialogue_id = dialogue.id
+      assert_push_event(view, "navigate_to_node", %{node_db_id: ^dialogue_id})
+    end
+
+    test "a malformed highlight is ignored", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Unhighlighted Flow"})
+      base = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+
+      {:ok, view, _html} = live(conn, base)
+      render_async(view, 2000)
+
+      render_patch(view, "#{base}?highlight=zone:not-a-node")
+
+      refute_push_event(view, "navigate_to_node", %{})
     end
   end
 

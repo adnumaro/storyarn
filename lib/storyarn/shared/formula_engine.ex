@@ -57,10 +57,26 @@ defmodule Storyarn.Shared.FormulaEngine do
     |> Enum.sort()
   end
 
-  @doc "Evaluate AST with resolved symbol values."
+  @doc """
+  Evaluate AST with resolved symbol values.
+
+  Float overflow is an `{:error, _}`, not a raise. Erlang floats never reach
+  infinity — `1.0e308 * 10`, `10^400` and `1.0e308 + 1.0e308` all raise
+  `ArithmeticError` — and every arithmetic branch below except `:div` hands its
+  result straight back. Guarding here rather than at each call site is what keeps
+  the contract single: `evaluate/2` and `compute/2` are the only two doors, so a
+  cell a designer can type cannot take down a caller that reasonably trusted the
+  declared `{:ok, number()} | {:error, String.t()}`.
+
+  `ArithmeticError` specifically, never a bare rescue: `eval_node/2` already
+  guards symbol values with `is_number`, so anything else escaping is a real bug
+  and must still crash.
+  """
   @spec evaluate(ast(), %{String.t() => number()}) :: {:ok, number()} | {:error, String.t()}
   def evaluate(ast, values) when is_map(values) do
     eval_node(ast, values)
+  rescue
+    ArithmeticError -> {:error, "Numeric overflow"}
   end
 
   @doc "Parse + evaluate in one call."

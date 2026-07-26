@@ -8,12 +8,12 @@ defmodule Storyarn.Sheets.SheetStats do
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.HealthChecker
+  alias Storyarn.Sheets.HealthSnapshots
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
 
   @variable_types ~w(text rich_text number select multi_select boolean date)
-  @health_variable_types ~w(text rich_text number select multi_select boolean date table)
 
   # ===========================================================================
   # Stats
@@ -115,83 +115,74 @@ defmodule Storyarn.Sheets.SheetStats do
   # ===========================================================================
 
   @doc """
-  Returns the project-wide overview subset of canonical sheet health findings.
+  Project-wide sheet health findings for the dashboard.
 
-  The editor runs the full checker for a single sheet. The dashboard uses
-  efficient aggregate queries for findings that make sense in a global list:
+  The sibling of `Flows.list_dashboard_health_findings/1` and
+  `Scenes.list_dashboard_health_findings/1`: it runs the SAME `HealthChecker` over
+  the SAME snapshot the editor checks, so every one of the 26 codes the popover can
+  show can also reach the dashboard. Nothing here re-detects anything.
 
-  - `:missing_sheet_shortcut`
-  - `:empty_leaf_sheet`
-  - `:no_internal_variable_usages` (capped at 10)
+  This replaced three hand-written aggregate detectors that covered 3 of the 26
+  codes and capped unused variables at 10 — on a real 34-sheet project that was 10
+  findings reported out of 140. Counts therefore go UP: that is the correction.
 
-  Codes, finding shape, and severities come from `HealthChecker`.
+  `referenced_ids` is `referenced_block_ids_for_project/1`, which the dashboard
+  already caches for its "variables in use" stat; pass it to save the four queries.
+
+  Findings carry the location the caller needs for a label — the sheet name plus
+  the block, row, and column names — because resolving those per finding is a query
+  per finding.
   """
   def list_dashboard_health_findings(project_id, referenced_ids \\ nil) do
-    missing_shortcut_findings(project_id) ++
-      empty_leaf_findings(project_id) ++
-      unused_variable_findings(project_id, referenced_ids)
+    project_id
+    |> HealthSnapshots.load_project(referenced_ids)
+    |> Enum.flat_map(fn snapshot ->
+      labels = location_labels(snapshot)
+
+      snapshot
+      |> HealthChecker.check()
+      |> Enum.map(&locate(&1, snapshot.sheet, labels))
+    end)
   end
 
   # ===========================================================================
   # Private
   # ===========================================================================
 
-  defp empty_leaf_findings(project_id) do
-    from(s in Sheet,
-      left_join: b in Block,
-      on: b.sheet_id == s.id and is_nil(b.deleted_at),
-      left_join: child in Sheet,
-      on: child.parent_id == s.id and child.project_id == ^project_id and is_nil(child.deleted_at),
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(child.id),
-      group_by: [s.id, s.name],
-      having: count(b.id) == 0,
-      select: %{sheet_id: s.id, sheet_name: s.name}
-    )
-    |> Repo.all()
-    |> Enum.map(fn row ->
-      HealthChecker.finding(:empty_leaf_sheet, %{
-        sheet_id: row.sheet_id,
-        details: %{sheet_name: row.sheet_name}
-      })
-    end)
+  defp locate(finding, sheet, labels) do
+    details =
+      %{sheet_name: sheet.name}
+      |> maybe_put(:block_label, Map.get(labels.blocks, finding.block_id))
+      |> maybe_put(:row_label, Map.get(labels.rows, finding.row_id))
+      |> maybe_put(:column_label, Map.get(labels.columns, finding.column_id))
+      |> Map.merge(finding.details)
+
+    %{finding | details: details}
   end
 
-  defp unused_variable_findings(project_id, referenced_ids) do
-    referenced_ids = referenced_ids || referenced_block_ids_for_project(project_id)
+  defp maybe_put(details, _key, nil), do: details
+  defp maybe_put(details, key, value), do: Map.put(details, key, value)
 
-    from(b in Block,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at) and
-          b.type in ^@health_variable_types and b.is_constant == false and
-          not is_nil(b.variable_name) and b.variable_name != "",
-      select: %{
-        block_id: b.id,
-        block_type: b.type,
-        variable_name: b.variable_name,
-        sheet_id: s.id,
-        sheet_name: s.name,
-        sheet_shortcut: s.shortcut
-      },
-      order_by: [asc: s.name, asc: b.position, asc: b.id]
-    )
-    |> Repo.all()
-    |> Enum.reject(&MapSet.member?(referenced_ids, &1.block_id))
-    |> Enum.take(10)
-    |> Enum.map(fn row ->
-      HealthChecker.finding(:no_internal_variable_usages, %{
-        sheet_id: row.sheet_id,
-        block_id: row.block_id,
-        block_type: row.block_type,
-        details: %{
-          sheet_name: row.sheet_name,
-          sheet_shortcut: row.sheet_shortcut,
-          variable_name: row.variable_name
-        }
-      })
-    end)
+  # The dashboard shows one flat list across every sheet, so a finding that only
+  # said "Sheet" would be unattributable. Labels come from data already loaded for
+  # the snapshot; blank ones are dropped so the caller falls back to an identifier.
+  defp location_labels(snapshot) do
+    blocks = Map.new(snapshot.blocks, &{&1.id, present(get_in(&1.config || %{}, ["label"]))})
+
+    {rows, columns} =
+      Enum.reduce(snapshot.table_data, {%{}, %{}}, fn {_block_id, table}, {rows, columns} ->
+        {Map.merge(rows, Map.new(table.rows, &{&1.id, present(&1.name)})),
+         Map.merge(columns, Map.new(table.columns, &{&1.id, present(&1.name)}))}
+      end)
+
+    %{blocks: blocks, rows: rows, columns: columns}
   end
+
+  defp present(value) when is_binary(value) do
+    if String.trim(value) == "", do: nil, else: value
+  end
+
+  defp present(_value), do: nil
 
   defp formula_referenced_block_ids(project_id) do
     reference_pairs =
@@ -278,20 +269,6 @@ defmodule Storyarn.Sheets.SheetStats do
       else
         referenced_ids
       end
-    end)
-  end
-
-  defp missing_shortcut_findings(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and (is_nil(s.shortcut) or s.shortcut == ""),
-      select: %{sheet_id: s.id, sheet_name: s.name}
-    )
-    |> Repo.all()
-    |> Enum.map(fn row ->
-      HealthChecker.finding(:missing_sheet_shortcut, %{
-        sheet_id: row.sheet_id,
-        details: %{sheet_name: row.sheet_name}
-      })
     end)
   end
 end

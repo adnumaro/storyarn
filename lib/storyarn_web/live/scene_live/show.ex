@@ -704,10 +704,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
         project_flows: Storyarn.Flows.list_flows(project.id),
         project_variables: VariableHelpers.list_all_variables(project.id),
-        project_asset_ids:
-          project.id
-          |> Assets.list_assets(images_only: true)
-          |> Enum.map(& &1.id)
+        project_asset_ids: Assets.list_asset_ids(project.id, images_only: true)
       }
     end)
   end
@@ -1142,7 +1139,9 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("move_pin", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      params |> ElementHandlers.handle_move_pin(socket) |> broadcast_scene_change()
+      params
+      |> ElementHandlers.handle_move_pin(socket)
+      |> broadcast_scene_change(dashboard?: false)
     end)
   end
 
@@ -1351,7 +1350,9 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("update_zone_vertices", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      params |> ElementHandlers.handle_update_zone_vertices(socket) |> broadcast_scene_change()
+      params
+      |> ElementHandlers.handle_update_zone_vertices(socket)
+      |> broadcast_scene_change(dashboard?: false)
     end)
   end
 
@@ -1938,7 +1939,9 @@ defmodule StoryarnWeb.SceneLive.Show do
     ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/compare/#{version_number}"
   end
 
-  defp broadcast_scene_change({:noreply, socket} = _result) do
+  defp broadcast_scene_change(result, opts \\ [])
+
+  defp broadcast_scene_change({:noreply, socket} = _result, opts) do
     {action, payload} =
       socket.assigns[:_broadcast] || {:scene_refreshed, %{}}
 
@@ -1946,7 +1949,9 @@ defmodule StoryarnWeb.SceneLive.Show do
       Collab.broadcast_change(socket, scope, action, payload)
     end
 
-    Collaboration.broadcast_dashboard_change(socket.assigns.project.id, :scenes)
+    if Keyword.get(opts, :dashboard?, true) do
+      Collaboration.broadcast_dashboard_change(socket.assigns.project.id, :scenes)
+    end
 
     {:noreply, socket |> assign(:_broadcast, nil) |> assign_scene_health()}
   end

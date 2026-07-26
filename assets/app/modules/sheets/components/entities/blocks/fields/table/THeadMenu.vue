@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Check, ChevronDown, Layers, X } from "lucide-vue-next";
+import { ArrowLeft, Check, ChevronDown, Layers } from "lucide-vue-next";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Separator } from "@components/ui/separator";
@@ -28,13 +28,6 @@ const menuType = ref<THeadMenuType>("main");
 const renameValue = ref("");
 const newOptionValue = ref("");
 const optionEdits = ref<Record<number, string>>({});
-const menuTypesComponent = {
-  main: "Dropdown",
-  type: "Dropdown",
-  options: "Dropdown",
-  number: "Dropdown",
-  reference: "Dropdown",
-};
 
 function open(): void {
   isOpen.value = true;

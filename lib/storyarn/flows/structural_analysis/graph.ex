@@ -3,9 +3,9 @@ defmodule Storyarn.Flows.StructuralAnalysis.Graph do
   Pure structural-graph computation for a single flow.
 
   Single implementation of the graph semantics shared by the flow editor
-  serializer, the dashboards, and the structural-analysis panel: pin-validated
-  connections, virtual jump→hub edges, cycle-safe reachability from every
-  Entry, dead ends, isolated nodes, and orphan hubs.
+  serializer and the dashboards: pin-validated connections, virtual jump→hub
+  edges, cycle-safe reachability from every Entry, dead ends, isolated nodes,
+  and orphan hubs.
 
   Operates on plain node maps (`%{id, type, data}`) and connection maps
   (`%{id, source_node_id, source_pin, target_node_id, target_pin}`) — see

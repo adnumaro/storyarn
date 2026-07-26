@@ -76,12 +76,38 @@ defmodule Storyarn.Assets do
   """
   @spec list_assets(integer(), list_opts()) :: [asset()]
   def list_assets(project_id, opts \\ []) do
+    project_id
+    |> list_query(opts)
+    |> Repo.all()
+  end
+
+  # The single filter/order pipeline both listers run. Extracted so a future
+  # filter cannot be added to one and forgotten in the other: that would make
+  # `list_asset_ids/2` return an id set that is not the row set's ids, silently
+  # breaking the reference-existence checks that trust exactly that.
+  defp list_query(project_id, opts) do
     from(a in Asset, where: a.project_id == ^project_id)
     |> apply_content_type_filter(opts)
     |> apply_images_only_filter(opts)
     |> apply_search_filter(opts)
     |> apply_pagination(opts)
     |> order_by([a], desc: a.inserted_at, desc: a.id)
+  end
+
+  @doc """
+  Lists the IDs of a project's assets, taking the same options as
+  `list_assets/2` through the same filters.
+
+  For callers that only need reference-existence checks (scene health, editor
+  reference sets) this avoids loading every asset row to throw all but the id
+  away — and going through the same filter pipeline is what keeps the id set
+  identical to the row set.
+  """
+  @spec list_asset_ids(integer(), list_opts()) :: [integer()]
+  def list_asset_ids(project_id, opts \\ []) do
+    project_id
+    |> list_query(opts)
+    |> select([a], a.id)
     |> Repo.all()
   end
 

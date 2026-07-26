@@ -21,8 +21,6 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.Evaluator.EngineHelpers
   alias Storyarn.Flows.Evaluator.Helpers
   alias Storyarn.Flows.Evaluator.InstructionExec
-  alias Storyarn.Flows.FindingDismissal
-  alias Storyarn.Flows.FindingDismissals
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowCrud
@@ -731,8 +729,14 @@ defmodule Storyarn.Flows do
   def serialize_for_canvas(%Flow{} = flow, opts \\ []) do
     stale_node_ids = References.list_stale_node_ids(flow.id)
 
-    project_variables =
-      opts[:project_variables] || Storyarn.Sheets.list_project_variables(flow.project_id)
+    # Defaults to the FULL referenceable set, not just sheet blocks: a caller that
+    # forgets the option would otherwise silently type-check against a smaller
+    # vocabulary than the editor uses, and report different findings for it.
+    # ONE map for the whole flow. Built per node this was 96% of the project
+    # health sweep and a 15× penalty on flow open; the option still takes the
+    # variable LIST because that is what callers already hold.
+    variable_types =
+      Instruction.variable_type_map(opts[:project_variables] || list_referenceable_variables(flow.project_id))
 
     # Sequences now live in flow.nodes with type='sequence'. Preload their
     # 1:1 config to expose name/width/height alongside the base fields.
@@ -764,7 +768,7 @@ defmodule Storyarn.Flows do
             cache: cache,
             resolved_node_data: resolved_node_data,
             stale_node_ids: stale_node_ids,
-            project_variables: project_variables,
+            variable_types: variable_types,
             referencing_flows: referencing_flows,
             unreachable_ids: graph.unreachable_ids,
             dead_end_ids: graph.dead_end_ids,
@@ -820,7 +824,7 @@ defmodule Storyarn.Flows do
       ctx.resolved_node_data
       |> Map.fetch!(node.id)
       |> maybe_add_stale_flag(node.id, ctx.stale_node_ids)
-      |> maybe_add_type_warning_flag(node.type, ctx.project_variables)
+      |> maybe_add_type_warning_flag(node.type, ctx.variable_types)
       |> maybe_add_referencing_flows(node.type, ctx.referencing_flows)
       |> maybe_add_unreachable_flag(node.id, node.type, ctx.unreachable_ids)
       |> maybe_add_dead_end_flag(node.id, node.type, ctx.dead_end_ids)
@@ -892,24 +896,48 @@ defmodule Storyarn.Flows do
 
   defp maybe_add_referencing_flows(data, _type, _referencing_flows), do: data
 
-  defp maybe_add_type_warning_flag(data, "instruction", project_variables) do
+  @doc """
+  Adds the health flags `serialize_for_canvas/2` injects, for callers reading
+  nodes straight from the database.
+
+  The editorial checks in `HealthChecker` read `has_stale_refs` and
+  `has_type_warnings` off a node's data. The canvas serializer computes them; a
+  project-wide sweep does not go through it, so it applies them here instead —
+  otherwise the dashboard would silently miss three codes the editor reports.
+
+  Takes the PREPARED type map (`variable_type_map/1`), not the variable list, so
+  a project-wide sweep builds it once for every flow instead of once per node.
+  """
+  @spec add_health_flags([map()], MapSet.t(), %{String.t() => String.t()}) :: [map()]
+  def add_health_flags(nodes, stale_node_ids, variable_types) do
+    Enum.map(nodes, fn node ->
+      data =
+        node.data
+        |> maybe_add_stale_flag(node.id, stale_node_ids)
+        |> maybe_add_type_warning_flag(node.type, variable_types)
+
+      %{node | data: data}
+    end)
+  end
+
+  defp maybe_add_type_warning_flag(data, "instruction", variable_types) do
     assignments = data["assignments"] || []
 
-    if Instruction.has_type_warnings?(assignments, project_variables) do
+    if Instruction.has_type_warnings?(assignments, variable_types) do
       Map.put(data, "has_type_warnings", true)
     else
       data
     end
   end
 
-  defp maybe_add_type_warning_flag(data, "dialogue", project_variables) do
+  defp maybe_add_type_warning_flag(data, "dialogue", variable_types) do
     responses = data["responses"] || []
 
     updated =
       Enum.map(responses, fn response ->
         assignments = response["instruction_assignments"] || []
 
-        if Instruction.has_type_warnings?(assignments, project_variables) do
+        if Instruction.has_type_warnings?(assignments, variable_types) do
           Map.put(response, "has_type_warnings", true)
         else
           response
@@ -919,7 +947,7 @@ defmodule Storyarn.Flows do
     Map.put(data, "responses", updated)
   end
 
-  defp maybe_add_type_warning_flag(data, _type, _project_variables), do: data
+  defp maybe_add_type_warning_flag(data, _type, _variable_types), do: data
 
   defp maybe_add_stale_flag(data, node_id, stale_node_ids) do
     if MapSet.member?(stale_node_ids, node_id) do
@@ -985,9 +1013,12 @@ defmodule Storyarn.Flows do
   defdelegate instruction_sanitize(assignments), to: Instruction, as: :sanitize
   defdelegate instruction_format_short(assignment), to: Instruction, as: :format_assignment_short
 
-  defdelegate instruction_has_type_warnings?(assignments, variables),
+  defdelegate instruction_has_type_warnings?(assignments, variable_types),
     to: Instruction,
     as: :has_type_warnings?
+
+  @doc "Builds the `\"shortcut.name\" => block_type` map the type-warning check reads."
+  defdelegate variable_type_map(project_variables), to: Instruction
 
   # =============================================================================
   # DebugSessionStore
@@ -1023,8 +1054,8 @@ defmodule Storyarn.Flows do
   @doc "Returns per-flow localizable word counts from runtime flow-node fields. %{flow_id => word_count}."
   defdelegate flow_word_counts(project_id), to: FlowStats
 
-  @doc "Detects issues in flows for a project. Returns [%{flow_id, flow_name, issue_type, count}]."
-  defdelegate detect_flow_issues(project_id), to: FlowStats
+  @doc "Project-wide flow health findings for the dashboard (canonical shape)."
+  defdelegate list_dashboard_health_findings(project_id), to: FlowStats
 
   @doc """
   Runs the canonical structural analysis for one flow.
@@ -1033,10 +1064,6 @@ defmodule Storyarn.Flows do
   @spec analyze_flow_structure(integer(), integer()) ::
           {:ok, StructuralAnalysis.Analysis.t()} | {:error, :not_found}
   defdelegate analyze_flow_structure(project_id, flow_id), to: StructuralAnalysis, as: :analyze_flow
-
-  @doc "Runs the canonical structural analysis for every active flow of a project."
-  @spec analyze_project_structure(integer()) :: [StructuralAnalysis.Analysis.t()]
-  defdelegate analyze_project_structure(project_id), to: StructuralAnalysis, as: :analyze_project
 
   @doc "Runs the canonical structural analysis on an already-loaded flow."
   @spec analyze_loaded_flow_structure(flow()) :: StructuralAnalysis.Analysis.t()
@@ -1049,76 +1076,34 @@ defmodule Storyarn.Flows do
     as: :analyze_serialized
 
   @doc """
-  Loads one CURRENT structural finding by its exact occurrence identity.
+  Every variable a flow can reference: sheet blocks, scene pins and scene zones.
 
-  `{:error, :unknown_finding}` when the key is gone, `{:error, :stale_finding}`
-  when its rule version or evidence moved.
-
-  No caller in `lib/` since Slice 7.1a.0 removed the AI explanation; kept for
-  7.1a.1's `findings` operation. See `StructuralAnalysis.fetch_current_finding/3`.
+  The ONE definition, because the health checkers compare a node's assignments
+  against it and the editor and the dashboard must not be looking at different
+  sets — a flow that assigns to a pin property would otherwise get a type warning
+  on one surface and not the other. `VariableHelpers.list_all_variables/1`
+  delegates here.
   """
-  @spec fetch_current_structural_finding(integer(), integer(), StructuralAnalysis.Finding.identity()) ::
-          {:ok, StructuralAnalysis.Finding.t()}
-          | {:error, :not_found | :unknown_finding | :stale_finding}
-  defdelegate fetch_current_structural_finding(project_id, flow_id, identity),
-    to: StructuralAnalysis,
-    as: :fetch_current_finding
+  @spec list_referenceable_variables(integer()) :: [map()]
+  def list_referenceable_variables(project_id) do
+    Storyarn.Sheets.list_project_variables(project_id) ++
+      Storyarn.Scenes.list_pin_variables(project_id) ++
+      Storyarn.Scenes.list_zone_variables(project_id)
+  end
 
   @doc """
-  The exact occurrence triple identifying a structural finding.
+  Every health finding of a flow from already-serialized canvas data.
 
-  This and the encode/decode pair below share the caller status of
-  `fetch_current_structural_finding/3`: tests only, kept for 7.1a.1.
+  The editor's entry into the single composition point the dashboard also uses
+  (`StructuralAnalysis.findings/1`). Zero extra node queries: the serializer's
+  output is already resolved and already carries the health flags.
   """
-  @spec structural_finding_identity(StructuralAnalysis.Finding.t()) :: StructuralAnalysis.Finding.identity()
-  defdelegate structural_finding_identity(finding), to: StructuralAnalysis.Finding, as: :identity
-
-  @doc "Durable single-string encoding of a structural finding identity."
-  @spec encode_structural_finding_identity(StructuralAnalysis.Finding.t() | StructuralAnalysis.Finding.identity()) ::
-          String.t()
-  defdelegate encode_structural_finding_identity(finding), to: StructuralAnalysis.Finding, as: :encode_identity
-
-  @doc "Parses `encode_structural_finding_identity/1`. Fails closed."
-  @spec decode_structural_finding_identity(term()) ::
-          {:ok, StructuralAnalysis.Finding.identity()} | {:error, :invalid_finding_identity}
-  defdelegate decode_structural_finding_identity(encoded), to: StructuralAnalysis.Finding, as: :decode_identity
-
-  @doc "Rule ids of the frozen structural-analysis catalog."
-  @spec structural_rule_ids() :: [String.t()]
-  defdelegate structural_rule_ids(), to: StructuralAnalysis.Rules, as: :rule_ids
-
-  @doc "The declared i18n limitations key of a structural rule."
-  @spec structural_rule_limitations_key(String.t()) :: String.t()
-  def structural_rule_limitations_key(rule_id), do: StructuralAnalysis.Rules.fetch!(rule_id).limitations_key
-
-  # =============================================================================
-  # Structural Finding Dismissals
-  # =============================================================================
-
-  @doc "Dismisses a server-computed structural finding for a flow. Idempotent."
-  defdelegate dismiss_finding(flow, finding, attrs), to: FindingDismissals, as: :dismiss
-
-  @doc "Restores an active finding dismissal of a flow. Idempotent."
-  defdelegate restore_finding_dismissal(flow, dismissal_id, restored_by_id),
-    to: FindingDismissals,
-    as: :restore
-
-  @doc "Active finding dismissals of a flow."
-  defdelegate list_active_finding_dismissals(flow), to: FindingDismissals, as: :list_active
-
-  @doc "Active finding dismissals of a project, grouped by flow id."
-  defdelegate list_active_finding_dismissals_by_project(project_id),
-    to: FindingDismissals,
-    as: :list_active_by_project
-
-  @doc "Splits findings into {active, dismissed} against active dismissals."
-  defdelegate split_findings(findings, active_dismissals), to: FindingDismissals
-
-  @doc "Stable dismissal reason codes, in display order."
-  defdelegate finding_dismissal_reason_codes(), to: FindingDismissal, as: :reason_codes
-
-  @doc "Maximum accepted dismissal note length."
-  defdelegate finding_dismissal_max_note_length(), to: FindingDismissal, as: :max_note_length
+  @spec flow_health_findings(map(), integer()) :: [map()]
+  def flow_health_findings(flow_data, project_id) do
+    flow_data
+    |> StructuralAnalysis.Topology.from_serialized(project_id)
+    |> StructuralAnalysis.findings()
+  end
 
   @doc "Counts non-deleted flow nodes across all flows in a project."
   defdelegate count_nodes_for_project(project_id), to: FlowCrud

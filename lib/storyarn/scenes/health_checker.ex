@@ -78,6 +78,31 @@ defmodule Storyarn.Scenes.HealthChecker do
   @spec severity_for(atom()) :: severity()
   def severity_for(code), do: Map.fetch!(@severity_by_code, code)
 
+  @doc """
+  Every code this checker can emit.
+
+  The dashboard's coverage is asserted against this in
+  `test/storyarn/scenes/dashboard_health_coverage_test.exs`: a code the checker
+  can produce but the dashboard cannot is a finding a user only sees inside one
+  entity, which is the discrimination that test exists to prevent.
+  """
+  @spec codes() :: [atom()]
+  def codes, do: Map.keys(@severity_by_code)
+
+  @entity_types ~w(scene zone pin connection annotation ambient_flow collection_item)
+
+  @doc """
+  Every location a finding can be attributed to.
+
+  The sibling of `codes/0` for the other half of a finding: the code says WHAT,
+  this says WHERE. Both surfaces name the location with
+  `SceneHelpers.element_type_label/1`, which has no catch-all clause, so a type
+  added here without a word there fails instead of leaking the raw enum into the
+  UI.
+  """
+  @spec entity_types() :: [String.t()]
+  def entity_types, do: @entity_types
+
   @doc "Builds a canonical finding for the editor and aggregate dashboard adapter."
   @spec finding(atom(), map()) :: finding()
   def finding(code, attrs \\ %{}) when is_atom(code) and is_map(attrs) do
@@ -562,7 +587,12 @@ defmodule Storyarn.Scenes.HealthChecker do
     stale_refs =
       if references_loaded?(snapshot), do: stale_assignment_refs(assignments, variable_types(snapshot)), else: []
 
-    type_warning? = Instruction.has_type_warnings?(assignments, Map.get(snapshot, :project_variables, []))
+    # The PREPARED map, not the variable list: `Instruction.has_type_warnings?/2`
+    # takes the lookup so it is built once per snapshot instead of once per zone,
+    # pin and collection item. `variable_types/1` is that map, and it is the same
+    # one the stale-reference checks above read, so a reference cannot be fresh
+    # for one check and unknown for the other.
+    type_warning? = Instruction.has_type_warnings?(assignments, variable_types(snapshot))
 
     []
     |> maybe_add(
@@ -672,14 +702,14 @@ defmodule Storyarn.Scenes.HealthChecker do
     end)
   end
 
+  # `HealthSnapshots.build/3` precomputes this so it is built once per scene
+  # instead of once per zone, pin and collection item. The fallback exists for
+  # snapshots assembled by hand, and it goes through the SAME builder — a second
+  # spelling of the key format is a reference that is stale on one surface and
+  # fresh on the other.
   defp variable_types(snapshot) do
     Map.get_lazy(snapshot, :variable_types, fn ->
-      snapshot
-      |> Map.get(:project_variables, [])
-      |> Map.new(fn variable ->
-        {variable_ref(field(variable, :sheet_shortcut), field(variable, :variable_name)), field(variable, :block_type)}
-      end)
-      |> Map.delete(nil)
+      snapshot |> Map.get(:project_variables, []) |> Instruction.variable_type_map()
     end)
   end
 

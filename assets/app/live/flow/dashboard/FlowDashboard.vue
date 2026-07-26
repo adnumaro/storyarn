@@ -19,6 +19,8 @@ import {
 import type { Component } from "vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import type { FlowDashboardIssue } from "@modules/flows/types/health";
+import { interpolatableDetails } from "@components/health/health-details";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import {
@@ -65,12 +67,6 @@ interface FlowPagination {
   total: number;
 }
 
-interface FlowIssue {
-  href: string;
-  message: string;
-  severity: "error" | "warning" | "info";
-}
-
 interface StatCard {
   icon: Component;
   label: string;
@@ -97,13 +93,19 @@ const {
   stats: FlowStats | null;
   tableData: FlowTableRow[];
   pagination: FlowPagination;
-  issues: FlowIssue[];
+  issues: FlowDashboardIssue[];
   canEdit: boolean;
   workspaceSlug: string;
   projectSlug: string;
 }>();
 
 const { t } = useI18n();
+
+// The dashboard translates the SAME `flows.health.findings.*` keys the editor
+// popover uses, so the two surfaces cannot word the same finding differently.
+function healthFindingLabel(issue: FlowDashboardIssue): string {
+  return t(`flows.health.findings.${issue.code}`, interpolatableDetails(issue.details));
+}
 const live = useLive();
 
 function flowHref(row: FlowTableRow): string {
@@ -383,7 +385,10 @@ const pages = computed(() => {
             data-testid="flow-issue-info-icon"
             class="size-4 text-blue-400 shrink-0 mt-0.5"
           />
-          <span class="text-muted-foreground">{{ issue.message }}</span>
+          <span class="text-muted-foreground">
+            <span class="text-foreground">{{ issue.label }}</span>
+            · {{ healthFindingLabel(issue) }}
+          </span>
         </a>
       </div>
     </div>

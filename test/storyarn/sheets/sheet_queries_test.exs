@@ -1675,4 +1675,115 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
                SheetQueries.validate_reference_target("flow", -1, project.id)
     end
   end
+
+  # =============================================================================
+  # Stale variable references
+  # =============================================================================
+
+  # The flow editor asks per flow, the flows dashboard asks for many at once. Both
+  # answers come out of the same two SQL builders, and both staleness causes are
+  # exercised separately: a reference goes stale either because the sheet shortcut
+  # it was written against changed, or — for a table cell — because the row or
+  # column that spelled its path is gone. The second has its own subquery, and the
+  # per-flow and batched readings of it must not drift.
+  describe "stale node ids" do
+    setup do
+      %{project: project} = setup_project()
+
+      sheet = sheet_fixture(project, %{name: "Hero", shortcut: "hero"})
+      plain = block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+
+      table = table_block_fixture(sheet, %{label: "Attributes"})
+      row = table_row_fixture(table, %{name: "Strength"})
+      column = table_column_fixture(table, %{name: "Value", type: "number"})
+
+      flow = flow_fixture(project)
+
+      plain_node = tracked_assignment_node(flow, "hero", plain.variable_name)
+      table_node = tracked_assignment_node(flow, "hero", "#{table.variable_name}.#{row.slug}.#{column.slug}")
+
+      %{
+        project: project,
+        sheet: sheet,
+        table: table,
+        row: row,
+        flow: flow,
+        plain_node: plain_node,
+        table_node: table_node
+      }
+    end
+
+    test "report nothing while both references still resolve", context do
+      assert SheetQueries.list_stale_node_ids_by_flow([context.flow.id]) == %{}
+      assert per_flow_stale_node_ids(context.flow.id) == MapSet.new()
+    end
+
+    test "agree when a deleted table row breaks a cell path", context do
+      # `update_table_row/2` deliberately KEEPS the slug on rename, so renaming the
+      # row leaves the path intact — only removing it can break the cell.
+      {:ok, _row} = Sheets.delete_table_row(context.row)
+
+      batched = SheetQueries.list_stale_node_ids_by_flow([context.flow.id])
+
+      assert Map.get(batched, context.flow.id, MapSet.new()) == per_flow_stale_node_ids(context.flow.id)
+
+      assert Map.get(batched, context.flow.id, MapSet.new()) == MapSet.new([context.table_node.id]),
+             "only the table node loses its cell: the plain reference is untouched"
+    end
+
+    test "agree when the sheet shortcut is renamed", context do
+      {:ok, _sheet} = Sheets.update_sheet(context.sheet, %{shortcut: "protagonist"})
+
+      batched = SheetQueries.list_stale_node_ids_by_flow([context.flow.id])
+
+      assert Map.get(batched, context.flow.id, MapSet.new()) == per_flow_stale_node_ids(context.flow.id)
+
+      assert Map.get(batched, context.flow.id, MapSet.new()) ==
+               MapSet.new([context.plain_node.id, context.table_node.id]),
+             "the shortcut is half of every reference, table cells included"
+    end
+
+    test "key each flow separately when several are asked for at once", context do
+      other_flow = flow_fixture(context.project)
+      other_node = tracked_assignment_node(other_flow, "hero", "health")
+
+      {:ok, _sheet} = Sheets.update_sheet(context.sheet, %{shortcut: "protagonist"})
+
+      batched = SheetQueries.list_stale_node_ids_by_flow([context.flow.id, other_flow.id])
+
+      assert Map.get(batched, other_flow.id, MapSet.new()) == MapSet.new([other_node.id])
+      assert Map.get(batched, context.flow.id, MapSet.new()) == per_flow_stale_node_ids(context.flow.id)
+    end
+  end
+
+  defp per_flow_stale_node_ids(flow_id) do
+    MapSet.union(
+      Sheets.list_stale_regular_node_ids(flow_id),
+      Sheets.list_stale_table_node_ids(flow_id)
+    )
+  end
+
+  # An instruction node that writes `sheet.variable`, with the reference recorded —
+  # the same tracking the flow editor performs when a node is saved.
+  defp tracked_assignment_node(flow, sheet_shortcut, variable_name) do
+    node =
+      node_fixture(flow, %{
+        type: "instruction",
+        data: %{
+          "assignments" => [
+            %{
+              "id" => Ecto.UUID.generate(),
+              "sheet" => sheet_shortcut,
+              "variable" => variable_name,
+              "operator" => "set",
+              "value" => "1",
+              "value_type" => "literal"
+            }
+          ]
+        }
+      })
+
+    :ok = Storyarn.Flows.VariableReferenceTracker.update_references(node)
+    node
+  end
 end

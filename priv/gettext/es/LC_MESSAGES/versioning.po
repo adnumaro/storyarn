@@ -20,8 +20,8 @@ msgstr "%{count} bloques heredados se desvinculan automáticamente si faltan los
 #, elixir-autogen, elixir-format
 msgid "%{count} missing %{type}"
 msgid_plural "%{count} missing %{type}"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%{count} %{type} ausente"
+msgstr[1] "%{count} %{type} ausentes"
 
 #: lib/storyarn/versioning/project_snapshot_crud.ex:243
 #, elixir-autogen, elixir-format
@@ -144,36 +144,36 @@ msgstr "Versión no encontrada."
 #, elixir-autogen, elixir-format
 msgid "asset"
 msgid_plural "assets"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "recurso"
+msgstr[1] "recursos"
 
 #: lib/storyarn/versioning/conflict_detector.ex:201
 #, elixir-autogen, elixir-format
 msgid "block"
 msgid_plural "blocks"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "bloque"
+msgstr[1] "bloques"
 
 #: lib/storyarn/versioning/conflict_detector.ex:197
 #, elixir-autogen, elixir-format
 msgid "flow"
 msgid_plural "flows"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "flujo"
+msgstr[1] "flujos"
 
 #: lib/storyarn/versioning/conflict_detector.ex:199
 #, elixir-autogen, elixir-format
 msgid "scene"
 msgid_plural "scenes"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "escena"
+msgstr[1] "escenas"
 
 #: lib/storyarn/versioning/conflict_detector.ex:195
 #, elixir-autogen, elixir-format
 msgid "sheet"
 msgid_plural "sheets"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "ficha"
+msgstr[1] "fichas"
 
 #: lib/storyarn/versioning/conflict_detector.ex:185
 #, elixir-autogen, elixir-format
@@ -182,25 +182,25 @@ msgstr "colisión de atajo"
 
 #: lib/storyarn_web/live/flow_live/show.ex:547
 #: lib/storyarn_web/live/scene_live/show.ex:801
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Before restore to v%{n}"
-msgstr "Antes de restaurar a v%{number}"
+msgstr "Antes de restaurar a v%{n}"
 
 #: lib/storyarn_web/live/flow_live/show.ex:441
 #: lib/storyarn_web/live/scene_live/show.ex:689
 #: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:38
 #, elixir-autogen, elixir-format
 msgid "Title is required."
-msgstr ""
+msgstr "El título es obligatorio."
 
 #: lib/storyarn_web/live/flow_live/show.ex:587
 #: lib/storyarn_web/live/scene_live/show.ex:841
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Version restored."
-msgstr "Versión creada."
+msgstr "Versión restaurada."
 
 #: lib/storyarn_web/live/version_viewer_live.ex:177
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Version not found"
 msgstr "Versión no encontrada."
 

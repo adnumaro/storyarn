@@ -120,6 +120,14 @@ export type SheetHealthReason = HealthStatusReason;
 export type SheetHealthSeverity = HealthStatusSeverity;
 
 export interface SheetHealthItem extends HealthStatusItem {
+  /**
+   * The location every domain's findings carry, matching `SceneHealthItem`:
+   * `"sheet"` for a sheet-level finding, otherwise the block's type. `entityId`
+   * is the block id, so it is null exactly when `blockId` is.
+   */
+  entityType: string;
+  entityId: number | string | null;
+  /** The finer location only sheets need: a finding can land on a single cell. */
   blockId: number | string | null;
   rowId: number | string | null;
   columnId: number | string | null;

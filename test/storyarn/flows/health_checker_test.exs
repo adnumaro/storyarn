@@ -7,7 +7,6 @@ defmodule Storyarn.Flows.HealthCheckerTest do
 
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowConnection
-  alias Storyarn.Flows.HealthChecker
   alias Storyarn.Repo
 
   setup do
@@ -18,6 +17,11 @@ defmodule Storyarn.Flows.HealthCheckerTest do
     %{project: project, flow: flow}
   end
 
+  # These fixtures are nodes without connections, so only the codes derivable from
+  # a node's own data appear, plus `isolated_node`. The graph-derived family —
+  # pin validity, dead ends, unreachability with a real Entry — is covered in
+  # `structural_analysis_test.exs`, which builds actual graphs. The composition
+  # itself is covered in `health_consolidation_test.exs`.
   describe "severity contract" do
     test "treats invalid graph configuration and broken references as errors" do
       flow_data = %{
@@ -55,9 +59,7 @@ defmodule Storyarn.Flows.HealthCheckerTest do
                  :stale_jump_target,
                  :missing_exit_flow_reference,
                  :stale_exit_flow_reference,
-                 :stale_variable_reference,
-                 :invalid_output_pins,
-                 :invalid_input_pins
+                 :stale_variable_reference
                ])
 
       assert :missing_entry in error_codes(%{nodes: []})
@@ -120,9 +122,7 @@ defmodule Storyarn.Flows.HealthCheckerTest do
                  :incomplete_response_assignment,
                  :incomplete_condition,
                  :incomplete_instruction_assignment,
-                 :unreachable_node,
-                 :missing_output_connections,
-                 :no_outgoing_connection
+                 :isolated_node
                ])
     end
 
@@ -152,13 +152,16 @@ defmodule Storyarn.Flows.HealthCheckerTest do
           data: %{"referenced_flow_id" => referenced_flow.id}
         })
 
+      # Reachable on purpose: an unreachable node reports only `unreachable_node`.
+      connection_fixture(flow, entry_node(flow), subflow)
+
       {_flow_data, findings} = check_flow(project, flow)
       subflow_id = subflow.id
 
       assert %{
                severity: :warning,
                code: :no_outgoing_connection,
-               node_id: ^subflow_id
+               entity_id: ^subflow_id
              } = finding_for(findings, subflow, :no_outgoing_connection)
     end
 
@@ -175,6 +178,8 @@ defmodule Storyarn.Flows.HealthCheckerTest do
         })
 
       target = exit_node(flow)
+      # Reachable on purpose: an unreachable node reports only `unreachable_node`.
+      connection_fixture(flow, entry_node(flow), subflow)
 
       # Deliberately bypass the productive writer: this health-check regression
       # exercises repair visibility for a legacy/corrupt pin that new writes reject.
@@ -321,13 +326,44 @@ defmodule Storyarn.Flows.HealthCheckerTest do
     end
   end
 
+  describe "attribution" do
+    # A project-wide sweep groups by `flow_id`. A checker that cannot fill its own
+    # findings' flow forces every caller to patch them afterwards, and the one that
+    # forgets collapses every flow under a nil key.
+    test "every finding carries the flow the snapshot names" do
+      findings =
+        Flows.HealthChecker.check(%{
+          flow_id: 4242,
+          nodes: [
+            health_node(1, "instruction", %{"assignments" => []}),
+            health_node(2, "dialogue", %{"text" => ""})
+          ]
+        })
+
+      # Positive control: the fixture really does emit findings from both halves
+      # of the editorial catalog.
+      assert :empty_instruction in Enum.map(findings, & &1.code)
+      assert :missing_dialogue_text in Enum.map(findings, & &1.code)
+
+      assert Enum.all?(findings, &(&1.flow_id == 4242)),
+             "flow ids: #{inspect(Enum.map(findings, &{&1.code, &1.flow_id}))}"
+    end
+
+    test "a snapshot without a flow still checks, attributing to no flow" do
+      findings = Flows.HealthChecker.check(%{nodes: [health_node(1, "instruction", %{"assignments" => []})]})
+
+      assert Enum.map(findings, & &1.code) == [:empty_instruction]
+      assert Enum.all?(findings, &is_nil(&1.flow_id))
+    end
+  end
+
   defp check_flow(project, flow) do
     flow_data =
       project.id
       |> Flows.get_flow!(flow.id)
       |> Flows.serialize_for_canvas()
 
-    {flow_data, HealthChecker.check(flow_data)}
+    {flow_data, Flows.flow_health_findings(flow_data, project.id)}
   end
 
   defp entry_node(flow), do: Enum.find(Flows.list_nodes(flow.id), &(&1.type == "entry"))
@@ -338,18 +374,32 @@ defmodule Storyarn.Flows.HealthCheckerTest do
   end
 
   defp finding_for(findings, node, code) do
-    Enum.find(findings, &(&1.node_id == node.id and &1.code == code))
+    Enum.find(findings, &(&1.entity_id == node.id and &1.code == code))
   end
 
   defp health_node(id, type, data \\ %{}), do: %{id: id, type: type, data: data}
+
+  defp composed_findings(flow_data) do
+    flow_data
+    |> Map.put_new(:id, 1)
+    |> Map.put_new(:name, "Flow")
+    |> Map.put_new(:connections, [])
+    |> Storyarn.Flows.StructuralAnalysis.Topology.from_serialized(1)
+    |> Storyarn.Flows.StructuralAnalysis.findings()
+  end
 
   defp error_codes(flow_data), do: finding_codes(flow_data, :error)
   defp warning_codes(flow_data), do: finding_codes(flow_data, :warning)
   defp info_codes(flow_data), do: finding_codes(flow_data, :info)
 
+  # The COMPOSED flow health, which is what the product now shows: the editorial
+  # checks plus the graph-derived ones, through the one composition point. Before
+  # the consolidation `HealthChecker.check/1` emitted both halves itself; the
+  # split moved the structural codes to `StructuralAnalysis` without changing the
+  # set, so these assertions stay meaningful exactly as written.
   defp finding_codes(flow_data, severity) do
     flow_data
-    |> HealthChecker.check()
+    |> composed_findings()
     |> Enum.filter(&(&1.severity == severity))
     |> MapSet.new(& &1.code)
   end

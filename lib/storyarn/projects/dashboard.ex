@@ -18,7 +18,6 @@ defmodule Storyarn.Projects.Dashboard do
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Sheets
-  alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
 
   # ===========================================================================
@@ -105,12 +104,10 @@ defmodule Storyarn.Projects.Dashboard do
     workspace_slug = Keyword.fetch!(opts, :workspace_slug)
     project_slug = Keyword.fetch!(opts, :project_slug)
 
-    flow_issues = Flows.detect_flow_issues(project_id)
+    flow_findings = Flows.list_dashboard_health_findings(project_id)
 
     [
-      detect_flows_without_entry(flow_issues, workspace_slug, project_slug),
-      detect_disconnected_nodes(flow_issues, workspace_slug, project_slug),
-      detect_dead_end_nodes(flow_issues, workspace_slug, project_slug),
+      detect_flow_health(flow_findings, workspace_slug, project_slug),
       detect_empty_sheets(project_id, workspace_slug, project_slug),
       detect_untranslated_content(project_id, workspace_slug, project_slug)
     ]
@@ -227,96 +224,124 @@ defmodule Storyarn.Projects.Dashboard do
   # Issue Detectors (formatters over the canonical flow analysis)
   # ---------------------------------------------------------------------------
 
-  defp detect_flows_without_entry(flow_issues, workspace_slug, project_slug) do
-    flow_issues
-    |> Enum.filter(&(&1.issue_type == :no_entry))
-    |> Enum.map(fn flow ->
-      %{
-        severity: :error,
-        message: dgettext("flows", "Flow \"%{name}\" has no entry node", name: flow.flow_name),
-        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow.flow_id}",
-        count: 1
-      }
-    end)
+  # The project overview is a CURATED cross-domain summary, not full coverage:
+  # every domain contributes a few high-signal rows with a written sentence
+  # (`detect_empty_sheets` does exactly this for sheets). So flows keeps specific
+  # copy here — but driven by the canonical findings, so it cannot drift from the
+  # flows dashboard the way the old bucket mapping did.
+  #
+  # Anything outside the curated set still gets a row per flow and severity, so no
+  # finding is silently dropped from the overview.
+  @curated_codes %{
+    missing_entry: :no_entry,
+    isolated_node: :disconnected,
+    unreachable_node: :disconnected,
+    no_outgoing_connection: :dead_end
+  }
+
+  defp detect_flow_health(findings, workspace_slug, project_slug) do
+    {curated, rest} = Enum.split_with(findings, &Map.has_key?(@curated_codes, &1.code))
+
+    curated_rows =
+      curated
+      |> Enum.group_by(&{&1.flow_id, Map.fetch!(@curated_codes, &1.code)})
+      |> Enum.map(fn {{flow_id, kind}, group} ->
+        flow_health_row(kind, hd(group), length(group), flow_id, workspace_slug, project_slug)
+      end)
+
+    other_rows =
+      rest
+      |> Enum.filter(&(&1.severity in [:error, :warning]))
+      |> Enum.group_by(&{&1.flow_id, &1.severity})
+      |> Enum.map(fn {{flow_id, severity}, group} ->
+        %{
+          severity: severity,
+          message: other_flow_health_message(severity, flow_name(hd(group)), length(group)),
+          href: flow_href(workspace_slug, project_slug, flow_id),
+          count: length(group)
+        }
+      end)
+
+    Enum.sort_by(curated_rows ++ other_rows, & &1.message)
   end
 
-  defp detect_disconnected_nodes(flow_issues, workspace_slug, project_slug) do
-    flow_issues
-    |> Enum.filter(&(&1.issue_type == :disconnected_nodes))
-    |> Enum.map(fn row ->
-      %{
-        severity: :warning,
-        message:
-          dgettext(
-            "flows",
-            "Flow \"%{name}\" has %{count} disconnected node(s)",
-            name: row.flow_name,
-            count: row.count
-          ),
-        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{row.flow_id}",
-        count: row.count
-      }
-    end)
+  defp flow_health_row(:no_entry, finding, _count, flow_id, workspace_slug, project_slug) do
+    %{
+      severity: :error,
+      message: dgettext("flows", "Flow \"%{name}\" has no entry node", name: flow_name(finding)),
+      href: flow_href(workspace_slug, project_slug, flow_id),
+      count: 1
+    }
   end
 
-  defp detect_dead_end_nodes(flow_issues, workspace_slug, project_slug) do
-    flow_issues
-    |> Enum.filter(&(&1.issue_type == :dead_end_nodes))
-    |> Enum.map(fn row ->
-      %{
-        severity: :warning,
-        message:
-          dgettext(
-            "flows",
-            "Flow \"%{name}\" has %{count} node(s) without outgoing connection",
-            name: row.flow_name,
-            count: row.count
-          ),
-        href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{row.flow_id}",
-        count: row.count
-      }
-    end)
+  defp flow_health_row(:disconnected, finding, count, flow_id, workspace_slug, project_slug) do
+    %{
+      severity: :warning,
+      message:
+        dgettext("flows", "Flow \"%{name}\" has %{count} disconnected node(s)",
+          name: flow_name(finding),
+          count: count
+        ),
+      href: flow_href(workspace_slug, project_slug, flow_id),
+      count: count
+    }
   end
 
+  defp flow_health_row(:dead_end, finding, count, flow_id, workspace_slug, project_slug) do
+    %{
+      severity: :warning,
+      message:
+        dgettext("flows", "Flow \"%{name}\" has %{count} node(s) without outgoing connection",
+          name: flow_name(finding),
+          count: count
+        ),
+      href: flow_href(workspace_slug, project_slug, flow_id),
+      count: count
+    }
+  end
+
+  defp other_flow_health_message(:error, flow_name, count) do
+    dgettext("flows", "Flow \"%{name}\" has %{count} error(s)", name: flow_name, count: count)
+  end
+
+  defp other_flow_health_message(:warning, flow_name, count) do
+    dgettext("flows", "Flow \"%{name}\" has %{count} warning(s)", name: flow_name, count: count)
+  end
+
+  defp flow_name(finding), do: Map.get(finding.details, :flow_name, dgettext("flows", "Flow"))
+
+  defp flow_href(workspace_slug, project_slug, flow_id) do
+    "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow_id}"
+  end
+
+  # Reads the canonical sheet findings instead of running a fourth sheet-health
+  # detector with its own SQL. That detector counted EVERY empty sheet while the
+  # checker's `empty_leaf_sheet` only counts leaves, so the overview over-reported
+  # against the sheets dashboard for any empty parent sheet.
   defp detect_empty_sheets(project_id, workspace_slug, project_slug) do
-    sheets_with_blocks_ids =
-      from(b in Block,
-        join: s in Sheet,
-        on: b.sheet_id == s.id,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
-        select: s.id
-      )
+    count =
+      project_id
+      |> Sheets.list_dashboard_health_findings()
+      |> Enum.count(&(&1.code == :empty_leaf_sheet))
 
-    empty_sheets =
-      Repo.all(
-        from(s in Sheet,
-          where: s.project_id == ^project_id and is_nil(s.deleted_at) and s.id not in subquery(sheets_with_blocks_ids),
-          select: %{id: s.id, name: s.name}
-        )
-      )
-
-    case empty_sheets do
-      [] ->
-        []
-
-      sheets ->
-        count = length(sheets)
-
-        [
-          %{
-            severity: :info,
-            message:
-              dngettext(
-                "sheets",
-                "%{count} sheet has no blocks defined",
-                "%{count} sheets have no blocks defined",
-                count,
-                count: count
-              ),
-            href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets",
-            count: count
-          }
-        ]
+    if count == 0 do
+      []
+    else
+      [
+        %{
+          severity: :info,
+          message:
+            dngettext(
+              "sheets",
+              "%{count} sheet has no blocks defined",
+              "%{count} sheets have no blocks defined",
+              count,
+              count: count
+            ),
+          href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets",
+          count: count
+        }
+      ]
     end
   end
 

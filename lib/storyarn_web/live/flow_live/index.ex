@@ -16,8 +16,12 @@ defmodule StoryarnWeb.FlowLive.Index do
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Flows
+  alias Storyarn.Shared.Severity
+  alias StoryarnWeb.FlowLive.NodeTypeRegistry
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+
+  require Logger
 
   @impl true
   def render(assigns) do
@@ -63,7 +67,7 @@ defmodule StoryarnWeb.FlowLive.Index do
             sortDir: to_string(@sort_dir),
             page: @page,
             totalPages: @total_pages,
-            total: length(@all_flow_table_data)
+            total: @total_flows
           }
         }
         issues={@flow_issues}
@@ -119,6 +123,7 @@ defmodule StoryarnWeb.FlowLive.Index do
      |> assign(:sort_dir, :asc)
      |> assign(:page, 1)
      |> assign(:total_pages, 1)
+     |> assign(:total_flows, 0)
      |> assign(:pending_delete_id, nil)}
   end
 
@@ -171,10 +176,22 @@ defmodule StoryarnWeb.FlowLive.Index do
      |> assign(:flow_table_data, data.page_rows)
      |> assign(:page, 1)
      |> assign(:total_pages, data.total_pages)
+     |> assign(:total_flows, data.total_flows)
      |> assign(:flow_issues, data.formatted_issues)}
   end
 
-  def handle_async(:load_dashboard_data, {:exit, _reason}, socket), do: {:noreply, socket}
+  # Swallowing the reason left `dashboard_stats` nil forever, and Vue renders a
+  # skeleton while it is nil — so a crashed load presented as a dashboard that
+  # never finishes loading, with nothing to read and nothing to click. Log it so
+  # it reaches the error tracker, then show the failure and offer the retry.
+  def handle_async(:load_dashboard_data, {:exit, reason}, socket) do
+    Logger.error("Flow dashboard load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
+
+    {:noreply,
+     socket
+     |> assign(:dashboard_stats, empty_dashboard_stats())
+     |> put_flash(:error, dgettext("flows", "Could not load dashboard data. Reload the page to try again."))}
+  end
 
   defp load_dashboard_data_async(project_id, workspace, project, sort_by, sort_dir) do
     flows = Flows.list_flows(project_id)
@@ -191,7 +208,7 @@ defmodule StoryarnWeb.FlowLive.Index do
 
     issues =
       DashboardCache.fetch(project_id, :flow_issues, fn ->
-        Flows.detect_flow_issues(project_id)
+        Flows.list_dashboard_health_findings(project_id)
       end)
 
     table_data =
@@ -224,6 +241,9 @@ defmodule StoryarnWeb.FlowLive.Index do
       sorted_table: sorted_table,
       page_rows: page_rows,
       total_pages: total_pages,
+      # Counted once here, not on every render: `render/1` walked the whole row
+      # list for a number this already knew.
+      total_flows: length(sorted_table),
       formatted_issues: format_flow_issues(issues, workspace, project)
     }
   end
@@ -315,9 +335,23 @@ defmodule StoryarnWeb.FlowLive.Index do
   defp reload_flows(socket) do
     project_id = socket.assigns.project.id
 
-    reload_dashboard(socket, :flows, :all_flow_table_data, :flow_table_data, :flow_issues, fn s ->
+    # `:total_flows` has to be zeroed HERE and not left to the next
+    # `:load_dashboard_data`, because deleting the last flow means there is no
+    # next one: `reload_dashboard/6` only re-triggers the load when the entity
+    # list is non-empty. Vue reads `isEmpty = total === 0 && !stats`, so a stale
+    # non-zero total plus the nil stats it just cleared renders the loading
+    # skeleton forever instead of the empty state.
+    socket
+    |> assign(:total_flows, 0)
+    |> reload_dashboard(:flows, :all_flow_table_data, :flow_table_data, :flow_issues, fn s ->
       assign(s, :flows, Flows.list_flows(project_id))
     end)
+  end
+
+  # A failed load must stop the skeleton, or the dashboard spins forever. Zeroed
+  # counts next to the error flash read as "nothing loaded", not as real data.
+  defp empty_dashboard_stats do
+    %{flow_count: 0, node_count: 0, dialogue_count: 0, word_count: 0}
   end
 
   defp flow_sort_columns do
@@ -331,36 +365,48 @@ defmodule StoryarnWeb.FlowLive.Index do
     }
   end
 
-  defp format_flow_issues(issues, workspace, project) do
-    Enum.map(issues, fn issue ->
-      {severity, message} =
-        case issue.issue_type do
-          :no_entry ->
-            {:error, dgettext("flows", "Flow \"%{name}\" has no entry node", name: issue.flow_name)}
-
-          :disconnected_nodes ->
-            {:warning,
-             dgettext("flows", "Flow \"%{name}\" has %{count} disconnected node(s)",
-               name: issue.flow_name,
-               count: issue.count
-             )}
-
-          :dead_end_nodes ->
-            {:warning,
-             dgettext("flows", "Flow \"%{name}\" has %{count} node(s) without outgoing connection",
-               name: issue.flow_name,
-               count: issue.count
-             )}
-
-          _ ->
-            {:info, gettext("Issue detected")}
-        end
-
+  # One row per finding, with the CODE — never a rendered sentence. Vue resolves
+  # it against `flows.health.findings.*`, the same catalog the editor popover
+  # uses, exactly as `SheetDashboard.vue` does. That is what makes the dashboard
+  # and the editor incapable of wording the same finding differently, and it is
+  # why this needs no server-side copy at all.
+  defp format_flow_issues(findings, workspace, project) do
+    findings
+    |> Enum.map(fn finding ->
       %{
-        severity: severity,
-        message: message,
-        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{issue.flow_id}"
+        severity: Atom.to_string(finding.severity),
+        code: to_string(finding.code),
+        label: issue_label(finding),
+        details: finding.details,
+        href: issue_href(finding, workspace, project)
       }
     end)
+    # The list is rendered in the order it arrives, and now that every code reaches
+    # it, errors would otherwise sit behind hundreds of info findings.
+    |> Enum.sort_by(&{Severity.rank(&1.severity), &1.label, &1.code})
+  end
+
+  # A finding on a node opens the flow AND focuses that node, exactly as the
+  # scenes dashboard does with `?highlight=<type>:<id>` — the row is otherwise a
+  # link to a canvas the reader still has to search by hand.
+  defp issue_href(finding, workspace, project) do
+    base = ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{finding.flow_id}"
+
+    if finding.entity_type != "flow" and not is_nil(finding.entity_id) do
+      "#{base}?highlight=node:#{finding.entity_id}"
+    else
+      base
+    end
+  end
+
+  # Location only, like sheets' "Ancient Tome · type": the flow, plus the node
+  # when the finding belongs to one.
+  defp issue_label(%{entity_type: "flow", details: details}) do
+    Map.get(details, :flow_name, dgettext("flows", "Flow"))
+  end
+
+  defp issue_label(%{entity_type: type, entity_id: id, details: details}) do
+    flow_name = Map.get(details, :flow_name, dgettext("flows", "Flow"))
+    "#{flow_name} · #{NodeTypeRegistry.label(type)} ##{id}"
   end
 end

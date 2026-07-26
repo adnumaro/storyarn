@@ -370,31 +370,40 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     data = Flows.resolve_node_colors(node.type, node.data)
 
     if node.type in ["instruction", "dialogue"] do
-      project_variables = Storyarn.Sheets.list_project_variables(project_id)
-      maybe_add_type_warning_flag(data, node.type, project_variables)
+      # `list_referenceable_variables/1`, not the sheets-only set: a single-node
+      # canvas update that type-checked against a smaller vocabulary than the
+      # editor and the dashboard would drop the warning on every assignment to a
+      # scene pin or zone property, and put it back on the next full reload.
+      # Keyed once here, not once per assignment.
+      variable_types =
+        project_id
+        |> Flows.list_referenceable_variables()
+        |> Flows.variable_type_map()
+
+      maybe_add_type_warning_flag(data, node.type, variable_types)
     else
       data
     end
   end
 
-  defp maybe_add_type_warning_flag(data, "instruction", project_variables) do
+  defp maybe_add_type_warning_flag(data, "instruction", variable_types) do
     assignments = data["assignments"] || []
 
-    if Flows.instruction_has_type_warnings?(assignments, project_variables) do
+    if Flows.instruction_has_type_warnings?(assignments, variable_types) do
       Map.put(data, "has_type_warnings", true)
     else
       data
     end
   end
 
-  defp maybe_add_type_warning_flag(data, "dialogue", project_variables) do
+  defp maybe_add_type_warning_flag(data, "dialogue", variable_types) do
     responses = data["responses"] || []
 
     updated =
       Enum.map(responses, fn response ->
         assignments = response["instruction_assignments"] || []
 
-        if Flows.instruction_has_type_warnings?(assignments, project_variables) do
+        if Flows.instruction_has_type_warnings?(assignments, variable_types) do
           Map.put(response, "has_type_warnings", true)
         else
           response
@@ -404,7 +413,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     Map.put(data, "responses", updated)
   end
 
-  defp maybe_add_type_warning_flag(data, _type, _project_variables), do: data
+  defp maybe_add_type_warning_flag(data, _type, _variable_types), do: data
 
   # Pushes a full flow update for graph-wide mutations, otherwise a single node update.
   defp push_node_or_flow_update(socket, _node, renamed_count, _connections_changed?) when renamed_count > 0 do

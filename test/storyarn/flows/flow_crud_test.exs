@@ -1220,7 +1220,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
   # detect_flow_issues/1
   # ===========================================================================
 
-  describe "detect_flow_issues/1" do
+  describe "list_dashboard_health_findings/1" do
     test "detects flows without entry nodes" do
       user = user_fixture()
       project = project_fixture(user)
@@ -1228,11 +1228,11 @@ defmodule Storyarn.Flows.FlowCrudTest do
       # Import a flow without entry node (raw import bypasses auto-creation)
       {:ok, flow} = Flows.import_flow(project.id, %{name: "No Entry", shortcut: "no-entry"})
 
-      issues = Flows.detect_flow_issues(project.id)
-      no_entry_issues = Enum.filter(issues, &(&1.issue_type == :no_entry))
+      findings = Flows.list_dashboard_health_findings(project.id)
+      missing_entry = Enum.filter(findings, &(&1.code == :missing_entry))
 
-      assert length(no_entry_issues) == 1
-      assert hd(no_entry_issues).flow_id == flow.id
+      assert length(missing_entry) == 1
+      assert hd(missing_entry).flow_id == flow.id
     end
 
     test "detects disconnected nodes" do
@@ -1241,13 +1241,15 @@ defmodule Storyarn.Flows.FlowCrudTest do
       # Add a third disconnected dialogue node
       node_fixture(flow, %{type: "dialogue", data: %{"text" => "Orphan"}})
 
-      issues = Flows.detect_flow_issues(project.id)
-      disconnected = Enum.filter(issues, &(&1.issue_type == :disconnected_nodes))
+      # Three nodes with no connections at all: the dashboard now names each one
+      # instead of collapsing them into a single bucketed count.
+      isolated =
+        project.id
+        |> Flows.list_dashboard_health_findings()
+        |> Enum.filter(&(&1.code == :isolated_node))
 
-      assert length(disconnected) == 1
-      issue = hd(disconnected)
-      assert issue.flow_id == flow.id
-      assert issue.count == 3
+      assert length(isolated) == 3
+      assert Enum.all?(isolated, &(&1.flow_id == flow.id))
     end
 
     test "ignores connectionless visual and organizational nodes" do
@@ -1260,8 +1262,14 @@ defmodule Storyarn.Flows.FlowCrudTest do
       node_fixture(flow, %{type: "annotation", data: %{"text" => "Design note"}})
       assert {:ok, _sequence} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
 
-      issues = Flows.detect_flow_issues(project.id)
-      assert issues == []
+      # Editorial findings are in scope now, and the auto-created Entry/Exit pair
+      # carries none; what must hold is that no STRUCTURAL finding is reported.
+      findings = Flows.list_dashboard_health_findings(project.id)
+
+      refute Enum.any?(
+               findings,
+               &(&1.code in [:isolated_node, :unreachable_node, :no_outgoing_connection, :missing_entry])
+             )
     end
 
     test "detects connected nodes whose outgoing connection points to a soft-deleted node" do
@@ -1278,13 +1286,14 @@ defmodule Storyarn.Flows.FlowCrudTest do
       |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
       |> Repo.update!()
 
-      issues = Flows.detect_flow_issues(project.id)
-      dead_end = Enum.filter(issues, &(&1.issue_type == :dead_end_nodes))
+      dead_ends =
+        project.id
+        |> Flows.list_dashboard_health_findings()
+        |> Enum.filter(&(&1.code == :no_outgoing_connection))
 
-      assert length(dead_end) == 1
-      issue = hd(dead_end)
-      assert issue.flow_id == flow.id
-      assert issue.count == 1
+      assert length(dead_ends) == 1
+      assert hd(dead_ends).flow_id == flow.id
+      assert hd(dead_ends).entity_id == source.id
     end
 
     test "returns empty list for healthy project" do
@@ -1298,8 +1307,14 @@ defmodule Storyarn.Flows.FlowCrudTest do
       exit_node = Enum.find(loaded.nodes, &(&1.type == "exit"))
       Storyarn.FlowsFixtures.connection_fixture(loaded, entry, exit_node)
 
-      issues = Flows.detect_flow_issues(project.id)
-      assert issues == []
+      # Editorial findings are in scope now, and the auto-created Entry/Exit pair
+      # carries none; what must hold is that no STRUCTURAL finding is reported.
+      findings = Flows.list_dashboard_health_findings(project.id)
+
+      refute Enum.any?(
+               findings,
+               &(&1.code in [:isolated_node, :unreachable_node, :no_outgoing_connection, :missing_entry])
+             )
     end
   end
 end

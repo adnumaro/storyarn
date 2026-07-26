@@ -6,6 +6,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
   alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Scenes.PositionUtils
+  alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.MapUtils
@@ -58,11 +59,15 @@ defmodule Storyarn.Scenes.ZoneCrud do
     Repo.one!(from(z in SceneZone, where: z.scene_id == ^scene_id and z.id == ^zone_id, preload: [:label_icon_asset]))
   end
 
+  # A zone's shortcut is a referenceable variable, so create/update/delete change
+  # the vocabulary every health surface type-checks against — not just the zone
+  # count. Vertices are also health inputs (`invalid_zone_geometry` and
+  # `element_outside_canvas`), so the optimized drag path must invalidate too.
   def create_zone(scene_id, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(
-      scene_id,
+    scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(
       [project_lock: :update],
       fn scene ->
         zone = %SceneZone{scene_id: scene.id}
@@ -84,13 +89,14 @@ defmodule Storyarn.Scenes.ZoneCrud do
         end
       end
     )
+    |> SceneCrud.broadcast_scene_dashboard_result(scene_id)
   end
 
   def update_zone(%SceneZone{} = zone, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(
-      zone.scene_id,
+    zone.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(
       [project_lock: :update],
       fn scene ->
         with {:ok, locked_zone} <- lock_zone_for_scene(zone.id, scene.id),
@@ -112,14 +118,15 @@ defmodule Storyarn.Scenes.ZoneCrud do
         end
       end
     )
+    |> SceneCrud.broadcast_scene_dashboard_result(zone.scene_id)
   end
 
   @doc """
   Updates only vertices (optimized for drag operations).
   """
   def update_zone_vertices(%SceneZone{} = zone, attrs) do
-    SceneReferenceIntegrity.with_active_scene_lock(
-      zone.scene_id,
+    zone.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(
       [project_lock: :update],
       fn scene ->
         with {:ok, locked_zone} <- lock_zone_for_scene(zone.id, scene.id),
@@ -128,22 +135,27 @@ defmodule Storyarn.Scenes.ZoneCrud do
                  scene,
                  locked_zone,
                  %{}
-               ) do
-          locked_zone
-          |> SceneZone.update_vertices_changeset(attrs)
-          |> Repo.update()
+               ),
+             {:ok, updated_zone} <-
+               locked_zone
+               |> SceneZone.update_vertices_changeset(attrs)
+               |> Repo.update() do
+          {:ok, {updated_zone, scene.project_id}}
         end
       end
     )
+    |> SceneCrud.broadcast_scene_dashboard_project_result()
   end
 
   def delete_zone(%SceneZone{} = zone) do
-    SceneReferenceIntegrity.with_active_scene_lock(zone.scene_id, fn scene ->
+    zone.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_zone} <- lock_zone_for_scene(zone.id, scene.id),
            :ok <- delete_zone_references(locked_zone.id) do
         Repo.delete(locked_zone)
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(zone.scene_id)
   end
 
   def change_zone(%SceneZone{} = zone, attrs \\ %{}) do

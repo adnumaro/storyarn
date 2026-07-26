@@ -2,11 +2,19 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
   @moduledoc """
   Builds the enriched snapshot used by the scene health checker and serializes
   its findings for the Vue header.
+
+  The check itself runs through `Scenes.scene_health_findings/3` — the same
+  composition point the project-wide dashboard sweep enters — so the editor and
+  the dashboard cannot feed the checker differently for the same scene.
   """
+
+  use Gettext, backend: Storyarn.Gettext
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Scenes.HealthChecker
+  alias Storyarn.Scenes
+  alias Storyarn.Shared.StringUtils
+  alias StoryarnWeb.SceneLive.Helpers.SceneHelpers
 
   @empty_health %{errorItems: [], warningItems: [], infoItems: []}
 
@@ -19,8 +27,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
   def assign_scene_health(socket) do
     assigns = socket.assigns
     collections = scene_collections(assigns)
-    snapshot = health_snapshot(assigns, collections)
-    findings = HealthChecker.check(snapshot)
+    findings = Scenes.scene_health_findings(assigns.scene, collections, health_references(assigns))
 
     assign(
       socket,
@@ -49,25 +56,21 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
     }
   end
 
-  defp health_snapshot(assigns, collections) do
-    %{
-      scene: assigns.scene,
-      layers: collections.layers,
-      zones: collections.zones,
-      pins: collections.pins,
-      connections: collections.connections,
-      annotations: collections.annotations,
-      ambient_flows: collections.ambient_flows,
-      scene_layer_ids: MapSet.new(collections.layers, & &1.id),
-      scene_pin_ids: MapSet.new(collections.pins, & &1.id),
-      references_loaded: assigns.health_references_loaded,
-      valid_scene_ids: MapSet.new(list(assigns.project_scenes), & &1.id),
-      valid_sheet_ids: assigns.project_sheets |> flatten_tree() |> MapSet.new(& &1.id),
-      valid_flow_ids: MapSet.new(list(assigns.project_flows), & &1.id),
-      valid_asset_ids: MapSet.new(list(assigns.project_asset_ids)),
-      project_variables: list(assigns.project_variables)
-    }
+  # `health_references_loaded` stays the gate: until the async sidebar load
+  # lands, every project reference set is empty and reporting them as stale
+  # would flag the whole scene.
+  defp health_references(assigns) do
+    Scenes.scene_health_references(%{
+      loaded?: assigns.health_references_loaded,
+      scene_ids: entity_ids(assigns.project_scenes),
+      sheet_ids: assigns.project_sheets |> flatten_tree() |> Enum.map(& &1.id),
+      flow_ids: entity_ids(assigns.project_flows),
+      asset_ids: list(assigns.project_asset_ids),
+      variables: list(assigns.project_variables)
+    })
   end
+
+  defp entity_ids(entities), do: entities |> list() |> Enum.map(& &1.id)
 
   @doc "Serializes checker findings into stable, grouped UI payloads."
   def health_payload(findings, scene, layers, zones, pins, connections, annotations, ambient_flows) do
@@ -102,46 +105,48 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
 
   defp health_label(%{entity_type: "scene"}, context), do: context.scene_name
 
-  defp health_label(%{entity_type: entity_type, entity_id: entity_id, details: details}, context) do
-    case entity_type do
-      "collection_item" ->
-        item_label = Map.get(context.collection_items, entity_id, "Item #{entity_id}")
-        zone_label = Map.get(context.zones, details[:zone_id] || details["zone_id"], "Collection")
-        "#{zone_label} · #{item_label}"
+  # `Storyarn.Scenes.HealthChecker` builds every `details` map with atom keys —
+  # `finding/2` is its only constructor and no caller outside it supplies one —
+  # so `details[:zone_id]` is the whole access, not half of it.
+  defp health_label(%{entity_type: "collection_item", entity_id: entity_id, details: details}, context) do
+    zone_id = details[:zone_id]
+    item_label = Map.get(context.collection_items, entity_id, element_label("collection_item", entity_id))
+    zone_label = Map.get(context.zones, zone_id, element_label("zone", zone_id))
+    "#{zone_label} · #{item_label}"
+  end
 
-      _ ->
-        context.labels
-        |> Map.get(entity_type, %{})
-        |> Map.get(entity_id, fallback_label(entity_type, entity_id))
-    end
+  defp health_label(%{entity_type: entity_type, entity_id: entity_id}, context) do
+    context.labels
+    |> Map.get(entity_type, %{})
+    |> Map.get(entity_id, element_label(entity_type, entity_id))
   end
 
   defp label_context(scene, layers, zones, pins, connections, annotations, ambient_flows) do
     %{
-      scene_name: present_label(scene.name, "Scene"),
-      zones: label_map(zones, :name, "Zone"),
+      scene_name: StringUtils.present_label(scene.name, SceneHelpers.element_type_label("scene")),
+      zones: label_map(zones, :name, "zone"),
       collection_items: collection_item_labels(zones),
       labels: %{
-        "layer" => label_map(layers, :name, "Layer"),
-        "zone" => label_map(zones, :name, "Zone"),
-        "pin" => label_map(pins, :label, "Pin"),
-        "connection" => label_map(connections, :label, "Connection"),
-        "annotation" => label_map(annotations, :text, "Annotation"),
+        "layer" => label_map(layers, :name, "layer"),
+        "zone" => label_map(zones, :name, "zone"),
+        "pin" => label_map(pins, :label, "pin"),
+        "connection" => label_map(connections, :label, "connection"),
+        "annotation" => label_map(annotations, :text, "annotation"),
         "ambient_flow" => ambient_flow_labels(ambient_flows)
       }
     }
   end
 
-  defp label_map(items, field, fallback) do
+  defp label_map(items, field, entity_type) do
     Map.new(items || [], fn item ->
-      {item.id, present_label(Map.get(item, field), "#{fallback} ##{item.id}")}
+      {item.id, StringUtils.present_label(Map.get(item, field), element_label(entity_type, item.id))}
     end)
   end
 
   defp ambient_flow_labels(ambient_flows) do
     Map.new(ambient_flows || [], fn ambient_flow ->
       flow_name = get_in(ambient_flow, [Access.key(:flow), Access.key(:name)])
-      {ambient_flow.id, present_label(flow_name, "Ambient flow ##{ambient_flow.id}")}
+      {ambient_flow.id, StringUtils.present_label(flow_name, element_label("ambient_flow", ambient_flow.id))}
     end)
   end
 
@@ -159,7 +164,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
     |> Enum.filter(&is_map/1)
     |> Map.new(fn item ->
       id = item["id"]
-      {id, present_label(item["label"], "Item #{id}")}
+      {id, StringUtils.present_label(item["label"], element_label("collection_item", id))}
     end)
   end
 
@@ -176,13 +181,12 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
   defp list(value) when is_list(value), do: value
   defp list(_value), do: []
 
-  defp present_label(value, fallback) when is_binary(value) do
-    if String.trim(value) == "", do: fallback, else: value
-  end
-
-  defp present_label(_value, fallback), do: fallback
-
-  defp fallback_label(entity_type, entity_id) do
-    entity_type |> String.replace("_", " ") |> String.capitalize() |> Kernel.<>(" ##{entity_id}")
+  # "Zona #12" — the element's type plus its id, for anything the author never
+  # named. Same shape as the flows sibling's `"%{type} #%{id}"`.
+  defp element_label(entity_type, entity_id) do
+    dgettext("scenes", "%{type} #%{id}",
+      type: SceneHelpers.element_type_label(entity_type),
+      id: entity_id
+    )
   end
 end
