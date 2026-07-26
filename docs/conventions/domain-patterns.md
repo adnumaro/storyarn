@@ -26,17 +26,17 @@ and only under `lib/storyarn_web/`. The rule above is broader than the linter.
 
 ### Contexts and their submodules
 
-| Context          | Facade                      | Key Submodules                                                                                                                                                                                          |
-| ---------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts         | `Storyarn.Accounts`         | `Users`, `Registration`, `Sessions`, `Emails`, `Passwords`, `Profiles`, `Scope`, `UserNotifier`, `UserToken`                                                                         |
+| Context          | Facade                      | Key Submodules                                                                                                                                                                                           |
+| ---------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts         | `Storyarn.Accounts`         | `Users`, `Registration`, `Sessions`, `Emails`, `Passwords`, `Profiles`, `Scope`, `UserNotifier`, `UserToken`                                                                                             |
 | Workspaces       | `Storyarn.Workspaces`       | `WorkspaceCrud`, `Memberships`, `Invitations` (schemas: `WorkspaceMembership`, `WorkspaceInvitation`)                                                                                                    |
 | Projects         | `Storyarn.Projects`         | `ProjectCrud`, `Memberships`, `Invitations`, `Dashboard`, `ProjectTrash` (schemas: `ProjectMembership`, `ProjectInvitation`)                                                                             |
-| Sheets           | `Storyarn.Sheets`           | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `GalleryCrud`, `AvatarCrud`, `PropertyInheritance`, `ReferenceTracker`, `TreeOperations`, `HealthChecker`, `FormulaResolver`   |
+| Sheets           | `Storyarn.Sheets`           | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `GalleryCrud`, `AvatarCrud`, `PropertyInheritance`, `ReferenceTracker`, `TreeOperations`, `HealthChecker`, `FormulaResolver`                      |
 | Flows            | `Storyarn.Flows`            | `FlowCrud`, `NodeCrud` (-> `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `SequenceCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`, `HealthChecker`, `StructuralAnalysis` |
 | Scenes           | `Storyarn.Scenes`           | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `AmbientFlowCrud`, `ExplorationSessionCrud`, `TreeOperations`, `HealthChecker`, `ChangesetHelpers`                  |
 | Screenplays      | `Storyarn.Screenplays`      | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`, `FlowSync`, `LinkedPageCrud`, `AutoDetect`, `Export.Fountain`, `Import.Fountain`                              |
 | Localization     | `Storyarn.Localization`     | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`, `TranslationRunCrud`, `Providers.*`                                                           |
-| Collaboration    | `Storyarn.Collaboration`    | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                                                          |
+| Collaboration    | `Storyarn.Collaboration`    | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                                                           |
 | Assets           | `Storyarn.Assets`           | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`, `BlobStore`, `UploadPolicy`                                                                                    |
 | AI               | `Storyarn.AI`               | `Operations`, `Execution`, `Executor`, `Allowance`, `Context`, `Audit`, `IntegrationCrud`, `InferenceProviders`, `ModelCatalog`, `CredentialResolver`                                                    |
 | References       | `Storyarn.References`       | `Backlinks`, `EntityTracker`, `VariableTracker`, `VariableUsage`, `ProjectReferenceIntegrity`, `AvatarIntegrity`                                                                                         |
@@ -44,15 +44,15 @@ and only under `lib/storyarn_web/`. The rule above is broader than the linter.
 | Versioning       | `Storyarn.Versioning`       | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`, `ProjectSnapshotCrud`, `SnapshotDiff`, `ConflictDetector`, `RestorePolicy`, `ProjectRecovery`                                      |
 | Exports          | `Storyarn.Exports`          | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`, `SizeGuard`, `LocalizationCatalog`                                                            |
 | Imports          | `Storyarn.Imports`          | `Parser`, `ParserRegistry`, `Parsers.*`, `ImportPlan`, `PlanStorage`, `ErrorDeduplicator`                                                                                                                |
-| Billing          | `Storyarn.Billing`          | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`                                                                                                                                                    |
-| CommandPalette   | `Storyarn.CommandPalette`   | `Operation`                                                                                                                                                                                             |
-| GlobalSearch     | `Storyarn.GlobalSearch`     | `Destinations`                                                                                                                                                                                          |
-| Onboarding       | `Storyarn.Onboarding`       | `TutorialProgress`                                                                                                                                                                                      |
-| Docs             | `Storyarn.Docs`             | `Guide`, `GuideBuilder`                                                                                                                                                                                 |
-| Blog             | `Storyarn.Blog`             | `Post`, `PostBuilder`                                                                                                                                                                                   |
-| Analytics        | `Storyarn.Analytics`        | `PostHogAdapter`, `NoopAdapter`                                                                                                                                                                         |
-| RateLimiter      | `Storyarn.RateLimiter`      | `ETSBackend`, `RedisBackend`                                                                                                                                                                            |
-| Shortcuts        | `Storyarn.Shortcuts`        | Centralized shortcut generation for all entity types (single module, no submodules)                                                                                                                     |
+| Billing          | `Storyarn.Billing`          | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`                                                                                                                                                     |
+| CommandPalette   | `Storyarn.CommandPalette`   | `Operation`                                                                                                                                                                                              |
+| GlobalSearch     | `Storyarn.GlobalSearch`     | `Destinations`                                                                                                                                                                                           |
+| Onboarding       | `Storyarn.Onboarding`       | `TutorialProgress`                                                                                                                                                                                       |
+| Docs             | `Storyarn.Docs`             | `Guide`, `GuideBuilder`                                                                                                                                                                                  |
+| Blog             | `Storyarn.Blog`             | `Post`, `PostBuilder`                                                                                                                                                                                    |
+| Analytics        | `Storyarn.Analytics`        | `PostHogAdapter`, `NoopAdapter`                                                                                                                                                                          |
+| RateLimiter      | `Storyarn.RateLimiter`      | `ETSBackend`, `RedisBackend`                                                                                                                                                                             |
+| Shortcuts        | `Storyarn.Shortcuts`        | Centralized shortcut generation for all entity types (single module, no submodules)                                                                                                                      |
 
 Facade-less directories — call the module directly, do not invent a facade:
 `lib/storyarn/dashboards/` (`Cache`), `lib/storyarn/emails/` (`Layout`, `Templates`),
@@ -274,11 +274,11 @@ Topic format: `"{type}:{id}:{channel}"` where channel is `presence`, `changes`,
 
 Project-wide channels take a bare `project_id`, not a scope tuple:
 
-| Channel     | Subscribe                             | Topic                          |
-| ----------- | ------------------------------------- | ------------------------------ |
-| Flow graph  | `subscribe_flow_graph/1`              | `project:{id}:flow_graph`      |
-| Restoration | `subscribe_restoration/1`             | `project:{id}:restoration`     |
-| Dashboard   | `subscribe_dashboard/1`               | `project:{id}:dashboard`       |
+| Channel     | Subscribe                 | Topic                      |
+| ----------- | ------------------------- | -------------------------- |
+| Flow graph  | `subscribe_flow_graph/1`  | `project:{id}:flow_graph`  |
+| Restoration | `subscribe_restoration/1` | `project:{id}:restoration` |
+| Dashboard   | `subscribe_dashboard/1`   | `project:{id}:dashboard`   |
 
 ---
 

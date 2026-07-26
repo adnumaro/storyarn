@@ -8,13 +8,13 @@
 
 Centralizes ALL name-to-identifier conversions. Handles Unicode transliteration (accents → ASCII), lowercasing, and character filtering.
 
-| Function                 | Input → Output                                                                         | Used For                                    |
-| ------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------- |
-| `slugify/1`              | `"My Workspace!"` → `"my-workspace"`                                                   | URL slugs. Allows `[a-z0-9-]`               |
-| `variablify/1`           | `"Health Points"` → `"health_points"`                                                  | Variable names. Allows `[a-z0-9_.]`, `nil` on blank |
-| `shortcutify/1`          | `"MC.Jaime"` → `"mc.jaime"`                                                            | Sheet/flow/scene shortcuts. Allows `[a-z0-9-.]` — spaces become `-`, dots preserved |
-| `generate_unique_slug/3-4` | `(Schema, scope, name, suffix \\ nil)` → `"my-workspace"` or `"my-workspace-a1b2c3d4"` | Unique slugs with collision suffix        |
-| `maybe_regenerate/4`     | `(current, new_name, referenced?, normalize_fn)` → `String.t()`                        | Smart rename: skips if entity has backlinks |
+| Function                   | Input → Output                                                                         | Used For                                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `slugify/1`                | `"My Workspace!"` → `"my-workspace"`                                                   | URL slugs. Allows `[a-z0-9-]`                                                       |
+| `variablify/1`             | `"Health Points"` → `"health_points"`                                                  | Variable names. Allows `[a-z0-9_.]`, `nil` on blank                                 |
+| `shortcutify/1`            | `"MC.Jaime"` → `"mc.jaime"`                                                            | Sheet/flow/scene shortcuts. Allows `[a-z0-9-.]` — spaces become `-`, dots preserved |
+| `generate_unique_slug/3-4` | `(Schema, scope, name, suffix \\ nil)` → `"my-workspace"` or `"my-workspace-a1b2c3d4"` | Unique slugs with collision suffix                                                  |
+| `maybe_regenerate/4`       | `(current, new_name, referenced?, normalize_fn)` → `String.t()`                        | Smart rename: skips if entity has backlinks                                         |
 
 **Pipeline:** NFD decomposition → strip combining marks → lowercase → filter allowed chars → collapse separators → trim
 
@@ -37,8 +37,8 @@ NameNormalizer.shortcutify("MC.Jaime")  # => "mc.jaime"
 
 Shortcut lifecycle management shared by ALL CRUD modules (FlowCrud, SheetCrud, SceneCrud, ScreenplayCrud).
 
-| Function                              | Purpose                                                                |
-| ------------------------------------- | ---------------------------------------------------------------------- |
+| Function                                | Purpose                                                                |
+| --------------------------------------- | ---------------------------------------------------------------------- |
 | `maybe_generate_shortcut/4`             | Auto-generates shortcut from name if not present in attrs              |
 | `name_changing?/2`                      | Returns true if attrs contain a new, non-empty name                    |
 | `missing_shortcut?/1`                   | Returns true if entity shortcut is nil/empty                           |
@@ -64,18 +64,18 @@ attrs = ShortcutHelpers.maybe_generate_shortcut_on_update(entity, attrs, &genera
 
 Generic tree manipulation for ANY entity with `parent_id` + `position` fields. Used by sheets, flows, scenes, screenplays.
 
-| Function                       | Purpose                                                            |
-| ------------------------------ | ------------------------------------------------------------------ |
-| `reorder/5`                    | Reorder siblings within a parent (transactional)                   |
-| `move_to_position/5`           | Move entity to new parent at position                              |
-| `next_position/3`              | Get next available position for new child                          |
-| `list_by_parent/3`             | List children ordered by position                                  |
-| `update_position_only/3`       | Update just position field                                         |
-| `reorder_source_container/4`   | Compact positions after removal                                    |
-| `add_parent_filter/2`          | Add parent_id filter to query (handles nil for roots)              |
-| `batch_set_positions/3`        | Single-statement position update for many rows. Takes a raw table name + required `:scope` opt; both are validated against hardcoded allowlists |
-| `descendant?/3-4`              | Cycle guard for reparenting; bails out past depth 100              |
-| `build_tree_from_flat_list/1-2` | Nest a flat list into `:children` in memory                       |
+| Function                        | Purpose                                                                                                                                         |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reorder/5`                     | Reorder siblings within a parent (transactional)                                                                                                |
+| `move_to_position/5`            | Move entity to new parent at position                                                                                                           |
+| `next_position/3`               | Get next available position for new child                                                                                                       |
+| `list_by_parent/3`              | List children ordered by position                                                                                                               |
+| `update_position_only/3`        | Update just position field                                                                                                                      |
+| `reorder_source_container/4`    | Compact positions after removal                                                                                                                 |
+| `add_parent_filter/2`           | Add parent_id filter to query (handles nil for roots)                                                                                           |
+| `batch_set_positions/3`         | Single-statement position update for many rows. Takes a raw table name + required `:scope` opt; both are validated against hardcoded allowlists |
+| `descendant?/3-4`               | Cycle guard for reparenting; bails out past depth 100                                                                                           |
+| `build_tree_from_flat_list/1-2` | Nest a flat list into `:children` in memory                                                                                                     |
 
 ```elixir
 TreeOperations.reorder(Sheet, project_id, parent_id, ordered_ids, &list_fn/2)
@@ -135,14 +135,14 @@ changeset
 
 Map transformation and parsing utilities for handling mixed atom/string key maps from forms and JSON.
 
-| Function                | Purpose                                                                              |
-| ----------------------- | ------------------------------------------------------------------------------------ |
-| `stringify_keys/1`      | Convert top-level atom keys to strings (NOT recursive — nested maps keep their keys) |
-| `get_flexible/2`        | Fetch by atom key, falling back to the string key                                    |
-| `parse_int/1`           | Safe integer parsing: `"42"` → `42`, `42` → `42`, `nil` → `nil`                      |
-| `parse_to_number/1`     | Parse any value to float for formulas: `"42"` → `42.0`, `nil` → `0.0`                |
-| `ensure_integer/1`      | Integer passthrough, `0` for anything else                                           |
-| `format_number_result/1` | Collapse a whole float back to an integer for display                               |
+| Function                 | Purpose                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| `stringify_keys/1`       | Convert top-level atom keys to strings (NOT recursive — nested maps keep their keys) |
+| `get_flexible/2`         | Fetch by atom key, falling back to the string key                                    |
+| `parse_int/1`            | Safe integer parsing: `"42"` → `42`, `42` → `42`, `nil` → `nil`                      |
+| `parse_to_number/1`      | Parse any value to float for formulas: `"42"` → `42.0`, `nil` → `0.0`                |
+| `ensure_integer/1`       | Integer passthrough, `0` for anything else                                           |
+| `format_number_result/1` | Collapse a whole float back to an integer for display                                |
 
 ```elixir
 MapUtils.stringify_keys(%{name: "test", nested: %{key: "val"}})
@@ -252,20 +252,20 @@ Allowlist: `p br em strong b i u s span a ul ol li blockquote code pre sub sup d
 
 One line each. Open the file before writing anything that overlaps.
 
-| Module                 | File                       | What it owns                                                                                                                     |
-| ---------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `ColorUtils`           | `color_utils.ex`           | `valid_hex?/1`, `hex_to_oklch/1`, `darken_oklch/2` — hex→oklch for theme customization                                          |
-| `FormulaEngine`        | `formula_engine.ex`        | `parse/1`, `evaluate/2`, `compute/2`, `extract_symbols/1`, `to_latex/1`, `to_latex_substituted/2` — table formula columns        |
-| `FormulaRuntime`       | `formula_runtime.ex`       | `recompute_formulas/1`, `translate_same_row/2` — topological recompute of a runtime variables map after every mutation           |
+| Module                 | File                       | What it owns                                                                                                                      |
+| ---------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `ColorUtils`           | `color_utils.ex`           | `valid_hex?/1`, `hex_to_oklch/1`, `darken_oklch/2` — hex→oklch for theme customization                                            |
+| `FormulaEngine`        | `formula_engine.ex`        | `parse/1`, `evaluate/2`, `compute/2`, `extract_symbols/1`, `to_latex/1`, `to_latex_substituted/2` — table formula columns         |
+| `FormulaRuntime`       | `formula_runtime.ex`       | `recompute_formulas/1`, `translate_same_row/2` — topological recompute of a runtime variables map after every mutation            |
 | `HierarchicalSchema`   | `hierarchical_schema.ex`   | `delete_changeset/1`, `restore_changeset/1`, `move_changeset/2`, `validate_core_fields/1`, `validate_description/1`, `deleted?/1` |
-| `HtmlUtils`            | `html_utils.ex`            | `strip_html/1`, `strip_and_truncate/2`, `word_count/1`, `add_heading_ids/1`, `heading_outline/1` — **not** a sanitizer          |
-| `ImportHelpers`        | `import_helpers.ex`        | `detect_shortcut_conflicts/3`, `soft_delete_by_shortcut/3`, `bulk_insert/2-3`                                                    |
-| `InvitationSchema`     | `invitation_schema.ex`     | `use`-macro that generates the shared invitation schema/changesets (parameterized by `parent_key`, `allowed_roles`, …)           |
-| `InvitationOperations` | `invitation_operations.ex` | Config-map-driven invitation CRUD shared by Projects and Workspaces (`create_invitation`, `accept_invitation`, `revoke_…`)       |
-| `InvitationNotifier`   | `invitation_notifier.ex`   | `deliver_invitation/3-4` — email delivery for the above                                                                          |
-| `MembershipOperations` | `membership_operations.ex` | Config-map-driven membership CRUD + `authorize/2`, shared by Projects and Workspaces                                             |
-| `Trashable`            | `trashable.ex`             | `soft_delete/1`, `restore/1`, `inbound_refs/1`, `target_type!/1` — registry-driven soft-delete that also sweeps inbound refs     |
-| `WordCount`            | `word_count.ex`            | `for_node_data/2`, `for_block/2`, `for_block_value/1`, `for_name/1` — denormalized at write time                                 |
+| `HtmlUtils`            | `html_utils.ex`            | `strip_html/1`, `strip_and_truncate/2`, `word_count/1`, `add_heading_ids/1`, `heading_outline/1` — **not** a sanitizer            |
+| `ImportHelpers`        | `import_helpers.ex`        | `detect_shortcut_conflicts/3`, `soft_delete_by_shortcut/3`, `bulk_insert/2-3`                                                     |
+| `InvitationSchema`     | `invitation_schema.ex`     | `use`-macro that generates the shared invitation schema/changesets (parameterized by `parent_key`, `allowed_roles`, …)            |
+| `InvitationOperations` | `invitation_operations.ex` | Config-map-driven invitation CRUD shared by Projects and Workspaces (`create_invitation`, `accept_invitation`, `revoke_…`)        |
+| `InvitationNotifier`   | `invitation_notifier.ex`   | `deliver_invitation/3-4` — email delivery for the above                                                                           |
+| `MembershipOperations` | `membership_operations.ex` | Config-map-driven membership CRUD + `authorize/2`, shared by Projects and Workspaces                                              |
+| `Trashable`            | `trashable.ex`             | `soft_delete/1`, `restore/1`, `inbound_refs/1`, `target_type!/1` — registry-driven soft-delete that also sweeps inbound refs      |
+| `WordCount`            | `word_count.ex`            | `for_node_data/2`, `for_block/2`, `for_block_value/1`, `for_name/1` — denormalized at write time                                  |
 
 `EncryptedBinary` is covered above; it is a type, not a helper.
 
@@ -319,13 +319,13 @@ socket
 
 ## Remaining `StoryarnWeb.Helpers.*` modules
 
-| Module                  | File                          | What it owns                                                                                                            |
-| ----------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `AutoSnapshot`          | `auto_snapshot.ex`            | `schedule/2`, `cancel/1` — debounced auto-versioning for entity editors                                                  |
-| `EntitySearch`          | `entity_search.ex`            | `search_entities/4`, `search_entities_multi/4`, `search_variables/2-3`, `get_entity_name/3`, `get_entity_name_multi/3`, `get_variable_name/2` — pure |
-| `UndoRedoStack`         | `undo_redo_stack.ex`          | `init/1`, `push_undo/2-3`, `push_undo_no_clear/2-3`, `push_coalesced/4-5`, `pop_undo/1`, `pop_redo/1`, `push_redo/2-3`, `clear/1` |
-| `VersionEventHelpers`   | `version_event_helpers.ex`    | `handle_create`, `handle_delete`, `handle_promote`, `handle_compare`, `handle_*_restore`, `with_authorized_restore`      |
-| `VersionHistoryHelpers` | `version_history_helpers.ex`  | `load_history_data`, `load_more_history`, `serialize_versions`, `show_conflict_preview`, `detect_and_show_restore_preview` |
+| Module                  | File                         | What it owns                                                                                                                                         |
+| ----------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AutoSnapshot`          | `auto_snapshot.ex`           | `schedule/2`, `cancel/1` — debounced auto-versioning for entity editors                                                                              |
+| `EntitySearch`          | `entity_search.ex`           | `search_entities/4`, `search_entities_multi/4`, `search_variables/2-3`, `get_entity_name/3`, `get_entity_name_multi/3`, `get_variable_name/2` — pure |
+| `UndoRedoStack`         | `undo_redo_stack.ex`         | `init/1`, `push_undo/2-3`, `push_undo_no_clear/2-3`, `push_coalesced/4-5`, `pop_undo/1`, `pop_redo/1`, `push_redo/2-3`, `clear/1`                    |
+| `VersionEventHelpers`   | `version_event_helpers.ex`   | `handle_create`, `handle_delete`, `handle_promote`, `handle_compare`, `handle_*_restore`, `with_authorized_restore`                                  |
+| `VersionHistoryHelpers` | `version_history_helpers.ex` | `load_history_data`, `load_more_history`, `serialize_versions`, `show_conflict_preview`, `detect_and_show_restore_preview`                           |
 
 Domain-agnostic LiveView helpers also live in `lib/storyarn_web/live/shared/`:
 `CollaborationHelpers`, `DashboardHandlers`, `DashboardHelpers`, `InvitationHelpers`,
@@ -339,12 +339,12 @@ There is no shared JS utility layer under `assets/js/` — it holds only `app.js
 and the `PublicMobileNavigation` / `SeoMetadata` / PostHog scripts. Everything
 else is Vue/TypeScript under `assets/app/`:
 
-| Concern                         | Where                                                                    |
-| ------------------------------- | ------------------------------------------------------------------------ |
-| Pure utilities                  | `assets/app/shared/utils/` (`utils.ts`, `date-utils.ts`)                 |
-| Composables                     | `assets/app/shared/composables/` (`useLive`, `usePresence`, `useUpload`) |
-| Popovers, dropdowns, dialogs    | reka-ui primitives in `assets/app/components/ui/` — never hand-positioned |
-| Icons                           | `lucide-vue-next` components; `Record<string, Component>` map for dynamic |
-| Flow node canvas metadata       | `assets/app/modules/flows/editor/lib/node-configs.ts`                    |
+| Concern                      | Where                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| Pure utilities               | `assets/app/shared/utils/` (`utils.ts`, `date-utils.ts`)                  |
+| Composables                  | `assets/app/shared/composables/` (`useLive`, `usePresence`, `useUpload`)  |
+| Popovers, dropdowns, dialogs | reka-ui primitives in `assets/app/components/ui/` — never hand-positioned |
+| Icons                        | `lucide-vue-next` components; `Record<string, Component>` map for dynamic |
+| Flow node canvas metadata    | `assets/app/modules/flows/editor/lib/node-configs.ts`                     |
 
 Import via the `@shared` / `@components` / `@modules` / `@shell` / `@plugins` aliases.

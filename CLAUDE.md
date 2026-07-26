@@ -115,9 +115,10 @@ just e2e                    # Playwright E2E (mix test.e2e)
 The first, third and sixth run on `lib/storyarn_web/` only.
 
 Suppress inline with `# storyarn:disable`, `# storyarn:disable:<rule>`, or a
-`# storyarn:disable-start` / `# storyarn:disable-end` block. **It only walks
-`**/*.{ex,exs}`** — Vue/TS files are never scanned, so the `native_dialog` rule
-does not protect the frontend. Enforce that one by review.
+`# storyarn:disable-start` / `# storyarn:disable-end` block. **It only walks Elixir
+sources** — the collector globs `.ex` and `.exs` only, so Vue/TS files are never
+scanned and the `native_dialog` rule does not protect the frontend. Enforce that
+one by review.
 
 ## Domain Model
 

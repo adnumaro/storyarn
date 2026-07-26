@@ -12,12 +12,12 @@ The UI is **Vue 3 rendered through LiveVue**, not HEEx. Server-rendered HEEx is 
 
 **Architecture verifiers:** `pnpm arch` runs five checks — `depcruise` plus four Node scripts in `scripts/`:
 
-| Script                          | Enforces                                                                                                    |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Script                           | Enforces                                                                                                                                                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `verify-live-vue-components.mjs` | Every `v-component=` resolves to a real `.vue`; LiveView may only mount `live/`, `shell/`, or a module's public boundary — never `components/` or a module private segment (`canvas`, `chrome`, `panels`, `services`, `lib`, …) |
-| `verify-live-links.mjs`          | Every `<a>` in `components/`, `live/`, `modules/`, `shell/` is a LiveLink, external, an anchor, or carries `data-phx-link` / `data-live-link-exempt`                            |
-| `verify-live-sessions.mjs`       | The split `:require_authenticated_user` / `:project_scope` / `:workspace_scope` sessions stay deleted, and `live_session :authenticated_app` keeps its four `on_mount` hooks    |
-| `verify-live-layouts.mjs`        | `ProjectShell`, `Layouts.app` and `AppLayout` stay deleted; `Layouts.{auth,compare,docs,project,public,settings,workspace}` are rejected in favour of the concrete modules      |
+| `verify-live-links.mjs`          | Every `<a>` in `components/`, `live/`, `modules/`, `shell/` is a LiveLink, external, an anchor, or carries `data-phx-link` / `data-live-link-exempt`                                                                            |
+| `verify-live-sessions.mjs`       | The split `:require_authenticated_user` / `:project_scope` / `:workspace_scope` sessions stay deleted, and `live_session :authenticated_app` keeps its four `on_mount` hooks                                                    |
+| `verify-live-layouts.mjs`        | `ProjectShell`, `Layouts.app` and `AppLayout` stay deleted; `Layouts.{auth,compare,docs,project,public,settings,workspace}` are rejected in favour of the concrete modules                                                      |
 
 **E2E Tests:** `mix test.e2e` runs `test/e2e/` (`use PhoenixTest.Playwright.Case`, `@moduletag :e2e`). The alias builds assets first.
 
@@ -32,15 +32,15 @@ The UI is **Vue 3 rendered through LiveVue**, not HEEx. Server-rendered HEEx is 
 
 - **Always** begin a LiveView template with a concrete layout boundary module, invoked fully qualified. There is no `Layouts.app` and no nesting:
 
-  | Surface                     | Component                                                     |
-  | --------------------------- | ------------------------------------------------------------- |
-  | Project tools               | `<StoryarnWeb.Components.ProjectLayout.project>`              |
-  | Workspace dashboard         | `<StoryarnWeb.Components.WorkspaceLayout.workspace>`          |
-  | Account/workspace/project settings | `<StoryarnWeb.Components.SettingsLayout.settings>`     |
-  | Sign in / sign up / confirm | `<StoryarnWeb.Components.AuthLayout.auth>`                    |
-  | Landing, blog, legal, invitations | `<StoryarnWeb.Components.PublicLayout.public>`           |
-  | Documentation               | `<StoryarnWeb.Components.DocsLayout.docs>`                    |
-  | Version comparison          | `<StoryarnWeb.Components.CompareLayout.compare>`              |
+  | Surface                            | Component                                            |
+  | ---------------------------------- | ---------------------------------------------------- |
+  | Project tools                      | `<StoryarnWeb.Components.ProjectLayout.project>`     |
+  | Workspace dashboard                | `<StoryarnWeb.Components.WorkspaceLayout.workspace>` |
+  | Account/workspace/project settings | `<StoryarnWeb.Components.SettingsLayout.settings>`   |
+  | Sign in / sign up / confirm        | `<StoryarnWeb.Components.AuthLayout.auth>`           |
+  | Landing, blog, legal, invitations  | `<StoryarnWeb.Components.PublicLayout.public>`       |
+  | Documentation                      | `<StoryarnWeb.Components.DocsLayout.docs>`           |
+  | Version comparison                 | `<StoryarnWeb.Components.CompareLayout.compare>`     |
 
 - `StoryarnWeb.Layouts` is aliased in `storyarn_web.ex`, but it now holds only `root.html.heex`, `flash_group/1`, `command_palette/1` and the SEO/PostHog helpers — no page layout functions
 - `ProjectLayout.project/1` mounts sticky nested LiveViews itself: `PresenceLive` always, plus the per-tool sidebar passed as `sidebar_module` (`SheetsSidebarLive`, `FlowSidebarLive`, `SceneSidebarLive`, `LocalizationSidebarLive`, `AssetSidebarLive`, `ProjectSidebarLive`). Pass `sidebar_session` with everything that sidebar needs — it is a separate LiveView and inherits no assigns
@@ -60,6 +60,7 @@ The UI is **Vue 3 rendered through LiveVue**, not HEEx. Server-rendered HEEx is 
       @source "../../lib/storyarn_web";
 
   Note `@source "../app"` — **not** `../js`. Vue files outside `assets/app/` will not be scanned for classes
+
 - **Never** use `@apply` when writing raw css
 - Assets are bundled by **Vite** (`phoenix_vite`), not esbuild. `assets/js/app.js` is the only entry point; it imports `assets/app/index.ts`
 - LiveView hooks come from `getHooks(liveVueApp)`. There is no `assets/js/hooks/` directory — the only two hand-written hooks are `PublicMobileNavigation` and `SeoMetadata` in `assets/js/utils/`. Prefer a Vue component over a new hook
@@ -229,7 +230,7 @@ Controllers automatically have `current_scope` available if they use the `:brows
 - **Always** add unique DOM IDs to key elements (like forms, buttons, etc) when writing templates, these IDs can later be used in tests
 - For "app wide" template imports, add them to the `html_helpers` block in `storyarn_web.ex`
 
-- Elixir supports `if/else` but **does NOT support `if/else if` or `if/elsif`. **Never use `else if` or `elseif` in Elixir**, **always\*\* use `cond` or `case` for multiple conditionals.
+- Elixir supports `if/else` but **does NOT support `if/else if` or `if/elsif`**. Never use `else if` or `elseif` in Elixir — **always** use `cond` or `case` for multiple conditionals.
 
   **Never do this (invalid)**:
 
@@ -355,34 +356,34 @@ mix test --cover            # Coverage summary (threshold: 85)
 
 Facade at `lib/storyarn/{context}.ex`, submodules under `lib/storyarn/{context}/`. LiveViews call `Context.fun()`; calling `Context.SubModule.fun()` from `storyarn_web` is a `facade_bypass` violation.
 
-| Context         | Facade                       | Key Submodules                                                                                                                                     |
-| --------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts        | `Storyarn.Accounts`          | `Users`, `Registration`, `Sessions`, `Passwords`, `Profiles`, `Emails`, `Scope`, `UserToken`                                    |
-| Workspaces      | `Storyarn.Workspaces`        | `WorkspaceCrud`, `Memberships`, `Invitations`                                                                                                       |
-| Projects        | `Storyarn.Projects`          | `ProjectCrud`, `Memberships`, `Invitations`, `Dashboard`, `ProjectTrash`                                                                            |
-| Sheets          | `Storyarn.Sheets`            | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `GalleryCrud`, `PropertyInheritance`, `ReferenceTracker`, `HealthChecker`, `FormulaResolver` |
-| Flows           | `Storyarn.Flows`             | `FlowCrud`, `NodeCrud` (→ `NodeCreate/Update/Delete`), `ConnectionCrud`, `SequenceCrud`, `HealthChecker`, `StructuralAnalysis`, `Evaluator`         |
-| Scenes          | `Storyarn.Scenes`            | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `ExplorationSession`, `HealthChecker`                          |
-| Screenplays     | `Storyarn.Screenplays`       | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `ElementGrouping`, `FlowSync`, `AutoDetect`, `Export`, `Import`                               |
-| Localization    | `Storyarn.Localization`      | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`, `TranslationRunCrud`                     |
-| Collaboration   | `Storyarn.Collaboration`     | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                      |
-| Assets          | `Storyarn.Assets`            | `Asset`, `Storage` (behaviour + `Local`/`R2`), `BlobStore`, `ImageProcessor`, `StorageCompensation`, `UploadPolicy`                                 |
-| AI              | `Storyarn.AI`                | `Executor`, `Runtime`, `Operations`, `Tasks`/`TaskRegistry`, `Providers`, `RouteResolver`, `Allowance*`, `Settlement`, `Policy`, `Audit`            |
-| CommandPalette  | `Storyarn.CommandPalette`    | `Operation`                                                                                                                                         |
-| References      | `Storyarn.References`        | `EntityTracker`, `VariableTracker`, `Backlinks`, `ProjectReferenceIntegrity`, `AvatarIntegrity`                                                     |
-| ProjectTemplates| `Storyarn.ProjectTemplates`  | `Installation`, `PortableExport`, `PortableImport`, `PublicationRunner`, `TemplateQueries`, `Authorization`                                          |
-| Versioning      | `Storyarn.Versioning`        | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`, `ProjectSnapshot*`, `RestorePolicy`, `ConflictDetector`                       |
-| Exports         | `Storyarn.Exports`           | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`, `SizeGuard`                              |
-| Imports         | `Storyarn.Imports`           | `Parsers`, `ParserRegistry`, `ImportPlan`, `PlanStorage`, `ErrorDeduplicator`                                                                       |
-| Billing         | `Storyarn.Billing`           | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`                                                                                                |
-| GlobalSearch    | `Storyarn.GlobalSearch`      | `Destinations`                                                                                                                                      |
-| Onboarding      | `Storyarn.Onboarding`        | `TutorialProgress`                                                                                                                                  |
-| Blog            | `Storyarn.Blog`              | `Post`, `PostBuilder`                                                                                                                               |
-| Docs            | `Storyarn.Docs`              | `Guide`, `GuideBuilder`                                                                                                                             |
-| Analytics       | `Storyarn.Analytics`         | `PostHogAdapter`, `NoopAdapter`                                                                                                                     |
-| Publication     | (no facade)                  | `Locales`, `PathLocalizer`, `HtmlLinkLocalizer` — called as `Storyarn.Publication.Locales`                                                          |
-| Shortcuts       | `Storyarn.Shortcuts`         | Centralized shortcut generation for all entity types                                                                                                |
-| FeatureFlags    | `Storyarn.FeatureFlags`      | Single module                                                                                                                                       |
+| Context          | Facade                      | Key Submodules                                                                                                                                      |
+| ---------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts         | `Storyarn.Accounts`         | `Users`, `Registration`, `Sessions`, `Passwords`, `Profiles`, `Emails`, `Scope`, `UserToken`                                                        |
+| Workspaces       | `Storyarn.Workspaces`       | `WorkspaceCrud`, `Memberships`, `Invitations`                                                                                                       |
+| Projects         | `Storyarn.Projects`         | `ProjectCrud`, `Memberships`, `Invitations`, `Dashboard`, `ProjectTrash`                                                                            |
+| Sheets           | `Storyarn.Sheets`           | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `GalleryCrud`, `PropertyInheritance`, `ReferenceTracker`, `HealthChecker`, `FormulaResolver` |
+| Flows            | `Storyarn.Flows`            | `FlowCrud`, `NodeCrud` (→ `NodeCreate/Update/Delete`), `ConnectionCrud`, `SequenceCrud`, `HealthChecker`, `StructuralAnalysis`, `Evaluator`         |
+| Scenes           | `Storyarn.Scenes`           | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `ExplorationSession`, `HealthChecker`                          |
+| Screenplays      | `Storyarn.Screenplays`      | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `ElementGrouping`, `FlowSync`, `AutoDetect`, `Export`, `Import`                               |
+| Localization     | `Storyarn.Localization`     | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`, `TranslationRunCrud`                     |
+| Collaboration    | `Storyarn.Collaboration`    | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                      |
+| Assets           | `Storyarn.Assets`           | `Asset`, `Storage` (behaviour + `Local`/`R2`), `BlobStore`, `ImageProcessor`, `StorageCompensation`, `UploadPolicy`                                 |
+| AI               | `Storyarn.AI`               | `Executor`, `Runtime`, `Operations`, `Tasks`/`TaskRegistry`, `Providers`, `RouteResolver`, `Allowance*`, `Settlement`, `Policy`, `Audit`            |
+| CommandPalette   | `Storyarn.CommandPalette`   | `Operation`                                                                                                                                         |
+| References       | `Storyarn.References`       | `EntityTracker`, `VariableTracker`, `Backlinks`, `ProjectReferenceIntegrity`, `AvatarIntegrity`                                                     |
+| ProjectTemplates | `Storyarn.ProjectTemplates` | `Installation`, `PortableExport`, `PortableImport`, `PublicationRunner`, `TemplateQueries`, `Authorization`                                         |
+| Versioning       | `Storyarn.Versioning`       | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`, `ProjectSnapshot*`, `RestorePolicy`, `ConflictDetector`                       |
+| Exports          | `Storyarn.Exports`          | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`, `SizeGuard`                              |
+| Imports          | `Storyarn.Imports`          | `Parsers`, `ParserRegistry`, `ImportPlan`, `PlanStorage`, `ErrorDeduplicator`                                                                       |
+| Billing          | `Storyarn.Billing`          | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`                                                                                                |
+| GlobalSearch     | `Storyarn.GlobalSearch`     | `Destinations`                                                                                                                                      |
+| Onboarding       | `Storyarn.Onboarding`       | `TutorialProgress`                                                                                                                                  |
+| Blog             | `Storyarn.Blog`             | `Post`, `PostBuilder`                                                                                                                               |
+| Docs             | `Storyarn.Docs`             | `Guide`, `GuideBuilder`                                                                                                                             |
+| Analytics        | `Storyarn.Analytics`        | `PostHogAdapter`, `NoopAdapter`                                                                                                                     |
+| Publication      | (no facade)                 | `Locales`, `PathLocalizer`, `HtmlLinkLocalizer` — called as `Storyarn.Publication.Locales`                                                          |
+| Shortcuts        | `Storyarn.Shortcuts`        | Centralized shortcut generation for all entity types                                                                                                |
+| FeatureFlags     | `Storyarn.FeatureFlags`     | Single module                                                                                                                                       |
 
 Background jobs are Oban workers in `lib/storyarn/workers/`.
 
@@ -390,8 +391,8 @@ Background jobs are Oban workers in `lib/storyarn/workers/`.
 
 There is no static contract table — the flow editor alone has 116 `handle_event` clauses in `show.ex` and 121 `pushEvent` call sites in Vue. The contract lives in two files and **must be read before adding an event**:
 
-| Direction     | Source of truth                                                                             |
-| ------------- | ------------------------------------------------------------------------------------------- |
+| Direction     | Source of truth                                                                               |
+| ------------- | --------------------------------------------------------------------------------------------- |
 | Server→Client | `assets/app/modules/flows/editor/composables/flowCanvasServerEvents.ts` — every `handleEvent` |
 | Client→Server | `lib/storyarn_web/live/flow_live/show.ex` — every `handle_event`, delegating to `handlers/`   |
 
@@ -409,23 +410,23 @@ Data reaches Vue as **props on `<.vue>`**, not `data-*` attributes. There are no
 
 `lib/storyarn_web/live/flow_live/node_type_registry.ex` is the single source of truth: it maps a type string to `Nodes.{Type}.Node`, which owns `default_data/0`, `extract_form_data/1`, `on_select/2`, `on_double_click/1`, `duplicate_data_cleanup/1`, `icon_name/0`, `label/0` and `description/0`. Vue renders each type from `assets/app/modules/flows/editor/components/entities/nodes/{Type}Node.vue`.
 
-| Type          | `default_data/0`                                                                                                                                       |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `annotation`  | `%{text, color, font_size}` — `font_size` in `sm \| md \| lg`                                                                                            |
-| `entry`       | `%{}`                                                                                                                                                    |
+| Type          | `default_data/0`                                                                                                                                                            |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `annotation`  | `%{text, color, font_size}` — `font_size` in `sm \| md \| lg`                                                                                                               |
+| `entry`       | `%{}`                                                                                                                                                                       |
 | `exit`        | `%{label, technical_id, outcome_tags, outcome_color, exit_mode, referenced_flow_id, target_type, target_id}` — `exit_mode` in `terminal \| flow_reference \| caller_return` |
-| `dialogue`    | `%{speaker_sheet_id, text, stage_directions, menu_text, audio_asset_id, technical_id, localization_id, avatar_id, responses}`                            |
-| `hub`         | `%{hub_id, label, color}`                                                                                                                                |
-| `condition`   | `%{condition: %{logic, rules}, switch_mode}`                                                                                                             |
-| `instruction` | `%{assignments, description}`                                                                                                                            |
-| `jump`        | `%{target_hub_id}`                                                                                                                                       |
-| `subflow`     | `%{referenced_flow_id}`                                                                                                                                  |
+| `dialogue`    | `%{speaker_sheet_id, text, stage_directions, menu_text, audio_asset_id, technical_id, localization_id, avatar_id, responses}`                                               |
+| `hub`         | `%{hub_id, label, color}`                                                                                                                                                   |
+| `condition`   | `%{condition: %{logic, rules}, switch_mode}`                                                                                                                                |
+| `instruction` | `%{assignments, description}`                                                                                                                                               |
+| `jump`        | `%{target_hub_id}`                                                                                                                                                          |
+| `subflow`     | `%{referenced_flow_id}`                                                                                                                                                     |
 
 A dialogue response is `%{id, text, condition, instruction, instruction_assignments}`. `annotation` and `entry` are excluded from `user_addable_types/0`.
 
 ### File Size
 
-Nothing enforces a line limit — Credo checks line *length* (120), not file length, and the largest files in the codebase are far past any figure previously written here (`lib/storyarn/assets.ex` 1921, `scene_live/show.ex` 2139, `flow_live/show.ex` 1699). Treat these as direction, not gates:
+Nothing enforces a line limit — Credo checks line _length_ (120), not file length, and the largest files in the codebase are far past any figure previously written here (`lib/storyarn/assets.ex` 1921, `scene_live/show.ex` 2139, `flow_live/show.ex` 1699). Treat these as direction, not gates:
 
 - A LiveView `show.ex` should dispatch, not implement — push logic into `handlers/` (event handling, returns `{:noreply, socket}`) and `helpers/` (pure functions, no socket mutation)
 - A Vue component that owns more than one concern belongs in `composables/` plus a thin SFC
@@ -436,7 +437,7 @@ Nothing enforces a line limit — Credo checks line *length* (120), not file len
 Before changing the flow editor:
 
 1. **Read both sides of the event** — `show.ex` and `flowCanvasServerEvents.ts`. Adding one half ships a silent no-op
-2. **Check the node registry** — a new field belongs in `default_data/0` *and* `extract_form_data/1` in `nodes/{type}/node.ex`
+2. **Check the node registry** — a new field belongs in `default_data/0` _and_ `extract_form_data/1` in `nodes/{type}/node.ex`
 3. **Check the Vue node component** — `entities/nodes/{Type}Node.vue` renders it
 4. **Authorize the handler** — every mutating `handle_event` goes through `Authorize`
 5. Run `mix compile --warnings-as-errors`, then `mix test`
