@@ -1,0 +1,30 @@
+priv/docs/es/narrative-design/05-structural-analysis.md
+  s_604de6a6202303::t_70f9e744cb1d2d 22-23,25-26,42-58,76-89,98-113
+assets/app/live/localization/texts/LocalizationTextEdit.vue
+  s_604de6a6202303::t_35d276809d4bdf 48-53
+docs/conventions/shared-utilities.md
+  s_604de6a6202303::t_28646e9e2e6eca 176-178
+priv/docs/en/narrative-design/05-structural-analysis.md
+  s_604de6a6202303::t_e5cca3b15c0841 22-23,25-26,42-58,97-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c039616ef06c12ba6a057cd446dcf32b9e358e47",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_604de6a6202303": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11b82f6a-3990-43ee-93ab-6f1589bded40",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
