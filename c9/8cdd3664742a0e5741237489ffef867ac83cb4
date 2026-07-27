@@ -1,0 +1,28 @@
+test/storyarn/publication/locales_test.exs
+  s_6d6ea1f48924a1::t_2c46f9a6dbe498 180-193
+  s_6d6ea1f48924a1::t_acdf869b65c5cf 50,57-64,66-84,95-102,104-118,129-131,137-144,163,165-169,171,173-176,194-233
+  s_6d6ea1f48924a1::t_bded1a5225e47e 132-133
+  s_6d6ea1f48924a1::t_d2a979f142ccfb 146-162
+  s_6d6ea1f48924a1::t_e53674b27f3482 145
+  s_6d6ea1f48924a1::t_4e050a765f4d07 234
+justfile
+  s_6d6ea1f48924a1::t_9f2c95fd1829ee 74
+mix.exs
+  s_6d6ea1f48924a1::t_a794aecd755089 152-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c98cdd3664742a0e5741237489ffef867ac83cb4",
+  "prompts": {},
+  "sessions": {
+    "s_6d6ea1f48924a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8bcf717a-da03-4d59-b3fe-0596b6b12fbf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+docs/conventions/domain-patterns.md
+  s_6d6ea1f48924a1::t_563ccc30a3b6f9 321-342,350-357
+  s_6d6ea1f48924a1::t_1ebc1acdcdfad3 343-349
+docs/features/ai-platform/SLICE_7_1A_0_REMOVE_FINDING_EXPLANATION.md
+  s_6d6ea1f48924a1::t_881b3ebeaf65f3 114-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1ded48757c182b37b618c801bdaded362adb237f",
+  "prompts": {},
+  "sessions": {
+    "s_6d6ea1f48924a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8bcf717a-da03-4d59-b3fe-0596b6b12fbf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
