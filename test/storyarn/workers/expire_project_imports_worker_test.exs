@@ -2,6 +2,7 @@ defmodule Storyarn.Workers.ExpireProjectImportsWorkerTest do
   use ExUnit.Case, async: true
 
   alias Storyarn.Workers.ExpireProjectImportsWorker
+  alias Storyarn.Workers.ImportProjectWorker
   alias StoryarnWeb.Telemetry
 
   @event [:storyarn, :import, :expiration, :stop]
@@ -22,6 +23,24 @@ defmodule Storyarn.Workers.ExpireProjectImportsWorkerTest do
 
     on_exit(fn -> :telemetry.detach(handler_id) end)
     :ok
+  end
+
+  describe "queue isolation" do
+    test "the sweep does not share a queue with the imports it expires" do
+      import_queue = Keyword.fetch!(ImportProjectWorker.__opts__(), :queue)
+
+      assert import_queue == :imports
+      assert Keyword.fetch!(ExpireProjectImportsWorker.__opts__(), :queue) == :imports_maintenance
+
+      refute Keyword.fetch!(ExpireProjectImportsWorker.__opts__(), :queue) == import_queue
+    end
+
+    test "the maintenance queue is configured with serial concurrency" do
+      queues = :storyarn |> Application.fetch_env!(Oban) |> Keyword.fetch!(:queues)
+
+      assert Keyword.fetch!(queues, :imports_maintenance) == 1
+      assert Keyword.fetch!(queues, :imports) == 2
+    end
   end
 
   test "reports expired plans, failures, and duration without identifying metadata" do

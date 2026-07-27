@@ -11,199 +11,90 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn/accounts/registration.ex:110
+#: lib/storyarn/accounts/registration.ex:180
 #, elixir-autogen, elixir-format
 msgid "%{name}'s workspace"
 msgstr "Espacio de trabajo de %{name}"
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:144
-#, elixir-autogen, elixir-format
-msgid "Cannot unlink your only authentication method. Set a password first."
-msgstr "No puedes desvincular tu único método de autenticación. Establece una contraseña primero."
-
-#: lib/storyarn_web/controllers/oauth_controller.ex:34
-#, elixir-autogen, elixir-format
-msgid "Could not authenticate: %{errors}"
-msgstr "No se pudo autenticar: %{errors}"
-
-#: lib/storyarn_web/controllers/oauth_controller.ex:96
-#, elixir-autogen, elixir-format
-msgid "Could not link account: %{errors}"
-msgstr "No se pudo vincular la cuenta: %{errors}"
-
-#: lib/storyarn_web/controllers/oauth_controller.ex:47
-#, elixir-autogen, elixir-format
-msgid "Failed to authenticate with %{provider}: %{message}"
-msgstr "Error al autenticar con %{provider}: %{message}"
-
-#: lib/storyarn_web/controllers/oauth_controller.ex:109
-#, elixir-autogen, elixir-format
-msgid "Failed to link %{provider}: %{message}"
-msgstr "Error al vincular %{provider}: %{message}"
-
-#: lib/storyarn_web/controllers/user_session_controller.ex:65
+#: lib/storyarn_web/controllers/user_session_controller.ex:182
 #, elixir-autogen, elixir-format
 msgid "Failed to update password."
 msgstr "Error al actualizar la contraseña."
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:31
+#: lib/storyarn_web/controllers/user_session_controller.ex:78
+#: lib/storyarn_web/live/user_live/login.ex:139
 #, elixir-autogen, elixir-format
 msgid "Invalid email or password"
 msgstr "Email o contraseña inválidos"
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:80
+#: lib/storyarn_web/controllers/user_session_controller.ex:189
 #, elixir-autogen, elixir-format
 msgid "Logged out successfully."
 msgstr "Sesión cerrada exitosamente."
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:136
-#, elixir-autogen, elixir-format
-msgid "No %{provider} account linked."
-msgstr "No hay cuenta de %{provider} vinculada."
-
-#: lib/storyarn_web/controllers/user_session_controller.ex:61
+#: lib/storyarn_web/controllers/user_session_controller.ex:175
 #, elixir-autogen, elixir-format
 msgid "Password updated successfully!"
 msgstr "¡Contraseña actualizada exitosamente!"
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:72
+#: lib/storyarn_web/controllers/user_session_controller.ex:155
 #, elixir-autogen, elixir-format
 msgid "Please re-authenticate to change your password."
 msgstr "Re-autentícate para cambiar tu contraseña."
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:24
-#, elixir-autogen, elixir-format
-msgid "Successfully authenticated with %{provider}."
-msgstr "Autenticado exitosamente con %{provider}."
-
-#: lib/storyarn_web/controllers/oauth_controller.ex:86
-#, elixir-autogen, elixir-format
-msgid "Successfully linked %{provider} account."
-msgstr "Cuenta de %{provider} vinculada exitosamente."
-
-#: lib/storyarn_web/controllers/oauth_controller.ex:128
-#, elixir-autogen, elixir-format
-msgid "Successfully unlinked %{provider} account."
-msgstr "Cuenta de %{provider} desvinculada exitosamente."
-
-#: lib/storyarn_web/controllers/user_session_controller.ex:40
+#: lib/storyarn_web/controllers/user_session_controller.ex:59
+#: lib/storyarn_web/live/user_live/login.ex:124
 #, elixir-autogen, elixir-format
 msgid "Too many login attempts. Please try again later."
 msgstr "Demasiados intentos de inicio de sesión. Intenta de nuevo más tarde."
 
-#: lib/storyarn_web/live/user_live/registration.ex:74
+#: lib/storyarn_web/live/user_live/registration.ex:85
 #, elixir-autogen, elixir-format
 msgid "Too many registration attempts. Please try again later."
 msgstr "Demasiados intentos de registro. Intenta de nuevo más tarde."
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:10
-#, elixir-autogen, elixir-format
-msgid "User confirmed successfully."
-msgstr "Usuario confirmado exitosamente."
-
-#: lib/storyarn_web/controllers/user_session_controller.ex:14
+#: lib/storyarn_web/controllers/user_session_controller.ex:19
 #, elixir-autogen, elixir-format
 msgid "Welcome back!"
 msgstr "¡Bienvenido de nuevo!"
 
-#: lib/storyarn_web/live/user_live/confirm_access.ex:41
-#: lib/storyarn_web/user_auth.ex:234
-#: lib/storyarn_web/user_auth.ex:344
+#: lib/storyarn_web/live/user_live/confirm_access.ex:57
+#: lib/storyarn_web/user_auth.ex:244
+#: lib/storyarn_web/user_auth.ex:506
 #, elixir-autogen, elixir-format
 msgid "You must log in to access this page."
 msgstr "Debes iniciar sesión para acceder a esta página."
 
-#: lib/storyarn_web/controllers/oauth_controller.ex:57
-#: lib/storyarn_web/controllers/oauth_controller.ex:71
-#, elixir-autogen, elixir-format
-msgid "Unknown authentication provider."
-msgstr "Proveedor de autenticación desconocido."
-
-#: lib/storyarn_web/live/user_live/registration.ex:96
+#: lib/storyarn_web/live/user_live/registration.ex:103
 #, elixir-autogen, elixir-format
 msgid "Account created successfully! Welcome."
 msgstr "¡Cuenta creada correctamente! Te damos la bienvenida."
 
-#: lib/storyarn_web/live/user_live/registration.ex:54
+#: lib/storyarn_web/live/user_live/registration.ex:56
+#: lib/storyarn_web/live/user_live/registration.ex:116
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired registration link."
 msgstr "El enlace de registro no es válido o ha caducado."
 
-#: lib/storyarn_web/live/user_live/reset_password.ex:20
-#, elixir-autogen, elixir-format
-msgid "Choose a new password"
-msgstr "Elige una nueva contraseña"
-
-#: lib/storyarn_web/live/user_live/reset_password.ex:66
-#, elixir-autogen, elixir-format
-msgid "Confirm password"
-msgstr "Confirmar contraseña"
-
-#: lib/storyarn_web/live/user_live/forgot_password.ex:107
-#, elixir-autogen, elixir-format
-msgid "Could not send password reset instructions. Please try again."
-msgstr "No se han podido enviar las instrucciones para restablecer la contraseña. Inténtalo de nuevo."
-
-#: lib/storyarn_web/live/user_live/forgot_password.ex:26
-#, elixir-autogen, elixir-format
-msgid "Enter your email and we'll send you a secure password reset link."
-msgstr "Introduce tu correo y te enviaremos un enlace seguro para restablecer la contraseña."
-
-#: lib/storyarn_web/live/user_live/forgot_password.ex:43
-#, elixir-autogen, elixir-format
-msgid "Email"
-msgstr "Correo electrónico"
-
-#: lib/storyarn_web/live/user_live/forgot_password.ex:138
-#, elixir-autogen, elixir-format
-msgid "If that email belongs to an account, we'll send password reset instructions shortly."
-msgstr "Si ese correo pertenece a una cuenta, enviaremos instrucciones para restablecer la contraseña en breve."
-
-#: lib/storyarn_web/live/user_live/reset_password.ex:144
+#: lib/storyarn_web/live/user_live/reset_password.ex:99
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired password reset link."
 msgstr "El enlace para restablecer la contraseña es inválido o ha caducado."
 
-#: lib/storyarn_web/live/user_live/reset_password.ex:35
-#, elixir-autogen, elixir-format
-msgid "New password"
-msgstr "Nueva contraseña"
-
-#: lib/storyarn_web/live/user_live/reset_password.ex:131
-#, elixir-autogen, elixir-format
-msgid "Password reset successfully. Log in with your new password."
-msgstr "Contraseña restablecida correctamente. Inicia sesión con tu nueva contraseña."
-
-#: lib/storyarn_web/live/user_live/forgot_password.ex:23
-#, elixir-autogen, elixir-format
-msgid "Reset your password"
-msgstr "Restablecer tu contraseña"
-
-#: lib/storyarn_web/live/user_live/forgot_password.ex:65
-#, elixir-autogen, elixir-format
-msgid "Send reset link"
-msgstr "Enviar enlace de restablecimiento"
-
-#: lib/storyarn_web/live/user_live/forgot_password.ex:117
+#: lib/storyarn_web/live/user_live/forgot_password.ex:118
 #, elixir-autogen, elixir-format
 msgid "Too many password reset requests. Please try again later."
 msgstr "Demasiadas solicitudes para restablecer la contraseña. Inténtalo de nuevo más tarde."
 
-#: lib/storyarn_web/live/user_live/reset_password.ex:91
+#: lib/storyarn_web/live/user_live/registration.ex:124
 #, elixir-autogen, elixir-format
-msgid "Update password"
-msgstr "Actualizar contraseña"
+msgid "We couldn't create your workspace. Please try again."
+msgstr "No hemos podido crear tu espacio de trabajo. Inténtalo de nuevo."
 
-#: lib/storyarn_web/live/user_live/reset_password.ex:23
+#: lib/storyarn_web/live/user_live/confirm_access.ex:104
 #, elixir-autogen, elixir-format
-msgid "Use a strong password that you don't use anywhere else."
-msgstr "Usa una contraseña segura que no utilices en ningún otro sitio."
-
-#: lib/storyarn_web/live/user_live/forgot_password.ex:72
-#: lib/storyarn_web/live/user_live/reset_password.ex:98
-#, elixir-autogen, elixir-format
-msgid "Back to log in"
-msgstr "Volver a iniciar sesión"
+msgid "Your session has expired. Please log in again."
+msgstr "Tu sesión ha caducado. Vuelve a iniciar sesión."
 
 #: lib/storyarn_web/controllers/user_session_controller.ex:121
 #: lib/storyarn_web/controllers/user_session_controller.ex:137

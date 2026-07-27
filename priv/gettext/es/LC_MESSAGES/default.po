@@ -11,17 +11,17 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/components/layouts.ex:85
+#: lib/storyarn_web/components/layouts.ex:110
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr "Intentando reconectar"
 
-#: lib/storyarn_web/components/layouts.ex:84
+#: lib/storyarn_web/components/layouts.ex:109
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr "¡Algo salió mal!"
 
-#: lib/storyarn_web/components/layouts.ex:83
+#: lib/storyarn_web/components/layouts.ex:108
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr "No podemos encontrar la conexión a internet"
@@ -66,37 +66,32 @@ msgstr "hizo un cambio"
 msgid "moved a node"
 msgstr "movió un nodo"
 
-#: lib/storyarn_web/controllers/export_controller.ex:42
-#: lib/storyarn_web/controllers/export_controller.ex:71
+#: lib/storyarn_web/controllers/export_controller.ex:43
+#: lib/storyarn_web/controllers/export_controller.ex:88
 #, elixir-autogen, elixir-format
 msgid "Export failed"
 msgstr "Error al exportar"
 
-#: lib/storyarn_web/controllers/export_controller.ex:30
+#: lib/storyarn_web/controllers/export_controller.ex:31
 #, elixir-autogen, elixir-format
 msgid "Invalid format"
 msgstr "Formato no válido"
 
-#: lib/storyarn_web/controllers/export_controller.ex:36
+#: lib/storyarn_web/controllers/export_controller.ex:37
 #, elixir-autogen, elixir-format
 msgid "Not found"
 msgstr "No encontrado"
 
-#: lib/storyarn_web/controllers/export_controller.ex:27
+#: lib/storyarn_web/controllers/export_controller.ex:28
 #, elixir-autogen, elixir-format
 msgid "Unknown format"
 msgstr "Formato desconocido"
 
-#: lib/storyarn_web/live/flow_live/index.ex:355
-#, elixir-autogen, elixir-format
-msgid "Issue detected"
-msgstr "Problema detectado"
-
 #: lib/storyarn_web/live/flow_live/form.ex:57
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:466
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:181
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:257
-#: lib/storyarn_web/live/flow_live/show.ex:1669
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:188
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:264
+#: lib/storyarn_web/live/flow_live/show.ex:1702
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:95
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:112
 #, elixir-autogen, elixir-format
@@ -131,17 +126,17 @@ msgstr "actualizó el flujo"
 #: lib/storyarn_web/live/compare_live/flow.ex:79
 #: lib/storyarn_web/live/compare_live/scene.ex:79
 #: lib/storyarn_web/live/compare_live/sheet.ex:80
-#: lib/storyarn_web/live/version_viewer_live.ex:156
+#: lib/storyarn_web/live/version_viewer_live.ex:224
 #, elixir-autogen, elixir-format
 msgid "Auto-snapshot"
 msgstr "Auto-snapshot"
 
-#: lib/storyarn/versioning/version_crud.ex:495
+#: lib/storyarn/versioning/version_crud.ex:741
 #, elixir-autogen, elixir-format
 msgid "Changes from previous version"
 msgstr "Cambios respecto a la versión anterior"
 
-#: lib/storyarn/versioning/version_crud.ex:482
+#: lib/storyarn/versioning/version_crud.ex:728
 #, elixir-autogen, elixir-format
 msgid "Initial version"
 msgstr "Versión inicial"
@@ -194,12 +189,14 @@ msgstr "Alguien"
 msgid "You don't have permission to edit."
 msgstr "No tienes permiso para editar."
 
-#: lib/storyarn_web/controllers/export_controller.ex:39
+#: lib/storyarn_web/controllers/export_controller.ex:40
+#: lib/storyarn_web/controllers/export_controller.ex:61
+#: lib/storyarn_web/controllers/export_controller.ex:85
 #, elixir-autogen, elixir-format
 msgid "Export is too large"
 msgstr "La exportación es demasiado grande"
 
-#: lib/storyarn_web/controllers/export_controller.ex:33
+#: lib/storyarn_web/controllers/export_controller.ex:34
 #, elixir-autogen, elixir-format
 msgid "Invalid localization policy"
 msgstr "Política de localización no válida"

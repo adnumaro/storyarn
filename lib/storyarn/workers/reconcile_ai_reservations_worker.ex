@@ -1,6 +1,10 @@
 defmodule Storyarn.Workers.ReconcileAIReservationsWorker do
   @moduledoc "Expires allowance and terminalizes stale managed reservations without retrying providers."
-  use Oban.Worker, queue: :ai, max_attempts: 1, unique: [period: 300]
+  # The uniqueness window must stay strictly below the `*/15` cron interval it is
+  # scheduled at. Oban compares a DB-clock `inserted_at` against an app-clock
+  # cutoff with an inclusive `>=`, so a window equal to the schedule dedupes
+  # every other tick as soon as clock skew exceeds the BEGIN round-trip.
+  use Oban.Worker, queue: :ai_maintenance, max_attempts: 1, unique: [period: 240]
 
   import Ecto.Query
 
@@ -12,7 +16,16 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorker do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
-  @default_stale_after_seconds 900
+  # Recovery bound = this threshold + the cron interval. It was 900 + 300; the
+  # cron moved to 900 to let the database compute idle, so this drops to 300 to
+  # hold the documented ≤20 minute bound unchanged.
+  #
+  # This is the shorter of the two knobs, so it is the one that decides how long
+  # a genuinely slow provider call may run before being treated as stalled. It
+  # must stay above the longest managed execution — safe today because the only
+  # registered task is `execution_mode: :inline` and never reserves in the
+  # background.
+  @default_stale_after_seconds 300
 
   @impl Oban.Worker
   def perform(%Oban.Job{}) do

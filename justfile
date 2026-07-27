@@ -71,6 +71,7 @@ quality-lint:
     pnpm run typecheck
     pnpm arch & pnpm knip
     mix format
+    mix gettext.extract --check-up-to-date
     mix sobelow --config
     mix convention.check
     mix credo --strict

@@ -1,6 +1,9 @@
 defmodule Storyarn.Workers.ExpireAIResultsWorker do
   @moduledoc "Purges expired encrypted AI content and abandons undecided previews."
-  use Oban.Worker, queue: :ai, max_attempts: 3
+  # Sits on `:ai_maintenance`, not `:ai`: the `schedule_in: 1` follow-up chain
+  # holds a slot for as long as `more?` is true and must never compete with
+  # user-facing execution. `new/2` inherits this queue, so follow-ups move too.
+  use Oban.Worker, queue: :ai_maintenance, max_attempts: 3
 
   alias Storyarn.AI.Results
   alias Storyarn.AI.RouteOptions

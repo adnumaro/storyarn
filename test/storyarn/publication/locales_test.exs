@@ -9,7 +9,6 @@ defmodule Storyarn.Publication.LocalesTest do
   alias Storyarn.Publication.Locales
 
   @project_root Path.expand("../../..", __DIR__)
-  @public_gettext_domains ~w(public docs blog)
 
   test "exposes the canonical default and localized public locales" do
     assert Locales.default_locale() == "en"
@@ -48,43 +47,41 @@ defmodule Storyarn.Publication.LocalesTest do
     assert Locales.normalize(nil) == "en"
   end
 
-  test "every published locale has a complete public content surface" do
+  test "every published locale has a complete content surface" do
     assert_complete_gettext_catalogs()
     assert_complete_vue_catalogs()
     assert_complete_docs()
     assert_complete_blog()
   end
 
-  # The test above guards the PUBLIC surface (marketing, docs, blog) and has
-  # always checked those three domains for fuzzy and missing translations. This
-  # one extends the same two guarantees to every other domain, because the app's
-  # own UI is where an unreviewed translation actually reaches a designer: a
-  # `fuzzy` msgstr is a merge guess that Gettext serves to users verbatim, with
-  # no visual difference from a reviewed one.
+  # `.pot` and `.po` are both derived from the source tree, so comparing them to
+  # each other cannot see a placeholder that only the source knows about. This is
+  # the one check on the *contents* of a translation rather than its presence,
+  # and it catches the failure `mix gettext.extract --merge` actively creates:
+  # when a msgid changes, the merge copies the nearest neighbour's msgstr, and a
+  # neighbour's placeholder set is not the new msgid's. `versioning.po` shipped
+  # `"Before restore to v%{n}"` translated with `%{number}` — Gettext has nothing
+  # to bind, so Spanish users read the literal `%{number}` on screen.
   #
-  # It is not folded into the test above because that one also asserts each
-  # catalog contains EXACTLY the messages of its `.pot`, and the non-public
-  # `.pot` files drift from source (see `docs/features/GETTEXT_EXTRACTION_DEBT.md`).
-  # Blocking on translation quality is affordable today; blocking on extraction
-  # debt is not, and conflating them would mean deleting both guards the next
-  # time someone hits the second one.
-  test "no localized catalog ships a fuzzy or missing translation" do
-    for locale <- Locales.localized_locales(), path <- gettext_catalogs(locale) do
-      catalog = parse_po!(path)
+  # Extraction freshness — `.pot` against source — is the third axis, and it
+  # cannot live here: it needs a compiler pass. It runs in `mix precommit` and
+  # `just quality-lint` as `mix gettext.extract --check-up-to-date`.
+  test "no translation binds a placeholder its message never provides" do
+    for locale <- Locales.localized_locales(),
+        path <- gettext_catalogs(locale),
+        message <- parse_po!(path).messages,
+        {reason, key, provided, used} <- placeholder_faults(message) do
+      flunk("""
+      #{path} — #{reason}
 
-      fuzzy = Enum.filter(catalog.messages, &Message.has_flag?(&1, "fuzzy"))
+          msgid       #{inspect(key)}
+          provides    #{inspect(MapSet.to_list(provided))}
+          translation #{inspect(MapSet.to_list(used))}
 
-      assert fuzzy == [],
-             "#{path} ships #{length(fuzzy)} fuzzy translation(s): " <>
-               inspect(Enum.map(fuzzy, &message_key/1)) <>
-               ". A fuzzy entry is an unreviewed merge guess and Gettext serves it to users."
-
-      untranslated = Enum.reject(catalog.messages, &translated?(&1, catalog))
-
-      assert untranslated == [],
-             "#{path} leaves #{length(untranslated)} message(s) untranslated: " <>
-               inspect(Enum.map(untranslated, &message_key/1)) <>
-               ". An empty msgstr falls back to English mid-interface."
+      Gettext substitutes by name. A placeholder the message never provides is
+      printed verbatim to the user; one the translation drops silently loses the
+      value the sentence was written to carry.
+      """)
     end
   end
 
@@ -95,8 +92,30 @@ defmodule Storyarn.Publication.LocalesTest do
     |> Enum.map(&Path.relative_to(&1, @project_root))
   end
 
+  defp gettext_domains do
+    @project_root
+    |> Path.join("priv/gettext/*.pot")
+    |> Path.wildcard()
+    |> Enum.map(&Path.basename(&1, ".pot"))
+    |> Enum.sort()
+  end
+
   defp assert_complete_gettext_catalogs do
-    Enum.each(@public_gettext_domains, fn domain ->
+    domains = gettext_domains()
+
+    assert domains != [], "priv/gettext must publish at least one .pot template"
+
+    Enum.each(Locales.locales(), fn locale ->
+      catalogs =
+        locale |> gettext_catalogs() |> Enum.map(&Path.basename(&1, ".po")) |> Enum.sort()
+
+      assert catalogs == domains,
+             "priv/gettext/#{locale}/LC_MESSAGES has no catalog for #{inspect(domains -- catalogs)} " <>
+               "and carries an orphan one for #{inspect(catalogs -- domains)}. A domain with no " <>
+               "catalog is a domain Gettext can only serve in English."
+    end)
+
+    Enum.each(domains, fn domain ->
       template = parse_po!("priv/gettext/#{domain}.pot")
       template_keys = message_keys(template.messages)
 
@@ -107,20 +126,110 @@ defmodule Storyarn.Publication.LocalesTest do
     end)
   end
 
+  # Runs over every domain, not just the public ones. It used to walk
+  # `~w(public docs blog)` — 3 of the 19 `.pot` files — which left every
+  # app-facing domain unguarded: `es/projects.po` had drifted to 63 messages
+  # short of `projects.pot` with a green suite. The catalog workflow this
+  # enforces is in `docs/conventions/domain-patterns.md`.
   defp assert_complete_gettext_catalog(locale, domain, template_keys) do
     relative_path = "priv/gettext/#{locale}/LC_MESSAGES/#{domain}.po"
     catalog = parse_po!(relative_path)
+    catalog_keys = message_keys(catalog.messages)
 
-    assert message_keys(catalog.messages) == template_keys,
-           "#{relative_path} must contain exactly the messages from #{domain}.pot"
+    assert catalog_keys == template_keys,
+           "#{relative_path} has drifted from #{domain}.pot: " <>
+             "#{MapSet.size(MapSet.difference(template_keys, catalog_keys))} message(s) the app can " <>
+             "emit have no entry here and reach the user in English, and " <>
+             "#{MapSet.size(MapSet.difference(catalog_keys, template_keys))} entry(ies) translate " <>
+             "text no longer in the source. Run `mix gettext.extract --merge`."
 
-    if locale != Locales.default_locale() do
-      assert Enum.all?(catalog.messages, &(not Message.has_flag?(&1, "fuzzy"))),
-             "#{relative_path} contains fuzzy translations"
+    if locale == Locales.default_locale() do
+      # `Gettext.Compiler` filters compiled messages on `obsolete` alone — it has
+      # no notion of `fuzzy` at runtime — so whatever sits in a msgstr is what
+      # ships. In the default locale a msgstr is therefore not a translation but
+      # an override of the source string, and the merge writes those on its own:
+      # `en/projects.po` served "Project Trash" for the msgid "Project name", and
+      # `en/flows.po` answered "Could not update scene map." with "Could not
+      # update node positions.". Empty is the convention here; Gettext falls back
+      # to the msgid, which is already English.
+      rewritten = Enum.filter(catalog.messages, &rewrites_source?/1)
 
-      assert Enum.all?(catalog.messages, &translated?(&1, catalog)),
-             "#{relative_path} contains missing translations"
+      assert rewritten == [],
+             "#{relative_path} overrides #{length(rewritten)} source string(s) with different " <>
+               "English: " <>
+               inspect(Enum.map(rewritten, &message_key/1)) <>
+               ". Blank the msgstr so Gettext falls back to the msgid."
+    else
+      fuzzy = Enum.filter(catalog.messages, &Message.has_flag?(&1, "fuzzy"))
+
+      assert fuzzy == [],
+             "#{relative_path} ships #{length(fuzzy)} fuzzy translation(s): " <>
+               inspect(Enum.map(fuzzy, &message_key/1)) <>
+               ". A fuzzy entry is the merge's guess copied off a neighbouring msgid, and " <>
+               "Gettext serves it to users with nothing to distinguish it from a reviewed one."
+
+      untranslated = Enum.reject(catalog.messages, &translated?(&1, catalog))
+
+      assert untranslated == [],
+             "#{relative_path} leaves #{length(untranslated)} message(s) untranslated: " <>
+               inspect(Enum.map(untranslated, &message_key/1)) <>
+               ". An empty msgstr falls back to English mid-interface."
     end
+  end
+
+  defp rewrites_source?(%Singular{msgid: msgid, msgstr: msgstr}) do
+    text = to_text(msgstr)
+    text != "" and text != to_text(msgid)
+  end
+
+  defp rewrites_source?(%Plural{msgid: msgid, msgid_plural: plural, msgstr: msgstr}) do
+    forms = [to_text(msgid), to_text(plural)]
+
+    Enum.any?(msgstr, fn {_index, form} ->
+      text = to_text(form)
+      text != "" and text not in forms
+    end)
+  end
+
+  # Returns [] for a healthy message. Plural messages are compared as a set
+  # union, not per index: a form may legitimately hardcode the number it stands
+  # for ("1 item"), so only dropping a placeholder from *every* form is a fault.
+  defp placeholder_faults(%Singular{msgid: msgid, msgstr: msgstr}) do
+    provided = placeholders(msgid)
+    used = placeholders(msgstr)
+
+    cond do
+      MapSet.size(used) == 0 and to_text(msgstr) == "" -> []
+      MapSet.equal?(provided, used) -> []
+      true -> [{fault_reason(provided, used), to_text(msgid), provided, used}]
+    end
+  end
+
+  defp placeholder_faults(%Plural{msgid: msgid, msgid_plural: plural, msgstr: msgstr}) do
+    provided = MapSet.union(placeholders(msgid), placeholders(plural))
+    used = msgstr |> Map.values() |> Enum.reduce(MapSet.new(), &MapSet.union(placeholders(&1), &2))
+
+    cond do
+      MapSet.size(used) == 0 and Enum.all?(Map.values(msgstr), &(to_text(&1) == "")) -> []
+      MapSet.equal?(provided, used) -> []
+      true -> [{fault_reason(provided, used), to_text(msgid), provided, used}]
+    end
+  end
+
+  defp fault_reason(provided, used) do
+    unbound = MapSet.difference(used, provided)
+
+    if MapSet.size(unbound) > 0 do
+      "the translation uses #{inspect(MapSet.to_list(unbound))}, which the message never binds"
+    else
+      "the translation drops #{inspect(MapSet.to_list(MapSet.difference(provided, used)))}"
+    end
+  end
+
+  defp placeholders(iodata) do
+    ~r/%\{([^}]+)\}/
+    |> Regex.scan(to_text(iodata))
+    |> MapSet.new(fn [_full, name] -> name end)
   end
 
   defp assert_complete_vue_catalogs do
