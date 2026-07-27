@@ -87,9 +87,28 @@ config :posthog,
 config :storyarn, DailySnapshotWorker, pruning_enabled: false
 
 # Oban background job processing
+#
+# Cadence is a database-cost decision, not just a latency one. The production
+# database (Neon) suspends its compute after five minutes without a query, so
+# every background poll finer than that pins the compute at 100% and burns the
+# monthly compute budget on an otherwise idle app. Because compute stays warm
+# for five minutes after each touch, only the *finest* interval matters —
+# anything coarser lands inside a wake window that was already paid for.
+#
+# The floor is therefore 15 minutes, and each sweep is set as coarse as the
+# window it actually enforces allows. See ENG-37.
 config :storyarn, Oban,
   engine: Oban.Engines.Basic,
   repo: Storyarn.Repo,
+  # Process groups instead of Postgres LISTEN/NOTIFY: the latter holds a
+  # connection open purely to wait. Valid because Fly runs a single machine
+  # (`min_machines_running = 1`).
+  notifier: {Oban.Notifiers.PG, []},
+  # Oban's default is one second. Staging is a query, so at that rate the
+  # compute can never idle. The cost of raising it is that everything deferred —
+  # retry backoffs, `schedule_in` chains, `{:snooze, _}` — inherits up to this
+  # much latency.
+  stage_interval: to_timeout(minute: 15),
   queues: [
     default: 10,
     snapshots: 2,
@@ -107,16 +126,29 @@ config :storyarn, Oban,
   ],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
-    {Oban.Plugins.Cron,
-     crontab: [
-       {"0 3 * * *", DailySnapshotWorker},
-       {"0 4 * * *", SnapshotRetentionWorker},
-       {"0 * * * *", TrashRetentionWorker},
-       {"*/15 * * * *", Storyarn.Workers.ExpireProjectImportsWorker},
-       {"*/15 * * * *", ExpireAIResultsWorker},
-       {"*/5 * * * *", Storyarn.Workers.ReconcileAIReservationsWorker},
-       {"* * * * *", Storyarn.Workers.RetryStorageCleanupRequestsWorker}
-     ]}
+    {
+      Oban.Plugins.Cron,
+      # Each entry is paired with the window it enforces. Nothing may be finer
+      # than 15 minutes without re-doing the compute-budget arithmetic in ENG-37.
+      crontab: [
+        {"0 3 * * *", DailySnapshotWorker},
+        {"0 4 * * *", SnapshotRetentionWorker},
+        # 24h retention (`Billing.Plan` `trash_retention_hours: 24`); 4h is still
+        # six times finer than the window.
+        {"0 */4 * * *", TrashRetentionWorker},
+        # 24h retention (`Imports` `@plan_retention_seconds 86_400`).
+        {"0 * * * *", Storyarn.Workers.ExpireProjectImportsWorker},
+        # Correctness does not depend on this sweep: the read path already
+        # refuses results past `expires_at`. It only reclaims rows.
+        {"*/30 * * * *", ExpireAIResultsWorker},
+        # Recovery bound is `stale_after_seconds` + this interval. Holding the
+        # documented ≤20 min means 300 + 900, where it used to be 900 + 300.
+        {"*/15 * * * *", Storyarn.Workers.ReconcileAIReservationsWorker},
+        # Safety net for cleanup requests whose direct enqueue failed — already a
+        # rare path. Its own uniqueness window made it run every 2-3 min anyway.
+        {"*/15 * * * *", Storyarn.Workers.RetryStorageCleanupRequestsWorker}
+      ]
+    }
   ]
 
 # Automatic retention for deleted-project snapshots is frozen during the
