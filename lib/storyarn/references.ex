@@ -10,8 +10,10 @@ defmodule Storyarn.References do
 
   defdelegate update_block_references(block, opts \\ []), to: EntityTracker
   defdelegate delete_block_references(block_id), to: EntityTracker
+  @spec update_flow_node_entity_references(map(), keyword()) :: :ok | {:error, term()}
   defdelegate update_flow_node_entity_references(node, opts \\ []), to: EntityTracker
   defdelegate flow_node_entity_references_current?(node), to: EntityTracker
+  defdelegate flow_node_entity_references_current_ids(nodes), to: EntityTracker
   defdelegate delete_flow_node_entity_references(node_id), to: EntityTracker
   defdelegate update_screenplay_element_references(element), to: EntityTracker
   defdelegate delete_screenplay_element_references(element_id), to: EntityTracker
@@ -31,6 +33,12 @@ defmodule Storyarn.References do
   defdelegate rebuild_project_variable_references(project_id), to: VariableTracker
 
   defdelegate update_flow_node_variable_references(node), to: VariableTracker
+
+  @spec flow_node_variable_references_current_ids([map()], integer()) ::
+          MapSet.t(integer())
+  defdelegate flow_node_variable_references_current_ids(nodes, project_id),
+    to: VariableTracker
+
   defdelegate delete_flow_node_variable_references(node_id), to: VariableTracker
   defdelegate update_scene_pin_variable_references(pin, opts \\ []), to: VariableTracker
   defdelegate delete_scene_pin_variable_references(pin_id), to: VariableTracker

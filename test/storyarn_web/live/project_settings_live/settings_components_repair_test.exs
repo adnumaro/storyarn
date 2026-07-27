@@ -1,0 +1,61 @@
+defmodule StoryarnWeb.ProjectSettingsLive.SettingsComponentsRepairTest do
+  use Storyarn.DataCase, async: true
+
+  import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
+
+  alias Phoenix.LiveView.Socket
+  alias StoryarnWeb.ProjectLive.Components.SettingsComponents
+
+  test "pluralizes repaired and failed node counts independently in English and Spanish" do
+    assert Gettext.with_locale(Storyarn.Gettext, "en", fn ->
+             SettingsComponents.partial_repair_message(1, 2)
+           end) ==
+             "Repair partially completed: 1 node repaired; 2 nodes failed."
+
+    assert Gettext.with_locale(Storyarn.Gettext, "en", fn ->
+             SettingsComponents.partial_repair_message(2, 1)
+           end) ==
+             "Repair partially completed: 2 nodes repaired; 1 node failed."
+
+    assert Gettext.with_locale(Storyarn.Gettext, "es", fn ->
+             SettingsComponents.partial_repair_message(1, 2)
+           end) ==
+             "Reparación parcial: 1 nodo reparado; 2 nodos fallidos."
+
+    assert Gettext.with_locale(Storyarn.Gettext, "es", fn ->
+             SettingsComponents.partial_repair_message(2, 1)
+           end) ==
+             "Reparación parcial: 2 nodos reparados; 1 nodo fallido."
+  end
+
+  test "reports repaired and failed counts for a partial variable-reference repair" do
+    user = user_fixture()
+    project = project_fixture(user)
+
+    socket = %Socket{
+      assigns: %{
+        __changed__: %{},
+        flash: %{},
+        project: project
+      }
+    }
+
+    repair_fun = fn project_id ->
+      assert project_id == project.id
+
+      {:error,
+       {:partial_variable_reference_repair,
+        %{
+          repaired_count: 39,
+          failures: [{123, :database_unavailable}]
+        }}}
+    end
+
+    assert {:noreply, repaired_socket} =
+             SettingsComponents.do_repair_variable_references(socket, repair_fun)
+
+    assert repaired_socket.assigns.flash["error"] ==
+             "Repair partially completed: 39 nodes repaired; 1 node failed."
+  end
+end

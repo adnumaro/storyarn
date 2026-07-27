@@ -907,8 +907,8 @@ defmodule Storyarn.Sheets do
   Updates references from a flow node.
   Called after node data is saved to track mentions and references.
   """
-  @spec update_flow_node_references(map()) :: :ok
-  defdelegate update_flow_node_references(node),
+  @spec update_flow_node_references(map(), keyword()) :: :ok | {:error, term()}
+  defdelegate update_flow_node_references(node, opts \\ []),
     to: References,
     as: :update_flow_node_entity_references
 

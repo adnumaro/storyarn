@@ -72,7 +72,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
 
     Repo.transaction(fn ->
       with {:ok, %{flow: locked_flow}} <-
-             ReferenceIntegrity.lock_active_flow_for_write(flow),
+             ReferenceIntegrity.lock_active_flow_for_write(flow, :key_share),
            {:ok, source_node_id} <- normalize_endpoint_id(attrs["source_node_id"], :source),
            {:ok, target_node_id} <- normalize_endpoint_id(attrs["target_node_id"], :target),
            attrs =
@@ -111,7 +111,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
 
     fn ->
       with {:ok, %{flow: flow}} <-
-             ReferenceIntegrity.lock_active_flow_for_write(connection.flow_id),
+             ReferenceIntegrity.lock_active_flow_for_write(connection.flow_id, :key_share),
            {:ok, locked_connection} <-
              lock_connection_for_write(connection.id, flow.id),
            {:ok, source_node, target_node} <-
@@ -157,7 +157,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
       with {:ok, normalized_connection_id} <-
              normalize_connection_id(connection_id),
            {:ok, %{flow: flow}} <-
-             ReferenceIntegrity.lock_active_flow_for_write(flow_id),
+             ReferenceIntegrity.lock_active_flow_for_write(flow_id, :key_share),
            {:ok, locked_connection} <-
              lock_connection_for_write(normalized_connection_id, flow.id),
            {:ok, deleted_connection} <- Repo.delete(locked_connection) do
@@ -264,7 +264,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
   end
 
   defp delete_connections_in_locked_flow(flow_id, delete_fn) do
-    case ReferenceIntegrity.lock_active_flow_for_write(flow_id) do
+    case ReferenceIntegrity.lock_active_flow_for_write(flow_id, :key_share) do
       {:ok, %{flow: flow, project_id: project_id}} ->
         {count, result} = delete_fn.(flow.id)
         {count, result, project_id}

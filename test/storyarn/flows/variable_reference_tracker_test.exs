@@ -1605,6 +1605,65 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
     end
   end
 
+  describe "flow_node_references_current_ids/2" do
+    test "certifies regular and table references in one batch and rejects stale metadata", ctx do
+      table_block = table_block_fixture(ctx.sheet, %{label: "Attributes"})
+      table_row = table_row_fixture(table_block, %{name: "Strength"})
+      table_column = table_column_fixture(table_block, %{name: "Value", type: "number"})
+
+      regular_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              variable_assignment(ctx.sheet.shortcut, ctx.health_block.variable_name)
+            ]
+          }
+        })
+
+      table_variable =
+        "#{table_block.variable_name}.#{table_row.slug}.#{table_column.slug}"
+
+      table_node =
+        node_fixture(ctx.flow, %{
+          type: "condition",
+          data: %{"condition" => variable_condition(ctx.sheet.shortcut, table_variable)}
+        })
+
+      assert :ok = VariableReferenceTracker.update_references(regular_node)
+      assert :ok = VariableReferenceTracker.update_references(table_node)
+
+      assert VariableReferenceTracker.flow_node_references_current_ids(
+               [regular_node, table_node],
+               ctx.project.id
+             ) == MapSet.new([regular_node.id, table_node.id])
+
+      other_project = project_fixture()
+
+      assert VariableReferenceTracker.flow_node_references_current_ids(
+               [regular_node, table_node],
+               other_project.id
+             ) == MapSet.new()
+
+      table_reference =
+        Repo.get_by!(VariableReference,
+          source_type: "flow_node",
+          source_id: table_node.id,
+          block_id: table_block.id,
+          kind: "read"
+        )
+
+      table_reference
+      |> Ecto.Changeset.change(source_sheet: "stale")
+      |> Repo.update!()
+
+      assert VariableReferenceTracker.flow_node_references_current_ids(
+               [regular_node, table_node],
+               ctx.project.id
+             ) == MapSet.new([regular_node.id])
+    end
+  end
+
   # -- Table variable tests --
 
   describe "update_references with table variable instruction nodes" do

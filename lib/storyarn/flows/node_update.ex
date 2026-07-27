@@ -35,7 +35,7 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   defp update_node_transaction(node, attrs) do
     with {:ok, %{project_id: project_id, flow: flow, node: locked_node}} <-
-           ReferenceIntegrity.lock_active_node_for_write(node),
+           ReferenceIntegrity.lock_active_node_for_write(node, :key_share),
          changeset = FlowNode.update_changeset(locked_node, attrs),
          type = Ecto.Changeset.get_field(changeset, :type),
          data = Ecto.Changeset.get_field(changeset, :data) || %{},
@@ -120,7 +120,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   def update_node_position(%FlowNode{} = node, attrs) do
     Repo.transaction(fn ->
       with {:ok, %{node: locked_node}} <-
-             ReferenceIntegrity.lock_active_node_for_write(node),
+             ReferenceIntegrity.lock_active_node_for_write(node, :key_share),
            {:ok, updated_node} <-
              locked_node
              |> FlowNode.position_changeset(attrs)
@@ -145,7 +145,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   def update_node_parent(%FlowNode{} = node, parent_id) do
     Repo.transaction(fn ->
       with {:ok, %{flow: flow, node: locked_node}} <-
-             ReferenceIntegrity.lock_active_node_for_write(node),
+             ReferenceIntegrity.lock_active_node_for_write(node, :key_share),
            {:ok, parent_id} <-
              ReferenceIntegrity.lock_node_parent(flow.id, parent_id, locked_node.id) do
         reparent_locked_node(locked_node, parent_id)
@@ -181,7 +181,7 @@ defmodule Storyarn.Flows.NodeUpdate do
 
     Repo.transaction(fn ->
       with {:ok, %{flow: flow}} <-
-             ReferenceIntegrity.lock_active_flow_for_write(flow_id),
+             ReferenceIntegrity.lock_active_flow_for_write(flow_id, :key_share),
            {:ok, {ids, xs, ys}} <- normalize_position_batch(positions),
            {:ok, _nodes} <- lock_position_nodes(flow.id, ids) do
         Repo.query!(@batch_node_positions_sql, [
@@ -287,37 +287,177 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   @doc false
   @spec data_and_derivatives_current?(FlowNode.t(), map(), integer()) :: boolean()
-  def data_and_derivatives_current?(%FlowNode{type: type} = node, desired_data, project_id)
+  def data_and_derivatives_current?(%FlowNode{} = node, desired_data, project_id)
       when is_map(desired_data) and is_integer(project_id) do
+    node.id in data_and_derivatives_current_ids([{node, desired_data}], project_id)
+  end
+
+  @doc false
+  @spec data_and_derivatives_current_ids([{FlowNode.t(), map()}], integer()) ::
+          MapSet.t(integer())
+  def data_and_derivatives_current_ids(node_data_pairs, project_id)
+      when is_list(node_data_pairs) and is_integer(project_id) do
+    candidate_pairs =
+      node_data_pairs
+      |> Enum.group_by(fn {node, _desired_data} -> node.id end)
+      |> Enum.reduce([], fn
+        {_node_id, [{%FlowNode{} = node, desired_data}]}, candidates
+        when is_map(desired_data) ->
+          case node_data_candidate(node, desired_data) do
+            {:ok, normalized_input} -> [{node, normalized_input} | candidates]
+            :not_current -> candidates
+          end
+
+        {_node_id, _ambiguous_or_invalid_pairs}, candidates ->
+          candidates
+      end)
+
+    normalized_by_node_id = normalize_candidate_references(candidate_pairs, project_id)
+    hub_owners = lock_batch_hub_owners(candidate_pairs)
+
+    candidates =
+      candidate_pairs
+      |> Enum.reduce([], fn {%FlowNode{type: type} = node, _normalized_input}, current ->
+        with {:ok, normalized_data} <- Map.fetch(normalized_by_node_id, node.id),
+             true <- normalized_data == node.data,
+             :ok <- validate_batch_hub_id(node, type, normalized_data, hub_owners) do
+          [node | current]
+        else
+          _not_current_or_invalid -> current
+        end
+      end)
+      |> keep_active_project_nodes(project_id)
+
+    localized_text_ids = Localization.flow_node_texts_current_ids(candidates, project_id)
+    entity_reference_ids = References.flow_node_entity_references_current_ids(candidates)
+
+    variable_reference_ids =
+      References.flow_node_variable_references_current_ids(
+        candidates,
+        project_id
+      )
+
+    localized_text_ids
+    |> MapSet.intersection(entity_reference_ids)
+    |> MapSet.intersection(variable_reference_ids)
+  end
+
+  defp keep_active_project_nodes([], _project_id), do: []
+
+  defp keep_active_project_nodes(nodes, project_id) do
+    node_ids = Enum.map(nodes, & &1.id)
+
+    flow_ids_by_node =
+      from(node in FlowNode,
+        join: flow in Flow,
+        on: flow.id == node.flow_id,
+        where:
+          node.id in ^node_ids and
+            flow.project_id == ^project_id and
+            is_nil(node.deleted_at) and
+            is_nil(flow.deleted_at),
+        select: {node.id, node.flow_id}
+      )
+      |> Repo.all()
+      |> Map.new()
+
+    Enum.filter(nodes, fn node ->
+      Map.get(flow_ids_by_node, node.id) == node.flow_id
+    end)
+  end
+
+  defp node_data_candidate(%FlowNode{} = node, desired_data) do
     changeset = FlowNode.data_changeset(node, %{data: desired_data})
     normalized_input = Ecto.Changeset.get_field(changeset, :data)
 
-    with true <- changeset.valid?,
-         # These two node types resolve sheet/block names into rows outside the
-         # node itself. Keep reconciling them until that dependency also has a
-         # persisted revision that can participate in the certification.
-         false <- type in ["condition", "instruction"],
-         {:ok, normalized_data} <-
-           ReferenceIntegrity.lock_and_normalize_node_references(
-             project_id,
-             node.flow_id,
-             type,
-             normalized_input
-           ),
-         :ok <- validate_hub_id(node, type, normalized_data),
-         true <- Localization.flow_node_texts_current?(node, project_id),
-         true <- References.flow_node_entity_references_current?(node) do
-      normalized_data == node.data and
-        node.derivatives_fingerprint == derivatives_fingerprint(node) and
-        node.word_count == WordCount.for_node_data(node.type, node.data)
+    if changeset.valid? and
+         node.derivatives_fingerprint == derivatives_fingerprint(node) and
+         node.word_count == WordCount.for_node_data(node.type, node.data) do
+      {:ok, normalized_input}
     else
-      _not_current_or_invalid -> false
+      :not_current
     end
   end
 
+  defp normalize_candidate_references([], _project_id), do: %{}
+
+  defp normalize_candidate_references(candidate_pairs, project_id) do
+    reference_candidates =
+      Enum.map(candidate_pairs, fn {node, normalized_input} ->
+        {node.id, node.flow_id, node.type, normalized_input}
+      end)
+
+    case ReferenceIntegrity.lock_and_normalize_node_reference_batch(
+           project_id,
+           reference_candidates
+         ) do
+      {:ok, normalized_by_node_id} -> normalized_by_node_id
+      {:error, _reason} -> %{}
+    end
+  end
+
+  defp lock_batch_hub_owners(candidate_pairs) do
+    hub_candidates =
+      Enum.flat_map(candidate_pairs, fn
+        {%FlowNode{flow_id: flow_id, type: "hub"}, %{"hub_id" => hub_id}}
+        when is_binary(hub_id) ->
+          if String.trim(hub_id) == "", do: [], else: [{flow_id, hub_id}]
+
+        _candidate ->
+          []
+      end)
+
+    flow_ids =
+      hub_candidates
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    hub_ids =
+      hub_candidates
+      |> Enum.map(&elem(&1, 1))
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    if hub_candidates == [] do
+      %{}
+    else
+      from(node in FlowNode,
+        where:
+          node.flow_id in ^flow_ids and node.type == "hub" and
+            is_nil(node.deleted_at) and
+            fragment("?->>'hub_id'", node.data) in ^hub_ids,
+        order_by: [asc: node.id],
+        select: {node.flow_id, fragment("?->>'hub_id'", node.data), node.id}
+      )
+      |> Repo.all()
+      |> Enum.group_by(
+        fn {flow_id, hub_id, _node_id} -> {flow_id, hub_id} end,
+        fn {_flow_id, _hub_id, node_id} -> node_id end
+      )
+    end
+  end
+
+  defp validate_batch_hub_id(%FlowNode{} = node, "hub", data, hub_owners) do
+    hub_id = data["hub_id"]
+
+    cond do
+      not is_binary(hub_id) or String.trim(hub_id) == "" ->
+        {:error, :hub_id_required}
+
+      Enum.any?(Map.get(hub_owners, {node.flow_id, hub_id}, []), &(&1 != node.id)) ->
+        {:error, :hub_id_not_unique}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_batch_hub_id(_node, _type, _data, _hub_owners), do: :ok
+
   defp update_node_data_transaction(node, data) do
     with {:ok, %{project_id: project_id, flow: flow, node: locked_node}} <-
-           ReferenceIntegrity.lock_active_node_for_write(node),
+           ReferenceIntegrity.lock_active_node_for_write(node, :key_share),
          {:ok, _parent_id} <-
            ReferenceIntegrity.lock_node_parent(
              flow.id,

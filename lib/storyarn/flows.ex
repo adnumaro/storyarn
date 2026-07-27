@@ -370,6 +370,13 @@ defmodule Storyarn.Flows do
     to: NodeCrud,
     as: :data_and_derivatives_current?
 
+  @doc false
+  @spec node_data_and_derivatives_current_ids([{flow_node(), map()}], integer()) ::
+          MapSet.t(integer())
+  defdelegate node_data_and_derivatives_current_ids(node_data_pairs, project_id),
+    to: NodeCrud,
+    as: :data_and_derivatives_current_ids
+
   @doc """
   Deletes a node and all its connections.
   """

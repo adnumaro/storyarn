@@ -8,10 +8,11 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Flows.NodeCreate
-  alias Storyarn.Projects.Project
   alias Storyarn.References.AvatarIntegrity
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
+
+  @project_lock_modes [:key_share, :share, :update]
 
   @doc """
   Locks a project, an active flow and an active node in a stable order.
@@ -19,19 +20,22 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
   The supplied structs are only identity hints. Callers must persist the
   returned rows so a stale or forged struct cannot bypass project/flow scope.
   """
-  def lock_active_node_for_write(%FlowNode{id: node_id, flow_id: flow_id})
-      when is_integer(node_id) and is_integer(flow_id) do
+  def lock_active_node_for_write(node, project_lock_mode \\ :update)
+
+  def lock_active_node_for_write(%FlowNode{id: node_id, flow_id: flow_id}, project_lock_mode)
+      when is_integer(node_id) and is_integer(flow_id) and project_lock_mode in @project_lock_modes do
     ensure_transaction!()
 
     with {:ok, project_id} <- flow_project_id(flow_id),
-         {:ok, project} <- lock_project(project_id),
+         {:ok, project} <- lock_project(project_id, project_lock_mode),
          {:ok, flow} <- lock_active_flow(flow_id, project_id),
          {:ok, node} <- lock_active_node(node_id, flow_id) do
       {:ok, %{project: project, project_id: project_id, flow: flow, node: node}}
     end
   end
 
-  def lock_active_node_for_write(node_id) when is_integer(node_id) do
+  def lock_active_node_for_write(node_id, project_lock_mode)
+      when is_integer(node_id) and project_lock_mode in @project_lock_modes do
     ensure_transaction!()
 
     case Repo.one(from(node in FlowNode, where: node.id == ^node_id, select: node.flow_id)) do
@@ -39,11 +43,14 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
         {:error, :node_not_found}
 
       flow_id ->
-        lock_active_node_for_write(%FlowNode{id: node_id, flow_id: flow_id})
+        lock_active_node_for_write(
+          %FlowNode{id: node_id, flow_id: flow_id},
+          project_lock_mode
+        )
     end
   end
 
-  def lock_active_node_for_write(_node), do: {:error, :node_not_found}
+  def lock_active_node_for_write(_node, _project_lock_mode), do: {:error, :node_not_found}
 
   @doc """
   Locks a project and an active flow in a stable order.
@@ -51,27 +58,30 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
   The struct's `project_id` is part of the identity check, preventing a caller
   from pairing a real flow ID with an unrelated project.
   """
-  def lock_active_flow_for_write(%Flow{id: flow_id, project_id: project_id})
-      when is_integer(flow_id) and is_integer(project_id) do
+  def lock_active_flow_for_write(flow, project_lock_mode \\ :update)
+
+  def lock_active_flow_for_write(%Flow{id: flow_id, project_id: project_id}, project_lock_mode)
+      when is_integer(flow_id) and is_integer(project_id) and project_lock_mode in @project_lock_modes do
     ensure_transaction!()
 
-    with {:ok, project} <- lock_project(project_id),
+    with {:ok, project} <- lock_project(project_id, project_lock_mode),
          {:ok, flow} <- lock_active_flow(flow_id, project_id) do
       {:ok, %{project: project, project_id: project_id, flow: flow}}
     end
   end
 
-  def lock_active_flow_for_write(flow_id) when is_integer(flow_id) do
+  def lock_active_flow_for_write(flow_id, project_lock_mode)
+      when is_integer(flow_id) and project_lock_mode in @project_lock_modes do
     ensure_transaction!()
 
     with {:ok, project_id} <- flow_project_id(flow_id),
-         {:ok, project} <- lock_project(project_id),
+         {:ok, project} <- lock_project(project_id, project_lock_mode),
          {:ok, flow} <- lock_active_flow(flow_id, project_id) do
       {:ok, %{project: project, project_id: project_id, flow: flow}}
     end
   end
 
-  def lock_active_flow_for_write(_flow), do: {:error, :flow_not_found}
+  def lock_active_flow_for_write(_flow, _project_lock_mode), do: {:error, :flow_not_found}
 
   @doc """
   Validates and locks a node parent.
@@ -123,39 +133,48 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
          {:ok, mention_specs} <- mention_reference_specs(data),
          specs = node_reference_specs(data, exit_target) ++ mention_specs,
          {:ok, normalized_ids} <-
-           ProjectReferenceIntegrity.lock_active_references(project_id, specs),
-         normalized_by_context = normalized_ids_by_context(specs, normalized_ids),
-         normalized_data = apply_normalized_node_ids(data, normalized_by_context),
-         normalized_data =
-           apply_normalized_exit_target(
-             normalized_data,
-             exit_target,
-             normalized_by_context[:exit_target_id]
-           ),
-         :ok <-
-           validate_audio_asset(
-             project_id,
-             normalized_data["audio_asset_id"]
-           ),
-         {:ok, normalized_data} <-
-           AvatarIntegrity.lock_and_normalize_node_avatar_for_project(
-             project_id,
-             node_type,
-             normalized_data
-           ),
-         {:ok, normalized_data} <-
-           lock_and_normalize_jump_target(
-             source_flow_id,
-             node_type,
-             normalized_data
-           ),
-         :ok <- validate_referenced_flow_cycle(source_flow_id, normalized_data["referenced_flow_id"]) do
-      {:ok, normalized_data}
+           ProjectReferenceIntegrity.lock_active_references(project_id, specs) do
+      normalized_by_context = normalized_ids_by_context(specs, normalized_ids)
+      normalized_data = apply_normalized_node_ids(data, normalized_by_context)
+
+      normalized_data =
+        apply_normalized_exit_target(
+          normalized_data,
+          exit_target,
+          normalized_by_context[:exit_target_id]
+        )
+
+      finish_node_reference_normalization(
+        project_id,
+        source_flow_id,
+        node_type,
+        normalized_data
+      )
     end
   end
 
   def lock_and_normalize_node_references(_project_id, _source_flow_id, _node_type, data),
     do: {:error, {:invalid_node_data, data}}
+
+  @doc false
+  @spec lock_and_normalize_node_reference_batch(
+          integer(),
+          [{term(), integer(), String.t(), map()}]
+        ) :: {:ok, %{optional(term()) => map()}} | {:error, term()}
+  def lock_and_normalize_node_reference_batch(project_id, candidates)
+      when is_integer(project_id) and is_list(candidates) do
+    ensure_transaction!()
+
+    with {:ok, prepared} <- prepare_node_reference_batch(candidates),
+         specs = Enum.flat_map(prepared, & &1.specs),
+         {:ok, normalized_ids} <-
+           ProjectReferenceIntegrity.lock_active_references(project_id, specs) do
+      finish_node_reference_batch(project_id, prepared, normalized_ids)
+    end
+  end
+
+  def lock_and_normalize_node_reference_batch(_project_id, candidates),
+    do: {:error, {:invalid_node_reference_batch, candidates}}
 
   @doc """
   Validates an active same-project flow parent and prevents hierarchy cycles.
@@ -248,15 +267,13 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
     end
   end
 
-  defp lock_project(project_id) do
-    case Repo.one(
-           from(project in Project,
-             where: project.id == ^project_id and is_nil(project.deleted_at),
-             lock: "FOR UPDATE"
-           )
+  defp lock_project(project_id, project_lock_mode) do
+    case ProjectReferenceIntegrity.lock_active_project(
+           project_id,
+           project_lock_mode
          ) do
-      nil -> {:error, :flow_not_found}
-      project -> {:ok, project}
+      {:ok, project} -> {:ok, project}
+      {:error, _reason} -> {:error, :flow_not_found}
     end
   end
 
@@ -371,6 +388,295 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
     data
     |> Map.put("target_type", Atom.to_string(type))
     |> Map.put("target_id", normalized_id)
+  end
+
+  defp prepare_node_reference_batch(candidates) do
+    candidates
+    |> Enum.reduce_while({:ok, []}, fn
+      {key, source_flow_id, node_type, data}, {:ok, prepared}
+      when is_integer(source_flow_id) and is_binary(node_type) and is_map(data) ->
+        data = stringify_keys(data)
+
+        with :ok <- validate_referenced_flow_contract(node_type, data),
+             {:ok, exit_target} <- normalize_exit_target(node_type, data),
+             {:ok, mention_specs} <- mention_reference_specs(data) do
+          candidate = %{
+            key: key,
+            source_flow_id: source_flow_id,
+            node_type: node_type,
+            data: data,
+            exit_target: exit_target,
+            specs: node_reference_specs(data, exit_target) ++ mention_specs
+          }
+
+          {:cont, {:ok, [candidate | prepared]}}
+        else
+          {:error, _reason} = error -> {:halt, error}
+        end
+
+      invalid_candidate, _prepared ->
+        {:halt, {:error, {:invalid_node_reference_candidate, invalid_candidate}}}
+    end)
+    |> case do
+      {:ok, prepared} -> {:ok, Enum.reverse(prepared)}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp finish_node_reference_batch(project_id, prepared, normalized_ids) do
+    with {:ok, normalized_candidates} <-
+           apply_normalized_reference_ids(prepared, normalized_ids) do
+      audio_asset_ids =
+        batch_audio_asset_ids(project_id, normalized_candidates)
+
+      avatar_results =
+        AvatarIntegrity.lock_and_normalize_node_avatar_batch_for_project(
+          project_id,
+          Enum.map(normalized_candidates, & &1.data)
+        )
+
+      jump_hub_counts = lock_batch_jump_hub_counts(normalized_candidates)
+
+      circular_reference_pairs =
+        normalized_candidates
+        |> batch_referenced_flow_pairs()
+        |> NodeCreate.circular_reference_pairs()
+
+      semantic_context = %{
+        audio_asset_ids: audio_asset_ids,
+        jump_hub_counts: jump_hub_counts,
+        circular_reference_pairs: circular_reference_pairs
+      }
+
+      finish_batch_candidates(
+        normalized_candidates,
+        avatar_results,
+        semantic_context
+      )
+    end
+  end
+
+  defp finish_batch_candidates(candidates, avatar_results, semantic_context) do
+    candidates
+    |> Enum.zip(avatar_results)
+    |> Enum.reduce_while({:ok, %{}}, fn candidate_and_avatar, acc ->
+      reduce_batch_candidate(candidate_and_avatar, acc, semantic_context)
+    end)
+  end
+
+  defp reduce_batch_candidate({candidate, avatar_result}, {:ok, normalized}, semantic_context) do
+    case finish_batch_node_reference_normalization(
+           candidate,
+           avatar_result,
+           semantic_context.audio_asset_ids,
+           semantic_context.jump_hub_counts,
+           semantic_context.circular_reference_pairs
+         ) do
+      {:ok, normalized_data} ->
+        {:cont, {:ok, Map.put(normalized, candidate.key, normalized_data)}}
+
+      {:error, _reason} = error ->
+        {:halt, error}
+
+      :error ->
+        {:halt, :error}
+    end
+  end
+
+  defp apply_normalized_reference_ids(prepared, normalized_ids) do
+    prepared
+    |> Enum.reduce_while({:ok, [], normalized_ids}, fn candidate, {:ok, normalized, remaining_ids} ->
+      {candidate_ids, remaining_ids} = Enum.split(remaining_ids, length(candidate.specs))
+      normalized_by_context = normalized_ids_by_context(candidate.specs, candidate_ids)
+
+      normalized_data =
+        candidate.data
+        |> apply_normalized_node_ids(normalized_by_context)
+        |> apply_normalized_exit_target(
+          candidate.exit_target,
+          normalized_by_context[:exit_target_id]
+        )
+
+      {:cont, {:ok, [%{candidate | data: normalized_data} | normalized], remaining_ids}}
+    end)
+    |> case do
+      {:ok, normalized, []} -> {:ok, Enum.reverse(normalized)}
+      {:ok, _normalized, remaining_ids} -> {:error, {:unexpected_normalized_reference_ids, remaining_ids}}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp finish_batch_node_reference_normalization(
+         candidate,
+         avatar_result,
+         audio_asset_ids,
+         jump_hub_counts,
+         circular_reference_pairs
+       ) do
+    with :ok <-
+           validate_batch_audio_asset(
+             candidate.data["audio_asset_id"],
+             audio_asset_ids
+           ),
+         {:ok, normalized_data} <- avatar_result,
+         {:ok, normalized_data} <-
+           normalize_batch_jump_target(
+             candidate.source_flow_id,
+             candidate.node_type,
+             normalized_data,
+             jump_hub_counts
+           ),
+         :ok <-
+           validate_batch_referenced_flow_cycle(
+             candidate.source_flow_id,
+             normalized_data["referenced_flow_id"],
+             circular_reference_pairs
+           ) do
+      {:ok, normalized_data}
+    end
+  end
+
+  defp batch_audio_asset_ids(project_id, candidates) do
+    audio_asset_ids =
+      candidates
+      |> Enum.map(& &1.data["audio_asset_id"])
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    if audio_asset_ids == [] do
+      MapSet.new()
+    else
+      from(asset in Asset,
+        where:
+          asset.id in ^audio_asset_ids and asset.project_id == ^project_id and
+            like(asset.content_type, "audio/%"),
+        select: asset.id
+      )
+      |> Repo.all()
+      |> MapSet.new()
+    end
+  end
+
+  defp validate_batch_audio_asset(nil, _audio_asset_ids), do: :ok
+
+  defp validate_batch_audio_asset(asset_id, audio_asset_ids) do
+    if MapSet.member?(audio_asset_ids, asset_id),
+      do: :ok,
+      else: {:error, {:invalid_audio_asset_reference, asset_id}}
+  end
+
+  defp lock_batch_jump_hub_counts(candidates) do
+    jump_targets =
+      candidates
+      |> Enum.flat_map(fn
+        %{source_flow_id: flow_id, node_type: "jump", data: %{"target_hub_id" => value}}
+        when is_binary(value) ->
+          if String.trim(value) == "", do: [], else: [{flow_id, value}]
+
+        _candidate ->
+          []
+      end)
+      |> Enum.uniq()
+
+    flow_ids =
+      jump_targets
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    hub_ids =
+      jump_targets
+      |> Enum.map(&elem(&1, 1))
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    if jump_targets == [] do
+      %{}
+    else
+      from(node in FlowNode,
+        where:
+          node.flow_id in ^flow_ids and node.type == "hub" and
+            is_nil(node.deleted_at) and
+            fragment("?->>'hub_id'", node.data) in ^hub_ids,
+        order_by: [asc: node.id],
+        lock: "FOR SHARE",
+        select: {node.flow_id, fragment("?->>'hub_id'", node.data)}
+      )
+      |> Repo.all()
+      |> Enum.frequencies()
+    end
+  end
+
+  defp normalize_batch_jump_target(flow_id, "jump", data, hub_counts) do
+    value = data["target_hub_id"]
+
+    cond do
+      value in [nil, ""] ->
+        {:ok, data}
+
+      not is_binary(value) ->
+        {:error, {:invalid_jump_target, value}}
+
+      String.trim(value) == "" ->
+        {:ok, Map.put(data, "target_hub_id", "")}
+
+      Map.get(hub_counts, {flow_id, value}) == 1 ->
+        {:ok, data}
+
+      true ->
+        {:error, {:invalid_jump_target, value}}
+    end
+  end
+
+  defp normalize_batch_jump_target(_flow_id, _node_type, data, _hub_counts), do: {:ok, data}
+
+  defp batch_referenced_flow_pairs(candidates) do
+    candidates
+    |> Enum.flat_map(fn candidate ->
+      case candidate.data["referenced_flow_id"] do
+        target_flow_id when is_integer(target_flow_id) ->
+          [{candidate.source_flow_id, target_flow_id}]
+
+        _absent_reference ->
+          []
+      end
+    end)
+    |> Enum.uniq()
+  end
+
+  defp validate_batch_referenced_flow_cycle(_source_flow_id, nil, _circular_pairs), do: :ok
+
+  defp validate_batch_referenced_flow_cycle(source_flow_id, source_flow_id, _circular_pairs),
+    do: {:error, :self_reference}
+
+  defp validate_batch_referenced_flow_cycle(source_flow_id, target_flow_id, circular_pairs) do
+    if MapSet.member?(circular_pairs, {source_flow_id, target_flow_id}),
+      do: {:error, :circular_reference},
+      else: :ok
+  end
+
+  defp finish_node_reference_normalization(project_id, source_flow_id, node_type, normalized_data) do
+    with :ok <-
+           validate_audio_asset(
+             project_id,
+             normalized_data["audio_asset_id"]
+           ),
+         {:ok, normalized_data} <-
+           AvatarIntegrity.lock_and_normalize_node_avatar_for_project(
+             project_id,
+             node_type,
+             normalized_data
+           ),
+         {:ok, normalized_data} <-
+           lock_and_normalize_jump_target(
+             source_flow_id,
+             node_type,
+             normalized_data
+           ),
+         :ok <- validate_referenced_flow_cycle(source_flow_id, normalized_data["referenced_flow_id"]) do
+      {:ok, normalized_data}
+    end
   end
 
   defp mention_reference_specs(data) do

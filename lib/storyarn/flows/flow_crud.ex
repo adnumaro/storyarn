@@ -589,20 +589,39 @@ defmodule Storyarn.Flows.FlowCrud do
   flow locks used by active writers.
   """
   def restore_flow(%Flow{id: flow_id}) when is_integer(flow_id) do
+    restore_flow_with_localization(%Flow{id: flow_id}, &Localization.extract_flow_nodes/1)
+  end
+
+  def restore_flow(_flow), do: {:error, :flow_not_found}
+
+  @doc false
+  def restore_flow(%Flow{id: flow_id}, extract_flow_nodes)
+      when is_integer(flow_id) and is_function(extract_flow_nodes, 1) do
+    restore_flow_with_localization(%Flow{id: flow_id}, extract_flow_nodes)
+  end
+
+  def restore_flow(_flow, _extract_flow_nodes), do: {:error, :flow_not_found}
+
+  defp restore_flow_with_localization(%Flow{id: flow_id}, extract_flow_nodes) do
     result =
-      Repo.transaction(fn -> restore_flow_transaction(flow_id) end)
+      Repo.transaction(fn ->
+        restored_flow = restore_flow_transaction(flow_id)
+
+        case extract_flow_nodes.(restored_flow.id) do
+          :ok -> restored_flow
+          {:error, reason} -> Repo.rollback(reason)
+          unexpected -> Repo.rollback({:unexpected_localization_extraction_result, unexpected})
+        end
+      end)
 
     case result do
       {:ok, restored_flow} ->
-        Localization.extract_flow_nodes(restored_flow.id)
         broadcast_flow_dashboard_result(result, restored_flow.project_id)
 
       _ ->
         result
     end
   end
-
-  def restore_flow(_flow), do: {:error, :flow_not_found}
 
   defp restore_flow_transaction(flow_id) do
     project_id =
@@ -874,15 +893,35 @@ defmodule Storyarn.Flows.FlowCrud do
 
   defp validate_restored_flow_sources(source_nodes, restored_nodes, restored_flow, project_id) do
     restored_node_ids = MapSet.new(restored_nodes, & &1.id)
+    source_nodes = Enum.map(source_nodes, &Repo.get!(FlowNode, &1.id))
+    active_source_flow_ids = active_flow_ids_for_nodes(source_nodes)
 
     source_nodes
-    |> Enum.map(&Repo.get!(FlowNode, &1.id))
-    |> Enum.filter(&restored_source_node?(&1, restored_node_ids, restored_flow.id))
+    |> Enum.filter(
+      &restored_source_node?(
+        &1,
+        restored_node_ids,
+        active_source_flow_ids,
+        restored_flow.id
+      )
+    )
     |> normalize_restored_flow_nodes(project_id)
   end
 
-  defp restored_source_node?(source_node, restored_node_ids, restored_flow_id) do
-    source_node.data["referenced_flow_id"] == restored_flow_id and
+  defp active_flow_ids_for_nodes(nodes) do
+    flow_ids = nodes |> Enum.map(& &1.flow_id) |> Enum.uniq()
+
+    Flow
+    |> where([flow], flow.id in ^flow_ids and is_nil(flow.deleted_at))
+    |> select([flow], flow.id)
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  defp restored_source_node?(source_node, restored_node_ids, active_source_flow_ids, restored_flow_id) do
+    is_nil(source_node.deleted_at) and
+      MapSet.member?(active_source_flow_ids, source_node.flow_id) and
+      source_node.data["referenced_flow_id"] == restored_flow_id and
       not MapSet.member?(restored_node_ids, source_node.id)
   end
 
@@ -1221,7 +1260,9 @@ defmodule Storyarn.Flows.FlowCrud do
       join: f in Flow,
       on: n.flow_id == f.id,
       where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: f.project_id == ^project_id,
+      where:
+        f.project_id == ^project_id and
+          is_nil(n.deleted_at) and is_nil(f.deleted_at),
       select: %{
         id: r.id,
         source_type: r.source_type,

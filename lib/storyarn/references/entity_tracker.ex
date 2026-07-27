@@ -18,6 +18,7 @@ defmodule Storyarn.References.EntityTracker do
 
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.ScenePin
@@ -35,11 +36,16 @@ defmodule Storyarn.References.EntityTracker do
   defdelegate delete_screenplay_element_references(element_id), to: ReferenceTracker
   defdelegate delete_target_references(target_type, target_id), to: ReferenceTracker
 
+  @spec update_flow_node_entity_references(map(), keyword()) :: :ok | {:error, term()}
   def update_flow_node_entity_references(node, opts \\ []), do: ReferenceTracker.update_flow_node_references(node, opts)
 
   defdelegate flow_node_entity_references_current?(node),
     to: ReferenceTracker,
     as: :flow_node_references_current?
+
+  defdelegate flow_node_entity_references_current_ids(nodes),
+    to: ReferenceTracker,
+    as: :flow_node_references_current_ids
 
   def delete_flow_node_entity_references(node_id), do: ReferenceTracker.delete_flow_node_references(node_id)
 
@@ -65,14 +71,24 @@ defmodule Storyarn.References.EntityTracker do
   end
 
   defp rebuild_project_entity_references_transaction(project_id) do
-    case Repo.transaction(fn -> do_rebuild_project_entity_references(project_id) end) do
-      {:ok, result} -> result
+    case Repo.transaction(fn -> execute_project_rebuild!(project_id) end) do
+      {:ok, :ok} -> :ok
       {:error, reason} -> {:error, reason}
     end
   end
 
+  defp execute_project_rebuild!(project_id) do
+    case do_rebuild_project_entity_references(project_id) do
+      :ok -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+      unexpected -> Repo.rollback({:unexpected_entity_reference_rebuild_result, unexpected})
+    end
+  end
+
   defp do_rebuild_project_entity_references(project_id) do
-    with :ok <-
+    with {:ok, _project} <-
+           ProjectReferenceIntegrity.lock_active_project(project_id, :update),
+         :ok <-
            rebuild_sources(active_project_blocks_query(project_id), fn block ->
              ReferenceTracker.update_block_references(block, project_id: project_id)
            end),
@@ -133,12 +149,30 @@ defmodule Storyarn.References.EntityTracker do
         )
       )
 
-    Enum.each(sources, update_fun)
+    case apply_source_updates(sources, update_fun) do
+      :ok when length(sources) == @rebuild_batch_size ->
+        rebuild_sources(query, update_fun, List.last(sources).id)
 
-    if length(sources) == @rebuild_batch_size do
-      rebuild_sources(query, update_fun, List.last(sources).id)
-    else
-      :ok
+      :ok ->
+        :ok
+
+      {:error, _reason} = error ->
+        error
     end
+  end
+
+  defp apply_source_updates(sources, update_fun) do
+    Enum.reduce_while(sources, :ok, fn source, :ok ->
+      case update_fun.(source) do
+        :ok ->
+          {:cont, :ok}
+
+        {:error, _reason} = error ->
+          {:halt, error}
+
+        unexpected ->
+          {:halt, {:error, {:unexpected_entity_reference_update_result, source.id, unexpected}}}
+      end
+    end)
   end
 end

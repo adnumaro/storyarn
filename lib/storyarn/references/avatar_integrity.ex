@@ -65,6 +65,55 @@ defmodule Storyarn.References.AvatarIntegrity do
     {:error, {:invalid_avatar_reference, value}}
   end
 
+  @doc false
+  @spec lock_and_normalize_node_avatar_batch_for_project(integer(), [map()]) ::
+          [
+            {:ok, map()}
+            | {:error, validation_error()}
+            | :error
+          ]
+  def lock_and_normalize_node_avatar_batch_for_project(project_id, data_items)
+      when is_integer(project_id) and is_list(data_items) do
+    ensure_transaction!()
+
+    prepared =
+      Enum.map(data_items, fn data ->
+        {data, normalize_batch_avatar_id(data)}
+      end)
+
+    avatar_ids =
+      prepared
+      |> Enum.flat_map(fn
+        {_data, {:ok, avatar_id}} when is_integer(avatar_id) -> [avatar_id]
+        _invalid_or_absent -> []
+      end)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    project_avatar_sheets = lock_project_avatar_sheets(avatar_ids, project_id)
+
+    existing_avatar_ids =
+      avatar_ids
+      |> Enum.reject(&Map.has_key?(project_avatar_sheets, &1))
+      |> existing_avatar_ids()
+
+    Enum.map(prepared, fn {data, avatar_result} ->
+      normalize_batch_avatar(
+        data,
+        avatar_result,
+        project_avatar_sheets,
+        existing_avatar_ids
+      )
+    end)
+  end
+
+  def lock_and_normalize_node_avatar_batch_for_project(_project_id, data_items) do
+    Enum.map(data_items, fn data ->
+      value = if is_map(data), do: Map.get(data, "avatar_id"), else: data
+      {:error, {:invalid_avatar_reference, value}}
+    end)
+  end
+
   @doc """
   Locks one avatar for deletion and verifies optional ownership constraints.
 
@@ -174,6 +223,79 @@ defmodule Storyarn.References.AvatarIntegrity do
 
       sheet_id ->
         {:ok, sheet_id}
+    end
+  end
+
+  defp lock_project_avatar_sheets([], _project_id), do: %{}
+
+  defp lock_project_avatar_sheets(avatar_ids, project_id) do
+    from(avatar in SheetAvatar,
+      join: sheet in Sheet,
+      on: sheet.id == avatar.sheet_id,
+      where:
+        avatar.id in ^avatar_ids and sheet.project_id == ^project_id and
+          is_nil(sheet.deleted_at),
+      order_by: [asc: avatar.id],
+      lock: "FOR KEY SHARE",
+      select: {avatar.id, avatar.sheet_id}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  defp existing_avatar_ids([]), do: MapSet.new()
+
+  defp existing_avatar_ids(avatar_ids) do
+    from(avatar in SheetAvatar,
+      where: avatar.id in ^avatar_ids,
+      select: avatar.id
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  defp normalize_batch_avatar_id(data) when is_map(data) do
+    normalize_optional_id(Map.get(data, "avatar_id"))
+  end
+
+  defp normalize_batch_avatar_id(_data), do: :error
+
+  defp normalize_batch_avatar(data, {:ok, nil}, _project_avatar_sheets, _existing_avatar_ids) do
+    {:ok, data}
+  end
+
+  defp normalize_batch_avatar(data, {:ok, avatar_id}, project_avatar_sheets, existing_avatar_ids) do
+    with {:ok, speaker_sheet_id} <-
+           normalize_optional_id(Map.get(data, "speaker_sheet_id")),
+         {:ok, avatar_sheet_id} <-
+           batch_avatar_sheet(
+             avatar_id,
+             project_avatar_sheets,
+             existing_avatar_ids
+           ),
+         :ok <-
+           validate_avatar_speaker(
+             avatar_id,
+             avatar_sheet_id,
+             speaker_sheet_id
+           ) do
+      {:ok, Map.put(data, "avatar_id", avatar_id)}
+    end
+  end
+
+  defp normalize_batch_avatar(data, :error, _project_avatar_sheets, _existing_avatar_ids) do
+    {:error, {:invalid_avatar_reference, Map.get(data, "avatar_id")}}
+  end
+
+  defp batch_avatar_sheet(avatar_id, project_avatar_sheets, existing_avatar_ids) do
+    case Map.fetch(project_avatar_sheets, avatar_id) do
+      {:ok, sheet_id} ->
+        {:ok, sheet_id}
+
+      :error ->
+        if MapSet.member?(existing_avatar_ids, avatar_id),
+          do: {:error, {:avatar_project_mismatch, avatar_id}},
+          else: {:error, {:invalid_avatar_reference, avatar_id}}
     end
   end
 

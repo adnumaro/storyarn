@@ -76,6 +76,33 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     )
   end
 
+  def partial_repair_message(repaired_count, failed_count) do
+    repaired =
+      dngettext(
+        "projects",
+        "%{count} node repaired",
+        "%{count} nodes repaired",
+        repaired_count,
+        count: repaired_count
+      )
+
+    failed =
+      dngettext(
+        "projects",
+        "%{count} node failed",
+        "%{count} nodes failed",
+        failed_count,
+        count: failed_count
+      )
+
+    dgettext(
+      "projects",
+      "Repair partially completed: %{repaired}; %{failed}.",
+      repaired: repaired,
+      failed: failed
+    )
+  end
+
   # ---------------------------------------------------------------------------
   # Action helpers (called from handle_event)
   # ---------------------------------------------------------------------------
@@ -141,9 +168,23 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   end
 
   def do_repair_variable_references(socket) do
-    case Flows.repair_stale_references(socket.assigns.project.id) do
+    do_repair_variable_references(socket, &Flows.repair_stale_references/1)
+  end
+
+  @doc false
+  def do_repair_variable_references(socket, repair_fun) when is_function(repair_fun, 1) do
+    case repair_fun.(socket.assigns.project.id) do
       {:ok, count} ->
         {:noreply, put_flash(socket, :info, repair_message(count))}
+
+      {:error, {:partial_variable_reference_repair, %{repaired_count: repaired_count, failures: failures}}}
+      when repaired_count > 0 and is_list(failures) ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           partial_repair_message(repaired_count, length(failures))
+         )}
 
       {:error, _reason} ->
         {:noreply,

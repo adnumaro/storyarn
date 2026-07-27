@@ -14,6 +14,9 @@ defmodule Storyarn.References.VariableTracker do
 
   def update_flow_node_variable_references(node), do: VariableReferenceTracker.update_references(node)
 
+  def flow_node_variable_references_current_ids(nodes, project_id),
+    do: VariableReferenceTracker.flow_node_references_current_ids(nodes, project_id)
+
   def delete_flow_node_variable_references(node_id), do: VariableReferenceTracker.delete_references(node_id)
 
   def update_scene_pin_variable_references(pin, opts \\ []),

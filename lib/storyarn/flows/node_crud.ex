@@ -36,13 +36,12 @@ defmodule Storyarn.Flows.NodeCrud do
   @doc false
   def lock_flow_nodes_for_update(%Flow{} = flow) do
     with {:ok, %{flow: locked_flow}} <-
-           ReferenceIntegrity.lock_active_flow_for_write(flow) do
+           ReferenceIntegrity.lock_active_flow_for_write(flow, :key_share) do
       nodes =
         Repo.all(
           from(n in FlowNode,
             where: n.flow_id == ^locked_flow.id and is_nil(n.deleted_at),
-            order_by: [asc: n.id],
-            lock: "FOR UPDATE"
+            order_by: [asc: n.id]
           )
         )
 
@@ -508,6 +507,7 @@ defmodule Storyarn.Flows.NodeCrud do
   defdelegate update_node_data(node, data), to: NodeUpdate
   defdelegate update_node_data_without_dashboard_broadcast(node, data), to: NodeUpdate
   defdelegate data_and_derivatives_current?(node, data, project_id), to: NodeUpdate
+  defdelegate data_and_derivatives_current_ids(node_data_pairs, project_id), to: NodeUpdate
   defdelegate change_node(node, attrs \\ %{}), to: NodeUpdate
 
   defdelegate delete_node(node), to: NodeDelete

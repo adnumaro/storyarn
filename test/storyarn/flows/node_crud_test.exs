@@ -1055,6 +1055,26 @@ defmodule Storyarn.Flows.NodeCrudTest do
                end)
     end
 
+    test "does not certify node derivatives against a different project" do
+      %{user: user, flow: flow} = create_project_and_flow()
+      other_project = project_fixture(user)
+
+      assert {:ok, dialogue} =
+               Flows.create_node(flow, %{
+                 type: "dialogue",
+                 data: %{"text" => "", "responses" => []}
+               })
+
+      assert {:ok, false} =
+               Repo.transaction(fn ->
+                 Flows.node_data_and_derivatives_current?(
+                   Repo.reload!(dialogue),
+                   dialogue.data,
+                   other_project.id
+                 )
+               end)
+    end
+
     test "does not certify unchanged node data when a derived entity reference is missing" do
       %{project: project, flow: flow} = create_project_and_flow()
       speaker = sheet_fixture(project)

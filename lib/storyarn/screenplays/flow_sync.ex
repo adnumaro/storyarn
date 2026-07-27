@@ -10,7 +10,10 @@ defmodule Storyarn.Screenplays.FlowSync do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Screenplays.ElementCrud
   alias Storyarn.Screenplays.FlowLayout
@@ -30,16 +33,22 @@ defmodule Storyarn.Screenplays.FlowSync do
   When creating a new flow, auto-links it to the screenplay.
   Returns `{:ok, flow}` or `{:error, reason}`.
   """
-  def ensure_flow(%Screenplay{linked_flow_id: nil, project_id: project_id} = screenplay) do
-    fn -> ensure_flow_in_transaction(screenplay) end
-    |> Repo.transaction()
-    |> Collaboration.broadcast_dashboard_result(project_id, :flows)
-  end
+  def ensure_flow(%Screenplay{id: screenplay_id, project_id: project_id}) do
+    result =
+      with_locked_screenplay(project_id, screenplay_id, fn project, screenplay ->
+        created? = is_nil(screenplay.linked_flow_id)
+        {ensure_flow_in_transaction(screenplay, project), created?}
+      end)
 
-  def ensure_flow(%Screenplay{linked_flow_id: flow_id, project_id: project_id}) do
-    case Flows.get_flow(project_id, flow_id) do
-      nil -> {:error, :flow_not_found}
-      flow -> {:ok, flow}
+    case result do
+      {:ok, {flow, true}} ->
+        Collaboration.broadcast_dashboard_result({:ok, flow}, project_id, :flows)
+
+      {:ok, {flow, false}} ->
+        {:ok, flow}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -49,16 +58,11 @@ defmodule Storyarn.Screenplays.FlowSync do
   Validates the flow exists and belongs to the same project.
   Returns `{:ok, screenplay}` or `{:error, changeset}`.
   """
-  def link_to_flow(%Screenplay{} = screenplay, flow_id) do
-    case Flows.get_flow(screenplay.project_id, flow_id) do
-      nil ->
-        {:error, :flow_not_found}
-
-      _flow ->
-        screenplay
-        |> Screenplay.link_flow_changeset(%{linked_flow_id: flow_id})
-        |> Repo.update()
-    end
+  def link_to_flow(%Screenplay{id: screenplay_id, project_id: project_id}, flow_id) do
+    with_locked_screenplay(project_id, screenplay_id, fn _project, screenplay ->
+      flow = lock_active_flow_in_project!(project_id, flow_id)
+      link_locked_screenplay!(screenplay, flow.id)
+    end)
   end
 
   @doc """
@@ -68,23 +72,98 @@ defmodule Storyarn.Screenplays.FlowSync do
   Does NOT delete the flow or its nodes.
   Returns `{:ok, screenplay}` or `{:ok, screenplay}` if already unlinked.
   """
-  def unlink_flow(%Screenplay{linked_flow_id: nil} = screenplay) do
-    {:ok, screenplay}
+  def unlink_flow(%Screenplay{id: screenplay_id, project_id: project_id}) do
+    with_locked_screenplay(project_id, screenplay_id, fn _project, screenplay ->
+      link_locked_screenplay!(screenplay, nil)
+    end)
   end
 
-  def unlink_flow(%Screenplay{} = screenplay) do
-    Repo.transaction(fn ->
-      # Clear linked_node_id on all elements
-      Repo.update_all(
-        from(e in ScreenplayElement, where: e.screenplay_id == ^screenplay.id and not is_nil(e.linked_node_id)),
-        set: [linked_node_id: nil]
+  defp link_locked_screenplay!(screenplay, linked_flow_id) do
+    previous_flow_id = screenplay.linked_flow_id
+
+    cond do
+      previous_flow_id == linked_flow_id and not is_nil(linked_flow_id) ->
+        screenplay
+
+      previous_flow_id == linked_flow_id ->
+        clear_direct_element_links!(screenplay.id)
+        screenplay
+
+      true ->
+        clear_previous_element_links!(
+          screenplay.project_id,
+          screenplay.id,
+          previous_flow_id
+        )
+
+        screenplay
+        |> Screenplay.link_flow_changeset(%{linked_flow_id: linked_flow_id})
+        |> Repo.update()
+        |> case do
+          {:ok, updated_screenplay} -> updated_screenplay
+          {:error, reason} -> Repo.rollback(reason)
+        end
+    end
+  end
+
+  defp clear_previous_element_links!(_project_id, screenplay_id, nil) do
+    clear_direct_element_links!(screenplay_id)
+  end
+
+  defp clear_previous_element_links!(project_id, screenplay_id, previous_flow_id) do
+    screenplay_ids = screenplay_subtree_ids(project_id, screenplay_id)
+
+    previous_flow_node_ids =
+      from(node in FlowNode,
+        where: node.flow_id == ^previous_flow_id,
+        select: node.id
       )
 
-      # Clear linked_flow_id on screenplay
-      screenplay
-      |> Screenplay.link_flow_changeset(%{linked_flow_id: nil})
-      |> Repo.update!()
-    end)
+    Repo.update_all(
+      from(element in ScreenplayElement,
+        where:
+          element.screenplay_id in ^screenplay_ids and
+            element.linked_node_id in subquery(previous_flow_node_ids)
+      ),
+      set: [linked_node_id: nil]
+    )
+  end
+
+  defp clear_direct_element_links!(screenplay_id) do
+    Repo.update_all(
+      from(element in ScreenplayElement,
+        where:
+          element.screenplay_id == ^screenplay_id and
+            not is_nil(element.linked_node_id)
+      ),
+      set: [linked_node_id: nil]
+    )
+  end
+
+  defp screenplay_subtree_ids(project_id, screenplay_id) do
+    anchor =
+      from(screenplay in "screenplays",
+        where:
+          screenplay.id == ^screenplay_id and
+            screenplay.project_id == ^project_id,
+        select: %{id: screenplay.id}
+      )
+
+    recursion =
+      from(screenplay in "screenplays",
+        join: ancestor in "screenplay_subtree",
+        on: screenplay.parent_id == ancestor.id,
+        where: screenplay.project_id == ^project_id,
+        select: %{id: screenplay.id}
+      )
+
+    subtree = union(anchor, ^recursion)
+
+    from("screenplay_subtree")
+    |> recursive_ctes(true)
+    |> with_cte("screenplay_subtree", as: ^subtree)
+    |> select([screenplay], screenplay.id)
+    |> Repo.all()
   end
 
   @doc """
@@ -97,30 +176,51 @@ defmodule Storyarn.Screenplays.FlowSync do
   Returns `{:ok, flow}` or `{:error, reason}`.
   """
   def sync_to_flow(%Screenplay{id: id, project_id: project_id}) do
-    # Re-fetch to get latest linked_flow_id
-    screenplay = Repo.get!(Screenplay, id)
-
-    page_data = load_page_tree_data(screenplay)
-    page_tree = PageTreeBuilder.build(page_data)
-
-    %{all_node_attrs: all_node_attrs, connections: connections, screenplay_ids: screenplay_ids} =
-      PageTreeBuilder.flatten(page_tree)
-
-    fn ->
-      flow = ensure_flow_in_transaction(screenplay)
-
-      do_sync_in_transaction(
-        %{screenplay | project_id: project_id},
-        flow,
-        all_node_attrs,
-        connections,
-        screenplay_ids,
-        page_tree
-      )
-    end
-    |> Repo.transaction()
+    project_id
+    |> sync_to_flow_with_project_lock(id, :key_share)
+    |> retry_sync_with_project_update(project_id, id)
     |> Collaboration.broadcast_dashboard_result(project_id, :flows)
   end
+
+  defp sync_to_flow_with_project_lock(project_id, screenplay_id, project_lock_mode) do
+    with_locked_screenplay(
+      project_id,
+      screenplay_id,
+      project_lock_mode,
+      fn project, screenplay ->
+        if project_lock_mode == :key_share and is_nil(screenplay.linked_flow_id),
+          do: Repo.rollback(:requires_project_update)
+
+        flow = ensure_flow_in_transaction(screenplay, project)
+        {flow, all_nodes} = lock_flow_nodes!(flow)
+
+        page_tree =
+          screenplay
+          |> load_page_tree_data(flow.id)
+          |> PageTreeBuilder.build()
+
+        %{all_node_attrs: all_node_attrs, connections: connections, screenplay_ids: screenplay_ids} =
+          PageTreeBuilder.flatten(page_tree)
+
+        do_sync_in_transaction(
+          screenplay,
+          flow,
+          all_nodes,
+          all_node_attrs,
+          connections,
+          screenplay_ids,
+          page_tree,
+          project_lock_mode
+        )
+      end
+    )
+  end
+
+  defp retry_sync_with_project_update({:error, :requires_project_update}, project_id, screenplay_id) do
+    sync_to_flow_with_project_lock(project_id, screenplay_id, :update)
+  end
+
+  defp retry_sync_with_project_update(result, _project_id, _screenplay_id), do: result
 
   @doc """
   Syncs flow nodes into the screenplay (reverse direction).
@@ -131,37 +231,35 @@ defmodule Storyarn.Screenplays.FlowSync do
 
   Returns `{:ok, screenplay}` or `{:error, reason}`.
   """
-  def sync_from_flow(%Screenplay{id: id}) do
-    # Re-fetch to get latest linked_flow_id
-    screenplay = Repo.get!(Screenplay, id)
-
-    if is_nil(screenplay.linked_flow_id) do
-      {:error, :not_linked}
-    else
-      sync_from_flow_linked(screenplay)
-    end
+  def sync_from_flow(%Screenplay{id: id, project_id: project_id}) do
+    with_locked_screenplay(
+      project_id,
+      id,
+      :key_share,
+      fn _project, screenplay ->
+        flow = lock_linked_flow_for_reverse_sync!(screenplay)
+        sync_from_flow_in_transaction!(screenplay, flow)
+      end
+    )
   end
 
-  defp sync_from_flow_linked(screenplay) do
-    case ensure_flow(screenplay) do
-      {:error, reason} -> {:error, reason}
-      {:ok, flow} -> sync_from_flow_tree(screenplay, flow)
-    end
-  end
-
-  defp sync_from_flow_tree(screenplay, flow) do
+  defp sync_from_flow_in_transaction!(screenplay, flow) do
     nodes = Flows.list_nodes(flow.id)
     connections = Flows.list_connections(flow.id)
 
     case FlowTraversal.linearize_tree(nodes, connections) do
       {:error, :no_entry_node} ->
-        {:error, :no_entry_node}
+        Repo.rollback(:no_entry_node)
 
       {:ok, tree_result} ->
-        Repo.transaction(fn ->
-          sync_page_from_tree!(screenplay, tree_result)
-          Repo.get!(Screenplay, screenplay.id)
-        end)
+        sync_page_from_tree!(
+          screenplay,
+          tree_result,
+          flow.id,
+          MapSet.new([screenplay.id])
+        )
+
+        Repo.get!(Screenplay, screenplay.id)
     end
   end
 
@@ -169,23 +267,38 @@ defmodule Storyarn.Screenplays.FlowSync do
   # sync_from_flow internals
   # ---------------------------------------------------------------------------
 
-  defp sync_page_from_tree!(screenplay, tree_result, depth \\ 0)
+  defp sync_page_from_tree!(screenplay, tree_result, flow_id, visited_screenplay_ids, depth \\ 0)
 
-  defp sync_page_from_tree!(_screenplay, _tree_result, depth) when depth > @max_tree_depth, do: :ok
+  defp sync_page_from_tree!(_screenplay, _tree_result, _flow_id, visited_screenplay_ids, depth)
+       when depth > @max_tree_depth, do: visited_screenplay_ids
 
-  defp sync_page_from_tree!(screenplay, tree_result, depth) do
+  defp sync_page_from_tree!(screenplay, tree_result, flow_id, visited_screenplay_ids, depth) do
     new_attrs = ReverseNodeMapping.nodes_to_element_attrs(tree_result.nodes)
     sync_page_elements!(screenplay, new_attrs)
 
     nodes_by_id = Map.new(tree_result.nodes, &{&1.id, &1})
     branch_choice_ids = MapSet.new(tree_result.branches, & &1.choice_id)
 
-    Enum.each(tree_result.branches, fn branch ->
-      source_node = Map.get(nodes_by_id, branch.source_node_id)
-      sync_branch_from_tree!(screenplay, branch, source_node, depth)
-    end)
+    visited_screenplay_ids =
+      Enum.reduce(
+        tree_result.branches,
+        visited_screenplay_ids,
+        fn branch, visited_ids ->
+          source_node = Map.get(nodes_by_id, branch.source_node_id)
+
+          sync_branch_from_tree!(
+            screenplay,
+            branch,
+            source_node,
+            flow_id,
+            visited_ids,
+            depth
+          )
+        end
+      )
 
     cleanup_orphaned_links!(screenplay.id, tree_result.nodes, branch_choice_ids)
+    visited_screenplay_ids
   end
 
   defp sync_page_elements!(screenplay, new_attrs) do
@@ -206,17 +319,28 @@ defmodule Storyarn.Screenplays.FlowSync do
     recompact_positions!(final_order)
   end
 
-  defp sync_branch_from_tree!(parent, branch, source_node, depth) do
+  defp sync_branch_from_tree!(parent, branch, source_node, flow_id, visited_screenplay_ids, depth) do
     linked_id = get_choice_field(source_node, branch.choice_id, "linked_screenplay_id")
 
     child =
-      if linked_id && child_exists?(linked_id, parent.id) do
-        Repo.get!(Screenplay, linked_id)
-      else
-        create_branch_child!(parent, branch.choice_id, source_node)
+      case lock_owned_child(parent, linked_id, flow_id) do
+        %Screenplay{} = owned_child ->
+          owned_child
+
+        nil ->
+          create_branch_child!(parent, branch.choice_id, source_node)
       end
 
-    sync_page_from_tree!(child, branch.subtree, depth + 1)
+    if MapSet.member?(visited_screenplay_ids, child.id),
+      do: Repo.rollback({:reused_screenplay_branch, child.id})
+
+    sync_page_from_tree!(
+      child,
+      branch.subtree,
+      flow_id,
+      MapSet.put(visited_screenplay_ids, child.id),
+      depth + 1
+    )
   end
 
   defp create_branch_child!(parent, choice_id, source_node) do
@@ -229,9 +353,21 @@ defmodule Storyarn.Screenplays.FlowSync do
     child
   end
 
-  defp child_exists?(child_id, parent_id) do
-    Repo.exists?(from(s in Screenplay, where: s.id == ^child_id and s.parent_id == ^parent_id and is_nil(s.deleted_at)))
+  defp lock_owned_child(parent, child_id, flow_id) when is_integer(child_id) and is_integer(flow_id) do
+    Repo.one(
+      from(child in Screenplay,
+        where:
+          child.id == ^child_id and
+            child.parent_id == ^parent.id and
+            child.project_id == ^parent.project_id and
+            is_nil(child.deleted_at) and
+            (is_nil(child.linked_flow_id) or child.linked_flow_id == ^flow_id),
+        lock: "FOR NO KEY UPDATE"
+      )
+    )
   end
+
+  defp lock_owned_child(_parent, _child_id, _flow_id), do: nil
 
   defp get_choice_field(node, choice_id, field) do
     responses = (node.data || %{})["responses"] || []
@@ -385,9 +521,16 @@ defmodule Storyarn.Screenplays.FlowSync do
   # sync_to_flow internals
   # ---------------------------------------------------------------------------
 
-  defp do_sync_in_transaction(screenplay, flow, all_node_attrs, connection_specs, screenplay_ids, page_tree) do
-    # Load existing state
-    {flow, all_nodes} = lock_flow_nodes!(flow)
+  defp do_sync_in_transaction(
+         screenplay,
+         flow,
+         all_nodes,
+         all_node_attrs,
+         connection_specs,
+         screenplay_ids,
+         page_tree,
+         project_lock_mode
+       ) do
     synced_nodes = Enum.filter(all_nodes, &(&1.source == "screenplay_sync"))
     entry_node = Enum.find(all_nodes, &(&1.type == "entry"))
 
@@ -395,18 +538,39 @@ defmodule Storyarn.Screenplays.FlowSync do
     element_to_node = build_element_to_node_lookup(screenplay_ids)
     synced_by_id = Map.new(synced_nodes, &{&1.id, &1})
 
-    # Create or update nodes
-    {result_nodes, matched_ids} =
-      Enum.map_reduce(all_node_attrs, MapSet.new(), fn attrs, matched ->
-        upsert_sync_node(attrs, element_to_node, synced_by_id, entry_node, flow, matched)
+    resolved_nodes =
+      Enum.map(all_node_attrs, fn attrs ->
+        {attrs, find_existing_node(attrs, element_to_node, synced_by_id, entry_node)}
       end)
 
-    # Delete orphaned synced nodes
-    delete_orphaned_nodes!(synced_nodes, matched_ids)
+    matched_ids = matched_node_ids(resolved_nodes)
 
-    # Rebuild connections between result nodes
-    delete_connections_between!(flow.id, result_nodes)
-    create_connections_from_specs!(flow, result_nodes, connection_specs)
+    if project_lock_mode == :key_share and
+         (Enum.any?(resolved_nodes, fn {_attrs, existing} -> is_nil(existing) end) or
+            Enum.any?(synced_nodes, &(not MapSet.member?(matched_ids, &1.id)))),
+       do: Repo.rollback(:requires_project_update)
+
+    # Delete orphans before certification. Deleting a hub clears its jumps, so
+    # certifying first would leave a stale "current" decision for those nodes.
+    delete_orphaned_nodes!(synced_nodes, matched_ids, flow.project_id)
+
+    {hub_mutations, remaining_nodes} =
+      resolved_nodes
+      |> Enum.with_index()
+      |> Enum.split_with(&hub_mutation?/1)
+
+    # Hub writes can cascade into jump data. Apply every hub mutation as one
+    # phase, then certify the remaining nodes against that final hub state.
+    hub_results = upsert_sync_node_group(hub_mutations, flow)
+    remaining_results = upsert_sync_node_group(remaining_nodes, flow)
+
+    result_nodes =
+      (hub_results ++ remaining_results)
+      |> Enum.sort_by(&elem(&1, 0))
+      |> Enum.map(&elem(&1, 1))
+
+    # Reconcile only changed connections between result nodes.
+    reconcile_connections!(flow, result_nodes, connection_specs)
 
     # Position new nodes using tree-aware layout
     positions = FlowLayout.compute_positions(page_tree, result_nodes)
@@ -425,15 +589,46 @@ defmodule Storyarn.Screenplays.FlowSync do
     end
   end
 
-  defp upsert_sync_node(attrs, element_to_node, synced_by_id, entry_node, flow, matched) do
-    case find_existing_node(attrs, element_to_node, synced_by_id, entry_node) do
+  defp matched_node_ids(resolved_nodes) do
+    resolved_nodes
+    |> Enum.flat_map(fn
+      {_attrs, %FlowNode{id: id}} -> [id]
+      {_attrs, nil} -> []
+    end)
+    |> MapSet.new()
+  end
+
+  defp hub_mutation?({{attrs, existing}, _index}) do
+    attrs.type == "hub" or match?(%FlowNode{type: "hub"}, existing)
+  end
+
+  defp upsert_sync_node_group([], _flow), do: []
+
+  defp upsert_sync_node_group(indexed_resolved_nodes, flow) do
+    current_node_ids =
+      indexed_resolved_nodes
+      |> Enum.flat_map(fn
+        {{attrs, %FlowNode{type: type, source: "screenplay_sync"} = node}, _index}
+        when type == attrs.type ->
+          [{node, attrs.data}]
+
+        {_missing_or_stale_node, _index} ->
+          []
+      end)
+      |> Flows.node_data_and_derivatives_current_ids(flow.project_id)
+
+    Enum.map(indexed_resolved_nodes, fn {{attrs, existing}, index} ->
+      {index, upsert_sync_node(attrs, existing, flow, current_node_ids)}
+    end)
+  end
+
+  defp upsert_sync_node(attrs, existing, flow, current_node_ids) do
+    case existing do
       nil ->
-        node = create_sync_node!(flow, attrs)
-        {node, matched}
+        create_sync_node!(flow, attrs)
 
       existing ->
-        node = update_sync_node!(existing, attrs, flow.project_id)
-        {node, MapSet.put(matched, existing.id)}
+        update_sync_node!(existing, attrs, current_node_ids)
     end
   end
 
@@ -472,8 +667,8 @@ defmodule Storyarn.Screenplays.FlowSync do
     end
   end
 
-  defp update_sync_node!(existing, attrs, project_id) do
-    if sync_node_current?(existing, attrs, project_id) do
+  defp update_sync_node!(existing, attrs, current_node_ids) do
+    if sync_node_current?(existing, attrs, current_node_ids) do
       existing
     else
       case Flows.update_node_without_dashboard_broadcast(existing, %{
@@ -486,14 +681,10 @@ defmodule Storyarn.Screenplays.FlowSync do
     end
   end
 
-  defp sync_node_current?(existing, attrs, project_id) do
+  defp sync_node_current?(existing, attrs, current_node_ids) do
     existing.type == attrs.type and
       existing.source == "screenplay_sync" and
-      Flows.node_data_and_derivatives_current?(
-        existing,
-        attrs.data,
-        project_id
-      )
+      MapSet.member?(current_node_ids, existing.id)
   end
 
   defp ensure_screenplay_sync_source!(%FlowNode{source: "screenplay_sync"} = node), do: node
@@ -507,55 +698,150 @@ defmodule Storyarn.Screenplays.FlowSync do
     end
   end
 
-  defp delete_orphaned_nodes!(synced_nodes, matched_ids) do
+  defp delete_orphaned_nodes!(synced_nodes, matched_ids, project_id) do
     orphaned = Enum.reject(synced_nodes, &MapSet.member?(matched_ids, &1.id))
     orphaned_ids = Enum.map(orphaned, & &1.id)
 
     # Clear element links to orphaned nodes
     if orphaned_ids != [] do
       Repo.update_all(
-        from(e in ScreenplayElement, where: e.linked_node_id in ^orphaned_ids),
+        from(element in ScreenplayElement,
+          join: screenplay in Screenplay,
+          on: screenplay.id == element.screenplay_id,
+          where:
+            screenplay.project_id == ^project_id and
+              element.linked_node_id in ^orphaned_ids
+        ),
         set: [linked_node_id: nil]
       )
     end
 
-    # Delete orphaned nodes (skip protected ones)
-    Enum.each(orphaned, fn node ->
-      case Flows.delete_node_in_transaction_without_dashboard_broadcast(node) do
-        {:ok, _, _} -> :ok
-        {:error, :cannot_delete_entry_node} -> :ok
-        {:error, :cannot_delete_last_exit} -> :ok
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
+    deleted_node_ids =
+      Enum.reduce(orphaned, [], fn node, deleted_ids ->
+        case Flows.delete_node_in_transaction_without_dashboard_broadcast(node) do
+          {:ok, deleted_node, _meta} -> [deleted_node.id | deleted_ids]
+          {:error, :cannot_delete_entry_node} -> deleted_ids
+          {:error, :cannot_delete_last_exit} -> deleted_ids
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+
+    delete_connections_incident_to_nodes!(deleted_node_ids)
   end
 
-  defp delete_connections_between!(flow_id, result_nodes) do
-    node_ids = Enum.map(result_nodes, & &1.id)
-    Flows.delete_connections_among_nodes_without_dashboard_broadcast(flow_id, node_ids)
+  defp delete_connections_incident_to_nodes!([]), do: :ok
+
+  defp delete_connections_incident_to_nodes!(node_ids) do
+    Repo.delete_all(
+      from(connection in FlowConnection,
+        where:
+          connection.source_node_id in ^node_ids or
+            connection.target_node_id in ^node_ids
+      )
+    )
+
+    :ok
   end
 
-  defp create_connections_from_specs!(flow, result_nodes, connection_specs) do
-    Enum.each(connection_specs, fn spec ->
+  defp reconcile_connections!(flow, result_nodes, connection_specs) do
+    desired_connections = build_desired_connections(result_nodes, connection_specs)
+    desired_by_key = Map.new(desired_connections, &{connection_key(&1), &1})
+    existing_connections = list_internal_connections_for_update(flow.id, result_nodes)
+
+    {current_keys, stale_ids} =
+      Enum.reduce(existing_connections, {MapSet.new(), []}, fn connection, {current, stale} ->
+        key = connection_key(connection)
+
+        if Map.has_key?(desired_by_key, key) do
+          {MapSet.put(current, key), stale}
+        else
+          {current, [connection.id | stale]}
+        end
+      end)
+
+    delete_connections!(stale_ids)
+
+    desired_connections
+    |> Enum.reject(&MapSet.member?(current_keys, connection_key(&1)))
+    |> Enum.each(&create_connection!(flow, &1))
+  end
+
+  defp build_desired_connections(result_nodes, connection_specs) do
+    connection_specs
+    |> Enum.reduce([], fn spec, connections ->
       source = Enum.at(result_nodes, spec.source_index)
       target = Enum.at(result_nodes, spec.target_index)
 
       if source && target do
-        create_connection!(flow, source, target, spec.source_pin, spec.target_pin)
+        [
+          %{
+            source_node_id: source.id,
+            target_node_id: target.id,
+            source_pin: spec.source_pin,
+            target_pin: spec.target_pin
+          }
+          | connections
+        ]
+      else
+        connections
       end
     end)
+    |> Enum.reverse()
+    |> ensure_unique_connection_keys!()
   end
 
-  defp create_connection!(flow, source, target, source_pin, target_pin) do
-    case Flows.create_connection_without_dashboard_broadcast(flow, %{
-           source_node_id: source.id,
-           target_node_id: target.id,
-           source_pin: source_pin,
-           target_pin: target_pin
-         }) do
+  defp ensure_unique_connection_keys!(connections) do
+    case Enum.reduce_while(connections, MapSet.new(), &track_connection_key/2) do
+      {:duplicate, key} -> Repo.rollback({:duplicate_connection_spec, key})
+      _seen -> connections
+    end
+  end
+
+  defp track_connection_key(connection, seen) do
+    key = connection_key(connection)
+
+    if MapSet.member?(seen, key),
+      do: {:halt, {:duplicate, key}},
+      else: {:cont, MapSet.put(seen, key)}
+  end
+
+  defp list_internal_connections_for_update(_flow_id, []), do: []
+
+  defp list_internal_connections_for_update(flow_id, result_nodes) do
+    node_ids = Enum.map(result_nodes, & &1.id)
+
+    Repo.all(
+      from(connection in FlowConnection,
+        where:
+          connection.flow_id == ^flow_id and
+            connection.source_node_id in ^node_ids and
+            connection.target_node_id in ^node_ids,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp delete_connections!([]), do: :ok
+
+  defp delete_connections!(connection_ids) do
+    Repo.delete_all(from(connection in FlowConnection, where: connection.id in ^connection_ids))
+    :ok
+  end
+
+  defp create_connection!(flow, attrs) do
+    case Flows.create_connection_without_dashboard_broadcast(flow, attrs) do
       {:ok, _} -> :ok
       {:error, reason} -> Repo.rollback(reason)
     end
+  end
+
+  defp connection_key(connection) do
+    {
+      connection.source_node_id,
+      connection.source_pin,
+      connection.target_node_id,
+      connection.target_pin
+    }
   end
 
   defp apply_positions!(result_nodes, positions, matched_ids) do
@@ -587,43 +873,94 @@ defmodule Storyarn.Screenplays.FlowSync do
     end)
   end
 
-  defp load_page_tree_data(screenplay) do
+  defp load_page_tree_data(screenplay, flow_id) do
     elements = ElementCrud.list_elements(screenplay.id)
-    children = load_descendant_data(screenplay.id)
+    children = load_descendant_data(screenplay.project_id, screenplay.id, flow_id)
     %{screenplay_id: screenplay.id, elements: elements, children: children}
   end
 
-  defp load_descendant_data(parent_id, depth \\ 0)
+  defp load_descendant_data(project_id, parent_id, flow_id, depth \\ 0)
 
-  defp load_descendant_data(_parent_id, depth) when depth > @max_tree_depth, do: []
+  defp load_descendant_data(_project_id, _parent_id, _flow_id, depth) when depth > @max_tree_depth, do: []
 
-  defp load_descendant_data(parent_id, depth) do
+  defp load_descendant_data(project_id, parent_id, flow_id, depth) do
     from(s in Screenplay,
-      where: s.parent_id == ^parent_id and is_nil(s.deleted_at),
+      where:
+        s.project_id == ^project_id and
+          s.parent_id == ^parent_id and
+          is_nil(s.deleted_at) and
+          (is_nil(s.linked_flow_id) or s.linked_flow_id == ^flow_id),
       order_by: [asc: s.position]
     )
     |> Repo.all()
     |> Enum.map(fn child ->
       elements = ElementCrud.list_elements(child.id)
-      children = load_descendant_data(child.id, depth + 1)
+      children = load_descendant_data(project_id, child.id, flow_id, depth + 1)
       %{screenplay_id: child.id, elements: elements, children: children}
     end)
   end
 
-  defp ensure_flow_in_transaction(%Screenplay{linked_flow_id: nil, project_id: project_id} = screenplay) do
-    project = Storyarn.Projects.get_project!(project_id)
+  defp ensure_flow_in_transaction(%Screenplay{linked_flow_id: nil} = screenplay, project) do
     flow = Flows.create_flow_in_transaction(project, %{name: screenplay.name})
+    link_locked_screenplay!(screenplay, flow.id)
+    flow
+  end
 
-    case link_to_flow(screenplay, flow.id) do
-      {:ok, _screenplay} -> flow
-      {:error, reason} -> Repo.rollback(reason)
+  defp ensure_flow_in_transaction(%Screenplay{linked_flow_id: flow_id, project_id: project_id}, _project) do
+    lock_active_flow_in_project!(project_id, flow_id)
+  end
+
+  defp lock_linked_flow_for_reverse_sync!(%Screenplay{linked_flow_id: nil}) do
+    Repo.rollback(:not_linked)
+  end
+
+  defp lock_linked_flow_for_reverse_sync!(%Screenplay{linked_flow_id: flow_id, project_id: project_id}) do
+    lock_active_flow_in_project!(project_id, flow_id)
+  end
+
+  defp with_locked_screenplay(project_id, screenplay_id, operation) do
+    with_locked_screenplay(project_id, screenplay_id, :update, operation)
+  end
+
+  defp with_locked_screenplay(project_id, screenplay_id, project_lock_mode, operation) do
+    Repo.transaction(fn ->
+      project = lock_active_project!(project_id, project_lock_mode)
+      screenplay = lock_active_screenplay!(project.id, screenplay_id)
+      operation.(project, screenplay)
+    end)
+  end
+
+  defp lock_active_project!(project_id, project_lock_mode) do
+    case ProjectReferenceIntegrity.lock_active_project(
+           project_id,
+           project_lock_mode
+         ) do
+      {:ok, project} -> project
+      {:error, _reason} -> Repo.rollback(:project_not_active)
     end
   end
 
-  defp ensure_flow_in_transaction(%Screenplay{linked_flow_id: flow_id, project_id: project_id}) do
-    case Flows.get_flow(project_id, flow_id) do
-      nil -> Repo.rollback(:flow_not_found)
-      flow -> flow
-    end
+  defp lock_active_screenplay!(project_id, screenplay_id) do
+    Repo.one(
+      from(screenplay in Screenplay,
+        where:
+          screenplay.id == ^screenplay_id and
+            screenplay.project_id == ^project_id and
+            is_nil(screenplay.deleted_at),
+        lock: "FOR NO KEY UPDATE"
+      )
+    ) || Repo.rollback(:screenplay_not_found)
+  end
+
+  defp lock_active_flow_in_project!(project_id, flow_id) do
+    Repo.one(
+      from(flow in Flow,
+        where:
+          flow.id == ^flow_id and
+            flow.project_id == ^project_id and
+            is_nil(flow.deleted_at),
+        lock: "FOR UPDATE"
+      )
+    ) || Repo.rollback(:flow_not_found)
   end
 end

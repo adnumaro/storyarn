@@ -45,7 +45,7 @@ defmodule Storyarn.Flows.NodeDelete do
   def restore_node(flow_id, node_id) when is_integer(flow_id) and is_integer(node_id) do
     fn ->
       with {:ok, %{project_id: project_id}} <-
-             ReferenceIntegrity.lock_active_flow_for_write(flow_id),
+             ReferenceIntegrity.lock_active_flow_for_write(flow_id, :update),
            %FlowNode{} = node <- lock_node_in_flow(node_id, flow_id) do
         restore_locked_node(node, project_id)
       else
@@ -178,7 +178,7 @@ defmodule Storyarn.Flows.NodeDelete do
 
   defp delete_node_in_transaction(node_hint) do
     with {:ok, %{node: node, project_id: project_id}} <-
-           ReferenceIntegrity.lock_active_node_for_write(node_hint),
+           ReferenceIntegrity.lock_active_node_for_write(node_hint, :update),
          :ok <- validate_deletable_node(node) do
       orphaned_count = maybe_clear_orphaned_jumps(node)
 
