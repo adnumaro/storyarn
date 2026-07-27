@@ -152,6 +152,43 @@ defmodule Storyarn.Localization.LocalizableWords do
     normalize_lock_result(case_result)
   end
 
+  @doc false
+  @spec flow_node_texts_current?(FlowNode.t(), integer()) :: boolean()
+  def flow_node_texts_current?(%FlowNode{} = node, project_id) when is_integer(project_id) do
+    expected =
+      for field <- flow_node_source_fields(node),
+          locale_code <- get_target_locales(project_id) do
+        {
+          field.field,
+          locale_code,
+          field.text,
+          hash(field.text),
+          word_count(field.text),
+          field.speaker_sheet_id,
+          field.content_role,
+          field.vo_eligible
+        }
+      end
+
+    actual =
+      "flow_node"
+      |> TextCrud.get_texts_for_source(node.id)
+      |> Enum.map(fn text ->
+        {
+          text.source_field,
+          text.locale_code,
+          text.source_text,
+          text.source_text_hash,
+          text.word_count,
+          text.speaker_sheet_id,
+          text.content_role,
+          text.vo_eligible
+        }
+      end)
+
+    Enum.sort(expected) == Enum.sort(actual)
+  end
+
   @spec extract_block(Block.t()) :: :ok | {:error, term()}
   def extract_block(%Block{} = block) do
     case_result =

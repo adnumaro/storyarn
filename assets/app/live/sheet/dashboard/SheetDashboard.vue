@@ -8,7 +8,8 @@ import {
   Trash2,
   Variable,
 } from "lucide-vue-next";
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Button } from "@components/ui/button/index.ts";
 import {
   DropdownMenu,
@@ -23,8 +24,7 @@ import { interpolatableDetails } from "@components/health/health-details";
 import { useI18n } from "vue-i18n";
 import DashboardContent from "@shell/DashboardContent.vue";
 import DashboardDataTable from "@components/dashboard/DashboardDataTable.vue";
-import DashboardIssueFilters from "@components/dashboard/DashboardIssueFilters.vue";
-import DashboardIssueList from "@components/dashboard/DashboardIssueList.vue";
+import DashboardIssuesSection from "@components/dashboard/DashboardIssuesSection.vue";
 import {
   emptyDashboardIssueFilterOptions,
   type DashboardIssuePagination,
@@ -62,6 +62,15 @@ const {
 
 const live = useLive();
 const { t } = useI18n();
+const pendingDeleteSheet = ref<DashboardRow | null>(null);
+const deleteDialogOpen = computed({
+  get: () => pendingDeleteSheet.value !== null,
+  set: (open: boolean) => {
+    if (!open) {
+      pendingDeleteSheet.value = null;
+    }
+  },
+});
 
 const resolvedIssuePagination = computed<DashboardIssuePagination>(
   () =>
@@ -121,9 +130,16 @@ function retryIssues(): void {
   live.pushEvent("retry_dashboard_issues");
 }
 
-function requestDelete(id: number | string): void {
-  live.pushEvent("set_pending_delete_sheet", { id });
+function requestDelete(sheet: DashboardRow): void {
+  pendingDeleteSheet.value = sheet;
+}
+
+function confirmDelete(): void {
+  if (!pendingDeleteSheet.value) return;
+
+  live.pushEvent("set_pending_delete_sheet", { id: pendingDeleteSheet.value.id });
   live.pushEvent("confirm_delete_sheet", {});
+  pendingDeleteSheet.value = null;
 }
 
 function healthFindingLabel(issue: DashboardIssue): string {
@@ -257,7 +273,7 @@ const columns = computed<DashboardTableColumn[]>(() => [
             <DropdownMenuItem
               data-testid="sheet-dashboard-delete-row"
               class="text-destructive gap-2 text-xs"
-              @select="requestDelete(row.id)"
+              @select="requestDelete(row)"
             >
               <Trash2 class="size-3.5" />
               {{ $t("sheets.dashboard.delete") }}
@@ -268,96 +284,39 @@ const columns = computed<DashboardTableColumn[]>(() => [
     </DashboardDataTable>
 
     <template #supplementary>
-      <!-- Issues -->
-      <div
-        v-if="
-          issuesStatus === 'loading' ||
-          issuesStatus === 'error' ||
-          issuesStatus === 'stale' ||
-          resolvedIssuePagination.unfilteredTotal > 0
-        "
-        data-testid="sheet-dashboard-issues"
-        class="space-y-3"
-        :aria-busy="issuesStatus === 'loading' || issuesStatus === 'refreshing'"
+      <DashboardIssuesSection
+        :title="$t('sheets.dashboard.issues')"
+        test-id-prefix="sheet"
+        :status="issuesStatus"
+        :issues="issues"
+        :pagination="resolvedIssuePagination"
+        :filters="issueFilters"
+        :filter-options="issueFilterOptions"
+        :all-resources-label="$t('sheets.dashboard.all_sheets')"
+        :code-label="issueCodeLabel"
+        @retry="retryIssues"
+        @filter="changeIssueFilter"
+        @page="goToIssuePage"
       >
-        <h2 class="text-sm font-medium">{{ $t("sheets.dashboard.issues") }}</h2>
-
-        <div
-          v-if="issuesStatus === 'loading'"
-          data-testid="sheet-issues-loading"
-          class="flex items-center justify-center rounded-lg border border-border py-8"
-          role="status"
-          aria-live="polite"
-        >
-          <div
-            class="size-5 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/60"
-            aria-hidden="true"
-          />
-          <span class="sr-only">{{ $t("common.dashboard.loading_issues") }}</span>
-        </div>
-
-        <div
-          v-else-if="issuesStatus === 'error'"
-          data-testid="sheet-issues-error"
-          class="flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-8 text-center"
-          role="alert"
-        >
-          <p class="text-sm text-destructive">
-            {{ $t("common.dashboard.issues_load_failed") }}
-          </p>
-          <button
-            type="button"
-            data-testid="sheet-issues-retry"
-            class="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-            @click="retryIssues"
-          >
-            {{ $t("common.dashboard.retry") }}
-          </button>
-        </div>
-
-        <template v-else>
-          <div
-            v-if="issuesStatus === 'stale'"
-            data-testid="sheet-issues-stale"
-            class="flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3"
-            role="status"
-            aria-live="polite"
-          >
-            <p class="text-sm text-amber-700 dark:text-amber-300">
-              {{ $t("common.dashboard.issues_stale") }}
-            </p>
-            <button
-              type="button"
-              data-testid="sheet-issues-retry"
-              class="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-              @click="retryIssues"
-            >
-              {{ $t("common.dashboard.retry") }}
-            </button>
-          </div>
-
-          <template v-if="resolvedIssuePagination.unfilteredTotal > 0">
-            <DashboardIssueFilters
-              :filters="issueFilters"
-              :options="issueFilterOptions"
-              :all-resources-label="$t('sheets.dashboard.all_sheets')"
-              :code-label="issueCodeLabel"
-              :busy="issuesStatus === 'refreshing'"
-              @change="changeIssueFilter"
-            />
-
-            <DashboardIssueList
-              :issues="issues"
-              :pagination="resolvedIssuePagination"
-              @page="goToIssuePage"
-            >
-              <template #description="{ issue }">
-                {{ healthFindingLabel(issue) }}
-              </template>
-            </DashboardIssueList>
-          </template>
+        <template #description="{ issue }">
+          {{ healthFindingLabel(issue) }}
         </template>
-      </div>
+      </DashboardIssuesSection>
     </template>
   </DashboardContent>
+
+  <ConfirmDialog
+    v-model:open="deleteDialogOpen"
+    :title="$t('sheets.tree.delete_title')"
+    :description="
+      $t('sheets.tree.delete_description', {
+        name: pendingDeleteSheet?.name ?? '',
+      })
+    "
+    :confirm-text="$t('sheets.tree.delete')"
+    :cancel-text="$t('sheets.tree.cancel')"
+    variant="destructive"
+    :icon="Trash2"
+    @confirm="confirmDelete"
+  />
 </template>

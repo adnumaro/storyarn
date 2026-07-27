@@ -17,6 +17,7 @@
       "total_issues": "{count} incidencia | {count} incidencias",
       "loading_overview": "Cargando resumen del dashboard",
       "loading_issues": "Cargando incidencias",
+      "refreshing_issues": "Actualizando incidencias",
       "overview_load_failed": "No se ha podido cargar el resumen del dashboard.",
       "overview_stale": "No se ha podido actualizar el resumen del dashboard. Se muestran los últimos datos cargados.",
       "issues_load_failed": "No se han podido cargar las incidencias.",

@@ -37,6 +37,10 @@ defmodule Storyarn.References.EntityTracker do
 
   def update_flow_node_entity_references(node, opts \\ []), do: ReferenceTracker.update_flow_node_references(node, opts)
 
+  defdelegate flow_node_entity_references_current?(node),
+    to: ReferenceTracker,
+    as: :flow_node_references_current?
+
   def delete_flow_node_entity_references(node_id), do: ReferenceTracker.delete_flow_node_references(node_id)
 
   def update_scene_pin_entity_references(pin, opts \\ []), do: ReferenceTracker.update_scene_pin_references(pin, opts)

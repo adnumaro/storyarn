@@ -10,8 +10,10 @@ defmodule StoryarnWeb.Live.Shared.DashboardHandlers do
 
   Each of the independently rendered overview and issues tasks is coalesced.
   An invalidation that arrives while a task is running records one pending
-  reload instead of cancelling useful work. When that task finishes, the
-  pending reload starts immediately. This guarantees forward progress while
+  reload instead of cancelling useful work. When that task succeeds, the
+  pending reload starts immediately. A failed task clears the pending flag so
+  that a persistent failure cannot create an automatic retry loop; retries
+  remain explicit and rate-limited. This guarantees forward progress while
   still collapsing any number of overlapping invalidations into one refresh.
 
   The scope is intentionally not filtered here. Sheet, flow, and scene health
@@ -139,6 +141,15 @@ defmodule StoryarnWeb.Live.Shared.DashboardHandlers do
       |> assign(config.pending, false)
 
     if pending?, do: restart_fun.(socket), else: socket
+  end
+
+  @doc false
+  def finish_failed_load(socket, kind) when kind in [:overview, :issues] do
+    config = load_config(kind)
+
+    socket
+    |> assign(config.running, false)
+    |> assign(config.pending, false)
   end
 
   defmacro __using__(_opts) do

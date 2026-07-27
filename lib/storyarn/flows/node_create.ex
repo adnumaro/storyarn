@@ -94,6 +94,7 @@ defmodule Storyarn.Flows.NodeCreate do
     case attrs["type"] do
       "entry" -> create_entry_node(flow, attrs)
       "hub" -> create_hub_node(flow, attrs)
+      "sequence" -> {:error, :sequence_requires_sequence_api}
       _ -> insert_node(flow, attrs)
     end
   end
@@ -111,20 +112,29 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp create_hub_node(flow, attrs) do
-    hub_id = get_in(attrs, ["data", "hub_id"])
-    hub_id = if hub_id == nil || hub_id == "", do: generate_hub_id(flow.id), else: hub_id
-
-    Repo.transaction(fn ->
-      lock_flow!(flow.id)
-
-      if NodeCrud.hub_id_exists?(flow.id, hub_id, nil) do
-        Repo.rollback(:hub_id_not_unique)
-      else
-        updated_data = Map.put(attrs["data"] || %{}, "hub_id", hub_id)
-        insert_node_or_rollback(flow, Map.put(attrs, "data", updated_data))
-      end
-    end)
+    with {:ok, hub_id} <- resolve_hub_id(flow.id, get_in(attrs, ["data", "hub_id"])) do
+      Repo.transaction(fn -> create_hub_node_transaction(flow, attrs, hub_id) end)
+    end
   end
+
+  defp create_hub_node_transaction(flow, attrs, hub_id) do
+    lock_flow!(flow.id)
+
+    if NodeCrud.hub_id_exists?(flow.id, hub_id, nil) do
+      Repo.rollback(:hub_id_not_unique)
+    else
+      updated_data = Map.put(attrs["data"] || %{}, "hub_id", hub_id)
+      insert_node_or_rollback(flow, Map.put(attrs, "data", updated_data))
+    end
+  end
+
+  defp resolve_hub_id(flow_id, hub_id) when hub_id in [nil, ""], do: {:ok, generate_hub_id(flow_id)}
+
+  defp resolve_hub_id(_flow_id, hub_id) when is_binary(hub_id) do
+    if String.trim(hub_id) == "", do: {:error, :hub_id_required}, else: {:ok, hub_id}
+  end
+
+  defp resolve_hub_id(_flow_id, _hub_id), do: {:error, :hub_id_required}
 
   defp insert_node_or_rollback(flow, attrs) do
     case insert_node(flow, attrs) do
@@ -139,11 +149,16 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp insert_node(%Flow{} = flow, attrs) do
-    word_count = WordCount.for_node_data(attrs["type"], attrs["data"])
+    changeset = FlowNode.create_changeset(%FlowNode{flow_id: flow.id}, attrs)
+    type = Ecto.Changeset.get_field(changeset, :type)
+    data = Ecto.Changeset.get_field(changeset, :data)
 
-    %FlowNode{flow_id: flow.id}
-    |> FlowNode.create_changeset(attrs)
-    |> Ecto.Changeset.put_change(:word_count, word_count)
+    changeset
+    |> Ecto.Changeset.put_change(:word_count, WordCount.for_node_data(type, data))
+    |> Ecto.Changeset.put_change(
+      :derivatives_fingerprint,
+      NodeUpdate.derivatives_fingerprint(type, data)
+    )
     |> Repo.insert()
   end
 

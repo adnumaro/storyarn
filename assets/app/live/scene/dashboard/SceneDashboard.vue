@@ -2,18 +2,10 @@
 import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { Image, Map as MapIcon, MapPin, MoreHorizontal, Pentagon, Trash2 } from "lucide-vue-next";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Button } from "@components/ui/button";
 import DashboardDataTable from "@components/dashboard/DashboardDataTable.vue";
-import DashboardIssueFilters from "@components/dashboard/DashboardIssueFilters.vue";
-import DashboardIssueList from "@components/dashboard/DashboardIssueList.vue";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@components/ui/dialog";
+import DashboardIssuesSection from "@components/dashboard/DashboardIssuesSection.vue";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,8 +94,15 @@ const {
 }>();
 
 const live = useLive();
-const deleteDialogOpen = ref(false);
 const pendingDeleteScene = ref<TableDataRow | null>(null);
+const deleteDialogOpen = computed({
+  get: () => pendingDeleteScene.value !== null,
+  set: (open: boolean) => {
+    if (!open) {
+      pendingDeleteScene.value = null;
+    }
+  },
+});
 
 const resolvedIssuePagination = computed<DashboardIssuePagination>(
   () =>
@@ -165,7 +164,6 @@ function retryIssues(): void {
 
 function requestDelete(scene: TableDataRow): void {
   pendingDeleteScene.value = scene;
-  deleteDialogOpen.value = true;
 }
 
 function confirmDelete(): void {
@@ -173,7 +171,6 @@ function confirmDelete(): void {
 
   live.pushEvent("set_pending_delete_scene", { id: pendingDeleteScene.value.id });
   live.pushEvent("confirm_delete_scene", {});
-  deleteDialogOpen.value = false;
   pendingDeleteScene.value = null;
 }
 
@@ -183,11 +180,6 @@ function healthFindingLabel(issue: Issue): string {
 
 function issueCodeLabel(code: string): string {
   return t(`scenes.health.issue_types.${code}`);
-}
-
-function cancelDelete(): void {
-  deleteDialogOpen.value = false;
-  pendingDeleteScene.value = null;
 }
 
 const statCards = computed<StatCard[]>(() => {
@@ -318,124 +310,39 @@ const columns = computed<DashboardTableColumn[]>(() => [
     </DashboardDataTable>
 
     <template #supplementary>
-      <!-- Issues -->
-      <div
-        v-if="
-          issuesStatus === 'loading' ||
-          issuesStatus === 'error' ||
-          issuesStatus === 'stale' ||
-          resolvedIssuePagination.unfilteredTotal > 0
-        "
-        data-testid="scene-dashboard-issues"
-        class="space-y-3"
-        :aria-busy="issuesStatus === 'loading' || issuesStatus === 'refreshing'"
+      <DashboardIssuesSection
+        :title="$t('scenes.dashboard.issues')"
+        test-id-prefix="scene"
+        :status="issuesStatus"
+        :issues="issues"
+        :pagination="resolvedIssuePagination"
+        :filters="issueFilters"
+        :filter-options="issueFilterOptions"
+        :all-resources-label="$t('scenes.dashboard.all_scenes')"
+        :code-label="issueCodeLabel"
+        @retry="retryIssues"
+        @filter="changeIssueFilter"
+        @page="goToIssuePage"
       >
-        <h2 class="text-sm font-medium">{{ $t("scenes.dashboard.issues") }}</h2>
-
-        <div
-          v-if="issuesStatus === 'loading'"
-          data-testid="scene-issues-loading"
-          class="flex items-center justify-center rounded-lg border border-border py-8"
-          role="status"
-          aria-live="polite"
-        >
-          <div
-            class="size-5 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/60"
-            aria-hidden="true"
-          />
-          <span class="sr-only">{{ $t("common.dashboard.loading_issues") }}</span>
-        </div>
-
-        <div
-          v-else-if="issuesStatus === 'error'"
-          data-testid="scene-issues-error"
-          class="flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-8 text-center"
-          role="alert"
-        >
-          <p class="text-sm text-destructive">
-            {{ $t("common.dashboard.issues_load_failed") }}
-          </p>
-          <button
-            type="button"
-            data-testid="scene-issues-retry"
-            class="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-            @click="retryIssues"
-          >
-            {{ $t("common.dashboard.retry") }}
-          </button>
-        </div>
-
-        <template v-else>
-          <div
-            v-if="issuesStatus === 'stale'"
-            data-testid="scene-issues-stale"
-            class="flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3"
-            role="status"
-            aria-live="polite"
-          >
-            <p class="text-sm text-amber-700 dark:text-amber-300">
-              {{ $t("common.dashboard.issues_stale") }}
-            </p>
-            <button
-              type="button"
-              data-testid="scene-issues-retry"
-              class="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-              @click="retryIssues"
-            >
-              {{ $t("common.dashboard.retry") }}
-            </button>
-          </div>
-
-          <template v-if="resolvedIssuePagination.unfilteredTotal > 0">
-            <DashboardIssueFilters
-              :filters="issueFilters"
-              :options="issueFilterOptions"
-              :all-resources-label="$t('scenes.dashboard.all_scenes')"
-              :code-label="issueCodeLabel"
-              :busy="issuesStatus === 'refreshing'"
-              @change="changeIssueFilter"
-            />
-
-            <DashboardIssueList
-              :issues="issues"
-              :pagination="resolvedIssuePagination"
-              @page="goToIssuePage"
-            >
-              <template #description="{ issue }">
-                {{ healthFindingLabel(issue) }}
-              </template>
-            </DashboardIssueList>
-          </template>
+        <template #description="{ issue }">
+          {{ healthFindingLabel(issue) }}
         </template>
-      </div>
+      </DashboardIssuesSection>
     </template>
-
-    <Dialog v-model:open="deleteDialogOpen">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{{ $t("scenes.dashboard.delete_title") }}</DialogTitle>
-          <DialogDescription>
-            {{
-              $t("scenes.dashboard.delete_description", {
-                name: pendingDeleteScene?.name,
-              })
-            }}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" size="sm" @click="cancelDelete">
-            {{ $t("scenes.dashboard.cancel") }}
-          </Button>
-          <Button
-            data-testid="scene-dashboard-confirm-delete"
-            variant="destructive"
-            size="sm"
-            @click="confirmDelete"
-          >
-            {{ $t("scenes.dashboard.delete") }}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   </DashboardContent>
+
+  <ConfirmDialog
+    v-model:open="deleteDialogOpen"
+    :title="$t('scenes.dashboard.delete_title')"
+    :description="
+      $t('scenes.dashboard.delete_description', {
+        name: pendingDeleteScene?.name ?? '',
+      })
+    "
+    :confirm-text="$t('scenes.dashboard.delete')"
+    :cancel-text="$t('scenes.dashboard.cancel')"
+    variant="destructive"
+    :icon="Trash2"
+    @confirm="confirmDelete"
+  />
 </template>

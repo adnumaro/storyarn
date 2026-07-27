@@ -1119,7 +1119,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       refute_receive {:dashboard_invalidate, :flows}, 10
     end
 
-    test "aborts a failed node update instead of counting or broadcasting it", ctx do
+    test "keeps successful repairs when a later node cannot be repaired", ctx do
       valid_assignment =
         variable_assignment(ctx.sheet.shortcut, ctx.health_block.variable_name)
 
@@ -1139,10 +1139,8 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       :ok = VariableReferenceTracker.update_references(failing_node)
 
       # Keep the tracked reference deliberately while making the node
-      # unwritable. The repair query still sees the reference, but
-      # NodeUpdate must reject the soft-deleted node. Node IDs are repaired in
-      # order, so the valid row is written first and proves that the later
-      # failure rolls the whole batch back.
+      # unwritable. The repair query still sees the reference, but one damaged
+      # source must not roll back every independent repair in the project.
       failing_node
       |> FlowNode.soft_delete_changeset()
       |> Storyarn.Repo.update!()
@@ -1150,15 +1148,17 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, _sheet} = Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
       :ok = Collaboration.subscribe_dashboard(ctx.project.id)
 
-      assert {:error, _reason} =
+      assert {:error, {:partial_variable_reference_repair, %{repaired_count: 1, failures: [{failing_id, _reason}]}}} =
                VariableReferenceTracker.repair_stale_references(ctx.project.id)
 
+      assert failing_id == failing_node.id
+      assert_receive {:dashboard_invalidate, :flows}
       refute_receive {:dashboard_invalidate, :flows}, 10
 
       persisted_valid = Storyarn.Repo.get!(FlowNode, valid_node.id)
       persisted_failing = Storyarn.Repo.get!(FlowNode, failing_node.id)
 
-      assert persisted_valid.data == valid_node.data
+      assert hd(persisted_valid.data["assignments"])["sheet"] == "mc.renamed"
       assert persisted_failing.data == failing_node.data
       assert persisted_failing.deleted_at
     end

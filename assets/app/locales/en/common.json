@@ -17,6 +17,7 @@
       "total_issues": "{count} issue | {count} issues",
       "loading_overview": "Loading dashboard overview",
       "loading_issues": "Loading issues",
+      "refreshing_issues": "Updating issues",
       "overview_load_failed": "The dashboard overview could not be loaded.",
       "overview_stale": "The dashboard overview could not be refreshed. Showing the last loaded data.",
       "issues_load_failed": "Issues could not be loaded.",

@@ -435,7 +435,9 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   Repairs all stale variable references across a project.
   Updates node JSON to reflect current sheet shortcut + variable names.
   Returns `{:ok, count}` where count is the number of repaired nodes,
-  or `{:error, reason}` if the transaction fails.
+  or `{:error, {:partial_variable_reference_repair, details}}` when one or
+  more independent node repairs fail. Successful nodes remain repaired and
+  `details.repaired_count` reports that progress.
   """
   @spec repair_stale_references(integer()) :: {:ok, non_neg_integer()} | {:error, term()}
   def repair_stale_references(project_id) do
@@ -485,18 +487,26 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp apply_repairs(repairs_by_node) do
-    Repo.transaction(fn ->
+    {repaired_count, failures} =
       repairs_by_node
       |> Enum.sort_by(&elem(&1, 0))
-      |> Enum.reduce(0, &count_repair/2)
-    end)
+      |> Enum.reduce({0, []}, &collect_repair_result/2)
+
+    case failures do
+      [] ->
+        {:ok, repaired_count}
+
+      failures ->
+        {:error,
+         {:partial_variable_reference_repair, %{repaired_count: repaired_count, failures: Enum.reverse(failures)}}}
+    end
   end
 
-  defp count_repair(repair, repaired_count) do
+  defp collect_repair_result({node_id, _data} = repair, {repaired_count, failures}) do
     case repair_single_node(repair) do
-      {:ok, _node, _meta} -> repaired_count + 1
-      :skip -> repaired_count
-      {:error, reason} -> Repo.rollback(reason)
+      {:ok, _node, _meta} -> {repaired_count + 1, failures}
+      :skip -> {repaired_count, failures}
+      {:error, reason} -> {repaired_count, [{node_id, reason} | failures]}
     end
   end
 
@@ -508,6 +518,15 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp broadcast_repair_result({:ok, count} = result, project_id) when count > 0 do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    result
+  end
+
+  defp broadcast_repair_result(
+         {:error, {:partial_variable_reference_repair, %{repaired_count: count}}} = result,
+         project_id
+       )
+       when count > 0 do
     Collaboration.broadcast_dashboard_change(project_id, :flows)
     result
   end

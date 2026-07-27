@@ -16,6 +16,10 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
     LiveVue.Test.get_vue(view, name: "live/flow/dashboard/FlowDashboard")
   end
 
+  defp get_flash_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/layouts/flash/FlashGroup")
+  end
+
   describe "Flow index page" do
     setup :register_and_log_in_user
 
@@ -311,6 +315,29 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
 
   describe "deleting the last flow" do
     setup :register_and_log_in_user
+
+    test "clears the pending target after a confirmed deletion", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Pending Flow"})
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
+
+      await_async(view)
+
+      render_click(view, "set_pending_delete", %{"id" => to_string(flow.id)})
+      render_click(view, "confirm_delete", %{})
+
+      assert Flows.get_flow(project.id, flow.id) == nil
+
+      # A second confirmation is a no-op. Retaining the old ID would attempt
+      # the same deletion again and replace the success flash with an error.
+      render_click(view, "confirm_delete", %{})
+
+      flash = get_flash_vue(view).props["flash"]
+      assert flash["error"] == nil
+      assert is_binary(flash["info"])
+    end
 
     test "refreshes to the empty state after deleting the last flow", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)

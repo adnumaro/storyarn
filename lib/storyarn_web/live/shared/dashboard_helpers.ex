@@ -69,6 +69,8 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpers do
   end
 
   defp sortable_value(%DateTime{} = value), do: DateTime.to_unix(value, :microsecond)
+  defp sortable_value(%NaiveDateTime{} = value), do: NaiveDateTime.to_gregorian_seconds(value)
+  defp sortable_value(%Date{} = value), do: Date.to_gregorian_days(value)
   defp sortable_value(value), do: value
 
   def handle_sort(socket, column, all_data_key, page_data_key, sort_columns) do

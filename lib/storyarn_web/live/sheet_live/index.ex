@@ -237,7 +237,7 @@ defmodule StoryarnWeb.SheetLive.Index do
     socket =
       socket
       |> assign(:overview_status, fail_overview_load(socket.assigns.overview_status))
-      |> DashboardHandlers.finish_load(:overview, &start_dashboard_overview/1)
+      |> DashboardHandlers.finish_failed_load(:overview)
 
     {:noreply, socket}
   end
@@ -248,7 +248,7 @@ defmodule StoryarnWeb.SheetLive.Index do
     socket =
       socket
       |> assign(:issues_status, fail_issues_load(socket.assigns.issues_status))
-      |> DashboardHandlers.finish_load(:issues, &start_dashboard_issues/1)
+      |> DashboardHandlers.finish_failed_load(:issues)
 
     {:noreply, socket}
   end
@@ -359,7 +359,10 @@ defmodule StoryarnWeb.SheetLive.Index do
     Authorize.with_authorization(socket, :edit_content, &confirm_delete_sheet/1)
   end
 
-  def handle_event(_event, _params, socket), do: {:noreply, socket}
+  def handle_event(event, _params, socket) do
+    Logger.warning("[sheets dashboard] ignored unknown event #{inspect(event)}")
+    {:noreply, socket}
+  end
 
   # Other tree mutation events (create_sheet, create_child_sheet and
   # move_to_parent) live in the separately rendered SheetsSidebarLive.

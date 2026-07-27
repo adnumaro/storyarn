@@ -238,22 +238,35 @@ defmodule Storyarn.Flows.NodeDelete do
   defp clear_orphaned_jumps(flow_id, hub_id) when is_binary(hub_id) and hub_id != "" do
     now = Storyarn.Shared.TimeHelpers.now()
 
-    query =
+    matching_jumps =
       from(n in FlowNode,
         where: n.flow_id == ^flow_id and n.type == "jump",
-        where: fragment("?->>'target_hub_id' = ?", n.data, ^hub_id),
-        update: [
-          set: [
-            data: fragment("jsonb_set(?, '{target_hub_id}', '\"\"'::jsonb)", n.data),
-            updated_at: ^now
-          ]
-        ]
+        where: fragment("?->>'target_hub_id' = ?", n.data, ^hub_id)
       )
 
-    {count, _} = Repo.update_all(query, [])
+    {active_count, _} =
+      matching_jumps
+      |> where([n], is_nil(n.deleted_at))
+      |> clear_jump_targets(now)
 
-    count
+    matching_jumps
+    |> where([n], not is_nil(n.deleted_at))
+    |> clear_jump_targets(now)
+
+    active_count
   end
 
   defp clear_orphaned_jumps(_flow_id, _hub_id), do: 0
+
+  defp clear_jump_targets(query, now) do
+    query
+    |> update([n],
+      set: [
+        data: fragment("jsonb_set(?, '{target_hub_id}', '\"\"'::jsonb)", n.data),
+        derivatives_fingerprint: nil,
+        updated_at: ^now
+      ]
+    )
+    |> Repo.update_all([])
+  end
 end

@@ -191,15 +191,34 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
   end
 
   defp serialize_node(node) do
+    node
+    |> serialize_base_node()
+    |> maybe_put_sequence_config(node)
+  end
+
+  defp serialize_base_node(node) do
     %{
       "id" => to_string(node.id),
       "type" => node.type,
       "position_x" => node.position_x,
       "position_y" => node.position_y,
       "source" => node.source,
+      "parent_id" => maybe_to_string(node.parent_id),
       "data" => serialize_node_data(node.type, node.data || %{})
     }
   end
+
+  defp maybe_put_sequence_config(serialized, %{type: "sequence"} = node) do
+    Map.put(serialized, "sequence_config", serialize_sequence_config(node.sequence_config))
+  end
+
+  defp maybe_put_sequence_config(serialized, _node), do: serialized
+
+  defp serialize_sequence_config(%{name: name, width: width, height: height}) do
+    %{"name" => name, "width" => width, "height" => height}
+  end
+
+  defp serialize_sequence_config(_config), do: nil
 
   defp serialize_node_data("dialogue", data) do
     responses =

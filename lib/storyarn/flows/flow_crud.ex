@@ -11,6 +11,7 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.ReferenceIntegrity
+  alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.TreeOperations
   alias Storyarn.Localization
   alias Storyarn.Projects.Project
@@ -1328,19 +1329,94 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   @doc """
-  Creates a flow node for import. Raw insert — no entry-node uniqueness check,
-  no hub_id generation, no subflow validation.
+  Creates a flow node for import. Raw insert — no entry-node generation and no
+  subflow validation. Imported hub identifiers still preserve the flow-wide
+  uniqueness invariant.
   Returns `{:ok, node}` or `{:error, changeset}`.
   """
   def import_node(flow_id, attrs) do
-    type = attrs[:type] || attrs["type"]
-    data = attrs[:data] || attrs["data"]
+    type = MapUtils.get_flexible(attrs, :type)
+    data = MapUtils.get_flexible(attrs, :data)
+    sequence_config = MapUtils.get_flexible(attrs, :sequence_config)
 
+    Repo.transaction(fn ->
+      validate_import_node_invariants!(flow_id, type, data)
+
+      flow_id
+      |> insert_import_node!(attrs, type, data)
+      |> maybe_insert_import_sequence_config!(type, sequence_config)
+    end)
+  end
+
+  defp validate_import_node_invariants!(flow_id, "entry", _data) do
+    lock_import_flow(flow_id)
+
+    if Repo.exists?(
+         from(node in FlowNode,
+           where:
+             node.flow_id == ^flow_id and node.type == "entry" and
+               is_nil(node.deleted_at)
+         )
+       ) do
+      Repo.rollback(:entry_node_exists)
+    end
+  end
+
+  defp validate_import_node_invariants!(flow_id, "hub", data) do
+    lock_import_flow(flow_id)
+    hub_id = if is_map(data), do: MapUtils.get_flexible(data, :hub_id)
+
+    cond do
+      not is_binary(hub_id) or String.trim(hub_id) == "" ->
+        Repo.rollback(:hub_id_required)
+
+      NodeCrud.hub_id_exists?(flow_id, hub_id, nil) ->
+        Repo.rollback(:hub_id_not_unique)
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_import_node_invariants!(_flow_id, _type, _data), do: :ok
+
+  # Serialize import writers with regular node CRUD before validating
+  # flow-wide identities. Both paths lock the same Flow row.
+  defp lock_import_flow(flow_id) do
+    Repo.one(from(flow in Flow, where: flow.id == ^flow_id, lock: "FOR UPDATE"))
+  end
+
+  defp insert_import_node!(flow_id, attrs, type, data) do
     %FlowNode{flow_id: flow_id}
     |> FlowNode.create_changeset(attrs)
     |> Ecto.Changeset.put_change(:word_count, WordCount.for_node_data(type, data))
     |> Repo.insert()
+    |> case do
+      {:ok, node} -> node
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
   end
+
+  defp maybe_insert_import_sequence_config!(node, "sequence", config_attrs) do
+    config_attrs =
+      config_attrs
+      |> then(fn
+        attrs when is_map(attrs) -> attrs
+        _invalid_or_missing -> %{}
+      end)
+      |> MapUtils.stringify_keys()
+      |> Map.put("flow_node_id", node.id)
+
+    %SequenceConfig{}
+    |> SequenceConfig.create_changeset(config_attrs)
+    |> Repo.insert()
+    |> case do
+      {:ok, config} -> %{node | sequence_config: config}
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
+  end
+
+  defp maybe_insert_import_sequence_config!(node, _type, _config_attrs), do: node
 
   @doc """
   Updates a flow's parent_id after import (two-pass parent linking).
@@ -1349,6 +1425,15 @@ defmodule Storyarn.Flows.FlowCrud do
     flow
     |> Ecto.Changeset.change(%{parent_id: parent_id})
     |> Repo.update!()
+  end
+
+  @doc """
+  Updates an imported node's parent after all source node IDs have been
+  remapped. Parent scope, type, and cycle invariants are validated by the
+  regular node reparenting path.
+  """
+  def link_node_import_parent(%FlowNode{} = node, parent_id) do
+    NodeCrud.update_node_parent(node, parent_id)
   end
 
   @doc """

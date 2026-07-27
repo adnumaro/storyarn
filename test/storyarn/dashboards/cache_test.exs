@@ -1,6 +1,8 @@
 defmodule Storyarn.Dashboards.CacheTest do
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureLog
+
   alias Phoenix.PubSub
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache
@@ -96,6 +98,40 @@ defmodule Storyarn.Dashboards.CacheTest do
 
       assert Task.await(task_a) == :scope_a
       assert Task.await(task_b) == :scope_b
+    end
+
+    test "cross-key nested computations cannot deadlock each other", %{
+      project_id: project_id
+    } do
+      parent = self()
+      barrier = make_ref()
+
+      task_a =
+        nested_fetch_task(
+          parent,
+          barrier,
+          project_id,
+          :nested_scope_a,
+          :nested_scope_b
+        )
+
+      task_b =
+        nested_fetch_task(
+          parent,
+          barrier,
+          project_id,
+          :nested_scope_b,
+          :nested_scope_a
+        )
+
+      assert_receive {^barrier, :nested_scope_a, task_a_pid}
+      assert_receive {^barrier, :nested_scope_b, task_b_pid}
+
+      send(task_a_pid, {barrier, :continue})
+      send(task_b_pid, {barrier, :continue})
+
+      assert_task_result(task_a, {:computed, :nested_scope_a})
+      assert_task_result(task_b, {:computed, :nested_scope_b})
     end
 
     test "releases the singleflight lock when computation raises", %{project_id: project_id} do
@@ -270,9 +306,76 @@ defmodule Storyarn.Dashboards.CacheTest do
       assert Process.whereis(Cache) == cache_pid
       assert Cache.fetch(project_id, :scope, fn -> :unexpected end) == :cached
     end
+
+    test "unsupported invalidation scopes are observable", %{project_id: project_id} do
+      log =
+        capture_log(fn ->
+          send(
+            Cache,
+            {:dashboard_cache_invalidate, :remote@cluster, project_id, :unsupported}
+          )
+
+          :sys.get_state(Cache)
+        end)
+
+      assert log =~ "unsupported dashboard cache invalidation scope"
+      assert log =~ ":unsupported"
+    end
   end
 
   describe "cache lifecycle" do
+    test "manual cleanup is not limited by the default GenServer call timeout" do
+      source_path =
+        Path.expand(
+          "../../../lib/storyarn/dashboards/cache.ex",
+          __DIR__
+        )
+
+      source = File.read!(source_path)
+
+      assert source =~
+               ~r/def cleanup,\s+do: GenServer\.call\(__MODULE__, :cleanup, :infinity\)/
+    end
+
+    test "cleanup preserves an in-flight computation and its eventual cache entry", %{
+      project_id: project_id
+    } do
+      parent = self()
+
+      task =
+        Task.async(fn ->
+          Cache.fetch(project_id, :slow_scope, fn ->
+            send(parent, {:slow_compute_started, self()})
+
+            receive do
+              :finish_slow_compute -> :computed_before_cleanup
+            end
+          end)
+        end)
+
+      assert_receive {:slow_compute_started, task_pid}
+      assert :ok = Cache.cleanup()
+      send(task_pid, :finish_slow_compute)
+
+      assert Task.await(task) == :computed_before_cleanup
+
+      assert Cache.fetch(project_id, :slow_scope, fn -> :unexpected_recompute end) ==
+               :computed_before_cleanup
+    end
+
+    test "cleanup does not copy the full value table into the cache process" do
+      source_path =
+        Path.expand(
+          "../../../lib/storyarn/dashboards/cache.ex",
+          __DIR__
+        )
+
+      source = File.read!(source_path)
+
+      refute source =~
+               ~r/@table\s*\|>\s*:ets\.tab2list\(\)/
+    end
+
     test "reads and invalidations degrade safely while the ETS owner is restarting", %{
       project_id: project_id
     } do
@@ -325,6 +428,34 @@ defmodule Storyarn.Dashboards.CacheTest do
 
       _pid ->
         :ok
+    end
+  end
+
+  defp nested_fetch_task(parent, barrier, project_id, outer_scope, inner_scope) do
+    Task.async(fn -> perform_nested_fetch(parent, barrier, project_id, outer_scope, inner_scope) end)
+  end
+
+  defp perform_nested_fetch(parent, barrier, project_id, outer_scope, inner_scope) do
+    Cache.fetch(project_id, outer_scope, fn ->
+      send(parent, {barrier, outer_scope, self()})
+
+      receive do
+        {^barrier, :continue} -> :ok
+      end
+
+      Cache.fetch(project_id, inner_scope, fn -> {:nested, inner_scope} end)
+      {:computed, outer_scope}
+    end)
+  end
+
+  defp assert_task_result(task, expected) do
+    case Task.yield(task, 1_000) do
+      {:ok, result} ->
+        assert result == expected
+
+      nil ->
+        Task.shutdown(task, :brutal_kill)
+        flunk("cache computation deadlocked")
     end
   end
 end

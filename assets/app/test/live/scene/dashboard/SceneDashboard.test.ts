@@ -1,5 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
+import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
 import DashboardIssueFilters from "../../../../components/dashboard/DashboardIssueFilters.vue";
 import DashboardPagination from "../../../../components/dashboard/DashboardPagination.vue";
 import DropdownMenuItem from "../../../../components/ui/dropdown-menu/DropdownMenuItem.vue";
@@ -118,7 +119,13 @@ describe("SceneDashboard health", () => {
   it("marks issue filters busy without disabling them during a background refresh", () => {
     const { wrapper } = mountDashboard({ issuesStatus: "refreshing" });
 
+    expect(wrapper.getComponent({ name: "DashboardIssuesSection" }).props("testIdPrefix")).toBe(
+      "scene",
+    );
     expect(wrapper.getComponent(DashboardIssueFilters).props("busy")).toBe(true);
+    expect(wrapper.get('[data-testid="scene-issues-refreshing"]').text()).toContain(
+      "Updating issues",
+    );
   });
 
   it("renders canonical severities, translations, and deep links", () => {
@@ -186,11 +193,9 @@ describe("SceneDashboard health", () => {
     wrapper.getComponent(DropdownMenuItem).vm.$emit("select");
     await wrapper.vm.$nextTick();
 
-    const confirmButton = document.body.querySelector<HTMLButtonElement>(
-      '[data-testid="scene-dashboard-confirm-delete"]',
-    );
-    expect(confirmButton).not.toBeNull();
-    confirmButton?.click();
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    expect(confirmation.props("open")).toBe(true);
+    confirmation.vm.$emit("confirm");
     await wrapper.vm.$nextTick();
 
     expect(live.pushEvent).toHaveBeenNthCalledWith(
@@ -200,6 +205,41 @@ describe("SceneDashboard health", () => {
       undefined,
     );
     expect(live.pushEvent).toHaveBeenNthCalledWith(2, "confirm_delete_scene", {}, undefined);
+  });
+
+  it("keeps an open delete confirmation mounted when the overview becomes empty", async () => {
+    const row = {
+      id: 99,
+      name: "Doomed Scene",
+      href: "/workspaces/ws/projects/story/scenes/99",
+      zone_count: 0,
+      pin_count: 0,
+      connection_count: 0,
+      updated_at: "2026-07-26T12:00:00Z",
+    };
+    const { live, wrapper } = mountDashboard({ canEdit: true, tableData: [row] });
+
+    await wrapper.get('[data-slot="dropdown-menu-trigger"]').trigger("click");
+    wrapper.getComponent(DropdownMenuItem).vm.$emit("select");
+    await wrapper.vm.$nextTick();
+
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    expect(confirmation.props("open")).toBe(true);
+
+    await wrapper.setProps({
+      tableData: [],
+      pagination: {
+        sortBy: "name",
+        sortDir: "asc",
+        page: 1,
+        totalPages: 1,
+        total: 0,
+      },
+    });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.getComponent(ConfirmDialog).props("open")).toBe(true);
+    expect(live.pushEvent).not.toHaveBeenCalled();
   });
 
   it("shows issue loading independently from the overview", () => {

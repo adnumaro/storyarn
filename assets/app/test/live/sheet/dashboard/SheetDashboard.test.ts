@@ -1,6 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import SheetDashboard from "../../../../live/sheet/dashboard/SheetDashboard.vue";
+import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
 import DashboardIssueFilters from "../../../../components/dashboard/DashboardIssueFilters.vue";
 import DashboardPagination from "../../../../components/dashboard/DashboardPagination.vue";
 import DropdownMenuItem from "../../../../components/ui/dropdown-menu/DropdownMenuItem.vue";
@@ -119,7 +120,7 @@ describe("SheetDashboard health", () => {
     );
   });
 
-  it("wires the row delete action to the exact LiveView event pair", async () => {
+  it("requires explicit confirmation before deleting a sheet", async () => {
     const { live, wrapper } = mountDashboard({ canEdit: true });
     const trigger = wrapper.get('[data-slot="dropdown-menu-trigger"]');
 
@@ -128,6 +129,24 @@ describe("SheetDashboard health", () => {
 
     await trigger.trigger("click");
     wrapper.getComponent(DropdownMenuItem).vm.$emit("select");
+    await wrapper.vm.$nextTick();
+
+    expect(live.pushEvent).not.toHaveBeenCalledWith(
+      "set_pending_delete_sheet",
+      expect.anything(),
+      undefined,
+    );
+    expect(live.pushEvent).not.toHaveBeenCalledWith(
+      "confirm_delete_sheet",
+      expect.anything(),
+      undefined,
+    );
+
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    expect(confirmation.props("open")).toBe(true);
+
+    confirmation.vm.$emit("confirm");
+    await wrapper.vm.$nextTick();
 
     expect(live.pushEvent).toHaveBeenNthCalledWith(
       1,
@@ -136,6 +155,23 @@ describe("SheetDashboard health", () => {
       undefined,
     );
     expect(live.pushEvent).toHaveBeenNthCalledWith(2, "confirm_delete_sheet", {}, undefined);
+  });
+
+  it("clears the pending sheet when the delete dialog closes without a cancel event", async () => {
+    const { live, wrapper } = mountDashboard({ canEdit: true });
+
+    await wrapper.get('[data-slot="dropdown-menu-trigger"]').trigger("click");
+    wrapper.getComponent(DropdownMenuItem).vm.$emit("select");
+    await wrapper.vm.$nextTick();
+
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    confirmation.vm.$emit("update:open", false);
+    await wrapper.vm.$nextTick();
+
+    confirmation.vm.$emit("confirm");
+    await wrapper.vm.$nextTick();
+
+    expect(live.pushEvent).not.toHaveBeenCalled();
   });
 
   it("forwards complete faceted counts to the shared issue filters", () => {
@@ -151,7 +187,13 @@ describe("SheetDashboard health", () => {
 
     await wrapper.setProps({ issuesStatus: "refreshing" });
 
+    expect(wrapper.getComponent({ name: "DashboardIssuesSection" }).props("testIdPrefix")).toBe(
+      "sheet",
+    );
     expect(wrapper.getComponent(DashboardIssueFilters).props("busy")).toBe(true);
+    expect(wrapper.get('[data-testid="sheet-issues-refreshing"]').text()).toContain(
+      "Updating issues",
+    );
   });
 
   it("renders canonical severities and the shared health translations", () => {

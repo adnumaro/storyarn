@@ -25,6 +25,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.Project
+  alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.RoutePoints
@@ -188,6 +189,18 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp invalid_flow_node_data(%{"type" => "dialogue"}, flow_index, node_index),
     do: ["flows[#{flow_index}].nodes[#{node_index}].data"]
+
+  defp invalid_flow_node_data(%{"type" => "sequence"} = node, flow_index, node_index) do
+    case node["sequence_config"] do
+      %{"name" => name} when is_binary(name) ->
+        if String.trim(name) == "",
+          do: ["flows[#{flow_index}].nodes[#{node_index}].sequence_config"],
+          else: []
+
+      _other ->
+        ["flows[#{flow_index}].nodes[#{node_index}].sequence_config"]
+    end
+  end
 
   defp invalid_flow_node_data(_node, _flow_index, _node_index), do: []
 
@@ -492,6 +505,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
       {_id_map, loc_results} = import_localization(project.id, data, id_map)
 
+      rebuild_imported_references!(project.id)
+
       counts = %{
         assets: length(asset_results),
         sheets: length(sheet_results),
@@ -511,6 +526,15 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
          localization: loc_results,
          counts: counts
        }}
+    end
+  end
+
+  defp rebuild_imported_references!(project_id) do
+    with :ok <- References.rebuild_project_entity_references(project_id),
+         :ok <- References.rebuild_project_variable_references(project_id) do
+      :ok
+    else
+      {:error, reason} -> Repo.rollback({:import_reference_rebuild_failed, reason})
     end
   end
 
@@ -849,7 +873,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
           "position_x" => node_data["position_x"] || 0.0,
           "position_y" => node_data["position_y"] || 0.0,
           "source" => node_data["source"],
-          "data" => data
+          "data" => data,
+          "sequence_config" => node_data["sequence_config"]
         }
 
         node =
@@ -858,7 +883,27 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         {Map.put(map, {:node, node_data["id"]}, node.id), [node | results], dialogue_ids}
       end)
 
+    link_node_parent_ids(nodes, results, id_map)
+
     {id_map, results}
+  end
+
+  defp link_node_parent_ids(nodes, imported_nodes, id_map) do
+    imported_nodes_by_id = Map.new(imported_nodes, &{&1.id, &1})
+
+    Enum.each(nodes, fn node_data ->
+      with parent_source_id when not is_nil(parent_source_id) <- node_data["parent_id"],
+           node_id when is_integer(node_id) <- Map.get(id_map, {:node, node_data["id"]}),
+           parent_id when is_integer(parent_id) <- Map.get(id_map, {:node, parent_source_id}),
+           %FlowNode{} = node <- Map.get(imported_nodes_by_id, node_id) do
+        facade_insert_or_rollback!(
+          Flows.link_node_import_parent(node, parent_id),
+          {:node_parent, node_data["id"]}
+        )
+      else
+        _unresolved_reference -> :ok
+      end
+    end)
   end
 
   defp rekey_conflicting_import_dialogue(%{"localization_id" => localization_id} = data, "dialogue", used_ids)

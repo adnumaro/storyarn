@@ -24,7 +24,6 @@ const {
   searchPlaceholder,
   emptyLabel,
   searchable = false,
-  disabled = false,
   triggerClass = "",
 } = defineProps<{
   id: string;
@@ -34,7 +33,6 @@ const {
   searchPlaceholder: string;
   emptyLabel: string;
   searchable?: boolean;
-  disabled?: boolean;
   triggerClass?: string;
 }>();
 
@@ -70,13 +68,6 @@ function selectOption(option: DashboardFilterPopoverOption): void {
   if (option.value !== modelValue) emit("update:modelValue", option.value);
 }
 
-watch(
-  () => disabled,
-  (isDisabled) => {
-    if (isDisabled) open.value = false;
-  },
-);
-
 watch(open, (isOpen) => {
   if (!isOpen) optionSearch.query.value = "";
 });
@@ -90,7 +81,6 @@ watch(open, (isOpen) => {
         type="button"
         variant="outline"
         size="sm"
-        :disabled="disabled"
         :aria-label="triggerAriaLabel"
         :aria-expanded="open"
         :data-testid="id"

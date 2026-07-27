@@ -14,6 +14,8 @@ defmodule Storyarn.Dashboards.Cache do
   alias Phoenix.PubSub
   alias Storyarn.Collaboration
 
+  require Logger
+
   @table :storyarn_dashboard_cache
   @generation_table :storyarn_dashboard_cache_generations
   @flight_table :storyarn_dashboard_cache_flights
@@ -21,6 +23,7 @@ defmodule Storyarn.Dashboards.Cache do
   @reset_topic "storyarn:dashboard_cache:resets"
   @ttl_ms to_timeout(second: 30)
   @cleanup_interval_ms to_timeout(second: 15)
+  @compute_depth_key {__MODULE__, :compute_depth}
 
   # ===========================================================================
   # Client API
@@ -90,7 +93,7 @@ defmodule Storyarn.Dashboards.Cache do
   end
 
   @doc false
-  def cleanup, do: GenServer.call(__MODULE__, :cleanup)
+  def cleanup, do: GenServer.call(__MODULE__, :cleanup, :infinity)
 
   # ===========================================================================
   # Server
@@ -138,6 +141,16 @@ defmodule Storyarn.Dashboards.Cache do
     {:noreply, state}
   end
 
+  def handle_info({:dashboard_cache_invalidate, origin_node, project_id, scope}, state)
+      when is_atom(origin_node) and is_integer(project_id) and project_id > 0 do
+    Logger.warning(
+      "Ignoring unsupported dashboard cache invalidation scope #{inspect(scope)} " <>
+        "for project #{project_id} from #{inspect(origin_node)}"
+    )
+
+    {:noreply, state}
+  end
+
   @impl true
   def handle_info(:announce_reset, state) do
     PubSub.local_broadcast(Storyarn.PubSub, @reset_topic, :dashboard_cache_reset)
@@ -173,9 +186,16 @@ defmodule Storyarn.Dashboards.Cache do
   end
 
   defp fetch_on_miss(project_id, scope, key, compute_fn) do
-    with_key_lock(key, fn ->
-      fetch_in_flight(project_id, scope, key, compute_fn)
-    end)
+    if cache_compute_active?() do
+      # A computation may legitimately read another cached dashboard slice.
+      # Waiting for that key's singleflight lock can form A -> B / B -> A
+      # cycles across callers, so nested reads compute directly on a miss.
+      fetch_after_lock(project_id, scope, key, compute_fn)
+    else
+      with_key_lock(key, fn ->
+        fetch_in_flight(project_id, scope, key, compute_fn)
+      end)
+    end
   end
 
   defp fetch_in_flight(project_id, scope, key, compute_fn) do
@@ -185,7 +205,7 @@ defmodule Storyarn.Dashboards.Cache do
   end
 
   defp compute_and_cache(project_id, scope, key, generation, compute_fn) do
-    result = compute_fn.()
+    result = with_compute_guard(compute_fn)
 
     with_cache_tables(fn ->
       expires_at = System.monotonic_time(:millisecond) + @ttl_ms
@@ -202,6 +222,21 @@ defmodule Storyarn.Dashboards.Cache do
     end)
 
     result
+  end
+
+  defp cache_compute_active?, do: Process.get(@compute_depth_key, 0) > 0
+
+  defp with_compute_guard(compute_fn) do
+    previous_depth = Process.get(@compute_depth_key, 0)
+    Process.put(@compute_depth_key, previous_depth + 1)
+
+    try do
+      compute_fn.()
+    after
+      if previous_depth == 0,
+        do: Process.delete(@compute_depth_key),
+        else: Process.put(@compute_depth_key, previous_depth)
+    end
   end
 
   defp cached_result(project_id, scope, key) do
@@ -311,11 +346,18 @@ defmodule Storyarn.Dashboards.Cache do
         end
       end)
 
-    retained_projects =
+    cached_projects =
       @table
-      |> :ets.tab2list()
-      |> MapSet.new(fn {{project_id, _scope}, _result, _expires_at, _generation} -> project_id end)
-      |> MapSet.union(MapSet.new(active_flights, fn {{project_id, _scope}, _pid} -> project_id end))
+      |> :ets.select([
+        {{{:"$1", :_}, :_, :_, :_}, [], [:"$1"]}
+      ])
+      |> MapSet.new()
+
+    retained_projects =
+      MapSet.union(
+        cached_projects,
+        MapSet.new(active_flights, fn {{project_id, _scope}, _pid} -> project_id end)
+      )
 
     @generation_table
     |> :ets.tab2list()

@@ -242,7 +242,7 @@ defmodule StoryarnWeb.FlowLive.Index do
     socket =
       socket
       |> assign(:overview_status, fail_overview_load(socket.assigns.overview_status))
-      |> DashboardHandlers.finish_load(:overview, &start_dashboard_overview/1)
+      |> DashboardHandlers.finish_failed_load(:overview)
 
     {:noreply, socket}
   end
@@ -253,7 +253,7 @@ defmodule StoryarnWeb.FlowLive.Index do
     socket =
       socket
       |> assign(:issues_status, fail_issues_load(socket.assigns.issues_status))
-      |> DashboardHandlers.finish_load(:issues, &start_dashboard_issues/1)
+      |> DashboardHandlers.finish_failed_load(:issues)
 
     {:noreply, socket}
   end
@@ -381,7 +381,10 @@ defmodule StoryarnWeb.FlowLive.Index do
     end
   end
 
-  def handle_event(_event, _params, socket), do: {:noreply, socket}
+  def handle_event(event, _params, socket) do
+    Logger.warning("[flows dashboard] ignored unknown event #{inspect(event)}")
+    {:noreply, socket}
+  end
 
   # Tree mutations (create_flow, create_child_flow, move_to_parent) now live in
   # FlowSidebarLive — they never reach this LV because the tree is rendered by
@@ -398,14 +401,21 @@ defmodule StoryarnWeb.FlowLive.Index do
 
       {:noreply,
        socket
+       |> assign(:pending_delete_id, nil)
        |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
        |> reload_flows()}
     else
       nil ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
+        {:noreply,
+         socket
+         |> assign(:pending_delete_id, nil)
+         |> put_flash(:error, dgettext("flows", "Flow not found."))}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
+        {:noreply,
+         socket
+         |> assign(:pending_delete_id, nil)
+         |> put_flash(:error, dgettext("flows", "Could not delete flow."))}
     end
   end
 

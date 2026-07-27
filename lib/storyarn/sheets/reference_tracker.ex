@@ -173,6 +173,33 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   def update_flow_node_references(_node, _opts), do: :ok
 
+  @doc false
+  @spec flow_node_references_current?(map()) :: boolean()
+  def flow_node_references_current?(%{id: node_id, data: data}) when is_integer(node_id) and is_map(data) do
+    expected =
+      data
+      |> extract_flow_node_refs()
+      |> Enum.map(fn reference ->
+        {reference.type, parse_id(reference.id), reference.context}
+      end)
+      |> Enum.reject(fn {_type, target_id, _context} -> is_nil(target_id) end)
+      |> MapSet.new()
+
+    actual =
+      from(reference in EntityReference,
+        where:
+          reference.source_type == "flow_node" and
+            reference.source_id == ^node_id,
+        select: {reference.target_type, reference.target_id, reference.context}
+      )
+      |> Repo.all()
+      |> MapSet.new()
+
+    expected == actual
+  end
+
+  def flow_node_references_current?(_node), do: false
+
   @doc """
   Deletes all references from a flow node.
   Called when a node is deleted.

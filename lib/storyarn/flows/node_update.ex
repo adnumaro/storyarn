@@ -40,6 +40,7 @@ defmodule Storyarn.Flows.NodeUpdate do
          type = Ecto.Changeset.get_field(changeset, :type),
          data = Ecto.Changeset.get_field(changeset, :data) || %{},
          parent_id = Ecto.Changeset.get_field(changeset, :parent_id),
+         :ok <- validate_node_type_transition(locked_node, type),
          {:ok, parent_id} <-
            ReferenceIntegrity.lock_node_parent(flow.id, parent_id, locked_node.id),
          {:ok, data} <-
@@ -48,7 +49,8 @@ defmodule Storyarn.Flows.NodeUpdate do
              flow.id,
              type,
              data
-           ) do
+           ),
+         :ok <- validate_hub_id(locked_node, type, data) do
       updated_node =
         changeset
         |> Ecto.Changeset.put_change(:parent_id, parent_id)
@@ -64,17 +66,55 @@ defmodule Storyarn.Flows.NodeUpdate do
         |> Repo.update()
         |> handle_persisted_node_data(project_id)
 
-      _connections_changed? =
-        reconcile_outgoing_connection_pins(
-          project_id,
+      _renamed_count =
+        maybe_cascade_hub_id_rename(
           locked_node,
-          updated_node
+          type,
+          data,
+          project_id
         )
+
+      _connections_changed? =
+        Enum.any?([
+          reconcile_outgoing_connection_pins(project_id, locked_node, updated_node),
+          reconcile_incoming_connection_pins(updated_node)
+        ])
 
       updated_node
     else
       {:error, reason} -> Repo.rollback(reason)
     end
+  end
+
+  defp validate_node_type_transition(%FlowNode{type: type}, type), do: :ok
+
+  defp validate_node_type_transition(%FlowNode{type: "entry"}, _new_type), do: {:error, :cannot_change_entry_node}
+
+  defp validate_node_type_transition(%FlowNode{type: old_type}, new_type)
+       when old_type == "sequence" or new_type == "sequence", do: {:error, :cannot_change_sequence_type}
+
+  defp validate_node_type_transition(%FlowNode{} = node, "entry") do
+    if active_node_of_type_exists?(node.flow_id, "entry", node.id),
+      do: {:error, :entry_node_exists},
+      else: :ok
+  end
+
+  defp validate_node_type_transition(%FlowNode{type: "exit"} = node, _new_type) do
+    if active_node_of_type_exists?(node.flow_id, "exit", node.id),
+      do: :ok,
+      else: {:error, :cannot_change_last_exit}
+  end
+
+  defp validate_node_type_transition(%FlowNode{}, _new_type), do: :ok
+
+  defp active_node_of_type_exists?(flow_id, type, excluded_id) do
+    Repo.exists?(
+      from(other in FlowNode,
+        where:
+          other.flow_id == ^flow_id and other.id != ^excluded_id and
+            other.type == ^type and is_nil(other.deleted_at)
+      )
+    )
   end
 
   def update_node_position(%FlowNode{} = node, attrs) do
@@ -264,7 +304,9 @@ defmodule Storyarn.Flows.NodeUpdate do
              type,
              normalized_input
            ),
-         :ok <- validate_hub_id(node, normalized_data) do
+         :ok <- validate_hub_id(node, type, normalized_data),
+         true <- Localization.flow_node_texts_current?(node, project_id),
+         true <- References.flow_node_entity_references_current?(node) do
       normalized_data == node.data and
         node.derivatives_fingerprint == derivatives_fingerprint(node) and
         node.word_count == WordCount.for_node_data(node.type, node.data)
@@ -289,11 +331,17 @@ defmodule Storyarn.Flows.NodeUpdate do
              locked_node.type,
              data
            ),
-         :ok <- validate_hub_id(locked_node, normalized_data) do
+         :ok <- validate_hub_id(locked_node, locked_node.type, normalized_data) do
       {updated_node, connections_changed?} =
         persist_node_data(normalized_data, locked_node, project_id)
 
-      renamed_count = maybe_cascade_hub_id_rename(locked_node, normalized_data)
+      renamed_count =
+        maybe_cascade_hub_id_rename(
+          locked_node,
+          locked_node.type,
+          normalized_data,
+          project_id
+        )
 
       {updated_node,
        %{
@@ -305,28 +353,34 @@ defmodule Storyarn.Flows.NodeUpdate do
     end
   end
 
-  defp validate_hub_id(%FlowNode{type: "hub"} = node, data) do
+  defp validate_hub_id(%FlowNode{} = node, "hub", data) do
     hub_id = data["hub_id"]
 
     cond do
-      hub_id in [nil, ""] -> {:error, :hub_id_required}
+      not is_binary(hub_id) or String.trim(hub_id) == "" -> {:error, :hub_id_required}
       NodeCrud.hub_id_exists?(node.flow_id, hub_id, node.id) -> {:error, :hub_id_not_unique}
       true -> :ok
     end
   end
 
-  defp validate_hub_id(_node, _data), do: :ok
+  defp validate_hub_id(_node, _type, _data), do: :ok
 
-  defp maybe_cascade_hub_id_rename(%FlowNode{type: "hub"} = node, data) do
+  defp maybe_cascade_hub_id_rename(%FlowNode{type: "hub"} = node, updated_type, data, project_id) do
     old_hub_id = node.data["hub_id"]
-    new_hub_id = data["hub_id"]
+    new_hub_id = if updated_type == "hub", do: data["hub_id"], else: ""
 
     if old_hub_id == new_hub_id,
       do: 0,
-      else: cascade_hub_id_rename(node.flow_id, old_hub_id, new_hub_id)
+      else:
+        cascade_hub_id_rename(
+          project_id,
+          node.flow_id,
+          old_hub_id,
+          new_hub_id
+        )
   end
 
-  defp maybe_cascade_hub_id_rename(_node, _data), do: 0
+  defp maybe_cascade_hub_id_rename(_node, _type, _data, _project_id), do: 0
 
   defp persist_node_data(data, node, project_id) do
     word_count = WordCount.for_node_data(node.type, data)
@@ -399,7 +453,8 @@ defmodule Storyarn.Flows.NodeUpdate do
     derivatives_fingerprint(node.type, node.data)
   end
 
-  defp derivatives_fingerprint(type, data) do
+  @doc false
+  def derivatives_fingerprint(type, data) do
     {@derivatives_fingerprint_version, type, data}
     |> :erlang.term_to_binary([:deterministic])
     |> then(&:crypto.hash(:sha256, &1))
@@ -468,6 +523,35 @@ defmodule Storyarn.Flows.NodeUpdate do
     )
   end
 
+  defp reconcile_incoming_connection_pins(%FlowNode{} = updated_node) do
+    updated_node.id
+    |> lock_incoming_connections()
+    |> Enum.reduce(false, &reconcile_incoming_connection(&1, updated_node.type, &2))
+  end
+
+  defp reconcile_incoming_connection(connection, node_type, changed?) do
+    if NodeConnectionRules.valid_input_pin?(node_type, connection.target_pin),
+      do: changed?,
+      else: delete_invalid_incoming_connection(connection)
+  end
+
+  defp delete_invalid_incoming_connection(connection) do
+    case Repo.delete(connection) do
+      {:ok, _deleted_connection} -> true
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp lock_incoming_connections(node_id) do
+    Repo.all(
+      from(connection in FlowConnection,
+        where: connection.target_node_id == ^node_id,
+        order_by: [asc: connection.id],
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
   defp reconcile_outgoing_connection(
          %FlowConnection{source_pin: source_pin} = connection,
          current_pins,
@@ -502,24 +586,53 @@ defmodule Storyarn.Flows.NodeUpdate do
     end
   end
 
-  defp cascade_hub_id_rename(flow_id, old_hub_id, new_hub_id) when is_binary(old_hub_id) and old_hub_id != "" do
+  defp cascade_hub_id_rename(project_id, flow_id, old_hub_id, new_hub_id)
+       when is_binary(old_hub_id) and old_hub_id != "" do
+    active_jumps =
+      Repo.all(
+        from(n in FlowNode,
+          where: n.flow_id == ^flow_id and n.type == "jump",
+          where: is_nil(n.deleted_at),
+          where: fragment("?->>'target_hub_id' = ?", n.data, ^old_hub_id),
+          order_by: [asc: n.id],
+          lock: "FOR UPDATE"
+        )
+      )
+
+    Enum.each(active_jumps, fn jump ->
+      updated_data = Map.put(jump.data, "target_hub_id", new_hub_id)
+      {_updated_jump, _connections_changed?} = persist_node_data(updated_data, jump, project_id)
+    end)
+
+    cascade_deleted_hub_id_rename(flow_id, old_hub_id, new_hub_id)
+
+    length(active_jumps)
+  end
+
+  defp cascade_hub_id_rename(_, _, _, _), do: 0
+
+  defp cascade_deleted_hub_id_rename(flow_id, old_hub_id, new_hub_id) do
     now = TimeHelpers.now()
 
-    query =
+    Repo.update_all(
       from(n in FlowNode,
         where: n.flow_id == ^flow_id and n.type == "jump",
+        where: not is_nil(n.deleted_at),
         where: fragment("?->>'target_hub_id' = ?", n.data, ^old_hub_id),
         update: [
           set: [
-            data: fragment("jsonb_set(?, '{target_hub_id}', to_jsonb(?::text))", n.data, ^new_hub_id),
+            data:
+              fragment(
+                "jsonb_set(?, '{target_hub_id}', to_jsonb(?::text))",
+                n.data,
+                ^new_hub_id
+              ),
+            derivatives_fingerprint: nil,
             updated_at: ^now
           ]
         ]
-      )
-
-    {count, _} = Repo.update_all(query, [])
-    count
+      ),
+      []
+    )
   end
-
-  defp cascade_hub_id_rename(_, _, _), do: 0
 end

@@ -9,10 +9,11 @@ import {
   Trash2,
 } from "lucide-vue-next";
 import type { Component } from "vue";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import type { FlowDashboardIssue } from "@modules/flows/types/health";
 import { interpolatableDetails } from "@components/health/health-details";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import {
@@ -26,8 +27,7 @@ import { useLive } from "@shared/composables/useLive";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 import DashboardContent from "@shell/DashboardContent.vue";
 import DashboardDataTable from "@components/dashboard/DashboardDataTable.vue";
-import DashboardIssueFilters from "@components/dashboard/DashboardIssueFilters.vue";
-import DashboardIssueList from "@components/dashboard/DashboardIssueList.vue";
+import DashboardIssuesSection from "@components/dashboard/DashboardIssuesSection.vue";
 import {
   emptyDashboardIssueFilterOptions,
   type DashboardIssuePagination,
@@ -89,6 +89,15 @@ const {
 }>();
 
 const { t } = useI18n();
+const pendingDeleteFlow = ref<FlowTableRow | null>(null);
+const deleteDialogOpen = computed({
+  get: () => pendingDeleteFlow.value !== null,
+  set: (open: boolean) => {
+    if (!open) {
+      pendingDeleteFlow.value = null;
+    }
+  },
+});
 
 // The dashboard translates the SAME `flows.health.findings.*` keys the editor
 // popover uses, so the two surfaces cannot word the same finding differently.
@@ -163,9 +172,16 @@ function setMain(id: number | string): void {
   live.pushEvent("set_main", { id });
 }
 
-function requestDelete(id: number | string): void {
-  live.pushEvent("set_pending_delete", { id });
+function requestDelete(flow: FlowTableRow): void {
+  pendingDeleteFlow.value = flow;
+}
+
+function confirmDelete(): void {
+  if (!pendingDeleteFlow.value) return;
+
+  live.pushEvent("set_pending_delete", { id: pendingDeleteFlow.value.id });
   live.pushEvent("confirm_delete", {});
+  pendingDeleteFlow.value = null;
 }
 
 const statCards = computed<StatCard[]>(() => {
@@ -317,10 +333,7 @@ const columns = computed<DashboardTableColumn[]>(() => [
               <Star class="size-3.5" />
               {{ $t("flows.dashboard.set_main") }}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              class="text-destructive gap-2 text-xs"
-              @select="requestDelete(row.id)"
-            >
+            <DropdownMenuItem class="text-destructive gap-2 text-xs" @select="requestDelete(row)">
               <Trash2 class="size-3.5" />
               {{ $t("flows.dashboard.delete") }}
             </DropdownMenuItem>
@@ -330,96 +343,39 @@ const columns = computed<DashboardTableColumn[]>(() => [
     </DashboardDataTable>
 
     <template #supplementary>
-      <!-- Issues -->
-      <div
-        v-if="
-          issuesStatus === 'loading' ||
-          issuesStatus === 'error' ||
-          issuesStatus === 'stale' ||
-          resolvedIssuePagination.unfilteredTotal > 0
-        "
-        data-testid="flow-dashboard-issues"
-        class="space-y-3"
-        :aria-busy="issuesStatus === 'loading' || issuesStatus === 'refreshing'"
+      <DashboardIssuesSection
+        :title="$t('flows.dashboard.issues')"
+        test-id-prefix="flow"
+        :status="issuesStatus"
+        :issues="issues"
+        :pagination="resolvedIssuePagination"
+        :filters="issueFilters"
+        :filter-options="issueFilterOptions"
+        :all-resources-label="$t('flows.dashboard.all_flows')"
+        :code-label="issueCodeLabel"
+        @retry="retryIssues"
+        @filter="changeIssueFilter"
+        @page="goToIssuePage"
       >
-        <h2 class="text-sm font-medium">{{ $t("flows.dashboard.issues") }}</h2>
-
-        <div
-          v-if="issuesStatus === 'loading'"
-          data-testid="flow-issues-loading"
-          class="flex items-center justify-center rounded-lg border border-border py-8"
-          role="status"
-          aria-live="polite"
-        >
-          <div
-            class="size-5 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/60"
-            aria-hidden="true"
-          />
-          <span class="sr-only">{{ $t("common.dashboard.loading_issues") }}</span>
-        </div>
-
-        <div
-          v-else-if="issuesStatus === 'error'"
-          data-testid="flow-issues-error"
-          class="flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-8 text-center"
-          role="alert"
-        >
-          <p class="text-sm text-destructive">
-            {{ $t("common.dashboard.issues_load_failed") }}
-          </p>
-          <button
-            type="button"
-            data-testid="flow-issues-retry"
-            class="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-            @click="retryIssues"
-          >
-            {{ $t("common.dashboard.retry") }}
-          </button>
-        </div>
-
-        <template v-else>
-          <div
-            v-if="issuesStatus === 'stale'"
-            data-testid="flow-issues-stale"
-            class="flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3"
-            role="status"
-            aria-live="polite"
-          >
-            <p class="text-sm text-amber-700 dark:text-amber-300">
-              {{ $t("common.dashboard.issues_stale") }}
-            </p>
-            <button
-              type="button"
-              data-testid="flow-issues-retry"
-              class="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-              @click="retryIssues"
-            >
-              {{ $t("common.dashboard.retry") }}
-            </button>
-          </div>
-
-          <template v-if="resolvedIssuePagination.unfilteredTotal > 0">
-            <DashboardIssueFilters
-              :filters="issueFilters"
-              :options="issueFilterOptions"
-              :all-resources-label="$t('flows.dashboard.all_flows')"
-              :code-label="issueCodeLabel"
-              :busy="issuesStatus === 'refreshing'"
-              @change="changeIssueFilter"
-            />
-
-            <DashboardIssueList
-              :issues="issues"
-              :pagination="resolvedIssuePagination"
-              @page="goToIssuePage"
-            >
-              <template #description="{ issue }">
-                {{ healthFindingLabel(issue) }}
-              </template>
-            </DashboardIssueList>
-          </template>
+        <template #description="{ issue }">
+          {{ healthFindingLabel(issue) }}
         </template>
-      </div>
+      </DashboardIssuesSection>
     </template>
   </DashboardContent>
+
+  <ConfirmDialog
+    v-model:open="deleteDialogOpen"
+    :title="$t('flows.tree.delete_title')"
+    :description="
+      $t('flows.tree.delete_description', {
+        name: pendingDeleteFlow?.name,
+      })
+    "
+    :confirm-text="$t('flows.tree.delete')"
+    :cancel-text="$t('flows.tree.cancel')"
+    variant="destructive"
+    :icon="Trash2"
+    @confirm="confirmDelete"
+  />
 </template>

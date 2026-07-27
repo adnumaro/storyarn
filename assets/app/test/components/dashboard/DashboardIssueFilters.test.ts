@@ -239,15 +239,24 @@ describe("DashboardIssueFilters", () => {
 
     expect(wrapper.get("#dashboard-issue-code-filter").attributes("aria-expanded")).toBe("true");
 
-    await wrapper.setProps({ busy: true });
+    await wrapper.setProps({
+      busy: true,
+      options: {
+        ...options,
+        totals: { ...options.totals, code: 5 },
+        codes: [
+          { value: "missing_entry", count: 4 },
+          { value: "unreachable_node", count: 1 },
+        ],
+      },
+    });
 
     expect(wrapper.attributes("aria-busy")).toBe("true");
-    expect(
-      wrapper
-        .findAllComponents(DashboardFilterPopover)
-        .every((filterPopover) => filterPopover.props("disabled") === false),
-    ).toBe(true);
+    for (const filterPopover of wrapper.findAllComponents(DashboardFilterPopover)) {
+      expect(filterPopover.props()).not.toHaveProperty("disabled");
+    }
     expect(wrapper.get("#dashboard-issue-code-filter").attributes("aria-expanded")).toBe("true");
+    expect(wrapper.get("#dashboard-issue-code-filter").text()).toContain("5");
 
     for (const id of [
       "dashboard-issue-severity-filter",

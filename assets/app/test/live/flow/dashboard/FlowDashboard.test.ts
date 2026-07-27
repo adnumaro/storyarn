@@ -1,8 +1,10 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import FlowDashboard from "../../../../live/flow/dashboard/FlowDashboard.vue";
+import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
 import DashboardIssueFilters from "../../../../components/dashboard/DashboardIssueFilters.vue";
 import DashboardPagination from "../../../../components/dashboard/DashboardPagination.vue";
+import DropdownMenuItem from "../../../../components/ui/dropdown-menu/DropdownMenuItem.vue";
 import { createMockLive } from "../../../setup";
 
 const issueFilterOptions = {
@@ -138,12 +140,56 @@ describe("FlowDashboard issues", () => {
     expect(trigger.attributes("title")).toBe("Flow actions");
   });
 
+  it("requires explicit confirmation before deleting a flow", async () => {
+    const { live, wrapper } = mountDashboard();
+
+    await wrapper.setProps({ canEdit: true });
+    await wrapper.get('[data-slot="dropdown-menu-trigger"]').trigger("click");
+    wrapper.getComponent(DropdownMenuItem).vm.$emit("select");
+    await wrapper.vm.$nextTick();
+
+    expect(live.pushEvent).not.toHaveBeenCalled();
+
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    expect(confirmation.props("open")).toBe(true);
+
+    confirmation.vm.$emit("confirm");
+    await wrapper.vm.$nextTick();
+
+    expect(live.pushEvent).toHaveBeenNthCalledWith(1, "set_pending_delete", { id: 1 }, undefined);
+    expect(live.pushEvent).toHaveBeenNthCalledWith(2, "confirm_delete", {}, undefined);
+  });
+
+  it("keeps an open delete confirmation mounted when the overview becomes empty", async () => {
+    const { wrapper } = mountDashboard();
+
+    await wrapper.setProps({ canEdit: true });
+    await wrapper.get('[data-slot="dropdown-menu-trigger"]').trigger("click");
+    wrapper.getComponent(DropdownMenuItem).vm.$emit("select");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.getComponent(ConfirmDialog).props("open")).toBe(true);
+
+    await wrapper.setProps({
+      tableData: [],
+      pagination: { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 },
+    });
+
+    expect(wrapper.getComponent(ConfirmDialog).props("open")).toBe(true);
+  });
+
   it("marks issue filters busy without disabling them during a background refresh", async () => {
     const { wrapper } = mountDashboard();
 
     await wrapper.setProps({ issuesStatus: "refreshing" });
 
+    expect(wrapper.getComponent({ name: "DashboardIssuesSection" }).props("testIdPrefix")).toBe(
+      "flow",
+    );
     expect(wrapper.getComponent(DashboardIssueFilters).props("busy")).toBe(true);
+    expect(wrapper.get('[data-testid="flow-issues-refreshing"]').text()).toContain(
+      "Updating issues",
+    );
   });
 
   it("renders distinct error, warning, and info severities", () => {

@@ -959,6 +959,94 @@ defmodule Storyarn.Flows.FlowCrudTest do
       assert node.flow_id == flow.id
       assert node.word_count == 2
     end
+
+    test "rejects a duplicate hub_id within the imported flow" do
+      %{flow: flow} = create_project_and_flow()
+
+      assert {:ok, first_hub} =
+               Flows.import_node(flow.id, %{
+                 type: "hub",
+                 data: %{"hub_id" => "shared-hub", "label" => "First hub"}
+               })
+
+      assert {:error, :hub_id_not_unique} =
+               Flows.import_node(flow.id, %{
+                 type: "hub",
+                 data: %{"hub_id" => "shared-hub", "label" => "Second hub"}
+               })
+
+      assert [%{id: hub_id}] = Flows.list_hubs(flow.id)
+      assert hub_id == first_hub.id
+    end
+
+    test "rejects a whitespace-only hub_id instead of persisting an untargetable hub" do
+      %{flow: flow} = create_project_and_flow()
+
+      assert {:error, :hub_id_required} =
+               Flows.import_node(flow.id, %{
+                 type: "hub",
+                 data: %{"hub_id" => "   ", "label" => "Invalid hub"}
+               })
+
+      assert Flows.list_hubs(flow.id) == []
+    end
+
+    test "preserves the single-entry invariant while importing raw nodes" do
+      %{project: project} = create_project_and_flow()
+
+      assert {:ok, flow} =
+               Flows.import_flow(project.id, %{
+                 name: "Imported entry flow",
+                 shortcut: "imported-entry-flow"
+               })
+
+      assert {:ok, _entry} =
+               Flows.import_node(flow.id, %{
+                 type: "entry",
+                 data: %{"label" => "Start"}
+               })
+
+      assert {:error, :entry_node_exists} =
+               Flows.import_node(flow.id, %{
+                 type: "entry",
+                 data: %{"label" => "Duplicate start"}
+               })
+
+      assert flow.id
+             |> Flows.list_nodes()
+             |> Enum.count(&(&1.type == "entry")) == 1
+    end
+
+    test "persists the required sequence config atomically with an imported sequence node" do
+      %{project: project} = create_project_and_flow()
+
+      assert {:ok, flow} =
+               Flows.import_flow(project.id, %{
+                 name: "Imported sequence flow",
+                 shortcut: "imported-sequence-flow"
+               })
+
+      assert {:ok, sequence} =
+               Flows.import_node(flow.id, %{
+                 type: "sequence",
+                 position_x: 120.0,
+                 position_y: 80.0,
+                 data: %{},
+                 sequence_config: %{
+                   name: "Act I",
+                   width: 640.0,
+                   height: 360.0
+                 }
+               })
+
+      imported_sequence = Flows.get_sequence!(flow.id, sequence.id)
+
+      assert %{
+               name: "Act I",
+               width: 640.0,
+               height: 360.0
+             } = imported_sequence.sequence_config
+    end
   end
 
   # ===========================================================================

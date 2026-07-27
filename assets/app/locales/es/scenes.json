@@ -95,7 +95,7 @@
         "stale_zone_target": "Destino de zona inexistente",
         "stale_collection_sheet_reference": "Referencia de ficha de colección inexistente",
         "stale_variable_reference": "Referencia de variable obsoleta",
-        "stale_ambient_flow_reference": "Referencia de flow ambiental inexistente",
+        "stale_ambient_flow_reference": "Referencia de flujo ambiental inexistente",
         "invalid_ambient_trigger": "Trigger ambiental no válido",
         "invalid_collection_item": "Elemento de colección no válido",
         "missing_scene_shortcut": "Falta el atajo de la escena",

@@ -84,6 +84,7 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
       assert initial_overview.assigns.overview_status == :loading, "#{name} initial overview retry"
       assert initial_overview.assigns.dashboard_overview_running?, "#{name} overview task"
       refute initial_overview.assigns.dashboard_overview_reload_pending?, "#{name} overview pending"
+      assert_async_started(initial_overview, :load_dashboard_overview, name)
 
       {:noreply, stale_overview} =
         handle_dashboard_event(
@@ -106,6 +107,7 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
       assert initial_issues.assigns.issues_status == :loading, "#{name} initial issues retry"
       assert initial_issues.assigns.dashboard_issues_running?, "#{name} issues task"
       refute initial_issues.assigns.dashboard_issues_reload_pending?, "#{name} issues pending"
+      assert_async_started(initial_issues, :load_dashboard_issues, name)
 
       {:noreply, stale_issues} =
         handle_dashboard_event(
@@ -273,7 +275,7 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
     end
   end
 
-  test "a pending invalidation restarts each failed task once instead of leaving it stale" do
+  test "a failed refresh clears a pending invalidation instead of entering an automatic retry loop" do
     for {name, dashboard, _table_key, issues_key, all_issues_key} <- @dashboards do
       {:noreply, overview} =
         handle_dashboard_async(
@@ -287,8 +289,8 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
           })
         )
 
-      assert overview.assigns.overview_status == :refreshing, "#{name} overview restart status"
-      assert overview.assigns.dashboard_overview_running?, "#{name} overview restarted"
+      assert overview.assigns.overview_status == :stale, "#{name} overview failure status"
+      refute overview.assigns.dashboard_overview_running?, "#{name} overview stopped"
       refute overview.assigns.dashboard_overview_reload_pending?, "#{name} overview pending cleared"
 
       {:noreply, issues} =
@@ -305,8 +307,8 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
           })
         )
 
-      assert issues.assigns.issues_status == :refreshing, "#{name} issues restart status"
-      assert issues.assigns.dashboard_issues_running?, "#{name} issues restarted"
+      assert issues.assigns.issues_status == :stale, "#{name} issues failure status"
+      refute issues.assigns.dashboard_issues_running?, "#{name} issues stopped"
       refute issues.assigns.dashboard_issues_reload_pending?, "#{name} issues pending cleared"
     end
   end
@@ -328,8 +330,16 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
     %{socket | assigns: Map.put(socket.assigns, key, retry_after)}
   end
 
+  defp assert_async_started(socket, task, dashboard) do
+    assert {_ref, pid, :start} = socket.private[:live_async][task],
+           "#{dashboard} #{task} did not start a LiveView async task"
+
+    assert is_pid(pid)
+  end
+
   defp socket(extra_assigns) do
     %Socket{
+      transport_pid: self(),
       assigns:
         Map.merge(
           %{

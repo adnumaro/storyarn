@@ -325,7 +325,7 @@ defmodule Storyarn.Flows do
   @doc """
   Updates a node.
   """
-  @spec update_node(flow_node(), attrs()) :: {:ok, flow_node()} | {:error, changeset()}
+  @spec update_node(flow_node(), attrs()) :: {:ok, flow_node()} | {:error, term()}
   defdelegate update_node(node, attrs), to: NodeCrud
 
   @doc false
@@ -1183,6 +1183,9 @@ defmodule Storyarn.Flows do
 
   @doc "Updates a flow's parent_id after import."
   defdelegate link_flow_import_parent(flow, parent_id), to: FlowCrud, as: :link_import_parent
+
+  @doc "Updates an imported node's parent_id after source node IDs have been remapped."
+  defdelegate link_node_import_parent(node, parent_id), to: FlowCrud
 
   @doc "Updates a node's data map after import (deferred flow ID remapping)."
   defdelegate link_node_import_data(node_id, data), to: FlowCrud

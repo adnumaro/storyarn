@@ -223,6 +223,11 @@ defmodule Storyarn.Flows.FlowNode do
     data = attr(attrs, :data) || existing_data(node)
 
     if type == "dialogue" and is_map(data) do
+      identity_mode =
+        if identity_mode == :update and match?(%__MODULE__{type: previous_type} when previous_type != "dialogue", node),
+          do: :create,
+          else: identity_mode
+
       put_attr(
         attrs,
         :data,
