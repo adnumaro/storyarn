@@ -1,0 +1,45 @@
+config/config.exs
+  s_cbd5ec1111913e::t_1d54de5575c195 90-99,103-111
+  s_cbd5ec1111913e::t_ce8ddbd23198d1 129,149-151
+  s_cbd5ec1111913e::t_958383733a5cff 148
+  s_cbd5ec1111913e::t_c19ff67ed84bd9 130-147
+lib/storyarn/workers/reconcile_ai_reservations_worker.ex
+  s_cbd5ec1111913e::t_bf6184fc480c51 3,5
+  s_cbd5ec1111913e::t_505328ef906d81 19-28
+test/storyarn/workers/reconcile_ai_reservations_worker_test.exs
+  s_7b823d14826a94::t_58e3a66cf01627 132,291
+  s_cbd5ec1111913e::t_2a5cb6741c639d 292-311,316-319
+  s_cbd5ec1111913e::t_103d6e6006e397 8,95,133
+  s_7b823d14826a94::t_739d7ce14ca4f2 94
+  s_cbd5ec1111913e::t_908099c132258f 134-158
+  s_cbd5ec1111913e::t_2ccd7d59f4525a 312-315
+  s_cbd5ec1111913e::t_16e8336d0eacf5 23-30,38-46
+  s_7b823d14826a94::t_ef258d4ad1aec6 107
+  s_cbd5ec1111913e::t_554b5f9cfd5f64 96-101,108-110
+lib/storyarn/workers/retry_storage_cleanup_requests_worker.ex
+  s_cbd5ec1111913e::t_0ad02e8612527e 6-9,13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "88a0fec9e2d1b9bf3e96da0c456f0aa33eebec6f",
+  "prompts": {},
+  "sessions": {
+    "s_7b823d14826a94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49ad9581-feac-4c2c-8679-8a193aa56248",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_cbd5ec1111913e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e18d536-0100-434d-bbc1-ec7bfa8d39d8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
