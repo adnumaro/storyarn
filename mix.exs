@@ -149,6 +149,13 @@ defmodule Storyarn.MixProject do
         "compile --warning-as-errors",
         "deps.unlock --unused",
         "format",
+        # The suite can only compare `.po` against `.pot`; both are derived, so a
+        # `dgettext` that was never extracted is missing from both and every
+        # assertion still passes while the string renders in English for `es`.
+        # This is the only step that reads the source tree itself. It is strict
+        # about `#:` reference lines too, so moving a `dgettext` to another line
+        # fails it — re-run `mix gettext.extract --merge` and commit the result.
+        "gettext.extract --check-up-to-date",
         "convention.check",
         "credo --strict",
         # `--warnings-as-errors` here covers the `.exs` test files, which the
