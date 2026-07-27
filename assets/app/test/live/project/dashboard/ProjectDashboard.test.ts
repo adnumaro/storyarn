@@ -134,6 +134,23 @@ describe("ProjectDashboard", () => {
     expect(wrapper.find('[data-testid="project-health-flows"]').exists()).toBe(true);
   });
 
+  // Health is the actionable summary: it belongs directly under the totals, not
+  // stranded below a ten-row activity list.
+  it("orders the page totals -> health -> activity", () => {
+    const { wrapper } = mountDashboard({
+      activity: [{ type: "flow", name: "Opening", updated_at: "2026-07-26T12:00:00Z" }],
+    });
+
+    const html = wrapper.html();
+    const totals = html.indexOf('data-testid="project-stat-sheets"');
+    const health = html.indexOf('data-testid="project-tool-health"');
+    const recent = html.indexOf('data-testid="project-recent-activity"');
+
+    expect(totals).toBeGreaterThan(-1);
+    expect(health).toBeGreaterThan(totals);
+    expect(recent).toBeGreaterThan(health);
+  });
+
   it("shows recent activity once the overview is ready", () => {
     const { wrapper } = mountDashboard({
       activity: [{ type: "flow", name: "Opening", updated_at: "2026-07-26T12:00:00Z" }],

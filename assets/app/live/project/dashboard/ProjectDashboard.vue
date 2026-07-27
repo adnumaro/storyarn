@@ -196,6 +196,10 @@ const activityTypeKeys: Record<string, string> = {
   scene: "workspace.project_dashboard.activity_types.scene",
 };
 
+// `stale` keeps the previously loaded rows on screen; `loading` and `error`
+// have nothing truthful to show.
+const showActivity = computed(() => overviewStatus !== "loading" && overviewStatus !== "error");
+
 function retryOverview(): void {
   live.pushEvent("retry_dashboard_overview");
 }
@@ -230,36 +234,6 @@ function retryHealth(): void {
         </div>
         <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
       </a>
-    </div>
-
-    <!-- Recent activity — part of the overview load, so a failed overview hides
-         it rather than claiming the project has no activity. -->
-    <div
-      data-testid="project-recent-activity"
-      class="rounded-lg border border-border bg-surface p-4 space-y-3"
-    >
-      <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.recent_activity") }}</h2>
-      <div v-if="activity.length === 0" class="text-sm text-muted-foreground/50 py-2 text-center">
-        {{ $t("workspace.project_dashboard.no_activity") }}
-      </div>
-      <div v-else class="space-y-0.5">
-        <div v-for="(item, i) in activity" :key="i" class="flex items-center gap-3 py-1.5">
-          <component
-            :is="activityIcon(item.type)"
-            class="size-4 text-muted-foreground/40 shrink-0"
-          />
-          <span class="text-sm flex-1 min-w-0">
-            <span class="font-medium truncate">{{ item.name }}</span>
-            <span class="text-muted-foreground/50">
-              &middot;
-              {{ activityTypeKeys[item.type] ? $t(activityTypeKeys[item.type]) : item.type }}
-            </span>
-          </span>
-          <span class="text-xs text-muted-foreground/40 shrink-0">
-            {{ formatRelativeTime(item.updated_at) }}
-          </span>
-        </div>
-      </div>
     </div>
 
     <template #supplementary>
@@ -393,6 +367,45 @@ function retryHealth(): void {
           </div>
         </template>
       </section>
+
+      <!-- Recent activity — loaded by the OVERVIEW, so it is gated on the
+           overview having data. Rendering its "no activity yet" empty state
+           next to an overview error told the reader the project was empty when
+           the truth was that nothing had loaded.
+
+           It sits in #supplementary, after health, purely for order: health is
+           the actionable summary and belongs directly under the totals, not
+           below a ten-row list. DashboardContent always paints #supplementary
+           last, so this is the only way to reach totals -> health -> activity
+           without gating health on the overview too. -->
+      <div
+        v-if="showActivity"
+        data-testid="project-recent-activity"
+        class="rounded-lg border border-border bg-surface p-4 space-y-3"
+      >
+        <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.recent_activity") }}</h2>
+        <div v-if="activity.length === 0" class="text-sm text-muted-foreground/50 py-2 text-center">
+          {{ $t("workspace.project_dashboard.no_activity") }}
+        </div>
+        <div v-else class="space-y-0.5">
+          <div v-for="(item, i) in activity" :key="i" class="flex items-center gap-3 py-1.5">
+            <component
+              :is="activityIcon(item.type)"
+              class="size-4 text-muted-foreground/40 shrink-0"
+            />
+            <span class="text-sm flex-1 min-w-0">
+              <span class="font-medium truncate">{{ item.name }}</span>
+              <span class="text-muted-foreground/50">
+                &middot;
+                {{ activityTypeKeys[item.type] ? $t(activityTypeKeys[item.type]) : item.type }}
+              </span>
+            </span>
+            <span class="text-xs text-muted-foreground/40 shrink-0">
+              {{ formatRelativeTime(item.updated_at) }}
+            </span>
+          </div>
+        </div>
+      </div>
     </template>
   </DashboardContent>
 </template>
