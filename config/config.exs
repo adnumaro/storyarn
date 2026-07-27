@@ -98,7 +98,11 @@ config :storyarn, Oban,
     template_installs: 2,
     localization: 2,
     imports: 2,
+    # `:ai` carries user-facing execution only. Maintenance sweeps live on their
+    # own queue so the reaper never depends on the producer it is meant to
+    # rescue, and so an expiry backlog cannot starve execution.
     ai: 2,
+    ai_maintenance: 1,
     storage_cleanup: 1
   ],
   plugins: [

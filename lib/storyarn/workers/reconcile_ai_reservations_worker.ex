@@ -1,6 +1,10 @@
 defmodule Storyarn.Workers.ReconcileAIReservationsWorker do
   @moduledoc "Expires allowance and terminalizes stale managed reservations without retrying providers."
-  use Oban.Worker, queue: :ai, max_attempts: 1, unique: [period: 300]
+  # The uniqueness window must stay strictly below the `*/5` cron interval it is
+  # scheduled at. Oban compares a DB-clock `inserted_at` against an app-clock
+  # cutoff with an inclusive `>=`, so a 300s window on a 300s schedule dedupes
+  # every other tick as soon as clock skew exceeds the BEGIN round-trip.
+  use Oban.Worker, queue: :ai_maintenance, max_attempts: 1, unique: [period: 240]
 
   import Ecto.Query
 
