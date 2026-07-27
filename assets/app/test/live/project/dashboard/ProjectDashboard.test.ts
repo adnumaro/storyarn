@@ -118,6 +118,44 @@ describe("ProjectDashboard", () => {
     expect(wrapper.find('[data-testid="project-stat-words"]').text()).toContain("900");
   });
 
+  // Recent activity is loaded by the OVERVIEW. Rendering its "no activity yet"
+  // empty state next to an overview error told the reader the project had no
+  // activity, when the truth was that nothing loaded.
+  it("hides recent activity when the overview failed, instead of claiming there is none", () => {
+    const { wrapper } = mountDashboard({
+      overviewStatus: "error",
+      stats: null,
+      activity: [],
+    });
+
+    expect(wrapper.find('[data-testid="project-recent-activity"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("No activity yet");
+    // Health is a separate load, so it survives an overview failure.
+    expect(wrapper.find('[data-testid="project-health-flows"]').exists()).toBe(true);
+  });
+
+  it("shows recent activity once the overview is ready", () => {
+    const { wrapper } = mountDashboard({
+      activity: [{ type: "flow", name: "Opening", updated_at: "2026-07-26T12:00:00Z" }],
+    });
+
+    const panel = wrapper.find('[data-testid="project-recent-activity"]');
+    expect(panel.exists()).toBe(true);
+    expect(panel.text()).toContain("Opening");
+  });
+
+  // Screenplays have no editor route and the tool is being removed.
+  it("has no screenplay activity type", () => {
+    const { wrapper } = mountDashboard({
+      activity: [{ type: "screenplay", name: "Ghost", updated_at: "2026-07-26T12:00:00Z" }],
+    });
+
+    // Nothing maps it, so it degrades to the raw type rather than a label.
+    expect(wrapper.find('[data-testid="project-recent-activity"]').text()).not.toContain(
+      "Screenplay",
+    );
+  });
+
   // Moved to the flows dashboard; the overview is a global context surface now.
   it("no longer renders flow-specific panels", () => {
     const { wrapper } = mountDashboard();

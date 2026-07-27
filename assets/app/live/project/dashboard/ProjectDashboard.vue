@@ -10,7 +10,6 @@ import {
   LoaderCircle,
   Map as MapIcon,
   MessageSquare,
-  ScrollText,
   Text,
   Variable,
 } from "lucide-vue-next";
@@ -184,7 +183,6 @@ const activityIcons: Record<string, Component> = {
   sheet: FileText,
   flow: GitBranch,
   scene: MapIcon,
-  screenplay: ScrollText,
   node: Box,
 };
 
@@ -196,7 +194,6 @@ const activityTypeKeys: Record<string, string> = {
   sheet: "workspace.project_dashboard.activity_types.sheet",
   flow: "workspace.project_dashboard.activity_types.flow",
   scene: "workspace.project_dashboard.activity_types.scene",
-  screenplay: "workspace.project_dashboard.activity_types.screenplay",
 };
 
 function retryOverview(): void {
@@ -233,6 +230,36 @@ function retryHealth(): void {
         </div>
         <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
       </a>
+    </div>
+
+    <!-- Recent activity — part of the overview load, so a failed overview hides
+         it rather than claiming the project has no activity. -->
+    <div
+      data-testid="project-recent-activity"
+      class="rounded-lg border border-border bg-surface p-4 space-y-3"
+    >
+      <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.recent_activity") }}</h2>
+      <div v-if="activity.length === 0" class="text-sm text-muted-foreground/50 py-2 text-center">
+        {{ $t("workspace.project_dashboard.no_activity") }}
+      </div>
+      <div v-else class="space-y-0.5">
+        <div v-for="(item, i) in activity" :key="i" class="flex items-center gap-3 py-1.5">
+          <component
+            :is="activityIcon(item.type)"
+            class="size-4 text-muted-foreground/40 shrink-0"
+          />
+          <span class="text-sm flex-1 min-w-0">
+            <span class="font-medium truncate">{{ item.name }}</span>
+            <span class="text-muted-foreground/50">
+              &middot;
+              {{ activityTypeKeys[item.type] ? $t(activityTypeKeys[item.type]) : item.type }}
+            </span>
+          </span>
+          <span class="text-xs text-muted-foreground/40 shrink-0">
+            {{ formatRelativeTime(item.updated_at) }}
+          </span>
+        </div>
+      </div>
     </div>
 
     <template #supplementary>
@@ -366,32 +393,6 @@ function retryHealth(): void {
           </div>
         </template>
       </section>
-
-      <!-- Recent activity -->
-      <div class="rounded-lg border border-border bg-surface p-4 space-y-3">
-        <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.recent_activity") }}</h2>
-        <div v-if="activity.length === 0" class="text-sm text-muted-foreground/50 py-2 text-center">
-          {{ $t("workspace.project_dashboard.no_activity") }}
-        </div>
-        <div v-else class="space-y-0.5">
-          <div v-for="(item, i) in activity" :key="i" class="flex items-center gap-3 py-1.5">
-            <component
-              :is="activityIcon(item.type)"
-              class="size-4 text-muted-foreground/40 shrink-0"
-            />
-            <span class="text-sm flex-1 min-w-0">
-              <span class="font-medium truncate">{{ item.name }}</span>
-              <span class="text-muted-foreground/50">
-                &middot;
-                {{ activityTypeKeys[item.type] ? $t(activityTypeKeys[item.type]) : item.type }}
-              </span>
-            </span>
-            <span class="text-xs text-muted-foreground/40 shrink-0">
-              {{ formatRelativeTime(item.updated_at) }}
-            </span>
-          </div>
-        </div>
-      </div>
     </template>
   </DashboardContent>
 </template>

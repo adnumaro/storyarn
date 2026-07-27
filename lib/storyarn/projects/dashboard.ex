@@ -91,10 +91,16 @@ defmodule Storyarn.Projects.Dashboard do
   # ===========================================================================
 
   @doc """
-  Returns recent changes across all entity types.
+  Returns recent changes across the three authoring tools.
 
   Returns a list of `%{name: String.t(), type: String.t(), updated_at: DateTime.t()}`
   sorted by most recent first.
+
+  Screenplays are deliberately absent. They have no editor route, so a
+  screenplay row was an activity entry the reader could not open — and the tool
+  is being removed, at which point the `screenplays` UNION takes the whole
+  overview down with an `undefined_table`. The overview covers what the project
+  navigation covers.
   """
   def recent_activity(project_id, limit \\ 10) do
     sheets_query =
@@ -130,21 +136,9 @@ defmodule Storyarn.Projects.Dashboard do
         }
       )
 
-    screenplays_query =
-      from(sp in "screenplays",
-        where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
-        select: %{
-          name: sp.name,
-          type: "screenplay",
-          entity_id: sp.id,
-          updated_at: sp.updated_at
-        }
-      )
-
     sheets_query
     |> union_all(^flows_query)
     |> union_all(^scenes_query)
-    |> union_all(^screenplays_query)
     |> subquery()
     |> order_by([r], desc: r.updated_at)
     |> limit(^limit)

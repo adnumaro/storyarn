@@ -155,8 +155,7 @@
       "activity_types": {
         "sheet": "Sheet",
         "flow": "Flow",
-        "scene": "Scene",
-        "screenplay": "Screenplay"
+        "scene": "Scene"
       },
       "recent_activity": "Recent Activity",
       "no_activity": "No activity yet",

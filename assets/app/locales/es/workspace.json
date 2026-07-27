@@ -155,8 +155,7 @@
       "activity_types": {
         "sheet": "Ficha",
         "flow": "Flujo",
-        "scene": "Escena",
-        "screenplay": "Guión"
+        "scene": "Escena"
       },
       "recent_activity": "Actividad reciente",
       "no_activity": "Aún no hay actividad",
