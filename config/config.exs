@@ -116,7 +116,11 @@ config :storyarn, Oban,
     templates: 1,
     template_installs: 2,
     localization: 2,
+    # `:imports` carries user-facing import execution only. The expiry sweep
+    # lives on its own queue for the same reason the AI sweeps do: two
+    # concurrent imports must not be able to block the sweep that expires them.
     imports: 2,
+    imports_maintenance: 1,
     # `:ai` carries user-facing execution only. Maintenance sweeps live on their
     # own queue so the reaper never depends on the producer it is meant to
     # rescue, and so an expiry backlog cannot starve execution.

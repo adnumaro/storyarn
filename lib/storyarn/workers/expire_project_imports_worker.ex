@@ -3,7 +3,11 @@ defmodule Storyarn.Workers.ExpireProjectImportsWorker do
   Removes encrypted plans for previews that were never executed.
   """
 
-  use Oban.Worker, queue: :imports, max_attempts: 3
+  # Sits on `:imports_maintenance`, not `:imports`: this sweep must not compete
+  # for slots with the imports it is expiring. `:imports` runs two at a time, so
+  # two concurrent user imports would otherwise block the sweep entirely — and a
+  # sweep would occupy a slot a user import needs.
+  use Oban.Worker, queue: :imports_maintenance, max_attempts: 3
 
   alias Storyarn.Imports
 
