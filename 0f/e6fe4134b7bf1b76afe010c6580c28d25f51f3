@@ -1,0 +1,64 @@
+assets/app/test/components/dashboard/DashboardIssueList.test.ts
+  s_7337fae2006063::t_30220cf33a841f 56-64
+  s_7337fae2006063::t_3e00a4ee56c289 1-55,65-151
+assets/app/components/dashboard/DashboardIssueList.vue
+  s_7337fae2006063::t_43d2cbba0302ca 2-58,60-83
+  s_7337fae2006063::t_11af7e8917ce01 1,59
+assets/app/components/dashboard/types.ts
+  s_7337fae2006063::t_43d2cbba0302ca 1-37
+assets/app/components/dashboard/DashboardDataTable.vue
+  s_7337fae2006063::t_dd04dfd8afcb5e 49-53,72
+  s_7337fae2006063::t_11af7e8917ce01 1,5
+  s_7337fae2006063::t_43d2cbba0302ca 2-4,6-48,54-71,73-116
+assets/app/test/live/flow/dashboard/FlowDashboard.test.ts
+  s_7337fae2006063::t_f628647c2d299e 114,119-120
+  s_7337fae2006063::t_b48b69737cbfb5 115-118,121-122
+  s_7337fae2006063::t_ba4e2ddff71e3c 145-148,151-153
+assets/app/components/dashboard/DashboardPagination.vue
+  s_7337fae2006063::t_43d2cbba0302ca 5
+assets/app/live/flow/dashboard/FlowDashboard.vue
+  s_7337fae2006063::t_db5cde53e533f7 28,30,33-34,37-38,81,85,104,203
+  s_7337fae2006063::t_e3131520aff54a 24,261-309,311-324,404-405,408-412
+  s_7337fae2006063::t_11af7e8917ce01 310
+assets/app/test/components/dashboard/DashboardDataTable.test.ts
+  s_7337fae2006063::t_30220cf33a841f 53-71,75,77-79
+  s_7337fae2006063::t_dd04dfd8afcb5e 96-97,116-131
+  s_7337fae2006063::t_3e00a4ee56c289 1-52,72-74,76,80-95,98-115,132-137,144-149,153-155,165-176
+  s_7337fae2006063::t_bc5332f06c668f 138-143,150-152
+  s_7337fae2006063::t_8697ab15d9cd3a 156-164
+assets/app/test/live/scene/dashboard/SceneDashboard.test.ts
+  s_7337fae2006063::t_227f568950eccb 148,168-169
+  s_7337fae2006063::t_b48b69737cbfb5 150,164-167
+  s_7337fae2006063::t_ba4e2ddff71e3c 129-132,135-137,307
+assets/app/live/scene/dashboard/SceneDashboard.vue
+  s_7337fae2006063::t_f6754e1ac84103 6,8,23,32-33,36-37,94,98,108,225,262-306,308-314,394-395,398-402
+  s_7337fae2006063::t_11af7e8917ce01 4,307
+assets/app/live/sheet/dashboard/SheetDashboard.vue
+  s_7337fae2006063::t_b8a240c44f3d2b 19,25,27,30-31,34-35,53,57,66,175,212-261,341-342,345-349
+  s_7337fae2006063::t_11af7e8917ce01 37
+assets/app/test/live/sheet/dashboard/SheetDashboard.test.ts
+  s_7337fae2006063::t_aac2165a6ecad3 105,110
+  s_7337fae2006063::t_ba4e2ddff71e3c 140-143,146-148
+  s_7337fae2006063::t_b48b69737cbfb5 106-109,111-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0fe6fe4134b7bf1b76afe010c6580c28d25f51f3",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_7337fae2006063": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9ffb-b5ec-7450-90bf-0cbbe07969af",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
