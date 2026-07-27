@@ -205,26 +205,26 @@ export interface DashboardStats {
 export interface DashboardRow {
   id: number | string;
   name: string;
+  href: string;
   block_count: number;
   variable_count: number;
   word_count: number;
   updated_at: string;
 }
 
-export interface DashboardPagination {
-  sortBy: string;
-  sortDir: string;
-  page: number;
-  totalPages: number;
-  total: number;
-}
-
 export interface DashboardIssue {
+  id: string;
   severity: SheetHealthSeverity;
   code: string;
   label: string;
   details?: SheetHealthDetails;
   href: string;
+  sheet_id: number | string;
+  block_id?: number | string | null;
+  row_id?: number | string | null;
+  column_id?: number | string | null;
+  resource_id: number | string;
+  resource_label: string;
 }
 
 // ── Layout types ──
@@ -347,10 +347,4 @@ export interface StatCard {
   label: string;
   value: number;
   color: string;
-}
-
-export interface DashboardColumn {
-  key: string;
-  label: string;
-  align: "left" | "right";
 }

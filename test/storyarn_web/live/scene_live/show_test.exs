@@ -333,10 +333,13 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
+      Collaboration.subscribe_dashboard(project.id)
       render_hook(view, "save_name", %{"name" => "Updated Name"})
 
       updated = Scenes.get_scene(project.id, scene.id)
       assert updated.name == "Updated Name"
+      assert_receive {:dashboard_invalidate, :scenes}
+      refute_receive {:dashboard_invalidate, :scenes}, 10
     end
 
     test "rejected for viewer", %{conn: conn, user: user} do
@@ -355,6 +358,32 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       unchanged = Scenes.get_scene(project.id, scene.id)
       assert unchanged.name == "Original"
+    end
+  end
+
+  describe "ambient flow dashboard invalidation" do
+    setup :register_and_log_in_user
+
+    test "adding an ambient flow keeps its single explicit post-commit event", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project)
+      flow = flow_fixture(project)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+        )
+
+      Collaboration.subscribe_dashboard(project.id)
+      render_hook(view, "add_ambient_flow", %{"flow_id" => to_string(flow.id)})
+
+      assert [_ambient_flow] = Scenes.list_ambient_flows(scene.id)
+      assert_receive {:dashboard_invalidate, :scenes}
+      refute_receive {:dashboard_invalidate, :scenes}, 10
     end
   end
 
@@ -1488,6 +1517,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
+      Collaboration.subscribe_dashboard(project.id)
+
       render_hook(view, "create_connection", %{
         "from_pin_id" => pin1.id,
         "to_pin_id" => pin2.id
@@ -1498,6 +1529,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       [connection] = conns
       assert connection.from_pin_id == pin1.id
       assert connection.to_pin_id == pin2.id
+      assert_receive {:dashboard_invalidate, :scenes}
+      refute_receive {:dashboard_invalidate, :scenes}, 10
     end
 
     test "creates free route from waypoint points", %{conn: conn, user: user} do
@@ -2069,6 +2102,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
+      Collaboration.subscribe_dashboard(project.id)
+
       # Toggle off
       render_click(view, "toggle_layer_visibility", %{"id" => to_string(layer.id)})
 
@@ -2080,6 +2115,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       updated2 = Scenes.get_layer!(scene.id, layer.id)
       assert updated2.visible == true
+      refute_receive {:dashboard_invalidate, :scenes}, 10
     end
 
     test "hidden layer is reflected in tree panel layers prop", %{conn: conn, user: user} do

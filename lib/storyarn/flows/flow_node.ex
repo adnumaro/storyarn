@@ -62,6 +62,7 @@ defmodule Storyarn.Flows.FlowNode do
           position_y: float(),
           data: map(),
           source: String.t(),
+          derivatives_fingerprint: String.t() | nil,
           deleted_at: DateTime.t() | nil,
           flow_id: integer() | nil,
           flow: Flow.t() | NotLoaded.t() | nil,
@@ -84,6 +85,7 @@ defmodule Storyarn.Flows.FlowNode do
     field :data, :map, default: %{}
     field :word_count, :integer, default: 0
     field :source, :string, default: "manual"
+    field :derivatives_fingerprint, :string
     field :deleted_at, :utc_datetime
 
     belongs_to :flow, Flow
@@ -221,6 +223,11 @@ defmodule Storyarn.Flows.FlowNode do
     data = attr(attrs, :data) || existing_data(node)
 
     if type == "dialogue" and is_map(data) do
+      identity_mode =
+        if identity_mode == :update and match?(%__MODULE__{type: previous_type} when previous_type != "dialogue", node),
+          do: :create,
+          else: identity_mode
+
       put_attr(
         attrs,
         :data,

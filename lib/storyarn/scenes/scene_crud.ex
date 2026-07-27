@@ -386,8 +386,8 @@ defmodule Storyarn.Scenes.SceneCrud do
   Updates a scene. Regenerates shortcut if name changes.
   """
   def update_scene(%Scene{} = scene, attrs) do
-    SceneReferenceIntegrity.with_active_scene_lock(
-      scene.id,
+    scene.id
+    |> SceneReferenceIntegrity.with_active_scene_lock(
       [project_lock: :update],
       fn locked_scene ->
         attrs = maybe_generate_shortcut_on_update(locked_scene, attrs)
@@ -405,6 +405,7 @@ defmodule Storyarn.Scenes.SceneCrud do
         end
       end
     )
+    |> broadcast_scene_dashboard_result(scene.id)
   end
 
   @doc """
@@ -471,7 +472,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   Restores a soft-deleted scene.
   """
   def restore_scene(%Scene{id: scene_id}) when is_integer(scene_id) do
-    Repo.transaction(fn ->
+    fn ->
       project_id =
         Repo.one(from(scene in Scene, where: scene.id == ^scene_id, select: scene.project_id)) ||
           Repo.rollback(:scene_not_found)
@@ -492,12 +493,14 @@ defmodule Storyarn.Scenes.SceneCrud do
              |> Scene.restore_changeset()
              |> Repo.update() do
         restore_children(project_id, locked_scene.id, locked_scene.deleted_at)
-        restored_scene
+        {restored_scene, project_id}
       else
         nil -> Repo.rollback(:scene_not_deleted)
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_scene_dashboard_project_result()
   end
 
   @doc """

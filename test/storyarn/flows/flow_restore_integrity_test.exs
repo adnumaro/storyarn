@@ -8,9 +8,11 @@ defmodule Storyarn.Flows.FlowRestoreIntegrityTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowCrud
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
@@ -79,6 +81,77 @@ defmodule Storyarn.Flows.FlowRestoreIntegrityTest do
     assert {:ok, restored_host} = Flows.restore_flow(deleted_host)
     assert restored_host.id == host.id
     assert Repo.get!(FlowNode, source.id).data["referenced_flow_id"] == target.id
+  end
+
+  test "keeps an individually deleted pending source out of live reference indexes",
+       %{project: project} do
+    host = flow_fixture(project, %{name: "Host"})
+    target = flow_fixture(project, %{name: "Target"})
+    speaker = sheet_fixture(project, %{name: "Speaker"})
+
+    source =
+      node_fixture(host, %{
+        type: "subflow",
+        data: %{
+          "referenced_flow_id" => target.id,
+          "speaker_sheet_id" => speaker.id
+        }
+      })
+
+    assert {:ok, source, _meta} = Flows.update_node_data(source, source.data)
+    assert speaker.id in entity_targets(source.id)
+
+    assert {:ok, deleted_target} = Flows.delete_flow(target)
+    assert {:ok, _deleted_source, _meta} = Flows.delete_node(source)
+    assert entity_targets(source.id) == MapSet.new()
+    assert Sheets.get_backlinks_with_sources("sheet", speaker.id, project.id) == []
+
+    assert {:ok, restored_target} = Flows.restore_flow(deleted_target)
+    assert restored_target.id == target.id
+
+    deleted_source = Repo.get!(FlowNode, source.id)
+    assert %DateTime{} = deleted_source.deleted_at
+    assert deleted_source.data["referenced_flow_id"] == target.id
+    assert deleted_source.data["speaker_sheet_id"] == speaker.id
+    assert entity_targets(source.id) == MapSet.new()
+    assert Sheets.get_backlinks_with_sources("sheet", speaker.id, project.id) == []
+
+    assert {:ok, _restored_source} = Flows.restore_node(host.id, source.id)
+    assert entity_targets(source.id) == MapSet.new([speaker.id])
+
+    assert Enum.any?(
+             Sheets.get_backlinks_with_sources("sheet", speaker.id, project.id),
+             &(&1.source_id == source.id)
+           )
+  end
+
+  test "hides backlinks from a flow while the flow is in trash",
+       %{project: project} do
+    flow = flow_fixture(project, %{name: "Backlink source"})
+    speaker = sheet_fixture(project, %{name: "Speaker"})
+
+    node =
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"speaker_sheet_id" => speaker.id, "text" => "Hello"}
+      })
+
+    assert {:ok, _node, _meta} = Flows.update_node_data(node, node.data)
+
+    assert Enum.any?(
+             Sheets.get_backlinks_with_sources("sheet", speaker.id, project.id),
+             &(&1.source_id == node.id)
+           )
+
+    assert {:ok, deleted_flow} = Flows.delete_flow(flow)
+    assert Sheets.get_backlinks_with_sources("sheet", speaker.id, project.id) == []
+
+    assert {:ok, _restored_flow} = Flows.restore_flow(deleted_flow)
+
+    assert Enum.any?(
+             Sheets.get_backlinks_with_sources("sheet", speaker.id, project.id),
+             &(&1.source_id == node.id)
+           )
   end
 
   test "rolls back when a pending reference no longer belongs to the source node type",
@@ -496,6 +569,29 @@ defmodule Storyarn.Flows.FlowRestoreIntegrityTest do
     assert Enum.map(restored_dialogue.data["responses"], & &1["id"]) == response_ids
     assert entity_targets(dialogue.id) == MapSet.new([speaker.id, mentioned.id])
     assert variable_target_ids(instruction.id) == MapSet.new([block.id])
+  end
+
+  test "rolls back the restore and emits no dashboard event when localization extraction fails",
+       %{project: project} do
+    flow = flow_fixture(project, %{name: "Localization rollback"})
+    _node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Runtime dialogue"}})
+
+    assert {:ok, deleted_flow} = Flows.delete_flow(flow)
+    assert deleted_flow.deleted_at
+    :ok = Collaboration.subscribe_dashboard(project.id)
+
+    parent = self()
+
+    assert {:error, :forced_localization_failure} =
+             FlowCrud.restore_flow(deleted_flow, fn flow_id ->
+               send(parent, {:localization_extraction_attempted, flow_id})
+               {:error, :forced_localization_failure}
+             end)
+
+    assert_receive {:localization_extraction_attempted, flow_id}
+    assert flow_id == flow.id
+    assert Repo.get!(Flow, flow.id).deleted_at
+    refute_receive {:dashboard_invalidate, :flows}, 20
   end
 
   defp put_node_data(node_id, data) do

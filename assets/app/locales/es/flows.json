@@ -9,6 +9,8 @@
       "main": "Principal",
       "set_main": "Establecer como principal",
       "delete": "Eliminar",
+      "flow_actions": "Acciones de flujo",
+      "total_flows": "{n} flujo | {n} flujos",
       "columns": {
         "name": "Nombre",
         "nodes": "Nodos",
@@ -424,6 +426,35 @@
         "incomplete_instruction_assignment": "Asignación de instrucción incompleta",
         "empty_instruction": "Sin asignaciones de instrucción",
         "empty_condition": "La condición no tiene reglas"
+      },
+      "issue_types": {
+        "missing_entry": "Falta el nodo Entry",
+        "multiple_entries": "Varios nodos Entry",
+        "unreachable_node": "Nodo inalcanzable",
+        "isolated_node": "Nodo aislado",
+        "no_outgoing_connection": "Falta una conexión de salida",
+        "missing_output_connections": "Pins de salida sin conexión",
+        "invalid_output_pins": "Conexión en un pin de salida eliminado",
+        "invalid_input_pins": "Conexión en un pin de entrada no válido",
+        "orphan_hub": "Hub inalcanzable",
+        "missing_jump_target": "Falta el destino del jump",
+        "stale_jump_target": "Destino de jump inexistente",
+        "missing_subflow_reference": "Falta la referencia del subflow",
+        "stale_subflow_reference": "Referencia a un subflow eliminado",
+        "missing_exit_flow_reference": "Falta la referencia de flow en Exit",
+        "stale_exit_flow_reference": "Referencia de Exit a un flow eliminado",
+        "stale_variable_reference": "Referencia de variable obsoleta",
+        "variable_type_mismatch": "Tipo de variable incompatible",
+        "response_type_mismatch": "Tipo de respuesta incompatible",
+        "missing_dialogue_text": "Falta el texto del diálogo",
+        "missing_dialogue_speaker": "Falta el personaje del diálogo",
+        "empty_dialogue_response": "Respuesta de diálogo vacía",
+        "incomplete_response_condition": "Condición de respuesta incompleta",
+        "incomplete_response_assignment": "Asignación de respuesta incompleta",
+        "incomplete_condition": "Condición incompleta",
+        "incomplete_instruction_assignment": "Asignación de instrucción incompleta",
+        "empty_instruction": "Instrucción vacía",
+        "empty_condition": "Condición vacía"
       }
     }
   }

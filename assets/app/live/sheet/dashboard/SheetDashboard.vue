@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import {
-  AlertTriangle,
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
-  CircleX,
   FileText,
-  Info,
   Layers,
   Link,
   MoreHorizontal,
@@ -16,8 +8,8 @@ import {
   Trash2,
   Variable,
 } from "lucide-vue-next";
-import type { FunctionalComponent } from "vue";
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Button } from "@components/ui/button/index.ts";
 import {
   DropdownMenu,
@@ -25,51 +17,94 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu/index.ts";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@components/ui/table/index.ts";
+import { TableCell } from "@components/ui/table/index.ts";
 import { useLive } from "@shared/composables/useLive.ts";
 import { formatRelativeTime } from "@shared/utils/date-utils.ts";
+import { interpolatableDetails } from "@components/health/health-details";
 import { useI18n } from "vue-i18n";
 import DashboardContent from "@shell/DashboardContent.vue";
-import type {
-  DashboardColumn,
-  DashboardIssue,
-  DashboardPagination,
-  DashboardRow,
-  DashboardStats,
-  StatCard,
-} from "@modules/sheets/types";
+import DashboardDataTable from "@components/dashboard/DashboardDataTable.vue";
+import DashboardIssuesSection from "@components/dashboard/DashboardIssuesSection.vue";
+import {
+  emptyDashboardIssueFilterOptions,
+  type DashboardIssuePagination,
+  type DashboardLoadStatus,
+  type DashboardIssueFilterOptions,
+  type DashboardIssueFilterValues,
+  type DashboardTableColumn,
+  type DashboardTablePagination,
+} from "@components/dashboard/types";
+import type { DashboardIssue, DashboardRow, DashboardStats, StatCard } from "@modules/sheets/types";
 
 const {
   stats = null,
   tableData = [],
   pagination = { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 },
   issues = [],
+  overviewStatus = "loading",
+  issuesStatus = "loading",
+  issuePagination,
+  issueFilters = { severity: "all", code: "all", resource: "all" },
+  issueFilterOptions = emptyDashboardIssueFilterOptions(),
   canEdit = false,
-  workspaceSlug,
-  projectSlug,
 } = defineProps<{
   stats?: DashboardStats | null;
   tableData?: DashboardRow[];
-  pagination?: DashboardPagination;
+  pagination?: DashboardTablePagination;
   issues?: DashboardIssue[];
+  overviewStatus?: DashboardLoadStatus;
+  issuesStatus?: DashboardLoadStatus;
+  issuePagination?: DashboardIssuePagination;
+  issueFilters?: DashboardIssueFilterValues;
+  issueFilterOptions?: DashboardIssueFilterOptions;
   canEdit?: boolean;
-  workspaceSlug: string;
-  projectSlug: string;
 }>();
 
 const live = useLive();
 const { t } = useI18n();
+const pendingDeleteSheet = ref<DashboardRow | null>(null);
+const deleteDialogOpen = computed({
+  get: () => pendingDeleteSheet.value !== null,
+  set: (open: boolean) => {
+    if (!open) {
+      pendingDeleteSheet.value = null;
+    }
+  },
+});
 
-function sheetHref(row: DashboardRow): string {
-  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${row.id}`;
-}
+const resolvedIssuePagination = computed<DashboardIssuePagination>(
+  () =>
+    issuePagination ?? {
+      page: 1,
+      totalPages: 1,
+      total: issues.length,
+      unfilteredTotal: issues.length,
+    },
+);
+
+const overviewHasContent = computed(
+  () => overviewStatus !== "loading" && overviewStatus !== "error",
+);
+
+const overviewFailure = computed(() => {
+  if (overviewStatus === "error") {
+    return {
+      kind: "error" as const,
+      message: t("common.dashboard.overview_load_failed"),
+      retryLabel: t("common.dashboard.retry"),
+    };
+  }
+
+  if (overviewStatus === "stale") {
+    return {
+      kind: "stale" as const,
+      message: t("common.dashboard.overview_stale"),
+      retryLabel: t("common.dashboard.retry"),
+    };
+  }
+
+  return undefined;
+});
 
 function sortBy(column: string): void {
   live.pushEvent("sort_sheets", { column });
@@ -79,20 +114,40 @@ function goToPage(page: number): void {
   live.pushEvent("page_sheets", { page });
 }
 
-function requestDelete(id: number | string): void {
-  live.pushEvent("set_pending_delete_sheet", { id });
+function goToIssuePage(page: number): void {
+  live.pushEvent("page_sheet_issues", { page });
+}
+
+function changeIssueFilter(payload: { filter: string; value: string }): void {
+  live.pushEvent("filter_sheet_issues", payload);
+}
+
+function retryOverview(): void {
+  live.pushEvent("retry_dashboard_overview");
+}
+
+function retryIssues(): void {
+  live.pushEvent("retry_dashboard_issues");
+}
+
+function requestDelete(sheet: DashboardRow): void {
+  pendingDeleteSheet.value = sheet;
+}
+
+function confirmDelete(): void {
+  if (!pendingDeleteSheet.value) return;
+
+  live.pushEvent("set_pending_delete_sheet", { id: pendingDeleteSheet.value.id });
   live.pushEvent("confirm_delete_sheet", {});
+  pendingDeleteSheet.value = null;
 }
 
 function healthFindingLabel(issue: DashboardIssue): string {
-  return t(`sheets.health.findings.${issue.code}`, issue.details || {});
+  return t(`sheets.health.findings.${issue.code}`, interpolatableDetails(issue.details));
 }
 
-function sortIcon(column: string): FunctionalComponent {
-  if (pagination.sortBy !== column) {
-    return ArrowUpDown;
-  }
-  return pagination.sortDir === "asc" ? ArrowUp : ArrowDown;
+function issueCodeLabel(code: string): string {
+  return t(`sheets.health.issue_types.${code}`);
 }
 
 const statCards = computed<StatCard[]>(() => {
@@ -133,31 +188,26 @@ const statCards = computed<StatCard[]>(() => {
   ];
 });
 
-const columns = computed<DashboardColumn[]>(() => [
+const columns = computed<DashboardTableColumn[]>(() => [
   { key: "name", label: t("sheets.dashboard.columns.name"), align: "left" },
   { key: "block_count", label: t("sheets.dashboard.columns.blocks"), align: "right" },
   { key: "variable_count", label: t("sheets.dashboard.columns.variables"), align: "right" },
   { key: "word_count", label: t("sheets.dashboard.columns.words"), align: "right" },
   { key: "updated_at", label: t("sheets.dashboard.columns.modified"), align: "right" },
 ]);
-
-const pages = computed<number[]>(() => {
-  const result: number[] = [];
-  for (let i = 1; i <= pagination.totalPages; i++) {
-    result.push(i);
-  }
-  return result;
-});
 </script>
 
 <template>
   <DashboardContent
     :title="$t('sheets.dashboard.title')"
     :subtitle="$t('sheets.dashboard.subtitle')"
-    :loading="!stats"
-    :is-empty="pagination.total === 0 && !stats"
+    :loading="overviewStatus === 'loading'"
+    :loading-label="$t('common.dashboard.loading_overview')"
+    :failure="overviewFailure"
+    :is-empty="overviewHasContent && pagination.total === 0"
     :empty-icon="FileText"
     :empty-message="$t('sheets.dashboard.empty')"
+    @retry="retryOverview"
   >
     <!-- Stats row -->
     <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
@@ -175,147 +225,98 @@ const pages = computed<number[]>(() => {
     </div>
 
     <!-- Table section -->
-    <div class="space-y-2">
-      <h2 class="text-sm font-medium">{{ $t("sheets.dashboard.all_sheets") }}</h2>
-      <div class="rounded-lg border border-border bg-surface overflow-auto max-h-[60vh]">
-        <Table>
-          <TableHeader>
-            <TableRow class="bg-muted/40 hover:bg-muted/40 sticky top-0 z-10">
-              <TableHead
-                v-for="col in columns"
-                :key="col.key"
-                :class="[
-                  'font-medium text-xs text-muted-foreground uppercase',
-                  col.align === 'right' ? 'text-right' : 'text-left',
-                ]"
-              >
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-                  :class="col.align === 'right' && 'ml-auto'"
-                  @click="sortBy(col.key)"
-                >
-                  {{ col.label }}
-                  <component :is="sortIcon(col.key)" class="size-3" />
-                </button>
-              </TableHead>
-              <TableHead v-if="canEdit" class="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="row in tableData" :key="row.id">
-              <TableCell>
-                <a
-                  :href="sheetHref(row)"
-                  data-phx-link="redirect"
-                  data-phx-link-state="push"
-                  class="font-medium hover:underline"
-                >
-                  {{ row.name }}
-                </a>
-              </TableCell>
-              <TableCell class="text-right tabular-nums">{{ row.block_count }}</TableCell>
-              <TableCell class="text-right tabular-nums">{{ row.variable_count }}</TableCell>
-              <TableCell class="text-right tabular-nums">{{ row.word_count }}</TableCell>
-              <TableCell class="text-right text-muted-foreground text-xs">
-                {{ formatRelativeTime(row.updated_at) }}
-              </TableCell>
-              <TableCell v-if="canEdit" class="text-right w-10">
-                <DropdownMenu>
-                  <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" size="icon-sm" class="size-7">
-                      <MoreHorizontal class="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" class="">
-                    <DropdownMenuItem
-                      class="text-destructive gap-2 text-xs"
-                      @select="requestDelete(row.id)"
-                    >
-                      <Trash2 class="size-3.5" />
-                      {{ $t("sheets.dashboard.delete") }}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
+    <DashboardDataTable
+      :title="$t('sheets.dashboard.all_sheets')"
+      :rows="tableData"
+      :columns="columns"
+      :pagination="pagination"
+      :total-label="$t('sheets.dashboard.total_sheets', pagination.total)"
+      :previous-label="$t('common.dashboard.previous_page')"
+      :next-label="$t('common.dashboard.next_page')"
+      :has-actions="canEdit"
+      @sort="sortBy"
+      @page="goToPage"
+    >
+      <template #row="{ row }">
+        <TableCell>
+          <a
+            :href="row.href"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
+            class="font-medium hover:underline"
+          >
+            {{ row.name }}
+          </a>
+        </TableCell>
+        <TableCell class="text-right tabular-nums">{{ row.block_count }}</TableCell>
+        <TableCell class="text-right tabular-nums">{{ row.variable_count }}</TableCell>
+        <TableCell class="text-right tabular-nums">{{ row.word_count }}</TableCell>
+        <TableCell class="text-right text-muted-foreground text-xs">
+          {{ formatRelativeTime(row.updated_at) }}
+        </TableCell>
+      </template>
 
-      <!-- Pagination -->
-      <div
-        v-if="pagination.totalPages > 1"
-        class="flex items-center justify-between text-xs text-muted-foreground pt-1"
+      <template #actions="{ row }">
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="size-7"
+              :aria-label="$t('sheets.dashboard.sheet_actions')"
+              :title="$t('sheets.dashboard.sheet_actions')"
+            >
+              <MoreHorizontal class="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              data-testid="sheet-dashboard-delete-row"
+              class="text-destructive gap-2 text-xs"
+              @select="requestDelete(row)"
+            >
+              <Trash2 class="size-3.5" />
+              {{ $t("sheets.dashboard.delete") }}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </template>
+    </DashboardDataTable>
+
+    <template #supplementary>
+      <DashboardIssuesSection
+        :title="$t('sheets.dashboard.issues')"
+        test-id-prefix="sheet"
+        :status="issuesStatus"
+        :issues="issues"
+        :pagination="resolvedIssuePagination"
+        :filters="issueFilters"
+        :filter-options="issueFilterOptions"
+        :all-resources-label="$t('sheets.dashboard.all_sheets')"
+        :code-label="issueCodeLabel"
+        @retry="retryIssues"
+        @filter="changeIssueFilter"
+        @page="goToIssuePage"
       >
-        <span>{{ $t("sheets.dashboard.total_sheets", pagination.total) }}</span>
-        <div class="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="size-7"
-            :disabled="pagination.page <= 1"
-            @click="goToPage(pagination.page - 1)"
-          >
-            <ChevronLeft class="size-4" />
-          </Button>
-          <Button
-            v-for="p in pages"
-            :key="p"
-            :variant="p === pagination.page ? 'default' : 'ghost'"
-            size="sm"
-            class="h-7 min-w-7 px-2 text-xs"
-            @click="goToPage(p)"
-          >
-            {{ p }}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="size-7"
-            :disabled="pagination.page >= pagination.totalPages"
-            @click="goToPage(pagination.page + 1)"
-          >
-            <ChevronRight class="size-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Issues -->
-    <div v-if="issues.length > 0" class="space-y-2">
-      <h2 class="text-sm font-medium">{{ $t("sheets.dashboard.issues") }}</h2>
-      <div class="rounded-lg border border-border divide-y divide-border">
-        <a
-          v-for="(issue, i) in issues"
-          :key="i"
-          :href="issue.href"
-          :data-severity="issue.severity"
-          data-phx-link="redirect"
-          data-phx-link-state="push"
-          class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
-        >
-          <CircleX
-            v-if="issue.severity === 'error'"
-            data-testid="sheet-issue-error-icon"
-            class="size-4 text-red-500 shrink-0 mt-0.5"
-          />
-          <AlertTriangle
-            v-else-if="issue.severity === 'warning'"
-            data-testid="sheet-issue-warning-icon"
-            class="size-4 text-yellow-500 shrink-0 mt-0.5"
-          />
-          <Info
-            v-else
-            data-testid="sheet-issue-info-icon"
-            class="size-4 text-blue-400 shrink-0 mt-0.5"
-          />
-          <span class="text-muted-foreground">
-            <span class="text-foreground">{{ issue.label }}</span>
-            · {{ healthFindingLabel(issue) }}
-          </span>
-        </a>
-      </div>
-    </div>
+        <template #description="{ issue }">
+          {{ healthFindingLabel(issue) }}
+        </template>
+      </DashboardIssuesSection>
+    </template>
   </DashboardContent>
+
+  <ConfirmDialog
+    v-model:open="deleteDialogOpen"
+    :title="$t('sheets.tree.delete_title')"
+    :description="
+      $t('sheets.tree.delete_description', {
+        name: pendingDeleteSheet?.name ?? '',
+      })
+    "
+    :confirm-text="$t('sheets.tree.delete')"
+    :cancel-text="$t('sheets.tree.cancel')"
+    variant="destructive"
+    :icon="Trash2"
+    @confirm="confirmDelete"
+  />
 </template>

@@ -21,9 +21,15 @@ export type FlowHealth = HealthStatus<FlowHealthItem>;
  * the server sends a CODE and the location label, Vue translates the code against
  * the same `flows.health.findings.*` catalog the editor popover uses. */
 export interface FlowDashboardIssue {
+  id: string;
   severity: FlowHealthSeverity;
   code: string;
   label: string;
   details?: FlowHealthDetails;
   href: string;
+  flow_id: number | string;
+  entity_type: string;
+  entity_id: number | string | null;
+  resource_id: number | string;
+  resource_label: string;
 }

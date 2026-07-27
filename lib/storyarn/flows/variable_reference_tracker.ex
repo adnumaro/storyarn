@@ -23,9 +23,11 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   import Ecto.Query
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows.Condition
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NodeUpdate
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
@@ -34,6 +36,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.TableColumn
+  alias Storyarn.Sheets.TableRow
 
   @rebuild_batch_size 100
 
@@ -105,6 +109,36 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       end
 
     replace_references("flow_node", node.id, refs, flow_node_id: node.id)
+  end
+
+  @doc false
+  @spec flow_node_references_current_ids([FlowNode.t()], integer()) ::
+          MapSet.t(integer())
+  def flow_node_references_current_ids(nodes, project_id) when is_list(nodes) and is_integer(project_id) do
+    valid_nodes =
+      Enum.filter(nodes, fn
+        %FlowNode{id: node_id, data: data}
+        when is_integer(node_id) and is_map(data) ->
+          true
+
+        _node ->
+          false
+      end)
+
+    node_ids = Enum.map(valid_nodes, & &1.id)
+    specs = Enum.flat_map(valid_nodes, &flow_node_reference_specs/1)
+    resolved_block_ids = resolve_reference_block_ids(project_id, specs)
+    expected_by_node = expected_flow_node_reference_sets(specs, resolved_block_ids)
+    actual_by_node = actual_flow_node_reference_sets(node_ids)
+
+    Enum.reduce(valid_nodes, MapSet.new(), fn node, current_ids ->
+      expected = Map.get(expected_by_node, node.id, MapSet.new())
+      actual = Map.get(actual_by_node, node.id, MapSet.new())
+
+      if expected == actual,
+        do: MapSet.put(current_ids, node.id),
+        else: current_ids
+    end)
   end
 
   @doc """
@@ -433,7 +467,9 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   Repairs all stale variable references across a project.
   Updates node JSON to reflect current sheet shortcut + variable names.
   Returns `{:ok, count}` where count is the number of repaired nodes,
-  or `{:error, reason}` if the transaction fails.
+  or `{:error, {:partial_variable_reference_repair, details}}` when one or
+  more independent node repairs fail. Successful nodes remain repaired and
+  `details.repaired_count` reports that progress.
   """
   @spec repair_stale_references(integer()) :: {:ok, non_neg_integer()} | {:error, term()}
   def repair_stale_references(project_id) do
@@ -458,7 +494,9 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         end
       end)
 
-    apply_repairs(repairs_by_node)
+    repairs_by_node
+    |> apply_repairs()
+    |> broadcast_repair_result(project_id)
   end
 
   @doc """
@@ -481,20 +519,308 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp apply_repairs(repairs_by_node) do
-    Repo.transaction(fn ->
-      Enum.each(repairs_by_node, &repair_single_node/1)
-      map_size(repairs_by_node)
-    end)
+    {repaired_count, failures} =
+      repairs_by_node
+      |> Enum.sort_by(&elem(&1, 0))
+      |> Enum.reduce({0, []}, &collect_repair_result/2)
+
+    case failures do
+      [] ->
+        {:ok, repaired_count}
+
+      failures ->
+        {:error,
+         {:partial_variable_reference_repair, %{repaired_count: repaired_count, failures: Enum.reverse(failures)}}}
+    end
+  end
+
+  defp collect_repair_result({node_id, _data} = repair, {repaired_count, failures}) do
+    case repair_single_node(repair) do
+      {:ok, _node, _meta} -> {repaired_count + 1, failures}
+      :skip -> {repaired_count, failures}
+      {:error, reason} -> {repaired_count, [{node_id, reason} | failures]}
+    end
   end
 
   defp repair_single_node({node_id, new_data}) do
     case Repo.get(FlowNode, node_id) do
       nil -> :skip
-      node -> Storyarn.Flows.update_node_data(node, new_data)
+      node -> NodeUpdate.update_node_data_without_dashboard_broadcast(node, new_data)
     end
   end
 
+  defp broadcast_repair_result({:ok, count} = result, project_id) when count > 0 do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    result
+  end
+
+  defp broadcast_repair_result(
+         {:error, {:partial_variable_reference_repair, %{repaired_count: count}}} = result,
+         project_id
+       )
+       when count > 0 do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    result
+  end
+
+  defp broadcast_repair_result(result, _project_id), do: result
+
   # -- Private --
+
+  defp flow_node_reference_specs(%FlowNode{id: node_id, type: "instruction", data: data}) do
+    data
+    |> Map.get("assignments", [])
+    |> list_value()
+    |> Enum.flat_map(&assignment_reference_specs(node_id, &1))
+  end
+
+  defp flow_node_reference_specs(%FlowNode{id: node_id, type: "condition", data: data}) do
+    data
+    |> Map.get("condition")
+    |> Condition.extract_all_rules()
+    |> Enum.flat_map(fn rule ->
+      reference_specs(
+        node_id,
+        "read",
+        rule["sheet"],
+        rule["variable"]
+      )
+    end)
+  end
+
+  defp flow_node_reference_specs(%FlowNode{}), do: []
+
+  defp assignment_reference_specs(node_id, assignment) when is_map(assignment) do
+    write_specs =
+      reference_specs(
+        node_id,
+        "write",
+        assignment["sheet"],
+        assignment["variable"]
+      )
+
+    read_specs =
+      if assignment["value_type"] == "variable_ref" do
+        reference_specs(
+          node_id,
+          "read",
+          assignment["value_sheet"],
+          assignment["value"]
+        )
+      else
+        []
+      end
+
+    write_specs ++ read_specs
+  end
+
+  defp assignment_reference_specs(_node_id, _assignment), do: []
+
+  defp reference_specs(node_id, kind, sheet_shortcut, variable_name)
+       when is_binary(sheet_shortcut) and sheet_shortcut != "" and is_binary(variable_name) and variable_name != "" do
+    [
+      %{
+        source_id: node_id,
+        kind: kind,
+        source_sheet: sheet_shortcut,
+        source_variable: variable_name,
+        resolution_key: variable_resolution_key(sheet_shortcut, variable_name)
+      }
+    ]
+  end
+
+  defp reference_specs(_node_id, _kind, _sheet_shortcut, _variable_name), do: []
+
+  defp variable_resolution_key(sheet_shortcut, variable_name) do
+    case String.split(variable_name, ".", parts: 3) do
+      [table_name, row_slug, column_slug] ->
+        {:table, sheet_shortcut, table_name, row_slug, column_slug}
+
+      _regular_variable ->
+        {:regular, sheet_shortcut, variable_name}
+    end
+  end
+
+  defp resolve_reference_block_ids(project_id, specs) do
+    resolution_keys = MapSet.new(specs, & &1.resolution_key)
+
+    regular_keys =
+      for {:regular, _sheet, _variable} = key <- resolution_keys,
+          do: key
+
+    table_keys =
+      for {:table, _sheet, _table, _row, _column} = key <-
+            resolution_keys,
+          do: key
+
+    project_id
+    |> resolve_regular_block_ids(regular_keys)
+    |> Map.merge(resolve_table_block_ids(project_id, table_keys))
+  end
+
+  defp resolve_regular_block_ids(_project_id, []), do: %{}
+
+  defp resolve_regular_block_ids(project_id, keys) do
+    shortcuts =
+      keys
+      |> Enum.map(&elem(&1, 1))
+      |> Enum.uniq()
+
+    variable_names =
+      keys
+      |> Enum.map(&elem(&1, 2))
+      |> Enum.uniq()
+
+    from(block in Block,
+      join: sheet in Sheet,
+      on: sheet.id == block.sheet_id,
+      where:
+        sheet.project_id == ^project_id and
+          sheet.shortcut in ^shortcuts and
+          block.variable_name in ^variable_names and
+          is_nil(sheet.deleted_at) and
+          is_nil(block.deleted_at),
+      select: {sheet.shortcut, block.variable_name, block.id}
+    )
+    |> Repo.all()
+    |> Map.new(fn {shortcut, variable_name, block_id} ->
+      {{:regular, shortcut, variable_name}, block_id}
+    end)
+  end
+
+  defp resolve_table_block_ids(_project_id, []), do: %{}
+
+  defp resolve_table_block_ids(project_id, keys) do
+    shortcuts = keys |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
+    table_names = keys |> Enum.map(&elem(&1, 2)) |> Enum.uniq()
+    row_slugs = keys |> Enum.map(&elem(&1, 3)) |> Enum.uniq()
+    column_slugs = keys |> Enum.map(&elem(&1, 4)) |> Enum.uniq()
+
+    from(block in Block,
+      join: sheet in Sheet,
+      on: sheet.id == block.sheet_id,
+      join: row in TableRow,
+      on: row.block_id == block.id,
+      join: column in TableColumn,
+      on: column.block_id == block.id,
+      where:
+        sheet.project_id == ^project_id and
+          sheet.shortcut in ^shortcuts and
+          block.variable_name in ^table_names and
+          block.type == "table" and
+          row.slug in ^row_slugs and
+          column.slug in ^column_slugs and
+          is_nil(sheet.deleted_at) and
+          is_nil(block.deleted_at),
+      select: {
+        sheet.shortcut,
+        block.variable_name,
+        row.slug,
+        column.slug,
+        block.id
+      }
+    )
+    |> Repo.all()
+    |> Map.new(fn {shortcut, table_name, row_slug, column_slug, block_id} ->
+      {{:table, shortcut, table_name, row_slug, column_slug}, block_id}
+    end)
+  end
+
+  defp expected_flow_node_reference_sets(specs, resolved_block_ids) do
+    specs
+    |> Enum.group_by(& &1.source_id)
+    |> Map.new(fn {source_id, source_specs} ->
+      references =
+        source_specs
+        |> Enum.flat_map(&resolved_flow_node_reference(&1, resolved_block_ids))
+        |> Enum.uniq_by(fn reference ->
+          {
+            reference.block_id,
+            reference.kind,
+            reference.source_variable
+          }
+        end)
+        |> MapSet.new(fn reference ->
+          {
+            reference.block_id,
+            reference.kind,
+            reference.source_sheet,
+            reference.source_variable,
+            source_id
+          }
+        end)
+
+      {source_id, references}
+    end)
+  end
+
+  defp resolved_flow_node_reference(spec, resolved_block_ids) do
+    case Map.fetch(resolved_block_ids, spec.resolution_key) do
+      {:ok, block_id} ->
+        [
+          %{
+            block_id: block_id,
+            kind: spec.kind,
+            source_sheet: spec.source_sheet,
+            source_variable: spec.source_variable
+          }
+        ]
+
+      :error ->
+        []
+    end
+  end
+
+  defp actual_flow_node_reference_sets([]), do: %{}
+
+  defp actual_flow_node_reference_sets(node_ids) do
+    from(reference in VariableReference,
+      where:
+        reference.source_type == "flow_node" and
+          reference.source_id in ^node_ids,
+      select: {
+        reference.source_id,
+        reference.block_id,
+        reference.kind,
+        reference.source_sheet,
+        reference.source_variable,
+        reference.flow_node_id
+      }
+    )
+    |> Repo.all()
+    |> Enum.reduce(
+      %{},
+      fn
+        {
+          source_id,
+          block_id,
+          kind,
+          source_sheet,
+          source_variable,
+          flow_node_id
+        },
+        references ->
+          reference =
+            {
+              block_id,
+              kind,
+              source_sheet,
+              source_variable,
+              flow_node_id
+            }
+
+          Map.update(
+            references,
+            source_id,
+            MapSet.new([reference]),
+            &MapSet.put(&1, reference)
+          )
+      end
+    )
+  end
+
+  defp list_value(value) when is_list(value), do: value
+  defp list_value(_value), do: []
 
   defp extract_write_refs(node) do
     assignments = node.data["assignments"] || []

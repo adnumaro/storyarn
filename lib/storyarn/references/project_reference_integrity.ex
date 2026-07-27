@@ -21,13 +21,13 @@ defmodule Storyarn.References.ProjectReferenceIntegrity do
   alias Storyarn.Sheets.Sheet
 
   @reference_types [:asset, :flow, :scene, :sheet]
-  @project_lock_modes [:share, :update]
+  @project_lock_modes [:key_share, :share, :update]
 
   @type reference_type :: :asset | :flow | :scene | :sheet
   @type reference_context :: term()
   @type reference_spec :: {reference_type(), reference_context(), term()}
   @type validation_error :: {:invalid_project_reference, reference_context(), term()}
-  @type project_lock_mode :: :share | :update
+  @type project_lock_mode :: :key_share | :share | :update
 
   @doc """
   Locks and returns an active project.
@@ -241,6 +241,7 @@ defmodule Storyarn.References.ProjectReferenceIntegrity do
     end
   end
 
+  defp apply_project_lock(query, :key_share), do: lock(query, "FOR KEY SHARE")
   defp apply_project_lock(query, :share), do: lock(query, "FOR SHARE")
   defp apply_project_lock(query, :update), do: lock(query, "FOR UPDATE")
 end

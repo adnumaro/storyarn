@@ -279,6 +279,11 @@ defmodule Storyarn.Flows do
   @spec list_nodes(integer()) :: [flow_node()]
   defdelegate list_nodes(flow_id), to: NodeCrud
 
+  @doc false
+  @spec lock_flow_nodes_for_update(flow()) ::
+          {:ok, {flow(), [flow_node()]}} | {:error, term()}
+  defdelegate lock_flow_nodes_for_update(flow), to: NodeCrud
+
   @doc """
   Gets a single node by ID within a flow.
   Returns `nil` if the node doesn't exist or doesn't belong to the flow.
@@ -314,11 +319,19 @@ defmodule Storyarn.Flows do
   @spec create_node(flow(), attrs()) :: {:ok, flow_node()} | {:error, changeset()}
   defdelegate create_node(flow, attrs), to: NodeCrud
 
+  @doc false
+  defdelegate create_node_without_dashboard_broadcast(flow, attrs), to: NodeCrud
+
   @doc """
   Updates a node.
   """
-  @spec update_node(flow_node(), attrs()) :: {:ok, flow_node()} | {:error, changeset()}
+  @spec update_node(flow_node(), attrs()) :: {:ok, flow_node()} | {:error, term()}
   defdelegate update_node(node, attrs), to: NodeCrud
+
+  @doc false
+  @spec update_node_without_dashboard_broadcast(flow_node(), attrs()) ::
+          {:ok, flow_node()} | {:error, term()}
+  defdelegate update_node_without_dashboard_broadcast(node, attrs), to: NodeCrud
 
   @doc """
   Updates only the position of a node.
@@ -348,11 +361,33 @@ defmodule Storyarn.Flows do
           {:ok, flow_node(), map()} | {:error, atom() | changeset()}
   defdelegate update_node_data(node, data), to: NodeCrud
 
+  @doc false
+  defdelegate update_node_data_without_dashboard_broadcast(node, data), to: NodeCrud
+
+  @doc false
+  @spec node_data_and_derivatives_current?(flow_node(), map(), integer()) :: boolean()
+  defdelegate node_data_and_derivatives_current?(node, data, project_id),
+    to: NodeCrud,
+    as: :data_and_derivatives_current?
+
+  @doc false
+  @spec node_data_and_derivatives_current_ids([{flow_node(), map()}], integer()) ::
+          MapSet.t(integer())
+  defdelegate node_data_and_derivatives_current_ids(node_data_pairs, project_id),
+    to: NodeCrud,
+    as: :data_and_derivatives_current_ids
+
   @doc """
   Deletes a node and all its connections.
   """
   @spec delete_node(flow_node()) :: {:ok, flow_node(), map()} | {:error, atom() | changeset()}
   defdelegate delete_node(node), to: NodeCrud
+
+  @doc false
+  defdelegate delete_node_without_dashboard_broadcast(node), to: NodeCrud
+
+  @doc false
+  defdelegate delete_node_in_transaction_without_dashboard_broadcast(node), to: NodeCrud
 
   @doc """
   Restores a soft-deleted node by clearing its deleted_at timestamp.
@@ -574,6 +609,10 @@ defmodule Storyarn.Flows do
     ConnectionCrud.create_connection(flow, attrs)
   end
 
+  @doc false
+  defdelegate create_connection_without_dashboard_broadcast(flow, attrs),
+    to: ConnectionCrud
+
   @doc """
   Updates a connection.
   """
@@ -641,6 +680,10 @@ defmodule Storyarn.Flows do
   """
   @spec delete_connections_among_nodes(integer(), [integer()]) :: {integer(), nil | term()}
   defdelegate delete_connections_among_nodes(flow_id, node_ids), to: ConnectionCrud
+
+  @doc false
+  defdelegate delete_connections_among_nodes_without_dashboard_broadcast(flow_id, node_ids),
+    to: ConnectionCrud
 
   # =============================================================================
   # Evaluator — Engine
@@ -1147,6 +1190,9 @@ defmodule Storyarn.Flows do
 
   @doc "Updates a flow's parent_id after import."
   defdelegate link_flow_import_parent(flow, parent_id), to: FlowCrud, as: :link_import_parent
+
+  @doc "Updates an imported node's parent_id after source node IDs have been remapped."
+  defdelegate link_node_import_parent(node, parent_id), to: FlowCrud
 
   @doc "Updates a node's data map after import (deferred flow ID remapping)."
   defdelegate link_node_import_data(node_id, data), to: FlowCrud

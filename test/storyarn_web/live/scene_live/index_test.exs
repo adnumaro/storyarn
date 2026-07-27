@@ -8,6 +8,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
   import Storyarn.ScenesFixtures
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Scene
@@ -81,11 +82,33 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, scenes_path(project))
+      _ = await_async(view)
 
       vue = get_dashboard_vue(view)
-      # Without scenes, mount doesn't trigger the async dashboard load at all.
       assert vue.props["table-data"] == []
-      assert vue.props["stats"] == nil
+      assert vue.props["stats"]["scene_count"] == 0
+      assert vue.props["overview-status"] == "ready"
+      assert vue.props["issues-status"] == "ready"
+      assert vue.props["issue-pagination"]["total"] == 0
+    end
+
+    test "refreshes the visible dashboard after a committed scene update", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Before"})
+
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      await_async(view)
+      assert "Before" in scene_names(view)
+
+      assert {:ok, _scene} = Scenes.update_scene(scene, %{name: "After"})
+
+      assert_dashboard_eventually(view, fn ->
+        assert "After" in scene_names(view)
+        refute "Before" in scene_names(view)
+      end)
     end
   end
 
@@ -302,6 +325,12 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       assert Map.has_key?(stats, "background_count")
 
       assert "Dashboard Scene" in scene_names(view)
+
+      assert %{"href" => href} =
+               Enum.find(vue.props["table-data"], &(&1["id"] == scene.id))
+
+      assert href ==
+               "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
     end
 
     test "passes canonical health severities, codes, and scene links to Vue", %{
@@ -317,11 +346,21 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       issues = get_dashboard_vue(view).props["issues"]
 
       assert %{
+               "id" => id,
                "severity" => "warning",
                "code" => "missing_background",
                "label" => "Health Overview",
+               "scene_id" => scene_id,
+               "entity_type" => "scene",
+               "entity_id" => nil,
+               "resource_id" => resource_id,
+               "resource_label" => "Health Overview",
                "href" => href
              } = Enum.find(issues, &(&1["code"] == "missing_background"))
+
+      assert is_binary(id)
+      assert scene_id == scene.id
+      assert resource_id == scene.id
 
       assert href ==
                "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
@@ -347,37 +386,271 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       assert issue["label"] == SceneHelpers.element_type_label("scene")
     end
 
-    test "a crashed dashboard load surfaces instead of hanging on the skeleton", %{user: user} do
+    test "assigns unique stable IDs when one entity emits the same code twice", %{
+      conn: conn,
+      user: user
+    } do
       project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Duplicate Findings"})
 
-      socket = %Socket{
-        assigns: %{__changed__: %{}, project: project, dashboard_stats: nil, flash: %{}}
-      }
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Double Reference",
+          "action_type" => "display",
+          "is_walkable" => false,
+          "action_data" => %{
+            "variable_ref" => "hero.missing",
+            "display_mode" => "value"
+          },
+          "condition" => %{
+            "logic" => "all",
+            "blocks" => [
+              %{
+                "id" => "block-1",
+                "type" => "block",
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "id" => "rule-1",
+                    "sheet" => "hero",
+                    "variable" => "missing",
+                    "operator" => "equals",
+                    "value" => "x"
+                  }
+                ]
+              }
+            ]
+          }
+        })
 
-      {:noreply, result} = Index.handle_async(:load_dashboard_data, {:exit, :boom}, socket)
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      _ = await_async(view)
 
-      # Vue renders the skeleton for as long as stats are nil, so leaving them nil
-      # is what turned a crash into "loading forever".
-      assert result.assigns.dashboard_stats
-      assert result.assigns.dashboard_stats.scene_count == 0
+      [first_issue, survivor_issue] = stale_variable_issues(view, zone.id)
+      stable_ids = Enum.map([first_issue, survivor_issue], & &1["id"])
+      assert length(stable_ids) == 2
+      assert length(Enum.uniq(stable_ids)) == 2
 
-      assert Phoenix.Flash.get(result.assigns.flash, :error) =~ "dashboard"
+      DashboardCache.invalidate(project.id)
+      send(view.pid, :load_dashboard_data)
+      _ = await_async(view)
+
+      assert Enum.map(stale_variable_issues(view, zone.id), & &1["id"]) == stable_ids
+
+      removal_attrs =
+        case first_issue["details"] do
+          %{"reference" => _reference} ->
+            %{
+              "action_data" => %{
+                "variable_ref" => "",
+                "display_mode" => "value"
+              }
+            }
+
+          %{"references" => _references} ->
+            %{"condition" => nil}
+        end
+
+      assert {:ok, _updated_zone} = Scenes.update_zone(zone, removal_attrs)
+
+      DashboardCache.invalidate(project.id)
+      send(view.pid, :load_dashboard_data)
+      _ = await_async(view)
+
+      assert [remaining_issue] = stale_variable_issues(view, zone.id)
+      assert remaining_issue["id"] == survivor_issue["id"]
     end
 
-    test "and the reason reaches the log rather than being swallowed", %{user: user} do
+    test "paginates and filters issues while preserving controls across refresh", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      scenes =
+        for index <- 1..26 do
+          scene_fixture(project, %{name: "Scene #{String.pad_leading(to_string(index), 2, "0")}"})
+        end
+
+      {:ok, view, _html} = live(conn, scenes_path(project))
+      _ = await_async(view)
+
+      initial = get_dashboard_vue(view).props
+      assert length(initial["table-data"]) == 25
+      assert initial["pagination"]["page"] == 1
+      assert initial["pagination"]["total"] == 26
+      assert initial["pagination"]["totalPages"] == 2
+      assert length(initial["issues"]) == 25
+      assert initial["issue-pagination"]["page"] == 1
+      assert initial["issue-pagination"]["unfilteredTotal"] == 52
+
+      assert initial["issue-filter-options"]["totals"] == %{
+               "severity" => 52,
+               "code" => 52,
+               "resource" => 52
+             }
+
+      assert initial["issue-filter-options"]["severities"] == [
+               %{"value" => "error", "count" => 0},
+               %{"value" => "warning", "count" => 26},
+               %{"value" => "info", "count" => 26}
+             ]
+
+      assert initial["issue-filter-options"]["codes"] == [
+               %{"value" => "empty_scene", "count" => 26},
+               %{"value" => "missing_background", "count" => 26}
+             ]
+
+      assert length(initial["issue-filter-options"]["resources"]) == 26
+      assert Enum.all?(initial["issue-filter-options"]["resources"], &(&1["count"] == 2))
+
+      render_click(view, "page_scenes", %{"page" => 2})
+      assert length(get_dashboard_vue(view).props["table-data"]) == 1
+
+      render_click(view, "filter_scene_issues", %{
+        "filter" => "code",
+        "value" => "missing_background"
+      })
+
+      filtered = get_dashboard_vue(view).props
+      assert filtered["issue-filters"]["code"] == "missing_background"
+      assert filtered["issue-pagination"]["page"] == 1
+      assert filtered["issue-pagination"]["total"] == 26
+      assert filtered["issue-pagination"]["totalPages"] == 2
+      assert Enum.all?(filtered["issues"], &(&1["code"] == "missing_background"))
+
+      assert filtered["issue-filter-options"]["totals"] == %{
+               "severity" => 26,
+               "code" => 52,
+               "resource" => 26
+             }
+
+      assert filtered["issue-filter-options"]["severities"] == [
+               %{"value" => "error", "count" => 0},
+               %{"value" => "warning", "count" => 26},
+               %{"value" => "info", "count" => 0}
+             ]
+
+      assert Enum.all?(filtered["issue-filter-options"]["resources"], &(&1["count"] == 1))
+
+      render_click(view, "page_scene_issues", %{"page" => 2})
+
+      second_page = get_dashboard_vue(view).props
+      assert second_page["issue-pagination"]["page"] == 2
+      assert length(second_page["issues"]) == 1
+
+      send(view.pid, :load_dashboard_data)
+      _ = await_async(view)
+
+      refreshed = get_dashboard_vue(view).props
+      assert refreshed["pagination"]["page"] == 2
+      assert length(refreshed["table-data"]) == 1
+      assert refreshed["issue-filters"]["code"] == "missing_background"
+      assert refreshed["issue-pagination"]["page"] == 2
+      assert length(refreshed["issues"]) == 1
+      assert refreshed["issue-filter-options"] == filtered["issue-filter-options"]
+
+      selected_scene = hd(scenes)
+
+      render_click(view, "filter_scene_issues", %{
+        "filter" => "resource",
+        "value" => to_string(selected_scene.id)
+      })
+
+      resource_filtered = get_dashboard_vue(view).props
+      assert resource_filtered["issue-pagination"]["page"] == 1
+      assert resource_filtered["issue-pagination"]["total"] == 1
+      assert resource_filtered["issue-filter-options"]["totals"]["severity"] == 1
+      assert resource_filtered["issue-filter-options"]["totals"]["code"] == 2
+      assert resource_filtered["issue-filter-options"]["totals"]["resource"] == 26
+
+      assert [%{"resource_id" => resource_id, "id" => issue_id}] =
+               resource_filtered["issues"]
+
+      assert resource_id == selected_scene.id
+      assert is_binary(issue_id)
+    end
+
+    test "a crashed overview load surfaces instead of hanging on the skeleton", %{user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
 
       socket = %Socket{
-        assigns: %{__changed__: %{}, project: project, dashboard_stats: nil, flash: %{}}
+        assigns: %{
+          __changed__: %{},
+          project: project,
+          dashboard_stats: nil,
+          overview_status: :loading,
+          flash: %{}
+        }
+      }
+
+      {:noreply, result} =
+        Index.handle_async(:load_dashboard_overview, {:exit, :boom}, socket)
+
+      assert result.assigns.dashboard_stats == nil
+      assert result.assigns.overview_status == :error
+    end
+
+    test "a crashed initial issues load exposes its independent error state", %{user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          project: project,
+          issues_status: :loading,
+          flash: %{}
+        }
+      }
+
+      {:noreply, result} =
+        Index.handle_async(:load_dashboard_issues, {:exit, :boom}, socket)
+
+      assert result.assigns.issues_status == :error
+    end
+
+    test "and the overview failure reason reaches the log rather than being swallowed", %{
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          project: project,
+          dashboard_stats: nil,
+          overview_status: :loading,
+          flash: %{}
+        }
       }
 
       log =
         ExUnit.CaptureLog.capture_log(fn ->
-          Index.handle_async(:load_dashboard_data, {:exit, {:badarg, []}}, socket)
+          Index.handle_async(:load_dashboard_overview, {:exit, {:badarg, []}}, socket)
         end)
 
-      assert log =~ "Scene dashboard load failed for project #{project.id}"
+      assert log =~ "Scene dashboard overview load failed for project #{project.id}"
       assert log =~ "badarg"
+    end
+
+    test "retry immediately returns the overview to loading" do
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          project: %{id: 4242, slug: "project"},
+          workspace: %{slug: "workspace"},
+          locale: "en",
+          overview_status: :error,
+          dashboard_overview_running?: false,
+          dashboard_overview_reload_pending?: false
+        }
+      }
+
+      {:noreply, result} = Index.handle_event("retry_dashboard_overview", %{}, socket)
+
+      assert result.assigns.overview_status == :loading
+      assert result.assigns.dashboard_overview_running?
+      refute result.assigns.dashboard_overview_reload_pending?
     end
 
     test "sort_scenes event toggles table order", %{conn: conn, user: user} do
@@ -404,6 +677,31 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       render_click(view, "sort_scenes", %{"column" => "pin_count"})
       assert scene_names(view) == ["Zeta Scene", "Alpha Scene"]
     end
+  end
+
+  defp stale_variable_issues(view, zone_id) do
+    view
+    |> get_dashboard_vue()
+    |> then(& &1.props["issues"])
+    |> Enum.filter(&(&1["code"] == "stale_variable_reference" and &1["entity_id"] == zone_id))
+  end
+
+  defp assert_dashboard_eventually(view, assertion, attempts \\ 200)
+
+  defp assert_dashboard_eventually(view, assertion, attempts) when attempts > 1 do
+    render(view)
+    await_async(view)
+    assertion.()
+  rescue
+    ExUnit.AssertionError ->
+      Process.sleep(10)
+      assert_dashboard_eventually(view, assertion, attempts - 1)
+  end
+
+  defp assert_dashboard_eventually(view, assertion, 1) do
+    render(view)
+    await_async(view)
+    assertion.()
   end
 
   describe "Authentication" do

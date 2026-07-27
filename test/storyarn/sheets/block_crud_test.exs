@@ -637,12 +637,17 @@ defmodule Storyarn.Sheets.BlockCrudTest do
   describe "reorder_blocks/2" do
     setup :setup_context
 
-    test "reorders blocks to new positions", %{sheet: sheet} do
+    test "reorders blocks to new positions and invalidates the dashboard", %{
+      project: project,
+      sheet: sheet
+    } do
       b1 = block_fixture(sheet, %{config: %{"label" => "A"}})
       b2 = block_fixture(sheet, %{config: %{"label" => "B"}})
       b3 = block_fixture(sheet, %{config: %{"label" => "C"}})
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
       {:ok, reordered} = Sheets.reorder_blocks(sheet.id, [b3.id, b1.id, b2.id])
+      assert_receive {:dashboard_invalidate, :sheets}
 
       assert length(reordered) == 3
       assert Enum.at(reordered, 0).id == b3.id
@@ -705,10 +710,14 @@ defmodule Storyarn.Sheets.BlockCrudTest do
   describe "reorder_blocks_with_columns/2" do
     setup :setup_context
 
-    test "reorders blocks with column layout info", %{sheet: sheet} do
+    test "reorders blocks with column layout info and invalidates the dashboard", %{
+      project: project,
+      sheet: sheet
+    } do
       b1 = block_fixture(sheet, %{config: %{"label" => "A"}})
       b2 = block_fixture(sheet, %{config: %{"label" => "B"}})
       group_id = Ecto.UUID.generate()
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
       items = [
         %{id: b2.id, column_group_id: group_id, column_index: 0},
@@ -716,6 +725,7 @@ defmodule Storyarn.Sheets.BlockCrudTest do
       ]
 
       {:ok, blocks} = Sheets.reorder_blocks_with_columns(sheet.id, items)
+      assert_receive {:dashboard_invalidate, :sheets}
 
       assert length(blocks) == 2
       first = Enum.find(blocks, &(&1.id == b2.id))
@@ -880,11 +890,16 @@ defmodule Storyarn.Sheets.BlockCrudTest do
   describe "create_column_group/2" do
     setup :setup_context
 
-    test "creates a column group from 2+ blocks", %{sheet: sheet} do
+    test "creates a column group from 2+ blocks and invalidates the dashboard", %{
+      project: project,
+      sheet: sheet
+    } do
       b1 = block_fixture(sheet, %{config: %{"label" => "A"}})
       b2 = block_fixture(sheet, %{config: %{"label" => "B"}})
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
       {:ok, group_id} = Sheets.create_column_group(sheet.id, [b1.id, b2.id])
+      assert_receive {:dashboard_invalidate, :sheets}
       assert is_binary(group_id)
 
       blocks = Sheets.list_blocks(sheet.id)
@@ -1369,22 +1384,32 @@ defmodule Storyarn.Sheets.BlockCrudTest do
   describe "move_block_up/2" do
     setup :setup_context
 
-    test "swaps with previous block", %{sheet: sheet} do
+    test "swaps with previous block and invalidates the dashboard", %{
+      project: project,
+      sheet: sheet
+    } do
       b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
       b2 = block_fixture(sheet, %{config: %{"label" => "B"}, position: 1})
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
       {:ok, :moved} = Sheets.move_block_up(b2.id, sheet.id)
+      assert_receive {:dashboard_invalidate, :sheets}
 
       blocks = Sheets.list_blocks(sheet.id)
       ids = Enum.map(blocks, & &1.id)
       assert ids == [b2.id, b1.id]
     end
 
-    test "returns {:ok, :already_first} for first block", %{sheet: sheet} do
+    test "returns {:ok, :already_first} without invalidating for first block", %{
+      project: project,
+      sheet: sheet
+    } do
       b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
       _b2 = block_fixture(sheet, %{config: %{"label" => "B"}, position: 1})
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
       assert {:ok, :already_first} = Sheets.move_block_up(b1.id, sheet.id)
+      refute_receive {:dashboard_invalidate, :sheets}, 10
     end
 
     test "returns {:error, :not_found} for invalid id", %{sheet: sheet} do
@@ -1411,22 +1436,32 @@ defmodule Storyarn.Sheets.BlockCrudTest do
   describe "move_block_down/2" do
     setup :setup_context
 
-    test "swaps with next block", %{sheet: sheet} do
+    test "swaps with next block and invalidates the dashboard", %{
+      project: project,
+      sheet: sheet
+    } do
       b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
       b2 = block_fixture(sheet, %{config: %{"label" => "B"}, position: 1})
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
       {:ok, :moved} = Sheets.move_block_down(b1.id, sheet.id)
+      assert_receive {:dashboard_invalidate, :sheets}
 
       blocks = Sheets.list_blocks(sheet.id)
       ids = Enum.map(blocks, & &1.id)
       assert ids == [b2.id, b1.id]
     end
 
-    test "returns {:ok, :already_last} for last block", %{sheet: sheet} do
+    test "returns {:ok, :already_last} without invalidating for last block", %{
+      project: project,
+      sheet: sheet
+    } do
       _b1 = block_fixture(sheet, %{config: %{"label" => "A"}, position: 0})
       b2 = block_fixture(sheet, %{config: %{"label" => "B"}, position: 1})
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
       assert {:ok, :already_last} = Sheets.move_block_down(b2.id, sheet.id)
+      refute_receive {:dashboard_invalidate, :sheets}, 10
     end
 
     test "returns {:error, :not_found} for invalid id", %{sheet: sheet} do

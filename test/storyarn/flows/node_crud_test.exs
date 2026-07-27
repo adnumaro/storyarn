@@ -3,11 +3,16 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Localization
+  alias Storyarn.Localization.RuntimeKey
+  alias Storyarn.References.EntityReference
   alias Storyarn.Repo
 
   # ===========================================================================
@@ -163,6 +168,36 @@ defmodule Storyarn.Flows.NodeCrudTest do
   # ===========================================================================
 
   describe "create_node/2 — dialogue" do
+    test "persists the derivative fingerprint in the insert without a follow-up node update" do
+      %{flow: flow} = create_project_and_flow()
+      handler_id = "node-create-query-budget-#{System.unique_integer([:positive])}"
+      marker = make_ref()
+      test_pid = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :repo, :query],
+          fn _event, _measurements, %{query: query}, {pid, ref} ->
+            if self() == pid and String.contains?(query, ~s(UPDATE "flow_nodes")) do
+              send(pid, {ref, query})
+            end
+          end,
+          {test_pid, marker}
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:ok, dialogue} =
+               Flows.create_node(flow, %{
+                 type: "dialogue",
+                 data: %{"text" => "Inserted once", "responses" => []}
+               })
+
+      assert is_binary(dialogue.derivatives_fingerprint)
+      refute_receive {^marker, _redundant_node_update}
+    end
+
     test "creates dialogue node with data" do
       %{flow: flow} = create_project_and_flow()
 
@@ -243,6 +278,22 @@ defmodule Storyarn.Flows.NodeCrudTest do
     end
   end
 
+  describe "create_node/2 — sequence" do
+    test "rejects the generic node API so a sequence cannot exist without its config" do
+      %{flow: flow} = create_project_and_flow()
+
+      assert {:error, :sequence_requires_sequence_api} =
+               Flows.create_node(flow, %{
+                 type: "sequence",
+                 position_x: 120.0,
+                 position_y: 80.0,
+                 data: %{}
+               })
+
+      refute Enum.any?(Flows.list_nodes(flow.id), &(&1.type == "sequence"))
+    end
+  end
+
   describe "create_node/2 — hub" do
     test "creates hub with explicit hub_id" do
       %{flow: flow} = create_project_and_flow()
@@ -300,6 +351,30 @@ defmodule Storyarn.Flows.NodeCrudTest do
         })
 
       assert hub.data["hub_id"] == "hub_1"
+    end
+
+    test "rejects a whitespace-only explicit hub_id" do
+      %{flow: flow} = create_project_and_flow()
+
+      assert {:error, :hub_id_required} =
+               Flows.create_node(flow, %{
+                 type: "hub",
+                 data: %{"hub_id" => "   ", "label" => "Invalid Hub"}
+               })
+
+      refute Enum.any?(Flows.list_nodes(flow.id), &(&1.type == "hub"))
+    end
+
+    test "rejects a non-string explicit hub_id without raising" do
+      %{flow: flow} = create_project_and_flow()
+
+      assert {:error, :hub_id_required} =
+               Flows.create_node(flow, %{
+                 type: "hub",
+                 data: %{"hub_id" => 123, "label" => "Invalid Hub"}
+               })
+
+      refute Enum.any?(Flows.list_nodes(flow.id), &(&1.type == "hub"))
     end
 
     test "auto-generates sequential hub_ids" do
@@ -713,6 +788,365 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert Flows.flow_word_counts(project.id)[flow.id] == 6
       assert_received {:dashboard_invalidate, :flows}
     end
+
+    test "generates a dialogue identity when changing a non-dialogue node into a dialogue" do
+      %{flow: flow} = create_project_and_flow()
+      annotation = node_fixture(flow, %{type: "annotation", data: %{}})
+
+      assert {:ok, updated_dialogue} =
+               Flows.update_node(annotation, %{
+                 type: "dialogue",
+                 data: %{
+                   "text" => "A new voice",
+                   "stage_directions" => "",
+                   "menu_text" => "",
+                   "responses" => []
+                 }
+               })
+
+      assert updated_dialogue.type == "dialogue"
+      assert RuntimeKey.valid_dialogue_id?(updated_dialogue.data["localization_id"])
+
+      assert Repo.reload!(annotation).data["localization_id"] ==
+               updated_dialogue.data["localization_id"]
+    end
+
+    test "removes incoming connections when changing a node into a type without inputs" do
+      %{flow: flow} = create_project_and_flow()
+      entry = get_entry_node(flow)
+      dialogue = node_fixture(flow, %{type: "dialogue"})
+
+      assert {:ok, connection} =
+               Flows.create_connection(flow, entry, dialogue, %{
+                 source_pin: "output",
+                 target_pin: "input"
+               })
+
+      assert {:ok, updated_annotation} =
+               Flows.update_node(dialogue, %{
+                 type: "annotation",
+                 data: %{}
+               })
+
+      assert updated_annotation.type == "annotation"
+      assert Flows.get_connection(flow.id, connection.id) == nil
+    end
+
+    test "rejects a duplicate hub_id when the full node update changes data" do
+      %{flow: flow} = create_project_and_flow()
+
+      {:ok, _taken_hub} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "taken", "label" => "Taken"}
+        })
+
+      {:ok, available_hub} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "available", "label" => "Available"}
+        })
+
+      assert {:error, :hub_id_not_unique} =
+               Flows.update_node(available_hub, %{
+                 data: %{"hub_id" => "taken", "label" => "Available"}
+               })
+
+      assert Repo.reload!(available_hub).data["hub_id"] == "available"
+    end
+
+    test "rejects a whitespace hub_id when the full node update changes type" do
+      %{flow: flow} = create_project_and_flow()
+      {:ok, annotation} = Flows.create_node(flow, %{type: "annotation", data: %{}})
+
+      assert {:error, :hub_id_required} =
+               Flows.update_node(annotation, %{
+                 type: "hub",
+                 data: %{"hub_id" => "   ", "label" => "Invalid"}
+               })
+
+      assert Repo.reload!(annotation).type == "annotation"
+    end
+
+    test "returns a controlled error for a non-binary hub_id in the full node update" do
+      %{flow: flow} = create_project_and_flow()
+      {:ok, annotation} = Flows.create_node(flow, %{type: "annotation", data: %{}})
+
+      assert {:error, :hub_id_required} =
+               Flows.update_node(annotation, %{
+                 type: "hub",
+                 data: %{"hub_id" => 123, "label" => "Invalid"}
+               })
+
+      assert Repo.reload!(annotation).type == "annotation"
+    end
+
+    test "rejects changing a node into a second entry" do
+      %{flow: flow} = create_project_and_flow()
+      dialogue = node_fixture(flow, %{type: "dialogue"})
+
+      assert {:error, :entry_node_exists} =
+               Flows.update_node(dialogue, %{
+                 type: "entry",
+                 data: %{}
+               })
+
+      assert Repo.reload!(dialogue).type == "dialogue"
+
+      assert flow.id
+             |> Flows.list_nodes()
+             |> Enum.count(&(&1.type == "entry")) == 1
+    end
+
+    test "rejects changing an extra exit into a second entry" do
+      %{flow: flow} = create_project_and_flow()
+
+      {:ok, extra_exit} =
+        Flows.create_node(flow, %{
+          type: "exit",
+          data: %{"label" => "Extra", "exit_mode" => "terminal"}
+        })
+
+      assert {:error, :entry_node_exists} =
+               Flows.update_node(extra_exit, %{
+                 type: "entry",
+                 data: %{}
+               })
+
+      assert Repo.reload!(extra_exit).type == "exit"
+
+      nodes = Flows.list_nodes(flow.id)
+      assert Enum.count(nodes, &(&1.type == "entry")) == 1
+      assert Enum.count(nodes, &(&1.type == "exit")) == 2
+    end
+
+    test "rejects changing the only entry into another type" do
+      %{flow: flow} = create_project_and_flow()
+      entry = get_entry_node(flow)
+
+      assert {:error, :cannot_change_entry_node} =
+               Flows.update_node(entry, %{
+                 type: "annotation",
+                 data: %{}
+               })
+
+      assert Repo.reload!(entry).type == "entry"
+    end
+
+    test "rejects changing the last exit into another type" do
+      %{flow: flow} = create_project_and_flow()
+      exit_node = get_exit_node(flow)
+
+      assert {:error, :cannot_change_last_exit} =
+               Flows.update_node(exit_node, %{
+                 type: "annotation",
+                 data: %{"text" => "Not an exit"}
+               })
+
+      assert Repo.reload!(exit_node).type == "exit"
+
+      assert flow.id
+             |> Flows.list_nodes()
+             |> Enum.count(&(&1.type == "exit")) == 1
+    end
+
+    test "rejects changing a sequence with active children into another type" do
+      %{flow: flow} = create_project_and_flow()
+
+      assert {:ok, sequence} =
+               Flows.create_sequence(flow.id, %{"name" => "Parent sequence"})
+
+      child = node_fixture(flow, %{type: "dialogue", parent_id: sequence.id})
+
+      assert {:error, :cannot_change_sequence_type} =
+               Flows.update_node(sequence, %{
+                 type: "annotation",
+                 data: %{}
+               })
+
+      assert Repo.reload!(sequence).type == "sequence"
+      assert Repo.reload!(child).parent_id == sequence.id
+    end
+
+    test "rejects changing a configured sequence into another type" do
+      %{flow: flow} = create_project_and_flow()
+      assert {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+      assert sequence.sequence_config.flow_node_id == sequence.id
+
+      assert {:error, :cannot_change_sequence_type} =
+               Flows.update_node(sequence, %{
+                 type: "annotation",
+                 data: %{}
+               })
+
+      reloaded_sequence = Flows.get_sequence!(flow.id, sequence.id)
+      assert reloaded_sequence.type == "sequence"
+      assert reloaded_sequence.sequence_config.flow_node_id == sequence.id
+      assert reloaded_sequence.sequence_config.name == "Act I"
+    end
+
+    test "rejects changing a non-sequence node into a sequence" do
+      %{flow: flow} = create_project_and_flow()
+      annotation = node_fixture(flow, %{type: "annotation", data: %{}})
+
+      assert {:error, :cannot_change_sequence_type} =
+               Flows.update_node(annotation, %{
+                 type: "sequence",
+                 data: %{}
+               })
+
+      assert Repo.reload!(annotation).type == "annotation"
+      assert Flows.get_sequence(flow.id, annotation.id) == nil
+    end
+
+    test "cascades hub_id renames from the full node update to manual jumps" do
+      %{project: project, flow: flow} = create_project_and_flow()
+
+      {:ok, hub} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "old_hub", "label" => "Hub"}
+        })
+
+      {:ok, jump} =
+        Flows.create_node(flow, %{
+          type: "jump",
+          data: %{"target_hub_id" => "old_hub"}
+        })
+
+      assert {:ok, _updated_hub} =
+               Flows.update_node(hub, %{
+                 data: %{"hub_id" => "new_hub", "label" => "Hub"}
+               })
+
+      updated_jump = Repo.reload!(jump)
+      assert updated_jump.data["target_hub_id"] == "new_hub"
+
+      assert {:ok, true} =
+               Repo.transaction(fn ->
+                 Flows.node_data_and_derivatives_current?(
+                   updated_jump,
+                   updated_jump.data,
+                   project.id
+                 )
+               end)
+    end
+
+    test "does not certify unchanged node data when a derived localization row is missing" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      language_fixture(project)
+
+      assert {:ok, dialogue} =
+               Flows.create_node(flow, %{
+                 type: "dialogue",
+                 data: %{"text" => "A localized line", "responses" => []}
+               })
+
+      assert [localized_text] = Localization.get_texts_for_source("flow_node", dialogue.id)
+      Repo.delete!(localized_text)
+
+      assert {:ok, false} =
+               Repo.transaction(fn ->
+                 Flows.node_data_and_derivatives_current?(
+                   Repo.reload!(dialogue),
+                   dialogue.data,
+                   project.id
+                 )
+               end)
+    end
+
+    test "does not certify node derivatives against a different project" do
+      %{user: user, flow: flow} = create_project_and_flow()
+      other_project = project_fixture(user)
+
+      assert {:ok, dialogue} =
+               Flows.create_node(flow, %{
+                 type: "dialogue",
+                 data: %{"text" => "", "responses" => []}
+               })
+
+      assert {:ok, false} =
+               Repo.transaction(fn ->
+                 Flows.node_data_and_derivatives_current?(
+                   Repo.reload!(dialogue),
+                   dialogue.data,
+                   other_project.id
+                 )
+               end)
+    end
+
+    test "does not certify unchanged node data when a derived entity reference is missing" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      speaker = sheet_fixture(project)
+
+      assert {:ok, dialogue} =
+               Flows.create_node(flow, %{
+                 type: "dialogue",
+                 data: %{
+                   "speaker_sheet_id" => speaker.id,
+                   "text" => "A referenced line",
+                   "responses" => []
+                 }
+               })
+
+      assert %EntityReference{} =
+               Repo.get_by(EntityReference,
+                 source_type: "flow_node",
+                 source_id: dialogue.id,
+                 target_type: "sheet",
+                 target_id: speaker.id,
+                 context: "speaker"
+               )
+
+      Repo.delete_all(
+        from(reference in EntityReference,
+          where:
+            reference.source_type == "flow_node" and
+              reference.source_id == ^dialogue.id
+        )
+      )
+
+      assert {:ok, false} =
+               Repo.transaction(fn ->
+                 Flows.node_data_and_derivatives_current?(
+                   Repo.reload!(dialogue),
+                   dialogue.data,
+                   project.id
+                 )
+               end)
+    end
+
+    test "clears jump targets when the full node update changes a hub into another type" do
+      %{flow: flow} = create_project_and_flow()
+
+      {:ok, hub} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "removed_hub", "label" => "Hub"}
+        })
+
+      {:ok, jump} =
+        Flows.create_node(flow, %{
+          type: "jump",
+          data: %{"target_hub_id" => "removed_hub"}
+        })
+
+      assert {:ok, updated_node} =
+               Flows.update_node(hub, %{
+                 type: "exit",
+                 data: %{
+                   "label" => "No longer a hub",
+                   "technical_id" => "",
+                   "outcome_tags" => [],
+                   "outcome_color" => "#22c55e",
+                   "exit_mode" => "terminal",
+                   "referenced_flow_id" => nil
+                 }
+               })
+
+      assert updated_node.type == "exit"
+      assert Repo.reload!(jump).data["target_hub_id"] == ""
+    end
   end
 
   describe "update_node_position/2" do
@@ -926,6 +1360,43 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       jump = hd(jumps)
       assert jump.data["target_hub_id"] == "new_hub"
+    end
+
+    test "hub rename updates deleted jumps in bulk without counting them as visible changes" do
+      %{flow: flow} = create_project_and_flow()
+
+      {:ok, hub} =
+        Flows.create_node(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "old_hub", "label" => "Hub"}
+        })
+
+      {:ok, active_jump} =
+        Flows.create_node(flow, %{
+          type: "jump",
+          data: %{"target_hub_id" => "old_hub"}
+        })
+
+      {:ok, deleted_jump} =
+        Flows.create_node(flow, %{
+          type: "jump",
+          data: %{"target_hub_id" => "old_hub"}
+        })
+
+      assert {:ok, _deleted_jump, _meta} = Flows.delete_node(deleted_jump)
+
+      assert {:ok, _updated_hub, meta} =
+               Flows.update_node_data(hub, %{
+                 "hub_id" => "new_hub",
+                 "label" => "Hub"
+               })
+
+      assert meta.renamed_jumps == 1
+      assert Repo.reload!(active_jump).data["target_hub_id"] == "new_hub"
+
+      deleted_jump = Repo.get!(FlowNode, deleted_jump.id)
+      assert deleted_jump.data["target_hub_id"] == "new_hub"
+      assert deleted_jump.derivatives_fingerprint == nil
     end
 
     test "hub update rejects empty hub_id" do
@@ -1166,6 +1637,14 @@ defmodule Storyarn.Flows.NodeCrudTest do
           data: %{"target_hub_id" => "deletable_hub"}
         })
 
+      {:ok, deleted_jump} =
+        Flows.create_node(flow, %{
+          type: "jump",
+          data: %{"target_hub_id" => "deletable_hub"}
+        })
+
+      assert {:ok, deleted_jump, _meta} = Flows.delete_node(deleted_jump)
+
       {:ok, _deleted, meta} = Flows.delete_node(hub)
 
       assert meta.orphaned_jumps == 1
@@ -1173,6 +1652,11 @@ defmodule Storyarn.Flows.NodeCrudTest do
       # Verify jump target was cleared
       updated_jump = Flows.get_node!(flow.id, jump.id)
       assert updated_jump.data["target_hub_id"] == ""
+      assert updated_jump.derivatives_fingerprint == nil
+
+      deleted_jump = Repo.reload!(deleted_jump)
+      assert deleted_jump.data["target_hub_id"] == ""
+      assert deleted_jump.derivatives_fingerprint == nil
     end
 
     test "deleting hub with multiple referencing jumps clears all" do

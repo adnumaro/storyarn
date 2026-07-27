@@ -12,9 +12,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   alias Storyarn.Collaboration
   alias Storyarn.Exports
   alias Storyarn.Flows
+  alias Storyarn.Flows.VariableReference
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Localization
+  alias Storyarn.References.EntityReference
   alias Storyarn.Repo
 
   # =============================================================================
@@ -167,6 +169,56 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
                data |> Jason.encode!() |> Imports.parse_file()
 
       assert field == "flows[0].nodes[0].data"
+    end
+
+    test "rejects malformed sequence config without crashing" do
+      data =
+        minimal_import_data([
+          %{
+            "id" => Ecto.UUID.generate(),
+            "type" => "sequence",
+            "data" => %{},
+            "sequence_config" => "invalid"
+          }
+        ])
+
+      assert {:error, {:invalid_field_types, [field]}} =
+               data |> Jason.encode!() |> Imports.parse_file()
+
+      assert field == "flows[0].nodes[0].sequence_config"
+    end
+
+    test "rejects a sequence without its required config" do
+      data =
+        minimal_import_data([
+          %{
+            "id" => Ecto.UUID.generate(),
+            "type" => "sequence",
+            "data" => %{}
+          }
+        ])
+
+      assert {:error, {:invalid_field_types, [field]}} =
+               data |> Jason.encode!() |> Imports.parse_file()
+
+      assert field == "flows[0].nodes[0].sequence_config"
+    end
+
+    test "rejects a sequence config without its required name" do
+      data =
+        minimal_import_data([
+          %{
+            "id" => Ecto.UUID.generate(),
+            "type" => "sequence",
+            "data" => %{},
+            "sequence_config" => %{}
+          }
+        ])
+
+      assert {:error, {:invalid_field_types, [field]}} =
+               data |> Jason.encode!() |> Imports.parse_file()
+
+      assert field == "flows[0].nodes[0].sequence_config"
     end
 
     test "rejects malformed translation payloads without crashing" do
@@ -420,6 +472,136 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       # At least entry + dialogue nodes
       assert Enum.count(flow_with_data.nodes) >= 2
       assert Enum.find(flow_with_data.nodes, &(&1.type == "dialogue")).word_count == 1
+    end
+
+    test "round-trips sequence config and nested node hierarchy", %{
+      source: source,
+      target: target
+    } do
+      flow = flow_fixture(source, %{name: "Sequence fidelity"})
+
+      assert {:ok, sequence} =
+               Flows.create_sequence(flow.id, %{
+                 "name" => "Act I",
+                 "width" => 640.0,
+                 "height" => 360.0,
+                 "position_x" => 120.0,
+                 "position_y" => 80.0
+               })
+
+      _nested_node =
+        node_fixture(flow, %{
+          type: "annotation",
+          parent_id: sequence.id,
+          data: %{"text" => "Nested in Act I"}
+        })
+
+      assert {:ok, json} =
+               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
+
+      assert {:ok, parsed} = Imports.parse_file(json)
+      assert {:ok, result} = Imports.execute(target, parsed)
+
+      imported_flow = Enum.find(result.flows, &(&1.name == "Sequence fidelity"))
+      imported_nodes = Flows.list_nodes(imported_flow.id)
+      imported_sequence = Enum.find(imported_nodes, &(&1.type == "sequence"))
+      imported_nested_node = Enum.find(imported_nodes, &(&1.data["text"] == "Nested in Act I"))
+      imported_sequence = Flows.get_sequence!(imported_flow.id, imported_sequence.id)
+
+      imported_config =
+        case imported_sequence.sequence_config do
+          nil -> nil
+          config -> Map.take(config, [:name, :width, :height])
+        end
+
+      assert %{
+               config: %{
+                 name: "Act I",
+                 width: 640.0,
+                 height: 360.0
+               },
+               nested_parent_id: imported_sequence.id
+             } == %{
+               config: imported_config,
+               nested_parent_id: imported_nested_node.parent_id
+             }
+    end
+
+    test "rebuilds flow-node entity and variable references after import", %{
+      source: source,
+      target: target
+    } do
+      character =
+        sheet_fixture(source, %{
+          name: "Reference target",
+          shortcut: "characters.reference-target"
+        })
+
+      health =
+        block_fixture(character, %{
+          type: "number",
+          config: %{"label" => "Health", "placeholder" => "0"}
+        })
+
+      flow = flow_fixture(source, %{name: "Reference fidelity"})
+
+      assert {:ok, _dialogue} =
+               Flows.create_node(flow, %{
+                 type: "dialogue",
+                 data: %{
+                   "speaker_sheet_id" => character.id,
+                   "text" => "Referenced dialogue",
+                   "responses" => []
+                 }
+               })
+
+      assert {:ok, _instruction} =
+               Flows.create_node(flow, %{
+                 type: "instruction",
+                 data: %{
+                   "assignments" => [
+                     %{
+                       "id" => Ecto.UUID.generate(),
+                       "sheet" => character.shortcut,
+                       "variable" => health.variable_name,
+                       "operator" => "set",
+                       "value" => "100",
+                       "value_type" => "literal"
+                     }
+                   ]
+                 }
+               })
+
+      assert {:ok, json} =
+               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
+
+      assert {:ok, parsed} = Imports.parse_file(json)
+      assert {:ok, result} = Imports.execute(target, parsed)
+
+      imported_sheet = Enum.find(result.sheets, &(&1.name == character.name))
+      imported_sheet = Repo.preload(imported_sheet, :blocks)
+      imported_health = Enum.find(imported_sheet.blocks, &(&1.variable_name == health.variable_name))
+      imported_flow = Enum.find(result.flows, &(&1.name == flow.name))
+      imported_nodes = Flows.list_nodes(imported_flow.id)
+      imported_dialogue = Enum.find(imported_nodes, &(&1.type == "dialogue"))
+      imported_instruction = Enum.find(imported_nodes, &(&1.type == "instruction"))
+
+      assert %EntityReference{} =
+               Repo.get_by(EntityReference,
+                 source_type: "flow_node",
+                 source_id: imported_dialogue.id,
+                 target_type: "sheet",
+                 target_id: imported_sheet.id,
+                 context: "speaker"
+               )
+
+      assert %VariableReference{} =
+               Repo.get_by(VariableReference,
+                 source_type: "flow_node",
+                 source_id: imported_instruction.id,
+                 block_id: imported_health.id,
+                 kind: "write"
+               )
     end
 
     test "preserves scene sub-entities", %{target: target, parsed: parsed} do

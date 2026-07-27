@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import {
-  AlertTriangle,
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   Box,
-  ChevronLeft,
-  ChevronRight,
-  CircleX,
   GitBranch,
-  Info,
   MessageSquare,
   MoreHorizontal,
   Star,
@@ -17,10 +9,11 @@ import {
   Trash2,
 } from "lucide-vue-next";
 import type { Component } from "vue";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import type { FlowDashboardIssue } from "@modules/flows/types/health";
 import { interpolatableDetails } from "@components/health/health-details";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import {
@@ -29,17 +22,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@components/ui/table";
+import { TableCell } from "@components/ui/table";
 import { useLive } from "@shared/composables/useLive";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 import DashboardContent from "@shell/DashboardContent.vue";
+import DashboardDataTable from "@components/dashboard/DashboardDataTable.vue";
+import DashboardIssuesSection from "@components/dashboard/DashboardIssuesSection.vue";
+import {
+  emptyDashboardIssueFilterOptions,
+  type DashboardIssuePagination,
+  type DashboardLoadStatus,
+  type DashboardIssueFilterOptions,
+  type DashboardIssueFilterValues,
+  type DashboardTableColumn,
+  type DashboardTablePagination,
+} from "@components/dashboard/types";
 
 interface FlowStats {
   flow_count: number;
@@ -51,20 +48,13 @@ interface FlowStats {
 interface FlowTableRow {
   id: number | string;
   name: string;
+  href: string;
   is_main: boolean;
   node_count: number;
   dialogue_count: number;
   condition_count: number;
   word_count: number;
   updated_at: string;
-}
-
-interface FlowPagination {
-  sortBy: string;
-  sortDir: "asc" | "desc";
-  page: number;
-  totalPages: number;
-  total: number;
 }
 
 interface StatCard {
@@ -74,43 +64,85 @@ interface StatCard {
   color: string;
 }
 
-interface TableColumn {
-  key: string;
-  label: string;
-  align: "left" | "right";
-  hiddenClass?: string;
-}
-
 const {
   stats = null,
   tableData = [],
   pagination = { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 },
   issues = [],
+  overviewStatus = "loading",
+  issuesStatus = "loading",
+  issuePagination,
+  issueFilters = { severity: "all", code: "all", resource: "all" },
+  issueFilterOptions = emptyDashboardIssueFilterOptions(),
   canEdit = false,
-  workspaceSlug,
-  projectSlug,
 } = defineProps<{
   stats: FlowStats | null;
   tableData: FlowTableRow[];
-  pagination: FlowPagination;
+  pagination: DashboardTablePagination;
   issues: FlowDashboardIssue[];
+  overviewStatus?: DashboardLoadStatus;
+  issuesStatus?: DashboardLoadStatus;
+  issuePagination?: DashboardIssuePagination;
+  issueFilters?: DashboardIssueFilterValues;
+  issueFilterOptions?: DashboardIssueFilterOptions;
   canEdit: boolean;
-  workspaceSlug: string;
-  projectSlug: string;
 }>();
 
 const { t } = useI18n();
+const pendingDeleteFlow = ref<FlowTableRow | null>(null);
+const deleteDialogOpen = computed({
+  get: () => pendingDeleteFlow.value !== null,
+  set: (open: boolean) => {
+    if (!open) {
+      pendingDeleteFlow.value = null;
+    }
+  },
+});
 
 // The dashboard translates the SAME `flows.health.findings.*` keys the editor
 // popover uses, so the two surfaces cannot word the same finding differently.
 function healthFindingLabel(issue: FlowDashboardIssue): string {
   return t(`flows.health.findings.${issue.code}`, interpolatableDetails(issue.details));
 }
+
+function issueCodeLabel(code: string): string {
+  return t(`flows.health.issue_types.${code}`);
+}
 const live = useLive();
 
-function flowHref(row: FlowTableRow): string {
-  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${row.id}`;
-}
+const resolvedIssuePagination = computed<DashboardIssuePagination>(
+  () =>
+    issuePagination ?? {
+      page: 1,
+      totalPages: 1,
+      total: issues.length,
+      unfilteredTotal: issues.length,
+    },
+);
+
+const overviewHasContent = computed(
+  () => overviewStatus !== "loading" && overviewStatus !== "error",
+);
+
+const overviewFailure = computed(() => {
+  if (overviewStatus === "error") {
+    return {
+      kind: "error" as const,
+      message: t("common.dashboard.overview_load_failed"),
+      retryLabel: t("common.dashboard.retry"),
+    };
+  }
+
+  if (overviewStatus === "stale") {
+    return {
+      kind: "stale" as const,
+      message: t("common.dashboard.overview_stale"),
+      retryLabel: t("common.dashboard.retry"),
+    };
+  }
+
+  return undefined;
+});
 
 function handleSort(column: string): void {
   live.pushEvent("sort_flows", { column });
@@ -120,20 +152,36 @@ function goToPage(page: number): void {
   live.pushEvent("page_flows", { page });
 }
 
+function goToIssuePage(page: number): void {
+  live.pushEvent("page_flow_issues", { page });
+}
+
+function changeIssueFilter(payload: { filter: string; value: string }): void {
+  live.pushEvent("filter_flow_issues", payload);
+}
+
+function retryOverview(): void {
+  live.pushEvent("retry_dashboard_overview");
+}
+
+function retryIssues(): void {
+  live.pushEvent("retry_dashboard_issues");
+}
+
 function setMain(id: number | string): void {
   live.pushEvent("set_main", { id });
 }
 
-function requestDelete(id: number | string): void {
-  live.pushEvent("set_pending_delete", { id });
-  live.pushEvent("confirm_delete", {});
+function requestDelete(flow: FlowTableRow): void {
+  pendingDeleteFlow.value = flow;
 }
 
-function sortIcon(column: string): Component {
-  if (pagination.sortBy !== column) {
-    return ArrowUpDown;
-  }
-  return pagination.sortDir === "asc" ? ArrowUp : ArrowDown;
+function confirmDelete(): void {
+  if (!pendingDeleteFlow.value) return;
+
+  live.pushEvent("set_pending_delete", { id: pendingDeleteFlow.value.id });
+  live.pushEvent("confirm_delete", {});
+  pendingDeleteFlow.value = null;
 }
 
 const statCards = computed<StatCard[]>(() => {
@@ -168,7 +216,7 @@ const statCards = computed<StatCard[]>(() => {
   ];
 });
 
-const columns = computed<TableColumn[]>(() => [
+const columns = computed<DashboardTableColumn[]>(() => [
   { key: "name", label: t("flows.dashboard.columns.name"), align: "left" },
   { key: "node_count", label: t("flows.dashboard.columns.nodes"), align: "right" },
   {
@@ -196,24 +244,19 @@ const columns = computed<TableColumn[]>(() => [
     hiddenClass: "hidden md:table-cell",
   },
 ]);
-
-const pages = computed(() => {
-  const result = [];
-  for (let i = 1; i <= pagination.totalPages; i++) {
-    result.push(i);
-  }
-  return result;
-});
 </script>
 
 <template>
   <DashboardContent
     :title="$t('flows.dashboard.title')"
     :subtitle="$t('flows.dashboard.subtitle')"
-    :loading="!stats"
-    :is-empty="pagination.total === 0 && !stats"
+    :loading="overviewStatus === 'loading'"
+    :loading-label="$t('common.dashboard.loading_overview')"
+    :failure="overviewFailure"
+    :is-empty="overviewHasContent && pagination.total === 0"
     :empty-message="$t('flows.dashboard.empty')"
     :empty-icon="GitBranch"
+    @retry="retryOverview"
   >
     <!-- Stats row -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -231,166 +274,108 @@ const pages = computed(() => {
     </div>
 
     <!-- Table section -->
-    <div class="space-y-2">
-      <h2 class="text-sm font-medium">{{ $t("flows.dashboard.all_flows") }}</h2>
-      <div class="rounded-lg border border-border bg-surface overflow-auto max-h-[60vh]">
-        <Table>
-          <TableHeader>
-            <TableRow class="bg-muted/40 hover:bg-muted/40 sticky top-0 z-10">
-              <TableHead
-                v-for="col in columns"
-                :key="col.key"
-                :class="[
-                  'font-medium text-xs text-muted-foreground uppercase',
-                  col.align === 'right' ? 'text-right' : 'text-left',
-                  col.hiddenClass,
-                ]"
-              >
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-                  :class="col.align === 'right' && 'ml-auto'"
-                  @click="handleSort(col.key)"
-                >
-                  {{ col.label }}
-                  <component :is="sortIcon(col.key)" class="size-3" />
-                </button>
-              </TableHead>
-              <TableHead v-if="canEdit" class="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="row in tableData" :key="row.id">
-              <TableCell>
-                <a
-                  :href="flowHref(row)"
-                  data-phx-link="patch"
-                  data-phx-link-state="push"
-                  class="inline-flex items-center gap-2 font-medium hover:underline"
-                >
-                  {{ row.name }}
-                  <Badge v-if="row.is_main" variant="default" class="text-[10px] px-1.5 py-0">
-                    {{ $t("flows.dashboard.main") }}
-                  </Badge>
-                </a>
-              </TableCell>
-              <TableCell class="text-right tabular-nums">{{ row.node_count }}</TableCell>
-              <TableCell class="text-right tabular-nums hidden sm:table-cell"
-                >{{ row.dialogue_count }}
-              </TableCell>
-              <TableCell class="text-right tabular-nums hidden sm:table-cell"
-                >{{ row.condition_count }}
-              </TableCell>
-              <TableCell class="text-right tabular-nums hidden md:table-cell"
-                >{{ row.word_count }}
-              </TableCell>
-              <TableCell class="text-right text-muted-foreground text-xs hidden md:table-cell">
-                {{ formatRelativeTime(row.updated_at) }}
-              </TableCell>
-              <TableCell v-if="canEdit" class="text-right w-10">
-                <DropdownMenu>
-                  <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" size="icon-sm" class="size-7">
-                      <MoreHorizontal class="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      v-if="!row.is_main"
-                      class="gap-2 text-xs"
-                      @select="setMain(row.id)"
-                    >
-                      <Star class="size-3.5" />
-                      {{ $t("flows.dashboard.set_main") }}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      class="text-destructive gap-2 text-xs"
-                      @select="requestDelete(row.id)"
-                    >
-                      <Trash2 class="size-3.5" />
-                      {{ $t("flows.dashboard.delete") }}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
+    <DashboardDataTable
+      :title="$t('flows.dashboard.all_flows')"
+      :rows="tableData"
+      :columns="columns"
+      :pagination="pagination"
+      :total-label="$t('flows.dashboard.total_flows', pagination.total)"
+      :previous-label="$t('common.dashboard.previous_page')"
+      :next-label="$t('common.dashboard.next_page')"
+      :has-actions="canEdit"
+      @sort="handleSort"
+      @page="goToPage"
+    >
+      <template #row="{ row }">
+        <TableCell>
+          <a
+            :href="row.href"
+            data-phx-link="patch"
+            data-phx-link-state="push"
+            class="inline-flex items-center gap-2 font-medium hover:underline"
+          >
+            {{ row.name }}
+            <Badge v-if="row.is_main" variant="default" class="text-[10px] px-1.5 py-0">
+              {{ $t("flows.dashboard.main") }}
+            </Badge>
+          </a>
+        </TableCell>
+        <TableCell class="text-right tabular-nums">{{ row.node_count }}</TableCell>
+        <TableCell class="text-right tabular-nums hidden sm:table-cell">
+          {{ row.dialogue_count }}
+        </TableCell>
+        <TableCell class="text-right tabular-nums hidden sm:table-cell">
+          {{ row.condition_count }}
+        </TableCell>
+        <TableCell class="text-right tabular-nums hidden md:table-cell">
+          {{ row.word_count }}
+        </TableCell>
+        <TableCell class="text-right text-muted-foreground text-xs hidden md:table-cell">
+          {{ formatRelativeTime(row.updated_at) }}
+        </TableCell>
+      </template>
 
-      <!-- Pagination -->
-      <div
-        v-if="pagination.totalPages > 1"
-        class="flex items-center justify-between text-xs text-muted-foreground pt-1"
+      <template #actions="{ row }">
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="size-7"
+              :aria-label="$t('flows.dashboard.flow_actions')"
+              :title="$t('flows.dashboard.flow_actions')"
+            >
+              <MoreHorizontal class="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem v-if="!row.is_main" class="gap-2 text-xs" @select="setMain(row.id)">
+              <Star class="size-3.5" />
+              {{ $t("flows.dashboard.set_main") }}
+            </DropdownMenuItem>
+            <DropdownMenuItem class="text-destructive gap-2 text-xs" @select="requestDelete(row)">
+              <Trash2 class="size-3.5" />
+              {{ $t("flows.dashboard.delete") }}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </template>
+    </DashboardDataTable>
+
+    <template #supplementary>
+      <DashboardIssuesSection
+        :title="$t('flows.dashboard.issues')"
+        test-id-prefix="flow"
+        :status="issuesStatus"
+        :issues="issues"
+        :pagination="resolvedIssuePagination"
+        :filters="issueFilters"
+        :filter-options="issueFilterOptions"
+        :all-resources-label="$t('flows.dashboard.all_flows')"
+        :code-label="issueCodeLabel"
+        @retry="retryIssues"
+        @filter="changeIssueFilter"
+        @page="goToIssuePage"
       >
-        <span>{{ pagination.total }} flows</span>
-        <div class="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="size-7"
-            :disabled="pagination.page <= 1"
-            @click="goToPage(pagination.page - 1)"
-          >
-            <ChevronLeft class="size-4" />
-          </Button>
-          <Button
-            v-for="p in pages"
-            :key="p"
-            :variant="p === pagination.page ? 'default' : 'ghost'"
-            size="sm"
-            class="h-7 min-w-7 px-2 text-xs"
-            @click="goToPage(p)"
-          >
-            {{ p }}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="size-7"
-            :disabled="pagination.page >= pagination.totalPages"
-            @click="goToPage(pagination.page + 1)"
-          >
-            <ChevronRight class="size-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Issues -->
-    <div v-if="issues.length > 0" class="space-y-2">
-      <h2 class="text-sm font-medium">{{ $t("flows.dashboard.issues") }}</h2>
-      <div class="rounded-lg border border-border divide-y divide-border">
-        <a
-          v-for="(issue, i) in issues"
-          :key="i"
-          :href="issue.href"
-          :data-severity="issue.severity"
-          data-phx-link="redirect"
-          data-phx-link-state="push"
-          class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
-        >
-          <CircleX
-            v-if="issue.severity === 'error'"
-            data-testid="flow-issue-error-icon"
-            class="size-4 text-red-500 shrink-0 mt-0.5"
-          />
-          <AlertTriangle
-            v-else-if="issue.severity === 'warning'"
-            data-testid="flow-issue-warning-icon"
-            class="size-4 text-yellow-500 shrink-0 mt-0.5"
-          />
-          <Info
-            v-else
-            data-testid="flow-issue-info-icon"
-            class="size-4 text-blue-400 shrink-0 mt-0.5"
-          />
-          <span class="text-muted-foreground">
-            <span class="text-foreground">{{ issue.label }}</span>
-            · {{ healthFindingLabel(issue) }}
-          </span>
-        </a>
-      </div>
-    </div>
+        <template #description="{ issue }">
+          {{ healthFindingLabel(issue) }}
+        </template>
+      </DashboardIssuesSection>
+    </template>
   </DashboardContent>
+
+  <ConfirmDialog
+    v-model:open="deleteDialogOpen"
+    :title="$t('flows.tree.delete_title')"
+    :description="
+      $t('flows.tree.delete_description', {
+        name: pendingDeleteFlow?.name,
+      })
+    "
+    :confirm-text="$t('flows.tree.delete')"
+    :cancel-text="$t('flows.tree.cancel')"
+    variant="destructive"
+    :icon="Trash2"
+    @confirm="confirmDelete"
+  />
 </template>

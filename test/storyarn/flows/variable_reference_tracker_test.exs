@@ -7,6 +7,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
@@ -1079,6 +1080,88 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 0
     end
+
+    test "broadcasts one dashboard invalidation after repairing multiple nodes", ctx do
+      nodes =
+        for _index <- 1..2 do
+          node =
+            node_fixture(ctx.flow, %{
+              type: "instruction",
+              data: %{
+                "assignments" => [
+                  variable_assignment(ctx.sheet.shortcut, ctx.health_block.variable_name)
+                ]
+              }
+            })
+
+          :ok = VariableReferenceTracker.update_references(node)
+          node
+        end
+
+      {:ok, _sheet} = Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
+      :ok = Collaboration.subscribe_dashboard(ctx.project.id)
+
+      assert {:ok, 2} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert_receive {:dashboard_invalidate, :flows}
+      refute_receive {:dashboard_invalidate, :flows}, 10
+
+      assert Enum.all?(nodes, fn node ->
+               updated_node = Storyarn.Repo.get!(FlowNode, node.id)
+               assignment = hd(updated_node.data["assignments"])
+               assignment["sheet"] == "mc.renamed"
+             end)
+    end
+
+    test "does not broadcast when the repair is a no-op", ctx do
+      :ok = Collaboration.subscribe_dashboard(ctx.project.id)
+
+      assert {:ok, 0} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      refute_receive {:dashboard_invalidate, :flows}, 10
+    end
+
+    test "keeps successful repairs when a later node cannot be repaired", ctx do
+      valid_assignment =
+        variable_assignment(ctx.sheet.shortcut, ctx.health_block.variable_name)
+
+      valid_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{"assignments" => [valid_assignment]}
+        })
+
+      failing_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{"assignments" => [valid_assignment]}
+        })
+
+      :ok = VariableReferenceTracker.update_references(valid_node)
+      :ok = VariableReferenceTracker.update_references(failing_node)
+
+      # Keep the tracked reference deliberately while making the node
+      # unwritable. The repair query still sees the reference, but one damaged
+      # source must not roll back every independent repair in the project.
+      failing_node
+      |> FlowNode.soft_delete_changeset()
+      |> Storyarn.Repo.update!()
+
+      {:ok, _sheet} = Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
+      :ok = Collaboration.subscribe_dashboard(ctx.project.id)
+
+      assert {:error, {:partial_variable_reference_repair, %{repaired_count: 1, failures: [{failing_id, _reason}]}}} =
+               VariableReferenceTracker.repair_stale_references(ctx.project.id)
+
+      assert failing_id == failing_node.id
+      assert_receive {:dashboard_invalidate, :flows}
+      refute_receive {:dashboard_invalidate, :flows}, 10
+
+      persisted_valid = Storyarn.Repo.get!(FlowNode, valid_node.id)
+      persisted_failing = Storyarn.Repo.get!(FlowNode, failing_node.id)
+
+      assert hd(persisted_valid.data["assignments"])["sheet"] == "mc.renamed"
+      assert persisted_failing.data == failing_node.data
+      assert persisted_failing.deleted_at
+    end
   end
 
   describe "list_stale_node_ids/1" do
@@ -1519,6 +1602,65 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert length(refs) == 1
       assert hd(refs).stale == true
       assert hd(refs).kind == "read"
+    end
+  end
+
+  describe "flow_node_references_current_ids/2" do
+    test "certifies regular and table references in one batch and rejects stale metadata", ctx do
+      table_block = table_block_fixture(ctx.sheet, %{label: "Attributes"})
+      table_row = table_row_fixture(table_block, %{name: "Strength"})
+      table_column = table_column_fixture(table_block, %{name: "Value", type: "number"})
+
+      regular_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              variable_assignment(ctx.sheet.shortcut, ctx.health_block.variable_name)
+            ]
+          }
+        })
+
+      table_variable =
+        "#{table_block.variable_name}.#{table_row.slug}.#{table_column.slug}"
+
+      table_node =
+        node_fixture(ctx.flow, %{
+          type: "condition",
+          data: %{"condition" => variable_condition(ctx.sheet.shortcut, table_variable)}
+        })
+
+      assert :ok = VariableReferenceTracker.update_references(regular_node)
+      assert :ok = VariableReferenceTracker.update_references(table_node)
+
+      assert VariableReferenceTracker.flow_node_references_current_ids(
+               [regular_node, table_node],
+               ctx.project.id
+             ) == MapSet.new([regular_node.id, table_node.id])
+
+      other_project = project_fixture()
+
+      assert VariableReferenceTracker.flow_node_references_current_ids(
+               [regular_node, table_node],
+               other_project.id
+             ) == MapSet.new()
+
+      table_reference =
+        Repo.get_by!(VariableReference,
+          source_type: "flow_node",
+          source_id: table_node.id,
+          block_id: table_block.id,
+          kind: "read"
+        )
+
+      table_reference
+      |> Ecto.Changeset.change(source_sheet: "stale")
+      |> Repo.update!()
+
+      assert VariableReferenceTracker.flow_node_references_current_ids(
+               [regular_node, table_node],
+               ctx.project.id
+             ) == MapSet.new([regular_node.id])
     end
   end
 

@@ -7,6 +7,7 @@ defmodule Storyarn.Localization.LocalizableWords do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization.LanguageCrud
   alias Storyarn.Localization.LocaleCode
+  alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Localization.TextCrud
   alias Storyarn.References.ProjectReferenceIntegrity
@@ -150,6 +151,80 @@ defmodule Storyarn.Localization.LocalizableWords do
       end
 
     normalize_lock_result(case_result)
+  end
+
+  @doc false
+  @spec flow_node_texts_current?(FlowNode.t(), integer()) :: boolean()
+  def flow_node_texts_current?(%FlowNode{} = node, project_id) when is_integer(project_id) do
+    node.id in flow_node_texts_current_ids([node], project_id)
+  end
+
+  @doc false
+  @spec flow_node_texts_current_ids([FlowNode.t()], integer()) :: MapSet.t(integer())
+  def flow_node_texts_current_ids([], project_id) when is_integer(project_id), do: MapSet.new()
+
+  def flow_node_texts_current_ids(nodes, project_id) when is_list(nodes) and is_integer(project_id) do
+    target_locales = get_target_locales(project_id)
+    node_ids = Enum.map(nodes, & &1.id)
+    actual_by_node = flow_node_text_signatures(node_ids)
+
+    Enum.reduce(nodes, MapSet.new(), fn node, current_ids ->
+      expected = expected_flow_node_text_signatures(node, project_id, target_locales)
+      actual = Map.get(actual_by_node, node.id, [])
+
+      if Enum.sort(expected) == Enum.sort(actual),
+        do: MapSet.put(current_ids, node.id),
+        else: current_ids
+    end)
+  end
+
+  defp expected_flow_node_text_signatures(node, project_id, target_locales) do
+    for field <- flow_node_source_fields(node),
+        locale_code <- target_locales do
+      {
+        project_id,
+        field.field,
+        locale_code,
+        field.text,
+        hash(field.text),
+        word_count(field.text),
+        field.speaker_sheet_id,
+        field.content_role,
+        field.vo_eligible
+      }
+    end
+  end
+
+  defp flow_node_text_signatures([]), do: %{}
+
+  defp flow_node_text_signatures(node_ids) do
+    from(text in LocalizedText,
+      where:
+        text.source_type == "flow_node" and
+          text.source_id in ^node_ids and
+          is_nil(text.archived_at),
+      select: {
+        text.source_id,
+        text.project_id,
+        text.source_field,
+        text.locale_code,
+        text.source_text,
+        text.source_text_hash,
+        text.word_count,
+        text.speaker_sheet_id,
+        text.content_role,
+        text.vo_eligible
+      }
+    )
+    |> Repo.all()
+    |> Enum.group_by(
+      fn {source_id, _project_id, _field, _locale, _text, _hash, _words, _speaker, _role, _vo} ->
+        source_id
+      end,
+      fn {_source_id, project_id, field, locale, text, hash, words, speaker, role, vo} ->
+        {project_id, field, locale, text, hash, words, speaker, role, vo}
+      end
+    )
   end
 
   @spec extract_block(Block.t()) :: :ok | {:error, term()}

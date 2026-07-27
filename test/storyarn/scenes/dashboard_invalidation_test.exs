@@ -143,17 +143,54 @@ defmodule Storyarn.Scenes.DashboardInvalidationTest do
     end
   end
 
+  describe "restoring a scene invalidates the scenes dashboard" do
+    test "only after the restore transaction commits", %{scene: scene} do
+      assert {:ok, _deleted} = Scenes.delete_scene(scene)
+      flush()
+
+      deleted = Scenes.get_scene_including_deleted(scene.project_id, scene.id)
+      assert {:ok, restored} = Scenes.restore_scene(deleted)
+
+      assert is_nil(restored.deleted_at)
+      assert_receive {:dashboard_invalidate, :scenes}
+      refute_receive {:dashboard_invalidate, :scenes}, 10
+    end
+
+    test "a rejected restore emits nothing", %{scene: scene} do
+      assert {:error, :scene_not_deleted} = Scenes.restore_scene(scene)
+      refute_receive {:dashboard_invalidate, :scenes}, 10
+    end
+  end
+
+  describe "updating a scene invalidates its persisted owner" do
+    test "does not trust a stale struct's project_id", %{project: project, scene: scene} do
+      unrelated_project = project_fixture()
+      subscribe_dashboard_probe(unrelated_project.id, :unrelated)
+      flush()
+
+      stale_scene = %{scene | project_id: unrelated_project.id}
+
+      assert {:ok, updated} = Scenes.update_scene(stale_scene, %{name: "Updated ruins"})
+      assert updated.project_id == project.id
+      assert_receive {:dashboard_invalidate, :scenes}
+      refute_receive {:dashboard_probe, :unrelated, {:dashboard_invalidate, :scenes}}, 50
+    end
+  end
+
   describe "health-neutral writes stay quiet" do
     test "reorder_layers/2 and toggle_layer_visibility/1 write no finding input", %{scene: scene} do
       first = layer_fixture(scene, %{"name" => "Background"})
       second = layer_fixture(scene, %{"name" => "Foreground"})
+      findings_before = Scenes.list_dashboard_health_findings(scene.project_id)
       flush()
 
       {:ok, _} = Scenes.reorder_layers(scene.id, [second.id, first.id])
       {:ok, _} = Scenes.toggle_layer_visibility(first)
 
-      # No finding reads `position` or `visible`. If one ever does, this test is
-      # the thing that has to fail.
+      # Keep the missing invalidation coupled to its premise: these fields do
+      # not currently affect dashboard health. If a checker starts reading
+      # either field, this assertion forces the writer contract to be updated.
+      assert Scenes.list_dashboard_health_findings(scene.project_id) == findings_before
       refute_receive {:dashboard_invalidate, :scenes}
     end
   end
@@ -231,6 +268,33 @@ defmodule Storyarn.Scenes.DashboardInvalidationTest do
     end
   end
 
+  describe "connection and annotation writes invalidate at the context boundary" do
+    test "a connection create emits exactly one post-commit event", %{scene: scene} do
+      first = pin_fixture(scene, %{"label" => "First"})
+      second = pin_fixture(scene, %{"label" => "Second"})
+      flush()
+
+      assert {:ok, _connection} =
+               Scenes.create_connection(scene.id, %{
+                 "from_pin_id" => first.id,
+                 "to_pin_id" => second.id
+               })
+
+      assert_receive {:dashboard_invalidate, :scenes}
+      refute_receive {:dashboard_invalidate, :scenes}, 10
+    end
+
+    test "an annotation move emits exactly one post-commit event", %{scene: scene} do
+      annotation = annotation_fixture(scene, %{"text" => "Move me"})
+      flush()
+
+      assert {:ok, _annotation} = Scenes.move_annotation(annotation, 90.0, 90.0)
+
+      assert_receive {:dashboard_invalidate, :scenes}
+      refute_receive {:dashboard_invalidate, :scenes}, 10
+    end
+  end
+
   defp triangle do
     [%{"x" => 5.0, "y" => 5.0}, %{"x" => 40.0, "y" => 5.0}, %{"x" => 20.0, "y" => 40.0}]
   end
@@ -240,6 +304,29 @@ defmodule Storyarn.Scenes.DashboardInvalidationTest do
       {:dashboard_invalidate, _} -> flush()
     after
       0 -> :ok
+    end
+  end
+
+  defp subscribe_dashboard_probe(project_id, tag) do
+    test_pid = self()
+
+    pid =
+      spawn(fn ->
+        Collaboration.subscribe_dashboard(project_id)
+        send(test_pid, {:dashboard_probe_ready, tag})
+        forward_dashboard_messages(test_pid, tag)
+      end)
+
+    assert_receive {:dashboard_probe_ready, ^tag}
+    on_exit(fn -> Process.exit(pid, :kill) end)
+    pid
+  end
+
+  defp forward_dashboard_messages(test_pid, tag) do
+    receive do
+      message ->
+        send(test_pid, {:dashboard_probe, tag, message})
+        forward_dashboard_messages(test_pid, tag)
     end
   end
 end

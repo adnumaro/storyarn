@@ -5,6 +5,7 @@ defmodule Storyarn.Scenes.ConnectionCrud do
 
   alias Storyarn.Repo
   alias Storyarn.Scenes.SceneConnection
+  alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Shared.MapUtils
 
@@ -46,7 +47,8 @@ defmodule Storyarn.Scenes.ConnectionCrud do
   def create_connection(scene_id, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(scene_id, fn scene ->
+    scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, attrs} <-
              SceneReferenceIntegrity.lock_connection_endpoints(scene, attrs) do
         %SceneConnection{scene_id: scene.id}
@@ -54,12 +56,14 @@ defmodule Storyarn.Scenes.ConnectionCrud do
         |> Repo.insert()
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(scene_id)
   end
 
   def update_connection(%SceneConnection{} = connection, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(connection.scene_id, fn scene ->
+    connection.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_connection} <-
              lock_connection_for_scene(connection.id, scene.id),
            {:ok, attrs} <-
@@ -73,6 +77,7 @@ defmodule Storyarn.Scenes.ConnectionCrud do
         |> Repo.update()
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(connection.scene_id)
   end
 
   @doc """
@@ -81,7 +86,8 @@ defmodule Storyarn.Scenes.ConnectionCrud do
   def update_connection_waypoints(%SceneConnection{} = connection, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(connection.scene_id, fn scene ->
+    connection.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_connection} <-
              lock_connection_for_scene(connection.id, scene.id),
            {:ok, _attrs} <-
@@ -95,15 +101,18 @@ defmodule Storyarn.Scenes.ConnectionCrud do
         |> Repo.update()
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(connection.scene_id)
   end
 
   def delete_connection(%SceneConnection{} = connection) do
-    SceneReferenceIntegrity.with_active_scene_lock(connection.scene_id, fn scene ->
+    connection.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_connection} <-
              lock_connection_for_scene(connection.id, scene.id) do
         Repo.delete(locked_connection)
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(connection.scene_id)
   end
 
   def change_connection(%SceneConnection{} = connection, attrs \\ %{}) do

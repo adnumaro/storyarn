@@ -10,7 +10,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
@@ -41,8 +40,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
 
     case Flows.create_connection_with_attrs(socket.assigns.flow, attrs) do
       {:ok, conn} ->
-        Collaboration.broadcast_dashboard_change(socket.assigns.flow.project_id, :flows)
-
         connection_data = %{
           id: conn.id,
           source_node_id: source_id,
@@ -83,8 +80,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
   def delete_connection(socket, params) do
     case delete_requested_connection(socket.assigns.flow.id, params) do
       {:ok, deletion_payload} ->
-        Collaboration.broadcast_dashboard_change(socket.assigns.flow.project_id, :flows)
-
         {:noreply,
          socket
          |> reload_flow_data()
@@ -111,8 +106,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
   def delete_connection_by_nodes(socket, source_id, target_id) do
     case Flows.delete_connection_by_nodes(socket.assigns.flow.id, source_id, target_id) do
       {deleted_count, _result} when deleted_count > 0 ->
-        Collaboration.broadcast_dashboard_change(socket.assigns.flow.project_id, :flows)
-
         {:noreply,
          socket
          |> reload_flow_data()

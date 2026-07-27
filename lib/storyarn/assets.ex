@@ -18,6 +18,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
+  alias Storyarn.Collaboration
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.SequenceConfig
@@ -247,14 +248,16 @@ defmodule Storyarn.Assets do
   """
   @spec delete_asset(asset()) :: {:ok, asset()} | {:error, changeset() | term()}
   def delete_asset(%Asset{id: asset_id, project_id: project_id}) do
-    Repo.transaction(fn ->
+    fn ->
       with {:ok, _project} <- lock_active_project_for_asset_write(project_id),
            {:ok, asset} <- lock_asset_for_write(asset_id, project_id) do
         delete_asset_in_transaction(asset)
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> Collaboration.broadcast_dashboard_result(project_id, :all)
   end
 
   defp delete_asset_in_transaction(asset) do

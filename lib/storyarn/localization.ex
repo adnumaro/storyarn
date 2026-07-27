@@ -197,6 +197,12 @@ defmodule Storyarn.Localization do
   @spec extract_flow_node(struct()) :: :ok
   defdelegate extract_flow_node(node), to: TextExtractor
 
+  @doc false
+  defdelegate flow_node_texts_current?(node, project_id), to: TextExtractor
+
+  @doc false
+  defdelegate flow_node_texts_current_ids(nodes, project_id), to: TextExtractor
+
   @doc "Extracts localizable runtime text from a block after its value is updated. No-op if nil."
   @spec extract_block(struct() | nil) :: :ok
   def extract_block(nil), do: :ok

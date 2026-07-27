@@ -7,6 +7,7 @@
       "all_sheets": "All Sheets",
       "issues": "Issues",
       "delete": "Delete",
+      "sheet_actions": "Sheet actions",
       "stats": {
         "sheets": "Sheets",
         "blocks": "Blocks",
@@ -72,6 +73,34 @@
         "formula_evaluation_failed": "The formula cannot be evaluated with the current values",
         "invalid_block_layout": "The column layout is inconsistent",
         "broken_inheritance": "The inherited block is out of sync with its source"
+      },
+      "issue_types": {
+        "missing_sheet_shortcut": "Missing sheet shortcut",
+        "empty_leaf_sheet": "Empty leaf sheet",
+        "missing_variable_name": "Missing variable name",
+        "no_internal_variable_usages": "No internal variable usages",
+        "stale_incoming_variable_reference": "Stale incoming variable reference",
+        "invalid_block_value": "Invalid block value",
+        "required_block_empty": "Empty required block",
+        "stale_reference_target": "Missing reference target",
+        "disallowed_reference_target": "Disallowed reference target",
+        "stale_inline_reference": "Stale inline reference",
+        "invalid_constraints": "Invalid constraints",
+        "value_outside_constraints": "Value outside constraints",
+        "invalid_select_option_keys": "Invalid select option identifiers",
+        "stale_selected_option": "Stale selected option",
+        "empty_select_options": "Empty select options",
+        "blank_option_label": "Blank option label",
+        "invalid_table_structure": "Invalid table structure",
+        "required_table_cell_empty": "Empty required table cell",
+        "unnamed_table_axis": "Unnamed table row or column",
+        "invalid_formula_expression": "Invalid formula expression",
+        "unbound_formula_symbol": "Unbound formula symbol",
+        "invalid_formula_binding": "Invalid formula binding",
+        "cyclic_formula_dependency": "Cyclic formula dependency",
+        "formula_evaluation_failed": "Formula evaluation failure",
+        "invalid_block_layout": "Invalid block layout",
+        "broken_inheritance": "Broken inheritance"
       }
     },
     "metadata": {

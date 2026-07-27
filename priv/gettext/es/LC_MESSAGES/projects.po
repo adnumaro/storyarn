@@ -102,6 +102,25 @@ msgid_plural "Repaired %{count} nodes."
 msgstr[0] "%{count} nodo reparado."
 msgstr[1] "%{count} nodos reparados."
 
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:81
+#, elixir-autogen, elixir-format
+msgid "%{count} node repaired"
+msgid_plural "%{count} nodes repaired"
+msgstr[0] "%{count} nodo reparado"
+msgstr[1] "%{count} nodos reparados"
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:90
+#, elixir-autogen, elixir-format
+msgid "%{count} node failed"
+msgid_plural "%{count} nodes failed"
+msgstr[0] "%{count} nodo fallido"
+msgstr[1] "%{count} nodos fallidos"
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:98
+#, elixir-autogen, elixir-format
+msgid "Repair partially completed: %{repaired}; %{failed}."
+msgstr "Reparación parcial: %{repaired}; %{failed}."
+
 #: lib/storyarn_web/live/project_live/form.ex:22
 #, elixir-autogen, elixir-format
 msgid "Save"

@@ -6,6 +6,8 @@ defmodule Storyarn.Localization.TextExtractor do
   defdelegate extract_all(project_id), to: LocalizableWords
   defdelegate extract_locale(project_id, locale_code), to: LocalizableWords
   defdelegate extract_flow_node(node), to: LocalizableWords
+  defdelegate flow_node_texts_current?(node, project_id), to: LocalizableWords
+  defdelegate flow_node_texts_current_ids(nodes, project_id), to: LocalizableWords
   defdelegate extract_block(block), to: LocalizableWords
   defdelegate extract_flow_nodes(flow_id), to: LocalizableWords
   defdelegate extract_sheet_blocks(sheet_id), to: LocalizableWords

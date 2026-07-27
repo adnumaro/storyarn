@@ -208,8 +208,16 @@ defmodule Storyarn.Projects.ProjectCrud do
   """
   def delete_project(%Project{} = project, user_id) do
     Repo.transact(fn ->
+      locked_project =
+        Repo.one(
+          from(candidate in Project,
+            where: candidate.id == ^project.id,
+            lock: "FOR UPDATE"
+          )
+        ) || Repo.rollback(:not_found)
+
       result =
-        project
+        locked_project
         |> Project.soft_delete_changeset(%{
           deleted_at: TimeHelpers.now(),
           deleted_by_id: user_id

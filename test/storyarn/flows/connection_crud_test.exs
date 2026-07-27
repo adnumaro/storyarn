@@ -5,6 +5,7 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
 
   # ===========================================================================
@@ -33,6 +34,174 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
       type: "dialogue",
       data: %{"text" => "Choose", "responses" => responses}
     })
+  end
+
+  describe "dashboard invalidation" do
+    test "both create variants invalidate once after commit while errors and internal writes do not" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      entry = get_entry_node(flow)
+      first = node_fixture(flow, %{type: "dialogue"})
+      second = node_fixture(flow, %{type: "dialogue"})
+      third = node_fixture(flow, %{type: "dialogue"})
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      attrs = %{source_pin: "output", target_pin: "input"}
+
+      assert {:ok, _connection} =
+               Flows.create_connection(flow, entry, first, attrs)
+
+      assert_dashboard_invalidation_once()
+
+      assert {:ok, _connection} =
+               Flows.create_connection_with_attrs(flow, %{
+                 source_node_id: first.id,
+                 target_node_id: second.id,
+                 source_pin: "output",
+                 target_pin: "input"
+               })
+
+      assert_dashboard_invalidation_once()
+
+      assert {:error, _changeset} =
+               Flows.create_connection(flow, entry, first, attrs)
+
+      refute_dashboard_invalidation()
+
+      assert {:ok, _connection} =
+               Flows.create_connection_without_dashboard_broadcast(flow, %{
+                 source_node_id: second.id,
+                 target_node_id: third.id,
+                 source_pin: "output",
+                 target_pin: "input"
+               })
+
+      refute_dashboard_invalidation()
+    end
+
+    test "update invalidates changed data once while failure and no-op emit nothing" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      entry = get_entry_node(flow)
+      dialogue = node_fixture(flow, %{type: "dialogue"})
+      connection = connection_fixture(flow, entry, dialogue)
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, updated} =
+               Flows.update_connection(connection, %{label: "Updated"})
+
+      assert_dashboard_invalidation_once()
+
+      assert {:ok, unchanged} =
+               Flows.update_connection(updated, %{label: "Updated"})
+
+      assert unchanged.label == "Updated"
+      refute_dashboard_invalidation()
+
+      assert {:error, _changeset} =
+               Flows.update_connection(updated, %{
+                 label: String.duplicate("x", 201)
+               })
+
+      refute_dashboard_invalidation()
+    end
+
+    test "entity and id deletes each invalidate once while a stale delete emits nothing" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      entry = get_entry_node(flow)
+      first = node_fixture(flow, %{type: "dialogue"})
+      second = node_fixture(flow, %{type: "dialogue"})
+      first_connection = connection_fixture(flow, entry, first)
+      second_connection = connection_fixture(flow, first, second)
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, _deleted} = Flows.delete_connection(first_connection)
+      assert_dashboard_invalidation_once()
+
+      assert {:ok, _deleted} =
+               Flows.delete_connection_by_id(flow.id, second_connection.id)
+
+      assert_dashboard_invalidation_once()
+
+      assert {:error, :connection_not_found} =
+               Flows.delete_connection_by_id(flow.id, second_connection.id)
+
+      refute_dashboard_invalidation()
+    end
+
+    test "counted delete variants invalidate only when at least one row changes" do
+      %{project: project, flow: flow} = create_project_and_flow()
+
+      [first, second, third, fourth, fifth, sixth] =
+        for _index <- 1..6, do: node_fixture(flow, %{type: "dialogue"})
+
+      _by_nodes = connection_fixture(flow, first, second)
+      _by_pins = connection_fixture(flow, third, fourth)
+      _among_nodes = connection_fixture(flow, fifth, sixth)
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {1, nil} =
+               Flows.delete_connection_by_nodes(flow.id, first.id, second.id)
+
+      assert_dashboard_invalidation_once()
+
+      assert {0, nil} =
+               Flows.delete_connection_by_nodes(flow.id, first.id, second.id)
+
+      refute_dashboard_invalidation()
+
+      assert {1, nil} =
+               Flows.delete_connection_by_pins(
+                 flow.id,
+                 third.id,
+                 "output",
+                 fourth.id,
+                 "input"
+               )
+
+      assert_dashboard_invalidation_once()
+
+      assert {0, nil} =
+               Flows.delete_connection_by_pins(
+                 flow.id,
+                 third.id,
+                 "output",
+                 fourth.id,
+                 "input"
+               )
+
+      refute_dashboard_invalidation()
+
+      assert {1, nil} =
+               Flows.delete_connections_among_nodes(flow.id, [
+                 fifth.id,
+                 sixth.id
+               ])
+
+      assert_dashboard_invalidation_once()
+
+      assert {0, nil} =
+               Flows.delete_connections_among_nodes(flow.id, [
+                 fifth.id,
+                 sixth.id
+               ])
+
+      refute_dashboard_invalidation()
+    end
+
+    test "internal bulk deletion preserves its result without broadcasting" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      first = node_fixture(flow, %{type: "dialogue"})
+      second = node_fixture(flow, %{type: "dialogue"})
+      _connection = connection_fixture(flow, first, second)
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {1, nil} =
+               Flows.delete_connections_among_nodes_without_dashboard_broadcast(
+                 flow.id,
+                 [first.id, second.id]
+               )
+
+      refute_dashboard_invalidation()
+    end
   end
 
   # ===========================================================================
@@ -788,5 +957,14 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
       changeset = Flows.change_connection(conn)
       assert changeset.valid?
     end
+  end
+
+  defp assert_dashboard_invalidation_once do
+    assert_receive {:dashboard_invalidate, :flows}
+    refute_receive {:dashboard_invalidate, :flows}, 10
+  end
+
+  defp refute_dashboard_invalidation do
+    refute_receive {:dashboard_invalidate, :flows}, 10
   end
 end

@@ -37,8 +37,8 @@ assets/app/
 │                       and is addressed as v-component="live/{domain}/{page}/{Name}"
 ├── shell/            — App chrome: sidebars, project navbar, dashboard frame
 ├── components/       — Shared UI. ui/ = shadcn-vue/reka-ui primitives; also ai/,
-│                       builders/, collab/, command-palette/, forms/, health/,
-│                       invitations/, language/, navigation/, onboarding/,
+│                       builders/, collab/, command-palette/, dashboard/, forms/,
+│                       health/, invitations/, language/, navigation/, onboarding/,
 │                       toolbar/, versioning/
 ├── shared/           — Cross-domain code
 │   ├── utils/          — Pure utilities (utils.ts, date-utils.ts)

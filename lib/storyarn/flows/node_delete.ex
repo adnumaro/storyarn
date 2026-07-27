@@ -17,6 +17,27 @@ defmodule Storyarn.Flows.NodeDelete do
     |> maybe_broadcast_delete()
   end
 
+  @doc false
+  def delete_node_without_dashboard_broadcast(%FlowNode{} = node_hint) do
+    case do_delete_node(node_hint) do
+      {:ok, deleted_node, meta, _project_id} -> {:ok, deleted_node, meta}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  @doc false
+  def delete_node_in_transaction_without_dashboard_broadcast(%FlowNode{} = node_hint) do
+    if Repo.in_transaction?() do
+      case delete_node_in_transaction(node_hint) do
+        {:ok, {deleted_node, meta, _project_id}} -> {:ok, deleted_node, meta}
+        {:error, _reason} = error -> error
+      end
+    else
+      raise ArgumentError,
+            "delete_node_in_transaction_without_dashboard_broadcast/1 requires an active transaction"
+    end
+  end
+
   @doc """
   Restores a soft-deleted node by clearing its deleted_at timestamp.
   Returns {:ok, :already_active} if the node is not deleted (idempotent for redo safety).
@@ -24,7 +45,7 @@ defmodule Storyarn.Flows.NodeDelete do
   def restore_node(flow_id, node_id) when is_integer(flow_id) and is_integer(node_id) do
     fn ->
       with {:ok, %{project_id: project_id}} <-
-             ReferenceIntegrity.lock_active_flow_for_write(flow_id),
+             ReferenceIntegrity.lock_active_flow_for_write(flow_id, :update),
            %FlowNode{} = node <- lock_node_in_flow(node_id, flow_id) do
         restore_locked_node(node, project_id)
       else
@@ -146,17 +167,8 @@ defmodule Storyarn.Flows.NodeDelete do
 
   defp do_delete_node(node_hint) do
     fn ->
-      with {:ok, %{node: node, project_id: project_id}} <-
-             ReferenceIntegrity.lock_active_node_for_write(node_hint),
-           :ok <- validate_deletable_node(node) do
-        orphaned_count = maybe_clear_orphaned_jumps(node)
-
-        References.delete_flow_node_entity_references(node.id)
-        References.delete_flow_node_variable_references(node.id)
-        Localization.delete_flow_node_texts(node.id)
-
-        soft_delete_locked_node(node, orphaned_count, project_id)
-      else
+      case delete_node_in_transaction(node_hint) do
+        {:ok, result} -> result
         {:error, reason} -> Repo.rollback(reason)
       end
     end
@@ -164,13 +176,27 @@ defmodule Storyarn.Flows.NodeDelete do
     |> unwrap_delete_result()
   end
 
+  defp delete_node_in_transaction(node_hint) do
+    with {:ok, %{node: node, project_id: project_id}} <-
+           ReferenceIntegrity.lock_active_node_for_write(node_hint, :update),
+         :ok <- validate_deletable_node(node) do
+      orphaned_count = maybe_clear_orphaned_jumps(node)
+
+      References.delete_flow_node_entity_references(node.id)
+      References.delete_flow_node_variable_references(node.id)
+      Localization.delete_flow_node_texts(node.id)
+
+      soft_delete_locked_node(node, orphaned_count, project_id)
+    end
+  end
+
   defp soft_delete_locked_node(node, orphaned_count, project_id) do
     case node |> FlowNode.soft_delete_changeset() |> Repo.update() do
       {:ok, deleted_node} ->
-        {deleted_node, %{orphaned_jumps: orphaned_count}, project_id}
+        {:ok, {deleted_node, %{orphaned_jumps: orphaned_count}, project_id}}
 
       {:error, changeset} ->
-        Repo.rollback(changeset)
+        {:error, changeset}
     end
   end
 
@@ -212,22 +238,35 @@ defmodule Storyarn.Flows.NodeDelete do
   defp clear_orphaned_jumps(flow_id, hub_id) when is_binary(hub_id) and hub_id != "" do
     now = Storyarn.Shared.TimeHelpers.now()
 
-    query =
+    matching_jumps =
       from(n in FlowNode,
         where: n.flow_id == ^flow_id and n.type == "jump",
-        where: fragment("?->>'target_hub_id' = ?", n.data, ^hub_id),
-        update: [
-          set: [
-            data: fragment("jsonb_set(?, '{target_hub_id}', '\"\"'::jsonb)", n.data),
-            updated_at: ^now
-          ]
-        ]
+        where: fragment("?->>'target_hub_id' = ?", n.data, ^hub_id)
       )
 
-    {count, _} = Repo.update_all(query, [])
+    {active_count, _} =
+      matching_jumps
+      |> where([n], is_nil(n.deleted_at))
+      |> clear_jump_targets(now)
 
-    count
+    matching_jumps
+    |> where([n], not is_nil(n.deleted_at))
+    |> clear_jump_targets(now)
+
+    active_count
   end
 
   defp clear_orphaned_jumps(_flow_id, _hub_id), do: 0
+
+  defp clear_jump_targets(query, now) do
+    query
+    |> update([n],
+      set: [
+        data: fragment("jsonb_set(?, '{target_hub_id}', '\"\"'::jsonb)", n.data),
+        derivatives_fingerprint: nil,
+        updated_at: ^now
+      ]
+    )
+    |> Repo.update_all([])
+  end
 end

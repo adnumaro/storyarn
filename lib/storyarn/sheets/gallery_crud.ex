@@ -3,6 +3,7 @@ defmodule Storyarn.Sheets.GalleryCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Collaboration
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
@@ -59,28 +60,32 @@ defmodule Storyarn.Sheets.GalleryCrud do
 
   @doc "Adds a single image to a gallery block."
   def add_gallery_image(%Block{id: block_id, type: "gallery"}, asset_id) do
-    Repo.transaction(fn ->
+    fn ->
       {project_id, sheet_id} = fetch_gallery_owner!(block_id)
       lock_active_project!(project_id)
       sheet = lock_active_sheet!(sheet_id, project_id)
       _block = lock_active_gallery!(block_id, sheet.id)
       normalized_asset_id = sheet.project_id |> lock_gallery_assets!([asset_id]) |> hd()
 
-      insert_gallery_image!(block_id, normalized_asset_id)
-    end)
+      {insert_gallery_image!(block_id, normalized_asset_id), project_id}
+    end
+    |> Repo.transaction()
+    |> broadcast_gallery_result()
   end
 
   @doc "Adds multiple images to a gallery block in batch."
   def add_gallery_images(%Block{id: block_id, type: "gallery"}, asset_ids) when is_list(asset_ids) do
-    Repo.transaction(fn ->
+    fn ->
       {project_id, sheet_id} = fetch_gallery_owner!(block_id)
       lock_active_project!(project_id)
       sheet = lock_active_sheet!(sheet_id, project_id)
       _block = lock_active_gallery!(block_id, sheet.id)
       normalized_asset_ids = lock_gallery_assets!(sheet.project_id, asset_ids)
 
-      Enum.map(normalized_asset_ids, &insert_gallery_image!(block_id, &1))
-    end)
+      {Enum.map(normalized_asset_ids, &insert_gallery_image!(block_id, &1)), project_id}
+    end
+    |> Repo.transaction()
+    |> broadcast_gallery_result()
   end
 
   # ===========================================================================
@@ -90,7 +95,7 @@ defmodule Storyarn.Sheets.GalleryCrud do
   @doc "Updates a gallery image's label and description."
   def update_gallery_image(%BlockGalleryImage{} = gallery_image, attrs) do
     Repo.transaction(fn ->
-      persisted_image =
+      {persisted_image, _project_id} =
         lock_active_gallery_image_writer!(
           gallery_image.id,
           expected_block_id: gallery_image.block_id
@@ -112,18 +117,20 @@ defmodule Storyarn.Sheets.GalleryCrud do
   @doc "Removes a gallery image (hard delete), verifying it belongs to a block owned by the given sheet."
   def remove_gallery_image(sheet_id, gallery_image_id)
       when is_integer(sheet_id) and sheet_id > 0 and is_integer(gallery_image_id) and gallery_image_id > 0 do
-    Repo.transaction(fn ->
-      image =
+    fn ->
+      {image, project_id} =
         lock_active_gallery_image_writer!(
           gallery_image_id,
           expected_sheet_id: sheet_id
         )
 
       case Repo.delete(image) do
-        {:ok, deleted} -> deleted
+        {:ok, deleted} -> {deleted, project_id}
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_gallery_result()
   end
 
   def remove_gallery_image(_sheet_id, _gallery_image_id), do: {:error, :not_found}
@@ -287,13 +294,23 @@ defmodule Storyarn.Sheets.GalleryCrud do
     lock_active_sheet!(sheet_id, project_id)
     lock_active_gallery!(block_id, sheet_id)
 
-    Repo.one(
-      from(image in BlockGalleryImage,
-        where: image.id == ^image_id and image.block_id == ^block_id,
-        lock: "FOR UPDATE"
-      )
-    ) || Repo.rollback(:not_found)
+    image =
+      Repo.one(
+        from(image in BlockGalleryImage,
+          where: image.id == ^image_id and image.block_id == ^block_id,
+          lock: "FOR UPDATE"
+        )
+      ) || Repo.rollback(:not_found)
+
+    {image, project_id}
   end
+
+  defp broadcast_gallery_result({:ok, {value, project_id}}) do
+    Collaboration.broadcast_dashboard_change(project_id, :sheets)
+    {:ok, value}
+  end
+
+  defp broadcast_gallery_result(result), do: result
 
   defp normalize_reorder_ids!(ordered_ids) do
     if Enum.all?(ordered_ids, &(is_integer(&1) and &1 > 0)) and

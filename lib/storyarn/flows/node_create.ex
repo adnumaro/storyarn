@@ -6,8 +6,8 @@ defmodule Storyarn.Flows.NodeCreate do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.NodeUpdate
   alias Storyarn.Flows.ReferenceIntegrity
-  alias Storyarn.Localization
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
@@ -16,13 +16,62 @@ defmodule Storyarn.Flows.NodeCreate do
   # Prevents infinite recursion in circular reference detection
   @max_reference_depth 20
 
-  def create_node(%Flow{} = flow, attrs) do
-    attrs = stringify_keys(attrs)
+  @batch_circular_references_sql """
+  WITH RECURSIVE candidates AS (
+    SELECT DISTINCT source_flow_id, target_flow_id
+    FROM unnest($1::bigint[], $2::bigint[])
+      AS pair(source_flow_id, target_flow_id)
+  ),
+  reference_walk AS (
+    SELECT
+      source_flow_id,
+      target_flow_id,
+      target_flow_id AS current_flow_id,
+      ARRAY[]::bigint[] AS visited_flow_ids,
+      0 AS depth
+    FROM candidates
 
-    result =
-      fn -> create_node_in_transaction(flow, attrs) end
-      |> Repo.transaction()
-      |> normalize_item_limit_result()
+    UNION ALL
+
+    SELECT
+      walk.source_flow_id,
+      walk.target_flow_id,
+      reference.target_flow_id AS current_flow_id,
+      array_append(walk.visited_flow_ids, walk.current_flow_id),
+      walk.depth + 1
+    FROM reference_walk AS walk
+    JOIN LATERAL (
+      SELECT DISTINCT
+        (node.data->>'referenced_flow_id')::integer AS target_flow_id
+      FROM flow_nodes AS node
+      WHERE
+        node.flow_id = walk.current_flow_id
+        AND node.deleted_at IS NULL
+        AND node.data->>'referenced_flow_id' ~ '^[0-9]+$'
+        AND (
+          node.type = 'subflow'
+          OR (
+            node.type = 'exit'
+            AND node.data->>'exit_mode' = 'flow_reference'
+          )
+        )
+    ) AS reference ON TRUE
+    WHERE
+      walk.depth <= $3
+      AND walk.current_flow_id <> walk.source_flow_id
+      AND NOT walk.current_flow_id = ANY(walk.visited_flow_ids)
+  )
+  SELECT source_flow_id, target_flow_id
+  FROM reference_walk
+  GROUP BY source_flow_id, target_flow_id
+  HAVING bool_or(
+    depth > $3
+    OR current_flow_id = source_flow_id
+  )
+  """
+
+  def create_node(%Flow{} = flow, attrs) do
+    result = create_node_without_dashboard_broadcast(flow, attrs)
 
     case result do
       {:ok, _node} ->
@@ -33,6 +82,15 @@ defmodule Storyarn.Flows.NodeCreate do
     end
 
     result
+  end
+
+  @doc false
+  def create_node_without_dashboard_broadcast(%Flow{} = flow, attrs) do
+    attrs = stringify_keys(attrs)
+
+    fn -> create_node_in_transaction(flow, attrs) end
+    |> Repo.transaction()
+    |> normalize_item_limit_result()
   end
 
   defp create_node_in_transaction(flow, attrs) do
@@ -59,7 +117,7 @@ defmodule Storyarn.Flows.NodeCreate do
       attrs
       |> Map.put("parent_id", parent_id)
       |> Map.put("data", normalized_data)
-      |> then(&create_and_extract_node(locked_flow, &1))
+      |> then(&create_and_reconcile_node(locked_flow, &1))
     else
       {:error, reason, details} ->
         Repo.rollback({reason, details})
@@ -79,11 +137,9 @@ defmodule Storyarn.Flows.NodeCreate do
 
   defp normalize_item_limit_result(result), do: result
 
-  defp create_and_extract_node(flow, attrs) do
-    with {:ok, node} <- create_node_by_type(flow, attrs),
-         :ok <- Localization.extract_flow_node(node) do
-      node
-    else
+  defp create_and_reconcile_node(flow, attrs) do
+    case create_node_by_type(flow, attrs) do
+      {:ok, node} -> NodeUpdate.reconcile_persisted_node(node, flow.project_id)
       {:error, reason} -> Repo.rollback(reason)
     end
   end
@@ -92,6 +148,7 @@ defmodule Storyarn.Flows.NodeCreate do
     case attrs["type"] do
       "entry" -> create_entry_node(flow, attrs)
       "hub" -> create_hub_node(flow, attrs)
+      "sequence" -> {:error, :sequence_requires_sequence_api}
       _ -> insert_node(flow, attrs)
     end
   end
@@ -109,20 +166,29 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp create_hub_node(flow, attrs) do
-    hub_id = get_in(attrs, ["data", "hub_id"])
-    hub_id = if hub_id == nil || hub_id == "", do: generate_hub_id(flow.id), else: hub_id
-
-    Repo.transaction(fn ->
-      lock_flow!(flow.id)
-
-      if NodeCrud.hub_id_exists?(flow.id, hub_id, nil) do
-        Repo.rollback(:hub_id_not_unique)
-      else
-        updated_data = Map.put(attrs["data"] || %{}, "hub_id", hub_id)
-        insert_node_or_rollback(flow, Map.put(attrs, "data", updated_data))
-      end
-    end)
+    with {:ok, hub_id} <- resolve_hub_id(flow.id, get_in(attrs, ["data", "hub_id"])) do
+      Repo.transaction(fn -> create_hub_node_transaction(flow, attrs, hub_id) end)
+    end
   end
+
+  defp create_hub_node_transaction(flow, attrs, hub_id) do
+    lock_flow!(flow.id)
+
+    if NodeCrud.hub_id_exists?(flow.id, hub_id, nil) do
+      Repo.rollback(:hub_id_not_unique)
+    else
+      updated_data = Map.put(attrs["data"] || %{}, "hub_id", hub_id)
+      insert_node_or_rollback(flow, Map.put(attrs, "data", updated_data))
+    end
+  end
+
+  defp resolve_hub_id(flow_id, hub_id) when hub_id in [nil, ""], do: {:ok, generate_hub_id(flow_id)}
+
+  defp resolve_hub_id(_flow_id, hub_id) when is_binary(hub_id) do
+    if String.trim(hub_id) == "", do: {:error, :hub_id_required}, else: {:ok, hub_id}
+  end
+
+  defp resolve_hub_id(_flow_id, _hub_id), do: {:error, :hub_id_required}
 
   defp insert_node_or_rollback(flow, attrs) do
     case insert_node(flow, attrs) do
@@ -137,11 +203,16 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp insert_node(%Flow{} = flow, attrs) do
-    word_count = WordCount.for_node_data(attrs["type"], attrs["data"])
+    changeset = FlowNode.create_changeset(%FlowNode{flow_id: flow.id}, attrs)
+    type = Ecto.Changeset.get_field(changeset, :type)
+    data = Ecto.Changeset.get_field(changeset, :data)
 
-    %FlowNode{flow_id: flow.id}
-    |> FlowNode.create_changeset(attrs)
-    |> Ecto.Changeset.put_change(:word_count, word_count)
+    changeset
+    |> Ecto.Changeset.put_change(:word_count, WordCount.for_node_data(type, data))
+    |> Ecto.Changeset.put_change(
+      :derivatives_fingerprint,
+      NodeUpdate.derivatives_fingerprint(type, data)
+    )
     |> Repo.insert()
   end
 
@@ -168,6 +239,31 @@ defmodule Storyarn.Flows.NodeCreate do
   """
   def has_circular_reference?(source_flow_id, target_flow_id) do
     do_check_circular(source_flow_id, target_flow_id, MapSet.new(), 0)
+  end
+
+  @doc false
+  @spec circular_reference_pairs([{integer(), integer()}]) ::
+          MapSet.t({integer(), integer()})
+  def circular_reference_pairs([]), do: MapSet.new()
+
+  def circular_reference_pairs(pairs) when is_list(pairs) do
+    pairs =
+      pairs
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    {source_flow_ids, target_flow_ids} = Enum.unzip(pairs)
+
+    @batch_circular_references_sql
+    |> Repo.query!([
+      source_flow_ids,
+      target_flow_ids,
+      @max_reference_depth
+    ])
+    |> Map.fetch!(:rows)
+    |> MapSet.new(fn [source_flow_id, target_flow_id] ->
+      {source_flow_id, target_flow_id}
+    end)
   end
 
   defp do_check_circular(source_flow_id, current_flow_id, visited, depth) do

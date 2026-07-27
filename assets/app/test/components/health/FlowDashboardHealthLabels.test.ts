@@ -14,9 +14,9 @@ function mountDashboard(issues: FlowDashboardIssue[]) {
       tableData: [],
       pagination: { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 1 },
       issues,
+      overviewStatus: "ready",
+      issuesStatus: "ready",
       canEdit: false,
-      workspaceSlug: "ws",
-      projectSlug: "story",
     },
     global: { provide: { _live_vue: createMockLive() } },
   });
@@ -24,10 +24,16 @@ function mountDashboard(issues: FlowDashboardIssue[]) {
 
 function issue(overrides: Partial<FlowDashboardIssue>): FlowDashboardIssue {
   return {
+    id: "flow:warning:7",
     severity: "warning",
     code: "missing_output_connections",
     label: "Opening · Condition #7",
     href: "/workspaces/ws/projects/story/flows/1",
+    flow_id: 1,
+    entity_type: "condition",
+    entity_id: 7,
+    resource_id: 1,
+    resource_label: "Opening",
     ...overrides,
   };
 }

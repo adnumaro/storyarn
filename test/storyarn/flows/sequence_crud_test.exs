@@ -5,6 +5,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
@@ -21,6 +22,20 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   end
 
   describe "create_sequence/2" do
+    test "invalidates the flows dashboard once after commit and not on error" do
+      %{flow: flow, project: project} = setup_flow()
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, %FlowNode{type: "sequence"}} =
+               Flows.create_sequence(flow.id, %{"name" => "Opening"})
+
+      assert_receive {:dashboard_invalidate, :flows}
+      refute_receive {:dashboard_invalidate, :flows}, 10
+
+      assert {:error, %Ecto.Changeset{}} = Flows.create_sequence(flow.id, %{})
+      refute_receive {:dashboard_invalidate, :flows}, 10
+    end
+
     test "creates a sequence flow_node + sequence_config" do
       %{flow: flow} = setup_flow()
 
@@ -425,6 +440,25 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   end
 
   describe "delete_sequence/1 and restore_sequence/1" do
+    test "each committed transition invalidates once while repeated transitions emit nothing" do
+      %{flow: flow, project: project} = setup_flow()
+      {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, deleted} = Flows.delete_sequence(sequence)
+      assert_dashboard_invalidation_once()
+
+      assert {:error, :node_not_found} = Flows.delete_sequence(sequence)
+      refute_dashboard_invalidation()
+
+      assert {:ok, restored} = Flows.restore_sequence(deleted)
+      assert is_nil(restored.deleted_at)
+      assert_dashboard_invalidation_once()
+
+      assert {:error, :sequence_not_deleted} = Flows.restore_sequence(deleted)
+      refute_dashboard_invalidation()
+    end
+
     test "reloads the persisted node so a forged type cannot delete a dialogue" do
       %{flow: flow} = setup_flow()
       dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Keep me"}})
@@ -542,6 +576,18 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   end
 
   describe "wrap_selection_in_sequence/3" do
+    test "invalidates once for the whole committed wrap, not for its nested sequence insert" do
+      %{flow: flow, project: project} = setup_flow()
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "a"}})
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, %FlowNode{type: "sequence"}} =
+               Flows.wrap_selection_in_sequence(flow, [node.id], %{"name" => "Opening"})
+
+      assert_receive {:dashboard_invalidate, :flows}
+      refute_receive {:dashboard_invalidate, :flows}, 10
+    end
+
     test "wraps a single node: creates sequence + sets parent_id" do
       %{flow: flow} = setup_flow()
       n1 = node_fixture(flow, %{type: "dialogue", data: %{"text" => "a"}})
@@ -718,5 +764,14 @@ defmodule Storyarn.Flows.SequenceCrudTest do
                      |> Repo.update!()
                    end
     end
+  end
+
+  defp assert_dashboard_invalidation_once do
+    assert_receive {:dashboard_invalidate, :flows}
+    refute_receive {:dashboard_invalidate, :flows}, 10
+  end
+
+  defp refute_dashboard_invalidation do
+    refute_receive {:dashboard_invalidate, :flows}, 10
   end
 end

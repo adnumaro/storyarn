@@ -14,6 +14,7 @@ defmodule Storyarn.Flows.NodeCrud do
   alias Storyarn.Flows.NodeCreate
   alias Storyarn.Flows.NodeDelete
   alias Storyarn.Flows.NodeUpdate
+  alias Storyarn.Flows.ReferenceIntegrity
   alias Storyarn.Repo
 
   # =============================================================================
@@ -30,6 +31,22 @@ defmodule Storyarn.Flows.NodeCrud do
         order_by: [asc: n.inserted_at, asc: n.id]
       )
     )
+  end
+
+  @doc false
+  def lock_flow_nodes_for_update(%Flow{} = flow) do
+    with {:ok, %{flow: locked_flow}} <-
+           ReferenceIntegrity.lock_active_flow_for_write(flow, :key_share) do
+      nodes =
+        Repo.all(
+          from(n in FlowNode,
+            where: n.flow_id == ^locked_flow.id and is_nil(n.deleted_at),
+            order_by: [asc: n.id]
+          )
+        )
+
+      {:ok, {locked_flow, nodes}}
+    end
   end
 
   @doc """
@@ -478,15 +495,23 @@ defmodule Storyarn.Flows.NodeCrud do
   # =============================================================================
 
   defdelegate create_node(flow, attrs), to: NodeCreate
+  defdelegate create_node_without_dashboard_broadcast(flow, attrs), to: NodeCreate
   defdelegate has_circular_reference?(source_flow_id, target_flow_id), to: NodeCreate
 
   defdelegate update_node(node, attrs), to: NodeUpdate
+  defdelegate update_node_without_dashboard_broadcast(node, attrs), to: NodeUpdate
+
   defdelegate update_node_position(node, attrs), to: NodeUpdate
   defdelegate update_node_parent(node, parent_id), to: NodeUpdate
   defdelegate batch_update_positions(flow_id, positions), to: NodeUpdate
   defdelegate update_node_data(node, data), to: NodeUpdate
+  defdelegate update_node_data_without_dashboard_broadcast(node, data), to: NodeUpdate
+  defdelegate data_and_derivatives_current?(node, data, project_id), to: NodeUpdate
+  defdelegate data_and_derivatives_current_ids(node_data_pairs, project_id), to: NodeUpdate
   defdelegate change_node(node, attrs \\ %{}), to: NodeUpdate
 
   defdelegate delete_node(node), to: NodeDelete
+  defdelegate delete_node_without_dashboard_broadcast(node), to: NodeDelete
+  defdelegate delete_node_in_transaction_without_dashboard_broadcast(node), to: NodeDelete
   defdelegate restore_node(flow_id, node_id), to: NodeDelete
 end

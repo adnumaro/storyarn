@@ -9,6 +9,8 @@
       "main": "Main",
       "set_main": "Set as main",
       "delete": "Delete",
+      "flow_actions": "Flow actions",
+      "total_flows": "{n} flow | {n} flows",
       "columns": {
         "name": "Name",
         "nodes": "Nodes",
@@ -424,6 +426,35 @@
         "incomplete_instruction_assignment": "Incomplete instruction assignment",
         "empty_instruction": "No instruction assignments",
         "empty_condition": "Condition has no rules"
+      },
+      "issue_types": {
+        "missing_entry": "Missing Entry node",
+        "multiple_entries": "Multiple Entry nodes",
+        "unreachable_node": "Unreachable node",
+        "isolated_node": "Isolated node",
+        "no_outgoing_connection": "Missing outgoing connection",
+        "missing_output_connections": "Unconnected output pins",
+        "invalid_output_pins": "Connection on removed output pin",
+        "invalid_input_pins": "Connection on invalid input pin",
+        "orphan_hub": "Unreachable hub",
+        "missing_jump_target": "Missing jump target",
+        "stale_jump_target": "Missing jump target resource",
+        "missing_subflow_reference": "Missing subflow reference",
+        "stale_subflow_reference": "Deleted subflow reference",
+        "missing_exit_flow_reference": "Missing Exit flow reference",
+        "stale_exit_flow_reference": "Deleted Exit flow reference",
+        "stale_variable_reference": "Stale variable reference",
+        "variable_type_mismatch": "Variable type mismatch",
+        "response_type_mismatch": "Response type mismatch",
+        "missing_dialogue_text": "Missing dialogue text",
+        "missing_dialogue_speaker": "Missing dialogue speaker",
+        "empty_dialogue_response": "Empty dialogue response",
+        "incomplete_response_condition": "Incomplete response condition",
+        "incomplete_response_assignment": "Incomplete response assignment",
+        "incomplete_condition": "Incomplete condition",
+        "incomplete_instruction_assignment": "Incomplete instruction assignment",
+        "empty_instruction": "Empty instruction",
+        "empty_condition": "Empty condition"
       }
     }
   }

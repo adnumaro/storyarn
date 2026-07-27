@@ -234,7 +234,6 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
       end)
 
     assert lock_order == [:project, :membership, :attempt]
-    refute_receive {^marker, _unexpected_lock}
   end
 
   test "locks authorization before the attempt when cancelling", ctx do

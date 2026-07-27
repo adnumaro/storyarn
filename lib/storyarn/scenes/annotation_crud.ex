@@ -6,6 +6,7 @@ defmodule Storyarn.Scenes.AnnotationCrud do
   alias Storyarn.Repo
   alias Storyarn.Scenes.PositionUtils
   alias Storyarn.Scenes.SceneAnnotation
+  alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Shared.MapUtils
 
@@ -24,7 +25,8 @@ defmodule Storyarn.Scenes.AnnotationCrud do
   def create_annotation(scene_id, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(scene_id, fn scene ->
+    scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with :ok <-
              PositionUtils.lock_requested_layer_for_scene(scene.id, attrs) do
         position = PositionUtils.next_position(SceneAnnotation, scene.id)
@@ -34,12 +36,14 @@ defmodule Storyarn.Scenes.AnnotationCrud do
         |> Repo.insert()
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(scene_id)
   end
 
   def update_annotation(%SceneAnnotation{} = annotation, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    SceneReferenceIntegrity.with_active_scene_lock(annotation.scene_id, fn scene ->
+    annotation.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_annotation} <-
              lock_annotation_for_scene(annotation.id, scene.id),
            :ok <-
@@ -53,10 +57,12 @@ defmodule Storyarn.Scenes.AnnotationCrud do
         |> Repo.update()
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(annotation.scene_id)
   end
 
   def move_annotation(%SceneAnnotation{} = annotation, position_x, position_y) do
-    SceneReferenceIntegrity.with_active_scene_lock(annotation.scene_id, fn scene ->
+    annotation.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_annotation} <-
              lock_annotation_for_scene(annotation.id, scene.id),
            :ok <-
@@ -73,15 +79,18 @@ defmodule Storyarn.Scenes.AnnotationCrud do
         |> Repo.update()
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(annotation.scene_id)
   end
 
   def delete_annotation(%SceneAnnotation{} = annotation) do
-    SceneReferenceIntegrity.with_active_scene_lock(annotation.scene_id, fn scene ->
+    annotation.scene_id
+    |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_annotation} <-
              lock_annotation_for_scene(annotation.id, scene.id) do
         Repo.delete(locked_annotation)
       end
     end)
+    |> SceneCrud.broadcast_scene_dashboard_result(annotation.scene_id)
   end
 
   defp lock_annotation_for_scene(annotation_id, scene_id) do

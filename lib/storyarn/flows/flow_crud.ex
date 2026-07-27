@@ -11,6 +11,7 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.ReferenceIntegrity
+  alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.TreeOperations
   alias Storyarn.Localization
   alias Storyarn.Projects.Project
@@ -305,7 +306,10 @@ defmodule Storyarn.Flows.FlowCrud do
       |> Map.put("referenced_flow_id", new_flow.id)
       |> maybe_put_flow_reference_mode(locked_node.type)
 
-    case NodeCrud.update_node_data(locked_node, new_data) do
+    # The surrounding Ecto.Multi owns the commit and the single dashboard
+    # invalidation. Publishing from this nested write would notify subscribers
+    # before the outer transaction commits and duplicate the final event.
+    case NodeCrud.update_node_data_without_dashboard_broadcast(locked_node, new_data) do
       {:ok, updated_node, _meta} -> {:ok, updated_node}
       {:error, reason} -> {:error, reason}
     end
@@ -383,7 +387,9 @@ defmodule Storyarn.Flows.FlowCrud do
   defp normalize_item_limit_result(result), do: result
 
   def update_flow(%Flow{} = flow, attrs) do
-    Repo.transaction(fn -> update_flow_transaction(flow, attrs) end)
+    fn -> update_flow_transaction(flow, attrs) end
+    |> Repo.transaction()
+    |> broadcast_flow_dashboard_result(flow.project_id)
   end
 
   defp update_flow_transaction(flow, attrs) do
@@ -583,20 +589,39 @@ defmodule Storyarn.Flows.FlowCrud do
   flow locks used by active writers.
   """
   def restore_flow(%Flow{id: flow_id}) when is_integer(flow_id) do
+    restore_flow_with_localization(%Flow{id: flow_id}, &Localization.extract_flow_nodes/1)
+  end
+
+  def restore_flow(_flow), do: {:error, :flow_not_found}
+
+  @doc false
+  def restore_flow(%Flow{id: flow_id}, extract_flow_nodes)
+      when is_integer(flow_id) and is_function(extract_flow_nodes, 1) do
+    restore_flow_with_localization(%Flow{id: flow_id}, extract_flow_nodes)
+  end
+
+  def restore_flow(_flow, _extract_flow_nodes), do: {:error, :flow_not_found}
+
+  defp restore_flow_with_localization(%Flow{id: flow_id}, extract_flow_nodes) do
     result =
-      Repo.transaction(fn -> restore_flow_transaction(flow_id) end)
+      Repo.transaction(fn ->
+        restored_flow = restore_flow_transaction(flow_id)
+
+        case extract_flow_nodes.(restored_flow.id) do
+          :ok -> restored_flow
+          {:error, reason} -> Repo.rollback(reason)
+          unexpected -> Repo.rollback({:unexpected_localization_extraction_result, unexpected})
+        end
+      end)
 
     case result do
       {:ok, restored_flow} ->
-        Localization.extract_flow_nodes(restored_flow.id)
         broadcast_flow_dashboard_result(result, restored_flow.project_id)
 
       _ ->
         result
     end
   end
-
-  def restore_flow(_flow), do: {:error, :flow_not_found}
 
   defp restore_flow_transaction(flow_id) do
     project_id =
@@ -868,15 +893,35 @@ defmodule Storyarn.Flows.FlowCrud do
 
   defp validate_restored_flow_sources(source_nodes, restored_nodes, restored_flow, project_id) do
     restored_node_ids = MapSet.new(restored_nodes, & &1.id)
+    source_nodes = Enum.map(source_nodes, &Repo.get!(FlowNode, &1.id))
+    active_source_flow_ids = active_flow_ids_for_nodes(source_nodes)
 
     source_nodes
-    |> Enum.map(&Repo.get!(FlowNode, &1.id))
-    |> Enum.filter(&restored_source_node?(&1, restored_node_ids, restored_flow.id))
+    |> Enum.filter(
+      &restored_source_node?(
+        &1,
+        restored_node_ids,
+        active_source_flow_ids,
+        restored_flow.id
+      )
+    )
     |> normalize_restored_flow_nodes(project_id)
   end
 
-  defp restored_source_node?(source_node, restored_node_ids, restored_flow_id) do
-    source_node.data["referenced_flow_id"] == restored_flow_id and
+  defp active_flow_ids_for_nodes(nodes) do
+    flow_ids = nodes |> Enum.map(& &1.flow_id) |> Enum.uniq()
+
+    Flow
+    |> where([flow], flow.id in ^flow_ids and is_nil(flow.deleted_at))
+    |> select([flow], flow.id)
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  defp restored_source_node?(source_node, restored_node_ids, active_source_flow_ids, restored_flow_id) do
+    is_nil(source_node.deleted_at) and
+      MapSet.member?(active_source_flow_ids, source_node.flow_id) and
+      source_node.data["referenced_flow_id"] == restored_flow_id and
       not MapSet.member?(restored_node_ids, source_node.id)
   end
 
@@ -1012,14 +1057,12 @@ defmodule Storyarn.Flows.FlowCrud do
   def update_flow_scene(%Flow{} = flow, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    Repo.transaction(fn ->
+    fn ->
       with {:ok, %{flow: locked_flow, project_id: project_id}} <-
              ReferenceIntegrity.lock_active_flow_for_write(flow),
            {:ok, scene_id} <-
              ReferenceIntegrity.lock_flow_scene(project_id, attrs["scene_id"]) do
-        locked_flow
-        |> Flow.scene_changeset(%{"scene_id" => scene_id})
-        |> update_flow_or_rollback()
+        persist_flow_scene(locked_flow, project_id, scene_id)
       else
         {:error, :flow_not_found} ->
           Repo.rollback(:flow_not_found)
@@ -1027,7 +1070,19 @@ defmodule Storyarn.Flows.FlowCrud do
         {:error, reason} ->
           Repo.rollback(flow_reference_changeset(flow, attrs, reason))
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_flow_scene_result()
+  end
+
+  defp persist_flow_scene(locked_flow, project_id, scene_id) do
+    changeset = Flow.scene_changeset(locked_flow, %{"scene_id" => scene_id})
+
+    if map_size(changeset.changes) == 0 do
+      {locked_flow, project_id, false}
+    else
+      {update_flow_or_rollback(changeset), project_id, true}
+    end
   end
 
   def change_flow(%Flow{} = flow, attrs \\ %{}) do
@@ -1035,13 +1090,19 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   def set_main_flow(%Flow{} = flow) do
+    flow
+    |> set_main_flow_transaction_result()
+    |> broadcast_set_main_flow_result()
+  end
+
+  defp set_main_flow_transaction_result(flow) do
     Repo.transaction(fn -> set_main_flow_transaction(flow) end)
   end
 
   defp set_main_flow_transaction(flow) do
     case ReferenceIntegrity.lock_active_flow_for_write(flow) do
       {:ok, %{project_id: project_id, flow: locked_flow}} ->
-        replace_main_flow(locked_flow, project_id)
+        {replace_main_flow(locked_flow, project_id), project_id}
 
       {:error, reason} ->
         Repo.rollback(reason)
@@ -1053,6 +1114,7 @@ defmodule Storyarn.Flows.FlowCrud do
       from(candidate in Flow,
         where:
           candidate.project_id == ^project_id and
+            candidate.id != ^locked_flow.id and
             candidate.is_main == true
       ),
       set: [is_main: false]
@@ -1198,7 +1260,9 @@ defmodule Storyarn.Flows.FlowCrud do
       join: f in Flow,
       on: n.flow_id == f.id,
       where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: f.project_id == ^project_id,
+      where:
+        f.project_id == ^project_id and
+          is_nil(n.deleted_at) and is_nil(f.deleted_at),
       select: %{
         id: r.id,
         source_type: r.source_type,
@@ -1306,19 +1370,94 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   @doc """
-  Creates a flow node for import. Raw insert — no entry-node uniqueness check,
-  no hub_id generation, no subflow validation.
+  Creates a flow node for import. Raw insert — no entry-node generation and no
+  subflow validation. Imported hub identifiers still preserve the flow-wide
+  uniqueness invariant.
   Returns `{:ok, node}` or `{:error, changeset}`.
   """
   def import_node(flow_id, attrs) do
-    type = attrs[:type] || attrs["type"]
-    data = attrs[:data] || attrs["data"]
+    type = MapUtils.get_flexible(attrs, :type)
+    data = MapUtils.get_flexible(attrs, :data)
+    sequence_config = MapUtils.get_flexible(attrs, :sequence_config)
 
+    Repo.transaction(fn ->
+      validate_import_node_invariants!(flow_id, type, data)
+
+      flow_id
+      |> insert_import_node!(attrs, type, data)
+      |> maybe_insert_import_sequence_config!(type, sequence_config)
+    end)
+  end
+
+  defp validate_import_node_invariants!(flow_id, "entry", _data) do
+    lock_import_flow(flow_id)
+
+    if Repo.exists?(
+         from(node in FlowNode,
+           where:
+             node.flow_id == ^flow_id and node.type == "entry" and
+               is_nil(node.deleted_at)
+         )
+       ) do
+      Repo.rollback(:entry_node_exists)
+    end
+  end
+
+  defp validate_import_node_invariants!(flow_id, "hub", data) do
+    lock_import_flow(flow_id)
+    hub_id = if is_map(data), do: MapUtils.get_flexible(data, :hub_id)
+
+    cond do
+      not is_binary(hub_id) or String.trim(hub_id) == "" ->
+        Repo.rollback(:hub_id_required)
+
+      NodeCrud.hub_id_exists?(flow_id, hub_id, nil) ->
+        Repo.rollback(:hub_id_not_unique)
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_import_node_invariants!(_flow_id, _type, _data), do: :ok
+
+  # Serialize import writers with regular node CRUD before validating
+  # flow-wide identities. Both paths lock the same Flow row.
+  defp lock_import_flow(flow_id) do
+    Repo.one(from(flow in Flow, where: flow.id == ^flow_id, lock: "FOR UPDATE"))
+  end
+
+  defp insert_import_node!(flow_id, attrs, type, data) do
     %FlowNode{flow_id: flow_id}
     |> FlowNode.create_changeset(attrs)
     |> Ecto.Changeset.put_change(:word_count, WordCount.for_node_data(type, data))
     |> Repo.insert()
+    |> case do
+      {:ok, node} -> node
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
   end
+
+  defp maybe_insert_import_sequence_config!(node, "sequence", config_attrs) do
+    config_attrs =
+      config_attrs
+      |> then(fn
+        attrs when is_map(attrs) -> attrs
+        _invalid_or_missing -> %{}
+      end)
+      |> MapUtils.stringify_keys()
+      |> Map.put("flow_node_id", node.id)
+
+    %SequenceConfig{}
+    |> SequenceConfig.create_changeset(config_attrs)
+    |> Repo.insert()
+    |> case do
+      {:ok, config} -> %{node | sequence_config: config}
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
+  end
+
+  defp maybe_insert_import_sequence_config!(node, _type, _config_attrs), do: node
 
   @doc """
   Updates a flow's parent_id after import (two-pass parent linking).
@@ -1327,6 +1466,15 @@ defmodule Storyarn.Flows.FlowCrud do
     flow
     |> Ecto.Changeset.change(%{parent_id: parent_id})
     |> Repo.update!()
+  end
+
+  @doc """
+  Updates an imported node's parent after all source node IDs have been
+  remapped. Parent scope, type, and cycle invariants are validated by the
+  regular node reparenting path.
+  """
+  def link_node_import_parent(%FlowNode{} = node, parent_id) do
+    NodeCrud.update_node_parent(node, parent_id)
   end
 
   @doc """
@@ -1349,4 +1497,19 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   defp broadcast_flow_dashboard_result(result, _project_id), do: result
+
+  defp broadcast_flow_scene_result({:ok, {flow, project_id, true}}) do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    {:ok, flow}
+  end
+
+  defp broadcast_flow_scene_result({:ok, {flow, _project_id, false}}), do: {:ok, flow}
+  defp broadcast_flow_scene_result(result), do: result
+
+  defp broadcast_set_main_flow_result({:ok, {flow, project_id}}) do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    {:ok, flow}
+  end
+
+  defp broadcast_set_main_flow_result(result), do: result
 end
