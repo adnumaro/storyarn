@@ -1,0 +1,20 @@
+test/storyarn/flows/cross_flow_write_isolation_test.exs
+  s_a459a0cba168b0::t_5a347a78453d19 1-58,60-164
+  s_a459a0cba168b0::t_c944bd3e92b729 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3b244188539a0a9b683bd231f25d3ef414380068",
+  "prompts": {},
+  "sessions": {
+    "s_a459a0cba168b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40b9b20d-26e6-4a2d-853a-18cc4f98be53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
