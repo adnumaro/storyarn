@@ -1,0 +1,108 @@
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_a459a0cba168b0::t_600456f3b77451 226
+lib/storyarn/flows/flow_node.ex
+  s_a459a0cba168b0::t_600456f3b77451 112,126
+CLAUDE.md
+  s_a459a0cba168b0::t_30f7681903fb3e 128
+lib/storyarn_web/live/export_import_live/index.ex
+  s_a459a0cba168b0::t_40175b8ed2d19c 12
+lib/storyarn/projects/dashboard.ex
+  s_a459a0cba168b0::t_600456f3b77451 194
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_a459a0cba168b0::t_6323118a730a3c 151
+lib/storyarn/projects/project_trash.ex
+  s_a459a0cba168b0::t_175ee1dff72112 12
+assets/app/test/modules/projects/settings/ExportPanel.test.ts
+  s_a459a0cba168b0::t_6323118a730a3c 36,38
+lib/storyarn/exports/serializers/storyarn_json.ex
+  s_a459a0cba168b0::t_bb888bdc2d91b0 25
+assets/app/modules/flows/editor/components/entities/toolbar/sections/DialogueToolbar.vue
+  s_a459a0cba168b0::t_03897def7b57e9 111
+docs/conventions/shared-utilities.md
+  s_a459a0cba168b0::t_30f7681903fb3e 38,65
+lib/storyarn/exports/serializer.ex
+  s_a459a0cba168b0::t_40175b8ed2d19c 48
+FUTURE_FEATURES.md
+  s_a459a0cba168b0::t_30f7681903fb3e 9,11-15
+lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex
+  s_a459a0cba168b0::t_600456f3b77451 11
+lib/storyarn/versioning/builders/flow_builder.ex
+  s_a459a0cba168b0::t_67d50984b7bee2 52,4173
+assets/app/locales/es/flows.json
+  s_a459a0cba168b0::t_03897def7b57e9 133
+assets/app/locales/es/project-settings.json
+  s_a459a0cba168b0::t_30f7681903fb3e 146,158
+lib/storyarn_web/components/sidebar/tree_helpers.ex
+  s_a459a0cba168b0::t_600456f3b77451 3
+test/storyarn/exports/round_trip_test.exs
+  s_a459a0cba168b0::t_1808d476ce2e41 256
+lib/storyarn/sheets/reference_tracker.ex
+  s_a459a0cba168b0::t_175ee1dff72112 390
+  s_a459a0cba168b0::t_3b901933b4258d 567
+priv/repo/migrations/20260727130000_drop_screenplays.exs
+  s_a459a0cba168b0::t_a7caba3c031c6b 1-41
+assets/app/locales/en/workspace.json
+  s_a459a0cba168b0::t_30f7681903fb3e 158
+lib/storyarn/shared/shortcut_helpers.ex
+  s_a459a0cba168b0::t_71a644a1433947 5
+assets/app/live/project/settings/ProjectSettingsTrash.vue
+  s_a459a0cba168b0::t_61e22a81d66b4d 24,46,68,93
+lib/storyarn/shared/soft_delete.ex
+  s_a459a0cba168b0::t_71a644a1433947 5-6
+lib/storyarn/imports/parsers/yarn/normalizer.ex
+  s_a459a0cba168b0::t_40175b8ed2d19c 53
+.claude/hooks/scripts/convention-rules.sh
+  s_a459a0cba168b0::t_30f7681903fb3e 121
+lib/storyarn/imports/parsers/storyarn_json.ex
+  s_a459a0cba168b0::t_f8b96a1407cf62 103,373,505,616
+lib/storyarn/localization/source_contract.ex
+  s_a459a0cba168b0::t_600456f3b77451 7
+assets/app/locales/es/workspace.json
+  s_a459a0cba168b0::t_30f7681903fb3e 158
+test/storyarn/localization_test.exs
+  s_a459a0cba168b0::t_6323118a730a3c 482
+lib/storyarn/localization/localizable_words.ex
+  s_a459a0cba168b0::t_600456f3b77451 87-88
+assets/app/shell/ProjectNavbarContext.vue
+  s_a459a0cba168b0::t_03897def7b57e9 58
+test/storyarn_web/live/project_settings_live/trash_test.exs
+  s_a459a0cba168b0::t_919223d9c98245 113-114
+lib/storyarn/sheets/entity_reference.ex
+  s_a459a0cba168b0::t_175ee1dff72112 29
+lib/storyarn/references/entity_reference.ex
+  s_a459a0cba168b0::t_175ee1dff72112 23
+assets/app/locales/en/flows.json
+  s_a459a0cba168b0::t_03897def7b57e9 133
+lib/storyarn/shared/hierarchical_schema.ex
+  s_a459a0cba168b0::t_71a644a1433947 3
+docs/conventions/domain-patterns.md
+  s_a459a0cba168b0::t_f003475b9039fa 289-308
+assets/app/locales/en/project-settings.json
+  s_a459a0cba168b0::t_30f7681903fb3e 146,158
+test/storyarn/exports/data_collector_test.exs
+  s_a459a0cba168b0::t_9645f9c3a43ea7 317,323
+test/storyarn/imports/parsers/storyarn_json_test.exs
+  s_a459a0cba168b0::t_872a1161d68f93 69,259,810
+assets/app/modules/flows/editor/components/panels/FlowDialoguePanel.vue
+  s_a459a0cba168b0::t_03897def7b57e9 5-7
+lib/storyarn_web/live/flow_live/handlers/editor_info_handlers.ex
+  s_a459a0cba168b0::t_600456f3b77451 5-6,44
+.claude/hooks/scripts/pre-write-pattern-check.sh
+  s_a459a0cba168b0::t_30f7681903fb3e 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "15c6aa592b22f5a93b3e512517b58f93e8495e2d",
+  "prompts": {},
+  "sessions": {
+    "s_a459a0cba168b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40b9b20d-26e6-4a2d-853a-18cc4f98be53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
