@@ -1,0 +1,237 @@
+lib/storyarn/flows/node_update.ex
+  s_7337fae2006063::t_eca066518bd7c1 91,94
+  s_7337fae2006063::t_f45d9d679a33ea 308-309
+  s_7337fae2006063::t_5b00633be99cea 552,591,595,602,617,620,624-630,634-636
+  s_7337fae2006063::t_19e18b69df6936 100-105
+  s_7337fae2006063::t_93fe9fc7b3d61a 368
+  s_7337fae2006063::t_8e34568d25f7dc 80,526-528,543-548
+  s_7337fae2006063::t_9ce31c766af966 360
+  s_7337fae2006063::t_ffc5e4e33fa1d7 456-457
+  s_7337fae2006063::t_e4a8e548fc61c3 529-542
+  s_7337fae2006063::t_e89362e3f8e799 118,553,606-614
+  s_7337fae2006063::t_790d1503d749b2 69-70,72-74,342-343,370,374-380,383,589-590,592-594,596-601,603-605
+  s_7337fae2006063::t_bcb07255aaa65f 78-79,81
+  s_7337fae2006063::t_cb204bcc295046 43,89-90,92-93,95-99,106-117,551
+  s_7337fae2006063::t_b34c60ec7f39cc 307
+  s_7337fae2006063::t_0bd55dca1837c0 52-53,334,338-341,344,356,366
+  s_7337fae2006063::t_0a3ad44c66bf9a 77
+  s_7337fae2006063::t_d3a334b58453f3 82
+  s_7337fae2006063::t_e0ef4ba33a1b85 119
+  s_7337fae2006063::t_d30605ad2eaf4f 549-550
+  s_7337fae2006063::t_57419966ea3063 554
+lib/storyarn_web/live/shared/dashboard_helpers.ex
+  s_7337fae2006063::t_b1704b8510d626 72-73
+assets/app/locales/en/common.json
+  s_7337fae2006063::t_9048a9557c1363 20
+lib/storyarn/localization.ex
+  s_7337fae2006063::t_b34c60ec7f39cc 200-202
+assets/app/test/live/sheet/dashboard/SheetDashboard.test.ts
+  s_7337fae2006063::t_821c0caf060f90 194-196
+  s_7337fae2006063::t_ca97aa1fd8a82e 190-192
+  s_7337fae2006063::t_ba6e29ea5b5b8d 160-176
+  s_7337fae2006063::t_5904eddb6fb7ab 4,123,132-149
+assets/app/locales/es/common.json
+  s_7337fae2006063::t_9048a9557c1363 20
+lib/storyarn/flows/node_delete.ex
+  s_7337fae2006063::t_e0143e8c4a44da 250,254,260-271
+  s_7337fae2006063::t_cb204bcc295046 241,244,247-249,252-253,256
+  s_cbd5ec1111913e::t_98a81e1db8625e 255
+lib/storyarn_web/live/sheet_live/index.ex
+  s_7337fae2006063::t_38157c8d954410 240,251
+  s_7337fae2006063::t_d714d46b46b29f 362-365
+lib/storyarn/flows/flow_node.ex
+  s_7337fae2006063::t_cb204bcc295046 226-230
+lib/storyarn/references/entity_tracker.ex
+  s_7337fae2006063::t_86d5d56796795e 40-43
+lib/storyarn_web/live/shared/dashboard_handlers.ex
+  s_7337fae2006063::t_38157c8d954410 13-16,146-152
+  s_7337fae2006063::t_f0bcbb23f50647 153-154
+test/storyarn/flows/node_crud_test.exs
+  s_7337fae2006063::t_61745a878ee4ab 14,791-808,810-811
+  s_7337fae2006063::t_fd6511e5df7fe5 884-900,923-928,931-956,958-960,962-970
+  s_7337fae2006063::t_eca066518bd7c1 809
+  s_7337fae2006063::t_e92070970f8787 929-930
+  s_7337fae2006063::t_cb204bcc295046 961
+  s_7337fae2006063::t_6fb99851c122e4 971-973,975-983,986-1001
+  s_7337fae2006063::t_fa5a97481125df 901-922
+  s_7337fae2006063::t_650fad91f6b163 812-813,835-857,1002,1004-1019,1125-1126,1129,1380
+  s_7337fae2006063::t_d1e42fe9d251e7 957
+  s_7337fae2006063::t_ea261cec53e3a3 814-834
+  s_7337fae2006063::t_9e39f055f4ca4e 1025-1029,1094-1096,1116-1124,1127
+  s_7337fae2006063::t_726032a98a5404 281-296
+  s_7337fae2006063::t_632835dfc5f588 858-883
+  s_7337fae2006063::t_ca03642d9bb706 974,984-985
+  s_7337fae2006063::t_de458a963fe001 8,15,1047-1087
+  s_7337fae2006063::t_bf005549a82270 356-379,1345-1379
+  s_7337fae2006063::t_9ec52cd89ea308 1620-1627,1635-1639
+  s_7337fae2006063::t_a21de162377cec 1003,1020-1024,1097-1115,1128
+  s_7337fae2006063::t_662465f6b69e8f 6,13,1030-1046,1088-1093
+  s_7337fae2006063::t_60252a034352c6 171-200
+  s_7337fae2006063::t_db5a6cbba61dbe 1381
+test/storyarn_web/live/shared/dashboard_event_contract_test.exs
+  s_7337fae2006063::t_adf749e6c8fbb9 4-5,71-75,80-90
+  s_7337fae2006063::t_de095a277f0c89 11,15-53,91
+  s_7337fae2006063::t_b197e99694658c 76-79
+  s_7337fae2006063::t_277f336bb75ea8 12-14
+  s_7337fae2006063::t_43f2311f818e86 92
+lib/storyarn/references.ex
+  s_7337fae2006063::t_86d5d56796795e 14
+lib/storyarn/flows/node_crud.ex
+  s_7337fae2006063::t_9683d02e60df36 504
+assets/app/test/live/flow/dashboard/FlowDashboard.test.ts
+  s_7337fae2006063::t_297bdef673ca04 147
+  s_7337fae2006063::t_ca97aa1fd8a82e 186-188
+  s_7337fae2006063::t_6a190bf549156f 190-192
+  s_7337fae2006063::t_ba6e29ea5b5b8d 161,163-180
+  s_7337fae2006063::t_9c90714b0d43e3 4,7,143-146,148-150,152-158,160
+  s_7337fae2006063::t_aa3548fb8af878 151
+  s_7337fae2006063::t_fbd5b9e20b5570 159
+  s_7337fae2006063::t_1412976da7897f 162
+lib/storyarn/localization/localizable_words.ex
+  s_7337fae2006063::t_277f336bb75ea8 157
+  s_7337fae2006063::t_b34c60ec7f39cc 155-156,158-191
+lib/storyarn_web/live/flow_live/index.ex
+  s_7337fae2006063::t_cb204bcc295046 404,409-412,415-418
+  s_7337fae2006063::t_38157c8d954410 245,256
+  s_7337fae2006063::t_d714d46b46b29f 384-387
+assets/app/live/flow/dashboard/FlowDashboard.vue
+  s_7337fae2006063::t_bb8e9e89264a9e 30,346-358,360-361,363
+  s_7337fae2006063::t_fbd5b9e20b5570 336
+  s_7337fae2006063::t_b1ec66d4806bce 12,16,92-100,175-182,184
+  s_7337fae2006063::t_cfd1eb5870c24d 366-380
+test/storyarn/flows/variable_reference_tracker_test.exs
+  s_7337fae2006063::t_7440208ec6b3bc 1122,1142-1143,1154-1155,1161
+  s_cbd5ec1111913e::t_d3dbc113ab1035 1151
+assets/app/test/components/dashboard/DashboardIssueFilters.test.ts
+  s_7337fae2006063::t_d7a71df4e5683a 242-252,259
+  s_7337fae2006063::t_6a190bf549156f 255-257
+lib/storyarn/sheets/reference_tracker.ex
+  s_7337fae2006063::t_0d2eafb7343f73 182-186,196
+  s_7337fae2006063::t_bcb07255aaa65f 178,189-195
+  s_7337fae2006063::t_ff8dd53a894439 176-177
+  s_7337fae2006063::t_be9a69267ac043 179-181
+  s_7337fae2006063::t_fa2be11185afb8 187-188
+  s_7337fae2006063::t_b8e00995a387a5 197-199
+  s_7337fae2006063::t_b9855265451730 200-202
+lib/storyarn/flows.ex
+  s_7337fae2006063::t_9ce31c766af966 328
+  s_7337fae2006063::t_c0834324446a41 1187-1189
+lib/storyarn/flows/variable_reference_tracker.ex
+  s_7337fae2006063::t_9c85e0f85baaaa 438-440
+  s_7337fae2006063::t_b1166035f46bb3 490,493-500,502,505,507-509,525,527-529
+  s_7337fae2006063::t_c0f9fadf0a9427 501,526
+  s_cbd5ec1111913e::t_f8071297707f81 530-533
+assets/app/locales/es/scenes.json
+  s_7337fae2006063::t_bcfe8055a6174b 98
+docs/conventions/component-registry.md
+  s_7337fae2006063::t_b2ced4d7dd32a7 116
+  s_7337fae2006063::t_c38d9a01e4bc2b 106-115,117-126
+test/storyarn/flows/flow_crud_test.exs
+  s_7337fae2006063::t_dd5b3b9c328d48 1048
+  s_7337fae2006063::t_25c188d3660e69 981-1047,1049
+  s_7337fae2006063::t_f7b8a8aeb25aea 962-980
+test/storyarn_web/live/shared/dashboard_sorting_test.exs
+  s_7337fae2006063::t_aee5a0e7e12646 24-53
+lib/storyarn/flows/node_create.ex
+  s_7337fae2006063::t_e4a8e548fc61c3 116-118,120-121,123-127
+  s_7337fae2006063::t_2b4be46c50bf9c 115,128,132-137
+  s_7337fae2006063::t_ffc5e4e33fa1d7 152-161
+  s_cbd5ec1111913e::t_f39e365b9d8d36 97
+  s_7337fae2006063::t_87761cbc40da3b 131
+  s_7337fae2006063::t_64d2238de874e8 138
+lib/storyarn/flows/flow_crud.ex
+  s_7337fae2006063::t_c0834324446a41 14,1338-1340,1343-1347,1349-1386,1389,1394-1398,1400-1402,1407-1408,1410-1415,1419-1420,1430-1437
+  s_7337fae2006063::t_079b4b0fc6fe56 1332-1334,1342,1348,1387-1388,1399,1409,1416
+  s_7337fae2006063::t_d05abc6188c036 1403-1406
+  s_7337fae2006063::t_6e9f78ef3f9ee4 1438
+lib/storyarn_web/live/scene_live/index.ex
+  s_7337fae2006063::t_38157c8d954410 244,255
+  s_7337fae2006063::t_d714d46b46b29f 362-365
+lib/storyarn/exports/serializers/storyarn_json.ex
+  s_7337fae2006063::t_c0834324446a41 194-199,206,211-221
+  s_cbd5ec1111913e::t_f7776fa0cbac07 222
+assets/app/live/scene/dashboard/SceneDashboard.vue
+  s_7337fae2006063::t_bb8e9e89264a9e 8,313-325,327-328,330
+  s_7337fae2006063::t_e9992ddb41a1d4 5,98-105,333-347
+test/storyarn/dashboards/cache_test.exs
+  s_7337fae2006063::t_6333e1d026f801 4-5,309-322
+  s_7337fae2006063::t_36505966a616c9 327-339
+  s_7337fae2006063::t_0a4114ddb37d74 103-136,323,366-378,433-434,437,441,448-460
+  s_7337fae2006063::t_43999db8d6c8d3 340-365
+  s_7337fae2006063::t_e4a8e548fc61c3 435-436,438-440,442-447
+assets/app/live/sheet/dashboard/SheetDashboard.vue
+  s_7337fae2006063::t_bb8e9e89264a9e 27,287-299,301-302,304
+  s_7337fae2006063::t_ad0c9fd871dae2 11-12,65,133-140,142,276,307-321
+  s_7337fae2006063::t_cfd1eb5870c24d 66-73
+lib/storyarn/dashboards/cache.ex
+  s_7337fae2006063::t_f22052f40cf074 17-18,144-149
+  s_7337fae2006063::t_c4c4863726027f 96
+  s_7337fae2006063::t_1765a90e2d46d4 26,189-198,208,227-241,349,351-360
+  s_cbd5ec1111913e::t_673aa2edcef0b7 150-153
+test/storyarn/imports/parsers/storyarn_json_test.exs
+  s_7337fae2006063::t_b526a1335c79eb 15,19,528-536,538-604
+  s_7337fae2006063::t_3c22772ffb1d3c 477-527,605-606
+  s_7337fae2006063::t_2033c40d66a729 207-223
+  s_7337fae2006063::t_75f4730db62daa 537
+  s_7337fae2006063::t_d27d73895e0aea 191-206
+  s_7337fae2006063::t_44f075b25099ca 174-190
+assets/app/test/locales/SpanishHealthLabels.test.ts
+  s_7337fae2006063::t_e79bf16c5af548 1-10
+assets/app/test/components/dashboard/DashboardIssuesSection.test.ts
+  s_7337fae2006063::t_d0faecbd54a16d 1-124,126-132
+  s_7337fae2006063::t_ca97aa1fd8a82e 125
+test/storyarn_web/live/flow_live/index_test.exs
+  s_7337fae2006063::t_d270625bb7e8dc 19-22,319-340
+  s_cbd5ec1111913e::t_3c5745fa0f82ad 341
+lib/storyarn/imports/parsers/storyarn_json.ex
+  s_7337fae2006063::t_74a278db6f1515 28,508-509,532-537
+  s_7337fae2006063::t_51e44410a2e287 195-199
+  s_7337fae2006063::t_c0834324446a41 876-877,886-887,891-906
+  s_7337fae2006063::t_d05abc6188c036 193-194,202-204,538-539,907
+  s_7337fae2006063::t_815aed1923fc05 200-201
+  s_7337fae2006063::t_87af6c6ab4770b 540
+  s_7337fae2006063::t_518083aec30c35 908
+lib/storyarn/localization/text_extractor.ex
+  s_7337fae2006063::t_b34c60ec7f39cc 9
+test/storyarn_web/live/dashboard_async_state_test.exs
+  s_7337fae2006063::t_85814c045dcee8 278,292-293,310-311
+  s_7337fae2006063::t_c7576a3652cf5c 342
+  s_7337fae2006063::t_88fd5af5109b70 87,110,333-337
+  s_7337fae2006063::t_08df098213adeb 338-339
+assets/app/components/dashboard/DashboardIssuesSection.vue
+  s_7337fae2006063::t_9048a9557c1363 1-150
+assets/app/test/live/scene/dashboard/SceneDashboard.test.ts
+  s_7337fae2006063::t_bf336200d9ea75 210-225,228-240,242-244
+  s_7337fae2006063::t_821c0caf060f90 126-128
+  s_7337fae2006063::t_ca97aa1fd8a82e 122-124
+  s_7337fae2006063::t_453f67c6dea375 3,196-198,226-227,241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "76e9268ba942f411a884d248b3351e257b50f51d",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_7337fae2006063": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9ffb-b5ec-7450-90bf-0cbbe07969af",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_cbd5ec1111913e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e18d536-0100-434d-bbc1-ec7bfa8d39d8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
