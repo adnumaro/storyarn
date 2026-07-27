@@ -129,7 +129,8 @@ msgstr ""
 msgid "Workflow"
 msgstr ""
 
-#: lib/storyarn_web/components/public_language_switcher.ex:20
+#: lib/storyarn_web/components/public_language_switcher.ex:18
+#: lib/storyarn_web/components/public_language_switcher.ex:77
 #, elixir-autogen, elixir-format
 msgid "Page language"
 msgstr ""
@@ -175,7 +176,7 @@ msgid "Narrative design flows"
 msgstr ""
 
 #: lib/storyarn_web/live/legal_live/show.ex:88
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Privacy Policy"
 msgstr ""
 
@@ -190,7 +191,7 @@ msgid "Scene maps for spatial narrative design and exploration"
 msgstr ""
 
 #: lib/storyarn_web/live/landing_live/index.ex:86
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Storyarn documentation"
 msgstr ""
 
@@ -205,7 +206,7 @@ msgid "Storyarn is a video game design platform for narrative designers, game de
 msgstr ""
 
 #: lib/storyarn_web/live/landing_live/index.ex:51
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Storyarn overview"
 msgstr ""
 
@@ -220,7 +221,7 @@ msgid "Storyarn: narrative design platform for video games"
 msgstr ""
 
 #: lib/storyarn_web/live/legal_live/show.ex:75
-#, elixir-autogen, elixir-format, fuzzy
+#, elixir-autogen, elixir-format
 msgid "Terms of Use"
 msgstr ""
 
