@@ -12,6 +12,7 @@
     "dashboard": {
       "previous_page": "Previous page",
       "next_page": "Next page",
+      "pagination_label": "Pagination",
       "page_label": "Page {page}",
       "total_issues": "{count} issue | {count} issues",
       "loading_overview": "Loading dashboard overview",

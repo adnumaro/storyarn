@@ -279,6 +279,11 @@ defmodule Storyarn.Flows do
   @spec list_nodes(integer()) :: [flow_node()]
   defdelegate list_nodes(flow_id), to: NodeCrud
 
+  @doc false
+  @spec lock_flow_nodes_for_update(flow()) ::
+          {:ok, {flow(), [flow_node()]}} | {:error, term()}
+  defdelegate lock_flow_nodes_for_update(flow), to: NodeCrud
+
   @doc """
   Gets a single node by ID within a flow.
   Returns `nil` if the node doesn't exist or doesn't belong to the flow.
@@ -323,6 +328,11 @@ defmodule Storyarn.Flows do
   @spec update_node(flow_node(), attrs()) :: {:ok, flow_node()} | {:error, changeset()}
   defdelegate update_node(node, attrs), to: NodeCrud
 
+  @doc false
+  @spec update_node_without_dashboard_broadcast(flow_node(), attrs()) ::
+          {:ok, flow_node()} | {:error, term()}
+  defdelegate update_node_without_dashboard_broadcast(node, attrs), to: NodeCrud
+
   @doc """
   Updates only the position of a node.
   """
@@ -354,6 +364,12 @@ defmodule Storyarn.Flows do
   @doc false
   defdelegate update_node_data_without_dashboard_broadcast(node, data), to: NodeCrud
 
+  @doc false
+  @spec node_data_and_derivatives_current?(flow_node(), map(), integer()) :: boolean()
+  defdelegate node_data_and_derivatives_current?(node, data, project_id),
+    to: NodeCrud,
+    as: :data_and_derivatives_current?
+
   @doc """
   Deletes a node and all its connections.
   """
@@ -362,6 +378,9 @@ defmodule Storyarn.Flows do
 
   @doc false
   defdelegate delete_node_without_dashboard_broadcast(node), to: NodeCrud
+
+  @doc false
+  defdelegate delete_node_in_transaction_without_dashboard_broadcast(node), to: NodeCrud
 
   @doc """
   Restores a soft-deleted node by clearing its deleted_at timestamp.

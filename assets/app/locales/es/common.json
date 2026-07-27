@@ -12,6 +12,7 @@
     "dashboard": {
       "previous_page": "Página anterior",
       "next_page": "Página siguiente",
+      "pagination_label": "Paginación",
       "page_label": "Página {page}",
       "total_issues": "{count} incidencia | {count} incidencias",
       "loading_overview": "Cargando resumen del dashboard",

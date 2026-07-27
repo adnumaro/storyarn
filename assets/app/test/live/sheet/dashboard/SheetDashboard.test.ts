@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import SheetDashboard from "../../../../live/sheet/dashboard/SheetDashboard.vue";
 import DashboardIssueFilters from "../../../../components/dashboard/DashboardIssueFilters.vue";
 import DashboardPagination from "../../../../components/dashboard/DashboardPagination.vue";
+import DropdownMenuItem from "../../../../components/ui/dropdown-menu/DropdownMenuItem.vue";
 import { createMockLive } from "../../../setup";
+
+type SheetDashboardProps = InstanceType<typeof SheetDashboard>["$props"];
 
 const issueFilterOptions = {
   totals: { severity: 30, code: 30, resource: 30 },
@@ -23,7 +26,7 @@ const issueFilterOptions = {
   ],
 };
 
-function mountDashboard() {
+function mountDashboard(overrides: Partial<SheetDashboardProps> = {}) {
   const live = createMockLive();
 
   const wrapper = mount(SheetDashboard, {
@@ -90,6 +93,7 @@ function mountDashboard() {
       overviewStatus: "ready",
       issuesStatus: "ready",
       canEdit: false,
+      ...overrides,
     },
     global: {
       provide: {
@@ -115,6 +119,25 @@ describe("SheetDashboard health", () => {
     );
   });
 
+  it("wires the row delete action to the exact LiveView event pair", async () => {
+    const { live, wrapper } = mountDashboard({ canEdit: true });
+    const trigger = wrapper.get('[data-slot="dropdown-menu-trigger"]');
+
+    expect(trigger.attributes("aria-label")).toBe("Sheet actions");
+    expect(trigger.attributes("title")).toBe("Sheet actions");
+
+    await trigger.trigger("click");
+    wrapper.getComponent(DropdownMenuItem).vm.$emit("select");
+
+    expect(live.pushEvent).toHaveBeenNthCalledWith(
+      1,
+      "set_pending_delete_sheet",
+      { id: 1 },
+      undefined,
+    );
+    expect(live.pushEvent).toHaveBeenNthCalledWith(2, "confirm_delete_sheet", {}, undefined);
+  });
+
   it("forwards complete faceted counts to the shared issue filters", () => {
     const { wrapper } = mountDashboard();
 
@@ -123,12 +146,12 @@ describe("SheetDashboard health", () => {
     );
   });
 
-  it("disables issue filters during a background issue refresh", async () => {
+  it("marks issue filters busy without disabling them during a background refresh", async () => {
     const { wrapper } = mountDashboard();
 
     await wrapper.setProps({ issuesStatus: "refreshing" });
 
-    expect(wrapper.getComponent(DashboardIssueFilters).props("disabled")).toBe(true);
+    expect(wrapper.getComponent(DashboardIssueFilters).props("busy")).toBe(true);
   });
 
   it("renders canonical severities and the shared health translations", () => {
@@ -237,6 +260,21 @@ describe("SheetDashboard health", () => {
 
     await wrapper.get('[data-testid="sheet-issues-retry"]').trigger("click");
     expect(live.pushEvent).toHaveBeenCalledWith("retry_dashboard_issues", {}, undefined);
+  });
+
+  it("keeps the stale warning without showing filters or an empty-filter state when no results exist", async () => {
+    const { wrapper } = mountDashboard();
+
+    await wrapper.setProps({
+      issuesStatus: "stale",
+      issues: [],
+      issuePagination: { page: 1, totalPages: 1, total: 0, unfilteredTotal: 0 },
+    });
+
+    expect(wrapper.find('[data-testid="sheet-issues-stale"]').exists()).toBe(true);
+    expect(wrapper.findComponent(DashboardIssueFilters).exists()).toBe(false);
+    expect(wrapper.find('[data-testid="dashboard-issue-list"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="dashboard-issues-empty-filter"]').exists()).toBe(false);
   });
 
   it("does not reveal an empty issues section during a background refresh", async () => {

@@ -91,7 +91,7 @@
         "invalid_condition_structure": "Estructura de condición no válida",
         "invalid_asset_reference": "Referencia de asset no válida",
         "stale_pin_sheet_reference": "Referencia de ficha del pin inexistente",
-        "stale_pin_flow_reference": "Referencia de flow del pin inexistente",
+        "stale_pin_flow_reference": "Referencia de flujo del pin inexistente",
         "stale_zone_target": "Destino de zona inexistente",
         "stale_collection_sheet_reference": "Referencia de ficha de colección inexistente",
         "stale_variable_reference": "Referencia de variable obsoleta",

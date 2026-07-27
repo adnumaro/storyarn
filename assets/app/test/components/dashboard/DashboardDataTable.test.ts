@@ -92,7 +92,6 @@ describe("DashboardDataTable", () => {
     expect(headers[1].classes()).toEqual(
       expect.arrayContaining(["text-right", "hidden", "sm:table-cell"]),
     );
-    expect(headers[1].get("button").classes()).toContain("ml-auto");
     expect(headers[0].attributes("aria-sort")).toBe("ascending");
     expect(headers[1].attributes("aria-sort")).toBeUndefined();
 

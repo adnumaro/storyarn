@@ -16,10 +16,10 @@ defmodule StoryarnWeb.FlowLive.Index do
       handle_issue_page: 3,
       put_issues: 3,
       put_stable_issue_ids: 3,
-      begin_overview_load: 1,
       fail_overview_load: 1,
-      begin_issues_load: 1,
-      fail_issues_load: 1
+      fail_issues_load: 1,
+      parse_entity_id: 1,
+      put_pending_delete_id: 2
     ]
 
   alias Storyarn.Collaboration
@@ -112,6 +112,7 @@ defmodule StoryarnWeb.FlowLive.Index do
 
     if connected?(socket) do
       Collaboration.subscribe_dashboard(project.id)
+      DashboardCache.subscribe_resets()
 
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
@@ -135,11 +136,15 @@ defmodule StoryarnWeb.FlowLive.Index do
      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
      |> assign(:dashboard_stats, nil)
      |> assign(:overview_status, :loading)
+     |> assign(:dashboard_overview_running?, false)
+     |> assign(:dashboard_overview_reload_pending?, false)
      |> assign(:all_flow_table_data, [])
      |> assign(:flow_table_data, [])
      |> assign(:all_flow_issues, [])
      |> assign(:flow_issues, [])
      |> assign(:issues_status, :loading)
+     |> assign(:dashboard_issues_running?, false)
+     |> assign(:dashboard_issues_reload_pending?, false)
      |> assign(:issue_filters, default_issue_filters())
      |> assign(:issue_filter_options, default_issue_filter_options())
      |> assign(:issue_page, 1)
@@ -207,34 +212,50 @@ defmodule StoryarnWeb.FlowLive.Index do
 
     page = pagination(sorted_table, socket.assigns.page)
 
-    {:noreply,
-     socket
-     |> assign(:dashboard_stats, data.dashboard_stats)
-     |> assign(:overview_status, :ready)
-     |> assign(:all_flow_table_data, sorted_table)
-     |> assign(:flow_table_data, page.rows)
-     |> assign(:page, page.page)
-     |> assign(:total_pages, page.total_pages)
-     |> assign(:total_flows, page.total)}
+    socket =
+      socket
+      |> assign(:dashboard_stats, data.dashboard_stats)
+      |> assign(:overview_status, :ready)
+      |> assign(:all_flow_table_data, sorted_table)
+      |> assign(:flow_table_data, page.rows)
+      |> assign(:page, page.page)
+      |> assign(:total_pages, page.total_pages)
+      |> assign(:total_flows, page.total)
+      |> DashboardHandlers.finish_load(:overview, &start_dashboard_overview/1)
+
+    {:noreply, socket}
   end
 
   def handle_async(:load_dashboard_issues, {:ok, issues}, socket) do
-    {:noreply,
-     socket
-     |> put_issues(issues, issue_assign_opts())
-     |> assign(:issues_status, :ready)}
+    socket =
+      socket
+      |> put_issues(issues, issue_assign_opts())
+      |> assign(:issues_status, :ready)
+      |> DashboardHandlers.finish_load(:issues, &start_dashboard_issues/1)
+
+    {:noreply, socket}
   end
 
   def handle_async(:load_dashboard_overview, {:exit, reason}, socket) do
     Logger.error("Flow dashboard overview load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
 
-    {:noreply, assign(socket, :overview_status, fail_overview_load(socket.assigns.overview_status))}
+    socket =
+      socket
+      |> assign(:overview_status, fail_overview_load(socket.assigns.overview_status))
+      |> DashboardHandlers.finish_load(:overview, &start_dashboard_overview/1)
+
+    {:noreply, socket}
   end
 
   def handle_async(:load_dashboard_issues, {:exit, reason}, socket) do
     Logger.error("Flow dashboard issues load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
 
-    {:noreply, assign(socket, :issues_status, fail_issues_load(socket.assigns.issues_status))}
+    socket =
+      socket
+      |> assign(:issues_status, fail_issues_load(socket.assigns.issues_status))
+      |> DashboardHandlers.finish_load(:issues, &start_dashboard_issues/1)
+
+    {:noreply, socket}
   end
 
   defp load_dashboard_overview_async(project_id, workspace, project) do
@@ -308,20 +329,24 @@ defmodule StoryarnWeb.FlowLive.Index do
     {:noreply, handle_issue_page(socket, page, issue_assign_opts())}
   end
 
-  def handle_event("retry_dashboard_overview", _params, socket) do
-    send(self(), :load_dashboard_overview)
-    {:noreply, assign(socket, :overview_status, begin_overview_load(socket.assigns.overview_status))}
+  def handle_event("retry_dashboard_overview", _params, %{assigns: %{overview_status: status}} = socket)
+      when status in [:error, :stale] do
+    {:noreply, DashboardHandlers.retry_load(socket, :overview, &start_dashboard_overview/1)}
   end
 
-  def handle_event("retry_dashboard_issues", _params, socket) do
-    send(self(), :load_dashboard_issues)
-    {:noreply, assign(socket, :issues_status, begin_issues_load(socket.assigns.issues_status))}
+  def handle_event("retry_dashboard_overview", _params, socket), do: {:noreply, socket}
+
+  def handle_event("retry_dashboard_issues", _params, %{assigns: %{issues_status: status}} = socket)
+      when status in [:error, :stale] do
+    {:noreply, DashboardHandlers.retry_load(socket, :issues, &start_dashboard_issues/1)}
   end
+
+  def handle_event("retry_dashboard_issues", _params, socket), do: {:noreply, socket}
 
   # Dashboard table row actions (long form routes here; short form comes from
   # FlowDashboard.vue which uses `set_pending_delete` / `confirm_delete` / `set_main`)
   def handle_event(event, %{"id" => id}, socket) when event in ~w(set_pending_delete set_pending_delete_flow) do
-    {:noreply, assign(socket, :pending_delete_id, id)}
+    {:noreply, put_pending_delete_id(socket, id)}
   end
 
   def handle_event(event, _params, socket) when event in ~w(confirm_delete confirm_delete_flow) do
@@ -333,44 +358,30 @@ defmodule StoryarnWeb.FlowLive.Index do
   end
 
   def handle_event(event, %{"id" => flow_id}, socket) when event in ~w(delete delete_flow) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
-           {:ok, _} <- Flows.delete_flow(flow) do
-        broadcast_tree_changed(socket)
+    case parse_entity_id(flow_id) do
+      flow_id when is_integer(flow_id) ->
+        Authorize.with_authorization(
+          socket,
+          :edit_content,
+          &delete_authorized_flow(&1, flow_id)
+        )
 
-        {:noreply,
-         socket
-         |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
-         |> reload_flows()}
-      else
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
-      end
-    end)
+      nil ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event(event, %{"id" => flow_id}, socket) when event in ~w(set_main set_main_flow) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
-           {:ok, _} <- Flows.set_main_flow(flow) do
-        broadcast_tree_changed(socket)
+    case parse_entity_id(flow_id) do
+      flow_id when is_integer(flow_id) ->
+        Authorize.with_authorization(socket, :edit_content, &set_authorized_main_flow(&1, flow_id))
 
-        {:noreply,
-         socket
-         |> put_flash(:info, dgettext("flows", "Flow set as main."))
-         |> reload_flows()}
-      else
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
-      end
-    end)
+      nil ->
+        {:noreply, socket}
+    end
   end
+
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
 
   # Tree mutations (create_flow, create_child_flow, move_to_parent) now live in
   # FlowSidebarLive — they never reach this LV because the tree is rendered by
@@ -379,6 +390,42 @@ defmodule StoryarnWeb.FlowLive.Index do
   # ===========================================================================
   # Private helpers
   # ===========================================================================
+
+  defp delete_authorized_flow(socket, flow_id) do
+    with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
+         {:ok, _} <- Flows.delete_flow(flow) do
+      broadcast_tree_changed(socket)
+
+      {:noreply,
+       socket
+       |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
+       |> reload_flows()}
+    else
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not delete flow."))}
+    end
+  end
+
+  defp set_authorized_main_flow(socket, flow_id) do
+    with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
+         {:ok, _} <- Flows.set_main_flow(flow) do
+      broadcast_tree_changed(socket)
+
+      {:noreply,
+       socket
+       |> put_flash(:info, dgettext("flows", "Flow set as main."))
+       |> reload_flows()}
+    else
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
+    end
+  end
 
   defp broadcast_tree_changed(socket) do
     Phoenix.PubSub.broadcast_from(
@@ -409,10 +456,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   defp start_dashboard_overview(socket) do
     %{project: project, workspace: workspace, locale: locale} = socket.assigns
 
-    socket
-    |> assign(:overview_status, begin_overview_load(socket.assigns.overview_status))
-    |> cancel_async(:load_dashboard_overview)
-    |> start_async(:load_dashboard_overview, fn ->
+    DashboardHandlers.start_load(socket, :overview, fn ->
       Gettext.put_locale(Storyarn.Gettext, locale)
       load_dashboard_overview_async(project.id, workspace, project)
     end)
@@ -421,10 +465,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   defp start_dashboard_issues(socket) do
     %{project: project, workspace: workspace, locale: locale} = socket.assigns
 
-    socket
-    |> assign(:issues_status, begin_issues_load(socket.assigns.issues_status))
-    |> cancel_async(:load_dashboard_issues)
-    |> start_async(:load_dashboard_issues, fn ->
+    DashboardHandlers.start_load(socket, :issues, fn ->
       Gettext.put_locale(Storyarn.Gettext, locale)
       load_dashboard_issues_async(project.id, workspace, project)
     end)

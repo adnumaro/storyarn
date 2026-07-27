@@ -9,6 +9,7 @@
       "main": "Principal",
       "set_main": "Establecer como principal",
       "delete": "Eliminar",
+      "flow_actions": "Acciones de flujo",
       "total_flows": "{n} flujo | {n} flujos",
       "columns": {
         "name": "Nombre",

@@ -25,6 +25,12 @@ describe("DashboardPagination", () => {
     expect(
       wrapper.get('[data-testid="dashboard-pagination-page-50"]').attributes("aria-current"),
     ).toBe("page");
+    expect(
+      wrapper.get('[data-testid="dashboard-pagination-page-49"]').attributes("aria-label"),
+    ).toBe("Page 49");
+    expect(wrapper.get('[data-testid="dashboard-pagination-pages"]').attributes("aria-label")).toBe(
+      "Pagination",
+    );
     expect(wrapper.get('[data-testid="dashboard-pagination-pages"]').classes()).toContain(
       "flex-wrap",
     );

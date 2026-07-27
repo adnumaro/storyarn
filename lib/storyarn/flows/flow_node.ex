@@ -62,6 +62,7 @@ defmodule Storyarn.Flows.FlowNode do
           position_y: float(),
           data: map(),
           source: String.t(),
+          derivatives_fingerprint: String.t() | nil,
           deleted_at: DateTime.t() | nil,
           flow_id: integer() | nil,
           flow: Flow.t() | NotLoaded.t() | nil,
@@ -84,6 +85,7 @@ defmodule Storyarn.Flows.FlowNode do
     field :data, :map, default: %{}
     field :word_count, :integer, default: 0
     field :source, :string, default: "manual"
+    field :derivatives_fingerprint, :string
     field :deleted_at, :utc_datetime
 
     belongs_to :flow, Flow

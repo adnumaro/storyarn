@@ -639,11 +639,14 @@ defmodule Storyarn.Flows.FlowCrudTest do
   # ===========================================================================
 
   describe "set_main_flow/1" do
-    test "sets a flow as main" do
-      %{flow: flow} = create_project_and_flow()
+    test "sets a flow as main and invalidates its dashboard after commit" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
       {:ok, main_flow} = Flows.set_main_flow(flow)
       assert main_flow.is_main == true
+      assert_receive {:dashboard_invalidate, :flows}
+      refute_receive {:dashboard_invalidate, :flows}, 10
     end
 
     test "unsets previous main flow" do
@@ -659,6 +662,24 @@ defmodule Storyarn.Flows.FlowCrudTest do
 
       assert updated_flow1.is_main == false
       assert updated_flow2.is_main == true
+    end
+
+    test "keeps the flow main when setting the same flow twice" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, %{is_main: true}} = Flows.set_main_flow(flow)
+      assert_receive {:dashboard_invalidate, :flows}
+
+      assert {:ok, %{is_main: true}} = Flows.set_main_flow(flow)
+      assert_receive {:dashboard_invalidate, :flows}
+
+      assert Flows.get_flow_brief(project.id, flow.id).is_main
+
+      assert 1 ==
+               project.id
+               |> Flows.list_flows()
+               |> Enum.count(& &1.is_main)
     end
   end
 

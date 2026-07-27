@@ -128,12 +128,22 @@ describe("FlowDashboard issues", () => {
     );
   });
 
-  it("disables issue filters during a background issue refresh", async () => {
+  it("gives the icon-only row actions trigger an accessible name", async () => {
+    const { wrapper } = mountDashboard();
+
+    await wrapper.setProps({ canEdit: true });
+
+    const trigger = wrapper.get('[data-slot="dropdown-menu-trigger"]');
+    expect(trigger.attributes("aria-label")).toBe("Flow actions");
+    expect(trigger.attributes("title")).toBe("Flow actions");
+  });
+
+  it("marks issue filters busy without disabling them during a background refresh", async () => {
     const { wrapper } = mountDashboard();
 
     await wrapper.setProps({ issuesStatus: "refreshing" });
 
-    expect(wrapper.getComponent(DashboardIssueFilters).props("disabled")).toBe(true);
+    expect(wrapper.getComponent(DashboardIssueFilters).props("busy")).toBe(true);
   });
 
   it("renders distinct error, warning, and info severities", () => {
@@ -239,6 +249,21 @@ describe("FlowDashboard issues", () => {
 
     await wrapper.get('[data-testid="flow-issues-retry"]').trigger("click");
     expect(live.pushEvent).toHaveBeenCalledWith("retry_dashboard_issues", {}, undefined);
+  });
+
+  it("keeps the stale warning without showing filters or an empty-filter state when no results exist", async () => {
+    const { wrapper } = mountDashboard();
+
+    await wrapper.setProps({
+      issuesStatus: "stale",
+      issues: [],
+      issuePagination: { page: 1, totalPages: 1, total: 0, unfilteredTotal: 0 },
+    });
+
+    expect(wrapper.find('[data-testid="flow-issues-stale"]').exists()).toBe(true);
+    expect(wrapper.findComponent(DashboardIssueFilters).exists()).toBe(false);
+    expect(wrapper.find('[data-testid="dashboard-issue-list"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="dashboard-issues-empty-filter"]').exists()).toBe(false);
   });
 
   it("does not reveal an empty issues section during a background refresh", async () => {

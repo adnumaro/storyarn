@@ -28,7 +28,8 @@ defmodule Storyarn.LiveVueEncoders do
   # Flows
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.Flow)
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.FlowConnection)
-  Protocol.derive(LiveVue.Encoder, Storyarn.Flows.FlowNode)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Flows.FlowNode, except: [:derivatives_fingerprint])
+
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.SequenceConfig)
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.SequenceVisualLayer)
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.VariableReference)

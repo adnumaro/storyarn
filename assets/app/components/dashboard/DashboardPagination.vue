@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight } from "lucide-vue-next";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import type { DashboardPagination } from "./types";
 
@@ -16,6 +17,8 @@ const { pagination, totalLabel, previousLabel, nextLabel } = defineProps<{
 const emit = defineEmits<{
   page: [page: number];
 }>();
+
+const { t } = useI18n();
 
 const totalPages = computed(() => {
   const value = Math.trunc(pagination.totalPages);
@@ -73,7 +76,7 @@ function goToPage(page: number) {
     <nav
       v-if="totalPages > 1"
       class="flex flex-wrap items-center gap-1"
-      :aria-label="totalLabel"
+      :aria-label="t('common.dashboard.pagination_label')"
       data-testid="dashboard-pagination-pages"
     >
       <Button
@@ -103,6 +106,7 @@ function goToPage(page: number) {
           type="button"
           :variant="token === currentPage ? 'secondary' : 'ghost'"
           size="icon-sm"
+          :aria-label="t('common.dashboard.page_label', { page: token })"
           :aria-current="token === currentPage ? 'page' : undefined"
           :data-testid="`dashboard-pagination-page-${token}`"
           @click="goToPage(token)"

@@ -14,13 +14,13 @@ const {
   options,
   allResourcesLabel,
   codeLabel,
-  disabled = false,
+  busy = false,
 } = defineProps<{
   filters: DashboardIssueFilterValues;
   options: DashboardIssueFilterOptions;
   allResourcesLabel: string;
   codeLabel?: (code: string) => string;
-  disabled?: boolean;
+  busy?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -81,7 +81,7 @@ function issueCodeLabel(code: string) {
   <div
     data-testid="dashboard-issue-filters"
     class="flex flex-wrap items-center gap-2"
-    :aria-busy="disabled"
+    :aria-busy="busy"
   >
     <DashboardFilterPopover
       id="dashboard-issue-severity-filter"
@@ -90,7 +90,6 @@ function issueCodeLabel(code: string) {
       :label="t('common.dashboard.issue_filters.severity_label')"
       :search-placeholder="t('common.search')"
       :empty-label="t('common.no_results')"
-      :disabled="disabled"
       trigger-class="sm:max-w-52"
       @update:model-value="changeFilter('severity', $event)"
     />
@@ -103,7 +102,6 @@ function issueCodeLabel(code: string) {
       :search-placeholder="t('common.search')"
       :empty-label="t('common.no_results')"
       searchable
-      :disabled="disabled"
       trigger-class="sm:max-w-72"
       @update:model-value="changeFilter('code', $event)"
     />
@@ -116,7 +114,6 @@ function issueCodeLabel(code: string) {
       :search-placeholder="t('common.search')"
       :empty-label="t('common.no_results')"
       searchable
-      :disabled="disabled"
       trigger-class="sm:max-w-64"
       @update:model-value="changeFilter('resource', $event)"
     />

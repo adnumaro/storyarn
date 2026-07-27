@@ -18,17 +18,19 @@ defmodule StoryarnWeb.SheetLive.Index do
       handle_issue_page: 3,
       put_issues: 3,
       put_stable_issue_ids: 3,
-      begin_overview_load: 1,
       fail_overview_load: 1,
-      begin_issues_load: 1,
-      fail_issues_load: 1
+      fail_issues_load: 1,
+      put_pending_delete_id: 2
     ]
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Shared.Severity
   alias Storyarn.Sheets
+  alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.DashboardHandlers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+  alias StoryarnWeb.Live.TreeSidebarActions
   alias StoryarnWeb.SheetLive.Helpers.HealthHelpers
 
   require Logger
@@ -109,6 +111,7 @@ defmodule StoryarnWeb.SheetLive.Index do
 
     if connected?(socket) do
       Collaboration.subscribe_dashboard(project.id)
+      DashboardCache.subscribe_resets()
 
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
@@ -132,12 +135,16 @@ defmodule StoryarnWeb.SheetLive.Index do
      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
      |> assign(:dashboard_stats, nil)
      |> assign(:overview_status, :loading)
+     |> assign(:dashboard_overview_running?, false)
+     |> assign(:dashboard_overview_reload_pending?, false)
      |> assign(:all_sheet_table_data, [])
      |> assign(:sheet_table_data, [])
      |> assign(:total_sheets, 0)
      |> assign(:all_sheet_issues, [])
      |> assign(:sheet_issues, [])
      |> assign(:issues_status, :loading)
+     |> assign(:dashboard_issues_running?, false)
+     |> assign(:dashboard_issues_reload_pending?, false)
      |> assign(:issue_filters, default_issue_filters())
      |> assign(:issue_filter_options, default_issue_filter_options())
      |> assign(:issue_page, 1)
@@ -174,7 +181,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
 
   def handle_info({:tree_changed, :sheets}, socket) do
-    {:noreply, StoryarnWeb.Live.Shared.DashboardHandlers.schedule_reload(socket)}
+    {:noreply, DashboardHandlers.schedule_reload(socket)}
   end
 
   def handle_info({:entities_deleted, _type, _ids}, socket), do: {:noreply, socket}
@@ -200,34 +207,50 @@ defmodule StoryarnWeb.SheetLive.Index do
 
     page = pagination(sorted_table, socket.assigns.page)
 
-    {:noreply,
-     socket
-     |> assign(:dashboard_stats, data.dashboard_stats)
-     |> assign(:overview_status, :ready)
-     |> assign(:all_sheet_table_data, sorted_table)
-     |> assign(:sheet_table_data, page.rows)
-     |> assign(:total_sheets, page.total)
-     |> assign(:page, page.page)
-     |> assign(:total_pages, page.total_pages)}
+    socket =
+      socket
+      |> assign(:dashboard_stats, data.dashboard_stats)
+      |> assign(:overview_status, :ready)
+      |> assign(:all_sheet_table_data, sorted_table)
+      |> assign(:sheet_table_data, page.rows)
+      |> assign(:total_sheets, page.total)
+      |> assign(:page, page.page)
+      |> assign(:total_pages, page.total_pages)
+      |> DashboardHandlers.finish_load(:overview, &start_dashboard_overview/1)
+
+    {:noreply, socket}
   end
 
   def handle_async(:load_dashboard_issues, {:ok, issues}, socket) do
-    {:noreply,
-     socket
-     |> put_issues(issues, issue_assign_opts())
-     |> assign(:issues_status, :ready)}
+    socket =
+      socket
+      |> put_issues(issues, issue_assign_opts())
+      |> assign(:issues_status, :ready)
+      |> DashboardHandlers.finish_load(:issues, &start_dashboard_issues/1)
+
+    {:noreply, socket}
   end
 
   def handle_async(:load_dashboard_overview, {:exit, reason}, socket) do
     Logger.error("Sheet dashboard overview load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
 
-    {:noreply, assign(socket, :overview_status, fail_overview_load(socket.assigns.overview_status))}
+    socket =
+      socket
+      |> assign(:overview_status, fail_overview_load(socket.assigns.overview_status))
+      |> DashboardHandlers.finish_load(:overview, &start_dashboard_overview/1)
+
+    {:noreply, socket}
   end
 
   def handle_async(:load_dashboard_issues, {:exit, reason}, socket) do
     Logger.error("Sheet dashboard issues load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
 
-    {:noreply, assign(socket, :issues_status, fail_issues_load(socket.assigns.issues_status))}
+    socket =
+      socket
+      |> assign(:issues_status, fail_issues_load(socket.assigns.issues_status))
+      |> DashboardHandlers.finish_load(:issues, &start_dashboard_issues/1)
+
+    {:noreply, socket}
   end
 
   defp load_dashboard_overview_async(project_id, workspace, project) do
@@ -314,32 +337,72 @@ defmodule StoryarnWeb.SheetLive.Index do
     {:noreply, handle_issue_page(socket, page, issue_assign_opts())}
   end
 
-  def handle_event("retry_dashboard_overview", _params, socket) do
-    send(self(), :load_dashboard_overview)
-    {:noreply, assign(socket, :overview_status, begin_overview_load(socket.assigns.overview_status))}
+  def handle_event("retry_dashboard_overview", _params, %{assigns: %{overview_status: status}} = socket)
+      when status in [:error, :stale] do
+    {:noreply, DashboardHandlers.retry_load(socket, :overview, &start_dashboard_overview/1)}
   end
 
-  def handle_event("retry_dashboard_issues", _params, socket) do
-    send(self(), :load_dashboard_issues)
-    {:noreply, assign(socket, :issues_status, begin_issues_load(socket.assigns.issues_status))}
+  def handle_event("retry_dashboard_overview", _params, socket), do: {:noreply, socket}
+
+  def handle_event("retry_dashboard_issues", _params, %{assigns: %{issues_status: status}} = socket)
+      when status in [:error, :stale] do
+    {:noreply, DashboardHandlers.retry_load(socket, :issues, &start_dashboard_issues/1)}
   end
 
-  # Tree mutation events (create_sheet, create_child_sheet, move_to_parent,
-  # set_pending_delete, confirm_delete, delete) now live in SheetsSidebarLive —
-  # they never reach this LV because the tree is rendered by SheetsSidebarLive
-  # which is a separate nested LV.
+  def handle_event("retry_dashboard_issues", _params, socket), do: {:noreply, socket}
+
+  def handle_event("set_pending_delete_sheet", %{"id" => id}, socket) do
+    {:noreply, put_pending_delete_id(socket, id)}
+  end
+
+  def handle_event("confirm_delete_sheet", _params, socket) do
+    Authorize.with_authorization(socket, :edit_content, &confirm_delete_sheet/1)
+  end
+
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  # Other tree mutation events (create_sheet, create_child_sheet and
+  # move_to_parent) live in the separately rendered SheetsSidebarLive.
 
   # ===========================================================================
   # Private helpers
   # ===========================================================================
 
+  defp confirm_delete_sheet(socket) do
+    TreeSidebarActions.confirm_delete(socket, %{
+      get_entity: &Sheets.get_sheet/2,
+      delete_entity: &Sheets.delete_sheet_subtree/1,
+      broadcast_deleted: &broadcast_entities_deleted/2,
+      refresh_tree: &refresh_dashboard_and_tree/1,
+      deleted_message: dgettext("sheets", "Sheet moved to trash."),
+      delete_error_message: dgettext("sheets", "Could not delete sheet.")
+    })
+  end
+
+  defp broadcast_entities_deleted(socket, ids) do
+    Phoenix.PubSub.broadcast_from(
+      Storyarn.PubSub,
+      self(),
+      StoryarnWeb.SheetsSidebarLive.shell_topic(socket.assigns.project.id),
+      {:entities_deleted, :sheet, ids}
+    )
+  end
+
+  defp refresh_dashboard_and_tree(socket) do
+    Phoenix.PubSub.broadcast_from(
+      Storyarn.PubSub,
+      self(),
+      StoryarnWeb.SheetsSidebarLive.shell_topic(socket.assigns.project.id),
+      {:tree_changed, :sheets}
+    )
+
+    DashboardHandlers.schedule_reload(socket)
+  end
+
   defp start_dashboard_overview(socket) do
     %{project: project, workspace: workspace, locale: locale} = socket.assigns
 
-    socket
-    |> assign(:overview_status, begin_overview_load(socket.assigns.overview_status))
-    |> cancel_async(:load_dashboard_overview)
-    |> start_async(:load_dashboard_overview, fn ->
+    DashboardHandlers.start_load(socket, :overview, fn ->
       Gettext.put_locale(Storyarn.Gettext, locale)
       load_dashboard_overview_async(project.id, workspace, project)
     end)
@@ -348,10 +411,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   defp start_dashboard_issues(socket) do
     %{project: project, workspace: workspace, locale: locale} = socket.assigns
 
-    socket
-    |> assign(:issues_status, begin_issues_load(socket.assigns.issues_status))
-    |> cancel_async(:load_dashboard_issues)
-    |> start_async(:load_dashboard_issues, fn ->
+    DashboardHandlers.start_load(socket, :issues, fn ->
       Gettext.put_locale(Storyarn.Gettext, locale)
       load_dashboard_issues_async(project.id, workspace, project)
     end)

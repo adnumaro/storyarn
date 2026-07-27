@@ -82,8 +82,8 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
         )
 
       assert initial_overview.assigns.overview_status == :loading, "#{name} initial overview retry"
-      assert_receive :load_dashboard_overview
-      refute_receive :load_dashboard_issues, 0
+      assert initial_overview.assigns.dashboard_overview_running?, "#{name} overview task"
+      refute initial_overview.assigns.dashboard_overview_reload_pending?, "#{name} overview pending"
 
       {:noreply, stale_overview} =
         handle_dashboard_event(
@@ -93,8 +93,8 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
         )
 
       assert stale_overview.assigns.overview_status == :refreshing, "#{name} stale overview retry"
-      assert_receive :load_dashboard_overview
-      refute_receive :load_dashboard_issues, 0
+      assert stale_overview.assigns.dashboard_overview_running?, "#{name} stale overview task"
+      refute stale_overview.assigns.dashboard_overview_reload_pending?, "#{name} stale overview pending"
 
       {:noreply, initial_issues} =
         handle_dashboard_event(
@@ -104,8 +104,8 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
         )
 
       assert initial_issues.assigns.issues_status == :loading, "#{name} initial issues retry"
-      assert_receive :load_dashboard_issues
-      refute_receive :load_dashboard_overview, 0
+      assert initial_issues.assigns.dashboard_issues_running?, "#{name} issues task"
+      refute initial_issues.assigns.dashboard_issues_reload_pending?, "#{name} issues pending"
 
       {:noreply, stale_issues} =
         handle_dashboard_event(
@@ -115,8 +115,199 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
         )
 
       assert stale_issues.assigns.issues_status == :refreshing, "#{name} stale issues retry"
-      assert_receive :load_dashboard_issues
-      refute_receive :load_dashboard_overview, 0
+      assert stale_issues.assigns.dashboard_issues_running?, "#{name} stale issues task"
+      refute stale_issues.assigns.dashboard_issues_reload_pending?, "#{name} stale issues pending"
+    end
+  end
+
+  test "retry events are no-ops unless their section is in error or stale" do
+    for {name, dashboard, _table_key, _issues_key, _all_issues_key} <- @dashboards,
+        status <- [:ready, :loading, :refreshing] do
+      overview_socket =
+        socket(%{
+          overview_status: status,
+          dashboard_overview_running?: status in [:loading, :refreshing]
+        })
+
+      {:noreply, overview_result} =
+        handle_dashboard_event(
+          dashboard,
+          "retry_dashboard_overview",
+          overview_socket
+        )
+
+      assert overview_result == overview_socket, "#{name} overview #{status}"
+
+      issues_socket =
+        socket(%{
+          issues_status: status,
+          dashboard_issues_running?: status in [:loading, :refreshing]
+        })
+
+      {:noreply, issues_result} =
+        handle_dashboard_event(
+          dashboard,
+          "retry_dashboard_issues",
+          issues_socket
+        )
+
+      assert issues_result == issues_socket, "#{name} issues #{status}"
+    end
+  end
+
+  test "repeated retry events cannot replace an in-flight retry task" do
+    for {name, dashboard, _table_key, _issues_key, _all_issues_key} <- @dashboards do
+      {:noreply, first_overview} =
+        handle_dashboard_event(
+          dashboard,
+          "retry_dashboard_overview",
+          socket(%{overview_status: :error})
+        )
+
+      {:noreply, repeated_overview} =
+        handle_dashboard_event(
+          dashboard,
+          "retry_dashboard_overview",
+          first_overview
+        )
+
+      assert repeated_overview == first_overview, "#{name} repeated overview"
+
+      {:noreply, first_issues} =
+        handle_dashboard_event(
+          dashboard,
+          "retry_dashboard_issues",
+          socket(%{issues_status: :error})
+        )
+
+      {:noreply, repeated_issues} =
+        handle_dashboard_event(
+          dashboard,
+          "retry_dashboard_issues",
+          first_issues
+        )
+
+      assert repeated_issues == first_issues, "#{name} repeated issues"
+    end
+  end
+
+  test "a fast retry failure is rate-limited before another task can start" do
+    for {name, dashboard, _table_key, issues_key, all_issues_key} <- @dashboards do
+      {:noreply, overview_retry} =
+        handle_dashboard_event(
+          dashboard,
+          "retry_dashboard_overview",
+          socket(%{overview_status: :error})
+        )
+
+      {:noreply, failed_overview_retry} =
+        handle_dashboard_async(
+          dashboard,
+          :load_dashboard_overview,
+          {:exit, :overview_boom},
+          overview_retry
+        )
+
+      assert failed_overview_retry.assigns.overview_status == :error,
+             "#{name} overview retry failure"
+
+      assert is_integer(failed_overview_retry.assigns.dashboard_overview_retry_after),
+             "#{name} overview retry timestamp"
+
+      overview_in_cooldown =
+        put_retry_after(
+          failed_overview_retry,
+          :dashboard_overview_retry_after
+        )
+
+      {:noreply, blocked_overview_retry} =
+        handle_dashboard_event(
+          dashboard,
+          "retry_dashboard_overview",
+          overview_in_cooldown
+        )
+
+      assert blocked_overview_retry == overview_in_cooldown,
+             "#{name} overview retry cooldown"
+
+      {:noreply, issues_retry} =
+        handle_dashboard_event(
+          dashboard,
+          "retry_dashboard_issues",
+          socket(%{
+            issues_key => [],
+            all_issues_key => [],
+            issues_status: :error
+          })
+        )
+
+      {:noreply, failed_issues_retry} =
+        handle_dashboard_async(
+          dashboard,
+          :load_dashboard_issues,
+          {:exit, :issues_boom},
+          issues_retry
+        )
+
+      assert failed_issues_retry.assigns.issues_status == :error,
+             "#{name} issues retry failure"
+
+      assert is_integer(failed_issues_retry.assigns.dashboard_issues_retry_after),
+             "#{name} issues retry timestamp"
+
+      issues_in_cooldown =
+        put_retry_after(
+          failed_issues_retry,
+          :dashboard_issues_retry_after
+        )
+
+      {:noreply, blocked_issues_retry} =
+        handle_dashboard_event(
+          dashboard,
+          "retry_dashboard_issues",
+          issues_in_cooldown
+        )
+
+      assert blocked_issues_retry == issues_in_cooldown,
+             "#{name} issues retry cooldown"
+    end
+  end
+
+  test "a pending invalidation restarts each failed task once instead of leaving it stale" do
+    for {name, dashboard, _table_key, issues_key, all_issues_key} <- @dashboards do
+      {:noreply, overview} =
+        handle_dashboard_async(
+          dashboard,
+          :load_dashboard_overview,
+          {:exit, :overview_boom},
+          socket(%{
+            overview_status: :refreshing,
+            dashboard_overview_running?: true,
+            dashboard_overview_reload_pending?: true
+          })
+        )
+
+      assert overview.assigns.overview_status == :refreshing, "#{name} overview restart status"
+      assert overview.assigns.dashboard_overview_running?, "#{name} overview restarted"
+      refute overview.assigns.dashboard_overview_reload_pending?, "#{name} overview pending cleared"
+
+      {:noreply, issues} =
+        handle_dashboard_async(
+          dashboard,
+          :load_dashboard_issues,
+          {:exit, :issues_boom},
+          socket(%{
+            issues_key => [%{id: "loaded"}],
+            all_issues_key => [%{id: "loaded"}],
+            issues_status: :refreshing,
+            dashboard_issues_running?: true,
+            dashboard_issues_reload_pending?: true
+          })
+        )
+
+      assert issues.assigns.issues_status == :refreshing, "#{name} issues restart status"
+      assert issues.assigns.dashboard_issues_running?, "#{name} issues restarted"
+      refute issues.assigns.dashboard_issues_reload_pending?, "#{name} issues pending cleared"
     end
   end
 
@@ -132,6 +323,11 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
 
   defp handle_dashboard_event(SceneDashboard, event, socket), do: SceneDashboard.handle_event(event, %{}, socket)
 
+  defp put_retry_after(socket, key) do
+    retry_after = System.monotonic_time(:millisecond) + 60_000
+    %{socket | assigns: Map.put(socket.assigns, key, retry_after)}
+  end
+
   defp socket(extra_assigns) do
     %Socket{
       assigns:
@@ -139,8 +335,14 @@ defmodule StoryarnWeb.Live.DashboardAsyncStateTest do
           %{
             __changed__: %{},
             project: %{id: 42},
+            workspace: %{slug: "workspace"},
+            locale: "en",
             dashboard_stats: nil,
-            issues: []
+            issues: [],
+            dashboard_overview_running?: false,
+            dashboard_overview_reload_pending?: false,
+            dashboard_issues_running?: false,
+            dashboard_issues_reload_pending?: false
           },
           extra_assigns
         )

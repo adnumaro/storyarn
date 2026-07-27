@@ -9,6 +9,7 @@
       "main": "Main",
       "set_main": "Set as main",
       "delete": "Delete",
+      "flow_actions": "Flow actions",
       "total_flows": "{n} flow | {n} flows",
       "columns": {
         "name": "Name",

@@ -243,12 +243,19 @@ const columns = computed<DashboardTableColumn[]>(() => [
       <template #actions="{ row }">
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <Button variant="ghost" size="icon-sm" class="size-7">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="size-7"
+              :aria-label="$t('sheets.dashboard.sheet_actions')"
+              :title="$t('sheets.dashboard.sheet_actions')"
+            >
               <MoreHorizontal class="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem
+              data-testid="sheet-dashboard-delete-row"
               class="text-destructive gap-2 text-xs"
               @select="requestDelete(row.id)"
             >
@@ -329,24 +336,26 @@ const columns = computed<DashboardTableColumn[]>(() => [
             </button>
           </div>
 
-          <DashboardIssueFilters
-            :filters="issueFilters"
-            :options="issueFilterOptions"
-            :all-resources-label="$t('sheets.dashboard.all_sheets')"
-            :code-label="issueCodeLabel"
-            :disabled="issuesStatus === 'refreshing'"
-            @change="changeIssueFilter"
-          />
+          <template v-if="resolvedIssuePagination.unfilteredTotal > 0">
+            <DashboardIssueFilters
+              :filters="issueFilters"
+              :options="issueFilterOptions"
+              :all-resources-label="$t('sheets.dashboard.all_sheets')"
+              :code-label="issueCodeLabel"
+              :busy="issuesStatus === 'refreshing'"
+              @change="changeIssueFilter"
+            />
 
-          <DashboardIssueList
-            :issues="issues"
-            :pagination="resolvedIssuePagination"
-            @page="goToIssuePage"
-          >
-            <template #description="{ issue }">
-              {{ healthFindingLabel(issue) }}
-            </template>
-          </DashboardIssueList>
+            <DashboardIssueList
+              :issues="issues"
+              :pagination="resolvedIssuePagination"
+              @page="goToIssuePage"
+            >
+              <template #description="{ issue }">
+                {{ healthFindingLabel(issue) }}
+              </template>
+            </DashboardIssueList>
+          </template>
         </template>
       </div>
     </template>

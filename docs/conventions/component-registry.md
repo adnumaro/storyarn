@@ -103,26 +103,27 @@ the call site, not by editing the primitive.
 
 ## Shared Vue Components (`assets/app/components/`)
 
-| Path                  | Components                                                                                                                                                         |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ConfirmDialog.vue`   | The confirmation dialog. See Dialog Policy below                                                                                                                   |
-| `SaveIndicator.vue`   | `status` (`"idle" \| "saving" \| "saved"`, default `"idle"`)                                                                                                       |
-| `UserAvatar.vue`      | `email`, `displayName`, `size` (`xs\|sm\|md\|lg`), `color` — initials fallback                                                                                     |
-| `ThemeSelector.vue`   | Theme switcher                                                                                                                                                     |
-| `ai/`                 | `ContextDisclosure.vue`                                                                                                                                            |
-| `builders/`           | `ConditionBuilder.vue`, `InstructionBuilder.vue` (+ `condition/`, `instruction/` internals, `types.ts`)                                                            |
-| `collab/`             | `CollabToast.vue` — `actionLabels`; toast data arrives via `live.handleEvent("collab_toast")`, not props                                                           |
-| `command-palette/`    | `CommandPalette.vue`, `PaletteEmpty.vue`                                                                                                                           |
-| `forms/`              | `EditableText.vue`, `ColorPicker.vue`, `ColorPickerPopover.vue`, `ExpressionEditor.vue`, `VariableCombobox.vue`, `BooleanToggle.vue`, `PasswordInput.vue`          |
-| `forms/fields/`       | `TextField`, `NumberField`, `SelectField`, `ToggleField`, `SliderField`, `ButtonGroupField`, `EntityCombobox` (barrel `index.ts`)                                  |
-| `forms/assets/`       | `AssetPicker`, `AssetUploadButton`, `AudioAsset`, `ImageAsset`, `ImageFit`, `ImagePosition`                                                                        |
-| `health/`             | `HealthStatusPopover.vue`                                                                                                                                          |
-| `invitations/`        | `InvitationResponse.vue`                                                                                                                                           |
-| `language/`           | `LanguageFlag.vue`, `LanguagePicker.vue`                                                                                                                           |
-| `navigation/`         | `LiveLink.vue` — `to`, `mode` (`navigate\|patch\|external`), `state` (`push\|replace`). Use instead of a raw `<a>` so scroll position survives navigation          |
-| `onboarding/`         | `OnboardingDialog.vue`, `onboardingGuides.ts`                                                                                                                      |
-| `toolbar/`            | `ToolbarBase`, `ToolbarButton`, `ToolbarSeparator`, `ToolbarSizePicker`, `ToolbarColorPicker`, `ToolbarTooltip` (barrel `index.ts`)                                |
-| `versioning/history/` | `VersionHistory.vue`, `CreateVersionDialog`, `DeleteVersionDialog`, `PromoteVersionDialog`, `RestorePreviewDialog`, `UnsavedChangesDialog`, `useVersionHistory.ts` |
+| Path                  | Components                                                                                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ConfirmDialog.vue`   | The confirmation dialog. See Dialog Policy below                                                                                                                                                 |
+| `SaveIndicator.vue`   | `status` (`"idle" \| "saving" \| "saved"`, default `"idle"`)                                                                                                                                     |
+| `UserAvatar.vue`      | `email`, `displayName`, `size` (`xs\|sm\|md\|lg`), `color` — initials fallback                                                                                                                   |
+| `ThemeSelector.vue`   | Theme switcher                                                                                                                                                                                   |
+| `ai/`                 | `ContextDisclosure.vue`                                                                                                                                                                          |
+| `builders/`           | `ConditionBuilder.vue`, `InstructionBuilder.vue` (+ `condition/`, `instruction/` internals, `types.ts`)                                                                                          |
+| `collab/`             | `CollabToast.vue` — `actionLabels`; toast data arrives via `live.handleEvent("collab_toast")`, not props                                                                                         |
+| `command-palette/`    | `CommandPalette.vue`, `PaletteEmpty.vue`                                                                                                                                                         |
+| `dashboard/`          | Shared dashboard filters, issue list, sortable data table, and pagination (`DashboardFilterPopover`, `DashboardIssueFilters`, `DashboardIssueList`, `DashboardDataTable`, `DashboardPagination`) |
+| `forms/`              | `EditableText.vue`, `ColorPicker.vue`, `ColorPickerPopover.vue`, `ExpressionEditor.vue`, `VariableCombobox.vue`, `BooleanToggle.vue`, `PasswordInput.vue`                                        |
+| `forms/fields/`       | `TextField`, `NumberField`, `SelectField`, `ToggleField`, `SliderField`, `ButtonGroupField`, `EntityCombobox` (barrel `index.ts`)                                                                |
+| `forms/assets/`       | `AssetPicker`, `AssetUploadButton`, `AudioAsset`, `ImageAsset`, `ImageFit`, `ImagePosition`                                                                                                      |
+| `health/`             | `HealthStatusPopover.vue`                                                                                                                                                                        |
+| `invitations/`        | `InvitationResponse.vue`                                                                                                                                                                         |
+| `language/`           | `LanguageFlag.vue`, `LanguagePicker.vue`                                                                                                                                                         |
+| `navigation/`         | `LiveLink.vue` — `to`, `mode` (`navigate\|patch\|external`), `state` (`push\|replace`). Use instead of a raw `<a>` so scroll position survives navigation                                        |
+| `onboarding/`         | `OnboardingDialog.vue`, `onboardingGuides.ts`                                                                                                                                                    |
+| `toolbar/`            | `ToolbarBase`, `ToolbarButton`, `ToolbarSeparator`, `ToolbarSizePicker`, `ToolbarColorPicker`, `ToolbarTooltip` (barrel `index.ts`)                                                              |
+| `versioning/history/` | `VersionHistory.vue`, `CreateVersionDialog`, `DeleteVersionDialog`, `PromoteVersionDialog`, `RestorePreviewDialog`, `UnsavedChangesDialog`, `useVersionHistory.ts`                               |
 
 `assets/app/shell/` holds app chrome, not reusable widgets: `Sidebar.vue`,
 `SidebarFrame.vue`, `MainSidebar.vue`, `WorkspaceSidebar.vue`, `DashboardContent.vue`,
@@ -155,10 +156,10 @@ NEVER use `window.confirm/alert/prompt` or `data-confirm`.
 
 ## Shared Live Helpers
 
-| Module              | Import                                            | Purpose                                                 |
-| ------------------- | ------------------------------------------------- | ------------------------------------------------------- |
-| `DashboardHelpers`  | `import StoryarnWeb.Live.Shared.DashboardHelpers` | Sort, pagination, and reload helpers for Vue dashboards |
-| `DashboardHandlers` | `use StoryarnWeb.Live.Shared.DashboardHandlers`   | Injects the shared dashboard `handle_event` clauses     |
+| Module              | Import                                            | Purpose                                                                         |
+| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `DashboardHelpers`  | `import StoryarnWeb.Live.Shared.DashboardHelpers` | Sorting, pagination, issue filtering, and load-state helpers for Vue dashboards |
+| `DashboardHandlers` | `use StoryarnWeb.Live.Shared.DashboardHandlers`   | Injects debounced dashboard-invalidation `handle_info` clauses                  |
 
 The rest of `lib/storyarn_web/live/shared/` (`CollaborationHelpers`,
 `InvitationHelpers`, `OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`,

@@ -304,7 +304,11 @@ const columns = computed<DashboardTableColumn[]>(() => [
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem class="text-destructive gap-2 text-xs" @select="requestDelete(row)">
+            <DropdownMenuItem
+              data-testid="scene-dashboard-delete-row"
+              class="text-destructive gap-2 text-xs"
+              @select="requestDelete(row)"
+            >
               <Trash2 class="size-3.5" />
               {{ $t("scenes.dashboard.delete") }}
             </DropdownMenuItem>
@@ -382,24 +386,26 @@ const columns = computed<DashboardTableColumn[]>(() => [
             </button>
           </div>
 
-          <DashboardIssueFilters
-            :filters="issueFilters"
-            :options="issueFilterOptions"
-            :all-resources-label="$t('scenes.dashboard.all_scenes')"
-            :code-label="issueCodeLabel"
-            :disabled="issuesStatus === 'refreshing'"
-            @change="changeIssueFilter"
-          />
+          <template v-if="resolvedIssuePagination.unfilteredTotal > 0">
+            <DashboardIssueFilters
+              :filters="issueFilters"
+              :options="issueFilterOptions"
+              :all-resources-label="$t('scenes.dashboard.all_scenes')"
+              :code-label="issueCodeLabel"
+              :busy="issuesStatus === 'refreshing'"
+              @change="changeIssueFilter"
+            />
 
-          <DashboardIssueList
-            :issues="issues"
-            :pagination="resolvedIssuePagination"
-            @page="goToIssuePage"
-          >
-            <template #description="{ issue }">
-              {{ healthFindingLabel(issue) }}
-            </template>
-          </DashboardIssueList>
+            <DashboardIssueList
+              :issues="issues"
+              :pagination="resolvedIssuePagination"
+              @page="goToIssuePage"
+            >
+              <template #description="{ issue }">
+                {{ healthFindingLabel(issue) }}
+              </template>
+            </DashboardIssueList>
+          </template>
         </template>
       </div>
     </template>
@@ -420,7 +426,12 @@ const columns = computed<DashboardTableColumn[]>(() => [
           <Button variant="outline" size="sm" @click="cancelDelete">
             {{ $t("scenes.dashboard.cancel") }}
           </Button>
-          <Button variant="destructive" size="sm" @click="confirmDelete">
+          <Button
+            data-testid="scene-dashboard-confirm-delete"
+            variant="destructive"
+            size="sm"
+            @click="confirmDelete"
+          >
             {{ $t("scenes.dashboard.delete") }}
           </Button>
         </DialogFooter>

@@ -1,5 +1,5 @@
 defmodule Storyarn.Dashboards.CacheTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Phoenix.PubSub
   alias Storyarn.Collaboration
@@ -23,6 +23,106 @@ defmodule Storyarn.Dashboards.CacheTest do
       # compute_fn should NOT be called on cache hit
       result = Cache.fetch(project_id, :test_scope, fn -> %{count: 999} end)
       assert result == %{count: 1}
+    end
+
+    test "coalesces concurrent misses for the same project and scope", %{project_id: project_id} do
+      parent = self()
+      compute_count = :atomics.new(1, [])
+
+      tasks =
+        for _ <- 1..20 do
+          Task.async(fn ->
+            send(parent, {:fetch_ready, self()})
+
+            receive do
+              :fetch -> :ok
+            end
+
+            Cache.fetch(project_id, :singleflight_scope, fn ->
+              invocation = :atomics.add_get(compute_count, 1, 1)
+
+              if invocation == 1 do
+                send(parent, {:compute_started, self()})
+
+                receive do
+                  :finish_compute -> :ok
+                end
+              end
+
+              :computed
+            end)
+          end)
+        end
+
+      callers =
+        for _ <- tasks do
+          assert_receive {:fetch_ready, pid}
+          pid
+        end
+
+      Enum.each(callers, &send(&1, :fetch))
+      assert_receive {:compute_started, compute_pid}
+      Process.sleep(25)
+      send(compute_pid, :finish_compute)
+
+      assert Enum.map(tasks, &Task.await(&1)) == List.duplicate(:computed, length(tasks))
+      assert :atomics.get(compute_count, 1) == 1
+    end
+
+    test "does not serialize misses for different keys", %{project_id: project_id} do
+      parent = self()
+
+      task_a =
+        Task.async(fn ->
+          Cache.fetch(project_id, :scope_a, fn ->
+            send(parent, {:compute_started, :scope_a, self()})
+            receive do: (:finish_compute -> :scope_a)
+          end)
+        end)
+
+      assert_receive {:compute_started, :scope_a, task_a_pid}
+
+      task_b =
+        Task.async(fn ->
+          Cache.fetch(project_id, :scope_b, fn ->
+            send(parent, {:compute_started, :scope_b, self()})
+            receive do: (:finish_compute -> :scope_b)
+          end)
+        end)
+
+      assert_receive {:compute_started, :scope_b, task_b_pid}
+      send(task_a_pid, :finish_compute)
+      send(task_b_pid, :finish_compute)
+
+      assert Task.await(task_a) == :scope_a
+      assert Task.await(task_b) == :scope_b
+    end
+
+    test "releases the singleflight lock when computation raises", %{project_id: project_id} do
+      assert_raise RuntimeError, "compute failed", fn ->
+        Cache.fetch(project_id, :failing_scope, fn -> raise "compute failed" end)
+      end
+
+      assert Cache.fetch(project_id, :failing_scope, fn -> :recovered end) == :recovered
+    end
+
+    test "returns without retrying forever when every computation invalidates its generation", %{
+      project_id: project_id
+    } do
+      compute_count = :atomics.new(1, [])
+
+      result =
+        Cache.fetch(project_id, :continuously_invalidated_scope, fn ->
+          :atomics.add(compute_count, 1, 1)
+          Cache.invalidate(project_id)
+          :snapshot
+        end)
+
+      assert result == :snapshot
+      assert :atomics.get(compute_count, 1) == 1
+
+      assert Cache.fetch(project_id, :continuously_invalidated_scope, fn -> :fresh end) ==
+               :fresh
     end
   end
 
@@ -57,13 +157,32 @@ defmodule Storyarn.Dashboards.CacheTest do
 
       assert_receive {:compute_started, task_pid}
       assert :ok = Cache.invalidate(project_id)
+      assert :ok = Cache.cleanup()
       send(task_pid, {:computed_value, :stale})
 
-      assert_receive {:compute_started, ^task_pid}
-      send(task_pid, {:computed_value, :fresh})
-
-      assert Task.await(task) == :fresh
+      assert Task.await(task) == :stale
+      assert Cache.fetch(project_id, :scope, fn -> :fresh end) == :fresh
       assert Cache.fetch(project_id, :scope, fn -> :unexpected end) == :fresh
+    end
+
+    test "cleanup removes generations after a project has no cache or computation", %{
+      project_id: project_id
+    } do
+      assert :ok = Cache.invalidate(project_id)
+
+      assert [{{:project, ^project_id}, first_generation}] =
+               :ets.lookup(:storyarn_dashboard_cache_generations, {:project, project_id})
+
+      assert :ok = Cache.cleanup()
+
+      assert :ets.lookup(:storyarn_dashboard_cache_generations, {:project, project_id}) == []
+
+      assert :ok = Cache.invalidate(project_id)
+
+      assert [{{:project, ^project_id}, second_generation}] =
+               :ets.lookup(:storyarn_dashboard_cache_generations, {:project, project_id})
+
+      refute second_generation == first_generation
     end
   end
 
@@ -134,6 +253,78 @@ defmodule Storyarn.Dashboards.CacheTest do
 
       refute_receive {:dashboard_invalidate, :flows}, 10
       assert Cache.fetch(project_id, :scope, fn -> :unexpected end) == :cached
+    end
+
+    test "unexpected invalidation messages do not restart the cache", %{project_id: project_id} do
+      cache_pid = Process.whereis(Cache)
+      Cache.fetch(project_id, :scope, fn -> :cached end)
+
+      PubSub.broadcast(
+        Storyarn.PubSub,
+        Cache.invalidation_topic(),
+        {:dashboard_cache_invalidate, :remote@cluster, %{invalid: project_id}, :flows}
+      )
+
+      :sys.get_state(Cache)
+
+      assert Process.whereis(Cache) == cache_pid
+      assert Cache.fetch(project_id, :scope, fn -> :unexpected end) == :cached
+    end
+  end
+
+  describe "cache lifecycle" do
+    test "reads and invalidations degrade safely while the ETS owner is restarting", %{
+      project_id: project_id
+    } do
+      assert :ok = Cache.subscribe_resets()
+      Cache.fetch(project_id, :scope, fn -> :stale end)
+
+      assert :ok = Supervisor.terminate_child(Storyarn.Supervisor, Cache)
+      on_exit(&ensure_cache_started/0)
+
+      assert :ok = Cache.invalidate(project_id)
+      assert :ok = Cache.invalidate(project_id, :scope)
+
+      assert Cache.fetch(project_id, :scope, fn -> :computed_without_cache end) ==
+               :computed_without_cache
+
+      ensure_cache_started()
+      :sys.get_state(Cache)
+
+      assert_receive :dashboard_cache_reset
+      assert Cache.fetch(project_id, :scope, fn -> :fresh end) == :fresh
+    end
+
+    test "cleanup removes expired entries so the next read recomputes", %{
+      project_id: project_id
+    } do
+      assert Cache.fetch(project_id, :expiring_scope, fn -> :cached end) == :cached
+
+      key = {project_id, :expiring_scope}
+      [{^key, :cached, _expires_at, generation}] = :ets.lookup(:storyarn_dashboard_cache, key)
+
+      true =
+        :ets.insert(
+          :storyarn_dashboard_cache,
+          {key, :cached, System.monotonic_time(:millisecond) - 1, generation}
+        )
+
+      assert :ok = Cache.cleanup()
+      assert Cache.fetch(project_id, :expiring_scope, fn -> :fresh end) == :fresh
+    end
+  end
+
+  defp ensure_cache_started do
+    case Process.whereis(Cache) do
+      nil ->
+        case Supervisor.restart_child(Storyarn.Supervisor, Cache) do
+          {:ok, _pid} -> :ok
+          {:ok, _pid, _info} -> :ok
+          {:error, :running} -> :ok
+        end
+
+      _pid ->
+        :ok
     end
   end
 end

@@ -8,14 +8,17 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
+  alias Storyarn.Shared.Severity
+
   @default_per_page 25
+  @max_bigint 9_223_372_036_854_775_807
   @issue_filter_keys ~w(severity code resource)
   @default_issue_filters %{
     "severity" => "all",
     "code" => "all",
     "resource" => "all"
   }
-  @issue_severity_values ~w(error warning info)
+  @issue_severity_values Enum.map(Severity.catalog(), &Atom.to_string/1)
   @issue_severities MapSet.new(["all" | @issue_severity_values])
 
   def begin_overview_load(status) when status in [:ready, :refreshing, :stale], do: :refreshing
@@ -26,6 +29,26 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpers do
 
   def begin_issues_load(status), do: begin_overview_load(status)
   def fail_issues_load(status), do: fail_overview_load(status)
+
+  def put_pending_delete_id(socket, value) do
+    assign(socket, :pending_delete_id, parse_entity_id(value))
+  end
+
+  def parse_entity_id(value) do
+    case value do
+      id when is_integer(id) and id > 0 and id <= @max_bigint ->
+        id
+
+      id when is_binary(id) ->
+        case Integer.parse(id) do
+          {parsed, ""} when parsed > 0 and parsed <= @max_bigint -> parsed
+          _invalid -> nil
+        end
+
+      _invalid ->
+        nil
+    end
+  end
 
   def pagination(rows, requested_page, per_page \\ @default_per_page) do
     total = length(rows)
@@ -42,8 +65,11 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpers do
 
   def sort_table(data, sort_by, sort_dir, columns) do
     sorter = Map.get(columns, sort_by, &String.downcase(&1.name))
-    Enum.sort_by(data, &{sorter.(&1), &1.id}, sort_dir)
+    Enum.sort_by(data, &{sortable_value(sorter.(&1)), &1.id}, sort_dir)
   end
+
+  defp sortable_value(%DateTime{} = value), do: DateTime.to_unix(value, :microsecond)
+  defp sortable_value(value), do: value
 
   def handle_sort(socket, column, all_data_key, page_data_key, sort_columns) do
     {sort_by, sort_dir} = toggle_sort(column, socket.assigns.sort_by, socket.assigns.sort_dir)
@@ -94,8 +120,10 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpers do
     unfiltered_total_assign = Keyword.fetch!(opts, :unfiltered_total_assign)
     requested_page = Keyword.get(opts, :requested_page, socket.assigns[page_assign])
 
+    previous_options = socket.assigns[options_key]
     catalog = issue_filter_catalog(issues)
-    filters = normalize_issue_filters(socket.assigns[filters_key], catalog)
+    filters = normalize_issue_filters(socket.assigns[filters_key], catalog, previous_options)
+    catalog = preserve_selected_catalog_options(catalog, filters, previous_options)
     options = issue_filter_options(issues, filters, catalog)
     filtered = filter_issues(issues, filters)
     page = pagination(filtered, requested_page)
@@ -113,14 +141,20 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpers do
 
   def handle_issue_filter(socket, filter, value, opts) when filter in @issue_filter_keys do
     filters_key = Keyword.fetch!(opts, :filters_key)
-    filters = Map.put(socket.assigns[filters_key], filter, normalize_filter_value(value))
+    value = normalize_filter_value(value)
 
-    socket
-    |> assign(filters_key, filters)
-    |> put_issues(
-      socket.assigns[Keyword.fetch!(opts, :all_key)],
-      Keyword.put(opts, :requested_page, 1)
-    )
+    if selectable_filter_value?(socket, filter, value, opts) do
+      filters = Map.put(socket.assigns[filters_key], filter, value)
+
+      socket
+      |> assign(filters_key, filters)
+      |> put_issues(
+        socket.assigns[Keyword.fetch!(opts, :all_key)],
+        Keyword.put(opts, :requested_page, 1)
+      )
+    else
+      socket
+    end
   end
 
   def handle_issue_filter(socket, _filter, _value, _opts), do: socket
@@ -216,17 +250,56 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpers do
     }
   end
 
-  defp normalize_issue_filters(filters, catalog) do
+  defp normalize_issue_filters(filters, catalog, previous_options) do
     valid_values = %{
       "severity" => @issue_severities,
-      "code" => catalog.codes |> MapSet.new() |> MapSet.put("all"),
-      "resource" => catalog.resources |> MapSet.new(& &1.value) |> MapSet.put("all")
+      "code" =>
+        catalog.codes
+        |> Kernel.++(option_values(previous_options.codes))
+        |> MapSet.new()
+        |> MapSet.put("all"),
+      "resource" =>
+        catalog.resources
+        |> Enum.map(& &1.value)
+        |> Kernel.++(option_values(previous_options.resources))
+        |> MapSet.new()
+        |> MapSet.put("all")
     }
 
     Map.new(@issue_filter_keys, fn key ->
       value = Map.get(filters, key, "all")
       {key, if(MapSet.member?(valid_values[key], value), do: value, else: "all")}
     end)
+  end
+
+  defp preserve_selected_catalog_options(catalog, filters, previous_options) do
+    code = filters["code"]
+    resource = filters["resource"]
+
+    codes =
+      if code != "all" and code not in catalog.codes do
+        Enum.sort([code | catalog.codes])
+      else
+        catalog.codes
+      end
+
+    resources =
+      if resource != "all" and Enum.all?(catalog.resources, &(&1.value != resource)) do
+        case Enum.find(previous_options.resources, &(&1.value == resource)) do
+          nil ->
+            catalog.resources
+
+          previous ->
+            Enum.sort_by(
+              [Map.take(previous, [:value, :label]) | catalog.resources],
+              &{String.downcase(&1.label), &1.value}
+            )
+        end
+      else
+        catalog.resources
+      end
+
+    %{catalog | codes: codes, resources: resources}
   end
 
   defp matches_issue_filter?(_issue, _key, "all"), do: true
@@ -244,6 +317,26 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpers do
   defp count_options(values, counts) do
     Enum.map(values, &%{value: &1, count: Map.get(counts, &1, 0)})
   end
+
+  defp selectable_filter_value?(_socket, _filter, "all", _opts), do: true
+
+  defp selectable_filter_value?(_socket, "severity", value, _opts) do
+    MapSet.member?(@issue_severities, value)
+  end
+
+  defp selectable_filter_value?(socket, filter, value, opts) do
+    options = socket.assigns[Keyword.fetch!(opts, :options_key)]
+
+    values =
+      case filter do
+        "code" -> option_values(options.codes)
+        "resource" -> option_values(options.resources)
+      end
+
+    value in values
+  end
+
+  defp option_values(options), do: Enum.map(options, & &1.value)
 
   defp normalize_filter_value(value) when is_binary(value), do: value
   defp normalize_filter_value(value) when is_atom(value), do: Atom.to_string(value)

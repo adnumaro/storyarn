@@ -16,11 +16,21 @@ defmodule Storyarn.Flows.NodeUpdate do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Shared.WordCount
 
+  # This is a write-path certification, not a hash of the derivative rows.
+  # Increment it whenever the canonical derivative contract changes. A nil or
+  # mismatched value forces FlowSync through the full reconciliation path.
+  @derivatives_fingerprint_version 1
+
   def update_node(%FlowNode{} = node, attrs) do
-    result = Repo.transaction(fn -> update_node_transaction(node, attrs) end)
+    result = update_node_without_dashboard_broadcast(node, attrs)
 
     maybe_broadcast_dashboard(result, node)
     result
+  end
+
+  @doc false
+  def update_node_without_dashboard_broadcast(%FlowNode{} = node, attrs) do
+    Repo.transaction(fn -> update_node_transaction(node, attrs) end)
   end
 
   defp update_node_transaction(node, attrs) do
@@ -46,6 +56,10 @@ defmodule Storyarn.Flows.NodeUpdate do
         |> Ecto.Changeset.put_change(
           :word_count,
           WordCount.for_node_data(type, data)
+        )
+        |> Ecto.Changeset.put_change(
+          :derivatives_fingerprint,
+          derivatives_fingerprint(type, data)
         )
         |> Repo.update()
         |> handle_persisted_node_data(project_id)
@@ -226,7 +240,37 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   @doc false
   def reconcile_persisted_node(%FlowNode{} = node, project_id) do
-    handle_persisted_node_data({:ok, node}, project_id)
+    node
+    |> then(&handle_persisted_node_data({:ok, &1}, project_id))
+    |> persist_derivatives_fingerprint()
+  end
+
+  @doc false
+  @spec data_and_derivatives_current?(FlowNode.t(), map(), integer()) :: boolean()
+  def data_and_derivatives_current?(%FlowNode{type: type} = node, desired_data, project_id)
+      when is_map(desired_data) and is_integer(project_id) do
+    changeset = FlowNode.data_changeset(node, %{data: desired_data})
+    normalized_input = Ecto.Changeset.get_field(changeset, :data)
+
+    with true <- changeset.valid?,
+         # These two node types resolve sheet/block names into rows outside the
+         # node itself. Keep reconciling them until that dependency also has a
+         # persisted revision that can participate in the certification.
+         false <- type in ["condition", "instruction"],
+         {:ok, normalized_data} <-
+           ReferenceIntegrity.lock_and_normalize_node_references(
+             project_id,
+             node.flow_id,
+             type,
+             normalized_input
+           ),
+         :ok <- validate_hub_id(node, normalized_data) do
+      normalized_data == node.data and
+        node.derivatives_fingerprint == derivatives_fingerprint(node) and
+        node.word_count == WordCount.for_node_data(node.type, node.data)
+    else
+      _not_current_or_invalid -> false
+    end
   end
 
   defp update_node_data_transaction(node, data) do
@@ -290,6 +334,10 @@ defmodule Storyarn.Flows.NodeUpdate do
     case node
          |> FlowNode.data_changeset(%{data: data})
          |> Ecto.Changeset.put_change(:word_count, word_count)
+         |> Ecto.Changeset.put_change(
+           :derivatives_fingerprint,
+           derivatives_fingerprint(node.type, data)
+         )
          |> Repo.update() do
       {:ok, updated_node} ->
         connections_changed? =
@@ -307,16 +355,56 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   defp handle_persisted_node_data({:ok, updated_node}, project_id) do
-    References.update_flow_node_entity_references(updated_node, project_id: project_id)
-    References.update_flow_node_variable_references(updated_node)
-
-    case Localization.extract_flow_node(updated_node) do
-      :ok -> updated_node
+    with :ok <-
+           normalize_reference_write_result(
+             References.update_flow_node_entity_references(
+               updated_node,
+               project_id: project_id
+             )
+           ),
+         :ok <-
+           normalize_reference_write_result(References.update_flow_node_variable_references(updated_node)),
+         :ok <- Localization.extract_flow_node(updated_node) do
+      updated_node
+    else
       {:error, reason} -> Repo.rollback(reason)
     end
   end
 
   defp handle_persisted_node_data({:error, changeset}, _project_id), do: Repo.rollback(changeset)
+
+  defp normalize_reference_write_result(:ok), do: :ok
+  defp normalize_reference_write_result({:error, reason}), do: {:error, reason}
+
+  defp normalize_reference_write_result(result) do
+    {:error, {:unexpected_reference_write_result, result}}
+  end
+
+  defp persist_derivatives_fingerprint(%FlowNode{} = node) do
+    fingerprint = derivatives_fingerprint(node)
+
+    if node.derivatives_fingerprint == fingerprint do
+      node
+    else
+      case node
+           |> Ecto.Changeset.change(derivatives_fingerprint: fingerprint)
+           |> Repo.update() do
+        {:ok, updated_node} -> updated_node
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end
+  end
+
+  defp derivatives_fingerprint(%FlowNode{} = node) do
+    derivatives_fingerprint(node.type, node.data)
+  end
+
+  defp derivatives_fingerprint(type, data) do
+    {@derivatives_fingerprint_version, type, data}
+    |> :erlang.term_to_binary([:deterministic])
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
 
   defp reconcile_outgoing_connection_pins(project_id, %FlowNode{} = previous_node, %FlowNode{} = updated_node) do
     connections = lock_outgoing_connections(updated_node.id)

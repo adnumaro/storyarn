@@ -152,13 +152,11 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
 
       assert {:ok, _flow} = Flows.update_flow(flow, %{name: "After"})
 
-      Process.sleep(550)
-      render(view)
-      await_async(view)
-
-      names = Enum.map(get_dashboard_vue(view).props["table-data"], & &1["name"])
-      assert "After" in names
-      refute "Before" in names
+      assert_dashboard_eventually(view, fn ->
+        names = Enum.map(get_dashboard_vue(view).props["table-data"], & &1["name"])
+        assert "After" in names
+        refute "Before" in names
+      end)
     end
   end
 
@@ -393,13 +391,23 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
     end
 
     test "retry immediately returns the overview to loading" do
-      socket = %Socket{assigns: %{__changed__: %{}, overview_status: :error}}
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          project: %{id: 4242, slug: "project"},
+          workspace: %{slug: "workspace"},
+          locale: "en",
+          overview_status: :error,
+          dashboard_overview_running?: false,
+          dashboard_overview_reload_pending?: false
+        }
+      }
 
       {:noreply, result} = Index.handle_event("retry_dashboard_overview", %{}, socket)
 
       assert result.assigns.overview_status == :loading
-      assert_receive :load_dashboard_overview
-      refute_receive :load_dashboard_issues
+      assert result.assigns.dashboard_overview_running?
+      refute result.assigns.dashboard_overview_reload_pending?
     end
   end
 
@@ -418,6 +426,24 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
     await_async(view)
 
     get_dashboard_vue(view).props["issues"]
+  end
+
+  defp assert_dashboard_eventually(view, assertion, attempts \\ 200)
+
+  defp assert_dashboard_eventually(view, assertion, attempts) when attempts > 1 do
+    render(view)
+    await_async(view)
+    assertion.()
+  rescue
+    ExUnit.AssertionError ->
+      Process.sleep(10)
+      assert_dashboard_eventually(view, assertion, attempts - 1)
+  end
+
+  defp assert_dashboard_eventually(view, assertion, 1) do
+    render(view)
+    await_async(view)
+    assertion.()
   end
 
   describe "Authentication" do

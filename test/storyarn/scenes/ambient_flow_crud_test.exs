@@ -197,6 +197,29 @@ defmodule Storyarn.Scenes.AmbientFlowCrudTest do
   end
 
   describe "update_ambient_flow/2" do
+    test "returns validation errors even when casting produced no changes" do
+      project = project_fixture()
+      scene = scene_fixture(project)
+      flow = flow_fixture(project)
+
+      assert {:ok, ambient_flow} =
+               AmbientFlowCrud.create_ambient_flow(scene.id, %{
+                 "flow_id" => flow.id,
+                 "priority" => 7
+               })
+
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               AmbientFlowCrud.update_ambient_flow(ambient_flow, %{
+                 "priority" => "not-an-integer"
+               })
+
+      refute changeset.valid?
+      assert Repo.get!(SceneAmbientFlow, ambient_flow.id).priority == 7
+      refute_dashboard_invalidation()
+    end
+
     test "validates a requested flow change under the scene and flow locks" do
       project = project_fixture()
       scene = scene_fixture(project)

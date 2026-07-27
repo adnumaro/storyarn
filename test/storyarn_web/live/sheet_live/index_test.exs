@@ -244,13 +244,23 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
     end
 
     test "retry immediately returns the overview to loading" do
-      socket = %Socket{assigns: %{__changed__: %{}, overview_status: :error}}
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          project: %{id: 4242, slug: "project"},
+          workspace: %{slug: "workspace"},
+          locale: "en",
+          overview_status: :error,
+          dashboard_overview_running?: false,
+          dashboard_overview_reload_pending?: false
+        }
+      }
 
       {:noreply, result} = Index.handle_event("retry_dashboard_overview", %{}, socket)
 
       assert result.assigns.overview_status == :loading
-      assert_receive :load_dashboard_overview
-      refute_receive :load_dashboard_issues
+      assert result.assigns.dashboard_overview_running?
+      refute result.assigns.dashboard_overview_reload_pending?
     end
   end
 

@@ -12,6 +12,7 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Localization
+  alias Storyarn.Localization.LocalizedText
   alias Storyarn.Repo
   alias Storyarn.Screenplays
   alias Storyarn.Shared.WordCount
@@ -170,6 +171,197 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
       assert Repo.reload!(screenplay).linked_flow_id == nil
       assert Flows.list_flows(project.id) == []
     end
+
+    test "repairs legacy node derivatives before certifying the no-op path" do
+      project = project_fixture()
+      language_fixture(project)
+
+      sheet = sheet_fixture(project, %{name: "Hero", shortcut: "hero"})
+
+      variable =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Health", "placeholder" => "0"}
+        })
+
+      screenplay = screenplay_fixture(project, %{name: "Legacy derivatives"})
+
+      {:ok, _character} =
+        Screenplays.create_element(screenplay, %{
+          type: "character",
+          content: "Narrator"
+        })
+
+      {:ok, dialogue_element} =
+        Screenplays.create_element(screenplay, %{
+          type: "dialogue",
+          content: "One two three"
+        })
+
+      {:ok, instruction_element} =
+        Screenplays.create_element(screenplay, %{
+          type: "instruction",
+          data: %{"assignments" => [assignment(sheet.shortcut, variable.variable_name)]}
+        })
+
+      assert {:ok, _flow} = Screenplays.sync_to_flow(screenplay)
+
+      dialogue_node = linked_node(dialogue_element)
+      instruction_node = linked_node(instruction_element)
+      node_ids = [dialogue_node.id, instruction_node.id]
+
+      Repo.update_all(
+        from(node in FlowNode, where: node.id in ^node_ids),
+        set: [derivatives_fingerprint: nil]
+      )
+
+      Repo.update_all(
+        from(node in FlowNode, where: node.id == ^dialogue_node.id),
+        set: [word_count: -1]
+      )
+
+      Repo.delete_all(
+        from(reference in VariableReference,
+          where:
+            reference.source_type == "flow_node" and
+              reference.source_id == ^instruction_node.id
+        )
+      )
+
+      Repo.delete_all(
+        from(text in LocalizedText,
+          where:
+            text.source_type == "flow_node" and
+              text.source_id == ^dialogue_node.id
+        )
+      )
+
+      assert {:ok, _flow} = Screenplays.sync_to_flow(screenplay)
+
+      repaired_dialogue = Repo.get!(FlowNode, dialogue_node.id)
+      repaired_instruction = Repo.get!(FlowNode, instruction_node.id)
+
+      assert repaired_dialogue.word_count ==
+               WordCount.for_node_data(repaired_dialogue.type, repaired_dialogue.data)
+
+      assert variable_reference_block_ids(repaired_instruction.id) == [variable.id]
+
+      assert Localization.get_text_by_source(
+               "flow_node",
+               repaired_dialogue.id,
+               "text",
+               "es"
+             )
+
+      assert is_binary(repaired_dialogue.derivatives_fingerprint)
+      assert is_binary(repaired_instruction.derivatives_fingerprint)
+    end
+
+    test "updates the linked node type when an element changes mapping" do
+      project = project_fixture()
+      screenplay = screenplay_fixture(project, %{name: "Type change"})
+
+      {:ok, action} =
+        Screenplays.create_element(screenplay, %{
+          type: "action",
+          content: "The door opens"
+        })
+
+      assert {:ok, _flow} = Screenplays.sync_to_flow(screenplay)
+      dialogue_node = linked_node(action)
+      assert dialogue_node.type == "dialogue"
+
+      assert {:ok, transition} =
+               Screenplays.update_element(action, %{
+                 type: "transition",
+                 content: "CUT TO BLACK"
+               })
+
+      assert {:ok, _flow} = Screenplays.sync_to_flow(screenplay)
+
+      exit_node = linked_node(transition)
+      assert exit_node.id == dialogue_node.id
+      assert exit_node.type == "exit"
+      assert exit_node.data["label"] == "CUT TO BLACK"
+      assert is_binary(exit_node.derivatives_fingerprint)
+    end
+
+    test "keeps an unchanged twenty-node resync within its query budget" do
+      project = project_fixture()
+      screenplay = screenplay_fixture(project, %{name: "Query budget"})
+
+      assert {:ok, _scene_heading} =
+               Screenplays.create_element(screenplay, %{
+                 type: "scene_heading",
+                 content: "INT. ARCHIVE - NIGHT"
+               })
+
+      for index <- 1..19 do
+        assert {:ok, _action} =
+                 Screenplays.create_element(screenplay, %{
+                   type: "action",
+                   content: "Action #{index}"
+                 })
+      end
+
+      assert {:ok, flow} = Screenplays.sync_to_flow(screenplay)
+
+      assert flow.id
+             |> Flows.list_nodes()
+             |> Enum.filter(&(&1.source == "screenplay_sync"))
+             |> Enum.all?(&is_binary(&1.derivatives_fingerprint))
+
+      handler_id = "flow-sync-query-budget-#{System.unique_integer([:positive])}"
+      marker = make_ref()
+      test_pid = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :repo, :query],
+          fn _event, _measurements, %{query: query}, {pid, ref} ->
+            if self() == pid, do: send(pid, {ref, query})
+          end,
+          {test_pid, marker}
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:ok, resynced_flow} = Screenplays.sync_to_flow(screenplay)
+      assert resynced_flow.id == flow.id
+
+      queries = drain_queries(marker)
+
+      assert length(queries) <= 120
+      refute Enum.any?(queries, &String.contains?(&1, ~s(UPDATE "flow_nodes")))
+    end
+
+    test "keeps the protected entry when its source scene heading is removed" do
+      project = project_fixture()
+      screenplay = screenplay_fixture(project, %{name: "Protected entry"})
+
+      assert {:ok, scene_heading} =
+               Screenplays.create_element(screenplay, %{
+                 type: "scene_heading",
+                 content: "INT. ARCHIVE - NIGHT"
+               })
+
+      assert {:ok, flow} = Screenplays.sync_to_flow(screenplay)
+
+      entry =
+        flow.id
+        |> Flows.list_nodes()
+        |> Enum.find(&(&1.type == "entry"))
+
+      assert entry.source == "screenplay_sync"
+      assert {:ok, _deleted_element} = Screenplays.delete_element(scene_heading)
+
+      assert {:ok, resynced_flow} = Screenplays.sync_to_flow(screenplay)
+      assert resynced_flow.id == flow.id
+
+      assert reloaded_entry = Repo.get!(FlowNode, entry.id)
+      assert reloaded_entry.deleted_at == nil
+    end
   end
 
   defp assignment(sheet_shortcut, variable_name) do
@@ -200,5 +392,13 @@ defmodule Storyarn.Screenplays.FlowSyncTest do
     |> order_by([reference], asc: reference.block_id)
     |> select([reference], reference.block_id)
     |> Repo.all()
+  end
+
+  defp drain_queries(marker, queries \\ []) do
+    receive do
+      {^marker, query} -> drain_queries(marker, [query | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
   end
 end

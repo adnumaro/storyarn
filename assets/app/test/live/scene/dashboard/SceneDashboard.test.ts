@@ -2,6 +2,7 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import DashboardIssueFilters from "../../../../components/dashboard/DashboardIssueFilters.vue";
 import DashboardPagination from "../../../../components/dashboard/DashboardPagination.vue";
+import DropdownMenuItem from "../../../../components/ui/dropdown-menu/DropdownMenuItem.vue";
 import SceneDashboard from "../../../../live/scene/dashboard/SceneDashboard.vue";
 import { createMockLive } from "../../../setup";
 
@@ -114,10 +115,10 @@ describe("SceneDashboard health", () => {
     );
   });
 
-  it("disables issue filters during a background issue refresh", () => {
+  it("marks issue filters busy without disabling them during a background refresh", () => {
     const { wrapper } = mountDashboard({ issuesStatus: "refreshing" });
 
-    expect(wrapper.getComponent(DashboardIssueFilters).props("disabled")).toBe(true);
+    expect(wrapper.getComponent(DashboardIssueFilters).props("busy")).toBe(true);
   });
 
   it("renders canonical severities, translations, and deep links", () => {
@@ -167,6 +168,38 @@ describe("SceneDashboard health", () => {
     expect(rowLink.attributes("data-phx-link")).toBe("patch");
     await wrapper.findAll("thead button")[1].trigger("click");
     expect(live.pushEvent).toHaveBeenCalledWith("sort_scenes", { column: "zone_count" }, undefined);
+  });
+
+  it("wires confirmed row deletion to the exact LiveView event pair", async () => {
+    const row = {
+      id: 99,
+      name: "Doomed Scene",
+      href: "/workspaces/ws/projects/story/scenes/99",
+      zone_count: 0,
+      pin_count: 0,
+      connection_count: 0,
+      updated_at: "2026-07-26T12:00:00Z",
+    };
+    const { live, wrapper } = mountDashboard({ canEdit: true, tableData: [row] });
+
+    await wrapper.get('[data-slot="dropdown-menu-trigger"]').trigger("click");
+    wrapper.getComponent(DropdownMenuItem).vm.$emit("select");
+    await wrapper.vm.$nextTick();
+
+    const confirmButton = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="scene-dashboard-confirm-delete"]',
+    );
+    expect(confirmButton).not.toBeNull();
+    confirmButton?.click();
+    await wrapper.vm.$nextTick();
+
+    expect(live.pushEvent).toHaveBeenNthCalledWith(
+      1,
+      "set_pending_delete_scene",
+      { id: 99 },
+      undefined,
+    );
+    expect(live.pushEvent).toHaveBeenNthCalledWith(2, "confirm_delete_scene", {}, undefined);
   });
 
   it("shows issue loading independently from the overview", () => {
@@ -242,6 +275,19 @@ describe("SceneDashboard health", () => {
 
     await wrapper.get('[data-testid="scene-issues-retry"]').trigger("click");
     expect(live.pushEvent).toHaveBeenCalledWith("retry_dashboard_issues", {}, undefined);
+  });
+
+  it("keeps the stale warning without showing filters or an empty-filter state when no results exist", () => {
+    const { wrapper } = mountDashboard({
+      issuesStatus: "stale",
+      issues: [],
+      issuePagination: { page: 1, totalPages: 1, total: 0, unfilteredTotal: 0 },
+    });
+
+    expect(wrapper.find('[data-testid="scene-issues-stale"]').exists()).toBe(true);
+    expect(wrapper.findComponent(DashboardIssueFilters).exists()).toBe(false);
+    expect(wrapper.find('[data-testid="dashboard-issue-list"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="dashboard-issues-empty-filter"]').exists()).toBe(false);
   });
 
   it("does not reveal an empty issues section during a background refresh", () => {

@@ -387,7 +387,7 @@ defmodule Storyarn.Screenplays.FlowSync do
 
   defp do_sync_in_transaction(screenplay, flow, all_node_attrs, connection_specs, screenplay_ids, page_tree) do
     # Load existing state
-    all_nodes = Flows.list_nodes(flow.id)
+    {flow, all_nodes} = lock_flow_nodes!(flow)
     synced_nodes = Enum.filter(all_nodes, &(&1.source == "screenplay_sync"))
     entry_node = Enum.find(all_nodes, &(&1.type == "entry"))
 
@@ -413,9 +413,16 @@ defmodule Storyarn.Screenplays.FlowSync do
     apply_positions!(result_nodes, positions, matched_ids)
 
     # Update element links across all pages
-    update_element_links!(all_node_attrs, result_nodes)
+    update_element_links!(all_node_attrs, result_nodes, element_to_node)
 
     Flows.get_flow!(screenplay.project_id, flow.id)
+  end
+
+  defp lock_flow_nodes!(flow) do
+    case Flows.lock_flow_nodes_for_update(flow) do
+      {:ok, locked_flow_and_nodes} -> locked_flow_and_nodes
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   defp upsert_sync_node(attrs, element_to_node, synced_by_id, entry_node, flow, matched) do
@@ -425,7 +432,7 @@ defmodule Storyarn.Screenplays.FlowSync do
         {node, matched}
 
       existing ->
-        node = update_sync_node!(existing, attrs)
+        node = update_sync_node!(existing, attrs, flow.project_id)
         {node, MapSet.put(matched, existing.id)}
     end
   end
@@ -465,11 +472,28 @@ defmodule Storyarn.Screenplays.FlowSync do
     end
   end
 
-  defp update_sync_node!(existing, attrs) do
-    case Flows.update_node_data_without_dashboard_broadcast(existing, attrs.data) do
-      {:ok, node, _meta} -> ensure_screenplay_sync_source!(node)
-      {:error, reason} -> Repo.rollback(reason)
+  defp update_sync_node!(existing, attrs, project_id) do
+    if sync_node_current?(existing, attrs, project_id) do
+      existing
+    else
+      case Flows.update_node_without_dashboard_broadcast(existing, %{
+             type: attrs.type,
+             data: attrs.data
+           }) do
+        {:ok, node} -> ensure_screenplay_sync_source!(node)
+        {:error, reason} -> Repo.rollback(reason)
+      end
     end
+  end
+
+  defp sync_node_current?(existing, attrs, project_id) do
+    existing.type == attrs.type and
+      existing.source == "screenplay_sync" and
+      Flows.node_data_and_derivatives_current?(
+        existing,
+        attrs.data,
+        project_id
+      )
   end
 
   defp ensure_screenplay_sync_source!(%FlowNode{source: "screenplay_sync"} = node), do: node
@@ -497,7 +521,7 @@ defmodule Storyarn.Screenplays.FlowSync do
 
     # Delete orphaned nodes (skip protected ones)
     Enum.each(orphaned, fn node ->
-      case Flows.delete_node_without_dashboard_broadcast(node) do
+      case Flows.delete_node_in_transaction_without_dashboard_broadcast(node) do
         {:ok, _, _} -> :ok
         {:error, :cannot_delete_entry_node} -> :ok
         {:error, :cannot_delete_last_exit} -> :ok
@@ -547,11 +571,19 @@ defmodule Storyarn.Screenplays.FlowSync do
     end
   end
 
-  defp update_element_links!(node_attrs_list, result_nodes) do
+  defp update_element_links!(node_attrs_list, result_nodes, element_to_node) do
     node_attrs_list
     |> Enum.zip(result_nodes)
     |> Enum.each(fn {attrs, node} ->
-      Repo.update_all(from(e in ScreenplayElement, where: e.id in ^attrs.element_ids), set: [linked_node_id: node.id])
+      stale_element_ids =
+        Enum.reject(attrs.element_ids, &(Map.get(element_to_node, &1) == node.id))
+
+      if stale_element_ids != [] do
+        Repo.update_all(
+          from(e in ScreenplayElement, where: e.id in ^stale_element_ids),
+          set: [linked_node_id: node.id]
+        )
+      end
     end)
   end
 

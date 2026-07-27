@@ -181,13 +181,16 @@ defmodule Storyarn.Scenes.DashboardInvalidationTest do
     test "reorder_layers/2 and toggle_layer_visibility/1 write no finding input", %{scene: scene} do
       first = layer_fixture(scene, %{"name" => "Background"})
       second = layer_fixture(scene, %{"name" => "Foreground"})
+      findings_before = Scenes.list_dashboard_health_findings(scene.project_id)
       flush()
 
       {:ok, _} = Scenes.reorder_layers(scene.id, [second.id, first.id])
       {:ok, _} = Scenes.toggle_layer_visibility(first)
 
-      # No finding reads `position` or `visible`. If one ever does, this test is
-      # the thing that has to fail.
+      # Keep the missing invalidation coupled to its premise: these fields do
+      # not currently affect dashboard health. If a checker starts reading
+      # either field, this assertion forces the writer contract to be updated.
+      assert Scenes.list_dashboard_health_findings(scene.project_id) == findings_before
       refute_receive {:dashboard_invalidate, :scenes}
     end
   end

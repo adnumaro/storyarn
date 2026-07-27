@@ -74,7 +74,6 @@ function ariaSort(column: string): "ascending" | "descending" | undefined {
               <button
                 type="button"
                 class="inline-flex items-center gap-1 transition-colors hover:text-foreground"
-                :class="column.align === 'right' && 'ml-auto'"
                 @click="emit('sort', column.key)"
               >
                 {{ column.label }}

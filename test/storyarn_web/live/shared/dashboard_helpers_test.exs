@@ -2,6 +2,7 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpersTest do
   use ExUnit.Case, async: true
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Shared.Severity
   alias StoryarnWeb.Live.Shared.DashboardHelpers
 
   @issue_opts [
@@ -58,6 +59,15 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpersTest do
     assert DashboardHelpers.fail_overview_load(:loading) == :error
     assert DashboardHelpers.fail_overview_load(:error) == :error
     assert DashboardHelpers.fail_overview_load(:refreshing) == :stale
+  end
+
+  test "default severity filters follow the canonical severity catalog" do
+    expected = Enum.map(Severity.catalog(), &Atom.to_string/1)
+
+    assert Enum.map(
+             DashboardHelpers.default_issue_filter_options().severities,
+             & &1.value
+           ) == expected
   end
 
   test "issue filters are combined before using the same 25-row paginator" do
@@ -175,6 +185,77 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpersTest do
     assert socket.assigns.filters["severity"] == "error"
     assert socket.assigns.issue_total == 0
     assert socket.assigns.issues == []
+  end
+
+  test "selected code and resource stay active with zero results when they disappear on refresh" do
+    original = %{
+      id: "issue-1",
+      severity: "warning",
+      code: "resolved_code",
+      resource_id: 10,
+      resource_label: "Resolved resource"
+    }
+
+    remaining = %{
+      id: "issue-2",
+      severity: "info",
+      code: "other_code",
+      resource_id: 20,
+      resource_label: "Other resource"
+    }
+
+    socket =
+      socket_fixture()
+      |> DashboardHelpers.put_issues([original], @issue_opts)
+      |> DashboardHelpers.handle_issue_filter("code", "resolved_code", @issue_opts)
+      |> DashboardHelpers.handle_issue_filter("resource", "10", @issue_opts)
+      |> DashboardHelpers.put_issues([remaining], @issue_opts)
+
+    assert socket.assigns.filters == %{
+             "severity" => "all",
+             "code" => "resolved_code",
+             "resource" => "10"
+           }
+
+    assert socket.assigns.issue_total == 0
+    assert socket.assigns.issues == []
+
+    assert %{value: "resolved_code", count: 0} =
+             Enum.find(socket.assigns.filter_options.codes, &(&1.value == "resolved_code"))
+
+    assert %{value: "10", label: "Resolved resource", count: 0} =
+             Enum.find(socket.assigns.filter_options.resources, &(&1.value == "10"))
+  end
+
+  test "unknown filter keys and values cannot become active filters" do
+    issue = %{
+      id: "issue-1",
+      severity: "warning",
+      code: "known_code",
+      resource_id: 10,
+      resource_label: "Known resource"
+    }
+
+    socket = DashboardHelpers.put_issues(socket_fixture(), [issue], @issue_opts)
+
+    for {filter, value} <- [
+          {"code", "unknown_code"},
+          {"resource", "999"},
+          {"severity", "critical"},
+          {"unknown", "known_code"}
+        ] do
+      unchanged =
+        DashboardHelpers.handle_issue_filter(
+          socket,
+          filter,
+          value,
+          @issue_opts
+        )
+
+      assert unchanged.assigns.filters == DashboardHelpers.default_issue_filters()
+      assert unchanged.assigns.issue_total == 1
+      assert unchanged.assigns.issues == [issue]
+    end
   end
 
   test "resource options deduplicate an id and tolerate a missing label" do

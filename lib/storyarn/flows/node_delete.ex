@@ -25,6 +25,19 @@ defmodule Storyarn.Flows.NodeDelete do
     end
   end
 
+  @doc false
+  def delete_node_in_transaction_without_dashboard_broadcast(%FlowNode{} = node_hint) do
+    if Repo.in_transaction?() do
+      case delete_node_in_transaction(node_hint) do
+        {:ok, {deleted_node, meta, _project_id}} -> {:ok, deleted_node, meta}
+        {:error, _reason} = error -> error
+      end
+    else
+      raise ArgumentError,
+            "delete_node_in_transaction_without_dashboard_broadcast/1 requires an active transaction"
+    end
+  end
+
   @doc """
   Restores a soft-deleted node by clearing its deleted_at timestamp.
   Returns {:ok, :already_active} if the node is not deleted (idempotent for redo safety).
@@ -154,17 +167,8 @@ defmodule Storyarn.Flows.NodeDelete do
 
   defp do_delete_node(node_hint) do
     fn ->
-      with {:ok, %{node: node, project_id: project_id}} <-
-             ReferenceIntegrity.lock_active_node_for_write(node_hint),
-           :ok <- validate_deletable_node(node) do
-        orphaned_count = maybe_clear_orphaned_jumps(node)
-
-        References.delete_flow_node_entity_references(node.id)
-        References.delete_flow_node_variable_references(node.id)
-        Localization.delete_flow_node_texts(node.id)
-
-        soft_delete_locked_node(node, orphaned_count, project_id)
-      else
+      case delete_node_in_transaction(node_hint) do
+        {:ok, result} -> result
         {:error, reason} -> Repo.rollback(reason)
       end
     end
@@ -172,13 +176,27 @@ defmodule Storyarn.Flows.NodeDelete do
     |> unwrap_delete_result()
   end
 
+  defp delete_node_in_transaction(node_hint) do
+    with {:ok, %{node: node, project_id: project_id}} <-
+           ReferenceIntegrity.lock_active_node_for_write(node_hint),
+         :ok <- validate_deletable_node(node) do
+      orphaned_count = maybe_clear_orphaned_jumps(node)
+
+      References.delete_flow_node_entity_references(node.id)
+      References.delete_flow_node_variable_references(node.id)
+      Localization.delete_flow_node_texts(node.id)
+
+      soft_delete_locked_node(node, orphaned_count, project_id)
+    end
+  end
+
   defp soft_delete_locked_node(node, orphaned_count, project_id) do
     case node |> FlowNode.soft_delete_changeset() |> Repo.update() do
       {:ok, deleted_node} ->
-        {deleted_node, %{orphaned_jumps: orphaned_count}, project_id}
+        {:ok, {deleted_node, %{orphaned_jumps: orphaned_count}, project_id}}
 
       {:error, changeset} ->
-        Repo.rollback(changeset)
+        {:error, changeset}
     end
   end
 

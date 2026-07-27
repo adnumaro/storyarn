@@ -1,10 +1,19 @@
 import { mount } from "@vue/test-utils";
+import { defineComponent } from "vue";
 import { describe, expect, it, vi } from "vitest";
 import DashboardFilterPopover from "../../../components/dashboard/DashboardFilterPopover.vue";
 import DashboardIssueFilters from "../../../components/dashboard/DashboardIssueFilters.vue";
 import { CommandItem } from "../../../components/ui/command";
 
 const passthrough = { template: "<div><slot /></div>" };
+const popoverStub = defineComponent({
+  name: "PopoverStub",
+  props: {
+    open: Boolean,
+  },
+  emits: ["update:open"],
+  template: '<div data-testid="filter-popover"><slot /></div>',
+});
 const contentStub = {
   template: '<div data-testid="filter-popover-content"><slot /></div>',
 };
@@ -37,7 +46,7 @@ function mountFilters(props: Record<string, unknown> = {}) {
     },
     global: {
       stubs: {
-        Popover: passthrough,
+        Popover: popoverStub,
         PopoverTrigger: passthrough,
         PopoverContent: contentStub,
       },
@@ -220,22 +229,32 @@ describe("DashboardIssueFilters", () => {
     expect(wrapper.emitted("change")).toBeUndefined();
   });
 
-  it("disables all popup triggers while a dashboard refresh is in progress", () => {
-    const wrapper = mountFilters({ disabled: true });
+  it("keeps an open popup interactive while marking background refreshes as busy", async () => {
+    const wrapper = mountFilters();
+    const codePopover = wrapper.findAllComponents(DashboardFilterPopover).at(1)!;
+    const popover = codePopover.findComponent({ name: "PopoverStub" });
+
+    popover.vm.$emit("update:open", true);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get("#dashboard-issue-code-filter").attributes("aria-expanded")).toBe("true");
+
+    await wrapper.setProps({ busy: true });
 
     expect(wrapper.attributes("aria-busy")).toBe("true");
     expect(
       wrapper
         .findAllComponents(DashboardFilterPopover)
-        .every((popover) => popover.props("disabled")),
+        .every((filterPopover) => filterPopover.props("disabled") === false),
     ).toBe(true);
+    expect(wrapper.get("#dashboard-issue-code-filter").attributes("aria-expanded")).toBe("true");
 
     for (const id of [
       "dashboard-issue-severity-filter",
       "dashboard-issue-code-filter",
       "dashboard-issue-resource-filter",
     ]) {
-      expect(wrapper.get(`#${id}`).attributes("disabled")).toBeDefined();
+      expect(wrapper.get(`#${id}`).attributes("disabled")).toBeUndefined();
     }
   });
 });

@@ -1050,13 +1050,19 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   def set_main_flow(%Flow{} = flow) do
+    flow
+    |> set_main_flow_transaction_result()
+    |> broadcast_set_main_flow_result()
+  end
+
+  defp set_main_flow_transaction_result(flow) do
     Repo.transaction(fn -> set_main_flow_transaction(flow) end)
   end
 
   defp set_main_flow_transaction(flow) do
     case ReferenceIntegrity.lock_active_flow_for_write(flow) do
       {:ok, %{project_id: project_id, flow: locked_flow}} ->
-        replace_main_flow(locked_flow, project_id)
+        {replace_main_flow(locked_flow, project_id), project_id}
 
       {:error, reason} ->
         Repo.rollback(reason)
@@ -1068,6 +1074,7 @@ defmodule Storyarn.Flows.FlowCrud do
       from(candidate in Flow,
         where:
           candidate.project_id == ^project_id and
+            candidate.id != ^locked_flow.id and
             candidate.is_main == true
       ),
       set: [is_main: false]
@@ -1372,4 +1379,11 @@ defmodule Storyarn.Flows.FlowCrud do
 
   defp broadcast_flow_scene_result({:ok, {flow, _project_id, false}}), do: {:ok, flow}
   defp broadcast_flow_scene_result(result), do: result
+
+  defp broadcast_set_main_flow_result({:ok, {flow, project_id}}) do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    {:ok, flow}
+  end
+
+  defp broadcast_set_main_flow_result(result), do: result
 end

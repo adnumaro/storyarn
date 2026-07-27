@@ -213,8 +213,8 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
     end
   end
 
-  defp update_ambient_flow_if_changed(%Ecto.Changeset{changes: changes}, locked_ambient_flow) when map_size(changes) == 0,
-    do: {:ok, locked_ambient_flow, false}
+  defp update_ambient_flow_if_changed(%Ecto.Changeset{valid?: true, changes: changes}, locked_ambient_flow)
+       when map_size(changes) == 0, do: {:ok, locked_ambient_flow, false}
 
   defp update_ambient_flow_if_changed(changeset, _locked_ambient_flow) do
     case Repo.update(changeset) do
