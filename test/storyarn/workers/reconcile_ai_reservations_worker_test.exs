@@ -5,6 +5,7 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Oban.Plugins.Cron
   alias Storyarn.AI
   alias Storyarn.AI.AllowanceReservation
   alias Storyarn.AI.Operation
@@ -19,7 +20,14 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
   alias Storyarn.Workers.ReconcileAIReservationsWorker
   alias StoryarnTest.AI.ContractTask
 
-  @stale_after 900
+  # Pinned through config in `setup` rather than read from the worker's default,
+  # so these cases keep testing the behaviour they describe when the default
+  # moves for compute-budget reasons (ENG-37).
+  @stale_after 300
+
+  # The cadence floor the crontab is allowed to use. Anything finer keeps the
+  # database compute from ever idling — see the Oban block in config/config.exs.
+  @min_cron_interval_seconds 900
 
   # A DB clock leading the app clock by tens of milliseconds is well within what
   # NTP-synced but separate machines drift to. Any positive lead larger than the
@@ -27,6 +35,15 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
   @db_clock_lead_ms 50
 
   setup do
+    original_reconciler_config =
+      Application.get_env(:storyarn, ReconcileAIReservationsWorker, [])
+
+    Application.put_env(:storyarn, ReconcileAIReservationsWorker, stale_after_seconds: @stale_after)
+
+    on_exit(fn ->
+      Application.put_env(:storyarn, ReconcileAIReservationsWorker, original_reconciler_config)
+    end)
+
     original_config = Application.get_env(:storyarn, ContractTask, [])
     Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
 
@@ -74,17 +91,23 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
   end
 
   describe "uniqueness window" do
-    test "the window stays strictly below the cron interval it is scheduled at" do
-      assert Keyword.fetch!(ReconcileAIReservationsWorker.__opts__(), :unique)[:period] < 300
+    test "every uniqueness window stays strictly below the cron interval it runs at" do
+      for {worker, interval} <- scheduled_intervals(),
+          unique = Keyword.get(worker.__opts__(), :unique),
+          is_list(unique) do
+        assert unique[:period] < interval,
+               "#{inspect(worker)} has a #{unique[:period]}s uniqueness window on a " <>
+                 "#{interval}s schedule — it will dedupe its own ticks"
+      end
     end
 
     test "a window equal to the cron interval drops the next tick under a small clock lead" do
       # Positive control for the hazard itself. Oban stamps `inserted_at` from the
       # DB clock (Postgres `now()` at transaction start) but computes the window
-      # cutoff from the app clock, with an inclusive `>=`. Two `*/5` ticks land
-      # exactly 300s apart, so the second dedupes against the first as soon as the
-      # DB clock leads the app clock by more than the BEGIN round-trip. The lead is
-      # a property of the deployment, so simulate it rather than race it.
+      # cutoff from the app clock, with an inclusive `>=`. Two ticks of a schedule
+      # land exactly one interval apart, so the second dedupes against the first as
+      # soon as the DB clock leads the app clock by more than the BEGIN round-trip.
+      # The lead is a property of the deployment, so simulate it rather than race it.
       insert_completed_reconciler_job!(seconds_ago: 300, lead_ms: @db_clock_lead_ms)
 
       assert {:ok, %Oban.Job{conflict?: true}} =
@@ -103,6 +126,33 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
 
       assert {:ok, %Oban.Job{conflict?: true}} =
                Oban.insert(ReconcileAIReservationsWorker.new(%{}))
+    end
+  end
+
+  describe "database compute budget" do
+    # The production database suspends its compute after five minutes without a
+    # query, so any background poll finer than that pins it at 100% and burns the
+    # monthly compute budget on an idle app. These are the guards for ENG-37.
+
+    test "no scheduled job runs finer than the cadence floor" do
+      for {worker, interval} <- scheduled_intervals() do
+        assert interval >= @min_cron_interval_seconds,
+               "#{inspect(worker)} runs every #{interval}s, below the #{@min_cron_interval_seconds}s " <>
+                 "floor — it will keep the database compute from ever idling"
+      end
+    end
+
+    test "staging does not poll finer than the cadence floor" do
+      # Oban's default is one second. Staging is a query like any other.
+      stage_interval = :storyarn |> Application.fetch_env!(Oban) |> Keyword.fetch!(:stage_interval)
+
+      assert stage_interval >= to_timeout(second: @min_cron_interval_seconds)
+    end
+
+    test "the notifier does not hold a connection open to wait" do
+      # Postgres LISTEN/NOTIFY keeps a connection parked purely to receive.
+      assert {Oban.Notifiers.PG, _} =
+               :storyarn |> Application.fetch_env!(Oban) |> Keyword.fetch!(:notifier)
     end
   end
 
@@ -237,5 +287,34 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
     |> Ecto.Changeset.put_change(:state, "completed")
     |> Ecto.Changeset.put_change(:inserted_at, inserted_at)
     |> Repo.insert!()
+  end
+
+  defp crontab do
+    {Cron, opts} =
+      :storyarn
+      |> Application.fetch_env!(Oban)
+      |> Keyword.fetch!(:plugins)
+      |> Enum.find(&match?({Cron, _}, &1))
+
+    Keyword.fetch!(opts, :crontab)
+  end
+
+  defp scheduled_intervals do
+    Enum.map(crontab(), fn {expression, worker} -> {worker, cron_interval(expression)} end)
+  end
+
+  # Covers only the shapes the crontab actually uses. A new shape should fail
+  # loudly here rather than be silently treated as "coarse enough".
+  defp cron_interval(expression) do
+    case String.split(expression, " ") do
+      # A bare `*` in the minute field means every minute — it must be matched
+      # before the literal-minute clause below, which would otherwise read it as
+      # hourly and wave the worst case straight through.
+      ["*", "*", "*", "*", "*"] -> 60
+      ["*/" <> minutes, "*", "*", "*", "*"] -> String.to_integer(minutes) * 60
+      [_minute, "*", "*", "*", "*"] -> 3600
+      [_minute, "*/" <> hours, "*", "*", "*"] -> String.to_integer(hours) * 3600
+      [_minute, _hour, "*", "*", "*"] -> 86_400
+    end
   end
 end
