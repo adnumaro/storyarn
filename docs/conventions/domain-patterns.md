@@ -336,15 +336,15 @@ domains, not just the public ones:
 - **Review every `#, fuzzy` entry and drop the flag.** `Gettext.Compiler` filters
   on `obsolete` alone (`deps/gettext/lib/gettext/compiler.ex:514`) — it has no
   notion of `fuzzy` at runtime, so the merge's nearest-neighbour guess ships
-  verbatim. `scenes.po` answered `Asset not found.` with *"Ficha no encontrada."*
+  verbatim. `scenes.po` answered `Asset not found.` with _"Ficha no encontrada."_
   ("Sheet not found") that way.
 - **Leave `en` msgstrs empty.** Gettext falls back to the msgid, already English,
-  so a filled `en` msgstr is an *override* of the source string — and the merge
+  so a filled `en` msgstr is an _override_ of the source string — and the merge
   writes those on its own. It fuzzy-matched three new `projects` msgids onto
-  neighbours, one of them answering `Project name` with *"Project Trash"*; clear
+  neighbours, one of them answering `Project name` with _"Project Trash"_; clear
   the flags without reading them and the override is what ships. One had been
-  sitting in `en/flows.po` since an earlier merge, telling English users *"Could
-  not update node positions."* when they failed to update the scene map.
+  sitting in `en/flows.po` since an earlier merge, telling English users _"Could
+  not update node positions."_ when they failed to update the scene map.
 - **Keep interpolations identical** between msgid and msgstr — same names, same
   `%{...}` form. A placeholder the message never binds prints literally on screen.
 
