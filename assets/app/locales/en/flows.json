@@ -130,7 +130,7 @@
       "exit": "Exit",
       "subflow": "Subflow",
       "sequence": "Sequence",
-      "dialogue_toolbar_screenplay": "Screenplay editor",
+      "dialogue_toolbar_editor": "Dialogue editor",
       "dialogue_toolbar_preview": "Preview",
       "entry": "Entry",
       "annotation": "Annotation"

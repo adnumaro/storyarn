@@ -33,9 +33,6 @@ defmodule Storyarn.Exports.DataCollector do
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
-  alias Storyarn.Screenplays
-  alias Storyarn.Screenplays.Screenplay
-  alias Storyarn.Screenplays.ScreenplayElement
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
@@ -62,8 +59,6 @@ defmodule Storyarn.Exports.DataCollector do
     :scene_zones,
     :scene_connections,
     :scene_annotations,
-    :screenplays,
-    :screenplay_elements,
     :assets,
     :languages,
     :localized_texts,
@@ -86,7 +81,6 @@ defmodule Storyarn.Exports.DataCollector do
       sheets: maybe_load(:sheets, project_id, opts),
       flows: maybe_load_preloaded(:flows, project_id, opts, preloaded),
       scenes: maybe_load(:scenes, project_id, opts),
-      screenplays: maybe_load(:screenplays, project_id, opts),
       localization: maybe_load(:localization, project_id, opts),
       assets: maybe_load(:assets, project_id, opts)
     }
@@ -110,8 +104,6 @@ defmodule Storyarn.Exports.DataCollector do
       scene_zones: count_scene_children(SceneZone, project_id, opts),
       scene_connections: count_scene_children(SceneConnection, project_id, opts),
       scene_annotations: count_scene_children(SceneAnnotation, project_id, opts),
-      screenplays: count_if(:screenplays, project_id, opts),
-      screenplay_elements: count_screenplay_elements(project_id, opts),
       assets: count_if(:assets, project_id, opts),
       languages: count_languages(project_id, opts),
       localized_texts: count_localized_texts(project_id, opts),
@@ -201,12 +193,6 @@ defmodule Storyarn.Exports.DataCollector do
     Scenes.list_scenes_for_export(project_id, filter_ids: filter_ids)
   end
 
-  defp maybe_load(:screenplays, _project_id, %{include_screenplays: false}), do: []
-
-  defp maybe_load(:screenplays, project_id, _opts) do
-    Screenplays.list_screenplays_for_export(project_id)
-  end
-
   defp maybe_load(:localization, _project_id, %{include_localization: false}),
     do: %{languages: [], strings: [], glossary: []}
 
@@ -254,13 +240,11 @@ defmodule Storyarn.Exports.DataCollector do
   defp count_if(:sheets, _project_id, %{include_sheets: false}), do: 0
   defp count_if(:flows, _project_id, %{include_flows: false}), do: 0
   defp count_if(:scenes, _project_id, %{include_scenes: false}), do: 0
-  defp count_if(:screenplays, _project_id, %{include_screenplays: false}), do: 0
   defp count_if(:assets, _project_id, %{include_assets: false}), do: 0
 
   defp count_if(:sheets, project_id, opts), do: count_sheets(project_id, opts)
   defp count_if(:flows, project_id, opts), do: count_flows(project_id, opts)
   defp count_if(:scenes, project_id, opts), do: count_scenes(project_id, opts)
-  defp count_if(:screenplays, project_id, _opts), do: Screenplays.count_screenplays(project_id)
   defp count_if(:assets, project_id, _opts), do: Assets.count_assets(project_id)
 
   defp count_sheets(project_id, %{sheet_ids: :all}), do: Sheets.count_sheets(project_id)
@@ -359,19 +343,6 @@ defmodule Storyarn.Exports.DataCollector do
     |> Repo.aggregate(:count)
   end
 
-  defp count_screenplay_elements(_project_id, %{include_screenplays: false}), do: 0
-
-  defp count_screenplay_elements(project_id, _opts) do
-    Repo.aggregate(
-      from(e in ScreenplayElement,
-        join: sp in Screenplay,
-        on: e.screenplay_id == sp.id,
-        where: sp.project_id == ^project_id and is_nil(sp.deleted_at)
-      ),
-      :count
-    )
-  end
-
   defp count_languages(_project_id, %{include_localization: false}), do: 0
 
   defp count_languages(project_id, opts) do
@@ -435,8 +406,6 @@ defmodule Storyarn.Exports.DataCollector do
       {:scene_zones, scene_child_query(SceneZone, project_id, opts)},
       {:scene_connections, scene_child_query(SceneConnection, project_id, opts)},
       {:scene_annotations, scene_child_query(SceneAnnotation, project_id, opts)},
-      {:screenplays, screenplay_query(project_id, opts)},
-      {:screenplay_elements, screenplay_element_query(project_id, opts)},
       {:assets, asset_query(project_id, opts)},
       {:languages, language_query(project_id, opts)},
       {:localized_texts, localized_text_query(project_id, opts)},
@@ -559,24 +528,6 @@ defmodule Storyarn.Exports.DataCollector do
       [] -> where(query, false)
       ids -> where(query, [_config, _node, flow], flow.id in ^ids)
     end
-  end
-
-  defp screenplay_query(_project_id, %{include_screenplays: false}), do: nil
-
-  defp screenplay_query(project_id, _opts) do
-    from(screenplay in Screenplay,
-      where: screenplay.project_id == ^project_id and is_nil(screenplay.deleted_at)
-    )
-  end
-
-  defp screenplay_element_query(_project_id, %{include_screenplays: false}), do: nil
-
-  defp screenplay_element_query(project_id, _opts) do
-    from(element in ScreenplayElement,
-      join: screenplay in Screenplay,
-      on: element.screenplay_id == screenplay.id,
-      where: screenplay.project_id == ^project_id and is_nil(screenplay.deleted_at)
-    )
   end
 
   defp asset_query(_project_id, %{include_assets: false}), do: nil

@@ -7,10 +7,9 @@ defmodule Storyarn.Projects.ProjectTrash do
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
-  alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Sheets.Sheet
 
-  @item_types ~w(sheet flow scene screenplay)
+  @item_types ~w(sheet flow scene)
   @default_per_page 25
   @max_per_page 100
 
@@ -251,7 +250,6 @@ defmodule Storyarn.Projects.ProjectTrash do
   defp retention_schema("sheet"), do: {:ok, Sheet}
   defp retention_schema("flow"), do: {:ok, Flow}
   defp retention_schema("scene"), do: {:ok, Scene}
-  defp retention_schema("screenplay"), do: {:ok, Screenplay}
   defp retention_schema(_type), do: {:error, :retention_candidate_changed}
 
   defp retention_cursor_filter(nil), do: dynamic(true)
@@ -323,7 +321,6 @@ defmodule Storyarn.Projects.ProjectTrash do
       |> deleted_item_query("sheet")
       |> union_all(^deleted_item_query(Flow, "flow"))
       |> union_all(^deleted_item_query(Scene, "scene"))
-      |> union_all(^deleted_item_query(Screenplay, "screenplay"))
 
     from(i in subquery(union_query))
   end

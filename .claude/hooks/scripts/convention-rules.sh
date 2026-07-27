@@ -118,7 +118,7 @@ check_conventions() {
   # === RULE: facade_bypass ===
   # Web layer must not call context submodules directly
   if [[ "$is_web" == true ]]; then
-    local submodules="SheetCrud\|SheetQueries\|BlockCrud\|TableCrud\|FlowCrud\|NodeCreate\|NodeUpdate\|NodeDelete\|ConnectionCrud\|SceneCrud\|LayerCrud\|ZoneCrud\|PinCrud\|AnnotationCrud\|ScreenplayCrud\|ElementCrud\|ScreenplayQueries\|LanguageCrud\|TextCrud\|GlossaryCrud\|BatchTranslator\|ProjectCrud\|WorkspaceCrud"
+    local submodules="SheetCrud\|SheetQueries\|BlockCrud\|TableCrud\|FlowCrud\|NodeCreate\|NodeUpdate\|NodeDelete\|ConnectionCrud\|SceneCrud\|LayerCrud\|ZoneCrud\|PinCrud\|AnnotationCrud\|LanguageCrud\|TextCrud\|GlossaryCrud\|BatchTranslator\|ProjectCrud\|WorkspaceCrud"
     local line_num=0
     while IFS= read -r line; do
       line_num=$((line_num + 1))

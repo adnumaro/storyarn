@@ -60,7 +60,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       membership={@membership}
       urls={@urls}
       active_tool={:flows}
-      is_super_admin={@is_super_admin}
       online_users={@online_users}
       restoration_banner={@restoration_banner}
       onboarding={@onboarding}

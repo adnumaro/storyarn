@@ -732,23 +732,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert node.position_x == 0.0
       assert node.position_y == 0.0
     end
-
-    test "source defaults to manual" do
-      %{flow: flow} = create_project_and_flow()
-
-      {:ok, node} = Flows.create_node(flow, %{type: "dialogue"})
-
-      assert node.source == "manual"
-    end
-
-    test "accepts screenplay_sync source" do
-      %{flow: flow} = create_project_and_flow()
-
-      {:ok, node} =
-        Flows.create_node(flow, %{type: "dialogue", source: "screenplay_sync"})
-
-      assert node.source == "screenplay_sync"
-    end
   end
 
   # ===========================================================================
@@ -2408,14 +2391,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       refute changeset.valid?
       assert "is invalid" in errors_on(changeset).type
-    end
-
-    test "create_changeset rejects invalid source" do
-      changeset =
-        FlowNode.create_changeset(%FlowNode{}, %{type: "dialogue", source: "invalid_source"})
-
-      refute changeset.valid?
-      assert "is invalid" in errors_on(changeset).source
     end
 
     test "position_changeset requires both position fields on a bare struct" do

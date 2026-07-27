@@ -155,8 +155,7 @@
       "activity_types": {
         "sheet": "Ficha",
         "flow": "Flujo",
-        "scene": "Escena",
-        "screenplay": "Guión"
+        "scene": "Escena"
       },
       "node_distribution": "Distribución de nodos",
       "no_nodes": "Aún no hay nodos",

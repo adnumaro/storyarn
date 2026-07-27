@@ -8,7 +8,6 @@ import {
   Info,
   Map as MapIcon,
   MessageSquare,
-  ScrollText,
   Text,
   Variable,
 } from "lucide-vue-next";
@@ -121,7 +120,6 @@ const activityIcons: Record<string, Component> = {
   sheet: FileText,
   flow: GitBranch,
   scene: MapIcon,
-  screenplay: ScrollText,
   node: Box,
 };
 
@@ -133,7 +131,6 @@ const activityTypeKeys: Record<string, string> = {
   sheet: "workspace.project_dashboard.activity_types.sheet",
   flow: "workspace.project_dashboard.activity_types.flow",
   scene: "workspace.project_dashboard.activity_types.scene",
-  screenplay: "workspace.project_dashboard.activity_types.screenplay",
 };
 </script>
 

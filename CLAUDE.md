@@ -125,12 +125,10 @@ one by review.
 ```
 User → WorkspaceMembership (owner|admin|member|viewer)
          └→ Workspace → Project → ProjectMembership (owner|editor|viewer)
-                                    └→ Sheets, Flows, Scenes, Screenplays, Assets
+                                    └→ Sheets, Flows, Scenes, Assets
 ```
 
 Contexts use facade with `defdelegate` → submodules (e.g., `sheets.ex` → `sheets/sheet_crud.ex`). See @docs/conventions/domain-patterns.md.
-
-Screenplays have no editor route — the context is reachable only through export, import, trash and reference-tracking code paths.
 
 ## Variable System
 

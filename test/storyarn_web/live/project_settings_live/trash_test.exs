@@ -6,13 +6,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
-  import Storyarn.ScreenplaysFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Screenplays
   alias Storyarn.Sheets
 
   defp get_trash_vue(view) do
@@ -95,12 +93,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       sheet = sheet_fixture(project, %{name: "Deleted Sheet"})
       flow = flow_fixture(project, %{name: "Deleted Flow"})
       scene = scene_fixture(project, %{name: "Deleted Scene"})
-      screenplay = screenplay_fixture(project, %{name: "Deleted Screenplay"})
 
       {:ok, _} = Sheets.delete_sheet(sheet)
       {:ok, _} = Flows.delete_flow(flow)
       {:ok, _} = Scenes.delete_scene(scene)
-      {:ok, _} = Screenplays.delete_screenplay(screenplay)
 
       {:ok, view, _html} =
         live(
@@ -114,9 +110,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       assert Enum.any?(items, &match?(%{"type" => "sheet", "name" => "Deleted Sheet"}, &1))
       assert Enum.any?(items, &match?(%{"type" => "flow", "name" => "Deleted Flow"}, &1))
       assert Enum.any?(items, &match?(%{"type" => "scene", "name" => "Deleted Scene"}, &1))
-      assert Enum.any?(items, &match?(%{"type" => "screenplay", "name" => "Deleted Screenplay"}, &1))
-      assert vue.props["pagination"]["totalCount"] == 4
-      assert vue.props["type-counts"] == %{"flow" => 1, "scene" => 1, "screenplay" => 1, "sheet" => 1}
+      assert vue.props["pagination"]["totalCount"] == 3
+      assert vue.props["type-counts"] == %{"flow" => 1, "scene" => 1, "sheet" => 1}
     end
 
     test "paginates project trash items", %{conn: conn, user: user} do

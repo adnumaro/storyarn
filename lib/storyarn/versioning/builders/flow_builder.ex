@@ -49,7 +49,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     original_id name shortcut description is_main settings scene_id nodes connections
     asset_blob_hashes asset_metadata referenced_sheets localization localization_manifest
   )
-  @node_snapshot_fields ~w(original_id type position_x position_y data source parent_id)
+  @node_snapshot_fields ~w(original_id type position_x position_y data parent_id)
   @sequence_config_fields ~w(name width height)
   @sequence_track_fields ~w(original_id kind position asset_id start_time end_time volume)
   @sequence_visual_layer_fields ~w(
@@ -499,7 +499,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       "position_x" => node.position_x,
       "position_y" => node.position_y,
       "data" => node.data,
-      "source" => node.source,
       "parent_id" => node.parent_id
     }
 
@@ -1540,9 +1539,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
       not optional_positive_integer?(data["audio_asset_id"]) ->
         invalid_snapshot_field(:node, "audio_asset_id", data["audio_asset_id"])
-
-      node["source"] not in ~w(manual screenplay_sync) ->
-        invalid_snapshot_field(:node, "source", node["source"])
 
       not optional_positive_integer?(parent_id) ->
         {:error, {:invalid_snapshot_node_parent_id, node["original_id"], parent_id}}
@@ -3568,7 +3564,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         position_y: node_data["position_y"],
         data: data,
         word_count: WordCount.for_node_data(node_data["type"], data),
-        source: node_data["source"],
         parent_id: nil
       })
       |> Ecto.Changeset.put_change(:deleted_at, nil)
@@ -4175,8 +4170,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       position_x: node_data["position_x"] || 0.0,
       position_y: node_data["position_y"] || 0.0,
       data: data,
-      word_count: WordCount.for_node_data(node_data["type"], data),
-      source: node_data["source"] || "manual"
+      word_count: WordCount.for_node_data(node_data["type"], data)
     })
   end
 

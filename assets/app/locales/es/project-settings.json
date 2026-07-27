@@ -143,7 +143,7 @@
       "search_placeholder": "Buscar elementos eliminados...",
       "empty_trash": "Vaciar papelera",
       "empty_title": "La papelera está vacía",
-      "empty_description": "Las fichas, flujos, escenas y guiones eliminados aparecerán aquí.",
+      "empty_description": "Las fichas, flujos y escenas eliminados aparecerán aquí.",
       "no_results_title": "No se encontraron elementos eliminados",
       "no_results_description": "Ajusta la búsqueda o el filtro de tipo para encontrar otro elemento.",
       "deleted_label": "Eliminado {time}",
@@ -155,8 +155,7 @@
       "types": {
         "sheet": "Ficha",
         "flow": "Flujo",
-        "scene": "Escena",
-        "screenplay": "Guion"
+        "scene": "Escena"
       },
       "restore": "Restaurar",
       "page_of": "Página {page} de {total}",
@@ -250,7 +249,6 @@
         "flows": "Flujos",
         "nodes": "Nodos de flujo",
         "scenes": "Escenas",
-        "screenplays": "Guiones",
         "assets": "Recursos",
         "localization": "Localización"
       }
@@ -279,14 +277,12 @@
         "sheets": "Fichas",
         "flows": "Flujos",
         "scenes": "Escenas",
-        "screenplays": "Guiones",
         "localization": "Localización"
       },
       "section_descriptions": {
         "sheets": "Personajes, objetos y datos estructurados.",
         "flows": "Grafos de diálogo, decisiones y lógica.",
         "scenes": "Escenas interactivas y sus conexiones.",
-        "screenplays": "Guiones y elementos de screenplay.",
         "localization": "Idiomas, traducciones y entradas del glosario."
       },
       "not_supported": "No disponible",

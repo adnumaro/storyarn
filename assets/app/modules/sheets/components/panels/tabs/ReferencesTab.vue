@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   ArrowRight,
   ArrowUpRight,
-  BookOpen,
   ChevronDown,
   Circle,
   Database,
@@ -54,7 +53,6 @@ function nodeIcon(nodeType: string | undefined): FunctionalComponent {
 function sourceIcon(sourceType: string): FunctionalComponent {
   if (sourceType === "sheet") return FileText;
   if (sourceType === "flow") return GitBranch;
-  if (sourceType === "screenplay") return BookOpen;
   if (sourceType === "scene") return Map;
   return Link;
 }
@@ -62,8 +60,6 @@ function sourceIcon(sourceType: string): FunctionalComponent {
 function sourceColor(sourceType: string): string {
   if (sourceType === "sheet") return "bg-violet-500/15 text-violet-600 dark:text-violet-400";
   if (sourceType === "flow") return "bg-amber-500/15 text-amber-600 dark:text-amber-400";
-  if (sourceType === "screenplay")
-    return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400";
   if (sourceType === "scene") return "bg-sky-500/15 text-sky-600 dark:text-sky-400";
   return "bg-muted text-muted-foreground";
 }
@@ -83,8 +79,6 @@ function backlinkUrl(backlink: Backlink): string {
     return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${si.sheetId}`;
   if (si.type === "flow")
     return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${si.flowId}`;
-  if (si.type === "screenplay")
-    return `/workspaces/${workspaceSlug}/projects/${projectSlug}/screenplays/${si.screenplayId}?element=${backlink.sourceId}`;
   if (si.type === "scene")
     return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${si.sceneId}`;
   return "#";

@@ -34,7 +34,6 @@ and only under `lib/storyarn_web/`. The rule above is broader than the linter.
 | Sheets           | `Storyarn.Sheets`           | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `GalleryCrud`, `AvatarCrud`, `PropertyInheritance`, `ReferenceTracker`, `TreeOperations`, `HealthChecker`, `FormulaResolver`                      |
 | Flows            | `Storyarn.Flows`            | `FlowCrud`, `NodeCrud` (-> `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `SequenceCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`, `HealthChecker`, `StructuralAnalysis` |
 | Scenes           | `Storyarn.Scenes`           | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `AmbientFlowCrud`, `ExplorationSessionCrud`, `TreeOperations`, `HealthChecker`, `ChangesetHelpers`                  |
-| Screenplays      | `Storyarn.Screenplays`      | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`, `FlowSync`, `LinkedPageCrud`, `AutoDetect`, `Export.Fountain`, `Import.Fountain`                              |
 | Localization     | `Storyarn.Localization`     | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`, `TranslationRunCrud`, `Providers.*`                                                           |
 | Collaboration    | `Storyarn.Collaboration`    | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                                                           |
 | Assets           | `Storyarn.Assets`           | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`, `BlobStore`, `UploadPolicy`                                                                                    |
@@ -287,27 +286,26 @@ Project-wide channels take a bare `project_id`, not a scope tuple:
 All user-facing text uses domain-specific Gettext. One domain per `.pot` file in
 `priv/gettext/`:
 
-| Domain       | Function                                    | Example               |
-| ------------ | ------------------------------------------- | --------------------- |
-| Generic      | `gettext("Saved")`                          | `default` domain      |
-| Sheets       | `dgettext("sheets", "Untitled")`            | Sheet-specific        |
-| Flows        | `dgettext("flows", "Add node")`             | Flow-specific         |
-| Scenes       | `dgettext("scenes", "Default Layer")`       | Scene-specific        |
-| Screenplays  | `dgettext("screenplays", "New Screenplay")` | Screenplay-specific   |
-| Localization | `dgettext("localization", "Pending")`       | Localization-specific |
-| Identity     | `dgettext("identity", "Sign in")`           | Auth/user-specific    |
-| Settings     | `dgettext("settings", "General")`           | Settings-specific     |
-| Projects     | `dgettext("projects", "New Project")`       | Project-specific      |
-| Workspaces   | `dgettext("workspaces", "Members")`         | Workspace-specific    |
-| Assets       | `dgettext("assets", "Upload")`              | Asset library         |
-| Versioning   | `dgettext("versioning", "Restore")`         | Versions & snapshots  |
-| Integrations | `dgettext("integrations", "Provider")`      | AI integrations       |
-| Drafts       | `dgettext("drafts", "Draft")`               | Draft surfaces        |
-| Public       | `dgettext("public", "Pricing")`             | Marketing pages       |
-| Docs         | `dgettext("docs", "Guides")`                | Documentation         |
-| Blog         | `dgettext("blog", "Read more")`             | Blog                  |
-| Emails       | `dgettext("emails", "Welcome")`             | Transactional email   |
-| Errors       | — **dormant**                               | See note below        |
+| Domain       | Function                               | Example               |
+| ------------ | -------------------------------------- | --------------------- |
+| Generic      | `gettext("Saved")`                     | `default` domain      |
+| Sheets       | `dgettext("sheets", "Untitled")`       | Sheet-specific        |
+| Flows        | `dgettext("flows", "Add node")`        | Flow-specific         |
+| Scenes       | `dgettext("scenes", "Default Layer")`  | Scene-specific        |
+| Localization | `dgettext("localization", "Pending")`  | Localization-specific |
+| Identity     | `dgettext("identity", "Sign in")`      | Auth/user-specific    |
+| Settings     | `dgettext("settings", "General")`      | Settings-specific     |
+| Projects     | `dgettext("projects", "New Project")`  | Project-specific      |
+| Workspaces   | `dgettext("workspaces", "Members")`    | Workspace-specific    |
+| Assets       | `dgettext("assets", "Upload")`         | Asset library         |
+| Versioning   | `dgettext("versioning", "Restore")`    | Versions & snapshots  |
+| Integrations | `dgettext("integrations", "Provider")` | AI integrations       |
+| Drafts       | `dgettext("drafts", "Draft")`          | Draft surfaces        |
+| Public       | `dgettext("public", "Pricing")`        | Marketing pages       |
+| Docs         | `dgettext("docs", "Guides")`           | Documentation         |
+| Blog         | `dgettext("blog", "Read more")`        | Blog                  |
+| Emails       | `dgettext("emails", "Welcome")`        | Transactional email   |
+| Errors       | — **dormant**                          | See note below        |
 
 **NEVER use hardcoded strings for user-facing text.** `mix convention.check` catches
 only the `put_flash` case (`put_flash_without_gettext`, web files only).

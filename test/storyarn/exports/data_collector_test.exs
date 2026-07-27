@@ -36,7 +36,6 @@ defmodule Storyarn.Exports.DataCollectorTest do
       assert is_list(data.sheets)
       assert is_list(data.flows)
       assert is_list(data.scenes)
-      assert is_list(data.screenplays)
       assert is_map(data.localization)
       assert is_list(data.assets)
     end
@@ -48,7 +47,6 @@ defmodule Storyarn.Exports.DataCollectorTest do
       assert data.sheets == []
       assert data.flows == []
       assert data.scenes == []
-      assert data.screenplays == []
       assert data.localization.languages == []
       assert data.assets == []
     end
@@ -218,7 +216,6 @@ defmodule Storyarn.Exports.DataCollectorTest do
       assert counts.flows == 0
       assert counts.nodes == 0
       assert counts.scenes == 0
-      assert counts.screenplays == 0
       assert counts.assets == 0
     end
 
@@ -233,7 +230,6 @@ defmodule Storyarn.Exports.DataCollectorTest do
         include_sheets: false,
         include_flows: false,
         include_scenes: false,
-        include_screenplays: false,
         include_localization: false,
         include_assets: false
       }
@@ -243,7 +239,6 @@ defmodule Storyarn.Exports.DataCollectorTest do
       assert data.sheets == []
       assert data.flows == []
       assert data.scenes == []
-      assert data.screenplays == []
       assert data.assets == []
     end
   end
@@ -292,7 +287,6 @@ defmodule Storyarn.Exports.DataCollectorTest do
       assert counts.flows == 0
       assert counts.nodes == 0
       assert counts.scenes == 0
-      assert counts.screenplays == 0
       assert counts.assets == 0
     end
 
@@ -320,21 +314,19 @@ defmodule Storyarn.Exports.DataCollectorTest do
       assert counts.sheets == 0
     end
 
-    test "returns zero for disabled flows, scenes, and screenplays", %{project: project} do
+    test "returns zero for disabled flows and scenes", %{project: project} do
       flow_fixture(project, %{name: "F1"})
 
       opts = %ExportOptions{
         format: :storyarn,
         include_flows: false,
-        include_scenes: false,
-        include_screenplays: false
+        include_scenes: false
       }
 
       counts = DataCollector.count_entities(project.id, opts)
 
       assert counts.flows == 0
       assert counts.scenes == 0
-      assert counts.screenplays == 0
     end
   end
 

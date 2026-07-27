@@ -21,7 +21,6 @@ defmodule StoryarnWeb.Components.ProjectLayout do
   attr :membership, :map, required: true
   attr :urls, :map, required: true
   attr :active_tool, :atom, default: :sheets
-  attr :is_super_admin, :boolean, default: false
   attr :online_users, :list, default: []
   attr :sidebar_module, :atom, default: nil
   attr :sidebar_session, :map, default: %{}
@@ -67,7 +66,6 @@ defmodule StoryarnWeb.Components.ProjectLayout do
             projectName: @project.name,
             workspaceName: @workspace.name,
             showToolSwitcher: true,
-            isSuperAdmin: @is_super_admin,
             canManageProject: Storyarn.Projects.can?(@membership.role, :manage_project)
           }
         }

@@ -14,7 +14,6 @@ defmodule Storyarn.Exports.RoundTripTest do
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
-  import Storyarn.ScreenplaysFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Exports
@@ -96,11 +95,6 @@ defmodule Storyarn.Exports.RoundTripTest do
     _annotation = annotation_fixture(scene, %{"text" => "Here be dragons"})
     _scene_conn = connection_fixture(scene, pin1, pin2)
 
-    # Screenplays
-    sp = screenplay_fixture(source_project, %{name: "Act 1"})
-    _el1 = element_fixture(sp, %{type: "scene_heading", content: "INT. CASTLE - DAY"})
-    _el2 = element_fixture(sp, %{type: "action", content: "The hero enters the throne room."})
-
     # Assets
     _asset =
       image_asset_fixture(source_project, user, %{
@@ -177,7 +171,6 @@ defmodule Storyarn.Exports.RoundTripTest do
       assert length(data["sheets"]) == length(data2["sheets"])
       assert length(data["flows"]) == length(data2["flows"])
       assert length(data["scenes"]) == length(data2["scenes"])
-      assert length(data["screenplays"]) == length(data2["screenplays"])
 
       assert length(get_in(data, ["assets", "items"])) ==
                length(get_in(data2, ["assets", "items"]))
@@ -260,8 +253,7 @@ defmodule Storyarn.Exports.RoundTripTest do
         "project" => %{"name" => "Test"},
         "sheets" => sheets,
         "flows" => [],
-        "scenes" => [],
-        "screenplays" => []
+        "scenes" => []
       }
 
       assert {:error, {:entity_limits_exceeded, details}} =
@@ -324,17 +316,6 @@ defmodule Storyarn.Exports.RoundTripTest do
       z1_names = s1["zones"] |> Enum.map(& &1["name"]) |> Enum.sort()
       z2_names = s2["zones"] |> Enum.map(& &1["name"]) |> Enum.sort()
       assert z1_names == z2_names, "Zone names mismatch for scene #{s1["name"]}"
-    end)
-
-    # Screenplays: compare by name, check element types and content
-    assert_entities_match(data1["screenplays"], data2["screenplays"], "screenplays", fn sp1, sp2 ->
-      assert sp1["name"] == sp2["name"]
-      assert length(sp1["elements"]) == length(sp2["elements"])
-
-      # Value-level: compare element types
-      e1_types = sp1["elements"] |> Enum.map(& &1["type"]) |> Enum.sort()
-      e2_types = sp2["elements"] |> Enum.map(& &1["type"]) |> Enum.sort()
-      assert e1_types == e2_types, "Element types mismatch for screenplay #{sp1["name"]}"
     end)
 
     # Assets: compare by filename

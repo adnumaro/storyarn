@@ -17,7 +17,6 @@ export interface CurrentUser {
   id: number | null;
   email: string;
   displayName?: string;
-  isSuperAdmin?: boolean;
 }
 
 export interface OnlineUser {

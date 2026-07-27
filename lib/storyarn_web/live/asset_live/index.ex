@@ -39,7 +39,6 @@ defmodule StoryarnWeb.AssetLive.Index do
       membership={@membership}
       urls={@urls}
       active_tool={:assets}
-      is_super_admin={@is_super_admin}
       online_users={@online_users}
       sidebar_module={StoryarnWeb.AssetSidebarLive}
       sidebar_session={

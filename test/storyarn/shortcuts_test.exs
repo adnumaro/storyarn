@@ -67,15 +67,6 @@ defmodule Storyarn.ShortcutsTest do
     end
   end
 
-  describe "generate_screenplay_shortcut/2" do
-    test "generates shortcutified name" do
-      %{project: project} = create_project()
-
-      shortcut = Shortcuts.generate_screenplay_shortcut("Act One", project.id)
-      assert shortcut == "act-one"
-    end
-  end
-
   describe "generate_scene_shortcut/2" do
     test "generates shortcutified name" do
       %{project: project} = create_project()

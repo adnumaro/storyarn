@@ -9,7 +9,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   alias Storyarn.Imports.ProjectImportAttempt
   alias StoryarnWeb.Helpers.Authorize
 
-  @all_sections ~w(sheets flows scenes screenplays localization)a
+  @all_sections ~w(sheets flows scenes localization)a
   @hidden_export_formats MapSet.new([:storyarn])
   @archive_export_formats ~w(ink yarn godot unreal articy)a
 
@@ -335,7 +335,6 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       include_sheets: MapSet.member?(sections, :sheets),
       include_flows: MapSet.member?(sections, :flows),
       include_scenes: MapSet.member?(sections, :scenes),
-      include_screenplays: MapSet.member?(sections, :screenplays),
       include_localization: MapSet.member?(sections, :localization),
       localization_policy: assigns.localization_policy,
       include_assets: assigns.asset_mode
@@ -365,7 +364,6 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       |> maybe_add("sheets", "false", not MapSet.member?(sections, :sheets))
       |> maybe_add("flows", "false", not MapSet.member?(sections, :flows))
       |> maybe_add("scenes", "false", not MapSet.member?(sections, :scenes))
-      |> maybe_add("screenplays", "false", not MapSet.member?(sections, :screenplays))
       |> maybe_add("localization", "false", not MapSet.member?(sections, :localization))
       |> maybe_add("localization_policy", "preview", assigns.localization_policy == :preview)
       |> maybe_add("assets", to_string(assigns.asset_mode), assigns.asset_mode != :references)

@@ -148,7 +148,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       section_config = export_config(view)["sectionConfig"]
 
-      for section <- ~w(sheets flows scenes screenplays localization) do
+      for section <- ~w(sheets flows scenes localization) do
         assert section in section_config["selected"]
       end
     end

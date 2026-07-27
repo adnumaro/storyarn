@@ -26,7 +26,6 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
-  alias Storyarn.Screenplays
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
 
@@ -103,10 +102,6 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
 
   defp permanently_delete_item(%{type: "scene"} = item) do
     Projects.delete_retention_candidate(item, &Scenes.hard_delete_scene/1)
-  end
-
-  defp permanently_delete_item(%{type: "screenplay"} = item) do
-    Projects.delete_retention_candidate(item, &Screenplays.hard_delete_screenplay/1)
   end
 
   defp enabled? do

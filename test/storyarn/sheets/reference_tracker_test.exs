@@ -619,20 +619,6 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   end
 
   # =============================================================================
-  # Screenplay element references (fallback clause)
-  # =============================================================================
-
-  describe "update_screenplay_element_references/1" do
-    test "returns :ok for non-matching input" do
-      assert :ok == ReferenceTracker.update_screenplay_element_references("not a map")
-    end
-
-    test "returns :ok for map without required keys" do
-      assert :ok == ReferenceTracker.update_screenplay_element_references(%{id: 1})
-    end
-  end
-
-  # =============================================================================
   # Scene pin/zone references (fallback clauses)
   # =============================================================================
 

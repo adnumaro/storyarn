@@ -4,7 +4,7 @@ defmodule Storyarn.Localization.SourceContract do
 
   Localization is intentionally narrower than the editor data model: a value is
   localizable only when it is player-facing and is part of an engine export
-  contract. Editor metadata, scenes, and screenplays are excluded.
+  contract. Editor metadata and scenes are excluded.
   """
 
   alias Storyarn.Localization.RuntimeKey

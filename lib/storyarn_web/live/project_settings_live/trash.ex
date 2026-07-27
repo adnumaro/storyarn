@@ -6,7 +6,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
-  alias Storyarn.Screenplays
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
 
@@ -219,15 +218,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   defp fetch_trashed_item(project_id, "scene", id),
     do: fetch_item(:scene, Scenes.get_scene_including_deleted(project_id, id))
 
-  defp fetch_trashed_item(project_id, "screenplay", id),
-    do: fetch_item(:screenplay, Screenplays.get_screenplay_including_deleted(project_id, id))
-
   defp fetch_trashed_item(_project_id, _type, _id), do: :error
 
   defp fetch_item(type, %{deleted_at: %DateTime{}} = item), do: {:ok, %{type: type, entity: item}}
   defp fetch_item(_type, _item), do: :error
 
-  defp normalize_trash_type(type) when type in ["sheet", "flow", "scene", "screenplay"], do: type
+  defp normalize_trash_type(type) when type in ["sheet", "flow", "scene"], do: type
   defp normalize_trash_type(_type), do: "all"
 
   defp normalize_page(page) when is_integer(page) and page > 0, do: page
@@ -244,12 +240,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   defp restore_item(%{type: :sheet, entity: sheet}), do: Sheets.restore_sheet(sheet)
   defp restore_item(%{type: :flow, entity: flow}), do: Flows.restore_flow(flow)
   defp restore_item(%{type: :scene, entity: scene}), do: Scenes.restore_scene(scene)
-  defp restore_item(%{type: :screenplay, entity: screenplay}), do: Screenplays.restore_screenplay(screenplay)
 
   defp permanently_delete_item(%{type: :sheet, entity: sheet}), do: Sheets.permanently_delete_sheet(sheet)
   defp permanently_delete_item(%{type: :flow, entity: flow}), do: Flows.hard_delete_flow(flow)
   defp permanently_delete_item(%{type: :scene, entity: scene}), do: Scenes.hard_delete_scene(scene)
-
-  defp permanently_delete_item(%{type: :screenplay, entity: screenplay}),
-    do: Screenplays.hard_delete_screenplay(screenplay)
 end

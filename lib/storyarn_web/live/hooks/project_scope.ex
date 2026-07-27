@@ -41,7 +41,6 @@ defmodule StoryarnWeb.Live.Hooks.ProjectScope do
           |> assign(:membership, membership)
           |> assign(:can_edit, can_edit)
           |> assign(:current_user, current_user)
-          |> assign(:is_super_admin, user.is_super_admin)
           |> assign(:urls, ProjectChromeHelpers.build_urls(project.workspace, project))
 
         {:cont, socket}

@@ -16,7 +16,6 @@ defmodule Storyarn.Exports.ExportOptionsTest do
       assert opts.include_sheets == true
       assert opts.include_flows == true
       assert opts.include_scenes == true
-      assert opts.include_screenplays == true
       assert opts.include_localization == true
       assert opts.localization_policy == :release
       assert opts.include_assets == :references
@@ -102,14 +101,12 @@ defmodule Storyarn.Exports.ExportOptionsTest do
           include_sheets: false,
           include_flows: false,
           include_scenes: false,
-          include_screenplays: false,
           include_localization: false
         })
 
       assert opts.include_sheets == false
       assert opts.include_flows == false
       assert opts.include_scenes == false
-      assert opts.include_screenplays == false
       assert opts.include_localization == false
     end
 
@@ -327,14 +324,6 @@ defmodule Storyarn.Exports.ExportOptionsTest do
 
       {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_scenes: false})
       assert ExportOptions.include_section?(opts, :scenes) == false
-    end
-
-    test "screenplays section" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_screenplays: true})
-      assert ExportOptions.include_section?(opts, :screenplays) == true
-
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_screenplays: false})
-      assert ExportOptions.include_section?(opts, :screenplays) == false
     end
 
     test "localization section" do

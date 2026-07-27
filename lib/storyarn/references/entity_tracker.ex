@@ -32,8 +32,6 @@ defmodule Storyarn.References.EntityTracker do
   def update_block_references(block, opts \\ []), do: ReferenceTracker.update_block_references(block, opts)
 
   defdelegate delete_block_references(block_id), to: ReferenceTracker
-  defdelegate update_screenplay_element_references(element), to: ReferenceTracker
-  defdelegate delete_screenplay_element_references(element_id), to: ReferenceTracker
   defdelegate delete_target_references(target_type, target_id), to: ReferenceTracker
 
   @spec update_flow_node_entity_references(map(), keyword()) :: :ok | {:error, term()}

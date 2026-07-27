@@ -22,7 +22,7 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
   def format_label, do: "Storyarn JSON"
 
   @impl true
-  def supported_sections, do: [:sheets, :flows, :scenes, :screenplays, :localization, :assets]
+  def supported_sections, do: [:sheets, :flows, :scenes, :localization, :assets]
 
   @impl true
   def localization_mode, do: :full_state
@@ -39,13 +39,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       |> maybe_put_section("sheets", project_data.sheets, opts, :sheets, &serialize_sheets/1)
       |> maybe_put_section("flows", project_data.flows, opts, :flows, &serialize_flows/1)
       |> maybe_put_section("scenes", project_data.scenes, opts, :scenes, &serialize_scenes/1)
-      |> maybe_put_section(
-        "screenplays",
-        project_data.screenplays,
-        opts,
-        :screenplays,
-        &serialize_screenplays/1
-      )
       |> maybe_put_section(
         "localization",
         project_data.localization,
@@ -202,7 +195,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "type" => node.type,
       "position_x" => node.position_x,
       "position_y" => node.position_y,
-      "source" => node.source,
       "parent_id" => maybe_to_string(node.parent_id),
       "data" => serialize_node_data(node.type, node.data || %{})
     }
@@ -389,38 +381,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
     }
   end
 
-  # -- Screenplays --
-
-  defp serialize_screenplays(screenplays) do
-    Enum.map(screenplays, &serialize_screenplay/1)
-  end
-
-  defp serialize_screenplay(sp) do
-    %{
-      "id" => to_string(sp.id),
-      "shortcut" => sp.shortcut,
-      "name" => sp.name,
-      "description" => sp.description,
-      "parent_id" => maybe_to_string(sp.parent_id),
-      "position" => sp.position,
-      "linked_flow_id" => maybe_to_string(sp.linked_flow_id),
-      "elements" => Enum.map(sp.elements, &serialize_element/1)
-    }
-  end
-
-  defp serialize_element(el) do
-    %{
-      "id" => to_string(el.id),
-      "type" => el.type,
-      "position" => el.position,
-      "content" => el.content,
-      "data" => el.data || %{},
-      "depth" => el.depth,
-      "branch" => el.branch,
-      "linked_node_id" => maybe_to_string(el.linked_node_id)
-    }
-  end
-
   # -- Localization --
 
   defp serialize_localization(%{languages: languages, strings: strings, glossary: glossary}) do
@@ -541,7 +501,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
         "node_count" => node_count,
         "connection_count" => connection_count,
         "scene_count" => length(project_data.scenes || []),
-        "screenplay_count" => length(project_data.screenplays || []),
         "asset_count" => length(Map.get(project_data, :assets, []))
       }
     })
