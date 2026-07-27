@@ -158,14 +158,20 @@
         "scene": "Escena",
         "screenplay": "Guión"
       },
-      "node_distribution": "Distribución de nodos",
-      "no_nodes": "Aún no hay nodos",
-      "top_speakers": "Fichas con más diálogos",
-      "no_speakers": "Aún no hay diálogos asignados",
-      "issues": "Problemas y advertencias",
-      "localization_progress": "Progreso de localización",
       "recent_activity": "Actividad reciente",
-      "no_activity": "Aún no hay actividad"
+      "no_activity": "Aún no hay actividad",
+      "health": {
+        "title": "Salud del contenido",
+        "clean": "Al día",
+        "issues": "{count} problema por revisar | {count} problemas por revisar",
+        "errors": "{count} error | {count} errores",
+        "warnings": "{count} advertencia | {count} advertencias",
+        "tools": {
+          "flows": "Flujos",
+          "sheets": "Fichas",
+          "scenes": "Escenas"
+        }
+      }
     },
     "sidebar": {
       "my_workspaces": "Mis espacios de trabajo",

@@ -10,7 +10,14 @@ import { createMockLive } from "../../setup";
 function mountDashboard(issues: FlowDashboardIssue[]) {
   return mount(FlowDashboard, {
     props: {
-      stats: { flow_count: 1, node_count: 0, dialogue_count: 0, word_count: 0 },
+      stats: {
+        flow_count: 1,
+        node_count: 0,
+        dialogue_count: 0,
+        word_count: 0,
+        node_dist: [],
+        speakers: [],
+      },
       tableData: [],
       pagination: { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 1 },
       issues,

@@ -18,7 +18,12 @@
         "conditions": "Conditions",
         "words": "Localizable words",
         "modified": "Modified"
-      }
+      },
+      "node_distribution": "Node Distribution",
+      "no_nodes": "No flow nodes yet",
+      "top_speakers": "Top Speakers",
+      "no_speakers": "No dialogue with speakers yet",
+      "unknown_speaker": "Unknown speaker"
     },
     "tree": {
       "filter": "Filter flows...",

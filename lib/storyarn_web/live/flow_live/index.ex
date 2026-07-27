@@ -271,6 +271,16 @@ defmodule StoryarnWeb.FlowLive.Index do
         Flows.flow_word_counts(project_id)
       end)
 
+    node_dist =
+      DashboardCache.fetch(project_id, :flow_node_dist, fn ->
+        Flows.count_project_nodes_by_type(project_id)
+      end)
+
+    speakers =
+      DashboardCache.fetch(project_id, :flow_speakers, fn ->
+        Flows.count_dialogue_lines_by_speaker(project_id)
+      end)
+
     table_data =
       Enum.map(flows, fn flow ->
         flow_stats =
@@ -294,11 +304,51 @@ defmodule StoryarnWeb.FlowLive.Index do
         flow_count: length(flows),
         node_count: table_data |> Enum.map(& &1.node_count) |> Enum.sum(),
         dialogue_count: table_data |> Enum.map(& &1.dialogue_count) |> Enum.sum(),
-        word_count: table_data |> Enum.map(& &1.word_count) |> Enum.sum()
+        word_count: table_data |> Enum.map(& &1.word_count) |> Enum.sum(),
+        node_dist: format_node_distribution(node_dist),
+        speakers: format_speakers(speakers, workspace, project)
       },
       table_data: table_data
     }
   end
+
+  # Both panels moved here from the project overview, which is now a global
+  # context surface: a node-type histogram and a dialogue-line ranking are
+  # answers about flows, and they belong next to the flow table that explains
+  # them.
+  #
+  # The node type rides as its raw code, not a server-rendered label. Vue
+  # resolves `flows.node_types.*` — the same catalog the canvas palette uses —
+  # so the two cannot drift, and a new node type needs no server-side copy.
+  defp format_node_distribution(node_dist) when is_map(node_dist) do
+    total = node_dist |> Map.values() |> Enum.sum() |> max(1)
+
+    node_dist
+    |> Enum.map(fn {type, count} ->
+      %{type: type, count: count, percentage: round(count / total * 100)}
+    end)
+    |> Enum.sort_by(&{-&1.count, &1.type})
+  end
+
+  defp format_node_distribution(_node_dist), do: []
+
+  # `sheet_name` is nil when the speaker's sheet was deleted — the id survives in
+  # the node's JSONB. Those rows still count (the lines exist), but they get no
+  # link, because the old overview linked them to a 404.
+  defp format_speakers(speakers, workspace, project) when is_list(speakers) do
+    Enum.map(speakers, fn speaker ->
+      %{
+        sheet_id: speaker.sheet_id,
+        name: speaker.sheet_name,
+        count: speaker.line_count,
+        href:
+          speaker.sheet_name &&
+            ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{speaker.sheet_id}"
+      }
+    end)
+  end
+
+  defp format_speakers(_speakers, _workspace, _project), do: []
 
   defp load_dashboard_issues_async(project_id, workspace, project) do
     project_id

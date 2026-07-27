@@ -18,7 +18,12 @@
         "conditions": "Condiciones",
         "words": "Palabras localizables",
         "modified": "Modificado"
-      }
+      },
+      "node_distribution": "Distribución de nodos",
+      "no_nodes": "Aún no hay nodos",
+      "top_speakers": "Fichas con más diálogos",
+      "no_speakers": "Aún no hay diálogos asignados",
+      "unknown_speaker": "Ficha desconocida"
     },
     "tree": {
       "filter": "Filtrar flujos...",

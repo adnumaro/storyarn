@@ -2,23 +2,31 @@ defmodule Storyarn.Projects.Dashboard do
   @moduledoc """
   Aggregates dashboard data across all project contexts.
 
-  Provides project-level statistics, issue detection, and recent activity
-  for the project dashboard. Calls existing facade functions where possible
-  and only implements new queries when needed.
-  """
+  Provides project-level statistics, per-tool health counts, and recent activity
+  for the project overview. Calls existing facade functions where possible and
+  only implements new queries when needed.
 
-  use Gettext, backend: Storyarn.Gettext
+  This module renders no text. It used to build `dgettext` sentences for the
+  overview's issue list, inside a `Task.async` that does not inherit the
+  Gettext locale and whose result is cached in a cross-user ETS table — so the
+  list shipped in English to Spanish readers, and seeding the locale in the task
+  would only have swapped that for serving the first reader's language to
+  everyone. `tool_health_summary/1` returns counts instead, and the client
+  renders them.
+  """
 
   import Ecto.Query
 
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Scenes
+  alias Storyarn.Shared.Severity
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
+
+  @tools [:flows, :sheets, :scenes]
 
   # ===========================================================================
   # Project Stats
@@ -42,77 +50,40 @@ defmodule Storyarn.Projects.Dashboard do
   end
 
   # ===========================================================================
-  # Content Breakdown
+  # Tool Health
   # ===========================================================================
 
-  @doc """
-  Returns node type distribution across all flows in a project.
+  @doc "The tools that report authoring health, in display order."
+  def tools, do: @tools
 
-  Returns a map of `%{"dialogue" => 42, "condition" => 15, ...}`.
+  @doc """
+  Rolls the three health sweeps up into per-tool severity counts.
+
+  Takes the canonical findings the tool dashboards already load — this function
+  runs no queries, so the caller keeps ownership of caching and can reuse the
+  very cache entries those dashboards fill.
+
+  Returns `%{flows: counts, sheets: counts, scenes: counts}`, where counts is
+  `%{error: n, warning: n, info: n, actionable: n}`. `actionable` is errors plus
+  warnings: it is the number the overview reports, because an `:info` finding is
+  a note about valid content, not something the reader has to go fix. A tool
+  with only `:info` findings reads as up to date.
+
+  Counts, not sentences — no locale, no slugs. That is what makes the result
+  safe to cache across users, and it is why the overview cannot regress into the
+  cross-user locale leak it had.
   """
-  def count_all_nodes_by_type(project_id) do
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at),
-      group_by: n.type,
-      select: {n.type, count(n.id)}
-    )
-    |> Repo.all()
-    |> Map.new()
+  def tool_health_summary(findings_by_tool) do
+    Map.new(@tools, fn tool ->
+      {tool, count_by_severity(Map.fetch!(findings_by_tool, tool))}
+    end)
   end
 
-  @doc """
-  Returns top speakers by dialogue line count.
+  defp count_by_severity(findings) do
+    counts = Enum.frequencies_by(findings, & &1.severity)
+    summary = Map.new(Severity.catalog(), &{&1, Map.get(counts, &1, 0)})
 
-  Returns a list of `%{sheet_id: id, sheet_name: name, line_count: count}`
-  sorted by line count descending.
-  """
-  def count_dialogue_lines_by_speaker(project_id, limit \\ 10) do
-    Repo.all(
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        left_join: s in Sheet,
-        on: type(fragment("(?->>'speaker_sheet_id')::integer", n.data), :integer) == s.id,
-        where:
-          f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and n.type == "dialogue" and
-            not is_nil(fragment("?->>'speaker_sheet_id'", n.data)),
-        group_by: [fragment("(?->>'speaker_sheet_id')::integer", n.data), s.name, s.id],
-        select: %{
-          sheet_id: fragment("(?->>'speaker_sheet_id')::integer", n.data),
-          sheet_name: s.name,
-          line_count: count(n.id)
-        },
-        order_by: [desc: count(n.id)],
-        limit: ^limit
-      )
-    )
-  end
-
-  # ===========================================================================
-  # Issue Detection
-  # ===========================================================================
-
-  @doc """
-  Detects project issues across all contexts.
-
-  Returns a list of `%{severity: atom, message: String.t(), href: String.t(), count: integer}`
-  sorted by severity (error > warning > info).
-  """
-  def detect_issues(project_id, opts \\ []) do
-    workspace_slug = Keyword.fetch!(opts, :workspace_slug)
-    project_slug = Keyword.fetch!(opts, :project_slug)
-
-    flow_findings = Flows.list_dashboard_health_findings(project_id)
-
-    [
-      detect_flow_health(flow_findings, workspace_slug, project_slug),
-      detect_empty_sheets(project_id, workspace_slug, project_slug),
-      detect_untranslated_content(project_id, workspace_slug, project_slug)
-    ]
-    |> List.flatten()
-    |> Enum.sort_by(& &1.severity, &severity_order/2)
+    Map.put(summary, :actionable, summary.error + summary.warning)
   end
 
   # ===========================================================================
@@ -219,168 +190,4 @@ defmodule Storyarn.Projects.Dashboard do
 
     flow_words + sheet_words
   end
-
-  # ---------------------------------------------------------------------------
-  # Issue Detectors (formatters over the canonical flow analysis)
-  # ---------------------------------------------------------------------------
-
-  # The project overview is a CURATED cross-domain summary, not full coverage:
-  # every domain contributes a few high-signal rows with a written sentence
-  # (`detect_empty_sheets` does exactly this for sheets). So flows keeps specific
-  # copy here — but driven by the canonical findings, so it cannot drift from the
-  # flows dashboard the way the old bucket mapping did.
-  #
-  # Anything outside the curated set still gets a row per flow and severity, so no
-  # finding is silently dropped from the overview.
-  @curated_codes %{
-    missing_entry: :no_entry,
-    isolated_node: :disconnected,
-    unreachable_node: :disconnected,
-    no_outgoing_connection: :dead_end
-  }
-
-  defp detect_flow_health(findings, workspace_slug, project_slug) do
-    {curated, rest} = Enum.split_with(findings, &Map.has_key?(@curated_codes, &1.code))
-
-    curated_rows =
-      curated
-      |> Enum.group_by(&{&1.flow_id, Map.fetch!(@curated_codes, &1.code)})
-      |> Enum.map(fn {{flow_id, kind}, group} ->
-        flow_health_row(kind, hd(group), length(group), flow_id, workspace_slug, project_slug)
-      end)
-
-    other_rows =
-      rest
-      |> Enum.filter(&(&1.severity in [:error, :warning]))
-      |> Enum.group_by(&{&1.flow_id, &1.severity})
-      |> Enum.map(fn {{flow_id, severity}, group} ->
-        %{
-          severity: severity,
-          message: other_flow_health_message(severity, flow_name(hd(group)), length(group)),
-          href: flow_href(workspace_slug, project_slug, flow_id),
-          count: length(group)
-        }
-      end)
-
-    Enum.sort_by(curated_rows ++ other_rows, & &1.message)
-  end
-
-  defp flow_health_row(:no_entry, finding, _count, flow_id, workspace_slug, project_slug) do
-    %{
-      severity: :error,
-      message: dgettext("flows", "Flow \"%{name}\" has no entry node", name: flow_name(finding)),
-      href: flow_href(workspace_slug, project_slug, flow_id),
-      count: 1
-    }
-  end
-
-  defp flow_health_row(:disconnected, finding, count, flow_id, workspace_slug, project_slug) do
-    %{
-      severity: :warning,
-      message:
-        dgettext("flows", "Flow \"%{name}\" has %{count} disconnected node(s)",
-          name: flow_name(finding),
-          count: count
-        ),
-      href: flow_href(workspace_slug, project_slug, flow_id),
-      count: count
-    }
-  end
-
-  defp flow_health_row(:dead_end, finding, count, flow_id, workspace_slug, project_slug) do
-    %{
-      severity: :warning,
-      message:
-        dgettext("flows", "Flow \"%{name}\" has %{count} node(s) without outgoing connection",
-          name: flow_name(finding),
-          count: count
-        ),
-      href: flow_href(workspace_slug, project_slug, flow_id),
-      count: count
-    }
-  end
-
-  defp other_flow_health_message(:error, flow_name, count) do
-    dgettext("flows", "Flow \"%{name}\" has %{count} error(s)", name: flow_name, count: count)
-  end
-
-  defp other_flow_health_message(:warning, flow_name, count) do
-    dgettext("flows", "Flow \"%{name}\" has %{count} warning(s)", name: flow_name, count: count)
-  end
-
-  defp flow_name(finding), do: Map.get(finding.details, :flow_name, dgettext("flows", "Flow"))
-
-  defp flow_href(workspace_slug, project_slug, flow_id) do
-    "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow_id}"
-  end
-
-  # Reads the canonical sheet findings instead of running a fourth sheet-health
-  # detector with its own SQL. That detector counted EVERY empty sheet while the
-  # checker's `empty_leaf_sheet` only counts leaves, so the overview over-reported
-  # against the sheets dashboard for any empty parent sheet.
-  defp detect_empty_sheets(project_id, workspace_slug, project_slug) do
-    count =
-      project_id
-      |> Sheets.list_dashboard_health_findings()
-      |> Enum.count(&(&1.code == :empty_leaf_sheet))
-
-    if count == 0 do
-      []
-    else
-      [
-        %{
-          severity: :info,
-          message:
-            dngettext(
-              "sheets",
-              "%{count} sheet has no blocks defined",
-              "%{count} sheets have no blocks defined",
-              count,
-              count: count
-            ),
-          href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets",
-          count: count
-        }
-      ]
-    end
-  end
-
-  defp detect_untranslated_content(project_id, workspace_slug, project_slug) do
-    languages = Localization.list_languages(project_id)
-    target_languages = Enum.reject(languages, & &1.is_source)
-
-    if target_languages == [] do
-      []
-    else
-      progress = Localization.progress_by_language(project_id)
-
-      progress
-      |> Enum.reject(&(&1.percentage >= 100.0))
-      |> Enum.map(fn lang ->
-        pending = lang.total - lang.final
-
-        %{
-          severity: :warning,
-          message:
-            dngettext(
-              "localization",
-              "%{language}: %{count} text pending translation (%{percent}% done)",
-              "%{language}: %{count} texts pending translation (%{percent}% done)",
-              pending,
-              language: lang.name,
-              count: pending,
-              percent: round(lang.percentage)
-            ),
-          href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/localization",
-          count: pending
-        }
-      end)
-    end
-  end
-
-  # Severity ordering: :error < :warning < :info (error first)
-  defp severity_order(a, b), do: severity_rank(a) <= severity_rank(b)
-  defp severity_rank(:error), do: 0
-  defp severity_rank(:warning), do: 1
-  defp severity_rank(:info), do: 2
 end

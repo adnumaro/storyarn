@@ -1097,6 +1097,16 @@ defmodule Storyarn.Flows do
   @doc "Returns per-flow localizable word counts from runtime flow-node fields. %{flow_id => word_count}."
   defdelegate flow_word_counts(project_id), to: FlowStats
 
+  @doc """
+  Project-wide node type distribution. `%{node_type => count}`.
+
+  Distinct from `count_nodes_by_type/1`, which counts within ONE flow.
+  """
+  defdelegate count_project_nodes_by_type(project_id), to: FlowStats
+
+  @doc "Top speakers by dialogue line count across every flow in the project."
+  defdelegate count_dialogue_lines_by_speaker(project_id, limit \\ 10), to: FlowStats
+
   @doc "Project-wide flow health findings for the dashboard (canonical shape)."
   defdelegate list_dashboard_health_findings(project_id), to: FlowStats
 

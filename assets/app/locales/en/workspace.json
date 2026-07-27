@@ -158,14 +158,20 @@
         "scene": "Scene",
         "screenplay": "Screenplay"
       },
-      "node_distribution": "Node Distribution",
-      "no_nodes": "No flow nodes yet",
-      "top_speakers": "Top Speakers",
-      "no_speakers": "No dialogue with speakers yet",
-      "issues": "Issues & Warnings",
-      "localization_progress": "Localization Progress",
       "recent_activity": "Recent Activity",
-      "no_activity": "No activity yet"
+      "no_activity": "No activity yet",
+      "health": {
+        "title": "Content health",
+        "clean": "Up to date",
+        "issues": "{count} issue to review | {count} issues to review",
+        "errors": "{count} error | {count} errors",
+        "warnings": "{count} warning | {count} warnings",
+        "tools": {
+          "flows": "Flows",
+          "sheets": "Sheets",
+          "scenes": "Scenes"
+        }
+      }
     },
     "sidebar": {
       "my_workspaces": "My Workspaces",

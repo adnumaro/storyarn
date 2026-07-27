@@ -402,8 +402,6 @@ defmodule Storyarn.Projects do
   # =============================================================================
 
   defdelegate project_stats(project_id), to: Dashboard
-  defdelegate count_all_nodes_by_type(project_id), to: Dashboard
-  defdelegate count_dialogue_lines_by_speaker(project_id), to: Dashboard
-  defdelegate detect_issues(project_id, opts), to: Dashboard
+  defdelegate tool_health_summary(findings_by_tool), to: Dashboard
   defdelegate recent_activity(project_id, limit \\ 10), to: Dashboard
 end

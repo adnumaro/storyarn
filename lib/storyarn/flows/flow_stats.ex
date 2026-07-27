@@ -11,6 +11,7 @@ defmodule Storyarn.Flows.FlowStats do
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.References
   alias Storyarn.Repo
+  alias Storyarn.Sheets.Sheet
 
   # ===========================================================================
   # Stats
@@ -48,6 +49,55 @@ defmodule Storyarn.Flows.FlowStats do
   Returns `%{flow_id => word_count}`.
   """
   defdelegate flow_word_counts(project_id), to: LocalizableWords
+
+  @doc """
+  Returns the node type distribution across every flow in a project.
+
+  Returns a map of `%{"dialogue" => 42, "condition" => 15, ...}`. Types with no
+  nodes are absent.
+
+  Named for its scope because `NodeCrud.count_nodes_by_type/1` counts within ONE
+  flow — same shape, different question.
+  """
+  def count_project_nodes_by_type(project_id) do
+    from(n in FlowNode,
+      join: f in Flow,
+      on: n.flow_id == f.id,
+      where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at),
+      group_by: n.type,
+      select: {n.type, count(n.id)}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  @doc """
+  Returns the top speakers by dialogue line count across every flow in a project.
+
+  Returns a list of `%{sheet_id: id, sheet_name: name, line_count: count}` sorted
+  by line count descending.
+  """
+  def count_dialogue_lines_by_speaker(project_id, limit \\ 10) do
+    Repo.all(
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        left_join: s in Sheet,
+        on: type(fragment("(?->>'speaker_sheet_id')::integer", n.data), :integer) == s.id,
+        where:
+          f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and n.type == "dialogue" and
+            not is_nil(fragment("?->>'speaker_sheet_id'", n.data)),
+        group_by: [fragment("(?->>'speaker_sheet_id')::integer", n.data), s.name, s.id],
+        select: %{
+          sheet_id: fragment("(?->>'speaker_sheet_id')::integer", n.data),
+          sheet_name: s.name,
+          line_count: count(n.id)
+        },
+        order_by: [desc: count(n.id)],
+        limit: ^limit
+      )
+    )
+  end
 
   # ===========================================================================
   # Issue Detection
