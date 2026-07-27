@@ -26,7 +26,7 @@ msgstr ""
 msgid "Profile Settings"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/profile.ex:123
+#: lib/storyarn_web/live/settings_live/profile.ex:124
 #, elixir-autogen, elixir-format
 msgid "Profile updated successfully."
 msgstr ""

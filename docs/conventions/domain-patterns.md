@@ -318,6 +318,43 @@ interpolated raw (`String.replace` over `%{key}` — see `format_changeset_error
 `lib/storyarn/versioning/builders/sheet_builder.ex:1273`) and ship untranslated.
 Do not route new error text through that domain expecting translation.
 
+### After adding, moving or deleting a `dgettext` call
+
+**Run `mix gettext.extract --merge` and commit the result.** `mix precommit` and
+`just quality-lint` fail otherwise (`mix gettext.extract --check-up-to-date`),
+including when the call only changed line number — the task compares `#:`
+reference lines too. Extraction is all-or-nothing: there is no per-domain flag, so
+to keep a feature PR reviewable, extract everything and revert every domain but
+yours.
+
+The merge then leaves work in `priv/gettext/es/LC_MESSAGES/`, and
+`test/storyarn/publication/locales_test.exs` blocks on all of it — across all 19
+domains, not just the public ones:
+
+- **Fill every empty `msgstr`.** Informal second person ("Selecciona…", "No tienes
+  permiso…"). Keep `hub`, `jump`, `subflow`, `entry`, `exit`, `sequence`,
+  `waypoint`, `fog`, `API key` in English — but the catalog outranks that list:
+  `flow`, `sheet` and `zone` are already _flujo_, _ficha_ and _zona_.
+- **Review every `#, fuzzy` entry and drop the flag.** `Gettext.Compiler` filters
+  on `obsolete` alone (`deps/gettext/lib/gettext/compiler.ex:514`) — it has no
+  notion of `fuzzy` at runtime, so the merge's nearest-neighbour guess ships
+  verbatim. `scenes.po` answered `Asset not found.` with *"Ficha no encontrada."*
+  ("Sheet not found") that way.
+- **Leave `en` msgstrs empty.** Gettext falls back to the msgid, already English,
+  so a filled `en` msgstr is an *override* of the source string — and the merge
+  writes those on its own. It fuzzy-matched three new `projects` msgids onto
+  neighbours, one of them answering `Project name` with *"Project Trash"*; clear
+  the flags without reading them and the override is what ships. One had been
+  sitting in `en/flows.po` since an earlier merge, telling English users *"Could
+  not update node positions."* when they failed to update the scene map.
+- **Keep interpolations identical** between msgid and msgstr — same names, same
+  `%{...}` form. A placeholder the message never binds prints literally on screen.
+
+Worth two minutes after a large merge, though no test does it: group a catalog by
+`msgstr` and inspect every value claimed by more than one `msgid`. That is the
+fingerprint of the merge copying, and it is how eight distinct `scenes` errors
+were found all reading "No se pudo actualizar el contenido.".
+
 ---
 
 ## Ecto Query Patterns

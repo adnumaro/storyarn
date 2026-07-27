@@ -42,6 +42,7 @@ msgstr ""
 msgid "Could not delete block."
 msgstr ""
 
+#: lib/storyarn_web/live/sheet_live/index.ex:381
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:167
 #, elixir-autogen, elixir-format
 msgid "Could not delete sheet."
@@ -211,6 +212,7 @@ msgstr ""
 msgid "Could not duplicate block."
 msgstr ""
 
+#: lib/storyarn_web/live/sheet_live/index.ex:380
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:166
 #, elixir-autogen, elixir-format
 msgid "Sheet moved to trash."
@@ -303,7 +305,7 @@ msgstr ""
 msgid "Unknown Speaker"
 msgstr ""
 
-#: lib/storyarn/projects/dashboard.ex:346
+#: lib/storyarn/projects/dashboard.ex:334
 #, elixir-autogen, elixir-format
 msgid "%{count} sheet has no blocks defined"
 msgid_plural "%{count} sheets have no blocks defined"
@@ -330,102 +332,88 @@ msgstr ""
 msgid "Changed hidden inherited blocks"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/index.ex:314
-#, elixir-autogen, elixir-format
-msgid "Column"
-msgstr ""
-
 #: lib/storyarn/versioning/builders/sheet_builder.ex:3235
 #, elixir-autogen, elixir-format
 msgid "Hidden inherited block"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/index.ex:313
-#, elixir-autogen, elixir-format
-msgid "Row"
-msgstr ""
-
-#: lib/storyarn_web/live/sheet_live/index.ex:306
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:159
+#: lib/storyarn_web/live/sheet_live/index.ex:492
 #, elixir-autogen, elixir-format
 msgid "Sheet"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:90
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:95
 #, elixir-autogen, elixir-format
 msgid "%{type} #%{id}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:85
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:79
 #, elixir-autogen, elixir-format
 msgid "Block"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:80
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:86
 #, elixir-autogen, elixir-format
 msgid "Boolean"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:99
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:104
 #, elixir-autogen, elixir-format
 msgid "Column #%{id}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:79
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:85
 #, elixir-autogen, elixir-format
 msgid "Date"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:84
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:90
 #, elixir-autogen, elixir-format
 msgid "Formula"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:83
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:89
 #, elixir-autogen, elixir-format
 msgid "Gallery"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:78
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:84
 #, elixir-autogen, elixir-format
 msgid "Multi Select"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:76
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:82
 #, elixir-autogen, elixir-format
 msgid "Number"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:81
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:87
 #, elixir-autogen, elixir-format
 msgid "Reference"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:75
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:81
 #, elixir-autogen, elixir-format
 msgid "Rich Text"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:95
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:100
 #, elixir-autogen, elixir-format
 msgid "Row #%{id}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:77
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:83
 #, elixir-autogen, elixir-format
 msgid "Select"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:82
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:88
 #, elixir-autogen, elixir-format
 msgid "Table"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:74
+#: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:80
 #, elixir-autogen, elixir-format
 msgid "Text"
-msgstr ""
-
-#: lib/storyarn_web/live/sheet_live/index.ex:186
-#, elixir-autogen, elixir-format
-msgid "Could not load dashboard data. Reload the page to try again."
 msgstr ""

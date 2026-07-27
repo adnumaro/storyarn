@@ -5,7 +5,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: lib/storyarn_web/live/blog_live/index.ex:204
-#: lib/storyarn_web/live/blog_live/show.ex:169
+#: lib/storyarn_web/live/blog_live/show.ex:172
 #, elixir-autogen
 msgid "%{count} min read"
 msgid_plural "%{count} min read"
@@ -17,7 +17,7 @@ msgstr[1] "%{count} min de lectura"
 msgid "Back to the journal"
 msgstr "Volver al diario"
 
-#: lib/storyarn_web/live/blog_live/show.ex:142
+#: lib/storyarn_web/live/blog_live/show.ex:143
 #, elixir-autogen
 msgid "Bring the whole narrative into one connected project."
 msgstr "Reúne toda la narrativa en un único proyecto conectado."
@@ -27,7 +27,7 @@ msgstr "Reúne toda la narrativa en un único proyecto conectado."
 msgid "By %{author}"
 msgstr "Por %{author}"
 
-#: lib/storyarn_web/live/blog_live/show.ex:155
+#: lib/storyarn_web/live/blog_live/show.ex:157
 #, elixir-autogen
 msgid "Create your Storyarn account"
 msgstr "Crea tu cuenta de Storyarn"
@@ -77,12 +77,12 @@ msgstr "Decisiones de producto, prácticas de diseño narrativo y aprendizajes a
 msgid "Read the story"
 msgstr "Leer el artículo"
 
-#: lib/storyarn_web/live/blog_live/show.ex:145
+#: lib/storyarn_web/live/blog_live/show.ex:146
 #, elixir-autogen
 msgid "Registration is open, Storyarn is free during early access, and no invitation is required."
 msgstr "El registro está abierto, Storyarn es gratuito durante el acceso anticipado y no hace falta invitación."
 
-#: lib/storyarn_web/live/blog_live/show.ex:139
+#: lib/storyarn_web/live/blog_live/show.ex:140
 #, elixir-autogen
 msgid "Storyarn is in open beta"
 msgstr "Storyarn está en beta pública"
