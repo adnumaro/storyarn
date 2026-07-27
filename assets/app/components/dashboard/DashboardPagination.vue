@@ -2,12 +2,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-vue-next";
 import { computed } from "vue";
 import { Button } from "@components/ui/button";
-
-interface DashboardPagination {
-  page: number;
-  totalPages: number;
-  total: number;
-}
+import type { DashboardPagination } from "./types";
 
 type PageToken = number | "start-ellipsis" | "end-ellipsis";
 

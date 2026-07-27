@@ -212,14 +212,6 @@ export interface DashboardRow {
   updated_at: string;
 }
 
-export interface DashboardPagination {
-  sortBy: string;
-  sortDir: string;
-  page: number;
-  totalPages: number;
-  total: number;
-}
-
 export interface DashboardIssue {
   id: string;
   severity: SheetHealthSeverity;
@@ -355,10 +347,4 @@ export interface StatCard {
   label: string;
   value: number;
   color: string;
-}
-
-export interface DashboardColumn {
-  key: string;
-  label: string;
-  align: "left" | "right";
 }

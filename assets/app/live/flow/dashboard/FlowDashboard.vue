@@ -1,13 +1,7 @@
 <script setup lang="ts">
 import {
-  AlertTriangle,
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   Box,
-  CircleX,
   GitBranch,
-  Info,
   MessageSquare,
   MoreHorizontal,
   Star,
@@ -27,23 +21,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@components/ui/table";
+import { TableCell } from "@components/ui/table";
 import { useLive } from "@shared/composables/useLive";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 import DashboardContent from "@shell/DashboardContent.vue";
+import DashboardDataTable from "@components/dashboard/DashboardDataTable.vue";
 import DashboardIssueFilters from "@components/dashboard/DashboardIssueFilters.vue";
-import DashboardPagination from "@components/dashboard/DashboardPagination.vue";
+import DashboardIssueList from "@components/dashboard/DashboardIssueList.vue";
 import {
   emptyDashboardIssueFilterOptions,
+  type DashboardIssuePagination,
+  type DashboardLoadStatus,
   type DashboardIssueFilterOptions,
   type DashboardIssueFilterValues,
+  type DashboardTableColumn,
+  type DashboardTablePagination,
 } from "@components/dashboard/types";
 
 interface FlowStats {
@@ -65,35 +57,11 @@ interface FlowTableRow {
   updated_at: string;
 }
 
-interface FlowPagination {
-  sortBy: string;
-  sortDir: "asc" | "desc";
-  page: number;
-  totalPages: number;
-  total: number;
-}
-
-interface IssuePagination {
-  page: number;
-  totalPages: number;
-  total: number;
-  unfilteredTotal: number;
-}
-
-type DashboardLoadStatus = "loading" | "ready" | "refreshing" | "error" | "stale";
-
 interface StatCard {
   icon: Component;
   label: string;
   value: number;
   color: string;
-}
-
-interface TableColumn {
-  key: string;
-  label: string;
-  align: "left" | "right";
-  hiddenClass?: string;
 }
 
 const {
@@ -110,11 +78,11 @@ const {
 } = defineProps<{
   stats: FlowStats | null;
   tableData: FlowTableRow[];
-  pagination: FlowPagination;
+  pagination: DashboardTablePagination;
   issues: FlowDashboardIssue[];
   overviewStatus?: DashboardLoadStatus;
   issuesStatus?: DashboardLoadStatus;
-  issuePagination?: IssuePagination;
+  issuePagination?: DashboardIssuePagination;
   issueFilters?: DashboardIssueFilterValues;
   issueFilterOptions?: DashboardIssueFilterOptions;
   canEdit: boolean;
@@ -133,7 +101,7 @@ function issueCodeLabel(code: string): string {
 }
 const live = useLive();
 
-const resolvedIssuePagination = computed<IssuePagination>(
+const resolvedIssuePagination = computed<DashboardIssuePagination>(
   () =>
     issuePagination ?? {
       page: 1,
@@ -200,13 +168,6 @@ function requestDelete(id: number | string): void {
   live.pushEvent("confirm_delete", {});
 }
 
-function sortIcon(column: string): Component {
-  if (pagination.sortBy !== column) {
-    return ArrowUpDown;
-  }
-  return pagination.sortDir === "asc" ? ArrowUp : ArrowDown;
-}
-
 const statCards = computed<StatCard[]>(() => {
   if (!stats) {
     return [];
@@ -239,7 +200,7 @@ const statCards = computed<StatCard[]>(() => {
   ];
 });
 
-const columns = computed<TableColumn[]>(() => [
+const columns = computed<DashboardTableColumn[]>(() => [
   { key: "name", label: t("flows.dashboard.columns.name"), align: "left" },
   { key: "node_count", label: t("flows.dashboard.columns.nodes"), align: "right" },
   {
@@ -297,102 +258,70 @@ const columns = computed<TableColumn[]>(() => [
     </div>
 
     <!-- Table section -->
-    <div class="space-y-2">
-      <h2 class="text-sm font-medium">{{ $t("flows.dashboard.all_flows") }}</h2>
-      <div class="rounded-lg border border-border bg-surface overflow-auto max-h-[60vh]">
-        <Table>
-          <TableHeader>
-            <TableRow class="bg-muted/40 hover:bg-muted/40 sticky top-0 z-10">
-              <TableHead
-                v-for="col in columns"
-                :key="col.key"
-                :class="[
-                  'font-medium text-xs text-muted-foreground uppercase',
-                  col.align === 'right' ? 'text-right' : 'text-left',
-                  col.hiddenClass,
-                ]"
-              >
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-                  :class="col.align === 'right' && 'ml-auto'"
-                  @click="handleSort(col.key)"
-                >
-                  {{ col.label }}
-                  <component :is="sortIcon(col.key)" class="size-3" />
-                </button>
-              </TableHead>
-              <TableHead v-if="canEdit" class="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="row in tableData" :key="row.id">
-              <TableCell>
-                <a
-                  :href="row.href"
-                  data-phx-link="patch"
-                  data-phx-link-state="push"
-                  class="inline-flex items-center gap-2 font-medium hover:underline"
-                >
-                  {{ row.name }}
-                  <Badge v-if="row.is_main" variant="default" class="text-[10px] px-1.5 py-0">
-                    {{ $t("flows.dashboard.main") }}
-                  </Badge>
-                </a>
-              </TableCell>
-              <TableCell class="text-right tabular-nums">{{ row.node_count }}</TableCell>
-              <TableCell class="text-right tabular-nums hidden sm:table-cell"
-                >{{ row.dialogue_count }}
-              </TableCell>
-              <TableCell class="text-right tabular-nums hidden sm:table-cell"
-                >{{ row.condition_count }}
-              </TableCell>
-              <TableCell class="text-right tabular-nums hidden md:table-cell"
-                >{{ row.word_count }}
-              </TableCell>
-              <TableCell class="text-right text-muted-foreground text-xs hidden md:table-cell">
-                {{ formatRelativeTime(row.updated_at) }}
-              </TableCell>
-              <TableCell v-if="canEdit" class="text-right w-10">
-                <DropdownMenu>
-                  <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" size="icon-sm" class="size-7">
-                      <MoreHorizontal class="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      v-if="!row.is_main"
-                      class="gap-2 text-xs"
-                      @select="setMain(row.id)"
-                    >
-                      <Star class="size-3.5" />
-                      {{ $t("flows.dashboard.set_main") }}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      class="text-destructive gap-2 text-xs"
-                      @select="requestDelete(row.id)"
-                    >
-                      <Trash2 class="size-3.5" />
-                      {{ $t("flows.dashboard.delete") }}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
+    <DashboardDataTable
+      :title="$t('flows.dashboard.all_flows')"
+      :rows="tableData"
+      :columns="columns"
+      :pagination="pagination"
+      :total-label="$t('flows.dashboard.total_flows', pagination.total)"
+      :previous-label="$t('common.dashboard.previous_page')"
+      :next-label="$t('common.dashboard.next_page')"
+      :has-actions="canEdit"
+      @sort="handleSort"
+      @page="goToPage"
+    >
+      <template #row="{ row }">
+        <TableCell>
+          <a
+            :href="row.href"
+            data-phx-link="patch"
+            data-phx-link-state="push"
+            class="inline-flex items-center gap-2 font-medium hover:underline"
+          >
+            {{ row.name }}
+            <Badge v-if="row.is_main" variant="default" class="text-[10px] px-1.5 py-0">
+              {{ $t("flows.dashboard.main") }}
+            </Badge>
+          </a>
+        </TableCell>
+        <TableCell class="text-right tabular-nums">{{ row.node_count }}</TableCell>
+        <TableCell class="text-right tabular-nums hidden sm:table-cell">
+          {{ row.dialogue_count }}
+        </TableCell>
+        <TableCell class="text-right tabular-nums hidden sm:table-cell">
+          {{ row.condition_count }}
+        </TableCell>
+        <TableCell class="text-right tabular-nums hidden md:table-cell">
+          {{ row.word_count }}
+        </TableCell>
+        <TableCell class="text-right text-muted-foreground text-xs hidden md:table-cell">
+          {{ formatRelativeTime(row.updated_at) }}
+        </TableCell>
+      </template>
 
-      <DashboardPagination
-        v-if="pagination.total > 0"
-        :pagination="pagination"
-        :total-label="$t('flows.dashboard.total_flows', pagination.total)"
-        :previous-label="$t('common.dashboard.previous_page')"
-        :next-label="$t('common.dashboard.next_page')"
-        @page="goToPage"
-      />
-    </div>
+      <template #actions="{ row }">
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button variant="ghost" size="icon-sm" class="size-7">
+              <MoreHorizontal class="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem v-if="!row.is_main" class="gap-2 text-xs" @select="setMain(row.id)">
+              <Star class="size-3.5" />
+              {{ $t("flows.dashboard.set_main") }}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              class="text-destructive gap-2 text-xs"
+              @select="requestDelete(row.id)"
+            >
+              <Trash2 class="size-3.5" />
+              {{ $t("flows.dashboard.delete") }}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </template>
+    </DashboardDataTable>
 
     <template #supplementary>
       <!-- Issues -->
@@ -472,62 +401,15 @@ const columns = computed<TableColumn[]>(() => [
             @change="changeIssueFilter"
           />
 
-          <div
-            v-if="issues.length > 0"
-            class="rounded-lg border border-border divide-y divide-border"
-          >
-            <a
-              v-for="issue in issues"
-              :key="issue.id"
-              :href="issue.href"
-              :data-severity="issue.severity"
-              data-phx-link="redirect"
-              data-phx-link-state="push"
-              class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
-            >
-              <CircleX
-                v-if="issue.severity === 'error'"
-                data-testid="flow-issue-error-icon"
-                class="size-4 text-red-500 shrink-0 mt-0.5"
-              />
-              <AlertTriangle
-                v-else-if="issue.severity === 'warning'"
-                data-testid="flow-issue-warning-icon"
-                class="size-4 text-yellow-500 shrink-0 mt-0.5"
-              />
-              <Info
-                v-else
-                data-testid="flow-issue-info-icon"
-                class="size-4 text-blue-400 shrink-0 mt-0.5"
-              />
-              <span class="sr-only">
-                {{ $t(`common.dashboard.issue_severity.${issue.severity}`) }}:
-              </span>
-              <span class="text-muted-foreground">
-                <span class="text-foreground">{{ issue.label }}</span>
-                · {{ healthFindingLabel(issue) }}
-              </span>
-            </a>
-          </div>
-
-          <p
-            v-else
-            data-testid="flow-issues-empty-filter"
-            class="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"
-          >
-            {{ $t("common.dashboard.no_matching_issues") }}
-          </p>
-
-          <DashboardPagination
-            v-if="resolvedIssuePagination.total > 0"
+          <DashboardIssueList
+            :issues="issues"
             :pagination="resolvedIssuePagination"
-            :total-label="
-              $t('common.dashboard.total_issues', { count: resolvedIssuePagination.total })
-            "
-            :previous-label="$t('common.dashboard.previous_page')"
-            :next-label="$t('common.dashboard.next_page')"
             @page="goToIssuePage"
-          />
+          >
+            <template #description="{ issue }">
+              {{ healthFindingLabel(issue) }}
+            </template>
+          </DashboardIssueList>
         </template>
       </div>
     </template>

@@ -102,6 +102,19 @@ function mountDashboard() {
 }
 
 describe("SheetDashboard health", () => {
+  it("preserves redirect navigation and forwards table sorting to LiveView", async () => {
+    const { live, wrapper } = mountDashboard();
+    const rowLink = wrapper.get('a[href="/workspaces/ws/projects/story/sheets/1"]');
+
+    expect(rowLink.attributes("data-phx-link")).toBe("redirect");
+    await wrapper.findAll("thead button")[1].trigger("click");
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "sort_sheets",
+      { column: "block_count" },
+      undefined,
+    );
+  });
+
   it("forwards complete faceted counts to the shared issue filters", () => {
     const { wrapper } = mountDashboard();
 
@@ -124,11 +137,15 @@ describe("SheetDashboard health", () => {
     const warning = wrapper.get('a[data-severity="warning"]');
     const info = wrapper.get('a[data-severity="info"]');
 
-    expect(error.get('[data-testid="sheet-issue-error-icon"]').classes()).toContain("text-red-500");
-    expect(warning.get('[data-testid="sheet-issue-warning-icon"]').classes()).toContain(
+    expect(error.get('[data-testid="dashboard-issue-error-icon"]').classes()).toContain(
+      "text-red-500",
+    );
+    expect(warning.get('[data-testid="dashboard-issue-warning-icon"]').classes()).toContain(
       "text-yellow-500",
     );
-    expect(info.get('[data-testid="sheet-issue-info-icon"]').classes()).toContain("text-blue-400");
+    expect(info.get('[data-testid="dashboard-issue-info-icon"]').classes()).toContain(
+      "text-blue-400",
+    );
     expect(error.get(".sr-only").text()).toBe("Error:");
     expect(warning.get(".sr-only").text()).toBe("Warning:");
     expect(info.get(".sr-only").text()).toBe("Information:");

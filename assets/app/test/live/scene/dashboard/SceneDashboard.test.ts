@@ -126,11 +126,15 @@ describe("SceneDashboard health", () => {
     const warning = wrapper.get('a[data-severity="warning"]');
     const info = wrapper.get('a[data-severity="info"]');
 
-    expect(error.get('[data-testid="scene-issue-error-icon"]').classes()).toContain("text-red-500");
-    expect(warning.get('[data-testid="scene-issue-warning-icon"]').classes()).toContain(
+    expect(error.get('[data-testid="dashboard-issue-error-icon"]').classes()).toContain(
+      "text-red-500",
+    );
+    expect(warning.get('[data-testid="dashboard-issue-warning-icon"]').classes()).toContain(
       "text-yellow-500",
     );
-    expect(info.get('[data-testid="scene-issue-info-icon"]').classes()).toContain("text-blue-400");
+    expect(info.get('[data-testid="dashboard-issue-info-icon"]').classes()).toContain(
+      "text-blue-400",
+    );
     expect(error.get(".sr-only").text()).toBe("Error:");
     expect(warning.get(".sr-only").text()).toBe("Warning:");
     expect(info.get(".sr-only").text()).toBe("Information:");
@@ -141,9 +145,9 @@ describe("SceneDashboard health", () => {
     expect(error.attributes("href")).toContain("highlight=connection:4");
   });
 
-  it("uses the canonical row link returned by the async overview", () => {
+  it("uses the canonical row link returned by the async overview", async () => {
     const href = "/workspaces/ws/projects/story/scenes/99";
-    const { wrapper } = mountDashboard({
+    const { live, wrapper } = mountDashboard({
       tableData: [
         {
           id: 99,
@@ -157,7 +161,12 @@ describe("SceneDashboard health", () => {
       ],
     });
 
-    expect(wrapper.get(`a[href="${href}"]`).text()).toBe("Linked Scene");
+    const rowLink = wrapper.get(`a[href="${href}"]`);
+
+    expect(rowLink.text()).toBe("Linked Scene");
+    expect(rowLink.attributes("data-phx-link")).toBe("patch");
+    await wrapper.findAll("thead button")[1].trigger("click");
+    expect(live.pushEvent).toHaveBeenCalledWith("sort_scenes", { column: "zone_count" }, undefined);
   });
 
   it("shows issue loading independently from the overview", () => {
@@ -295,7 +304,7 @@ describe("SceneDashboard health", () => {
     });
 
     expect(wrapper.findComponent(DashboardIssueFilters).exists()).toBe(true);
-    expect(wrapper.get('[data-testid="scene-issues-empty-filter"]').text()).toBe(
+    expect(wrapper.get('[data-testid="dashboard-issues-empty-filter"]').text()).toBe(
       "No issues match these filters.",
     );
   });

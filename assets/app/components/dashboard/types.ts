@@ -1,3 +1,40 @@
+import type { HealthStatusSeverity } from "@shared/types/health";
+
+export type DashboardLoadStatus = "loading" | "ready" | "refreshing" | "error" | "stale";
+
+export interface DashboardPagination {
+  page: number;
+  totalPages: number;
+  total: number;
+}
+
+export interface DashboardTablePagination extends DashboardPagination {
+  sortBy: string;
+  sortDir: "asc" | "desc";
+}
+
+export interface DashboardIssuePagination extends DashboardPagination {
+  unfilteredTotal: number;
+}
+
+export interface DashboardTableRow {
+  id: number | string;
+}
+
+export interface DashboardTableColumn {
+  key: string;
+  label: string;
+  align: "left" | "right";
+  hiddenClass?: string;
+}
+
+export interface DashboardIssueListItem {
+  id: string;
+  href: string;
+  severity: HealthStatusSeverity;
+  label: string;
+}
+
 export type DashboardIssueFilter = "severity" | "code" | "resource";
 
 export interface DashboardIssueFilterValues {
