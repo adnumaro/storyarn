@@ -1,0 +1,92 @@
+lib/storyarn/flows.ex
+  s_6401ae78a3fc64::t_29ce0b4c93bbf8 1100-1105
+  s_6401ae78a3fc64::t_02dfc9944efb47 1106-1109
+lib/storyarn/flows/flow_stats.ex
+  s_6401ae78a3fc64::t_bb2508b09baced 58-60,62
+  s_6401ae78a3fc64::t_70737b839f7e6c 53-57,61,63-101
+  s_6401ae78a3fc64::t_a212aea1172d36 14
+test/storyarn/flows/flow_stats_test.exs
+  s_6401ae78a3fc64::t_317bc55b0d677a 1-135
+lib/storyarn_web/live/flow_live/index.ex
+  s_6401ae78a3fc64::t_4e70eb69013baa 307-309
+  s_6401ae78a3fc64::t_e6f0f64ffb5a07 335-337,345
+  s_6401ae78a3fc64::t_fdcc47ced11294 274-275,277-283
+  s_6401ae78a3fc64::t_d62bb5991d7528 276
+  s_6401ae78a3fc64::t_03428e075bb371 315-334,338-344,346-351
+  s_6401ae78a3fc64::t_c5f4a1286cf3a5 352
+assets/app/test/live/flow/dashboard/FlowDashboard.test.ts
+  s_6401ae78a3fc64::t_1ab061e79a932a 34-35
+  s_6401ae78a3fc64::t_7ad739c95e11ac 351-435
+assets/app/locales/en/flows.json
+  s_6401ae78a3fc64::t_38f68324d952ed 21-26
+assets/app/live/project/dashboard/ProjectDashboard.vue
+  s_6401ae78a3fc64::t_2bed34924d9797 319
+  s_6401ae78a3fc64::t_ea9bbdf04b6844 133,146,151,155,157,161
+  s_6401ae78a3fc64::t_e7e330d10a7ba8 330-331
+  s_6401ae78a3fc64::t_b879b80cb1243a 342-343,350-351,358-359
+  s_6401ae78a3fc64::t_4a635cdf359109 46-56
+  s_6401ae78a3fc64::t_a219854c31d9aa 167-168,175-176
+  s_6401ae78a3fc64::t_6aafb001439077 5-6,10,20-21,24,35-39,42,44,68-70,76-78,85-88,102,104,109,111,116-126,134-137,139-145,147-150,152-154,156,158-160,162-166,169-174,177-182,201-208,212-236,238-245,247,250-254,256-257,261-269,272-285,287-288,291-297,299-307,309-318,320-329,332-341,344-349,352-357,360-368,370,395
+  s_6401ae78a3fc64::t_2922595cce9ddf 84
+  s_6401ae78a3fc64::t_5cfe9e479a19d4 19
+  s_6401ae78a3fc64::t_47366cc06f2b95 127-132,138
+  s_6401ae78a3fc64::t_ce692a10589efc 96
+lib/storyarn_web/live/project_live/show.ex
+  s_6401ae78a3fc64::t_f474d5cf0b4fd6 132-167,169-170,174-175,179,182-186,188-199,202-204,206-211,213,215-222,237-238,240,263-265
+  s_6401ae78a3fc64::t_4719a07648f729 14,16-17
+  s_6401ae78a3fc64::t_f527d427bd511c 9-11,18,22
+  s_6401ae78a3fc64::t_36fa090b48b247 58-60
+  s_6401ae78a3fc64::t_b9f160010b1d91 227-236,241-259
+  s_6401ae78a3fc64::t_975c9d9c3a804b 82-88,94
+  s_6401ae78a3fc64::t_6fb9006d6bebc4 23
+assets/app/live/flow/dashboard/FlowDashboard.vue
+  s_6401ae78a3fc64::t_25f2c5aa26be1e 41-56,62-63
+  s_6401ae78a3fc64::t_cc2b580c47b4b4 240-251
+  s_6401ae78a3fc64::t_bf7672b0c52e06 237-239
+  s_6401ae78a3fc64::t_8cd6d578e8e81d 309-365
+test/storyarn_web/live/project_live/show_test.exs
+  s_6401ae78a3fc64::t_e8c0263bee9c4f 97,120,144-145,150-151
+  s_6401ae78a3fc64::t_9dcc563668d2c2 76-83
+  s_6401ae78a3fc64::t_cc772bb6b92acb 4,7,9,11,13,19-20
+  s_6401ae78a3fc64::t_3c873ce76f02de 21,73-75,84-96,98-119,121-143,146-149,152-239
+  s_6401ae78a3fc64::t_ed26751d5ac947 22
+assets/app/test/components/health/FlowDashboardHealthLabels.test.ts
+  s_6401ae78a3fc64::t_1ab061e79a932a 13-20
+assets/app/locales/es/flows.json
+  s_6401ae78a3fc64::t_38f68324d952ed 21-26
+lib/storyarn/projects/dashboard.ex
+  s_6401ae78a3fc64::t_0b9cc0daa3a0bc 86
+  s_6401ae78a3fc64::t_46fd3552d01383 5-7,14-15,25,29
+  s_6401ae78a3fc64::t_93ec9e09fc5619 9-13
+  s_6401ae78a3fc64::t_e0cb3c08c3349e 53,56-57,60,62-64,66-70,72-74,76-80,82-84
+  s_6401ae78a3fc64::t_a8e83cb7feeed9 8,30
+assets/app/locales/es/workspace.json
+  s_6401ae78a3fc64::t_38f68324d952ed 162-174
+assets/app/locales/en/workspace.json
+  s_6401ae78a3fc64::t_38f68324d952ed 162-174
+assets/app/test/live/project/dashboard/ProjectDashboard.test.ts
+  s_6401ae78a3fc64::t_367da7585443fe 104
+  s_6401ae78a3fc64::t_317f6b8e964c25 39
+  s_6401ae78a3fc64::t_c7ffbeb8f91851 1-38,40-103,105-130
+lib/storyarn/projects.ex
+  s_6401ae78a3fc64::t_fb0bbefc58bd85 405
+test/storyarn/projects/dashboard_test.exs
+  s_6401ae78a3fc64::t_d34ac2a7e71d3a 139-151,153,155-157,160-161,166-169,173-174,179-184,186-187,190-191,193-198,200-201
+  s_6401ae78a3fc64::t_d192f8435ac330 163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5cafd59a44254c7915a6b3a9c7320c8cecb3a9b6",
+  "prompts": {},
+  "sessions": {
+    "s_6401ae78a3fc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9bc0da24-9334-450b-9597-d0d8482861c1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
