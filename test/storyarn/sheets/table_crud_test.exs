@@ -711,6 +711,10 @@ defmodule Storyarn.Sheets.TableCrudTest do
       assert {:ok, column} = Sheets.create_table_column(block, %{name: "Damage", type: "number"})
       assert_received {:dashboard_invalidate, :sheets}
 
+      original = hd(block.table_columns)
+      assert {:ok, _columns} = Sheets.reorder_table_columns(block.id, [column.id, original.id])
+      assert_received {:dashboard_invalidate, :sheets}
+
       assert {:ok, _column} = Sheets.update_table_column(column, %{name: "Damage Dealt"})
       assert_received {:dashboard_invalidate, :sheets}
 
@@ -722,6 +726,10 @@ defmodule Storyarn.Sheets.TableCrudTest do
       :ok = Collaboration.subscribe_dashboard(project.id)
 
       assert {:ok, row} = Sheets.create_table_row(block, %{name: "Strength"})
+      assert_received {:dashboard_invalidate, :sheets}
+
+      original = hd(block.table_rows)
+      assert {:ok, _rows} = Sheets.reorder_table_rows(block.id, [row.id, original.id])
       assert_received {:dashboard_invalidate, :sheets}
 
       assert {:ok, row} = Sheets.update_table_row(row, %{name: "Might"})

@@ -6,8 +6,8 @@ defmodule Storyarn.Flows.NodeCreate do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.NodeUpdate
   alias Storyarn.Flows.ReferenceIntegrity
-  alias Storyarn.Localization
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
@@ -17,12 +17,7 @@ defmodule Storyarn.Flows.NodeCreate do
   @max_reference_depth 20
 
   def create_node(%Flow{} = flow, attrs) do
-    attrs = stringify_keys(attrs)
-
-    result =
-      fn -> create_node_in_transaction(flow, attrs) end
-      |> Repo.transaction()
-      |> normalize_item_limit_result()
+    result = create_node_without_dashboard_broadcast(flow, attrs)
 
     case result do
       {:ok, _node} ->
@@ -33,6 +28,15 @@ defmodule Storyarn.Flows.NodeCreate do
     end
 
     result
+  end
+
+  @doc false
+  def create_node_without_dashboard_broadcast(%Flow{} = flow, attrs) do
+    attrs = stringify_keys(attrs)
+
+    fn -> create_node_in_transaction(flow, attrs) end
+    |> Repo.transaction()
+    |> normalize_item_limit_result()
   end
 
   defp create_node_in_transaction(flow, attrs) do
@@ -59,7 +63,7 @@ defmodule Storyarn.Flows.NodeCreate do
       attrs
       |> Map.put("parent_id", parent_id)
       |> Map.put("data", normalized_data)
-      |> then(&create_and_extract_node(locked_flow, &1))
+      |> then(&create_and_reconcile_node(locked_flow, &1))
     else
       {:error, reason, details} ->
         Repo.rollback({reason, details})
@@ -79,11 +83,9 @@ defmodule Storyarn.Flows.NodeCreate do
 
   defp normalize_item_limit_result(result), do: result
 
-  defp create_and_extract_node(flow, attrs) do
-    with {:ok, node} <- create_node_by_type(flow, attrs),
-         :ok <- Localization.extract_flow_node(node) do
-      node
-    else
+  defp create_and_reconcile_node(flow, attrs) do
+    case create_node_by_type(flow, attrs) do
+      {:ok, node} -> NodeUpdate.reconcile_persisted_node(node, flow.project_id)
       {:error, reason} -> Repo.rollback(reason)
     end
   end

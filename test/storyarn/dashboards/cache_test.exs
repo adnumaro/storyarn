@@ -1,6 +1,8 @@
 defmodule Storyarn.Dashboards.CacheTest do
   use ExUnit.Case, async: true
 
+  alias Phoenix.PubSub
+  alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache
 
   setup do
@@ -79,6 +81,59 @@ defmodule Storyarn.Dashboards.CacheTest do
       # scope_b should still be cached
       result_b = Cache.fetch(project_id, :scope_b, fn -> :b_new end)
       assert result_b == :b
+    end
+  end
+
+  describe "cluster invalidation" do
+    test "the writer invalidates synchronously and emits exactly one local event", %{
+      project_id: project_id
+    } do
+      Cache.fetch(project_id, :scope, fn -> :stale end)
+      :ok = Collaboration.subscribe_dashboard(project_id)
+
+      :ok = Collaboration.broadcast_dashboard_change(project_id, :scenes)
+
+      assert_receive {:dashboard_invalidate, :scenes}
+      assert Cache.fetch(project_id, :scope, fn -> :fresh end) == :fresh
+
+      # The global echo was already enqueued by the call above. Processing it
+      # must not relay a second local dashboard event.
+      :sys.get_state(Cache)
+      refute_receive {:dashboard_invalidate, :scenes}, 10
+    end
+
+    test "the cache subscribes to remote invalidations and relays only after clearing local ETS", %{
+      project_id: project_id
+    } do
+      Cache.fetch(project_id, :scope, fn -> :stale end)
+      :ok = Collaboration.subscribe_dashboard(project_id)
+
+      PubSub.broadcast(
+        Storyarn.PubSub,
+        Cache.invalidation_topic(),
+        {:dashboard_cache_invalidate, :remote@cluster, project_id, :sheets}
+      )
+
+      assert_receive {:dashboard_invalidate, :sheets}
+      assert Cache.fetch(project_id, :scope, fn -> :fresh end) == :fresh
+    end
+
+    test "the origin node ignores the cluster echo after its synchronous invalidation", %{
+      project_id: project_id
+    } do
+      Cache.fetch(project_id, :scope, fn -> :cached end)
+      :ok = Collaboration.subscribe_dashboard(project_id)
+
+      send(
+        Cache,
+        {:dashboard_cache_invalidate, node(), project_id, :flows}
+      )
+
+      # A synchronous call is a mailbox barrier for the preceding message.
+      :sys.get_state(Cache)
+
+      refute_receive {:dashboard_invalidate, :flows}, 10
+      assert Cache.fetch(project_id, :scope, fn -> :unexpected end) == :cached
     end
   end
 end

@@ -5,8 +5,6 @@ import {
   ArrowUp,
   ArrowUpDown,
   Box,
-  ChevronLeft,
-  ChevronRight,
   CircleX,
   GitBranch,
   Info,
@@ -40,6 +38,13 @@ import {
 import { useLive } from "@shared/composables/useLive";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 import DashboardContent from "@shell/DashboardContent.vue";
+import DashboardIssueFilters from "@components/dashboard/DashboardIssueFilters.vue";
+import DashboardPagination from "@components/dashboard/DashboardPagination.vue";
+import {
+  emptyDashboardIssueFilterOptions,
+  type DashboardIssueFilterOptions,
+  type DashboardIssueFilterValues,
+} from "@components/dashboard/types";
 
 interface FlowStats {
   flow_count: number;
@@ -51,6 +56,7 @@ interface FlowStats {
 interface FlowTableRow {
   id: number | string;
   name: string;
+  href: string;
   is_main: boolean;
   node_count: number;
   dialogue_count: number;
@@ -66,6 +72,15 @@ interface FlowPagination {
   totalPages: number;
   total: number;
 }
+
+interface IssuePagination {
+  page: number;
+  totalPages: number;
+  total: number;
+  unfilteredTotal: number;
+}
+
+type DashboardLoadStatus = "loading" | "ready" | "refreshing" | "error" | "stale";
 
 interface StatCard {
   icon: Component;
@@ -86,17 +101,23 @@ const {
   tableData = [],
   pagination = { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 },
   issues = [],
+  overviewStatus = "loading",
+  issuesStatus = "loading",
+  issuePagination,
+  issueFilters = { severity: "all", code: "all", resource: "all" },
+  issueFilterOptions = emptyDashboardIssueFilterOptions(),
   canEdit = false,
-  workspaceSlug,
-  projectSlug,
 } = defineProps<{
   stats: FlowStats | null;
   tableData: FlowTableRow[];
   pagination: FlowPagination;
   issues: FlowDashboardIssue[];
+  overviewStatus?: DashboardLoadStatus;
+  issuesStatus?: DashboardLoadStatus;
+  issuePagination?: IssuePagination;
+  issueFilters?: DashboardIssueFilterValues;
+  issueFilterOptions?: DashboardIssueFilterOptions;
   canEdit: boolean;
-  workspaceSlug: string;
-  projectSlug: string;
 }>();
 
 const { t } = useI18n();
@@ -106,11 +127,45 @@ const { t } = useI18n();
 function healthFindingLabel(issue: FlowDashboardIssue): string {
   return t(`flows.health.findings.${issue.code}`, interpolatableDetails(issue.details));
 }
+
+function issueCodeLabel(code: string): string {
+  return t(`flows.health.issue_types.${code}`);
+}
 const live = useLive();
 
-function flowHref(row: FlowTableRow): string {
-  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${row.id}`;
-}
+const resolvedIssuePagination = computed<IssuePagination>(
+  () =>
+    issuePagination ?? {
+      page: 1,
+      totalPages: 1,
+      total: issues.length,
+      unfilteredTotal: issues.length,
+    },
+);
+
+const overviewHasContent = computed(
+  () => overviewStatus !== "loading" && overviewStatus !== "error",
+);
+
+const overviewFailure = computed(() => {
+  if (overviewStatus === "error") {
+    return {
+      kind: "error" as const,
+      message: t("common.dashboard.overview_load_failed"),
+      retryLabel: t("common.dashboard.retry"),
+    };
+  }
+
+  if (overviewStatus === "stale") {
+    return {
+      kind: "stale" as const,
+      message: t("common.dashboard.overview_stale"),
+      retryLabel: t("common.dashboard.retry"),
+    };
+  }
+
+  return undefined;
+});
 
 function handleSort(column: string): void {
   live.pushEvent("sort_flows", { column });
@@ -118,6 +173,22 @@ function handleSort(column: string): void {
 
 function goToPage(page: number): void {
   live.pushEvent("page_flows", { page });
+}
+
+function goToIssuePage(page: number): void {
+  live.pushEvent("page_flow_issues", { page });
+}
+
+function changeIssueFilter(payload: { filter: string; value: string }): void {
+  live.pushEvent("filter_flow_issues", payload);
+}
+
+function retryOverview(): void {
+  live.pushEvent("retry_dashboard_overview");
+}
+
+function retryIssues(): void {
+  live.pushEvent("retry_dashboard_issues");
 }
 
 function setMain(id: number | string): void {
@@ -196,24 +267,19 @@ const columns = computed<TableColumn[]>(() => [
     hiddenClass: "hidden md:table-cell",
   },
 ]);
-
-const pages = computed(() => {
-  const result = [];
-  for (let i = 1; i <= pagination.totalPages; i++) {
-    result.push(i);
-  }
-  return result;
-});
 </script>
 
 <template>
   <DashboardContent
     :title="$t('flows.dashboard.title')"
     :subtitle="$t('flows.dashboard.subtitle')"
-    :loading="!stats"
-    :is-empty="pagination.total === 0 && !stats"
+    :loading="overviewStatus === 'loading'"
+    :loading-label="$t('common.dashboard.loading_overview')"
+    :failure="overviewFailure"
+    :is-empty="overviewHasContent && pagination.total === 0"
     :empty-message="$t('flows.dashboard.empty')"
     :empty-icon="GitBranch"
+    @retry="retryOverview"
   >
     <!-- Stats row -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -263,7 +329,7 @@ const pages = computed(() => {
             <TableRow v-for="row in tableData" :key="row.id">
               <TableCell>
                 <a
-                  :href="flowHref(row)"
+                  :href="row.href"
                   data-phx-link="patch"
                   data-phx-link-state="push"
                   class="inline-flex items-center gap-2 font-medium hover:underline"
@@ -318,79 +384,152 @@ const pages = computed(() => {
         </Table>
       </div>
 
-      <!-- Pagination -->
-      <div
-        v-if="pagination.totalPages > 1"
-        class="flex items-center justify-between text-xs text-muted-foreground pt-1"
-      >
-        <span>{{ pagination.total }} flows</span>
-        <div class="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="size-7"
-            :disabled="pagination.page <= 1"
-            @click="goToPage(pagination.page - 1)"
-          >
-            <ChevronLeft class="size-4" />
-          </Button>
-          <Button
-            v-for="p in pages"
-            :key="p"
-            :variant="p === pagination.page ? 'default' : 'ghost'"
-            size="sm"
-            class="h-7 min-w-7 px-2 text-xs"
-            @click="goToPage(p)"
-          >
-            {{ p }}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="size-7"
-            :disabled="pagination.page >= pagination.totalPages"
-            @click="goToPage(pagination.page + 1)"
-          >
-            <ChevronRight class="size-4" />
-          </Button>
-        </div>
-      </div>
+      <DashboardPagination
+        v-if="pagination.total > 0"
+        :pagination="pagination"
+        :total-label="$t('flows.dashboard.total_flows', pagination.total)"
+        :previous-label="$t('common.dashboard.previous_page')"
+        :next-label="$t('common.dashboard.next_page')"
+        @page="goToPage"
+      />
     </div>
 
-    <!-- Issues -->
-    <div v-if="issues.length > 0" class="space-y-2">
-      <h2 class="text-sm font-medium">{{ $t("flows.dashboard.issues") }}</h2>
-      <div class="rounded-lg border border-border divide-y divide-border">
-        <a
-          v-for="(issue, i) in issues"
-          :key="i"
-          :href="issue.href"
-          :data-severity="issue.severity"
-          data-phx-link="redirect"
-          data-phx-link-state="push"
-          class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
+    <template #supplementary>
+      <!-- Issues -->
+      <div
+        v-if="
+          issuesStatus === 'loading' ||
+          issuesStatus === 'error' ||
+          issuesStatus === 'stale' ||
+          resolvedIssuePagination.unfilteredTotal > 0
+        "
+        data-testid="flow-dashboard-issues"
+        class="space-y-3"
+        :aria-busy="issuesStatus === 'loading' || issuesStatus === 'refreshing'"
+      >
+        <h2 class="text-sm font-medium">{{ $t("flows.dashboard.issues") }}</h2>
+
+        <div
+          v-if="issuesStatus === 'loading'"
+          data-testid="flow-issues-loading"
+          class="flex items-center justify-center rounded-lg border border-border py-8"
+          role="status"
+          aria-live="polite"
         >
-          <CircleX
-            v-if="issue.severity === 'error'"
-            data-testid="flow-issue-error-icon"
-            class="size-4 text-red-500 shrink-0 mt-0.5"
+          <div
+            class="size-5 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/60"
+            aria-hidden="true"
           />
-          <AlertTriangle
-            v-else-if="issue.severity === 'warning'"
-            data-testid="flow-issue-warning-icon"
-            class="size-4 text-yellow-500 shrink-0 mt-0.5"
+          <span class="sr-only">{{ $t("common.dashboard.loading_issues") }}</span>
+        </div>
+
+        <div
+          v-else-if="issuesStatus === 'error'"
+          data-testid="flow-issues-error"
+          class="flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-8 text-center"
+          role="alert"
+        >
+          <p class="text-sm text-destructive">
+            {{ $t("common.dashboard.issues_load_failed") }}
+          </p>
+          <button
+            type="button"
+            data-testid="flow-issues-retry"
+            class="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            @click="retryIssues"
+          >
+            {{ $t("common.dashboard.retry") }}
+          </button>
+        </div>
+
+        <template v-else>
+          <div
+            v-if="issuesStatus === 'stale'"
+            data-testid="flow-issues-stale"
+            class="flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3"
+            role="status"
+            aria-live="polite"
+          >
+            <p class="text-sm text-amber-700 dark:text-amber-300">
+              {{ $t("common.dashboard.issues_stale") }}
+            </p>
+            <button
+              type="button"
+              data-testid="flow-issues-retry"
+              class="inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              @click="retryIssues"
+            >
+              {{ $t("common.dashboard.retry") }}
+            </button>
+          </div>
+
+          <DashboardIssueFilters
+            :filters="issueFilters"
+            :options="issueFilterOptions"
+            :all-resources-label="$t('flows.dashboard.all_flows')"
+            :code-label="issueCodeLabel"
+            :disabled="issuesStatus === 'refreshing'"
+            @change="changeIssueFilter"
           />
-          <Info
+
+          <div
+            v-if="issues.length > 0"
+            class="rounded-lg border border-border divide-y divide-border"
+          >
+            <a
+              v-for="issue in issues"
+              :key="issue.id"
+              :href="issue.href"
+              :data-severity="issue.severity"
+              data-phx-link="redirect"
+              data-phx-link-state="push"
+              class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
+            >
+              <CircleX
+                v-if="issue.severity === 'error'"
+                data-testid="flow-issue-error-icon"
+                class="size-4 text-red-500 shrink-0 mt-0.5"
+              />
+              <AlertTriangle
+                v-else-if="issue.severity === 'warning'"
+                data-testid="flow-issue-warning-icon"
+                class="size-4 text-yellow-500 shrink-0 mt-0.5"
+              />
+              <Info
+                v-else
+                data-testid="flow-issue-info-icon"
+                class="size-4 text-blue-400 shrink-0 mt-0.5"
+              />
+              <span class="sr-only">
+                {{ $t(`common.dashboard.issue_severity.${issue.severity}`) }}:
+              </span>
+              <span class="text-muted-foreground">
+                <span class="text-foreground">{{ issue.label }}</span>
+                · {{ healthFindingLabel(issue) }}
+              </span>
+            </a>
+          </div>
+
+          <p
             v-else
-            data-testid="flow-issue-info-icon"
-            class="size-4 text-blue-400 shrink-0 mt-0.5"
+            data-testid="flow-issues-empty-filter"
+            class="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground"
+          >
+            {{ $t("common.dashboard.no_matching_issues") }}
+          </p>
+
+          <DashboardPagination
+            v-if="resolvedIssuePagination.total > 0"
+            :pagination="resolvedIssuePagination"
+            :total-label="
+              $t('common.dashboard.total_issues', { count: resolvedIssuePagination.total })
+            "
+            :previous-label="$t('common.dashboard.previous_page')"
+            :next-label="$t('common.dashboard.next_page')"
+            @page="goToIssuePage"
           />
-          <span class="text-muted-foreground">
-            <span class="text-foreground">{{ issue.label }}</span>
-            · {{ healthFindingLabel(issue) }}
-          </span>
-        </a>
+        </template>
       </div>
-    </div>
+    </template>
   </DashboardContent>
 </template>

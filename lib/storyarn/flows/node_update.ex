@@ -190,14 +190,18 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   def update_node_data(%FlowNode{} = node, data) do
-    result =
-      case Repo.transaction(fn -> update_node_data_transaction(node, data) end) do
-        {:ok, {updated_node, meta}} -> {:ok, updated_node, meta}
-        {:error, reason} -> {:error, reason}
-      end
+    result = update_node_data_without_dashboard_broadcast(node, data)
 
     maybe_broadcast_dashboard(result, node)
     result
+  end
+
+  @doc false
+  def update_node_data_without_dashboard_broadcast(%FlowNode{} = node, data) do
+    case Repo.transaction(fn -> update_node_data_transaction(node, data) end) do
+      {:ok, {updated_node, meta}} -> {:ok, updated_node, meta}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp maybe_broadcast_dashboard({:ok, _, _}, node) do
@@ -218,6 +222,11 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   def change_node(%FlowNode{} = node, attrs \\ %{}) do
     FlowNode.update_changeset(node, attrs)
+  end
+
+  @doc false
+  def reconcile_persisted_node(%FlowNode{} = node, project_id) do
+    handle_persisted_node_data({:ok, node}, project_id)
   end
 
   defp update_node_data_transaction(node, data) do

@@ -30,6 +30,7 @@ defmodule Storyarn.Collaboration do
   alias Storyarn.Collaboration.CursorTracker
   alias Storyarn.Collaboration.Locks
   alias Storyarn.Collaboration.Presence
+  alias Storyarn.Dashboards.Cache
 
   @type editor_scope ::
           {:flow, integer()}
@@ -313,12 +314,21 @@ defmodule Storyarn.Collaboration do
   `scope` is an atom like `:flows`, `:sheets`, or `:scenes`.
   """
   def broadcast_dashboard_change(project_id, scope) do
-    Storyarn.Dashboards.Cache.invalidate(project_id)
+    Cache.invalidate(project_id)
 
-    PubSub.broadcast(
+    # Notify this node only after its cache is synchronously invalidated.
+    # Remote cache processes receive the cluster-wide message below, invalidate
+    # their own ETS table, and then relay the same dashboard event locally.
+    PubSub.local_broadcast(
       Storyarn.PubSub,
       dashboard_topic(project_id),
       {:dashboard_invalidate, scope}
+    )
+
+    PubSub.broadcast(
+      Storyarn.PubSub,
+      Cache.invalidation_topic(),
+      {:dashboard_cache_invalidate, node(), project_id, scope}
     )
   end
 

@@ -83,6 +83,8 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
 
       vue = get_dashboard_vue(view)
       assert vue.props["table-data"] == []
+      assert vue.props["overview-status"] == "ready"
+      assert vue.props["stats"]["flow_count"] == 0
     end
 
     test "passes stats to Vue when flows exist", %{conn: conn, user: user} do
@@ -134,10 +136,50 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       zeta_pos = Enum.find_index(names, &(&1 == "Zeta Flow"))
       assert zeta_pos < alpha_pos
     end
+
+    test "refreshes the visible dashboard after a committed flow update", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Before"})
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
+
+      await_async(view)
+      assert "Before" in Enum.map(get_dashboard_vue(view).props["table-data"], & &1["name"])
+
+      assert {:ok, _flow} = Flows.update_flow(flow, %{name: "After"})
+
+      Process.sleep(550)
+      render(view)
+      await_async(view)
+
+      names = Enum.map(get_dashboard_vue(view).props["table-data"], & &1["name"])
+      assert "After" in names
+      refute "Before" in names
+    end
   end
 
   describe "health issues" do
     setup :register_and_log_in_user
+
+    test "preserves the authenticated locale inside async issue formatting", %{
+      conn: conn,
+      user: user
+    } do
+      user = user |> Ecto.Changeset.change(locale: "es") |> Repo.update!()
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Localizado"})
+      node_fixture(flow, %{type: "dialogue", data: %{"text" => ""}})
+
+      issues = issues_for(conn, project)
+
+      assert Enum.any?(issues, fn issue ->
+               issue["entity_type"] == "dialogue" and issue["label"] =~ "Diálogo"
+             end)
+    end
 
     test "renders errors before warnings before info", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
@@ -183,17 +225,96 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       assert flow_issue, "expected the flow-level finding on the dashboard"
       assert flow_issue["href"] == base
     end
+
+    test "paginates, clamps, filters, and identifies findings without another load", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Many Findings"})
+
+      for index <- 1..14 do
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "", "speaker_sheet_id" => "", "index" => index}
+        })
+      end
+
+      other_flow = flow_fixture(project, %{name: "Other Flow"})
+
+      node_fixture(other_flow, %{
+        type: "dialogue",
+        data: %{"text" => "", "speaker_sheet_id" => ""}
+      })
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
+
+      await_async(view)
+
+      props = get_dashboard_vue(view).props
+      pagination = props["issue-pagination"]
+      ids = Enum.map(props["issues"], & &1["id"])
+
+      assert pagination["total"] > 25
+      assert pagination["totalPages"] > 1
+      assert length(props["issues"]) == 25
+      assert length(ids) == length(Enum.uniq(ids))
+      assert Enum.all?(ids, &is_binary/1)
+
+      assert %{"count" => 15} =
+               Enum.find(
+                 props["issue-filter-options"]["codes"],
+                 &(&1["value"] == "missing_dialogue_text")
+               )
+
+      render_click(view, "page_flow_issues", %{"page" => 999})
+      clamped = get_dashboard_vue(view).props["issue-pagination"]
+      assert clamped["page"] == clamped["totalPages"]
+
+      render_click(view, "filter_flow_issues", %{
+        "filter" => "code",
+        "value" => "missing_dialogue_text"
+      })
+
+      filtered = get_dashboard_vue(view).props
+      assert filtered["issue-pagination"]["page"] == 1
+      assert filtered["issue-pagination"]["total"] == 15
+      assert Enum.all?(filtered["issues"], &(&1["code"] == "missing_dialogue_text"))
+
+      assert %{"count" => 14} =
+               Enum.find(
+                 filtered["issue-filter-options"]["resources"],
+                 &(&1["value"] == to_string(flow.id))
+               )
+
+      assert %{"count" => 1} =
+               Enum.find(
+                 filtered["issue-filter-options"]["resources"],
+                 &(&1["value"] == to_string(other_flow.id))
+               )
+
+      render_click(view, "filter_flow_issues", %{
+        "filter" => "resource",
+        "value" => to_string(flow.id)
+      })
+
+      resource_filtered = get_dashboard_vue(view).props
+      assert resource_filtered["issue-pagination"]["total"] == 14
+      assert Enum.all?(resource_filtered["issues"], &(&1["flow_id"] == flow.id))
+
+      assert %{"count" => 14} =
+               Enum.find(
+                 resource_filtered["issue-filter-options"]["codes"],
+                 &(&1["value"] == "missing_dialogue_text")
+               )
+    end
   end
 
   describe "deleting the last flow" do
     setup :register_and_log_in_user
 
-    # Vue decides between the empty state and the spinner with
-    # `isEmpty = pagination.total === 0 && !stats`. Deleting the last flow clears
-    # `stats`, and `reload_dashboard/6` does NOT re-trigger the load when no
-    # entities remain — so if `total` keeps the count it had before the delete,
-    # neither branch is empty and the dashboard spins forever.
-    test "leaves a zero total so the empty state renders, not the skeleton", %{conn: conn, user: user} do
+    test "refreshes to the empty state after deleting the last flow", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Only Flow"})
 
@@ -207,10 +328,14 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       assert get_dashboard_vue(view).props["pagination"]["total"] == 1
 
       render_click(view, "delete", %{"id" => to_string(flow.id)})
+      send(view.pid, :load_dashboard_data)
+      render(view)
+      await_async(view)
 
       props = get_dashboard_vue(view).props
       assert props["pagination"]["total"] == 0
-      assert props["stats"] == nil
+      assert props["stats"]["flow_count"] == 0
+      assert props["overview-status"] == "ready"
       assert props["table-data"] == []
     end
   end
@@ -221,21 +346,60 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
     # dashboard that never finishes loading, with no message and nothing to
     # click. That is why the formula-overflow crash looked like "blank forever".
     test "a crashed load logs the reason and leaves an error, not a skeleton" do
-      socket = %Socket{assigns: %{__changed__: %{}, flash: %{}, project: %{id: 4242}}}
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          flash: %{},
+          project: %{id: 4242},
+          dashboard_stats: nil,
+          overview_status: :loading
+        }
+      }
 
       {result, log} =
         with_log(fn ->
-          {:noreply, result} = Index.handle_async(:load_dashboard_data, {:exit, :boom}, socket)
+          {:noreply, result} =
+            Index.handle_async(:load_dashboard_overview, {:exit, :boom}, socket)
+
           result
         end)
 
       # The reason must reach the error tracker, not vanish.
-      assert log =~ "Flow dashboard load failed for project 4242"
+      assert log =~ "Flow dashboard overview load failed for project 4242"
       assert log =~ ":boom"
 
-      # Non-nil stats is what stops the Vue skeleton; nil was the permanent spinner.
-      assert result.assigns.dashboard_stats
-      assert result.assigns.flash["error"] =~ "Could not load dashboard data"
+      assert result.assigns.dashboard_stats == nil
+      assert result.assigns.overview_status == :error
+    end
+
+    test "a failed refresh preserves loaded content and marks it stale" do
+      stats = %{flow_count: 3}
+
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          flash: %{},
+          project: %{id: 4242},
+          dashboard_stats: stats,
+          overview_status: :refreshing
+        }
+      }
+
+      {:noreply, result} =
+        Index.handle_async(:load_dashboard_overview, {:exit, :boom}, socket)
+
+      assert result.assigns.dashboard_stats == stats
+      assert result.assigns.overview_status == :stale
+    end
+
+    test "retry immediately returns the overview to loading" do
+      socket = %Socket{assigns: %{__changed__: %{}, overview_status: :error}}
+
+      {:noreply, result} = Index.handle_event("retry_dashboard_overview", %{}, socket)
+
+      assert result.assigns.overview_status == :loading
+      assert_receive :load_dashboard_overview
+      refute_receive :load_dashboard_issues
     end
   end
 

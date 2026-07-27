@@ -9,6 +9,37 @@
     "limited_matches": "Showing {shown} matches",
     "search": "Search...",
     "none": "None",
+    "dashboard": {
+      "previous_page": "Previous page",
+      "next_page": "Next page",
+      "page_label": "Page {page}",
+      "total_issues": "{count} issue | {count} issues",
+      "loading_overview": "Loading dashboard overview",
+      "loading_issues": "Loading issues",
+      "overview_load_failed": "The dashboard overview could not be loaded.",
+      "overview_stale": "The dashboard overview could not be refreshed. Showing the last loaded data.",
+      "issues_load_failed": "Issues could not be loaded.",
+      "issues_stale": "Issues could not be refreshed. Showing the last loaded results.",
+      "retry": "Retry",
+      "no_matching_issues": "No issues match these filters.",
+      "issue_severity": {
+        "error": "Error",
+        "warning": "Warning",
+        "info": "Information"
+      },
+      "issue_filters": {
+        "severity_label": "Filter by severity",
+        "code_label": "Filter by issue type",
+        "resource_label": "Filter by resource",
+        "all_severities": "All severities",
+        "all_codes": "All issue types",
+        "severities": {
+          "error": "Errors",
+          "warning": "Warnings",
+          "info": "Information"
+        }
+      }
+    },
     "version_history": {
       "empty_title": "No versions yet",
       "empty_description": "Create a version to save the current state.",

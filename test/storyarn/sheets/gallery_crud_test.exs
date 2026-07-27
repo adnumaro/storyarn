@@ -6,6 +6,7 @@ defmodule Storyarn.Sheets.GalleryCrudTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
@@ -25,6 +26,25 @@ defmodule Storyarn.Sheets.GalleryCrudTest do
   end
 
   describe "add_gallery_image/2" do
+    test "successful single and batch additions invalidate the sheets dashboard once each", %{
+      assets: assets,
+      block: block,
+      project: project
+    } do
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, _image} = Sheets.add_gallery_image(block, hd(assets).id)
+      assert_receive {:dashboard_invalidate, :sheets}
+      refute_receive {:dashboard_invalidate, :sheets}, 10
+
+      assert {:ok, images} =
+               Sheets.add_gallery_images(block, assets |> Enum.drop(1) |> Enum.take(2) |> Enum.map(& &1.id))
+
+      assert length(images) == 2
+      assert_receive {:dashboard_invalidate, :sheets}
+      refute_receive {:dashboard_invalidate, :sheets}, 10
+    end
+
     test "rejects same-project non-image assets for single and batch writes", %{
       block: block,
       project: project,
@@ -32,6 +52,7 @@ defmodule Storyarn.Sheets.GalleryCrudTest do
     } do
       first_audio = audio_asset_fixture(project, user)
       second_audio = audio_asset_fixture(project, user)
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
       assert {:error, {:invalid_asset_content_type, :gallery_asset_id, first_id}} =
                Sheets.add_gallery_image(block, first_audio.id)
@@ -43,6 +64,7 @@ defmodule Storyarn.Sheets.GalleryCrudTest do
 
       assert invalid_id in [first_audio.id, second_audio.id]
       assert Sheets.list_gallery_images(block.id) == []
+      refute_receive {:dashboard_invalidate, :sheets}, 10
     end
   end
 
@@ -112,6 +134,21 @@ defmodule Storyarn.Sheets.GalleryCrudTest do
   end
 
   describe "remove_gallery_image/2" do
+    test "a successful removal invalidates the sheets dashboard once", %{
+      assets: assets,
+      block: block,
+      project: project,
+      sheet: sheet
+    } do
+      [image] = add_images(block, [hd(assets)])
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, deleted} = Sheets.remove_gallery_image(sheet.id, image.id)
+      assert deleted.id == image.id
+      assert_receive {:dashboard_invalidate, :sheets}
+      refute_receive {:dashboard_invalidate, :sheets}, 10
+    end
+
     test "rejects foreign ownership without deleting the image", %{
       assets: assets,
       project: project,

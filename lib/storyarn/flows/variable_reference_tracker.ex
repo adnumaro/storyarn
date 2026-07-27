@@ -23,9 +23,11 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   import Ecto.Query
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows.Condition
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NodeUpdate
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
@@ -458,7 +460,9 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         end
       end)
 
-    apply_repairs(repairs_by_node)
+    repairs_by_node
+    |> apply_repairs()
+    |> broadcast_repair_result(project_id)
   end
 
   @doc """
@@ -482,17 +486,33 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   defp apply_repairs(repairs_by_node) do
     Repo.transaction(fn ->
-      Enum.each(repairs_by_node, &repair_single_node/1)
-      map_size(repairs_by_node)
+      repairs_by_node
+      |> Enum.sort_by(&elem(&1, 0))
+      |> Enum.reduce(0, &count_repair/2)
     end)
+  end
+
+  defp count_repair(repair, repaired_count) do
+    case repair_single_node(repair) do
+      {:ok, _node, _meta} -> repaired_count + 1
+      :skip -> repaired_count
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   defp repair_single_node({node_id, new_data}) do
     case Repo.get(FlowNode, node_id) do
       nil -> :skip
-      node -> Storyarn.Flows.update_node_data(node, new_data)
+      node -> NodeUpdate.update_node_data_without_dashboard_broadcast(node, new_data)
     end
   end
+
+  defp broadcast_repair_result({:ok, count} = result, project_id) when count > 0 do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    result
+  end
+
+  defp broadcast_repair_result(result, _project_id), do: result
 
   # -- Private --
 

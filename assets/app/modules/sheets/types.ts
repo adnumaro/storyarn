@@ -205,6 +205,7 @@ export interface DashboardStats {
 export interface DashboardRow {
   id: number | string;
   name: string;
+  href: string;
   block_count: number;
   variable_count: number;
   word_count: number;
@@ -220,11 +221,18 @@ export interface DashboardPagination {
 }
 
 export interface DashboardIssue {
+  id: string;
   severity: SheetHealthSeverity;
   code: string;
   label: string;
   details?: SheetHealthDetails;
   href: string;
+  sheet_id: number | string;
+  block_id?: number | string | null;
+  row_id?: number | string | null;
+  column_id?: number | string | null;
+  resource_id: number | string;
+  resource_label: string;
 }
 
 // ── Layout types ──

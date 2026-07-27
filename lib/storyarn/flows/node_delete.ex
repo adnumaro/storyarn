@@ -17,6 +17,14 @@ defmodule Storyarn.Flows.NodeDelete do
     |> maybe_broadcast_delete()
   end
 
+  @doc false
+  def delete_node_without_dashboard_broadcast(%FlowNode{} = node_hint) do
+    case do_delete_node(node_hint) do
+      {:ok, deleted_node, meta, _project_id} -> {:ok, deleted_node, meta}
+      {:error, _reason} = error -> error
+    end
+  end
+
   @doc """
   Restores a soft-deleted node by clearing its deleted_at timestamp.
   Returns {:ok, :already_active} if the node is not deleted (idempotent for redo safety).

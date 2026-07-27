@@ -9,8 +9,11 @@ defmodule Storyarn.Dashboards.Cache do
 
   use GenServer
 
+  alias Phoenix.PubSub
+
   @table :storyarn_dashboard_cache
   @generation_table :storyarn_dashboard_cache_generations
+  @invalidation_topic "storyarn:dashboard_cache:invalidations"
   @ttl_ms to_timeout(second: 30)
   @cleanup_interval_ms to_timeout(second: 15)
 
@@ -64,6 +67,9 @@ defmodule Storyarn.Dashboards.Cache do
     :ok
   end
 
+  @doc false
+  def invalidation_topic, do: @invalidation_topic
+
   # ===========================================================================
   # Server
   # ===========================================================================
@@ -76,8 +82,28 @@ defmodule Storyarn.Dashboards.Cache do
   def init(_opts) do
     :ets.new(@table, [:named_table, :set, :public, read_concurrency: true])
     :ets.new(@generation_table, [:named_table, :set, :public, read_concurrency: true, write_concurrency: true])
+    :ok = PubSub.subscribe(Storyarn.PubSub, @invalidation_topic)
     schedule_cleanup()
     {:ok, %{}}
+  end
+
+  @impl true
+  def handle_info({:dashboard_cache_invalidate, origin_node, project_id, scope}, state) do
+    # The writer invalidates and notifies its own node synchronously. Every
+    # other cache process invalidates first and only then relays the dashboard
+    # event locally, so a LiveView can never reload against that node's stale
+    # ETS entry. This also covers nodes with no dashboard LiveView at the time.
+    if origin_node != node() do
+      invalidate(project_id)
+
+      PubSub.local_broadcast(
+        Storyarn.PubSub,
+        "project:#{project_id}:dashboard",
+        {:dashboard_invalidate, scope}
+      )
+    end
+
+    {:noreply, state}
   end
 
   @impl true

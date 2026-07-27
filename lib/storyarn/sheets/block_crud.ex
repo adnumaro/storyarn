@@ -684,7 +684,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   def move_block_down(_block_id, _sheet_id), do: {:error, :not_found}
 
   defp move_block(block_id, sheet_id, direction) do
-    Repo.transaction(fn ->
+    fn ->
       project_id = fetch_sheet_project_id!(sheet_id)
       lock_active_project!(project_id)
       lock_active_sheet!(sheet_id, project_id)
@@ -694,25 +694,30 @@ defmodule Storyarn.Sheets.BlockCrud do
         |> lock_active_blocks!()
         |> Enum.sort_by(&{&1.position, &1.id})
 
-      case {direction, Enum.find_index(blocks, &(&1.id == block_id))} do
-        {_direction, nil} ->
-          Repo.rollback(:not_found)
+      result =
+        case {direction, Enum.find_index(blocks, &(&1.id == block_id))} do
+          {_direction, nil} ->
+            Repo.rollback(:not_found)
 
-        {:up, 0} ->
-          :already_first
+          {:up, 0} ->
+            :already_first
 
-        {:down, index} when index == length(blocks) - 1 ->
-          :already_last
+          {:down, index} when index == length(blocks) - 1 ->
+            :already_last
 
-        {:up, index} ->
-          swap_locked_block_positions!(Enum.at(blocks, index), Enum.at(blocks, index - 1))
-          :moved
+          {:up, index} ->
+            swap_locked_block_positions!(Enum.at(blocks, index), Enum.at(blocks, index - 1))
+            :moved
 
-        {:down, index} ->
-          swap_locked_block_positions!(Enum.at(blocks, index), Enum.at(blocks, index + 1))
-          :moved
-      end
-    end)
+          {:down, index} ->
+            swap_locked_block_positions!(Enum.at(blocks, index), Enum.at(blocks, index + 1))
+            :moved
+        end
+
+      {result, project_id}
+    end
+    |> Repo.transaction()
+    |> broadcast_block_move_result()
   end
 
   defp swap_locked_block_positions!(%Block{} = first, %Block{} = second) do
@@ -874,7 +879,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   """
 
   def reorder_blocks_with_columns(sheet_id, items) when is_integer(sheet_id) and sheet_id > 0 and is_list(items) do
-    Repo.transaction(fn ->
+    fn ->
       normalized_items = normalize_layout_items!(items)
       validate_layout_contract!(normalized_items, items)
       project_id = fetch_sheet_project_id!(sheet_id)
@@ -910,8 +915,10 @@ defmodule Storyarn.Sheets.BlockCrud do
         sheet_id
       ])
 
-      list_blocks(sheet_id)
-    end)
+      {list_blocks(sheet_id), project_id}
+    end
+    |> Repo.transaction()
+    |> broadcast_block_project_result()
   end
 
   def reorder_blocks_with_columns(_sheet_id, items), do: {:error, {:invalid_block_layout, items}}
@@ -922,7 +929,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   Returns {:ok, group_id} or {:error, reason}.
   """
   def create_column_group(sheet_id, block_ids) when is_integer(sheet_id) and sheet_id > 0 and is_list(block_ids) do
-    Repo.transaction(fn ->
+    fn ->
       if length(block_ids) < 2 do
         Repo.rollback(:not_enough_blocks)
       end
@@ -959,8 +966,10 @@ defmodule Storyarn.Sheets.BlockCrud do
         )
       end)
 
-      group_id
-    end)
+      {group_id, project_id}
+    end
+    |> Repo.transaction()
+    |> broadcast_block_project_result()
   end
 
   def create_column_group(_sheet_id, block_ids), do: {:error, {:invalid_column_group, block_ids}}
@@ -986,7 +995,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   # =============================================================================
 
   def reorder_blocks(sheet_id, block_ids) when is_integer(sheet_id) and sheet_id > 0 and is_list(block_ids) do
-    Repo.transaction(fn ->
+    fn ->
       normalized_ids =
         normalize_block_ids!(block_ids, {:invalid_block_reorder, block_ids})
 
@@ -1012,8 +1021,10 @@ defmodule Storyarn.Sheets.BlockCrud do
         soft_delete: true
       )
 
-      list_blocks(sheet_id)
-    end)
+      {list_blocks(sheet_id), project_id}
+    end
+    |> Repo.transaction()
+    |> broadcast_block_project_result()
   end
 
   def reorder_blocks(_sheet_id, block_ids), do: {:error, {:invalid_block_reorder, block_ids}}
@@ -1276,6 +1287,23 @@ defmodule Storyarn.Sheets.BlockCrud do
   end
 
   defp broadcast_block_result(result), do: result
+
+  defp broadcast_block_project_result({:ok, {value, project_id}}) do
+    Collaboration.broadcast_dashboard_change(project_id, :sheets)
+    {:ok, value}
+  end
+
+  defp broadcast_block_project_result(result), do: result
+
+  defp broadcast_block_move_result({:ok, {:moved, project_id}}) do
+    Collaboration.broadcast_dashboard_change(project_id, :sheets)
+    {:ok, :moved}
+  end
+
+  defp broadcast_block_move_result({:ok, {position, _project_id}}) when position in [:already_first, :already_last],
+    do: {:ok, position}
+
+  defp broadcast_block_move_result(result), do: result
 
   # =============================================================================
   # Import helpers (raw insert, no side effects)

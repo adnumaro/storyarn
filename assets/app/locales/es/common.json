@@ -9,6 +9,37 @@
     "limited_matches": "Mostrando {shown} coincidencias",
     "search": "Buscar...",
     "none": "Ninguno",
+    "dashboard": {
+      "previous_page": "Página anterior",
+      "next_page": "Página siguiente",
+      "page_label": "Página {page}",
+      "total_issues": "{count} incidencia | {count} incidencias",
+      "loading_overview": "Cargando resumen del dashboard",
+      "loading_issues": "Cargando incidencias",
+      "overview_load_failed": "No se ha podido cargar el resumen del dashboard.",
+      "overview_stale": "No se ha podido actualizar el resumen del dashboard. Se muestran los últimos datos cargados.",
+      "issues_load_failed": "No se han podido cargar las incidencias.",
+      "issues_stale": "No se han podido actualizar las incidencias. Se muestran los últimos resultados cargados.",
+      "retry": "Reintentar",
+      "no_matching_issues": "Ninguna incidencia coincide con estos filtros.",
+      "issue_severity": {
+        "error": "Error",
+        "warning": "Advertencia",
+        "info": "Información"
+      },
+      "issue_filters": {
+        "severity_label": "Filtrar por gravedad",
+        "code_label": "Filtrar por tipo de incidencia",
+        "resource_label": "Filtrar por recurso",
+        "all_severities": "Todas las gravedades",
+        "all_codes": "Todos los tipos de incidencia",
+        "severities": {
+          "error": "Errores",
+          "warning": "Advertencias",
+          "info": "Información"
+        }
+      }
+    },
     "version_history": {
       "empty_title": "Aún no hay versiones",
       "empty_description": "Crea una versión para guardar el estado actual.",

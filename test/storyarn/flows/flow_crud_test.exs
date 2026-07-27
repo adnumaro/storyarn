@@ -6,6 +6,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Repo
 
@@ -420,6 +421,20 @@ defmodule Storyarn.Flows.FlowCrudTest do
   # ===========================================================================
 
   describe "update_flow/2" do
+    test "invalidates the flows dashboard only after a successful update" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, updated} = Flows.update_flow(flow, %{name: "Updated Name"})
+      assert updated.name == "Updated Name"
+      assert_receive {:dashboard_invalidate, :flows}
+      refute_receive {:dashboard_invalidate, :flows}, 10
+
+      assert {:error, changeset} = Flows.update_flow(updated, %{name: ""})
+      assert errors_on(changeset).name
+      refute_receive {:dashboard_invalidate, :flows}, 10
+    end
+
     test "updates flow name" do
       %{flow: flow} = create_project_and_flow()
 
@@ -558,6 +573,31 @@ defmodule Storyarn.Flows.FlowCrudTest do
   # ===========================================================================
 
   describe "update_flow_scene/2" do
+    test "invalidates once after a changed commit while failure and no-op emit nothing" do
+      %{project: project, flow: flow} = create_project_and_flow()
+      scene = scene_fixture(project)
+      foreign_scene = scene_fixture(project_fixture())
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, updated} =
+               Flows.update_flow_scene(flow, %{scene_id: scene.id})
+
+      assert_receive {:dashboard_invalidate, :flows}
+      refute_receive {:dashboard_invalidate, :flows}, 10
+
+      assert {:ok, unchanged} =
+               Flows.update_flow_scene(updated, %{scene_id: scene.id})
+
+      assert unchanged.scene_id == scene.id
+      refute_receive {:dashboard_invalidate, :flows}, 10
+
+      assert {:error, changeset} =
+               Flows.update_flow_scene(updated, %{scene_id: foreign_scene.id})
+
+      assert errors_on(changeset).scene_id
+      refute_receive {:dashboard_invalidate, :flows}, 10
+    end
+
     test "sets scene_id on a flow" do
       %{project: project, flow: flow} = create_project_and_flow()
       scene = scene_fixture(project)
@@ -989,6 +1029,55 @@ defmodule Storyarn.Flows.FlowCrudTest do
 
       assert new_flow.parent_id == parent_flow.id
       assert updated_node.data["referenced_flow_id"] == new_flow.id
+    end
+
+    test "invalidates exactly once after the linked flow transaction commits", %{
+      project: project,
+      parent_flow: parent_flow
+    } do
+      node =
+        node_fixture(parent_flow, %{
+          type: "exit",
+          data: %{
+            "label" => "",
+            "exit_mode" => "flow_reference",
+            "referenced_flow_id" => nil
+          }
+        })
+
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, %{flow: new_flow, node: updated_node}} =
+               Flows.create_linked_flow(project, parent_flow, node)
+
+      assert updated_node.data["referenced_flow_id"] == new_flow.id
+      assert_receive {:dashboard_invalidate, :flows}
+      refute_receive {:dashboard_invalidate, :flows}, 10
+    end
+
+    test "does not invalidate when the linked flow transaction rolls back", %{
+      project: project,
+      parent_flow: parent_flow
+    } do
+      node =
+        node_fixture(parent_flow, %{
+          type: "hub",
+          data: %{"hub_id" => "linked-flow-rollback"}
+        })
+
+      node =
+        node
+        |> Ecto.Changeset.change(data: %{})
+        |> Repo.update!()
+
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:error, :node, reason, %{flow: rolled_back_flow}} =
+               Flows.create_linked_flow(project, parent_flow, node)
+
+      assert match?({:invalid_referenced_flow, "hub", _flow_id}, reason)
+      assert is_nil(Flows.get_flow(project.id, rolled_back_flow.id))
+      refute_receive {:dashboard_invalidate, :flows}, 10
     end
 
     test "uses node label as flow name when present", %{

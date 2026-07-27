@@ -8,6 +8,7 @@ defmodule Storyarn.Screenplays.FlowSync do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Repo
@@ -30,16 +31,9 @@ defmodule Storyarn.Screenplays.FlowSync do
   Returns `{:ok, flow}` or `{:error, reason}`.
   """
   def ensure_flow(%Screenplay{linked_flow_id: nil, project_id: project_id} = screenplay) do
-    project = Storyarn.Projects.get_project!(project_id)
-
-    Repo.transaction(fn ->
-      with {:ok, flow} <- Flows.create_flow(project, %{name: screenplay.name}),
-           {:ok, _screenplay} <- link_to_flow(screenplay, flow.id) do
-        flow
-      else
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
+    fn -> ensure_flow_in_transaction(screenplay) end
+    |> Repo.transaction()
+    |> Collaboration.broadcast_dashboard_result(project_id, :flows)
   end
 
   def ensure_flow(%Screenplay{linked_flow_id: flow_id, project_id: project_id}) do
@@ -112,8 +106,10 @@ defmodule Storyarn.Screenplays.FlowSync do
     %{all_node_attrs: all_node_attrs, connections: connections, screenplay_ids: screenplay_ids} =
       PageTreeBuilder.flatten(page_tree)
 
-    with {:ok, flow} <- ensure_flow(screenplay) do
-      do_sync(
+    fn ->
+      flow = ensure_flow_in_transaction(screenplay)
+
+      do_sync_in_transaction(
         %{screenplay | project_id: project_id},
         flow,
         all_node_attrs,
@@ -122,6 +118,8 @@ defmodule Storyarn.Screenplays.FlowSync do
         page_tree
       )
     end
+    |> Repo.transaction()
+    |> Collaboration.broadcast_dashboard_result(project_id, :flows)
   end
 
   @doc """
@@ -387,39 +385,37 @@ defmodule Storyarn.Screenplays.FlowSync do
   # sync_to_flow internals
   # ---------------------------------------------------------------------------
 
-  defp do_sync(screenplay, flow, all_node_attrs, connection_specs, screenplay_ids, page_tree) do
-    Repo.transaction(fn ->
-      # Load existing state
-      all_nodes = Flows.list_nodes(flow.id)
-      synced_nodes = Enum.filter(all_nodes, &(&1.source == "screenplay_sync"))
-      entry_node = Enum.find(all_nodes, &(&1.type == "entry"))
+  defp do_sync_in_transaction(screenplay, flow, all_node_attrs, connection_specs, screenplay_ids, page_tree) do
+    # Load existing state
+    all_nodes = Flows.list_nodes(flow.id)
+    synced_nodes = Enum.filter(all_nodes, &(&1.source == "screenplay_sync"))
+    entry_node = Enum.find(all_nodes, &(&1.type == "entry"))
 
-      # Build lookups across ALL screenplay pages
-      element_to_node = build_element_to_node_lookup(screenplay_ids)
-      synced_by_id = Map.new(synced_nodes, &{&1.id, &1})
+    # Build lookups across ALL screenplay pages
+    element_to_node = build_element_to_node_lookup(screenplay_ids)
+    synced_by_id = Map.new(synced_nodes, &{&1.id, &1})
 
-      # Create or update nodes
-      {result_nodes, matched_ids} =
-        Enum.map_reduce(all_node_attrs, MapSet.new(), fn attrs, matched ->
-          upsert_sync_node(attrs, element_to_node, synced_by_id, entry_node, flow, matched)
-        end)
+    # Create or update nodes
+    {result_nodes, matched_ids} =
+      Enum.map_reduce(all_node_attrs, MapSet.new(), fn attrs, matched ->
+        upsert_sync_node(attrs, element_to_node, synced_by_id, entry_node, flow, matched)
+      end)
 
-      # Delete orphaned synced nodes
-      delete_orphaned_nodes!(synced_nodes, matched_ids)
+    # Delete orphaned synced nodes
+    delete_orphaned_nodes!(synced_nodes, matched_ids)
 
-      # Rebuild connections between result nodes
-      delete_connections_between!(flow.id, result_nodes)
-      create_connections_from_specs!(flow, result_nodes, connection_specs)
+    # Rebuild connections between result nodes
+    delete_connections_between!(flow.id, result_nodes)
+    create_connections_from_specs!(flow, result_nodes, connection_specs)
 
-      # Position new nodes using tree-aware layout
-      positions = FlowLayout.compute_positions(page_tree, result_nodes)
-      apply_positions!(result_nodes, positions, matched_ids)
+    # Position new nodes using tree-aware layout
+    positions = FlowLayout.compute_positions(page_tree, result_nodes)
+    apply_positions!(result_nodes, positions, matched_ids)
 
-      # Update element links across all pages
-      update_element_links!(all_node_attrs, result_nodes)
+    # Update element links across all pages
+    update_element_links!(all_node_attrs, result_nodes)
 
-      Flows.get_flow!(screenplay.project_id, flow.id)
-    end)
+    Flows.get_flow!(screenplay.project_id, flow.id)
   end
 
   defp upsert_sync_node(attrs, element_to_node, synced_by_id, entry_node, flow, matched) do
@@ -459,16 +455,32 @@ defmodule Storyarn.Screenplays.FlowSync do
   end
 
   defp create_sync_node!(flow, attrs) do
-    case Flows.create_node(flow, %{type: attrs.type, data: attrs.data, source: "screenplay_sync"}) do
+    case Flows.create_node_without_dashboard_broadcast(flow, %{
+           type: attrs.type,
+           data: attrs.data,
+           source: "screenplay_sync"
+         }) do
       {:ok, node} -> node
       {:error, reason} -> Repo.rollback(reason)
     end
   end
 
   defp update_sync_node!(existing, attrs) do
-    existing
-    |> Ecto.Changeset.change(%{data: attrs.data, source: "screenplay_sync"})
-    |> Repo.update!()
+    case Flows.update_node_data_without_dashboard_broadcast(existing, attrs.data) do
+      {:ok, node, _meta} -> ensure_screenplay_sync_source!(node)
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp ensure_screenplay_sync_source!(%FlowNode{source: "screenplay_sync"} = node), do: node
+
+  defp ensure_screenplay_sync_source!(node) do
+    case node
+         |> Ecto.Changeset.change(source: "screenplay_sync")
+         |> Repo.update() do
+      {:ok, node} -> node
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
   end
 
   defp delete_orphaned_nodes!(synced_nodes, matched_ids) do
@@ -485,7 +497,7 @@ defmodule Storyarn.Screenplays.FlowSync do
 
     # Delete orphaned nodes (skip protected ones)
     Enum.each(orphaned, fn node ->
-      case Flows.delete_node(node) do
+      case Flows.delete_node_without_dashboard_broadcast(node) do
         {:ok, _, _} -> :ok
         {:error, :cannot_delete_entry_node} -> :ok
         {:error, :cannot_delete_last_exit} -> :ok
@@ -496,7 +508,7 @@ defmodule Storyarn.Screenplays.FlowSync do
 
   defp delete_connections_between!(flow_id, result_nodes) do
     node_ids = Enum.map(result_nodes, & &1.id)
-    Flows.delete_connections_among_nodes(flow_id, node_ids)
+    Flows.delete_connections_among_nodes_without_dashboard_broadcast(flow_id, node_ids)
   end
 
   defp create_connections_from_specs!(flow, result_nodes, connection_specs) do
@@ -511,7 +523,9 @@ defmodule Storyarn.Screenplays.FlowSync do
   end
 
   defp create_connection!(flow, source, target, source_pin, target_pin) do
-    case Flows.create_connection(flow, source, target, %{
+    case Flows.create_connection_without_dashboard_broadcast(flow, %{
+           source_node_id: source.id,
+           target_node_id: target.id,
            source_pin: source_pin,
            target_pin: target_pin
          }) do
@@ -562,5 +576,22 @@ defmodule Storyarn.Screenplays.FlowSync do
       children = load_descendant_data(child.id, depth + 1)
       %{screenplay_id: child.id, elements: elements, children: children}
     end)
+  end
+
+  defp ensure_flow_in_transaction(%Screenplay{linked_flow_id: nil, project_id: project_id} = screenplay) do
+    project = Storyarn.Projects.get_project!(project_id)
+    flow = Flows.create_flow_in_transaction(project, %{name: screenplay.name})
+
+    case link_to_flow(screenplay, flow.id) do
+      {:ok, _screenplay} -> flow
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp ensure_flow_in_transaction(%Screenplay{linked_flow_id: flow_id, project_id: project_id}) do
+    case Flows.get_flow(project_id, flow_id) do
+      nil -> Repo.rollback(:flow_not_found)
+      flow -> flow
+    end
   end
 end

@@ -15,6 +15,7 @@ defmodule Storyarn.Flows.SequenceCrud do
   import Ecto.Query
 
   alias Storyarn.Assets.Asset
+  alias Storyarn.Collaboration
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.ReferenceIntegrity
@@ -93,6 +94,12 @@ defmodule Storyarn.Flows.SequenceCrud do
   def create_sequence(flow_id, attrs) do
     attrs = normalize_keys(attrs)
 
+    fn -> create_sequence_in_transaction(flow_id, attrs) end
+    |> Repo.transaction()
+    |> broadcast_sequence_result()
+  end
+
+  defp create_sequence_in_transaction(flow_id, attrs) do
     node_attrs = %{
       "type" => "sequence",
       "position_x" => Map.get(attrs, "position_x", 0.0),
@@ -106,25 +113,23 @@ defmodule Storyarn.Flows.SequenceCrud do
       "height" => Map.get(attrs, "height", 200.0)
     }
 
-    Repo.transaction(fn ->
-      with {:ok, %{flow: flow}} <-
-             ReferenceIntegrity.lock_active_flow_for_write(flow_id),
-           {:ok, parent_id} <-
-             ReferenceIntegrity.lock_node_parent(flow.id, node_attrs["parent_id"]),
-           node_attrs = Map.put(node_attrs, "parent_id", parent_id),
-           {:ok, node} <-
-             %FlowNode{flow_id: flow_id}
-             |> FlowNode.create_changeset(node_attrs)
-             |> Repo.insert(),
-           {:ok, config} <-
-             %SequenceConfig{}
-             |> SequenceConfig.create_changeset(Map.put(config_attrs, "flow_node_id", node.id))
-             |> Repo.insert() do
-        %{node | sequence_config: config}
-      else
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
+    with {:ok, %{flow: flow, project_id: project_id}} <-
+           ReferenceIntegrity.lock_active_flow_for_write(flow_id),
+         {:ok, parent_id} <-
+           ReferenceIntegrity.lock_node_parent(flow.id, node_attrs["parent_id"]),
+         node_attrs = Map.put(node_attrs, "parent_id", parent_id),
+         {:ok, node} <-
+           %FlowNode{flow_id: flow_id}
+           |> FlowNode.create_changeset(node_attrs)
+           |> Repo.insert(),
+         {:ok, config} <-
+           %SequenceConfig{}
+           |> SequenceConfig.create_changeset(Map.put(config_attrs, "flow_node_id", node.id))
+           |> Repo.insert() do
+      {%{node | sequence_config: config}, project_id}
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   @doc """
@@ -171,19 +176,21 @@ defmodule Storyarn.Flows.SequenceCrud do
   """
   @spec delete_sequence(sequence()) :: {:ok, sequence()} | {:error, Ecto.Changeset.t()}
   def delete_sequence(%FlowNode{type: "sequence"} = node) do
-    Repo.transaction(fn ->
-      with {:ok, %{node: locked_node}} <-
+    fn ->
+      with {:ok, %{node: locked_node, project_id: project_id}} <-
              ReferenceIntegrity.lock_active_node_for_write(node),
            :ok <- ensure_sequence(locked_node),
            {:ok, deleted_node} <-
              locked_node
              |> FlowNode.soft_delete_changeset()
              |> Repo.update() do
-        deleted_node
+        {deleted_node, project_id}
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_sequence_result()
   end
 
   @doc """
@@ -193,7 +200,7 @@ defmodule Storyarn.Flows.SequenceCrud do
   """
   @spec restore_sequence(sequence()) :: {:ok, sequence()} | {:error, term()}
   def restore_sequence(%FlowNode{id: node_id, type: "sequence"}) when is_integer(node_id) do
-    Repo.transaction(fn ->
+    fn ->
       flow_id =
         Repo.one(
           from(node in FlowNode,
@@ -202,7 +209,7 @@ defmodule Storyarn.Flows.SequenceCrud do
           )
         ) || Repo.rollback(:sequence_not_found)
 
-      with {:ok, %{flow: flow}} <-
+      with {:ok, %{flow: flow, project_id: project_id}} <-
              ReferenceIntegrity.lock_active_flow_for_write(flow_id),
            %FlowNode{} = locked_node <-
              Repo.one(
@@ -217,12 +224,14 @@ defmodule Storyarn.Flows.SequenceCrud do
              locked_node
              |> FlowNode.restore_changeset()
              |> Repo.update() do
-        restored_node
+        {restored_node, project_id}
       else
         nil -> Repo.rollback(:sequence_not_deleted)
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_sequence_result()
   end
 
   @doc """
@@ -248,19 +257,21 @@ defmodule Storyarn.Flows.SequenceCrud do
   def wrap_selection_in_sequence(%Flow{}, [], _attrs), do: {:error, :empty_selection}
 
   def wrap_selection_in_sequence(%Flow{id: flow_id}, node_ids, attrs) when is_list(node_ids) do
-    Repo.transaction(fn ->
-      with {:ok, %{flow: locked_flow}} <-
+    fn ->
+      with {:ok, %{flow: locked_flow, project_id: project_id}} <-
              ReferenceIntegrity.lock_active_flow_for_write(flow_id),
            {:ok, nodes} <- load_active_nodes(locked_flow.id, node_ids),
            {:ok, parent_id} <- common_parent_id(nodes),
            attrs = build_wrap_attrs(attrs, parent_id),
-           {:ok, sequence} <- create_sequence(locked_flow.id, attrs),
+           {sequence, ^project_id} <- create_sequence_in_transaction(locked_flow.id, attrs),
            :ok <- assign_nodes_to_sequence(nodes, sequence.id) do
-        sequence
+        {sequence, project_id}
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_sequence_result()
   end
 
   # =========================================================================
@@ -338,6 +349,13 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   defp ensure_sequence(%FlowNode{type: "sequence", deleted_at: nil}), do: :ok
   defp ensure_sequence(_node), do: {:error, :sequence_not_found}
+
+  defp broadcast_sequence_result({:ok, {sequence, project_id}}) do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    {:ok, sequence}
+  end
+
+  defp broadcast_sequence_result(result), do: result
 
   # =========================================================================
   # Sequence visual layers

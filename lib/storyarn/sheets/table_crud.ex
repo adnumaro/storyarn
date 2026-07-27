@@ -258,7 +258,7 @@ defmodule Storyarn.Sheets.TableCrud do
 
   @doc "Reorders columns by updating their positions."
   def reorder_columns(block_id, column_ids) when is_list(column_ids) do
-    Repo.transaction(fn ->
+    fn ->
       scope = lock_table_scope!(block_id)
       normalized_ids = normalize_exact_child_ids!(column_ids, parent_columns(scope), :column)
       pairs = Enum.with_index(normalized_ids)
@@ -267,7 +267,9 @@ defmodule Storyarn.Sheets.TableCrud do
       sync_column_positions_to_children(scope, normalized_ids)
 
       list_columns(block_id)
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_table_result(block_id)
   end
 
   def reorder_columns(_block_id, column_ids), do: {:error, {:invalid_table_column_reorder, column_ids}}
@@ -452,7 +454,7 @@ defmodule Storyarn.Sheets.TableCrud do
 
   @doc "Reorders rows by updating their positions."
   def reorder_rows(block_id, row_ids) when is_list(row_ids) do
-    Repo.transaction(fn ->
+    fn ->
       scope = lock_table_scope!(block_id)
       normalized_ids = normalize_exact_child_ids!(row_ids, parent_rows(scope), :row)
       pairs = Enum.with_index(normalized_ids)
@@ -461,7 +463,9 @@ defmodule Storyarn.Sheets.TableCrud do
       sync_row_positions_to_children(scope, normalized_ids)
 
       list_rows(block_id)
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_table_result(block_id)
   end
 
   def reorder_rows(_block_id, row_ids), do: {:error, {:invalid_table_row_reorder, row_ids}}
@@ -503,9 +507,8 @@ defmodule Storyarn.Sheets.TableCrud do
   # for the editor's health recompute) a missed bust stops being a delay and
   # starts being a wrong answer.
   #
-  # `reorder_columns/2` and `reorder_rows/2` deliberately do NOT broadcast: axis
-  # ORDER appears in no dashboard number, no variable reference, and no health
-  # finding — every rule keys off slugs and cell keys.
+  # Axis order is part of the inherited table signature. A reorder can therefore
+  # create or repair a `broken_inheritance` finding even though slugs stay stable.
   defp broadcast_table_result(result, block_id)
 
   defp broadcast_table_result({:ok, _value} = result, block_id) do

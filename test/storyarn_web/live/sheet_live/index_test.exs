@@ -7,9 +7,11 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Repo
   alias Storyarn.Sheets
+  alias StoryarnWeb.SheetLive.Index
 
   defp get_dashboard_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/sheet/dashboard/SheetDashboard")
@@ -34,6 +36,20 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
       assert path == "/workspaces"
       assert flash["error"] =~ "access"
+    end
+
+    test "completes the async overview for an empty project", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
+
+      await_async(view)
+
+      props = get_dashboard_vue(view).props
+      assert props["overview-status"] == "ready"
+      assert props["stats"]["sheet_count"] == 0
+      assert props["pagination"]["total"] == 0
     end
 
     test "exposes the exact localizable word total to the dashboard", %{conn: conn, user: user} do
@@ -64,6 +80,27 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
              end)
     end
 
+    test "refreshes the visible dashboard after a committed sheet update", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Before"})
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
+
+      await_async(view)
+      assert "Before" in sheet_names(view)
+
+      assert {:ok, _sheet} = Sheets.update_sheet(sheet, %{name: "After"})
+
+      assert_dashboard_eventually(view, fn ->
+        assert "After" in sheet_names(view)
+        refute "Before" in sheet_names(view)
+      end)
+    end
+
     test "uses canonical sheet health codes and severities in the dashboard", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       missing_shortcut = sheet_fixture(project, %{name: "Missing Shortcut"})
@@ -81,6 +118,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       await_async(view)
 
       issues = get_dashboard_vue(view).props["issues"]
+      ids = Enum.map(issues, & &1["id"])
 
       assert %{"severity" => "error", "label" => "Missing Shortcut"} =
                Enum.find(issues, &(&1["code"] == "missing_sheet_shortcut"))
@@ -92,9 +130,77 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
                Enum.find(issues, &(&1["code"] == "no_internal_variable_usages"))
 
       assert String.starts_with?(label, "Unused Variable · ")
+      assert Enum.all?(ids, &is_binary/1)
+      assert length(ids) == length(Enum.uniq(ids))
+
+      assert %{"count" => 1} =
+               Enum.find(
+                 get_dashboard_vue(view).props["issue-filter-options"]["codes"],
+                 &(&1["value"] == "missing_sheet_shortcut")
+               )
+
+      render_click(view, "filter_sheet_issues", %{
+        "filter" => "code",
+        "value" => "missing_sheet_shortcut"
+      })
+
+      props = get_dashboard_vue(view).props
+      assert props["issue-pagination"]["page"] == 1
+      assert props["issue-pagination"]["total"] == 1
+      assert Enum.all?(props["issues"], &(&1["code"] == "missing_sheet_shortcut"))
+
+      assert %{"value" => "error", "count" => 1} =
+               Enum.find(
+                 props["issue-filter-options"]["severities"],
+                 &(&1["value"] == "error")
+               )
     end
 
-    test "surfaces a failed dashboard load instead of a permanent skeleton", %{conn: conn, user: user} do
+    test "keeps a total issue order and stable IDs across a real cache recomputation", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      for _index <- 1..26 do
+        sheet_fixture(project, %{name: "Same Name", position: 0})
+      end
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
+
+      await_async(view)
+
+      render_click(view, "filter_sheet_issues", %{
+        "filter" => "code",
+        "value" => "empty_leaf_sheet"
+      })
+
+      first_page_before = issue_identity(view)
+      assert length(first_page_before) == 25
+
+      render_click(view, "page_sheet_issues", %{"page" => 2})
+      second_page_before = issue_identity(view)
+      assert length(second_page_before) == 1
+
+      ordered_before = first_page_before ++ second_page_before
+      assert ordered_before == Enum.sort_by(ordered_before, &elem(&1, 0))
+
+      DashboardCache.invalidate(project.id)
+      send(view.pid, :load_dashboard_data)
+      await_async(view)
+
+      assert get_dashboard_vue(view).props["issue-pagination"]["page"] == 2
+      assert issue_identity(view) == second_page_before
+
+      render_click(view, "page_sheet_issues", %{"page" => 1})
+      assert issue_identity(view) == first_page_before
+    end
+
+    test "an issues failure does not block the independently loaded overview", %{
+      conn: conn,
+      user: user
+    } do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet_fixture(project, %{name: "Any Sheet"})
 
@@ -111,9 +217,40 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
       stats = get_dashboard_vue(view).props["stats"]
 
-      refute is_nil(stats), "a nil `stats` keeps the skeleton spinning with nothing to act on"
-      assert stats["sheet_count"] == 0
-      assert render(view) =~ "Could not load dashboard data."
+      refute is_nil(stats), "the overview should finish even when the issues task fails"
+      assert stats["sheet_count"] == 1
+      assert get_dashboard_vue(view).props["issues"] == []
+      assert get_dashboard_vue(view).props["issues-status"] == "error"
+    end
+  end
+
+  describe "dashboard overview state" do
+    test "an initial crash is an explicit error without fabricated stats" do
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          flash: %{},
+          project: %{id: 4242},
+          dashboard_stats: nil,
+          overview_status: :loading
+        }
+      }
+
+      {:noreply, result} =
+        Index.handle_async(:load_dashboard_overview, {:exit, :boom}, socket)
+
+      assert result.assigns.dashboard_stats == nil
+      assert result.assigns.overview_status == :error
+    end
+
+    test "retry immediately returns the overview to loading" do
+      socket = %Socket{assigns: %{__changed__: %{}, overview_status: :error}}
+
+      {:noreply, result} = Index.handle_event("retry_dashboard_overview", %{}, socket)
+
+      assert result.assigns.overview_status == :loading
+      assert_receive :load_dashboard_overview
+      refute_receive :load_dashboard_issues
     end
   end
 
@@ -317,5 +454,37 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       updated_sheet = Sheets.get_sheet(project.id, sheet.id)
       assert updated_sheet.parent_id == nil
     end
+  end
+
+  defp sheet_names(view) do
+    view
+    |> get_dashboard_vue()
+    |> then(& &1.props["table-data"])
+    |> Enum.map(& &1["name"])
+  end
+
+  defp issue_identity(view) do
+    view
+    |> get_dashboard_vue()
+    |> then(& &1.props["issues"])
+    |> Enum.map(&{&1["resource_id"], &1["id"]})
+  end
+
+  defp assert_dashboard_eventually(view, assertion, attempts \\ 200)
+
+  defp assert_dashboard_eventually(view, assertion, attempts) when attempts > 1 do
+    render(view)
+    await_async(view)
+    assertion.()
+  rescue
+    ExUnit.AssertionError ->
+      Process.sleep(10)
+      assert_dashboard_eventually(view, assertion, attempts - 1)
+  end
+
+  defp assert_dashboard_eventually(view, assertion, 1) do
+    render(view)
+    await_async(view)
+    assertion.()
   end
 end

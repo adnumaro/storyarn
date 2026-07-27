@@ -72,6 +72,64 @@ defmodule Storyarn.HealthLabelParityTest do
     end
   end
 
+  describe "dashboard issue type labels" do
+    test "every code a checker can emit has a canonical filter label in every locale" do
+      for {domain, checker} <- @domains, locale <- @locales do
+        uncovered = uncovered_codes(checker.codes(), issue_type_labels(domain, locale))
+
+        assert uncovered == [],
+               "assets/app/locales/#{locale}/#{domain}.json has no dashboard filter label for " <>
+                 report(domain, uncovered, "issue_types")
+      end
+    end
+
+    test "every dashboard filter label maps to a code the checker still emits" do
+      for {domain, checker} <- @domains, locale <- @locales do
+        orphans = orphan_labels(checker.codes(), issue_type_labels(domain, locale))
+
+        assert orphans == [],
+               "assets/app/locales/#{locale}/#{domain}.json labels dashboard codes " <>
+                 "#{inspect(checker)} no longer emits: " <>
+                 report(domain, orphans, "issue_types")
+      end
+    end
+
+    test "dashboard filter labels are nonblank and never require finding details" do
+      for {domain, _checker} <- @domains, locale <- @locales do
+        labels = issue_type_labels(domain, locale)
+        blank = blank_labels(labels)
+
+        placeholders =
+          labels
+          |> Enum.filter(fn {_code, label} ->
+            String.contains?(label, "{") or String.contains?(label, "}")
+          end)
+          |> Enum.map(fn {code, _label} -> code end)
+          |> Enum.sort()
+
+        assert blank == [],
+               "assets/app/locales/#{locale}/#{domain}.json leaves blank " <>
+                 report(domain, blank, "issue_types")
+
+        assert placeholders == [],
+               "dashboard filter labels cannot depend on issue-specific details: " <>
+                 report(domain, placeholders, "issue_types")
+      end
+    end
+
+    test "Spanish labels never fall back to raw or humanized code names" do
+      for {domain, _checker} <- @domains,
+          {code, label} <- issue_type_labels(domain, "es") do
+        normalized_label = label |> String.trim() |> String.downcase()
+        normalized_code = String.downcase(code)
+        humanized_code = String.replace(normalized_code, "_", " ")
+
+        refute normalized_label in [normalized_code, humanized_code],
+               "#{domain}.health.issue_types.#{code} is not localized to Spanish"
+      end
+    end
+  end
+
   # Positive controls: the assertions above pass today, so each one is fed a
   # deliberately broken input to prove it can still fail and names the offender.
   describe "the guard itself" do
@@ -101,8 +159,8 @@ defmodule Storyarn.HealthLabelParityTest do
     end
   end
 
-  defp report(domain, codes) do
-    Enum.map_join(codes, ", ", &"#{domain}.health.findings.#{&1}")
+  defp report(domain, codes, catalog \\ "findings") do
+    Enum.map_join(codes, ", ", &"#{domain}.health.#{catalog}.#{&1}")
   end
 
   defp uncovered_codes(codes, labels) do
@@ -131,6 +189,8 @@ defmodule Storyarn.HealthLabelParityTest do
   defp present_string?(value), do: is_binary(value) and String.trim(value) != ""
 
   defp labels(domain, locale), do: Map.fetch!(health_catalog(domain, locale), "findings")
+
+  defp issue_type_labels(domain, locale), do: Map.fetch!(health_catalog(domain, locale), "issue_types")
 
   defp health_catalog(domain, locale) do
     @project_root

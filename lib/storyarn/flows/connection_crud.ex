@@ -3,6 +3,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
@@ -54,6 +55,19 @@ defmodule Storyarn.Flows.ConnectionCrud do
   end
 
   def create_connection(%Flow{} = flow, attrs) do
+    flow
+    |> create_connection_result(attrs)
+    |> broadcast_connection_result()
+  end
+
+  @doc false
+  def create_connection_without_dashboard_broadcast(%Flow{} = flow, attrs) do
+    flow
+    |> create_connection_result(attrs)
+    |> unwrap_connection_result()
+  end
+
+  defp create_connection_result(%Flow{} = flow, attrs) do
     attrs = stringify_keys(attrs)
 
     Repo.transaction(fn ->
@@ -85,7 +99,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
                attrs
              ),
            {:ok, connection} <- Repo.insert(changeset) do
-        connection
+        {connection, locked_flow.project_id, true}
       else
         {:error, reason} -> Repo.rollback(reason)
       end
@@ -95,7 +109,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
   def update_connection(%FlowConnection{} = connection, attrs) do
     attrs = stringify_keys(attrs)
 
-    Repo.transaction(fn ->
+    fn ->
       with {:ok, %{flow: flow}} <-
              ReferenceIntegrity.lock_active_flow_for_write(connection.flow_id),
            {:ok, locked_connection} <-
@@ -123,12 +137,15 @@ defmodule Storyarn.Flows.ConnectionCrud do
                target_node,
                effective_attrs
              ),
-           {:ok, updated_connection} <- Repo.update(changeset) do
-        updated_connection
+           {:ok, updated_connection, changed?} <-
+             update_connection_if_changed(changeset, locked_connection) do
+        {updated_connection, flow.project_id, changed?}
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_connection_result()
   end
 
   def delete_connection(%FlowConnection{id: connection_id, flow_id: flow_id}) do
@@ -136,7 +153,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
   end
 
   def delete_connection_by_id(flow_id, connection_id) do
-    Repo.transaction(fn ->
+    fn ->
       with {:ok, normalized_connection_id} <-
              normalize_connection_id(connection_id),
            {:ok, %{flow: flow}} <-
@@ -144,17 +161,20 @@ defmodule Storyarn.Flows.ConnectionCrud do
            {:ok, locked_connection} <-
              lock_connection_for_write(normalized_connection_id, flow.id),
            {:ok, deleted_connection} <- Repo.delete(locked_connection) do
-        deleted_connection
+        {deleted_connection, flow.project_id, true}
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_connection_result()
   end
 
   def delete_connection_by_nodes(flow_id, source_node_id, target_node_id) do
     with {:ok, source_node_id} <- normalize_endpoint_id(source_node_id, :source),
          {:ok, target_node_id} <- normalize_endpoint_id(target_node_id, :target) do
-      delete_connection_count(flow_id, fn locked_flow_id ->
+      flow_id
+      |> delete_connection_count(fn locked_flow_id ->
         Repo.delete_all(
           from(connection in FlowConnection,
             where:
@@ -164,6 +184,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
           )
         )
       end)
+      |> broadcast_connection_count_result()
     else
       {:error, reason} -> {0, reason}
     end
@@ -173,7 +194,8 @@ defmodule Storyarn.Flows.ConnectionCrud do
       when is_binary(source_pin) and is_binary(target_pin) do
     with {:ok, source_node_id} <- normalize_endpoint_id(source_node_id, :source),
          {:ok, target_node_id} <- normalize_endpoint_id(target_node_id, :target) do
-      delete_connection_count(flow_id, fn locked_flow_id ->
+      flow_id
+      |> delete_connection_count(fn locked_flow_id ->
         Repo.delete_all(
           from(connection in FlowConnection,
             where:
@@ -185,6 +207,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
           )
         )
       end)
+      |> broadcast_connection_count_result()
     else
       {:error, reason} -> {0, reason}
     end
@@ -200,6 +223,21 @@ defmodule Storyarn.Flows.ConnectionCrud do
   def delete_connections_among_nodes(_flow_id, []), do: {0, nil}
 
   def delete_connections_among_nodes(flow_id, node_ids) when is_list(node_ids) do
+    flow_id
+    |> delete_connections_among_nodes_result(node_ids)
+    |> broadcast_connection_count_result()
+  end
+
+  @doc false
+  def delete_connections_among_nodes_without_dashboard_broadcast(_flow_id, []), do: {0, nil}
+
+  def delete_connections_among_nodes_without_dashboard_broadcast(flow_id, node_ids) when is_list(node_ids) do
+    flow_id
+    |> delete_connections_among_nodes_result(node_ids)
+    |> unwrap_connection_count_result()
+  end
+
+  defp delete_connections_among_nodes_result(flow_id, node_ids) do
     case normalize_node_ids(node_ids) do
       {:ok, node_ids} ->
         delete_connection_count(flow_id, fn locked_flow_id ->
@@ -214,23 +252,59 @@ defmodule Storyarn.Flows.ConnectionCrud do
         end)
 
       {:error, reason} ->
-        {0, reason}
+        {0, reason, nil}
     end
   end
 
   defp delete_connection_count(flow_id, delete_fn) do
     case Repo.transaction(fn -> delete_connections_in_locked_flow(flow_id, delete_fn) end) do
-      {:ok, {count, result}} -> {count, result}
-      {:error, reason} -> {0, reason}
+      {:ok, {count, result, project_id}} -> {count, result, project_id}
+      {:error, reason} -> {0, reason, nil}
     end
   end
 
   defp delete_connections_in_locked_flow(flow_id, delete_fn) do
     case ReferenceIntegrity.lock_active_flow_for_write(flow_id) do
-      {:ok, %{flow: flow}} -> delete_fn.(flow.id)
-      {:error, reason} -> Repo.rollback(reason)
+      {:ok, %{flow: flow, project_id: project_id}} ->
+        {count, result} = delete_fn.(flow.id)
+        {count, result, project_id}
+
+      {:error, reason} ->
+        Repo.rollback(reason)
     end
   end
+
+  defp update_connection_if_changed(%Ecto.Changeset{changes: changes}, locked_connection) when map_size(changes) == 0,
+    do: {:ok, locked_connection, false}
+
+  defp update_connection_if_changed(changeset, _locked_connection) do
+    case Repo.update(changeset) do
+      {:ok, updated_connection} -> {:ok, updated_connection, true}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp broadcast_connection_result({:ok, {connection, project_id, true}}) do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    {:ok, connection}
+  end
+
+  defp broadcast_connection_result({:ok, {connection, _project_id, false}}), do: {:ok, connection}
+
+  defp broadcast_connection_result(result), do: result
+
+  defp unwrap_connection_result({:ok, {connection, _project_id, _changed?}}), do: {:ok, connection}
+
+  defp unwrap_connection_result(result), do: result
+
+  defp broadcast_connection_count_result({count, result, project_id}) when count > 0 and is_integer(project_id) do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    {count, result}
+  end
+
+  defp broadcast_connection_count_result(result), do: unwrap_connection_count_result(result)
+
+  defp unwrap_connection_count_result({count, result, _project_id}), do: {count, result}
 
   defp validate_connection_rules(project_id, source_node, target_node, attrs) do
     source_pin = attrs["source_pin"]

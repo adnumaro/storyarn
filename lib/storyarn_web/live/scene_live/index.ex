@@ -9,10 +9,19 @@ defmodule StoryarnWeb.SceneLive.Index do
   import StoryarnWeb.Live.Shared.DashboardHelpers,
     only: [
       sort_table: 4,
-      paginate: 2,
+      pagination: 2,
       handle_sort: 5,
       handle_page: 4,
-      reload_dashboard: 6
+      default_issue_filters: 0,
+      default_issue_filter_options: 0,
+      handle_issue_filter: 4,
+      handle_issue_page: 3,
+      put_issues: 3,
+      put_stable_issue_ids: 3,
+      begin_overview_load: 1,
+      fail_overview_load: 1,
+      begin_issues_load: 1,
+      fail_issues_load: 1
     ]
 
   alias Storyarn.Collaboration
@@ -69,13 +78,23 @@ defmodule StoryarnWeb.SceneLive.Index do
             sortDir: to_string(@sort_dir),
             page: @page,
             totalPages: @total_pages,
-            total: length(@all_scene_table_data)
+            total: @total_scenes
           }
         }
         issues={@scene_issues}
+        overview-status={to_string(@overview_status)}
+        issues-status={to_string(@issues_status)}
+        issue-pagination={
+          %{
+            page: @issue_page,
+            totalPages: @issue_total_pages,
+            total: @issue_total,
+            unfilteredTotal: @unfiltered_issue_total
+          }
+        }
+        issue-filters={@issue_filters}
+        issue-filter-options={@issue_filter_options}
         can-edit={@can_edit}
-        workspace-slug={@workspace.slug}
-        project-slug={@project.slug}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
     """
@@ -88,7 +107,6 @@ defmodule StoryarnWeb.SceneLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     %{project: project} = socket.assigns
-    scenes = Scenes.list_scenes(project.id)
 
     if connected?(socket) do
       Collaboration.subscribe_dashboard(project.id)
@@ -107,17 +125,26 @@ defmodule StoryarnWeb.SceneLive.Index do
         {:active_scene, nil}
       )
 
-      if scenes != [], do: send(self(), :load_dashboard_data)
+      send(self(), :load_dashboard_data)
     end
 
     {:ok,
      socket
      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
-     |> assign(:scenes, scenes)
      |> assign(:dashboard_stats, nil)
+     |> assign(:overview_status, :loading)
      |> assign(:all_scene_table_data, [])
      |> assign(:scene_table_data, [])
+     |> assign(:total_scenes, 0)
+     |> assign(:all_scene_issues, [])
      |> assign(:scene_issues, [])
+     |> assign(:issues_status, :loading)
+     |> assign(:issue_filters, default_issue_filters())
+     |> assign(:issue_filter_options, default_issue_filter_options())
+     |> assign(:issue_page, 1)
+     |> assign(:issue_total_pages, 1)
+     |> assign(:issue_total, 0)
+     |> assign(:unfiltered_issue_total, 0)
      |> assign(:sort_by, "name")
      |> assign(:sort_dir, :asc)
      |> assign(:page, 1)
@@ -145,7 +172,11 @@ defmodule StoryarnWeb.SceneLive.Index do
   def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
   def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
   def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
-  def handle_info({:tree_changed, :scenes}, socket), do: {:noreply, reload_scenes(socket)}
+
+  def handle_info({:tree_changed, :scenes}, socket) do
+    {:noreply, StoryarnWeb.Live.Shared.DashboardHandlers.schedule_reload(socket)}
+  end
+
   def handle_info({:entities_deleted, _type, _ids}, socket), do: {:noreply, socket}
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
   def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
@@ -155,46 +186,55 @@ defmodule StoryarnWeb.SceneLive.Index do
   # ===========================================================================
 
   def handle_info(:load_dashboard_data, socket) do
-    %{project: project, workspace: workspace, sort_by: sort_by, sort_dir: sort_dir} =
-      socket.assigns
-
-    {:noreply,
-     start_async(socket, :load_dashboard_data, fn ->
-       load_dashboard_data_async(project.id, workspace, project, sort_by, sort_dir)
-     end)}
+    {:noreply, socket |> start_dashboard_overview() |> start_dashboard_issues()}
   end
 
+  def handle_info(:load_dashboard_overview, socket), do: {:noreply, start_dashboard_overview(socket)}
+  def handle_info(:load_dashboard_issues, socket), do: {:noreply, start_dashboard_issues(socket)}
+
   @impl true
-  def handle_async(:load_dashboard_data, {:ok, data}, socket) do
+  def handle_async(:load_dashboard_overview, {:ok, data}, socket) do
+    sorted_table =
+      sort_table(
+        data.table_data,
+        socket.assigns.sort_by,
+        socket.assigns.sort_dir,
+        scene_sort_columns()
+      )
+
+    page = pagination(sorted_table, socket.assigns.page)
+
     {:noreply,
      socket
      |> assign(:dashboard_stats, data.dashboard_stats)
-     |> assign(:all_scene_table_data, data.sorted_table)
-     |> assign(:scene_table_data, data.page_rows)
-     |> assign(:page, 1)
-     |> assign(:total_pages, data.total_pages)
-     |> assign(:scene_issues, data.formatted_issues)}
+     |> assign(:overview_status, :ready)
+     |> assign(:all_scene_table_data, sorted_table)
+     |> assign(:scene_table_data, page.rows)
+     |> assign(:total_scenes, page.total)
+     |> assign(:page, page.page)
+     |> assign(:total_pages, page.total_pages)}
   end
 
-  # Swallowing the reason left `dashboard_stats` nil forever, and Vue renders a
-  # skeleton until it is set: a crash in here presented to the author as a
-  # dashboard that simply never finished loading, with nothing to read, nothing
-  # to click, and nothing in the error tracker. Log it, break the skeleton, and
-  # say what to do — the same shape the flows and sheets dashboards use.
-  def handle_async(:load_dashboard_data, {:exit, reason}, socket) do
-    Logger.error("Scene dashboard load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
-
+  def handle_async(:load_dashboard_issues, {:ok, issues}, socket) do
     {:noreply,
      socket
-     |> assign(:dashboard_stats, empty_dashboard_stats())
-     |> put_flash(:error, dgettext("scenes", "Could not load dashboard data. Reload the page to try again."))}
+     |> put_issues(issues, issue_assign_opts())
+     |> assign(:issues_status, :ready)}
   end
 
-  defp empty_dashboard_stats do
-    %{scene_count: 0, zone_count: 0, pin_count: 0, background_count: 0}
+  def handle_async(:load_dashboard_overview, {:exit, reason}, socket) do
+    Logger.error("Scene dashboard overview load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
+
+    {:noreply, assign(socket, :overview_status, fail_overview_load(socket.assigns.overview_status))}
   end
 
-  defp load_dashboard_data_async(project_id, workspace, project, sort_by, sort_dir) do
+  def handle_async(:load_dashboard_issues, {:exit, reason}, socket) do
+    Logger.error("Scene dashboard issues load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
+
+    {:noreply, assign(socket, :issues_status, fail_issues_load(socket.assigns.issues_status))}
+  end
+
+  defp load_dashboard_overview_async(project_id, workspace, project) do
     scenes = Scenes.list_scenes(project_id)
 
     stats =
@@ -205,11 +245,6 @@ defmodule StoryarnWeb.SceneLive.Index do
     bg_count =
       DashboardCache.fetch(project_id, :scene_bg, fn ->
         Scenes.scenes_with_background_count(project_id)
-      end)
-
-    issues =
-      DashboardCache.fetch(project_id, :scene_health, fn ->
-        Scenes.list_dashboard_health_findings(project_id)
       end)
 
     table_data =
@@ -227,12 +262,10 @@ defmodule StoryarnWeb.SceneLive.Index do
           zone_count: scene_stats.zone_count,
           pin_count: scene_stats.pin_count,
           connection_count: scene_stats.connection_count,
-          updated_at: scene.updated_at
+          updated_at: scene.updated_at,
+          href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         }
       end)
-
-    sorted_table = sort_table(table_data, sort_by, sort_dir, scene_sort_columns())
-    {page_rows, total_pages} = paginate(sorted_table, 1)
 
     %{
       dashboard_stats: %{
@@ -241,11 +274,16 @@ defmodule StoryarnWeb.SceneLive.Index do
         pin_count: table_data |> Enum.map(& &1.pin_count) |> Enum.sum(),
         background_count: bg_count
       },
-      sorted_table: sorted_table,
-      page_rows: page_rows,
-      total_pages: total_pages,
-      formatted_issues: format_scene_issues(issues, workspace, project)
+      table_data: table_data
     }
+  end
+
+  defp load_dashboard_issues_async(project_id, workspace, project) do
+    project_id
+    |> DashboardCache.fetch(:scene_health, fn ->
+      Scenes.list_dashboard_health_findings(project_id)
+    end)
+    |> format_scene_issues(workspace, project)
   end
 
   # ===========================================================================
@@ -254,11 +292,36 @@ defmodule StoryarnWeb.SceneLive.Index do
 
   @impl true
   def handle_event("sort_scenes", %{"column" => column}, socket) do
-    {:noreply, handle_sort(socket, column, :all_scene_table_data, :scene_table_data, scene_sort_columns())}
+    {:noreply,
+     handle_sort(
+       socket,
+       column,
+       :all_scene_table_data,
+       :scene_table_data,
+       scene_sort_columns()
+     )}
   end
 
   def handle_event("page_scenes", %{"page" => page}, socket) do
     {:noreply, handle_page(socket, page, :all_scene_table_data, :scene_table_data)}
+  end
+
+  def handle_event("filter_scene_issues", %{"filter" => filter, "value" => value}, socket) do
+    {:noreply, handle_issue_filter(socket, filter, value, issue_assign_opts())}
+  end
+
+  def handle_event("page_scene_issues", %{"page" => page}, socket) do
+    {:noreply, handle_issue_page(socket, page, issue_assign_opts())}
+  end
+
+  def handle_event("retry_dashboard_overview", _params, socket) do
+    send(self(), :load_dashboard_overview)
+    {:noreply, assign(socket, :overview_status, begin_overview_load(socket.assigns.overview_status))}
+  end
+
+  def handle_event("retry_dashboard_issues", _params, socket) do
+    send(self(), :load_dashboard_issues)
+    {:noreply, assign(socket, :issues_status, begin_issues_load(socket.assigns.issues_status))}
   end
 
   # Tree mutation events (create_scene, create_child_scene, move_to_parent,
@@ -270,17 +333,41 @@ defmodule StoryarnWeb.SceneLive.Index do
   # Private helpers
   # ===========================================================================
 
-  defp reload_scenes(socket) do
-    project_id = socket.assigns.project.id
+  defp start_dashboard_overview(socket) do
+    %{project: project, workspace: workspace, locale: locale} = socket.assigns
 
-    reload_dashboard(
-      socket,
-      :scenes,
-      :all_scene_table_data,
-      :scene_table_data,
-      :scene_issues,
-      fn s -> assign(s, :scenes, Scenes.list_scenes(project_id)) end
-    )
+    socket
+    |> assign(:overview_status, begin_overview_load(socket.assigns.overview_status))
+    |> cancel_async(:load_dashboard_overview)
+    |> start_async(:load_dashboard_overview, fn ->
+      Gettext.put_locale(Storyarn.Gettext, locale)
+      load_dashboard_overview_async(project.id, workspace, project)
+    end)
+  end
+
+  defp start_dashboard_issues(socket) do
+    %{project: project, workspace: workspace, locale: locale} = socket.assigns
+
+    socket
+    |> assign(:issues_status, begin_issues_load(socket.assigns.issues_status))
+    |> cancel_async(:load_dashboard_issues)
+    |> start_async(:load_dashboard_issues, fn ->
+      Gettext.put_locale(Storyarn.Gettext, locale)
+      load_dashboard_issues_async(project.id, workspace, project)
+    end)
+  end
+
+  defp issue_assign_opts do
+    [
+      all_key: :all_scene_issues,
+      page_key: :scene_issues,
+      filters_key: :issue_filters,
+      options_key: :issue_filter_options,
+      page_assign: :issue_page,
+      total_pages_assign: :issue_total_pages,
+      total_assign: :issue_total,
+      unfiltered_total_assign: :unfiltered_issue_total
+    ]
   end
 
   defp scene_sort_columns do
@@ -296,15 +383,42 @@ defmodule StoryarnWeb.SceneLive.Index do
   defp format_scene_issues(issues, workspace, project) do
     issues
     |> Enum.map(fn issue ->
+      resource_label = scene_label(issue)
+
       %{
         severity: Atom.to_string(issue.severity),
         code: Atom.to_string(issue.code),
         label: scene_health_label(issue),
         details: issue.details,
+        scene_id: issue.scene_id,
+        entity_type: issue.entity_type,
+        entity_id: issue.entity_id,
+        resource_id: issue.scene_id,
+        resource_label: resource_label,
         href: scene_health_href(issue, workspace, project)
       }
     end)
-    |> Enum.sort_by(&{Severity.rank(&1.severity), &1.label, &1.code})
+    |> Enum.sort_by(
+      &{
+        Severity.rank(&1.severity),
+        &1.label,
+        &1.code,
+        &1.scene_id,
+        &1.entity_type,
+        &1.entity_id || 0,
+        :erlang.term_to_binary(&1.details, [:deterministic])
+      }
+    )
+    |> put_stable_issue_ids("scene", fn issue ->
+      {issue.scene_id, issue.code, issue.entity_type, issue.entity_id, issue.details}
+    end)
+  end
+
+  defp scene_label(issue) do
+    StringUtils.present_label(
+      Map.get(issue.details, :scene_name),
+      SceneHelpers.element_type_label("scene")
+    )
   end
 
   # Location only — never a rendered sentence. The code carries the meaning and
@@ -314,11 +428,7 @@ defmodule StoryarnWeb.SceneLive.Index do
   # The blank-name fallback matches `SceneLive.Helpers.HealthHelpers` so a scene
   # nobody named reads the same on both surfaces.
   defp scene_health_label(issue) do
-    scene_name =
-      StringUtils.present_label(
-        Map.get(issue.details, :scene_name),
-        SceneHelpers.element_type_label("scene")
-      )
+    scene_name = scene_label(issue)
 
     case Map.get(issue.details, :entity_label) do
       label when is_binary(label) and label != "" -> "#{scene_name} · #{label}"

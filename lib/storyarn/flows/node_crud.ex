@@ -478,6 +478,7 @@ defmodule Storyarn.Flows.NodeCrud do
   # =============================================================================
 
   defdelegate create_node(flow, attrs), to: NodeCreate
+  defdelegate create_node_without_dashboard_broadcast(flow, attrs), to: NodeCreate
   defdelegate has_circular_reference?(source_flow_id, target_flow_id), to: NodeCreate
 
   defdelegate update_node(node, attrs), to: NodeUpdate
@@ -485,8 +486,10 @@ defmodule Storyarn.Flows.NodeCrud do
   defdelegate update_node_parent(node, parent_id), to: NodeUpdate
   defdelegate batch_update_positions(flow_id, positions), to: NodeUpdate
   defdelegate update_node_data(node, data), to: NodeUpdate
+  defdelegate update_node_data_without_dashboard_broadcast(node, data), to: NodeUpdate
   defdelegate change_node(node, attrs \\ %{}), to: NodeUpdate
 
   defdelegate delete_node(node), to: NodeDelete
+  defdelegate delete_node_without_dashboard_broadcast(node), to: NodeDelete
   defdelegate restore_node(flow_id, node_id), to: NodeDelete
 end

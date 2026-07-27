@@ -376,7 +376,11 @@ defmodule Storyarn.Sheets do
   @doc """
   Detaches an inherited block, making it a local copy.
   """
-  defdelegate detach_block(block), to: PropertyInheritance
+  def detach_block(%Block{} = block) do
+    block
+    |> PropertyInheritance.detach_block()
+    |> broadcast_block_dashboard_result(block)
+  end
 
   @doc """
   Re-attaches a previously detached block.
@@ -399,12 +403,20 @@ defmodule Storyarn.Sheets do
   @doc """
   Hides an ancestor block from this sheet's children.
   """
-  defdelegate hide_for_children(sheet, ancestor_block_id), to: PropertyInheritance
+  def hide_for_children(%Sheet{} = sheet, ancestor_block_id) do
+    sheet
+    |> PropertyInheritance.hide_for_children(ancestor_block_id)
+    |> broadcast_sheet_dashboard_result(sheet)
+  end
 
   @doc """
   Unhides an ancestor block for this sheet's children.
   """
-  defdelegate unhide_for_children(sheet, ancestor_block_id), to: PropertyInheritance
+  def unhide_for_children(%Sheet{} = sheet, ancestor_block_id) do
+    sheet
+    |> PropertyInheritance.unhide_for_children(ancestor_block_id)
+    |> broadcast_sheet_dashboard_result(sheet)
+  end
 
   @doc """
   Returns the source sheet for an inherited block.
@@ -1101,4 +1113,11 @@ defmodule Storyarn.Sheets do
   end
 
   defp broadcast_block_dashboard_result(result, _block), do: result
+
+  defp broadcast_sheet_dashboard_result({:ok, _value} = result, %Sheet{project_id: project_id}) do
+    Collaboration.broadcast_dashboard_change(project_id, :sheets)
+    result
+  end
+
+  defp broadcast_sheet_dashboard_result(result, _sheet), do: result
 end

@@ -101,4 +101,72 @@ defmodule StoryarnWeb.E2E.FlowHealthTest do
       assert :missing_dialogue_speaker in codes
     end)
   end
+
+  test "dashboard filters are compact popups with complete faceted counts", %{conn: conn} do
+    user = user_fixture()
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    {_flow, _stuck} = seed_flow(project)
+
+    findings = Flows.list_dashboard_health_findings(project.id)
+    total = length(findings)
+    warning_count = Enum.count(findings, &(to_string(&1.severity) == "warning"))
+    type_count = Enum.count(findings, &(&1.code == :no_outgoing_connection))
+    path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
+
+    conn
+    |> authenticate(user)
+    |> visit(path)
+    |> assert_has(
+      "button[data-testid='dashboard-issue-severity-filter'][aria-label='Filter by severity: All severities (#{total})']",
+      timeout: 20_000
+    )
+    |> assert_has("button[data-testid='dashboard-issue-code-filter']")
+    |> assert_has("button[data-testid='dashboard-issue-resource-filter']")
+    |> evaluate(issue_filter_layout_expression(), fn layout ->
+      assert layout["display"] == "flex"
+
+      Enum.each(layout["triggers"], fn trigger ->
+        assert trigger["tag"] == "BUTTON"
+        assert trigger["width"] < layout["containerWidth"]
+        assert trigger["maxWidth"] != "none"
+        assert trigger["labelOverflow"] == "ellipsis"
+      end)
+    end)
+    |> click("button[data-testid='dashboard-issue-severity-filter']")
+    |> assert_has("#dashboard-issue-severity-filter-option-warning [aria-label='#{warning_count}']")
+    |> assert_has("#dashboard-issue-severity-filter-option-info [aria-label='0']")
+    |> click("button[data-testid='dashboard-issue-code-filter']")
+    |> assert_has("#dashboard-issue-code-filter-option-no_outgoing_connection [aria-label='#{type_count}']")
+    |> click("#dashboard-issue-code-filter-option-no_outgoing_connection")
+    |> assert_has(
+      "button[data-testid='dashboard-issue-code-filter'][aria-label='Filter by issue type: Missing outgoing connection (#{type_count})']"
+    )
+    |> assert_has("[data-severity='warning']", text: "Node has no outgoing connection")
+  end
+
+  defp issue_filter_layout_expression do
+    """
+    (() => {
+      const container = document.querySelector('[data-testid="dashboard-issue-filters"]');
+      const triggers = [...container.querySelectorAll('button[data-testid$="-filter"]')];
+
+      return {
+        display: getComputedStyle(container).display,
+        containerWidth: container.getBoundingClientRect().width,
+        triggers: triggers.map((trigger) => {
+          const label = trigger.querySelector('.truncate');
+          const style = getComputedStyle(trigger);
+          const labelStyle = getComputedStyle(label);
+
+          return {
+            tag: trigger.tagName,
+            width: trigger.getBoundingClientRect().width,
+            maxWidth: style.maxWidth,
+            labelOverflow: labelStyle.textOverflow
+          };
+        })
+      };
+    })()
+    """
+  end
 end

@@ -7,6 +7,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
@@ -1078,6 +1079,88 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       {:ok, count} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
       assert count == 0
+    end
+
+    test "broadcasts one dashboard invalidation after repairing multiple nodes", ctx do
+      nodes =
+        for _index <- 1..2 do
+          node =
+            node_fixture(ctx.flow, %{
+              type: "instruction",
+              data: %{
+                "assignments" => [
+                  variable_assignment(ctx.sheet.shortcut, ctx.health_block.variable_name)
+                ]
+              }
+            })
+
+          :ok = VariableReferenceTracker.update_references(node)
+          node
+        end
+
+      {:ok, _sheet} = Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
+      :ok = Collaboration.subscribe_dashboard(ctx.project.id)
+
+      assert {:ok, 2} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      assert_receive {:dashboard_invalidate, :flows}
+      refute_receive {:dashboard_invalidate, :flows}, 10
+
+      assert Enum.all?(nodes, fn node ->
+               updated_node = Storyarn.Repo.get!(FlowNode, node.id)
+               assignment = hd(updated_node.data["assignments"])
+               assignment["sheet"] == "mc.renamed"
+             end)
+    end
+
+    test "does not broadcast when the repair is a no-op", ctx do
+      :ok = Collaboration.subscribe_dashboard(ctx.project.id)
+
+      assert {:ok, 0} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+      refute_receive {:dashboard_invalidate, :flows}, 10
+    end
+
+    test "aborts a failed node update instead of counting or broadcasting it", ctx do
+      valid_assignment =
+        variable_assignment(ctx.sheet.shortcut, ctx.health_block.variable_name)
+
+      valid_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{"assignments" => [valid_assignment]}
+        })
+
+      failing_node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{"assignments" => [valid_assignment]}
+        })
+
+      :ok = VariableReferenceTracker.update_references(valid_node)
+      :ok = VariableReferenceTracker.update_references(failing_node)
+
+      # Keep the tracked reference deliberately while making the node
+      # unwritable. The repair query still sees the reference, but
+      # NodeUpdate must reject the soft-deleted node. Node IDs are repaired in
+      # order, so the valid row is written first and proves that the later
+      # failure rolls the whole batch back.
+      failing_node
+      |> FlowNode.soft_delete_changeset()
+      |> Storyarn.Repo.update!()
+
+      {:ok, _sheet} = Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
+      :ok = Collaboration.subscribe_dashboard(ctx.project.id)
+
+      assert {:error, _reason} =
+               VariableReferenceTracker.repair_stale_references(ctx.project.id)
+
+      refute_receive {:dashboard_invalidate, :flows}, 10
+
+      persisted_valid = Storyarn.Repo.get!(FlowNode, valid_node.id)
+      persisted_failing = Storyarn.Repo.get!(FlowNode, failing_node.id)
+
+      assert persisted_valid.data == valid_node.data
+      assert persisted_failing.data == failing_node.data
+      assert persisted_failing.deleted_at
     end
   end
 

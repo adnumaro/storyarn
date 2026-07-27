@@ -305,7 +305,10 @@ defmodule Storyarn.Flows.FlowCrud do
       |> Map.put("referenced_flow_id", new_flow.id)
       |> maybe_put_flow_reference_mode(locked_node.type)
 
-    case NodeCrud.update_node_data(locked_node, new_data) do
+    # The surrounding Ecto.Multi owns the commit and the single dashboard
+    # invalidation. Publishing from this nested write would notify subscribers
+    # before the outer transaction commits and duplicate the final event.
+    case NodeCrud.update_node_data_without_dashboard_broadcast(locked_node, new_data) do
       {:ok, updated_node, _meta} -> {:ok, updated_node}
       {:error, reason} -> {:error, reason}
     end
@@ -383,7 +386,9 @@ defmodule Storyarn.Flows.FlowCrud do
   defp normalize_item_limit_result(result), do: result
 
   def update_flow(%Flow{} = flow, attrs) do
-    Repo.transaction(fn -> update_flow_transaction(flow, attrs) end)
+    fn -> update_flow_transaction(flow, attrs) end
+    |> Repo.transaction()
+    |> broadcast_flow_dashboard_result(flow.project_id)
   end
 
   defp update_flow_transaction(flow, attrs) do
@@ -1012,14 +1017,12 @@ defmodule Storyarn.Flows.FlowCrud do
   def update_flow_scene(%Flow{} = flow, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
-    Repo.transaction(fn ->
+    fn ->
       with {:ok, %{flow: locked_flow, project_id: project_id}} <-
              ReferenceIntegrity.lock_active_flow_for_write(flow),
            {:ok, scene_id} <-
              ReferenceIntegrity.lock_flow_scene(project_id, attrs["scene_id"]) do
-        locked_flow
-        |> Flow.scene_changeset(%{"scene_id" => scene_id})
-        |> update_flow_or_rollback()
+        persist_flow_scene(locked_flow, project_id, scene_id)
       else
         {:error, :flow_not_found} ->
           Repo.rollback(:flow_not_found)
@@ -1027,7 +1030,19 @@ defmodule Storyarn.Flows.FlowCrud do
         {:error, reason} ->
           Repo.rollback(flow_reference_changeset(flow, attrs, reason))
       end
-    end)
+    end
+    |> Repo.transaction()
+    |> broadcast_flow_scene_result()
+  end
+
+  defp persist_flow_scene(locked_flow, project_id, scene_id) do
+    changeset = Flow.scene_changeset(locked_flow, %{"scene_id" => scene_id})
+
+    if map_size(changeset.changes) == 0 do
+      {locked_flow, project_id, false}
+    else
+      {update_flow_or_rollback(changeset), project_id, true}
+    end
   end
 
   def change_flow(%Flow{} = flow, attrs \\ %{}) do
@@ -1349,4 +1364,12 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   defp broadcast_flow_dashboard_result(result, _project_id), do: result
+
+  defp broadcast_flow_scene_result({:ok, {flow, project_id, true}}) do
+    Collaboration.broadcast_dashboard_change(project_id, :flows)
+    {:ok, flow}
+  end
+
+  defp broadcast_flow_scene_result({:ok, {flow, _project_id, false}}), do: {:ok, flow}
+  defp broadcast_flow_scene_result(result), do: result
 end

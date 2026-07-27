@@ -534,8 +534,6 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   defp reload_ambient_flows(socket) do
-    Collaboration.broadcast_dashboard_change(socket.assigns.project.id, :scenes)
-
     socket
     |> assign(:ambient_flows, Scenes.list_ambient_flows(socket.assigns.scene.id))
     |> assign_scene_health()
@@ -1171,7 +1169,9 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("toggle_layer_visibility", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      params |> LayerHandlers.handle_toggle_layer_visibility(socket) |> broadcast_scene_change()
+      params
+      |> LayerHandlers.handle_toggle_layer_visibility(socket)
+      |> broadcast_scene_change(dashboard?: false)
     end)
   end
 
@@ -1949,7 +1949,10 @@ defmodule StoryarnWeb.SceneLive.Show do
       Collab.broadcast_change(socket, scope, action, payload)
     end
 
-    if Keyword.get(opts, :dashboard?, true) do
+    # Scene mutation contexts own the post-commit dashboard invalidation. This
+    # wrapper only relays editor collaboration and recomputes local health unless
+    # an exceptional caller explicitly opts back into a dashboard event.
+    if Keyword.get(opts, :dashboard?, false) do
       Collaboration.broadcast_dashboard_change(socket.assigns.project.id, :scenes)
     end
 

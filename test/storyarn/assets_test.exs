@@ -16,6 +16,7 @@ defmodule Storyarn.AssetsTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
+  alias Storyarn.Collaboration
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
   alias Storyarn.Repo
@@ -209,9 +210,12 @@ defmodule Storyarn.AssetsTest do
 
     test "delete_asset/1 deletes an asset", %{project: project, user: user} do
       asset = asset_fixture(project, user)
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
       assert {:ok, _} = Assets.delete_asset(asset)
       assert Assets.get_asset(project.id, asset.id) == nil
+      assert_receive {:dashboard_invalidate, :all}
+      refute_receive {:dashboard_invalidate, :all}, 10
     end
 
     test "delete_asset/1 refuses stale writes after the project enters trash", %{
@@ -224,8 +228,10 @@ defmodule Storyarn.AssetsTest do
       |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
       |> Repo.update!()
 
+      :ok = Collaboration.subscribe_dashboard(project.id)
       assert {:error, :project_not_active} = Assets.delete_asset(asset)
       assert Repo.get(Asset, asset.id)
+      refute_receive {:dashboard_invalidate, :all}, 10
     end
 
     test "delete_asset/1 removes sheet avatar references before deleting", %{project: project, user: user} do

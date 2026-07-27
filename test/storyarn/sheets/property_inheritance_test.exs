@@ -5,6 +5,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.PropertyInheritance
@@ -386,13 +387,19 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
   describe "detach_block/1" do
     setup :setup_hierarchy
 
-    test "sets detached to true", %{parent: parent, child: child} do
+    test "sets detached to true and invalidates the dashboard", %{
+      project: project,
+      parent: parent,
+      child: child
+    } do
       block = inheritable_block_fixture(parent, label: "Detachable")
 
       child_blocks = Sheets.list_blocks(child.id)
       instance = Enum.find(child_blocks, &(&1.inherited_from_block_id == block.id))
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
-      {:ok, detached} = PropertyInheritance.detach_block(instance)
+      {:ok, detached} = Sheets.detach_block(instance)
+      assert_receive {:dashboard_invalidate, :sheets}
 
       assert detached.detached == true
       assert detached.inherited_from_block_id == block.id
@@ -445,10 +452,16 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
   describe "hide_for_children/2" do
     setup :setup_hierarchy
 
-    test "adds block ID to hidden list", %{parent: parent, child: child} do
+    test "adds block ID to hidden list and invalidates the dashboard", %{
+      project: project,
+      parent: parent,
+      child: child
+    } do
       block = inheritable_block_fixture(parent, label: "Hideable")
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
-      {:ok, updated_sheet} = PropertyInheritance.hide_for_children(child, block.id)
+      {:ok, updated_sheet} = Sheets.hide_for_children(child, block.id)
+      assert_receive {:dashboard_invalidate, :sheets}
 
       assert block.id in updated_sheet.hidden_inherited_block_ids
     end
@@ -466,11 +479,19 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
   describe "unhide_for_children/2" do
     setup :setup_hierarchy
 
-    test "removes block ID from hidden list", %{parent: parent, child: child} do
+    test "removes block ID from hidden list and invalidates the dashboard", %{
+      project: project,
+      parent: parent,
+      child: child
+    } do
       block = inheritable_block_fixture(parent, label: "Unhideable")
+      :ok = Collaboration.subscribe_dashboard(project.id)
 
-      {:ok, hidden_sheet} = PropertyInheritance.hide_for_children(child, block.id)
-      {:ok, unhidden_sheet} = PropertyInheritance.unhide_for_children(hidden_sheet, block.id)
+      {:ok, hidden_sheet} = Sheets.hide_for_children(child, block.id)
+      assert_receive {:dashboard_invalidate, :sheets}
+
+      {:ok, unhidden_sheet} = Sheets.unhide_for_children(hidden_sheet, block.id)
+      assert_receive {:dashboard_invalidate, :sheets}
 
       refute block.id in unhidden_sheet.hidden_inherited_block_ids
     end

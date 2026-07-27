@@ -314,6 +314,9 @@ defmodule Storyarn.Flows do
   @spec create_node(flow(), attrs()) :: {:ok, flow_node()} | {:error, changeset()}
   defdelegate create_node(flow, attrs), to: NodeCrud
 
+  @doc false
+  defdelegate create_node_without_dashboard_broadcast(flow, attrs), to: NodeCrud
+
   @doc """
   Updates a node.
   """
@@ -348,11 +351,17 @@ defmodule Storyarn.Flows do
           {:ok, flow_node(), map()} | {:error, atom() | changeset()}
   defdelegate update_node_data(node, data), to: NodeCrud
 
+  @doc false
+  defdelegate update_node_data_without_dashboard_broadcast(node, data), to: NodeCrud
+
   @doc """
   Deletes a node and all its connections.
   """
   @spec delete_node(flow_node()) :: {:ok, flow_node(), map()} | {:error, atom() | changeset()}
   defdelegate delete_node(node), to: NodeCrud
+
+  @doc false
+  defdelegate delete_node_without_dashboard_broadcast(node), to: NodeCrud
 
   @doc """
   Restores a soft-deleted node by clearing its deleted_at timestamp.
@@ -574,6 +583,10 @@ defmodule Storyarn.Flows do
     ConnectionCrud.create_connection(flow, attrs)
   end
 
+  @doc false
+  defdelegate create_connection_without_dashboard_broadcast(flow, attrs),
+    to: ConnectionCrud
+
   @doc """
   Updates a connection.
   """
@@ -641,6 +654,10 @@ defmodule Storyarn.Flows do
   """
   @spec delete_connections_among_nodes(integer(), [integer()]) :: {integer(), nil | term()}
   defdelegate delete_connections_among_nodes(flow_id, node_ids), to: ConnectionCrud
+
+  @doc false
+  defdelegate delete_connections_among_nodes_without_dashboard_broadcast(flow_id, node_ids),
+    to: ConnectionCrud
 
   # =============================================================================
   # Evaluator — Engine

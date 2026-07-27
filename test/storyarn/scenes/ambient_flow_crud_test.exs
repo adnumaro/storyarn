@@ -5,8 +5,137 @@ defmodule Storyarn.Scenes.AmbientFlowCrudTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
 
+  alias Storyarn.Collaboration
   alias Storyarn.Scenes.AmbientFlowCrud
   alias Storyarn.Scenes.SceneAmbientFlow
+
+  describe "dashboard invalidation" do
+    test "create invalidates once after commit while a rejected link emits nothing" do
+      project = project_fixture()
+      scene = scene_fixture(project)
+      flow = flow_fixture(project)
+      foreign_flow = flow_fixture(project_fixture())
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, _ambient_flow} =
+               AmbientFlowCrud.create_ambient_flow(scene.id, %{
+                 "flow_id" => flow.id
+               })
+
+      assert_dashboard_invalidation_once()
+
+      assert {:error, :cross_project} =
+               AmbientFlowCrud.create_ambient_flow(scene.id, %{
+                 "flow_id" => foreign_flow.id
+               })
+
+      refute_dashboard_invalidation()
+    end
+
+    test "update invalidates changed data once while failure and no-op emit nothing" do
+      project = project_fixture()
+      scene = scene_fixture(project)
+      flow = flow_fixture(project)
+      foreign_flow = flow_fixture(project_fixture())
+
+      assert {:ok, ambient_flow} =
+               AmbientFlowCrud.create_ambient_flow(scene.id, %{
+                 "flow_id" => flow.id
+               })
+
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, updated} =
+               AmbientFlowCrud.update_ambient_flow(ambient_flow, %{
+                 "priority" => 10
+               })
+
+      assert_dashboard_invalidation_once()
+
+      assert {:ok, unchanged} =
+               AmbientFlowCrud.update_ambient_flow(updated, %{
+                 "priority" => 10
+               })
+
+      assert unchanged.priority == 10
+      refute_dashboard_invalidation()
+
+      assert {:error, :cross_project} =
+               AmbientFlowCrud.update_ambient_flow(updated, %{
+                 "flow_id" => foreign_flow.id
+               })
+
+      refute_dashboard_invalidation()
+    end
+
+    test "delete invalidates once while deleting stale input emits nothing" do
+      project = project_fixture()
+      scene = scene_fixture(project)
+      flow = flow_fixture(project)
+
+      assert {:ok, ambient_flow} =
+               AmbientFlowCrud.create_ambient_flow(scene.id, %{
+                 "flow_id" => flow.id
+               })
+
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, _deleted} =
+               AmbientFlowCrud.delete_ambient_flow(ambient_flow)
+
+      assert_dashboard_invalidation_once()
+
+      assert {:error, :ambient_flow_not_found} =
+               AmbientFlowCrud.delete_ambient_flow(ambient_flow)
+
+      refute_dashboard_invalidation()
+    end
+
+    test "reorder invalidates only when the persisted order changes" do
+      project = project_fixture()
+      scene = scene_fixture(project)
+      first_flow = flow_fixture(project)
+      second_flow = flow_fixture(project)
+
+      assert {:ok, first} =
+               AmbientFlowCrud.create_ambient_flow(scene.id, %{
+                 "flow_id" => first_flow.id
+               })
+
+      assert {:ok, second} =
+               AmbientFlowCrud.create_ambient_flow(scene.id, %{
+                 "flow_id" => second_flow.id
+               })
+
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, reordered} =
+               AmbientFlowCrud.reorder_ambient_flows(scene.id, [
+                 second.id,
+                 first.id
+               ])
+
+      assert Enum.map(reordered, & &1.id) == [second.id, first.id]
+      assert_dashboard_invalidation_once()
+
+      assert {:ok, unchanged} =
+               AmbientFlowCrud.reorder_ambient_flows(scene.id, [
+                 second.id,
+                 first.id
+               ])
+
+      assert Enum.map(unchanged, & &1.id) == [second.id, first.id]
+      refute_dashboard_invalidation()
+
+      assert {:error, {:invalid_scene_ambient_flow_reorder, _ids}} =
+               AmbientFlowCrud.reorder_ambient_flows(scene.id, [
+                 second.id,
+                 second.id
+               ])
+
+      refute_dashboard_invalidation()
+    end
+  end
 
   describe "create_ambient_flow/2" do
     test "creates a link only when both scene and flow are active in the same project" do
@@ -161,5 +290,14 @@ defmodule Storyarn.Scenes.AmbientFlowCrudTest do
   defp soft_delete(struct) do
     deleted_at = DateTime.truncate(DateTime.utc_now(), :second)
     Repo.update!(Ecto.Changeset.change(struct, deleted_at: deleted_at))
+  end
+
+  defp assert_dashboard_invalidation_once do
+    assert_receive {:dashboard_invalidate, :scenes}
+    refute_receive {:dashboard_invalidate, :scenes}, 10
+  end
+
+  defp refute_dashboard_invalidation do
+    refute_receive {:dashboard_invalidate, :scenes}, 10
   end
 end
