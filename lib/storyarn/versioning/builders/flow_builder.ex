@@ -4765,7 +4765,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   # ========== Diff Snapshots ==========
 
   # Fields excluded from node comparison (canvas position and denormalized counts are noise)
-  @node_ignore_fields ["position_x", "position_y", "original_id", "word_count"]
+  # "source" is a removed column. Snapshots written before the Screenplays
+  # feature was deleted still carry it, so it must not count as a change —
+  # otherwise every node in every pre-existing version reads as modified.
+  @node_ignore_fields ["position_x", "position_y", "original_id", "word_count", "source"]
 
   @impl true
   def diff_snapshots(old_snapshot, new_snapshot) do

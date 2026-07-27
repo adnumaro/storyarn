@@ -18,7 +18,7 @@ The cards at the top summarize:
 - **Scenes**.
 - Total localizable word count: the same player-facing flow and sheet text included by the runtime export contract.
 
-The Sheets, Variables, Flows, Dialogue, and Scenes cards open their corresponding workspaces. The localizable-word card is informational. It excludes scenes, screenplays, and editor-only labels or descriptions.
+The Sheets, Variables, Flows, Dialogue, and Scenes cards open their corresponding workspaces. The localizable-word card is informational. It excludes scenes and editor-only labels or descriptions.
 
 ## Narrative breakdown
 

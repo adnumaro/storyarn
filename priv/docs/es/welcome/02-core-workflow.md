@@ -104,7 +104,7 @@ Al exportar, elige si los recursos se mantienen como referencias, se incrustan e
 
 ## Localiza el texto de runtime
 
-Cuando tu contenido esté listo, las herramientas de **Localización** extraen automáticamente el texto visible para el jugador definido por el contrato de exportación para motores: líneas de diálogo, acotaciones, texto de menú, etiquetas de respuestas y salidas, nombres de fichas activas y valores de variables exportadas de texto o texto enriquecido. Las escenas, los guiones y los metadatos exclusivos del editor quedan excluidos.
+Cuando tu contenido esté listo, las herramientas de **Localización** extraen automáticamente el texto visible para el jugador definido por el contrato de exportación para motores: líneas de diálogo, acotaciones, texto de menú, etiquetas de respuestas y salidas, nombres de fichas activas y valores de variables exportadas de texto o texto enriquecido. Las escenas y los metadatos exclusivos del editor quedan excluidos.
 
 Configura la **integración con DeepL** para traducción automática como primer paso. Haz seguimiento del progreso por idioma con informes que muestran conteos de palabras por personaje, estado de traducción y progreso de doblaje.
 
