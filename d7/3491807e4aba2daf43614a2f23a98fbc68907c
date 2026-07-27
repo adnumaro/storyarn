@@ -1,0 +1,24 @@
+assets/app/live/project/dashboard/ProjectDashboard.vue
+  s_6401ae78a3fc64::t_eb2f966b6f22af 371-380,382
+  s_6401ae78a3fc64::t_2e080e9be6fdfc 199-200,202,370,381,383-408
+  s_6401ae78a3fc64::t_40beac5b6b606b 201
+assets/app/test/live/project/dashboard/ProjectDashboard.test.ts
+  s_6401ae78a3fc64::t_89a7ad514a5b04 151
+  s_6401ae78a3fc64::t_2bdf863d3e92fa 137-150,152-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d73491807e4aba2daf43614a2f23a98fbc68907c",
+  "prompts": {},
+  "sessions": {
+    "s_6401ae78a3fc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9bc0da24-9334-450b-9597-d0d8482861c1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
