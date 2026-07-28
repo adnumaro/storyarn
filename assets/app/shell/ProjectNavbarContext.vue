@@ -10,7 +10,6 @@ import {
   Map,
   PanelLeft,
   PanelLeftClose,
-  ScrollText,
   Settings,
   Trash2,
 } from "lucide-vue-next";
@@ -32,7 +31,6 @@ const {
   projectName,
   workspaceName,
   showToolSwitcher = true,
-  isSuperAdmin = false,
   urls,
 } = defineProps<{
   activeTool: string;
@@ -41,7 +39,6 @@ const {
   projectName: string;
   workspaceName: string;
   showToolSwitcher?: boolean;
-  isSuperAdmin?: boolean;
   urls: ProjectNavbarContextUrls;
 }>();
 
@@ -52,20 +49,13 @@ const toolDefs = [
   { key: "sheets", icon: FileText },
   { key: "flows", icon: GitBranch },
   { key: "scenes", icon: Map },
-  { key: "screenplays", icon: ScrollText },
   { key: "assets", icon: Image },
   { key: "localization", icon: Languages },
 ];
 
 const activeToolDef = computed(() => toolDefs.find((t) => t.key === activeTool) || toolDefs[0]);
 
-const otherTools = computed(() => {
-  const filtered = toolDefs.filter((t) => t.key !== activeTool);
-  if (!isSuperAdmin) {
-    return filtered.filter((t) => t.key !== "screenplays");
-  }
-  return filtered;
-});
+const otherTools = computed(() => toolDefs.filter((t) => t.key !== activeTool));
 
 function toggleMainSidebar() {
   const open = !sidebarOpen.value;

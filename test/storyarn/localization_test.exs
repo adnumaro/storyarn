@@ -479,7 +479,7 @@ defmodule Storyarn.LocalizationTest do
       user = user_fixture()
       project = project_fixture(user)
 
-      for source_type <- ["flow", "scene", "screenplay"] do
+      for source_type <- ["flow", "scene"] do
         {:error, changeset} =
           Localization.create_text(project.id, %{
             source_type: source_type,

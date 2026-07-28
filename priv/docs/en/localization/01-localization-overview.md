@@ -29,7 +29,7 @@ Click **Sync** to reconcile localization with the project's current runtime expo
 | **Sheets**     | The name of each active sheet, used as a runtime actor or speaker name                                         |
 | **Blocks**     | `value.content` from active, non-constant text or rich-text blocks that have a non-empty runtime variable name |
 
-Scenes and screenplays are not part of localization. Flow names and descriptions, sheet descriptions, and editor metadata such as block labels, placeholders, and option labels are also excluded because they are not emitted as player-facing text by the engine export contract.
+Scenes are not part of localization. Flow names and descriptions, sheet descriptions, and editor metadata such as block labels, placeholders, and option labels are also excluded because they are not emitted as player-facing text by the engine export contract.
 
 Each extracted text gets a SHA-256 hash of its source content. When you re-sync, Storyarn detects changes -- if the source text has been modified since the last translation, the system can flag it for re-translation. Extraction is idempotent: running it multiple times never creates duplicates thanks to upsert logic.
 

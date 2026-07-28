@@ -41,7 +41,7 @@ Before writing custom CSS, layout, or HTML primitives:
 - Shadcn primitive covers it? (Button, Slider, Input, Popover, Command, Sheet, Tabs, Tooltip, ...)
 - Shared component implements this? (AssetUploadButton, ConfirmDialog, ColorPicker, EditableText, VariableCombobox, ...)
 - Toolbars: 9 implementations live at assets/app/modules/flows/components/toolbar-sections/ dispatched by FlowNodeToolbar.vue. Add to the registry; do NOT fork the wrapper.
-- Sidebars: open FlowBuilderPanel.vue or FlowScreenplayEditor.vue first; both use Sidebar from assets/app/components/layout/.
+- Sidebars: open FlowBuilderPanel.vue or FlowDialoguePanel.vue first; both use Sidebar from assets/app/components/layout/.
 - Asset pickers: AudioTab.vue inline pattern is the closest precedent today (Popover + Command + Upload). If you need it twice, EXTRACT a shared component first; do not duplicate.
 - File upload: AssetUploadButton.vue + useUpload composable exist. Don't re-implement FileReader logic.
 

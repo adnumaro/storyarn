@@ -16,7 +16,6 @@ defmodule Storyarn.Collaboration do
       {:flow, flow_id}
       {:sheet, sheet_id}
       {:scene, scene_id}
-      {:screenplay, screenplay_id}
 
   This module serves as a facade, delegating to specialized submodules:
   - `Colors` - Deterministic user color assignment
@@ -36,7 +35,6 @@ defmodule Storyarn.Collaboration do
           {:flow, integer()}
           | {:sheet, integer()}
           | {:scene, integer()}
-          | {:screenplay, integer()}
 
   defp normalize_scope({_type, _id} = scope), do: scope
 

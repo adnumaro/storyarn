@@ -159,21 +159,9 @@ defmodule Storyarn.Projects.Dashboard do
         }
       )
 
-    screenplays_query =
-      from(sp in "screenplays",
-        where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
-        select: %{
-          name: sp.name,
-          type: "screenplay",
-          entity_id: sp.id,
-          updated_at: sp.updated_at
-        }
-      )
-
     sheets_query
     |> union_all(^flows_query)
     |> union_all(^scenes_query)
-    |> union_all(^screenplays_query)
     |> subquery()
     |> order_by([r], desc: r.updated_at)
     |> limit(^limit)
@@ -203,7 +191,7 @@ defmodule Storyarn.Projects.Dashboard do
   end
 
   # Runtime word volume follows the same contract as localization and engine
-  # exports. Scenes and screenplays are editor-only and intentionally excluded.
+  # exports. Scenes are editor-only and intentionally excluded.
   defp count_total_words(project_id) do
     flow_words =
       project_id

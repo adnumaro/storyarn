@@ -104,7 +104,7 @@ When exporting, choose whether assets remain references, are embedded in the out
 
 ## Localize runtime text
 
-When your content is ready, the **Localization** tools extract player-facing text from the engine export contract automatically — dialogue lines, stage directions, menu text, response and exit labels, active sheet names, and exported text or rich-text variable values. Scenes, screenplays, and editor-only metadata are excluded.
+When your content is ready, the **Localization** tools extract player-facing text from the engine export contract automatically — dialogue lines, stage directions, menu text, response and exit labels, active sheet names, and exported text or rich-text variable values. Scenes and editor-only metadata are excluded.
 
 Set up **DeepL integration** for machine translation as a first pass. Track progress per language with reports that show word counts by speaker, translation status, and voice-over progress.
 

@@ -4,7 +4,6 @@ import {
   FileText,
   GitBranch,
   Map as MapIcon,
-  ScrollText,
   Search,
   Trash2,
   Undo2,
@@ -22,7 +21,7 @@ import {
 } from "@components/ui/dialog";
 import { useLive } from "@shared/composables/useLive";
 
-type TrashItemType = "sheet" | "flow" | "scene" | "screenplay";
+type TrashItemType = "sheet" | "flow" | "scene";
 type TrashFilter = "all" | TrashItemType;
 
 interface TrashedItem {
@@ -44,7 +43,7 @@ type TypeCounts = Record<TrashItemType, number>;
 const {
   trashedItems = [],
   pagination = { page: 1, pageSize: 25, totalCount: 0, totalPages: 1 },
-  typeCounts = { sheet: 0, flow: 0, scene: 0, screenplay: 0 },
+  typeCounts = { sheet: 0, flow: 0, scene: 0 },
   activeFilter = "all",
   searchQuery = "",
   canManage = false,
@@ -66,7 +65,7 @@ const showEmptyConfirm = ref(false);
 const itemToDelete = ref<TrashedItem | null>(null);
 let searchDebounce: ReturnType<typeof setTimeout> | undefined;
 
-const filters: TrashFilter[] = ["all", "sheet", "flow", "scene", "screenplay"];
+const filters: TrashFilter[] = ["all", "sheet", "flow", "scene"];
 
 const typeConfig = {
   sheet: {
@@ -81,10 +80,6 @@ const typeConfig = {
     icon: MapIcon,
     class: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
   },
-  screenplay: {
-    icon: ScrollText,
-    class: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-  },
 } satisfies Record<TrashItemType, { icon: Component; class: string }>;
 
 const itemCounts = computed<Record<TrashFilter, number>>(() => {
@@ -92,11 +87,10 @@ const itemCounts = computed<Record<TrashFilter, number>>(() => {
     sheet: typeCounts.sheet ?? 0,
     flow: typeCounts.flow ?? 0,
     scene: typeCounts.scene ?? 0,
-    screenplay: typeCounts.screenplay ?? 0,
   };
 
   return {
-    all: counts.sheet + counts.flow + counts.scene + counts.screenplay,
+    all: counts.sheet + counts.flow + counts.scene,
     ...counts,
   };
 });

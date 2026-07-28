@@ -7,7 +7,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
-  import Storyarn.ScreenplaysFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Exports
@@ -59,7 +58,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
       assert :sheets in sections
       assert :flows in sections
       assert :scenes in sections
-      assert :screenplays in sections
       assert :localization in sections
       assert :assets in sections
     end
@@ -100,7 +98,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
       assert result["sheets"] == []
       assert result["flows"] == []
       assert result["scenes"] == []
-      assert result["screenplays"] == []
       assert result["assets"]["items"] == []
     end
 
@@ -359,29 +356,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
   end
 
   # =============================================================================
-  # Screenplays serialization
-  # =============================================================================
-
-  describe "screenplays serialization" do
-    setup [:create_project]
-
-    test "serializes screenplay with elements", %{project: project} do
-      sp = screenplay_fixture(project, %{name: "Act 1"})
-      _el = element_fixture(sp, %{type: "action", content: "The hero enters."})
-
-      result = export_and_decode(project)
-      exported = hd(result["screenplays"])
-
-      assert exported["name"] == "Act 1"
-      assert length(exported["elements"]) == 1
-
-      el = hd(exported["elements"])
-      assert el["type"] == "action"
-      assert el["content"] == "The hero enters."
-    end
-  end
-
-  # =============================================================================
   # Assets serialization
   # =============================================================================
 
@@ -523,21 +497,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
       refute Map.has_key?(result, "scenes")
     end
 
-    test "excluding screenplays omits the section", %{project: project} do
-      _sp = screenplay_fixture(project)
-
-      {:ok, opts} =
-        ExportOptions.new(%{
-          format: :storyarn,
-          include_screenplays: false,
-          validate_before_export: false
-        })
-
-      result = export_and_decode(project, opts)
-
-      refute Map.has_key?(result, "screenplays")
-    end
-
     test "project and metadata always present", %{project: project} do
       {:ok, opts} =
         ExportOptions.new(%{
@@ -545,7 +504,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
           include_sheets: false,
           include_flows: false,
           include_scenes: false,
-          include_screenplays: false,
           include_localization: false,
           validate_before_export: false
         })

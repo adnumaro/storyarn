@@ -45,7 +45,7 @@ defmodule Storyarn.Exports.Serializer do
 
   @doc "Which content sections this format supports."
   @callback supported_sections() ::
-              [:sheets | :flows | :scenes | :screenplays | :localization | :assets]
+              [:sheets | :flows | :scenes | :localization | :assets]
 
   @doc "How this format delivers localization to its runtime."
   @callback localization_mode() :: :full_state | :embedded | :external_catalog | :none

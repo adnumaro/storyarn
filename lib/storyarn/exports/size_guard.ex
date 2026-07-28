@@ -25,8 +25,6 @@ defmodule Storyarn.Exports.SizeGuard do
     scene_zones: 50_000,
     scene_connections: 50_000,
     scene_annotations: 50_000,
-    screenplays: 500,
-    screenplay_elements: 100_000,
     assets: 5_000,
     languages: 50,
     localized_texts: 100_000,

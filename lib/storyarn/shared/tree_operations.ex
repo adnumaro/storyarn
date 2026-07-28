@@ -59,7 +59,6 @@ defmodule Storyarn.Shared.TreeOperations do
     project_languages
     scene_layers
     scenes
-    screenplays
     sheets
     table_columns
     table_rows

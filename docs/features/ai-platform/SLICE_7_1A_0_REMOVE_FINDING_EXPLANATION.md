@@ -112,7 +112,7 @@ the task.
 | `Finding.decode_identity/1` UTF-8 + printable guard                                             | deterministic, in Flows                                                                                                                                                                |
 | `Shared.CanonicalJSON`                                                                          | shared utility, registered                                                                                                                                                             |
 | `OBAN_AI_QUEUE_HARDENING.md`, `SHARED_HELPER_EXTRACTIONS.md`                                    | deferred work, still owed                                                                                                                                                              |
-| `GETTEXT_EXTRACTION_DEBT.md`                                                                    | closed by ENG-32; the doc is gone and its rules live in `docs/conventions/domain-patterns.md`                                                                                           |
+| `GETTEXT_EXTRACTION_DEBT.md`                                                                    | closed by ENG-32; the doc is gone and its rules live in `docs/conventions/domain-patterns.md`                                                                                          |
 
 **Open question for implementation:** `Flows.fetch_current_structural_finding/3` and
 the identity encode/decode pair lose their only caller here, but 7.1a.1's `findings`

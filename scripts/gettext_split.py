@@ -52,11 +52,6 @@ DOMAIN_RULES = [
     ("storyarn_web/live/settings_live/workspace_members.ex", "workspaces"),
     ("storyarn_web/live/settings_live/workspace_general.ex", "workspaces"),
 
-    # screenplays
-    ("storyarn_web/live/screenplay_live/", "screenplays"),
-    ("storyarn_web/controllers/screenplay_export_controller.ex", "screenplays"),
-    ("storyarn_web/components/sidebar/screenplay_tree.ex", "screenplays"),
-
     # identity
     ("storyarn_web/live/user_live/", "identity"),
     ("storyarn_web/controllers/user_session_controller.ex", "identity"),

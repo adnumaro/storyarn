@@ -6,7 +6,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
-  import Storyarn.ScreenplaysFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Collaboration
@@ -56,9 +55,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     scene = scene_fixture(source, %{name: "World Map"})
     _pin = pin_fixture(scene, %{"label" => "Castle", "position_x" => 10.0, "position_y" => 10.0})
 
-    sp = screenplay_fixture(source, %{name: "Act 1"})
-    _el = element_fixture(sp, %{type: "action", content: "The hero enters."})
-
     # Export source project
     {:ok, json} =
       Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
@@ -70,8 +66,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       parsed: parsed,
       sheet: sheet,
       flow: flow,
-      scene: scene,
-      screenplay: sp
+      scene: scene
     })
   end
 
@@ -261,8 +256,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
         "project" => %{},
         "sheets" => sheets,
         "flows" => [],
-        "scenes" => [],
-        "screenplays" => []
+        "scenes" => []
       }
 
       assert {:error, {:entity_limits_exceeded, details}} = Imports.execute(target, storyarn_plan(data))
@@ -321,7 +315,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert preview.counts.sheets == 1
       assert preview.counts.flows == 1
       assert preview.counts.scenes == 1
-      assert preview.counts.screenplays == 1
     end
 
     test "returns node counts in preview", %{target: target, parsed: parsed} do
@@ -341,7 +334,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       sheet_fixture(target, %{name: "Hero"})
       flow_fixture(target, %{name: "Main Story"})
       scene_fixture(target, %{name: "World Map"})
-      screenplay_fixture(target, %{name: "Act 1"})
 
       # Get shortcuts from source
       {:ok, source_json} =
@@ -447,7 +439,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert result.sheets != []
       assert result.flows != []
       assert result.scenes != []
-      assert result.screenplays != []
       assert_received {:dashboard_invalidate, :all}
     end
 
@@ -613,22 +604,12 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert scene_with_data.pins != []
     end
 
-    test "preserves screenplay elements", %{target: target, parsed: parsed} do
-      {:ok, result} = Imports.execute(target, parsed)
-
-      sp = hd(result.screenplays)
-      sp_with_data = Repo.preload(sp, :elements)
-
-      assert sp_with_data.elements != []
-    end
-
     test "normalizes legacy Flow Hub colors while importing", %{target: target} do
       data =
         [
           %{
             "id" => "legacy-hub",
             "type" => "hub",
-            "source" => "manual",
             "data" => %{"hub_id" => "checkpoint", "color" => "blue"}
           }
         ]
@@ -640,33 +621,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       flow = Enum.find(result.flows, &(&1.name == "Legacy Hub Colors"))
       hub = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "hub"))
       assert hub.data["color"] == "#3b82f6"
-    end
-
-    test "normalizes legacy Hub marker colors while importing", %{target: target} do
-      data =
-        minimal_import_data()
-        |> Map.put("flows", [])
-        |> Map.put("screenplays", [
-          %{
-            "id" => "legacy-screenplay",
-            "name" => "Legacy Hub Colors",
-            "position" => 0,
-            "elements" => [
-              %{
-                "id" => "legacy-hub-marker",
-                "type" => "hub_marker",
-                "position" => 0,
-                "data" => %{"hub_node_id" => "checkpoint", "color" => "blue"}
-              }
-            ]
-          }
-        ])
-
-      assert {:ok, result} = Imports.execute(target, storyarn_plan(data))
-
-      [screenplay] = result.screenplays
-      [marker] = screenplay |> Repo.preload(:elements) |> Map.fetch!(:elements)
-      assert marker.data["color"] == "#3b82f6"
     end
 
     test "remaps localized sheet names to the imported sheet ID", %{source: source, target: target} do
@@ -853,8 +807,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       "project" => %{},
       "sheets" => [],
       "flows" => [%{"id" => "flow-1", "nodes" => nodes}],
-      "scenes" => [],
-      "screenplays" => []
+      "scenes" => []
     }
   end
 

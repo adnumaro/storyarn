@@ -155,8 +155,7 @@
       "activity_types": {
         "sheet": "Sheet",
         "flow": "Flow",
-        "scene": "Scene",
-        "screenplay": "Screenplay"
+        "scene": "Scene"
       },
       "node_distribution": "Node Distribution",
       "no_nodes": "No flow nodes yet",

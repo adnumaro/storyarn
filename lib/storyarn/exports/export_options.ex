@@ -14,7 +14,6 @@ defmodule Storyarn.Exports.ExportOptions do
           include_sheets: boolean(),
           include_flows: boolean(),
           include_scenes: boolean(),
-          include_screenplays: boolean(),
           include_localization: boolean(),
           localization_policy: :release | :preview,
           include_assets: :references | :embedded | :bundled,
@@ -32,7 +31,6 @@ defmodule Storyarn.Exports.ExportOptions do
             include_sheets: true,
             include_flows: true,
             include_scenes: true,
-            include_screenplays: true,
             include_localization: true,
             localization_policy: :release,
             include_assets: :references,
@@ -73,7 +71,6 @@ defmodule Storyarn.Exports.ExportOptions do
         include_sheets: get_bool(attrs, :include_sheets, true),
         include_flows: get_bool(attrs, :include_flows, true),
         include_scenes: get_bool(attrs, :include_scenes, true),
-        include_screenplays: get_bool(attrs, :include_screenplays, true),
         include_localization: get_bool(attrs, :include_localization, true),
         localization_policy: to_atom(attrs[:localization_policy] || attrs["localization_policy"] || :release),
         include_assets: to_atom(attrs[:include_assets] || attrs["include_assets"] || :references),
@@ -102,7 +99,6 @@ defmodule Storyarn.Exports.ExportOptions do
       :sheets -> opts.include_sheets
       :flows -> opts.include_flows
       :scenes -> opts.include_scenes
-      :screenplays -> opts.include_screenplays
       :localization -> opts.include_localization
       :assets -> opts.include_assets != false
       _ -> false

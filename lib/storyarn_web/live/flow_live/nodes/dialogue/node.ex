@@ -8,7 +8,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   Also contains all dialogue-specific event handlers:
   - Response CRUD (add, remove, update text/condition/instruction)
   - Technical ID generation
-  - Open screenplay mode
+  - Open the dialogue editor panel
   """
 
   use Gettext, backend: Storyarn.Gettext

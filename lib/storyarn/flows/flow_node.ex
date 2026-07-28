@@ -42,7 +42,6 @@ defmodule Storyarn.Flows.FlowNode do
   alias Storyarn.Shared.TimeHelpers
 
   @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow sequence)
-  @valid_sources ~w(manual screenplay_sync)
 
   @type node_type ::
           :annotation
@@ -61,7 +60,6 @@ defmodule Storyarn.Flows.FlowNode do
           position_x: float(),
           position_y: float(),
           data: map(),
-          source: String.t(),
           derivatives_fingerprint: String.t() | nil,
           deleted_at: DateTime.t() | nil,
           flow_id: integer() | nil,
@@ -84,7 +82,6 @@ defmodule Storyarn.Flows.FlowNode do
     field :position_y, :float, default: 0.0
     field :data, :map, default: %{}
     field :word_count, :integer, default: 0
-    field :source, :string, default: "manual"
     field :derivatives_fingerprint, :string
     field :deleted_at, :utc_datetime
 
@@ -112,10 +109,9 @@ defmodule Storyarn.Flows.FlowNode do
     attrs = normalize_node_data(attrs, nil, :create)
 
     node
-    |> cast(attrs, [:type, :position_x, :position_y, :data, :source, :parent_id])
+    |> cast(attrs, [:type, :position_x, :position_y, :data, :parent_id])
     |> validate_required([:type])
     |> validate_inclusion(:type, @node_types)
-    |> validate_inclusion(:source, @valid_sources)
     |> validate_dialogue_runtime_ids()
     |> dialogue_localization_id_constraint()
     |> foreign_key_constraint(:flow_id)
@@ -127,10 +123,9 @@ defmodule Storyarn.Flows.FlowNode do
     attrs = normalize_legacy_node_data(attrs, node, :materialize)
 
     node
-    |> cast(attrs, [:type, :position_x, :position_y, :data, :word_count, :source, :parent_id])
+    |> cast(attrs, [:type, :position_x, :position_y, :data, :word_count, :parent_id])
     |> validate_required([:type])
     |> validate_inclusion(:type, @node_types)
-    |> validate_inclusion(:source, @valid_sources)
     |> validate_dialogue_runtime_ids()
     |> dialogue_localization_id_constraint()
     |> foreign_key_constraint(:flow_id)

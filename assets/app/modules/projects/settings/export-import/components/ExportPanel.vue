@@ -19,7 +19,6 @@ import {
   MessageSquareText,
   Network,
   Package,
-  ScrollText,
   ShieldCheck,
   Table2,
 } from "lucide-vue-next";
@@ -96,12 +95,6 @@ const sectionOptions = computed(() => [
     label: t("project_settings.export.sections.scenes"),
     description: t("project_settings.export.section_descriptions.scenes"),
     icon: Map,
-  },
-  {
-    key: "screenplays",
-    label: t("project_settings.export.sections.screenplays"),
-    description: t("project_settings.export.section_descriptions.screenplays"),
-    icon: ScrollText,
   },
   {
     key: "localization",

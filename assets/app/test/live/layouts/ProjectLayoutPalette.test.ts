@@ -22,7 +22,6 @@ function mountLayout(canManageProject: boolean) {
         projectName: "Veilbreak",
         workspaceName: "Acme",
         showToolSwitcher: true,
-        isSuperAdmin: false,
         canManageProject,
       },
       currentUser: { id: 1, email: "user@example.com", displayName: "User" },

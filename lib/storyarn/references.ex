@@ -15,8 +15,6 @@ defmodule Storyarn.References do
   defdelegate flow_node_entity_references_current?(node), to: EntityTracker
   defdelegate flow_node_entity_references_current_ids(nodes), to: EntityTracker
   defdelegate delete_flow_node_entity_references(node_id), to: EntityTracker
-  defdelegate update_screenplay_element_references(element), to: EntityTracker
-  defdelegate delete_screenplay_element_references(element_id), to: EntityTracker
   defdelegate update_scene_pin_entity_references(pin, opts \\ []), to: EntityTracker
   defdelegate delete_scene_pin_entity_references(pin_id), to: EntityTracker
   defdelegate update_scene_zone_entity_references(zone, opts \\ []), to: EntityTracker

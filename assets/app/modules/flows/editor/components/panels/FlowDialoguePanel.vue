@@ -2,9 +2,9 @@
 /**
  * Side panel for editing a dialogue flow_node.
  *
- * Vue port of V1's `lib/storyarn_web/live/flow_live/components/screenplay_editor.ex`
- * LiveComponent (V1 also misnamed it — this panel has nothing to do with the
- * Storyarn.Screenplays domain; it edits a `type="dialogue"` flow_node).
+ * Edits a `type="dialogue"` flow_node. The "screenplay" naming that survives
+ * in `.sp-*` classes and `screenplay.css` refers to screenplay TYPOGRAPHY
+ * (see docs/SCREENPLAY_FORMAT_CONVENTIONS.md), not to any document entity.
  *
  * Thin shell — header (title + close) + footer (status bar) + body. The
  * tabs / TipTap editor / save handlers live in `FlowDialogueEditorBody.vue`,

@@ -2,8 +2,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
   @moduledoc """
   Handles info messages related to the editor state.
 
-  Responsible for: reset_save_status, node_updated (from ScreenplayEditor),
-  close_preview, and mention_suggestions (from ScreenplayEditor).
+  Responsible for: reset_save_status, node_updated (from the dialogue editor),
+  close_preview, and mention_suggestions (from the dialogue editor).
   Returns `{:noreply, socket}`.
   """
 
@@ -41,7 +41,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
   @spec handle_node_updated(Storyarn.Flows.FlowNode.t(), Socket.t()) ::
           {:noreply, Socket.t()}
   def handle_node_updated(updated_node, socket) do
-    # The ScreenplayEditor already wrote to DB, so just reload state and push canvas data
+    # The dialogue editor already wrote to DB, so just reload state and push canvas data
     form = FormHelpers.node_data_to_form(updated_node)
 
     {:noreply,
