@@ -31,6 +31,8 @@ function mountDashboard() {
         node_count: 0,
         dialogue_count: 0,
         word_count: 0,
+        node_dist: [],
+        speakers: [],
       },
       tableData: [
         {
@@ -344,5 +346,90 @@ describe("FlowDashboard issues", () => {
       undefined,
     );
     expect(live.pushEvent).toHaveBeenCalledWith("page_flow_issues", { page: 2 }, undefined);
+  });
+});
+
+// Moved here from the project overview: both answer questions about flows, so
+// they belong next to the flow table. They ride inside `stats` because the
+// component is at the linter's 10-prop ceiling.
+describe("FlowDashboard content breakdown", () => {
+  function mountWithBreakdown() {
+    return mount(FlowDashboard, {
+      props: {
+        stats: {
+          flow_count: 1,
+          node_count: 10,
+          dialogue_count: 6,
+          word_count: 0,
+          node_dist: [
+            { type: "dialogue", count: 6, percentage: 60 },
+            { type: "condition", count: 4, percentage: 40 },
+          ],
+          speakers: [
+            { sheet_id: 1, name: "Jaime", count: 4, href: "/workspaces/ws/projects/s/sheets/1" },
+            { sheet_id: 9, name: null, count: 2, href: null },
+          ],
+        },
+        tableData: [],
+        pagination: { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 1 },
+        issues: [],
+        overviewStatus: "ready",
+        issuesStatus: "ready",
+        canEdit: false,
+      },
+      global: { provide: { _live_vue: createMockLive() } },
+    });
+  }
+
+  // The server sends the raw node type; the label comes from the same
+  // `flows.node_types.*` catalog the canvas palette uses.
+  it("resolves node type labels from the shared catalog", () => {
+    const panel = mountWithBreakdown().find('[data-testid="flow-node-distribution"]');
+
+    expect(panel.text()).toContain("Dialogue");
+    expect(panel.text()).toContain("60%");
+    expect(panel.text()).not.toContain("flows.node_types");
+  });
+
+  it("links a speaker to its sheet and leaves a deleted one unlinked", () => {
+    const panel = mountWithBreakdown().find('[data-testid="flow-top-speakers"]');
+
+    const link = panel.find("a");
+    expect(link.attributes("href")).toBe("/workspaces/ws/projects/s/sheets/1");
+    expect(link.text()).toBe("Jaime");
+
+    // The deleted speaker keeps its 2 lines but gets no link to a 404.
+    expect(panel.findAll("a")).toHaveLength(1);
+    expect(panel.text()).toContain("Unknown speaker");
+    expect(panel.text()).toContain("2");
+  });
+
+  it("shows empty states when a project has no nodes or speakers", () => {
+    const wrapper = mount(FlowDashboard, {
+      props: {
+        stats: {
+          flow_count: 0,
+          node_count: 0,
+          dialogue_count: 0,
+          word_count: 0,
+          node_dist: [],
+          speakers: [],
+        },
+        tableData: [],
+        pagination: { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 1 },
+        issues: [],
+        overviewStatus: "ready",
+        issuesStatus: "ready",
+        canEdit: false,
+      },
+      global: { provide: { _live_vue: createMockLive() } },
+    });
+
+    expect(wrapper.find('[data-testid="flow-node-distribution"]').text()).toContain(
+      "No flow nodes yet",
+    );
+    expect(wrapper.find('[data-testid="flow-top-speakers"]').text()).toContain(
+      "No dialogue with speakers yet",
+    );
   });
 });

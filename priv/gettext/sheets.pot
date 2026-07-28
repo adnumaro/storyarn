@@ -42,7 +42,7 @@ msgstr ""
 msgid "Could not delete block."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/index.ex:381
+#: lib/storyarn_web/live/sheet_live/index.ex:380
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:167
 #, elixir-autogen, elixir-format
 msgid "Could not delete sheet."
@@ -105,7 +105,7 @@ msgstr ""
 msgid "Renamed sheet"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:382
+#: lib/storyarn_web/live/sheet_live/show.ex:381
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr ""
@@ -212,7 +212,7 @@ msgstr ""
 msgid "Could not duplicate block."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/index.ex:380
+#: lib/storyarn_web/live/sheet_live/index.ex:379
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:166
 #, elixir-autogen, elixir-format
 msgid "Sheet moved to trash."
@@ -295,22 +295,10 @@ msgstr ""
 msgid "Invalid layout."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:898
+#: lib/storyarn_web/live/sheet_live/show.ex:897
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr ""
-
-#: lib/storyarn_web/live/project_live/show.ex:208
-#, elixir-autogen, elixir-format
-msgid "Unknown Speaker"
-msgstr ""
-
-#: lib/storyarn/projects/dashboard.ex:334
-#, elixir-autogen, elixir-format
-msgid "%{count} sheet has no blocks defined"
-msgid_plural "%{count} sheets have no blocks defined"
-msgstr[0] ""
-msgstr[1] ""
 
 #: lib/storyarn/versioning/builders/sheet_builder.ex:3242
 #, elixir-autogen, elixir-format
@@ -338,7 +326,7 @@ msgid "Hidden inherited block"
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/helpers/health_helpers.ex:159
-#: lib/storyarn_web/live/sheet_live/index.ex:492
+#: lib/storyarn_web/live/sheet_live/index.ex:491
 #, elixir-autogen, elixir-format
 msgid "Sheet"
 msgstr ""

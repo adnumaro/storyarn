@@ -136,86 +136,87 @@ defmodule Storyarn.Projects.DashboardTest do
     end
   end
 
-  describe "count_all_nodes_by_type/1" do
-    test "returns node type distribution", %{project: project} do
-      flow = flow_fixture(project)
-      node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hi"}})
-      node_fixture(flow, %{type: "dialogue", data: %{"text" => "Bye"}})
-      node_fixture(flow, %{type: "condition", data: %{}})
+  describe "tool_health_summary/1" do
+    test "counts each severity per tool and excludes info from actionable" do
+      summary =
+        Dashboard.tool_health_summary(%{
+          flows: [
+            %{severity: :error, code: :missing_entry},
+            %{severity: :warning, code: :isolated_node},
+            %{severity: :warning, code: :isolated_node},
+            %{severity: :info, code: :empty_flow}
+          ],
+          sheets: [%{severity: :info, code: :empty_leaf_sheet}],
+          scenes: []
+        })
 
-      dist = Dashboard.count_all_nodes_by_type(project.id)
+      assert summary.flows == %{error: 1, warning: 2, info: 1, actionable: 3}
 
-      # flow_fixture creates entry + exit nodes automatically
-      assert dist["dialogue"] == 2
-      assert dist["condition"] == 1
-      assert dist["entry"] == 1
-      assert dist["exit"] == 1
+      # Info-only reads as up to date: `actionable` is what the card reports.
+      assert summary.sheets == %{error: 0, warning: 0, info: 1, actionable: 0}
+      assert summary.scenes == %{error: 0, warning: 0, info: 0, actionable: 0}
     end
 
-    test "returns empty map for project with no flows", %{project: project} do
-      assert Dashboard.count_all_nodes_by_type(project.id) == %{}
-    end
-  end
+    test "always returns every tool, even when a domain has no findings" do
+      summary = Dashboard.tool_health_summary(%{flows: [], sheets: [], scenes: []})
 
-  describe "count_dialogue_lines_by_speaker/1" do
-    test "returns speakers ranked by line count", %{project: project} do
-      speaker = sheet_fixture(project, %{name: "Jaime"})
-      flow = flow_fixture(project)
-
-      node_fixture(flow, %{
-        type: "dialogue",
-        data: %{"text" => "Line 1", "speaker_sheet_id" => speaker.id}
-      })
-
-      node_fixture(flow, %{
-        type: "dialogue",
-        data: %{"text" => "Line 2", "speaker_sheet_id" => speaker.id}
-      })
-
-      result = Dashboard.count_dialogue_lines_by_speaker(project.id)
-
-      assert [%{sheet_name: "Jaime", line_count: 2}] = result
+      assert summary |> Map.keys() |> Enum.sort() == [:flows, :scenes, :sheets]
     end
 
-    test "returns empty list when no speakers assigned", %{project: project} do
-      flow = flow_fixture(project)
-      node_fixture(flow, %{type: "dialogue", data: %{"text" => "No speaker"}})
-
-      assert Dashboard.count_dialogue_lines_by_speaker(project.id) == []
+    test "raises when a tool is missing rather than silently reporting it clean" do
+      assert_raise KeyError, fn ->
+        Dashboard.tool_health_summary(%{flows: [], sheets: []})
+      end
     end
   end
 
-  describe "detect_issues/1" do
-    test "detects flows without entry node", %{project: project} do
+  describe "real findings from the three checkers" do
+    test "a flow with no entry node surfaces as an actionable flow error", %{project: project} do
       flow = flow_fixture(project)
-      # flow_fixture creates entry + exit. Delete the entry node.
       entry = Repo.get_by(Storyarn.Flows.FlowNode, flow_id: flow.id, type: "entry")
       Repo.delete!(entry)
 
-      issues =
-        Dashboard.detect_issues(project.id,
-          workspace_slug: project.workspace.slug,
-          project_slug: project.slug
-        )
+      summary =
+        Dashboard.tool_health_summary(%{
+          flows: Storyarn.Flows.list_dashboard_health_findings(project.id),
+          sheets: Storyarn.Sheets.list_dashboard_health_findings(project.id),
+          scenes: Storyarn.Scenes.list_dashboard_health_findings(project.id)
+        })
 
-      entry_issues = Enum.filter(issues, &(&1.severity == :error))
-      refute Enum.empty?(entry_issues)
-      assert Enum.any?(entry_issues, &String.contains?(&1.message, "no entry node"))
+      assert summary.flows.error > 0
+      assert summary.flows.actionable > 0
     end
 
-    test "returns empty list for healthy project", %{project: project} do
-      _flow = flow_fixture(project)
-      _sheet = sheet_fixture(project)
+    test "an empty leaf sheet is info, so sheets still read as up to date", %{project: project} do
+      sheet_fixture(project)
 
-      issues =
-        Dashboard.detect_issues(project.id,
-          workspace_slug: project.workspace.slug,
-          project_slug: project.slug
-        )
+      summary =
+        Dashboard.tool_health_summary(%{
+          flows: Storyarn.Flows.list_dashboard_health_findings(project.id),
+          sheets: Storyarn.Sheets.list_dashboard_health_findings(project.id),
+          scenes: Storyarn.Scenes.list_dashboard_health_findings(project.id)
+        })
 
-      # Might have info-level issues (empty sheets), but no errors
-      error_issues = Enum.filter(issues, &(&1.severity == :error))
-      assert Enum.empty?(error_issues)
+      assert summary.sheets.info > 0
+      assert summary.sheets.actionable == 0
+    end
+  end
+
+  describe "recent_activity/2 covers exactly the project's tools" do
+    # This UNION used to include `screenplays`. That took the WHOLE overview down
+    # with an `undefined_table` the moment the tool's table was dropped in #59 —
+    # stats and activity both. The tool is gone now, so the specific crash cannot
+    # recur, but the shape that caused it can: the overview must union only the
+    # tools the project navigation actually exposes.
+    test "returns sheets, flows and scenes, and no other type", %{project: project} do
+      sheet_fixture(project, %{name: "A Sheet"})
+      flow_fixture(project, %{name: "A Flow"})
+
+      types = project.id |> Dashboard.recent_activity() |> Enum.map(& &1.type) |> Enum.uniq()
+
+      assert "sheet" in types
+      assert "flow" in types
+      assert Enum.sort(types) -- ["flow", "scene", "sheet"] == []
     end
   end
 

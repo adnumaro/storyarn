@@ -38,11 +38,29 @@ import {
   type DashboardTablePagination,
 } from "@components/dashboard/types";
 
+interface NodeDistItem {
+  type: string;
+  count: number;
+  percentage: number;
+}
+
+interface Speaker {
+  sheet_id: number | null;
+  name: string | null;
+  count: number;
+  href: string | null;
+}
+
+// The node histogram and the speaker ranking ride inside `stats` rather than as
+// two more props: they ARE flow overview statistics, and the component is at the
+// 10-prop ceiling the linter enforces.
 interface FlowStats {
   flow_count: number;
   node_count: number;
   dialogue_count: number;
   word_count: number;
+  node_dist: NodeDistItem[];
+  speakers: Speaker[];
 }
 
 interface FlowTableRow {
@@ -216,6 +234,21 @@ const statCards = computed<StatCard[]>(() => {
   ];
 });
 
+const nodeDist = computed<NodeDistItem[]>(() => stats?.node_dist ?? []);
+const speakers = computed<Speaker[]>(() => stats?.speakers ?? []);
+
+// The server sends the raw node type, so the histogram resolves the SAME
+// `flows.node_types.*` catalog the canvas palette uses instead of carrying its
+// own copy of every label.
+function nodeTypeLabel(type: string): string {
+  return t(`flows.node_types.${type}`);
+}
+
+// A speaker whose sheet was deleted keeps its dialogue lines but loses its name.
+function speakerLabel(speaker: Speaker): string {
+  return speaker.name ?? t("flows.dashboard.unknown_speaker");
+}
+
 const columns = computed<DashboardTableColumn[]>(() => [
   { key: "name", label: t("flows.dashboard.columns.name"), align: "left" },
   { key: "node_count", label: t("flows.dashboard.columns.nodes"), align: "right" },
@@ -270,6 +303,63 @@ const columns = computed<DashboardTableColumn[]>(() => [
           {{ stat.label }}
         </div>
         <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
+      </div>
+    </div>
+
+    <!-- Content breakdown -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div
+        data-testid="flow-node-distribution"
+        class="rounded-lg border border-border bg-surface p-4 space-y-3"
+      >
+        <h2 class="text-sm font-medium">{{ $t("flows.dashboard.node_distribution") }}</h2>
+        <div v-if="nodeDist.length === 0" class="text-sm text-muted-foreground/50 py-2 text-center">
+          {{ $t("flows.dashboard.no_nodes") }}
+        </div>
+        <div v-else class="space-y-1.5">
+          <div
+            v-for="item in nodeDist"
+            :key="item.type"
+            class="flex items-center justify-between text-sm"
+          >
+            <span class="text-muted-foreground">{{ nodeTypeLabel(item.type) }}</span>
+            <div class="flex items-center gap-2">
+              <span class="tabular-nums font-medium">{{ item.count }}</span>
+              <span class="text-xs text-muted-foreground/60 tabular-nums w-10 text-right">
+                {{ item.percentage }}%
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        data-testid="flow-top-speakers"
+        class="rounded-lg border border-border bg-surface p-4 space-y-3"
+      >
+        <h2 class="text-sm font-medium">{{ $t("flows.dashboard.top_speakers") }}</h2>
+        <div v-if="speakers.length === 0" class="text-sm text-muted-foreground/50 py-2 text-center">
+          {{ $t("flows.dashboard.no_speakers") }}
+        </div>
+        <div v-else class="space-y-1.5">
+          <div
+            v-for="speaker in speakers"
+            :key="speaker.sheet_id ?? speakerLabel(speaker)"
+            class="flex items-center justify-between text-sm"
+          >
+            <a
+              v-if="speaker.href"
+              :href="speaker.href"
+              data-phx-link="redirect"
+              data-phx-link-state="push"
+              class="text-muted-foreground hover:text-foreground hover:underline transition-colors"
+            >
+              {{ speakerLabel(speaker) }}
+            </a>
+            <span v-else class="text-muted-foreground">{{ speakerLabel(speaker) }}</span>
+            <span class="tabular-nums font-medium">{{ speaker.count }}</span>
+          </div>
+        </div>
       </div>
     </div>
 

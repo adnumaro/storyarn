@@ -6,12 +6,20 @@ defmodule StoryarnWeb.ProjectLive.Show do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Live.Shared.DashboardHandlers
 
+  import StoryarnWeb.Live.Shared.DashboardHelpers,
+    only: [fail_overview_load: 1, fail_issues_load: 1]
+
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
-  alias Storyarn.Localization
+  alias Storyarn.Flows
   alias Storyarn.Projects
+  alias Storyarn.Scenes
+  alias Storyarn.Sheets
+  alias StoryarnWeb.Live.Shared.DashboardHandlers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.Live.Shared.RestorationHandlers
+
+  require Logger
 
   @impl true
   def render(assigns) do
@@ -45,15 +53,13 @@ defmodule StoryarnWeb.ProjectLive.Show do
         id="project-dashboard"
         class="contents"
         stats={@stats}
-        node-dist={@node_dist || []}
-        speakers={@speakers || []}
-        issues={@issues || []}
-        localization={@localization}
         activity={@activity}
+        tool-health={@tool_health}
+        overview-status={to_string(@overview_status)}
+        issues-status={to_string(@issues_status)}
         can-edit={@can_manage}
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
-        loading={is_nil(@stats)}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
     """
@@ -71,16 +77,20 @@ defmodule StoryarnWeb.ProjectLive.Show do
       |> assign(:can_manage, can_manage)
       |> assign(:restoration_banner, restoration_banner)
       |> assign(:stats, nil)
-      |> assign(:node_dist, nil)
-      |> assign(:speakers, nil)
-      |> assign(:issues, nil)
-      |> assign(:localization, [])
       |> assign(:activity, [])
+      |> assign(:tool_health, nil)
+      |> assign(:overview_status, :loading)
+      |> assign(:dashboard_overview_running?, false)
+      |> assign(:dashboard_overview_reload_pending?, false)
+      |> assign(:issues_status, :loading)
+      |> assign(:dashboard_issues_running?, false)
+      |> assign(:dashboard_issues_reload_pending?, false)
       |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Storyarn.PubSub, ProjectChromeHelpers.shell_topic(project.id))
       Collaboration.subscribe_dashboard(project.id)
+      DashboardCache.subscribe_resets()
       Collaboration.subscribe_restoration(project.id)
       send(self(), :load_dashboard_data)
     end
@@ -118,115 +128,140 @@ defmodule StoryarnWeb.ProjectLive.Show do
   def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
 
   def handle_info(:load_dashboard_data, socket) do
-    project = socket.assigns.project
-    project_id = project.id
-    ws = socket.assigns.workspace.slug
-    ps = project.slug
+    {:noreply, socket |> start_dashboard_overview() |> start_dashboard_issues()}
+  end
 
-    # Run independent queries in parallel with caching
-    tasks = [
-      Task.async(fn ->
-        DashboardCache.fetch(project_id, :project_stats, fn ->
-          Projects.project_stats(project_id)
-        end)
-      end),
-      Task.async(fn ->
-        {DashboardCache.fetch(project_id, :node_dist, fn ->
-           Projects.count_all_nodes_by_type(project_id)
-         end),
-         DashboardCache.fetch(project_id, :speakers, fn ->
-           Projects.count_dialogue_lines_by_speaker(project_id)
-         end)}
-      end),
-      Task.async(fn ->
-        DashboardCache.fetch(project_id, :project_issues, fn ->
-          Projects.detect_issues(project_id, workspace_slug: ws, project_slug: ps)
-        end)
-      end),
-      Task.async(fn ->
-        DashboardCache.fetch(project_id, :recent_activity, fn ->
-          Projects.recent_activity(project_id)
-        end)
-      end),
-      Task.async(fn ->
-        DashboardCache.fetch(project_id, :localization_progress, fn ->
-          case Localization.list_languages(project_id) do
-            [] -> []
-            _languages -> Localization.progress_by_language(project_id)
-          end
-        end)
-      end)
-    ]
+  def handle_info(:load_dashboard_overview, socket), do: {:noreply, start_dashboard_overview(socket)}
+  def handle_info(:load_dashboard_issues, socket), do: {:noreply, start_dashboard_issues(socket)}
 
-    [stats, {node_dist, speakers}, issues, activity, localization] =
-      Task.await_many(tasks, 15_000)
+  # ===========================================================================
+  # Dashboard loading (async)
+  # ===========================================================================
+
+  @impl true
+  def handle_async(:load_dashboard_overview, {:ok, data}, socket) do
+    {:noreply,
+     socket
+     |> assign(:stats, data.stats)
+     |> assign(:activity, data.activity)
+     |> assign(:overview_status, :ready)
+     |> DashboardHandlers.finish_load(:overview, &start_dashboard_overview/1)}
+  end
+
+  def handle_async(:load_dashboard_issues, {:ok, tool_health}, socket) do
+    {:noreply,
+     socket
+     |> assign(:tool_health, tool_health)
+     |> assign(:issues_status, :ready)
+     |> DashboardHandlers.finish_load(:issues, &start_dashboard_issues/1)}
+  end
+
+  def handle_async(:load_dashboard_overview, {:exit, reason}, socket) do
+    Logger.error("Project dashboard overview load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
 
     {:noreply,
      socket
-     |> assign(:stats, stats)
-     |> assign(:node_dist, format_node_distribution(node_dist))
-     |> assign(:speakers, format_speakers(speakers, ws, ps))
-     |> assign(:issues, format_issues(issues))
-     |> assign(:localization, localization)
-     |> assign(:activity, format_activity(activity))}
+     |> assign(:overview_status, fail_overview_load(socket.assigns.overview_status))
+     |> DashboardHandlers.finish_failed_load(:overview)}
+  end
+
+  def handle_async(:load_dashboard_issues, {:exit, reason}, socket) do
+    Logger.error("Project dashboard health load failed for project #{socket.assigns.project.id}: #{inspect(reason)}")
+
+    {:noreply,
+     socket
+     |> assign(:issues_status, fail_issues_load(socket.assigns.issues_status))
+     |> DashboardHandlers.finish_failed_load(:issues)}
+  end
+
+  # ===========================================================================
+  # Events
+  # ===========================================================================
+
+  @impl true
+  def handle_event("retry_dashboard_overview", _params, %{assigns: %{overview_status: status}} = socket)
+      when status in [:error, :stale] do
+    {:noreply, DashboardHandlers.retry_load(socket, :overview, &start_dashboard_overview/1)}
+  end
+
+  def handle_event("retry_dashboard_overview", _params, socket), do: {:noreply, socket}
+
+  def handle_event("retry_dashboard_issues", _params, %{assigns: %{issues_status: status}} = socket)
+      when status in [:error, :stale] do
+    {:noreply, DashboardHandlers.retry_load(socket, :issues, &start_dashboard_issues/1)}
+  end
+
+  def handle_event("retry_dashboard_issues", _params, socket), do: {:noreply, socket}
+
+  def handle_event(event, _params, socket) do
+    Logger.warning("[project dashboard] ignored unknown event #{inspect(event)}")
+    {:noreply, socket}
+  end
+
+  # ===========================================================================
+  # Async loaders
+  # ===========================================================================
+
+  # The two loads are independent on purpose. The health sweeps are by far the
+  # most expensive thing this page does; keeping them off the overview means the
+  # stats and activity render immediately instead of waiting on all three
+  # checkers, and a health failure degrades one card row instead of the page.
+  defp start_dashboard_overview(socket) do
+    project_id = socket.assigns.project.id
+
+    DashboardHandlers.start_load(socket, :overview, fn ->
+      %{
+        stats:
+          DashboardCache.fetch(project_id, :project_stats, fn ->
+            Projects.project_stats(project_id)
+          end),
+        activity:
+          project_id
+          |> DashboardCache.fetch(:recent_activity, fn -> Projects.recent_activity(project_id) end)
+          |> format_activity()
+      }
+    end)
+  end
+
+  # Deliberately the SAME cache keys the three tool dashboards use, so the
+  # overview warms the entries they read and vice versa instead of paying for
+  # the most expensive sweeps in the product a second time under private keys.
+  # `:sheet_refs` has to be resolved first: the sheets checker needs the
+  # project-wide reference set to judge which variables are unused, and getting
+  # that wrong under-reports silently rather than crashing.
+  #
+  # No `Gettext.put_locale` here, unlike the tool dashboards: the result is
+  # counts, so there is nothing to translate and nothing that could leak one
+  # reader's locale to the next through the shared cache.
+  defp start_dashboard_issues(socket) do
+    project_id = socket.assigns.project.id
+
+    DashboardHandlers.start_load(socket, :issues, fn ->
+      referenced_ids =
+        DashboardCache.fetch(project_id, :sheet_refs, fn ->
+          Sheets.referenced_block_ids_for_project(project_id)
+        end)
+
+      Projects.tool_health_summary(%{
+        flows:
+          DashboardCache.fetch(project_id, :flow_issues, fn ->
+            Flows.list_dashboard_health_findings(project_id)
+          end),
+        sheets:
+          DashboardCache.fetch(project_id, :sheet_issues, fn ->
+            Sheets.list_dashboard_health_findings(project_id, referenced_ids)
+          end),
+        scenes:
+          DashboardCache.fetch(project_id, :scene_health, fn ->
+            Scenes.list_dashboard_health_findings(project_id)
+          end)
+      })
+    end)
   end
 
   # ===========================================================================
   # Formatters (serialize for Vue)
   # ===========================================================================
-
-  defp format_node_distribution(node_dist) when is_map(node_dist) do
-    total = node_dist |> Map.values() |> Enum.sum() |> max(1)
-
-    node_dist
-    |> Enum.map(fn {type, count} ->
-      %{
-        label: node_type_label(type),
-        count: count,
-        percentage: round(count / total * 100)
-      }
-    end)
-    |> Enum.sort_by(& &1.count, :desc)
-  end
-
-  defp format_node_distribution(_), do: []
-
-  defp node_type_label("dialogue"), do: dgettext("flows", "Dialogue")
-  defp node_type_label("condition"), do: dgettext("flows", "Condition")
-  defp node_type_label("instruction"), do: dgettext("flows", "Instruction")
-  defp node_type_label("hub"), do: dgettext("flows", "Hub")
-  defp node_type_label("jump"), do: dgettext("flows", "Jump")
-  defp node_type_label("subflow"), do: dgettext("flows", "Subflow")
-  defp node_type_label("entry"), do: dgettext("flows", "Entry")
-  defp node_type_label("exit"), do: dgettext("flows", "Exit")
-  defp node_type_label(type), do: type
-
-  defp format_speakers(speakers, workspace_slug, project_slug) when is_list(speakers) do
-    Enum.map(speakers, fn s ->
-      %{
-        name: s.sheet_name || dgettext("sheets", "Unknown Speaker"),
-        count: s.line_count,
-        href:
-          if(s.sheet_id,
-            do: "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets/#{s.sheet_id}"
-          )
-      }
-    end)
-  end
-
-  defp format_speakers(_, _, _), do: []
-
-  defp format_issues(issues) when is_list(issues) do
-    Enum.map(issues, fn issue ->
-      %{
-        severity: to_string(issue.severity),
-        message: issue.message,
-        href: issue.href
-      }
-    end)
-  end
-
-  defp format_issues(_), do: []
 
   defp format_activity(activity) when is_list(activity) do
     Enum.map(activity, fn item ->
