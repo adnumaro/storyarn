@@ -17,25 +17,6 @@ defmodule Storyarn.Sheets.FormulaResolver do
   alias Storyarn.Sheets
 
   @doc """
-  Compute formula results for ALL formula columns in a table, for ALL rows.
-
-  Each formula cell stores its own expression+bindings in `row.cells[col.slug]`.
-  Returns `%{row_id => %{column_slug => result}}` where result is `number | nil`.
-  Returns an empty map if there are no formula columns.
-  """
-  @spec compute_all(list(), list(), integer()) :: map()
-  def compute_all(columns, rows, project_id) do
-    formula_cols = Enum.filter(columns, &(&1.type == "formula"))
-
-    if formula_cols == [] do
-      %{}
-    else
-      cross_values = resolve_cross_values(formula_cols, rows, project_id)
-      compute_all_rows(formula_cols, rows, columns, cross_values)
-    end
-  end
-
-  @doc """
   Injects `__result` and `__resolved` into every formula cell of a batch of table
   data, as returned by `Sheets.batch_load_table_data/1`.
 
@@ -95,13 +76,6 @@ defmodule Storyarn.Sheets.FormulaResolver do
 
   defp enrich_cell(_current, %{result: result, resolved: resolved}) do
     %{"__result" => result, "__resolved" => resolved}
-  end
-
-  defp resolve_cross_values(formula_cols, rows, project_id) do
-    formula_slugs = MapSet.new(formula_cols, & &1.slug)
-    cross_refs = collect_cross_sheet_refs(formula_slugs, rows)
-
-    if cross_refs == [], do: %{}, else: Sheets.resolve_variable_values(project_id, cross_refs)
   end
 
   defp compute_all_rows(formula_cols, rows, columns, cross_values) do

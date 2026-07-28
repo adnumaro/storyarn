@@ -55,23 +55,24 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
     }
   end
 
-  describe "compute_all/3" do
+  describe "enrich_table_data/2" do
     test "computes same-row formula for all rows", ctx do
-      result = FormulaResolver.compute_all(ctx.columns, ctx.rows, ctx.project.id)
+      enriched = enrich(ctx, ctx.columns, ctx.rows)
 
       # a - 3 where a = 5 → 2.0
-      assert result |> Map.get(ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
-               2.0
+      assert formula_cell(enriched, ctx, ctx.row1.id)["__result"] == 2.0
 
       # a - 3 where a = 7 → 4.0
-      assert result |> Map.get(ctx.row2.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
-               4.0
+      assert formula_cell(enriched, ctx, ctx.row2.id)["__result"] == 4.0
     end
 
-    test "returns empty map when no formula columns", ctx do
+    test "leaves the rows untouched when there are no formula columns", ctx do
       non_formula_cols = Enum.filter(ctx.columns, &(&1.type != "formula"))
-      result = FormulaResolver.compute_all(non_formula_cols, ctx.rows, ctx.project.id)
-      assert result == %{}
+
+      enriched = enrich(ctx, non_formula_cols, ctx.rows)
+
+      assert enriched[ctx.block.id].rows == ctx.rows
+      refute Map.has_key?(formula_cell(enriched, ctx, ctx.row1.id), "__result")
     end
 
     test "nil cell value defaults to 0", ctx do
@@ -87,10 +88,10 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
       {:ok, _} = Sheets.update_table_cell(row3, ctx.formula_col.slug, formula_value)
       rows = Sheets.list_table_rows(ctx.block.id)
 
-      result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
+      enriched = enrich(ctx, ctx.columns, rows)
+
       # a - 3 where a = 0 (nil default) → -3.0
-      assert result |> Map.get(row3.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
-               -3.0
+      assert formula_cell(enriched, ctx, row3.id)["__result"] == -3.0
     end
 
     test "invalid expression returns nil", ctx do
@@ -102,10 +103,9 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
         })
 
       rows = Sheets.list_table_rows(ctx.block.id)
-      result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
+      enriched = enrich(ctx, ctx.columns, rows)
 
-      assert result |> Map.get(ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
-               nil
+      assert formula_cell(enriched, ctx, ctx.row1.id)["__result"] == nil
     end
 
     test "missing binding returns nil", ctx do
@@ -117,10 +117,9 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
         })
 
       rows = Sheets.list_table_rows(ctx.block.id)
-      result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
+      enriched = enrich(ctx, ctx.columns, rows)
 
-      assert result |> Map.get(ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
-               nil
+      assert formula_cell(enriched, ctx, ctx.row1.id)["__result"] == nil
     end
 
     test "empty expression returns nil", ctx do
@@ -131,14 +130,11 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
         })
 
       rows = Sheets.list_table_rows(ctx.block.id)
-      result = FormulaResolver.compute_all(ctx.columns, rows, ctx.project.id)
+      enriched = enrich(ctx, ctx.columns, rows)
 
-      assert result |> Map.get(ctx.row1.id) |> Map.get(ctx.formula_col.slug) |> Map.get(:result) ==
-               nil
+      assert formula_cell(enriched, ctx, ctx.row1.id)["__result"] == nil
     end
-  end
 
-  describe "enrich_table_data/2" do
     test "preserves a non-map bindings value for health while skipping evaluation", ctx do
       table_data = %{
         ctx.block.id => %{
@@ -190,5 +186,21 @@ defmodule Storyarn.Sheets.FormulaResolverTest do
       assert cell["__resolved"] == %{}
       assert cell["__result"] == nil
     end
+  end
+
+  # Wraps a single block's columns/rows in the batch shape
+  # `Sheets.batch_load_table_data/1` returns, which is what the enricher takes.
+  defp enrich(ctx, columns, rows) do
+    FormulaResolver.enrich_table_data(
+      %{ctx.block.id => %{columns: columns, rows: rows}},
+      ctx.project.id
+    )
+  end
+
+  defp formula_cell(enriched, ctx, row_id) do
+    enriched[ctx.block.id].rows
+    |> Enum.find(&(&1.id == row_id))
+    |> Map.fetch!(:cells)
+    |> Map.get(ctx.formula_col.slug)
   end
 end
