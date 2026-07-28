@@ -1,0 +1,29 @@
+assets/app/modules/sheets/components/entities/blocks/fields/ReferenceBlock.vue
+  s_d0525e435087ba::t_b65916af92007c 96
+  s_d0525e435087ba::t_4546574af5be5d 61-63,66
+  s_d0525e435087ba::t_b34b741a8c245f 89
+assets/app/test/modules/sheets/ReferenceBlock.test.ts
+  s_d0525e435087ba::t_ff5c85d7cda789 13-14
+  s_d0525e435087ba::t_755da8a55241cf 1-12,15-94,96-99,105-106
+  s_d0525e435087ba::t_bf4384431ab5dd 95,100-104
+assets/app/shared/composables/useServerSearch.ts
+  s_d0525e435087ba::t_f516cb7c8e8050 43-48,55
+  s_d0525e435087ba::t_939ce0779c97d9 67
+  s_d0525e435087ba::t_f389459f0dfe06 22-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "43ca13c5afd8a5e2ce39f632a98ec7bf7cb4a812",
+  "prompts": {},
+  "sessions": {
+    "s_d0525e435087ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d3e876d-f5dc-41e9-bc36-347529bd7308",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
