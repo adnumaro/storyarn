@@ -48,5 +48,5 @@ defmodule Storyarn.Exports.Serializer do
               [:sheets | :flows | :scenes | :localization | :assets]
 
   @doc "How this format delivers localization to its runtime."
-  @callback localization_mode() :: :full_state | :embedded | :external_catalog | :none
+  @callback localization_mode() :: :embedded | :external_catalog | :none
 end

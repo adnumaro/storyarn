@@ -21,7 +21,6 @@ defmodule Storyarn.Exports.DataCollector do
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Localization
   alias Storyarn.Localization.GlossaryEntry
-  alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
@@ -345,34 +344,16 @@ defmodule Storyarn.Exports.DataCollector do
 
   defp count_languages(_project_id, %{include_localization: false}), do: 0
 
-  defp count_languages(project_id, opts) do
-    query = from(l in ProjectLanguage, where: l.project_id == ^project_id)
-    query = if opts.format == :storyarn, do: query, else: where(query, [l], is_nil(l.archived_at))
-    Repo.aggregate(query, :count)
+  defp count_languages(project_id, _opts) do
+    Repo.aggregate(from(l in ProjectLanguage, where: l.project_id == ^project_id and is_nil(l.archived_at)), :count)
   end
 
   defp count_localized_texts(_project_id, %{include_localization: false}), do: 0
 
   defp count_localized_texts(project_id, opts) do
-    if opts.format == :storyarn do
-      case opts.languages do
-        :all ->
-          Localization.count_texts(project_id, include_archived: true)
-
-        [] ->
-          0
-
-        locale_codes ->
-          Repo.aggregate(
-            from(lt in LocalizedText, where: lt.project_id == ^project_id and lt.locale_code in ^locale_codes),
-            :count
-          )
-      end
-    else
-      active_languages = Localization.list_languages(project_id)
-      locale_codes = requested_locale_codes(opts.languages, active_languages)
-      Localization.count_texts_for_export(project_id, locale_codes, opts)
-    end
+    active_languages = Localization.list_languages(project_id)
+    locale_codes = requested_locale_codes(opts.languages, active_languages)
+    Localization.count_texts_for_export(project_id, locale_codes, opts)
   end
 
   defp count_glossary_entries(_project_id, %{include_localization: false}), do: 0
@@ -590,18 +571,8 @@ defmodule Storyarn.Exports.DataCollector do
     end
   end
 
-  defp project_languages_query(project_id, opts) do
-    query = from(l in ProjectLanguage, where: l.project_id == ^project_id)
-    if opts.format == :storyarn, do: query, else: where(query, [l], is_nil(l.archived_at))
-  end
-
-  defp project_localized_texts_query(project_id, %{format: :storyarn} = opts) do
-    locale_codes =
-      requested_locale_codes(opts.languages, Localization.list_languages_for_backup(project_id))
-
-    from(text in LocalizedText,
-      where: text.project_id == ^project_id and text.locale_code in ^locale_codes
-    )
+  defp project_languages_query(project_id, _opts) do
+    from(l in ProjectLanguage, where: l.project_id == ^project_id and is_nil(l.archived_at))
   end
 
   defp project_localized_texts_query(project_id, opts) do

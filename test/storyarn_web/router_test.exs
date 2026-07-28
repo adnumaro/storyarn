@@ -148,7 +148,7 @@ defmodule StoryarnWeb.RouterTest do
 
     test "project export route requires auth", %{conn: conn} do
       conn = conn |> delete_req_header("cookie") |> Phoenix.ConnTest.recycle()
-      conn = get(conn, "/workspaces/ws/projects/proj/export/storyarn_json")
+      conn = get(conn, "/workspaces/ws/projects/proj/export/ink")
       assert redirected_to(conn) =~ "/users/log-in"
     end
   end

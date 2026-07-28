@@ -5,14 +5,13 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
   alias Storyarn.Exports.Serializers.ArticyXML
   alias Storyarn.Exports.Serializers.GodotDialogic
   alias Storyarn.Exports.Serializers.Ink
-  alias Storyarn.Exports.Serializers.StoryarnJSON
   alias Storyarn.Exports.Serializers.UnityJSON
   alias Storyarn.Exports.Serializers.UnrealCSV
   alias Storyarn.Exports.Serializers.Yarn
 
   describe "get/1" do
-    test "returns the storyarn serializer module" do
-      assert {:ok, StoryarnJSON} = SerializerRegistry.get(:storyarn)
+    test "no longer resolves the removed storyarn format" do
+      assert {:error, {:unknown_format, :storyarn}} = SerializerRegistry.get(:storyarn)
     end
 
     test "returns the ink serializer module" do
@@ -48,9 +47,9 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
     test "returns a map of all registered serializers" do
       serializers = SerializerRegistry.list()
       assert is_map(serializers)
-      assert map_size(serializers) == 7
+      assert map_size(serializers) == 6
 
-      assert serializers[:storyarn] == StoryarnJSON
+      refute Map.has_key?(serializers, :storyarn)
       assert serializers[:ink] == Ink
       assert serializers[:yarn] == Yarn
       assert serializers[:unity] == UnityJSON
@@ -64,8 +63,8 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
     test "returns all format atoms" do
       formats = SerializerRegistry.formats()
       assert is_list(formats)
-      assert length(formats) == 7
-      assert :storyarn in formats
+      assert length(formats) == 6
+      refute :storyarn in formats
       assert :ink in formats
       assert :yarn in formats
       assert :unity in formats
@@ -79,10 +78,10 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
     test "returns metadata for all serializers in display order" do
       metadata = SerializerRegistry.list_with_metadata()
       assert is_list(metadata)
-      assert length(metadata) == 7
+      assert length(metadata) == 6
 
-      # Check display order (storyarn first)
-      assert hd(metadata).format == :storyarn
+      # Check display order (ink first, now that storyarn is gone)
+      assert hd(metadata).format == :ink
     end
 
     test "each entry has required fields" do
@@ -94,25 +93,23 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
         assert is_binary(entry.extension)
         assert is_binary(entry.content_type)
         assert is_list(entry.sections)
-        assert entry.localization_mode in [:full_state, :embedded, :external_catalog]
+        assert entry.localization_mode in [:embedded, :external_catalog]
       end
     end
 
-    test "storyarn entry has correct metadata" do
-      [storyarn | _] = SerializerRegistry.list_with_metadata()
+    test "ink entry has correct metadata" do
+      [ink | _] = SerializerRegistry.list_with_metadata()
 
-      assert storyarn.format == :storyarn
-      assert is_binary(storyarn.label)
-      assert storyarn.extension == "json"
-      assert storyarn.content_type == "application/json"
-      assert storyarn.localization_mode == :full_state
+      assert ink.format == :ink
+      assert is_binary(ink.label)
+      assert ink.extension == "ink"
+      assert ink.localization_mode == :external_catalog
     end
 
     test "describes how every engine consumes localization" do
       modes = Map.new(SerializerRegistry.list_with_metadata(), &{&1.format, &1.localization_mode})
 
       assert modes == %{
-               storyarn: :full_state,
                ink: :external_catalog,
                yarn: :external_catalog,
                unity: :embedded,
@@ -122,9 +119,9 @@ defmodule Storyarn.Exports.SerializerRegistryTest do
              }
     end
 
-    test "display order matches: storyarn, ink, yarn, unity, godot, unreal, articy" do
+    test "display order matches: ink, yarn, unity, godot, unreal, articy" do
       formats = Enum.map(SerializerRegistry.list_with_metadata(), & &1.format)
-      assert formats == [:storyarn, :ink, :yarn, :unity, :godot, :unreal, :articy]
+      assert formats == [:ink, :yarn, :unity, :godot, :unreal, :articy]
     end
   end
 end

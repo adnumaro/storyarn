@@ -19,8 +19,8 @@ defmodule Storyarn.Imports do
   alias Storyarn.Collaboration
   alias Storyarn.Imports.Error
   alias Storyarn.Imports.ImportPlan
+  alias Storyarn.Imports.Materializer
   alias Storyarn.Imports.ParserRegistry
-  alias Storyarn.Imports.Parsers.StoryarnJSON, as: StoryarnJSONParser
   alias Storyarn.Imports.PlanCleanupRequest
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.ProjectImportAttempt
@@ -43,14 +43,11 @@ defmodule Storyarn.Imports do
   @doc """
   Parse an import file and detect its format.
 
-  `parse_file/1` remains as a backwards-compatible Storyarn JSON entry point.
-  New callers must use `parse_file/2` so the filename extension is available
-  for explicit, non-heuristic format selection.
+  The filename is required: format selection is explicit, off the extension,
+  never a heuristic on the contents. The arity-1 form existed only as a
+  backwards-compatible entry point for the native Storyarn JSON format, which
+  no longer exists.
   """
-  def parse_file(binary) when is_binary(binary) do
-    parse_file("project.storyarn.json", binary)
-  end
-
   @spec parse_file(String.t(), binary()) :: {:ok, ImportPlan.t()} | {:error, atom() | tuple()}
   def parse_file(filename, binary) when is_binary(filename) and is_binary(binary) do
     with {:ok, parser} <- ParserRegistry.parser_for(filename),
@@ -76,7 +73,7 @@ defmodule Storyarn.Imports do
     if ImportPlan.error?(plan) do
       {:error, :import_plan_has_errors}
     else
-      StoryarnJSONParser.preview(project_id, parsed_data)
+      Materializer.preview(project_id, parsed_data)
     end
   end
 
@@ -106,7 +103,7 @@ defmodule Storyarn.Imports do
     if ImportPlan.error?(plan) do
       {:error, :import_plan_has_errors}
     else
-      StoryarnJSONParser.execute(project, plan, opts)
+      Materializer.execute(project, plan, opts)
     end
   end
 
@@ -691,7 +688,7 @@ defmodule Storyarn.Imports do
        when status in ["queued", "running", "retrying"] do
     with {:ok, running} <- mark_running(attempt),
          {:ok, result} <-
-           StoryarnJSONParser.materialize_locked_project_in_transaction(project, plan,
+           Materializer.materialize_locked_project_in_transaction(project, plan,
              conflict_strategy: strategy_atom(running.conflict_strategy)
            ),
          :ok <- run_before_attempt_completion(opts),
@@ -1268,8 +1265,7 @@ defmodule Storyarn.Imports do
     extension = filename |> Path.extname() |> String.downcase()
 
     %{
-      format:
-        if(extension in [".yarn", ".zip"], do: "yarn", else: if(extension == ".json", do: "storyarn", else: "unknown")),
+      format: if(extension in [".yarn", ".zip"], do: "yarn", else: "unknown"),
       source_kind: if(extension == ".zip", do: "archive", else: "file"),
       parser_version: "unknown"
     }

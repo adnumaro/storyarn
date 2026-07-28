@@ -26,7 +26,7 @@ defmodule Storyarn.Exports.ExportOptions do
         }
 
   @enforce_keys [:format]
-  defstruct format: :storyarn,
+  defstruct format: nil,
             version: "1.0.0",
             include_sheets: true,
             include_flows: true,
@@ -41,7 +41,7 @@ defmodule Storyarn.Exports.ExportOptions do
             validate_before_export: true,
             pretty_print: true
 
-  @valid_formats ~w(storyarn ink yarn unity godot unreal articy)a
+  @valid_formats ~w(ink yarn unity godot unreal articy)a
   @valid_asset_modes ~w(references embedded bundled)a
   @valid_localization_policies ~w(release preview)a
 
@@ -52,15 +52,18 @@ defmodule Storyarn.Exports.ExportOptions do
 
   ## Examples
 
-      iex> ExportOptions.new(%{format: :storyarn})
-      {:ok, %ExportOptions{format: :storyarn, ...}}
+      iex> ExportOptions.new(%{format: :ink})
+      {:ok, %ExportOptions{format: :ink, ...}}
 
       iex> ExportOptions.new(%{format: :invalid})
       {:error, {:invalid_format, :invalid}}
 
+      iex> ExportOptions.new(%{})
+      {:error, :format_required}
+
   """
   def new(attrs) when is_map(attrs) do
-    format = to_atom(attrs[:format] || attrs["format"] || :storyarn)
+    format = to_atom(attrs[:format] || attrs["format"])
 
     with :ok <- validate_format(format),
          :ok <- validate_asset_mode(attrs),
@@ -106,6 +109,12 @@ defmodule Storyarn.Exports.ExportOptions do
   end
 
   defp validate_format(format) when format in @valid_formats, do: :ok
+
+  # No default format: the native `:storyarn` format used to be it, and once it
+  # was gone there was no non-arbitrary candidate. A caller that omits the
+  # format gets told so rather than silently exporting as some other engine's.
+  defp validate_format(nil), do: {:error, :format_required}
+
   defp validate_format(format), do: {:error, {:invalid_format, format}}
 
   defp validate_asset_mode(attrs) do

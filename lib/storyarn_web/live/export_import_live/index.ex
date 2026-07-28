@@ -10,7 +10,6 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   alias StoryarnWeb.Helpers.Authorize
 
   @all_sections ~w(sheets flows scenes localization)a
-  @hidden_export_formats MapSet.new([:storyarn])
   @archive_export_formats ~w(ink yarn godot unreal articy)a
 
   @impl true
@@ -318,9 +317,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # Helpers — Export
   # ===========================================================================
 
-  defp visible_export_formats do
-    Enum.reject(Exports.list_formats_with_metadata(), &MapSet.member?(@hidden_export_formats, &1.format))
-  end
+  defp visible_export_formats, do: Exports.list_formats_with_metadata()
 
   defp download_extension(%{format: format}) when format in @archive_export_formats, do: "zip"
   defp download_extension(%{extension: extension}), do: extension

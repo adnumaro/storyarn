@@ -49,16 +49,16 @@ defmodule StoryarnWeb.ExportControllerTest do
   # Storyarn JSON format
   # ===========================================================================
 
-  describe "GET storyarn format" do
+  describe "GET unity format" do
     test "exports JSON with correct content-type", %{conn: conn, project: project} do
-      conn = get(conn, export_url(project, "storyarn"))
+      conn = get(conn, export_url(project, "unity"))
 
       assert conn.status == 200
       assert get_resp_header(conn, "content-type") == ["application/json; charset=utf-8"]
     end
 
     test "sets content-disposition for download", %{conn: conn, project: project} do
-      conn = get(conn, export_url(project, "storyarn"))
+      conn = get(conn, export_url(project, "unity"))
 
       [disposition] = get_resp_header(conn, "content-disposition")
       assert disposition =~ "attachment"
@@ -66,11 +66,11 @@ defmodule StoryarnWeb.ExportControllerTest do
     end
 
     test "produces valid JSON output", %{conn: conn, project: project} do
-      conn = get(conn, export_url(project, "storyarn"))
+      conn = get(conn, export_url(project, "unity"))
 
       assert {:ok, data} = Jason.decode(conn.resp_body)
-      assert data["storyarn_version"] == "1.0.0"
-      assert data["project"]["name"] == project.name
+      assert data["author"] == "Storyarn"
+      assert data["description"] =~ project.name
     end
 
     test "includes sheets and flows in output", %{conn: conn, project: project} do
@@ -78,11 +78,15 @@ defmodule StoryarnWeb.ExportControllerTest do
       block_fixture(sheet, %{type: "text", config: %{"label" => "Name"}})
       flow_fixture(project, %{name: "Test Flow"})
 
-      conn = get(conn, export_url(project, "storyarn"))
+      conn = get(conn, export_url(project, "unity"))
 
-      assert {:ok, data} = Jason.decode(conn.resp_body)
-      assert length(data["sheets"]) == 1
-      assert length(data["flows"]) == 1
+      assert {:ok, _data} = Jason.decode(conn.resp_body)
+      # The previous assertion counted the native format's raw `sheets`/`flows`
+      # arrays. This engine nests them as actors and conversations behind a
+      # field list, so the shape is asserted in `unity_json_test.exs`; here the
+      # controller-level claim is only that both reach the response body.
+      assert conn.resp_body =~ "Test Sheet"
+      assert conn.resp_body =~ "Test Flow"
     end
   end
 
@@ -178,7 +182,7 @@ defmodule StoryarnWeb.ExportControllerTest do
 
       Application.put_env(:storyarn, :max_sync_export_bytes, 1)
 
-      conn = get(conn, export_url(project, "storyarn"))
+      conn = get(conn, export_url(project, "unity"))
 
       assert conn.status == 413
       assert conn.resp_body =~ "Export is too large"
@@ -220,7 +224,7 @@ defmodule StoryarnWeb.ExportControllerTest do
       conn =
         get(
           conn,
-          ~p"/workspaces/#{other_project.workspace.slug}/projects/#{other_project.slug}/export/storyarn"
+          ~p"/workspaces/#{other_project.workspace.slug}/projects/#{other_project.slug}/export/unity"
         )
 
       assert conn.status == 404
@@ -228,7 +232,7 @@ defmodule StoryarnWeb.ExportControllerTest do
 
     test "redirects unauthenticated user", %{project: project} do
       conn = build_conn()
-      conn = get(conn, export_url(project, "storyarn"))
+      conn = get(conn, export_url(project, "unity"))
 
       assert conn.status == 302
       assert redirected_to(conn) =~ "/users/log-in"
@@ -244,47 +248,59 @@ defmodule StoryarnWeb.ExportControllerTest do
       conn: conn,
       project: project
     } do
-      conn = get(conn, export_url(project, "storyarn", %{"validate" => "false"}))
+      conn = get(conn, export_url(project, "unity", %{"validate" => "false"}))
 
       assert conn.status == 200
       assert {:ok, _data} = Jason.decode(conn.resp_body)
     end
 
     test "pretty=false produces compact JSON", %{conn: conn, project: project} do
-      conn = get(conn, export_url(project, "storyarn", %{"pretty" => "false"}))
+      conn = get(conn, export_url(project, "unity", %{"pretty" => "false"}))
 
       assert conn.status == 200
       # Compact JSON should not have indentation
       refute conn.resp_body =~ "  \""
     end
 
+    # These assert on the entities themselves, not on a top-level `sheets` /
+    # `flows` key. This engine has neither key at any time, so keying off their
+    # absence passed whether or not the exclusion actually worked. Each carries a
+    # positive control so it cannot pass for the wrong reason again.
     test "sheets=false excludes sheets from output", %{conn: conn, project: project} do
       sheet_fixture(project, %{name: "Should be excluded"})
 
-      conn = get(conn, export_url(project, "storyarn", %{"sheets" => "false"}))
+      included = get(conn, export_url(project, "unity"))
+      assert included.resp_body =~ "Should be excluded"
 
-      assert {:ok, data} = Jason.decode(conn.resp_body)
-      refute Map.has_key?(data, "sheets")
+      conn = get(conn, export_url(project, "unity", %{"sheets" => "false"}))
+
+      assert {:ok, _data} = Jason.decode(conn.resp_body)
+      refute conn.resp_body =~ "Should be excluded"
     end
 
     test "flows=false excludes flows from output", %{conn: conn, project: project} do
       flow_fixture(project, %{name: "Should be excluded"})
 
-      conn = get(conn, export_url(project, "storyarn", %{"flows" => "false"}))
+      included = get(conn, export_url(project, "unity"))
+      assert {:ok, %{"conversations" => [_ | _]}} = Jason.decode(included.resp_body)
+
+      conn = get(conn, export_url(project, "unity", %{"flows" => "false"}))
 
       assert {:ok, data} = Jason.decode(conn.resp_body)
-      refute Map.has_key?(data, "flows")
+      assert data["conversations"] == []
     end
 
-    test "assets=embedded mode returns JSON with assets section", %{
+    test "assets=embedded mode still produces a well-formed export", %{
       conn: conn,
       project: project
     } do
-      conn = get(conn, export_url(project, "storyarn", %{"assets" => "embedded"}))
+      conn = get(conn, export_url(project, "unity", %{"assets" => "embedded"}))
 
       assert conn.status == 200
-      assert {:ok, data} = Jason.decode(conn.resp_body)
-      assert Map.has_key?(data, "metadata")
+      # The dropped assertion looked for the native format's `metadata` envelope
+      # key. No engine format has one, so what this test can still pin is that
+      # the asset mode is accepted and does not corrupt the output.
+      assert {:ok, _data} = Jason.decode(conn.resp_body)
     end
 
     test "localization_policy=preview includes draft translations excluded from release", %{

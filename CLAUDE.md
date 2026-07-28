@@ -16,14 +16,14 @@ no `develop` branch in this repo.
 <type>/<short-slug>                 # when none does
 ```
 
-| Prefix     | Use for                                                            | Example                                     |
-| ---------- | ------------------------------------------------------------------ | ------------------------------------------- |
-| `feature/` | New capability or improvement to working behavior                  | `feature/eng-27-flow-dashboard-node-label`  |
-| `bugfix/`  | Restoring behavior that is broken on `main`                        | `bugfix/eng-22-reference-block-server-search` |
-| `hotfix/`  | Urgent production fix that cannot wait for the normal queue        | `hotfix/eng-40-session-token-expiry`        |
-| `chore/`   | Tooling, config, deps, conventions — no product behavior change    | `chore/git-flow-branch-naming`              |
-| `docs/`    | Documentation only                                                 | `docs/convention-refresh`                   |
-| `release/` | Release preparation                                                | `release/1.4.0`                             |
+| Prefix     | Use for                                                         | Example                                       |
+| ---------- | --------------------------------------------------------------- | --------------------------------------------- |
+| `feature/` | New capability or improvement to working behavior               | `feature/eng-27-flow-dashboard-node-label`    |
+| `bugfix/`  | Restoring behavior that is broken on `main`                     | `bugfix/eng-22-reference-block-server-search` |
+| `hotfix/`  | Urgent production fix that cannot wait for the normal queue     | `hotfix/eng-40-session-token-expiry`          |
+| `chore/`   | Tooling, config, deps, conventions — no product behavior change | `chore/git-flow-branch-naming`                |
+| `docs/`    | Documentation only                                              | `docs/convention-refresh`                     |
+| `release/` | Release preparation                                             | `release/1.4.0`                               |
 
 Rules:
 

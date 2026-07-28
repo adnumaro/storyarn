@@ -57,7 +57,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       Storyarn.FlowsFixtures.connection_fixture(flow, entry, dialogue)
       Storyarn.FlowsFixtures.connection_fixture(flow, dialogue, exit_node)
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       assert result.status in [:passed, :warnings]
       assert result.errors == []
     end
@@ -77,7 +77,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       # Hard-delete the entry node to simulate a broken state
       Repo.delete!(entry)
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       assert result.status == :errors
 
       entry_error = Enum.find(result.errors, &(&1.rule == :missing_entry))
@@ -102,7 +102,7 @@ defmodule Storyarn.Exports.ValidatorTest do
           data: %{"text" => "Orphan node"}
         })
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       orphan_warnings = Enum.filter(result.warnings, &(&1.rule == :orphan_nodes))
 
       # The fixture's auto-created entry and exit are disconnected too. The
@@ -122,7 +122,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       node_fixture(flow, %{type: "annotation", data: %{"text" => "Design note"}})
       assert {:ok, _sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Act I"})
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
       refute Enum.any?(result.warnings, &(&1.rule == :orphan_nodes))
       refute Enum.any?(result.warnings, &(&1.rule == :unreachable_nodes))
@@ -145,7 +145,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       d2 = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Island 2"}})
       Storyarn.FlowsFixtures.connection_fixture(flow, d1, d2)
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       unreachable = Enum.filter(result.warnings, &(&1.rule == :unreachable_nodes))
       # d1 and d2 should be unreachable (not connected from entry)
       unreachable_dialogue = Enum.filter(unreachable, &(&1.node_type == "dialogue"))
@@ -170,7 +170,7 @@ defmodule Storyarn.Exports.ValidatorTest do
           data: %{"text" => "", "speaker_sheet_id" => speaker.id}
         })
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       empty_warnings = Enum.filter(result.warnings, &(&1.rule == :empty_dialogue))
       assert length(empty_warnings) == 1
     end
@@ -185,7 +185,7 @@ defmodule Storyarn.Exports.ValidatorTest do
           data: %{"text" => "<p><br></p>", "speaker_sheet_id" => speaker.id}
         })
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       empty_warnings = Enum.filter(result.warnings, &(&1.rule == :empty_dialogue))
       assert length(empty_warnings) == 1
     end
@@ -207,7 +207,7 @@ defmodule Storyarn.Exports.ValidatorTest do
           data: %{"text" => "Who says this?"}
         })
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       speaker_warnings = Enum.filter(result.warnings, &(&1.rule == :missing_speakers))
       assert length(speaker_warnings) == 1
     end
@@ -229,7 +229,7 @@ defmodule Storyarn.Exports.ValidatorTest do
           data: %{"target_hub_id" => "nonexistent_hub"}
         })
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       broken = Enum.filter(result.errors, &(&1.rule == :broken_references))
       assert length(broken) == 1
       assert hd(broken).ref_type == :hub
@@ -250,7 +250,7 @@ defmodule Storyarn.Exports.ValidatorTest do
           data: %{"target_hub_id" => "hub_1"}
         })
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
       broken_hub =
         Enum.filter(result.errors, &(&1.rule == :broken_references && &1[:ref_type] == :hub))
@@ -267,7 +267,7 @@ defmodule Storyarn.Exports.ValidatorTest do
           data: %{"referenced_flow_id" => -999}
         })
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
       broken =
         Enum.filter(result.errors, &(&1.rule == :broken_references && &1[:ref_type] == :flow))
@@ -294,7 +294,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       flow = flow_fixture(project, %{name: "Unset Jump"})
       _jump = node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => ""}})
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
       assert Enum.any?(result.warnings, &(&1.rule == :missing_jump_target)),
              "an unconfigured jump vanished from the report entirely"
@@ -307,7 +307,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       flow = flow_fixture(project, %{name: "Unset Subflow"})
       _subflow = node_fixture(flow, %{type: "subflow", data: %{"referenced_flow_id" => nil}})
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
       assert Enum.any?(result.warnings, &(&1.rule == :missing_subflow_reference)),
              "an unconfigured subflow vanished from the report entirely"
@@ -319,7 +319,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       flow = flow_fixture(project, %{name: "Dangling Jump"})
       _jump = corrupt_node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => "ghost"}})
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
       assert Enum.count(result.errors, &(&1.rule == :broken_references)) == 1
       refute Enum.any?(result.warnings, &(&1.rule == :stale_jump_target))
@@ -410,9 +410,11 @@ defmodule Storyarn.Exports.ValidatorTest do
                Enum.filter(result.warnings, &(&1.rule == :missing_translations))
     end
 
-    test "does not apply engine readiness to disabled localization or native full-state backups", %{
-      project: project
-    } do
+    # The other half of this test covered the native full-state backup format,
+    # which skipped readiness entirely. That format is gone, so every remaining
+    # format is an engine format and `include_localization: false` is now the
+    # only way readiness is skipped.
+    test "does not apply engine readiness when localization is disabled", %{project: project} do
       _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
       _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       flow = flow_fixture(project)
@@ -421,10 +423,12 @@ defmodule Storyarn.Exports.ValidatorTest do
       disabled =
         Validator.validate_project(project.id, %ExportOptions{format: :unity, include_localization: false})
 
-      native = Validator.validate_project(project.id, %ExportOptions{format: :storyarn})
+      enabled = Validator.validate_project(project.id, %ExportOptions{format: :unity})
 
       refute Enum.any?(disabled.warnings, &(&1.rule == :missing_translations))
-      refute Enum.any?(native.warnings, &(&1.rule == :missing_translations))
+      # Positive control: the same project DOES report readiness when enabled,
+      # so the assertion above cannot pass for the wrong reason.
+      assert Enum.any?(enabled.warnings, &(&1.rule == :missing_translations))
     end
 
     test "checks only target locales selected for export", %{project: project} do
@@ -472,7 +476,7 @@ defmodule Storyarn.Exports.ValidatorTest do
           position_y: 100.0
         })
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       circular = Enum.filter(result.warnings, &(&1.rule == :circular_subflows))
       assert length(circular) == 2
 
@@ -492,7 +496,7 @@ defmodule Storyarn.Exports.ValidatorTest do
           data: %{"referenced_flow_id" => flow_b.id}
         })
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       circular = Enum.filter(result.warnings, &(&1.rule == :circular_subflows))
       assert circular == []
     end
@@ -508,7 +512,7 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "reports info for sheets with no references", %{project: project} do
       _sheet = sheet_fixture(project, %{name: "Unused Sheet"})
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       orphans = Enum.filter(result.info, &(&1.rule == :orphan_sheets))
       assert length(orphans) == 1
       assert hd(orphans).sheet_name == "Unused Sheet"
@@ -523,7 +527,7 @@ defmodule Storyarn.Exports.ValidatorTest do
     setup [:setup_project]
 
     test "includes statistics", %{project: project} do
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       assert result.statistics.project_id == project.id
       assert is_integer(result.statistics.total_findings)
       assert is_integer(result.statistics.error_count)
@@ -536,12 +540,12 @@ defmodule Storyarn.Exports.ValidatorTest do
       entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
       Repo.delete!(entry)
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       assert result.status == :errors
     end
 
     test "accepts ExportOptions", %{project: project} do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn})
+      {:ok, opts} = ExportOptions.new(%{format: :ink})
       result = Validator.validate_project(project.id, opts)
       assert %ValidationResult{} = result
     end
@@ -553,7 +557,7 @@ defmodule Storyarn.Exports.ValidatorTest do
 
       result =
         Validator.validate_project(project.id, %ExportOptions{
-          format: :storyarn,
+          format: :ink,
           include_flows: false
         })
 
@@ -567,7 +571,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       Repo.delete!(entry)
 
       # Export with validation enabled (default) should fail
-      result = Storyarn.Exports.export_project(project, %{format: :storyarn})
+      result = Storyarn.Exports.export_project(project, %{format: :ink})
       assert {:error, {:validation_failed, %ValidationResult{status: :errors}}} = result
     end
 
@@ -580,7 +584,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       # Export with validation disabled should succeed
       result =
         Storyarn.Exports.export_project(project, %{
-          format: :storyarn,
+          format: :ink,
           validate_before_export: false
         })
 

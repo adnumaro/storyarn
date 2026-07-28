@@ -144,16 +144,17 @@ defmodule StoryarnWeb.ExportController do
     end)
   end
 
+  # Matched against the valid list as a string rather than through
+  # `String.to_existing_atom/1`. That call raised whenever the format's atom was
+  # not yet in the VM's table, and every format except the old `:storyarn` is
+  # only interned once `ExportOptions` loads — `:storyarn` happened to always
+  # exist because it is also the OTP application name, which is what kept the
+  # bug hidden. Comparing strings has no such dependency and cannot raise.
   defp parse_format(format_str) do
-    format = String.to_existing_atom(format_str)
-
-    if format in Exports.valid_export_formats() do
-      {:ok, format}
-    else
-      :error
+    case Enum.find(Exports.valid_export_formats(), &(Atom.to_string(&1) == format_str)) do
+      nil -> :error
+      format -> {:ok, format}
     end
-  rescue
-    ArgumentError -> :error
   end
 
   defp build_options(params, format) do

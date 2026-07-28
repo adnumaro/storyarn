@@ -676,14 +676,20 @@ defmodule Storyarn.Localization.TextCrud do
           (text.source_type == "sheet" and text.source_id in ^sheet_ids)
       )
 
-    content_roles =
-      opts
-      |> export_option(:format, :storyarn)
-      |> SourceContract.export_content_roles()
+    query = where(query, ^source_scope)
 
-    query
-    |> where(^source_scope)
-    |> where([text], text.content_role in ^content_roles)
+    # Filtering by content role is an ENGINE-export concern: each engine can only
+    # address some of the roles. Callers that pass no format are not exporting to
+    # an engine (snapshots, templates, recovery) and want every role.
+    #
+    # This used to default the format to `:storyarn`, whose entry in the role map
+    # was the full set — so "no format" and "all roles" happened to coincide.
+    # Once that format was removed the default resolved to `[]` instead, and the
+    # filter silently matched nothing.
+    case export_option(opts, :format, nil) do
+      nil -> query
+      format -> where(query, [text], text.content_role in ^SourceContract.export_content_roles(format))
+    end
   end
 
   defp engine_export_source_ids(project_id, opts) do

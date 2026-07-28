@@ -80,7 +80,14 @@ defmodule Storyarn.Imports.PlanStorage do
 
   defp decode_plan(_payload), do: {:error, :invalid_import_plan}
 
-  defp decode_format("storyarn"), do: {:ok, :storyarn}
+  # No `"storyarn"` clause: the native format is gone, so a stored plan carrying
+  # it decodes to `{:error, :invalid_import_plan}` and its attempt fails rather
+  # than materializing through a format nothing can produce any more. Plans are
+  # retained 24h and re-extended on enqueue, so an attempt prepared just before
+  # the deploy could otherwise have drained through days later. Nothing in the
+  # product could emit that file — the export side was hidden from the picker —
+  # so the population is a hand-crafted or long-archived file, and a failed
+  # import states that plainly.
   defp decode_format("yarn"), do: {:ok, :yarn}
   defp decode_format(_format), do: {:error, :invalid_import_plan}
 
