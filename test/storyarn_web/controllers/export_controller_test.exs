@@ -262,22 +262,32 @@ defmodule StoryarnWeb.ExportControllerTest do
       refute conn.resp_body =~ "  \""
     end
 
+    # These assert on the entities themselves, not on a top-level `sheets` /
+    # `flows` key. This engine has neither key at any time, so keying off their
+    # absence passed whether or not the exclusion actually worked. Each carries a
+    # positive control so it cannot pass for the wrong reason again.
     test "sheets=false excludes sheets from output", %{conn: conn, project: project} do
       sheet_fixture(project, %{name: "Should be excluded"})
 
+      included = get(conn, export_url(project, "unity"))
+      assert included.resp_body =~ "Should be excluded"
+
       conn = get(conn, export_url(project, "unity", %{"sheets" => "false"}))
 
-      assert {:ok, data} = Jason.decode(conn.resp_body)
-      refute Map.has_key?(data, "sheets")
+      assert {:ok, _data} = Jason.decode(conn.resp_body)
+      refute conn.resp_body =~ "Should be excluded"
     end
 
     test "flows=false excludes flows from output", %{conn: conn, project: project} do
       flow_fixture(project, %{name: "Should be excluded"})
 
+      included = get(conn, export_url(project, "unity"))
+      assert {:ok, %{"conversations" => [_ | _]}} = Jason.decode(included.resp_body)
+
       conn = get(conn, export_url(project, "unity", %{"flows" => "false"}))
 
       assert {:ok, data} = Jason.decode(conn.resp_body)
-      refute Map.has_key?(data, "flows")
+      assert data["conversations"] == []
     end
 
     test "assets=embedded mode still produces a well-formed export", %{
