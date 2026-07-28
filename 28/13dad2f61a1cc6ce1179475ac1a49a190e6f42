@@ -1,0 +1,41 @@
+priv/gettext/localization.pot
+  s_6401ae78a3fc64::t_5620b02cb7073d 100,106,112,117
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_6401ae78a3fc64::t_5620b02cb7073d 46,52,73,99,106-107,110,115,208,218,278,283,288,293,298,303,308,318,323,328,333,338,343,348,353,358,396,401,406,411,416,421,428-429,434
+test/storyarn/projects/dashboard_test.exs
+  s_6401ae78a3fc64::t_c9d9739cf10e1a 205-211,219
+priv/gettext/sheets.pot
+  s_6401ae78a3fc64::t_5620b02cb7073d 45,108,215,298,329
+priv/gettext/en/LC_MESSAGES/localization.po
+  s_6401ae78a3fc64::t_5620b02cb7073d 100,106,112,117
+priv/gettext/es/LC_MESSAGES/localization.po
+  s_6401ae78a3fc64::t_5620b02cb7073d 100,106,112,117
+assets/app/test/live/project/dashboard/ProjectDashboard.test.ts
+  s_6401ae78a3fc64::t_f3f423a2b2d45b 164-166,171-174
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_6401ae78a3fc64::t_5620b02cb7073d 45,108,215,298,329
+priv/gettext/flows.pot
+  s_6401ae78a3fc64::t_5620b02cb7073d 46,52,73,99,106-107,110,115,208,218,278,283,288,293,298,303,308,318,323,328,333,338,343,348,353,358,396,401,406,411,416,421,428-429,434
+lib/storyarn/projects/dashboard.ex
+  s_6401ae78a3fc64::t_d15529fc83054a 99-103
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_6401ae78a3fc64::t_5620b02cb7073d 45,108,215,298,329
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_6401ae78a3fc64::t_5620b02cb7073d 46,52,73,99,106-107,110,115,208,218,278,283,288,293,298,303,308,318,323,328,333,338,343,348,353,358,396,401,406,411,416,421,428-429,434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2813dad2f61a1cc6ce1179475ac1a49a190e6f42",
+  "prompts": {},
+  "sessions": {
+    "s_6401ae78a3fc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9bc0da24-9334-450b-9597-d0d8482861c1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
