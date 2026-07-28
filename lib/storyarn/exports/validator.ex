@@ -8,6 +8,7 @@ defmodule Storyarn.Exports.Validator do
 
   use Gettext, backend: Storyarn.Gettext
 
+  alias Storyarn.Exports.ArtifactValidator
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Flows
   alias Storyarn.Localization
@@ -112,6 +113,7 @@ defmodule Storyarn.Exports.Validator do
 
   defp run_checks_with_data(project_id, opts, flows_data, sheets) do
     checks = [
+      fn -> ArtifactValidator.findings(project_id, opts, flows_data, sheets) end,
       fn -> check_flow_health(flows_data) end,
       fn -> check_empty_dialogue(flows_data) end,
       fn -> check_missing_speakers(flows_data) end,
@@ -134,6 +136,7 @@ defmodule Storyarn.Exports.Validator do
     sheets = load_sheets(project_id, opts)
 
     checks = [
+      fn -> ArtifactValidator.findings(project_id, opts, flows_data, sheets) end,
       fn -> check_flow_health(flows_data) end,
       fn -> check_empty_dialogue(flows_data) end,
       fn -> check_missing_speakers(flows_data) end,
@@ -243,6 +246,7 @@ defmodule Storyarn.Exports.Validator do
 
   defp base_health_finding(finding, flow) do
     maybe_put_node(
+      finding,
       %{
         level: :warning,
         rule: Map.get(@export_rule_by_health_code, finding.code, finding.code),
@@ -250,16 +254,21 @@ defmodule Storyarn.Exports.Validator do
         flow_id: flow.id,
         flow_name: flow.name
       },
-      finding
+      flow
     )
   end
 
-  defp maybe_put_node(export_finding, %{entity_id: nil}), do: export_finding
+  defp maybe_put_node(%{entity_id: nil}, export_finding, _flow), do: export_finding
 
-  defp maybe_put_node(export_finding, finding) do
+  defp maybe_put_node(finding, export_finding, flow) do
+    node = Enum.find(flow.nodes, &(&1.id == finding.entity_id))
+
     export_finding
     |> Map.put(:node_id, finding.entity_id)
     |> Map.put(:node_type, finding.entity_type)
+    |> Map.put(:entity_id, finding.entity_id)
+    |> Map.put(:entity_type, finding.entity_type)
+    |> Map.put(:entity_label, if(node, do: Flows.node_label(node), else: Flows.node_label(finding)))
   end
 
   # =============================================================================
@@ -293,29 +302,17 @@ defmodule Storyarn.Exports.Validator do
   # variable set) and pass them through `add_health_flags/3` first.
 
   defp check_empty_dialogue(flows) do
-    Enum.flat_map(flows, fn flow ->
-      flow.nodes
-      |> Enum.filter(fn node ->
-        node.type == "dialogue" and
-          (get_in(node.data, ["text"]) || "") |> strip_html() |> String.trim() == ""
-      end)
-      |> Enum.map(fn node ->
-        %{
-          level: :warning,
-          rule: :empty_dialogue,
-          message:
-            dgettext(
-              "projects",
-              "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no text",
-              node_id: node.id,
-              flow_name: flow.name
-            ),
-          flow_id: flow.id,
-          flow_name: flow.name,
-          node_id: node.id
-        }
-      end)
-    end)
+    count =
+      Enum.sum(
+        for flow <- flows do
+          Enum.count(flow.nodes, fn node ->
+            node.type == "dialogue" and
+              (get_in(node.data, ["text"]) || "") |> strip_html() |> String.trim() == ""
+          end)
+        end
+      )
+
+    aggregate_editorial_finding(:empty_dialogue, count)
   end
 
   # =============================================================================
@@ -323,29 +320,57 @@ defmodule Storyarn.Exports.Validator do
   # =============================================================================
 
   defp check_missing_speakers(flows) do
-    Enum.flat_map(flows, fn flow ->
-      flow.nodes
-      |> Enum.filter(fn node ->
-        node.type == "dialogue" and
-          node.data |> get_in(["speaker_sheet_id"]) |> StringUtils.blank?()
-      end)
-      |> Enum.map(fn node ->
-        %{
-          level: :warning,
-          rule: :missing_speakers,
-          message:
-            dgettext(
-              "projects",
-              "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no speaker assigned",
-              node_id: node.id,
-              flow_name: flow.name
-            ),
-          flow_id: flow.id,
-          flow_name: flow.name,
-          node_id: node.id
-        }
-      end)
-    end)
+    count =
+      Enum.sum(
+        for flow <- flows do
+          Enum.count(flow.nodes, fn node ->
+            node.type == "dialogue" and
+              node.data |> get_in(["speaker_sheet_id"]) |> StringUtils.blank?()
+          end)
+        end
+      )
+
+    aggregate_editorial_finding(:missing_speakers, count)
+  end
+
+  defp aggregate_editorial_finding(_rule, 0), do: []
+
+  defp aggregate_editorial_finding(:empty_dialogue, count) do
+    [
+      %{
+        level: :warning,
+        rule: :empty_dialogue,
+        count: count,
+        dashboard: :flows,
+        message:
+          dngettext(
+            "projects",
+            "One dialogue has no text",
+            "%{count} dialogues have no text",
+            count,
+            count: count
+          )
+      }
+    ]
+  end
+
+  defp aggregate_editorial_finding(:missing_speakers, count) do
+    [
+      %{
+        level: :warning,
+        rule: :missing_speakers,
+        count: count,
+        dashboard: :flows,
+        message:
+          dngettext(
+            "projects",
+            "One dialogue has no speaker assigned",
+            "%{count} dialogues have no speaker assigned",
+            count,
+            count: count
+          )
+      }
+    ]
   end
 
   # =============================================================================
@@ -395,12 +420,13 @@ defmodule Storyarn.Exports.Validator do
   # Check: broken_references (error)
   # =============================================================================
 
-  defp check_broken_references(_project_id, flows) do
+  defp check_broken_references(project_id, flows) do
     # Check jump nodes referencing non-existent hubs
     jump_findings = check_broken_jump_refs(flows)
 
     # Check subflow nodes referencing deleted/non-existent flows
-    subflow_findings = check_broken_subflow_refs(flows)
+    valid_flow_ids = project_id |> Flows.list_flows() |> MapSet.new(& &1.id)
+    subflow_findings = check_broken_subflow_refs(flows, valid_flow_ids)
 
     jump_findings ++ subflow_findings
   end
@@ -425,14 +451,18 @@ defmodule Storyarn.Exports.Validator do
           message:
             dgettext(
               "projects",
-              ~s|Jump node (id: %{node_id}) in flow "%{flow_name}" references non-existent hub "%{target}"|,
-              node_id: node.id,
+              ~s|"%{node}" in flow "%{flow_name}" references non-existent hub "%{target}"|,
+              node: Flows.node_label(node),
               flow_name: flow.name,
               target: target
             ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
+          node_type: node.type,
+          entity_id: node.id,
+          entity_type: node.type,
+          entity_label: Flows.node_label(node),
           ref_type: :hub,
           ref_value: target
         }
@@ -440,9 +470,7 @@ defmodule Storyarn.Exports.Validator do
     end)
   end
 
-  defp check_broken_subflow_refs(flows) do
-    valid_flow_ids = MapSet.new(flows, & &1.id)
-
+  defp check_broken_subflow_refs(flows, valid_flow_ids) do
     Enum.flat_map(flows, fn flow ->
       flow.nodes
       |> Enum.filter(fn node ->
@@ -455,13 +483,17 @@ defmodule Storyarn.Exports.Validator do
           message:
             dgettext(
               "projects",
-              "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent flow",
-              node_id: node.id,
+              ~s("%{node}" in flow "%{flow_name}" references non-existent flow),
+              node: Flows.node_label(node),
               flow_name: flow.name
             ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
+          node_type: node.type,
+          entity_id: node.id,
+          entity_type: node.type,
+          entity_label: Flows.node_label(node),
           ref_type: :flow
         }
       end)
@@ -666,9 +698,8 @@ defmodule Storyarn.Exports.Validator do
   defp health_message(%{code: :isolated_node} = finding, flow) do
     dgettext(
       "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no connections",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
+      ~s("%{node}" in flow "%{flow_name}" has no connections),
+      node: health_node_label(finding, flow),
       flow_name: flow.name
     )
   end
@@ -676,9 +707,8 @@ defmodule Storyarn.Exports.Validator do
   defp health_message(%{code: :unreachable_node} = finding, flow) do
     dgettext(
       "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" is not reachable from Entry",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
+      ~s("%{node}" in flow "%{flow_name}" is not reachable from Entry),
+      node: health_node_label(finding, flow),
       flow_name: flow.name
     )
   end
@@ -686,9 +716,8 @@ defmodule Storyarn.Exports.Validator do
   defp health_message(%{code: :no_outgoing_connection} = finding, flow) do
     dgettext(
       "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no outgoing connection",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
+      ~s("%{node}" in flow "%{flow_name}" has no outgoing connection),
+      node: health_node_label(finding, flow),
       flow_name: flow.name
     )
   end
@@ -696,9 +725,8 @@ defmodule Storyarn.Exports.Validator do
   defp health_message(%{code: :missing_output_connections} = finding, flow) do
     dgettext(
       "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" leaves one or more outputs unconnected",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
+      ~s("%{node}" in flow "%{flow_name}" leaves one or more outputs unconnected),
+      node: health_node_label(finding, flow),
       flow_name: flow.name
     )
   end
@@ -706,9 +734,8 @@ defmodule Storyarn.Exports.Validator do
   defp health_message(%{code: :invalid_input_pins} = finding, flow) do
     dgettext(
       "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on input pins it no longer has",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
+      ~s("%{node}" in flow "%{flow_name}" has connections on input pins it no longer has),
+      node: health_node_label(finding, flow),
       flow_name: flow.name
     )
   end
@@ -716,9 +743,8 @@ defmodule Storyarn.Exports.Validator do
   defp health_message(%{code: :invalid_output_pins} = finding, flow) do
     dgettext(
       "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on output pins it no longer has",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
+      ~s("%{node}" in flow "%{flow_name}" has connections on output pins it no longer has),
+      node: health_node_label(finding, flow),
       flow_name: flow.name
     )
   end
@@ -726,8 +752,8 @@ defmodule Storyarn.Exports.Validator do
   defp health_message(%{code: :orphan_hub} = finding, flow) do
     dgettext(
       "projects",
-      "Hub node (id: %{node_id}) in flow \"%{flow_name}\" is never targeted by a Jump",
-      node_id: finding.entity_id,
+      ~s("%{node}" in flow "%{flow_name}" is never targeted by a Jump),
+      node: health_node_label(finding, flow),
       flow_name: flow.name
     )
   end
@@ -735,8 +761,8 @@ defmodule Storyarn.Exports.Validator do
   defp health_message(%{code: :missing_jump_target} = finding, flow) do
     dgettext(
       "projects",
-      "Jump node (id: %{node_id}) in flow \"%{flow_name}\" has no target hub set",
-      node_id: finding.entity_id,
+      ~s("%{node}" in flow "%{flow_name}" has no target hub set),
+      node: health_node_label(finding, flow),
       flow_name: flow.name
     )
   end
@@ -744,8 +770,8 @@ defmodule Storyarn.Exports.Validator do
   defp health_message(%{code: :missing_subflow_reference} = finding, flow) do
     dgettext(
       "projects",
-      "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" has no referenced flow set",
-      node_id: finding.entity_id,
+      ~s("%{node}" in flow "%{flow_name}" has no referenced flow set),
+      node: health_node_label(finding, flow),
       flow_name: flow.name
     )
   end
@@ -753,8 +779,8 @@ defmodule Storyarn.Exports.Validator do
   defp health_message(%{code: :missing_exit_flow_reference} = finding, flow) do
     dgettext(
       "projects",
-      "Exit node (id: %{node_id}) in flow \"%{flow_name}\" has no return flow set",
-      node_id: finding.entity_id,
+      ~s("%{node}" in flow "%{flow_name}" has no return flow set),
+      node: health_node_label(finding, flow),
       flow_name: flow.name
     )
   end
@@ -762,9 +788,16 @@ defmodule Storyarn.Exports.Validator do
   defp health_message(%{code: :stale_exit_flow_reference} = finding, flow) do
     dgettext(
       "projects",
-      "Exit node (id: %{node_id}) in flow \"%{flow_name}\" returns to a flow that no longer exists",
-      node_id: finding.entity_id,
+      ~s("%{node}" in flow "%{flow_name}" returns to a flow that no longer exists),
+      node: health_node_label(finding, flow),
       flow_name: flow.name
     )
+  end
+
+  defp health_node_label(finding, flow) do
+    case Enum.find(flow.nodes, &(&1.id == finding.entity_id)) do
+      nil -> Flows.node_label(%{type: finding.entity_type})
+      node -> Flows.node_label(node)
+    end
   end
 end

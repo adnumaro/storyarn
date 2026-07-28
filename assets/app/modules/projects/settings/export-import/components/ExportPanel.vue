@@ -25,6 +25,7 @@ import {
 import { computed, onUnmounted, ref, watch, type Component } from "vue";
 import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";
+import LiveLink from "@components/navigation/LiveLink.vue";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import { Switch } from "@components/ui/switch";
 import { useI18n } from "vue-i18n";
@@ -165,6 +166,7 @@ const selectedAssetMode = computed(
     assetModeOptions.value[0],
 );
 const canExport = computed(() => includedSections.value.length > 0);
+const canDownload = computed(() => canExport.value && validation?.status !== "errors");
 const validationCounts = computed(() => ({
   errors: validation?.errors?.length ?? 0,
   warnings: validation?.warnings?.length ?? 0,
@@ -688,7 +690,7 @@ function validationIconClass(status: string) {
                 }}
               </Button>
 
-              <Button v-if="canExport" class="w-full" as-child>
+              <Button v-if="canDownload" class="w-full" as-child>
                 <a
                   :href="exportDownloadUrl"
                   data-live-link-exempt="download"
@@ -704,6 +706,15 @@ function validationIconClass(status: string) {
                 {{ $t("project_settings.export.download", { ext: formatConfig.extension }) }}
               </Button>
             </div>
+
+            <p
+              v-if="canExport && validation?.status === 'errors'"
+              class="flex items-start gap-2 text-xs leading-relaxed text-error"
+              role="alert"
+            >
+              <CircleX class="mt-0.5 size-3.5 shrink-0" />
+              <span>{{ $t("project_settings.export.download_blocked") }}</span>
+            </p>
 
             <p class="flex items-start gap-2 text-xs leading-relaxed text-base-content/45">
               <Info class="mt-0.5 size-3.5 shrink-0" />
@@ -770,7 +781,14 @@ function validationIconClass(status: string) {
               :key="`error-${index}`"
               class="rounded-lg border border-error/20 bg-base-100/65 px-3 py-2.5 text-sm"
             >
-              {{ finding.message }}
+              <LiveLink
+                v-if="finding.href"
+                :to="finding.href"
+                class="font-medium underline decoration-current/30 underline-offset-4 transition hover:decoration-current"
+              >
+                {{ finding.message }}
+              </LiveLink>
+              <template v-else>{{ finding.message }}</template>
             </div>
           </div>
 
@@ -786,7 +804,14 @@ function validationIconClass(status: string) {
               :key="`warning-${index}`"
               class="rounded-lg border border-warning/20 bg-base-100/65 px-3 py-2.5 text-sm"
             >
-              {{ finding.message }}
+              <LiveLink
+                v-if="finding.href"
+                :to="finding.href"
+                class="font-medium underline decoration-current/30 underline-offset-4 transition hover:decoration-current"
+              >
+                {{ finding.message }}
+              </LiveLink>
+              <template v-else>{{ finding.message }}</template>
             </div>
           </div>
 
@@ -802,7 +827,14 @@ function validationIconClass(status: string) {
               :key="`info-${index}`"
               class="rounded-lg border border-info/20 bg-base-100/65 px-3 py-2.5 text-sm"
             >
-              {{ finding.message }}
+              <LiveLink
+                v-if="finding.href"
+                :to="finding.href"
+                class="font-medium underline decoration-current/30 underline-offset-4 transition hover:decoration-current"
+              >
+                {{ finding.message }}
+              </LiveLink>
+              <template v-else>{{ finding.message }}</template>
             </div>
           </div>
         </div>

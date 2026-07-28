@@ -19,6 +19,8 @@ defmodule Storyarn.Exports do
   alias Storyarn.Exports.Validator
   alias Storyarn.Exports.Validator.ValidationResult
 
+  require Logger
+
   @doc """
   Export a project to the specified format.
 
@@ -52,7 +54,7 @@ defmodule Storyarn.Exports do
          {:ok, options, preloaded} <- maybe_validate(project, options),
          {:ok, serializer} <- SerializerRegistry.get(options.format) do
       project_data = DataCollector.collect(project.id, options, preloaded)
-      serializer.serialize(project_data, options)
+      serialize_safely(serializer, project_data, options)
     end
   end
 
@@ -107,6 +109,17 @@ defmodule Storyarn.Exports do
   end
 
   defp maybe_validate(_project, options), do: {:ok, options, %{}}
+
+  defp serialize_safely(serializer, project_data, options) do
+    serializer.serialize(project_data, options)
+  rescue
+    error ->
+      Logger.error(
+        "Export serializer #{inspect(serializer)} failed for #{options.format} with #{inspect(error.__struct__)}"
+      )
+
+      {:error, :serialization_failed}
+  end
 
   # Options that do not parse are reported, not guessed at. This used to fall
   # through to the now-deleted native JSON format — so a caller that omitted or

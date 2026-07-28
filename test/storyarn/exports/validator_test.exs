@@ -11,6 +11,7 @@ defmodule Storyarn.Exports.ValidatorTest do
   alias Storyarn.Exports.Validator
   alias Storyarn.Exports.Validator.ValidationResult
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.References.VariableReference
   alias Storyarn.Repo
 
   # =============================================================================
@@ -58,8 +59,8 @@ defmodule Storyarn.Exports.ValidatorTest do
       Storyarn.FlowsFixtures.connection_fixture(flow, dialogue, exit_node)
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
+      assert result.errors == [], inspect(result.errors)
       assert result.status in [:passed, :warnings]
-      assert result.errors == []
     end
   end
 
@@ -273,6 +274,124 @@ defmodule Storyarn.Exports.ValidatorTest do
         Enum.filter(result.errors, &(&1.rule == :broken_references && &1[:ref_type] == :flow))
 
       assert length(broken) == 1
+    end
+
+    test "partial exports accept references to active flows outside the selection", %{project: project} do
+      included = flow_fixture(project, %{name: "Included"})
+      excluded = flow_fixture(project, %{name: "Excluded"})
+
+      node_fixture(included, %{
+        type: "subflow",
+        data: %{"referenced_flow_id" => excluded.id}
+      })
+
+      result =
+        Validator.validate_project(project.id, %ExportOptions{
+          format: :ink,
+          flow_ids: [included.id]
+        })
+
+      refute Enum.any?(result.errors, &(&1.rule == :broken_references))
+    end
+  end
+
+  describe "artifact integrity" do
+    setup [:setup_project]
+
+    test "blocks invalid dialogue and response runtime IDs", %{project: project} do
+      flow = flow_fixture(project, %{name: "Runtime IDs"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Choose",
+            "responses" => [%{"id" => "valid_response", "text" => "Continue"}]
+          }
+        })
+
+      corrupt_data =
+        dialogue.data
+        |> Map.put("localization_id", nil)
+        |> Map.put("responses", [%{"text" => "Missing ID"}])
+
+      dialogue |> Ecto.Changeset.change(data: corrupt_data) |> Repo.update!()
+
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
+
+      assert Enum.any?(result.errors, &(&1.rule == :invalid_dialogue_runtime_id))
+      assert Enum.any?(result.errors, &(&1.rule == :invalid_response_runtime_id))
+    end
+
+    test "blocks missing flow and sheet shortcuts", %{project: project} do
+      flow = flow_fixture(project, %{name: "Legacy Flow"})
+      sheet = sheet_fixture(project, %{name: "Legacy Sheet"})
+
+      flow |> Ecto.Changeset.change(shortcut: nil) |> Repo.update!()
+      sheet |> Ecto.Changeset.change(shortcut: nil) |> Repo.update!()
+
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
+
+      assert Enum.any?(result.errors, &(&1.rule == :invalid_flow_identifier))
+      assert Enum.any?(result.errors, &(&1.rule == :invalid_sheet_identifier))
+    end
+
+    test "uses format-aware severity for stale variable references", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Variables"})
+      block = block_fixture(sheet, %{type: "number"})
+      flow = flow_fixture(project, %{name: "Stale References"})
+
+      node =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{"condition" => condition(sheet.shortcut, block.variable_name, "equals")}
+        })
+
+      Repo.insert!(%VariableReference{
+        source_type: "flow_node",
+        source_id: node.id,
+        flow_node_id: node.id,
+        block_id: block.id,
+        kind: "read",
+        source_sheet: sheet.shortcut,
+        source_variable: "renamed_away"
+      })
+
+      ink = Validator.validate_project(project.id, %ExportOptions{format: :ink})
+      unity = Validator.validate_project(project.id, %ExportOptions{format: :unity})
+
+      assert Enum.any?(ink.errors, &(&1.rule == :stale_variable_reference))
+      assert Enum.any?(unity.warnings, &(&1.rule == :stale_variable_reference))
+      refute Enum.any?(unity.errors, &(&1.rule == :stale_variable_reference))
+    end
+
+    test "surfaces target-transpiler warnings", %{project: project} do
+      flow = flow_fixture(project, %{name: "Expressions"})
+
+      node_fixture(flow, %{
+        type: "condition",
+        data: %{"condition" => condition("inventory", "items", "contains")}
+      })
+
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
+
+      warning = Enum.find(result.warnings, &(&1.rule == :unsupported_operator))
+      assert warning
+      assert warning.format == :ink
+      assert warning.message =~ "contains"
+    end
+
+    test "blocks corrupt conditions that would become an always-true branch", %{project: project} do
+      flow = flow_fixture(project, %{name: "Corrupt Condition"})
+
+      node_fixture(flow, %{
+        type: "condition",
+        data: %{"condition" => "{not-json"}
+      })
+
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
+
+      assert Enum.any?(result.errors, &(&1.rule == :invalid_export_expression))
     end
   end
 
@@ -596,5 +715,27 @@ defmodule Storyarn.Exports.ValidatorTest do
     %FlowNode{flow_id: flow.id}
     |> FlowNode.create_changeset(attrs)
     |> Repo.insert!()
+  end
+
+  defp condition(sheet, variable, operator) do
+    %{
+      "logic" => "all",
+      "blocks" => [
+        %{
+          "id" => "block_1",
+          "type" => "block",
+          "logic" => "all",
+          "rules" => [
+            %{
+              "id" => "rule_1",
+              "sheet" => sheet,
+              "variable" => variable,
+              "operator" => operator,
+              "value" => "value"
+            }
+          ]
+        }
+      ]
+    }
   end
 end

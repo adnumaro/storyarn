@@ -328,6 +328,7 @@
       "validate": "Validate",
       "validating": "Validating…",
       "download": "Download .{ext}",
+      "download_blocked": "Resolve the blocking issues below and validate again before downloading.",
       "download_note": "Your project is not modified. Exporting creates a new local file.",
       "passed": "Passed",
       "warnings": "Warnings",

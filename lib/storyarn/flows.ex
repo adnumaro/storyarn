@@ -31,6 +31,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.NavigationHistoryStore
   alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.NodeLabel
   alias Storyarn.Flows.SceneResolver
   alias Storyarn.Flows.SequenceCrud
   alias Storyarn.Flows.StructuralAnalysis
@@ -62,6 +63,8 @@ defmodule Storyarn.Flows do
   """
   @spec node_types() :: [String.t()]
   defdelegate node_types(), to: FlowNode
+  defdelegate node_label(node), to: NodeLabel, as: :for_node
+  defdelegate node_specific_label(node), to: NodeLabel, as: :specific_for_node
 
   # =============================================================================
   # Flows - CRUD Operations

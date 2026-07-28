@@ -57,7 +57,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
               validateBeforeExport: @validate_before_export,
               prettyPrint: @pretty_print
             },
-            validation: serialize_validation_result(@validation_result),
+            validation: serialize_validation_result(@validation_result, assigns),
             downloadUrl: export_download_url(assigns)
           }
         }
@@ -88,20 +88,47 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp serialize_entity_counts(_), do: %{}
 
-  defp serialize_validation_result(nil), do: nil
+  defp serialize_validation_result(nil, _assigns), do: nil
 
-  defp serialize_validation_result(result) do
+  defp serialize_validation_result(result, assigns) do
     %{
       status: to_string(result.status),
-      errors: Enum.map(result.errors, &serialize_finding/1),
-      warnings: Enum.map(result.warnings, &serialize_finding/1),
-      info: Enum.map(result.info, &serialize_finding/1)
+      errors: Enum.map(result.errors, &serialize_finding(&1, assigns)),
+      warnings: Enum.map(result.warnings, &serialize_finding(&1, assigns)),
+      info: Enum.map(result.info, &serialize_finding(&1, assigns))
     }
   end
 
-  defp serialize_finding(finding) do
-    %{message: finding.message}
+  defp serialize_finding(finding, assigns) do
+    %{
+      message: finding.message,
+      rule: to_string(finding.rule),
+      label: finding[:entity_label],
+      count: finding[:count],
+      entityType: finding[:entity_type],
+      entityId: finding[:entity_id],
+      href: finding_href(finding, assigns)
+    }
   end
+
+  defp finding_href(%{dashboard: :flows}, assigns) do
+    ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows"
+  end
+
+  defp finding_href(%{flow_id: flow_id, node_id: node_id}, assigns) do
+    base = ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows/#{flow_id}"
+    "#{base}?highlight=node:#{node_id}"
+  end
+
+  defp finding_href(%{flow_id: flow_id}, assigns) do
+    ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows/#{flow_id}"
+  end
+
+  defp finding_href(%{sheet_id: sheet_id}, assigns) do
+    ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/sheets/#{sheet_id}"
+  end
+
+  defp finding_href(_finding, _assigns), do: nil
 
   defp serialize_import_state(state) do
     %{
@@ -192,7 +219,6 @@ defmodule StoryarnWeb.ExportImportLive.Index do
           |> assign(:selected_format, fmt_meta.format)
           |> assign(:selected_extension, download_extension(fmt_meta))
           |> assign(:supported_sections, fmt_meta.sections)
-          |> assign(:validation_result, nil)
 
         {:noreply, socket}
     end
@@ -211,10 +237,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
             do: MapSet.delete(sections, section),
             else: MapSet.put(sections, section)
 
-        {:noreply,
-         socket
-         |> assign(:sections, sections)
-         |> assign(:validation_result, nil)}
+        {:noreply, assign(socket, :sections, sections)}
     end
   end
 
@@ -224,10 +247,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         {:noreply, socket}
 
       mode ->
-        {:noreply,
-         socket
-         |> assign(:asset_mode, mode)
-         |> assign(:validation_result, nil)}
+        {:noreply, assign(socket, :asset_mode, mode)}
     end
   end
 
@@ -237,25 +257,16 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         {:noreply, socket}
 
       policy ->
-        {:noreply,
-         socket
-         |> assign(:localization_policy, policy)
-         |> assign(:validation_result, nil)}
+        {:noreply, assign(socket, :localization_policy, policy)}
     end
   end
 
   def handle_event("toggle_option", %{"option" => "validate_before_export"}, socket) do
-    {:noreply,
-     socket
-     |> assign(:validate_before_export, !socket.assigns.validate_before_export)
-     |> assign(:validation_result, nil)}
+    {:noreply, assign(socket, :validate_before_export, !socket.assigns.validate_before_export)}
   end
 
   def handle_event("toggle_option", %{"option" => "pretty_print"}, socket) do
-    {:noreply,
-     socket
-     |> assign(:pretty_print, !socket.assigns.pretty_print)
-     |> assign(:validation_result, nil)}
+    {:noreply, assign(socket, :pretty_print, !socket.assigns.pretty_print)}
   end
 
   def handle_event("validate_export", _params, socket) do

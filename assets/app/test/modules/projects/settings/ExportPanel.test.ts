@@ -210,7 +210,7 @@ describe("ExportPanel", () => {
     const props = baseProps();
     props.validation = {
       status: "errors",
-      errors: [{ message: "A blocking issue" }],
+      errors: [{ message: "A blocking issue", rule: "blocking_issue" }],
       warnings: [{ message: "A warning" }],
       info: [{ message: "A note" }],
     } as never;
@@ -221,5 +221,34 @@ describe("ExportPanel", () => {
     expect(results.text()).toContain("A blocking issue");
     expect(results.text()).toContain("A warning");
     expect(results.text()).toContain("A note");
+  });
+
+  it("blocks the download when validation has errors", () => {
+    const props = baseProps();
+    props.validation = {
+      status: "errors",
+      errors: [{ message: "A blocking issue", rule: "blocking_issue" }],
+      warnings: [],
+      info: [],
+    };
+    const { wrapper } = mountPanel(props);
+
+    expect(wrapper.find('[data-testid="download-export"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain(
+      "Resolve the blocking issues below and validate again before downloading.",
+    );
+  });
+
+  it("keeps the download available when validation only has warnings", () => {
+    const props = baseProps();
+    props.validation = {
+      status: "warnings",
+      errors: [],
+      warnings: [{ message: "A warning", rule: "warning" }],
+      info: [],
+    };
+    const { wrapper } = mountPanel(props);
+
+    expect(wrapper.get('[data-testid="download-export"]').attributes("href")).toBe("/export/ink");
   });
 });

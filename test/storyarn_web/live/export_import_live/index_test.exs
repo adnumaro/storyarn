@@ -262,46 +262,45 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert export_config(view)["options"]["localizationPolicy"] == "preview"
     end
 
-    test "switching localization policy clears validation result", %{conn: conn, project: project} do
+    test "switching localization policy preserves validation findings", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, export_url(project))
 
       render_click(view, "validate_export", %{})
-      assert validation_status(view)
+      status = validation_status(view)
 
       render_click(view, "set_localization_policy", %{"policy" => "preview"})
-      assert export_config(view)["validation"] == nil
+      assert validation_status(view) == status
     end
 
-    test "switching format clears validation result", %{conn: conn, project: project} do
+    test "switching format preserves validation findings", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, export_url(project))
 
       render_click(view, "validate_export", %{})
-      assert validation_status(view)
+      status = validation_status(view)
 
       render_click(view, "set_format", %{"format" => "yarn"})
-      assert export_config(view)["validation"] == nil
+      assert validation_status(view) == status
     end
 
-    test "changing export settings clears stale validation results", %{
+    test "changing export settings preserves validation findings", %{
       conn: conn,
       project: project
     } do
       {:ok, view, _html} = live(conn, export_url(project))
 
       render_click(view, "validate_export", %{})
-      assert validation_status(view)
+      status = validation_status(view)
       render_click(view, "toggle_section", %{"section" => "sheets"})
-      assert export_config(view)["validation"] == nil
+      assert validation_status(view) == status
 
-      render_click(view, "validate_export", %{})
-      assert validation_status(view)
       render_click(view, "set_asset_mode", %{"mode" => "embedded"})
-      assert export_config(view)["validation"] == nil
+      assert validation_status(view) == status
 
-      render_click(view, "validate_export", %{})
-      assert validation_status(view)
       render_click(view, "toggle_option", %{"option" => "validate_before_export"})
-      assert export_config(view)["validation"] == nil
+      assert validation_status(view) == status
+
+      render_click(view, "toggle_option", %{"option" => "pretty_print"})
+      assert validation_status(view) == status
     end
   end
 
@@ -312,6 +311,24 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       render_click(view, "validate_export", %{})
 
       assert validation_status(view) in ~w(passed warnings errors)
+    end
+
+    test "serializes actionable findings with rule, count, and dashboard link", %{
+      conn: conn,
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Editorial"})
+      node_fixture(flow, %{type: "dialogue", data: %{"text" => "", "responses" => []}})
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_click(view, "validate_export", %{})
+
+      finding = Enum.find(export_config(view)["validation"]["warnings"], &(&1["rule"] == "empty_dialogue"))
+
+      assert finding["count"] == 1
+
+      assert finding["href"] ==
+               ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
     end
 
     test "loads entity counts asynchronously", %{conn: conn, project: project} do

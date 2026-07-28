@@ -144,12 +144,29 @@ defmodule Storyarn.Flows.FlowStats do
     Enum.flat_map(topologies, fn topology ->
       stale_node_ids = Map.get(stale_by_flow, topology.flow_id, MapSet.new())
       nodes = Flows.add_health_flags(topology.nodes, stale_node_ids, variable_types)
+      node_labels = Map.new(nodes, &{&1.id, Flows.node_specific_label(&1)})
 
       %{topology | nodes: nodes}
       |> StructuralAnalysis.findings()
       # The flow name rides in `details` so the caller needs no second query;
       # `sheet_stats.ex` does the same with `sheet_name`.
-      |> Enum.map(&%{&1 | details: Map.put(&1.details, :flow_name, topology.flow_name)})
+      |> Enum.map(fn finding ->
+        details =
+          finding.details
+          |> Map.put(:flow_name, topology.flow_name)
+          |> maybe_put_entity_label(finding.entity_id, node_labels)
+
+        %{finding | details: details}
+      end)
     end)
+  end
+
+  defp maybe_put_entity_label(details, nil, _node_labels), do: details
+
+  defp maybe_put_entity_label(details, entity_id, node_labels) do
+    case Map.get(node_labels, entity_id) do
+      nil -> details
+      label -> Map.put(details, :entity_label, label)
+    end
   end
 end
