@@ -38,7 +38,7 @@ defmodule Storyarn.Exports.Validator do
   Returns a `%ValidationResult{}` struct with errors, warnings, and info findings.
 
   Takes a built `%ExportOptions{}`. There is no default: the previous one
-  guessed `%ExportOptions{format: :storyarn}`, so a caller that never said which
+  guessed the now-deleted native JSON format, so a caller that never said which
   format it was exporting as got validated against a different one.
   """
   def validate_project(project_id, %ExportOptions{} = opts) do

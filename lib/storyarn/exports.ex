@@ -2,14 +2,14 @@ defmodule Storyarn.Exports do
   @moduledoc """
   The Exports context.
 
-  Handles project export in multiple formats: Storyarn JSON (native, lossless),
-  Ink, Yarn Spinner, Unity, Godot, Unreal, and articy:draft XML.
+  Handles project export in engine formats: Ink, Yarn Spinner, Unity, Godot,
+  Unreal, and articy:draft XML. There is no native round-trip format.
 
   This module serves as a facade, delegating to specialized submodules:
   - `DataCollector` - Loads project data for export
   - `SerializerRegistry` - Resolves format atoms to serializer modules
   - `Validator` - Pre-export validation and health checks
-  - `Serializers.StoryarnJSON` - Native JSON format (lossless round-trip)
+  - `Serializers.*` - One module per engine format
   """
 
   alias Storyarn.Exports.DataCollector
@@ -109,7 +109,7 @@ defmodule Storyarn.Exports do
   defp maybe_validate(_project, options), do: {:ok, options, %{}}
 
   # Options that do not parse are reported, not guessed at. This used to fall
-  # through to `%ExportOptions{format: :storyarn}` — so a caller that omitted or
+  # through to the now-deleted native JSON format — so a caller that omitted or
   # misspelled the format silently got a validation pass for a different format
   # than the one it was about to export as.
   defp invalid_options_validation_result(project_id, reason) do

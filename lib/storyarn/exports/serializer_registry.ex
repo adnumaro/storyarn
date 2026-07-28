@@ -55,7 +55,7 @@ defmodule Storyarn.Exports.SerializerRegistry do
   List all formats with their display metadata.
 
   Returns a list of maps sorted by display order:
-  `[%{format: :storyarn, label: "Storyarn JSON", extension: "json", sections: [...]}]`
+  `[%{format: :ink, label: "Ink", extension: "ink", sections: [...]}]`
   """
   def list_with_metadata do
     Enum.map(@display_order, fn format ->

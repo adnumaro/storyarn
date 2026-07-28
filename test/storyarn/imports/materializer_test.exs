@@ -1,4 +1,4 @@
-defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
+defmodule Storyarn.Imports.MaterializerTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
@@ -9,14 +9,17 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Collaboration
-  alias Storyarn.Exports
   alias Storyarn.Flows
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
+  alias Storyarn.Imports.Materializer
   alias Storyarn.Localization
   alias Storyarn.References.EntityReference
   alias Storyarn.Repo
+  alias Storyarn.Scenes
+  alias Storyarn.Sheets
+  alias Storyarn.Sheets.Sheet
 
   # =============================================================================
   # Setup
@@ -27,15 +30,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     source = project_fixture(user)
     target = project_fixture(user)
     %{user: user, source: source, target: target}
-  end
-
-  defp storyarn_plan(data) do
-    %ImportPlan{
-      format: :storyarn,
-      parser_version: "1",
-      source_kind: :file,
-      data: data
-    }
   end
 
   defp setup_with_data(%{source: source} = context) do
@@ -55,15 +49,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     scene = scene_fixture(source, %{name: "World Map"})
     _pin = pin_fixture(scene, %{"label" => "Castle", "position_x" => 10.0, "position_y" => 10.0})
 
-    # Export source project
-    {:ok, json} =
-      Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
-
-    {:ok, parsed} = Imports.parse_file(json)
-
     Map.merge(context, %{
-      json: json,
-      parsed: parsed,
+      parsed: import_plan(project_plan_data(source)),
       sheet: sheet,
       flow: flow,
       scene: scene
@@ -71,47 +58,34 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   end
 
   # =============================================================================
-  # Parse errors
+  # Plan validation
   # =============================================================================
 
-  describe "parse — error paths" do
-    test "returns error for invalid JSON" do
-      assert {:error, :invalid_json} = Imports.parse_file("not valid json {{{")
-    end
-
-    test "returns error for non-map JSON (array)" do
-      json = Jason.encode!([1, 2, 3])
-      assert {:error, :invalid_json_structure} = Imports.parse_file(json)
-    end
-
+  describe "validate_plan_data" do
     test "returns error for missing required keys" do
-      json = Jason.encode!(%{"foo" => "bar"})
-      assert {:error, {:missing_required_keys, missing}} = Imports.parse_file(json)
+      assert {:error, {:missing_required_keys, missing}} = Materializer.validate_plan_data(%{"foo" => "bar"})
       assert "storyarn_version" in missing
       assert "export_version" in missing
       assert "project" in missing
     end
 
     test "accepts explicit null flow collections without crashing" do
-      assert {:ok, _data} =
+      assert :ok =
                minimal_import_data()
                |> Map.put("flows", nil)
-               |> Jason.encode!()
-               |> Imports.parse_file()
+               |> Materializer.validate_plan_data()
 
-      assert {:ok, _data} =
+      assert :ok =
                minimal_import_data()
                |> put_in(["flows", Access.at(0), "nodes"], nil)
-               |> Jason.encode!()
-               |> Imports.parse_file()
+               |> Materializer.validate_plan_data()
     end
 
     test "rejects locale codes that could escape an export directory" do
       data = minimal_import_data()
       data = put_in(data, ["localization"], %{"source_language" => "../../secrets", "languages" => []})
 
-      assert {:error, {:invalid_locale_codes, ["../../secrets"]}} =
-               data |> Jason.encode!() |> Imports.parse_file()
+      assert {:error, {:invalid_locale_codes, ["../../secrets"]}} = Materializer.validate_plan_data(data)
     end
 
     test "rejects dialogue responses without a stable response id" do
@@ -120,8 +94,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
           dialogue_import_node("welcome", [%{"text" => "Continue"}])
         ])
 
-      assert {:error, {:invalid_dialogue_ids, errors}} =
-               data |> Jason.encode!() |> Imports.parse_file()
+      assert {:error, {:invalid_dialogue_ids, errors}} = Materializer.validate_plan_data(data)
 
       assert Enum.any?(errors, &(&1.field == "response.id"))
     end
@@ -133,8 +106,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
           dialogue_import_node("shared_dialogue", [])
         ])
 
-      assert {:error, {:invalid_dialogue_ids, errors}} =
-               data |> Jason.encode!() |> Imports.parse_file()
+      assert {:error, {:invalid_dialogue_ids, errors}} = Materializer.validate_plan_data(data)
 
       assert Enum.any?(errors, &(&1.reason == "duplicate" and &1.value == "shared_dialogue"))
     end
@@ -147,8 +119,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
           "glossary" => []
         })
 
-      assert {:error, {:invalid_field_types, fields}} =
-               data |> Jason.encode!() |> Imports.parse_file()
+      assert {:error, {:invalid_field_types, fields}} = Materializer.validate_plan_data(data)
 
       assert "localization.languages[0]" in fields
       assert "localization.strings[0].translations" in fields
@@ -160,8 +131,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
           %{"id" => Ecto.UUID.generate(), "type" => "dialogue", "data" => "invalid"}
         ])
 
-      assert {:error, {:invalid_field_types, [field]}} =
-               data |> Jason.encode!() |> Imports.parse_file()
+      assert {:error, {:invalid_field_types, [field]}} = Materializer.validate_plan_data(data)
 
       assert field == "flows[0].nodes[0].data"
     end
@@ -177,8 +147,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
           }
         ])
 
-      assert {:error, {:invalid_field_types, [field]}} =
-               data |> Jason.encode!() |> Imports.parse_file()
+      assert {:error, {:invalid_field_types, [field]}} = Materializer.validate_plan_data(data)
 
       assert field == "flows[0].nodes[0].sequence_config"
     end
@@ -193,8 +162,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
           }
         ])
 
-      assert {:error, {:invalid_field_types, [field]}} =
-               data |> Jason.encode!() |> Imports.parse_file()
+      assert {:error, {:invalid_field_types, [field]}} = Materializer.validate_plan_data(data)
 
       assert field == "flows[0].nodes[0].sequence_config"
     end
@@ -210,8 +178,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
           }
         ])
 
-      assert {:error, {:invalid_field_types, [field]}} =
-               data |> Jason.encode!() |> Imports.parse_file()
+      assert {:error, {:invalid_field_types, [field]}} = Materializer.validate_plan_data(data)
 
       assert field == "flows[0].nodes[0].sequence_config"
     end
@@ -224,8 +191,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
           "glossary" => [%{"translations" => %{"es" => %{"invalid" => true}}}]
         })
 
-      assert {:error, {:invalid_field_types, fields}} =
-               data |> Jason.encode!() |> Imports.parse_file()
+      assert {:error, {:invalid_field_types, fields}} = Materializer.validate_plan_data(data)
 
       assert "localization.strings[0].translations.es" in fields
       assert "localization.glossary[0].translations.es" in fields
@@ -239,10 +205,10 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   describe "execute — entity count validation" do
     setup [:setup_projects]
 
-    test "rejects malformed nested structures even when parse is bypassed", %{target: target} do
+    test "rejects malformed nested structures when a plan reaches execution", %{target: target} do
       data = put_in(minimal_import_data(), ["flows"], [%{"nodes" => ["invalid"]}])
 
-      assert {:error, {:invalid_field_types, fields}} = Imports.execute(target, storyarn_plan(data))
+      assert {:error, {:invalid_field_types, fields}} = Imports.execute(target, import_plan(data))
       assert "flows[0].nodes[0]" in fields
     end
 
@@ -250,16 +216,9 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       # Build data that exceeds the sheets limit (1000)
       sheets = Enum.map(1..1001, fn i -> %{"id" => i, "name" => "Sheet #{i}"} end)
 
-      data = %{
-        "storyarn_version" => "1.0.0",
-        "export_version" => "1.0.0",
-        "project" => %{},
-        "sheets" => sheets,
-        "flows" => [],
-        "scenes" => []
-      }
+      data = plan_data(%{"sheets" => sheets})
 
-      assert {:error, {:entity_limits_exceeded, details}} = Imports.execute(target, storyarn_plan(data))
+      assert {:error, {:entity_limits_exceeded, details}} = Imports.execute(target, import_plan(data))
       assert Map.has_key?(details, :sheets)
       assert details.sheets.count == 1001
       assert details.sheets.limit == 1000
@@ -271,7 +230,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       |> Repo.update!()
 
       assert {:error, :project_not_active} =
-               Imports.execute(target, storyarn_plan(minimal_import_data()))
+               Imports.execute(target, import_plan(minimal_import_data()))
     end
 
     test "counts every inserted node when source IDs are duplicated", %{target: target} do
@@ -294,7 +253,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
 
       data = put_in(minimal_import_data(nodes), ["flows", Access.at(0), "name"], "Imported flow")
 
-      assert {:ok, result} = Imports.execute(target, storyarn_plan(data))
+      assert {:ok, result} = Imports.execute(target, import_plan(data))
       assert result.counts.nodes == 2
 
       assert [flow] = result.flows
@@ -329,19 +288,13 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert preview.conflicts == %{}
     end
 
-    test "detects shortcut conflicts", %{source: source, target: target} do
+    test "detects shortcut conflicts", %{target: target, parsed: parsed} do
       # Create conflicting entities in target
       sheet_fixture(target, %{name: "Hero"})
       flow_fixture(target, %{name: "Main Story"})
       scene_fixture(target, %{name: "World Map"})
 
-      # Get shortcuts from source
-      {:ok, source_json} =
-        Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
-
-      {:ok, source_parsed} = Imports.parse_file(source_json)
-
-      {:ok, preview} = Imports.preview(target.id, source_parsed)
+      {:ok, preview} = Imports.preview(target.id, parsed)
       assert preview.has_conflicts == true
       # Should detect conflicts in at least some schemas
       assert map_size(preview.conflicts) > 0
@@ -367,7 +320,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert result.counts.nodes >= 2
 
       # Should still have only one "Hero" sheet (the original)
-      sheets = Storyarn.Sheets.list_all_sheets(target.id)
+      sheets = Sheets.list_all_sheets(target.id)
       hero_sheets = Enum.filter(sheets, &(&1.name == "Hero"))
       assert length(hero_sheets) == 1
       assert hd(hero_sheets).id == existing.id
@@ -389,7 +342,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       {:ok, _result} = Imports.execute(target, parsed, conflict_strategy: :rename)
 
       # Should now have two "Hero" sheets, one with modified shortcut
-      sheets = Storyarn.Sheets.list_all_sheets(target.id)
+      sheets = Sheets.list_all_sheets(target.id)
       hero_sheets = Enum.filter(sheets, &String.starts_with?(&1.name, "Hero"))
       assert length(hero_sheets) == 2
 
@@ -414,11 +367,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       {:ok, _result} = Imports.execute(target, parsed, conflict_strategy: :overwrite)
 
       # The existing sheet should be soft-deleted
-      reloaded = Repo.get(Storyarn.Sheets.Sheet, existing.id)
+      reloaded = Repo.get(Sheet, existing.id)
       assert reloaded.deleted_at
 
       # Should have a new active "Hero" sheet
-      active_sheets = Storyarn.Sheets.list_all_sheets(target.id)
+      active_sheets = Sheets.list_all_sheets(target.id)
       hero_sheets = Enum.filter(active_sheets, &(&1.name == "Hero"))
       assert length(hero_sheets) == 1
       assert hd(hero_sheets).id != existing.id
@@ -445,7 +398,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     test "preserves sheet blocks", %{target: target, parsed: parsed} do
       {:ok, _result} = Imports.execute(target, parsed)
 
-      sheets = Storyarn.Sheets.list_all_sheets(target.id)
+      sheets = Sheets.list_all_sheets(target.id)
       hero = Enum.find(sheets, &(&1.name == "Hero"))
       assert hero
 
@@ -487,11 +440,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
           data: %{"text" => "Nested in Act I"}
         })
 
-      assert {:ok, json} =
-               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
-
-      assert {:ok, parsed} = Imports.parse_file(json)
-      assert {:ok, result} = Imports.execute(target, parsed)
+      assert {:ok, result} = Imports.execute(target, import_plan(project_plan_data(source)))
 
       imported_flow = Enum.find(result.flows, &(&1.name == "Sequence fidelity"))
       imported_nodes = Flows.list_nodes(imported_flow.id)
@@ -563,11 +512,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
                  }
                })
 
-      assert {:ok, json} =
-               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
-
-      assert {:ok, parsed} = Imports.parse_file(json)
-      assert {:ok, result} = Imports.execute(target, parsed)
+      assert {:ok, result} = Imports.execute(target, import_plan(project_plan_data(source)))
 
       imported_sheet = Enum.find(result.sheets, &(&1.name == character.name))
       imported_sheet = Repo.preload(imported_sheet, :blocks)
@@ -616,7 +561,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
         |> minimal_import_data()
         |> put_in(["flows", Access.at(0), "name"], "Legacy Hub Colors")
 
-      assert {:ok, result} = Imports.execute(target, storyarn_plan(data))
+      assert {:ok, result} = Imports.execute(target, import_plan(data))
 
       flow = Enum.find(result.flows, &(&1.name == "Legacy Hub Colors"))
       hub = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "hub"))
@@ -630,13 +575,9 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       [text] = Localization.get_texts_for_source("sheet", sheet.id)
       assert {:ok, _text} = Localization.update_text(text, %{translated_text: "Héroe", status: "final"})
 
-      assert {:ok, json} =
-               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
+      assert {:ok, _result} = Imports.execute(target, import_plan(project_plan_data(source)))
 
-      assert {:ok, parsed} = Imports.parse_file(json)
-      assert {:ok, _result} = Imports.execute(target, parsed)
-
-      imported_sheet = Enum.find(Storyarn.Sheets.list_all_sheets(target.id), &(&1.name == "Localized Hero"))
+      imported_sheet = Enum.find(Sheets.list_all_sheets(target.id), &(&1.name == "Localized Hero"))
       refute imported_sheet.id == sheet.id
 
       assert [%{translated_text: "Héroe", status: "final"}] =
@@ -653,11 +594,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert {:ok, _text} = Localization.update_text(text, %{translated_text: "Recuérdame", status: "final"})
       assert {:ok, archived_language} = Localization.remove_language(spanish)
 
-      assert {:ok, json} =
-               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
-
-      assert {:ok, parsed} = Imports.parse_file(json)
-      assert {:ok, result} = Imports.execute(target, parsed)
+      assert {:ok, result} = Imports.execute(target, import_plan(project_plan_data(source)))
 
       imported_language =
         target.id
@@ -707,11 +644,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
           }
         })
 
-      assert {:ok, json} =
-               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
-
-      assert {:ok, parsed} = Imports.parse_file(json)
-      assert {:ok, result} = Imports.execute(target, parsed, conflict_strategy: :rename)
+      assert {:ok, result} =
+               Imports.execute(target, import_plan(project_plan_data(source)), conflict_strategy: :rename)
 
       imported_flow = Enum.find(result.flows, &(&1.name == "Collision Source"))
       imported_node = imported_flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "dialogue"))
@@ -753,11 +687,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       assert {:ok, deleted_node, _meta} = Flows.delete_node(existing_node)
       assert deleted_node.deleted_at
 
-      assert {:ok, json} =
-               Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
-
-      assert {:ok, parsed} = Imports.parse_file(json)
-      assert {:ok, result} = Imports.execute(target, parsed, conflict_strategy: :rename)
+      assert {:ok, result} =
+               Imports.execute(target, import_plan(project_plan_data(source)), conflict_strategy: :rename)
 
       imported_flow = Enum.find(result.flows, &(&1.name == "Deleted Collision Source"))
       imported_node = imported_flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "dialogue"))
@@ -781,11 +712,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
           data: %{"target_type" => "flow", "target_id" => referenced_flow.id}
         })
 
-      {:ok, json} =
-        Exports.export_project(source, %{format: :storyarn, validate_before_export: false})
-
-      {:ok, parsed} = Imports.parse_file(json)
-      {:ok, _result} = Imports.execute(target, parsed)
+      {:ok, _result} = Imports.execute(target, import_plan(project_plan_data(source)))
 
       imported_flows = Flows.list_flows(target.id)
       imported_referenced_flow = Enum.find(imported_flows, &(&1.name == "Referenced Flow"))
@@ -800,15 +727,44 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
     end
   end
 
-  defp minimal_import_data(nodes \\ []) do
-    %{
-      "storyarn_version" => "1.0.0",
-      "export_version" => "1.0.0",
-      "project" => %{},
-      "sheets" => [],
-      "flows" => [%{"id" => "flow-1", "nodes" => nodes}],
-      "scenes" => []
+  # =============================================================================
+  # Import-plan fixtures
+  #
+  # Every parser normalizes its source into this one envelope — see
+  # `Imports.Parsers.Yarn.Normalizer` — and the materializer never branches on
+  # `plan.format`, so the scenarios above build the plan directly instead of
+  # round-tripping through a serializer. The builders carry exactly the keys the
+  # materializer reads back. Assets, table blocks, sheet avatars, glossary
+  # entries and scene zones/connections/annotations have no fixture in this
+  # file, so they are deliberately absent rather than emitted empty; add the
+  # matching builder alongside any new fixture that needs them.
+  # =============================================================================
+
+  defp import_plan(data) do
+    %ImportPlan{
+      format: :yarn,
+      parser_version: "1",
+      source_kind: :file,
+      data: data
     }
+  end
+
+  defp plan_data(sections) do
+    Map.merge(
+      %{
+        "storyarn_version" => "1.0.0",
+        "export_version" => "1.0.0",
+        "project" => %{},
+        "sheets" => [],
+        "flows" => [],
+        "scenes" => []
+      },
+      sections
+    )
+  end
+
+  defp minimal_import_data(nodes \\ []) do
+    plan_data(%{"flows" => [%{"id" => "flow-1", "nodes" => nodes}]})
   end
 
   defp dialogue_import_node(localization_id, responses) do
@@ -818,4 +774,222 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       "data" => %{"localization_id" => localization_id, "text" => "Hello", "responses" => responses}
     }
   end
+
+  defp project_plan_data(project) do
+    plan_data(%{
+      "project" => %{"id" => to_string(project.id), "name" => project.name},
+      "sheets" => project.id |> Sheets.list_sheets_for_export() |> Enum.map(&sheet_entry/1),
+      "scenes" => project.id |> Scenes.list_scenes_for_export() |> Enum.map(&scene_entry/1),
+      "flows" => project.id |> Flows.list_flows_for_export() |> Enum.map(&flow_entry/1),
+      "localization" => localization_entry(project.id)
+    })
+  end
+
+  # -- Sheets --
+
+  defp sheet_entry(sheet) do
+    %{
+      "id" => to_string(sheet.id),
+      "shortcut" => sheet.shortcut,
+      "name" => sheet.name,
+      "description" => sheet.description,
+      "color" => sheet.color,
+      "parent_id" => optional_id(sheet.parent_id),
+      "position" => sheet.position,
+      "blocks" => Enum.map(sheet.blocks, &block_entry/1)
+    }
+  end
+
+  defp block_entry(block) do
+    %{
+      "id" => to_string(block.id),
+      "type" => block.type,
+      "position" => block.position,
+      "config" => block.config || %{},
+      "value" => block.value || %{},
+      "is_constant" => block.is_constant,
+      "variable_name" => block.variable_name,
+      "scope" => block.scope,
+      "required" => block.required,
+      "detached" => block.detached,
+      "column_group_id" => block.column_group_id,
+      "column_index" => block.column_index
+    }
+  end
+
+  # -- Flows --
+
+  defp flow_entry(flow) do
+    %{
+      "id" => to_string(flow.id),
+      "shortcut" => flow.shortcut,
+      "name" => flow.name,
+      "description" => flow.description,
+      "parent_id" => optional_id(flow.parent_id),
+      "position" => flow.position,
+      "is_main" => flow.is_main,
+      "settings" => flow.settings || %{},
+      "scene_id" => optional_id(flow.scene_id),
+      "nodes" => Enum.map(flow.nodes, &node_entry/1),
+      "connections" => Enum.map(flow.connections, &flow_connection_entry/1)
+    }
+  end
+
+  defp node_entry(node) do
+    entry = %{
+      "id" => to_string(node.id),
+      "type" => node.type,
+      "position_x" => node.position_x,
+      "position_y" => node.position_y,
+      "parent_id" => optional_id(node.parent_id),
+      "data" => node.data || %{}
+    }
+
+    case node.sequence_config do
+      %{name: name, width: width, height: height} ->
+        Map.put(entry, "sequence_config", %{"name" => name, "width" => width, "height" => height})
+
+      _no_sequence_config ->
+        entry
+    end
+  end
+
+  defp flow_connection_entry(connection) do
+    %{
+      "id" => to_string(connection.id),
+      "source_node_id" => to_string(connection.source_node_id),
+      "source_pin" => connection.source_pin,
+      "target_node_id" => to_string(connection.target_node_id),
+      "target_pin" => connection.target_pin,
+      "label" => connection.label
+    }
+  end
+
+  # -- Scenes --
+
+  defp scene_entry(scene) do
+    %{
+      "id" => to_string(scene.id),
+      "shortcut" => scene.shortcut,
+      "name" => scene.name,
+      "description" => scene.description,
+      "parent_id" => optional_id(scene.parent_id),
+      "position" => scene.position,
+      "width" => scene.width,
+      "height" => scene.height,
+      "default_zoom" => scene.default_zoom,
+      "default_center_x" => scene.default_center_x,
+      "default_center_y" => scene.default_center_y,
+      "scale_unit" => scene.scale_unit,
+      "scale_value" => scene.scale_value,
+      "fog_color" => scene.fog_color,
+      "fog_opacity" => scene.fog_opacity,
+      "layers" => Enum.map(scene.layers, &layer_entry/1),
+      "pins" => Enum.map(scene.pins, &pin_entry/1)
+    }
+  end
+
+  defp layer_entry(layer) do
+    %{
+      "id" => to_string(layer.id),
+      "name" => layer.name,
+      "is_default" => layer.is_default,
+      "position" => layer.position,
+      "visible" => layer.visible,
+      "fog_enabled" => layer.fog_enabled
+    }
+  end
+
+  defp pin_entry(pin) do
+    %{
+      "id" => to_string(pin.id),
+      "layer_id" => optional_id(pin.layer_id),
+      "position_x" => pin.position_x,
+      "position_y" => pin.position_y,
+      "pin_type" => pin.pin_type,
+      "icon" => pin.icon,
+      "color" => pin.color,
+      "opacity" => pin.opacity,
+      "label" => pin.label,
+      "shortcut" => pin.shortcut,
+      "hidden" => pin.hidden,
+      "flow_id" => optional_id(pin.flow_id),
+      "tooltip" => pin.tooltip,
+      "size" => pin.size,
+      "position" => pin.position,
+      "locked" => pin.locked,
+      "sheet_id" => optional_id(pin.sheet_id),
+      "condition" => pin.condition,
+      "condition_effect" => pin.condition_effect,
+      "is_playable" => pin.is_playable,
+      "is_leader" => pin.is_leader
+    }
+  end
+
+  # -- Localization --
+
+  defp localization_entry(project_id) do
+    languages = Localization.list_languages_for_backup(project_id)
+    locale_codes = Enum.map(languages, & &1.locale_code)
+    source_language = Enum.find(languages, & &1.is_source)
+
+    %{
+      "source_language" => (source_language && source_language.locale_code) || "en",
+      "languages" => Enum.map(languages, &language_entry/1),
+      "strings" => project_id |> Localization.list_texts_for_backup(locale_codes) |> string_entries()
+    }
+  end
+
+  defp language_entry(language) do
+    %{
+      "locale_code" => language.locale_code,
+      "name" => language.name,
+      "is_source" => language.is_source,
+      "position" => language.position,
+      "archived_at" => optional_iso8601(language.archived_at)
+    }
+  end
+
+  defp string_entries(texts) do
+    texts
+    |> Enum.group_by(&{&1.source_type, &1.source_id, &1.source_field})
+    |> Enum.map(fn {{source_type, source_id, source_field}, locale_texts} ->
+      first = List.first(locale_texts)
+
+      %{
+        "source_type" => source_type,
+        "source_id" => to_string(source_id),
+        "source_field" => source_field,
+        "source_text" => first.source_text,
+        "source_text_hash" => first.source_text_hash,
+        "speaker_sheet_id" => optional_id(first.speaker_sheet_id),
+        "translations" => Map.new(locale_texts, &{&1.locale_code, translation_entry(&1)})
+      }
+    end)
+  end
+
+  defp translation_entry(text) do
+    %{
+      "translated_text" => text.translated_text,
+      "translated_source_hash" => text.translated_source_hash,
+      "status" => text.status,
+      "vo_status" => text.vo_status,
+      "translator_notes" => text.translator_notes,
+      "reviewer_notes" => text.reviewer_notes,
+      "word_count" => text.word_count,
+      "machine_translated" => text.machine_translated,
+      "last_translated_at" => optional_iso8601(text.last_translated_at),
+      "last_reviewed_at" => optional_iso8601(text.last_reviewed_at),
+      "archived_at" => optional_iso8601(text.archived_at),
+      "archive_reason" => text.archive_reason
+    }
+  end
+
+  # -- Shared --
+
+  defp optional_id(nil), do: nil
+  defp optional_id(id), do: to_string(id)
+
+  defp optional_iso8601(nil), do: nil
+  defp optional_iso8601(%DateTime{} = datetime), do: DateTime.to_iso8601(datetime)
 end

@@ -1,14 +1,17 @@
-defmodule Storyarn.Imports.Parsers.StoryarnJSON do
+defmodule Storyarn.Imports.Materializer do
   @moduledoc """
-  Parses and imports Storyarn JSON format files.
+  Writes an `%ImportPlan{}` into a project.
 
-  Handles:
-  - JSON parsing and structure validation
-  - Import preview with entity counts and conflict detection
-  - Import execution with ID remapping and conflict resolution
+  This is the shared back half of every import, not one format's parser. Each
+  parser normalizes its source into the plan shape — `yarn/normalizer.ex` builds
+  the same `storyarn_version`/`export_version` envelope — and everything from
+  there is common: plan validation, preview with entity counts and conflict
+  detection, and execution with ID remapping and conflict resolution.
+
+  It used to live in the native JSON format's parser module, which is why the
+  removal of that format could not simply delete the file: the name described
+  the parser half that has now gone, while every importer depended on this half.
   """
-
-  @behaviour Storyarn.Imports.Parser
 
   import Ecto.Query, warn: false
 
@@ -18,8 +21,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Imports.ImportPlan
-  alias Storyarn.Imports.Parser
-  alias Storyarn.Imports.SourceBundle
   alias Storyarn.Localization
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.RuntimeKey
@@ -34,12 +35,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   @required_top_keys ~w(storyarn_version export_version project)
 
-  @impl Parser
-  def format, do: :storyarn
-
-  @impl Parser
-  def parser_version, do: "1"
-
   @max_entity_counts %{
     sheets: 1_000,
     flows: 500,
@@ -52,41 +47,19 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   }
 
   # =============================================================================
-  # Parse
+  # Plan validation
   # =============================================================================
 
   @doc """
-  Parse a JSON binary into a structured map.
+  Validates an import plan's `data` map before anything is written.
 
-  Validates the top-level structure. Returns `{:ok, data}` or `{:error, reason}`.
+  Every parser normalizes into this shape, so these checks belong to the plan,
+  not to any one source format.
   """
-  def parse(binary) when is_binary(binary) do
-    with {:ok, data} <- decode_json(binary),
-         :ok <- validate_structure(data),
-         :ok <- validate_types(data),
-         :ok <- validate_runtime_identifiers(data) do
-      {:ok, data}
-    end
-  end
-
-  @impl Parser
-  def parse(%SourceBundle{kind: kind, files: [%{content: binary}]}) do
-    with {:ok, data} <- parse(binary) do
-      {:ok,
-       %ImportPlan{
-         format: format(),
-         parser_version: parser_version(),
-         source_kind: kind,
-         data: data
-       }}
-    end
-  end
-
-  defp decode_json(binary) do
-    case Jason.decode(binary) do
-      {:ok, data} when is_map(data) -> {:ok, data}
-      {:ok, _} -> {:error, :invalid_json_structure}
-      {:error, _} -> {:error, :invalid_json}
+  def validate_plan_data(data) when is_map(data) do
+    with :ok <- validate_structure(data),
+         :ok <- validate_types(data) do
+      validate_runtime_identifiers(data)
     end
   end
 

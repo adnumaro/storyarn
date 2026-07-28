@@ -8,8 +8,8 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
   alias Storyarn.Flows.Evaluator.ConditionEval
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
+  alias Storyarn.Imports.Materializer
   alias Storyarn.Imports.ParserRegistry
-  alias Storyarn.Imports.Parsers.StoryarnJSON
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.SourceBundle
   alias Storyarn.Repo
@@ -764,12 +764,12 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert {:error, :import_plan_has_errors} = Imports.execute(project, plan, conflict_strategy: :rename)
       assert {:error, :import_plan_required} = Imports.preview(project.id, plan.data)
       assert {:error, :import_plan_required} = Imports.execute(project, plan.data, conflict_strategy: :rename)
-      assert {:error, :import_plan_required} = StoryarnJSON.execute(project, plan.data)
+      assert {:error, :import_plan_required} = Materializer.execute(project, plan.data)
 
       assert {:ok, :raw_materializer_rejected} =
                Repo.transact(fn ->
                  assert {:error, :import_plan_required} =
-                          StoryarnJSON.materialize_in_transaction(project, plan.data)
+                          Materializer.materialize_in_transaction(project, plan.data)
 
                  {:ok, :raw_materializer_rejected}
                end)
