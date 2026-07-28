@@ -1,0 +1,95 @@
+test/storyarn/exports/serializer_registry_test.exs
+  s_d0525e435087ba::t_320f5a3e6efad0 13-14,50,52,66-67,81,83-84,96,100-101,103-106,122,124
+test/storyarn/exports/validator_test.exs
+  s_d0525e435087ba::t_f7d68332f930fb 413-417,426,429-431
+  s_d0525e435087ba::t_432284788ce76a 60,80,105,125,148,173,188,210,232,253,270,297,310,322,479,499,515,530,543,548,560,574,587
+test/storyarn/exports/validator_health_parity_test.exs
+  s_d0525e435087ba::t_f4d3918ce2952b 27,166,176,187
+  s_d0525e435087ba::t_fca2ab5f6a99b5 210,227
+priv/gettext/assets.pot
+  s_d0525e435087ba::t_b1627fcd7eb162 14,19,24,29,34-35,40,45,50,55
+lib/storyarn_web/controllers/export_controller.ex
+  s_d0525e435087ba::t_8ab2543ef06ab8 147-152,154-156
+lib/storyarn/exports/export_options.ex
+  s_d0525e435087ba::t_b9d4f24c020add 66
+  s_d0525e435087ba::t_20f34e8cdf080b 112-117
+  s_d0525e435087ba::t_44c38c359e48c0 29
+  s_d0525e435087ba::t_99a7fadcad6151 44
+  s_d0525e435087ba::t_952d60dbab1d4f 55-56,61-62
+  s_d0525e435087ba::t_cb95bb72c0487f 63
+lib/storyarn/exports/validator.ex
+  s_d0525e435087ba::t_557cd0a5020dc4 40-43
+priv/gettext/default.pot
+  s_d0525e435087ba::t_b1627fcd7eb162 94
+lib/storyarn/exports/serializer.ex
+  s_d0525e435087ba::t_0f37e7ab9c4534 51
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_d0525e435087ba::t_b1627fcd7eb162 137,142,147,152,157,162,167-168,173,178,183,369,384,389,394,399,404,409,414,419,424,429,444,449,908,913,918,923,928,1044,1049,1054,1059,1064,1069,1074,1079,1084,1089
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_d0525e435087ba::t_b1627fcd7eb162 35,137,234,249,256-257,278,294,373-374,384,391,639-640,645,650,655,665,720,725,730,740,745,750,809,824,834
+priv/gettext/projects.pot
+  s_d0525e435087ba::t_b1627fcd7eb162 137,142,147,152,157,162,167-168,173,178,183,369,384,389,394,399,404,409,414,419,424,429,444,449,908,913,918,923,928,1044,1049,1054,1059,1064,1069,1074,1079,1084,1089
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_d0525e435087ba::t_b1627fcd7eb162 35,137,234,249,256-257,278,294,373-374,384,391,639-640,645,650,655,665,720,725,730,740,745,750,809,824,834
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_d0525e435087ba::t_b1627fcd7eb162 14,19,24,29,34-35,40,45,50,55
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_d0525e435087ba::t_b1627fcd7eb162 14,19,24,29,34-35,40,45,50,55
+priv/gettext/es/LC_MESSAGES/default.po
+  s_d0525e435087ba::t_b1627fcd7eb162 94
+lib/storyarn/exports.ex
+  s_d0525e435087ba::t_e2a27991addc0d 42-43
+  s_d0525e435087ba::t_2228bbd65d2039 76
+  s_d0525e435087ba::t_d22c4b4892b1d7 111-134
+priv/gettext/en/LC_MESSAGES/default.po
+  s_d0525e435087ba::t_b1627fcd7eb162 94
+priv/gettext/scenes.pot
+  s_d0525e435087ba::t_b1627fcd7eb162 35,137,234,249,256-257,278,294,373-374,384,391,639-640,645,650,655,665,720,725,730,740,745,750,809,824,834
+lib/storyarn/localization/text_crud.ex
+  s_d0525e435087ba::t_70ed2727c6315a 679-692
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_d0525e435087ba::t_b1627fcd7eb162 137,142,147,152,157,162,167-168,173,178,183,369,384,389,394,399,404,409,414,419,424,429,444,449,908,913,918,923,928,1044,1049,1054,1059,1064,1069,1074,1079,1084,1089
+lib/storyarn_web/live/export_import_live/index.ex
+  s_d0525e435087ba::t_72b9bb566ca473 320
+test/storyarn/exports/localization_engine_contract_test.exs
+  s_d0525e435087ba::t_e8de6176c5fb8a 364-370,380,382
+  s_d0525e435087ba::t_3854be5148023c 381
+test/storyarn/exports/export_options_test.exs
+  s_d0525e435087ba::t_6044a9f4afd01c 14
+  s_d0525e435087ba::t_2c16ff3b5a9b94 12,66,72,99,115,127,153,173,178,183,188,193,198,203,208,213,218,223,228,233,240,256,261,266,271,305,308,313,316,321,324,329,332,337,340,345
+  s_d0525e435087ba::t_94e27e85fe48a9 31
+  s_d0525e435087ba::t_8f0763c031423c 43-44
+  s_d0525e435087ba::t_b37a81cfb4d31e 289
+test/storyarn/exports/size_guard_test.exs
+  s_d0525e435087ba::t_3854be5148023c 48,100,114,135,160,180,186,205
+  s_d0525e435087ba::t_65a64f7a74bd25 216-222
+  s_d0525e435087ba::t_cb032a10b7361b 64,69-70,72,85,90
+test/storyarn_web/controllers/export_controller_test.exs
+  s_d0525e435087ba::t_1f3febeea583c7 72-73
+  s_d0525e435087ba::t_91f6b51aa355cf 83-89
+  s_d0525e435087ba::t_6a520fca920411 283,290-293
+  s_d0525e435087ba::t_1010be65dc65dd 52
+  s_d0525e435087ba::t_3f971bde02e7ae 54,61,69,81,185,227,235,251,258,268,277,287
+test/storyarn/exports/data_collector_test.exs
+  s_d0525e435087ba::t_3854be5148023c 32,44,57,66,76,94,109,204,212,229,257,267,283,299,311,321,342
+lib/storyarn/exports/data_collector.ex
+  s_d0525e435087ba::t_17ebbe770244e0 574-575
+  s_d0525e435087ba::t_cdfb908f7301bf 347,354-356
+  s_d0525e435087ba::t_fbde3115589a16 348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ed4dad25bb3c2efbf66a856ef76cd0c8a3cef6ed",
+  "prompts": {},
+  "sessions": {
+    "s_d0525e435087ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d3e876d-f5dc-41e9-bc36-347529bd7308",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
