@@ -23,32 +23,29 @@ msgid_plural "%{count} missing %{type}"
 msgstr[0] "%{count} %{type} ausente"
 msgstr[1] "%{count} %{type} ausentes"
 
-#: lib/storyarn/versioning/project_snapshot_crud.ex:243
+#: lib/storyarn/versioning/project_snapshot_crud.ex:408
 #, elixir-autogen, elixir-format
 msgid "Before restore to project snapshot v%{number}"
 msgstr "Antes de restaurar a snapshot del proyecto v%{number}"
 
-#: lib/storyarn/versioning/version_crud.ex:372
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:144
+#: lib/storyarn/versioning/version_crud.ex:477
 #, elixir-autogen, elixir-format
 msgid "Before restore to v%{number}"
 msgstr "Antes de restaurar a v%{number}"
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:211
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:194
 #, elixir-autogen, elixir-format
 msgid "Could not create safety backup before restoring. Restore aborted."
 msgstr "No se pudo crear la copia de seguridad antes de restaurar. Restauración cancelada."
 
-#: lib/storyarn_web/live/flow_live/show.ex:458
-#: lib/storyarn_web/live/scene_live/show.ex:706
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:55
+#: lib/storyarn_web/helpers/version_event_helpers.ex:167
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:123
 #, elixir-autogen, elixir-format
 msgid "Could not create version."
 msgstr "No se pudo crear la versión."
 
-#: lib/storyarn_web/live/flow_live/show.ex:502
-#: lib/storyarn_web/live/scene_live/show.ex:750
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:101
+#: lib/storyarn_web/helpers/version_event_helpers.ex:216
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:169
 #, elixir-autogen, elixir-format
 msgid "Could not delete version."
 msgstr "No se pudo eliminar la versión."
@@ -59,83 +56,64 @@ msgstr "No se pudo eliminar la versión."
 msgid "Could not load version snapshot."
 msgstr "No se pudo cargar la snapshot de la versión."
 
-#: lib/storyarn_web/live/flow_live/show.ex:481
-#: lib/storyarn_web/live/scene_live/show.ex:729
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:79
+#: lib/storyarn_web/helpers/version_event_helpers.ex:203
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:156
 #, elixir-autogen, elixir-format
 msgid "Could not name version."
 msgstr "No se pudo nombrar la versión."
 
-#: lib/storyarn_web/live/flow_live/show.ex:594
-#: lib/storyarn_web/live/scene_live/show.ex:848
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:218
+#: lib/storyarn_web/helpers/version_event_helpers.ex:143
+#: lib/storyarn_web/helpers/version_event_helpers.ex:244
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:228
 #, elixir-autogen, elixir-format
 msgid "Could not restore version."
 msgstr "No se pudo restaurar la versión."
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:151
-#, elixir-autogen, elixir-format
-msgid "Could not save current state."
-msgstr "No se pudo guardar el estado actual."
-
-#: lib/storyarn/versioning/project_snapshot_crud.ex:257
+#: lib/storyarn/versioning/project_snapshot_crud.ex:557
 #, elixir-autogen, elixir-format
 msgid "Restored from project snapshot v%{number}"
 msgstr "Restaurado desde snapshot del proyecto v%{number}"
 
-#: lib/storyarn/versioning/version_crud.ex:386
+#: lib/storyarn/versioning/version_crud.ex:616
 #, elixir-autogen, elixir-format
 msgid "Restored from v%{number}"
 msgstr "Restaurado desde v%{number}"
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:203
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:248
 #, elixir-autogen, elixir-format
 msgid "Restored to version %{number}"
 msgstr "Restaurado a versión %{number}"
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:223
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:221
 #, elixir-autogen, elixir-format
 msgid "The safety backup is no longer available. Restore was aborted. Please try again."
 msgstr "La copia de seguridad ya no está disponible. La restauración se canceló. Inténtalo de nuevo."
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:207
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:205
 #, elixir-autogen, elixir-format
 msgid "The sheet changed while restore was being prepared. Review the latest changes and try again."
 msgstr "La ficha cambió mientras se preparaba la restauración. Revisa los últimos cambios e inténtalo de nuevo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:455
-#: lib/storyarn_web/live/scene_live/show.ex:703
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:52
+#: lib/storyarn_web/helpers/version_event_helpers.ex:164
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:120
 #, elixir-autogen, elixir-format
 msgid "Version created."
 msgstr "Versión creada."
 
-#: lib/storyarn_web/live/flow_live/show.ex:499
-#: lib/storyarn_web/live/scene_live/show.ex:747
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:98
+#: lib/storyarn_web/helpers/version_event_helpers.ex:213
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:166
 #, elixir-autogen, elixir-format
 msgid "Version deleted."
 msgstr "Versión eliminada."
 
-#: lib/storyarn_web/live/flow_live/show.ex:478
-#: lib/storyarn_web/live/scene_live/show.ex:726
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:76
+#: lib/storyarn_web/helpers/version_event_helpers.ex:200
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:153
 #, elixir-autogen, elixir-format
 msgid "Version named successfully."
 msgstr "Versión nombrada con éxito."
 
-#: lib/storyarn_web/live/flow_live/show.ex:484
-#: lib/storyarn_web/live/flow_live/show.ex:505
-#: lib/storyarn_web/live/flow_live/show.ex:533
-#: lib/storyarn_web/live/scene_live/show.ex:732
-#: lib/storyarn_web/live/scene_live/show.ex:753
-#: lib/storyarn_web/live/scene_live/show.ex:787
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:83
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:105
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:129
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:155
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:168
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:222
+#: lib/storyarn_web/helpers/version_event_helpers.ex:189
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:133
 #, elixir-autogen, elixir-format
 msgid "Version not found."
 msgstr "Versión no encontrada."
@@ -180,31 +158,23 @@ msgstr[1] "fichas"
 msgid "shortcut collision"
 msgstr "colisión de atajo"
 
-#: lib/storyarn_web/live/flow_live/show.ex:547
-#: lib/storyarn_web/live/scene_live/show.ex:801
-#, elixir-autogen, elixir-format
-msgid "Before restore to v%{n}"
-msgstr "Antes de restaurar a v%{n}"
-
-#: lib/storyarn_web/live/flow_live/show.ex:441
-#: lib/storyarn_web/live/scene_live/show.ex:689
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:38
+#: lib/storyarn_web/helpers/version_event_helpers.ex:148
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:104
 #, elixir-autogen, elixir-format
 msgid "Title is required."
 msgstr "El título es obligatorio."
 
-#: lib/storyarn_web/live/flow_live/show.ex:587
-#: lib/storyarn_web/live/scene_live/show.ex:841
+#: lib/storyarn_web/helpers/version_event_helpers.ex:240
 #, elixir-autogen, elixir-format
 msgid "Version restored."
 msgstr "Versión restaurada."
 
-#: lib/storyarn_web/live/version_viewer_live.ex:177
+#: lib/storyarn_web/live/version_viewer_live.ex:173
 #, elixir-autogen, elixir-format
 msgid "Version not found"
-msgstr "Versión no encontrada."
+msgstr "Versión no encontrada"
 
-#: lib/storyarn_web/live/version_viewer_live.ex:178
+#: lib/storyarn_web/live/version_viewer_live.ex:174
 #, elixir-autogen, elixir-format
 msgid "Version unavailable"
 msgstr "Versión no disponible"

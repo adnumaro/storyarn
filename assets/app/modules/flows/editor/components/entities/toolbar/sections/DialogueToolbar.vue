@@ -108,7 +108,7 @@ const hasAvatarOverride = computed(() => {
     @select="selectAvatar"
   />
   <ToolbarSeparator />
-  <ToolbarTooltip :label="$t('flows.node_types.dialogue_toolbar_screenplay')">
+  <ToolbarTooltip :label="$t('flows.node_types.dialogue_toolbar_editor')">
     <button type="button" class="toolbar-btn" @click="openDialoguePanel">
       <Settings class="size-3.5" />
     </button>

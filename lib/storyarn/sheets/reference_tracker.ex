@@ -42,7 +42,6 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   @project_target_types %{
     "block" => ~w(sheet flow),
     "flow_node" => ~w(sheet flow),
-    "screenplay_element" => ~w(sheet flow),
     "scene_pin" => ~w(sheet flow),
     "scene_zone" => ~w(sheet flow scene)
   }
@@ -241,41 +240,6 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   @doc """
-  Updates references from a screenplay element.
-
-  Deletes all existing references from this element and creates new ones
-  based on the current element state (character sheet_id + inline mentions).
-  """
-  @spec update_screenplay_element_references(map()) :: :ok
-  def update_screenplay_element_references(%{id: element_id, type: type, data: data, content: content}) do
-    Repo.transaction(fn ->
-      delete_screenplay_element_references(element_id)
-
-      references =
-        type
-        |> extract_screenplay_element_refs(data, content)
-        |> Enum.uniq_by(fn ref -> {ref.type, ref.id, ref.context} end)
-
-      batch_insert_references("screenplay_element", element_id, references)
-    end)
-
-    :ok
-  end
-
-  def update_screenplay_element_references(_element), do: :ok
-
-  @doc """
-  Deletes all references from a screenplay element.
-  Called when an element is deleted.
-  """
-  @spec delete_screenplay_element_references(any()) :: {integer(), nil}
-  def delete_screenplay_element_references(element_id) do
-    Repo.delete_all(
-      from(r in EntityReference, where: r.source_type == "screenplay_element" and r.source_id == ^element_id)
-    )
-  end
-
-  @doc """
   Gets all references pointing to a target (backlinks).
 
   Returns references grouped by source type with additional context.
@@ -419,12 +383,11 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   def get_backlinks_with_sources(target_type, target_id, project_id) do
     block_backlinks = query_block_backlinks(target_type, target_id, project_id)
     flow_backlinks = query_flow_node_backlinks(target_type, target_id, project_id)
-    screenplay_backlinks = query_screenplay_element_backlinks(target_type, target_id, project_id)
     map_pin_backlinks = query_scene_pin_backlinks(target_type, target_id, project_id)
     map_zone_backlinks = query_scene_zone_backlinks(target_type, target_id, project_id)
 
     Enum.sort_by(
-      block_backlinks ++ flow_backlinks ++ screenplay_backlinks ++ map_pin_backlinks ++ map_zone_backlinks,
+      block_backlinks ++ flow_backlinks ++ map_pin_backlinks ++ map_zone_backlinks,
       & &1.inserted_at,
       {:desc, NaiveDateTime}
     )
@@ -474,10 +437,6 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   defp query_flow_node_backlinks(target_type, target_id, project_id) do
     Storyarn.Flows.query_flow_node_backlinks(target_type, target_id, project_id)
-  end
-
-  defp query_screenplay_element_backlinks(target_type, target_id, project_id) do
-    Storyarn.Screenplays.query_screenplay_element_backlinks(target_type, target_id, project_id)
   end
 
   @doc """
@@ -605,7 +564,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   # Private functions
 
-  defp batch_insert_references(source_type, source_id, references, opts \\ []) do
+  defp batch_insert_references(source_type, source_id, references, opts) do
     now = DateTime.to_naive(TimeHelpers.now())
 
     entries =
@@ -883,32 +842,6 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   defp mention_reference_spec(%{type: "sheet", id: id}), do: {:sheet, {:block, :content, "sheet"}, id}
 
   defp mention_reference_spec(%{type: "flow", id: id}), do: {:flow, {:block, :content, "flow"}, id}
-
-  defp extract_screenplay_element_refs(type, data, content) do
-    refs = []
-
-    # Character elements: track sheet_id reference
-    refs =
-      if type == "character" && is_map(data) do
-        case data["sheet_id"] do
-          nil -> refs
-          sheet_id -> [%{type: "sheet", id: sheet_id, context: "character"} | refs]
-        end
-      else
-        refs
-      end
-
-    # Any element with HTML content: extract inline mentions
-    refs =
-      if is_binary(content) && content != "" do
-        mentions = extract_mentions_from_html(content)
-        mentions ++ refs
-      else
-        refs
-      end
-
-    refs
-  end
 
   defp extract_flow_node_refs(data) do
     refs = []

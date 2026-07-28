@@ -1,6 +1,6 @@
 defmodule StoryarnWeb.Components.Sidebar.TreeHelpers do
   @moduledoc """
-  Shared helper functions for sidebar tree components (sheets, flows, screenplays).
+  Shared helper functions for sidebar tree components (sheets, flows, scenes).
   """
 
   @doc "Returns true if the item has non-empty children."

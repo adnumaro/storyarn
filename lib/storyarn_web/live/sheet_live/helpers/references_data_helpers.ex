@@ -104,17 +104,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers do
     }
   end
 
-  defp serialize_source_info(%{type: :screenplay} = si) do
-    %{
-      type: "screenplay",
-      name: si.screenplay_name,
-      shortcut: nil,
-      screenplayId: si.screenplay_id,
-      contextType: si[:element_type],
-      contextLabel: nil
-    }
-  end
-
   defp serialize_source_info(%{type: :scene} = si) do
     %{
       type: "scene",

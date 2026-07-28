@@ -46,7 +46,6 @@ defmodule StoryarnWeb.FlowLive.Index do
       membership={@membership}
       urls={@urls}
       active_tool={:flows}
-      is_super_admin={@is_super_admin}
       online_users={@online_users}
       sidebar_module={StoryarnWeb.FlowSidebarLive}
       sidebar_session={

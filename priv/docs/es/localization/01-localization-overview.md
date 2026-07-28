@@ -29,7 +29,7 @@ Haz clic en **Sincronizar** para reconciliar la localización con el contrato de
 | **Fichas**         | El nombre de cada ficha activa, utilizado como nombre de actor o hablante en runtime                                                 |
 | **Bloques**        | `value.content` de bloques activos de texto o texto enriquecido, no constantes y con un nombre de variable runtime que no esté vacío |
 
-Las escenas y los guiones no forman parte de la localización. También se excluyen los nombres y descripciones de flujos, las descripciones de fichas y los metadatos del editor, como etiquetas de bloque, placeholders y etiquetas de opciones, porque el contrato de exportación para motores no los emite como texto visible para el jugador.
+Las escenas no forman parte de la localización. También se excluyen los nombres y descripciones de flujos, las descripciones de fichas y los metadatos del editor, como etiquetas de bloque, placeholders y etiquetas de opciones, porque el contrato de exportación para motores no los emite como texto visible para el jugador.
 
 Cada texto extraido recibe un hash SHA-256 de su contenido fuente. Cuando vuelves a sincronizar, Storyarn detecta cambios -- si el texto fuente ha sido modificado desde la ultima traduccion, el sistema puede marcarlo para re-traduccion. La extraccion es idempotente: ejecutarla multiples veces nunca crea duplicados gracias a la logica de upsert.
 

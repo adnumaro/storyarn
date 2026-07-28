@@ -29,7 +29,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.RoutePoints
-  alias Storyarn.Screenplays
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
 
@@ -46,7 +45,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     flows: 500,
     nodes_per_flow: 5_000,
     scenes: 200,
-    screenplays: 500,
     assets: 5_000,
     languages: 50,
     localized_texts: 100_000,
@@ -102,7 +100,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     end
   end
 
-  @array_keys ~w(sheets flows scenes screenplays)
+  @array_keys ~w(sheets flows scenes)
 
   defp validate_types(data) do
     bad =
@@ -363,7 +361,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       flows: length(data["flows"] || []),
       nodes: (data["flows"] || []) |> Enum.flat_map(&(Map.get(&1, "nodes") || [])) |> length(),
       scenes: length(data["scenes"] || []),
-      screenplays: length(data["screenplays"] || []),
       assets: length(get_in(data, ["assets", "items"]) || [])
     }
   end
@@ -373,8 +370,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
     conflicts = detect_shortcut_conflicts(conflicts, project_id, :sheet, data["sheets"] || [])
     conflicts = detect_shortcut_conflicts(conflicts, project_id, :flow, data["flows"] || [])
-    conflicts = detect_shortcut_conflicts(conflicts, project_id, :scene, data["scenes"] || [])
-    detect_shortcut_conflicts(conflicts, project_id, :screenplay, data["screenplays"] || [])
+    detect_shortcut_conflicts(conflicts, project_id, :scene, data["scenes"] || [])
   end
 
   defp detect_shortcut_conflicts(conflicts, project_id, entity_type, entities) do
@@ -404,9 +400,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp detect_conflicts_for_type(:scene, project_id, shortcuts),
     do: Scenes.detect_scene_shortcut_conflicts(project_id, shortcuts)
-
-  defp detect_conflicts_for_type(:screenplay, project_id, shortcuts),
-    do: Screenplays.detect_screenplay_shortcut_conflicts(project_id, shortcuts)
 
   # =============================================================================
   # Execute
@@ -500,9 +493,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       # now that all flows exist in id_map
       link_node_flow_references(data, id_map)
 
-      {id_map, screenplay_results} =
-        import_screenplays(project, data, id_map, strategy, existing_shortcuts)
-
       {_id_map, loc_results} = import_localization(project.id, data, id_map)
 
       rebuild_imported_references!(project.id)
@@ -512,8 +502,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         sheets: length(sheet_results),
         flows: length(flow_results),
         nodes: node_count,
-        scenes: length(scene_results),
-        screenplays: length(screenplay_results)
+        scenes: length(scene_results)
       }
 
       {:ok,
@@ -522,7 +511,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
          sheets: sheet_results,
          flows: flow_results,
          scenes: scene_results,
-         screenplays: screenplay_results,
          localization: loc_results,
          counts: counts
        }}
@@ -588,7 +576,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       {:flows, length(flows), @max_entity_counts.flows},
       {:nodes_per_flow, max_nodes_per_flow, @max_entity_counts.nodes_per_flow},
       {:scenes, length(data["scenes"] || []), @max_entity_counts.scenes},
-      {:screenplays, length(data["screenplays"] || []), @max_entity_counts.screenplays},
       {:assets, length(get_in(data, ["assets", "items"]) || []), @max_entity_counts.assets}
     ]
   end
@@ -626,8 +613,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     %{
       sheet: Sheets.list_sheet_shortcuts(project_id),
       flow: Flows.list_flow_shortcuts(project_id),
-      scene: Scenes.list_scene_shortcuts(project_id),
-      screenplay: Screenplays.list_screenplay_shortcuts(project_id)
+      scene: Scenes.list_scene_shortcuts(project_id)
     }
   end
 
@@ -872,7 +858,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
           "type" => node_data["type"],
           "position_x" => node_data["position_x"] || 0.0,
           "position_y" => node_data["position_y"] || 0.0,
-          "source" => node_data["source"],
           "data" => data,
           "sequence_config" => node_data["sequence_config"]
         }
@@ -1300,101 +1285,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   end
 
   # =============================================================================
-  # Screenplays import (two-pass for parent_id)
-  # =============================================================================
-
-  defp import_screenplays(project, data, id_map, strategy, existing_shortcuts) do
-    screenplays = data["screenplays"] || []
-
-    if screenplays == [],
-      do: {id_map, []},
-      else: do_import_screenplays(project, screenplays, id_map, strategy, existing_shortcuts)
-  end
-
-  defp do_import_screenplays(project, screenplays, id_map, strategy, existing_shortcuts) do
-    {id_map, sp_records} =
-      Enum.reduce(screenplays, {id_map, []}, fn sp_data, {map, records} ->
-        case resolve_shortcut(
-               sp_data["shortcut"],
-               strategy,
-               project.id,
-               :screenplay,
-               existing_shortcuts
-             ) do
-          :skip ->
-            {map, records}
-
-          shortcut ->
-            {map, sp} = create_screenplay_record(project, sp_data, shortcut, map)
-            {map, [{sp, sp_data} | records]}
-        end
-      end)
-
-    # Pass 2: parent_id
-    link_screenplay_refs(sp_records, id_map)
-
-    {id_map, Enum.map(sp_records, fn {sp, _} -> sp end)}
-  end
-
-  defp create_screenplay_record(project, sp_data, shortcut, map) do
-    attrs = %{
-      "name" => sp_data["name"],
-      "shortcut" => shortcut,
-      "description" => sp_data["description"],
-      "position" => sp_data["position"] || 0
-    }
-
-    extra_changes = maybe_put_extra(%{}, :linked_flow_id, remap_id(map, :flow, sp_data["linked_flow_id"]))
-
-    sp =
-      facade_insert_or_rollback!(
-        Screenplays.import_screenplay(project.id, attrs, extra_changes),
-        {:screenplay, sp_data["name"]}
-      )
-
-    map = Map.put(map, {:screenplay, sp_data["id"]}, sp.id)
-    {map, _} = import_elements(sp.id, sp_data["elements"] || [], map)
-
-    {map, sp}
-  end
-
-  defp link_screenplay_refs(sp_records, id_map) do
-    for {sp, sp_data} <- sp_records do
-      changes = maybe_remap_ref(%{}, :parent_id, id_map, :screenplay, sp_data["parent_id"])
-
-      if changes != %{} do
-        Screenplays.link_screenplay_import_refs(sp, changes)
-      end
-    end
-  end
-
-  defp import_elements(screenplay_id, elements, id_map) do
-    Enum.reduce(elements, {id_map, []}, fn el_data, {map, results} ->
-      data = normalize_legacy_hub_color(el_data["data"] || %{}, el_data["type"])
-
-      attrs = %{
-        "type" => el_data["type"],
-        "position" => el_data["position"] || 0,
-        "content" => el_data["content"],
-        "data" => data,
-        "depth" => el_data["depth"] || 0,
-        "branch" => el_data["branch"]
-      }
-
-      extra_changes =
-        maybe_put_extra(%{}, :linked_node_id, remap_id(map, :node, el_data["linked_node_id"]))
-
-      el =
-        facade_insert_or_rollback!(
-          Screenplays.import_element(screenplay_id, attrs, extra_changes),
-          {:element, el_data["type"]}
-        )
-
-      {Map.put(map, {:element, el_data["id"]}, el.id), [el | results]}
-    end)
-  end
-
-  # =============================================================================
   # Localization import
   # =============================================================================
 
@@ -1709,14 +1599,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     shortcut
   end
 
-  defp overwrite_existing(shortcut, project_id, :screenplay) do
-    Screenplays.soft_delete_screenplay_by_shortcut(project_id, shortcut)
-    shortcut
-  end
-
-  defp maybe_put_extra(map, _key, nil), do: map
-  defp maybe_put_extra(map, key, value), do: Map.put(map, key, value)
-
   defp facade_insert_or_rollback!({:ok, record}, _context), do: record
 
   defp facade_insert_or_rollback!({:error, changeset}, context), do: Repo.rollback({:import_failed, context, changeset})
@@ -1863,18 +1745,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     case remap_id(id_map, type, old_id) do
       nil -> result
       new_id -> Map.put(result, field, new_id)
-    end
-  end
-
-  defp maybe_remap_ref(changes, field, id_map, type, nil) when is_map(changes) do
-    _ = {field, id_map, type}
-    changes
-  end
-
-  defp maybe_remap_ref(changes, field, id_map, type, old_id) do
-    case Map.get(id_map, {type, old_id}) do
-      nil -> changes
-      new_id -> Map.put(changes, field, new_id)
     end
   end
 

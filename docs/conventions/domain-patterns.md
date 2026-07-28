@@ -34,7 +34,6 @@ and only under `lib/storyarn_web/`. The rule above is broader than the linter.
 | Sheets           | `Storyarn.Sheets`           | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `GalleryCrud`, `AvatarCrud`, `PropertyInheritance`, `ReferenceTracker`, `TreeOperations`, `HealthChecker`, `FormulaResolver`                      |
 | Flows            | `Storyarn.Flows`            | `FlowCrud`, `NodeCrud` (-> `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `SequenceCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`, `HealthChecker`, `StructuralAnalysis` |
 | Scenes           | `Storyarn.Scenes`           | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `AmbientFlowCrud`, `ExplorationSessionCrud`, `TreeOperations`, `HealthChecker`, `ChangesetHelpers`                  |
-| Screenplays      | `Storyarn.Screenplays`      | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`, `FlowSync`, `LinkedPageCrud`, `AutoDetect`, `Export.Fountain`, `Import.Fountain`                              |
 | Localization     | `Storyarn.Localization`     | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`, `TranslationRunCrud`, `Providers.*`                                                           |
 | Collaboration    | `Storyarn.Collaboration`    | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                                                           |
 | Assets           | `Storyarn.Assets`           | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`, `BlobStore`, `UploadPolicy`                                                                                    |
@@ -287,27 +286,26 @@ Project-wide channels take a bare `project_id`, not a scope tuple:
 All user-facing text uses domain-specific Gettext. One domain per `.pot` file in
 `priv/gettext/`:
 
-| Domain       | Function                                    | Example               |
-| ------------ | ------------------------------------------- | --------------------- |
-| Generic      | `gettext("Saved")`                          | `default` domain      |
-| Sheets       | `dgettext("sheets", "Untitled")`            | Sheet-specific        |
-| Flows        | `dgettext("flows", "Add node")`             | Flow-specific         |
-| Scenes       | `dgettext("scenes", "Default Layer")`       | Scene-specific        |
-| Screenplays  | `dgettext("screenplays", "New Screenplay")` | Screenplay-specific   |
-| Localization | `dgettext("localization", "Pending")`       | Localization-specific |
-| Identity     | `dgettext("identity", "Sign in")`           | Auth/user-specific    |
-| Settings     | `dgettext("settings", "General")`           | Settings-specific     |
-| Projects     | `dgettext("projects", "New Project")`       | Project-specific      |
-| Workspaces   | `dgettext("workspaces", "Members")`         | Workspace-specific    |
-| Assets       | `dgettext("assets", "Upload")`              | Asset library         |
-| Versioning   | `dgettext("versioning", "Restore")`         | Versions & snapshots  |
-| Integrations | `dgettext("integrations", "Provider")`      | AI integrations       |
-| Drafts       | `dgettext("drafts", "Draft")`               | Draft surfaces        |
-| Public       | `dgettext("public", "Pricing")`             | Marketing pages       |
-| Docs         | `dgettext("docs", "Guides")`                | Documentation         |
-| Blog         | `dgettext("blog", "Read more")`             | Blog                  |
-| Emails       | `dgettext("emails", "Welcome")`             | Transactional email   |
-| Errors       | — **dormant**                               | See note below        |
+| Domain       | Function                               | Example               |
+| ------------ | -------------------------------------- | --------------------- |
+| Generic      | `gettext("Saved")`                     | `default` domain      |
+| Sheets       | `dgettext("sheets", "Untitled")`       | Sheet-specific        |
+| Flows        | `dgettext("flows", "Add node")`        | Flow-specific         |
+| Scenes       | `dgettext("scenes", "Default Layer")`  | Scene-specific        |
+| Localization | `dgettext("localization", "Pending")`  | Localization-specific |
+| Identity     | `dgettext("identity", "Sign in")`      | Auth/user-specific    |
+| Settings     | `dgettext("settings", "General")`      | Settings-specific     |
+| Projects     | `dgettext("projects", "New Project")`  | Project-specific      |
+| Workspaces   | `dgettext("workspaces", "Members")`    | Workspace-specific    |
+| Assets       | `dgettext("assets", "Upload")`         | Asset library         |
+| Versioning   | `dgettext("versioning", "Restore")`    | Versions & snapshots  |
+| Integrations | `dgettext("integrations", "Provider")` | AI integrations       |
+| Drafts       | `dgettext("drafts", "Draft")`          | Draft surfaces        |
+| Public       | `dgettext("public", "Pricing")`        | Marketing pages       |
+| Docs         | `dgettext("docs", "Guides")`           | Documentation         |
+| Blog         | `dgettext("blog", "Read more")`        | Blog                  |
+| Emails       | `dgettext("emails", "Welcome")`        | Transactional email   |
+| Errors       | — **dormant**                          | See note below        |
 
 **NEVER use hardcoded strings for user-facing text.** `mix convention.check` catches
 only the `put_flash` case (`put_flash_without_gettext`, web files only).
@@ -317,6 +315,43 @@ only the `put_flash` case (`put_flash_without_gettext`, web files only).
 interpolated raw (`String.replace` over `%{key}` — see `format_changeset_error/1` in
 `lib/storyarn/versioning/builders/sheet_builder.ex:1273`) and ship untranslated.
 Do not route new error text through that domain expecting translation.
+
+### After adding, moving or deleting a `dgettext` call
+
+**Run `mix gettext.extract --merge` and commit the result.** `mix precommit` and
+`just quality-lint` fail otherwise (`mix gettext.extract --check-up-to-date`),
+including when the call only changed line number — the task compares `#:`
+reference lines too. Extraction is all-or-nothing: there is no per-domain flag, so
+to keep a feature PR reviewable, extract everything and revert every domain but
+yours.
+
+The merge then leaves work in `priv/gettext/es/LC_MESSAGES/`, and
+`test/storyarn/publication/locales_test.exs` blocks on all of it — across all 19
+domains, not just the public ones:
+
+- **Fill every empty `msgstr`.** Informal second person ("Selecciona…", "No tienes
+  permiso…"). Keep `hub`, `jump`, `subflow`, `entry`, `exit`, `sequence`,
+  `waypoint`, `fog`, `API key` in English — but the catalog outranks that list:
+  `flow`, `sheet` and `zone` are already _flujo_, _ficha_ and _zona_.
+- **Review every `#, fuzzy` entry and drop the flag.** `Gettext.Compiler` filters
+  on `obsolete` alone (`deps/gettext/lib/gettext/compiler.ex:514`) — it has no
+  notion of `fuzzy` at runtime, so the merge's nearest-neighbour guess ships
+  verbatim. `scenes.po` answered `Asset not found.` with _"Ficha no encontrada."_
+  ("Sheet not found") that way.
+- **Leave `en` msgstrs empty.** Gettext falls back to the msgid, already English,
+  so a filled `en` msgstr is an _override_ of the source string — and the merge
+  writes those on its own. It fuzzy-matched three new `projects` msgids onto
+  neighbours, one of them answering `Project name` with _"Project Trash"_; clear
+  the flags without reading them and the override is what ships. One had been
+  sitting in `en/flows.po` since an earlier merge, telling English users _"Could
+  not update node positions."_ when they failed to update the scene map.
+- **Keep interpolations identical** between msgid and msgstr — same names, same
+  `%{...}` form. A placeholder the message never binds prints literally on screen.
+
+Worth two minutes after a large merge, though no test does it: group a catalog by
+`msgstr` and inspect every value claimed by more than one `msgid`. That is the
+fingerprint of the merge copying, and it is how eight distinct `scenes` errors
+were found all reading "No se pudo actualizar el contenido.".
 
 ---
 

@@ -307,7 +307,6 @@ export interface BacklinkSourceInfo {
   shortcut?: string;
   sheetId?: number | string;
   flowId?: number | string;
-  screenplayId?: number | string;
   sceneId?: number | string;
   contextType?: string;
   contextLabel?: string;

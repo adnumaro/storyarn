@@ -75,7 +75,6 @@ const entityCountRows = computed(() => {
     { entity: t("project_settings.import.entities.flows"), count: counts.flows || 0 },
     { entity: t("project_settings.import.entities.nodes"), count: counts.nodes || 0 },
     { entity: t("project_settings.import.entities.scenes"), count: counts.scenes || 0 },
-    { entity: t("project_settings.import.entities.screenplays"), count: counts.screenplays || 0 },
     { entity: t("project_settings.import.entities.assets"), count: counts.assets || 0 },
   ];
   return rows.filter((r) => r.count > 0);

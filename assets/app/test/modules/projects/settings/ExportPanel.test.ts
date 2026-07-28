@@ -33,9 +33,9 @@ function baseProps(): ExportPanelProps {
       extension: "zip",
     },
     sectionConfig: {
-      selected: ["sheets", "flows", "scenes", "screenplays", "localization"],
+      selected: ["sheets", "flows", "scenes", "localization"],
       supported: ["sheets", "flows"],
-      entityCounts: { sheets: 2, flows: 3, scenes: 4, screenplays: 1, localization: 8 },
+      entityCounts: { sheets: 2, flows: 3, scenes: 4, localization: 8 },
     },
     options: {
       assetMode: "references",

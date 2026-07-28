@@ -48,7 +48,6 @@ defmodule StoryarnWeb.SheetLive.Index do
       membership={@membership}
       urls={@urls}
       active_tool={:sheets}
-      is_super_admin={@is_super_admin}
       online_users={@online_users}
       sidebar_module={StoryarnWeb.SheetsSidebarLive}
       sidebar_session={

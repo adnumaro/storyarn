@@ -20,7 +20,6 @@ defmodule StoryarnWeb.LocalizationLive.Report do
       membership={@membership}
       urls={@urls}
       active_tool={:localization}
-      is_super_admin={@is_super_admin}
       online_users={@online_users}
       onboarding={@onboarding}
       onboarding_autostart

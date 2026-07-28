@@ -168,7 +168,7 @@ defmodule Storyarn.Projects.Dashboard do
   end
 
   # Runtime word volume follows the same contract as localization and engine
-  # exports. Scenes and screenplays are editor-only and intentionally excluded.
+  # exports. Scenes are editor-only and intentionally excluded.
   defp count_total_words(project_id) do
     flow_words =
       project_id

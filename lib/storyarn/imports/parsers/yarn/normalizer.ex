@@ -50,8 +50,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
         },
         "sheets" => sheets,
         "flows" => flows,
-        "scenes" => [],
-        "screenplays" => []
+        "scenes" => []
       }
 
       metadata = %{

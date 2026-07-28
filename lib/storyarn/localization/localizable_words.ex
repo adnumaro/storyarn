@@ -84,8 +84,8 @@ defmodule Storyarn.Localization.LocalizableWords do
   export contract.
 
   Existing translations for live fields and archived locales are preserved.
-  Rows for deleted fields, deleted entities, editor-only metadata, scenes, and
-  screenplays are archived outside the active inventory.
+  Rows for deleted fields, deleted entities, editor-only metadata and scenes
+  are archived outside the active inventory.
   """
   @spec extract_all(integer()) :: {:ok, non_neg_integer()}
   def extract_all(project_id) do

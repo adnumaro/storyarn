@@ -4664,6 +4664,32 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert detail =~ "Renamed"
     end
 
+    test "a legacy snapshot's removed \"source\" key is not a node change" do
+      # Snapshots written before the Screenplays feature was deleted carry
+      # "source" => "manual". Freshly built ones no longer do. Without this,
+      # every node of every pre-existing version reads as modified.
+      legacy_node = %{
+        "original_id" => 1,
+        "type" => "dialogue",
+        "position_x" => 0.0,
+        "position_y" => 0.0,
+        "data" => %{"text" => "hi"},
+        "source" => "manual",
+        "parent_id" => nil
+      }
+
+      current_node = Map.delete(legacy_node, "source")
+
+      old = %{"name" => "F", "nodes" => [legacy_node], "connections" => []}
+      new = %{"name" => "F", "nodes" => [current_node], "connections" => []}
+
+      assert FlowBuilder.diff_snapshots(old, new) == []
+
+      # Positive control: a real change on the same pair is still reported.
+      changed = %{"name" => "F", "nodes" => [put_in(current_node, ["data", "text"], "bye")], "connections" => []}
+      assert Enum.any?(FlowBuilder.diff_snapshots(old, changed), &(&1.category == :node && &1.action == :modified))
+    end
+
     test "detects added nodes" do
       old = %{"name" => "F", "nodes" => [], "connections" => []}
       new = %{"name" => "F", "nodes" => [%{"type" => "dialogue"}], "connections" => []}

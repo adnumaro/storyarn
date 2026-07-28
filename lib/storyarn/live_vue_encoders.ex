@@ -57,10 +57,6 @@ defmodule Storyarn.LiveVueEncoders do
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.SceneZone)
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.ExplorationSession)
 
-  # Screenplays
-  Protocol.derive(LiveVue.Encoder, Storyarn.Screenplays.Screenplay)
-  Protocol.derive(LiveVue.Encoder, Storyarn.Screenplays.ScreenplayElement)
-
   # Sheets
   Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.Block)
   Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.BlockGalleryImage)

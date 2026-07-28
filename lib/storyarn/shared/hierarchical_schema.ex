@@ -1,6 +1,6 @@
 defmodule Storyarn.Shared.HierarchicalSchema do
   @moduledoc """
-  Shared changeset helpers for hierarchical entities (sheets, flows, scenes, screenplays).
+  Shared changeset helpers for hierarchical entities (sheets, flows, scenes).
 
   Eliminates duplication of standard soft-delete, restore, move, and validation functions
   that are identical across all four main entity schemas.

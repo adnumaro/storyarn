@@ -143,7 +143,7 @@
       "search_placeholder": "Search deleted items...",
       "empty_trash": "Empty trash",
       "empty_title": "Trash is empty",
-      "empty_description": "Deleted sheets, flows, scenes, and screenplays will appear here.",
+      "empty_description": "Deleted sheets, flows, and scenes will appear here.",
       "no_results_title": "No deleted items found",
       "no_results_description": "Adjust the search or type filter to find another item.",
       "deleted_label": "Deleted {time}",
@@ -155,8 +155,7 @@
       "types": {
         "sheet": "Sheet",
         "flow": "Flow",
-        "scene": "Scene",
-        "screenplay": "Screenplay"
+        "scene": "Scene"
       },
       "restore": "Restore",
       "page_of": "Page {page} of {total}",
@@ -250,7 +249,6 @@
         "flows": "Flows",
         "nodes": "Flow nodes",
         "scenes": "Scenes",
-        "screenplays": "Screenplays",
         "assets": "Assets",
         "localization": "Localization"
       }
@@ -279,14 +277,12 @@
         "sheets": "Sheets",
         "flows": "Flows",
         "scenes": "Scenes",
-        "screenplays": "Screenplays",
         "localization": "Localization"
       },
       "section_descriptions": {
         "sheets": "Characters, objects, and structured data.",
         "flows": "Dialogue graphs, choices, and logic.",
         "scenes": "Interactive scenes and their connections.",
-        "screenplays": "Scripts and screenplay elements.",
         "localization": "Languages, translations, and glossary entries."
       },
       "not_supported": "Unavailable",

@@ -8,7 +8,6 @@ defmodule Storyarn.Localization.TextExtractorTest do
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
-  import Storyarn.ScreenplaysFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
@@ -797,15 +796,6 @@ defmodule Storyarn.Localization.TextExtractorTest do
     test "does not extract scenes", %{project: project} do
       scene = scene_fixture(project, %{name: "World Map", description: "Main hub"})
       assert Localization.get_texts_for_source("scene", scene.id) == []
-    end
-
-    test "does not extract screenplays or screenplay elements", %{project: project} do
-      screenplay = screenplay_fixture(project, %{name: "Hidden Draft"})
-      element = element_fixture(screenplay, %{type: "dialogue", content: "Not runtime content"})
-
-      assert {:ok, _count} = Localization.extract_all(project.id)
-      assert Localization.get_texts_for_source("screenplay", screenplay.id) == []
-      assert Localization.get_texts_for_source("screenplay_element", element.id) == []
     end
   end
 

@@ -13,7 +13,6 @@ defmodule Storyarn.Shortcuts do
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
-  alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Sheets.Sheet
 
@@ -28,9 +27,6 @@ defmodule Storyarn.Shortcuts do
 
   def generate_flow_shortcut(name, project_id, exclude_id \\ nil),
     do: generate_unique(name, &list_entity_shortcuts(Flow, project_id, &1), exclude_id)
-
-  def generate_screenplay_shortcut(name, project_id, exclude_id \\ nil),
-    do: generate_unique(name, &list_entity_shortcuts(Screenplay, project_id, &1), exclude_id)
 
   def generate_scene_shortcut(name, project_id, exclude_id \\ nil),
     do: generate_unique(name, &list_entity_shortcuts(Scene, project_id, &1), exclude_id)

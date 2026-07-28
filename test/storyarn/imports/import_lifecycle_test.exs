@@ -102,7 +102,6 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
              "flows" => 0,
              "nodes" => 0,
              "scenes" => 0,
-             "screenplays" => 0,
              "sheets" => 0
            }
 

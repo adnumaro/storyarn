@@ -964,20 +964,6 @@ defmodule Storyarn.Sheets do
   @spec delete_target_references(String.t(), integer()) :: {integer(), nil}
   defdelegate delete_target_references(target_type, target_id), to: References
 
-  @doc """
-  Updates references from a screenplay element.
-  Called after element content is saved to track character sheet refs and mentions.
-  """
-  @spec update_screenplay_element_references(map()) :: :ok
-  defdelegate update_screenplay_element_references(element), to: References
-
-  @doc """
-  Deletes all references from a screenplay element.
-  Called when an element is deleted.
-  """
-  @spec delete_screenplay_element_references(id()) :: {integer(), nil}
-  defdelegate delete_screenplay_element_references(element_id), to: References
-
   # =============================================================================
   # Export / Import helpers
   # =============================================================================

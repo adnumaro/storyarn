@@ -49,15 +49,15 @@ Each is its own module under `lib/storyarn_web/components/`, invoked by full pat
 </StoryarnWeb.Components.ProjectLayout.project>
 ```
 
-| Module            | Function      | Required attrs                                                                          | Optional attrs / slots                                                                                                            |
-| ----------------- | ------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `AuthLayout`      | `auth/1`      | `flash`, `socket`, `seo_metadata`                                                       | `current_scope`                                                                                                                   |
-| `PublicLayout`    | `public/1`    | `flash`, `socket`, `seo_metadata`                                                       | `current_scope`, `theme`, `landing`, `language_links`                                                                             |
-| `DocsLayout`      | `docs/1`      | `flash`, `socket`, `seo_metadata`, `categories`, `guides`, `locale`                     | `guide`, `expanded_categories`, `search_query`, `search_results`, `prev`, `next`, `sidebar_open`, `language_links`                |
-| `SettingsLayout`  | `settings/1`  | `flash`, `socket`, `current_scope`, `current_path`                                      | `workspaces`, `workspace`, `project`, `sudo_grant`, `onboarding*`, slots `:title`, `:subtitle`                                    |
-| `ProjectLayout`   | `project/1`   | `socket`, `project`, `workspace`, `current_scope`, `current_user`, `membership`, `urls` | `id`, `flash`, `active_tool`, `is_super_admin`, `online_users`, `sidebar_module`, `sidebar_session`, `canvas_mode`, `onboarding*` |
-| `WorkspaceLayout` | `workspace/1` | `flash`, `socket`                                                                       | `current_scope`, `current_workspace`, `workspaces`, `onboarding*`                                                                 |
-| `CompareLayout`   | `compare/1`   | `flash`, `socket`                                                                       | `id`, `panel_title`, `panel_open`, `content_class`                                                                                |
+| Module            | Function      | Required attrs                                                                          | Optional attrs / slots                                                                                             |
+| ----------------- | ------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `AuthLayout`      | `auth/1`      | `flash`, `socket`, `seo_metadata`                                                       | `current_scope`                                                                                                    |
+| `PublicLayout`    | `public/1`    | `flash`, `socket`, `seo_metadata`                                                       | `current_scope`, `theme`, `landing`, `language_links`                                                              |
+| `DocsLayout`      | `docs/1`      | `flash`, `socket`, `seo_metadata`, `categories`, `guides`, `locale`                     | `guide`, `expanded_categories`, `search_query`, `search_results`, `prev`, `next`, `sidebar_open`, `language_links` |
+| `SettingsLayout`  | `settings/1`  | `flash`, `socket`, `current_scope`, `current_path`                                      | `workspaces`, `workspace`, `project`, `sudo_grant`, `onboarding*`, slots `:title`, `:subtitle`                     |
+| `ProjectLayout`   | `project/1`   | `socket`, `project`, `workspace`, `current_scope`, `current_user`, `membership`, `urls` | `id`, `flash`, `active_tool`, `online_users`, `sidebar_module`, `sidebar_session`, `canvas_mode`, `onboarding*`    |
+| `WorkspaceLayout` | `workspace/1` | `flash`, `socket`                                                                       | `current_scope`, `current_workspace`, `workspaces`, `onboarding*`                                                  |
+| `CompareLayout`   | `compare/1`   | `flash`, `socket`                                                                       | `id`, `panel_title`, `panel_open`, `content_class`                                                                 |
 
 All but `PublicLayout` mount a LiveVue shell (`v-component="live/layouts/{name}/Layout"`).
 `PublicLayout` is HEEx-native and composes `PublicHeader.header` / `PublicFooter.footer`.

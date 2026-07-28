@@ -6,7 +6,6 @@ import {
   Languages,
   LayoutDashboard,
   Map,
-  ScrollText,
   Settings,
   Trash2,
 } from "lucide-vue-next";
@@ -24,7 +23,6 @@ interface ProjectChrome {
   projectName: string;
   workspaceName: string;
   showToolSwitcher: boolean;
-  isSuperAdmin: boolean;
   canManageProject: boolean;
 }
 
@@ -85,7 +83,6 @@ const paletteToolIcons: Record<string, PaletteCommand["icon"]> = {
   sheets: FileText,
   flows: GitBranch,
   scenes: Map,
-  screenplays: ScrollText,
   assets: Image,
   localization: Languages,
 };
@@ -184,7 +181,6 @@ onUnmounted(() => {
                 :project-name="chrome.projectName"
                 :workspace-name="chrome.workspaceName"
                 :show-tool-switcher="chrome.showToolSwitcher"
-                :is-super-admin="chrome.isSuperAdmin"
                 :urls="urls"
               />
             </div>

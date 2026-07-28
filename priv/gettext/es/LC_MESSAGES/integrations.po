@@ -11,7 +11,7 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/settings_live/integrations.ex:25
+#: lib/storyarn_web/live/settings_live/integrations.ex:23
 #, elixir-autogen, elixir-format
 msgid "AI Integrations"
 msgstr "Integraciones IA"
@@ -20,3 +20,25 @@ msgstr "Integraciones IA"
 #, elixir-autogen, elixir-format
 msgid "This feature is not available for your account."
 msgstr "Esta funcionalidad no está disponible en tu cuenta."
+
+#: lib/storyarn_web/live/settings_live/ai_team.ex:117
+#: lib/storyarn_web/live/settings_live/ai_team_overview.ex:61
+#, elixir-autogen, elixir-format
+msgid "AI preferences are not available."
+msgstr "Las preferencias de IA no están disponibles."
+
+#: lib/storyarn_web/live/settings_live/integration_detail.ex:39
+#, elixir-autogen, elixir-format
+msgid "AI provider not found."
+msgstr "Proveedor de IA no encontrado."
+
+#: lib/storyarn_web/live/settings_live/ai_team.ex:29
+#: lib/storyarn_web/live/settings_live/ai_team_overview.ex:23
+#, elixir-autogen, elixir-format
+msgid "My AI Team"
+msgstr "Mi equipo de IA"
+
+#: lib/storyarn_web/live/settings_live/ai_team.ex:140
+#, elixir-autogen, elixir-format
+msgid "Workspace-level access is required to configure this AI team."
+msgstr "Necesitas acceso a nivel de espacio de trabajo para configurar este equipo de IA."

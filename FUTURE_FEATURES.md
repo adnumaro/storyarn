@@ -6,12 +6,14 @@
 
 ---
 
-## Copy-Based Drafts (Screenplays & Flows)
+## Copy-Based Drafts (Flows)
 
-> **Dependency:** Requires Screenplay Tool (Phase 1 schema ready) + Flow system
+> **Status:** The Screenplays feature was removed from the product; only the
+> Flow half of this plan still applies. Screenplay references below are kept
+> for the reasoning, but the `screenplays` table and its `draft_of_id` /
+> `draft_label` / `draft_status` columns no longer exist.
+> **Dependency:** Flow system
 > **Priority:** Must Have — essential for creative iteration workflows
-> **Schema fields:** Already included in Screenplay migration (draft_of_id, draft_label, draft_status)
-> **Related:** `docs/plans/SCREENPLAY_TOOL.md` — Design Decision D8
 
 ### Concept
 

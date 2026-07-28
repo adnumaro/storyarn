@@ -364,7 +364,6 @@ Facade at `lib/storyarn/{context}.ex`, submodules under `lib/storyarn/{context}/
 | Sheets           | `Storyarn.Sheets`           | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `GalleryCrud`, `PropertyInheritance`, `ReferenceTracker`, `HealthChecker`, `FormulaResolver` |
 | Flows            | `Storyarn.Flows`            | `FlowCrud`, `NodeCrud` (→ `NodeCreate/Update/Delete`), `ConnectionCrud`, `SequenceCrud`, `HealthChecker`, `StructuralAnalysis`, `Evaluator`         |
 | Scenes           | `Storyarn.Scenes`           | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `ExplorationSession`, `HealthChecker`                          |
-| Screenplays      | `Storyarn.Screenplays`      | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `ElementGrouping`, `FlowSync`, `AutoDetect`, `Export`, `Import`                               |
 | Localization     | `Storyarn.Localization`     | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`, `TranslationRunCrud`                     |
 | Collaboration    | `Storyarn.Collaboration`    | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                      |
 | Assets           | `Storyarn.Assets`           | `Asset`, `Storage` (behaviour + `Local`/`R2`), `BlobStore`, `ImageProcessor`, `StorageCompensation`, `UploadPolicy`                                 |

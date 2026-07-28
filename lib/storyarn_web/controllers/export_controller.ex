@@ -166,7 +166,6 @@ defmodule StoryarnWeb.ExportController do
          include_sheets: params["sheets"] != "false",
          include_flows: params["flows"] != "false",
          include_scenes: params["scenes"] != "false",
-         include_screenplays: params["screenplays"] != "false",
          include_localization: params["localization"] != "false",
          localization_policy: localization_policy,
          include_assets: parse_asset_mode(params["assets"])
