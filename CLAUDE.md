@@ -6,6 +6,44 @@
 
 **Stack:** Elixir 1.15+ / Phoenix 1.8 / LiveView 1.1 / LiveVue 1.2 / PostgreSQL / Redis / Tailwind v4 / shadcn-vue + reka-ui / TypeScript / Vue 3
 
+## Branch Naming — Git Flow
+
+**Every branch MUST carry a git-flow type prefix.** Branch from `main`; there is
+no `develop` branch in this repo.
+
+```
+<type>/<ticket-id>-<short-slug>     # when a ticket exists
+<type>/<short-slug>                 # when none does
+```
+
+| Prefix     | Use for                                                            | Example                                     |
+| ---------- | ------------------------------------------------------------------ | ------------------------------------------- |
+| `feature/` | New capability or improvement to working behavior                  | `feature/eng-27-flow-dashboard-node-label`  |
+| `bugfix/`  | Restoring behavior that is broken on `main`                        | `bugfix/eng-22-reference-block-server-search` |
+| `hotfix/`  | Urgent production fix that cannot wait for the normal queue        | `hotfix/eng-40-session-token-expiry`        |
+| `chore/`   | Tooling, config, deps, conventions — no product behavior change    | `chore/git-flow-branch-naming`              |
+| `docs/`    | Documentation only                                                 | `docs/convention-refresh`                   |
+| `release/` | Release preparation                                                | `release/1.4.0`                             |
+
+Rules:
+
+- Ticket id lowercase and hyphenated: `eng-22`, never `ENG-22`.
+- Slug in English, kebab-case, describing the change — not the file touched.
+- Pick the prefix from **what the change does**, not from the Linear label.
+  A ticket labelled `Improvement` that deletes dead code is a `chore/`.
+- **NEVER use Linear's suggested `gitBranchName`.** The Linear API returns
+  `<username>/<ticket>-<slug>` (e.g. `adnumaro/eng-22-…`); that is Linear's
+  convention, not ours, and it carries no type prefix. Take the ticket id from
+  it and build the name yourself.
+- Legacy `codex/*` and `adnumaro/*` branches predate this rule. Do not copy them.
+
+To rename a pushed branch that already has an open PR, use GitHub's rename
+endpoint — it moves the PR with it, so nothing has to be closed and reopened:
+
+```bash
+gh api -X POST repos/adnumaro/storyarn/branches/<old>/rename -f new_name='<new>'
+```
+
 ## Debugging & Research Policy
 
 - **When a fix doesn't work:** ALWAYS instrument before and after. Add `Logger.debug`/`IO.inspect`/`console.log` to verify your hypothesis. Never assume a fix works without measurement.
