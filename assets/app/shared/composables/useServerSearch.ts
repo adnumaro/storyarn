@@ -19,6 +19,16 @@ export interface UseServerSearchOptions {
   searchEvent?: string;
   loadMoreEvent?: string;
   debounceMs?: number;
+  /**
+   * Extra fields merged into every pushed payload, on top of `{ query }`.
+   *
+   * A getter rather than a value so callers can feed it reactive state and
+   * have it read at push time. Some server handlers need more than the query
+   * to answer — `search_references` resolves a block's `allowed_types` from a
+   * `block-id` — and without this they had to bypass `search()` entirely,
+   * which silently disabled the debounce and the loading flag.
+   */
+  extraPayload?: () => Record<string, unknown>;
 }
 
 export interface UseServerSearchReturn {
@@ -30,14 +40,19 @@ export interface UseServerSearchReturn {
 }
 
 export function useServerSearch(options: UseServerSearchOptions = {}): UseServerSearchReturn {
-  const { searchEvent = "search", loadMoreEvent = "load_more", debounceMs = 300 } = options;
+  const {
+    searchEvent = "search",
+    loadMoreEvent = "load_more",
+    debounceMs = 300,
+    extraPayload,
+  } = options;
 
   const live = useLive();
   const query = ref("");
   const loading = ref(false);
 
   const debouncedSearch = useDebounceFn((q: string) => {
-    live.pushEvent(searchEvent, { query: q }, () => {
+    live.pushEvent(searchEvent, { query: q, ...extraPayload?.() }, () => {
       loading.value = false;
     });
   }, debounceMs);
@@ -49,7 +64,7 @@ export function useServerSearch(options: UseServerSearchOptions = {}): UseServer
   }
 
   function loadMore(): void {
-    live.pushEvent(loadMoreEvent, {});
+    live.pushEvent(loadMoreEvent, { ...extraPayload?.() });
   }
 
   function reset(): void {

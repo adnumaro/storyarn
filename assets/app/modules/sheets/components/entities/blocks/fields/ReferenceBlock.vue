@@ -58,14 +58,12 @@ const listRef = ref<ComponentPublicInstance | null>(null);
 const searchResults = ref<ReferenceSearchResult[]>([]);
 let savedScrollTop = 0;
 
-// NOTE: `search` is deliberately not bound — the server's `search_references`
-// handler needs a `block-id` in the payload to resolve `allowed_types`, and
-// `useServerSearch` only sends `{ query }`. `onSearchInput` pushes directly
-// instead, which is why `query`/`loading` never update and the 300ms debounce
-// below never applies. See the report accompanying this change.
-const { query, loading, reset } = useServerSearch({
+// `search_references` resolves the block's `allowed_types` server-side, so the
+// block id rides along on every push via `extraPayload`.
+const { query, loading, search, reset } = useServerSearch({
   searchEvent: "search_references",
   debounceMs: 300,
+  extraPayload: () => ({ "block-id": block.id }),
 });
 
 // Listen for results from server
@@ -88,21 +86,14 @@ watch(open, (v) => {
     pendingLoad.value = false;
     savedScrollTop = 0;
     reset();
-    // Push search with block_id so server knows allowed_types
-    live.pushEvent("search_references", {
-      query: "",
-      "block-id": block.id,
-    });
+    search("");
   }
 });
 
 function onSearchInput(q: string): void {
   pendingLoad.value = false;
   savedScrollTop = 0;
-  live.pushEvent("search_references", {
-    query: q,
-    "block-id": block.id,
-  });
+  search(q);
 }
 
 function selectReference(result: ReferenceSearchResult): void {
