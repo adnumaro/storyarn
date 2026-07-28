@@ -24,6 +24,7 @@ defmodule Storyarn.Exports.ValidatorHealthParityTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.Validator
   alias Storyarn.Flows
 
@@ -162,7 +163,7 @@ defmodule Storyarn.Exports.ValidatorHealthParityTest do
       |> Enum.filter(&(&1.type == "entry"))
       |> Enum.each(&Repo.delete!/1)
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
       assert result.status == :errors
       assert Enum.any?(result.errors, &(&1.rule == :missing_entry and &1.flow_id == flow.id))
@@ -172,7 +173,7 @@ defmodule Storyarn.Exports.ValidatorHealthParityTest do
       flow = flow_fixture(project, %{name: "Disconnected"})
       _lonely = node_fixture(flow, %{type: "exit", data: %{"label" => "End"}})
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
       assert result.status == :warnings
       assert result.errors == []
@@ -183,7 +184,7 @@ defmodule Storyarn.Exports.ValidatorHealthParityTest do
       flow = flow_fixture(project, %{name: "Shape"})
       _lonely = node_fixture(flow, %{type: "exit", data: %{"label" => "End"}})
 
-      result = Validator.validate_project(project.id)
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       orphan = Enum.find(result.warnings, &(&1.rule == :orphan_nodes))
 
       assert %{level: :warning, rule: :orphan_nodes} = orphan
@@ -206,7 +207,7 @@ defmodule Storyarn.Exports.ValidatorHealthParityTest do
   @structural_rules [:orphan_nodes, :unreachable_nodes, :missing_entry]
 
   defp structural_rules(project_id) do
-    result = Validator.validate_project(project_id)
+    result = Validator.validate_project(project_id, %ExportOptions{format: :ink})
 
     (result.errors ++ result.warnings ++ result.info)
     |> Enum.reject(&(&1.rule in non_structural_rules()))
@@ -223,7 +224,7 @@ defmodule Storyarn.Exports.ValidatorHealthParityTest do
   end
 
   defp rules_with_nodes(project_id, rule) do
-    result = Validator.validate_project(project_id)
+    result = Validator.validate_project(project_id, %ExportOptions{format: :ink})
 
     (result.errors ++ result.warnings ++ result.info)
     |> Enum.filter(&(&1.rule == rule))

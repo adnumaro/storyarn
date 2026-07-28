@@ -29,7 +29,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
     setup [:setup_project]
 
     test "returns all sections for default options", %{project: project} do
-      opts = %ExportOptions{format: :storyarn}
+      opts = %ExportOptions{format: :ink}
       data = DataCollector.collect(project.id, opts)
 
       assert data.project.id == project.id
@@ -41,7 +41,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
     end
 
     test "returns empty lists for empty project", %{project: project} do
-      opts = %ExportOptions{format: :storyarn}
+      opts = %ExportOptions{format: :ink}
       data = DataCollector.collect(project.id, opts)
 
       assert data.sheets == []
@@ -54,7 +54,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
     test "excludes sheets when include_sheets is false", %{project: project} do
       sheet_fixture(project, %{name: "Test Sheet"})
 
-      opts = %ExportOptions{format: :storyarn, include_sheets: false}
+      opts = %ExportOptions{format: :ink, include_sheets: false}
       data = DataCollector.collect(project.id, opts)
 
       assert data.sheets == []
@@ -63,7 +63,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
     test "excludes flows when include_flows is false", %{project: project} do
       flow_fixture(project, %{name: "Test Flow"})
 
-      opts = %ExportOptions{format: :storyarn, include_flows: false}
+      opts = %ExportOptions{format: :ink, include_flows: false}
       data = DataCollector.collect(project.id, opts)
 
       assert data.flows == []
@@ -73,7 +73,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
       sheet = sheet_fixture(project, %{name: "Test Sheet"})
       block_fixture(sheet, %{type: "text", config: %{"label" => "Name"}})
 
-      opts = %ExportOptions{format: :storyarn}
+      opts = %ExportOptions{format: :ink}
       data = DataCollector.collect(project.id, opts)
 
       assert length(data.sheets) == 1
@@ -91,7 +91,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
       connection_fixture(flow, entry, dialogue)
       connection_fixture(flow, dialogue, exit_node)
 
-      opts = %ExportOptions{format: :storyarn}
+      opts = %ExportOptions{format: :ink}
       data = DataCollector.collect(project.id, opts)
 
       assert length(data.flows) == 1
@@ -106,7 +106,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
       deleted_sheet = sheet_fixture(project, %{name: "Deleted Sheet"})
       Storyarn.Sheets.delete_sheet(deleted_sheet)
 
-      opts = %ExportOptions{format: :storyarn}
+      opts = %ExportOptions{format: :ink}
       data = DataCollector.collect(project.id, opts)
 
       sheet_ids = Enum.map(data.sheets, & &1.id)
@@ -201,7 +201,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
 
   describe "error paths" do
     test "collect with non-existent project_id raises" do
-      opts = %ExportOptions{format: :storyarn}
+      opts = %ExportOptions{format: :ink}
 
       assert_raise Ecto.NoResultsError, fn ->
         DataCollector.collect(-1, opts)
@@ -209,7 +209,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
     end
 
     test "count_entities with non-existent project_id returns zeroes" do
-      opts = %ExportOptions{format: :storyarn}
+      opts = %ExportOptions{format: :ink}
       counts = DataCollector.count_entities(-1, opts)
 
       assert counts.sheets == 0
@@ -226,7 +226,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
       flow_fixture(project, %{name: "Flow"})
 
       opts = %ExportOptions{
-        format: :storyarn,
+        format: :ink,
         include_sheets: false,
         include_flows: false,
         include_scenes: false,
@@ -254,7 +254,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
       flow_fixture(project, %{name: "Real Flow"})
 
       fake_flows = [%{id: 999, name: "Preloaded Flow"}]
-      opts = %ExportOptions{format: :storyarn}
+      opts = %ExportOptions{format: :ink}
       data = DataCollector.collect(project.id, opts, %{flows: fake_flows})
 
       # Should use the preloaded fake flows, not query the DB
@@ -264,7 +264,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
     test "falls back to DB query when section not in preloaded", %{project: project} do
       flow_fixture(project, %{name: "DB Flow"})
 
-      opts = %ExportOptions{format: :storyarn}
+      opts = %ExportOptions{format: :ink}
       data = DataCollector.collect(project.id, opts, %{})
 
       assert length(data.flows) == 1
@@ -280,7 +280,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
     setup [:setup_project]
 
     test "returns zero counts for empty project", %{project: project} do
-      opts = %ExportOptions{format: :storyarn}
+      opts = %ExportOptions{format: :ink}
       counts = DataCollector.count_entities(project.id, opts)
 
       assert counts.sheets == 0
@@ -296,7 +296,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
       flow = flow_fixture(project, %{name: "F1"})
       node_fixture(flow, %{type: "dialogue", data: %{"text" => "test"}})
 
-      opts = %ExportOptions{format: :storyarn}
+      opts = %ExportOptions{format: :ink}
       counts = DataCollector.count_entities(project.id, opts)
 
       assert counts.sheets == 2
@@ -308,7 +308,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
     test "respects include flags", %{project: project} do
       sheet_fixture(project, %{name: "S1"})
 
-      opts = %ExportOptions{format: :storyarn, include_sheets: false}
+      opts = %ExportOptions{format: :ink, include_sheets: false}
       counts = DataCollector.count_entities(project.id, opts)
 
       assert counts.sheets == 0
@@ -318,7 +318,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
       flow_fixture(project, %{name: "F1"})
 
       opts = %ExportOptions{
-        format: :storyarn,
+        format: :ink,
         include_flows: false,
         include_scenes: false
       }
@@ -339,7 +339,7 @@ defmodule Storyarn.Exports.DataCollectorTest do
 
     test "filters localization by specific language codes", %{project: project} do
       # When languages is a list of codes (not :all), it uses that list
-      opts = %ExportOptions{format: :storyarn, languages: ["en", "es"]}
+      opts = %ExportOptions{format: :ink, languages: ["en", "es"]}
       data = DataCollector.collect(project.id, opts)
 
       assert is_map(data.localization)

@@ -7,7 +7,6 @@ defmodule Storyarn.Exports.SerializerRegistry do
   """
 
   @display_order [
-    :storyarn,
     :ink,
     :yarn,
     :unity,
@@ -17,7 +16,6 @@ defmodule Storyarn.Exports.SerializerRegistry do
   ]
 
   @serializers %{
-    storyarn: Storyarn.Exports.Serializers.StoryarnJSON,
     ink: Storyarn.Exports.Serializers.Ink,
     yarn: Storyarn.Exports.Serializers.Yarn,
     unity: Storyarn.Exports.Serializers.UnityJSON,

@@ -134,53 +134,53 @@ msgstr ""
 msgid "This invitation has already been accepted."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:181
+#: lib/storyarn_web/live/project_settings_live/trash.ex:180
 #, elixir-autogen, elixir-format
 msgid "Trash emptied successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:26
+#: lib/storyarn_web/live/project_settings_live/trash.ex:25
 #, elixir-autogen, elixir-format
 msgid "Trash"
 msgstr "Trash"
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:28
+#: lib/storyarn_web/live/project_settings_live/trash.ex:27
 #, elixir-autogen, elixir-format
 msgid "Restore deleted project items or remove them permanently."
 msgstr "Restore deleted project items or remove them permanently."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:78
+#: lib/storyarn_web/live/project_settings_live/trash.ex:77
 #, elixir-autogen, elixir-format
 msgid "Project Trash"
 msgstr "Project Trash"
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:132
+#: lib/storyarn_web/live/project_settings_live/trash.ex:131
 #, elixir-autogen, elixir-format
 msgid "Item restored successfully."
 msgstr "Item restored successfully."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:135
+#: lib/storyarn_web/live/project_settings_live/trash.ex:134
 #, elixir-autogen, elixir-format
 msgid "Failed to restore item."
 msgstr "Failed to restore item."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:139
-#: lib/storyarn_web/live/project_settings_live/trash.ex:158
+#: lib/storyarn_web/live/project_settings_live/trash.ex:138
+#: lib/storyarn_web/live/project_settings_live/trash.ex:157
 #, elixir-autogen, elixir-format
 msgid "Item not found."
 msgstr "Item not found."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:151
+#: lib/storyarn_web/live/project_settings_live/trash.ex:150
 #, elixir-autogen, elixir-format
 msgid "Item permanently deleted."
 msgstr "Item permanently deleted."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:154
+#: lib/storyarn_web/live/project_settings_live/trash.ex:153
 #, elixir-autogen, elixir-format
 msgid "Failed to delete item."
 msgstr "Failed to delete item."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:185
+#: lib/storyarn_web/live/project_settings_live/trash.ex:184
 #, elixir-autogen, elixir-format
 msgid "Some items could not be deleted."
 msgstr "Some items could not be deleted."
@@ -366,7 +366,7 @@ msgstr ""
 msgid "Source language updated."
 msgstr ""
 
-#: lib/storyarn_web/live/hooks/project_scope.ex:52
+#: lib/storyarn_web/live/hooks/project_scope.ex:51
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr ""
@@ -381,52 +381,52 @@ msgstr ""
 msgid "Usage Limits"
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:516
+#: lib/storyarn/exports/validator.ex:513
 #, elixir-autogen, elixir-format
 msgid "%{excluded} of %{total} strings are not release-ready for locale \"%{locale}\""
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:547
+#: lib/storyarn/exports/validator.ex:544
 #, elixir-autogen, elixir-format
 msgid "%{missing} of %{total} strings have no preview translation for locale \"%{locale}\""
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:573
+#: lib/storyarn/exports/validator.ex:570
 #, elixir-autogen, elixir-format
 msgid "Preview export includes %{count} non-final or outdated strings for locale \"%{locale}\""
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:670
+#: lib/storyarn/exports/validator.ex:667
 #, elixir-autogen, elixir-format
 msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no connections"
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:680
+#: lib/storyarn/exports/validator.ex:677
 #, elixir-autogen, elixir-format
 msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" is not reachable from Entry"
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:339
+#: lib/storyarn/exports/validator.ex:337
 #, elixir-autogen, elixir-format
 msgid "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no speaker assigned"
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:309
+#: lib/storyarn/exports/validator.ex:307
 #, elixir-autogen, elixir-format
 msgid "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no text"
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:662
+#: lib/storyarn/exports/validator.ex:659
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has no Entry node"
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:385
+#: lib/storyarn/exports/validator.ex:383
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" is part of a circular subflow reference chain"
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:428
+#: lib/storyarn/exports/validator.ex:426
 #, elixir-autogen, elixir-format
 msgid "Jump node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent hub \"%{target}\""
 msgstr ""
@@ -441,12 +441,12 @@ msgstr ""
 msgid "Operator '%{operator}' requires custom function '%{func_name}' in %{engine}"
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:614
+#: lib/storyarn/exports/validator.ex:611
 #, elixir-autogen, elixir-format
 msgid "Sheet \"%{name}\" has no references from flows or scenes"
 msgstr ""
 
-#: lib/storyarn/exports/validator.ex:458
+#: lib/storyarn/exports/validator.ex:456
 #, elixir-autogen, elixir-format
 msgid "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent flow"
 msgstr ""
@@ -905,27 +905,27 @@ msgstr ""
 msgid "You don't have permission to publish templates from this project."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:30
+#: lib/storyarn_web/live/export_import_live/index.ex:29
 #, elixir-autogen, elixir-format
 msgid "Import & Export"
 msgstr "Import & Export"
 
-#: lib/storyarn_web/live/export_import_live/index.ex:32
+#: lib/storyarn_web/live/export_import_live/index.ex:31
 #, elixir-autogen, elixir-format
 msgid "Move narrative content into or out of this project."
 msgstr "Move narrative content into or out of this project."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:542
+#: lib/storyarn_web/live/export_import_live/index.ex:537
 #, elixir-autogen, elixir-format
 msgid "The selected Yarn project is invalid or exceeds the import safety limits."
 msgstr "The selected Yarn project is invalid or exceeds the import safety limits."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:548
+#: lib/storyarn_web/live/export_import_live/index.ex:543
 #, elixir-autogen, elixir-format
 msgid "The import could not be completed. No project content was changed."
 msgstr "The import could not be completed. No project content was changed."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:518
+#: lib/storyarn_web/live/export_import_live/index.ex:513
 #, elixir-autogen, elixir-format
 msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
@@ -1041,52 +1041,52 @@ msgstr "The template or workspace is no longer available."
 msgid "You no longer have permission to install this template."
 msgstr "You no longer have permission to install this template."
 
-#: lib/storyarn/exports/validator.ex:666
+#: lib/storyarn/exports/validator.ex:663
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has more than one Entry node"
 msgstr "Flow \"%{name}\" has more than one Entry node"
 
-#: lib/storyarn/exports/validator.ex:690
+#: lib/storyarn/exports/validator.ex:687
 #, elixir-autogen, elixir-format
 msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no outgoing connection"
 msgstr "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no outgoing connection"
 
-#: lib/storyarn/exports/validator.ex:700
+#: lib/storyarn/exports/validator.ex:697
 #, elixir-autogen, elixir-format
 msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" leaves one or more outputs unconnected"
 msgstr "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" leaves one or more outputs unconnected"
 
-#: lib/storyarn/exports/validator.ex:710
+#: lib/storyarn/exports/validator.ex:707
 #, elixir-autogen, elixir-format
 msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on input pins it no longer has"
 msgstr "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on input pins it no longer has"
 
-#: lib/storyarn/exports/validator.ex:720
+#: lib/storyarn/exports/validator.ex:717
 #, elixir-autogen, elixir-format
 msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on output pins it no longer has"
 msgstr "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on output pins it no longer has"
 
-#: lib/storyarn/exports/validator.ex:730
+#: lib/storyarn/exports/validator.ex:727
 #, elixir-autogen, elixir-format
 msgid "Hub node (id: %{node_id}) in flow \"%{flow_name}\" is never targeted by a Jump"
 msgstr "Hub node (id: %{node_id}) in flow \"%{flow_name}\" is never targeted by a Jump"
 
-#: lib/storyarn/exports/validator.ex:739
+#: lib/storyarn/exports/validator.ex:736
 #, elixir-autogen, elixir-format
 msgid "Jump node (id: %{node_id}) in flow \"%{flow_name}\" has no target hub set"
 msgstr "Jump node (id: %{node_id}) in flow \"%{flow_name}\" has no target hub set"
 
-#: lib/storyarn/exports/validator.ex:748
+#: lib/storyarn/exports/validator.ex:745
 #, elixir-autogen, elixir-format
 msgid "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" has no referenced flow set"
 msgstr "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" has no referenced flow set"
 
-#: lib/storyarn/exports/validator.ex:757
+#: lib/storyarn/exports/validator.ex:754
 #, elixir-autogen, elixir-format
 msgid "Exit node (id: %{node_id}) in flow \"%{flow_name}\" has no return flow set"
 msgstr "Exit node (id: %{node_id}) in flow \"%{flow_name}\" has no return flow set"
 
-#: lib/storyarn/exports/validator.ex:766
+#: lib/storyarn/exports/validator.ex:763
 #, elixir-autogen, elixir-format
 msgid "Exit node (id: %{node_id}) in flow \"%{flow_name}\" returns to a flow that no longer exists"
 msgstr "Exit node (id: %{node_id}) in flow \"%{flow_name}\" returns to a flow that no longer exists"

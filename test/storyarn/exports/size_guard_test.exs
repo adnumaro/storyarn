@@ -45,7 +45,7 @@ defmodule Storyarn.Exports.SizeGuardTest do
 
       assert {:error, {:export_too_large, details}} =
                Exports.export_project(project, %{
-                 format: :storyarn,
+                 format: :ink,
                  validate_before_export: false
                })
 
@@ -61,13 +61,15 @@ defmodule Storyarn.Exports.SizeGuardTest do
 
       assert {:ok, json} =
                Exports.export_project(project, %{
-                 format: :storyarn,
+                 format: :unity,
                  include_flows: false,
                  validate_before_export: false
                })
 
+      # `:unity` because the assertion needs a single JSON body; the format this
+      # used to run on emitted one and is gone. `:ink` returns a file list.
       decoded = Jason.decode!(json)
-      refute Map.has_key?(decoded, "flows")
+      assert decoded["conversations"] == []
     end
 
     test "does not load excluded flows during validated exports" do
@@ -80,12 +82,12 @@ defmodule Storyarn.Exports.SizeGuardTest do
 
       assert {:ok, json} =
                Exports.export_project(project, %{
-                 format: :storyarn,
+                 format: :unity,
                  include_flows: false
                })
 
       decoded = Jason.decode!(json)
-      refute Map.has_key?(decoded, "flows")
+      assert decoded["conversations"] == []
     end
 
     test "guards manual export validation before loading oversized data" do
@@ -95,7 +97,7 @@ defmodule Storyarn.Exports.SizeGuardTest do
       Application.put_env(:storyarn, SizeGuard, limits: %{flows: 0})
 
       assert %ValidationResult{status: :errors, errors: [error]} =
-               Exports.validate_project(project.id, %ExportOptions{format: :storyarn})
+               Exports.validate_project(project.id, %ExportOptions{format: :ink})
 
       assert error.rule == :export_too_large
       assert error.violations == %{flows: %{count: 1, limit: 0}}
@@ -109,7 +111,7 @@ defmodule Storyarn.Exports.SizeGuardTest do
 
       assert {:error, {:export_too_large, details}} =
                Exports.export_project(project, %{
-                 format: :storyarn,
+                 format: :ink,
                  validate_before_export: false
                })
 
@@ -130,7 +132,7 @@ defmodule Storyarn.Exports.SizeGuardTest do
 
       assert {:error, {:export_too_large, details}} =
                Exports.export_project(project, %{
-                 format: :storyarn,
+                 format: :ink,
                  validate_before_export: false
                })
 
@@ -155,7 +157,7 @@ defmodule Storyarn.Exports.SizeGuardTest do
 
       {:ok, opts} =
         ExportOptions.new(%{
-          format: :storyarn,
+          format: :ink,
           sheet_ids: [selected_sheet.id],
           validate_before_export: false
         })
@@ -175,13 +177,13 @@ defmodule Storyarn.Exports.SizeGuardTest do
 
       {:ok, included_opts} =
         ExportOptions.new(%{
-          format: :storyarn,
+          format: :ink,
           validate_before_export: false
         })
 
       {:ok, excluded_opts} =
         ExportOptions.new(%{
-          format: :storyarn,
+          format: :ink,
           include_flows: false,
           validate_before_export: false
         })
@@ -200,7 +202,7 @@ defmodule Storyarn.Exports.SizeGuardTest do
 
     test "stops measuring once the configured source-byte cap is exceeded" do
       project = project_fixture(nil, %{description: String.duplicate("large", 200)})
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, validate_before_export: false})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, validate_before_export: false})
 
       assert {:ok, bytes} =
                DataCollector.estimate_source_bytes(project.id, opts, max_bytes: 512)
@@ -211,62 +213,12 @@ defmodule Storyarn.Exports.SizeGuardTest do
       assert bytes.sheets == 0
     end
 
-    test "uses the engine export localization scope for byte estimates" do
-      project = project_fixture()
-      source_language_fixture(project, %{locale_code: "en", name: "English"})
-      language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      included_flow = flow_fixture(project)
-      included_node = node_fixture(included_flow)
-      skipped_flow = flow_fixture(project)
-      skipped_node = node_fixture(skipped_flow)
-      oversized_text = String.duplicate("archived or out of scope", 200)
-
-      _included =
-        localized_text_fixture(project.id, %{
-          source_id: included_node.id,
-          source_text: "Included"
-        })
-
-      archived =
-        localized_text_fixture(project.id, %{
-          source_id: included_node.id,
-          source_field: "stage_directions",
-          source_text: oversized_text
-        })
-
-      Repo.update_all(
-        from(text in LocalizedText, where: text.id == ^archived.id),
-        set: [archived_at: DateTime.utc_now(:second), archive_reason: "source_field_removed"]
-      )
-
-      _out_of_scope =
-        localized_text_fixture(project.id, %{
-          source_id: skipped_node.id,
-          source_text: oversized_text
-        })
-
-      {:ok, engine_opts} =
-        ExportOptions.new(%{
-          format: :ink,
-          flow_ids: [included_flow.id],
-          include_sheets: false,
-          validate_before_export: false
-        })
-
-      {:ok, backup_opts} =
-        ExportOptions.new(%{
-          format: :storyarn,
-          flow_ids: [included_flow.id],
-          include_sheets: false,
-          validate_before_export: false
-        })
-
-      assert {:ok, engine_bytes} = DataCollector.estimate_source_bytes(project.id, engine_opts)
-      assert {:ok, backup_bytes} = DataCollector.estimate_source_bytes(project.id, backup_opts)
-
-      assert engine_bytes.localized_texts > 0
-      assert backup_bytes.localized_texts > engine_bytes.localized_texts + byte_size(oversized_text)
-    end
+    # REMOVED: "uses the engine export localization scope for byte estimates".
+    # It compared the native full-state backup scope — which counted archived
+    # and out-of-scope texts — against an engine scope. That format is gone, so
+    # every remaining format is an engine format and there is nothing left to
+    # compare it to. The surviving distinction is which content roles a format
+    # addresses (`unity` takes all of them, `ink`/`yarn` only dialogue and
+    # response), and that is covered in localization_engine_contract_test.exs.
   end
 end

@@ -36,9 +36,11 @@ defmodule Storyarn.Exports.Validator do
   Validate a project for export.
 
   Returns a `%ValidationResult{}` struct with errors, warnings, and info findings.
-  """
-  def validate_project(project_id, opts \\ %{})
 
+  Takes a built `%ExportOptions{}`. There is no default: the previous one
+  guessed `%ExportOptions{format: :storyarn}`, so a caller that never said which
+  format it was exporting as got validated against a different one.
+  """
   def validate_project(project_id, %ExportOptions{} = opts) do
     findings = run_all_checks(project_id, opts)
 
@@ -66,10 +68,6 @@ defmodule Storyarn.Exports.Validator do
         info_count: length(info)
       }
     }
-  end
-
-  def validate_project(project_id, _opts) do
-    validate_project(project_id, %ExportOptions{format: :storyarn})
   end
 
   @doc """
@@ -475,7 +473,6 @@ defmodule Storyarn.Exports.Validator do
   # =============================================================================
 
   defp check_missing_translations(_project_id, %ExportOptions{include_localization: false}), do: []
-  defp check_missing_translations(_project_id, %ExportOptions{format: :storyarn}), do: []
 
   defp check_missing_translations(project_id, opts) do
     languages =

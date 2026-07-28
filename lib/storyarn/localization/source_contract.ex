@@ -15,7 +15,6 @@ defmodule Storyarn.Localization.SourceContract do
   @localizable_block_types ~w(text rich_text)
 
   @engine_content_roles %{
-    storyarn: @content_roles,
     unity: @content_roles,
     ink: ~w(dialogue response),
     yarn: ~w(dialogue response),

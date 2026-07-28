@@ -9,9 +9,9 @@ defmodule Storyarn.Exports.ExportOptionsTest do
 
   describe "new/1 with valid formats" do
     test "creates options with default values" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn})
+      {:ok, opts} = ExportOptions.new(%{format: :ink})
 
-      assert opts.format == :storyarn
+      assert opts.format == :ink
       assert opts.version == "1.0.0"
       assert opts.include_sheets == true
       assert opts.include_flows == true
@@ -28,7 +28,7 @@ defmodule Storyarn.Exports.ExportOptionsTest do
     end
 
     test "accepts all valid format atoms" do
-      valid = ~w(storyarn ink yarn unity godot unreal articy)a
+      valid = ~w(ink yarn unity godot unreal articy)a
 
       for format <- valid do
         assert {:ok, %ExportOptions{format: ^format}} = ExportOptions.new(%{format: format})
@@ -40,9 +40,8 @@ defmodule Storyarn.Exports.ExportOptionsTest do
       assert opts.format == :ink
     end
 
-    test "defaults format to storyarn when not provided" do
-      {:ok, opts} = ExportOptions.new(%{})
-      assert opts.format == :storyarn
+    test "requires a format instead of defaulting to one" do
+      assert {:error, :format_required} = ExportOptions.new(%{})
     end
   end
 
@@ -64,13 +63,13 @@ defmodule Storyarn.Exports.ExportOptionsTest do
 
     test "rejects invalid asset mode" do
       assert {:error, {:invalid_asset_mode, :invalid_mode}} =
-               ExportOptions.new(%{format: :storyarn, include_assets: :invalid_mode})
+               ExportOptions.new(%{format: :ink, include_assets: :invalid_mode})
     end
 
     test "rejects invalid asset mode string that is not an existing atom" do
       assert {:error, {:invalid_asset_mode, "not_a_real_asset_mode_xyz"}} =
                ExportOptions.new(%{
-                 "format" => "storyarn",
+                 "format" => "ink",
                  "include_assets" => "not_a_real_asset_mode_xyz"
                })
     end
@@ -97,7 +96,7 @@ defmodule Storyarn.Exports.ExportOptionsTest do
     test "false values for include flags" do
       {:ok, opts} =
         ExportOptions.new(%{
-          format: :storyarn,
+          format: :ink,
           include_sheets: false,
           include_flows: false,
           include_scenes: false,
@@ -113,7 +112,7 @@ defmodule Storyarn.Exports.ExportOptionsTest do
     test "truthy values are coerced to true" do
       {:ok, opts} =
         ExportOptions.new(%{
-          format: :storyarn,
+          format: :ink,
           include_sheets: "yes",
           validate_before_export: 1
         })
@@ -125,7 +124,7 @@ defmodule Storyarn.Exports.ExportOptionsTest do
     test "nil values use default (true)" do
       {:ok, opts} =
         ExportOptions.new(%{
-          format: :storyarn,
+          format: :ink,
           include_sheets: nil
         })
 
@@ -151,7 +150,7 @@ defmodule Storyarn.Exports.ExportOptionsTest do
     test "string booleans are parsed explicitly" do
       {:ok, opts} =
         ExportOptions.new(%{
-          "format" => "storyarn",
+          "format" => "ink",
           "include_sheets" => "false",
           "include_flows" => "true",
           "validate_before_export" => "false",
@@ -171,74 +170,74 @@ defmodule Storyarn.Exports.ExportOptionsTest do
 
   describe "new/1 list and ID parsing" do
     test "languages as list" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, languages: ["en", "es"]})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, languages: ["en", "es"]})
       assert opts.languages == ["en", "es"]
     end
 
     test "languages as :all atom" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, languages: :all})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, languages: :all})
       assert opts.languages == :all
     end
 
     test "languages as 'all' string" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, languages: "all"})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, languages: "all"})
       assert opts.languages == :all
     end
 
     test "languages nil defaults to :all" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, languages: nil})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, languages: nil})
       assert opts.languages == :all
     end
 
     test "languages with non-list value defaults to :all" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, languages: 42})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, languages: 42})
       assert opts.languages == :all
     end
 
     test "flow_ids as integer list" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, flow_ids: [1, 2, 3]})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, flow_ids: [1, 2, 3]})
       assert opts.flow_ids == [1, 2, 3]
     end
 
     test "flow_ids as string integer list gets parsed" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, flow_ids: ["1", "2", "3"]})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, flow_ids: ["1", "2", "3"]})
       assert opts.flow_ids == [1, 2, 3]
     end
 
     test "flow_ids as :all atom" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, flow_ids: :all})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, flow_ids: :all})
       assert opts.flow_ids == :all
     end
 
     test "flow_ids as 'all' string" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, flow_ids: "all"})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, flow_ids: "all"})
       assert opts.flow_ids == :all
     end
 
     test "flow_ids nil defaults to :all" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, flow_ids: nil})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, flow_ids: nil})
       assert opts.flow_ids == :all
     end
 
     test "flow_ids with non-list value defaults to :all" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, flow_ids: "something"})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, flow_ids: "something"})
       assert opts.flow_ids == :all
     end
 
     test "sheet_ids as list" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, sheet_ids: [10, 20]})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, sheet_ids: [10, 20]})
       assert opts.sheet_ids == [10, 20]
     end
 
     test "scene_ids as list" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, scene_ids: [5]})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, scene_ids: [5]})
       assert opts.scene_ids == [5]
     end
 
     test "string keys for IDs work" do
       {:ok, opts} =
         ExportOptions.new(%{
-          "format" => "storyarn",
+          "format" => "ink",
           "flow_ids" => ["1", "2"],
           "sheet_ids" => [3, 4]
         })
@@ -254,22 +253,22 @@ defmodule Storyarn.Exports.ExportOptionsTest do
 
   describe "new/1 version and asset mode" do
     test "custom version string" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, version: "2.0.0"})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, version: "2.0.0"})
       assert opts.version == "2.0.0"
     end
 
     test "version from string key" do
-      {:ok, opts} = ExportOptions.new(%{"format" => "storyarn", "version" => "3.0.0"})
+      {:ok, opts} = ExportOptions.new(%{"format" => "ink", "version" => "3.0.0"})
       assert opts.version == "3.0.0"
     end
 
     test "asset mode embedded" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_assets: :embedded})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_assets: :embedded})
       assert opts.include_assets == :embedded
     end
 
     test "asset mode bundled" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_assets: :bundled})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_assets: :bundled})
       assert opts.include_assets == :bundled
     end
 
@@ -287,7 +286,7 @@ defmodule Storyarn.Exports.ExportOptionsTest do
     test "returns list of atoms" do
       formats = ExportOptions.valid_formats()
       assert is_list(formats)
-      assert :storyarn in formats
+      refute :storyarn in formats
       assert :ink in formats
       assert :yarn in formats
       assert :unity in formats
@@ -303,47 +302,47 @@ defmodule Storyarn.Exports.ExportOptionsTest do
 
   describe "include_section?/2" do
     test "sheets section" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_sheets: true})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_sheets: true})
       assert ExportOptions.include_section?(opts, :sheets) == true
 
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_sheets: false})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_sheets: false})
       assert ExportOptions.include_section?(opts, :sheets) == false
     end
 
     test "flows section" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_flows: true})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_flows: true})
       assert ExportOptions.include_section?(opts, :flows) == true
 
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_flows: false})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_flows: false})
       assert ExportOptions.include_section?(opts, :flows) == false
     end
 
     test "scenes section" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_scenes: true})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_scenes: true})
       assert ExportOptions.include_section?(opts, :scenes) == true
 
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_scenes: false})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_scenes: false})
       assert ExportOptions.include_section?(opts, :scenes) == false
     end
 
     test "localization section" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_localization: true})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_localization: true})
       assert ExportOptions.include_section?(opts, :localization) == true
 
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_localization: false})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_localization: false})
       assert ExportOptions.include_section?(opts, :localization) == false
     end
 
     test "assets section is true when mode is not false" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_assets: :references})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_assets: :references})
       assert ExportOptions.include_section?(opts, :assets) == true
 
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn, include_assets: :embedded})
+      {:ok, opts} = ExportOptions.new(%{format: :ink, include_assets: :embedded})
       assert ExportOptions.include_section?(opts, :assets) == true
     end
 
     test "unknown section returns false" do
-      {:ok, opts} = ExportOptions.new(%{format: :storyarn})
+      {:ok, opts} = ExportOptions.new(%{format: :ink})
       assert ExportOptions.include_section?(opts, :unknown) == false
       assert ExportOptions.include_section?(opts, :something_else) == false
     end

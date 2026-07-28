@@ -39,8 +39,8 @@ defmodule Storyarn.Exports do
 
   ## Examples
 
-      iex> Exports.export_project(project, %{format: :storyarn})
-      {:ok, "{...json...}"}
+      iex> Exports.export_project(project, %{format: :yarn})
+      {:ok, [{"story.yarn", "..."}, {"metadata.json", "..."}]}
 
       iex> Exports.export_project(project, %{format: :ink})
       {:ok, [{"story.ink", "..."}, {"metadata.json", "..."}]}
@@ -73,12 +73,8 @@ defmodule Storyarn.Exports do
   def validate_project(project_id, opts) when is_map(opts) do
     case ExportOptions.new(opts) do
       {:ok, options} -> validate_project(project_id, options)
-      {:error, _reason} -> Validator.validate_project(project_id, opts)
+      {:error, reason} -> invalid_options_validation_result(project_id, reason)
     end
-  end
-
-  def validate_project(project_id, _opts) do
-    validate_project(project_id, %ExportOptions{format: :storyarn})
   end
 
   @doc """
@@ -111,6 +107,30 @@ defmodule Storyarn.Exports do
   end
 
   defp maybe_validate(_project, options), do: {:ok, options, %{}}
+
+  # Options that do not parse are reported, not guessed at. This used to fall
+  # through to `%ExportOptions{format: :storyarn}` — so a caller that omitted or
+  # misspelled the format silently got a validation pass for a different format
+  # than the one it was about to export as.
+  defp invalid_options_validation_result(project_id, reason) do
+    %ValidationResult{
+      status: :errors,
+      errors: [
+        %{
+          level: :error,
+          rule: :invalid_export_options,
+          message: "Export options are invalid: #{inspect(reason)}"
+        }
+      ],
+      statistics: %{
+        project_id: project_id,
+        total_findings: 1,
+        error_count: 1,
+        warning_count: 0,
+        info_count: 0
+      }
+    }
+  end
 
   defp export_too_large_validation_result(project_id, details) do
     %ValidationResult{

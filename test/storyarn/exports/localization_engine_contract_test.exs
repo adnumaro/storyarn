@@ -361,7 +361,13 @@ defmodule Storyarn.Exports.LocalizationEngineContractTest do
     assert recovered_keys == original_keys
   end
 
-  test "native backups and project snapshots retain archived locales", %{project: project} do
+  # The first half of this test asserted that a NATIVE BACKUP export also kept
+  # archived locales. That was the one format whose collector branch skipped the
+  # `is_nil(archived_at)` filter, and it is gone — every remaining format is an
+  # engine format, and an engine must not ship a locale the author retired.
+  # Retaining archived locales is now purely a snapshot guarantee, which is where
+  # restoring a project actually needs them.
+  test "project snapshots retain archived locales", %{project: project} do
     flow = flow_fixture(project)
     node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Remember me", "responses" => []}})
     source_language_fixture(project, %{locale_code: "en", name: "English"})
@@ -371,11 +377,9 @@ defmodule Storyarn.Exports.LocalizationEngineContractTest do
     assert {:ok, _text} = Localization.update_text(text, %{translated_text: "Recuérdame", status: "final"})
     assert {:ok, archived_language} = Localization.remove_language(spanish)
 
-    data = DataCollector.collect(project.id, %ExportOptions{format: :storyarn})
-    archived = Enum.find(data.localization.languages, &(&1.locale_code == "es"))
-
-    assert archived.archived_at == archived_language.archived_at
-    assert Enum.any?(data.localization.strings, &(&1.locale_code == "es" and &1.translated_text == "Recuérdame"))
+    # Positive control for the removal: the engine export must NOT carry it.
+    data = DataCollector.collect(project.id, %ExportOptions{format: :ink})
+    refute Enum.any?(data.localization.languages, &(&1.locale_code == "es"))
 
     snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
     snapshot_language = Enum.find(snapshot["localization"]["languages"], &(&1["locale_code"] == "es"))
