@@ -1,0 +1,77 @@
+lib/storyarn_web/live/export_import_live/index.ex
+  s_bf1ff561f7cafa::t_89149aade23ad1 60,91,93,96-98,102-120,123-131
+  s_bf1ff561f7cafa::t_5cf0b186469127 240,250,260,265,269
+  s_bf1ff561f7cafa::t_675d23dc34cbd1 132
+lib/storyarn/exports.ex
+  s_bf1ff561f7cafa::t_5e793a564eb307 118
+  s_bf1ff561f7cafa::t_45722e92fc8c1d 22-23,57,113-117,119-122
+  s_bf1ff561f7cafa::t_bd41495b14a688 123
+assets/app/locales/es/project-settings.json
+  s_bf1ff561f7cafa::t_5cf0b186469127 331
+lib/storyarn_web/live/flow_live/index.ex
+  s_bf1ff561f7cafa::t_3fef06fa6dcad8 604,606-607
+assets/app/modules/projects/settings/export-import/types.ts
+  s_bf1ff561f7cafa::t_89149aade23ad1 32-37
+test/storyarn/exports/validator_test.exs
+  s_bf1ff561f7cafa::t_759ef9baaf7b72 14,278-395,719-740
+  s_bf1ff561f7cafa::t_027cbdbcd44d7c 62
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_bf1ff561f7cafa::t_ac4083f2555ba7 316-332
+  s_bf1ff561f7cafa::t_5cf0b186469127 265,269,272,275,279,282,285,292,294,297,300-303
+  s_bf1ff561f7cafa::t_439a2000794c2d 315
+assets/app/test/modules/projects/settings/ExportPanel.test.ts
+  s_bf1ff561f7cafa::t_5cf0b186469127 225-229,231-246,248-253
+  s_bf1ff561f7cafa::t_d3e2e373dff310 230
+  s_bf1ff561f7cafa::t_bcd40da560c852 213,247
+lib/storyarn/exports/validator.ex
+  s_bf1ff561f7cafa::t_f1db5654d6ae37 11,116,139,269-271,305-315,323-373,423,428-429,454-455,462-465,473,486-487,493-496,802
+  s_bf1ff561f7cafa::t_7aee93b76a9cef 249,257,261-264
+  s_bf1ff561f7cafa::t_c48b4256021f84 701-702,710-711,719-720,728-729,737-738,746-747,755-756,764-765,773-774,782-783,791-792,796-801
+lib/storyarn/flows.ex
+  s_bf1ff561f7cafa::t_0adb46c47ce596 66
+  s_bf1ff561f7cafa::t_0c3edd297b039b 67
+  s_bf1ff561f7cafa::t_5d5520144e82a0 34
+lib/storyarn/flows/node_label.ex
+  s_bf1ff561f7cafa::t_0c3edd297b039b 11,16-27
+  s_bf1ff561f7cafa::t_3290a1646490a0 1-10,12-15,28-46
+test/storyarn_web/controllers/export_controller_test.exs
+  s_bf1ff561f7cafa::t_04590f2b734de9 220-245
+assets/app/locales/en/project-settings.json
+  s_bf1ff561f7cafa::t_5cf0b186469127 331
+assets/app/modules/projects/settings/export-import/components/ExportPanel.vue
+  s_bf1ff561f7cafa::t_5cf0b186469127 169,693,710-717
+  s_bf1ff561f7cafa::t_89149aade23ad1 28,784-791,807-814,830-837
+  s_bf1ff561f7cafa::t_619199a0858114 718
+lib/storyarn/exports/artifact_validator.ex
+  s_bf1ff561f7cafa::t_3290a1646490a0 1-33,56-60,83-128,130-138,140,147,155,174-184,187-195,198-264,266-330,332-343,345-357,359-379,381-399,401-412,428-450
+  s_bf1ff561f7cafa::t_9e5d85f9d0c4af 34-55,61-82,129,139,141-146,148,156-173,185-186,196-197,265,331,344,358,380,400,413-427
+  s_bf1ff561f7cafa::t_74c72cd01a3b21 149-154
+lib/storyarn/flows/flow_stats.ex
+  s_bf1ff561f7cafa::t_3fef06fa6dcad8 153-160,163-170
+  s_bf1ff561f7cafa::t_0c3edd297b039b 147
+  s_bf1ff561f7cafa::t_0cf93f579a00b2 171
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_bf1ff561f7cafa::t_d3eabab73b3afe 384,389,394,399,404,419,888,893,898,1014,1019-1029,1031-1032,1034,1036-1037,1039,1041-1042,1046-1047,1049,1051-1052,1054,1056-1057,1059,1061-1062,1064,1066-1067,1069,1071-1072,1074,1076-1077,1079,1081-1162
+test/storyarn_web/live/flow_live/index_test.exs
+  s_bf1ff561f7cafa::t_39e6b0118a6387 224
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_bf1ff561f7cafa::t_49a674ce06a477 384,389,394,399,404,419,888,893,898,1014,1019-1024,1026-1027,1029,1031-1032,1034,1036-1042,1046-1052,1054,1056-1057,1059,1061-1062,1064,1066-1067,1069,1071-1072,1074,1076-1077,1079,1081,1084,1086-1161
+priv/gettext/projects.pot
+  s_bf1ff561f7cafa::t_782f102a1edea6 384,389,394,399,404,419,888,893,898,1014,1019-1029,1031,1034,1036,1039,1041,1046,1049,1051,1054,1056,1059,1061,1064,1066,1069,1071,1074,1076,1079,1081-1161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "4250317604a9e14a029cd1f8ccf47e3ebb5dfc2b",
+  "prompts": {},
+  "sessions": {
+    "s_bf1ff561f7cafa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa9b1-a671-76c0-853c-e1121c368bc1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
