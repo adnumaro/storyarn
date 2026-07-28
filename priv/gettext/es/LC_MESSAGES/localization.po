@@ -97,24 +97,24 @@ msgid_plural "Translated %{count} strings."
 msgstr[0] "Se tradujo %{count} cadena."
 msgstr[1] "Se tradujeron %{count} cadenas."
 
-#: lib/storyarn_web/live/localization_live/edit.ex:151
+#: lib/storyarn_web/live/localization_live/edit.ex:150
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:108
 #, elixir-autogen, elixir-format
 msgid "Translation complete."
 msgstr "Traducción completada."
 
-#: lib/storyarn_web/live/localization_live/edit.ex:160
+#: lib/storyarn_web/live/localization_live/edit.ex:159
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:117
 #, elixir-autogen, elixir-format
 msgid "Translation failed: %{reason}"
 msgstr "Traducción fallida: %{reason}"
 
-#: lib/storyarn_web/live/localization_live/edit.ex:131
+#: lib/storyarn_web/live/localization_live/edit.ex:130
 #, elixir-autogen, elixir-format
 msgid "Translation saved."
 msgstr "Traducción guardada."
 
-#: lib/storyarn_web/live/localization_live/index.ex:345
+#: lib/storyarn_web/live/localization_live/index.ex:344
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."
@@ -153,13 +153,6 @@ msgstr "Idioma de origen actualizado."
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr "No tienes permiso para editar."
-
-#: lib/storyarn/projects/dashboard.ex:365
-#, elixir-autogen, elixir-format
-msgid "%{language}: %{count} text pending translation (%{percent}% done)"
-msgid_plural "%{language}: %{count} texts pending translation (%{percent}% done)"
-msgstr[0] "%{language}: %{count} texto pendiente de traducción (%{percent}% hecho)"
-msgstr[1] "%{language}: %{count} textos pendientes de traducción (%{percent}% hecho)"
 
 #: lib/storyarn_web/live/localization_sidebar_live.ex:89
 #, elixir-autogen, elixir-format

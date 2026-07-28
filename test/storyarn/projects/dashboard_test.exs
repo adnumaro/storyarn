@@ -202,21 +202,13 @@ defmodule Storyarn.Projects.DashboardTest do
     end
   end
 
-  describe "recent_activity/2 and the screenplays tool" do
-    # The UNION over `screenplays` took the WHOLE overview down with an
-    # `undefined_table` the moment that tool's table was dropped — stats and
-    # activity both, on a page where screenplays were never reachable anyway
-    # (they have no editor route). The overview covers what the navigation covers.
-    test "omits screenplays even when the project has one", %{project: project} do
-      Storyarn.ScreenplaysFixtures.screenplay_fixture(project, %{name: "A Screenplay"})
-
-      activity = Dashboard.recent_activity(project.id)
-
-      refute Enum.any?(activity, &(&1.type == "screenplay"))
-      refute Enum.any?(activity, &(&1.name == "A Screenplay"))
-    end
-
-    test "still returns sheets, flows and scenes", %{project: project} do
+  describe "recent_activity/2 covers exactly the project's tools" do
+    # This UNION used to include `screenplays`. That took the WHOLE overview down
+    # with an `undefined_table` the moment the tool's table was dropped in #59 —
+    # stats and activity both. The tool is gone now, so the specific crash cannot
+    # recur, but the shape that caused it can: the overview must union only the
+    # tools the project navigation actually exposes.
+    test "returns sheets, flows and scenes, and no other type", %{project: project} do
       sheet_fixture(project, %{name: "A Sheet"})
       flow_fixture(project, %{name: "A Flow"})
 
@@ -224,7 +216,7 @@ defmodule Storyarn.Projects.DashboardTest do
 
       assert "sheet" in types
       assert "flow" in types
-      refute "screenplay" in types
+      assert Enum.sort(types) -- ["flow", "scene", "sheet"] == []
     end
   end
 

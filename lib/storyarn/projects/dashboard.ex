@@ -96,11 +96,11 @@ defmodule Storyarn.Projects.Dashboard do
   Returns a list of `%{name: String.t(), type: String.t(), updated_at: DateTime.t()}`
   sorted by most recent first.
 
-  Screenplays are deliberately absent. They have no editor route, so a
-  screenplay row was an activity entry the reader could not open — and the tool
-  is being removed, at which point the `screenplays` UNION takes the whole
-  overview down with an `undefined_table`. The overview covers what the project
-  navigation covers.
+  This unions only the tools the project navigation exposes. It used to include
+  `screenplays`, which had no editor route — so those rows were activity the
+  reader could not open, and when the tool's table was dropped the UNION took the
+  whole overview down with an `undefined_table`, stats included. Adding a table
+  here that the navigation does not expose repeats that.
   """
   def recent_activity(project_id, limit \\ 10) do
     sheets_query =

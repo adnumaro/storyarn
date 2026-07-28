@@ -161,16 +161,17 @@ describe("ProjectDashboard", () => {
     expect(panel.text()).toContain("Opening");
   });
 
-  // Screenplays have no editor route and the tool is being removed.
-  it("has no screenplay activity type", () => {
+  // An unmapped type must degrade to the raw string, not crash or render a stray
+  // key. `screenplay` is the concrete case: the tool was removed in #59.
+  it("degrades gracefully on an unknown activity type", () => {
     const { wrapper } = mountDashboard({
       activity: [{ type: "screenplay", name: "Ghost", updated_at: "2026-07-26T12:00:00Z" }],
     });
 
-    // Nothing maps it, so it degrades to the raw type rather than a label.
-    expect(wrapper.find('[data-testid="project-recent-activity"]').text()).not.toContain(
-      "Screenplay",
-    );
+    const panel = wrapper.find('[data-testid="project-recent-activity"]');
+    expect(panel.text()).toContain("Ghost");
+    expect(panel.text()).not.toContain("Screenplay");
+    expect(panel.text()).not.toContain("activity_types");
   });
 
   // Moved to the flows dashboard; the overview is a global context surface now.
