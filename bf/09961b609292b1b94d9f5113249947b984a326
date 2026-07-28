@@ -1,0 +1,21 @@
+lib/storyarn/imports/plan_storage.ex
+  s_d0525e435087ba::t_13a924843a2c8c 83-90
+lib/storyarn/imports.ex
+  s_d0525e435087ba::t_ee9ffa480b4d96 1268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bf09961b609292b1b94d9f5113249947b984a326",
+  "prompts": {},
+  "sessions": {
+    "s_d0525e435087ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d3e876d-f5dc-41e9-bc36-347529bd7308",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
