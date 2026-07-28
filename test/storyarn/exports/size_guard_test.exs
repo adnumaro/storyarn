@@ -2,7 +2,6 @@ defmodule Storyarn.Exports.SizeGuardTest do
   use Storyarn.DataCase, async: false
 
   import Storyarn.FlowsFixtures
-  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
@@ -12,7 +11,6 @@ defmodule Storyarn.Exports.SizeGuardTest do
   alias Storyarn.Exports.SizeGuard
   alias Storyarn.Exports.Validator.ValidationResult
   alias Storyarn.Flows
-  alias Storyarn.Localization.LocalizedText
   alias Storyarn.Repo
 
   setup do

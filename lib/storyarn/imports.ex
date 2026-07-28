@@ -1265,8 +1265,7 @@ defmodule Storyarn.Imports do
     extension = filename |> Path.extname() |> String.downcase()
 
     %{
-      format:
-        if(extension in [".yarn", ".zip"], do: "yarn", else: if(extension == ".json", do: "storyarn", else: "unknown")),
+      format: if(extension in [".yarn", ".zip"], do: "yarn", else: "unknown"),
       source_kind: if(extension == ".zip", do: "archive", else: "file"),
       parser_version: "unknown"
     }
