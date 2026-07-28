@@ -1,0 +1,19 @@
+CLAUDE.md
+  s_d0525e435087ba::t_4ad885ff7b3d0e 9-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3ee5518001e952422580cfda24f499782c817d5c",
+  "prompts": {},
+  "sessions": {
+    "s_d0525e435087ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d3e876d-f5dc-41e9-bc36-347529bd7308",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
