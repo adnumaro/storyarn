@@ -1,0 +1,20 @@
+test/storyarn/sheets/formula_resolver_test.exs
+  s_d0525e435087ba::t_f548b434585519 190-205
+  s_d0525e435087ba::t_43d04bedefabe1 58,60,63,66,69,71-75,91-92,94,106,108,120,122,133,135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9cd7ab4e451ede726bf9a2fb5acc185d3e9708bc",
+  "prompts": {},
+  "sessions": {
+    "s_d0525e435087ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d3e876d-f5dc-41e9-bc36-347529bd7308",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
