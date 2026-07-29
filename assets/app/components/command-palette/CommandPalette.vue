@@ -314,7 +314,7 @@ const canMutate = computed(
     createTargets.value.length > 0,
 );
 
-function operationAvailability(operation: OperationDefinition): OperationAvailability {
+function resolveOperationAvailability(operation: OperationDefinition): OperationAvailability {
   if (operation.authorization === "edit_content") {
     if (!createTargetsLoaded.value && createTargetsLoading.value) {
       return {
@@ -347,7 +347,8 @@ function operationAvailability(operation: OperationDefinition): OperationAvailab
   );
   if (!contextualParameter) return { enabled: true };
 
-  if (localOperationOptions(contextualParameter.completionSource).length > 0) {
+  const contextualOptions = localOperationOptions(contextualParameter.completionSource);
+  if (contextualOptions.length > 0) {
     return { enabled: true };
   }
 
@@ -358,6 +359,21 @@ function operationAvailability(operation: OperationDefinition): OperationAvailab
         ? "palette.operation_unavailable.commands"
         : "palette.operation_unavailable.views",
   };
+}
+
+const operationAvailabilityById = computed(
+  () =>
+    new Map<string, OperationAvailability>(
+      operationCatalog.map(
+        (operation) => [operation.id, resolveOperationAvailability(operation)] as const,
+      ),
+    ),
+);
+
+function operationAvailability(operation: OperationDefinition): OperationAvailability {
+  return (
+    operationAvailabilityById.value.get(operation.id) ?? resolveOperationAvailability(operation)
+  );
 }
 
 function operationAvailable(operation: OperationDefinition): boolean {
@@ -387,6 +403,12 @@ const activeErrorKey = computed<string | null>(() => {
 
   return null;
 });
+
+const operationEmptyMessageKey = computed(() =>
+  activeOperation.value?.id === "delete" && query.value.trim() === ""
+    ? "palette.no_deletable_content"
+    : "palette.no_operation_options",
+);
 
 const activeLoading = computed(() => {
   switch (step.value.kind) {
@@ -1538,7 +1560,7 @@ function track(event: string, payload: Record<string, unknown>): void {
             :enabled="!operationOptionsLoading && !operationOptionsErrorKey"
             @no-results="onNoResults"
           >
-            {{ t("palette.no_operation_options") }}
+            {{ t(operationEmptyMessageKey) }}
           </PaletteEmpty>
           <p
             v-if="
@@ -1550,7 +1572,7 @@ function track(event: string, payload: Record<string, unknown>): void {
             "
             class="py-6 text-center text-sm text-muted-foreground"
           >
-            {{ t("palette.no_operation_options") }}
+            {{ t(operationEmptyMessageKey) }}
           </p>
           <CommandGroup
             v-if="operationOptions.length > 0"
@@ -1609,13 +1631,16 @@ function track(event: string, payload: Record<string, unknown>): void {
               </div>
             </div>
           </div>
+          <!-- Reka's listbox item snapshots disabled and fallthrough attrs.
+               Availability belongs in both operation-row keys so a state
+               change remounts the row with matching interaction semantics. -->
           <CommandGroup
             v-if="recentOperations.length > 0"
             :heading="t('palette.recent_operations')"
           >
             <CommandItem
               v-for="operation in recentOperations"
-              :key="`recent-operation-${operation.id}`"
+              :key="`recent-operation-${operation.id}-${operationAvailable(operation)}`"
               :value="`recent-operation-${operation.id}`"
               :data-operation-id="operation.id"
               :data-operation-available="operationAvailable(operation)"
@@ -1643,7 +1668,7 @@ function track(event: string, payload: Record<string, unknown>): void {
           >
             <CommandItem
               v-for="operation in operationGroup.operations"
-              :key="`operation-${operation.id}`"
+              :key="`operation-${operation.id}-${operationAvailable(operation)}`"
               :value="`operation-${operation.id}`"
               :data-operation-id="operation.id"
               :data-operation-available="operationAvailable(operation)"
@@ -1785,7 +1810,7 @@ function track(event: string, payload: Record<string, unknown>): void {
             "
             class="py-6 text-center text-sm text-muted-foreground"
           >
-            {{ t("palette.no_results") }}
+            {{ t("palette.no_deletable_content") }}
           </p>
           <CommandGroup v-if="deleteItems.length > 0" :heading="t('palette.delete_entity')">
             <CommandItem

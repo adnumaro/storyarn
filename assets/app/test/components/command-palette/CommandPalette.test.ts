@@ -2,7 +2,6 @@ import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, nextTick, type App } from "vue";
 import CommandPalette from "../../../components/command-palette/CommandPalette.vue";
-import PaletteOperationInput from "../../../components/command-palette/PaletteOperationInput.vue";
 import { Command, CommandItem } from "../../../components/ui/command";
 import { liveNavigate } from "../../../shared/navigation/liveNavigate";
 
@@ -10,6 +9,7 @@ vi.mock("../../../shared/navigation/liveNavigate", () => ({
   liveNavigate: vi.fn(),
 }));
 import {
+  paletteGroups,
   registerPaletteCommands,
   resetPaletteRegistry,
   type PaletteCommand,
@@ -411,6 +411,53 @@ describe("CommandPalette", () => {
     expect(wrapper.find("[data-slot='palette-operation-input']").exists()).toBe(false);
   });
 
+  it("reactively invalidates cached contextual availability when local commands change", async () => {
+    const { wrapper } = mountPalette([runCommandOperation]);
+    pressPaletteShortcut();
+    await nextTick();
+
+    const operation = () => wrapper.get("[data-operation-id='run_command']");
+    expect(operation().attributes("data-operation-available")).toBe("false");
+
+    const unregister = registerPaletteCommands("flows", [command("flows.fit")]);
+    await nextTick();
+    expect(paletteGroups.value.flatMap((group) => group.commands).map(({ id }) => id)).toContain(
+      "flows.fit",
+    );
+    await nextTick();
+    expect(operation().attributes("data-operation-available")).toBe("true");
+
+    unregister();
+    await nextTick();
+    expect(operation().attributes("data-operation-available")).toBe("false");
+  });
+
+  it("explains an empty delete picker after availability has been confirmed", async () => {
+    const { live, wrapper } = mountPalette([deleteOperation]);
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({
+          token: payload?.token as number,
+          projects: [{ id: 11, label: "Veilbreak", context: "Acme" }],
+        });
+      } else if (event === "palette_operation_options") {
+        callback({ token: payload?.token as number, items: [] });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-delete");
+    await nextTick();
+
+    expect(wrapper.text()).toContain("No sheets, flows or scenes are available to delete");
+    expect(wrapper.text()).not.toContain("No matching options");
+  });
+
   it("uses locale-owned help keywords instead of leaking keywords from another locale", async () => {
     const { wrapper } = mountPalette([gotoOperation]);
     pressPaletteShortcut();
@@ -744,13 +791,14 @@ describe("CommandPalette", () => {
       ]),
     );
 
-    const composer = wrapper.findComponent(PaletteOperationInput);
-    await (
-      composer.vm as unknown as {
-        restoreHighlightedOption: (optionId: string) => Promise<void>;
-      }
-    ).restoreHighlightedOption("nav.chapter.beta");
+    expect(
+      wrapper.get("[data-operation-option-id='nav.chapter.alpha']").attributes("data-highlighted"),
+    ).toBeDefined();
+    await input.trigger("keydown", { key: "ArrowDown" });
     await nextTick();
+    expect(
+      wrapper.get("[data-operation-option-id='nav.chapter.beta']").attributes("data-highlighted"),
+    ).toBeDefined();
 
     await vi.advanceTimersByTimeAsync(200);
     expect(resolveCurrentQuery).toBeDefined();
@@ -761,11 +809,11 @@ describe("CommandPalette", () => {
       ]),
     );
 
-    await (
-      composer.vm as unknown as {
-        restoreHighlightedOption: (optionId: string) => Promise<void>;
-      }
-    ).restoreHighlightedOption("nav.chapter.gamma");
+    await input.trigger("keydown", { key: "ArrowDown" });
+    await nextTick();
+    expect(
+      wrapper.get("[data-operation-option-id='nav.chapter.gamma']").attributes("data-highlighted"),
+    ).toBeDefined();
     resolveCurrentQuery!();
     await nextTick();
     await nextTick();
@@ -1621,6 +1669,32 @@ describe("CommandPalette", () => {
         }
       });
     }
+
+    it("explains when editable projects do not contain deletable content", async () => {
+      const { live, wrapper } = mountPalette();
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (!callback) return;
+
+        if (event === "palette_nav") {
+          callback({ token: payload?.token as number, groups: [] });
+        } else if (event === "palette_create_targets") {
+          callback({
+            token: payload?.token as number,
+            projects: [{ id: 11, label: "Veilbreak", context: "Acme" }],
+          });
+        } else if (event === "palette_delete_search") {
+          callback({ token: payload?.token as number, items: [] });
+        }
+      });
+
+      pressPaletteShortcut();
+      await nextTick();
+      selectItem(wrapper, "palette.delete-entity");
+      await nextTick();
+
+      expect(wrapper.text()).toContain("No sheets, flows or scenes are available to delete");
+      expect(wrapper.text()).not.toContain("No matching commands");
+    });
 
     it("lists deletable entities, confirms inline, deletes, and returns to the listing", async () => {
       const { live, wrapper } = mountPalette();

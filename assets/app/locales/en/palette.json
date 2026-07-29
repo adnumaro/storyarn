@@ -17,6 +17,7 @@
     },
     "operation_options_failed": "Storyarn couldn't load the available options. Try again.",
     "no_operation_options": "No matching options",
+    "no_deletable_content": "No sheets, flows or scenes are available to delete",
     "no_results": "No matching commands",
     "command_failed": "The command failed to run. Try again.",
     "ai_destination_failed": "The AI request was accepted, but its result view could not be opened.",
