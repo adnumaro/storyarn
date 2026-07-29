@@ -1,0 +1,767 @@
+test/e2e/command_palette_test.exs
+  s_6112f11c106698::t_a99c906c197721 78-80
+  s_6112f11c106698::t_39401b3d91e4cc 86
+  s_6112f11c106698::t_3637dba4907925 62-65,67-77,82-85
+  s_6112f11c106698::t_b725c268c22f8b 12,66
+  s_6112f11c106698::t_2e9e9202ff71dd 26-35
+  s_6112f11c106698::t_8beec539a6b7b5 81,115-119
+  s_6112f11c106698::t_bb45b053f3a652 120
+assets/app/components/command-palette/CommandPalette.vue
+  s_6112f11c106698::t_8ecfb9357903e8 1537
+  s_6112f11c106698::t_8c45607f34e8b0 1552
+  s_6112f11c106698::t_4b529c2ecffa30 1349-1355,1379-1384
+  s_6112f11c106698::t_b1d89e1b82da02 1683
+  s_6112f11c106698::t_d7c33fbd3cfdfb 785-793,795-800,801-811,814-819,821-833,835-845,850-851,853-859,921-922,924-931,942-946,948-959,967-991,994-996,1007-1024,1026-1033,1039-1044,1045,1093-1095,1106,1113,1116,1120,1130,1137,1143,1151-1161,1166-1169,1172-1174,1176-1180,1190-1191,1197-1212,1214-1215
+  s_6112f11c106698::t_9ee0e6963d87ab 997-1006
+  s_6112f11c106698::t_6b4d4ea61fe4b3 1523,1529-1536,1538-1542,1568-1572,1574-1584,1586-1598,1601-1613,1618-1627,1632-1643,1647,1675-1680,1682,1685-1686,1689-1700,1707-1715
+  s_6112f11c106698::t_83c630b7cd7261 129-134,642-643
+  s_6112f11c106698::t_adf4a590cefbe9 1648-1652,1654,1657,1660-1662,1672-1674
+  s_6112f11c106698::t_f06c12c8236697 1192-1196,1600
+  s_6112f11c106698::t_818152ccd99c47 8,140-141,220,278-284,531,1046-1047,1065-1092
+  s_6112f11c106698::t_d2ce61fac85027 540,561,564,614,629-633,644-646,649
+  s_6112f11c106698::t_14c88dff14723b 655,679-680
+  s_6112f11c106698::t_8a5d17da13bd4b 1507-1508,1510
+  s_6112f11c106698::t_eeac42f1bd5962 285-286,292-293,1631
+  s_6112f11c106698::t_727004f86ee4f2 472
+  s_6112f11c106698::t_e2814569e10ccc 4,11,41-46,48-49,51-53,56,110-115,122-123,126,190-192
+  s_6112f11c106698::t_f5ecd96edcaf3a 941,947,1104
+  s_6112f11c106698::t_dd03e9df6fdbe3 213-219,226,257-277,402-403,425-426
+  s_6112f11c106698::t_0bc34fe22d4d6b 467,483-493,860-862,915-917,919,1034-1038,1614-1617
+  s_6112f11c106698::t_d42bc866bf866b 136,455-457,475,481-482,494-507,509,511-513,516-517,519-522,1096-1103,1105,1107-1112,1115,1117-1119,1121-1129,1131-1136,1138-1142,1144-1150,1164-1165,1175,1181-1182,1184-1189,1423,1432-1447,1449-1476
+  s_6112f11c106698::t_9c8631b52aad41 1162-1163,1170-1171,1183
+  s_6112f11c106698::t_39858b94e6b789 918,920
+  s_6112f11c106698::t_82ee6108694bc5 1395
+  s_bf1ff561f7cafa::t_0720da0fb78db3 135,476,1477
+  s_6112f11c106698::t_2ef3a16ab9ea1a 47,50,116-120,221,287-291
+  s_6112f11c106698::t_b395fabaf355da 732
+  s_6112f11c106698::t_8211349d6c987b 573,1356,1367,1370,1403,1418,1422,1503
+  s_6112f11c106698::t_d1a859184f42d0 321-352,355-366,387-395,876
+  s_6112f11c106698::t_940790d9e463a8 477-480
+  s_6112f11c106698::t_1f14bb8b321096 530,553,648
+  s_6112f11c106698::t_53a0d1533500a2 1599
+  s_6112f11c106698::t_2ec78c07efe1d8 1373-1377,1448,1487,1495,1498
+  s_6112f11c106698::t_d4e3bfa43ece19 744,846-849
+  s_6112f11c106698::t_c45100ee83d16c 1114,1213,1218-1222,1237,1242,1254,1261,1294,1296,1298,1300,1326,1331
+  s_6112f11c106698::t_532f0f66088296 834,852,863-875
+  s_6112f11c106698::t_fc522b644e2425 794,812-813,820,877-914,923,932-937
+  s_6112f11c106698::t_330954ecb59bfa 514-515,518,724,748-758
+  s_6112f11c106698::t_c8fea395e8cbe4 759,939,961-966,1025,1048-1063
+  s_6112f11c106698::t_0ac635e12a438a 231,1496,1499,1504
+  s_6112f11c106698::t_c793203b08ae22 1655-1656,1658-1659,1663-1671,1684,1687-1688,1701-1705
+  s_6112f11c106698::t_f86e7aed5e8e24 760
+  s_6112f11c106698::t_133fb5b2510ef1 938
+  s_6112f11c106698::t_d4f5a86382edd9 940
+  s_6112f11c106698::t_a2d684b7e9386b 1064
+  s_6112f11c106698::t_8a34ba8b670078 1706
+  s_6112f11c106698::t_fd7e3200136884 370-372
+  s_6112f11c106698::t_a546eec83c48c0 1823
+  s_6112f11c106698::t_85ee4107c4b6be 353-354
+  s_6112f11c106698::t_c018f1ef15eea7 320,367-368,373-381,415-420,1573,1585
+  s_6112f11c106698::t_0f368769a9e851 369
+  s_6112f11c106698::t_8377184a582b4e 307-309
+  s_6112f11c106698::t_0d323b9a8520a0 382-386,960,992-993,1644-1646,1653,1681
+  s_1dd185fade4970::t_18339f5b17fe32 15
+assets/app/shared/command-palette/operationCatalog.ts
+  s_6112f11c106698::t_35741bfa7ed1da 27-28,32-51,53,57-67,69-70,72-136
+  s_6112f11c106698::t_96389ac25bc60f 1-2,23-26,68,71
+  s_6112f11c106698::t_65d8c9905c123c 3-22,29-31,52,54-56
+lib/storyarn/command_palette.ex
+  s_6112f11c106698::t_ad07f9d0788b70 3,5-6,8,16,30-33,37
+  s_6112f11c106698::t_115ddbfb3e1ac8 39-41
+  s_6112f11c106698::t_70cde0d6a65b48 7,34-36,38,42-47,49,57-58,60,64,69-70,74,76,79,83,85,96,100
+  s_6112f11c106698::t_6e5e5ed5c06382 14,25-28
+lib/storyarn_web/live/hooks/palette.ex
+  s_6112f11c106698::t_ad07f9d0788b70 71-72,94-95,97-98,108-110,303-305,321,323-325,331,340,342-343,346-347
+  s_6112f11c106698::t_1a000347b1a36d 4-5,10-11
+  s_6112f11c106698::t_0bc34fe22d4d6b 112-114
+  s_6112f11c106698::t_cae72c0fb15dee 96,99-100
+  s_6112f11c106698::t_196fb492e196c5 107,111
+  s_6112f11c106698::t_aa240005431b80 348
+  s_6112f11c106698::t_f276f4a11fa283 8,64-70,73,81,101-103,105-106,162,165,172,222,226,233,285,287-296,306-320,322,326-330,332-339,341,344
+  s_6112f11c106698::t_6e5e5ed5c06382 104,284,286
+  s_6112f11c106698::t_9077b6c00ca4a9 345
+assets/app/components/command-palette/PaletteOperationInput.vue
+  s_6112f11c106698::t_0bc34fe22d4d6b 398
+  s_6112f11c106698::t_447ee41e778081 19-24,26-31,33,50,52,60-61,67,75,85,140,144,168,201,208,214,217,225,227,243,254,261,264,270,292-293,386-387,389-390
+  s_6112f11c106698::t_196fb492e196c5 2,45,103,107-108
+  s_6112f11c106698::t_f06c12c8236697 302-304,306-321,326-331
+  s_6112f11c106698::t_39858b94e6b789 102,104-106
+  s_6112f11c106698::t_2041dd5d8dbcba 1,3-18,34-44,46-47,49,51,53,59,62-66,68-74,76-82,84,100-101,138-139,141-143,145-166,169-171,183-186,194-200,202-207,209-213,215-216,218-224,226,228-242,244-253,255-260,262-263,265-269,271-291,294-301,322,324-325,332-351,353-369,371,375-381,384-385,388,391-393,395-396,399-402,405-408,410-436
+  s_6112f11c106698::t_48d835c71185c6 25,32,83,167,173,187,323,374,383,404,409
+  s_6112f11c106698::t_52b2e88ad469e3 48,86-88,352,370,373,394,403
+  s_6112f11c106698::t_08f7782e84f5e0 188
+  s_6112f11c106698::t_f91d9f93c28002 305
+  s_6112f11c106698::t_e4f2a7eabf220a 118-120
+  s_6112f11c106698::t_6279e606749751 54-58,109-117,121-137,189-193,372,382,397
+  s_6112f11c106698::t_532f0f66088296 89-99
+  s_6112f11c106698::t_8e6b50748babda 172,174-182
+assets/app/locales/en/palette.json
+  s_6112f11c106698::t_79fea5f6652cb2 9
+  s_6112f11c106698::t_f5ecd96edcaf3a 91
+  s_6112f11c106698::t_611f66875db5bc 6-8,10,18-19,40-90,92-102
+  s_6112f11c106698::t_50bbdd014e25ed 11-17
+  s_6112f11c106698::t_c018f1ef15eea7 20
+docs/features/ai-platform/SLICE_7_1A_1_PALETTE_OPERATIONS.md
+  s_6112f11c106698::t_ae8458488e6b62 3-4,6,18-24,30,32-38,233-243,254-256,261-266,268-270,311-315,396-403,407-414
+  s_6112f11c106698::t_c9b144343ca951 5,25-27,29,31,248-250
+  s_6112f11c106698::t_f5ecd96edcaf3a 28,244
+  s_6112f11c106698::t_adc2f7522664cc 213-216
+  s_6112f11c106698::t_58b10bf1bbdc9a 186-190,202-206,217-227,375-377,384-385
+assets/app/locales/es/palette.json
+  s_6112f11c106698::t_611f66875db5bc 6-8,10,18-19,40-90,92-102
+  s_6112f11c106698::t_79fea5f6652cb2 9
+  s_6112f11c106698::t_f5ecd96edcaf3a 91
+  s_6112f11c106698::t_50bbdd014e25ed 11-17
+  s_6112f11c106698::t_c018f1ef15eea7 20
+test/storyarn_web/live/hooks/palette_test.exs
+  s_6112f11c106698::t_0e73d6b7b40cdc 299,301-303,305-329,331-333,334-373,378-379,381-384,386-387,389-390,448-449,727-733
+  s_6112f11c106698::t_485b42440bf5f1 13-14,402-407,411-416,418-446
+  s_6112f11c106698::t_9ec2ee2bd89660 304
+  s_6112f11c106698::t_196fb492e196c5 380,385,388
+  s_6112f11c106698::t_cc162d524cdb28 408-410,417
+  s_6112f11c106698::t_f691735b2d1138 753-761
+  s_6112f11c106698::t_9e72264b48db8a 391-401,447
+  s_6112f11c106698::t_cae72c0fb15dee 330
+  s_6112f11c106698::t_1a000347b1a36d 300
+  s_6112f11c106698::t_75c25849393f85 91-122,126-127
+  s_6112f11c106698::t_817c0791e735d8 123-125
+  s_6112f11c106698::t_2450465146c887 374-377
+  s_6112f11c106698::t_3ebd68dfed9ff6 741-743
+  s_6112f11c106698::t_6e5e5ed5c06382 744-745
+  s_6112f11c106698::t_fbc8c84b9a9073 459,480,499,508,512,527,548,592,616,634,648,666,693,711
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_6112f11c106698::t_298e44ca4df1ad 243
+  s_6112f11c106698::t_f06c12c8236697 96,555
+  s_6112f11c106698::t_c9dab744ca5507 50,65-68,72,83-90,92-95,97-118,120-126,128-147
+  s_6112f11c106698::t_8dd589b8456d92 728-745,747-752
+  s_6112f11c106698::t_9ee0e6963d87ab 865-923,925-936
+  s_6112f11c106698::t_d48cf02114999d 1015-1022,1027-1062,1064-1069,1071-1081,1083-1095,1097-1107
+  s_6112f11c106698::t_727d4d2109b743 244,610,612
+  s_6112f11c106698::t_07a61b47d57682 338-361,502-528,530-531,535-554,958-967,968-969,971-983,997-1007,1009-1014
+  s_6112f11c106698::t_9e72264b48db8a 532-534,570-571,625-705,937-957
+  s_6112f11c106698::t_7c3cb8e0a2f4ad 149,155-163,165-188,190-195,197-198,201,204-206
+  s_6112f11c106698::t_05acbc49961814 529,608,622
+  s_6112f11c106698::t_e1c36d6abe84c9 572-600,607,609,613-615,619-621,623-624
+  s_6112f11c106698::t_141543ce14ea9f 611,1229-1234,1238-1240
+  s_6112f11c106698::t_f5ecd96edcaf3a 150,199-200,202,1070,1082,1096
+  s_bf1ff561f7cafa::t_fd0f46228a5c80 148
+  s_6112f11c106698::t_8afed6292fce66 833,924
+  s_6112f11c106698::t_412d762247f3c7 18-24,91,119,127,151-154,164,189,196,203
+  s_6112f11c106698::t_e97131d4df251f 970,984,988-996,1008,1023-1026,1063
+  s_6112f11c106698::t_5be007d8465f74 985-987
+  s_6112f11c106698::t_cc42194c365e4f 1108-1145,1153,1156-1182,1190,1193-1195
+  s_6112f11c106698::t_20fdc98d19b838 706-727,746
+  s_6112f11c106698::t_cd29821a98d551 753-779,785-794,798,800-823,828,832,834-841,847-853,860,862-864
+  s_6112f11c106698::t_54570bad3f911e 1634,1789,1940-1941,1989-1990
+  s_6112f11c106698::t_0bde7bba5ea313 362-413,491-501,556-558,566,569,601-606,616-618
+  s_6112f11c106698::t_d2667eb52ccbc7 559-565,567-568,1146-1152,1154-1155,1183-1189,1191-1192
+  s_6112f11c106698::t_a01d79ce1e383e 780-784,795-797,799,854-859,861
+  s_6112f11c106698::t_aace2506da9dd5 12,454-456
+  s_6112f11c106698::t_c018f1ef15eea7 444-453,458-490,824-827,829-831,842-846
+  s_6112f11c106698::t_a22e823e40726b 457
+  s_6112f11c106698::t_fd7e3200136884 1736-1761
+  s_6112f11c106698::t_0d323b9a8520a0 414-443,1312-1343
+  s_6112f11c106698::t_198d44ee0a89b8 1344
+assets/app/test/setup.ts
+  s_6112f11c106698::t_10e9e01722f49d 24-25,27,31,33-35,37,45
+lib/storyarn/command_palette/definition.ex
+  s_6112f11c106698::t_f5ecd96edcaf3a 11,18,48,56
+  s_6112f11c106698::t_f8d72a5d9608dd 1-10,12-17,19,21-47,49-55,57,60-63,65-117,119-122,128-169,171-175,178-204,206-222,224-245
+  s_6112f11c106698::t_ce4ec93e8b3340 123-127,205
+  s_6112f11c106698::t_7315e2308ad973 20,58-59,64,118,170,176-177,223
+assets/app/test/components/command-palette/PaletteOperationInput.test.ts
+  s_6112f11c106698::t_16587712b33522 1-15,18-20,24-28,32-71,76-86,88-110,112-121,123-127,129-130,132-146,183-219,238-285,310-319,321-335
+  s_6112f11c106698::t_f06c12c8236697 220-237,287,308
+  s_6112f11c106698::t_66b9eca53effd4 72-75,87,111,122,128,131,286,288-307,309,320
+  s_6112f11c106698::t_412d762247f3c7 16-17,21-23,29-31
+  s_6112f11c106698::t_4db1ddf5f22088 147-158,165-168
+  s_6112f11c106698::t_d4e3bfa43ece19 159-164
+  s_6112f11c106698::t_4945088f0cd11c 169-182
+lib/storyarn/command_palette/registry.ex
+  s_6112f11c106698::t_f8d72a5d9608dd 1-20,22-25,27-47,49-55,57-60,62-84,86-89,91-111,113-131,133-136,140,142-147,149-151,155-176,178-191
+  s_6112f11c106698::t_aca0cdaa4dfffd 61,177
+  s_6112f11c106698::t_f5ecd96edcaf3a 132,137-138,141,148,152-154
+  s_6112f11c106698::t_05b4e600d83d02 26,90
+  s_6112f11c106698::t_7315e2308ad973 21,48,56,85,112,139
+test/storyarn/command_palette_test.exs
+  s_6112f11c106698::t_7f93b2ac57ad67 7,9,84-102,131-147
+  s_6112f11c106698::t_f5ecd96edcaf3a 17,53
+  s_6112f11c106698::t_0e73d6b7b40cdc 12-16,18,21-30,32-33,48-52,54-64,66-83,103-109,120-121,125-126,130,149
+  s_6112f11c106698::t_ce4ec93e8b3340 19-20
+  s_6112f11c106698::t_dbf3f94c18e767 150
+  s_6112f11c106698::t_b47619e2d058db 31,34-47,65,110-119,122-124
+  s_6112f11c106698::t_6cdb954cb2c1a0 127-129,148,153,159,173,184,186,192,203,210
+test/storyarn_web/layouts_test.exs
+  s_6112f11c106698::t_0e73d6b7b40cdc 18-29,31-34,37-40
+  s_6112f11c106698::t_f5ecd96edcaf3a 30
+  s_6112f11c106698::t_bf784db961d8fc 35-36
+assets/app/live/layouts/CommandPalette.vue
+  s_6112f11c106698::t_25a8d51c4aa5da 5,12-14
+  s_6112f11c106698::t_e3f5b0c7e09cda 15-16,18,39
+assets/app/test/live/layouts/CommandPaletteLayout.test.ts
+  s_6112f11c106698::t_dff073ef9e5f88 9-15,57-84
+  s_6112f11c106698::t_f41a6ede613a61 85
+assets/app/components/ui/command/CommandItem.vue
+  s_6112f11c106698::t_cdfb31fe9548eb 5,48,51-55
+  s_6112f11c106698::t_8d8b475999482b 11-12,22,49-50,56-58,62,75-76
+assets/app/test/components/ui/command/Command.test.ts
+  s_6112f11c106698::t_a839b65eea28b7 63-97
+lib/storyarn_web/components/layouts.ex
+  s_6112f11c106698::t_ad07f9d0788b70 11,39
+priv/gettext/default.pot
+  s_6112f11c106698::t_59b98756526699 14,19,24
+lib/storyarn/analytics.ex
+  s_6112f11c106698::t_817c0791e735d8 25-27
+priv/gettext/en/LC_MESSAGES/default.po
+  s_6112f11c106698::t_787c04a263c295 14,19,24
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_6112f11c106698::t_839a382f73cedc 181
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_6112f11c106698::t_f21c5a27233fd2 461
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_6112f11c106698::t_762d01a8eaef30 124
+priv/gettext/es/LC_MESSAGES/default.po
+  s_6112f11c106698::t_b576e3b75c3fed 14,19,24
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_6112f11c106698::t_28ec80798177d0 181
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_6112f11c106698::t_8b7ca1fe35514b 461
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_6112f11c106698::t_2877b24766ef8c 124
+priv/gettext/flows.pot
+  s_6112f11c106698::t_138676743a3eaa 181
+priv/gettext/scenes.pot
+  s_6112f11c106698::t_2fb777f629d257 461
+priv/gettext/sheets.pot
+  s_6112f11c106698::t_c86bb98d6d63ae 124
+lib/storyarn/command_palette/operation.ex
+  s_6112f11c106698::t_c018f1ef15eea7 14-15
+assets/app/modules/flows/editor/components/panels/FlowVersionHistoryPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/flow/dashboard/FlowDashboard.vue
+  s_1dd185fade4970::t_18339f5b17fe32 10
+assets/app/live/localization/toolbar/LocalizationToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 12
+assets/app/modules/scenes/editor/components/chrome/dock/PendingSheetIndicator.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/exploration/components/FlowOverlay.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/language/LanguagePicker.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/scene/show/SceneHeaderActions.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/chrome/dock/PinsDropdown.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/chrome/tree/SheetTreeNode.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/components/builders/condition/ConditionRule.vue
+  s_1dd185fade4970::t_18339f5b17fe32 8
+assets/app/live/localization/glossary/LocalizationGlossary.vue
+  s_1dd185fade4970::t_18339f5b17fe32 11
+assets/app/live/project/dashboard/ProjectDashboard.vue
+  s_1dd185fade4970::t_18339f5b17fe32 15
+assets/app/modules/flows/player/components/PlayerToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/auth/confirm-access/AuthConfirmAccessForm.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/panels/tabs/AudioTab.vue
+  s_1dd185fade4970::t_18339f5b17fe32 13
+assets/app/modules/flows/editor/components/entities/nodes/ExitNode.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/ui/dropdown-menu/DropdownMenuRadioGroup.vue
+  s_1dd185fade4970::t_3d4fed313a331d 10,14-18,22-26
+  s_1dd185fade4970::t_a921d12165add5 3
+assets/app/modules/scenes/exploration/components/CollectionModal.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/shell/ProjectNavbarContext.vue
+  s_1dd185fade4970::t_18339f5b17fe32 15
+assets/app/modules/scenes/editor/components/panels/settings/ScaleSection.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/public/landing/sections/cta/CtaSignup.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/toolbar/sections/ZoneToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 6
+assets/app/modules/scenes/editor/components/panels/settings/BackgroundSection.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/modules/flows/editor/components/panels/FlowDialogueEditorBody.vue
+  s_1dd185fade4970::t_18339f5b17fe32 14
+assets/app/components/forms/PasswordInput.vue
+  s_1dd185fade4970::t_18339f5b17fe32 5
+assets/app/components/ui/dialog/DialogScrollContent.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/live/project/settings/ProjectSettingsLocalization.vue
+  s_1dd185fade4970::t_18339f5b17fe32 9
+assets/app/modules/sheets/components/chrome/tree/SheetTree.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/components/dashboard/DashboardDataTable.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/forms/assets/AudioAsset.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/modules/scenes/editor/components/panels/SettingsPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/ui/dropdown-menu/DropdownMenuCheckboxItem.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/live/project/settings/ProjectSettingsGeneral.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/chrome/layers/Legend.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/shared/command-palette/accountCommands.ts
+  s_1dd185fade4970::t_18339f5b17fe32 1
+assets/app/live/account/settings/integrations/IntegrationCard.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/localization/texts/LocalizationTextEdit.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/plugins/tiptap/MentionList.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/shell/WorkspaceSidebar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/versioning/history/PromoteVersionDialog.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/panels/properties/zone/TargetPicker.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/account/settings/integrations/ConnectKeyDialog.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/chrome/dock/DockLogicPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/panels/FlowPreview.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/exploration/components/SessionPromptModal.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/account/settings/AccountSettingsTutorials.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/canvas/SceneCanvas.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/live/layouts/docs/Layout.vue
+  s_1dd185fade4970::t_18339f5b17fe32 12
+assets/app/modules/sheets/components/entities/blocks/fields/BooleanBlock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/dashboard/DashboardIssuesSection.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/table/table-config.ts
+  s_1dd185fade4970::t_18339f5b17fe32 11
+assets/app/components/ui/radio-group/RadioGroupItem.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/components/SaveIndicator.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/layouts/workspace/Layout.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/forms/assets/AssetPicker.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/ui/select/SelectTrigger.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/live/auth/reset-password/AuthResetPasswordForm.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/flows/player/components/PlayerOutcome.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/panels/settings/FogDesignSection.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/nodes/InstructionNode.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/lib/context_menu_items.ts
+  s_1dd185fade4970::t_18339f5b17fe32 24
+assets/app/modules/scenes/editor/components/panels/settings/AmbientFlowsSection.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/galleryBlock/GalleryBlockContent.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/account/settings/integrations/PreferenceCard.vue
+  s_1dd185fade4970::t_18339f5b17fe32 12
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/TSelectCell.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadSelectOptionsMenu.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/sheets/components/entities/dnd/BlockDndRoot.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/live/flow/show/FlowHeader.vue
+  s_1dd185fade4970::t_a921d12165add5 2
+assets/app/plugins/tiptap/VariableList.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/live/account/settings/AccountSettingsSecurity.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/flows/editor/components/chrome/FlowLockIndicators.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/forms/assets/AssetUploadButton.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/dashboard/DashboardFilterPopover.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/BlockToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 7
+assets/app/live/project/settings/ProjectSettingsTrash.vue
+  s_1dd185fade4970::t_18339f5b17fe32 10
+assets/app/modules/scenes/editor/components/panels/properties/pin/PinPatrolSection.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/account/settings/MyAITeamOverview.vue
+  s_1dd185fade4970::t_18339f5b17fe32 11
+assets/app/modules/flows/editor/components/entities/nodes/JumpNode.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/toolbar/sections/InstructionToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/builders/condition/ConditionGroup.vue
+  s_1dd185fade4970::t_18339f5b17fe32 6
+assets/app/modules/flows/editor/components/entities/toolbar/controls/ToolbarAvatarPicker.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/project/sidebar/ProjectSidebar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 12
+package.json
+  s_1dd185fade4970::t_57a622f098dcb3 24-33,35-43,47,49,57-58,60,66,68,72-74,82-91,93-94
+  s_1dd185fade4970::t_c3e0892e7c1b73 63
+  s_6112f11c106698::t_6dd7ada184b585 96
+assets/app/modules/flows/editor/components/entities/toolbar/sections/SubflowToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadCellTypeMenu.vue
+  s_1dd185fade4970::t_18339f5b17fe32 8
+assets/app/modules/flows/editor/components/entities/toolbar/sections/ExitToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/TextBlock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/canvas/lib/pin-icons.ts
+  s_1dd185fade4970::t_18339f5b17fe32 3,7,91
+assets/app/components/forms/assets/ImageAsset.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/sheets/components/entities/blocks/fields/ReferenceBlock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/table/TableRowActions.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/toolbar/sections/HubToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/chrome/layers/LayerListPopover.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/chrome/tree/FlowTreeNode.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/components/versioning/history/RestorePreviewDialog.vue
+  s_1dd185fade4970::t_18339f5b17fe32 14
+assets/app/live/assets/sidebar/AssetsSidebar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/chrome/header/SheetAvatarSection.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/shell/DashboardContent.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/chrome/tree/FlowTree.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/live/account/settings/AccountSettingsIntegrations.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/chrome/dock/DockNavigationPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/panels/properties/ZoneProperties.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/layouts/settings/Layout.vue
+  s_1dd185fade4970::t_18339f5b17fe32 24
+assets/app/modules/scenes/editor/components/chrome/tree/SceneTreeNode.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/scenes/editor/components/panels/VersionHistoryPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/builders/ConditionBuilder.vue
+  s_1dd185fade4970::t_18339f5b17fe32 7
+assets/app/components/ui/dropdown-menu/DropdownMenuSubTrigger.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/modules/sheets/components/entities/blocks/fields/SelectBlock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/panels/properties/zone/CollectionItemsEditor.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/ui/context-menu/ContextMenuRadioItem.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/modules/flows/editor/components/chrome/dock/FlowDock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/table/TableGrid.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/toolbar/controls/ToolbarExitModePicker.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/table/TableBlock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/builders/condition/ConditionBlock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 6
+assets/app/components/versioning/history/VersionHistory.vue
+  s_1dd185fade4970::t_18339f5b17fe32 13
+assets/app/live/assets/dashboard/AssetsDashboard.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarLayerPicker.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/chrome/header/SheetContentHeader.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/richText/RichTextEditor.vue
+  s_1dd185fade4970::t_18339f5b17fe32 16
+assets/app/modules/scenes/editor/components/panels/properties/ConnectionProperties.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/layouts/compare/Layout.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/scenes/editor/components/chrome/layers/SceneLayerList.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/ThemeSelector.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/live/public/legal/LegalPage.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/components/ui/context-menu/ContextMenuCheckboxItem.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/live/versioning/compare/VersioningCompare.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/panels/tabs/ReferencesTab.vue
+  s_1dd185fade4970::t_18339f5b17fe32 16
+assets/app/modules/scenes/exploration/components/ExplorationToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/chrome/dock/DockActions.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/nodes/ConditionNode.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/panels/settings/AmbientFlowRow.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarActionTypePicker.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/panels/FlowBuilderPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/docs/show/DocsContent.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/dashboard/DashboardIssueList.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/toolbar/sections/EntryToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/ui/sheet/SheetContent.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/live/sheet/dashboard/SheetDashboard.vue
+  s_1dd185fade4970::t_18339f5b17fe32 10
+assets/app/live/public/CookieConsent.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/modules/flows/editor/components/entities/toolbar/sections/DialogueToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/localization/report/LocalizationReport.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/toolbar/sections/JumpToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/versioning/history/CreateVersionDialog.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/auth/login/AuthLoginForm.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/flows/editor/components/chrome/dock/DockActionsPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/richText/RichTextBlock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/toolbar/sections/ConditionToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/toolbar/sections/SequenceToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/localization/components/chrome/LocalizationSidebar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/projects/settings/export-import/components/ExportPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 24
+assets/app/modules/scenes/editor/components/panels/properties/pin/PinPlayableSection.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/projects/settings/export-import/components/ImportPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/live/scene/show/SceneSurface.vue
+  s_1dd185fade4970::t_18339f5b17fe32 5
+assets/app/components/onboarding/OnboardingDialog.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/sheets/components/entities/blocks/fields/NumberBlock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/TFormulaCell.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/forms/ColorPickerPopover.vue
+  s_1dd185fade4970::t_18339f5b17fe32 13
+assets/app/components/ui/checkbox/Checkbox.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/live/auth/reset-password/AuthForgotPasswordForm.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/sheets/components/entities/blocks/fields/table/THeadMenu.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/panels/FlowDialogueFullscreenEditor.vue
+  s_1dd185fade4970::t_18339f5b17fe32 13
+assets/app/live/public/landing/PublicLanding.vue
+  s_1dd185fade4970::t_18339f5b17fe32 14
+assets/app/components/invitations/InvitationResponse.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/project/settings/ProjectSettingsMembers.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/workspace/settings/WorkspaceSettingsDeletedProjects.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/ui/select/SelectItem.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/modules/scenes/editor/components/panels/properties/PinProperties.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/forms/fields/EntityCombobox.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/chrome/dock/SceneDock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/workspace/settings/WorkspaceSettingsMembers.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarLockToggle.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/shell/ProjectNavbarAccount.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/nodes/EntryNode.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/panels/FlowSequenceConfigPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 20
+assets/app/components/ui/context-menu/ContextMenuSubTrigger.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/live/versioning/viewer/VersionViewerError.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/flows/editor/components/entities/nodes/DialogueNode.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/scenes/editor/components/chrome/tree/SceneTree.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/scenes/editor/components/panels/settings/DisplayModeSection.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/account/settings/integrations/PreferenceCombobox.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/nodes/SubflowNode.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/panels/FlowDialoguePanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 14
+assets/app/modules/sheets/components/chrome/header/AvatarGallery.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/panels/tabs/SheetTabs.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/versioning/history/DeleteVersionDialog.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+.oxlintrc.json
+  s_1dd185fade4970::t_e6f8de86599a40 8-12
+assets/app/components/ui/select/SelectScrollDownButton.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/modules/flows/editor/components/chrome/dock/DockNarrativePanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/nodes/HubNode.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/forms/ExpressionEditor.vue
+  s_1dd185fade4970::t_18339f5b17fe32 9
+assets/app/modules/sheets/components/entities/blocks/fields/galleryBlock/GalleryBlock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/account/settings/MyAITeam.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/toolbar/controls/ToolbarSearchableSelect.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/public/contact/PublicContact.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/entities/toolbar/sections/AnnotationToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/player/components/PlayerChoices.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/sheets/components/entities/dnd/BlockDndItem.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/live/scene/dashboard/SceneDashboard.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/components/dashboard/DashboardPagination.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/ui/toggle-group/ToggleGroup.vue
+  s_1dd185fade4970::t_a921d12165add5 4
+  s_1dd185fade4970::t_3d4fed313a331d 27,38-49,63
+  s_1dd185fade4970::t_8c2545dbf829d0 37
+assets/app/components/ui/context-menu/ContextMenuRadioGroup.vue
+  s_1dd185fade4970::t_a921d12165add5 3
+  s_1dd185fade4970::t_3d4fed313a331d 10,14-18,22-26
+assets/app/modules/sheets/components/entities/blocks/BlockLabel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 9
+pnpm-workspace.yaml
+  s_1dd185fade4970::t_32b8c4fc26031a 2-5
+  s_1dd185fade4970::t_0a22d2754d2eef 1
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarTypePicker.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/ai/ContextDisclosure.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/OptionEditor.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/builders/instruction/AssignmentRow.vue
+  s_1dd185fade4970::t_18339f5b17fe32 7
+assets/app/live/layouts/project/Layout.vue
+  s_1dd185fade4970::t_18339f5b17fe32 11
+assets/app/modules/sheets/components/entities/blocks/AddBlockMenu.vue
+  s_1dd185fade4970::t_18339f5b17fe32 14
+assets/app/modules/sheets/components/panels/FormulaPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/scenes/editor/components/toolbar/sections/PinToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/DateBlock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/shell/SidebarFrame.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/chrome/FlowMinimapToggle.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/localization/texts/LocalizationTextsIndex.vue
+  s_1dd185fade4970::t_18339f5b17fe32 15
+assets/app/components/versioning/history/UnsavedChangesDialog.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/panels/FlowDebugPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 37
+assets/app/modules/scenes/editor/components/chrome/dock/ZonesDropdown.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/components/ui/radio-group/RadioGroup.vue
+  s_1dd185fade4970::t_3d4fed313a331d 20,26-30,39
+  s_1dd185fade4970::t_a921d12165add5 4
+assets/app/components/ui/select/SelectScrollUpButton.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/components/ui/dialog/DialogContent.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/components/health/HealthStatusPopover.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadMainMenu.vue
+  s_1dd185fade4970::t_18339f5b17fe32 12
+assets/app/live/workspace/settings/WorkspaceSettingsGeneral.vue
+  s_1dd185fade4970::t_18339f5b17fe32 10
+assets/app/modules/sheets/components/entities/blocks/BlockList.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/components/ui/command/CommandInput.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/live/account/settings/ProviderIntegrationDetail.vue
+  s_1dd185fade4970::t_18339f5b17fe32 16
+assets/app/modules/flows/editor/components/chrome/dock/DockAnnotationButton.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/shared/components/assets/AssetUploadDecisionDialog.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/live/workspace/dashboard/WorkspaceDashboard.vue
+  s_1dd185fade4970::t_18339f5b17fe32 12
+assets/app/components/ui/dropdown-menu/DropdownMenuRadioItem.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/components/builders/InstructionBuilder.vue
+  s_1dd185fade4970::t_18339f5b17fe32 10
+assets/app/modules/sheets/components/entities/blocks/fields/MultiSelectBlock.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/flows/editor/components/chrome/FlowCursors.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/live/layouts/flash/FlashGroup.vue
+  s_1dd185fade4970::t_18339f5b17fe32 4
+assets/app/modules/scenes/editor/components/panels/properties/zone/CollectionItemCard.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/panels/ElementPropertiesPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/modules/scenes/editor/components/chrome/header/SearchPanel.vue
+  s_1dd185fade4970::t_18339f5b17fe32 3
+assets/app/modules/scenes/editor/components/toolbar/sections/ConnectionToolbar.vue
+  s_1dd185fade4970::t_18339f5b17fe32 2
+assets/app/components/ui/command/Command.vue
+  s_6112f11c106698::t_7814cfc68d0e91 2,8-9,15,18,20-21
+assets/app/components/ui/slider/Slider.vue
+  s_6112f11c106698::t_e28912032b39e4 2,10-11,15,17-20
+pnpm-lock.yaml
+  s_1dd185fade4970::t_3088e53155bcac 12-13,15-16,18-19,21-22,24-25,27-28,30-34,36-37,39-40,43,45-46,48-49,51-52,54-55,57-58,60-61,63-64,66-67,69-70,73,81-82,87-88,94,111-112,114-115,120-121,124,127,129-130,133,136,138-139,144-145,156-157,159-160,162-163,166,181-182,184-185,187-188,190-191,193-194,196-197,199-200,202-203,205-206,208-209,214-215,217-218,222-224,226-228,230-231,234-235,238-239,242-243,246-247,250-251,254-255,260-261,264-265,268-269,272-273,278-279,282-283,286-287,292-293,296-297,300-301,304-305,308-309,312-313,322-323,328-329,334-335,340-341,346-347,352-353,356-357,360-361,364-365,372-373,375-376,378-379,381-382,384-385,387-388,390-391,394-395,401-402,414-415,426-427,430-434,436-437,439-440,442-449,481-482,490-491,493-494,496-497,502-504,528-529,531-532,534-536,538-540,542-544,546-548,587-590,592-596,605-607,609-610,635-636,641-642,647-648,653-654,659-660,665-666,671-672,677-678,682,684-685,689,691-692,696,698-699,703,705-706,710,712-713,717,719-720,724,726-727,731,733-734,739-740,744-745,750-751,756-757,762-766,768-769,773-774,778-779,783-784,788-789,793-794,798-799,803-804,807,809-810,813,815-816,819,821-822,825,827-828,831,833-834,837,839-840,843,845-846,849,851-852,856-857,861-862,866-867,871-872,877-878,883-884,889-890,895-896,901-902,907-908,913-914,918,920-921,925,927-928,932,934-935,939,941-942,946,948-949,953,955-956,960,962-963,967,969-970,975-976,981-982,987-988,993-994,999-1000,1005-1006,1011-1012,1017-1018,1023-1024,1029-1030,1035-1036,1040,1042-1043,1047,1049-1050,1054,1056-1057,1061,1063-1064,1068,1070-1071,1075,1077-1078,1082,1084-1085,1089,1091-1092,1097-1098,1103-1104,1109-1110,1119-1120,1122-1123,1125-1126,1128-1129,1134-1135,1140-1141,1146-1147,1152-1153,1158-1159,1163,1165-1166,1170,1172-1173,1177,1179-1180,1184,1186-1187,1191,1193-1194,1198,1200-1201,1206-1207,1211-1212,1217-1218,1229-1230,1232-1233,1235-1236,1241-1242,1247-1248,1253-1254,1259-1260,1265-1266,1270,1272-1273,1277,1279-1280,1284,1286-1287,1291,1293-1294,1305-1306,1311-1312,1317-1318,1321-1322,1324,1326-1327,1335-1336,1344-1345,1349-1350,1352,1354-1355,1357-1358,1360-1361,1363,1365-1366,1368-1369,1371-1372,1374,1376-1377,1379-1380,1382-1383,1385,1387-1388,1390,1392-1393,1395,1397-1398,1401-1402,1404-1405,1407,1409-1410,1412,1414-1415,1417,1419-1420,1422-1423,1425-1426,1428,1430-1431,1433-1434,1436-1437,1439,1441-1442,1444,1446-1447,1449-1450,1452-1453,1455-1457,1459-1460,1462,1464-1465,1467,1469-1470,1472,1474-1475,1477,1479-1480,1482,1484-1485,1487,1489-1490,1492-1493,1495-1496,1498-1499,1501-1502,1504-1506,1508-1509,1512-1513,1516-1517,1519-1520,1537-1538,1551-1552,1558-1559,1561-1562,1572-1573,1575-1576,1578-1579,1581-1582,1584-1585,1596-1597,1601-1602,1604-1605,1607-1608,1610-1611,1616-1617,1619-1620,1622-1623,1625-1626,1628-1629,1631-1632,1634-1635,1684-1685,1750-1751,1758-1759,1768-1769,1771-1773,1779-1780,1808-1809,1867-1870,1922-1923,2009-2011,2021-2022,2035-2036,2060-2061,2063-2064,2076-2077,2080-2081,2104-2105,2107-2108,2174-2175,2182-2183,2186-2187,2196-2197,2215-2216,2233-2234,2279-2280,2329-2330,2380-2381,2388-2389,2400-2401,2404-2405,2412-2413,2438-2439,2467-2468,2471-2474,2532-2533,2540-2541,2546-2548,2550,2583-2584,2594-2595,2612-2617,2624-2629,2636-2641,2648-2653,2660-2665,2671-2678,2685-2692,2699-2706,2713-2720,2728-2733,2740-2745,2750-2753,2782-2783,2803-2804,2831-2832,2861-2862,2879-2881,2891-2892,2904-2906,2925-2927,2933-2934,2940-2941,2944-2945,2947-2948,2953,2957-2958,2960-2961,2964-2965,2969-2970,2974-2975,3057-3058,3068-3070,3073-3075,3098-3099,3106-3107,3110-3111,3113-3123,3129-3130,3144-3145,3153-3155,3159-3160,3174-3175,3188-3189,3198-3203,3229-3230,3254-3255,3289-3290,3304-3305,3340-3341,3356-3357,3380-3381,3398-3399,3425-3426,3440-3441,3444-3446,3493-3494,3510-3511,3514-3515,3522-3523,3526-3527,3529-3530,3544-3545,3552-3553,3594-3595,3598-3599,3601-3603,3625-3627,3636-3637,3642,3679-3680,3687-3692,3723-3724,3737-3738,3743-3745,3760-3761,3766-3767,3785-3787,3790-3791,3808-3811,3837-3839,3860-3861,3864-3865,3881,3883-3884,3887,3889,3894,3896,3898,3902,3904,3906-3914,3917,3924,3926-3927,3932,3934,3936,3938-3940,3944,3946-3952,3957,3959,3961-3962,3966,3968-3969,3973,3975-3978,3982,3984,3986,3988,3990-3993,3997,3999-4000,4004,4006,4008,4010,4012-4013,4015,4017,4021,4023-4024,4026,4028-4029,4031,4033-4035,4039,4041-4046,4050,4052-4057,4061,4063,4065-4067,4069,4071-4077,4081,4083-4084,4090,4092-4094,4097,4099-4101,4104,4106-4107,4113,4115-4117,4119,4121,4123,4125-4126,4130,4132,4137,4139-4140,4148,4154,4156-4168,4170,4172-4174,4176,4181,4186,4191,4193,4198,4201-4202,4221,4225,4227,4229,4231-4232,4234,4236,4238-4240,4245,4247,4265,4267,4269,4271,4273,4275-4277,4279,4281-4282,4284,4286,4289,4336-4340,4342,4344,4351-4355,4364,4366-4368,4371,4373-4376,4378-4379,4395-4396,4398,4401,4404,4407,4410,4413,4416,4419,4422,4425,4428,4431,4434,4437,4440,4443,4446,4448-4450,4453,4456,4459,4462,4464,4466,4469,4472,4475,4478,4481,4484,4487,4490,4493,4496,4499,4502,4505,4508,4511,4514-4518,4521,4524,4527,4530,4533,4536,4539,4542,4545,4548,4551,4554,4557,4560,4563,4566,4569,4572,4575,4578,4581,4584,4587,4590,4593,4596,4599,4602,4605,4608,4611,4614,4617,4620,4623,4626,4629,4632,4635,4638,4644,4646-4647,4649,4651,4653,4655,4658,4661,4664,4667,4670,4673,4676,4679,4682,4685,4688,4691,4693-4695,4698,4701,4708,4712,4715,4720,4722,4725,4728,4731,4734,4737,4740,4743,4746,4749,4752,4755,4758,4760-4773,4776,4778,4780-4783,4787,4789,4792,4794,4796-4797,4799,4801,4803,4805-4806,4808,4810,4812,4814-4816,4819,4821,4823,4825-4826,4828,4830,4832,4834,4836,4838,4840,4842-4844,4847,4849,4851,4853,4855,4857,4859,4861-4862,4864,4866,4868,4870-4871,4874,4876,4878,4880,4882,4884-4885,4887,4889-4891,4893,4895,4897,4899,4901,4903,4905,4907,4909,4911,4913,4915,4917,4919-4920,4922,4926,4929,4931,4936-4976,4978-4979,4981,4983,4985,4987,5005,5007,5014,5016-5019,5022,5027,5030-5031,5033,5037-5038,5040,5042,5044,5048,5050,5052,5054,5056,5059,5061-5062,5066,5068,5070,5072,5086,5088,5090,5092-5093,5098,5100-5101,5103,5105-5109,5112,5115,5117-5118,5122,5125-5126,5130,5132,5134,5136,5138-5139,5141,5143-5145,5148,5150-5152,5154,5156,5158,5160-5161,5163,5167,5169,5173-5174,5178,5180,5191,5193,5197,5201,5203,5219,5253,5259,5262-5263,5265,5267,5280,5284,5292,5294-5298,5312-5313,5331,5376-5377,5412,5452,5455-5456,5483,5485-5486,5490-5492,5496,5500,5502,5508,5522,5547,5551,5553,5561,5566,5581,5583,5604,5606,5608,5618,5633,5643-5644,5667,5671,5673,5675,5677-5681,5683,5686,5691,5696,5705-5709,5716,5734,5744,5746,5748,5758,5760,5796,5825,5830,5838,5844,5867,5897,5903,5907,5919,5923,5929,5946,5952,5964,5966,5969-5970,6014,6021,6024,6028,6030-6031,6033-6034,6040,6044-6045,6049,6074,6084,6086,6090-6093,6095-6096,6110-6112,6116-6118,6122-6124,6128-6130,6134-6136,6140-6142,6146-6148,6152-6154,6158-6160,6164-6166,6170-6172,6189-6204,6207,6209,6224,6228,6248,6267,6269,6277,6291,6304,6314,6318,6324,6346,6350,6352-6353,6364,6373,6377,6379,6381-6402,6404-6424,6428-6453,6455-6473,6514,6537,6544,6547,6549,6551,6555,6557,6562,6564,6566,6573,6578,6580,6583-6584,6588,6590,6594,6596-6598,6600-6602,6604-6608,6610,6614,6627,6631,6635,6640,6642,6648,6651-6655,6661,6667,6673,6675,6680,6683,6687,6689,6691,6704,6706-6707,6713-6715,6721,6744,6746-6752,6756,6778,6780,6783,6785,6787,6789,6791,6793,6795,6797,6799,6801,6803,6805,6807,6809,6811,6813,6815,6817-6819,6823,6827,6829,6832-6846,6850,6852,6880,6882,6884,6893,6898,6903,6909,6911-6914,6916,6920-6921,6924,6926,6928-6929,6931-6932,6934-6943,6981,7001,7018,7034,7039,7042,7045,7061,7064,7096,7108,7110,7112-7113,7117,7119,7121,7123,7133,7135,7141,7143,7149,7172,7181,7183,7185,7191,7193,7203,7209,7211-7215,7217,7220,7223-7233,7235,7237-7238,7240-7243,7247-7248,7254,7256,7258,7260,7262-7263,7268,7272,7274-7276,7278,7280,7283,7285,7293,7299-7300,7302-7303,7306,7311,7314,7317,7319-7323,7335,7337,7347,7353,7355-7359,7361,7363,7386,7389,7401,7403,7405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f382c3588a5e006e4b0593b8aff1ed21b2a73c25",
+  "prompts": {},
+  "sessions": {
+    "s_1dd185fade4970": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fade1-e690-7c63-bd27-d9d770916bd7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_bf1ff561f7cafa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa9b1-a671-76c0-853c-e1121c368bc1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
