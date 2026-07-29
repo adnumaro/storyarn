@@ -1,0 +1,97 @@
+assets/app/test/components/command-palette/PaletteOperationInput.test.ts
+  s_6112f11c106698::t_628331a815fbd2 17
+lib/storyarn_web/live/hooks/palette.ex
+  s_6112f11c106698::t_4a027f82dac5e5 355,373,377-378,380,392
+test/storyarn/command_palette_test.exs
+  s_6112f11c106698::t_b8b99410f3f4d1 24-35,79-81,142-143
+  s_6112f11c106698::t_d8b5a1d9ddd44c 144-145
+assets/app/test/plugins/expression-editor/reference-pattern.test.ts
+  s_6112f11c106698::t_44323ae99c1e67 18-19
+lib/storyarn/global_search.ex
+  s_6112f11c106698::t_4a027f82dac5e5 18,23
+lib/storyarn/command_palette/definition.ex
+  s_6112f11c106698::t_b8b99410f3f4d1 36,47,97,149,172
+lib/storyarn/global_search/destinations.ex
+  s_6112f11c106698::t_4a027f82dac5e5 44-59,61,69-87,89-92,154-167,169,176-196,325-344
+assets/app/plugins/expression-editor/reference-pattern.ts
+  s_6112f11c106698::t_3d448185d80c61 31,80
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_6112f11c106698::t_cbbfcb4090ec7e 825,835-851,858-859,866-867,874,877,887-888,975-1009
+  s_6112f11c106698::t_c8449e8dd85a3b 1103-1134
+  s_6112f11c106698::t_0c8d7757d7adae 637-647,649,653,657-658
+  s_6112f11c106698::t_c31e21baccbd3c 1010,1255-1284,1287-1288
+  s_6112f11c106698::t_e6b2405ecb2af1 648,650-652,654-656,870-871,875-876,878-886,1011,1018-1022,1135-1143,1285-1286
+  s_6112f11c106698::t_91bbf51db39765 889-929,931-934,938-974,1101,1253
+  s_6112f11c106698::t_628331a815fbd2 99,136,174,231,872-873,1013-1017
+  s_6112f11c106698::t_ee316af2269096 1012,1100,1102,1252,1254
+assets/app/components/command-palette/CommandPalette.vue
+  s_6112f11c106698::t_745cef25802347 308,505,1763-1769,2151,2154
+  s_6112f11c106698::t_3d448185d80c61 278,304-307,309-312,430,478-480,602-603,610,615,656,658,684,706-708,757-758,853-854,882-883,918,1382-1395,1770
+  s_6112f11c106698::t_d8c50ceef4f601 317,2144-2150,2152-2153,2155-2167,2169-2176
+  s_6112f11c106698::t_6714d55d4ed7c2 1396
+  s_6112f11c106698::t_3a939e25f39117 1771
+assets/app/test/live/layouts/CommandPaletteLayout.test.ts
+  s_6112f11c106698::t_628331a815fbd2 73
+lib/storyarn/global_search/reference_pattern.ex
+  s_6112f11c106698::t_4a027f82dac5e5 5
+assets/app/shared/command-palette/operationCatalog.ts
+  s_6112f11c106698::t_3d448185d80c61 61
+lib/storyarn/sheets/variable_catalog.ex
+  s_6112f11c106698::t_4a027f82dac5e5 147-156,200-209
+lib/storyarn/command_palette/registry.ex
+  s_6112f11c106698::t_b8b99410f3f4d1 29,57,85,113,141,177,207,235,263
+assets/app/plugins/expression-editor/storyarn-expr.grammar
+  s_6112f11c106698::t_3d448185d80c61 13-16,49
+test/storyarn_web/layouts_test.exs
+  s_6112f11c106698::t_3eca69d093dc2f 35
+test/storyarn_web/live/hooks/palette_test.exs
+  s_6112f11c106698::t_73a5cc2e3d0c50 710,1180
+  s_6112f11c106698::t_20b891d73f9dea 1065-1071,1098-1103,1111,1143,1152,1154,1157,1162-1168,1181-1189
+  s_6112f11c106698::t_b01ac4c42c09d2 345-365,401-419
+  s_6112f11c106698::t_1ea7377beb31d8 1073,1080-1087
+  s_6112f11c106698::t_9a15939fefac12 14-18,20-24,420,661-709,711-730,1052-1055,1057-1064,1072,1074-1076,1078-1079,1088-1090,1093-1097,1104-1109,1112-1142,1145-1151,1153,1155-1156,1158-1161,1169-1179,1190-1227
+  s_6112f11c106698::t_d877c3e00ada94 1056,1077,1091-1092,1110,1144
+  s_6112f11c106698::t_c7a31c0d246db0 421
+test/storyarn/global_search/reference_search_test.exs
+  s_6112f11c106698::t_44323ae99c1e67 131-188
+docs/features/ai-platform/SLICE_7_1A_1_PALETTE_OPERATIONS.md
+  s_6112f11c106698::t_f7173762205abf 140-142,212-215
+test/storyarn/global_search/reference_pattern_test.exs
+  s_6112f11c106698::t_44323ae99c1e67 8-9
+assets/app/plugins/expression-editor/parser-generated.js
+  s_6112f11c106698::t_e3d52c736ad23b 6,8-9,11-12,14,16,23
+assets/app/plugins/expression-editor/parser-generated.terms.js
+  s_6112f11c106698::t_026297137c2720 31-32
+priv/gettext/en/LC_MESSAGES/default.po
+  s_6112f11c106698::t_082417dbeb2492 14,19,24
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_6112f11c106698::t_5ca0e90bf673da 181
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_6112f11c106698::t_bcabc93bb9ef26 461
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_6112f11c106698::t_c3dd8301deef04 108,124,298
+priv/gettext/es/LC_MESSAGES/default.po
+  s_6112f11c106698::t_a60441891a8675 14,19,24
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_6112f11c106698::t_9e972cfd4a8648 181
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_6112f11c106698::t_ec3a4cf717c46c 461
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_6112f11c106698::t_30e21b664f5901 108,124,298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "60d72582513631bbce3a9f4469e3b45b183a1a55",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
