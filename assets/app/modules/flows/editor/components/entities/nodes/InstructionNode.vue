@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { TriangleAlert, Zap } from "lucide-vue-next";
+import { TriangleAlert, Zap } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import NodeHeader from "../node-shell/NodeHeader.vue";

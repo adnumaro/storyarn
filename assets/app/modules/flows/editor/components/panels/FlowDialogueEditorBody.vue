@@ -11,7 +11,7 @@
  */
 
 import { EditorContent } from "@tiptap/vue-3";
-import { Check, Copy, MessageSquare, RefreshCw, Settings, Volume2 } from "lucide-vue-next";
+import { Check, Copy, MessageSquare, RefreshCw, Settings, Volume2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import AudioAsset from "../../../../../components/forms/assets/AudioAsset.vue";
 import EntityCombobox from "../../../../../components/forms/fields/EntityCombobox.vue";

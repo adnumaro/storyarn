@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from "vue";
-import { Circle, PenTool, Square, Triangle } from "lucide-vue-next";
+import { Circle, PenTool, Square, Triangle } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";

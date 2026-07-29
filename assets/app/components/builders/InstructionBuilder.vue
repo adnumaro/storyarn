@@ -7,7 +7,7 @@
  * are reflected immediately without waiting for LiveView prop updates.
  */
 
-import { Plus } from "lucide-vue-next";
+import { Plus } from "@lucide/vue";
 import { ref, watch } from "vue";
 import type { Variable } from "../../shared/domain/variables";
 import type { Assignment } from "./types";

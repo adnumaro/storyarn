@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { type Component, computed, ref } from "vue";
-import { Image as ImageIcon, Loader2, Upload, X } from "lucide-vue-next";
+import { Image as ImageIcon, Loader2, Upload, X } from "@lucide/vue";
 
 import AssetPicker from "@components/forms/assets/AssetPicker.vue";
 import { Button } from "@components/ui/button";

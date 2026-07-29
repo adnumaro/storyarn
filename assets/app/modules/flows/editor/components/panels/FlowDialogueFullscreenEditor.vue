@@ -10,7 +10,7 @@
  *   - X button / Esc / backdrop → pushes `close_editor` (closes everything).
  */
 
-import { BookOpen, FileText, MessageSquare, Minimize2, Volume2 } from "lucide-vue-next";
+import { BookOpen, FileText, MessageSquare, Minimize2, Volume2 } from "@lucide/vue";
 import { computed } from "vue";
 import { Button } from "@components/ui/button";
 import { Dialog, DialogContent } from "@components/ui/dialog";

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Settings } from "lucide-vue-next";
+import { Settings } from "@lucide/vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@shared/composables/useLive.ts";
 import { useSceneElementOptimisticUpdater } from "../../../composables/useSceneElementOptimism";

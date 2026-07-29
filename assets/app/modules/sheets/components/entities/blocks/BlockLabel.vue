@@ -6,7 +6,7 @@
  * Default slot: rendered after the label row (e.g. menu button).
  */
 
-import { Lock } from "lucide-vue-next";
+import { Lock } from "@lucide/vue";
 import type { Component } from "vue";
 import { nextTick, ref, watch } from "vue";
 

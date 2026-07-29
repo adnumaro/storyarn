@@ -10,7 +10,7 @@ import {
   Volume2,
   VolumeX,
   X,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";

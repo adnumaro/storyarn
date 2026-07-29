@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useLiveUpload, type UploadConfig } from "live_vue";
-import { AlertTriangle, CheckCircle, Clock3, Eye, Lock, Upload } from "lucide-vue-next";
+import { AlertTriangle, CheckCircle, Clock3, Eye, Lock, Upload } from "@lucide/vue";
 import { computed, toRef } from "vue";
 import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";

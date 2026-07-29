@@ -5,7 +5,7 @@
  * Uses .condition-rule-row and .sentence-text/.sentence-slot CSS classes.
  */
 
-import { X } from "lucide-vue-next";
+import { X } from "@lucide/vue";
 import { computed, nextTick, useTemplateRef } from "vue";
 import {
   NO_VALUE_OPERATORS,

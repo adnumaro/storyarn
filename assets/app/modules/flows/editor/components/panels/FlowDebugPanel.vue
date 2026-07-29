@@ -34,7 +34,7 @@ import {
   TriangleAlert,
   Undo2,
   Zap,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { computed, ref } from "vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";

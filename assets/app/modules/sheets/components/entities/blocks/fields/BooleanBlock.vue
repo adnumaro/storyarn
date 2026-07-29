@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ToggleLeft } from "lucide-vue-next";
+import { ToggleLeft } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import BooleanToggle from "@components/forms/BooleanToggle.vue";

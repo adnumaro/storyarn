@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { ToggleGroupRoot, useForwardPropsEmits, type AsTag } from "reka-ui";
+import { ToggleGroupRoot, useForwardProps, type AcceptableValue, type AsTag } from "reka-ui";
 import { provide } from "vue";
 import { cn } from "../../../shared/utils/utils";
 
@@ -24,7 +24,7 @@ const props = defineProps<{
   spacing?: number;
 }>();
 
-const emits = defineEmits<{
+const emit = defineEmits<{
   "update:modelValue": [value: string | string[]];
 }>();
 
@@ -34,8 +34,19 @@ provide("toggleGroup", {
   spacing: props.spacing,
 });
 
-const delegatedProps = reactiveOmit(props, "class", "size", "variant");
-const forwarded = useForwardPropsEmits(delegatedProps, emits);
+const delegatedProps = reactiveOmit(props, "class", "size", "variant", "spacing");
+const forwarded = useForwardProps(delegatedProps);
+
+function updateModelValue(value: AcceptableValue | AcceptableValue[]) {
+  if (typeof value === "string") {
+    emit("update:modelValue", value);
+    return;
+  }
+
+  if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
+    emit("update:modelValue", value as string[]);
+  }
+}
 </script>
 
 <template>
@@ -49,6 +60,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
       '--gap': spacing,
     }"
     v-bind="forwarded"
+    @update:model-value="updateModelValue"
     :class="
       cn(
         'group/toggle-group flex w-fit items-center gap-[--spacing(var(--gap))] rounded-md data-[spacing=default]:data-[variant=outline]:shadow-xs',

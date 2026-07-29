@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useLiveVue } from "live_vue";
-import { ImagePlus, Upload, X } from "lucide-vue-next";
+import { ImagePlus, Upload, X } from "@lucide/vue";
 import AssetUploadDecisionDialog from "@shared/components/assets/AssetUploadDecisionDialog.vue";
 import { useAssetDecisionUpload } from "@shared/composables/useAssetDecisionUpload.ts";
 import { useLive } from "@shared/composables/useLive.ts";

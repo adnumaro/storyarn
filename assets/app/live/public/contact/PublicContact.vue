@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { ArrowUpRight, Mail, MessageCircle } from "lucide-vue-next";
+import { ArrowUpRight, Mail, MessageCircle } from "@lucide/vue";
 
 const { contactEmail } = defineProps<{
   contactEmail: string;

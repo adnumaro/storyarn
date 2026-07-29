@@ -6,7 +6,7 @@
  * Code tab: CodeMirror 6 with Lezer grammar, autocomplete, linting, formatting.
  */
 
-import { AlignLeft } from "lucide-vue-next";
+import { AlignLeft } from "@lucide/vue";
 import { computed, ref, toRef, watch } from "vue";
 import { Button } from "@components/ui/button";
 import ConditionBuilder from "../builders/ConditionBuilder.vue";

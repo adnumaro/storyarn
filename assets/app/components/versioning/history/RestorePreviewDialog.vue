@@ -11,7 +11,7 @@ import {
   Map,
   Puzzle,
   RotateCcw,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import {
   Dialog,

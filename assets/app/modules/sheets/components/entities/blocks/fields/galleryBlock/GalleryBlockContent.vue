@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Trash2, X } from "lucide-vue-next";
+import { Plus, Trash2, X } from "@lucide/vue";
 import { ref } from "vue";
 import { Button } from "@components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";

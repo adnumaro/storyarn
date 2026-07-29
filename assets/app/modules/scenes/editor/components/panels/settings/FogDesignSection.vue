@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CloudFog } from "lucide-vue-next";
+import { CloudFog } from "@lucide/vue";
 import { computed } from "vue";
 import { useLive } from "@shared/composables/useLive.ts";
 

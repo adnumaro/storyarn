@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, Box, CornerDownLeft, Square } from "lucide-vue-next";
+import { ArrowRight, Box, CornerDownLeft, Square } from "@lucide/vue";
 import { Ref } from "rete-vue-plugin";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";

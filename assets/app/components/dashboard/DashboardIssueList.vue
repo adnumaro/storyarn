@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="TIssue extends DashboardIssueListItem">
-import { AlertTriangle, CircleX, Info } from "lucide-vue-next";
+import { AlertTriangle, CircleX, Info } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import DashboardPagination from "./DashboardPagination.vue";
 import type {

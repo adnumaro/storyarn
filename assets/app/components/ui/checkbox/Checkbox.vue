@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { Check } from "lucide-vue-next";
+import { Check } from "@lucide/vue";
 import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { cn } from "@shared/utils/utils.ts";
 

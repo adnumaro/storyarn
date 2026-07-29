@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookmarkPlus, Loader2 } from "lucide-vue-next";
+import { BookmarkPlus, Loader2 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import {
   Dialog,

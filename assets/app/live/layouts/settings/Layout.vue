@@ -21,7 +21,7 @@ import {
   Trash2,
   User,
   Users,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";

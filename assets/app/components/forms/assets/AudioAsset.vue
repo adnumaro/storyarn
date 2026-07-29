@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from "vue";
 import { computed, onUnmounted, ref, watch } from "vue";
-import { Loader2, Music, Pause, Play, Upload, Volume2, VolumeX, X } from "lucide-vue-next";
+import { Loader2, Music, Pause, Play, Upload, Volume2, VolumeX, X } from "@lucide/vue";
 
 import AssetPicker from "@components/forms/assets/AssetPicker.vue";
 import { Button } from "@components/ui/button";

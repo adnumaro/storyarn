@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MessageSquare, Play as PlayIcon, Settings, Volume2 } from "lucide-vue-next";
+import { MessageSquare, Play as PlayIcon, Settings, Volume2 } from "@lucide/vue";
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronUp, Folder, RotateCcw, Trash2 } from "lucide-vue-next";
+import { ChevronDown, ChevronUp, Folder, RotateCcw, Trash2 } from "@lucide/vue";
 import { ref } from "vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";

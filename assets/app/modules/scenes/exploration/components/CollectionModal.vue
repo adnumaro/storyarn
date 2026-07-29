@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PackageCheck, PackageOpen, X } from "lucide-vue-next";
+import { PackageCheck, PackageOpen, X } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { useLive } from "@shared/composables/useLive.ts";

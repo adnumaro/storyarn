@@ -4,7 +4,7 @@
  * Each block type composes this and passes its own config slot content.
  */
 
-import { Hash, Lock, Settings, Unlock } from "lucide-vue-next";
+import { Hash, Lock, Settings, Unlock } from "@lucide/vue";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs";

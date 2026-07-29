@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Bot, CircleAlert, KeyRound, ShieldCheck } from "lucide-vue-next";
+import { ArrowLeft, Bot, CircleAlert, KeyRound, ShieldCheck } from "@lucide/vue";
 import { onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import LiveLink from "@components/navigation/LiveLink.vue";

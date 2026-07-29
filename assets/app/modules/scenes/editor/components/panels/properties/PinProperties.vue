@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { EyeOff, Image } from "lucide-vue-next";
+import { EyeOff, Image } from "@lucide/vue";
 import { ref } from "vue";
 import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import type { ConditionData } from "@components/builders/types";

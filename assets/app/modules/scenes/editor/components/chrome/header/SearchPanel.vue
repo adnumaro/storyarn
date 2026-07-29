@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from "vue";
-import { Cable, MapPin, Pentagon, Search, StickyNote, X } from "lucide-vue-next";
+import { Cable, MapPin, Pentagon, Search, StickyNote, X } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Popover, PopoverAnchor, PopoverContent } from "@components/ui/popover";

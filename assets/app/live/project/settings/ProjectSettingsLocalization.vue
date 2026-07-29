@@ -6,7 +6,7 @@ import {
   Gauge,
   KeyRound,
   LoaderCircle,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import PasswordInput from "@components/forms/PasswordInput.vue";
 import { Button } from "@components/ui/button";

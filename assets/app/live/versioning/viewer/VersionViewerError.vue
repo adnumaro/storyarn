@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { FileQuestion, ShieldAlert, TriangleAlert } from "lucide-vue-next";
+import { FileQuestion, ShieldAlert, TriangleAlert } from "@lucide/vue";
 
 type ViewerErrorReason = "not_found" | "integrity" | "unreadable";
 

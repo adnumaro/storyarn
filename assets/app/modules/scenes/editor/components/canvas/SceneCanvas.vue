@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { KonvaEventObject } from "konva/lib/Node";
-import { Maximize2 } from "lucide-vue-next";
+import { Maximize2 } from "@lucide/vue";
 import { computed, onUnmounted, ref, toRef } from "vue";
 import type { SceneRouteConnection } from "@modules/scenes/types/routes";
 import { registerPaletteCommands } from "@shared/command-palette/registry";

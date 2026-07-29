@@ -21,7 +21,7 @@
  */
 
 import type { Component } from "vue";
-import { Clapperboard, Copy, LayoutGrid, StickyNote, Trash2 } from "lucide-vue-next";
+import { Clapperboard, Copy, LayoutGrid, StickyNote, Trash2 } from "@lucide/vue";
 
 import { i18n } from "@/app/i18n";
 import { FlowNode } from "./flow-node";

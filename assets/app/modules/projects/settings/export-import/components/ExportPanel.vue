@@ -21,7 +21,7 @@ import {
   Package,
   ShieldCheck,
   Table2,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { computed, onUnmounted, ref, watch, type Component } from "vue";
 import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";

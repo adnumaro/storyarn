@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bug, History, Play } from "lucide-vue-next";
+import { Bug, History, Play } from "@lucide/vue";
 
 const { debugPanelOpen = false, playUrl } = defineProps<{
   debugPanelOpen: boolean;

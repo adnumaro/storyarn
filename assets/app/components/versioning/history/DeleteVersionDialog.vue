@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertTriangle, Loader2, Trash2 } from "lucide-vue-next";
+import { AlertTriangle, Loader2, Trash2 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import {
   Dialog,

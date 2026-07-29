@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRightToLine, ExternalLink } from "lucide-vue-next";
+import { ArrowRightToLine, ExternalLink } from "@lucide/vue";
 import { ToolbarColorPicker, ToolbarSeparator } from "@components/toolbar";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "../../../../../../../shared/composables/useLive";

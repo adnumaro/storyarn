@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboard } from "lucide-vue-next";
+import { LayoutDashboard } from "@lucide/vue";
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useMediaQuery } from "@shared/composables/useMediaQuery";
 

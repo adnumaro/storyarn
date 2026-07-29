@@ -7,7 +7,7 @@ import {
   Search,
   Trash2,
   Undo2,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { computed, ref, watch, type Component } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";

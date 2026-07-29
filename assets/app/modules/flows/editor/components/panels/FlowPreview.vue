@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRight, Info } from "lucide-vue-next";
+import { ArrowLeft, ArrowRight, Info } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { useLive } from "../../../../../shared/composables/useLive";

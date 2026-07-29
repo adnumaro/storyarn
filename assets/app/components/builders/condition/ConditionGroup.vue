@@ -3,7 +3,7 @@
  * Condition group — colored left border, group-level AND/OR, ungroup action.
  */
 
-import { Plus, Ungroup } from "lucide-vue-next";
+import { Plus, Ungroup } from "@lucide/vue";
 import { generateId } from "../../../shared/domain/variables";
 import type { Variable } from "../../../shared/domain/variables";
 import type {

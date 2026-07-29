@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PlayIcon } from "lucide-vue-next";
+import { PlayIcon } from "@lucide/vue";
 import { ToolbarSeparator } from "@components/toolbar";
 import { Badge } from "@components/ui/badge";
 import type { ReferencingFlow } from "../../../../../types";

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { ArrowLeft, ArrowRight, BookOpen, Check, PackageCheck, Sparkles } from "lucide-vue-next";
+import { ArrowLeft, ArrowRight, BookOpen, Check, PackageCheck, Sparkles } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";

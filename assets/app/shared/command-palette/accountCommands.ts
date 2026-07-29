@@ -1,4 +1,4 @@
-import { GraduationCap, Plug, ShieldCheck, User } from "lucide-vue-next";
+import { GraduationCap, Plug, ShieldCheck, User } from "@lucide/vue";
 import { sensitiveSettingsPath } from "../navigation/sensitiveSettingsPath";
 import type { PaletteCommand } from "./registry";
 

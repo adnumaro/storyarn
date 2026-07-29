@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, CheckCircle2, Clock3, RefreshCcw, RotateCcw } from "lucide-vue-next";
+import { BookOpen, CheckCircle2, Clock3, RefreshCcw, RotateCcw } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";

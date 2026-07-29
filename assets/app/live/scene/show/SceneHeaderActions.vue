@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, Eye, Pencil, Settings } from "lucide-vue-next";
+import { Download, Eye, Pencil, Settings } from "@lucide/vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import {
   DropdownMenu,

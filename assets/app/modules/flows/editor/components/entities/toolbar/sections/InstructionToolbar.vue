@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Settings, Zap } from "lucide-vue-next";
+import { Settings, Zap } from "@lucide/vue";
 import { ToolbarSeparator } from "@components/toolbar";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Badge } from "@components/ui/badge";

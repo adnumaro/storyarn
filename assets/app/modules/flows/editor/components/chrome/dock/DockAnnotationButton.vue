@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { StickyNote } from "lucide-vue-next";
+import { StickyNote } from "@lucide/vue";
 
 const { active = false } = defineProps<{
   active?: boolean;

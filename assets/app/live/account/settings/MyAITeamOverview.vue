@@ -8,7 +8,7 @@ import {
   CircleDashed,
   Clock3,
   Sparkles,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import LiveLink from "@components/navigation/LiveLink.vue";
 

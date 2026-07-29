@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { ChevronUp } from "lucide-vue-next";
+import { ChevronUp } from "@lucide/vue";
 import { SelectScrollUpButton, useForwardProps, type AsTag } from "reka-ui";
 import { cn } from "../../../shared/utils/utils";
 

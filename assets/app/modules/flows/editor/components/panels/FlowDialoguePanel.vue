@@ -11,7 +11,7 @@
  * shared with `FlowDialogueFullscreenEditor.vue`.
  */
 
-import { BookOpen, FileText, Maximize2, MessageSquare, Volume2, X } from "lucide-vue-next";
+import { BookOpen, FileText, Maximize2, MessageSquare, Volume2, X } from "@lucide/vue";
 import { computed } from "vue";
 import { Button } from "@components/ui/button";
 import Sidebar from "../../../../../shell/Sidebar.vue";

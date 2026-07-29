@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Headphones, History, LayoutList, Link } from "lucide-vue-next";
+import { Headphones, History, LayoutList, Link } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs";

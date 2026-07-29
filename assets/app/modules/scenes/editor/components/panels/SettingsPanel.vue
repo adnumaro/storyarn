@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Settings, X } from "lucide-vue-next";
+import { Settings, X } from "@lucide/vue";
 import { computed } from "vue";
 import Sidebar from "@shell/Sidebar.vue";
 import { useLive } from "@shared/composables/useLive.ts";

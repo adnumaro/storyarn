@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Upload } from "lucide-vue-next";
+import { Upload } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useLive } from "../../../shared/composables/useLive";
 

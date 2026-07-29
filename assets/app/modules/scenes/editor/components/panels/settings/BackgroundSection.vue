@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { ImagePlus, RefreshCw, Trash2, X } from "lucide-vue-next";
+import { ImagePlus, RefreshCw, Trash2, X } from "@lucide/vue";
 import AssetUploadDecisionDialog from "@shared/components/assets/AssetUploadDecisionDialog.vue";
 import { useAssetDecisionUpload } from "@shared/composables/useAssetDecisionUpload.ts";
 import { useLive } from "@shared/composables/useLive.ts";

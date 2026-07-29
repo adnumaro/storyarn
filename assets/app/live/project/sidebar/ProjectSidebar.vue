@@ -9,7 +9,7 @@ import {
   Settings,
   Trash2,
   UploadCloud,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import type { Component } from "vue";
 import SidebarFrame from "@shell/SidebarFrame.vue";
 

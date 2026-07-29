@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Trash2 } from "lucide-vue-next";
+import { Trash2 } from "@lucide/vue";
 import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import type { ConditionData } from "@components/builders/types";
 import { EntityCombobox, TextField } from "@components/forms/fields";

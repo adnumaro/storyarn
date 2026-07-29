@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core";
-import { ChevronRight, FilePlus, Map as MapIcon, Trash2 } from "lucide-vue-next";
+import { ChevronRight, FilePlus, Map as MapIcon, Trash2 } from "@lucide/vue";
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";
 import {
   ContextMenu,

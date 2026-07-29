@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import katex from "katex";
-import { AlertCircle, ChevronRight, Sigma, X } from "lucide-vue-next";
+import { AlertCircle, ChevronRight, Sigma, X } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import Sidebar from "@shell/Sidebar.vue";
 import { useLive } from "@shared/composables/useLive.ts";

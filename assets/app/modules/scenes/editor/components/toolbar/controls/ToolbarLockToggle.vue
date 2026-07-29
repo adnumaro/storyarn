@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Lock, Unlock } from "lucide-vue-next";
+import { Lock, Unlock } from "@lucide/vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
 const { locked = false, disabled = false } = defineProps<{
