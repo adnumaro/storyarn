@@ -541,6 +541,13 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
       end
     end
 
+    test "legacy flat rules remain exportable" do
+      condition = %{"logic" => "all", "rules" => [simple_rule("equals")]}
+
+      assert {:ok, "mc_jaime_health == 50", []} =
+               ExpressionTranspiler.transpile_condition(condition, :ink)
+    end
+
     test "JSON string condition with blocks is decoded" do
       json =
         Jason.encode!(%{

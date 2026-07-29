@@ -17,6 +17,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.ExpressionTranspiler
   alias Storyarn.Exports.LocalizationCatalog
+  alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
   alias Storyarn.Localization.SourceContract
@@ -43,7 +44,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
     flows = project_data.flows || []
     variables = Helpers.collect_variables(sheets)
     speaker_map = Helpers.build_speaker_map(sheets)
-    flow_shortcuts_by_id = flow_shortcuts_by_id(flows)
+    flow_shortcuts_by_id = Helpers.flow_shortcuts_by_id(project_data, flows)
     tunnel_targets = collect_tunnel_targets(flows, flow_shortcuts_by_id)
 
     ink_lines =
@@ -342,8 +343,17 @@ defmodule Storyarn.Exports.Serializers.Ink do
     ["#{indent(depth)}-> #{target} ->"]
   end
 
-  defp render_instruction({:jump, _node, target_label}, _ctx, depth) do
-    ["#{indent(depth)}-> #{target_label}"]
+  defp render_instruction({:jump, node, target_label}, ctx, depth) do
+    data = node.data || %{}
+
+    target =
+      if FlowControlResolver.target_hub_id(data) do
+        target_label
+      else
+        Helpers.shortcut_to_identifier(resolve_flow_shortcut(data, ctx) || target_label)
+      end
+
+    ["#{indent(depth)}-> #{target}"]
   end
 
   defp render_instruction({:divert, target_label}, _ctx, depth) do
@@ -401,10 +411,6 @@ defmodule Storyarn.Exports.Serializers.Ink do
   defp terminal_line(%{is_tunnel: true}, depth), do: "#{indent(depth)}->->"
   defp terminal_line(_ctx, depth), do: "#{indent(depth)}-> END"
 
-  defp flow_shortcuts_by_id(flows) do
-    Map.new(flows, fn flow -> {to_string(flow.id), flow.shortcut} end)
-  end
-
   defp collect_tunnel_targets(flows, flow_shortcuts_by_id) do
     flows
     |> Enum.flat_map(fn flow ->
@@ -421,9 +427,10 @@ defmodule Storyarn.Exports.Serializers.Ink do
   end
 
   defp resolve_flow_shortcut(data, flow_shortcuts_by_id) do
-    data["flow_shortcut"] ||
-      data["referenced_flow_shortcut"] ||
-      flow_shortcuts_by_id[to_string(data["referenced_flow_id"])]
+    referenced_id = FlowControlResolver.referenced_flow_id(data)
+
+    flow_shortcuts_by_id[referenced_id] ||
+      FlowControlResolver.referenced_flow_shortcut(data)
   end
 
   defp indent(0), do: ""

@@ -39,8 +39,17 @@ defmodule StoryarnWeb.ExportController do
       {:error, {:export_too_large, _details}} ->
         conn |> put_status(413) |> text(gettext("Export is too large"))
 
+      {:error, {:validation_failed, _result}} ->
+        conn
+        |> put_resp_header("x-storyarn-export-error", "validation")
+        |> put_status(:unprocessable_entity)
+        |> text(gettext("Export failed"))
+
       _ ->
-        conn |> put_status(:unprocessable_entity) |> text(gettext("Export failed"))
+        conn
+        |> put_resp_header("x-storyarn-export-error", "serialization")
+        |> put_status(:unprocessable_entity)
+        |> text(gettext("Export failed"))
     end
   end
 

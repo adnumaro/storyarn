@@ -25,6 +25,7 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.ExpressionTranspiler
   alias Storyarn.Exports.LocalizationCatalog
+  alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.Helpers
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
@@ -72,7 +73,11 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
         "",
         ~s(    <Hierarchy>),
         build_entities(sheets),
-        build_flow_fragments(flows, speaker_map),
+        build_flow_fragments(
+          flows,
+          speaker_map,
+          Helpers.flow_shortcuts_by_id(project_data, flows)
+        ),
         ~s(    </Hierarchy>),
         ~s(  </Project>),
         ~s(</ArticyData>)
@@ -179,12 +184,17 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
   # Flow Fragments (from Flows)
   # ---------------------------------------------------------------------------
 
-  defp build_flow_fragments(flows, speaker_map) do
+  defp build_flow_fragments(flows, speaker_map, flow_shortcuts_by_id) do
     Enum.map(flows, fn flow ->
       guid = generate_guid("flow:#{flow.id}")
       tech_name = flow.shortcut || flow.name || "flow_#{flow.id}"
 
-      nodes_xml = build_flow_nodes(flow.nodes, speaker_map)
+      flow_control = %{
+        flow_shortcuts_by_id: flow_shortcuts_by_id,
+        hub_refs: FlowControlResolver.hub_reference_map(flow.nodes || [])
+      }
+
+      nodes_xml = build_flow_nodes(flow.nodes, speaker_map, flow_control)
       connections_xml = build_connections(flow)
 
       [
@@ -199,13 +209,13 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     end)
   end
 
-  defp build_flow_nodes(nodes, speaker_map) do
+  defp build_flow_nodes(nodes, speaker_map, flow_control) do
     Enum.map(nodes, fn node ->
-      build_articy_node(node, speaker_map)
+      build_articy_node(node, speaker_map, flow_control)
     end)
   end
 
-  defp build_articy_node(%{type: "dialogue"} = node, speaker_map) do
+  defp build_articy_node(%{type: "dialogue"} = node, speaker_map, _flow_control) do
     data = node.data || %{}
     guid = generate_guid("node:#{node.id}")
     speaker = Helpers.speaker_shortcut(data, speaker_map) || ""
@@ -226,7 +236,7 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     ] ++ List.flatten(response_xml)
   end
 
-  defp build_articy_node(%{type: "condition"} = node, _speaker_map) do
+  defp build_articy_node(%{type: "condition"} = node, _speaker_map, _flow_control) do
     data = node.data || %{}
     guid = generate_guid("node:#{node.id}")
     condition = Helpers.extract_condition(data["condition"])
@@ -239,7 +249,7 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     ]
   end
 
-  defp build_articy_node(%{type: "instruction"} = node, _speaker_map) do
+  defp build_articy_node(%{type: "instruction"} = node, _speaker_map, _flow_control) do
     data = node.data || %{}
     guid = generate_guid("node:#{node.id}")
     assignments = Helpers.extract_assignments(data)
@@ -252,7 +262,7 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     ]
   end
 
-  defp build_articy_node(%{type: "hub"} = node, _speaker_map) do
+  defp build_articy_node(%{type: "hub"} = node, _speaker_map, _flow_control) do
     data = node.data || %{}
     guid = generate_guid("node:#{node.id}")
     label = data["label"] || ""
@@ -264,17 +274,17 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     ]
   end
 
-  defp build_articy_node(%{type: "jump"} = node, _speaker_map) do
+  defp build_articy_node(%{type: "jump"} = node, _speaker_map, flow_control) do
     data = node.data || %{}
     guid = generate_guid("node:#{node.id}")
-    target = data["hub_id"] || data["target_flow_shortcut"] || ""
+    target = articy_jump_target(data, flow_control)
 
     [
       ~s(          <Jump Id="#{guid}" TechnicalName="jump_#{node.id}" Target="#{escape_xml(to_string(target))}"/>)
     ]
   end
 
-  defp build_articy_node(%{type: type} = node, _speaker_map) when type in ["entry", "exit"] do
+  defp build_articy_node(%{type: type} = node, _speaker_map, _flow_control) when type in ["entry", "exit"] do
     guid = generate_guid("node:#{node.id}")
 
     [
@@ -282,17 +292,41 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     ]
   end
 
-  defp build_articy_node(%{type: "subflow"} = node, _speaker_map) do
+  defp build_articy_node(%{type: "subflow"} = node, _speaker_map, flow_control) do
     data = node.data || %{}
     guid = generate_guid("node:#{node.id}")
-    flow_shortcut = data["flow_shortcut"] || ""
+    flow_shortcut = articy_flow_reference(data, flow_control.flow_shortcuts_by_id)
 
     [
       ~s(          <FlowFragment Id="#{guid}" TechnicalName="subflow_#{node.id}" Reference="#{escape_xml(flow_shortcut)}"/>)
     ]
   end
 
-  defp build_articy_node(_node, _speaker_map), do: []
+  defp build_articy_node(_node, _speaker_map, _flow_control), do: []
+
+  defp articy_jump_target(data, flow_control) do
+    case FlowControlResolver.target_hub_id(data) do
+      nil ->
+        articy_flow_reference(data, flow_control.flow_shortcuts_by_id)
+
+      hub_ref ->
+        case FlowControlResolver.hub_target(flow_control.hub_refs, hub_ref) do
+          {hub_node_id, _label} -> "hub_#{hub_node_id}"
+          nil -> hub_ref
+        end
+    end
+  end
+
+  defp articy_flow_reference(data, flow_shortcuts_by_id) do
+    shortcut = FlowControlResolver.referenced_flow_shortcut(data)
+    referenced_id = FlowControlResolver.referenced_flow_id(data)
+
+    cond do
+      referenced_id -> flow_shortcuts_by_id[referenced_id] || referenced_id
+      is_binary(shortcut) and shortcut != "" -> shortcut
+      true -> ""
+    end
+  end
 
   defp build_articy_response(node, response) do
     response_id = Map.fetch!(response, "id")

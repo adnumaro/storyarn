@@ -119,6 +119,33 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       assert :choices_end in types
     end
 
+    test "current response ids preserve their connected branch bodies" do
+      response_id = "response_2d6b0c7d-f3f1-4ac3-bf14-8fc1ad84498f"
+
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "text" => "Continue?",
+              "responses" => [%{"id" => response_id, "text" => "Yes"}]
+            }),
+            make_node(3, "dialogue", %{"text" => "Reached"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, response_id)
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:dialogue, _dialogue},
+               {:choices, _owner, [{%{"id" => ^response_id}, 0, [{:dialogue, %{data: %{"text" => "Reached"}}}]}]}
+             ] = instructions
+    end
+
     test "linearize_blocks groups dialogue choice branch bodies" do
       flow =
         make_flow(
@@ -148,6 +175,41 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
                {:choices, _dialogue,
                 [{%{"text" => "Yes"}, 0, [{:dialogue, _yes}]}, {%{"text" => "No"}, 1, [{:dialogue, _no}]}]}
              ] = instructions
+    end
+
+    test "reconvergent choice branches each retain their shared tail" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "responses" => [
+                %{"id" => "yes", "text" => "Yes"},
+                %{"id" => "no", "text" => "No"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "Yes branch"}),
+            make_node(4, "dialogue", %{"text" => "No branch"}),
+            make_node(5, "dialogue", %{"text" => "Shared tail"}),
+            make_node(6, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "yes"),
+            make_conn(2, 4, "no"),
+            make_conn(3, 5),
+            make_conn(4, 5),
+            make_conn(5, 6)
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+      [{:dialogue, _}, {:choices, _, branches}] = instructions
+
+      assert Enum.all?(branches, fn {_response, _index, body} ->
+               Enum.any?(body, &match?({:dialogue, %{data: %{"text" => "Shared tail"}}}, &1)) and
+                 Enum.any?(body, &match?({:exit, _}, &1))
+             end)
     end
 
     test "condition branches" do
@@ -212,6 +274,41 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
              ] = instructions
     end
 
+    test "reconvergent condition branches each retain their shared tail" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "condition", %{
+              "cases" => [
+                %{"id" => "true", "label" => "True"},
+                %{"id" => "false", "label" => "False"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "True branch"}),
+            make_node(4, "dialogue", %{"text" => "False branch"}),
+            make_node(5, "dialogue", %{"text" => "Shared tail"}),
+            make_node(6, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "true"),
+            make_conn(2, 4, "false"),
+            make_conn(3, 5),
+            make_conn(4, 5),
+            make_conn(5, 6)
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+      [{:condition, _, branches}] = instructions
+
+      assert Enum.all?(branches, fn {_pin, _label, _index, body} ->
+               Enum.any?(body, &match?({:dialogue, %{data: %{"text" => "Shared tail"}}}, &1)) and
+                 Enum.any?(body, &match?({:exit, _}, &1))
+             end)
+    end
+
     test "linearize_blocks derives switch branches from condition blocks" do
       flow =
         make_flow(
@@ -245,6 +342,31 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
                   {"case_mage", "Mage", 0, [{:dialogue, _mage}]},
                   {"case_warrior", "Warrior", 1, [{:dialogue, _warrior}]}
                 ]}
+             ] = instructions
+    end
+
+    test "switch default output is traversed even when there are no configured cases" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "condition", %{
+              "switch_mode" => true,
+              "condition" => %{"logic" => "all", "blocks" => []}
+            }),
+            make_node(3, "dialogue", %{"text" => "Default branch"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "default")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:condition, _condition,
+                [{"default", "Default", 0, [{:dialogue, %{data: %{"text" => "Default branch"}}}]}]}
              ] = instructions
     end
 
@@ -439,9 +561,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       assert [{"safe_house", [exit: _exit_node]}] = hub_sections
     end
 
-    test "jump without hub_id or target_flow_shortcut follows connection" do
-      # When jump has no hub_id and no target_flow_shortcut, it follows
-      # the outgoing connection to determine the target label.
+    test "jump without a persisted target does not infer one from an invalid connection" do
       flow =
         make_flow(
           [
@@ -458,11 +578,9 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
         )
 
       {instructions, hub_sections} = GraphTraversal.linearize(flow)
-      # The jump should resolve to the hub's label via the connection
       jump_instruction = Enum.find(instructions, fn {type, _, _} -> type == :jump end)
-      assert {:jump, _node, target_label} = jump_instruction
-      assert target_label == "target_hub"
-      assert is_list(hub_sections)
+      assert {:jump, _node, "unknown"} = jump_instruction
+      assert hub_sections == []
     end
 
     test "jump without hub_id or target_flow_shortcut and no connections resolves to unknown" do

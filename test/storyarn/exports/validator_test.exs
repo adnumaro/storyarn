@@ -11,7 +11,6 @@ defmodule Storyarn.Exports.ValidatorTest do
   alias Storyarn.Exports.Validator
   alias Storyarn.Exports.Validator.ValidationResult
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.References.VariableReference
   alias Storyarn.Repo
 
   # =============================================================================
@@ -88,73 +87,6 @@ defmodule Storyarn.Exports.ValidatorTest do
   end
 
   # =============================================================================
-  # orphan_nodes (warning)
-  # =============================================================================
-
-  describe "orphan_nodes" do
-    setup [:setup_project]
-
-    test "reports warning for nodes with no connections", %{project: project} do
-      flow = flow_fixture(project, %{name: "Orphan Flow"})
-      # Create a dialogue node that's not connected to anything
-      _orphan =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => "Orphan node"}
-        })
-
-      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
-      orphan_warnings = Enum.filter(result.warnings, &(&1.rule == :orphan_nodes))
-
-      # The fixture's auto-created entry and exit are disconnected too. The
-      # validator's own orphan check used to skip both node types outright, so
-      # this flow reported one orphan instead of three; the health engine reports
-      # every node that has no connection, whatever its type.
-      assert Enum.sort(Enum.map(orphan_warnings, & &1.node_type)) == ["dialogue", "entry", "exit"]
-      assert Enum.all?(orphan_warnings, &(&1.flow_id == flow.id))
-    end
-
-    test "ignores annotations and sequences with no graph connections", %{project: project} do
-      flow = flow_fixture(project, %{name: "Visual Nodes Flow"})
-      entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
-      exit_node = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
-
-      Storyarn.FlowsFixtures.connection_fixture(flow, entry, exit_node)
-      node_fixture(flow, %{type: "annotation", data: %{"text" => "Design note"}})
-      assert {:ok, _sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Act I"})
-
-      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
-
-      refute Enum.any?(result.warnings, &(&1.rule == :orphan_nodes))
-      refute Enum.any?(result.warnings, &(&1.rule == :unreachable_nodes))
-    end
-  end
-
-  # =============================================================================
-  # unreachable_nodes (warning)
-  # =============================================================================
-
-  describe "unreachable_nodes" do
-    setup [:setup_project]
-
-    test "reports warning for nodes not reachable from entry", %{project: project} do
-      flow = flow_fixture(project, %{name: "Unreachable Flow"})
-
-      # Create two dialogue nodes and connect them to each other
-      # but NOT connected to the entry node
-      d1 = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Island 1"}})
-      d2 = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Island 2"}})
-      Storyarn.FlowsFixtures.connection_fixture(flow, d1, d2)
-
-      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
-      unreachable = Enum.filter(result.warnings, &(&1.rule == :unreachable_nodes))
-      # d1 and d2 should be unreachable (not connected from entry)
-      unreachable_dialogue = Enum.filter(unreachable, &(&1.node_type == "dialogue"))
-      assert length(unreachable_dialogue) == 2
-    end
-  end
-
-  # =============================================================================
   # empty_dialogue (warning)
   # =============================================================================
 
@@ -215,10 +147,10 @@ defmodule Storyarn.Exports.ValidatorTest do
   end
 
   # =============================================================================
-  # broken_references (error) — jump to non-existent hub
+  # Artifact control references
   # =============================================================================
 
-  describe "broken_references" do
+  describe "artifact control references" do
     setup [:setup_project]
 
     test "reports error for jump node targeting non-existent hub", %{project: project} do
@@ -231,9 +163,9 @@ defmodule Storyarn.Exports.ValidatorTest do
         })
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
-      broken = Enum.filter(result.errors, &(&1.rule == :broken_references))
+      broken = Enum.filter(result.errors, &(&1.rule == :stale_jump_target))
       assert length(broken) == 1
-      assert hd(broken).ref_type == :hub
+      assert hd(broken).node_id
     end
 
     test "no error when jump targets existing hub", %{project: project} do
@@ -254,7 +186,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
       broken_hub =
-        Enum.filter(result.errors, &(&1.rule == :broken_references && &1[:ref_type] == :hub))
+        Enum.filter(result.errors, &(&1.rule == :stale_jump_target))
 
       assert broken_hub == []
     end
@@ -270,8 +202,7 @@ defmodule Storyarn.Exports.ValidatorTest do
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
-      broken =
-        Enum.filter(result.errors, &(&1.rule == :broken_references && &1[:ref_type] == :flow))
+      broken = Enum.filter(result.errors, &(&1.rule == :stale_subflow_reference))
 
       assert length(broken) == 1
     end
@@ -291,7 +222,7 @@ defmodule Storyarn.Exports.ValidatorTest do
           flow_ids: [included.id]
         })
 
-      refute Enum.any?(result.errors, &(&1.rule == :broken_references))
+      refute Enum.any?(result.errors, &(&1.rule == :stale_subflow_reference))
     end
   end
 
@@ -336,25 +267,14 @@ defmodule Storyarn.Exports.ValidatorTest do
       assert Enum.any?(result.errors, &(&1.rule == :invalid_sheet_identifier))
     end
 
-    test "uses format-aware severity for stale variable references", %{project: project} do
-      sheet = sheet_fixture(project, %{name: "Variables"})
-      block = block_fixture(sheet, %{type: "number"})
+    test "uses direct artifact data and format-aware severity for stale variable references", %{
+      project: project
+    } do
       flow = flow_fixture(project, %{name: "Stale References"})
 
-      node =
-        node_fixture(flow, %{
-          type: "condition",
-          data: %{"condition" => condition(sheet.shortcut, block.variable_name, "equals")}
-        })
-
-      Repo.insert!(%VariableReference{
-        source_type: "flow_node",
-        source_id: node.id,
-        flow_node_id: node.id,
-        block_id: block.id,
-        kind: "read",
-        source_sheet: sheet.shortcut,
-        source_variable: "renamed_away"
+      node_fixture(flow, %{
+        type: "condition",
+        data: %{"condition" => condition("missing_sheet", "missing_variable", "equals")}
       })
 
       ink = Validator.validate_project(project.id, %ExportOptions{format: :ink})
@@ -392,56 +312,6 @@ defmodule Storyarn.Exports.ValidatorTest do
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
       assert Enum.any?(result.errors, &(&1.rule == :invalid_export_expression))
-    end
-  end
-
-  # =============================================================================
-  # An UNCONFIGURED reference is nobody else's job
-  # =============================================================================
-  #
-  # `check_broken_references/2` only sees a reference that is SET but dangling:
-  # `has_broken_hub_ref?/2` skips nil and "", `has_broken_ref?/3` skips nil. So
-  # filtering the `missing_*` health codes out of `check_flow_health/1` — on the
-  # belief that the legacy check already reported them — made a node the author
-  # simply never configured produce NO export finding at all, from either side.
-  # These are the defaults: a fresh jump stores "" and a fresh subflow stores nil.
-
-  describe "unconfigured references still reach the export report" do
-    setup [:setup_project]
-
-    test "a jump with a blank target is reported", %{project: project} do
-      flow = flow_fixture(project, %{name: "Unset Jump"})
-      _jump = node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => ""}})
-
-      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
-
-      assert Enum.any?(result.warnings, &(&1.rule == :missing_jump_target)),
-             "an unconfigured jump vanished from the report entirely"
-
-      # Still not double-reported: the legacy check must stay silent on blanks.
-      refute Enum.any?(result.errors, &(&1.rule == :broken_references))
-    end
-
-    test "a subflow with no referenced flow is reported", %{project: project} do
-      flow = flow_fixture(project, %{name: "Unset Subflow"})
-      _subflow = node_fixture(flow, %{type: "subflow", data: %{"referenced_flow_id" => nil}})
-
-      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
-
-      assert Enum.any?(result.warnings, &(&1.rule == :missing_subflow_reference)),
-             "an unconfigured subflow vanished from the report entirely"
-
-      refute Enum.any?(result.errors, &(&1.rule == :broken_references))
-    end
-
-    test "a dangling reference is still reported once, by the legacy check only", %{project: project} do
-      flow = flow_fixture(project, %{name: "Dangling Jump"})
-      _jump = corrupt_node_fixture(flow, %{type: "jump", data: %{"target_hub_id" => "ghost"}})
-
-      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
-
-      assert Enum.count(result.errors, &(&1.rule == :broken_references)) == 1
-      refute Enum.any?(result.warnings, &(&1.rule == :stale_jump_target))
     end
   end
 

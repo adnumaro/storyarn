@@ -93,6 +93,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp serialize_validation_result(result, assigns) do
     %{
       status: to_string(result.status),
+      stale: validation_stale?(assigns),
       errors: Enum.map(result.errors, &serialize_finding(&1, assigns)),
       warnings: Enum.map(result.warnings, &serialize_finding(&1, assigns)),
       info: Enum.map(result.info, &serialize_finding(&1, assigns))
@@ -172,6 +173,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       |> assign(:validate_before_export, true)
       |> assign(:pretty_print, true)
       |> assign(:validation_result, nil)
+      |> assign(:validated_export_options, nil)
       # Import state. Files are consumed from LiveView's bounded temporary
       # upload and are never written under their client-provided filename.
       |> assign(:import_state, empty_import_state())
@@ -272,7 +274,11 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   def handle_event("validate_export", _params, socket) do
     opts = build_export_options(socket.assigns)
     result = Exports.validate_project(socket.assigns.project.id, opts)
-    {:noreply, assign(socket, :validation_result, result)}
+
+    {:noreply,
+     socket
+     |> assign(:validation_result, result)
+     |> assign(:validated_export_options, opts)}
   end
 
   # ===========================================================================
@@ -347,6 +353,10 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       localization_policy: assigns.localization_policy,
       include_assets: assigns.asset_mode
     }
+  end
+
+  defp validation_stale?(assigns) do
+    assigns.validated_export_options != build_export_options(assigns)
   end
 
   defp export_download_url(assigns) do

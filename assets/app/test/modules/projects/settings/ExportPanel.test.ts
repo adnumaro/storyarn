@@ -1,4 +1,4 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockLive } from "../../../setup";
 import type { ExportPanelProps } from "../../../../modules/projects/settings/export-import/types";
@@ -61,6 +61,8 @@ describe("ExportPanel", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("summarizes only content supported by the selected format", () => {
@@ -190,6 +192,21 @@ describe("ExportPanel", () => {
     expect(wrapper.get('[data-testid="validate-export"]').attributes("disabled")).toBeDefined();
   });
 
+  it("requires a current validation result while preflight is enabled", () => {
+    const { wrapper } = mountPanel();
+
+    expect(wrapper.find('[data-testid="download-export"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain("Validate before export");
+  });
+
+  it("allows downloading without a result when preflight is explicitly disabled", () => {
+    const props = baseProps();
+    props.options.validateBeforeExport = false;
+    const { wrapper } = mountPanel(props);
+
+    expect(wrapper.get('[data-testid="download-export"]').attributes("href")).toBe("/export/ink");
+  });
+
   it("only shows asset and formatting controls when the format supports them", () => {
     const { wrapper: inkWrapper } = mountPanel();
 
@@ -218,9 +235,30 @@ describe("ExportPanel", () => {
 
     const results = wrapper.get("#export-validation-results");
     expect(results.attributes("data-status")).toBe("errors");
+    expect(results.attributes("data-stale")).toBe("false");
     expect(results.text()).toContain("A blocking issue");
     expect(results.text()).toContain("A warning");
     expect(results.text()).toContain("A note");
+  });
+
+  it("caps long finding lists while preserving the full counts", () => {
+    const props = baseProps();
+    props.validation = {
+      status: "errors",
+      errors: Array.from({ length: 55 }, (_, index) => ({
+        message: `Blocking issue ${index}`,
+        rule: "blocking_issue",
+      })),
+      warnings: [],
+      info: [],
+    };
+    const { wrapper } = mountPanel(props);
+
+    const results = wrapper.get("#export-validation-results");
+    expect(results.text()).toContain("Blocking issue 49");
+    expect(results.text()).not.toContain("Blocking issue 50");
+    expect(results.text()).toContain("5 more findings are not shown");
+    expect(results.text()).toContain("55 errors");
   });
 
   it("blocks the download when validation has errors", () => {
@@ -236,6 +274,219 @@ describe("ExportPanel", () => {
     expect(wrapper.find('[data-testid="download-export"]').exists()).toBe(false);
     expect(wrapper.text()).toContain(
       "Resolve the blocking issues below and validate again before downloading.",
+    );
+  });
+
+  it("keeps stale findings visible but requires validation before downloading", () => {
+    const props = baseProps();
+    props.validation = {
+      status: "passed",
+      stale: true,
+      errors: [],
+      warnings: [{ message: "A previous warning", rule: "previous_warning" }],
+      info: [],
+    } as never;
+    const { wrapper } = mountPanel(props);
+
+    const results = wrapper.get("#export-validation-results");
+    expect(results.attributes("data-status")).toBe("passed");
+    expect(results.attributes("data-stale")).toBe("true");
+    expect(results.text()).toContain("A previous warning");
+    expect(results.text()).toContain("Validate before export");
+    expect(results.text()).not.toContain("Ready to export");
+    expect(wrapper.find('[data-testid="download-export"]').exists()).toBe(false);
+  });
+
+  it("does not reuse an Ink error verdict after switching to Unity", async () => {
+    const props = baseProps();
+    props.validation = {
+      status: "errors",
+      stale: false,
+      errors: [{ message: "Ink cannot compile this reference", rule: "stale_variable_reference" }],
+      warnings: [],
+      info: [],
+    } as never;
+    const { wrapper } = mountPanel(props);
+
+    await wrapper.setProps({
+      formatConfig: {
+        ...props.formatConfig,
+        selected: "unity",
+        extension: "json",
+      },
+      validation: {
+        status: "errors",
+        stale: true,
+        errors: [
+          { message: "Ink cannot compile this reference", rule: "stale_variable_reference" },
+        ],
+        warnings: [],
+        info: [],
+      } as never,
+      exportDownloadUrl: "/export/unity",
+    });
+
+    expect(wrapper.get("#export-validation-results").attributes("data-stale")).toBe("true");
+    expect(wrapper.text()).toContain("Ink cannot compile this reference");
+    expect(wrapper.find('[data-testid="download-export"]').exists()).toBe(false);
+
+    await wrapper.setProps({
+      validation: {
+        status: "warnings",
+        stale: false,
+        errors: [],
+        warnings: [
+          {
+            message: "Unity cannot preserve this reference safely",
+            rule: "stale_variable_reference",
+          },
+        ],
+        info: [],
+      } as never,
+    });
+
+    expect(wrapper.get("#export-validation-results").attributes("data-stale")).toBe("false");
+    expect(wrapper.get('[data-testid="download-export"]').attributes("href")).toBe("/export/unity");
+  });
+
+  it("downloads only a successful attachment response", async () => {
+    const props = baseProps();
+    props.validation = {
+      status: "passed",
+      stale: false,
+      errors: [],
+      warnings: [],
+      info: [],
+    };
+
+    const blob = new Blob(["export"], { type: "application/zip" });
+    const blobMock = vi.fn().mockResolvedValue(blob);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      redirected: false,
+      headers: new Headers({
+        "content-disposition": 'attachment; filename="story.zip"',
+        "content-type": "application/zip",
+      }),
+      blob: blobMock,
+    });
+    const createObjectURL = vi.fn().mockReturnValue("blob:storyarn-export");
+    const revokeObjectURL = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+    const { wrapper } = mountPanel(props);
+
+    await wrapper.get('[data-testid="download-export"]').trigger("click");
+    await flushPromises();
+
+    expect(fetchMock).toHaveBeenCalledWith("/export/ink");
+    expect(blobMock).toHaveBeenCalledOnce();
+    expect(createObjectURL).toHaveBeenCalledWith(blob);
+    expect(clickSpy).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:storyarn-export");
+    expect(wrapper.find("#export-download-error").exists()).toBe(false);
+  });
+
+  it("surfaces a failed export in the panel instead of navigating to the 422 response", async () => {
+    const props = baseProps();
+    props.validation = {
+      status: "passed",
+      stale: false,
+      errors: [],
+      warnings: [],
+      info: [],
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      headers: new Headers({ "x-storyarn-export-error": "validation" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { wrapper } = mountPanel(props);
+
+    await wrapper.get('[data-testid="download-export"]').trigger("click");
+    await flushPromises();
+
+    expect(fetchMock).toHaveBeenCalledWith("/export/ink");
+    expect(wrapper.get("#export-download-error").text()).toContain(
+      "The export could not be generated",
+    );
+    expect(wrapper.get('[data-testid="download-export"]').attributes("href")).toBe("/export/ink");
+  });
+
+  it("does not mislabel a serializer 422 as a validation failure", async () => {
+    const props = baseProps();
+    props.validation = {
+      status: "passed",
+      stale: false,
+      errors: [],
+      warnings: [],
+      info: [],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        headers: new Headers({ "x-storyarn-export-error": "serialization" }),
+      }),
+    );
+    const { wrapper } = mountPanel(props);
+
+    await wrapper.get('[data-testid="download-export"]').trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get("#export-download-error").text()).toContain(
+      "The export could not be downloaded",
+    );
+    expect(wrapper.get("#export-download-error").text()).not.toContain("Validate again");
+  });
+
+  it.each([
+    {
+      name: "a followed login redirect",
+      redirected: true,
+      disposition: 'attachment; filename="login.html"',
+    },
+    {
+      name: "an HTML response without attachment metadata",
+      redirected: false,
+      disposition: null,
+    },
+  ])("rejects $name as a download", async ({ redirected, disposition }) => {
+    const props = baseProps();
+    props.validation = {
+      status: "passed",
+      stale: false,
+      errors: [],
+      warnings: [],
+      info: [],
+    };
+
+    const headers = new Headers({ "content-type": "text/html; charset=utf-8" });
+    if (disposition) headers.set("content-disposition", disposition);
+
+    const blobMock = vi.fn().mockResolvedValue(new Blob(["<html>login</html>"]));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        redirected,
+        headers,
+        blob: blobMock,
+      }),
+    );
+    const { wrapper } = mountPanel(props);
+
+    await wrapper.get('[data-testid="download-export"]').trigger("click");
+    await flushPromises();
+
+    expect(blobMock).not.toHaveBeenCalled();
+    expect(wrapper.get("#export-download-error").text()).toContain(
+      "The export could not be downloaded",
     );
   });
 

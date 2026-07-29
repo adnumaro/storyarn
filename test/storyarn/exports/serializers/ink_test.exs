@@ -563,9 +563,30 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       assert source =~ "-> side_quest_rescue ->"
     end
 
-    test "subflow with referenced_flow_id resolves target flow shortcut", %{project: project} do
+    test "subflow with target_flow_id alias resolves target flow shortcut", %{project: project} do
       target_flow = flow_fixture(project, %{name: "Side Quest"})
       caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      subflow =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"target_flow_id" => target_flow.id}
+        })
+
+      connection_fixture(caller_flow, caller_entry, subflow)
+
+      source = ink_source(export_ink(project))
+      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
+      assert source =~ "-> #{target} ->"
+    end
+
+    test "partial export preserves the shortcut of an external subflow target", %{
+      project: project
+    } do
+      target_flow = flow_fixture(project, %{name: "Side Quest", shortcut: "side-quest"})
+      caller_flow = flow_fixture(project, %{name: "Main", shortcut: "main"})
       caller_flow = reload_flow(caller_flow)
       caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
 
@@ -577,9 +598,11 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
       connection_fixture(caller_flow, caller_entry, subflow)
 
-      source = ink_source(export_ink(project))
-      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
-      assert source =~ "-> #{target} ->"
+      opts = %{default_opts() | flow_ids: [caller_flow.id]}
+      source = project |> export_ink(opts) |> ink_source()
+
+      assert source =~ "-> side_quest ->"
+      refute source =~ "=== side_quest ==="
     end
 
     test "subflow without shortcut uses fallback id", %{project: project} do
@@ -899,6 +922,28 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
       source = ink_source(export_ink(project))
       assert source =~ "-> act2_beginning"
+    end
+
+    test "jump resolves a direct flow id before a stale shortcut", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Right Target", shortcut: "right-target"})
+      flow = flow_fixture(project, %{name: "Jump By Id"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      jump =
+        node_fixture(flow, %{
+          type: "jump",
+          data: %{
+            "target_flow_id" => target_flow.id,
+            "target_flow_shortcut" => "stale-target"
+          }
+        })
+
+      connection_fixture(flow, entry, jump)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "-> right_target"
+      refute source =~ "-> stale_target"
     end
   end
 

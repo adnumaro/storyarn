@@ -66,8 +66,9 @@ msgstr ""
 msgid "moved a node"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:43
-#: lib/storyarn_web/controllers/export_controller.ex:88
+#: lib/storyarn_web/controllers/export_controller.ex:46
+#: lib/storyarn_web/controllers/export_controller.ex:52
+#: lib/storyarn_web/controllers/export_controller.ex:97
 #, elixir-autogen, elixir-format
 msgid "Export failed"
 msgstr ""
@@ -190,8 +191,8 @@ msgid "You don't have permission to edit."
 msgstr ""
 
 #: lib/storyarn_web/controllers/export_controller.ex:40
-#: lib/storyarn_web/controllers/export_controller.ex:61
-#: lib/storyarn_web/controllers/export_controller.ex:85
+#: lib/storyarn_web/controllers/export_controller.ex:70
+#: lib/storyarn_web/controllers/export_controller.ex:94
 #, elixir-autogen, elixir-format
 msgid "Export is too large"
 msgstr ""

@@ -39,6 +39,7 @@ export interface ValidationFinding {
 
 export interface ValidationResult {
   status: string;
+  stale?: boolean;
   errors?: ValidationFinding[];
   warnings?: ValidationFinding[];
   info?: ValidationFinding[];

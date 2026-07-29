@@ -79,6 +79,7 @@ defmodule Storyarn.Exports.DataCollector do
       project: load_project(project_id),
       sheets: maybe_load(:sheets, project_id, opts),
       flows: maybe_load_preloaded(:flows, project_id, opts, preloaded),
+      flow_shortcuts_by_id: load_flow_shortcuts_by_id(project_id),
       scenes: maybe_load(:scenes, project_id, opts),
       localization: maybe_load(:localization, project_id, opts),
       assets: maybe_load(:assets, project_id, opts)
@@ -160,6 +161,12 @@ defmodule Storyarn.Exports.DataCollector do
 
   defp load_project(project_id) do
     Projects.get_project!(project_id)
+  end
+
+  defp load_flow_shortcuts_by_id(project_id) do
+    project_id
+    |> Flows.list_flows()
+    |> Map.new(&{to_string(&1.id), &1.shortcut})
   end
 
   defp maybe_load_preloaded(section, project_id, opts, preloaded) do

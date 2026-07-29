@@ -6,6 +6,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Ink do
   Logic: `and` / `or`
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   use Storyarn.Exports.ExpressionTranspiler.Base,
     var_style: :underscore,
     logic_opts: [and_keyword: " and ", or_keyword: " or "],
@@ -70,6 +72,39 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Ink do
   # ---------------------------------------------------------------------------
   # Instruction operators
   # ---------------------------------------------------------------------------
+
+  @impl true
+  def transpile_instruction(assignments, ctx) when is_list(assignments) do
+    {:ok, result, warnings} = super(assignments, ctx)
+
+    semantic_loss_warnings =
+      assignments
+      |> Enum.filter(fn
+        %{"sheet" => sheet, "variable" => variable, "operator" => "set_if_unset"}
+        when is_binary(sheet) and sheet != "" and is_binary(variable) and variable != "" ->
+          true
+
+        _assignment ->
+          false
+      end)
+      |> Enum.map(fn %{"sheet" => sheet, "variable" => variable} ->
+        %{
+          type: :semantic_loss,
+          message:
+            dgettext(
+              "projects",
+              "set_if_unset emits an unconditional assignment in Ink"
+            ),
+          operator: "set_if_unset",
+          engine: "Ink",
+          variable: "#{sheet}.#{variable}"
+        }
+      end)
+
+    {:ok, result, warnings ++ semantic_loss_warnings}
+  end
+
+  def transpile_instruction(assignments, ctx), do: super(assignments, ctx)
 
   defp emit_assignment(ref, "set", a), do: "~ #{ref} = #{format_value(ref, a)}"
   defp emit_assignment(ref, "add", a), do: "~ #{ref} += #{format_value(ref, a)}"

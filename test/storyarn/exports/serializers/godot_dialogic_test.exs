@@ -515,7 +515,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       hub =
         node_fixture(flow, %{
           type: "hub",
-          data: %{"label" => "checkpoint"}
+          data: %{"hub_id" => "checkpoint", "label" => "checkpoint"}
         })
 
       jump =
@@ -555,6 +555,28 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       assert source =~ "jump act2_beginning/"
     end
 
+    test "jump resolves a direct flow id before a stale shortcut", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Right Target", shortcut: "right-target"})
+      flow = flow_fixture(project, %{name: "Jump By Id"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      jump =
+        node_fixture(flow, %{
+          type: "jump",
+          data: %{
+            "target_flow_id" => target_flow.id,
+            "target_flow_shortcut" => "stale-target"
+          }
+        })
+
+      connection_fixture(flow, entry, jump)
+
+      source = project |> export_dialogic() |> dtl_source_for(flow)
+      assert source =~ "jump right_target/"
+      refute source =~ "jump stale_target/"
+    end
+
     test "subflow renders jump with trailing slash", %{project: project} do
       flow = flow_fixture(project, %{name: "Subflow Flow"})
       flow = reload_flow(flow)
@@ -589,6 +611,29 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       source = project |> export_dialogic() |> dtl_source_for(caller_flow)
       target = Helpers.shortcut_to_identifier(target_flow.shortcut)
       assert source =~ "jump #{target}/"
+    end
+
+    test "partial export preserves the shortcut of an external subflow target", %{
+      project: project
+    } do
+      target_flow = flow_fixture(project, %{name: "Side Quest", shortcut: "side-quest"})
+      caller_flow = flow_fixture(project, %{name: "Main", shortcut: "main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      subflow =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => target_flow.id}
+        })
+
+      connection_fixture(caller_flow, caller_entry, subflow)
+
+      opts = %{default_opts() | flow_ids: [caller_flow.id]}
+      files = export_dialogic(project, opts)
+
+      assert dtl_source_for(files, caller_flow) =~ "jump side_quest/"
+      refute Enum.any?(files, fn {name, _content} -> name == "side_quest.dtl" end)
     end
 
     test "exit in subflow target emits return", %{project: project} do

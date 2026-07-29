@@ -20,6 +20,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
   alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Flows.NodeConnectionRules
 
   @type instruction ::
           {:label, node :: map(), label :: String.t()}
@@ -159,26 +160,31 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
   defp traverse_node(%{type: "condition"} = node, state) do
     state = %{state | instructions: [{:condition_start, node} | state.instructions]}
+    branch_base_visited = state.visited
 
     # Condition nodes have multiple output pins (one per case)
     targets_by_pin = outgoing_by_pin(state, node.id)
     cases = FlowControlResolver.condition_cases(node, targets_by_pin)
 
-    state =
+    {state, branch_visited} =
       cases
       |> Enum.with_index()
-      |> Enum.reduce(state, fn {case_data, idx}, acc ->
+      |> Enum.reduce({state, branch_base_visited}, fn {case_data, idx}, {acc, visited_acc} ->
+        acc = %{acc | visited: branch_base_visited}
         pin = case_data["id"] || "case_#{idx}"
         label = case_data["label"] || case_data["value"] || "case_#{idx}"
         acc = %{acc | instructions: [{:condition_branch, pin, label, idx} | acc.instructions]}
 
-        case Map.get(targets_by_pin, pin) do
-          nil -> acc
-          pin_targets -> traverse_targets(pin_targets, acc)
-        end
+        acc =
+          case Map.get(targets_by_pin, pin) do
+            nil -> acc
+            pin_targets -> traverse_targets(pin_targets, acc)
+          end
+
+        {acc, MapSet.union(visited_acc, acc.visited)}
       end)
 
-    %{state | instructions: [{:condition_end, node} | state.instructions]}
+    %{state | visited: branch_visited, instructions: [{:condition_end, node} | state.instructions]}
   end
 
   defp traverse_node(%{type: "instruction"} = node, state) do
@@ -215,20 +221,23 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
   defp traverse_dialogue_with_choices(node, responses, state) do
     # Build pin lookup once (O(R+C) instead of O(R*C))
-    targets_by_pin = outgoing_by_pin(state, node.id)
+    targets_by_pin = outgoing_by_dialogue_pin(state, node)
     state = %{state | instructions: [{:dialogue, node} | state.instructions]}
     state = %{state | instructions: [{:choices_start, node} | state.instructions]}
+    branch_base_visited = state.visited
 
-    state =
+    {state, branch_visited} =
       responses
       |> Enum.with_index()
-      |> Enum.reduce(state, fn {resp, idx}, acc ->
+      |> Enum.reduce({state, branch_base_visited}, fn {resp, idx}, {acc, visited_acc} ->
+        acc = %{acc | visited: branch_base_visited}
         acc = %{acc | instructions: [{:choice, resp, idx} | acc.instructions]}
-        pin = "response_#{resp["id"]}"
-        traverse_pin_targets(acc, targets_by_pin, pin)
+        pin = resp["id"]
+        acc = traverse_pin_targets(acc, targets_by_pin, pin)
+        {acc, MapSet.union(visited_acc, acc.visited)}
       end)
 
-    %{state | instructions: [{:choices_end, node} | state.instructions]}
+    %{state | visited: branch_visited, instructions: [{:choices_end, node} | state.instructions]}
   end
 
   defp traverse_pin_targets(state, targets_by_pin, pin) do
@@ -295,6 +304,21 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
     |> Enum.group_by(fn {_target, pin, _conn} -> pin end)
   end
 
+  defp outgoing_by_dialogue_pin(state, node) do
+    state
+    |> outgoing_by_pin(node.id)
+    |> Enum.reduce(%{}, fn {source_pin, targets}, acc ->
+      canonical_pin =
+        NodeConnectionRules.canonical_output_pin(
+          "dialogue",
+          node.data || %{},
+          source_pin
+        )
+
+      Map.update(acc, canonical_pin, targets, &(&1 ++ targets))
+    end)
+  end
+
   defp resolve_jump_target(node, state) do
     # Jump node data may reference a hub_id or target flow
     data = node.data || %{}
@@ -309,7 +333,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
         {Helpers.shortcut_to_identifier(flow_shortcut), state}
 
       true ->
-        resolve_connected_jump_target(node, state)
+        {"unknown", state}
     end
   end
 
@@ -322,24 +346,6 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
       nil ->
         {Helpers.shortcut_to_identifier("hub_#{hub_ref}"), state}
-    end
-  end
-
-  defp resolve_connected_jump_target(node, state) do
-    {connected_jump_label(node, state), state}
-  end
-
-  defp connected_jump_label(node, state) do
-    case outgoing(state, node.id) do
-      [{target_id, _, _} | _] -> hub_label_or_node_identifier(state, target_id)
-      [] -> "unknown"
-    end
-  end
-
-  defp hub_label_or_node_identifier(state, target_id) do
-    case hub_target(state, target_id) do
-      {_hub_id, hub_label} -> hub_label
-      nil -> Helpers.shortcut_to_identifier("node_#{target_id}")
     end
   end
 

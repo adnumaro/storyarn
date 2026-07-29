@@ -241,6 +241,34 @@ defmodule StoryarnWeb.ExportControllerTest do
 
       assert conn.status == 422
       assert conn.resp_body == "Export failed"
+      assert get_resp_header(conn, "x-storyarn-export-error") == ["serialization"]
+    end
+
+    test "marks validation failures separately from serializer failures", %{
+      conn: conn,
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Invalid Artifact"})
+      entry = Enum.find(Storyarn.Flows.list_nodes(flow.id), &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Hello", "localization_id" => nil, "responses" => []}
+        })
+
+      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+      connection_fixture(flow, entry, dialogue)
+      connection_fixture(flow, dialogue, exit_node)
+
+      corrupt_data = Map.put(dialogue.data, "localization_id", nil)
+      dialogue |> Ecto.Changeset.change(data: corrupt_data) |> Repo.update!()
+
+      conn = get(conn, export_url(project, "ink"))
+
+      assert conn.status == 422
+      assert conn.resp_body == "Export failed"
+      assert get_resp_header(conn, "x-storyarn-export-error") == ["validation"]
     end
 
     test "returns 404 for non-member project", %{conn: conn} do

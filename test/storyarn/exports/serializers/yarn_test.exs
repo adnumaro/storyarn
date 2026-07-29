@@ -720,9 +720,30 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       assert source =~ "<<detour side_quest_rescue>>"
     end
 
-    test "subflow with referenced_flow_id resolves target flow shortcut", %{project: project} do
+    test "subflow with flow_id alias resolves target flow shortcut", %{project: project} do
       target_flow = flow_fixture(project, %{name: "Side Quest"})
       caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      subflow =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"flow_id" => target_flow.id}
+        })
+
+      connection_fixture(caller_flow, caller_entry, subflow)
+
+      source = yarn_source(export_yarn(project))
+      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
+      assert source =~ "<<detour #{target}>>"
+    end
+
+    test "partial export preserves the shortcut of an external subflow target", %{
+      project: project
+    } do
+      target_flow = flow_fixture(project, %{name: "Side Quest", shortcut: "side-quest"})
+      caller_flow = flow_fixture(project, %{name: "Main", shortcut: "main"})
       caller_flow = reload_flow(caller_flow)
       caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
 
@@ -734,9 +755,11 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
 
       connection_fixture(caller_flow, caller_entry, subflow)
 
-      source = yarn_source(export_yarn(project))
-      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
-      assert source =~ "<<detour #{target}>>"
+      opts = %{default_opts() | flow_ids: [caller_flow.id]}
+      source = project |> export_yarn(opts) |> yarn_source()
+
+      assert source =~ "<<detour side_quest>>"
+      refute source =~ "title: side_quest"
     end
 
     test "subflow without shortcut uses fallback id", %{project: project} do
@@ -1086,6 +1109,28 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       source = yarn_source(export_yarn(project))
       assert source =~ "<<jump act2_beginning>>"
     end
+
+    test "jump resolves a direct flow id before a stale shortcut", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Right Target", shortcut: "right-target"})
+      flow = flow_fixture(project, %{name: "Jump By Id"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      jump =
+        node_fixture(flow, %{
+          type: "jump",
+          data: %{
+            "target_flow_id" => target_flow.id,
+            "target_flow_shortcut" => "stale-target"
+          }
+        })
+
+      connection_fixture(flow, entry, jump)
+
+      source = yarn_source(export_yarn(project))
+      assert source =~ "<<jump right_target>>"
+      refute source =~ "<<jump stale_target>>"
+    end
   end
 
   # =============================================================================
@@ -1351,7 +1396,7 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       hub =
         node_fixture(flow, %{
           type: "hub",
-          data: %{"label" => "checkpoint"}
+          data: %{"hub_id" => "checkpoint", "label" => "checkpoint"}
         })
 
       jump =

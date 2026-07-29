@@ -19,6 +19,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.ExpressionTranspiler
   alias Storyarn.Exports.LocalizationCatalog
+  alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.Helpers
   alias Storyarn.Localization.SourceContract
 
@@ -44,7 +45,8 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
     variables = Helpers.collect_variables(sheets)
     speaker_map = Helpers.build_speaker_map(sheets)
 
-    dialogue_csv = build_dialogue_csv(flows, speaker_map)
+    flow_shortcuts_by_id = Helpers.flow_shortcuts_by_id(project_data, flows)
+    dialogue_csv = build_dialogue_csv(flows, speaker_map, flow_shortcuts_by_id)
     characters_csv = build_characters_csv(sheets)
     variables_csv = build_variables_csv(variables)
     metadata = build_metadata(flows, sheets, variables, speaker_map)
@@ -68,7 +70,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
   # Dialogue Lines CSV
   # ---------------------------------------------------------------------------
 
-  defp build_dialogue_csv(flows, speaker_map) do
+  defp build_dialogue_csv(flows, speaker_map, flow_shortcuts_by_id) do
     headers = [
       "Name",
       "ConversationId",
@@ -92,18 +94,18 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
       Enum.flat_map(flows, fn flow ->
         conv_id = Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")
         conn_graph = Helpers.connection_graph(flow)
-        build_flow_rows(flow, conv_id, conn_graph, speaker_map, counter)
+        build_flow_rows(flow, conv_id, conn_graph, speaker_map, flow_shortcuts_by_id, counter)
       end)
 
     Helpers.build_csv(headers, rows)
   end
 
-  defp build_flow_rows(flow, conv_id, conn_graph, speaker_map, counter) do
+  defp build_flow_rows(flow, conv_id, conn_graph, speaker_map, flow_shortcuts_by_id, counter) do
     # Build a mapping from node_id to row name for cross-referencing
     node_row_map = build_node_row_map(flow.nodes, counter)
 
     Enum.flat_map(flow.nodes, fn node ->
-      build_node_rows(node, conv_id, conn_graph, speaker_map, node_row_map)
+      build_node_rows(node, conv_id, conn_graph, speaker_map, flow_shortcuts_by_id, node_row_map)
     end)
   end
 
@@ -116,13 +118,21 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
     end)
   end
 
-  defp build_node_rows(node, conv_id, conn_graph, speaker_map, node_row_map) do
+  defp build_node_rows(node, conv_id, conn_graph, speaker_map, flow_shortcuts_by_id, node_row_map) do
     targets = Helpers.outgoing_targets(node.id, conn_graph)
     next_lines = Enum.map_join(targets, "|", fn {tid, _pin, _conn} -> node_row_map[tid] || "" end)
     data = node.data || %{}
     row_name = node_row_map[node.id] || ""
 
-    row_context = %{data: data, conv_id: conv_id, row_name: row_name, next_lines: next_lines, node: node}
+    row_context = %{
+      data: data,
+      conv_id: conv_id,
+      row_name: row_name,
+      next_lines: next_lines,
+      node: node,
+      flow_shortcuts_by_id: flow_shortcuts_by_id
+    }
+
     build_typed_rows(node.type, row_context, speaker_map)
   end
 
@@ -180,7 +190,11 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
   end
 
   defp build_typed_rows("jump", ctx, _speaker_map) do
-    target = ctx.data["hub_id"] || ctx.data["target_flow_shortcut"] || ""
+    target =
+      FlowControlResolver.target_hub_id(ctx.data) ||
+        ctx.flow_shortcuts_by_id[FlowControlResolver.referenced_flow_id(ctx.data)] ||
+        FlowControlResolver.referenced_flow_shortcut(ctx.data) || ""
+
     [simple_row(ctx, "jump", "", "", to_string(target))]
   end
 

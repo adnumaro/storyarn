@@ -400,6 +400,41 @@ defmodule Storyarn.Exports.Serializers.HelpersTest do
       assert length(resp["instruction_assignments"]) == 1
     end
 
+    test "prefers structured assignments over legacy instruction JSON" do
+      structured = [%{"variable" => "health", "operator" => "set", "value" => "100"}]
+      legacy = Jason.encode!([%{"variable" => "mana", "operator" => "set", "value" => "0"}])
+
+      data = %{
+        "responses" => [
+          %{
+            "id" => "r1",
+            "instruction_assignments" => structured,
+            "instruction" => legacy
+          }
+        ]
+      }
+
+      [resp] = Helpers.dialogue_responses(data)
+      assert resp["instruction_assignments"] == structured
+    end
+
+    test "falls back to legacy instruction JSON when structured assignments are empty" do
+      legacy = [%{"variable" => "health", "operator" => "set", "value" => "100"}]
+
+      data = %{
+        "responses" => [
+          %{
+            "id" => "r1",
+            "instruction_assignments" => [],
+            "instruction" => Jason.encode!(legacy)
+          }
+        ]
+      }
+
+      [resp] = Helpers.dialogue_responses(data)
+      assert resp["instruction_assignments"] == legacy
+    end
+
     test "returns empty list for invalid JSON instruction" do
       data = %{"responses" => [%{"id" => "r1", "text" => "X", "instruction" => "not json"}]}
       [resp] = Helpers.dialogue_responses(data)

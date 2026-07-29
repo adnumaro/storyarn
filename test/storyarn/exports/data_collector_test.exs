@@ -164,6 +164,23 @@ defmodule Storyarn.Exports.DataCollectorTest do
       assert counts.localized_texts == length(data.localization.strings)
     end
 
+    test "keeps active flow identifiers available outside a partial selection", %{
+      project: project
+    } do
+      included = flow_fixture(project, %{name: "Included", shortcut: "included"})
+      excluded = flow_fixture(project, %{name: "Excluded", shortcut: "excluded"})
+
+      opts = %ExportOptions{format: :ink, flow_ids: [included.id]}
+      data = DataCollector.collect(project.id, opts)
+
+      assert Enum.map(data.flows, & &1.id) == [included.id]
+
+      assert data.flow_shortcuts_by_id == %{
+               to_string(included.id) => "included",
+               to_string(excluded.id) => "excluded"
+             }
+    end
+
     test "engine localization is empty when flow and sheet sections are disabled", %{project: project} do
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})

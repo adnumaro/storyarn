@@ -302,6 +302,27 @@ defmodule Storyarn.Exports.ExpressionTranspiler.BaseTest do
       {:ok, result, _} = TestEmitter.transpile_condition(condition, %{})
       assert result == "mc_jaime_health == 50"
     end
+
+    test "empty branches retain their runtime true semantics inside any conditions" do
+      empty = make_block("empty", "all", [])
+      valid = make_block("valid", "all", [rule()])
+      condition = block_condition("any", [empty, valid])
+
+      {:ok, result, _} = TestEmitter.transpile_condition(condition, %{})
+
+      assert result == "true OR mc_jaime_health == 50"
+    end
+
+    test "nested empty branches remain neutral inside all conditions" do
+      empty = make_block("empty", "all", [])
+      valid = make_block("valid", "all", [rule()])
+      group = make_group("group", "all", [empty, valid])
+      condition = block_condition("all", [group])
+
+      {:ok, result, _} = TestEmitter.transpile_condition(condition, %{})
+
+      assert result == "(true AND mc_jaime_health == 50)"
+    end
   end
 
   # =============================================================================

@@ -73,6 +73,13 @@ defmodule Storyarn.Flows.Condition do
   def operators_for_type(_), do: @text_operators
 
   @doc """
+  Returns true when an operator is part of the persisted condition contract.
+  """
+  @spec valid_operator?(String.t()) :: boolean()
+  def valid_operator?(operator) when operator in @all_operators, do: true
+  def valid_operator?(_operator), do: false
+
+  @doc """
   Returns a human-readable label for an operator.
   """
   @spec operator_label(String.t()) :: String.t()

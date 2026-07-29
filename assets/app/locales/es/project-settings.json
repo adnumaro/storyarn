@@ -329,6 +329,8 @@
       "validating": "Validando…",
       "download": "Descargar .{ext}",
       "download_blocked": "Resuelve los problemas bloqueantes y vuelve a validar antes de descargar.",
+      "download_failed": "No se ha podido descargar la exportación. Inténtalo de nuevo.",
+      "download_failed_validation": "No se ha podido generar la exportación. Vuelve a validar y revisa los hallazgos bloqueantes.",
       "download_note": "El proyecto no se modifica. La exportación crea un archivo local nuevo.",
       "passed": "Correcto",
       "warnings": "Advertencias",
@@ -346,6 +348,7 @@
       "error_findings": "Problemas bloqueantes",
       "warning_findings": "Advertencias",
       "info_findings": "Información adicional",
+      "more_findings": "No se muestran {count} hallazgos más.",
       "no_issues": "No se encontraron problemas. El proyecto está listo para exportar."
     }
   }

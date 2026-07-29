@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Imports
@@ -27,6 +28,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   defp visible_formats(view), do: format_config(view)["formats"]
   defp download_url(view), do: export_config(view)["downloadUrl"]
   defp validation_status(view), do: (export_config(view)["validation"] || %{})["status"]
+  defp validation_stale?(view), do: (export_config(view)["validation"] || %{})["stale"]
   defp entity_counts(view), do: export_config(view)["sectionConfig"]["entityCounts"]
 
   setup :register_and_log_in_user
@@ -267,40 +269,85 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       render_click(view, "validate_export", %{})
       status = validation_status(view)
+      refute validation_stale?(view)
 
       render_click(view, "set_localization_policy", %{"policy" => "preview"})
       assert validation_status(view) == status
+      assert validation_stale?(view)
+
+      render_click(view, "validate_export", %{})
+      refute validation_stale?(view)
     end
 
-    test "switching format preserves validation findings", %{conn: conn, project: project} do
+    test "format-specific findings stay visible but stale until the new format is validated", %{
+      conn: conn,
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Variables"})
+      flow = flow_fixture(project, %{name: "Stale References"})
+
+      node_fixture(flow, %{
+        type: "condition",
+        data: %{"condition" => condition(sheet.shortcut, "missing_variable")}
+      })
+
       {:ok, view, _html} = live(conn, export_url(project))
 
       render_click(view, "validate_export", %{})
-      status = validation_status(view)
 
-      render_click(view, "set_format", %{"format" => "yarn"})
-      assert validation_status(view) == status
+      assert validation_status(view) == "errors"
+      refute validation_stale?(view)
+      assert finding_rule?(view, "errors", "stale_variable_reference")
+
+      render_click(view, "set_format", %{"format" => "unity"})
+
+      assert validation_status(view) == "errors"
+      assert validation_stale?(view)
+      assert finding_rule?(view, "errors", "stale_variable_reference")
+      assert download_url(view) =~ "/export/unity"
+
+      render_click(view, "validate_export", %{})
+
+      assert validation_status(view) == "warnings"
+      refute validation_stale?(view)
+      assert finding_rule?(view, "warnings", "stale_variable_reference")
+
+      render_click(view, "set_format", %{"format" => "ink"})
+
+      assert validation_status(view) == "warnings"
+      assert validation_stale?(view)
+      assert finding_rule?(view, "warnings", "stale_variable_reference")
+
+      render_click(view, "validate_export", %{})
+
+      assert validation_status(view) == "errors"
+      refute validation_stale?(view)
+      assert finding_rule?(view, "errors", "stale_variable_reference")
     end
 
-    test "changing export settings preserves validation findings", %{
+    test "changing export settings preserves findings but invalidates their verdict", %{
       conn: conn,
       project: project
     } do
       {:ok, view, _html} = live(conn, export_url(project))
 
-      render_click(view, "validate_export", %{})
-      status = validation_status(view)
-      render_click(view, "toggle_section", %{"section" => "sheets"})
-      assert validation_status(view) == status
+      changes = [
+        {"toggle_section", %{"section" => "sheets"}},
+        {"set_asset_mode", %{"mode" => "embedded"}},
+        {"toggle_option", %{"option" => "validate_before_export"}},
+        {"toggle_option", %{"option" => "pretty_print"}}
+      ]
 
-      render_click(view, "set_asset_mode", %{"mode" => "embedded"})
-      assert validation_status(view) == status
+      for {event, params} <- changes do
+        render_click(view, "validate_export", %{})
+        status = validation_status(view)
+        refute validation_stale?(view)
 
-      render_click(view, "toggle_option", %{"option" => "validate_before_export"})
-      assert validation_status(view) == status
+        render_click(view, event, params)
 
-      render_click(view, "toggle_option", %{"option" => "pretty_print"})
-      assert validation_status(view) == status
+        assert validation_status(view) == status
+        assert validation_stale?(view)
+      end
     end
   end
 
@@ -311,6 +358,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       render_click(view, "validate_export", %{})
 
       assert validation_status(view) in ~w(passed warnings errors)
+      refute validation_stale?(view)
     end
 
     test "serializes actionable findings with rule, count, and dashboard link", %{
@@ -391,5 +439,34 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert import_state(view)["step"] == "upload"
       assert download_url(view) =~ "/export/ink"
     end
+  end
+
+  defp finding_rule?(view, severity, rule) do
+    view
+    |> export_config()
+    |> get_in(["validation", severity])
+    |> Enum.any?(&(&1["rule"] == rule))
+  end
+
+  defp condition(sheet, variable) do
+    %{
+      "logic" => "all",
+      "blocks" => [
+        %{
+          "id" => "block_1",
+          "type" => "block",
+          "logic" => "all",
+          "rules" => [
+            %{
+              "id" => "rule_1",
+              "sheet" => sheet,
+              "variable" => variable,
+              "operator" => "equals",
+              "value" => "value"
+            }
+          ]
+        }
+      ]
+    }
   end
 end

@@ -377,6 +377,24 @@ defmodule Storyarn.Exports.Serializers.ArticyXMLTest do
       assert xml =~ "<Jump"
       assert xml =~ ~s(Target="some-hub-id")
     end
+
+    test "jump resolves a direct flow id before a stale shortcut", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Right Target", shortcut: "right-target"})
+      flow = flow_fixture(project, %{name: "Jump By Id"})
+
+      _jump =
+        node_fixture(flow, %{
+          type: "jump",
+          data: %{
+            "target_flow_id" => target_flow.id,
+            "target_flow_shortcut" => "stale-target"
+          }
+        })
+
+      xml = export_xml(project)
+      assert xml =~ ~s(Target="right-target")
+      refute xml =~ ~s(Target="stale-target")
+    end
   end
 
   # =============================================================================
