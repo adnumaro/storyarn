@@ -1,0 +1,245 @@
+assets/app/test/modules/projects/settings/ExportPanel.test.ts
+  s_bf1ff561f7cafa::t_f9ea84e8892c67 264-281
+lib/storyarn/sheets.ex
+  s_bf1ff561f7cafa::t_f3388dda0d4354 1005-1007
+lib/storyarn/exports/localization_catalog.ex
+  s_bf1ff561f7cafa::t_0d6bfcb170dd67 193-196
+  s_bf1ff561f7cafa::t_6424a7af740a68 5,37-38,41-46,50-61,83,86,97,100,111-124,190,214-225
+  s_bf1ff561f7cafa::t_2bf14264d22193 47-49,80,94,110,128-132,134-138
+  s_bf1ff561f7cafa::t_018f8be81ec5a6 226
+lib/storyarn/exports/expression_transpiler/ink.ex
+  s_bf1ff561f7cafa::t_8b3192171360e0 37
+lib/storyarn/exports/expression_transpiler/yarn.ex
+  s_bf1ff561f7cafa::t_8b3192171360e0 37
+test/storyarn/references/variable_usage_delegation_test.exs
+  s_bf1ff561f7cafa::t_c69277d27105a5 116-118,123
+test/storyarn/flows/health_consolidation_test.exs
+  s_bf1ff561f7cafa::t_7b10317f6807b9 62-91,176-179,189
+  s_bf1ff561f7cafa::t_9aaadbe258f939 145-149,152,172-173,180-186,188,196-197
+  s_bf1ff561f7cafa::t_05045f93b1890e 150-151,153-171,174-175,187,190-195
+test/storyarn/exports/serializers/graph_traversal_test.exs
+  s_bf1ff561f7cafa::t_7ba761b46d471a 215,217-219,512,514-515
+  s_bf1ff561f7cafa::t_9ff3fc572752a9 68,91
+  s_bf1ff561f7cafa::t_2045c9b0610acf 231,277-412,511
+  s_bf1ff561f7cafa::t_b8e2d4573f2ec7 233-276
+  s_bf1ff561f7cafa::t_facbf4eea33714 216,220-230,513,516-524
+  s_bf1ff561f7cafa::t_f1fdbb2364f985 232,510,777
+lib/storyarn/exports/validator.ex
+  s_bf1ff561f7cafa::t_adccb9b40a0f85 15,58-60,66-68,73-80,82,84-87,99,114,118-120,124,129-146,148
+  s_bf1ff561f7cafa::t_d213136e38ba99 115-117,121-123,126,147,166,169,171-175,181,248,406,415,422-429
+  s_bf1ff561f7cafa::t_a7e6e47934814e 81,189
+  s_bf1ff561f7cafa::t_244d64da49e383 159,163-164,167-168,170,176-180,182-183,187,190,207,213,220,222-226,230-231,241-247
+  s_bf1ff561f7cafa::t_3a70dccabc0171 56,71,158,161,186,188
+  s_bf1ff561f7cafa::t_9ffd5ad483b1f0 125,127,155,404
+lib/storyarn/exports/serializers/godot_dialogic.ex
+  s_bf1ff561f7cafa::t_01e027ee99ac03 59-68
+  s_bf1ff561f7cafa::t_896195f9c86725 327-328,330
+test/storyarn/exports/serializers/ink_test.exs
+  s_bf1ff561f7cafa::t_2fd9d689dbea60 200-204
+  s_bf1ff561f7cafa::t_e3cfcaef7d7ffe 47-57,725-728,734,738,740-741,744,746-747,750-753,755-756,758-767
+  s_bf1ff561f7cafa::t_aec3058dff4b8f 6,15,63,69,73,79,134-199,206
+  s_bf1ff561f7cafa::t_0d6bfcb170dd67 64-68,70-72,74-78
+  s_bf1ff561f7cafa::t_0ee755995f0348 205,207
+test/storyarn/flows/node_label_test.exs
+  s_bf1ff561f7cafa::t_f9ea84e8892c67 48-58,60-62,64-72,74-77
+  s_bf1ff561f7cafa::t_a37dea0ce49a70 59,63,73
+lib/storyarn/flows/node_label.ex
+  s_bf1ff561f7cafa::t_a37dea0ce49a70 40
+  s_bf1ff561f7cafa::t_f9ea84e8892c67 4-5,32-39,41-42,49
+  s_bf1ff561f7cafa::t_6b5a23a5d0d880 17
+test/storyarn/exports/serializers/yarn_test.exs
+  s_bf1ff561f7cafa::t_2fd9d689dbea60 404-408
+  s_bf1ff561f7cafa::t_0d6bfcb170dd67 64-68,70-72,74-78
+  s_bf1ff561f7cafa::t_8800678b86e956 63,69,73,79,341-403
+  s_bf1ff561f7cafa::t_f22e998bd8a861 231-314,409
+  s_bf1ff561f7cafa::t_e751d3d2d73fd1 47-57,959-962,968,972-977,984-987,989-990,992-993,995-1001
+  s_bf1ff561f7cafa::t_d6f57d41207046 410
+test/storyarn/exports/serializers/yarn_validation_test.exs
+  s_bf1ff561f7cafa::t_7ff270e2cfeef1 285
+  s_bf1ff561f7cafa::t_384c112b939852 400,403,413-420
+  s_bf1ff561f7cafa::t_d54470e8b0bce0 505
+  s_bf1ff561f7cafa::t_57736e93e7c71a 214-228,231-250,265-266,269-272,274-275,279-284,289-293,454-504,506-508
+  s_bf1ff561f7cafa::t_b8e2d4573f2ec7 251-252,261-264,267-268,276,278,286
+  s_bf1ff561f7cafa::t_2401b86f07be07 229-230
+  s_bf1ff561f7cafa::t_1f55a7b64800c2 253-260,273,277,287-288
+  s_bf1ff561f7cafa::t_021fb6b94556bc 380-399,401-402,404-412,421-453,509
+  s_bf1ff561f7cafa::t_c892c549fbbd94 510
+lib/storyarn/sheets/sheet_queries.ex
+  s_bf1ff561f7cafa::t_04296f81b1bc78 1264,1270,1275,1278-1281
+  s_bf1ff561f7cafa::t_afaca0a8c62cdb 1143-1177,1181-1182,1186-1190,1195,1210,1218,1250
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_bf1ff561f7cafa::t_9986c8025f8c88 290-296,373-377,502-504
+  s_bf1ff561f7cafa::t_962e05da4c73a7 11,390-430
+  s_bf1ff561f7cafa::t_7d0a786e4f1dfd 431-432
+  s_bf1ff561f7cafa::t_ad1e265420d066 505-506
+test/storyarn/exports/validator_test.exs
+  s_bf1ff561f7cafa::t_7aae6ab0765120 10,657-695,697-699,701-713,715-719
+  s_bf1ff561f7cafa::t_0bec5bc529f8c6 414-417,419
+  s_bf1ff561f7cafa::t_6f5b2394d0b89f 101,107-108,118,124-125,142,148-149,166,172-173,189,195-196,208,214-215,227-233,265-266,292-298,311-317,330-336,728-734
+  s_bf1ff561f7cafa::t_b8deeb9c0405c1 432-471
+  s_bf1ff561f7cafa::t_d0278646ad013e 522,529,538-539
+  s_bf1ff561f7cafa::t_a7e6e47934814e 696,700,714
+  s_bf1ff561f7cafa::t_5194b08e550c80 540
+  s_bf1ff561f7cafa::t_a14192473a17b7 720-721
+  s_bf1ff561f7cafa::t_f46ac03ce6ac6c 735-736
+test/storyarn/exports/expression_transpiler/instruction_test.exs
+  s_bf1ff561f7cafa::t_89b1902c100198 331-349
+lib/storyarn/exports/data_collector.ex
+  s_bf1ff561f7cafa::t_a7e6e47934814e 82,172-178
+  s_bf1ff561f7cafa::t_010fde1a20815f 74-75,80
+  s_bf1ff561f7cafa::t_a2c54a7193df1a 181-183
+  s_bf1ff561f7cafa::t_8199b87807ab8d 179-180
+lib/storyarn/exports/expression_transpiler/base.ex
+  s_bf1ff561f7cafa::t_2710c9e7261e7d 130-132,134-136,200-201
+  s_bf1ff561f7cafa::t_2c37f8a8e9d304 149
+  s_bf1ff561f7cafa::t_8b3192171360e0 167-168
+assets/app/locales/es/project-settings.json
+  s_bf1ff561f7cafa::t_f9ea84e8892c67 351
+lib/storyarn/references.ex
+  s_bf1ff561f7cafa::t_f3388dda0d4354 57
+lib/storyarn/localization.ex
+  s_bf1ff561f7cafa::t_d213136e38ba99 157
+lib/storyarn/localization/text_crud.ex
+  s_bf1ff561f7cafa::t_d213136e38ba99 630-639,642-647
+  s_bf1ff561f7cafa::t_0c97ba5d84595e 640-641,648-654,689,691,717,721-724
+lib/storyarn/flows/flow_stats.ex
+  s_bf1ff561f7cafa::t_4075edddc2c430 125-126,128-134,137,140-141,143-144
+  s_bf1ff561f7cafa::t_d2e6b7bdfa73ac 127,135-136,138-139,142,151-153,160-164
+  s_bf1ff561f7cafa::t_eaf4b6cc00906c 150
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_bf1ff561f7cafa::t_595624957d3214 384,389,394,399,404,419,888,893,898,1024-1025,1030,1035,1042,1047,1054,1059,1066,1073,1080,1085,1090,1095,1100,1105,1110,1115,1120,1125,1130,1135,1140,1145,1150,1155,1160,1165,1170,1175,1180,1185,1190,1195,1202,1207,1212,1217,1222,1232,1237,1241-1250
+test/storyarn/exports/expression_transpiler/base_test.exs
+  s_bf1ff561f7cafa::t_c823b930e319f4 306,313,316,324
+test/storyarn/exports/artifact_validator_test.exs
+  s_bf1ff561f7cafa::t_74ee3474f9a2aa 820-835,838-851,858,860-861,864,873
+  s_bf1ff561f7cafa::t_ff933dd30ce3ab 7,85,106-124
+  s_bf1ff561f7cafa::t_b244a2a98d1585 152,859
+  s_bf1ff561f7cafa::t_48781b083f0ebe 817,836,854,857,913
+  s_bf1ff561f7cafa::t_05f698f1e1658e 14,17,129-151,153-167
+  s_bf1ff561f7cafa::t_311d82db45f7ab 837,852-853,855-856,866-867,901,906
+  s_bf1ff561f7cafa::t_295eef707f6598 862-863,865,868-872,911,915
+  s_bf1ff561f7cafa::t_fcce7c3f0aa175 241-249
+  s_bf1ff561f7cafa::t_20bc420a008227 68,105,125-128,982-983,1021-1044,1049-1050
+  s_bf1ff561f7cafa::t_bf4d299deed517 257-261
+  s_bf1ff561f7cafa::t_f0a4e5d6a263d2 168,814-815,818-819,907,962,965-966,969,972-981,984-991,994-1020,1051-1100,1106-1107,1118-1119
+  s_bf1ff561f7cafa::t_e8a3283d6d6097 963,1120
+  s_bf1ff561f7cafa::t_5c34e326900724 170-240,250-256,262-276,351-360,372-381,391-395
+  s_bf1ff561f7cafa::t_ba84bb44c35123 169,396,813,816,900,902,909,912,914,961,964,1105,1117
+lib/storyarn/flows.ex
+  s_bf1ff561f7cafa::t_d2e6b7bdfa73ac 1117
+  s_bf1ff561f7cafa::t_4075edddc2c430 1116,1118
+test/storyarn/sheets/sheet_queries_test.exs
+  s_bf1ff561f7cafa::t_c69277d27105a5 1708,1711,1748-1779
+  s_bf1ff561f7cafa::t_021502003023e9 1780
+test/storyarn/exports/localization_catalog_test.exs
+  s_bf1ff561f7cafa::t_a77fb4ada983b6 85-112,151-165
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_bf1ff561f7cafa::t_595624957d3214 384,389,394,399,404,419,888,893,898,1024-1025,1030,1035,1042,1047,1054,1059,1066,1073,1080,1085,1090,1095,1100,1105,1110,1115,1120,1125,1130,1135,1140,1145,1150,1155,1160,1165,1170,1175,1180,1185,1190,1195,1202,1207,1212,1217,1222,1232,1237,1241-1250
+lib/storyarn/flows/structural_analysis/topology.ex
+  s_bf1ff561f7cafa::t_4075edddc2c430 49-97
+  s_bf1ff561f7cafa::t_d1ef56837efd52 98-99
+test/storyarn/exports/serializers/godot_dialogic_test.exs
+  s_bf1ff561f7cafa::t_efc3f579d79fc3 732-735,741,745-750,757-760,762-763,765-766,768-771,773-774
+  s_bf1ff561f7cafa::t_2fd9d689dbea60 198-202
+  s_bf1ff561f7cafa::t_0d6bfcb170dd67 58-62,64-66,68-72
+  s_bf1ff561f7cafa::t_3d4ec008e11049 6,14,57,63,67,73,132-197,204
+  s_bf1ff561f7cafa::t_6892708d328875 203,205
+test/storyarn/exports/serializers/ink_validation_test.exs
+  s_bf1ff561f7cafa::t_021fb6b94556bc 298-317,319-320,322-330,339-371
+  s_bf1ff561f7cafa::t_efcfe33a096557 318,321,331-338
+test/storyarn/exports/data_collector_test.exs
+  s_bf1ff561f7cafa::t_a7e6e47934814e 312
+  s_bf1ff561f7cafa::t_010fde1a20815f 281-298
+  s_bf1ff561f7cafa::t_73d6d8afd7c0ee 299-311,313-314
+lib/storyarn/exports/serializers/graph_traversal.ex
+  s_bf1ff561f7cafa::t_476490ca7a0e3c 51,83,85,116-117,123
+  s_bf1ff561f7cafa::t_ebcb5a22b759e4 52-68,97,100-101,103,333,397
+  s_bf1ff561f7cafa::t_33973483294ded 76,84,94-95,98-99,151,171,174-181,321,324-332,334-351,353-358,361-396,398,402-411,414,416-418,422,425,428-429,431-435,437,443-448,450-451,453-454,456-457,459
+  s_bf1ff561f7cafa::t_02e6f44fdc01ab 173,182,352,412,415,419-421,423-424,426-427,430,438-441,449,452,455,458,460
+  s_bf1ff561f7cafa::t_b4442d00c86b71 118
+  s_bf1ff561f7cafa::t_7ba761b46d471a 122
+  s_bf1ff561f7cafa::t_ca0149a6d29dc4 146-148,150,152-159,163-170,172,183-185
+  s_bf1ff561f7cafa::t_2d5b83321d8b23 359-360
+  s_bf1ff561f7cafa::t_7a018eaa24eed5 186
+test/storyarn/exports/expression_transpiler/condition_test.exs
+  s_bf1ff561f7cafa::t_8b3192171360e0 631-644
+  s_bf1ff561f7cafa::t_89b1902c100198 512-524,528-531
+  s_bf1ff561f7cafa::t_0323b61d850585 525-527
+  s_bf1ff561f7cafa::t_efe63202345e1b 532,645
+lib/storyarn/exports/serializers/yarn.ex
+  s_bf1ff561f7cafa::t_60f7e68f08d12b 533-543,547-548
+  s_bf1ff561f7cafa::t_f01f0cad94d99b 639-640
+  s_bf1ff561f7cafa::t_7ba761b46d471a 172
+  s_bf1ff561f7cafa::t_01e027ee99ac03 102,169,476,615-620,624
+  s_bf1ff561f7cafa::t_8accf3f57d9fd4 171
+  s_bf1ff561f7cafa::t_016d3c7af0ad8e 58,66-73,81-82,108-118,123-131,136-154,173-177,466-475,477-481
+  s_bf1ff561f7cafa::t_896195f9c86725 455-457,459
+  s_bf1ff561f7cafa::t_fdf9bfa7748aab 482-483
+lib/storyarn/exports/serializers/ink.ex
+  s_bf1ff561f7cafa::t_896195f9c86725 427-428,430
+  s_bf1ff561f7cafa::t_01e027ee99ac03 71-81
+lib/storyarn/exports/artifact_validator.ex
+  s_bf1ff561f7cafa::t_09aef6d664b1e7 86,93,2120
+  s_bf1ff561f7cafa::t_a70f7bd601de62 1445-1446,1448,1450-1456,1459-1465
+  s_bf1ff561f7cafa::t_05cc6a114d6c65 1476,1481-1503,1962-1968,1973-1980
+  s_bf1ff561f7cafa::t_8e19a7cbfe1f62 23,29,113,115-117,119-121,124-132,136,139,141-142,145-148,150-152,155-158,160,167,171-201
+  s_bf1ff561f7cafa::t_e6d6152e84be6b 66-68,103,106-107,123,1311,1313,1328,1334,1341-1342,1344-1353,1355,2123,2130,2219-2220
+  s_bf1ff561f7cafa::t_fc8bb101534825 2103,2173
+  s_bf1ff561f7cafa::t_82918cf6cb44b9 1929-1932,1935,1937-1942,1958-1960,2193,2201,2204
+  s_bf1ff561f7cafa::t_8daf606595d624 2114-2115,2132,2134-2135,2137-2139
+  s_bf1ff561f7cafa::t_e67ef1e12a846b 143-144,161-163,1327,1356-1362,1365,1367,1381-1384,2124-2129,2131
+  s_bf1ff561f7cafa::t_ef3dcdff767785 1354
+  s_bf1ff561f7cafa::t_65164375713e0e 62,64-65,71-72,75-79,81-85,87-92,94-95,102,104-105,108
+  s_bf1ff561f7cafa::t_48781b083f0ebe 1933-1934,1944-1945,1947-1957,1961,2188-2192
+  s_bf1ff561f7cafa::t_dfb0e81bdd1864 2133,2136
+  s_bf1ff561f7cafa::t_311d82db45f7ab 2211
+  s_bf1ff561f7cafa::t_295eef707f6598 1438
+  s_bf1ff561f7cafa::t_7959ffe57e5beb 1472-1475,1477-1480,1504-1549
+  s_bf1ff561f7cafa::t_d213136e38ba99 69-70,96-101
+  s_bf1ff561f7cafa::t_c82e77a979a50d 25,122,149,154
+  s_bf1ff561f7cafa::t_8b3192171360e0 63,80,110-111,118,887,889,2116-2119
+  s_bf1ff561f7cafa::t_72d4a1690608ba 1314-1318,1323-1326,1329,1335,1343,1363-1364,1366,1368-1380,1385-1386
+  s_bf1ff561f7cafa::t_fb5398d8db52f3 17,133-135,137-138,140,153,159,164-166,168-170
+  s_bf1ff561f7cafa::t_20bc420a008227 1928,1936,1943,1981-1982,2104-2106,2108-2112,2194-2200,2202-2203,2205-2210,2212-2218
+  s_bf1ff561f7cafa::t_15fca6854610d6 112
+  s_bf1ff561f7cafa::t_88bccec29a8c30 1983
+  s_bf1ff561f7cafa::t_f73baf5b1c4b0e 2113
+assets/app/test/locales/ProjectSettingsExportLabels.test.ts
+  s_bf1ff561f7cafa::t_f9ea84e8892c67 1-21
+assets/app/locales/en/project-settings.json
+  s_bf1ff561f7cafa::t_f9ea84e8892c67 351
+lib/storyarn_web/live/export_import_live/index.ex
+  s_bf1ff561f7cafa::t_962e05da4c73a7 124-129
+test/storyarn_web/controllers/export_controller_test.exs
+  s_bf1ff561f7cafa::t_9986c8025f8c88 366-367
+test/storyarn/exports/validator_health_boundary_test.exs
+  s_bf1ff561f7cafa::t_01efb748b6ca15 20-22,41,105-107,157-165,169-173
+  s_bf1ff561f7cafa::t_ae994ce7a936a8 118-119,121,124-129,131-152,166-168
+  s_bf1ff561f7cafa::t_4210eab4aa9815 153-156,174
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_bf1ff561f7cafa::t_595624957d3214 163,448,452-456
+  s_bf1ff561f7cafa::t_aa12de0fc8f7ff 29,85,91,97,124,130,146,236,447,449-451
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_bf1ff561f7cafa::t_595624957d3214 163,448,451-456
+  s_bf1ff561f7cafa::t_aa12de0fc8f7ff 29,85,91,97,124,130,146,236,447,449-450
+priv/gettext/flows.pot
+  s_bf1ff561f7cafa::t_f152b96028d043 29,85,91,97,124,130,146,163,236,447-456
+priv/gettext/projects.pot
+  s_bf1ff561f7cafa::t_998e928560964a 384,389,394,399,404,419,888,893,898,1024-1025,1030,1035,1042,1047,1054,1059,1066,1073,1080,1085,1090,1095,1100,1105,1110,1115,1120,1125,1130,1135,1140,1145,1150,1155,1160,1165,1170,1175,1180,1185,1190,1195,1202,1207,1212,1217,1222,1232,1237,1241-1250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ba9b205cdaff5cb578fac1b2d621366ca5a8327f",
+  "prompts": {},
+  "sessions": {
+    "s_bf1ff561f7cafa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa9b1-a671-76c0-853c-e1121c368bc1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
