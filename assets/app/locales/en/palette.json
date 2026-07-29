@@ -8,8 +8,13 @@
     "capabilities_description": "Pick an operation to build it step by step.",
     "recent_operations": "Recent operations",
     "run_operation": "Run operation",
-    "change_parameter": "Change {parameter}",
-    "required_parameter": "{parameter} is required",
+    "operation_unavailable": {
+      "checking": "Checking availability…",
+      "availability_failed": "Storyarn couldn't verify whether this operation is available.",
+      "edit_content": "Requires edit access to at least one project.",
+      "commands": "No commands are available in this view.",
+      "views": "No views are available in this context."
+    },
     "operation_options_failed": "Storyarn couldn't load the available options. Try again.",
     "no_operation_options": "No matching options",
     "no_results": "No matching commands",

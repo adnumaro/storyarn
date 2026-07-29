@@ -183,6 +183,11 @@ generated from the registry cannot.
   and the pattern column is where a user learns the expert door by osmosis.
 - **Selecting from help inserts the template** with focus on the first parameter.
   Help is an alternate entry point to the same flow, never a dead end.
+- **The catalog is canonical; availability is contextual.** An operation remains
+  discoverable when the current actor or surface cannot execute it, but is disabled
+  with a concrete reason such as "No editable projects" or "No commands in this
+  view." Authorization is still enforced independently by the server. A dead-end
+  template followed by a generic empty state is not an availability explanation.
 - **The filter searches descriptions, not just names.** This is how "where is the
   option to do Z" is answered when the user's words differ from ours: typing
   "translate" surfaces `localization_gaps` through its description. Descriptions are
@@ -194,19 +199,32 @@ generated from the registry cannot.
 ## The operation registry
 
 Every capability is one entry: an id, typed parameters with their completion
-sources, a latency class, an authorization requirement, a result type, and its
-**help payload** (description, filled example, pattern equivalent). Help being part
-of the entry rather than a separate file is what keeps it from drifting. The palette is a **router** over it,
-never a special case per feature.
+sources and client/server delivery mode, a latency class, an authorization
+requirement, a result type, and its **help payload** (description, filled example,
+pattern equivalent). Help being part of the entry rather than a separate file is
+what keeps it from drifting. The palette is a **router** over it, never a special
+case per feature.
 
 Latency classes matter because they are a contract, not documentation. The
 instant class has a **budget of 150 ms** and a test that fails when it regresses —
 above that threshold the tool stops feeling like an extension of the hand, which
 is the entire point of the slice.
 
-Results **append below, never reorder above the selection.** A late result that
-reshuffles the list while someone is pressing enter makes them open the wrong
-thing.
+Client-backed completions filter immediately. Server-backed completions share the
+root search's 200 ms debounce so typing cannot amplify the authorization lookup;
+the 150 ms instant budget measures the request and adapter after that debounce.
+
+Results **append below, never reorder above the selection.** The current list stays
+mounted while a request is in flight. A reply reconciles surviving items in their
+existing order, appends new items and preserves the highlighted id when it still
+exists. A late result that reshuffles the list while someone is pressing enter
+makes them open the wrong thing.
+
+Operation analytics contain only the closed operation id and surface. Selection,
+successful completion and abandonment are distinct events; parameter values,
+queries, labels and authored content are never included. Recents likewise represent
+successful operations, not a failed request or a destructive action abandoned at
+confirmation.
 
 ### Operations in this slice
 
@@ -354,12 +372,17 @@ the rest.
 - Vitest: the guided door inserts a template per operation, advances focus on
   completion, clears one parameter without touching the others, and removes the whole
   template only on Escape or backspace-at-start.
+- ExUnit/Vitest: the catalog remains canonical while operations unavailable to the
+  actor or current surface are disabled with a localized reason and cannot open a
+  dead-end template.
 - Vitest: an empty required parameter moves focus silently and shows no banner; a
   filled-but-invalid one does show a message. Both directions asserted.
 - Vitest: arrow keys navigate results outside a template and parameters inside one,
   with IME and screen-reader coverage.
 - Vitest: the pattern door parses every documented form and never fires a template.
 - Vitest: a late result never reorders above the current selection.
+- ExUnit/Vitest: operation selection, successful completion and abandonment emit
+  content-free analytics, and only a successful completion enters recents.
 - ExUnit/Vitest: **every registered operation has a description and at least one
   example in en and es** — the test that keeps generated help honest, and that makes
   the sidebar-hiding invariant measurable.

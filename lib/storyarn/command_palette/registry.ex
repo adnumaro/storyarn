@@ -18,6 +18,7 @@ defmodule Storyarn.CommandPalette.Registry do
           id: "destination",
           type: :destination,
           completion_source: :navigation,
+          completion_mode: :server,
           required: true,
           label_key: "palette.operations.goto.parameters.destination"
         }
@@ -44,6 +45,7 @@ defmodule Storyarn.CommandPalette.Registry do
           id: "entity_type",
           type: :entity_type,
           completion_source: :entity_types,
+          completion_mode: :client,
           required: true,
           label_key: "palette.operations.create.parameters.entity_type"
         },
@@ -51,6 +53,7 @@ defmodule Storyarn.CommandPalette.Registry do
           id: "project",
           type: :project,
           completion_source: :editable_projects,
+          completion_mode: :client,
           required: true,
           label_key: "palette.operations.create.parameters.project"
         }
@@ -79,6 +82,7 @@ defmodule Storyarn.CommandPalette.Registry do
           id: "entity",
           type: :entity,
           completion_source: :deletable_entities,
+          completion_mode: :server,
           required: true,
           label_key: "palette.operations.delete.parameters.entity"
         }
@@ -105,6 +109,7 @@ defmodule Storyarn.CommandPalette.Registry do
           id: "command",
           type: :command,
           completion_source: :commands,
+          completion_mode: :client,
           required: true,
           label_key: "palette.operations.run_command.parameters.command"
         }
@@ -131,6 +136,7 @@ defmodule Storyarn.CommandPalette.Registry do
           id: "destination",
           type: :view,
           completion_source: :views,
+          completion_mode: :client,
           required: true,
           label_key: "palette.operations.open_view.parameters.destination"
         }

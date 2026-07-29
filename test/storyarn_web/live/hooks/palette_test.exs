@@ -88,6 +88,43 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
     refute Map.has_key?(payload.properties, "query")
   end
 
+  test "operation lifecycle analytics accepts only registered operation ids and content-free properties",
+       %{view: view} do
+    events = [
+      {"palette_operation_selected", "palette operation selected"},
+      {"palette_operation_completed", "palette operation completed"},
+      {"palette_operation_abandoned", "palette operation abandoned"}
+    ]
+
+    for {hook_event, analytics_event} <- events do
+      render_hook(view, hook_event, %{
+        "operation_id" => "create",
+        "surface" => "workspace",
+        "query" => "secret story content",
+        "parameter_values" => %{"project" => 123}
+      })
+
+      assert_receive {:analytics_capture, %{event: ^analytics_event} = payload}
+      assert payload.properties["operation_id"] == "create"
+      assert payload.properties["surface"] == "workspace"
+      assert Enum.sort(Map.keys(payload.properties)) == ["operation_id", "surface"]
+    end
+  end
+
+  test "operation lifecycle analytics ignores ids outside the registry", %{view: view} do
+    for hook_event <-
+          ~w(palette_operation_selected palette_operation_completed palette_operation_abandoned) do
+      render_hook(view, hook_event, %{
+        "operation_id" => "forged_story_content",
+        "surface" => "workspace"
+      })
+    end
+
+    refute_receive {:analytics_capture, %{event: "palette operation selected"}}, 100
+    refute_receive {:analytics_capture, %{event: "palette operation completed"}}, 100
+    refute_receive {:analytics_capture, %{event: "palette operation abandoned"}}, 100
+  end
+
   test "payloads are rebuilt from validated params — extra client keys never pass through",
        %{view: view} do
     render_hook(view, "palette_opened", %{
@@ -294,35 +331,6 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       refute Enum.any?(items, &(&1.id == "nav.sheet.#{hidden_sheet.id}"))
     end
 
-    test "create.project returns editable projects and filters out viewer access", %{
-      view: view,
-      user: user
-    } do
-      workspace = workspace_fixture(user)
-      editable_project = project_fixture(user, %{workspace: workspace, name: "Editable story"})
-
-      owner = user_fixture()
-      viewer_workspace = workspace_fixture(owner)
-      viewer_project = project_fixture(owner, %{workspace: viewer_workspace, name: "Viewer story"})
-      membership_fixture(viewer_project, user, "viewer")
-
-      render_hook(view, "palette_operation_options", %{
-        "operation_id" => "create",
-        "parameter_id" => "project",
-        "query" => "story",
-        "token" => 32
-      })
-
-      assert_reply(view, %{token: 32, items: items})
-
-      assert Enum.any?(items, fn item ->
-               item.id == "project:#{editable_project.id}" and
-                 item.value == editable_project.id and item.context == workspace.name
-             end)
-
-      refute Enum.any?(items, &(&1.value == viewer_project.id))
-    end
-
     test "delete.entity returns entities only from editable projects", %{
       view: view,
       user: user
@@ -363,7 +371,10 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       invalid_pairs = [
         {"forged", "destination"},
         {"goto", "forged"},
-        {"run_command", "command"}
+        {"create", "entity_type"},
+        {"create", "project"},
+        {"run_command", "command"},
+        {"open_view", "destination"}
       ]
 
       for {{operation_id, parameter_id}, token} <- Enum.with_index(invalid_pairs, 34) do
@@ -445,7 +456,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       render_hook(view, "palette_create", %{
         "type" => "sheet",
         "project_id" => project.id,
-        "operation_id" => "create-sheet-1"
+        "execution_id" => "create-sheet-1"
       })
 
       assert_reply(view, %{url: url})
@@ -466,7 +477,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       render_hook(view, "palette_create", %{
         "type" => "sheet",
         "project_id" => project.id,
-        "operation_id" => "create-localized-sheet"
+        "execution_id" => "create-localized-sheet"
       })
 
       assert_reply(view, %{url: url})
@@ -485,7 +496,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
         render_hook(view, "palette_create", %{
           "type" => type,
           "project_id" => project.id,
-          "operation_id" => "create-#{type}-1"
+          "execution_id" => "create-#{type}-1"
         })
 
         assert_reply(view, %{url: url})
@@ -494,11 +505,11 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       end
     end
 
-    test "replaying an operation id returns the original result without creating twice",
+    test "replaying an execution id returns the original result without creating twice",
          %{view: view, user: user} do
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
-      payload = %{"type" => "sheet", "project_id" => project.id, "operation_id" => "stable-create-id"}
+      payload = %{"type" => "sheet", "project_id" => project.id, "execution_id" => "stable-create-id"}
 
       render_hook(view, "palette_create", payload)
       assert_reply(view, %{url: first_url})
@@ -513,7 +524,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
          %{view: view, user: user, conn: conn, workspace_path: workspace_path} do
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
-      payload = %{"type" => "sheet", "project_id" => project.id, "operation_id" => "reconnected-create-id"}
+      payload = %{"type" => "sheet", "project_id" => project.id, "execution_id" => "reconnected-create-id"}
 
       render_hook(view, "palette_create", payload)
       assert_reply(view, %{url: first_url})
@@ -534,7 +545,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       render_hook(view, "palette_create", %{
         "type" => "flow",
         "project_id" => viewer_project.id,
-        "operation_id" => "unauthorized-create"
+        "execution_id" => "unauthorized-create"
       })
 
       assert_reply(view, %{error: "unauthorized"})
@@ -578,7 +589,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
         "type" => "sheet",
         "id" => sheet.id,
         "project_id" => project.id,
-        "operation_id" => "delete-sheet-1"
+        "execution_id" => "delete-sheet-1"
       })
 
       assert_reply(view, %{deleted: true})
@@ -602,7 +613,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
         "type" => "sheet",
         "id" => 9_223_372_036_854_775_808,
         "project_id" => project.id,
-        "operation_id" => "oversized-delete"
+        "execution_id" => "oversized-delete"
       })
 
       assert_reply(view, %{error: "invalid_request"})
@@ -620,7 +631,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
         "type" => "sheet",
         "id" => readonly_sheet.id,
         "project_id" => viewer_project.id,
-        "operation_id" => "readonly-delete"
+        "execution_id" => "readonly-delete"
       })
 
       assert_reply(view, %{error: "unauthorized"})
@@ -634,7 +645,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
         "type" => "sheet",
         "id" => readonly_sheet.id,
         "project_id" => own_project.id,
-        "operation_id" => "mismatched-delete"
+        "execution_id" => "mismatched-delete"
       })
 
       assert_reply(view, %{error: "not_found"})
@@ -652,7 +663,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
           "type" => type,
           "id" => entity.id,
           "project_id" => project.id,
-          "operation_id" => "delete-#{type}-1"
+          "execution_id" => "delete-#{type}-1"
         })
 
         assert_reply(view, %{deleted: true})
@@ -679,7 +690,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
         "type" => "flow",
         "id" => target_flow.id,
         "project_id" => project.id,
-        "operation_id" => "delete-referenced-flow"
+        "execution_id" => "delete-referenced-flow"
       })
 
       assert_reply(view, %{deleted: true})
@@ -697,7 +708,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
         "type" => "sheet",
         "id" => sheet.id,
         "project_id" => project.id,
-        "operation_id" => "reconnected-delete-id"
+        "execution_id" => "reconnected-delete-id"
       }
 
       render_hook(view, "palette_delete", payload)
@@ -727,7 +738,11 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       {"palette_delete", %{"type" => "sheet", "id" => 1, "project_id" => 1}},
       {"palette_opened", %{"surface" => "forged"}},
       {"palette_command_executed", %{"command_id" => 123, "surface" => "workspace"}},
-      {"palette_search_no_results", %{"query_length" => -1, "surface" => "workspace"}}
+      {"palette_search_no_results", %{"query_length" => -1, "surface" => "workspace"}},
+      {"palette_operation_selected", %{"operation_id" => 123, "surface" => "workspace"}},
+      {"palette_operation_completed", %{"operation_id" => "goto", "surface" => "forged"}},
+      {"palette_operation_completed", %{"operation_id" => String.duplicate("x", 65), "surface" => "workspace"}},
+      {"palette_operation_abandoned", %{"surface" => "workspace"}}
     ]
 
     for {event, payload} <- invalid_events do

@@ -44,8 +44,10 @@ import {
   operationParameter,
   operationReady,
   operationSearchText,
+  type OperationCompletionSource,
   type OperationDefinition,
   type OperationErrors,
+  type OperationParameterDefinition,
   type OperationValue,
   type OperationValues,
 } from "@shared/command-palette/operationCatalog";
@@ -111,6 +113,11 @@ interface OperationOptionsReply {
   error?: string;
 }
 
+interface OperationAvailability {
+  enabled: boolean;
+  reasonKey?: string;
+}
+
 // The palette is a small state machine: the root page plus the multi-step
 // create/delete flows and the catalog-backed guided door. Every step happens
 // INSIDE the palette; Escape or Backspace-at-the-template-start walks back.
@@ -129,7 +136,6 @@ type PaletteStep =
 type DeleteConfirmStep = Extract<PaletteStep, { kind: "delete-confirm" }>;
 
 const NAV_DEBOUNCE_MS = 200;
-const OPERATION_DEBOUNCE_MS = 80;
 const MUTATION_TIMEOUT_MS = 15_000;
 const RECENT_OPERATIONS_KEY = "storyarn.command-palette.recent-operations.v1";
 const MAX_RECENT_OPERATIONS = 5;
@@ -212,6 +218,7 @@ const operationOptions = ref<OperationValue[]>([]);
 const operationOptionsLoading = ref(false);
 const operationOptionsErrorKey = ref<string | null>(null);
 const recentOperationIds = ref<string[]>([]);
+const activeGuidedOperationId = ref<string | null>(null);
 
 // Stale-reply guard: only the latest request may update the results.
 let navToken = 0;
@@ -221,7 +228,7 @@ let operationOptionsToken = 0;
 // must never invalidate an in-flight create/delete). The palette cannot close
 // while one is pending, so every accepted mutation reply is reconciled.
 let mutationToken = 0;
-let retryOperation: { key: string; id: string } | null = null;
+let retryExecution: { key: string; id: string } | null = null;
 let navDebounce: ReturnType<typeof setTimeout> | null = null;
 let mutationTimeout: ReturnType<typeof setTimeout> | null = null;
 let suppressQueryWatch = false;
@@ -277,7 +284,11 @@ const recentOperations = computed(() =>
 
 const showHelpIntro = computed(() => {
   const normalized = query.value.trim().toLocaleLowerCase();
-  return normalized === "" || normalized === "help" || normalized === "ayuda";
+  if (normalized === "") return true;
+
+  return t("palette.help_keywords")
+    .split(/\s+/)
+    .some((keyword) => keyword.toLocaleLowerCase() === normalized);
 });
 
 const inputPlaceholder = computed<string>(() =>
@@ -302,6 +313,61 @@ const canMutate = computed(
     !createTargetsErrorKey.value &&
     createTargets.value.length > 0,
 );
+
+function operationAvailability(operation: OperationDefinition): OperationAvailability {
+  if (operation.authorization === "edit_content") {
+    if (!createTargetsLoaded.value && createTargetsLoading.value) {
+      return {
+        enabled: false,
+        reasonKey: "palette.operation_unavailable.checking",
+      };
+    }
+
+    if (createTargetsErrorKey.value) {
+      return {
+        enabled: false,
+        reasonKey: "palette.operation_unavailable.availability_failed",
+      };
+    }
+
+    if (!canMutate.value) {
+      return {
+        enabled: false,
+        reasonKey: "palette.operation_unavailable.edit_content",
+      };
+    }
+  }
+
+  if (operation.authorization !== "contextual") return { enabled: true };
+
+  const contextualParameter = operation.parameters.find(
+    (parameter) =>
+      parameter.completionMode === "client" &&
+      (parameter.completionSource === "commands" || parameter.completionSource === "views"),
+  );
+  if (!contextualParameter) return { enabled: true };
+
+  if (localOperationOptions(contextualParameter.completionSource).length > 0) {
+    return { enabled: true };
+  }
+
+  return {
+    enabled: false,
+    reasonKey:
+      contextualParameter.completionSource === "commands"
+        ? "palette.operation_unavailable.commands"
+        : "palette.operation_unavailable.views",
+  };
+}
+
+function operationAvailable(operation: OperationDefinition): boolean {
+  return operationAvailability(operation).enabled;
+}
+
+function operationUnavailableReason(operation: OperationDefinition): string | undefined {
+  const reasonKey = operationAvailability(operation).reasonKey;
+  return reasonKey ? t(reasonKey) : undefined;
+}
 
 const activeErrorKey = computed<string | null>(() => {
   if (errorKey.value) return errorKey.value;
@@ -378,8 +444,10 @@ function handleQueryChange(): void {
 
   if (prepareStepForQueryChange()) return;
 
-  const debounceMs = step.value.kind === "operation" ? OPERATION_DEBOUNCE_MS : NAV_DEBOUNCE_MS;
-  navDebounce = setTimeout(() => fetchForStep(), debounceMs);
+  // Client-backed operation completions returned above without a timer.
+  // Server-backed completions use the same measured cadence as root search
+  // so typing cannot amplify the authorized 1+N lookup path.
+  navDebounce = setTimeout(() => fetchForStep(), NAV_DEBOUNCE_MS);
 }
 
 function clearActiveOperationValueForEdit(): void {
@@ -413,11 +481,11 @@ function prepareStepForQueryChange(): boolean {
 function prepareOperationForQueryChange(): boolean {
   operationOptionsErrorKey.value = null;
 
-  const source = activeOperationParameter()?.completionSource;
-  const usesServer = source ? serverCompletionSource(source) : false;
+  const parameter = activeOperationParameter();
+  const usesServer = parameter?.completionMode === "server";
   operationOptionsLoading.value = usesServer;
 
-  if (!source || usesServer) return false;
+  if (!parameter || usesServer) return false;
 
   fetchOperationOptions();
   return true;
@@ -429,6 +497,7 @@ onUnmounted(() => {
 });
 
 function openPalette(): void {
+  activeGuidedOperationId.value = null;
   recentOperationIds.value = loadRecentOperationIds();
   navGroups.value = [];
   createTargets.value = [];
@@ -451,6 +520,7 @@ function openPalette(): void {
 function closePalette(): void {
   if (busy.value) return;
 
+  abandonActiveOperation();
   open.value = false;
   // Reset on CLOSE, not open: the query watcher ignores changes while
   // closed, so reopening never invalidates the immediate initial fetch.
@@ -470,7 +540,7 @@ function startMutationTimeout(token: number): void {
     if (token !== mutationToken) return;
 
     // Invalidate a reply that may arrive after the client has already offered
-    // a retry. The stable operation ID is deliberately kept so the durable
+    // a retry. The stable execution ID is deliberately kept so the durable
     // server fence can return the original result if the first attempt landed.
     ++mutationToken;
     pendingMutation.value = false;
@@ -545,6 +615,7 @@ function goBack(): void {
       enterStep({ kind: "delete-pick-entity" });
     }
   } else {
+    if (current.kind === "operation") abandonActiveOperation();
     resetOperationState();
     enterStep({ kind: "root" });
   }
@@ -620,6 +691,7 @@ function fetchCreateTargets(): void {
       createTargetsLoading.value = false;
       createTargetsLoaded.value = true;
       createTargets.value = reply.projects ?? [];
+      refreshEditableProjectOptions();
     },
     () => {
       if (token !== createTargetsToken || !open.value) return;
@@ -627,6 +699,7 @@ function fetchCreateTargets(): void {
       createTargetsLoaded.value = true;
       createTargets.value = [];
       createTargetsErrorKey.value = "palette.search_failed";
+      refreshEditableProjectOptions();
     },
   );
 }
@@ -638,8 +711,21 @@ function acceptsCreateTargetsReply(token: number, reply: CreateTargetsReply): bo
     reply?.token === token &&
     token === createTargetsToken &&
     open.value &&
-    (currentKind === "root" || currentKind === "create-pick-project")
+    (currentKind === "root" || currentKind === "operation" || currentKind === "create-pick-project")
   );
+}
+
+function refreshEditableProjectOptions(): void {
+  const parameter = activeOperationParameter();
+  if (
+    step.value.kind !== "operation" ||
+    parameter?.completionMode !== "client" ||
+    parameter.completionSource !== "editable_projects"
+  ) {
+    return;
+  }
+
+  fetchOperationOptions();
 }
 
 function fetchDeleteItems(): void {
@@ -675,15 +761,11 @@ function resetOperationState(): void {
   operationOptionsErrorKey.value = null;
 }
 
-function activeOperationParameter() {
+function activeOperationParameter(): OperationParameterDefinition | undefined {
   const operation = activeOperation.value;
   const parameterId = activeParameterId.value;
   if (!operation || !parameterId) return undefined;
   return operationParameter(operation, parameterId);
-}
-
-function serverCompletionSource(source: string): boolean {
-  return ["navigation", "editable_projects", "deletable_entities"].includes(source);
 }
 
 function fetchOperationOptions(): void {
@@ -697,17 +779,15 @@ function fetchOperationOptions(): void {
 
   operationOptionsErrorKey.value = null;
 
-  if (!serverCompletionSource(parameter.completionSource)) {
-    operationOptions.value = localOperationOptions(parameter.completionSource);
-    operationOptionsLoading.value = false;
-    void highlightFirstOperationOption();
+  if (parameter.completionMode === "client") {
+    fetchClientOperationOptions(parameter.completionSource);
     return;
   }
 
   const token = ++operationOptionsToken;
   const operationId = operation.id;
   const parameterId = parameter.id;
-  operationOptions.value = [];
+  const highlightedOptionId = operationInput.value?.highlightedOptionId() ?? null;
   operationOptionsLoading.value = true;
 
   live.pushEvent(
@@ -721,11 +801,7 @@ function fetchOperationOptions(): void {
     (reply: OperationOptionsReply) => {
       if (
         reply?.token !== token ||
-        token !== operationOptionsToken ||
-        !open.value ||
-        step.value.kind !== "operation" ||
-        step.value.operationId !== operationId ||
-        activeParameterId.value !== parameterId
+        !acceptsOperationOptionsRequest(token, operationId, parameterId)
       ) {
         return;
       }
@@ -737,17 +813,13 @@ function fetchOperationOptions(): void {
         return;
       }
 
-      operationOptions.value = reply.items ?? [];
-      void highlightFirstOperationOption();
+      const latestHighlightedOptionId =
+        operationInput.value?.highlightedOptionId() ?? highlightedOptionId;
+      operationOptions.value = reconcileOperationOptions(operationOptions.value, reply.items ?? []);
+      void restoreOperationHighlight(latestHighlightedOptionId);
     },
     () => {
-      if (
-        token !== operationOptionsToken ||
-        !open.value ||
-        step.value.kind !== "operation" ||
-        step.value.operationId !== operationId ||
-        activeParameterId.value !== parameterId
-      ) {
+      if (!acceptsOperationOptionsRequest(token, operationId, parameterId)) {
         return;
       }
 
@@ -758,6 +830,58 @@ function fetchOperationOptions(): void {
   );
 }
 
+function acceptsOperationOptionsRequest(
+  token: number,
+  operationId: string,
+  parameterId: string,
+): boolean {
+  const currentStep = step.value;
+
+  return (
+    token === operationOptionsToken &&
+    open.value &&
+    currentStep.kind === "operation" &&
+    currentStep.operationId === operationId &&
+    activeParameterId.value === parameterId
+  );
+}
+
+function fetchClientOperationOptions(source: OperationCompletionSource): void {
+  if (source === "editable_projects" && !createTargetsLoaded.value) {
+    operationOptionsLoading.value = createTargetsLoading.value;
+    operationOptions.value = [];
+    return;
+  }
+
+  operationOptions.value = localOperationOptions(source);
+  operationOptionsLoading.value = false;
+  void highlightFirstOperationOption();
+}
+
+function reconcileOperationOptions(
+  current: OperationValue[],
+  incoming: OperationValue[],
+): OperationValue[] {
+  const incomingById = new Map(incoming.map((option) => [option.id, option]));
+  const retained = current.flatMap((option) => {
+    const updated = incomingById.get(option.id);
+    if (!updated) return [];
+    incomingById.delete(option.id);
+    return [updated];
+  });
+  const appended = incoming.filter((option) => incomingById.has(option.id));
+
+  return [...retained, ...appended];
+}
+
+async function restoreOperationHighlight(optionId: string | null): Promise<void> {
+  await nextTick();
+
+  if (!open.value || step.value.kind !== "operation" || operationOptions.value.length === 0) return;
+
+  await operationInput.value?.restoreHighlightedOption(optionId);
+}
+
 async function highlightFirstOperationOption(): Promise<void> {
   await nextTick();
 
@@ -766,12 +890,21 @@ async function highlightFirstOperationOption(): Promise<void> {
   await operationInput.value?.highlightFirstOption();
 }
 
-function localOperationOptions(source: string): OperationValue[] {
+function localOperationOptions(source: OperationCompletionSource): OperationValue[] {
   if (source === "entity_types") {
     return entityTypes.map((entityType) => ({
       id: `entity-type:${entityType}`,
       value: entityType,
       label: t(createLabelKeys[entityType]),
+    }));
+  }
+
+  if (source === "editable_projects") {
+    return createTargets.value.map((target) => ({
+      id: `project:${target.id}`,
+      value: target.id,
+      label: target.label,
+      context: target.context,
     }));
   }
 
@@ -794,6 +927,13 @@ function localOperationOptions(source: string): OperationValue[] {
 }
 
 function enterOperation(operation: OperationDefinition): void {
+  if (!operationAvailable(operation)) return;
+
+  if (activeGuidedOperationId.value && activeGuidedOperationId.value !== operation.id) {
+    abandonActiveOperation();
+  }
+  activeGuidedOperationId.value = operation.id;
+  track("palette_operation_selected", { operation_id: operation.id });
   resetOperationState();
   activeParameterId.value = operation.parameters[0]?.id ?? null;
   enterStep({ kind: "operation", operationId: operation.id });
@@ -850,6 +990,7 @@ function selectOperationOption(option: OperationValue): void {
 
 function cancelOperation(): void {
   if (busy.value) return;
+  abandonActiveOperation();
   resetOperationState();
   enterStep({ kind: "root" });
 }
@@ -869,8 +1010,24 @@ function submitOperation(): void {
     return;
   }
 
-  rememberOperation(operation.id);
   executeOperation(operation);
+}
+
+function completeActiveOperation(): void {
+  const operationId = activeGuidedOperationId.value;
+  if (!operationId) return;
+
+  rememberOperation(operationId);
+  track("palette_operation_completed", { operation_id: operationId });
+  activeGuidedOperationId.value = null;
+}
+
+function abandonActiveOperation(): void {
+  const operationId = activeGuidedOperationId.value;
+  if (!operationId) return;
+
+  track("palette_operation_abandoned", { operation_id: operationId });
+  activeGuidedOperationId.value = null;
 }
 
 function loadRecentOperationIds(): string[] {
@@ -922,7 +1079,7 @@ function executeGotoOperation(): void {
     return;
   }
 
-  runNavigationCommand(destination.id, destination.value);
+  runNavigationCommand(destination.id, destination.value, completeActiveOperation);
 }
 
 function executeCreateOperation(): void {
@@ -1021,12 +1178,16 @@ function runSelectedClientCommand(parameterId: string): void {
     return;
   }
 
-  onSelect(command);
+  onSelect(command, completeActiveOperation);
 }
 
 // A failing command keeps the palette open with an explicit error. Promise
 // handlers remain pending until they settle and are tracked only on success.
-async function runActionCommand(commandId: string, run: () => void | Promise<void>): Promise<void> {
+async function runActionCommand(
+  commandId: string,
+  run: () => void | Promise<void>,
+  onSuccess?: () => void,
+): Promise<void> {
   if (busy.value) return;
 
   errorKey.value = null;
@@ -1041,11 +1202,12 @@ async function runActionCommand(commandId: string, run: () => void | Promise<voi
   }
 
   track("palette_command_executed", { command_id: commandId });
+  onSuccess?.();
   pendingCommandId.value = null;
   closePalette();
 }
 
-async function runPaletteAICommand(command: PaletteCommand): Promise<void> {
+async function runPaletteAICommand(command: PaletteCommand, onSuccess?: () => void): Promise<void> {
   if (busy.value || !isAIPaletteCommand(command)) return;
 
   errorKey.value = null;
@@ -1057,12 +1219,14 @@ async function runPaletteAICommand(command: PaletteCommand): Promise<void> {
 
   if (result.status === "completed") {
     track("palette_command_executed", { command_id: command.id });
+    onSuccess?.();
     closePalette();
     return;
   }
 
   if (result.status === "destination_failed") {
     track("palette_command_executed", { command_id: command.id });
+    onSuccess?.();
     errorKey.value = result.reasonKey;
     return;
   }
@@ -1095,13 +1259,13 @@ async function runActiveAICta(): Promise<void> {
   }
 }
 
-function onSelect(command: PaletteCommand): void {
+function onSelect(command: PaletteCommand, onSuccess?: () => void): void {
   if (isAIPaletteCommand(command)) {
-    void runPaletteAICommand(command);
+    void runPaletteAICommand(command, onSuccess);
   } else if (command.href !== undefined) {
-    runNavigationCommand(command.id, command.href);
+    runNavigationCommand(command.id, command.href, onSuccess);
   } else {
-    void runActionCommand(command.id, command.run);
+    void runActionCommand(command.id, command.run, onSuccess);
   }
 }
 
@@ -1127,11 +1291,12 @@ function onSelectNav(item: NavItem): void {
 
 // Navigation tears down the current LiveView. Send telemetry first, while
 // the socket is still connected, then close and navigate synchronously.
-function runNavigationCommand(commandId: string, url: string): void {
+function runNavigationCommand(commandId: string, url: string, onSuccess?: () => void): void {
   if (busy.value) return;
 
   errorKey.value = null;
   track("palette_command_executed", { command_id: commandId });
+  onSuccess?.();
   closePalette();
   liveNavigate(url);
 }
@@ -1156,7 +1321,7 @@ function createEntity(entityType: EntityType, target: CreateTarget): void {
   if (pendingMutation.value) return;
 
   const guidedOperation = step.value.kind === "operation";
-  const operationKey = `create:${entityType}:${target.id}`;
+  const executionKey = `create:${entityType}:${target.id}`;
   errorKey.value = null;
   pendingMutation.value = true;
   const token = ++mutationToken;
@@ -1167,13 +1332,17 @@ function createEntity(entityType: EntityType, target: CreateTarget): void {
   // would be stuck unclickable.
   live.pushEvent(
     "palette_create",
-    { type: entityType, project_id: target.id, operation_id: operationIdFor(operationKey) },
+    { type: entityType, project_id: target.id, execution_id: executionIdFor(executionKey) },
     (reply: MutationReply) => {
       if (!settleMutation(token)) return;
-      finishOperation(operationKey);
+      finishExecution(executionKey);
       const url = reply?.url;
       if (url) {
-        runNavigationCommand(`create.${entityType}`, url);
+        runNavigationCommand(
+          `create.${entityType}`,
+          url,
+          guidedOperation ? completeActiveOperation : undefined,
+        );
       } else {
         const replyError = reply?.error ?? "";
         if (guidedOperation && ["unauthorized", "not_found"].includes(replyError)) {
@@ -1199,7 +1368,7 @@ function confirmDelete(): void {
   if (current.kind !== "delete-confirm" || pendingMutation.value) return;
 
   const item = current.item;
-  const operationKey = `delete:${item.type}:${item.projectId}:${item.id}`;
+  const executionKey = `delete:${item.type}:${item.projectId}:${item.id}`;
   errorKey.value = null;
   pendingMutation.value = true;
   const token = ++mutationToken;
@@ -1214,11 +1383,11 @@ function confirmDelete(): void {
       type: item.type,
       id: item.id,
       project_id: item.projectId,
-      operation_id: operationIdFor(operationKey),
+      execution_id: executionIdFor(executionKey),
     },
     (reply: MutationReply) => {
       if (!settleMutation(token)) return;
-      finishOperation(operationKey);
+      finishExecution(executionKey);
       handleDeleteReply(reply, current, item);
     },
     () => {
@@ -1244,6 +1413,7 @@ function handleDeleteReply(
 function handleDeleteSuccess(current: DeleteConfirmStep, item: DeleteItem): void {
   track("palette_command_executed", { command_id: `delete.${item.type}` });
   if (current.source === "operation") {
+    completeActiveOperation();
     closePalette();
     return;
   }
@@ -1282,7 +1452,7 @@ function commandLabel(command: PaletteCommand): string {
   return t(command.labelKey);
 }
 
-function createOperationId(): string {
+function createExecutionId(): string {
   if (typeof globalThis.crypto?.randomUUID === "function") {
     return globalThis.crypto.randomUUID();
   }
@@ -1290,16 +1460,16 @@ function createOperationId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function operationIdFor(key: string): string {
-  if (retryOperation?.key === key) return retryOperation.id;
+function executionIdFor(key: string): string {
+  if (retryExecution?.key === key) return retryExecution.id;
 
-  const id = createOperationId();
-  retryOperation = { key, id };
+  const id = createExecutionId();
+  retryExecution = { key, id };
   return id;
 }
 
-function finishOperation(key: string): void {
-  if (retryOperation?.key === key) retryOperation = null;
+function finishExecution(key: string): void {
+  if (retryExecution?.key === key) retryExecution = null;
 }
 
 // Analytics is fire-and-forget. useLive owns transport failures and never
@@ -1394,6 +1564,7 @@ function track(event: string, payload: Record<string, unknown>): void {
               v-for="option in operationOptions"
               :key="option.id"
               :value="`operation-option-${option.id}`"
+              :data-operation-option-id="option.id"
               :search-text="operationOptionSearchText(option)"
               :disabled="busy"
               @select="selectOperationOption(option)"
@@ -1446,12 +1617,23 @@ function track(event: string, payload: Record<string, unknown>): void {
               v-for="operation in recentOperations"
               :key="`recent-operation-${operation.id}`"
               :value="`recent-operation-${operation.id}`"
+              :data-operation-id="operation.id"
+              :data-operation-available="operationAvailable(operation)"
               :search-text="`${operationSearchText(operation, t)} ${t('palette.help_keywords')}`"
-              :disabled="busy"
+              :disabled="busy || !operationAvailable(operation)"
+              :title="operationUnavailableReason(operation)"
               @select="enterOperation(operation)"
             >
               <History class="size-4 shrink-0" />
-              <span>{{ t(operation.help.labelKey) }}</span>
+              <span class="min-w-0">
+                <span class="block">{{ t(operation.help.labelKey) }}</span>
+                <span
+                  v-if="!operationAvailable(operation)"
+                  class="block truncate text-xs font-normal text-muted-foreground"
+                >
+                  {{ operationUnavailableReason(operation) }}
+                </span>
+              </span>
             </CommandItem>
           </CommandGroup>
           <CommandGroup
@@ -1464,9 +1646,11 @@ function track(event: string, payload: Record<string, unknown>): void {
               :key="`operation-${operation.id}`"
               :value="`operation-${operation.id}`"
               :data-operation-id="operation.id"
+              :data-operation-available="operationAvailable(operation)"
               :search-text="`${operationSearchText(operation, t)} ${t('palette.help_keywords')}`"
               class="items-start py-2.5"
-              :disabled="busy"
+              :disabled="busy || !operationAvailable(operation)"
+              :title="operationUnavailableReason(operation)"
               @select="enterOperation(operation)"
             >
               <div class="min-w-0 flex-1">
@@ -1478,6 +1662,12 @@ function track(event: string, payload: Record<string, unknown>): void {
                 </div>
                 <p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                   {{ t(operation.help.descriptionKey) }}
+                </p>
+                <p
+                  v-if="!operationAvailable(operation)"
+                  class="mt-1 text-xs font-medium text-muted-foreground"
+                >
+                  {{ operationUnavailableReason(operation) }}
                 </p>
                 <p
                   v-if="operation.help.pattern"

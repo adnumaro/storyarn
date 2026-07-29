@@ -121,7 +121,7 @@ msgid "Unsupported file type."
 msgstr "Tipo de archivo no compatible."
 
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:457
-#: lib/storyarn_web/live/hooks/palette.ex:336
+#: lib/storyarn_web/live/hooks/palette.ex:426
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:90
 #, elixir-autogen, elixir-format
 msgid "Untitled"

@@ -32,7 +32,8 @@ defmodule StoryarnWeb.LayoutsTest do
       assert Enum.all?(catalog, fn operation ->
                Map.has_key?(operation, "parameters") and
                  Map.has_key?(operation, "resultType") and
-                 Map.has_key?(operation, "help")
+                 Map.has_key?(operation, "help") and
+                 Enum.all?(operation["parameters"], &Map.has_key?(&1, "completionMode"))
              end)
     end
   end

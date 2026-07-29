@@ -28,8 +28,23 @@ defmodule Storyarn.CommandPaletteTest do
         for parameter <- definition.parameters do
           assert parameter.type in Definition.enum_values(:parameter_type)
           assert parameter.completion_source in Definition.enum_values(:completion_source)
+          assert parameter.completion_mode in Definition.enum_values(:completion_mode)
         end
       end
+
+      assert Map.new(
+               for definition <- definitions,
+                   parameter <- definition.parameters,
+                   do: {{definition.id, parameter.id}, parameter.completion_mode}
+             ) ==
+               %{
+                 {"goto", "destination"} => :server,
+                 {"create", "entity_type"} => :client,
+                 {"create", "project"} => :client,
+                 {"delete", "entity"} => :server,
+                 {"run_command", "command"} => :client,
+                 {"open_view", "destination"} => :client
+               }
     end
 
     test "serializes the generated help catalog using the LiveVue contract" do
@@ -47,6 +62,7 @@ defmodule Storyarn.CommandPaletteTest do
                  id: "destination",
                  type: "destination",
                  completionSource: "navigation",
+                 completionMode: "server",
                  required: true,
                  labelKey: "palette.operations.goto.parameters.destination"
                }
@@ -91,11 +107,26 @@ defmodule Storyarn.CommandPaletteTest do
         Definition.validate!(%{definition | latency: :eventually})
       end
 
-      assert {:ok, %{completion_source: :navigation}} =
+      invalid_parameter =
+        definition.parameters
+        |> hd()
+        |> Map.put(:completion_mode, :remote)
+
+      assert_raise ArgumentError, ~r/invalid parameters/, fn ->
+        Definition.validate!(%{definition | parameters: [invalid_parameter]})
+      end
+
+      assert {:ok, %{completion_source: :navigation, completion_mode: :server}} =
                Registry.fetch_parameter("goto", "destination")
+
+      assert {:ok, %{source: :navigation, mode: :server}} =
+               CommandPalette.parameter_completion("goto", "destination")
 
       assert :error = Registry.fetch_parameter("goto", "forged")
       assert :error = Registry.fetch_parameter("forged", "destination")
+      assert CommandPalette.registered_operation_id?("goto")
+      refute CommandPalette.registered_operation_id?("forged")
+      refute CommandPalette.registered_operation_id?(123)
     end
   end
 
@@ -114,18 +145,18 @@ defmodule Storyarn.CommandPaletteTest do
         %{kind: :parameter} -> []
       end)
 
-    help_keys ++ parameter_keys ++ phrase_keys
+    ["palette.operation_domains.#{definition.domain}" | help_keys ++ parameter_keys ++ phrase_keys]
   end
 
   test "commits a successful mutation and its replay result atomically" do
     scope = user_scope_fixture()
-    operation_id = "create-once"
+    execution_id = "create-once"
 
     assert {%{url: "/sheets/123"}, :broadcast} =
              CommandPalette.run(
                scope,
                "palette_create",
-               operation_id,
+               execution_id,
                fn ->
                  send(self(), :executed)
                  {%{url: "/sheets/123"}, :broadcast}
@@ -139,7 +170,7 @@ defmodule Storyarn.CommandPaletteTest do
              CommandPalette.run(
                scope,
                "palette_create",
-               operation_id,
+               execution_id,
                fn ->
                  send(self(), :executed_twice)
                  {%{url: "/sheets/999"}, :broadcast}
@@ -150,15 +181,15 @@ defmodule Storyarn.CommandPaletteTest do
     refute_receive :executed_twice
   end
 
-  test "preserves rollback reasons and allows a failed operation id to be retried" do
+  test "preserves rollback reasons and allows a failed execution id to be retried" do
     scope = user_scope_fixture()
-    operation_id = "retry-after-limit"
+    execution_id = "retry-after-limit"
 
     assert {%{error: "limit_reached"}, nil} =
              CommandPalette.run(
                scope,
                "palette_create",
-               operation_id,
+               execution_id,
                fn -> Repo.rollback({:limit_reached, %{limit: 1}}) end,
                fn
                  {:limit_reached, _details} -> %{error: "limit_reached"}
@@ -169,14 +200,14 @@ defmodule Storyarn.CommandPaletteTest do
     refute Repo.get_by(Operation,
              user_id: scope.user.id,
              event: "palette_create",
-             operation_id: operation_id
+             operation_id: execution_id
            )
 
     assert {%{url: "/sheets/123"}, :broadcast} =
              CommandPalette.run(
                scope,
                "palette_create",
-               operation_id,
+               execution_id,
                fn -> {%{url: "/sheets/123"}, :broadcast} end,
                fn _reason -> %{error: "failed"} end
              )

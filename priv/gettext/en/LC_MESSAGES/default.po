@@ -11,17 +11,17 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/components/layouts.ex:110
+#: lib/storyarn_web/components/layouts.ex:112
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:109
+#: lib/storyarn_web/components/layouts.ex:111
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:108
+#: lib/storyarn_web/components/layouts.ex:110
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""

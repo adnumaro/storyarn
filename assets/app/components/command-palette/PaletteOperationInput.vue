@@ -51,6 +51,11 @@ const activeDefinition = computed(() => operationParameter(definition, activePar
 
 const activeValue = computed(() => (activeParameter ? values[activeParameter] : undefined));
 
+// A selected atomic value is real input content while it remains active, not
+// placeholder copy. The filter still owns only `query`, so the selected label
+// never narrows its own completion list.
+const displayedQuery = computed(() => query || activeValue.value?.label || "");
+
 const renderedErrors = computed(() =>
   definition.parameters.flatMap((parameter) => {
     const message = errors[parameter.id];
@@ -81,12 +86,17 @@ async function focusActive(): Promise<void> {
   if (!parameterId) return;
 
   const slots = rootElement.value?.querySelectorAll<HTMLElement>("[data-palette-parameter]");
-  for (const slot of slots ?? []) {
-    if (slot.dataset.paletteParameter === parameterId) {
-      slot.focus();
-      return;
-    }
-  }
+  const activeSlot = Array.from(slots ?? []).find(
+    (slot) => slot.dataset.paletteParameter === parameterId,
+  );
+  if (!activeSlot) return;
+
+  activeSlot.focus();
+  selectActiveInputValue(activeSlot);
+}
+
+function selectActiveInputValue(slot: HTMLElement): void {
+  if (slot instanceof HTMLInputElement && !query && activeValue.value) slot.select();
 }
 
 async function highlightFirstOption(): Promise<void> {
@@ -96,7 +106,35 @@ async function highlightFirstOption(): Promise<void> {
   await nextTick();
 }
 
-defineExpose({ focusActive, highlightFirstOption });
+function highlightedOptionId(): string | null {
+  return listboxRoot.highlightedElement.value?.dataset.operationOptionId ?? null;
+}
+
+async function restoreHighlightedOption(optionId: string | null): Promise<void> {
+  await nextTick();
+
+  const commandRoot = rootElement.value?.closest<HTMLElement>("[data-slot='command']");
+  const preferred = optionId
+    ? Array.from(
+        commandRoot?.querySelectorAll<HTMLElement>("[data-operation-option-id]") ?? [],
+      ).find((element) => element.dataset.operationOptionId === optionId)
+    : null;
+
+  if (preferred) {
+    listboxRoot.changeHighlight(preferred, false, false);
+    return;
+  }
+
+  listboxRoot.highlightFirstItem();
+  await nextTick();
+}
+
+defineExpose({
+  focusActive,
+  highlightFirstOption,
+  highlightedOptionId,
+  restoreHighlightedOption,
+});
 
 function parameterForPart(parameterId: string): OperationParameterDefinition | undefined {
   return operationParameter(definition, parameterId);
@@ -131,15 +169,28 @@ function activate(parameterId: string): void {
   emit("activate", parameterId);
 }
 
-function onQueryValue(query: string): void {
+function onQueryValue(nextQuery: string): void {
   if (disabled || composing.value) return;
-  updateQuery(query);
+
+  // Delete/Cut can empty a selected atomic value without producing a
+  // Backspace keydown. Clear this slot, never the whole guided template.
+  if (nextQuery === "" && activeParameter && activeValue.value) {
+    emit("clear", activeParameter);
+    return;
+  }
+
+  updateQuery(nextQuery);
 }
 
 function onCompositionEnd(event: CompositionEvent): void {
   composing.value = false;
   if (disabled) return;
-  updateQuery((event.target as HTMLInputElement).value);
+  onQueryValue((event.target as HTMLInputElement).value);
+}
+
+function onInputFocus(event: FocusEvent): void {
+  if (query || !activeValue.value) return;
+  (event.target as HTMLInputElement).select();
 }
 
 function imeOwns(event: KeyboardEvent): boolean {
@@ -251,7 +302,7 @@ function onTab(event: KeyboardEvent): void {
 function onHorizontalArrow(event: KeyboardEvent, direction: "previous" | "next"): void {
   // While the user is typing a completion query, horizontal arrows retain
   // their native caret semantics. Atomic slot navigation takes over once the
-  // query is empty (including a slot whose selected value is a placeholder).
+  // query is empty, including a slot whose selected value is shown atomically.
   if (query) return;
 
   const parameter = activeDefinition.value;
@@ -318,7 +369,7 @@ function onKeydown(event: KeyboardEvent): void {
           <template v-if="parameterForPart(part.parameterId)">
             <ListboxFilter
               v-if="activeParameter === part.parameterId"
-              :model-value="query"
+              :model-value="displayedQuery"
               :data-palette-parameter="part.parameterId"
               :disabled="disabled"
               autocomplete="off"
@@ -328,10 +379,7 @@ function onKeydown(event: KeyboardEvent): void {
               :aria-label="slotLabel(parameterForPart(part.parameterId)!)"
               :aria-invalid="errors[part.parameterId] ? 'true' : undefined"
               :aria-describedby="errors[part.parameterId] ? errorId(part.parameterId) : undefined"
-              :placeholder="
-                parameterValue(part.parameterId)?.label ||
-                parameterLabel(parameterForPart(part.parameterId)!)
-              "
+              :placeholder="parameterLabel(parameterForPart(part.parameterId)!)"
               class="h-7 min-w-24 rounded-md border border-primary/60 bg-background px-2 font-medium text-foreground outline-none ring-2 ring-primary/15 placeholder:text-muted-foreground focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
               :style="{
                 width: `${Math.max(
@@ -346,6 +394,7 @@ function onKeydown(event: KeyboardEvent): void {
               @update:model-value="onQueryValue"
               @compositionstart="composing = true"
               @compositionend="onCompositionEnd"
+              @focus="onInputFocus"
               @keydown.esc.stop
             />
             <button

@@ -1,13 +1,34 @@
 export type OperationSerializedValue = string | number | boolean | null | Record<string, unknown>;
 
+export type OperationDomain = "navigation" | "actions";
+export type OperationLatency = "instant" | "interactive" | "deferred";
+export type OperationAuthorization = "view" | "edit_content" | "contextual";
+export type OperationResultType = "navigation" | "mutation" | "command";
+export type OperationParameterType =
+  | "destination"
+  | "entity_type"
+  | "project"
+  | "entity"
+  | "command"
+  | "view";
+export type OperationCompletionSource =
+  | "navigation"
+  | "editable_projects"
+  | "deletable_entities"
+  | "entity_types"
+  | "commands"
+  | "views";
+export type OperationCompletionMode = "server" | "client";
+
 export type OperationPhrasePart =
   | { kind: "text"; textKey: string }
   | { kind: "parameter"; parameterId: string };
 
 export interface OperationParameterDefinition {
   id: string;
-  type: string;
-  completionSource: string;
+  type: OperationParameterType;
+  completionSource: OperationCompletionSource;
+  completionMode: OperationCompletionMode;
   required: boolean;
   labelKey: string;
 }
@@ -28,11 +49,11 @@ export interface OperationHelp {
  */
 export interface OperationDefinition {
   id: string;
-  domain: string;
+  domain: OperationDomain;
   parameters: OperationParameterDefinition[];
-  latency: string;
-  authorization: string;
-  resultType: string;
+  latency: OperationLatency;
+  authorization: OperationAuthorization;
+  resultType: OperationResultType;
   phrase: OperationPhrasePart[];
   help: OperationHelp;
 }

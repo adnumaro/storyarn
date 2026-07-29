@@ -8,8 +8,13 @@
     "capabilities_description": "Elige una operación para construirla paso a paso.",
     "recent_operations": "Operaciones recientes",
     "run_operation": "Ejecutar operación",
-    "change_parameter": "Cambiar {parameter}",
-    "required_parameter": "{parameter} es obligatorio",
+    "operation_unavailable": {
+      "checking": "Comprobando disponibilidad…",
+      "availability_failed": "Storyarn no ha podido comprobar si esta operación está disponible.",
+      "edit_content": "Necesitas acceso de edición al menos a un proyecto.",
+      "commands": "No hay comandos disponibles en esta vista.",
+      "views": "No hay vistas disponibles en este contexto."
+    },
     "operation_options_failed": "Storyarn no ha podido cargar las opciones disponibles. Inténtalo de nuevo.",
     "no_operation_options": "No hay opciones que coincidan",
     "no_results": "No hay comandos que coincidan",

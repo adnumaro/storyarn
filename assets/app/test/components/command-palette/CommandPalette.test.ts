@@ -2,6 +2,7 @@ import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, nextTick, type App } from "vue";
 import CommandPalette from "../../../components/command-palette/CommandPalette.vue";
+import PaletteOperationInput from "../../../components/command-palette/PaletteOperationInput.vue";
 import { Command, CommandItem } from "../../../components/ui/command";
 import { liveNavigate } from "../../../shared/navigation/liveNavigate";
 
@@ -14,7 +15,13 @@ import {
   type PaletteCommand,
 } from "../../../shared/command-palette/registry";
 import type { AILaunchCommand } from "../../../shared/command-palette/aiCommands";
-import type { OperationDefinition } from "../../../shared/command-palette/operationCatalog";
+import type {
+  OperationCompletionMode,
+  OperationCompletionSource,
+  OperationDefinition,
+  OperationParameterType,
+  OperationResultType,
+} from "../../../shared/command-palette/operationCatalog";
 import type { LiveInterface } from "../../../shared/composables/useLive";
 import { createMockLive, setTestLocale } from "../../setup";
 
@@ -81,6 +88,7 @@ const gotoOperation: OperationDefinition = {
       id: "destination",
       type: "destination",
       completionSource: "navigation",
+      completionMode: "server",
       required: true,
       labelKey: "palette.operations.goto.parameters.destination",
     },
@@ -108,6 +116,7 @@ const createOperation: OperationDefinition = {
       id: "entity_type",
       type: "entity_type",
       completionSource: "entity_types",
+      completionMode: "client",
       required: true,
       labelKey: "palette.operations.create.parameters.entity_type",
     },
@@ -115,6 +124,7 @@ const createOperation: OperationDefinition = {
       id: "project",
       type: "project",
       completionSource: "editable_projects",
+      completionMode: "client",
       required: true,
       labelKey: "palette.operations.create.parameters.project",
     },
@@ -138,9 +148,10 @@ const createOperation: OperationDefinition = {
 
 function singleParameterOperation(
   id: "delete" | "run_command" | "open_view",
-  parameterId: string,
-  completionSource: string,
-  resultType: string,
+  parameterId: OperationParameterType,
+  completionSource: OperationCompletionSource,
+  completionMode: OperationCompletionMode,
+  resultType: OperationResultType,
 ): OperationDefinition {
   return {
     id,
@@ -150,6 +161,7 @@ function singleParameterOperation(
         id: parameterId,
         type: parameterId,
         completionSource,
+        completionMode,
         required: true,
         labelKey: `palette.operations.${id}.parameters.${parameterId}`,
       },
@@ -174,18 +186,21 @@ const deleteOperation = singleParameterOperation(
   "delete",
   "entity",
   "deletable_entities",
+  "server",
   "mutation",
 );
 const runCommandOperation = singleParameterOperation(
   "run_command",
   "command",
   "commands",
+  "client",
   "command",
 );
 const openViewOperation = singleParameterOperation(
   "open_view",
   "destination",
   "views",
+  "client",
   "navigation",
 );
 
@@ -344,6 +359,69 @@ describe("CommandPalette", () => {
     expect(wrapper.find("[data-operation-id='create']").exists()).toBe(true);
   });
 
+  it("keeps the canonical catalog visible and explains why contextual operations are unavailable", async () => {
+    const { live, wrapper } = mountPalette([
+      gotoOperation,
+      createOperation,
+      deleteOperation,
+      runCommandOperation,
+      openViewOperation,
+    ]);
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+
+    const expectedAvailability: Record<string, { available: string; reason?: string }> = {
+      goto: { available: "true" },
+      create: {
+        available: "false",
+        reason: "Requires edit access to at least one project.",
+      },
+      delete: {
+        available: "false",
+        reason: "Requires edit access to at least one project.",
+      },
+      run_command: {
+        available: "false",
+        reason: "No commands are available in this view.",
+      },
+      open_view: {
+        available: "false",
+        reason: "No views are available in this context.",
+      },
+    };
+
+    for (const [operationId, expected] of Object.entries(expectedAvailability)) {
+      const item = wrapper.get(`[data-operation-id="${operationId}"]`);
+      expect(item.attributes("data-operation-available")).toBe(expected.available);
+      if (expected.reason) expect(item.text()).toContain(expected.reason);
+    }
+
+    selectItem(wrapper, "operation-create");
+    await nextTick();
+    expect(wrapper.find("[data-slot='palette-operation-input']").exists()).toBe(false);
+  });
+
+  it("uses locale-owned help keywords instead of leaking keywords from another locale", async () => {
+    const { wrapper } = mountPalette([gotoOperation]);
+    pressPaletteShortcut();
+    await nextTick();
+
+    await wrapper.find("[data-slot='command-input']").setValue("ayuda");
+    await nextTick();
+
+    expect(wrapper.text()).not.toContain("What Storyarn can do");
+  });
+
   it("builds goto through an atomic slot and navigates only after explicit submit", async () => {
     const { live, wrapper } = mountPalette([gotoOperation]);
     vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
@@ -398,6 +476,20 @@ describe("CommandPalette", () => {
 
     expect(liveNavigate).toHaveBeenCalledWith("/workspaces/acme/projects/veilbreak");
     expect(localStorage.getItem("storyarn.command-palette.recent-operations.v1")).toBe('["goto"]');
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) =>
+          [
+            "palette_operation_selected",
+            "palette_operation_completed",
+            "palette_operation_abandoned",
+          ].includes(event),
+        ),
+    ).toEqual([
+      ["palette_operation_selected", { operation_id: "goto", surface: "global" }, undefined],
+      ["palette_operation_completed", { operation_id: "goto", surface: "global" }, undefined],
+    ]);
   });
 
   it("completes the generated-help round trip in Spanish", async () => {
@@ -429,6 +521,12 @@ describe("CommandPalette", () => {
     await nextTick();
     expect(wrapper.find("[data-operation-id='goto']").text()).toContain("Ir a Capítulo 2");
 
+    await wrapper.find("[data-slot='command-input']").setValue("help");
+    await nextTick();
+    expect(wrapper.text()).toContain("Qué puede hacer Storyarn");
+    await wrapper.find("[data-slot='command-input']").setValue("");
+    await nextTick();
+
     selectItem(wrapper, "operation-goto");
     await flushPromises();
     expect(wrapper.find("[data-slot='palette-operation-input']").text()).toContain("Ir a");
@@ -438,6 +536,9 @@ describe("CommandPalette", () => {
 
     selectItem(wrapper, "operation-option-nav.sheet.9");
     await nextTick();
+    expect(
+      wrapper.find<HTMLInputElement>("[data-slot='palette-operation-input'] input").element.value,
+    ).toBe("Capítulo dos");
     selectItem(wrapper, "operation.execute");
     await nextTick();
 
@@ -525,7 +626,28 @@ describe("CommandPalette", () => {
     expect(itemValues(wrapper)).toContain("operation-option-nav.sheet.9");
   });
 
-  it("uses the guided-operation debounce without accelerating legacy navigation search", async () => {
+  it("updates client-backed operation completions without scheduling a server search", async () => {
+    const { live, wrapper } = mountPalette([createOperation]);
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-create");
+    await nextTick();
+
+    await wrapper
+      .find<HTMLInputElement>("[data-slot='palette-operation-input'] input")
+      .setValue("flow");
+    await nextTick();
+
+    expect(itemValues(wrapper)).toContain("operation-option-entity-type:flow");
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_operation_options"),
+    ).toHaveLength(0);
+  });
+
+  it("debounces server-backed operation completions at the root-search cadence", async () => {
     vi.useFakeTimers();
     const { live, wrapper } = mountPalette([gotoOperation]);
 
@@ -544,11 +666,122 @@ describe("CommandPalette", () => {
       .find<HTMLInputElement>("[data-slot='palette-operation-input'] input")
       .setValue("Chapter");
 
-    await vi.advanceTimersByTimeAsync(79);
+    await vi.advanceTimersByTimeAsync(199);
     expect(operationCalls()).toHaveLength(1);
 
     await vi.advanceTimersByTimeAsync(1);
     expect(operationCalls()).toHaveLength(2);
+  });
+
+  it("keeps current-query options visible and preserves the highlighted result while reconciling", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPalette([gotoOperation]);
+    let operationRequestCount = 0;
+    let resolveCurrentQuery: (() => void) | undefined;
+
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_operation_options") {
+        operationRequestCount += 1;
+        const token = payload?.token as number;
+        const initialItems = [
+          {
+            id: "nav.chapter.alpha",
+            value: "/chapters/alpha",
+            label: "Chapter Alpha",
+          },
+          {
+            id: "nav.chapter.beta",
+            value: "/chapters/beta",
+            label: "Chapter Beta",
+          },
+          {
+            id: "nav.chapter.gamma",
+            value: "/chapters/gamma",
+            label: "Chapter Gamma",
+          },
+        ];
+
+        if (operationRequestCount === 1) {
+          callback({ token, items: initialItems });
+        } else {
+          resolveCurrentQuery = () =>
+            callback({
+              token,
+              items: [
+                {
+                  id: "nav.chapter.delta",
+                  value: "/chapters/delta",
+                  label: "Chapter Delta",
+                },
+                initialItems[2]!,
+                initialItems[1]!,
+                initialItems[0]!,
+              ],
+            });
+        }
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-goto");
+    await nextTick();
+
+    const input = wrapper.find<HTMLInputElement>("[data-slot='palette-operation-input'] input");
+    await input.setValue("chapter");
+    await nextTick();
+
+    expect(itemValues(wrapper)).toEqual(
+      expect.arrayContaining([
+        "operation-option-nav.chapter.alpha",
+        "operation-option-nav.chapter.beta",
+      ]),
+    );
+
+    const composer = wrapper.findComponent(PaletteOperationInput);
+    await (
+      composer.vm as unknown as {
+        restoreHighlightedOption: (optionId: string) => Promise<void>;
+      }
+    ).restoreHighlightedOption("nav.chapter.beta");
+    await nextTick();
+
+    await vi.advanceTimersByTimeAsync(200);
+    expect(resolveCurrentQuery).toBeDefined();
+    expect(itemValues(wrapper)).toEqual(
+      expect.arrayContaining([
+        "operation-option-nav.chapter.alpha",
+        "operation-option-nav.chapter.beta",
+      ]),
+    );
+
+    await (
+      composer.vm as unknown as {
+        restoreHighlightedOption: (optionId: string) => Promise<void>;
+      }
+    ).restoreHighlightedOption("nav.chapter.gamma");
+    resolveCurrentQuery!();
+    await nextTick();
+    await nextTick();
+
+    const reconciledIds = wrapper
+      .findAll("[data-operation-option-id]")
+      .map((item) => item.attributes("data-operation-option-id"));
+    expect(reconciledIds).toEqual([
+      "nav.chapter.alpha",
+      "nav.chapter.beta",
+      "nav.chapter.gamma",
+      "nav.chapter.delta",
+    ]);
+    expect(
+      wrapper.get("[data-operation-option-id='nav.chapter.gamma']").attributes("data-highlighted"),
+    ).toBeDefined();
   });
 
   it("does not restore options from a completion reply that lands after selection", async () => {
@@ -610,7 +843,7 @@ describe("CommandPalette", () => {
     await wrapper
       .find<HTMLInputElement>("[data-slot='palette-operation-input'] input")
       .setValue("late");
-    vi.advanceTimersByTime(80);
+    vi.advanceTimersByTime(200);
     expect(resolveLateOptions).toBeDefined();
 
     // Vue has not flushed the removal caused by the request yet, matching the
@@ -654,11 +887,9 @@ describe("CommandPalette", () => {
       if (event === "palette_nav") {
         callback({ token: payload?.token as number, groups: [] });
       } else if (event === "palette_create_targets") {
-        callback({ token: payload?.token as number, projects: [] });
-      } else if (event === "palette_operation_options") {
         callback({
           token: payload?.token as number,
-          items: [{ id: "project:11", value: 11, label: "Veilbreak", context: "Acme" }],
+          projects: [{ id: 11, label: "Veilbreak", context: "Acme" }],
         });
       } else if (event === "palette_create") {
         callback({ url: "/workspaces/acme/projects/veilbreak/flows/42" });
@@ -672,14 +903,19 @@ describe("CommandPalette", () => {
     selectItem(wrapper, "operation-option-entity-type:flow");
     await nextTick();
 
-    expect(live.pushEvent).toHaveBeenCalledWith(
-      "palette_operation_options",
-      expect.objectContaining({
-        operation_id: "create",
-        parameter_id: "project",
-      }),
-      expect.any(Function),
-    );
+    expect(
+      vi.mocked(live.pushEvent).mock.calls.filter(([event]) => event === "palette_create_targets"),
+    ).toHaveLength(1);
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(
+          ([event, payload]) =>
+            event === "palette_operation_options" &&
+            payload?.operation_id === "create" &&
+            payload?.parameter_id === "project",
+        ),
+    ).toHaveLength(0);
 
     selectItem(wrapper, "operation-option-project:11");
     await nextTick();
@@ -691,7 +927,7 @@ describe("CommandPalette", () => {
       expect.objectContaining({
         type: "flow",
         project_id: 11,
-        operation_id: expect.any(String),
+        execution_id: expect.any(String),
       }),
       expect.any(Function),
     );
@@ -706,7 +942,10 @@ describe("CommandPalette", () => {
       if (event === "palette_nav") {
         callback({ token: payload?.token as number, groups: [] });
       } else if (event === "palette_create_targets") {
-        callback({ token: payload?.token as number, projects: [] });
+        callback({
+          token: payload?.token as number,
+          projects: [{ id: 11, label: "Veilbreak", context: "Acme" }],
+        });
       } else if (event === "palette_operation_options") {
         callback({
           token: payload?.token as number,
@@ -743,7 +982,7 @@ describe("CommandPalette", () => {
         type: "sheet",
         id: 9,
         project_id: 11,
-        operation_id: expect.any(String),
+        execution_id: expect.any(String),
       }),
       expect.any(Function),
     );
@@ -786,6 +1025,94 @@ describe("CommandPalette", () => {
     expect(liveNavigate).toHaveBeenCalledWith(
       "/workspaces/acme/projects/veilbreak/flows/9/settings",
     );
+  });
+
+  it("records a guided operation as recent only after its async command succeeds", async () => {
+    let resolveCommand!: () => void;
+    registerPaletteCommands("flows", [
+      command(
+        "flows.async-guided",
+        () =>
+          new Promise<void>((resolve) => {
+            resolveCommand = resolve;
+          }),
+      ),
+    ]);
+
+    const { live, wrapper } = mountPalette([runCommandOperation]);
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-run_command");
+    await nextTick();
+    selectItem(wrapper, "operation-option-command:flows.async-guided");
+    await nextTick();
+    selectItem(wrapper, "operation.execute");
+    await nextTick();
+
+    expect(localStorage.getItem("storyarn.command-palette.recent-operations.v1")).toBeNull();
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_operation_completed"),
+    ).toHaveLength(0);
+
+    resolveCommand();
+    await flushPromises();
+
+    expect(localStorage.getItem("storyarn.command-palette.recent-operations.v1")).toBe(
+      '["run_command"]',
+    );
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) =>
+          [
+            "palette_operation_selected",
+            "palette_operation_completed",
+            "palette_operation_abandoned",
+          ].includes(event),
+        ),
+    ).toEqual([
+      ["palette_operation_selected", { operation_id: "run_command", surface: "flows" }, undefined],
+      ["palette_operation_completed", { operation_id: "run_command", surface: "flows" }, undefined],
+    ]);
+  });
+
+  it("does not record a failed guided operation and emits a content-free abandonment", async () => {
+    registerPaletteCommands("flows", [
+      command("flows.reject-guided", () => Promise.reject(new Error("failed"))),
+    ]);
+
+    const { live, wrapper } = mountPalette([runCommandOperation]);
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-run_command");
+    await nextTick();
+    selectItem(wrapper, "operation-option-command:flows.reject-guided");
+    await nextTick();
+    selectItem(wrapper, "operation.execute");
+    await flushPromises();
+
+    expect(localStorage.getItem("storyarn.command-palette.recent-operations.v1")).toBeNull();
+    expect(wrapper.find('[role="alert"]').text()).toBe("The command failed to run. Try again.");
+
+    pressPaletteShortcut();
+    await nextTick();
+
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) =>
+          [
+            "palette_operation_selected",
+            "palette_operation_completed",
+            "palette_operation_abandoned",
+          ].includes(event),
+        ),
+    ).toEqual([
+      ["palette_operation_selected", { operation_id: "run_command", surface: "flows" }, undefined],
+      ["palette_operation_abandoned", { operation_id: "run_command", surface: "flows" }, undefined],
+    ]);
   });
 
   it("runs the command, tracks execution, and closes on select", async () => {
@@ -1193,7 +1520,7 @@ describe("CommandPalette", () => {
         expect.objectContaining({
           type: "sheet",
           project_id: 11,
-          operation_id: expect.any(String),
+          execution_id: expect.any(String),
         }),
         expect.any(Function),
       );
@@ -1322,7 +1649,7 @@ describe("CommandPalette", () => {
           type: "sheet",
           id: 7,
           project_id: 11,
-          operation_id: expect.any(String),
+          execution_id: expect.any(String),
         }),
         expect.any(Function),
       );
@@ -1473,8 +1800,8 @@ describe("CommandPalette", () => {
         .mocked(live.pushEvent)
         .mock.calls.filter(([event]) => event === "palette_delete");
       expect(deleteCalls).toHaveLength(2);
-      expect((deleteCalls[0]![1] as { operation_id: string }).operation_id).toBe(
-        (deleteCalls[1]![1] as { operation_id: string }).operation_id,
+      expect((deleteCalls[0]![1] as { execution_id: string }).execution_id).toBe(
+        (deleteCalls[1]![1] as { execution_id: string }).execution_id,
       );
     });
 
@@ -1522,8 +1849,8 @@ describe("CommandPalette", () => {
         .mocked(live.pushEvent)
         .mock.calls.filter(([event]) => event === "palette_delete");
       expect(deleteCalls).toHaveLength(2);
-      expect((deleteCalls[0]![1] as { operation_id: string }).operation_id).toBe(
-        (deleteCalls[1]![1] as { operation_id: string }).operation_id,
+      expect((deleteCalls[0]![1] as { execution_id: string }).execution_id).toBe(
+        (deleteCalls[1]![1] as { execution_id: string }).execution_id,
       );
     });
 

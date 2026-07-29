@@ -17,6 +17,7 @@ defmodule Storyarn.CommandPalette.Definition do
     :commands,
     :views
   ]
+  @completion_modes [:server, :client]
   @latencies [:instant, :interactive, :deferred]
   @authorizations [:view, :edit_content, :contextual]
   @result_types [:navigation, :mutation, :command]
@@ -54,10 +55,13 @@ defmodule Storyarn.CommandPalette.Definition do
           | :commands
           | :views
 
+  @type completion_mode :: :server | :client
+
   @type parameter :: %{
           required(:id) => String.t(),
           required(:type) => parameter_type(),
           required(:completion_source) => completion_source(),
+          required(:completion_mode) => completion_mode(),
           required(:required) => boolean(),
           required(:label_key) => String.t()
         }
@@ -111,6 +115,7 @@ defmodule Storyarn.CommandPalette.Definition do
   def enum_values(:domain), do: @domains
   def enum_values(:parameter_type), do: @parameter_types
   def enum_values(:completion_source), do: @completion_sources
+  def enum_values(:completion_mode), do: @completion_modes
   def enum_values(:latency), do: @latencies
   def enum_values(:authorization), do: @authorizations
   def enum_values(:result_type), do: @result_types
@@ -162,12 +167,14 @@ defmodule Storyarn.CommandPalette.Definition do
         id: id,
         type: type,
         completion_source: completion_source,
+        completion_mode: completion_mode,
         required: required,
         label_key: label_key
       }
       when is_boolean(required) ->
         valid_id?(id) and type in @parameter_types and
-          completion_source in @completion_sources and non_empty_string?(label_key)
+          completion_source in @completion_sources and completion_mode in @completion_modes and
+          non_empty_string?(label_key)
 
       _other ->
         false
@@ -213,6 +220,7 @@ defmodule Storyarn.CommandPalette.Definition do
       id: parameter.id,
       type: Atom.to_string(parameter.type),
       completionSource: Atom.to_string(parameter.completion_source),
+      completionMode: Atom.to_string(parameter.completion_mode),
       required: parameter.required,
       labelKey: parameter.label_key
     }

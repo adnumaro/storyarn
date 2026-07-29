@@ -13,20 +13,22 @@ const definition: OperationDefinition = {
   id: "variable_usages",
   domain: "navigation",
   latency: "instant",
-  authorization: "view_project",
-  resultType: "navigation_list",
+  authorization: "contextual",
+  resultType: "navigation",
   parameters: [
     {
       id: "scope",
-      type: "scope",
-      completionSource: "scope",
+      type: "project",
+      completionSource: "editable_projects",
+      completionMode: "client",
       required: true,
       labelKey: "palette.nav.projects",
     },
     {
       id: "variable",
-      type: "variable",
-      completionSource: "variable",
+      type: "command",
+      completionSource: "commands",
+      completionMode: "client",
       required: true,
       labelKey: "palette.nav.entities",
     },
@@ -142,6 +144,42 @@ afterEach(() => {
 });
 
 describe("PaletteOperationInput", () => {
+  it("renders the active atomic value as real input content, not as placeholder copy", async () => {
+    const wrapper = mountComposer({
+      values: {
+        scope: { id: "project:1", value: 1, label: "Veilbreak" },
+      },
+    });
+    await nextTick();
+
+    const input = activeInput(wrapper);
+    expect(input.element.value).toBe("Veilbreak");
+    expect(input.attributes("placeholder")).toBe("Projects");
+
+    input.element.setSelectionRange("Veilbreak".length, "Veilbreak".length);
+    await (
+      wrapper.findComponent(PaletteOperationInput).vm as unknown as {
+        focusActive: () => Promise<void>;
+      }
+    ).focusActive();
+    expect(input.element.selectionStart).toBe(0);
+    expect(input.element.selectionEnd).toBe("Veilbreak".length);
+  });
+
+  it("clears only the active slot when Delete or Cut empties its selected value", async () => {
+    const wrapper = mountComposer({
+      values: {
+        scope: { id: "project:1", value: 1, label: "Veilbreak" },
+      },
+    });
+
+    await activeInput(wrapper).setValue("");
+
+    expect(wrapper.emitted("clear")).toEqual([["scope"]]);
+    expect(wrapper.emitted("cancel")).toBeUndefined();
+    expect(wrapper.emitted("update:query")).toBeUndefined();
+  });
+
   it("exposes focusActive and emits the next parameter as its auto-advance contract", async () => {
     const wrapper = mountComposer({
       values: {
