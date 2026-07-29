@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import HealthStatusPopover from "@components/health/HealthStatusPopover.vue";
 import type { HealthStatusItem, HealthStatusSeverity } from "@shared/types/health";
+import { highlightSheetLocation } from "@modules/sheets/composables/useSheetHighlight";
 import type { SheetHealth, SheetHealthItem } from "@modules/sheets/types";
 
 const {
@@ -12,30 +13,6 @@ const {
 } = defineProps<{
   health?: SheetHealth;
 }>();
-
-function selectorValue(value: number | string): string {
-  return String(value).replaceAll('"', '\\"');
-}
-
-function findTarget(item: SheetHealthItem): HTMLElement | null {
-  if (item.rowId != null && item.columnId != null) {
-    const row = selectorValue(item.rowId);
-    const column = selectorValue(item.columnId);
-    const cell = document.querySelector<HTMLElement>(
-      `[data-sheet-row-id="${row}"] [data-sheet-column-id="${column}"]`,
-    );
-    if (cell) return cell;
-  }
-
-  if (item.rowId != null) {
-    const row = selectorValue(item.rowId);
-    const rowElement = document.querySelector<HTMLElement>(`[data-sheet-row-id="${row}"]`);
-    if (rowElement) return rowElement;
-  }
-
-  if (item.blockId == null) return null;
-  return document.getElementById(`sheet-block-${item.blockId}`);
-}
 
 function canNavigate(item: HealthStatusItem): boolean {
   return (item as SheetHealthItem).blockId != null;
@@ -57,14 +34,14 @@ function itemDataAttributes(item: HealthStatusItem) {
 }
 
 function navigateToFinding(item: HealthStatusItem): void {
-  const target = findTarget(item as SheetHealthItem);
-  if (!target) return;
+  const sheetItem = item as SheetHealthItem;
+  if (sheetItem.blockId == null) return;
 
-  target.scrollIntoView({ behavior: "smooth", block: "center" });
-  target.classList.add("ring-2", "ring-primary", "ring-offset-2", "ring-offset-background");
-  window.setTimeout(() => {
-    target.classList.remove("ring-2", "ring-primary", "ring-offset-2", "ring-offset-background");
-  }, 1600);
+  highlightSheetLocation({
+    blockId: sheetItem.blockId,
+    rowId: sheetItem.rowId,
+    columnId: sheetItem.columnId,
+  });
 }
 </script>
 

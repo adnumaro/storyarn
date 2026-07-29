@@ -53,6 +53,12 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     |> then(& &1.props["surface"])
   end
 
+  defp get_sheet_highlight_target(view) do
+    view
+    |> get_sheet_surface_vue()
+    |> then(& &1.props["highlight-target"])
+  end
+
   defp get_sheet_panels_props(view) do
     view
     |> get_sheet_surface_vue()
@@ -80,6 +86,82 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
       html = await_async(view)
       assert html =~ "Test Sheet"
+    end
+
+    test "normalizes block highlights and rejects blocks outside the loaded sheet", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Highlighted Sheet"})
+      block = block_fixture(sheet, %{type: "text"})
+      other_sheet = sheet_fixture(project, %{name: "Other Sheet"})
+      foreign_block = block_fixture(other_sheet, %{type: "text"})
+      base_path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+
+      {:ok, view, _html} = live(conn, "#{base_path}?highlight=block:#{block.id}")
+      await_async(view)
+
+      initial_target = get_sheet_highlight_target(view)
+      assert initial_target["kind"] == "block"
+      assert initial_target["blockId"] == block.id
+      assert is_integer(initial_target["requestId"])
+
+      render_hook(view, "switch_tab", %{"tab" => "references"})
+      assert get_sheet_surface_props(view)["tabs"]["currentTab"] == "references"
+
+      render_patch(view, "#{base_path}?highlight=block:#{foreign_block.id}")
+      assert get_sheet_highlight_target(view) == nil
+
+      render_patch(view, "#{base_path}?highlight=block:#{block.id}")
+      repeated_target = get_sheet_highlight_target(view)
+      assert repeated_target["blockId"] == block.id
+      assert repeated_target["requestId"] > initial_target["requestId"]
+      assert get_sheet_surface_props(view)["tabs"]["currentTab"] == "content"
+    end
+
+    test "accepts only table cells that belong to one block in the loaded sheet", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Table Sheet"})
+      table = table_block_fixture(sheet, %{label: "Stats"})
+      [column | _rest] = table.table_columns
+      [row | _rest] = table.table_rows
+
+      other_table =
+        project
+        |> sheet_fixture(%{name: "Other Table Sheet"})
+        |> table_block_fixture(%{label: "Foreign Stats"})
+
+      [foreign_column | _rest] = other_table.table_columns
+      [foreign_row | _rest] = other_table.table_rows
+      base_path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          "#{base_path}?highlight=cell:#{table.id}:#{row.id}:#{column.id}"
+        )
+
+      await_async(view)
+
+      target = get_sheet_highlight_target(view)
+      assert target["kind"] == "cell"
+      assert target["blockId"] == table.id
+      assert target["rowId"] == row.id
+      assert target["columnId"] == column.id
+
+      render_patch(
+        view,
+        "#{base_path}?highlight=cell:#{table.id}:#{foreign_row.id}:#{foreign_column.id}"
+      )
+
+      assert get_sheet_highlight_target(view) == nil
+
+      render_patch(view, "#{base_path}?highlight=cell:#{table.id}:#{row.id}:#{column.id}:extra")
+      assert get_sheet_highlight_target(view) == nil
     end
 
     test "passes grouped health findings to the sheet topbar", %{conn: conn, user: user} do

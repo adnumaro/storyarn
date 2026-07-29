@@ -27,6 +27,7 @@ defmodule StoryarnWeb.Layouts do
   attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue events)"
   attr :current_scope, :map, required: true, doc: "actor used to resolve command feature flags"
   attr :sudo_grant, :string, default: nil, doc: "validated grant for sensitive account commands"
+  attr :project_context, :boolean, default: false, doc: "whether the palette is mounted inside a project"
 
   def command_palette(assigns) do
     ~H"""
@@ -37,6 +38,7 @@ defmodule StoryarnWeb.Layouts do
         id="command-palette-island"
         feature-flags={FeatureFlagHelpers.client_flags(@current_scope)}
         operation-catalog={CommandPalette.operation_catalog()}
+        project-context={@project_context}
         sudo-grant={@sudo_grant}
       />
     </div>

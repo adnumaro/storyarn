@@ -27,7 +27,7 @@ defmodule StoryarnWeb.LayoutsTest do
       catalog = vue.props["operation-catalog"]
 
       assert Enum.map(catalog, & &1["id"]) ==
-               ~w(goto create delete run_command open_view)
+               ~w(goto variable_definition variable_usages entity_usages flow_callers create delete run_command open_view)
 
       assert Enum.all?(catalog, fn operation ->
                Map.has_key?(operation, "parameters") and
@@ -35,6 +35,21 @@ defmodule StoryarnWeb.LayoutsTest do
                  Map.has_key?(operation, "help") and
                  Enum.all?(operation["parameters"], &Map.has_key?(&1, "completionMode"))
              end)
+
+      refute vue.props["project-context"]
+    end
+
+    test "marks project layout instances as reference-search contexts" do
+      html =
+        render_component(&Layouts.command_palette/1,
+          socket: mock_socket(),
+          current_scope: %{user: nil},
+          project_context: true
+        )
+
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/CommandPalette")
+
+      assert vue.props["project-context"]
     end
   end
 

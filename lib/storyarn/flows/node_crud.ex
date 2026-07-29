@@ -249,6 +249,7 @@ defmodule Storyarn.Flows.NodeCrud do
         join: f in Flow,
         on: n.flow_id == f.id,
         where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        where: is_nil(n.deleted_at),
         where:
           (n.type == "subflow" and fragment("?->>'referenced_flow_id' = ?", n.data, ^flow_id_str)) or
             (n.type == "exit" and fragment("?->>'exit_mode'", n.data) == "flow_reference" and
@@ -257,6 +258,51 @@ defmodule Storyarn.Flows.NodeCrud do
         order_by: [asc: f.name]
       )
     )
+  end
+
+  @doc """
+  Bounded read model for command-palette flow caller lookups.
+
+  Returns only caller identity and navigation metadata, never node data.
+  """
+  @spec list_flow_callers(integer(), integer(), keyword()) ::
+          %{items: [map()], truncated: boolean()}
+  def list_flow_callers(flow_id, project_id, opts \\ []) do
+    limit =
+      opts
+      |> Keyword.get(:limit, 25)
+      |> max(1)
+      |> min(50)
+
+    flow_id_str = to_string(flow_id)
+
+    items =
+      Repo.all(
+        from(node in FlowNode,
+          join: flow in Flow,
+          on: node.flow_id == flow.id,
+          where:
+            flow.project_id == ^project_id and is_nil(flow.deleted_at) and
+              is_nil(node.deleted_at),
+          where:
+            (node.type == "subflow" and
+               fragment("?->>'referenced_flow_id' = ?", node.data, ^flow_id_str)) or
+              (node.type == "exit" and
+                 fragment("?->>'exit_mode'", node.data) == "flow_reference" and
+                 fragment("?->>'referenced_flow_id' = ?", node.data, ^flow_id_str)),
+          select: %{
+            node_id: node.id,
+            node_type: node.type,
+            flow_id: flow.id,
+            flow_name: flow.name,
+            flow_shortcut: flow.shortcut
+          },
+          order_by: [asc: flow.name, asc: node.id],
+          limit: ^(limit + 1)
+        )
+      )
+
+    %{items: Enum.take(items, limit), truncated: length(items) > limit}
   end
 
   # =============================================================================

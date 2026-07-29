@@ -11,8 +11,13 @@ const CommandPaletteStub = defineComponent({
       type: Array,
       default: () => [],
     },
+    projectContext: {
+      type: Boolean,
+      default: false,
+    },
   },
-  template: "<div data-testid='command-palette' :data-operation-count='operationCatalog.length' />",
+  template:
+    "<div data-testid='command-palette' :data-operation-count='operationCatalog.length' :data-project-context='projectContext' />",
 });
 
 function commandIds(): string[] {
@@ -81,6 +86,17 @@ describe("authenticated command palette boundary", () => {
 
     expect(wrapper.find("[data-testid='command-palette']").attributes("data-operation-count")).toBe(
       "1",
+    );
+  });
+
+  it("forwards whether the boundary belongs to a project surface", () => {
+    const wrapper = mount(CommandPaletteLayout, {
+      props: { projectContext: true },
+      global: { stubs: { CommandPalette: CommandPaletteStub } },
+    });
+
+    expect(wrapper.find("[data-testid='command-palette']").attributes("data-project-context")).toBe(
+      "true",
     );
   });
 });

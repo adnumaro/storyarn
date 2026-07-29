@@ -94,6 +94,27 @@ defmodule Storyarn.GlobalSearch.Destinations do
   end
 
   @doc """
+  Authorizes `project_id` for read-only palette lookups.
+
+  The project is resolved from the caller's freshly composed membership set on
+  every request. A project id supplied by a client is therefore never enough to
+  make a project visible.
+  """
+  @spec viewable_project(Scope.t(), integer()) ::
+          {:ok, %{project: struct(), workspace: struct()}} | {:error, :unauthorized}
+  def viewable_project(%Scope{} = scope, project_id) do
+    %{workspace_by_id: workspace_by_id, project_entries: project_entries} = authorized_entries(scope)
+
+    case Enum.find(project_entries, &(&1.project.id == project_id)) do
+      nil ->
+        {:error, :unauthorized}
+
+      %{project: project} ->
+        {:ok, %{project: project, workspace: Map.fetch!(workspace_by_id, project.workspace_id)}}
+    end
+  end
+
+  @doc """
   Entity search restricted to projects the user can edit — the candidate set
   for destructive palette actions. Unlike `destinations/3`, an empty query
   lists the most recently updated entities: a destructive picker must let

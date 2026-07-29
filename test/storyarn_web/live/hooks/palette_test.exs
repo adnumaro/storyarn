@@ -11,6 +11,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.CommandPalette.Definition
+  alias Storyarn.Sheets.Block
 
   defmodule TestAdapter do
     @moduledoc false
@@ -447,6 +448,166 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
     end
   end
 
+  describe "reference lookups" do
+    test "fail closed outside a project surface", %{view: view} do
+      render_hook(view, "palette_operation_options", %{
+        "operation_id" => "variable_definition",
+        "parameter_id" => "variable",
+        "query" => "",
+        "token" => 50
+      })
+
+      assert_reply(view, %{token: 50, error: "invalid_request"})
+
+      render_hook(view, "palette_reference_pattern", %{
+        "pattern" => "?health",
+        "token" => 51
+      })
+
+      assert_reply(view, %{token: 51, error: "unavailable"})
+
+      render_hook(view, "palette_reference_lookup", %{
+        "operation_id" => "variable_definition",
+        "target" => %{"block_id" => 1, "qualified_ref" => "mc.health"},
+        "token" => 52
+      })
+
+      assert_reply(view, %{token: 52, error: "unavailable"})
+    end
+
+    test "uses the socket project for completion, execution and deep links", %{
+      conn: conn,
+      user: user
+    } do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace, name: "Veilbreak"})
+      sheet = sheet_fixture(project, %{name: "Jaime", shortcut: "mc.jaime"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Health"},
+          value: %{"content" => 987_654_321},
+          variable_name: "health"
+        })
+
+      {:ok, project_view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+        )
+
+      render_hook(project_view, "palette_operation_options", %{
+        "operation_id" => "variable_definition",
+        "parameter_id" => "variable",
+        "query" => "health",
+        "token" => 53
+      })
+
+      assert_reply(project_view, %{token: 53, items: [option], truncated: false})
+      assert option.value == %{block_id: block.id, qualified_ref: "mc.jaime.health"}
+      refute Map.has_key?(option.value, :project_id)
+      refute inspect(option) =~ "987654321"
+
+      render_hook(project_view, "palette_reference_lookup", %{
+        "operation_id" => "variable_definition",
+        "target" => %{
+          "block_id" => block.id,
+          "qualified_ref" => "mc.jaime.health"
+        },
+        "token" => 54
+      })
+
+      assert_reply(project_view, %{token: 54, items: [result], truncated: false})
+      assert result.kind == "definition"
+      assert result.type == "sheet"
+      assert result.label == "mc.jaime.health"
+
+      assert result.url ==
+               "/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}?highlight=block:#{block.id}"
+
+      refute inspect(result) =~ "987654321"
+    end
+
+    test "never accepts a target from another accessible project", %{
+      conn: conn,
+      user: user
+    } do
+      workspace = workspace_fixture(user)
+      active_project = project_fixture(user, %{workspace: workspace, name: "Active"})
+      active_sheet = sheet_fixture(active_project)
+      other_project = project_fixture(user, %{workspace: workspace, name: "Other"})
+      other_sheet = sheet_fixture(other_project, %{shortcut: "other"})
+
+      other_block =
+        block_fixture(other_sheet, %{
+          type: "number",
+          config: %{"label" => "Secret"},
+          value: Block.default_value("number"),
+          variable_name: "secret"
+        })
+
+      {:ok, project_view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{workspace.slug}/projects/#{active_project.slug}/sheets/#{active_sheet.id}"
+        )
+
+      render_hook(project_view, "palette_reference_lookup", %{
+        "operation_id" => "variable_definition",
+        "target" => %{
+          "block_id" => other_block.id,
+          "qualified_ref" => "other.secret"
+        },
+        "token" => 55
+      })
+
+      assert_reply(project_view, %{token: 55, error: "not_found"})
+    end
+
+    test "pattern requests return definitions only from the active project", %{
+      conn: conn,
+      user: user
+    } do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(project, %{shortcut: "hero"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Health"},
+          value: Block.default_value("number"),
+          variable_name: "health"
+        })
+
+      other_project = project_fixture(user, %{workspace: workspace})
+      other_sheet = sheet_fixture(other_project, %{shortcut: "villain"})
+
+      block_fixture(other_sheet, %{
+        type: "number",
+        config: %{"label" => "Health"},
+        value: Block.default_value("number"),
+        variable_name: "health"
+      })
+
+      {:ok, project_view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+        )
+
+      render_hook(project_view, "palette_reference_pattern", %{
+        "pattern" => "sheets.**.?heal",
+        "token" => 56
+      })
+
+      assert_reply(project_view, %{token: 56, items: items, truncated: false})
+      assert Enum.map(items, & &1.label) == ["hero.health"]
+      assert hd(items).url =~ "highlight=block:#{block.id}"
+    end
+  end
+
   describe "palette_create" do
     test "creates the entity in an authorized project and replies its URL", %{view: view, user: user} do
       workspace = workspace_fixture(user)
@@ -731,6 +892,13 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
          "query" => "",
          "token" => "bad"
        }},
+      {"palette_reference_lookup",
+       %{
+         "operation_id" => "variable_definition",
+         "target" => %{"block_id" => 1, "qualified_ref" => "mc.health"},
+         "token" => "bad"
+       }},
+      {"palette_reference_pattern", %{"pattern" => "?health", "token" => "bad"}},
       {"palette_nav", %{"query" => "test", "token" => "bad"}},
       {"palette_create_targets", %{"token" => "bad"}},
       {"palette_create", %{"type" => "sheet", "project_id" => 1}},

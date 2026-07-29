@@ -12,10 +12,24 @@ defmodule Storyarn.GlobalSearch do
   """
 
   alias Storyarn.GlobalSearch.Destinations
+  alias Storyarn.GlobalSearch.ReferenceSearch
 
   defdelegate destinations(scope, query, opts \\ []), to: Destinations
   defdelegate create_targets(scope), to: Destinations
   defdelegate editable_project(scope, project_id), to: Destinations
+  defdelegate viewable_project(scope, project_id), to: Destinations
   defdelegate deletable_entities(scope, query, opts \\ []), to: Destinations
   defdelegate deletable_entity(scope, type, project_id, id), to: Destinations
+
+  defdelegate reference_options(scope, project_id, source, query, opts \\ []),
+    to: ReferenceSearch,
+    as: :options
+
+  defdelegate execute_reference_operation(scope, project_id, operation_id, params, opts \\ []),
+    to: ReferenceSearch,
+    as: :execute
+
+  defdelegate reference_pattern(scope, project_id, pattern, opts \\ []),
+    to: ReferenceSearch,
+    as: :pattern
 end

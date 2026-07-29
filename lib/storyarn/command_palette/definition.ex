@@ -7,12 +7,15 @@ defmodule Storyarn.CommandPalette.Definition do
   authorized domain boundaries that already own each capability.
   """
 
-  @domains [:navigation, :actions]
-  @parameter_types [:destination, :entity_type, :project, :entity, :command, :view]
+  @domains [:navigation, :references, :actions]
+  @parameter_types [:destination, :entity_type, :project, :entity, :flow, :variable, :command, :view]
   @completion_sources [
     :navigation,
     :editable_projects,
     :deletable_entities,
+    :reference_entities,
+    :flows,
+    :sheet_variables,
     :entity_types,
     :commands,
     :views
@@ -20,7 +23,7 @@ defmodule Storyarn.CommandPalette.Definition do
   @completion_modes [:server, :client]
   @latencies [:instant, :interactive, :deferred]
   @authorizations [:view, :edit_content, :contextual]
-  @result_types [:navigation, :mutation, :command]
+  @result_types [:navigation, :lookup, :mutation, :command]
   @id_format ~r/^[a-z][a-z0-9_]*$/
 
   @enforce_keys [
@@ -44,13 +47,18 @@ defmodule Storyarn.CommandPalette.Definition do
     :help
   ]
 
-  @type domain :: :navigation | :actions
-  @type parameter_type :: :destination | :entity_type | :project | :entity | :command | :view
+  @type domain :: :navigation | :references | :actions
+
+  @type parameter_type ::
+          :destination | :entity_type | :project | :entity | :flow | :variable | :command | :view
 
   @type completion_source ::
           :navigation
           | :editable_projects
           | :deletable_entities
+          | :reference_entities
+          | :flows
+          | :sheet_variables
           | :entity_types
           | :commands
           | :views
@@ -83,7 +91,7 @@ defmodule Storyarn.CommandPalette.Definition do
           parameters: [parameter()],
           latency: :instant | :interactive | :deferred,
           authorization: :view | :edit_content | :contextual,
-          result_type: :navigation | :mutation | :command,
+          result_type: :navigation | :lookup | :mutation | :command,
           phrase: [phrase_token()],
           help: help()
         }

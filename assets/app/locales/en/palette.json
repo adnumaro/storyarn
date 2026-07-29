@@ -12,11 +12,28 @@
       "checking": "Checking availability…",
       "availability_failed": "Storyarn couldn't verify whether this operation is available.",
       "edit_content": "Requires edit access to at least one project.",
+      "project_context": "Open a project to use reference lookups.",
       "commands": "No commands are available in this view.",
       "views": "No views are available in this context."
     },
     "operation_options_failed": "Storyarn couldn't load the available options. Try again.",
+    "lookup_failed": "Storyarn couldn't complete this reference lookup. Try again.",
     "no_operation_options": "No matching options",
+    "no_lookup_results": "No references found",
+    "lookup_results": "Reference results",
+    "lookup_results_count": "{count} reference result | {count} reference results",
+    "lookup_truncated": "Showing the first results. Refine the reference pattern to narrow the list.",
+    "back_to_operation": "Back to operation",
+    "lookup_kinds": {
+      "definition": "Definition",
+      "read": "Read",
+      "write": "Write",
+      "formula_read": "Formula",
+      "entity_usage": "Reference",
+      "flow_caller": "Caller"
+    },
+    "pattern_incomplete": "Keep typing the reference pattern",
+    "pattern_invalid": "That reference pattern isn't valid",
     "no_deletable_content": "No sheets, flows or scenes are available to delete",
     "no_results": "No matching commands",
     "command_failed": "The command failed to run. Try again.",
@@ -39,6 +56,7 @@
     },
     "operation_domains": {
       "navigation": "Find and open",
+      "references": "References",
       "actions": "Actions"
     },
     "operations": {
@@ -51,6 +69,50 @@
         },
         "parameters": {
           "destination": "destination"
+        }
+      },
+      "variable_definition": {
+        "label": "Find a variable definition…",
+        "description": "Find the sheet block or table cell that defines a project variable.",
+        "example": "Definition of mc.jaime.health",
+        "phrase": {
+          "prefix": "Definition of"
+        },
+        "parameters": {
+          "variable": "variable"
+        }
+      },
+      "variable_usages": {
+        "label": "Find variable usages…",
+        "description": "Show where a project variable is read or written in flows, scenes and formulas.",
+        "example": "Usages of mc.jaime.health",
+        "phrase": {
+          "prefix": "Usages of"
+        },
+        "parameters": {
+          "variable": "variable"
+        }
+      },
+      "entity_usages": {
+        "label": "Find entity references…",
+        "description": "Show the sheet blocks, flow nodes and scene elements that reference an entity.",
+        "example": "References to Chapter Two",
+        "phrase": {
+          "prefix": "References to"
+        },
+        "parameters": {
+          "entity": "sheet, flow or scene"
+        }
+      },
+      "flow_callers": {
+        "label": "Find flow callers…",
+        "description": "Show the subflow and flow-reference exit nodes that call a flow.",
+        "example": "Callers of Opening sequence",
+        "phrase": {
+          "prefix": "Callers of"
+        },
+        "parameters": {
+          "flow": "flow"
         }
       },
       "create": {

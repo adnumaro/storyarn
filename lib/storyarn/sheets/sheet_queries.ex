@@ -1061,6 +1061,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         where: vr.block_id == ^block_id,
         where: f.project_id == ^project_id,
         where: is_nil(f.deleted_at),
+        where: is_nil(n.deleted_at),
         where: is_nil(s.deleted_at),
         where: is_nil(b.deleted_at),
         select: %{

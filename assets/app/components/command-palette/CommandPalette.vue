@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  ArrowLeft,
   Building2,
   CircleHelp,
   FileText,
@@ -52,7 +53,10 @@ import {
   type OperationValues,
 } from "@shared/command-palette/operationCatalog";
 import { liveNavigate } from "@shared/navigation/liveNavigate";
+import type { PaletteLookupResult } from "@shared/command-palette/lookupResults";
+import { classifyReferencePattern } from "@plugins/expression-editor/reference-pattern";
 import PaletteEmpty from "./PaletteEmpty.vue";
+import PaletteLookupResults from "./PaletteLookupResults.vue";
 import PaletteOperationInput from "./PaletteOperationInput.vue";
 
 interface NavItem {
@@ -110,6 +114,24 @@ interface MutationReply {
 interface OperationOptionsReply {
   token?: number;
   items?: OperationValue[];
+  truncated?: boolean;
+  error?: string;
+}
+
+interface RawLookupResult {
+  id: string;
+  kind: string;
+  type: string;
+  label: string;
+  context?: string | null;
+  url: string;
+  meta?: Record<string, unknown>;
+}
+
+interface LookupReply {
+  token?: number;
+  items?: RawLookupResult[];
+  truncated?: boolean;
   error?: string;
 }
 
@@ -124,6 +146,7 @@ interface OperationAvailability {
 type PaletteStep =
   | { kind: "root" }
   | { kind: "operation"; operationId: string }
+  | { kind: "lookup-results"; operationId: string }
   | { kind: "create-pick-project"; entityType: EntityType }
   | { kind: "delete-pick-entity" }
   | {
@@ -139,6 +162,12 @@ const NAV_DEBOUNCE_MS = 200;
 const MUTATION_TIMEOUT_MS = 15_000;
 const RECENT_OPERATIONS_KEY = "storyarn.command-palette.recent-operations.v1";
 const MAX_RECENT_OPERATIONS = 5;
+const LOOKUP_OPERATION_IDS = new Set([
+  "variable_definition",
+  "variable_usages",
+  "entity_usages",
+  "flow_callers",
+]);
 
 const navIcons: Record<string, LucideIcon> = {
   workspace: Building2,
@@ -178,6 +207,17 @@ const errorMessageKeys: Record<string, string> = {
   create_failed: "palette.create_failed",
   delete_failed: "palette.delete_failed",
   invalid_request: "palette.invalid_request",
+  unavailable: "palette.operation_unavailable.project_context",
+  lookup_failed: "palette.lookup_failed",
+};
+
+const lookupKindLabelKeys: Record<string, string> = {
+  definition: "palette.lookup_kinds.definition",
+  read: "palette.lookup_kinds.read",
+  write: "palette.lookup_kinds.write",
+  formula_read: "palette.lookup_kinds.formula_read",
+  entity_usage: "palette.lookup_kinds.entity_usage",
+  flow_caller: "palette.lookup_kinds.flow_caller",
 };
 
 function navGroupHeading(key: string): string | undefined {
@@ -187,8 +227,9 @@ function navGroupHeading(key: string): string | undefined {
 
 const { t } = useI18n();
 const live = useLive();
-const { operationCatalog = [] } = defineProps<{
+const { operationCatalog = [], projectContext = false } = defineProps<{
   operationCatalog?: OperationDefinition[];
+  projectContext?: boolean;
 }>();
 
 const open = ref(false);
@@ -217,13 +258,19 @@ const activeParameterId = ref<string | null>(null);
 const operationOptions = ref<OperationValue[]>([]);
 const operationOptionsLoading = ref(false);
 const operationOptionsErrorKey = ref<string | null>(null);
+const lookupResults = ref<PaletteLookupResult[]>([]);
+const lookupLoading = ref(false);
+const lookupErrorKey = ref<string | null>(null);
+const lookupTruncated = ref(false);
 const recentOperationIds = ref<string[]>([]);
 const activeGuidedOperationId = ref<string | null>(null);
+const lookupResultsList = ref<InstanceType<typeof PaletteLookupResults> | null>(null);
 
 // Stale-reply guard: only the latest request may update the results.
 let navToken = 0;
 let createTargetsToken = 0;
 let operationOptionsToken = 0;
+let lookupToken = 0;
 // Mutation replies are checked against this separately from navToken (typing
 // must never invalidate an in-flight create/delete). The palette cannot close
 // while one is pending, so every accepted mutation reply is reconciled.
@@ -232,6 +279,8 @@ let retryExecution: { key: string; id: string } | null = null;
 let navDebounce: ReturnType<typeof setTimeout> | null = null;
 let mutationTimeout: ReturnType<typeof setTimeout> | null = null;
 let suppressQueryWatch = false;
+let rootComposing = false;
+let compositionFetchPending = false;
 
 const localOpen = computed({
   get: () => open.value,
@@ -252,6 +301,15 @@ const createEntityType = computed<EntityType | null>(() =>
 
 const confirmItem = computed<DeleteItem | null>(() =>
   step.value.kind === "delete-confirm" ? step.value.item : null,
+);
+
+const lookupStep = computed(() => (step.value.kind === "lookup-results" ? step.value : null));
+
+const referencePattern = computed(() => classifyReferencePattern(query.value));
+const patternDoorActive = computed(() => referencePattern.value.state !== "normal");
+const remoteLookupMode = computed(
+  () =>
+    step.value.kind === "lookup-results" || (step.value.kind === "root" && patternDoorActive.value),
 );
 
 const activeOperation = computed<OperationDefinition | null>(() => {
@@ -317,30 +375,30 @@ const canMutate = computed(
     createTargets.value.length > 0,
 );
 
-function resolveOperationAvailability(operation: OperationDefinition): OperationAvailability {
-  if (operation.authorization === "edit_content") {
-    if (!createTargetsLoaded.value && createTargetsLoading.value) {
-      return {
-        enabled: false,
-        reasonKey: "palette.operation_unavailable.checking",
-      };
-    }
+function editOperationAvailability(): OperationAvailability {
+  if (!createTargetsLoaded.value && createTargetsLoading.value) {
+    return {
+      enabled: false,
+      reasonKey: "palette.operation_unavailable.checking",
+    };
+  }
 
-    if (createTargetsErrorKey.value) {
-      return {
-        enabled: false,
-        reasonKey: "palette.operation_unavailable.availability_failed",
-      };
-    }
+  if (createTargetsErrorKey.value) {
+    return {
+      enabled: false,
+      reasonKey: "palette.operation_unavailable.availability_failed",
+    };
+  }
 
-    if (!canMutate.value) {
-      return {
+  return canMutate.value
+    ? { enabled: true }
+    : {
         enabled: false,
         reasonKey: "palette.operation_unavailable.edit_content",
       };
-    }
-  }
+}
 
+function contextualOperationAvailability(operation: OperationDefinition): OperationAvailability {
   if (operation.authorization !== "contextual") return { enabled: true };
 
   const contextualParameter = operation.parameters.find(
@@ -362,6 +420,21 @@ function resolveOperationAvailability(operation: OperationDefinition): Operation
         ? "palette.operation_unavailable.commands"
         : "palette.operation_unavailable.views",
   };
+}
+
+function resolveOperationAvailability(operation: OperationDefinition): OperationAvailability {
+  if (LOOKUP_OPERATION_IDS.has(operation.id) && !projectContext) {
+    return {
+      enabled: false,
+      reasonKey: "palette.operation_unavailable.project_context",
+    };
+  }
+
+  if (operation.authorization === "edit_content") {
+    return editOperationAvailability();
+  }
+
+  return contextualOperationAvailability(operation);
 }
 
 const operationAvailabilityById = computed(
@@ -398,9 +471,11 @@ const activeErrorKey = computed<string | null>(() => {
 
   switch (step.value.kind) {
     case "root":
-      return navErrorKey.value;
+      return patternDoorActive.value ? lookupErrorKey.value : navErrorKey.value;
     case "operation":
       return operationOptionsErrorKey.value;
+    case "lookup-results":
+      return lookupErrorKey.value;
     case "create-pick-project":
       return createTargetsErrorKey.value;
     case "delete-pick-entity":
@@ -421,9 +496,11 @@ const operationEmptyMessageKey = computed(() =>
 const activeLoading = computed(() => {
   switch (step.value.kind) {
     case "root":
-      return navLoading.value;
+      return patternDoorActive.value ? lookupLoading.value : navLoading.value;
     case "operation":
       return operationOptionsLoading.value;
+    case "lookup-results":
+      return lookupLoading.value;
     case "create-pick-project":
       return createTargetsLoading.value;
     case "delete-pick-entity":
@@ -470,7 +547,14 @@ function handleQueryChange(): void {
   // previous query must never land after the user has kept typing.
   ++navToken;
   ++operationOptionsToken;
+  ++lookupToken;
   if (navDebounce) clearTimeout(navDebounce);
+
+  if (step.value.kind === "root" && (rootComposing || compositionFetchPending)) {
+    navLoading.value = false;
+    lookupLoading.value = false;
+    return;
+  }
 
   if (prepareStepForQueryChange()) return;
 
@@ -494,9 +578,7 @@ function clearActiveOperationValueForEdit(): void {
 function prepareStepForQueryChange(): boolean {
   switch (step.value.kind) {
     case "root":
-      navLoading.value = true;
-      navErrorKey.value = null;
-      return false;
+      return prepareRootForQueryChange();
     case "operation":
       return prepareOperationForQueryChange();
     case "delete-pick-entity":
@@ -506,6 +588,35 @@ function prepareStepForQueryChange(): boolean {
     default:
       return false;
   }
+}
+
+function prepareRootForQueryChange(): boolean {
+  const classification = referencePattern.value;
+
+  if (classification.state === "normal") {
+    if (activeGuidedOperationId.value === "variable_definition") {
+      abandonActiveOperation();
+    }
+    resetLookupState();
+    navLoading.value = true;
+    navErrorKey.value = null;
+    return false;
+  }
+
+  navLoading.value = false;
+  navErrorKey.value = null;
+  navGroups.value = [];
+  lookupErrorKey.value = null;
+
+  if (classification.state !== "ready") {
+    lookupLoading.value = false;
+    lookupResults.value = [];
+    lookupTruncated.value = false;
+    return true;
+  }
+
+  lookupLoading.value = true;
+  return false;
 }
 
 function prepareOperationForQueryChange(): boolean {
@@ -519,6 +630,29 @@ function prepareOperationForQueryChange(): boolean {
 
   fetchOperationOptions();
   return true;
+}
+
+function onRootCompositionStart(): void {
+  if (step.value.kind !== "root") return;
+
+  rootComposing = true;
+  compositionFetchPending = false;
+  ++navToken;
+  ++lookupToken;
+  if (navDebounce) clearTimeout(navDebounce);
+}
+
+function onRootCompositionEnd(): void {
+  if (step.value.kind !== "root") return;
+
+  rootComposing = false;
+  compositionFetchPending = true;
+
+  void nextTick(() => {
+    if (!compositionFetchPending || !open.value || step.value.kind !== "root") return;
+    compositionFetchPending = false;
+    handleQueryChange();
+  });
 }
 
 onUnmounted(() => {
@@ -538,7 +672,10 @@ function openPalette(): void {
   deleteItemsErrorKey.value = null;
   activeAICta.value = null;
   resetOperationState();
+  resetLookupState();
   createTargetsLoaded.value = false;
+  rootComposing = false;
+  compositionFetchPending = false;
   step.value = { kind: "root" };
   open.value = true;
   focusPaletteInput();
@@ -559,9 +696,11 @@ function closePalette(): void {
   errorKey.value = null;
   activeAICta.value = null;
   resetOperationState();
+  resetLookupState();
   ++mutationToken;
   ++createTargetsToken;
   ++operationOptionsToken;
+  ++lookupToken;
 }
 
 function startMutationTimeout(token: number): void {
@@ -612,12 +751,13 @@ function enterStep(next: PaletteStep): void {
   ++mutationToken;
   ++navToken;
   ++operationOptionsToken;
+  ++lookupToken;
   if (navDebounce) clearTimeout(navDebounce);
   resetQuery();
 
   if (next.kind === "create-pick-project" && !createTargetsLoaded.value) {
     fetchCreateTargets();
-  } else if (next.kind !== "create-pick-project") {
+  } else if (next.kind !== "create-pick-project" && next.kind !== "lookup-results") {
     fetchForStep();
   }
 
@@ -628,7 +768,7 @@ function focusPaletteInput(): void {
   void nextTick(() => {
     if (step.value.kind === "operation") {
       operationInput.value?.focusActive();
-    } else {
+    } else if (step.value.kind !== "lookup-results") {
       paletteBody.value?.querySelector<HTMLInputElement>("[data-slot='command-input']")?.focus();
     }
   });
@@ -644,6 +784,9 @@ function goBack(): void {
     } else {
       enterStep({ kind: "delete-pick-entity" });
     }
+  } else if (current.kind === "lookup-results") {
+    resetLookupState();
+    enterStep({ kind: "operation", operationId: current.operationId });
   } else {
     if (current.kind === "operation") abandonActiveOperation();
     resetOperationState();
@@ -652,6 +795,15 @@ function goBack(): void {
 }
 
 function onPaletteKeydown(event: KeyboardEvent): void {
+  if (
+    step.value.kind === "root" &&
+    rootImeActive(event) &&
+    ["Enter", "Escape", "ArrowUp", "ArrowDown"].includes(event.key)
+  ) {
+    event.stopPropagation();
+    return;
+  }
+
   if (step.value.kind === "root" || step.value.kind === "operation") return;
 
   if (event.key === "Backspace" && query.value === "") {
@@ -664,6 +816,12 @@ function onPaletteKeydown(event: KeyboardEvent): void {
 // Reka owns Escape at the dismiss layer. Preventing that event is the only
 // reliable way to turn Escape into one-step-back for nested palette flows.
 function onDialogEscape(event: KeyboardEvent): void {
+  if (step.value.kind === "root" && rootImeActive(event)) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+
   if (step.value.kind === "root" && !busy.value) return;
 
   event.preventDefault();
@@ -671,11 +829,19 @@ function onDialogEscape(event: KeyboardEvent): void {
   if (!busy.value) goBack();
 }
 
+function rootImeActive(event: KeyboardEvent): boolean {
+  return rootComposing || event.isComposing || event.keyCode === 229;
+}
+
 function fetchForStep(): void {
   const current = step.value;
 
   if (current.kind === "root") {
-    fetchNavDestinations();
+    if (referencePattern.value.state === "ready") {
+      fetchReferencePattern();
+    } else if (referencePattern.value.state === "normal") {
+      fetchNavDestinations();
+    }
   } else if (current.kind === "operation") {
     fetchOperationOptions();
   } else if (current.kind === "delete-pick-entity") {
@@ -683,6 +849,86 @@ function fetchForStep(): void {
   }
   // create-pick-project filters its already-loaded targets client-side;
   // delete-confirm has no data to fetch.
+}
+
+function fetchReferencePattern(): void {
+  const classification = referencePattern.value;
+  if (classification.state !== "ready") {
+    lookupLoading.value = false;
+    lookupResults.value = [];
+    return;
+  }
+
+  if (!projectContext) {
+    lookupLoading.value = false;
+    lookupResults.value = [];
+    lookupTruncated.value = false;
+    lookupErrorKey.value = "palette.operation_unavailable.project_context";
+    return;
+  }
+
+  if (activeGuidedOperationId.value !== "variable_definition") {
+    activeGuidedOperationId.value = "variable_definition";
+    track("palette_operation_selected", { operation_id: "variable_definition" });
+  }
+
+  const pattern = classification.pattern.raw;
+  const token = ++lookupToken;
+  const highlightedResultId = lookupResultsList.value?.highlightedResultId() ?? null;
+  lookupLoading.value = true;
+  lookupErrorKey.value = null;
+
+  live.pushEvent(
+    "palette_reference_pattern",
+    { pattern, token },
+    (reply: LookupReply) => {
+      if (!acceptsPatternReply(token, pattern, reply)) return;
+
+      lookupLoading.value = false;
+      if (reply.error) {
+        lookupResults.value = [];
+        lookupTruncated.value = false;
+        lookupErrorKey.value =
+          reply.error === "invalid_request"
+            ? "palette.pattern_invalid"
+            : (errorMessageKeys[reply.error] ?? "palette.lookup_failed");
+        return;
+      }
+
+      const latestHighlightedResultId =
+        lookupResultsList.value?.highlightedResultId() ?? highlightedResultId;
+      lookupResults.value = reconcileLookupResults(
+        lookupResults.value,
+        normalizeLookupResults(reply.items ?? []),
+      );
+      lookupTruncated.value = reply.truncated ?? false;
+      completeActiveOperation();
+      void restoreLookupHighlight(latestHighlightedResultId);
+    },
+    () => {
+      if (!acceptsPatternRequest(token, pattern)) return;
+      lookupLoading.value = false;
+      lookupResults.value = [];
+      lookupTruncated.value = false;
+      lookupErrorKey.value = "palette.lookup_failed";
+    },
+  );
+}
+
+function acceptsPatternReply(token: number, pattern: string, reply: LookupReply): boolean {
+  return reply?.token === token && acceptsPatternRequest(token, pattern);
+}
+
+function acceptsPatternRequest(token: number, pattern: string): boolean {
+  const classification = referencePattern.value;
+
+  return (
+    token === lookupToken &&
+    open.value &&
+    step.value.kind === "root" &&
+    classification.state === "ready" &&
+    classification.pattern.raw === pattern
+  );
 }
 
 function fetchNavDestinations(): void {
@@ -694,7 +940,14 @@ function fetchNavDestinations(): void {
     "palette_nav",
     { query: query.value.trim(), token },
     (reply: PaletteNavReply) => {
-      if (reply?.token !== token || !open.value || step.value.kind !== "root") return;
+      if (
+        reply?.token !== token ||
+        token !== navToken ||
+        !open.value ||
+        step.value.kind !== "root"
+      ) {
+        return;
+      }
       navLoading.value = false;
       navGroups.value = reply.groups ?? [];
     },
@@ -789,6 +1042,65 @@ function resetOperationState(): void {
   operationOptions.value = [];
   operationOptionsLoading.value = false;
   operationOptionsErrorKey.value = null;
+}
+
+function resetLookupState(): void {
+  lookupResults.value = [];
+  lookupLoading.value = false;
+  lookupErrorKey.value = null;
+  lookupTruncated.value = false;
+}
+
+function normalizeLookupResults(items: RawLookupResult[]): PaletteLookupResult[] {
+  return items.flatMap((item) => {
+    if (
+      typeof item.id !== "string" ||
+      typeof item.url !== "string" ||
+      typeof item.label !== "string"
+    ) {
+      return [];
+    }
+
+    const icon: PaletteLookupResult["icon"] =
+      item.type === "sheet" || item.type === "flow" || item.type === "scene"
+        ? item.type
+        : "reference";
+    const detailKey = lookupKindLabelKeys[item.kind];
+
+    return [
+      {
+        id: item.id,
+        url: item.url,
+        label: item.label,
+        context: typeof item.context === "string" ? item.context : undefined,
+        detail: detailKey ? t(detailKey) : undefined,
+        icon,
+      },
+    ];
+  });
+}
+
+function reconcileLookupResults(
+  current: PaletteLookupResult[],
+  incoming: PaletteLookupResult[],
+): PaletteLookupResult[] {
+  const incomingById = new Map(incoming.map((result) => [result.id, result]));
+  const retained = current.flatMap((result) => {
+    const updated = incomingById.get(result.id);
+    if (!updated) return [];
+    incomingById.delete(result.id);
+    return [updated];
+  });
+  const appended = incoming.filter((result) => incomingById.has(result.id));
+
+  return [...retained, ...appended];
+}
+
+async function restoreLookupHighlight(resultId: string | null): Promise<void> {
+  await nextTick();
+
+  if (!open.value || lookupResults.value.length === 0) return;
+  await lookupResultsList.value?.restoreHighlightedResult(resultId);
 }
 
 function activeOperationParameter(): OperationParameterDefinition | undefined {
@@ -1098,6 +1410,10 @@ function executeOperation(operation: OperationDefinition): void {
 
 const operationExecutors: Readonly<Record<string, () => void>> = {
   goto: executeGotoOperation,
+  variable_definition: () => executeReferenceOperation("variable_definition", "variable"),
+  variable_usages: () => executeReferenceOperation("variable_usages", "variable"),
+  entity_usages: () => executeReferenceOperation("entity_usages", "entity"),
+  flow_callers: () => executeReferenceOperation("flow_callers", "flow"),
   create: executeCreateOperation,
   delete: executeDeleteOperation,
   run_command: () => runSelectedClientCommand("command"),
@@ -1112,6 +1428,101 @@ function executeGotoOperation(): void {
   }
 
   runNavigationCommand(destination.id, destination.value, completeActiveOperation);
+}
+
+function executeReferenceOperation(operationId: string, parameterId: string): void {
+  const target = operationRecord(operationValues.value[parameterId]);
+  if (!target || !projectContext) {
+    invalidateOperationParameter(parameterId);
+    return;
+  }
+
+  if (activeGuidedOperationId.value !== operationId) {
+    activeGuidedOperationId.value = operationId;
+    track("palette_operation_selected", { operation_id: operationId });
+  }
+
+  resetLookupState();
+  enterStep({ kind: "lookup-results", operationId });
+  const token = ++lookupToken;
+  lookupLoading.value = true;
+
+  live.pushEvent(
+    "palette_reference_lookup",
+    {
+      operation_id: operationId,
+      target,
+      token,
+    },
+    (reply: LookupReply) => {
+      if (!acceptsLookupReply(token, operationId, reply)) return;
+
+      lookupLoading.value = false;
+      if (reply.error) {
+        handleReferenceOperationError(operationId, parameterId, reply.error);
+        return;
+      }
+
+      lookupResults.value = reconcileLookupResults(
+        lookupResults.value,
+        normalizeLookupResults(reply.items ?? []),
+      );
+      lookupTruncated.value = reply.truncated ?? false;
+      completeActiveOperation();
+      void restoreLookupHighlight(null);
+    },
+    () => {
+      if (!acceptsLookupRequest(token, operationId)) return;
+      lookupLoading.value = false;
+      lookupResults.value = [];
+      lookupTruncated.value = false;
+      lookupErrorKey.value = "palette.lookup_failed";
+    },
+  );
+}
+
+function acceptsLookupReply(token: number, operationId: string, reply: LookupReply): boolean {
+  return reply?.token === token && acceptsLookupRequest(token, operationId);
+}
+
+function acceptsLookupRequest(token: number, operationId: string): boolean {
+  const current = step.value;
+
+  return (
+    token === lookupToken &&
+    open.value &&
+    current.kind === "lookup-results" &&
+    current.operationId === operationId
+  );
+}
+
+function handleReferenceOperationError(
+  operationId: string,
+  parameterId: string,
+  replyError: string,
+): void {
+  lookupResults.value = [];
+  lookupTruncated.value = false;
+
+  if (!["unauthorized", "not_found", "invalid_request", "unavailable"].includes(replyError)) {
+    lookupErrorKey.value = errorMessageKeys[replyError] ?? "palette.lookup_failed";
+    return;
+  }
+
+  operationErrors.value = {
+    ...operationErrors.value,
+    [parameterId]: t(errorMessageKeys[replyError] ?? "palette.invalid_request"),
+  };
+  activeParameterId.value = parameterId;
+  enterStep({ kind: "operation", operationId });
+}
+
+function onSelectLookupResult(result: PaletteLookupResult): void {
+  if (busy.value || lookupLoading.value) return;
+
+  track("palette_command_executed", { command_id: "reference.open" });
+  closePalette();
+  liveNavigate(result.url);
 }
 
 function executeCreateOperation(): void {
@@ -1516,15 +1927,19 @@ function track(event: string, payload: Record<string, unknown>): void {
     v-model:open="localOpen"
     :title="t('palette.title')"
     :description="t('palette.description')"
+    :disable-filter="remoteLookupMode"
     @escape-key-down="onDialogEscape"
   >
     <div ref="paletteBody" class="contents" @keydown="onPaletteKeydown">
       <CommandInput
-        v-if="!confirmItem && !activeOperation"
+        v-if="!confirmItem && !activeOperation && !lookupStep"
         :key="inputKey"
         v-model="query"
         :disabled="busy"
         :placeholder="inputPlaceholder"
+        :aria-label="inputPlaceholder"
+        @compositionstart="onRootCompositionStart"
+        @compositionend="onRootCompositionEnd"
       />
       <PaletteOperationInput
         v-else-if="activeOperation"
@@ -1540,6 +1955,24 @@ function track(event: string, payload: Record<string, unknown>): void {
         @cancel="cancelOperation"
         @submit="submitOperation"
       />
+      <div
+        v-else-if="lookupStep"
+        class="flex items-center gap-2 border-b px-3 py-2"
+        data-testid="palette-lookup-header"
+      >
+        <button
+          type="button"
+          class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          :aria-label="t('palette.back_to_operation')"
+          :disabled="busy"
+          @click="goBack"
+        >
+          <ArrowLeft class="size-4" />
+        </button>
+        <p class="min-w-0 flex-1 truncate text-sm font-medium">
+          {{ t("palette.lookup_results") }}
+        </p>
+      </div>
       <div
         v-if="activeErrorKey"
         role="alert"
@@ -1624,155 +2057,215 @@ function track(event: string, payload: Record<string, unknown>): void {
           </CommandGroup>
         </template>
 
+        <template v-else-if="lookupStep">
+          <PaletteLookupResults
+            ref="lookupResultsList"
+            :items="lookupResults"
+            :heading="t('palette.lookup_results')"
+            :disabled="busy || lookupLoading"
+            :loading="lookupLoading"
+            :truncated="lookupTruncated"
+            :truncated-label="t('palette.lookup_truncated')"
+            @select="onSelectLookupResult"
+          />
+          <p
+            v-if="!lookupLoading && !lookupErrorKey && lookupResults.length === 0"
+            class="py-6 text-center text-sm text-muted-foreground"
+          >
+            {{ t("palette.no_lookup_results") }}
+          </p>
+          <p v-if="lookupResults.length > 0" aria-live="polite" class="sr-only">
+            {{ t("palette.lookup_results_count", { count: lookupResults.length }) }}
+          </p>
+        </template>
+
         <template v-else-if="step.kind === 'root'">
-          <PaletteEmpty :enabled="!navLoading && !navErrorKey" @no-results="onNoResults">
-            {{ t("palette.no_results") }}
-          </PaletteEmpty>
-          <div v-if="showHelpIntro" class="border-b px-3 py-3">
-            <div class="flex items-start gap-2.5">
-              <div class="rounded-md bg-primary/10 p-1.5 text-primary">
-                <CircleHelp class="size-4" />
-              </div>
-              <div>
-                <p class="text-sm font-medium">{{ t("palette.capabilities_title") }}</p>
-                <p class="mt-0.5 text-xs text-muted-foreground">
-                  {{ t("palette.capabilities_description") }}
-                </p>
+          <template v-if="patternDoorActive">
+            <p
+              v-if="referencePattern.state === 'incomplete'"
+              class="py-6 text-center text-sm text-muted-foreground"
+            >
+              {{ t("palette.pattern_incomplete") }}
+            </p>
+            <p
+              v-else-if="referencePattern.state === 'invalid'"
+              class="py-6 text-center text-sm text-muted-foreground"
+            >
+              {{ t("palette.pattern_invalid") }}
+            </p>
+            <template v-else>
+              <PaletteLookupResults
+                ref="lookupResultsList"
+                :items="lookupResults"
+                :heading="t('palette.lookup_results')"
+                :disabled="busy || lookupLoading"
+                :loading="lookupLoading"
+                :truncated="lookupTruncated"
+                :truncated-label="t('palette.lookup_truncated')"
+                @select="onSelectLookupResult"
+              />
+              <p
+                v-if="!lookupLoading && !lookupErrorKey && lookupResults.length === 0"
+                class="py-6 text-center text-sm text-muted-foreground"
+              >
+                {{ t("palette.no_lookup_results") }}
+              </p>
+              <p v-if="lookupResults.length > 0" aria-live="polite" class="sr-only">
+                {{ t("palette.lookup_results_count", { count: lookupResults.length }) }}
+              </p>
+            </template>
+          </template>
+
+          <template v-else>
+            <PaletteEmpty :enabled="!navLoading && !navErrorKey" @no-results="onNoResults">
+              {{ t("palette.no_results") }}
+            </PaletteEmpty>
+            <div v-if="showHelpIntro" class="border-b px-3 py-3">
+              <div class="flex items-start gap-2.5">
+                <div class="rounded-md bg-primary/10 p-1.5 text-primary">
+                  <CircleHelp class="size-4" />
+                </div>
+                <div>
+                  <p class="text-sm font-medium">{{ t("palette.capabilities_title") }}</p>
+                  <p class="mt-0.5 text-xs text-muted-foreground">
+                    {{ t("palette.capabilities_description") }}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-          <!-- Reka's listbox item memoizes disabled and fallthrough attrs.
-               The full availability signature belongs in both operation-row
-               keys so enabled and reason changes remount the affected row. -->
-          <CommandGroup
-            v-if="recentOperations.length > 0"
-            :heading="t('palette.recent_operations')"
-          >
-            <CommandItem
-              v-for="operation in recentOperations"
-              :key="`recent-operation-${operation.id}-${operationAvailabilityKey(operation)}`"
-              :value="`recent-operation-${operation.id}`"
-              :data-operation-id="operation.id"
-              :data-operation-available="operationAvailable(operation)"
-              :search-text="`${operationSearchText(operation, t)} ${t('palette.help_keywords')}`"
-              :disabled="busy || !operationAvailable(operation)"
-              :title="operationUnavailableReason(operation)"
-              @select="enterOperation(operation)"
+            <!-- Reka's listbox item memoizes disabled and fallthrough attrs.
+                 The full availability signature belongs in both operation-row
+                 keys so enabled and reason changes remount the affected row. -->
+            <CommandGroup
+              v-if="recentOperations.length > 0"
+              :heading="t('palette.recent_operations')"
             >
-              <History class="size-4 shrink-0" />
-              <span class="min-w-0">
-                <span class="block">{{ t(operation.help.labelKey) }}</span>
-                <span
-                  v-if="!operationAvailable(operation)"
-                  class="block truncate text-xs font-normal text-muted-foreground"
-                >
-                  {{ operationUnavailableReason(operation) }}
-                </span>
-              </span>
-            </CommandItem>
-          </CommandGroup>
-          <CommandGroup
-            v-for="operationGroup in operationGroups"
-            :key="`operations-${operationGroup.domain}`"
-            :heading="t(`palette.operation_domains.${operationGroup.domain}`)"
-          >
-            <CommandItem
-              v-for="operation in operationGroup.operations"
-              :key="`operation-${operation.id}-${operationAvailabilityKey(operation)}`"
-              :value="`operation-${operation.id}`"
-              :data-operation-id="operation.id"
-              :data-operation-available="operationAvailable(operation)"
-              :search-text="`${operationSearchText(operation, t)} ${t('palette.help_keywords')}`"
-              class="items-start py-2.5"
-              :disabled="busy || !operationAvailable(operation)"
-              :title="operationUnavailableReason(operation)"
-              @select="enterOperation(operation)"
-            >
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center justify-between gap-3">
-                  <span class="font-medium">{{ t(operation.help.labelKey) }}</span>
-                  <span class="shrink-0 text-xs text-muted-foreground">
-                    {{ t(operation.help.exampleKey) }}
+              <CommandItem
+                v-for="operation in recentOperations"
+                :key="`recent-operation-${operation.id}-${operationAvailabilityKey(operation)}`"
+                :value="`recent-operation-${operation.id}`"
+                :data-operation-id="operation.id"
+                :data-operation-available="operationAvailable(operation)"
+                :search-text="`${operationSearchText(operation, t)} ${t('palette.help_keywords')}`"
+                :disabled="busy || !operationAvailable(operation)"
+                :title="operationUnavailableReason(operation)"
+                @select="enterOperation(operation)"
+              >
+                <History class="size-4 shrink-0" />
+                <span class="min-w-0">
+                  <span class="block">{{ t(operation.help.labelKey) }}</span>
+                  <span
+                    v-if="!operationAvailable(operation)"
+                    class="block truncate text-xs font-normal text-muted-foreground"
+                  >
+                    {{ operationUnavailableReason(operation) }}
                   </span>
+                </span>
+              </CommandItem>
+            </CommandGroup>
+            <CommandGroup
+              v-for="operationGroup in operationGroups"
+              :key="`operations-${operationGroup.domain}`"
+              :heading="t(`palette.operation_domains.${operationGroup.domain}`)"
+            >
+              <CommandItem
+                v-for="operation in operationGroup.operations"
+                :key="`operation-${operation.id}-${operationAvailabilityKey(operation)}`"
+                :value="`operation-${operation.id}`"
+                :data-operation-id="operation.id"
+                :data-operation-available="operationAvailable(operation)"
+                :search-text="`${operationSearchText(operation, t)} ${t('palette.help_keywords')}`"
+                class="items-start py-2.5"
+                :disabled="busy || !operationAvailable(operation)"
+                :title="operationUnavailableReason(operation)"
+                @select="enterOperation(operation)"
+              >
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="font-medium">{{ t(operation.help.labelKey) }}</span>
+                    <span class="shrink-0 text-xs text-muted-foreground">
+                      {{ t(operation.help.exampleKey) }}
+                    </span>
+                  </div>
+                  <p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    {{ t(operation.help.descriptionKey) }}
+                  </p>
+                  <p
+                    v-if="!operationAvailable(operation)"
+                    class="mt-1 text-xs font-medium text-muted-foreground"
+                  >
+                    {{ operationUnavailableReason(operation) }}
+                  </p>
+                  <p
+                    v-if="operation.help.pattern"
+                    class="mt-1 font-mono text-[11px] text-muted-foreground"
+                  >
+                    {{ operation.help.pattern }}
+                  </p>
                 </div>
-                <p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                  {{ t(operation.help.descriptionKey) }}
-                </p>
-                <p
-                  v-if="!operationAvailable(operation)"
-                  class="mt-1 text-xs font-medium text-muted-foreground"
-                >
-                  {{ operationUnavailableReason(operation) }}
-                </p>
-                <p
-                  v-if="operation.help.pattern"
-                  class="mt-1 font-mono text-[11px] text-muted-foreground"
-                >
-                  {{ operation.help.pattern }}
-                </p>
-              </div>
-            </CommandItem>
-          </CommandGroup>
-          <CommandGroup v-for="group in paletteGroups" :key="group.key" :heading="t(group.key)">
-            <CommandItem
-              v-for="command in group.commands"
-              :key="command.id"
-              :value="command.id"
-              :disabled="busy || !commandEnabled(command)"
-              :title="
-                !commandEnabled(command) && commandDisabledReasonKey(command)
-                  ? t(commandDisabledReasonKey(command)!)
-                  : undefined
-              "
-              @select="onSelect(command)"
+              </CommandItem>
+            </CommandGroup>
+            <CommandGroup v-for="group in paletteGroups" :key="group.key" :heading="t(group.key)">
+              <CommandItem
+                v-for="command in group.commands"
+                :key="command.id"
+                :value="command.id"
+                :disabled="busy || !commandEnabled(command)"
+                :title="
+                  !commandEnabled(command) && commandDisabledReasonKey(command)
+                    ? t(commandDisabledReasonKey(command)!)
+                    : undefined
+                "
+                @select="onSelect(command)"
+              >
+                <component :is="command.icon" v-if="command.icon" class="size-4 shrink-0" />
+                <span>{{ commandLabel(command) }}</span>
+                <CommandShortcut v-if="command.shortcut">{{ command.shortcut }}</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandGroup v-if="canMutate" :heading="t('palette.groups.actions')">
+              <CommandItem
+                v-for="entityType in entityTypes"
+                :key="`create.${entityType}`"
+                :value="`create.${entityType}`"
+                :disabled="busy"
+                @select="enterCreateStep(entityType)"
+              >
+                <component :is="navIcons[entityType]" class="size-4 shrink-0" />
+                <span>{{ t(createLabelKeys[entityType]) }}</span>
+              </CommandItem>
+              <CommandItem value="palette.delete-entity" :disabled="busy" @select="enterDeleteStep">
+                <Trash2 class="size-4 shrink-0" />
+                <span>{{ t("palette.delete_entity") }}</span>
+              </CommandItem>
+            </CommandGroup>
+            <CommandGroup
+              v-for="group in navGroups"
+              :key="`nav-${group.key}`"
+              :heading="navGroupHeading(group.key)"
             >
-              <component :is="command.icon" v-if="command.icon" class="size-4 shrink-0" />
-              <span>{{ commandLabel(command) }}</span>
-              <CommandShortcut v-if="command.shortcut">{{ command.shortcut }}</CommandShortcut>
-            </CommandItem>
-          </CommandGroup>
-          <CommandGroup v-if="canMutate" :heading="t('palette.groups.actions')">
-            <CommandItem
-              v-for="entityType in entityTypes"
-              :key="`create.${entityType}`"
-              :value="`create.${entityType}`"
-              :disabled="busy"
-              @select="enterCreateStep(entityType)"
-            >
-              <component :is="navIcons[entityType]" class="size-4 shrink-0" />
-              <span>{{ t(createLabelKeys[entityType]) }}</span>
-            </CommandItem>
-            <CommandItem value="palette.delete-entity" :disabled="busy" @select="enterDeleteStep">
-              <Trash2 class="size-4 shrink-0" />
-              <span>{{ t("palette.delete_entity") }}</span>
-            </CommandItem>
-          </CommandGroup>
-          <CommandGroup
-            v-for="group in navGroups"
-            :key="`nav-${group.key}`"
-            :heading="navGroupHeading(group.key)"
-          >
-            <CommandItem
-              v-for="item in group.items"
-              :key="item.id"
-              :value="item.id"
-              :disabled="busy"
-              @select="onSelectNav(item)"
-            >
-              <component
-                :is="navIcons[item.type]"
-                v-if="navIcons[item.type]"
-                class="size-4 shrink-0"
-              />
-              <span>{{ item.label }}</span>
-              <span v-if="item.context" class="text-xs text-muted-foreground">{{
-                item.context
-              }}</span>
-              <!-- Entities can match by shortcut server-side; keep it in the
-                 filterable textContent without showing it. -->
-              <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
-            </CommandItem>
-          </CommandGroup>
+              <CommandItem
+                v-for="item in group.items"
+                :key="item.id"
+                :value="item.id"
+                :disabled="busy"
+                @select="onSelectNav(item)"
+              >
+                <component
+                  :is="navIcons[item.type]"
+                  v-if="navIcons[item.type]"
+                  class="size-4 shrink-0"
+                />
+                <span>{{ item.label }}</span>
+                <span v-if="item.context" class="text-xs text-muted-foreground">{{
+                  item.context
+                }}</span>
+                <!-- Entities can match by shortcut server-side; keep it in the
+                   filterable textContent without showing it. -->
+                <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
+              </CommandItem>
+            </CommandGroup>
+          </template>
         </template>
 
         <template v-else-if="createEntityType">

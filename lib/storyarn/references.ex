@@ -25,6 +25,7 @@ defmodule Storyarn.References do
   defdelegate rebuild_project_entity_references(project_id), to: EntityTracker
 
   defdelegate get_backlinks_with_sources(target_type, target_id, project_id), to: Backlinks
+  defdelegate list_entity_usages(target_type, target_id, project_id, opts \\ []), to: Backlinks
   defdelegate count_backlinks(target_type, target_id), to: Backlinks
 
   @spec rebuild_project_variable_references(integer()) :: :ok | {:error, term()}
@@ -45,6 +46,7 @@ defmodule Storyarn.References do
 
   defdelegate count_variable_usage(block_id), to: VariableUsage
   defdelegate referenced_block_ids(block_ids), to: VariableUsage
+  defdelegate list_variable_usages(project_id, definition, opts \\ []), to: VariableUsage
 
   defdelegate count_stale_variable_references(block_ids, project_id),
     to: VariableUsage,

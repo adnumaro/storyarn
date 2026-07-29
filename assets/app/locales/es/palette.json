@@ -12,11 +12,28 @@
       "checking": "Comprobando disponibilidad…",
       "availability_failed": "Storyarn no ha podido comprobar si esta operación está disponible.",
       "edit_content": "Necesitas acceso de edición al menos a un proyecto.",
+      "project_context": "Abre un proyecto para usar las búsquedas de referencias.",
       "commands": "No hay comandos disponibles en esta vista.",
       "views": "No hay vistas disponibles en este contexto."
     },
     "operation_options_failed": "Storyarn no ha podido cargar las opciones disponibles. Inténtalo de nuevo.",
+    "lookup_failed": "Storyarn no ha podido completar esta búsqueda de referencias. Inténtalo de nuevo.",
     "no_operation_options": "No hay opciones que coincidan",
+    "no_lookup_results": "No se han encontrado referencias",
+    "lookup_results": "Resultados de referencias",
+    "lookup_results_count": "{count} resultado de referencia | {count} resultados de referencias",
+    "lookup_truncated": "Se muestran los primeros resultados. Concreta el patrón de referencia para acotar la lista.",
+    "back_to_operation": "Volver a la operación",
+    "lookup_kinds": {
+      "definition": "Definición",
+      "read": "Lectura",
+      "write": "Escritura",
+      "formula_read": "Fórmula",
+      "entity_usage": "Referencia",
+      "flow_caller": "Llamada"
+    },
+    "pattern_incomplete": "Sigue escribiendo el patrón de referencia",
+    "pattern_invalid": "Ese patrón de referencia no es válido",
     "no_deletable_content": "No hay fichas, flujos ni escenas que puedas eliminar",
     "no_results": "No hay comandos que coincidan",
     "command_failed": "El comando ha fallado al ejecutarse. Inténtalo de nuevo.",
@@ -39,6 +56,7 @@
     },
     "operation_domains": {
       "navigation": "Buscar y abrir",
+      "references": "Referencias",
       "actions": "Acciones"
     },
     "operations": {
@@ -51,6 +69,50 @@
         },
         "parameters": {
           "destination": "destino"
+        }
+      },
+      "variable_definition": {
+        "label": "Buscar la definición de una variable…",
+        "description": "Encuentra el bloque de ficha o la celda de tabla que define una variable del proyecto.",
+        "example": "Definición de mc.jaime.health",
+        "phrase": {
+          "prefix": "Definición de"
+        },
+        "parameters": {
+          "variable": "variable"
+        }
+      },
+      "variable_usages": {
+        "label": "Buscar usos de una variable…",
+        "description": "Muestra dónde se lee o escribe una variable del proyecto en flujos, escenas y fórmulas.",
+        "example": "Usos de mc.jaime.health",
+        "phrase": {
+          "prefix": "Usos de"
+        },
+        "parameters": {
+          "variable": "variable"
+        }
+      },
+      "entity_usages": {
+        "label": "Buscar referencias a una entidad…",
+        "description": "Muestra los bloques de ficha, nodos de flujo y elementos de escena que referencian una entidad.",
+        "example": "Referencias a Capítulo dos",
+        "phrase": {
+          "prefix": "Referencias a"
+        },
+        "parameters": {
+          "entity": "ficha, flujo o escena"
+        }
+      },
+      "flow_callers": {
+        "label": "Buscar llamadas a un flujo…",
+        "description": "Muestra los nodos de subflujo y salida por referencia que llaman a un flujo.",
+        "example": "Llamadas a Secuencia inicial",
+        "phrase": {
+          "prefix": "Llamadas a"
+        },
+        "parameters": {
+          "flow": "flujo"
         }
       },
       "create": {

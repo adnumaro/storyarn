@@ -84,6 +84,36 @@ defmodule StoryarnWeb.E2E.CommandPaletteTest do
     |> assert_path("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
   end
 
+  test "the reference-pattern door opens the exact variable definition", %{conn: conn} do
+    user = user_fixture()
+    project = user |> project_fixture(%{name: "Veilbreak"}) |> Repo.preload(:workspace)
+    sheet = sheet_fixture(project, %{name: "Jaime", shortcut: "mc.jaime"})
+
+    block =
+      block_fixture(sheet, %{
+        type: "number",
+        config: %{"label" => "Health"},
+        value: %{"content" => 42},
+        variable_name: "health"
+      })
+
+    path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+
+    conn
+    |> authenticate(user)
+    |> visit(path)
+    |> wait_for_palette()
+    |> evaluate(open_palette_expression())
+    |> fill_in("[data-slot='command-input']", "Type a command or search…", with: "?health")
+    |> assert_has("[data-lookup-result-id]", text: "mc.jaime.health", timeout: 20_000)
+    |> click("[data-lookup-result-id]", "mc.jaime.health")
+    |> assert_path(path)
+    |> evaluate("window.location.search", fn search ->
+      assert search == "?highlight=block:#{block.id}"
+    end)
+    |> assert_has("#sheet-block-#{block.id}.ring-2", timeout: 5_000)
+  end
+
   defp wait_for_palette(conn) do
     conn
     |> assert_has("body .phx-connected")

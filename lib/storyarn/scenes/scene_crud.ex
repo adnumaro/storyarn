@@ -879,7 +879,7 @@ defmodule Storyarn.Scenes.SceneCrud do
       join: m in Scene,
       on: p.scene_id == m.id,
       where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: m.project_id == ^project_id,
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
       select: %{
         id: r.id,
         source_type: r.source_type,
@@ -925,7 +925,7 @@ defmodule Storyarn.Scenes.SceneCrud do
       join: m in Scene,
       on: z.scene_id == m.id,
       where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: m.project_id == ^project_id,
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
       select: %{
         id: r.id,
         source_type: r.source_type,

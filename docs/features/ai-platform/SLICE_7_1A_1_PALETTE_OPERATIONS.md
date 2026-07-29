@@ -1,9 +1,11 @@
 # Slice 7.1a.1 — The platform can be asked, and it answers
 
 **Status:** in progress across reviewable PRs. PR-1, the health consolidation,
-merged as [#52](https://github.com/adnumaro/storyarn/pull/52). PR-2 (`ENG-40`) is
-in progress. No AI belongs anywhere in this slice. It builds the substrate
-every later palette capability plugs into, including the AI door in 7.1a.2.
+merged as [#52](https://github.com/adnumaro/storyarn/pull/52), and PR-2
+(`ENG-40`) merged as [#66](https://github.com/adnumaro/storyarn/pull/66).
+PR-3 is tracked by `ENG-44`. No AI belongs anywhere in this slice. It builds the
+substrate every later palette capability plugs into, including the AI door in
+7.1a.2.
 
 ## Objective
 
@@ -25,8 +27,8 @@ to review safely as one change. Delivery is therefore:
 | PR   | Scope                                                                                                                                                                               | Status                                  |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
 | PR-1 | Health consolidation: one finding contract/catalog per domain, complete project sweeps, editor/dashboard agreement and uncapped cross-domain unused-variable detection              | **Merged as #52**                       |
-| PR-2 | `ENG-40`: operation catalog, generated help and guided door, limited to `goto`, `create`/`delete`, `run_command` and `open_view`                                                    | **In progress**                         |
-| PR-3 | Lookup/reference operations (`variable_definition`, `variable_usages`, `entity_usages`, `flow_callers`) and the reference-pattern door                                              | Pending after PR-2                      |
+| PR-2 | `ENG-40`: operation catalog, generated help and guided door, limited to `goto`, `create`/`delete`, `run_command` and `open_view`                                                    | **Merged as #66**                       |
+| PR-3 | `ENG-44`: lookup/reference operations (`variable_definition`, `variable_usages`, `entity_usages`, `flow_callers`) and the reference-pattern door                                    | **In progress**                         |
 | PR-4 | Authorized normalized `findings`, `incomplete` and `localization_gaps` operations; `missing_exit`, `inescapable_cycle`, `uncalled_flow`; convert-unused-variable-to-constant action | Pending after PR-3                      |
 | PR-5 | Cross-domain full-text `content_search`, including its index, bounded query API and write/repair lifecycle                                                                          | Pending after PR-4; independently sized |
 
@@ -127,6 +129,10 @@ mc.jaime.?               every variable on this sheet
 ```
 
 A bare pattern means **show me these** — the common case, no verb, no template.
+Reference operations and patterns are scoped to the project currently open in
+the palette. The project comes from the authenticated LiveView session, never
+from a client parameter; outside a project the catalog remains discoverable but
+the operations are disabled with an explicit reason.
 
 **Both doors must coexist.** If the input opens with a dotted reference, no template
 fires; if it opens with an operation word, the guided door does. Making the template
@@ -234,7 +240,7 @@ Backed by data that already exists:
 | --------------------------- | -------------------------------------------------------- | -------- |
 | `goto`                      | sheets, flows, scenes, projects by name                  | PR-2     |
 | `variable_definition`       | which block defines this variable                        | PR-3     |
-| `variable_usages`           | where it is read / written                               | PR-3     |
+| `variable_usages`           | where it is read / written, including formula bindings   | PR-3     |
 | `entity_usages`             | backlinks for any entity                                 | PR-3     |
 | `flow_callers`              | which subflow/exit nodes reference this flow             | PR-3     |
 | `findings`                  | structural + sheet/scene health findings in a scope      | PR-4     |

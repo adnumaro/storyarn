@@ -37,6 +37,7 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.SheetStats
   alias Storyarn.Sheets.TableCrud
   alias Storyarn.Sheets.TreeOperations
+  alias Storyarn.Sheets.VariableCatalog
   alias Storyarn.Versioning
   alias Storyarn.Versioning.EntityVersion
 
@@ -180,6 +181,21 @@ defmodule Storyarn.Sheets do
   """
   @spec list_project_variables(id()) :: [map()]
   defdelegate list_project_variables(project_id), to: SheetQueries
+
+  @doc false
+  defdelegate list_reference_variable_definitions(project_id, filter \\ :all, opts \\ []),
+    to: VariableCatalog,
+    as: :list_definitions
+
+  @doc false
+  defdelegate get_reference_variable_definition(project_id, block_id, qualified_ref),
+    to: VariableCatalog,
+    as: :get_definition
+
+  @doc false
+  defdelegate list_formula_variable_usages(project_id, qualified_ref, opts \\ []),
+    to: VariableCatalog,
+    as: :list_formula_usages
 
   @doc """
   Resolves current default values for a list of variable references.

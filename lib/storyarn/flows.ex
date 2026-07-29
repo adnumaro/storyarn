@@ -475,6 +475,9 @@ defmodule Storyarn.Flows do
   @spec list_nodes_referencing_flow(integer(), integer()) :: [map()]
   defdelegate list_nodes_referencing_flow(flow_id, project_id), to: NodeCrud
 
+  @doc false
+  defdelegate list_flow_callers(flow_id, project_id, opts \\ []), to: NodeCrud
+
   @doc """
   Checks if a subflow reference would create a circular dependency.
   """

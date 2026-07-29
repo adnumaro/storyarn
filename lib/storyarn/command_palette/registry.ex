@@ -1,10 +1,10 @@
 defmodule Storyarn.CommandPalette.Registry do
   @moduledoc """
   Single source of truth for the deterministic operations delivered by
-  Slice 7.1a.1 PR-2.
+  Slice 7.1a.1.
 
-  Later slice PRs extend this registry when their authorized backend exists;
-  declaring an unavailable operation early would make generated help lie.
+  Entries land only alongside their authorized backend; declaring an
+  unavailable operation early would make generated help lie.
   """
 
   alias Storyarn.CommandPalette.Definition
@@ -34,6 +34,114 @@ defmodule Storyarn.CommandPalette.Registry do
         label_key: "palette.operations.goto.label",
         description_key: "palette.operations.goto.description",
         example_key: "palette.operations.goto.example",
+        pattern: nil
+      }
+    }),
+    Definition.new!(%{
+      id: "variable_definition",
+      domain: :references,
+      parameters: [
+        %{
+          id: "variable",
+          type: :variable,
+          completion_source: :sheet_variables,
+          completion_mode: :server,
+          required: true,
+          label_key: "palette.operations.variable_definition.parameters.variable"
+        }
+      ],
+      latency: :instant,
+      authorization: :view,
+      result_type: :lookup,
+      phrase: [
+        %{kind: :text, text_key: "palette.operations.variable_definition.phrase.prefix"},
+        %{kind: :parameter, parameter_id: "variable"}
+      ],
+      help: %{
+        label_key: "palette.operations.variable_definition.label",
+        description_key: "palette.operations.variable_definition.description",
+        example_key: "palette.operations.variable_definition.example",
+        pattern: "mc.jaime.health"
+      }
+    }),
+    Definition.new!(%{
+      id: "variable_usages",
+      domain: :references,
+      parameters: [
+        %{
+          id: "variable",
+          type: :variable,
+          completion_source: :sheet_variables,
+          completion_mode: :server,
+          required: true,
+          label_key: "palette.operations.variable_usages.parameters.variable"
+        }
+      ],
+      latency: :instant,
+      authorization: :view,
+      result_type: :lookup,
+      phrase: [
+        %{kind: :text, text_key: "palette.operations.variable_usages.phrase.prefix"},
+        %{kind: :parameter, parameter_id: "variable"}
+      ],
+      help: %{
+        label_key: "palette.operations.variable_usages.label",
+        description_key: "palette.operations.variable_usages.description",
+        example_key: "palette.operations.variable_usages.example",
+        pattern: nil
+      }
+    }),
+    Definition.new!(%{
+      id: "entity_usages",
+      domain: :references,
+      parameters: [
+        %{
+          id: "entity",
+          type: :entity,
+          completion_source: :reference_entities,
+          completion_mode: :server,
+          required: true,
+          label_key: "palette.operations.entity_usages.parameters.entity"
+        }
+      ],
+      latency: :instant,
+      authorization: :view,
+      result_type: :lookup,
+      phrase: [
+        %{kind: :text, text_key: "palette.operations.entity_usages.phrase.prefix"},
+        %{kind: :parameter, parameter_id: "entity"}
+      ],
+      help: %{
+        label_key: "palette.operations.entity_usages.label",
+        description_key: "palette.operations.entity_usages.description",
+        example_key: "palette.operations.entity_usages.example",
+        pattern: nil
+      }
+    }),
+    Definition.new!(%{
+      id: "flow_callers",
+      domain: :references,
+      parameters: [
+        %{
+          id: "flow",
+          type: :flow,
+          completion_source: :flows,
+          completion_mode: :server,
+          required: true,
+          label_key: "palette.operations.flow_callers.parameters.flow"
+        }
+      ],
+      latency: :instant,
+      authorization: :view,
+      result_type: :lookup,
+      phrase: [
+        %{kind: :text, text_key: "palette.operations.flow_callers.phrase.prefix"},
+        %{kind: :parameter, parameter_id: "flow"}
+      ],
+      help: %{
+        label_key: "palette.operations.flow_callers.label",
+        description_key: "palette.operations.flow_callers.description",
+        example_key: "palette.operations.flow_callers.example",
         pattern: nil
       }
     }),

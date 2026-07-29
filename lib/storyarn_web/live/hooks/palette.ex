@@ -2,7 +2,8 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   @moduledoc """
   Serves the command palette for every LiveView in the authenticated app
   session: registry-backed parameter completion
-  (`palette_operation_options`), navigation search (`palette_nav`), entity creation
+  (`palette_operation_options`), authorized reference lookups
+  (`palette_reference_lookup` / `palette_reference_pattern`), navigation search (`palette_nav`), entity creation
   (`palette_create_targets` / `palette_create`), entity deletion
   (`palette_delete_search` / `palette_delete`) and product analytics
   (`palette_opened`, command/search metrics and operation lifecycle metrics).
@@ -48,7 +49,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
                            workspace.toggle-sidebar flows.toggle-minimap
                            flows.fit-to-view flows.analyze scenes.fit-to-view
                            create.project create.sheet create.flow create.scene
-                           delete.sheet delete.flow delete.scene) ++
+                           delete.sheet delete.flow delete.scene reference.open) ++
                           Enum.map(
                             ~w(dashboard sheets flows scenes assets localization),
                             &"project.go-to.#{&1}"
@@ -68,7 +69,8 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     "palette_operation_completed" => "palette operation completed",
     "palette_operation_abandoned" => "palette operation abandoned"
   }
-  @palette_events ~w(palette_operation_options palette_nav palette_create_targets palette_create
+  @palette_events ~w(palette_operation_options palette_reference_lookup palette_reference_pattern
+                     palette_nav palette_create_targets palette_create
                      palette_delete_search palette_delete palette_opened palette_command_executed
                      palette_search_no_results) ++ @operation_analytics_events
   # Client-supplied ids above the PostgreSQL bigint range would raise on
@@ -100,8 +102,14 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
               byte_size(parameter_id) <= 64 and is_binary(query) and byte_size(query) <= 400 and is_integer(token) do
     with {:ok, %{mode: :server, source: source}} <-
            CommandPalette.parameter_completion(operation_id, parameter_id),
-         {:ok, items} <- operation_options(source, socket.assigns.current_scope, query) do
-      {:halt, %{token: token, items: items}, socket}
+         {:ok, page} <-
+           operation_options(
+             source,
+             socket.assigns.current_scope,
+             current_project_id(socket),
+             query
+           ) do
+      {:halt, Map.merge(%{token: token}, page), socket}
     else
       _invalid_or_client_completion ->
         {:halt, %{token: token, error: "invalid_request"}, socket}
@@ -110,6 +118,49 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   defp handle_palette_event("palette_operation_options", %{"token" => token}, socket) when is_integer(token) do
     {:halt, %{token: token, error: "invalid_request"}, socket}
+  end
+
+  defp handle_palette_event(
+         "palette_reference_lookup",
+         %{"operation_id" => operation_id, "target" => target, "token" => token},
+         socket
+       )
+       when is_binary(operation_id) and byte_size(operation_id) <= 64 and is_map(target) and is_integer(token) do
+    with project_id when is_integer(project_id) <- current_project_id(socket),
+         {:ok, page} <-
+           GlobalSearch.execute_reference_operation(
+             socket.assigns.current_scope,
+             project_id,
+             operation_id,
+             target
+           ) do
+      {:halt, reference_page_reply(page, token, socket), socket}
+    else
+      {:error, reason} ->
+        {:halt, %{token: token, error: reference_error(reason)}, socket}
+
+      _no_project ->
+        {:halt, %{token: token, error: "unavailable"}, socket}
+    end
+  end
+
+  defp handle_palette_event("palette_reference_pattern", %{"pattern" => pattern, "token" => token}, socket)
+       when is_binary(pattern) and byte_size(pattern) <= 400 and is_integer(token) do
+    with project_id when is_integer(project_id) <- current_project_id(socket),
+         {:ok, page} <-
+           GlobalSearch.reference_pattern(
+             socket.assigns.current_scope,
+             project_id,
+             pattern
+           ) do
+      {:halt, reference_page_reply(page, token, socket), socket}
+    else
+      {:error, reason} ->
+        {:halt, %{token: token, error: reference_error(reason)}, socket}
+
+      _no_project ->
+        {:halt, %{token: token, error: "unavailable"}, socket}
+    end
   end
 
   defp handle_palette_event("palette_nav", %{"query" => query, "token" => token}, socket)
@@ -300,7 +351,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   defp handle_palette_event(_event, _params, socket), do: {:cont, socket}
 
-  defp operation_options(:navigation, scope, query) do
+  defp operation_options(:navigation, scope, _project_id, query) do
     destinations = GlobalSearch.destinations(scope, query)
 
     items =
@@ -319,10 +370,10 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
         )
       end)
 
-    {:ok, items}
+    {:ok, %{items: items, truncated: false}}
   end
 
-  defp operation_options(:deletable_entities, scope, query) do
+  defp operation_options(:deletable_entities, scope, _project_id, query) do
     items =
       scope
       |> GlobalSearch.deletable_entities(query)
@@ -338,10 +389,89 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
         }
       end)
 
-    {:ok, items}
+    {:ok, %{items: items, truncated: false}}
   end
 
-  defp operation_options(_client_or_unknown_source, _scope, _query), do: :error
+  defp operation_options(source, scope, project_id, query)
+       when source in [:sheet_variables, :reference_entities, :flows] and is_integer(project_id) do
+    GlobalSearch.reference_options(scope, project_id, source, query)
+  end
+
+  defp operation_options(_client_or_unknown_source, _scope, _project_id, _query), do: :error
+
+  defp current_project_id(%{assigns: %{project: %{id: project_id}}}) when is_integer(project_id), do: project_id
+
+  defp current_project_id(_socket), do: nil
+
+  defp reference_page_reply(page, token, socket) do
+    %{
+      token: token,
+      items: Enum.map(page.items, &reference_hit_item(&1, socket)),
+      truncated: page.truncated
+    }
+  end
+
+  defp reference_hit_item(hit, socket) do
+    destination = hit.destination
+
+    %{
+      id: hit.id,
+      kind: Atom.to_string(hit.kind),
+      type: Atom.to_string(destination.type),
+      label: hit.label,
+      context: hit.context,
+      url: reference_destination_url(destination, socket),
+      meta: stringify_reference_meta(hit.meta)
+    }
+  end
+
+  defp reference_destination_url(destination, socket) do
+    project = socket.assigns.project
+    workspace = socket.assigns.workspace
+
+    base =
+      entity_url(%{
+        type: destination.type,
+        id: destination.id,
+        project_slug: project.slug,
+        workspace_slug: workspace.slug
+      })
+
+    append_reference_focus(base, destination.focus)
+  end
+
+  defp append_reference_focus(base, nil), do: base
+
+  defp append_reference_focus(base, %{type: :node, id: id}) when valid_database_id(id), do: "#{base}?highlight=node:#{id}"
+
+  defp append_reference_focus(base, %{type: type, id: id}) when type in [:pin, :zone] and valid_database_id(id),
+    do: "#{base}?highlight=#{type}:#{id}"
+
+  defp append_reference_focus(base, %{type: :block, id: id}) when valid_database_id(id),
+    do: "#{base}?highlight=block:#{id}"
+
+  defp append_reference_focus(base, %{type: :cell, block_id: block_id, row_id: row_id, column_id: column_id})
+       when valid_database_id(block_id) and valid_database_id(row_id) and valid_database_id(column_id),
+       do: "#{base}?highlight=cell:#{block_id}:#{row_id}:#{column_id}"
+
+  defp append_reference_focus(base, _invalid_focus), do: base
+
+  defp stringify_reference_meta(meta) when is_map(meta) do
+    Map.new(meta, fn
+      {key, value} when is_atom(key) -> {Atom.to_string(key), stringify_reference_meta_value(value)}
+      {key, value} -> {key, stringify_reference_meta_value(value)}
+    end)
+  end
+
+  defp stringify_reference_meta(_meta), do: %{}
+
+  defp stringify_reference_meta_value(value) when is_atom(value), do: Atom.to_string(value)
+  defp stringify_reference_meta_value(value), do: value
+
+  defp reference_error(:unauthorized), do: "unauthorized"
+  defp reference_error(:not_found), do: "not_found"
+  defp reference_error(:invalid_request), do: "invalid_request"
+  defp reference_error(_reason), do: "lookup_failed"
 
   defp put_optional(map, _key, nil), do: map
   defp put_optional(map, key, value), do: Map.put(map, key, value)

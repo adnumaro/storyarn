@@ -34,9 +34,10 @@ const CommandDialogStub = defineComponent({
     open: { type: Boolean, default: false },
     title: { type: String, default: "" },
     description: { type: String, default: "" },
+    disableFilter: { type: Boolean, default: false },
   },
   emits: ["update:open", "escapeKeyDown"],
-  template: `<div v-if="open" data-testid="palette-dialog" @keydown.esc="$emit('escapeKeyDown', $event)"><Command><slot /></Command></div>`,
+  template: `<div v-if="open" data-testid="palette-dialog" @keydown.esc="$emit('escapeKeyDown', $event)"><Command :disable-filter="disableFilter"><slot /></Command></div>`,
 });
 
 function livePlugin(live: LiveInterface) {
@@ -47,7 +48,7 @@ function livePlugin(live: LiveInterface) {
   };
 }
 
-function mountPalette(operationCatalog: OperationDefinition[] = []) {
+function mountPalette(operationCatalog: OperationDefinition[] = [], projectContext = false) {
   const live = createMockLive();
   vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
     if (!callback) return;
@@ -69,7 +70,7 @@ function mountPalette(operationCatalog: OperationDefinition[] = []) {
   });
   const wrapper = mount(CommandPalette, {
     attachTo: document.body,
-    props: { operationCatalog },
+    props: { operationCatalog, projectContext },
     global: {
       plugins: [livePlugin(live)],
       provide: { _live_vue: live },
@@ -202,6 +203,51 @@ const openViewOperation = singleParameterOperation(
   "views",
   "client",
   "navigation",
+);
+
+function referenceOperation(
+  id: "variable_definition" | "variable_usages" | "entity_usages" | "flow_callers",
+  parameterId: "variable" | "entity" | "flow",
+  completionSource: "sheet_variables" | "reference_entities" | "flows",
+): OperationDefinition {
+  return {
+    id,
+    domain: "references",
+    parameters: [
+      {
+        id: parameterId,
+        type: parameterId,
+        completionSource,
+        completionMode: "server",
+        required: true,
+        labelKey: `palette.operations.${id}.parameters.${parameterId}`,
+      },
+    ],
+    latency: "instant",
+    authorization: "view",
+    resultType: "lookup",
+    phrase: [
+      { kind: "text", textKey: `palette.operations.${id}.phrase.prefix` },
+      { kind: "parameter", parameterId },
+    ],
+    help: {
+      labelKey: `palette.operations.${id}.label`,
+      descriptionKey: `palette.operations.${id}.description`,
+      exampleKey: `palette.operations.${id}.example`,
+      pattern: id === "variable_definition" ? "mc.jaime.health" : null,
+    },
+  };
+}
+
+const variableDefinitionOperation = referenceOperation(
+  "variable_definition",
+  "variable",
+  "sheet_variables",
+);
+const variableUsagesOperation = referenceOperation(
+  "variable_usages",
+  "variable",
+  "sheet_variables",
 );
 
 function pressPaletteShortcut(init: KeyboardEventInit = { ctrlKey: true }) {
@@ -567,6 +613,436 @@ describe("CommandPalette", () => {
       ["palette_operation_selected", { operation_id: "goto", surface: "global" }, undefined],
       ["palette_operation_completed", { operation_id: "goto", surface: "global" }, undefined],
     ]);
+  });
+
+  it("keeps reference operations visible but unavailable outside a project", async () => {
+    const { wrapper } = mountPalette([variableDefinitionOperation]);
+
+    pressPaletteShortcut();
+    await nextTick();
+
+    const operation = wrapper.get("[data-operation-id='variable_definition']");
+    expect(operation.attributes("data-operation-available")).toBe("false");
+    expect(operation.text()).toContain("Open a project to use reference lookups.");
+
+    selectItem(wrapper, "operation-variable_definition");
+    await nextTick();
+    expect(wrapper.find("[data-slot='palette-operation-input']").exists()).toBe(false);
+  });
+
+  it("runs a guided reference lookup with an opaque target and opens an authorized result", async () => {
+    const { live, wrapper } = mountPalette([variableUsagesOperation], true);
+
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_operation_options") {
+        callback({
+          token: payload?.token as number,
+          items: [
+            {
+              id: "variable:mc.jaime.health",
+              value: { block_id: 9, qualified_ref: "mc.jaime.health" },
+              label: "mc.jaime.health",
+              context: "Characters · Jaime",
+            },
+          ],
+        });
+      } else if (event === "palette_reference_lookup") {
+        callback({
+          token: payload?.token as number,
+          items: [
+            {
+              id: "flow-node:31",
+              kind: "read",
+              type: "flow",
+              label: "Check Jaime health",
+              context: "Opening",
+              url: "/workspaces/acme/projects/veilbreak/flows/opening?highlight=node:31",
+            },
+          ],
+          truncated: false,
+        });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-variable_usages");
+    await nextTick();
+    selectItem(wrapper, "operation-option-variable:mc.jaime.health");
+    await nextTick();
+    selectItem(wrapper, "operation.execute");
+    await flushPromises();
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "palette_reference_lookup",
+      {
+        operation_id: "variable_usages",
+        target: { block_id: 9, qualified_ref: "mc.jaime.health" },
+        token: expect.any(Number),
+      },
+      expect.any(Function),
+    );
+    expect(wrapper.find("[data-lookup-result-id='flow-node:31']").text()).toContain(
+      "Check Jaime health",
+    );
+    expect(wrapper.find("[data-slot='command-input']").exists()).toBe(false);
+
+    await wrapper.get('[data-testid="palette-lookup-header"] button').trigger("click");
+    await nextTick();
+    selectItem(wrapper, "operation.execute");
+    await flushPromises();
+
+    const lifecycleEvents = vi
+      .mocked(live.pushEvent)
+      .mock.calls.filter(([event]) =>
+        ["palette_operation_selected", "palette_operation_completed"].includes(event),
+      )
+      .map(([event]) => event);
+    expect(lifecycleEvents).toEqual([
+      "palette_operation_selected",
+      "palette_operation_completed",
+      "palette_operation_selected",
+      "palette_operation_completed",
+    ]);
+
+    selectItem(wrapper, "lookup-result-flow-node:31");
+    await nextTick();
+
+    expect(liveNavigate).toHaveBeenCalledWith(
+      "/workspaces/acme/projects/veilbreak/flows/opening?highlight=node:31",
+    );
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "palette_command_executed",
+      { command_id: "reference.open", surface: "global" },
+      undefined,
+    );
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+
+    const analyticsPayloads = vi
+      .mocked(live.pushEvent)
+      .mock.calls.filter(([event]) =>
+        [
+          "palette_operation_selected",
+          "palette_operation_completed",
+          "palette_command_executed",
+        ].includes(event),
+      )
+      .map(([, payload]) => JSON.stringify(payload));
+    expect(analyticsPayloads.every((payload) => !payload.includes("flow-node:31"))).toBe(true);
+    expect(analyticsPayloads.every((payload) => !payload.includes("mc.jaime.health"))).toBe(true);
+  });
+
+  it("ignores a guided reference reply after returning to its operation", async () => {
+    const { live, wrapper } = mountPalette([variableDefinitionOperation], true);
+    let resolveLookup: (() => void) | undefined;
+
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_operation_options") {
+        callback({
+          token: payload?.token as number,
+          items: [
+            {
+              id: "variable:mc.jaime.health",
+              value: { block_id: 9, qualified_ref: "mc.jaime.health" },
+              label: "mc.jaime.health",
+            },
+          ],
+        });
+      } else if (event === "palette_reference_lookup") {
+        const token = payload?.token as number;
+        resolveLookup = () =>
+          callback({
+            token,
+            items: [
+              {
+                id: "sheet-block:9",
+                kind: "definition",
+                type: "sheet",
+                label: "Health",
+                url: "/sheets/characters?highlight=block:9",
+              },
+            ],
+          });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-variable_definition");
+    await nextTick();
+    selectItem(wrapper, "operation-option-variable:mc.jaime.health");
+    await nextTick();
+    selectItem(wrapper, "operation.execute");
+    await nextTick();
+
+    await wrapper.get('[data-testid="palette-lookup-header"] button').trigger("click");
+    await nextTick();
+    resolveLookup!();
+    await nextTick();
+
+    expect(wrapper.find("[data-slot='palette-operation-input']").exists()).toBe(true);
+    expect(wrapper.find("[data-lookup-result-id='sheet-block:9']").exists()).toBe(false);
+  });
+
+  it("opens the reference-pattern door without leaking normal palette results", async () => {
+    vi.useFakeTimers();
+    registerPaletteCommands("flows", [command("flows.fit")]);
+    const { live, wrapper } = mountPalette([gotoOperation, variableDefinitionOperation], true);
+
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({
+          token: payload?.token as number,
+          groups: [
+            {
+              key: "projects",
+              items: [
+                {
+                  id: "nav.project.1",
+                  type: "project",
+                  label: "Veilbreak",
+                  url: "/projects/veilbreak",
+                },
+              ],
+            },
+          ],
+        });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_reference_pattern") {
+        callback({
+          token: payload?.token as number,
+          items: [
+            {
+              id: "sheet-cell:7:0:health",
+              kind: "definition",
+              type: "sheet",
+              label: "sheets.characters.health",
+              context: "Characters",
+              url: "/sheets/characters?highlight=cell:7:0:health",
+            },
+          ],
+          truncated: true,
+        });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    await wrapper.find("[data-slot='command-input']").setValue("sheets.**.?heal");
+    await nextTick();
+
+    expect(wrapper.find("[data-operation-id='goto']").exists()).toBe(false);
+    expect(itemValues(wrapper)).not.toContain("flows.fit");
+    expect(itemValues(wrapper)).not.toContain("nav.project.1");
+
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "palette_reference_pattern",
+      { pattern: "sheets.**.?heal", token: expect.any(Number) },
+      expect.any(Function),
+    );
+    expect(wrapper.find("[data-lookup-result-id='sheet-cell:7:0:health']").exists()).toBe(true);
+    expect(wrapper.text()).toContain("Showing the first results.");
+  });
+
+  it("keeps prior pattern results disabled while resolving a new pattern", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPalette([variableDefinitionOperation], true);
+    let patternRequestCount = 0;
+    let resolveSecondPattern: (() => void) | undefined;
+
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_reference_pattern") {
+        patternRequestCount += 1;
+        const token = payload?.token as number;
+        const item = {
+          kind: "definition",
+          type: "sheet",
+          context: "Characters",
+        };
+
+        if (patternRequestCount === 1) {
+          callback({
+            token,
+            items: [
+              {
+                ...item,
+                id: "definition:health",
+                label: "hero.health",
+                url: "/sheets/hero?highlight=block:1",
+              },
+            ],
+          });
+        } else {
+          resolveSecondPattern = () =>
+            callback({
+              token,
+              items: [
+                {
+                  ...item,
+                  id: "definition:mana",
+                  label: "hero.mana",
+                  url: "/sheets/hero?highlight=block:2",
+                },
+              ],
+            });
+        }
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    const input = wrapper.find("[data-slot='command-input']");
+    await input.setValue("?health");
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+    expect(wrapper.find("[data-lookup-result-id='definition:health']").exists()).toBe(true);
+
+    await input.setValue("?mana");
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+    expect(resolveSecondPattern).toBeDefined();
+
+    selectItem(wrapper, "lookup-result-definition:health");
+    await nextTick();
+    expect(liveNavigate).not.toHaveBeenCalled();
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+
+    resolveSecondPattern!();
+    await nextTick();
+    expect(wrapper.find("[data-lookup-result-id='definition:health']").exists()).toBe(false);
+    expect(wrapper.find("[data-lookup-result-id='definition:mana']").exists()).toBe(true);
+  });
+
+  it("ignores a superseded root navigation reply", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPalette();
+    let resolveInitial: (() => void) | undefined;
+    let resolveLatest: (() => void) | undefined;
+    let navRequestCount = 0;
+
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        navRequestCount += 1;
+        const token = payload?.token as number;
+        const reply = (id: string, label: string) => ({
+          token,
+          groups: [
+            {
+              key: "projects",
+              items: [{ id, type: "project", label, url: `/${id}` }],
+            },
+          ],
+        });
+
+        if (navRequestCount === 1) {
+          resolveInitial = () => callback(reply("nav.project.1", "Old project"));
+        } else {
+          resolveLatest = () => callback(reply("nav.project.2", "Latest project"));
+        }
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    await wrapper.find("[data-slot='command-input']").setValue("latest");
+    await vi.advanceTimersByTimeAsync(200);
+
+    resolveInitial!();
+    await nextTick();
+    expect(itemValues(wrapper)).not.toContain("nav.project.1");
+
+    resolveLatest!();
+    await nextTick();
+    expect(itemValues(wrapper)).toContain("nav.project.2");
+  });
+
+  it("does not query incomplete or invalid reference patterns", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPalette([variableDefinitionOperation], true);
+
+    pressPaletteShortcut();
+    await nextTick();
+    const input = wrapper.find("[data-slot='command-input']");
+
+    await input.setValue("?");
+    await vi.advanceTimersByTimeAsync(250);
+    expect(wrapper.text()).toContain("Keep typing the reference pattern");
+
+    await input.setValue("mc..health");
+    await vi.advanceTimersByTimeAsync(250);
+    expect(wrapper.text()).toContain("That reference pattern isn't valid");
+
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_reference_pattern"),
+    ).toHaveLength(0);
+  });
+
+  it("waits for root IME composition before resolving a reference pattern", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPalette([variableDefinitionOperation], true);
+
+    pressPaletteShortcut();
+    await nextTick();
+    const input = wrapper.find<HTMLInputElement>("[data-slot='command-input']");
+
+    input.element.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+    await input.setValue("?health");
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_reference_pattern"),
+    ).toHaveLength(0);
+
+    input.element.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+    input.element.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+        isComposing: true,
+      }),
+    );
+    await nextTick();
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+    await vi.advanceTimersByTimeAsync(200);
+
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_reference_pattern"),
+    ).toHaveLength(1);
   });
 
   it("completes the generated-help round trip in Spanish", async () => {
