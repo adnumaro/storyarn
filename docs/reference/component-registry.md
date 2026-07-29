@@ -1,5 +1,11 @@
 # Component Registry
 
+> Owner: Engineering
+>
+> Last reviewed: 2026-07-29
+>
+> Source of truth: `lib/storyarn_web/components/`, `lib/storyarn_web/storyarn_web.ex`, and `assets/app/`
+
 The UI is Vue. HEEx is reduced to layout shells, the SEO head, and a handful of
 public-page partials; every interactive surface is a `<.vue>` boundary rendering
 a component from `assets/app/`.
@@ -112,7 +118,7 @@ the call site, not by editing the primitive.
 | `ai/`                 | `ContextDisclosure.vue`                                                                                                                                                                                                            |
 | `builders/`           | `ConditionBuilder.vue`, `InstructionBuilder.vue` (+ `condition/`, `instruction/` internals, `types.ts`)                                                                                                                            |
 | `collab/`             | `CollabToast.vue` — `actionLabels`; toast data arrives via `live.handleEvent("collab_toast")`, not props                                                                                                                           |
-| `command-palette/`    | `CommandPalette.vue`, `PaletteEmpty.vue`                                                                                                                                                                                           |
+| `command-palette/`    | `CommandPalette.vue`, `PaletteEmpty.vue`, `PaletteOperationInput.vue`                                                                                                                                                              |
 | `dashboard/`          | Shared dashboard filters, issue section/list, sortable data table, and pagination (`DashboardFilterPopover`, `DashboardIssueFilters`, `DashboardIssuesSection`, `DashboardIssueList`, `DashboardDataTable`, `DashboardPagination`) |
 | `forms/`              | `EditableText.vue`, `ColorPicker.vue`, `ColorPickerPopover.vue`, `ExpressionEditor.vue`, `VariableCombobox.vue`, `BooleanToggle.vue`, `PasswordInput.vue`                                                                          |
 | `forms/fields/`       | `TextField`, `NumberField`, `SelectField`, `ToggleField`, `SliderField`, `ButtonGroupField`, `EntityCombobox` (barrel `index.ts`)                                                                                                  |
@@ -163,7 +169,7 @@ NEVER use `window.confirm/alert/prompt` or `data-confirm`.
 
 The rest of `lib/storyarn_web/live/shared/` (`CollaborationHelpers`,
 `InvitationHelpers`, `OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`,
-`RestorationHandlers`) is listed in @docs/conventions/shared-utilities.md.
+`RestorationHandlers`) is listed in @docs/reference/shared-utilities.md.
 
 ---
 

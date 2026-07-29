@@ -18,11 +18,10 @@ import type {
   SheetMapEntry,
 } from "../../../../types";
 
-/** Raw rete state shape (snake_case from server canvas serializer). The
- * canvas wire stays snake_case for now — F3 of the relational refactor
- * (docs/features/flow-relational-refactor) will reshape `serialize_for_canvas`.
+/** Raw rete state shape (snake_case from the server canvas serializer).
  * Internally the component works in camelCase via the `dialogue` adapter
- * computed below. */
+ * computed below; keep that boundary explicit while the wire contract remains
+ * snake_case. */
 interface RawDialogueData {
   speaker_sheet_id?: number | string | null;
   avatar_id?: number | string | null;

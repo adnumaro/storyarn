@@ -1,5 +1,11 @@
 # Domain Patterns & Conventions
 
+> Owner: Engineering
+>
+> Last reviewed: 2026-07-29
+>
+> Source of truth: `lib/storyarn/`, `lib/storyarn_web/`, and `lib/mix/tasks/convention_check.ex`
+
 ## Context Facade Pattern
 
 Every domain uses the same structure. NEVER bypass the facade.
@@ -44,7 +50,7 @@ and only under `lib/storyarn_web/`. The rule above is broader than the linter.
 | Exports          | `Storyarn.Exports`          | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`, `SizeGuard`, `LocalizationCatalog`                                                            |
 | Imports          | `Storyarn.Imports`          | `Parser`, `ParserRegistry`, `Parsers.*`, `ImportPlan`, `PlanStorage`, `ErrorDeduplicator`                                                                                                                |
 | Billing          | `Storyarn.Billing`          | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`                                                                                                                                                     |
-| CommandPalette   | `Storyarn.CommandPalette`   | `Operation`                                                                                                                                                                                              |
+| CommandPalette   | `Storyarn.CommandPalette`   | `Definition`, `Registry`, `Operation`                                                                                                                                                                    |
 | GlobalSearch     | `Storyarn.GlobalSearch`     | `Destinations`                                                                                                                                                                                           |
 | Onboarding       | `Storyarn.Onboarding`       | `TutorialProgress`                                                                                                                                                                                       |
 | Docs             | `Storyarn.Docs`             | `Guide`, `GuideBuilder`                                                                                                                                                                                  |

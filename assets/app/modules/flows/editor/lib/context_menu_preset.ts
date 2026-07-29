@@ -5,8 +5,7 @@
  * renders the library's stock `Menu` component. We provide our own
  * FlowRendererContextMenu.vue to match shadcn styling while delegating event
  * interception to rete-context-menu-plugin (so we do NOT re-implement the
- * broken DOM-listener approach — see
- * docs/audit/flow-context-menu-broken-after-vue-migration.md).
+ * broken DOM-listener approach).
  */
 
 import type { BaseSchemes } from "rete";

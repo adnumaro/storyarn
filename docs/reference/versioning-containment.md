@@ -1,5 +1,11 @@
 # Version-control containment rollout
 
+> Owner: Engineering
+>
+> Last reviewed: 2026-07-29
+>
+> Source of truth: `lib/storyarn/versioning/restore_policy.ex`, `config/runtime.exs`, and the guarded workers
+
 This runbook deploys the beta containment layer that freezes unsafe restore and
 automatic retention paths while referential-integrity fixes are developed.
 
