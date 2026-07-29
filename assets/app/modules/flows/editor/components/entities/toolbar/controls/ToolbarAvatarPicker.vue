@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Image, X } from "lucide-vue-next";
+import { Image, X } from "@lucide/vue";
 import { ref } from "vue";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";

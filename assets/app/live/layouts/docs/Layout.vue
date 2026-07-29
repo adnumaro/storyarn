@@ -9,7 +9,7 @@ import {
   PanelLeft,
   Search,
   X,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import LanguagePicker from "@components/language/LanguagePicker.vue";
 import type { LanguagePickerOption } from "@components/language/types";

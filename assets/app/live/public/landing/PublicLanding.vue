@@ -11,7 +11,7 @@ import {
   Map,
   PackageCheck,
   Table2,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import CtaSignup from "@modules/public/landing/sections/cta/CtaSignup.vue";
 import { consumeHistoryScroll } from "@app/shared/navigation/historyScroll";

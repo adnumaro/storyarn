@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Hand, MousePointer2 } from "lucide-vue-next";
+import { Hand, MousePointer2 } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useLive } from "../../../../../../shared/composables/useLive";
 import { activeFlowPlacement, startFlowPlacement } from "../../../lib/flow-placement-state";

@@ -1,5 +1,11 @@
 # Shared Utilities Registry
 
+> Owner: Engineering
+>
+> Last reviewed: 2026-07-29
+>
+> Source of truth: `lib/storyarn/shared/`
+
 **IMPORTANT: Before writing ANY helper function, search this registry first. Duplicating these utilities is a bug.**
 
 ## `Storyarn.Shared.NameNormalizer`

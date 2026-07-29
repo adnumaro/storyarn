@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bookmark, Play, RotateCcw } from "lucide-vue-next";
+import { Bookmark, Play, RotateCcw } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import {
   Dialog,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronUp, Eye, EyeOff, GitBranch, X } from "lucide-vue-next";
+import { ChevronDown, ChevronUp, Eye, EyeOff, GitBranch, X } from "@lucide/vue";
 import {
   Select,
   SelectContent,

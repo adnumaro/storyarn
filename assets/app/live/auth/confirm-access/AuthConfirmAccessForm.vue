@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, LoaderCircle, Shield } from "lucide-vue-next";
+import { ArrowRight, LoaderCircle, Shield } from "@lucide/vue";
 import { nextTick, onBeforeUnmount, ref, watch } from "vue";
 import PasswordInput from "@components/forms/PasswordInput.vue";
 import { Button } from "@components/ui/button/index.ts";

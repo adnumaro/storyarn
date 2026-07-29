@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, Footprints, PackageOpen, Zap } from "lucide-vue-next";
+import { BarChart3, Footprints, PackageOpen, Zap } from "@lucide/vue";
 import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertTriangle, FileUp, Languages, Wrench } from "lucide-vue-next";
+import { AlertTriangle, FileUp, Languages, Wrench } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import ColorPickerPopover from "@components/forms/ColorPickerPopover.vue";
 import ConfirmDialog from "@components/ConfirmDialog.vue";

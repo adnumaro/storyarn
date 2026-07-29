@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Calendar } from "lucide-vue-next";
+import { Calendar } from "@lucide/vue";
 import { computed } from "vue";
 import { Input } from "@components/ui/input";
 import { useBlockActions } from "../../../../composables/useBlockActions";

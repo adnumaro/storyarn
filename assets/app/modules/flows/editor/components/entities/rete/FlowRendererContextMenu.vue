@@ -9,7 +9,6 @@
  *
  * 4c1-plus scope: no subitems (flat list only). Subitems land in 4c2.
  *
- * @see docs/audit/flow-context-menu-broken-after-vue-migration.md
  */
 
 import { onBeforeUnmount, onMounted } from "vue";

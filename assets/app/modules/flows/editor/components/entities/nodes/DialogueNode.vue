@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { EditorContent } from "@tiptap/vue-3";
-import { MessageSquare, Volume2 } from "lucide-vue-next";
+import { MessageSquare, Volume2 } from "@lucide/vue";
 import { Ref } from "rete-vue-plugin";
 import { computed, inject, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -18,11 +18,10 @@ import type {
   SheetMapEntry,
 } from "../../../../types";
 
-/** Raw rete state shape (snake_case from server canvas serializer). The
- * canvas wire stays snake_case for now — F3 of the relational refactor
- * (docs/features/flow-relational-refactor) will reshape `serialize_for_canvas`.
+/** Raw rete state shape (snake_case from the server canvas serializer).
  * Internally the component works in camelCase via the `dialogue` adapter
- * computed below. */
+ * computed below; keep that boundary explicit while the wire contract remains
+ * snake_case. */
 interface RawDialogueData {
   speaker_sheet_id?: number | string | null;
   avatar_id?: number | string | null;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from "vue";
 import { computed, ref } from "vue";
-import { Image, Map as MapIcon, MapPin, MoreHorizontal, Pentagon, Trash2 } from "lucide-vue-next";
+import { Image, Map as MapIcon, MapPin, MoreHorizontal, Pentagon, Trash2 } from "@lucide/vue";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Button } from "@components/ui/button";
 import DashboardDataTable from "@components/dashboard/DashboardDataTable.vue";

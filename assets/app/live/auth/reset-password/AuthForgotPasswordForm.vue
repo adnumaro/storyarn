@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useLiveForm, useLiveVue, type Form } from "live_vue";
-import { AlertCircle, ArrowLeft, ArrowRight, MailCheck } from "lucide-vue-next";
+import { AlertCircle, ArrowLeft, ArrowRight, MailCheck } from "@lucide/vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";

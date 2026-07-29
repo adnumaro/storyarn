@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Sparkles } from "lucide-vue-next";
+import { ArrowLeft, Sparkles } from "@lucide/vue";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";

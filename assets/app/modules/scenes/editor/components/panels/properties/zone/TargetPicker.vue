@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Link, Map as MapIcon, Workflow, X } from "lucide-vue-next";
+import { ArrowLeft, Link, Map as MapIcon, Workflow, X } from "@lucide/vue";
 import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";

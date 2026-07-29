@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from "vue";
-import { Calendar, Hash, List, ToggleLeft, Type } from "lucide-vue-next";
+import { Calendar, Hash, List, ToggleLeft, Type } from "@lucide/vue";
 import { ref, watch } from "vue";
 
 const TYPE_ICONS: Record<string, Component> = {

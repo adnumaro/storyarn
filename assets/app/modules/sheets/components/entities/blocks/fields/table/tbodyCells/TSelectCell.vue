@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
-import { Check } from "lucide-vue-next";
+import { Check } from "@lucide/vue";
 import { CellValue, SelectOption, TableColumn, TableRow } from "@modules/sheets/types.ts";
 import { useLive } from "../../../../../../../../shared/composables/useLive.ts";
 import { computed } from "vue";

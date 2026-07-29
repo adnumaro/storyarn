@@ -10,7 +10,7 @@ declare class EyeDropper {
  * Color picker using vanilla-colorful web components inside shadcn Popover.
  */
 
-import { ChevronDown, Pipette } from "lucide-vue-next";
+import { ChevronDown, Pipette } from "@lucide/vue";
 import { onBeforeUnmount, ref, watch } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutGrid, Maximize2, Minus, Plus } from "lucide-vue-next";
+import { LayoutGrid, Maximize2, Minus, Plus } from "@lucide/vue";
 import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import { AreaExtensions } from "rete-area-plugin";

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Clock3, Loader2, Trash2, X } from "lucide-vue-next";
+import { Clock3, Loader2, Trash2, X } from "@lucide/vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";

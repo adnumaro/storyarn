@@ -8,8 +8,7 @@ defmodule Storyarn.AI.Providers.Google do
   Model discovery requests Google's documented 1,000-item page instead of the
   50-item default so curated image and speech entries are not hidden.
 
-  See `docs/features/ai-integrations/PROVIDERS.md` for endpoint details and
-  why Vertex AI OAuth stayed in the backlog.
+  See `docs/reference/ai-provider-adapters.md` for the shared adapter contract.
   """
   @behaviour Storyarn.AI.Provider
 

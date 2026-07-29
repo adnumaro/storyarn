@@ -7,7 +7,7 @@ import {
   TextCursorInput,
   Trash2,
   Variable,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { computed, ref } from "vue";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Button } from "@components/ui/button/index.ts";

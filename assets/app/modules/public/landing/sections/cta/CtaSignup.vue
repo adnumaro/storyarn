@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, Check } from "lucide-vue-next";
+import { ArrowRight, Check } from "@lucide/vue";
 import { useTemplateRef } from "vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import { useRevealOnScroll } from "../../composables/useRevealOnScroll";

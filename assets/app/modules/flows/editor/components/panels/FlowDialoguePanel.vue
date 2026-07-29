@@ -4,14 +4,14 @@
  *
  * Edits a `type="dialogue"` flow_node. The "screenplay" naming that survives
  * in `.sp-*` classes and `screenplay.css` refers to screenplay TYPOGRAPHY
- * (see docs/SCREENPLAY_FORMAT_CONVENTIONS.md), not to any document entity.
+ * (see docs/reference/flow-dialogue-typography.md), not to any document entity.
  *
  * Thin shell — header (title + close) + footer (status bar) + body. The
  * tabs / TipTap editor / save handlers live in `FlowDialogueEditorBody.vue`,
  * shared with `FlowDialogueFullscreenEditor.vue`.
  */
 
-import { BookOpen, FileText, Maximize2, MessageSquare, Volume2, X } from "lucide-vue-next";
+import { BookOpen, FileText, Maximize2, MessageSquare, Volume2, X } from "@lucide/vue";
 import { computed } from "vue";
 import { Button } from "@components/ui/button";
 import Sidebar from "../../../../../shell/Sidebar.vue";

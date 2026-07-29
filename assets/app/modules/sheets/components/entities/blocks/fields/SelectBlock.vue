@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, CircleDot, Check } from "lucide-vue-next";
+import { ChevronDown, CircleDot, Check } from "@lucide/vue";
 import { computed } from "vue";
 import { Input } from "@components/ui/input";
 import { useBlockActions } from "../../../../composables/useBlockActions";

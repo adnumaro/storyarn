@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, ChevronLeft, ChevronRight, Columns2 } from "lucide-vue-next";
+import { ArrowLeft, ChevronLeft, ChevronRight, Columns2 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 
 const {

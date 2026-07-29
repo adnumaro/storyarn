@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Crown, User } from "lucide-vue-next";
+import { Crown, User } from "@lucide/vue";
 import { ToggleField } from "@components/forms/fields";
 
 const {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Image } from "lucide-vue-next";
+import { Image } from "@lucide/vue";
 import { useBlockActions } from "../../../../../composables/useBlockActions";
 import type { Block } from "../../../../../types";
 import BlockLabel from "../../BlockLabel.vue";

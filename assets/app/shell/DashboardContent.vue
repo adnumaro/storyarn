@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LucideProps } from "lucide-vue-next";
+import type { LucideProps } from "@lucide/vue";
 import type { FunctionalComponent } from "vue";
 
 const { isEmpty, title, subtitle, loading, loadingLabel, failure, emptyMessage, emptyIcon } =

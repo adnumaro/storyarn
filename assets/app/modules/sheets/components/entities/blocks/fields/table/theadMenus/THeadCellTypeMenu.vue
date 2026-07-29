@@ -5,7 +5,7 @@ import {
   typeLabels,
 } from "@modules/sheets/components/entities/blocks/fields/table/table-config.ts";
 import { Separator } from "@components/ui/separator";
-import { ArrowLeft, Check } from "lucide-vue-next";
+import { ArrowLeft, Check } from "@lucide/vue";
 import { TableColumn, type THeadMenuType } from "@modules/sheets/types.ts";
 import THeadBaseMenu from "@modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadBaseMenu.vue";
 import THeadMenuItem from "@modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadMenuItem.vue";

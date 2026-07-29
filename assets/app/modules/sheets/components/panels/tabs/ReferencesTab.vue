@@ -13,7 +13,7 @@ import {
   Map,
   Pencil,
   Zap,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import type { FunctionalComponent } from "vue";
 import { computed, ref } from "vue";
 import { Badge } from "@components/ui/badge";

@@ -1,3 +1,5 @@
-onlyBuiltDependencies:
-  - rete
-  - vue-demi
+allowBuilds:
+  core-js: false
+  protobufjs: false
+  rete: true
+  vue-demi: true

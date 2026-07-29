@@ -6,7 +6,7 @@ defmodule Storyarn.AI.Providers.OpenAI do
   keys (`sk-proj-...`) cannot query account identity, so `:account_email` and
   `:account_display_name` are always `nil` — the UI renders the masked key.
 
-  See `docs/features/ai-integrations/PROVIDERS.md` for endpoint details.
+  See `docs/reference/ai-provider-adapters.md` for the shared adapter contract.
   """
   @behaviour Storyarn.AI.Provider
 

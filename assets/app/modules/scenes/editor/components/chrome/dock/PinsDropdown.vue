@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MapPin } from "lucide-vue-next";
+import { MapPin } from "@lucide/vue";
 import { nextTick, ref } from "vue";
 import {
   Command,

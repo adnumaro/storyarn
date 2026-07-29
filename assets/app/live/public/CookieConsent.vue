@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { BarChart3, Cookie, ShieldCheck } from "lucide-vue-next";
+import { BarChart3, Cookie, ShieldCheck } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Switch } from "@components/ui/switch";
 import {

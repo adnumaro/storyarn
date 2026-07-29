@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, LogOut } from "lucide-vue-next";
+import { ArrowRight, LogOut } from "@lucide/vue";
 import { computed } from "vue";
 import NodeHeader from "../node-shell/NodeHeader.vue";
 import NodeShell from "../node-shell/NodeShell.vue";

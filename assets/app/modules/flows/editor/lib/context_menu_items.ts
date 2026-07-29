@@ -6,8 +6,6 @@
  * `{ label, key, handler, icon?, subitems? }`. Subitems are NOT implemented in
  * the 4c1-plus custom Menu — deferred to 4c2.
  *
- * @see docs/audit/flow-context-menu-broken-after-vue-migration.md
- *
  * Semantic rules:
  *
  * - When there is a non-empty selection, the menu ALWAYS operates on that
@@ -21,7 +19,7 @@
  */
 
 import type { Component } from "vue";
-import { Clapperboard, Copy, LayoutGrid, StickyNote, Trash2 } from "lucide-vue-next";
+import { Clapperboard, Copy, LayoutGrid, StickyNote, Trash2 } from "@lucide/vue";
 
 import { i18n } from "@/app/i18n";
 import { FlowNode } from "./flow-node";

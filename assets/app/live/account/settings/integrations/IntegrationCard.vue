@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Building2, CheckCircle2, ChevronRight, CircleAlert, Cpu, Plug } from "lucide-vue-next";
+import { Building2, CheckCircle2, ChevronRight, CircleAlert, Cpu, Plug } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import LiveLink from "@components/navigation/LiveLink.vue";

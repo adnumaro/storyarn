@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { ArrowRight, ShieldQuestion } from "lucide-vue-next";
+import { ArrowRight, ShieldQuestion } from "@lucide/vue";
 
 export interface ResponseData {
   id: string;

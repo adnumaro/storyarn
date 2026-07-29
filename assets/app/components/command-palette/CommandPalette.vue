@@ -13,7 +13,7 @@ import {
   Settings,
   Trash2,
   type LucideIcon,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
@@ -366,9 +366,9 @@ const inputKey = computed(() => {
     : current.kind;
 });
 
-// Reka emits `select` before consulting its reactive disabled state, while its
-// list item DOM memo may still expose stale attributes. Every in-flight action
-// therefore treats the handler-level busy guard as the authoritative fence.
+// Reka emits `select` before consulting its reactive disabled state. Every
+// in-flight action therefore treats the handler-level busy guard as the
+// authoritative fence.
 const busy = computed(() => pendingMutation.value || pendingCommandId.value !== null);
 
 const canMutate = computed(
@@ -646,11 +646,18 @@ function onRootCompositionStart(): void {
   if (navDebounce) clearTimeout(navDebounce);
 }
 
-function onRootCompositionEnd(): void {
+function onRootCompositionEnd(event: CompositionEvent): void {
   if (step.value.kind !== "root") return;
 
   rootComposing = false;
   compositionFetchPending = true;
+
+  // Reka commits the composed value on its next tick. Capture it now so a
+  // render driven by our own pending-state update cannot reset the input
+  // before Reka reads event.target.value.
+  if (event.target instanceof HTMLInputElement && event.target.value !== query.value) {
+    query.value = event.target.value;
+  }
 
   void nextTick(() => {
     if (!compositionFetchPending) return;
@@ -1761,9 +1768,8 @@ function onSelectNav(item: NavItem): void {
 }
 
 function onSelectPatternNav(item: NavItem): void {
-  // Reka memoizes the delegated disabled prop. The keyed remount below keeps
-  // its visual state honest; this guard remains the authoritative barrier
-  // against selecting a stale row while the replacement query is in flight.
+  // Reka emits `select` before consulting disabled, so this handler remains
+  // the authoritative barrier while a replacement query is in flight.
   if (navLoading.value) return;
 
   onSelectNav(item);
@@ -1967,7 +1973,13 @@ function track(event: string, payload: Record<string, unknown>): void {
     :disable-filter="remoteLookupMode"
     @escape-key-down="onDialogEscape"
   >
-    <div ref="paletteBody" class="contents" @keydown="onPaletteKeydown">
+    <div
+      ref="paletteBody"
+      class="contents"
+      @keydown="onPaletteKeydown"
+      @compositionstart.capture="onRootCompositionStart"
+      @compositionend.capture="onRootCompositionEnd"
+    >
       <CommandInput
         v-if="!confirmItem && !activeOperation && !lookupStep"
         :key="inputKey"
@@ -1975,8 +1987,6 @@ function track(event: string, payload: Record<string, unknown>): void {
         :disabled="busy"
         :placeholder="inputPlaceholder"
         :aria-label="inputPlaceholder"
-        @compositionstart="onRootCompositionStart"
-        @compositionend="onRootCompositionEnd"
       />
       <PaletteOperationInput
         v-else-if="activeOperation"
@@ -2148,7 +2158,7 @@ function track(event: string, payload: Record<string, unknown>): void {
               >
                 <CommandItem
                   v-for="item in group.items"
-                  :key="`pattern-nav-${item.id}-${navLoading ? 'loading' : 'ready'}`"
+                  :key="`pattern-nav-${item.id}`"
                   :value="item.id"
                   :disabled="busy || navLoading"
                   @select="onSelectPatternNav(item)"
@@ -2201,9 +2211,9 @@ function track(event: string, payload: Record<string, unknown>): void {
                 </div>
               </div>
             </div>
-            <!-- Reka's listbox item memoizes disabled and fallthrough attrs.
-                 The full availability signature belongs in both operation-row
-                 keys so enabled and reason changes remount the affected row. -->
+            <!-- Reka 2.10 updates disabled reactively, but still memoizes
+                 fallthrough attributes such as title and data-operation-available.
+                 Availability belongs in the key so those attributes stay current. -->
             <CommandGroup
               v-if="recentOperations.length > 0"
               :heading="t('palette.recent_operations')"

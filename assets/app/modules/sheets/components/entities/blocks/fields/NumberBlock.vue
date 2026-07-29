@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Hash } from "lucide-vue-next";
+import { Hash } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { Input } from "@components/ui/input";
 import { useBlockActions } from "../../../../composables/useBlockActions";

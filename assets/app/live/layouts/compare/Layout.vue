@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, useSlots } from "vue";
-import { PanelLeft, PanelLeftClose } from "lucide-vue-next";
+import { PanelLeft, PanelLeftClose } from "@lucide/vue";
 import { useLive } from "@shared/composables/useLive";
 
 const {

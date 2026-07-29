@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Component, HTMLAttributes } from "vue";
+import type { HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import {
   SliderRange,
@@ -7,32 +7,17 @@ import {
   SliderThumb,
   SliderTrack,
   useForwardPropsEmits,
-  type AsTag,
+  type SliderRootEmits,
+  type SliderRootProps,
 } from "reka-ui";
 import { cn } from "../../../shared/utils/utils";
 
-const props = defineProps<{
-  defaultValue?: number[];
-  modelValue?: number[] | null;
-  disabled?: boolean;
-  orientation?: "horizontal" | "vertical";
-  dir?: "ltr" | "rtl";
-  inverted?: boolean;
-  min?: number;
-  max?: number;
-  step?: number;
-  minStepsBetweenThumbs?: number;
-  thumbAlignment?: "contain" | "overflow";
-  asChild?: boolean;
-  as?: AsTag | Component;
-  name?: string;
-  required?: boolean;
+interface SliderProps extends SliderRootProps {
   class?: HTMLAttributes["class"];
-}>();
-const emits = defineEmits<{
-  "update:modelValue": [value: number[]];
-  valueCommit: [value: number[]];
-}>();
+}
+
+const props = defineProps<SliderProps>();
+const emits = defineEmits<SliderRootEmits>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

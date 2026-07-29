@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileText, GitBranch, Link, Map as MapIcon, type LucideIcon } from "lucide-vue-next";
+import { FileText, GitBranch, Link, Map as MapIcon, type LucideIcon } from "@lucide/vue";
 import { injectListboxRootContext } from "reka-ui";
 import { nextTick, ref } from "vue";
 import { CommandGroup, CommandItem } from "@components/ui/command";
@@ -95,7 +95,7 @@ defineExpose({
     <CommandGroup v-if="items.length > 0" :heading="heading">
       <CommandItem
         v-for="result in items"
-        :key="`${result.id}:${disabled ? 'disabled' : 'enabled'}`"
+        :key="result.id"
         :value="`lookup-result-${result.id}`"
         :data-lookup-result-id="result.id"
         :search-text="lookupResultSearchText(result)"

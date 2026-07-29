@@ -8,7 +8,7 @@ import {
   Map,
   Settings,
   Trash2,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { onMounted, onUnmounted, ref } from "vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import ProjectNavbarContext from "@shell/ProjectNavbarContext.vue";

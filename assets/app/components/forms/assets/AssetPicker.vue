@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Music } from "lucide-vue-next";
+import { Check, Music } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import {
   Command,

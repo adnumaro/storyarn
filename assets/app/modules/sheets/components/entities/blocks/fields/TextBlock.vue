@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Type } from "lucide-vue-next";
+import { Type } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { Input } from "@components/ui/input";
 import { useBlockActions } from "../../../../composables/useBlockActions.ts";

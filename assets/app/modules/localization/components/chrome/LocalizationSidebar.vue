@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Languages, Plus, RefreshCw, Trash2 } from "lucide-vue-next";
+import { Languages, Plus, RefreshCw, Trash2 } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { Button } from "@components/ui/button";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";

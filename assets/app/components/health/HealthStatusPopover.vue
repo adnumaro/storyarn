@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertTriangle, ChevronDown, CircleCheck, Info, TriangleAlert } from "lucide-vue-next";
+import { AlertTriangle, ChevronDown, CircleCheck, Info, TriangleAlert } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";

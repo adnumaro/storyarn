@@ -1114,7 +1114,6 @@ Inspired by World Anvil's secrets/visibility system, but adapted for game develo
 
 > **Dependency:** Assets Tool (implemented)
 > **Priority:** Low — quality-of-life improvements
-> **Related:** `docs/plans/ASSETS_IMPLEMENTATION_PLAN.md`
 
 - Bulk upload
 - Drag & drop reordering

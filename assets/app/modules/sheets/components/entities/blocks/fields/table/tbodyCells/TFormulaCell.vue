@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Sigma } from "lucide-vue-next";
+import { Sigma } from "@lucide/vue";
 import { CellValue, FormulaCellValue, TableColumn, TableRow } from "@modules/sheets/types.ts";
 import { useLive } from "../../../../../../../../shared/composables/useLive.ts";
 

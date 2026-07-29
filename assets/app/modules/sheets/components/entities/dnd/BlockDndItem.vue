@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { makeDraggable } from "@vue-dnd-kit/core";
-import { Grip, GripVertical } from "lucide-vue-next";
+import { Grip, GripVertical } from "@lucide/vue";
 import { computed, onMounted, onUnmounted, ref, useTemplateRef } from "vue";
 
 export interface DndItemData {

@@ -4,7 +4,7 @@
  * Wraps in .condition-builder for sentence-flow CSS.
  */
 
-import { Group, Plus } from "lucide-vue-next";
+import { Group, Plus } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { generateId } from "../../shared/domain/variables";
 import type { Variable } from "../../shared/domain/variables";

@@ -3,7 +3,7 @@ const zoneNameDrafts = new Map<string, string>();
 </script>
 
 <script setup lang="ts">
-import { Settings } from "lucide-vue-next";
+import { Settings } from "@lucide/vue";
 import { nextTick, onMounted, ref, watch } from "vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@shared/composables/useLive.ts";

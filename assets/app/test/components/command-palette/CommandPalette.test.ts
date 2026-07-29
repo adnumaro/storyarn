@@ -948,8 +948,8 @@ describe("CommandPalette", () => {
       .findAllComponents(CommandItem)
       .find((candidate) => candidate.props("value") === "nav.sheet.7");
     expect(pendingItem).toBeDefined();
-    expect(pendingItem!.vm).not.toBe(readyItem!.vm);
     expect(pendingItem!.props("disabled")).toBe(true);
+    expect(pendingItem!.attributes("data-disabled")).toBeDefined();
 
     selectItem(wrapper, "nav.sheet.7");
     expect(liveNavigate).not.toHaveBeenCalled();
@@ -961,8 +961,8 @@ describe("CommandPalette", () => {
       .findAllComponents(CommandItem)
       .find((candidate) => candidate.props("value") === "nav.sheet.7");
     expect(restoredItem).toBeDefined();
-    expect(restoredItem!.vm).not.toBe(pendingItem!.vm);
     expect(restoredItem!.props("disabled")).toBe(false);
+    expect(restoredItem!.attributes("data-disabled")).toBeUndefined();
 
     selectItem(wrapper, "nav.sheet.7");
     await nextTick();

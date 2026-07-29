@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileText } from "lucide-vue-next";
+import { FileText } from "@lucide/vue";
 import { computed } from "vue";
 import { useBlockActions } from "../../../../../composables/useBlockActions";
 import type { Block } from "../../../../../types";

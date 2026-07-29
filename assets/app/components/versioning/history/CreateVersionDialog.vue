@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Loader2, Save } from "lucide-vue-next";
+import { Loader2, Save } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import {
   Dialog,
