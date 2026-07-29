@@ -8,11 +8,22 @@ defmodule Storyarn.Exports.Validator do
 
   use Gettext, backend: Storyarn.Gettext
 
+  alias Storyarn.Exports.ArtifactValidator
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Flows
   alias Storyarn.Localization
-  alias Storyarn.Shared.StringUtils
+  alias Storyarn.References
   alias Storyarn.Sheets
+
+  @artifact_health_codes [
+    :invalid_output_pins,
+    :missing_entry,
+    :multiple_entries
+  ]
+  @editorial_health_rules [
+    missing_dialogue_text: :empty_dialogue,
+    missing_dialogue_speaker: :missing_speakers
+  ]
 
   defmodule ValidationResult do
     @moduledoc "Result of a project validation pass."
@@ -42,8 +53,38 @@ defmodule Storyarn.Exports.Validator do
   format it was exporting as got validated against a different one.
   """
   def validate_project(project_id, %ExportOptions{} = opts) do
-    findings = run_all_checks(project_id, opts)
+    validation_data = load_validation_data(project_id, opts)
 
+    project_id
+    |> run_checks_with_data(opts, validation_data)
+    |> build_result(project_id)
+  end
+
+  @doc """
+  Validate and return preloaded data for reuse by DataCollector.
+
+  Returns the result together with every export section already loaded by
+  validation: selected flows, selected full sheets, and the project-wide flow
+  shortcut map used to resolve cross-flow references.
+  """
+  def validate_with_data(project_id, %ExportOptions{} = opts) do
+    validation_data = load_validation_data(project_id, opts)
+
+    result =
+      project_id
+      |> run_checks_with_data(opts, validation_data)
+      |> build_result(project_id)
+
+    preloaded = %{
+      flows: validation_data.flows,
+      sheets: validation_data.sheets,
+      flow_shortcuts_by_id: Map.new(validation_data.active_flows, &{to_string(&1.id), &1.shortcut})
+    }
+
+    {result, preloaded}
+  end
+
+  defp build_result(findings, project_id) do
     errors = Enum.filter(findings, &(&1.level == :error))
     warnings = Enum.filter(findings, &(&1.level == :warning))
     info = Enum.filter(findings, &(&1.level == :info))
@@ -70,77 +111,41 @@ defmodule Storyarn.Exports.Validator do
     }
   end
 
-  @doc """
-  Validate and return preloaded data for reuse by DataCollector.
+  defp run_checks_with_data(project_id, opts, validation_data) do
+    effective_flow_result =
+      ArtifactValidator.effective_flows(opts.format, validation_data.flows)
 
-  Returns `{%ValidationResult{}, %{flows: flows_data}}` so that the caller
-  can thread the already-loaded flows into the data collection step.
-  """
-  def validate_with_data(project_id, %ExportOptions{} = opts) do
-    flows_data = load_flows_data(project_id, opts)
-    sheets = load_sheets(project_id, opts)
-
-    findings = run_checks_with_data(project_id, opts, flows_data, sheets)
-
-    errors = Enum.filter(findings, &(&1.level == :error))
-    warnings = Enum.filter(findings, &(&1.level == :warning))
-    info = Enum.filter(findings, &(&1.level == :info))
-
-    status =
-      cond do
-        errors != [] -> :errors
-        warnings != [] -> :warnings
-        true -> :passed
-      end
-
-    result = %ValidationResult{
-      status: status,
-      errors: errors,
-      warnings: warnings,
-      info: info,
-      statistics: %{
-        project_id: project_id,
-        total_findings: length(findings),
-        error_count: length(errors),
-        warning_count: length(warnings),
-        info_count: length(info)
-      }
+    artifact_context = %{
+      active_flows: validation_data.active_flows,
+      referenceable_variables: validation_data.referenceable_variables,
+      stale_node_variable_refs_by_flow: validation_data.stale_node_variable_refs_by_flow,
+      stale_node_ids_by_flow: validation_data.stale_node_ids_by_flow,
+      effective_flow_result: effective_flow_result
     }
 
-    {result, %{flows: flows_data}}
-  end
-
-  defp run_checks_with_data(project_id, opts, flows_data, sheets) do
-    checks = [
-      fn -> check_flow_health(flows_data) end,
-      fn -> check_empty_dialogue(flows_data) end,
-      fn -> check_missing_speakers(flows_data) end,
-      fn -> check_circular_subflows(flows_data) end,
-      fn -> check_broken_references(project_id, flows_data) end,
-      fn -> check_missing_translations(project_id, opts) end,
-      fn -> check_orphan_sheets(project_id, sheets) end
-    ]
-
-    Enum.flat_map(checks, fn check -> check.() end)
-  end
-
-  # =============================================================================
-  # Check runner
-  # =============================================================================
-
-  defp run_all_checks(project_id, opts) do
-    # Load data needed for multiple checks
-    flows_data = load_flows_data(project_id, opts)
-    sheets = load_sheets(project_id, opts)
+    {artifact_flows, _reachability_findings} = effective_flow_result
 
     checks = [
-      fn -> check_flow_health(flows_data) end,
-      fn -> check_empty_dialogue(flows_data) end,
-      fn -> check_missing_speakers(flows_data) end,
-      fn -> check_circular_subflows(flows_data) end,
-      fn -> check_broken_references(project_id, flows_data) end,
-      fn -> check_missing_translations(project_id, opts) end,
-      fn -> check_orphan_sheets(project_id, sheets) end
+      fn ->
+        ArtifactValidator.findings(
+          project_id,
+          opts,
+          validation_data.flows,
+          validation_data.sheets,
+          artifact_context
+        )
+      end,
+      fn ->
+        check_canonical_flow_health(
+          project_id,
+          validation_data.flows,
+          artifact_flows,
+          artifact_context
+        )
+      end,
+      fn -> check_circular_subflows(artifact_flows) end,
+      fn -> check_missing_translations(project_id, opts, artifact_flows) end,
+      fn -> check_orphan_sheets(project_id, validation_data.sheets) end
     ]
 
     Enum.flat_map(checks, fn check -> check.() end)
@@ -149,6 +154,40 @@ defmodule Storyarn.Exports.Validator do
   # =============================================================================
   # Data loading
   # =============================================================================
+
+  defp load_validation_data(project_id, opts) do
+    flows = load_flows_data(project_id, opts)
+    sheets = load_sheets(project_id, opts)
+    active_flows = load_active_flows(project_id, opts, flows)
+
+    referenceable_variables =
+      if flows == [], do: [], else: Flows.list_referenceable_variables(project_id)
+
+    stale_node_variable_refs_by_flow =
+      flows
+      |> Enum.map(& &1.id)
+      |> References.list_stale_node_variable_refs_by_flow()
+
+    stale_node_ids_by_flow =
+      Map.new(stale_node_variable_refs_by_flow, fn {flow_id, refs_by_node} ->
+        {flow_id, refs_by_node |> Map.keys() |> MapSet.new()}
+      end)
+
+    %{
+      flows: flows,
+      sheets: sheets,
+      active_flows: active_flows,
+      referenceable_variables: referenceable_variables,
+      stale_node_variable_refs_by_flow: stale_node_variable_refs_by_flow,
+      stale_node_ids_by_flow: stale_node_ids_by_flow
+    }
+  end
+
+  defp load_active_flows(_project_id, %{include_flows: true, flow_ids: :all}, flows), do: flows
+
+  defp load_active_flows(project_id, _opts, flows) when flows != [], do: Flows.list_flows(project_id)
+
+  defp load_active_flows(_project_id, _opts, _flows), do: []
 
   defp load_flows_data(_project_id, %ExportOptions{include_flows: false}), do: []
 
@@ -165,187 +204,154 @@ defmodule Storyarn.Exports.Validator do
   defp load_sheets(_project_id, %ExportOptions{include_sheets: false}), do: []
 
   defp load_sheets(project_id, %ExportOptions{sheet_ids: :all}) do
-    Sheets.list_sheets_brief(project_id)
+    Sheets.list_sheets_for_export(project_id)
   end
 
   defp load_sheets(_project_id, %ExportOptions{sheet_ids: []}), do: []
 
   defp load_sheets(project_id, %ExportOptions{sheet_ids: sheet_ids}) do
-    Sheets.list_sheets_brief(project_id, filter_ids: sheet_ids)
+    Sheets.list_sheets_for_export(project_id, filter_ids: sheet_ids)
   end
 
-  # =============================================================================
-  # Check: flow health (structural) — routed through the health engine
-  # =============================================================================
-  #
-  # This used to be three hand-rolled checks — missing_entry, orphan_nodes and
-  # unreachable_nodes — with their own raw-connection BFS. They disagreed with
-  # the health engine on real flows, always in the direction of noise:
-  #
-  #   * the orphan check skipped `entry` and `exit`, so a flow with no
-  #     connections at all reported zero orphans;
-  #   * the BFS walked connection rows, so it never resolved a jump -> hub
-  #     virtual edge and called everything behind a jump unreachable;
-  #   * it counted connections sitting on pins the node no longer has as real
-  #     wiring, so a stale response pin looked connected.
-  #
-  # There is one flow-health vocabulary now and the export path reads it rather
-  # than reimplementing it. `analyze_loaded_flow_structure/1` is the structural
-  # half; it re-uses the flows the validator already preloaded.
+  # Export consumes canonical health as a boundary, never as a second dashboard.
+  # Only health that invalidates every target artifact crosses that boundary;
+  # editorial quality is reduced to summaries that link back to the dashboard,
+  # where the individual authoring findings already live.
+  defp check_canonical_flow_health(_project_id, [], _artifact_flows, _context), do: []
 
-  # The rules whose names predate the consolidation. Consumers match on these
-  # atoms, so the health code is renamed rather than the finding re-labelled.
-  @export_rule_by_health_code %{
-    missing_entry: :missing_entry,
-    isolated_node: :orphan_nodes,
-    unreachable_node: :unreachable_nodes
-  }
+  defp check_canonical_flow_health(project_id, flows, artifact_flows, context) do
+    effective_nodes =
+      Map.new(artifact_flows, fn flow ->
+        {flow.id, MapSet.new(flow.nodes || [], & &1.id)}
+      end)
 
-  # `check_broken_references/2` already reports these, at :error. Surfacing them
-  # again at :warning would report one broken reference twice.
-  #
-  # ONLY the `stale_*` half. The split is: a reference that is SET but dangling
-  # is the legacy check's ("references non-existent hub/flow"); a reference that
-  # was never configured is health's, because the legacy check cannot see it —
-  # `has_broken_hub_ref?/2` requires `target != nil and target != ""` and
-  # `has_broken_ref?/3` requires `target != nil`. Since an unconfigured jump
-  # stores `""` (`Nodes.Jump.Node.default_data/0`) and an unconfigured subflow
-  # stores `nil` (`Nodes.Subflow.Node.default_data/0`), filtering `missing_*` here
-  # meant an unconfigured node produced NO export finding at all, from either
-  # side. Nothing double-reports: the two predicates skip exactly the blanks
-  # health claims.
-  @health_codes_reported_elsewhere [
-    :stale_jump_target,
-    :stale_subflow_reference
-  ]
+    health_findings =
+      project_id
+      |> Flows.list_export_health_findings(flows, context)
+      |> Enum.filter(&effective_health_finding?(&1, effective_nodes))
 
-  defp check_flow_health(flows) do
-    Enum.flat_map(flows, fn flow ->
-      flow
-      |> Flows.analyze_loaded_flow_structure()
-      |> Map.fetch!(:findings)
-      |> Enum.reject(&(&1.code in @health_codes_reported_elsewhere))
-      |> Enum.map(&health_finding(&1, flow))
+    artifact_findings =
+      health_findings
+      |> Enum.filter(&(&1.code in @artifact_health_codes))
+      |> Enum.map(&artifact_health_finding/1)
+
+    artifact_findings ++ aggregate_editorial_findings(health_findings)
+  end
+
+  defp effective_health_finding?(%{entity_id: nil}, _effective_nodes), do: true
+
+  defp effective_health_finding?(finding, effective_nodes) do
+    effective_nodes
+    |> Map.get(finding.flow_id, MapSet.new())
+    |> MapSet.member?(finding.entity_id)
+  end
+
+  defp artifact_health_finding(%{code: :missing_entry, flow_id: flow_id, details: details}) do
+    flow_name = Map.fetch!(details, :flow_name)
+
+    %{
+      level: :error,
+      rule: :missing_entry,
+      message: dgettext("projects", "Flow \"%{name}\" has no Entry node", name: flow_name),
+      flow_id: flow_id,
+      flow_name: flow_name
+    }
+  end
+
+  defp artifact_health_finding(%{code: :multiple_entries, flow_id: flow_id, details: details}) do
+    flow_name = Map.fetch!(details, :flow_name)
+    count = Map.fetch!(details, :count)
+
+    %{
+      level: :error,
+      rule: :multiple_entries,
+      count: count,
+      message:
+        dgettext(
+          "projects",
+          "Flow \"%{name}\" has %{count} Entry nodes; export can preserve only one",
+          name: flow_name,
+          count: count
+        ),
+      flow_id: flow_id,
+      flow_name: flow_name
+    }
+  end
+
+  defp artifact_health_finding(%{
+         code: :invalid_output_pins,
+         flow_id: flow_id,
+         entity_type: entity_type,
+         entity_id: entity_id,
+         details: details
+       }) do
+    flow_name = Map.fetch!(details, :flow_name)
+    entity_label = Map.get(details, :entity_label, entity_type)
+
+    %{
+      level: :error,
+      rule: :invalid_output_pins,
+      message:
+        dgettext(
+          "projects",
+          ~s("%{node}" in flow "%{flow}" has connections from outputs the exporter cannot preserve),
+          node: entity_label,
+          flow: flow_name
+        ),
+      flow_id: flow_id,
+      flow_name: flow_name,
+      entity_type: entity_type,
+      entity_id: entity_id,
+      entity_label: entity_label,
+      details: %{pins: Map.get(details, :pins, [])}
+    }
+  end
+
+  defp aggregate_editorial_findings(health_findings) do
+    Enum.flat_map(@editorial_health_rules, fn {health_code, export_rule} ->
+      count = Enum.count(health_findings, &(&1.code == health_code))
+      aggregate_editorial_finding(export_rule, count)
     end)
   end
 
-  # Only `missing_entry` blocks an export, exactly as before. Every code the
-  # consolidation newly surfaces lands at :warning: whether any of them should
-  # block is a product decision, and making it here would stop exports that
-  # succeed today.
-  defp health_finding(%{code: :missing_entry} = finding, flow) do
-    finding
-    |> base_health_finding(flow)
-    |> Map.put(:level, :error)
-  end
+  defp aggregate_editorial_finding(_rule, 0), do: []
 
-  defp health_finding(finding, flow), do: base_health_finding(finding, flow)
-
-  defp base_health_finding(finding, flow) do
-    maybe_put_node(
+  defp aggregate_editorial_finding(:empty_dialogue, count) do
+    [
       %{
         level: :warning,
-        rule: Map.get(@export_rule_by_health_code, finding.code, finding.code),
-        message: health_message(finding, flow),
-        flow_id: flow.id,
-        flow_name: flow.name
-      },
-      finding
-    )
+        rule: :empty_dialogue,
+        count: count,
+        dashboard: :flows,
+        message:
+          dngettext(
+            "projects",
+            "One dialogue has no text",
+            "%{count} dialogues have no text",
+            count,
+            count: count
+          )
+      }
+    ]
   end
 
-  defp maybe_put_node(export_finding, %{entity_id: nil}), do: export_finding
-
-  defp maybe_put_node(export_finding, finding) do
-    export_finding
-    |> Map.put(:node_id, finding.entity_id)
-    |> Map.put(:node_type, finding.entity_type)
-  end
-
-  # =============================================================================
-  # Check: empty_dialogue / missing_speakers (warning)
-  # =============================================================================
-  #
-  # These two are the EDITORIAL half of flow health (`HealthChecker`'s
-  # `missing_dialogue_text` and `missing_dialogue_speaker`) and the predicates
-  # below are already identical to the checker's. They stay here only because
-  # `Flows.analyze_loaded_flow_structure/1` is the structural half: no facade
-  # function composes both halves for an already-loaded flow, and reaching into
-  # `StructuralAnalysis`/`HealthChecker` directly would break the context facade.
-  # They do NOT diverge from health today — unlike the three structural rules
-  # that were removed.
-  #
-  # To fold them into `check_flow_health/1`, `Flows` needs a composed reading for
-  # a loaded flow. **Do not write the obvious version.** `Topology.from_loaded/1`
-  # resolves subflow/exit data but does NOT apply `Flows.add_health_flags/3`, and
-  # the editorial checks read `has_type_warnings` / `has_stale_refs` straight off
-  # a node's `data`. Measured on a flow with a live type mismatch:
-  #
-  #     from_loaded |> StructuralAnalysis.findings()
-  #       => [:incomplete_instruction_assignment, :isolated_node]
-  #     the editor path
-  #       => [:incomplete_instruction_assignment, :isolated_node, :variable_type_mismatch]
-  #
-  # So the naive helper would buy the two codes below and silently lose
-  # `variable_type_mismatch` — and `stale_variable_reference` with it, by
-  # construction, since it rides the same flag. A correct helper has to do the
-  # sweep's two loads (`References.list_stale_node_ids/1` plus the project
-  # variable set) and pass them through `add_health_flags/3` first.
-
-  defp check_empty_dialogue(flows) do
-    Enum.flat_map(flows, fn flow ->
-      flow.nodes
-      |> Enum.filter(fn node ->
-        node.type == "dialogue" and
-          (get_in(node.data, ["text"]) || "") |> strip_html() |> String.trim() == ""
-      end)
-      |> Enum.map(fn node ->
-        %{
-          level: :warning,
-          rule: :empty_dialogue,
-          message:
-            dgettext(
-              "projects",
-              "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no text",
-              node_id: node.id,
-              flow_name: flow.name
-            ),
-          flow_id: flow.id,
-          flow_name: flow.name,
-          node_id: node.id
-        }
-      end)
-    end)
-  end
-
-  # =============================================================================
-  # Check: missing_speakers (warning)
-  # =============================================================================
-
-  defp check_missing_speakers(flows) do
-    Enum.flat_map(flows, fn flow ->
-      flow.nodes
-      |> Enum.filter(fn node ->
-        node.type == "dialogue" and
-          node.data |> get_in(["speaker_sheet_id"]) |> StringUtils.blank?()
-      end)
-      |> Enum.map(fn node ->
-        %{
-          level: :warning,
-          rule: :missing_speakers,
-          message:
-            dgettext(
-              "projects",
-              "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no speaker assigned",
-              node_id: node.id,
-              flow_name: flow.name
-            ),
-          flow_id: flow.id,
-          flow_name: flow.name,
-          node_id: node.id
-        }
-      end)
-    end)
+  defp aggregate_editorial_finding(:missing_speakers, count) do
+    [
+      %{
+        level: :warning,
+        rule: :missing_speakers,
+        count: count,
+        dashboard: :flows,
+        message:
+          dngettext(
+            "projects",
+            "One dialogue has no speaker assigned",
+            "%{count} dialogues have no speaker assigned",
+            count,
+            count: count
+          )
+      }
+    ]
   end
 
   # =============================================================================
@@ -392,89 +398,12 @@ defmodule Storyarn.Exports.Validator do
   end
 
   # =============================================================================
-  # Check: broken_references (error)
-  # =============================================================================
-
-  defp check_broken_references(_project_id, flows) do
-    # Check jump nodes referencing non-existent hubs
-    jump_findings = check_broken_jump_refs(flows)
-
-    # Check subflow nodes referencing deleted/non-existent flows
-    subflow_findings = check_broken_subflow_refs(flows)
-
-    jump_findings ++ subflow_findings
-  end
-
-  defp check_broken_jump_refs(flows) do
-    Enum.flat_map(flows, fn flow ->
-      hub_ids =
-        flow.nodes
-        |> Enum.filter(&(&1.type == "hub"))
-        |> MapSet.new(&get_in(&1.data, ["hub_id"]))
-
-      flow.nodes
-      |> Enum.filter(fn node ->
-        node.type == "jump" and has_broken_hub_ref?(node, hub_ids)
-      end)
-      |> Enum.map(fn node ->
-        target = get_in(node.data, ["target_hub_id"])
-
-        %{
-          level: :error,
-          rule: :broken_references,
-          message:
-            dgettext(
-              "projects",
-              ~s|Jump node (id: %{node_id}) in flow "%{flow_name}" references non-existent hub "%{target}"|,
-              node_id: node.id,
-              flow_name: flow.name,
-              target: target
-            ),
-          flow_id: flow.id,
-          flow_name: flow.name,
-          node_id: node.id,
-          ref_type: :hub,
-          ref_value: target
-        }
-      end)
-    end)
-  end
-
-  defp check_broken_subflow_refs(flows) do
-    valid_flow_ids = MapSet.new(flows, & &1.id)
-
-    Enum.flat_map(flows, fn flow ->
-      flow.nodes
-      |> Enum.filter(fn node ->
-        node.type == "subflow" and has_broken_ref?(node, "referenced_flow_id", valid_flow_ids)
-      end)
-      |> Enum.map(fn node ->
-        %{
-          level: :error,
-          rule: :broken_references,
-          message:
-            dgettext(
-              "projects",
-              "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent flow",
-              node_id: node.id,
-              flow_name: flow.name
-            ),
-          flow_id: flow.id,
-          flow_name: flow.name,
-          node_id: node.id,
-          ref_type: :flow
-        }
-      end)
-    end)
-  end
-
-  # =============================================================================
   # Check: missing_translations (warning)
   # =============================================================================
 
-  defp check_missing_translations(_project_id, %ExportOptions{include_localization: false}), do: []
+  defp check_missing_translations(_project_id, %ExportOptions{include_localization: false}, _artifact_flows), do: []
 
-  defp check_missing_translations(project_id, opts) do
+  defp check_missing_translations(project_id, opts, artifact_flows) do
     languages =
       project_id
       |> Localization.list_target_locale_codes()
@@ -483,15 +412,21 @@ defmodule Storyarn.Exports.Validator do
     if languages == [] do
       []
     else
-      do_check_missing_translations(project_id, languages, opts)
+      do_check_missing_translations(project_id, languages, opts, artifact_flows)
     end
   end
 
   defp selected_locales(locales, :all), do: locales
   defp selected_locales(locales, selected), do: Enum.filter(locales, &(&1 in selected))
 
-  defp do_check_missing_translations(project_id, languages, opts) do
-    readiness = Localization.export_readiness_by_locale(project_id, languages, opts)
+  defp do_check_missing_translations(project_id, languages, opts, artifact_flows) do
+    flow_node_ids =
+      for flow <- artifact_flows,
+          node <- flow.nodes,
+          do: node.id
+
+    readiness =
+      Localization.export_readiness_by_locale(project_id, languages, opts, flow_node_ids)
 
     Enum.flat_map(languages, fn locale ->
       counts = Map.get(readiness, locale, %{total: 0, preview_ready: 0, release_ready: 0})
@@ -633,138 +568,5 @@ defmodule Storyarn.Exports.Validator do
       |> Map.get(start_id, [])
       |> Enum.any?(&has_cycle?(&1, graph, visited))
     end
-  end
-
-  defp has_broken_hub_ref?(node, hub_ids) do
-    target = get_in(node.data, ["target_hub_id"])
-    target != nil and target != "" and not MapSet.member?(hub_ids, target)
-  end
-
-  defp has_broken_ref?(node, field, valid_ids) do
-    target = get_in(node.data, [field])
-    target != nil and not MapSet.member?(valid_ids, target)
-  end
-
-  defp strip_html(text), do: Storyarn.Shared.HtmlUtils.strip_html(text)
-
-  # =============================================================================
-  # Health finding messages
-  # =============================================================================
-  #
-  # Rebuilt from the finding's own code, entity and flow name. The three rules
-  # that predate the consolidation keep their exact original strings so existing
-  # translations still match.
-
-  defp health_message(%{code: :missing_entry}, flow) do
-    dgettext("projects", "Flow \"%{name}\" has no Entry node", name: flow.name)
-  end
-
-  defp health_message(%{code: :multiple_entries}, flow) do
-    dgettext("projects", "Flow \"%{name}\" has more than one Entry node", name: flow.name)
-  end
-
-  defp health_message(%{code: :isolated_node} = finding, flow) do
-    dgettext(
-      "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no connections",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
-      flow_name: flow.name
-    )
-  end
-
-  defp health_message(%{code: :unreachable_node} = finding, flow) do
-    dgettext(
-      "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" is not reachable from Entry",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
-      flow_name: flow.name
-    )
-  end
-
-  defp health_message(%{code: :no_outgoing_connection} = finding, flow) do
-    dgettext(
-      "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no outgoing connection",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
-      flow_name: flow.name
-    )
-  end
-
-  defp health_message(%{code: :missing_output_connections} = finding, flow) do
-    dgettext(
-      "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" leaves one or more outputs unconnected",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
-      flow_name: flow.name
-    )
-  end
-
-  defp health_message(%{code: :invalid_input_pins} = finding, flow) do
-    dgettext(
-      "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on input pins it no longer has",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
-      flow_name: flow.name
-    )
-  end
-
-  defp health_message(%{code: :invalid_output_pins} = finding, flow) do
-    dgettext(
-      "projects",
-      "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has connections on output pins it no longer has",
-      type: finding.entity_type,
-      node_id: finding.entity_id,
-      flow_name: flow.name
-    )
-  end
-
-  defp health_message(%{code: :orphan_hub} = finding, flow) do
-    dgettext(
-      "projects",
-      "Hub node (id: %{node_id}) in flow \"%{flow_name}\" is never targeted by a Jump",
-      node_id: finding.entity_id,
-      flow_name: flow.name
-    )
-  end
-
-  defp health_message(%{code: :missing_jump_target} = finding, flow) do
-    dgettext(
-      "projects",
-      "Jump node (id: %{node_id}) in flow \"%{flow_name}\" has no target hub set",
-      node_id: finding.entity_id,
-      flow_name: flow.name
-    )
-  end
-
-  defp health_message(%{code: :missing_subflow_reference} = finding, flow) do
-    dgettext(
-      "projects",
-      "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" has no referenced flow set",
-      node_id: finding.entity_id,
-      flow_name: flow.name
-    )
-  end
-
-  defp health_message(%{code: :missing_exit_flow_reference} = finding, flow) do
-    dgettext(
-      "projects",
-      "Exit node (id: %{node_id}) in flow \"%{flow_name}\" has no return flow set",
-      node_id: finding.entity_id,
-      flow_name: flow.name
-    )
-  end
-
-  defp health_message(%{code: :stale_exit_flow_reference} = finding, flow) do
-    dgettext(
-      "projects",
-      "Exit node (id: %{node_id}) in flow \"%{flow_name}\" returns to a flow that no longer exists",
-      node_id: finding.entity_id,
-      flow_name: flow.name
-    )
   end
 end

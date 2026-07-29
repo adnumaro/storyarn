@@ -328,6 +328,9 @@
       "validate": "Validate",
       "validating": "Validating…",
       "download": "Download .{ext}",
+      "download_blocked": "Resolve the blocking issues below and validate again before downloading.",
+      "download_failed": "The export could not be downloaded. Try again.",
+      "download_failed_validation": "The export could not be generated. Validate again and review the blocking findings.",
       "download_note": "Your project is not modified. Exporting creates a new local file.",
       "passed": "Passed",
       "warnings": "Warnings",
@@ -345,6 +348,7 @@
       "error_findings": "Blocking issues",
       "warning_findings": "Warnings",
       "info_findings": "Additional information",
+      "more_findings": "{count} more finding is not shown. | {count} more findings are not shown.",
       "no_issues": "No issues found. Project is ready for export."
     }
   }

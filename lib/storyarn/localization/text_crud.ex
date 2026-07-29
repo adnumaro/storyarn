@@ -627,6 +627,31 @@ defmodule Storyarn.Localization.TextCrud do
 
   @doc "Returns active localization export readiness counts grouped by target locale."
   def export_readiness_by_locale(project_id, languages, opts \\ []) do
+    export_readiness_by_locale(project_id, languages, opts, :all)
+  end
+
+  @doc """
+  Returns active localization export readiness counts for an explicit effective
+  flow-node inventory while retaining the selected sheet scope from the export
+  options.
+  """
+  def export_readiness_by_locale(project_id, languages, opts, flow_node_ids) when is_list(flow_node_ids) do
+    project_id
+    |> export_readiness_query(languages)
+    |> scope_engine_export_sources(project_id, opts, %{flow_node: flow_node_ids})
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  def export_readiness_by_locale(project_id, languages, opts, :all) do
+    project_id
+    |> export_readiness_query(languages)
+    |> scope_engine_export_sources(project_id, opts)
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  defp export_readiness_query(project_id, languages) do
     from(lt in LocalizedText,
       where:
         lt.project_id == ^project_id and is_nil(lt.archived_at) and
@@ -652,9 +677,6 @@ defmodule Storyarn.Localization.TextCrud do
              )
          }}
     )
-    |> scope_engine_export_sources(project_id, opts)
-    |> Repo.all()
-    |> Map.new()
   end
 
   @doc "Counts active localized texts in the same source scope as an engine export."
@@ -664,9 +686,9 @@ defmodule Storyarn.Localization.TextCrud do
     |> Repo.aggregate(:count)
   end
 
-  defp scope_engine_export_sources(query, project_id, opts) do
+  defp scope_engine_export_sources(query, project_id, opts, source_overrides \\ %{}) do
     %{flow_node: node_ids, block: block_ids, sheet: sheet_ids} =
-      engine_export_source_ids(project_id, opts)
+      engine_export_source_ids(project_id, opts, source_overrides)
 
     source_scope =
       dynamic(
@@ -692,11 +714,14 @@ defmodule Storyarn.Localization.TextCrud do
     end
   end
 
-  defp engine_export_source_ids(project_id, opts) do
+  defp engine_export_source_ids(project_id, opts, source_overrides) do
     {sheet_ids, block_ids} = engine_sheet_source_ids(project_id, opts)
 
     %{
-      flow_node: engine_flow_node_ids(project_id, opts),
+      flow_node:
+        Map.get_lazy(source_overrides, :flow_node, fn ->
+          engine_flow_node_ids(project_id, opts)
+        end),
       block: block_ids,
       sheet: sheet_ids
     }

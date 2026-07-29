@@ -1002,6 +1002,9 @@ defmodule Storyarn.Sheets do
   @doc "Returns variable references with current block info for stale repair."
   defdelegate list_variable_refs_with_block_info_for_repair(project_id), to: SheetQueries
 
+  @doc "Lists stale full variable references for MANY flows, keyed by flow and node."
+  defdelegate list_stale_node_variable_refs_by_flow(flow_ids), to: SheetQueries
+
   @doc "Lists stale node IDs — regular and table — for MANY flows, keyed by flow."
   defdelegate list_stale_node_ids_by_flow(flow_ids), to: SheetQueries
 

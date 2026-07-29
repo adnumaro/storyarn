@@ -26,6 +26,7 @@ msgstr ""
 msgid "Circular reference detected. This flow is already referenced by the target."
 msgstr ""
 
+#: lib/storyarn/flows/node_label.ex:33
 #: lib/storyarn_web/live/flow_live/nodes/condition/node.ex:16
 #, elixir-autogen, elixir-format
 msgid "Condition"
@@ -81,16 +82,19 @@ msgstr ""
 msgid "Create Flow"
 msgstr ""
 
+#: lib/storyarn/flows/node_label.ex:34
 #: lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex:28
 #, elixir-autogen, elixir-format
 msgid "Dialogue"
 msgstr ""
 
+#: lib/storyarn/flows/node_label.ex:35
 #: lib/storyarn_web/live/flow_live/nodes/entry/node.ex:15
 #, elixir-autogen, elixir-format
 msgid "Entry"
 msgstr ""
 
+#: lib/storyarn/flows/node_label.ex:36
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:20
 #, elixir-autogen, elixir-format
 msgid "Exit"
@@ -117,11 +121,13 @@ msgstr ""
 msgid "Flow set as main."
 msgstr ""
 
+#: lib/storyarn/flows/node_label.ex:37
 #: lib/storyarn_web/live/flow_live/nodes/hub/node.ex:17
 #, elixir-autogen, elixir-format
 msgid "Hub"
 msgstr ""
 
+#: lib/storyarn/flows/node_label.ex:38
 #: lib/storyarn_web/live/flow_live/nodes/instruction/node.ex:15
 #, elixir-autogen, elixir-format
 msgid "Instruction"
@@ -137,6 +143,7 @@ msgstr ""
 msgid "Invalid flow reference."
 msgstr ""
 
+#: lib/storyarn/flows/node_label.ex:39
 #: lib/storyarn_web/live/flow_live/nodes/jump/node.ex:12
 #, elixir-autogen, elixir-format
 msgid "Jump"
@@ -153,6 +160,7 @@ msgstr ""
 msgid "Shortcut %{error}"
 msgstr ""
 
+#: lib/storyarn/flows/node_label.ex:41
 #: lib/storyarn_web/live/flow_live/nodes/subflow/node.ex:20
 #, elixir-autogen, elixir-format
 msgid "Subflow"
@@ -225,6 +233,7 @@ msgstr ""
 msgid "%{type} #%{id}"
 msgstr ""
 
+#: lib/storyarn/flows/node_label.ex:32
 #: lib/storyarn_web/live/flow_live/nodes/annotation/node.ex:20
 #, elixir-autogen, elixir-format
 msgid "Note"
@@ -434,4 +443,14 @@ msgstr ""
 #: lib/storyarn/versioning/builders/flow_builder.ex:5089
 #, elixir-autogen, elixir-format
 msgid "Localization row #%{n} — voice-over"
+msgstr ""
+
+#: lib/storyarn/flows/node_label.ex:49
+#, elixir-autogen, elixir-format
+msgid "Node"
+msgstr ""
+
+#: lib/storyarn/flows/node_label.ex:40
+#, elixir-autogen, elixir-format
+msgid "Sequence"
 msgstr ""

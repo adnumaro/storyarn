@@ -154,6 +154,7 @@ defmodule Storyarn.Localization do
 
   @doc "Returns localization export readiness counts grouped by target locale."
   defdelegate export_readiness_by_locale(project_id, locale_codes, opts \\ []), to: TextCrud
+  defdelegate export_readiness_by_locale(project_id, locale_codes, opts, flow_node_ids), to: TextCrud
 
   @doc "Creates a new localized text."
   @spec create_text(id(), attrs()) :: {:ok, localized_text()} | {:error, changeset()}

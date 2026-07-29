@@ -3,6 +3,7 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
@@ -11,6 +12,7 @@ defmodule Storyarn.Exports.Serializers.InkTest do
   alias Storyarn.Exports.Serializers.Helpers
   alias Storyarn.Exports.Serializers.Ink
   alias Storyarn.Flows
+  alias Storyarn.Localization
   alias Storyarn.Repo
 
   # =============================================================================
@@ -42,10 +44,38 @@ defmodule Storyarn.Exports.Serializers.InkTest do
     content
   end
 
+  defp ink_source_for(files, flow) do
+    knot_name = Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")
+
+    files
+    |> ink_source()
+    |> String.split("\n")
+    |> Enum.drop_while(&(&1 != "=== #{knot_name} ==="))
+    |> Enum.take_while(&(not String.starts_with?(&1, "// === Flow:")))
+    |> Enum.join("\n")
+  end
+
   defp metadata(files) do
     {_name, content} = Enum.find(files, fn {name, _} -> name == "metadata.json" end)
     Jason.decode!(content)
   end
+
+  defp invalidate_collected_localization_id(project_data, node_id) do
+    update_in(
+      project_data.flows,
+      &Enum.map(&1, fn flow -> invalidate_flow_localization_id(flow, node_id) end)
+    )
+  end
+
+  defp invalidate_flow_localization_id(flow, node_id) do
+    nodes = Enum.map(flow.nodes || [], &invalidate_node_localization_id(&1, node_id))
+    %{flow | nodes: nodes}
+  end
+
+  defp invalidate_node_localization_id(%{id: node_id} = node, node_id),
+    do: %{node | data: Map.put(node.data || %{}, "localization_id", nil)}
+
+  defp invalidate_node_localization_id(node, _node_id), do: node
 
   # =============================================================================
   # Behaviour callbacks
@@ -98,6 +128,80 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       meta = metadata(export_ink(project))
       assert meta["storyarn_ink_metadata"] == "1.0.0"
       assert is_binary(meta["project"])
+    end
+  end
+
+  describe "localization catalog reachability" do
+    setup [:create_project]
+
+    test "omits an unreachable invalid dialogue but keeps a dialogue emitted through a hub", %{
+      project: project
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      flow = project |> flow_fixture(%{name: "Localized Ink"}) |> reload_flow()
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      unreachable =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Discarded source", "responses" => []}
+        })
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "localized_hub", "label" => "Localized hub"}
+        })
+
+      reachable =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Hub source", "responses" => []}
+        })
+
+      connection_fixture(flow, entry, hub)
+      connection_fixture(flow, hub, reachable)
+
+      [unreachable_text] = Localization.get_texts_for_source("flow_node", unreachable.id)
+      [reachable_text] = Localization.get_texts_for_source("flow_node", reachable.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(unreachable_text, %{
+                 translated_text: "No debe salir",
+                 status: "final"
+               })
+
+      assert {:ok, _text} =
+               Localization.update_text(reachable_text, %{
+                 translated_text: "Desde el hub",
+                 status: "final"
+               })
+
+      opts = default_opts()
+
+      project_data =
+        project.id
+        |> DataCollector.collect(opts)
+        |> invalidate_collected_localization_id(unreachable.id)
+
+      assert {:ok, files} = Ink.serialize(project_data, opts)
+
+      source = ink_source(files)
+      assert source =~ "Hub source"
+      refute source =~ "Discarded source"
+
+      assert {"localization.es.csv", catalog} =
+               List.keyfind(files, "localization.es.csv", 0)
+
+      assert catalog =~ "Desde el hub"
+      refute catalog =~ "No debe salir"
+
+      assert {"localization-manifest.json", manifest_json} =
+               List.keyfind(files, "localization-manifest.json", 0)
+
+      assert Jason.decode!(manifest_json)["totalStrings"] == 1
     end
   end
 
@@ -563,9 +667,30 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       assert source =~ "-> side_quest_rescue ->"
     end
 
-    test "subflow with referenced_flow_id resolves target flow shortcut", %{project: project} do
+    test "subflow with target_flow_id alias resolves target flow shortcut", %{project: project} do
       target_flow = flow_fixture(project, %{name: "Side Quest"})
       caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      subflow =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"target_flow_id" => target_flow.id}
+        })
+
+      connection_fixture(caller_flow, caller_entry, subflow)
+
+      source = ink_source(export_ink(project))
+      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
+      assert source =~ "-> #{target} ->"
+    end
+
+    test "partial export preserves the shortcut of an external subflow target", %{
+      project: project
+    } do
+      target_flow = flow_fixture(project, %{name: "Side Quest", shortcut: "side-quest"})
+      caller_flow = flow_fixture(project, %{name: "Main", shortcut: "main"})
       caller_flow = reload_flow(caller_flow)
       caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
 
@@ -577,9 +702,11 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
       connection_fixture(caller_flow, caller_entry, subflow)
 
-      source = ink_source(export_ink(project))
-      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
-      assert source =~ "-> #{target} ->"
+      opts = %{default_opts() | flow_ids: [caller_flow.id]}
+      source = project |> export_ink(opts) |> ink_source()
+
+      assert source =~ "-> side_quest ->"
+      refute source =~ "=== side_quest ==="
     end
 
     test "subflow without shortcut uses fallback id", %{project: project} do
@@ -595,40 +722,49 @@ defmodule Storyarn.Exports.Serializers.InkTest do
       assert source =~ " ->"
     end
 
-    test "exit in tunnel flow emits ->-> not -> END", %{project: project} do
-      target_flow = flow_fixture(project, %{name: "Side Quest"})
+    test "only a reachable subflow target uses tunnel return, including through a hub", %{
+      project: project
+    } do
+      target_flow = flow_fixture(project, %{name: "Side Quest", shortcut: "side-quest"})
       target_flow = reload_flow(target_flow)
       target_entry = Enum.find(target_flow.nodes, &(&1.type == "entry"))
       target_exit = node_fixture(target_flow, %{type: "exit", data: %{}})
       connection_fixture(target_flow, target_entry, target_exit)
 
-      caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = flow_fixture(project, %{name: "Main", shortcut: "main"})
       caller_flow = reload_flow(caller_flow)
       caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      hub =
+        node_fixture(caller_flow, %{
+          type: "hub",
+          data: %{"hub_id" => "subflow_hub", "label" => "Subflow hub"}
+        })
 
       subflow_node =
         node_fixture(caller_flow, %{
           type: "subflow",
-          data: %{
-            "flow_shortcut" => target_flow.shortcut,
-            "referenced_flow_id" => target_flow.id
-          }
+          data: %{"referenced_flow_id" => target_flow.id}
         })
 
-      after_dialogue =
-        node_fixture(caller_flow, %{
-          type: "dialogue",
-          data: %{"text" => "Back!", "speaker_sheet_id" => nil, "responses" => []}
-        })
+      disconnected_target_source =
+        project
+        |> export_ink()
+        |> ink_source_for(target_flow)
 
-      connection_fixture(caller_flow, caller_entry, subflow_node)
+      assert disconnected_target_source =~ "-> END"
+      refute disconnected_target_source =~ "->->"
 
-      connection_fixture(caller_flow, subflow_node, after_dialogue, %{
-        source_pin: "exit_#{target_exit.id}"
-      })
+      connection_fixture(caller_flow, caller_entry, hub)
+      connection_fixture(caller_flow, hub, subflow_node)
 
-      source = ink_source(export_ink(project))
-      assert source =~ "->->"
+      reachable_target_source =
+        project
+        |> export_ink()
+        |> ink_source_for(target_flow)
+
+      assert reachable_target_source =~ "->->"
+      refute reachable_target_source =~ "-> END"
     end
   end
 
@@ -899,6 +1035,28 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
       source = ink_source(export_ink(project))
       assert source =~ "-> act2_beginning"
+    end
+
+    test "jump resolves a direct flow id before a stale shortcut", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Right Target", shortcut: "right-target"})
+      flow = flow_fixture(project, %{name: "Jump By Id"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      jump =
+        node_fixture(flow, %{
+          type: "jump",
+          data: %{
+            "target_flow_id" => target_flow.id,
+            "target_flow_shortcut" => "stale-target"
+          }
+        })
+
+      connection_fixture(flow, entry, jump)
+
+      source = ink_source(export_ink(project))
+      assert source =~ "-> right_target"
+      refute source =~ "-> stale_target"
     end
   end
 

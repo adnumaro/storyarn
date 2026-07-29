@@ -234,6 +234,25 @@ defmodule Storyarn.Exports.Serializers.Helpers do
     Map.get(conn_graph, node_id, [])
   end
 
+  @doc """
+  Returns the canonical active-flow shortcut lookup carried by collected export
+  data. The fallback keeps serializer unit fixtures that provide only `flows`
+  working.
+
+  The lookup deliberately contains flows outside a partial selection so
+  references keep their real target identifier even when that target's body is
+  delivered separately.
+  """
+  def flow_shortcuts_by_id(project_data, flows) do
+    case Map.get(project_data, :flow_shortcuts_by_id) do
+      shortcuts when is_map(shortcuts) ->
+        shortcuts
+
+      _missing_lookup ->
+        Map.new(flows, fn flow -> {to_string(flow.id), flow.shortcut} end)
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Dialogue data extraction
   # ---------------------------------------------------------------------------
@@ -251,9 +270,16 @@ defmodule Storyarn.Exports.Serializers.Helpers do
   """
   def dialogue_responses(data) do
     Enum.map(data["responses"] || [], fn resp ->
-      Map.put(resp, "instruction_assignments", parse_instruction_json(resp["instruction"]))
+      Map.put(resp, "instruction_assignments", response_instruction_assignments(resp))
     end)
   end
+
+  defp response_instruction_assignments(%{"instruction_assignments" => [_ | _] = assignments}), do: assignments
+
+  defp response_instruction_assignments(%{"instruction_assignments" => invalid}) when invalid not in [nil, []],
+    do: invalid
+
+  defp response_instruction_assignments(response), do: parse_instruction_json(response["instruction"])
 
   defp parse_instruction_json(nil), do: []
   defp parse_instruction_json(""), do: []

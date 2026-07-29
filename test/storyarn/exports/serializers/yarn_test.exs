@@ -44,10 +44,38 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
     content
   end
 
+  defp yarn_source_for(files, flow) do
+    node_title = Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")
+
+    files
+    |> yarn_source()
+    |> String.split("\n")
+    |> Enum.drop_while(&(&1 != "title: #{node_title}"))
+    |> Enum.take_while(&(&1 != "==="))
+    |> Enum.join("\n")
+  end
+
   defp metadata(files) do
     {_name, content} = Enum.find(files, fn {name, _} -> name == "metadata.json" end)
     Jason.decode!(content)
   end
+
+  defp invalidate_collected_localization_id(project_data, node_id) do
+    update_in(
+      project_data.flows,
+      &Enum.map(&1, fn flow -> invalidate_flow_localization_id(flow, node_id) end)
+    )
+  end
+
+  defp invalidate_flow_localization_id(flow, node_id) do
+    nodes = Enum.map(flow.nodes || [], &invalidate_node_localization_id(&1, node_id))
+    %{flow | nodes: nodes}
+  end
+
+  defp invalidate_node_localization_id(%{id: node_id} = node, node_id),
+    do: %{node | data: Map.put(node.data || %{}, "localization_id", nil)}
+
+  defp invalidate_node_localization_id(node, _node_id), do: node
 
   # =============================================================================
   # Behaviour callbacks
@@ -200,6 +228,90 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       assert "localization_id must be unique within the project" in errors_on(changeset).data
     end
 
+    test "ignores invalid line IDs on dialogues omitted as unreachable", %{project: project} do
+      flow = project |> flow_fixture(%{name: "Reachable IDs"}) |> reload_flow()
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      reachable =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Included dialogue", "responses" => []}
+        })
+
+      unreachable =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Detached dialogue", "responses" => []}
+        })
+
+      connection_fixture(flow, entry, reachable)
+
+      opts = default_opts()
+      project_data = DataCollector.collect(project.id, opts)
+
+      project_data =
+        update_in(project_data.flows, fn flows ->
+          Enum.map(flows, fn collected_flow ->
+            nodes =
+              Enum.map(collected_flow.nodes || [], fn
+                %{id: id} = node when id == unreachable.id ->
+                  %{node | data: Map.put(node.data || %{}, "localization_id", nil)}
+
+                node ->
+                  node
+              end)
+
+            %{collected_flow | nodes: nodes}
+          end)
+        end)
+
+      assert {:ok, files} = Yarn.serialize(project_data, opts)
+      source = yarn_source(files)
+      assert source =~ "Included dialogue"
+      refute source =~ "Detached dialogue"
+    end
+
+    test "validates line IDs on dialogues emitted inside hub sections", %{project: project} do
+      flow = project |> flow_fixture(%{name: "Hub IDs"}) |> reload_flow()
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "checkpoint", "label" => "Checkpoint"}
+        })
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Inside hub", "responses" => []}
+        })
+
+      connection_fixture(flow, entry, hub)
+      connection_fixture(flow, hub, dialogue)
+
+      opts = default_opts()
+      project_data = DataCollector.collect(project.id, opts)
+
+      project_data =
+        update_in(project_data.flows, fn flows ->
+          Enum.map(flows, fn collected_flow ->
+            nodes =
+              Enum.map(collected_flow.nodes || [], fn
+                %{id: id} = node when id == dialogue.id ->
+                  %{node | data: Map.put(node.data || %{}, "localization_id", nil)}
+
+                node ->
+                  node
+              end)
+
+            %{collected_flow | nodes: nodes}
+          end)
+        end)
+
+      assert {:error, :invalid_localization_ids} = Yarn.serialize(project_data, opts)
+    end
+
     test "emits Yarn line catalogs keyed by the exact runtime line ID", %{project: project} do
       _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
       _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
@@ -224,6 +336,76 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
                List.keyfind(files, "localization-manifest.json", 0)
 
       assert Jason.decode!(manifest_json)["policy"] == "release"
+    end
+
+    test "catalog omits an unreachable invalid dialogue but keeps a dialogue emitted through a hub", %{
+      project: project
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      flow = project |> flow_fixture(%{name: "Localized Yarn Reachability"}) |> reload_flow()
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      unreachable =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Discarded source", "responses" => []}
+        })
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "localized_hub", "label" => "Localized hub"}
+        })
+
+      reachable =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Hub source", "responses" => []}
+        })
+
+      connection_fixture(flow, entry, hub)
+      connection_fixture(flow, hub, reachable)
+
+      [unreachable_text] = Localization.get_texts_for_source("flow_node", unreachable.id)
+      [reachable_text] = Localization.get_texts_for_source("flow_node", reachable.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(unreachable_text, %{
+                 translated_text: "No debe salir",
+                 status: "final"
+               })
+
+      assert {:ok, _text} =
+               Localization.update_text(reachable_text, %{
+                 translated_text: "Desde el hub",
+                 status: "final"
+               })
+
+      opts = default_opts()
+
+      project_data =
+        project.id
+        |> DataCollector.collect(opts)
+        |> invalidate_collected_localization_id(unreachable.id)
+
+      assert {:ok, files} = Yarn.serialize(project_data, opts)
+
+      source = yarn_source(files)
+      assert source =~ "Hub source"
+      refute source =~ "Discarded source"
+
+      assert {"localization.es.csv", catalog} =
+               List.keyfind(files, "localization.es.csv", 0)
+
+      assert catalog =~ "Desde el hub"
+      refute catalog =~ "No debe salir"
+
+      assert {"localization-manifest.json", manifest_json} =
+               List.keyfind(files, "localization-manifest.json", 0)
+
+      assert Jason.decode!(manifest_json)["totalStrings"] == 1
     end
 
     test "dialogue includes line tag", %{project: project} do
@@ -720,9 +902,30 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       assert source =~ "<<detour side_quest_rescue>>"
     end
 
-    test "subflow with referenced_flow_id resolves target flow shortcut", %{project: project} do
+    test "subflow with flow_id alias resolves target flow shortcut", %{project: project} do
       target_flow = flow_fixture(project, %{name: "Side Quest"})
       caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = reload_flow(caller_flow)
+      caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      subflow =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"flow_id" => target_flow.id}
+        })
+
+      connection_fixture(caller_flow, caller_entry, subflow)
+
+      source = yarn_source(export_yarn(project))
+      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
+      assert source =~ "<<detour #{target}>>"
+    end
+
+    test "partial export preserves the shortcut of an external subflow target", %{
+      project: project
+    } do
+      target_flow = flow_fixture(project, %{name: "Side Quest", shortcut: "side-quest"})
+      caller_flow = flow_fixture(project, %{name: "Main", shortcut: "main"})
       caller_flow = reload_flow(caller_flow)
       caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
 
@@ -734,9 +937,11 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
 
       connection_fixture(caller_flow, caller_entry, subflow)
 
-      source = yarn_source(export_yarn(project))
-      target = Helpers.shortcut_to_identifier(target_flow.shortcut)
-      assert source =~ "<<detour #{target}>>"
+      opts = %{default_opts() | flow_ids: [caller_flow.id]}
+      source = project |> export_yarn(opts) |> yarn_source()
+
+      assert source =~ "<<detour side_quest>>"
+      refute source =~ "title: side_quest"
     end
 
     test "subflow without shortcut uses fallback id", %{project: project} do
@@ -751,16 +956,24 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       assert source =~ "<<detour subflow_"
     end
 
-    test "exit in detour target emits return command", %{project: project} do
-      target_flow = flow_fixture(project, %{name: "Side Quest"})
+    test "only a reachable subflow target returns from a detour, including through a hub", %{
+      project: project
+    } do
+      target_flow = flow_fixture(project, %{name: "Side Quest", shortcut: "side-quest"})
       target_flow = reload_flow(target_flow)
       target_entry = Enum.find(target_flow.nodes, &(&1.type == "entry"))
       target_exit = node_fixture(target_flow, %{type: "exit", data: %{}})
       connection_fixture(target_flow, target_entry, target_exit)
 
-      caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = flow_fixture(project, %{name: "Main", shortcut: "main"})
       caller_flow = reload_flow(caller_flow)
       caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      hub =
+        node_fixture(caller_flow, %{
+          type: "hub",
+          data: %{"hub_id" => "subflow_hub", "label" => "Subflow hub"}
+        })
 
       subflow =
         node_fixture(caller_flow, %{
@@ -768,21 +981,24 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
           data: %{"referenced_flow_id" => target_flow.id}
         })
 
-      after_dialogue =
-        node_fixture(caller_flow, %{
-          type: "dialogue",
-          data: %{"text" => "Back!", "speaker_sheet_id" => nil, "responses" => []}
-        })
+      disconnected_target_source =
+        project
+        |> export_yarn()
+        |> yarn_source_for(target_flow)
 
-      connection_fixture(caller_flow, caller_entry, subflow)
+      assert disconnected_target_source =~ "<<stop>>"
+      refute disconnected_target_source =~ "<<return>>"
 
-      connection_fixture(caller_flow, subflow, after_dialogue, %{
-        source_pin: "exit_#{target_exit.id}"
-      })
+      connection_fixture(caller_flow, caller_entry, hub)
+      connection_fixture(caller_flow, hub, subflow)
 
-      source = yarn_source(export_yarn(project))
-      assert source =~ "<<return>>"
-      assert source =~ "Back!"
+      reachable_target_source =
+        project
+        |> export_yarn()
+        |> yarn_source_for(target_flow)
+
+      assert reachable_target_source =~ "<<return>>"
+      refute reachable_target_source =~ "<<stop>>"
     end
   end
 
@@ -1086,6 +1302,28 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       source = yarn_source(export_yarn(project))
       assert source =~ "<<jump act2_beginning>>"
     end
+
+    test "jump resolves a direct flow id before a stale shortcut", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Right Target", shortcut: "right-target"})
+      flow = flow_fixture(project, %{name: "Jump By Id"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      jump =
+        node_fixture(flow, %{
+          type: "jump",
+          data: %{
+            "target_flow_id" => target_flow.id,
+            "target_flow_shortcut" => "stale-target"
+          }
+        })
+
+      connection_fixture(flow, entry, jump)
+
+      source = yarn_source(export_yarn(project))
+      assert source =~ "<<jump right_target>>"
+      refute source =~ "<<jump stale_target>>"
+    end
   end
 
   # =============================================================================
@@ -1351,7 +1589,7 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       hub =
         node_fixture(flow, %{
           type: "hub",
-          data: %{"label" => "checkpoint"}
+          data: %{"hub_id" => "checkpoint", "label" => "checkpoint"}
         })
 
       jump =

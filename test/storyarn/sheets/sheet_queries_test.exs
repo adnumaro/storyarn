@@ -1705,8 +1705,10 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       %{
         project: project,
         sheet: sheet,
+        plain: plain,
         table: table,
         row: row,
+        column: column,
         flow: flow,
         plain_node: plain_node,
         table_node: table_node
@@ -1741,6 +1743,39 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       assert Map.get(batched, context.flow.id, MapSet.new()) ==
                MapSet.new([context.plain_node.id, context.table_node.id]),
              "the shortcut is half of every reference, table cells included"
+    end
+
+    test "retain each stale full reference while deriving the node-id view", context do
+      {:ok, _sheet} = Sheets.update_sheet(context.sheet, %{shortcut: "protagonist"})
+
+      plain_ref = "hero.#{context.plain.variable_name}"
+      table_ref = "hero.#{context.table.variable_name}.#{context.row.slug}.#{context.column.slug}"
+
+      refs_by_flow =
+        SheetQueries.list_stale_node_variable_refs_by_flow([context.flow.id])
+
+      assert refs_by_flow == %{
+               context.flow.id => %{
+                 context.plain_node.id => MapSet.new([plain_ref]),
+                 context.table_node.id => MapSet.new([table_ref])
+               }
+             }
+
+      assert SheetQueries.list_stale_node_ids_by_flow([context.flow.id]) ==
+               %{context.flow.id => MapSet.new(Map.keys(refs_by_flow[context.flow.id]))}
+    end
+
+    test "retain the table-cell path when only that reference becomes stale", context do
+      {:ok, _row} = Sheets.delete_table_row(context.row)
+
+      table_ref = "hero.#{context.table.variable_name}.#{context.row.slug}.#{context.column.slug}"
+
+      assert SheetQueries.list_stale_node_variable_refs_by_flow([context.flow.id]) ==
+               %{
+                 context.flow.id => %{
+                   context.table_node.id => MapSet.new([table_ref])
+                 }
+               }
     end
 
     test "key each flow separately when several are asked for at once", context do

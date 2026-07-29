@@ -601,8 +601,9 @@ defmodule StoryarnWeb.FlowLive.Index do
     Map.get(details, :flow_name, dgettext("flows", "Flow"))
   end
 
-  defp issue_label(%{entity_type: type, entity_id: id, details: details}) do
+  defp issue_label(%{entity_type: type, details: details}) do
     flow_name = Map.get(details, :flow_name, dgettext("flows", "Flow"))
-    "#{flow_name} · #{NodeTypeRegistry.label(type)} ##{id}"
+    node_label = Map.get(details, :entity_label, NodeTypeRegistry.label(type))
+    "#{flow_name} · #{node_label}"
   end
 end

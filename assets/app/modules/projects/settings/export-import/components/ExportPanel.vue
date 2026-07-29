@@ -25,6 +25,7 @@ import {
 import { computed, onUnmounted, ref, watch, type Component } from "vue";
 import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";
+import LiveLink from "@components/navigation/LiveLink.vue";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import { Switch } from "@components/ui/switch";
 import { useI18n } from "vue-i18n";
@@ -62,6 +63,8 @@ const {
 
 const live = useLive();
 const validating = ref(false);
+const downloading = ref(false);
+const downloadError = ref<string | null>(null);
 const VALIDATION_TIMEOUT_MS = 15_000;
 let validationTimer: ReturnType<typeof setTimeout> | null = null;
 let validationEpoch = 0;
@@ -165,11 +168,26 @@ const selectedAssetMode = computed(
     assetModeOptions.value[0],
 );
 const canExport = computed(() => includedSections.value.length > 0);
+const validationIsStale = computed(() => validation?.stale === true);
+const canDownload = computed(
+  () =>
+    canExport.value &&
+    (!options.validateBeforeExport ||
+      (validation != null && !validationIsStale.value && validation.status !== "errors")),
+);
 const validationCounts = computed(() => ({
   errors: validation?.errors?.length ?? 0,
   warnings: validation?.warnings?.length ?? 0,
   info: validation?.info?.length ?? 0,
 }));
+const MAX_VISIBLE_FINDINGS = 50;
+const visibleErrors = computed(() => validation?.errors?.slice(0, MAX_VISIBLE_FINDINGS) ?? []);
+const visibleWarnings = computed(() => validation?.warnings?.slice(0, MAX_VISIBLE_FINDINGS) ?? []);
+const visibleInfo = computed(() => validation?.info?.slice(0, MAX_VISIBLE_FINDINGS) ?? []);
+
+function hiddenFindingCount(total: number) {
+  return Math.max(0, total - MAX_VISIBLE_FINDINGS);
+}
 
 function formatVisual(format: string) {
   return formatVisuals[format] ?? fallbackFormatVisual;
@@ -203,6 +221,13 @@ watch(
     }
   },
   { immediate: true },
+);
+
+watch(
+  () => exportDownloadUrl,
+  () => {
+    downloadError.value = null;
+  },
 );
 
 function toggleSection(section: string) {
@@ -246,6 +271,68 @@ function validateExport() {
   live.pushEvent("validate_export", {}, finish, finish);
 }
 
+function downloadFilename(response: Response) {
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const quoted = /filename="([^"]+)"/i.exec(disposition);
+  const unquoted = /filename=([^;]+)/i.exec(disposition);
+
+  return (
+    quoted?.[1] ??
+    unquoted?.[1]?.trim() ??
+    `storyarn-export.${formatConfig.extension.toLowerCase()}`
+  );
+}
+
+function isDownloadResponse(response: Response) {
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const contentType = response.headers.get("content-type") ?? "";
+
+  return (
+    !response.redirected &&
+    /^\s*attachment(?:\s*;|$)/i.test(disposition) &&
+    !/^(?:text\/html|application\/xhtml\+xml)\b/i.test(contentType)
+  );
+}
+
+async function downloadExport() {
+  if (!canDownload.value || downloading.value) return;
+
+  downloading.value = true;
+  downloadError.value = null;
+
+  try {
+    const response = await fetch(exportDownloadUrl);
+
+    if (!response.ok) {
+      const errorKind = response.headers.get("x-storyarn-export-error");
+      downloadError.value =
+        response.status === 422 && errorKind === "validation"
+          ? t("project_settings.export.download_failed_validation")
+          : t("project_settings.export.download_failed");
+      return;
+    }
+
+    if (!isDownloadResponse(response)) {
+      downloadError.value = t("project_settings.export.download_failed");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = downloadFilename(response);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+    trackExport();
+  } catch {
+    downloadError.value = t("project_settings.export.download_failed");
+  } finally {
+    downloading.value = false;
+  }
+}
+
 onUnmounted(() => {
   validationEpoch += 1;
   if (validationTimer) {
@@ -283,6 +370,7 @@ function validationDescription(status: string) {
 }
 
 function validationPanelClass(status: string) {
+  if (validationIsStale.value) return "border-warning/30 bg-warning/5";
   if (status === "passed") return "border-success/30 bg-success/5";
   if (status === "warnings") return "border-warning/30 bg-warning/5";
   if (status === "errors") return "border-error/30 bg-error/5";
@@ -290,6 +378,7 @@ function validationPanelClass(status: string) {
 }
 
 function validationIconClass(status: string) {
+  if (validationIsStale.value) return "bg-warning/15 text-warning";
   if (status === "passed") return "bg-success/15 text-success";
   if (status === "warnings") return "bg-warning/15 text-warning";
   if (status === "errors") return "bg-error/15 text-error";
@@ -688,14 +777,16 @@ function validationIconClass(status: string) {
                 }}
               </Button>
 
-              <Button v-if="canExport" class="w-full" as-child>
+              <Button v-if="canDownload" class="w-full" as-child>
                 <a
                   :href="exportDownloadUrl"
+                  :aria-busy="downloading"
                   data-live-link-exempt="download"
                   data-testid="download-export"
-                  @click="trackExport"
+                  @click.prevent="downloadExport"
                 >
-                  <Download class="size-4" />
+                  <LoaderCircle v-if="downloading" class="size-4 animate-spin" />
+                  <Download v-else class="size-4" />
                   {{ $t("project_settings.export.download", { ext: formatConfig.extension }) }}
                 </a>
               </Button>
@@ -704,6 +795,42 @@ function validationIconClass(status: string) {
                 {{ $t("project_settings.export.download", { ext: formatConfig.extension }) }}
               </Button>
             </div>
+
+            <p
+              v-if="
+                canExport &&
+                options.validateBeforeExport &&
+                (!validation || validationIsStale || validation.status === 'errors')
+              "
+              :class="[
+                'flex items-start gap-2 text-xs leading-relaxed',
+                !validation || validationIsStale ? 'text-warning' : 'text-error',
+              ]"
+              role="alert"
+            >
+              <AlertTriangle
+                v-if="!validation || validationIsStale"
+                class="mt-0.5 size-3.5 shrink-0"
+              />
+              <CircleX v-else class="mt-0.5 size-3.5 shrink-0" />
+              <span>
+                {{
+                  !validation || validationIsStale
+                    ? $t("project_settings.export.validate_before")
+                    : $t("project_settings.export.download_blocked")
+                }}
+              </span>
+            </p>
+
+            <p
+              v-if="downloadError"
+              id="export-download-error"
+              class="flex items-start gap-2 text-xs leading-relaxed text-error"
+              role="alert"
+            >
+              <CircleX class="mt-0.5 size-3.5 shrink-0" />
+              <span>{{ downloadError }}</span>
+            </p>
 
             <p class="flex items-start gap-2 text-xs leading-relaxed text-base-content/45">
               <Info class="mt-0.5 size-3.5 shrink-0" />
@@ -717,6 +844,7 @@ function validationIconClass(status: string) {
         v-if="validation"
         id="export-validation-results"
         :data-status="validation.status"
+        :data-stale="validationIsStale ? 'true' : 'false'"
         :class="[
           'overflow-hidden rounded-xl border shadow-sm',
           validationPanelClass(validation.status),
@@ -730,25 +858,37 @@ function validationIconClass(status: string) {
               validationIconClass(validation.status),
             ]"
           >
-            <CheckCircle2 v-if="validation.status === 'passed'" class="size-5" />
+            <AlertTriangle v-if="validationIsStale" class="size-5" />
+            <CheckCircle2 v-else-if="validation.status === 'passed'" class="size-5" />
             <AlertTriangle v-else-if="validation.status === 'warnings'" class="size-5" />
             <CircleX v-else class="size-5" />
           </div>
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
-              <h3 class="font-semibold">{{ validationTitle(validation.status) }}</h3>
+              <h3 class="font-semibold">
+                {{
+                  validationIsStale
+                    ? $t("project_settings.export.validate_before")
+                    : validationTitle(validation.status)
+                }}
+              </h3>
               <span
                 :class="[
                   'badge badge-sm badge-outline',
-                  validation.status === 'passed' && 'badge-success',
-                  validation.status === 'warnings' && 'badge-warning',
-                  validation.status === 'errors' && 'badge-error',
+                  validationIsStale && 'badge-warning',
+                  !validationIsStale && validation.status === 'passed' && 'badge-success',
+                  !validationIsStale && validation.status === 'warnings' && 'badge-warning',
+                  !validationIsStale && validation.status === 'errors' && 'badge-error',
                 ]"
               >
-                {{ validationStatusLabel(validation.status) }}
+                {{
+                  validationIsStale
+                    ? $t("project_settings.export.validate")
+                    : validationStatusLabel(validation.status)
+                }}
               </span>
             </div>
-            <p class="mt-1 text-sm text-base-content/55">
+            <p v-if="!validationIsStale" class="mt-1 text-sm text-base-content/55">
               {{ validationDescription(validation.status) }}
             </p>
           </div>
@@ -766,12 +906,29 @@ function validationIconClass(status: string) {
               {{ $t("project_settings.export.error_findings") }}
             </h4>
             <div
-              v-for="(finding, index) in validation.errors"
+              v-for="(finding, index) in visibleErrors"
               :key="`error-${index}`"
               class="rounded-lg border border-error/20 bg-base-100/65 px-3 py-2.5 text-sm"
             >
-              {{ finding.message }}
+              <LiveLink
+                v-if="finding.href"
+                :to="finding.href"
+                class="font-medium underline decoration-current/30 underline-offset-4 transition hover:decoration-current"
+              >
+                {{ finding.message }}
+              </LiveLink>
+              <template v-else>{{ finding.message }}</template>
             </div>
+            <p
+              v-if="hiddenFindingCount(validationCounts.errors)"
+              class="text-xs text-base-content/55"
+            >
+              {{
+                $t("project_settings.export.more_findings", {
+                  count: hiddenFindingCount(validationCounts.errors),
+                })
+              }}
+            </p>
           </div>
 
           <div v-if="validation.warnings?.length" class="space-y-2">
@@ -782,12 +939,29 @@ function validationIconClass(status: string) {
               {{ $t("project_settings.export.warning_findings") }}
             </h4>
             <div
-              v-for="(finding, index) in validation.warnings"
+              v-for="(finding, index) in visibleWarnings"
               :key="`warning-${index}`"
               class="rounded-lg border border-warning/20 bg-base-100/65 px-3 py-2.5 text-sm"
             >
-              {{ finding.message }}
+              <LiveLink
+                v-if="finding.href"
+                :to="finding.href"
+                class="font-medium underline decoration-current/30 underline-offset-4 transition hover:decoration-current"
+              >
+                {{ finding.message }}
+              </LiveLink>
+              <template v-else>{{ finding.message }}</template>
             </div>
+            <p
+              v-if="hiddenFindingCount(validationCounts.warnings)"
+              class="text-xs text-base-content/55"
+            >
+              {{
+                $t("project_settings.export.more_findings", {
+                  count: hiddenFindingCount(validationCounts.warnings),
+                })
+              }}
+            </p>
           </div>
 
           <div v-if="validation.info?.length" class="space-y-2">
@@ -798,17 +972,34 @@ function validationIconClass(status: string) {
               {{ $t("project_settings.export.info_findings") }}
             </h4>
             <div
-              v-for="(finding, index) in validation.info"
+              v-for="(finding, index) in visibleInfo"
               :key="`info-${index}`"
               class="rounded-lg border border-info/20 bg-base-100/65 px-3 py-2.5 text-sm"
             >
-              {{ finding.message }}
+              <LiveLink
+                v-if="finding.href"
+                :to="finding.href"
+                class="font-medium underline decoration-current/30 underline-offset-4 transition hover:decoration-current"
+              >
+                {{ finding.message }}
+              </LiveLink>
+              <template v-else>{{ finding.message }}</template>
             </div>
+            <p
+              v-if="hiddenFindingCount(validationCounts.info)"
+              class="text-xs text-base-content/55"
+            >
+              {{
+                $t("project_settings.export.more_findings", {
+                  count: hiddenFindingCount(validationCounts.info),
+                })
+              }}
+            </p>
           </div>
         </div>
 
         <div
-          v-if="validation.status === 'passed' && !validation.info?.length"
+          v-if="!validationIsStale && validation.status === 'passed' && !validation.info?.length"
           class="flex items-center gap-2 border-t border-success/15 px-5 py-3 text-sm text-success"
         >
           <CheckCircle2 class="size-4" />

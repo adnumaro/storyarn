@@ -295,6 +295,80 @@ defmodule Storyarn.Exports.Serializers.InkValidationTest do
              "inklecate rejected condition:\n#{inspect(InkCompiler.validate(source))}"
     end
 
+    test "condition with a valid rule and an operatorless draft compiles", %{
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Draft condition"})
+
+      block_fixture(sheet, %{
+        type: "boolean",
+        config: %{"label" => "Ready"},
+        value: %{"boolean" => true}
+      })
+
+      flow = flow_fixture(project, %{name: "DraftCondition"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" => %{
+              "logic" => "any",
+              "blocks" => [
+                %{
+                  "id" => "valid-rules",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "valid",
+                      "sheet" => sheet.shortcut,
+                      "variable" => "ready",
+                      "operator" => "is_true",
+                      "value" => nil
+                    }
+                  ]
+                },
+                %{
+                  "id" => "draft-rules",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "draft",
+                      "sheet" => sheet.shortcut,
+                      "variable" => "ready",
+                      "operator" => nil,
+                      "value" => nil
+                    }
+                  ]
+                }
+              ]
+            },
+            "cases" => [
+              %{"id" => "true", "value" => "true", "label" => "True"},
+              %{"id" => "false", "value" => "false", "label" => "False"}
+            ]
+          }
+        })
+
+      true_exit = node_fixture(flow, %{type: "exit", data: %{}})
+      false_exit = node_fixture(flow, %{type: "exit", data: %{}})
+
+      connection_fixture(flow, entry, condition)
+      connection_fixture(flow, condition, true_exit, %{source_pin: "true"})
+      connection_fixture(flow, condition, false_exit, %{source_pin: "false"})
+
+      source = ink_source(export_files(project))
+
+      refute source =~ "null"
+
+      assert InkCompiler.valid?(source),
+             "inklecate rejected condition with an operatorless draft:\n#{inspect(InkCompiler.validate(source))}"
+    end
+
     test "instruction set commands compile", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Flags"})
 

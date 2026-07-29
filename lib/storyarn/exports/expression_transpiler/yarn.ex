@@ -34,7 +34,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
   end
 
   defp yarn_transpile_rule(%{"sheet" => sheet, "variable" => var, "operator" => op} = rule)
-       when is_binary(sheet) and sheet != "" and is_binary(var) and var != "" do
+       when is_binary(sheet) and sheet != "" and is_binary(var) and var != "" and is_binary(op) and op != "" do
     ref = Helpers.format_var_ref(sheet, var, @var_style)
 
     if op in @custom_function_ops do

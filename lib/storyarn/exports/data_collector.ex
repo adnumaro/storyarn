@@ -71,14 +71,15 @@ defmodule Storyarn.Exports.DataCollector do
   Each section respects the filtering options in `ExportOptions`.
 
   Accepts an optional `preloaded` map to reuse data already loaded by the
-  Validator (e.g., `%{flows: flows_data}`). Only flows are shared — sheets
-  need full block preloads that the validator doesn't load.
+  Validator. Validated downloads share flows, full sheets, and the active-flow
+  shortcut map so collection does not repeat those queries.
   """
   def collect(project_id, %ExportOptions{} = opts, preloaded \\ %{}) do
     %{
       project: load_project(project_id),
-      sheets: maybe_load(:sheets, project_id, opts),
+      sheets: maybe_load_preloaded(:sheets, project_id, opts, preloaded),
       flows: maybe_load_preloaded(:flows, project_id, opts, preloaded),
+      flow_shortcuts_by_id: maybe_load_flow_shortcuts(project_id, opts, preloaded),
       scenes: maybe_load(:scenes, project_id, opts),
       localization: maybe_load(:localization, project_id, opts),
       assets: maybe_load(:assets, project_id, opts)
@@ -161,6 +162,24 @@ defmodule Storyarn.Exports.DataCollector do
   defp load_project(project_id) do
     Projects.get_project!(project_id)
   end
+
+  defp load_flow_shortcuts_by_id(project_id) do
+    project_id
+    |> Flows.list_flows()
+    |> Map.new(&{to_string(&1.id), &1.shortcut})
+  end
+
+  defp maybe_load_flow_shortcuts(_project_id, %{include_flows: false}, _preloaded), do: %{}
+  defp maybe_load_flow_shortcuts(_project_id, %{flow_ids: []}, _preloaded), do: %{}
+
+  defp maybe_load_flow_shortcuts(project_id, _opts, preloaded) do
+    Map.get_lazy(preloaded, :flow_shortcuts_by_id, fn ->
+      load_flow_shortcuts_by_id(project_id)
+    end)
+  end
+
+  defp maybe_load_preloaded(:sheets, _project_id, %{include_sheets: false}, _preloaded), do: []
+  defp maybe_load_preloaded(:flows, _project_id, %{include_flows: false}, _preloaded), do: []
 
   defp maybe_load_preloaded(section, project_id, opts, preloaded) do
     case Map.get(preloaded, section) do

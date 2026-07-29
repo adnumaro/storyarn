@@ -31,6 +31,17 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
     literal_opts = Keyword.get(opts, :literal_opts, [])
 
     quote do
+      unquote(setup_ast(var_style, logic_opts, literal_opts))
+      unquote(condition_api_ast())
+      unquote(condition_predicates_ast())
+      unquote(condition_traversal_ast())
+      unquote(condition_rules_ast())
+      unquote(instruction_ast())
+    end
+  end
+
+  defp setup_ast(var_style, logic_opts, literal_opts) do
+    quote do
       @behaviour Storyarn.Exports.ExpressionTranspiler
 
       alias Storyarn.Exports.ExpressionTranspiler.Helpers
@@ -38,21 +49,59 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
       @var_style unquote(var_style)
       @logic_opts unquote(logic_opts)
       @literal_opts unquote(literal_opts)
+    end
+  end
 
-      # -----------------------------------------------------------------------
-      # Conditions
-      # -----------------------------------------------------------------------
-
+  defp condition_api_ast do
+    quote do
       @impl true
       def transpile_condition(nil, _ctx), do: {:ok, "", []}
       def transpile_condition(%{"blocks" => []}, _ctx), do: {:ok, "", []}
 
       def transpile_condition(condition, _ctx) do
-        {:blocks, top_logic, groups} = Helpers.extract_condition_structure(condition)
-        {parts, warnings} = transpile_groups(groups)
-        {:ok, join_condition(top_logic, parts), warnings}
+        if condition_has_transpilable_rule?(condition) do
+          {:blocks, top_logic, groups} = Helpers.extract_condition_structure(condition)
+          {parts, warnings} = transpile_groups(groups)
+          {:ok, join_condition(top_logic, parts), warnings}
+        else
+          {:ok, "", []}
+        end
+      end
+    end
+  end
+
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defp condition_predicates_ast do
+    quote do
+      defp condition_has_transpilable_rule?(%{"blocks" => blocks}) when is_list(blocks) do
+        Enum.any?(blocks, &condition_item_has_transpilable_rule?/1)
       end
 
+      defp condition_has_transpilable_rule?(_condition), do: false
+
+      defp condition_item_has_transpilable_rule?(%{"rules" => rules}) when is_list(rules) do
+        Enum.any?(rules, fn
+          %{"sheet" => sheet, "variable" => variable, "operator" => operator}
+          when is_binary(sheet) and sheet != "" and is_binary(variable) and variable != "" and
+                 is_binary(operator) and operator != "" ->
+            true
+
+          _rule ->
+            false
+        end)
+      end
+
+      defp condition_item_has_transpilable_rule?(%{"blocks" => blocks}) when is_list(blocks) do
+        Enum.any?(blocks, &condition_item_has_transpilable_rule?/1)
+      end
+
+      defp condition_item_has_transpilable_rule?(_item), do: false
+    end
+  end
+
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defp condition_traversal_ast do
+    quote do
       defp join_condition(logic, parts) do
         Helpers.join_with_logic(logic, parts, @logic_opts)
       end
@@ -78,7 +127,13 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
             :groups -> transpile_groups(items)
           end
 
-        {:ok, maybe_paren(join_condition(logic, parts), parts), warnings}
+        case parts do
+          [] ->
+            :skip
+
+          _parts ->
+            {:ok, maybe_paren(join_condition(logic, parts), parts), warnings}
+        end
       end
 
       defp transpile_group(_), do: :skip
@@ -88,7 +143,12 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
 
       defp maybe_paren(expr, [_, _ | _]), do: "(#{expr})"
       defp maybe_paren(expr, _), do: expr
+    end
+  end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defp condition_rules_ast do
+    quote do
       defp transpile_rules(rules) do
         {parts, warnings} =
           Enum.reduce(rules, {[], []}, fn rule, {parts_acc, warn_acc} ->
@@ -104,7 +164,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
       defoverridable transpile_rules: 1
 
       defp transpile_rule(%{"sheet" => sheet, "variable" => var, "operator" => op} = rule)
-           when is_binary(sheet) and sheet != "" and is_binary(var) and var != "" do
+           when is_binary(sheet) and sheet != "" and is_binary(var) and var != "" and
+                  is_binary(op) and op != "" do
         ref = Helpers.format_var_ref(sheet, var, @var_style)
         {:ok, emit_condition_op(ref, op, rule["value"])}
       end
@@ -112,11 +173,12 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
       defp transpile_rule(_), do: :skip
 
       defoverridable transpile_rule: 1
+    end
+  end
 
-      # -----------------------------------------------------------------------
-      # Instructions
-      # -----------------------------------------------------------------------
-
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defp instruction_ast do
+    quote do
       @impl true
       def transpile_instruction(assignments, _ctx) when is_list(assignments) do
         {lines, warnings} =
@@ -135,7 +197,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
       defoverridable transpile_instruction: 2
 
       defp transpile_assignment(%{"sheet" => s, "variable" => v, "operator" => op} = a)
-           when is_binary(s) and s != "" and is_binary(v) and v != "" do
+           when is_binary(s) and s != "" and is_binary(v) and v != "" and
+                  is_binary(op) and op != "" do
         ref = Helpers.format_var_ref(s, v, @var_style)
         {:ok, emit_assignment(ref, op, a)}
       end

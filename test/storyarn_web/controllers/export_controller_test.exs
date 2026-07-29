@@ -217,6 +217,60 @@ defmodule StoryarnWeb.ExportControllerTest do
       assert conn.status == 400
     end
 
+    test "returns 422 instead of crashing when an explicitly unvalidated serializer fails", %{
+      conn: conn,
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Corrupt Runtime ID"})
+      entry = Enum.find(Storyarn.Flows.list_nodes(flow.id), &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Hello", "responses" => []}
+        })
+
+      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+      connection_fixture(flow, entry, dialogue)
+      connection_fixture(flow, dialogue, exit_node)
+
+      corrupt_data = Map.put(dialogue.data, "localization_id", nil)
+      dialogue |> Ecto.Changeset.change(data: corrupt_data) |> Repo.update!()
+
+      conn = get(conn, export_url(project, "ink", %{"validate" => "false"}))
+
+      assert conn.status == 422
+      assert conn.resp_body == "Export failed"
+      assert get_resp_header(conn, "x-storyarn-export-error") == ["serialization"]
+    end
+
+    test "marks validation failures separately from serializer failures", %{
+      conn: conn,
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Invalid Artifact"})
+      entry = Enum.find(Storyarn.Flows.list_nodes(flow.id), &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Hello", "localization_id" => nil, "responses" => []}
+        })
+
+      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+      connection_fixture(flow, entry, dialogue)
+      connection_fixture(flow, dialogue, exit_node)
+
+      corrupt_data = Map.put(dialogue.data, "localization_id", nil)
+      dialogue |> Ecto.Changeset.change(data: corrupt_data) |> Repo.update!()
+
+      conn = get(conn, export_url(project, "ink"))
+
+      assert conn.status == 422
+      assert conn.resp_body == "Export failed"
+      assert get_resp_header(conn, "x-storyarn-export-error") == ["validation"]
+    end
+
     test "returns 404 for non-member project", %{conn: conn} do
       other_user = user_fixture()
       other_project = other_user |> project_fixture() |> Repo.preload(:workspace)
@@ -309,6 +363,8 @@ defmodule StoryarnWeb.ExportControllerTest do
     } do
       flow = flow_fixture(project, %{name: "Localized flow"})
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello", "responses" => []}})
+      entry = Enum.find(Storyarn.Flows.list_nodes(flow.id), &(&1.type == "entry"))
+      connection_fixture(flow, entry, node)
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
 

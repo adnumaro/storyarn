@@ -17,6 +17,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.ExpressionTranspiler
   alias Storyarn.Exports.LocalizationCatalog
+  alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
   alias Storyarn.Localization.ExportPolicy
@@ -52,8 +53,9 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     sheets = project_data.sheets || []
     variables = Helpers.collect_variables(sheets)
     speaker_map = Helpers.build_speaker_map(sheets)
-    flow_shortcuts_by_id = flow_shortcuts_by_id(flows)
+    flow_shortcuts_by_id = Helpers.flow_shortcuts_by_id(project_data, flows)
     detour_targets = collect_detour_targets(flows, flow_shortcuts_by_id)
+    reserved_node_titles = yarn_user_node_titles(flows)
 
     # Multi-file for >5 flows, single-file otherwise
     project_name = Helpers.shortcut_to_identifier(project_data.project.slug || "story")
@@ -61,7 +63,14 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
     yarn_files =
       if length(flows) > 5 do
-        serialize_multi_file(flows, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets)
+        serialize_multi_file(
+          flows,
+          var_decls,
+          speaker_map,
+          flow_shortcuts_by_id,
+          detour_targets,
+          reserved_node_titles
+        )
       else
         serialize_single_file(
           flows,
@@ -69,7 +78,8 @@ defmodule Storyarn.Exports.Serializers.Yarn do
           speaker_map,
           flow_shortcuts_by_id,
           detour_targets,
-          project_name
+          project_name,
+          reserved_node_titles
         )
       end
 
@@ -89,24 +99,59 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   # Multi-file / single-file strategies
   # ---------------------------------------------------------------------------
 
-  defp serialize_multi_file(flows, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets) do
+  defp serialize_multi_file(flows, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets, reserved_node_titles) do
     flows
     |> Enum.with_index()
     |> Enum.map(fn {flow, idx} ->
       filename = Helpers.shortcut_to_identifier(flow.shortcut || "flow_#{flow.id}")
       decls = if idx == 0, do: var_decls, else: []
-      content = flow_to_yarn(flow, decls, speaker_map, flow_shortcuts_by_id, detour_targets)
+
+      content =
+        flow_to_yarn(
+          flow,
+          decls,
+          speaker_map,
+          flow_shortcuts_by_id,
+          detour_targets,
+          reserved_node_titles
+        )
+
       {"#{filename}.yarn", content}
     end)
   end
 
-  defp serialize_single_file(flows, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets, project_name) do
+  defp serialize_single_file(
+         flows,
+         var_decls,
+         speaker_map,
+         flow_shortcuts_by_id,
+         detour_targets,
+         project_name,
+         reserved_node_titles
+       ) do
     {first_content, rest_content} =
       case flows do
         [first | rest] ->
           {
-            flow_to_yarn(first, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets),
-            Enum.map(rest, &flow_to_yarn(&1, [], speaker_map, flow_shortcuts_by_id, detour_targets))
+            flow_to_yarn(
+              first,
+              var_decls,
+              speaker_map,
+              flow_shortcuts_by_id,
+              detour_targets,
+              reserved_node_titles
+            ),
+            Enum.map(
+              rest,
+              &flow_to_yarn(
+                &1,
+                [],
+                speaker_map,
+                flow_shortcuts_by_id,
+                detour_targets,
+                reserved_node_titles
+              )
+            )
           }
 
         [] ->
@@ -121,9 +166,15 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   # Flow → Yarn node(s)
   # ---------------------------------------------------------------------------
 
-  defp flow_to_yarn(flow, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets) do
+  defp flow_to_yarn(flow, var_decls, speaker_map, flow_shortcuts_by_id, detour_targets, reserved_node_titles) do
     node_title = Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")
-    {instructions, hub_sections} = GraphTraversal.linearize_blocks(flow)
+
+    {instructions, hub_sections} =
+      GraphTraversal.linearize_blocks(
+        flow,
+        split_reconvergences: true,
+        reserved_section_labels: reserved_node_titles
+      )
 
     ctx = %{
       speaker_map: speaker_map,
@@ -344,8 +395,17 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     ["#{indent(depth)}<<detour #{target}>>"]
   end
 
-  defp render_instruction({:jump, _node, target_label}, _ctx, depth) do
-    ["#{indent(depth)}<<jump #{target_label}>>"]
+  defp render_instruction({:jump, node, target_label}, ctx, depth) do
+    data = node.data || %{}
+
+    target =
+      if FlowControlResolver.target_hub_id(data) do
+        target_label
+      else
+        Helpers.shortcut_to_identifier(resolve_flow_shortcut(data, ctx) || target_label)
+      end
+
+    ["#{indent(depth)}<<jump #{target}>>"]
   end
 
   defp render_instruction({:divert, target_label}, _ctx, depth) do
@@ -389,19 +449,36 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   defp terminal_command(%{is_detour_target: true}, depth), do: "#{indent(depth)}<<return>>"
   defp terminal_command(_ctx, depth), do: "#{indent(depth)}<<stop>>"
 
-  defp flow_shortcuts_by_id(flows) do
-    Map.new(flows, fn flow -> {to_string(flow.id), flow.shortcut} end)
-  end
-
   defp collect_detour_targets(flows, flow_shortcuts_by_id) do
     flows
     |> Enum.flat_map(fn flow ->
+      reachable_node_ids =
+        GraphTraversal.reachable_node_ids(flow, split_reconvergences: true)
+
       (flow.nodes || [])
-      |> Enum.filter(&(&1.type == "subflow"))
+      |> Enum.filter(&(&1.type == "subflow" and MapSet.member?(reachable_node_ids, &1.id)))
       |> Enum.map(&resolve_flow_shortcut(&1.data || %{}, flow_shortcuts_by_id))
       |> Enum.reject(&StringUtils.blank?/1)
     end)
     |> MapSet.new()
+  end
+
+  defp yarn_user_node_titles(flows) do
+    Enum.reduce(flows, MapSet.new(), fn flow, titles ->
+      flow_title =
+        Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")
+
+      hub_titles =
+        flow.nodes
+        |> Kernel.||([])
+        |> FlowControlResolver.hub_reference_map()
+        |> Map.values()
+        |> MapSet.new(&elem(&1, 1))
+
+      titles
+      |> MapSet.put(flow_title)
+      |> MapSet.union(hub_titles)
+    end)
   end
 
   defp resolve_flow_shortcut(data, %{flow_shortcuts_by_id: flow_shortcuts_by_id}) do
@@ -409,9 +486,10 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   end
 
   defp resolve_flow_shortcut(data, flow_shortcuts_by_id) do
-    data["flow_shortcut"] ||
-      data["referenced_flow_shortcut"] ||
-      flow_shortcuts_by_id[to_string(data["referenced_flow_id"])]
+    referenced_id = FlowControlResolver.referenced_flow_id(data)
+
+    flow_shortcuts_by_id[referenced_id] ||
+      FlowControlResolver.referenced_flow_shortcut(data)
   end
 
   defp indent(0), do: ""
@@ -450,13 +528,24 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     sanitize_line_id("#{dialogue_line_id(node)}_response_#{response_id}")
   end
 
-  defp validate_line_ids(flows) do
-    dialogue_nodes = flows |> Enum.flat_map(&(&1.nodes || [])) |> Enum.filter(&(&1.type == "dialogue"))
+  @doc false
+  def validate_line_ids(flows) do
+    dialogue_nodes =
+      Enum.flat_map(flows, fn flow ->
+        reachable_node_ids =
+          GraphTraversal.reachable_node_ids(flow, split_reconvergences: true)
+
+        flow.nodes
+        |> Kernel.||([])
+        |> Enum.filter(fn node ->
+          node.type == "dialogue" and MapSet.member?(reachable_node_ids, node.id)
+        end)
+      end)
 
     if Enum.all?(dialogue_nodes, &valid_dialogue_runtime_ids?/1) do
       duplicates =
-        flows
-        |> Enum.flat_map(&flow_line_ids/1)
+        dialogue_nodes
+        |> Enum.flat_map(&node_line_ids/1)
         |> Enum.frequencies()
         |> Enum.filter(fn {_id, count} -> count > 1 end)
         |> Enum.map(&elem(&1, 0))
@@ -485,13 +574,6 @@ defmodule Storyarn.Exports.Serializers.Yarn do
     else
       false
     end
-  end
-
-  defp flow_line_ids(flow) do
-    flow.nodes
-    |> Kernel.||([])
-    |> Enum.filter(&(&1.type == "dialogue"))
-    |> Enum.flat_map(&node_line_ids/1)
   end
 
   defp node_line_ids(node) do
@@ -530,9 +612,16 @@ defmodule Storyarn.Exports.Serializers.Yarn do
       |> Enum.filter(&localization_attr(&1, :is_source))
       |> MapSet.new(&localization_attr(&1, :locale_code))
 
+    reachable_node_ids =
+      LocalizationCatalog.reachable_flow_node_ids(
+        flows,
+        split_reconvergences: true
+      )
+
     nodes =
       flows
       |> Enum.flat_map(&(&1.nodes || []))
+      |> Enum.filter(&MapSet.member?(reachable_node_ids, to_string(&1.id)))
       |> Map.new(&{to_string(&1.id), &1})
 
     catalog_files =
@@ -547,7 +636,8 @@ defmodule Storyarn.Exports.Serializers.Yarn do
         maybe_add_catalog([], "localization.#{LocaleCode.ensure_safe!(locale)}.csv", build_yarn_line_rows(texts, nodes))
       end)
 
-    catalog_files ++ LocalizationCatalog.manifest_files(localization, opts)
+    catalog_files ++
+      LocalizationCatalog.manifest_files(localization, opts, reachable_node_ids)
   end
 
   defp build_yarn_line_rows(texts, nodes) do

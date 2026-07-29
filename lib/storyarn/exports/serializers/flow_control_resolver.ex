@@ -46,9 +46,11 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
   @doc """
   Resolves a hub reference from `hub_reference_map/1`.
   """
-  def hub_target(hub_refs, ref) do
+  def hub_target(hub_refs, ref) when is_binary(ref) or is_integer(ref) do
     Map.get(hub_refs, ref) || Map.get(hub_refs, to_string(ref))
   end
+
+  def hub_target(_hub_refs, _ref), do: nil
 
   @doc """
   Finds a hub node in a node list or node map using the user-facing `hub_id`.
@@ -67,7 +69,8 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
   def target_hub_id(data) do
     case data["target_hub_id"] || data["hub_id"] do
       value when value in [nil, ""] -> nil
-      value -> to_string(value)
+      value when is_binary(value) or is_integer(value) -> to_string(value)
+      _value -> nil
     end
   end
 
@@ -82,8 +85,8 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
     shortcut_ref = referenced_flow_shortcut(data)
 
     cond do
-      present?(direct_ref) -> to_string(direct_ref)
-      present?(shortcut_ref) -> flow_id_by_shortcut[shortcut_ref]
+      present_reference?(direct_ref) -> to_string(direct_ref)
+      is_binary(shortcut_ref) and present?(shortcut_ref) -> flow_id_by_shortcut[shortcut_ref]
       true -> nil
     end
   end
@@ -92,7 +95,10 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
   Returns the target flow shortcut field used by export serializers.
   """
   def referenced_flow_shortcut(data) do
-    data["referenced_flow_shortcut"] || data["target_flow_shortcut"] || data["flow_shortcut"]
+    case data["referenced_flow_shortcut"] || data["target_flow_shortcut"] || data["flow_shortcut"] do
+      value when is_binary(value) -> value
+      _value -> nil
+    end
   end
 
   @doc """
@@ -103,10 +109,12 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
 
     cond do
       explicit_cases != [] ->
-        explicit_cases
+        maybe_append_default_case(explicit_cases, data, targets_by_pin)
 
       data["switch_mode"] == true ->
-        switch_cases(data)
+        data
+        |> switch_cases()
+        |> maybe_append_default_case(data, targets_by_pin)
 
       true ->
         boolean_cases(targets_by_pin)
@@ -135,10 +143,18 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
   defp entry_node_index(_node_with_index), do: nil
 
   defp hub_references(hub) do
-    label = Helpers.shortcut_to_identifier(hub.data["label"] || hub.data["hub_id"] || "hub_#{hub.id}")
-    refs = [hub.id, to_string(hub.id), hub.data["hub_id"]]
+    data = hub.data || %{}
+
+    runtime_id =
+      data["hub_id"]
+      |> present_hub_identifier()
+      |> Kernel.||(StringUtils.present_label(data["label"], "hub_#{hub.id}"))
+
+    label = Helpers.shortcut_to_identifier(runtime_id)
+    refs = [hub.id, to_string(hub.id), data["hub_id"]]
 
     refs
+    |> Enum.filter(&(is_binary(&1) or is_integer(&1)))
     |> Enum.reject(&StringUtils.blank?/1)
     |> Enum.map(&{&1, {hub.id, label}})
   end
@@ -193,6 +209,27 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
     |> Enum.filter(&Map.has_key?(targets_by_pin, &1))
     |> Enum.map(&%{"id" => &1, "value" => &1, "label" => String.capitalize(&1)})
   end
+
+  defp maybe_append_default_case(cases, %{"switch_mode" => true}, targets_by_pin) do
+    if Map.has_key?(targets_by_pin, "default") and
+         not Enum.any?(cases, &(&1["id"] == "default")) do
+      cases ++ [%{"id" => "default", "value" => "default", "label" => "Default"}]
+    else
+      cases
+    end
+  end
+
+  defp maybe_append_default_case(cases, _data, _targets_by_pin), do: cases
+
+  defp present_hub_identifier(value) when is_binary(value) do
+    if String.trim(value) == "", do: nil, else: value
+  end
+
+  defp present_hub_identifier(value) when is_integer(value), do: Integer.to_string(value)
+  defp present_hub_identifier(_value), do: nil
+
+  defp present_reference?(value) when is_binary(value) or is_integer(value), do: present?(value)
+  defp present_reference?(_value), do: false
 
   # The exact complement of `StringUtils.blank?/1`, deliberately NOT the trimming
   # reading: a shortcut of `" "` is a real (if odd) shortcut for export purposes.

@@ -509,6 +509,27 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
       assert result == "(mc_jaime_health == 50 and mc_jaime_mana > 30)"
     end
 
+    test "top-level any ignores empty and draft sibling groups in every engine" do
+      valid = make_block("valid", "all", [simple_rule("equals", 50)])
+
+      draft_rule =
+        nil
+        |> simple_rule(nil)
+        |> Map.put("id", "draft")
+        |> Map.put("variable", "draft")
+
+      empty = make_block("empty", "all", [])
+      draft_group = make_group("draft-group", "any", [make_block("draft", "all", [draft_rule])])
+      condition = block_condition("any", [valid, empty, draft_group])
+
+      for {engine, var_ref} <- @engines_with_var_ref do
+        expected = "#{var_ref} == 50"
+
+        assert {:ok, ^expected, []} =
+                 ExpressionTranspiler.transpile_condition(condition, engine)
+      end
+    end
+
     test "empty blocks returns empty string" do
       condition = block_condition("all", [])
 
@@ -539,6 +560,13 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
         {:ok, result, _} = ExpressionTranspiler.transpile_condition(condition, engine)
         assert result == ""
       end
+    end
+
+    test "legacy flat rules remain exportable" do
+      condition = %{"logic" => "all", "rules" => [simple_rule("equals")]}
+
+      assert {:ok, "mc_jaime_health == 50", []} =
+               ExpressionTranspiler.transpile_condition(condition, :ink)
     end
 
     test "JSON string condition with blocks is decoded" do
@@ -598,6 +626,21 @@ defmodule Storyarn.Exports.ExpressionTranspiler.ConditionTest do
       condition = flat_condition([rule])
       {:ok, result, _} = ExpressionTranspiler.transpile_condition(condition, :ink)
       assert result == ""
+    end
+
+    test "operatorless draft is skipped when mixed with a valid rule in every engine" do
+      valid = simple_rule("equals", 50)
+      draft = %{valid | "id" => "draft", "variable" => "draft", "operator" => nil, "value" => nil}
+      condition = flat_condition([valid, draft])
+
+      for {engine, var_ref} <- @engines_with_var_ref do
+        {:ok, result, warnings} = ExpressionTranspiler.transpile_condition(condition, engine)
+
+        assert result == "#{var_ref} == 50"
+        assert warnings == []
+        refute result =~ "draft"
+        refute result =~ "null"
+      end
     end
 
     test "rule missing operator key is skipped" do

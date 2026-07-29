@@ -248,6 +248,24 @@ defmodule Storyarn.Exports.Serializers.UnrealCSVTest do
       csv = get_file(export_files(project), "DT_DialogueLines.csv")
       assert csv =~ "instruction"
     end
+
+    test "jump resolves a direct flow id before a stale shortcut", %{project: project} do
+      target_flow = flow_fixture(project, %{name: "Right Target", shortcut: "right-target"})
+      flow = flow_fixture(project, %{name: "Jump By Id"})
+
+      _jump =
+        node_fixture(flow, %{
+          type: "jump",
+          data: %{
+            "target_flow_id" => target_flow.id,
+            "target_flow_shortcut" => "stale-target"
+          }
+        })
+
+      csv = get_file(export_files(project), "DT_DialogueLines.csv")
+      assert csv =~ "right-target"
+      refute csv =~ "stale-target"
+    end
   end
 
   # =============================================================================

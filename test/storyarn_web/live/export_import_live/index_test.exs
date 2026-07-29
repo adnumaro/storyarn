@@ -5,8 +5,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Imports
   alias Storyarn.Repo
   alias StoryarnWeb.ExportImportLive.Index
@@ -27,6 +29,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   defp visible_formats(view), do: format_config(view)["formats"]
   defp download_url(view), do: export_config(view)["downloadUrl"]
   defp validation_status(view), do: (export_config(view)["validation"] || %{})["status"]
+  defp validation_stale?(view), do: (export_config(view)["validation"] || %{})["stale"]
   defp entity_counts(view), do: export_config(view)["sectionConfig"]["entityCounts"]
 
   setup :register_and_log_in_user
@@ -262,46 +265,93 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert export_config(view)["options"]["localizationPolicy"] == "preview"
     end
 
-    test "switching localization policy clears validation result", %{conn: conn, project: project} do
+    test "switching localization policy preserves validation findings", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, export_url(project))
 
       render_click(view, "validate_export", %{})
-      assert validation_status(view)
+      status = validation_status(view)
+      refute validation_stale?(view)
 
       render_click(view, "set_localization_policy", %{"policy" => "preview"})
-      assert export_config(view)["validation"] == nil
+      assert validation_status(view) == status
+      assert validation_stale?(view)
+
+      render_click(view, "validate_export", %{})
+      refute validation_stale?(view)
     end
 
-    test "switching format clears validation result", %{conn: conn, project: project} do
+    test "format-specific findings stay visible but stale until the new format is validated", %{
+      conn: conn,
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Variables"})
+      flow = flow_fixture(project, %{name: "Stale References"})
+
+      condition_node =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{"condition" => condition(sheet.shortcut, "missing_variable")}
+        })
+
+      connect_from_entry(flow, condition_node)
+
       {:ok, view, _html} = live(conn, export_url(project))
 
       render_click(view, "validate_export", %{})
-      assert validation_status(view)
 
-      render_click(view, "set_format", %{"format" => "yarn"})
-      assert export_config(view)["validation"] == nil
+      assert validation_status(view) == "errors"
+      refute validation_stale?(view)
+      assert finding_rule?(view, "errors", "stale_variable_reference")
+
+      render_click(view, "set_format", %{"format" => "unity"})
+
+      assert validation_status(view) == "errors"
+      assert validation_stale?(view)
+      assert finding_rule?(view, "errors", "stale_variable_reference")
+      assert download_url(view) =~ "/export/unity"
+
+      render_click(view, "validate_export", %{})
+
+      assert validation_status(view) == "warnings"
+      refute validation_stale?(view)
+      assert finding_rule?(view, "warnings", "stale_variable_reference")
+
+      render_click(view, "set_format", %{"format" => "ink"})
+
+      assert validation_status(view) == "warnings"
+      assert validation_stale?(view)
+      assert finding_rule?(view, "warnings", "stale_variable_reference")
+
+      render_click(view, "validate_export", %{})
+
+      assert validation_status(view) == "errors"
+      refute validation_stale?(view)
+      assert finding_rule?(view, "errors", "stale_variable_reference")
     end
 
-    test "changing export settings clears stale validation results", %{
+    test "changing export settings preserves findings but invalidates their verdict", %{
       conn: conn,
       project: project
     } do
       {:ok, view, _html} = live(conn, export_url(project))
 
-      render_click(view, "validate_export", %{})
-      assert validation_status(view)
-      render_click(view, "toggle_section", %{"section" => "sheets"})
-      assert export_config(view)["validation"] == nil
+      changes = [
+        {"toggle_section", %{"section" => "sheets"}},
+        {"set_asset_mode", %{"mode" => "embedded"}},
+        {"toggle_option", %{"option" => "validate_before_export"}},
+        {"toggle_option", %{"option" => "pretty_print"}}
+      ]
 
-      render_click(view, "validate_export", %{})
-      assert validation_status(view)
-      render_click(view, "set_asset_mode", %{"mode" => "embedded"})
-      assert export_config(view)["validation"] == nil
+      for {event, params} <- changes do
+        render_click(view, "validate_export", %{})
+        status = validation_status(view)
+        refute validation_stale?(view)
 
-      render_click(view, "validate_export", %{})
-      assert validation_status(view)
-      render_click(view, "toggle_option", %{"option" => "validate_before_export"})
-      assert export_config(view)["validation"] == nil
+        render_click(view, event, params)
+
+        assert validation_status(view) == status
+        assert validation_stale?(view)
+      end
     end
   end
 
@@ -312,6 +362,72 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       render_click(view, "validate_export", %{})
 
       assert validation_status(view) in ~w(passed warnings errors)
+      refute validation_stale?(view)
+    end
+
+    test "serializes actionable findings with rule, count, and dashboard link", %{
+      conn: conn,
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Editorial"})
+
+      dialogue =
+        node_fixture(flow, %{type: "dialogue", data: %{"text" => "", "responses" => []}})
+
+      connect_from_entry(flow, dialogue)
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_click(view, "validate_export", %{})
+
+      finding = Enum.find(export_config(view)["validation"]["warnings"], &(&1["rule"] == "empty_dialogue"))
+
+      assert finding["count"] == 1
+
+      assert finding["href"] ==
+               ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
+    end
+
+    test "node health findings focus the affected node when only entity_id is available", %{
+      conn: conn,
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Stale Output"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Choose",
+            "localization_id" => "dialogue_stale_output",
+            "responses" => [%{"id" => "response_valid", "text" => "Continue"}]
+          }
+        })
+
+      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+
+      Repo.insert!(%FlowConnection{
+        flow_id: flow.id,
+        source_node_id: dialogue.id,
+        target_node_id: exit_node.id,
+        source_pin: "removed_response",
+        target_pin: "input"
+      })
+
+      connect_from_entry(flow, dialogue)
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_click(view, "validate_export", %{})
+
+      finding =
+        Enum.find(
+          export_config(view)["validation"]["errors"],
+          &(&1["rule"] == "invalid_output_pins")
+        )
+
+      base =
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+
+      assert finding["href"] == "#{base}?highlight=node:#{dialogue.id}"
     end
 
     test "loads entity counts asynchronously", %{conn: conn, project: project} do
@@ -374,5 +490,39 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert import_state(view)["step"] == "upload"
       assert download_url(view) =~ "/export/ink"
     end
+  end
+
+  defp finding_rule?(view, severity, rule) do
+    view
+    |> export_config()
+    |> get_in(["validation", severity])
+    |> Enum.any?(&(&1["rule"] == rule))
+  end
+
+  defp connect_from_entry(flow, node) do
+    entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
+    connection_fixture(flow, entry, node)
+  end
+
+  defp condition(sheet, variable) do
+    %{
+      "logic" => "all",
+      "blocks" => [
+        %{
+          "id" => "block_1",
+          "type" => "block",
+          "logic" => "all",
+          "rules" => [
+            %{
+              "id" => "rule_1",
+              "sheet" => sheet,
+              "variable" => variable,
+              "operator" => "equals",
+              "value" => "value"
+            }
+          ]
+        }
+      ]
+    }
   end
 end

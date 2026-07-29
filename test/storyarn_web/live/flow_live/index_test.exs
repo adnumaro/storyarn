@@ -221,6 +221,7 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       node_issue = Enum.find(issues, &(&1["code"] == "missing_dialogue_text"))
       assert node_issue, "expected the dialogue's own finding on the dashboard"
       assert node_issue["href"] == "#{base}?highlight=node:#{dialogue.id}"
+      refute node_issue["label"] =~ "##{dialogue.id}"
 
       # A flow-level finding has no node to open, so it keeps the bare href.
       flow_issue = Enum.find(issues, &(&1["code"] == "missing_entry"))

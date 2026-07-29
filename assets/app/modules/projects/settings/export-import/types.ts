@@ -29,10 +29,17 @@ export interface ExportOptions {
 
 export interface ValidationFinding {
   message: string;
+  rule: string;
+  label?: string | null;
+  count?: number | null;
+  entityType?: string | null;
+  entityId?: number | null;
+  href?: string | null;
 }
 
 export interface ValidationResult {
   status: string;
+  stale?: boolean;
   errors?: ValidationFinding[];
   warnings?: ValidationFinding[];
   info?: ValidationFinding[];

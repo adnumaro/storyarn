@@ -211,6 +211,86 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
              "ysc rejected choice branches:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
+    test "reconvergent choice branches compile with their shared tail emitted once", %{
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "ReconvergentChoices"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      choice =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Pick a path.",
+            "speaker_sheet_id" => nil,
+            "responses" => [
+              %{"id" => "fight", "text" => "Fight", "condition" => nil, "instruction" => nil},
+              %{"id" => "run", "text" => "Run", "condition" => nil, "instruction" => nil},
+              %{"id" => "leave", "text" => "Leave", "condition" => nil, "instruction" => nil}
+            ]
+          }
+        })
+
+      fight =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You fight.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      run =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You run.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      shared_tail =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Shared choice tail.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      reserved_merge_label = "__storyarn_merge_#{flow.id}_#{shared_tail.id}"
+
+      collision_hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => reserved_merge_label, "label" => "Collision hub"}
+        })
+
+      leave =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "You leave.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      shared_exit = node_fixture(flow, %{type: "exit", data: %{}})
+      leave_exit = node_fixture(flow, %{type: "exit", data: %{}})
+
+      connection_fixture(flow, entry, choice)
+      connection_fixture(flow, choice, fight, %{source_pin: "response_fight"})
+      connection_fixture(flow, choice, run, %{source_pin: "response_run"})
+      connection_fixture(flow, choice, collision_hub, %{source_pin: "response_leave"})
+      connection_fixture(flow, fight, shared_tail)
+      connection_fixture(flow, run, shared_tail)
+      connection_fixture(flow, shared_tail, shared_exit)
+      connection_fixture(flow, collision_hub, leave)
+      connection_fixture(flow, leave, leave_exit)
+
+      source = yarn_source(export_files(project))
+
+      assert length(Regex.scan(~r/^Shared choice tail\. #line:/m, source)) == 1
+      assert source =~ "    You fight."
+      assert source =~ "    You run."
+      assert source =~ "You leave."
+      assert source =~ "<<jump __storyarn_merge_"
+      assert source =~ "title: #{reserved_merge_label}\n"
+      assert source =~ "title: #{reserved_merge_label}_2\n"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected reconvergent choices:\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
     test "variable declarations compile", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Hero"})
 
@@ -295,6 +375,137 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
 
       assert YarnCompiler.valid?(source),
              "ysc rejected condition:\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    test "condition with a valid rule and an operatorless draft compiles", %{
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Draft condition"})
+
+      block_fixture(sheet, %{
+        type: "boolean",
+        config: %{"label" => "Ready"},
+        value: %{"boolean" => true}
+      })
+
+      flow = flow_fixture(project, %{name: "DraftCondition"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" => %{
+              "logic" => "any",
+              "blocks" => [
+                %{
+                  "id" => "valid-rules",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "valid",
+                      "sheet" => sheet.shortcut,
+                      "variable" => "ready",
+                      "operator" => "is_true",
+                      "value" => nil
+                    }
+                  ]
+                },
+                %{
+                  "id" => "draft-rules",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "draft",
+                      "sheet" => sheet.shortcut,
+                      "variable" => "ready",
+                      "operator" => nil,
+                      "value" => nil
+                    }
+                  ]
+                }
+              ]
+            },
+            "cases" => [
+              %{"id" => "true", "value" => "true", "label" => "True"},
+              %{"id" => "false", "value" => "false", "label" => "False"}
+            ]
+          }
+        })
+
+      true_exit = node_fixture(flow, %{type: "exit", data: %{}})
+      false_exit = node_fixture(flow, %{type: "exit", data: %{}})
+
+      connection_fixture(flow, entry, condition)
+      connection_fixture(flow, condition, true_exit, %{source_pin: "true"})
+      connection_fixture(flow, condition, false_exit, %{source_pin: "false"})
+
+      source = yarn_source(export_files(project))
+
+      refute source =~ "null"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected condition with an operatorless draft:\n#{inspect(YarnCompiler.validate(source))}"
+    end
+
+    test "reconvergent condition branches compile with their shared tail emitted once", %{
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "ReconvergentCondition"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" => %{"logic" => "all", "blocks" => []},
+            "cases" => [
+              %{"id" => "true", "value" => "true", "label" => "True"},
+              %{"id" => "false", "value" => "false", "label" => "False"}
+            ]
+          }
+        })
+
+      true_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "True branch.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      false_dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "False branch.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      shared_tail =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Shared condition tail.", "speaker_sheet_id" => nil, "responses" => []}
+        })
+
+      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+
+      connection_fixture(flow, entry, condition)
+      connection_fixture(flow, condition, true_dialogue, %{source_pin: "true"})
+      connection_fixture(flow, condition, false_dialogue, %{source_pin: "false"})
+      connection_fixture(flow, true_dialogue, shared_tail)
+      connection_fixture(flow, false_dialogue, shared_tail)
+      connection_fixture(flow, shared_tail, exit_node)
+
+      source = yarn_source(export_files(project))
+
+      assert length(Regex.scan(~r/^Shared condition tail\. #line:/m, source)) == 1
+      assert source =~ "True branch."
+      assert source =~ "False branch."
+      assert source =~ "<<jump __storyarn_merge_"
+
+      assert YarnCompiler.valid?(source),
+             "ysc rejected reconvergent condition:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
     test "instruction set commands compile", %{project: project} do

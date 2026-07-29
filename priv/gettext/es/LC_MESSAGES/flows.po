@@ -26,6 +26,7 @@ msgstr "No se puede referenciar el flujo actual."
 msgid "Circular reference detected. This flow is already referenced by the target."
 msgstr "Referencia circular detectada. Este flujo ya está referenciado por el destino."
 
+#: lib/storyarn/flows/node_label.ex:33
 #: lib/storyarn_web/live/flow_live/nodes/condition/node.ex:16
 #, elixir-autogen, elixir-format
 msgid "Condition"
@@ -81,16 +82,19 @@ msgstr "No se pudo establecer el flujo principal."
 msgid "Create Flow"
 msgstr "Crear flujo"
 
+#: lib/storyarn/flows/node_label.ex:34
 #: lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex:28
 #, elixir-autogen, elixir-format
 msgid "Dialogue"
 msgstr "Diálogo"
 
+#: lib/storyarn/flows/node_label.ex:35
 #: lib/storyarn_web/live/flow_live/nodes/entry/node.ex:15
 #, elixir-autogen, elixir-format
 msgid "Entry"
 msgstr "Entrada"
 
+#: lib/storyarn/flows/node_label.ex:36
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:20
 #, elixir-autogen, elixir-format
 msgid "Exit"
@@ -117,11 +121,13 @@ msgstr "Flujo no encontrado."
 msgid "Flow set as main."
 msgstr "Flujo establecido como principal."
 
+#: lib/storyarn/flows/node_label.ex:37
 #: lib/storyarn_web/live/flow_live/nodes/hub/node.ex:17
 #, elixir-autogen, elixir-format
 msgid "Hub"
 msgstr "Hub"
 
+#: lib/storyarn/flows/node_label.ex:38
 #: lib/storyarn_web/live/flow_live/nodes/instruction/node.ex:15
 #, elixir-autogen, elixir-format
 msgid "Instruction"
@@ -137,6 +143,7 @@ msgstr "ID de flujo inválido."
 msgid "Invalid flow reference."
 msgstr "Referencia de flujo inválida."
 
+#: lib/storyarn/flows/node_label.ex:39
 #: lib/storyarn_web/live/flow_live/nodes/jump/node.ex:12
 #, elixir-autogen, elixir-format
 msgid "Jump"
@@ -153,6 +160,7 @@ msgstr "No se encontró nodo de entrada en este flujo."
 msgid "Shortcut %{error}"
 msgstr "Atajo %{error}"
 
+#: lib/storyarn/flows/node_label.ex:41
 #: lib/storyarn_web/live/flow_live/nodes/subflow/node.ex:20
 #, elixir-autogen, elixir-format
 msgid "Subflow"
@@ -225,6 +233,7 @@ msgstr "No se pudo actualizar la escena."
 msgid "%{type} #%{id}"
 msgstr "%{type} #%{id}"
 
+#: lib/storyarn/flows/node_label.ex:32
 #: lib/storyarn_web/live/flow_live/nodes/annotation/node.ex:20
 #, elixir-autogen, elixir-format
 msgid "Note"
@@ -435,3 +444,13 @@ msgstr "Flujo"
 #, elixir-autogen, elixir-format
 msgid "Localization row #%{n} — voice-over"
 msgstr "Fila de localización #%{n} — voz en off"
+
+#: lib/storyarn/flows/node_label.ex:49
+#, elixir-autogen, elixir-format
+msgid "Node"
+msgstr "Nodo"
+
+#: lib/storyarn/flows/node_label.ex:40
+#, elixir-autogen, elixir-format
+msgid "Sequence"
+msgstr "Secuencia"

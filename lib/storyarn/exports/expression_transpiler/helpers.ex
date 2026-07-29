@@ -25,11 +25,11 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
   """
   @spec format_var_ref(String.t(), String.t(), atom()) :: String.t()
   def format_var_ref(sheet, variable, :underscore) do
-    "#{dotted_to_underscore(sheet)}_#{dotted_to_underscore(variable)}"
+    dotted_to_underscore("#{sheet}.#{variable}")
   end
 
   def format_var_ref(sheet, variable, :dollar_underscore) do
-    "$#{dotted_to_underscore(sheet)}_#{dotted_to_underscore(variable)}"
+    "$#{dotted_to_underscore("#{sheet}.#{variable}")}"
   end
 
   def format_var_ref(sheet, variable, :lua_dict) do
@@ -47,7 +47,12 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
   end
 
   defp dotted_to_underscore(str) do
-    str |> sanitize_identifier() |> String.replace(~r/[.\-]/, "_")
+    identifier =
+      str
+      |> sanitize_identifier()
+      |> String.replace(~r/[.\-]/, "_")
+
+    if String.match?(identifier, ~r/^[0-9]/), do: "_#{identifier}", else: identifier
   end
 
   # Defense-in-depth: strip characters that could cause code injection.
@@ -121,29 +126,54 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
   @doc """
   Normalizes a condition from storage into a structured map.
 
-  Returns `{:ok, condition_map}` for block-format conditions,
+  Returns `{:ok, condition_map}` for normalized block-format conditions,
   or `{:ok, nil}` for nil/empty/invalid.
 
   ## Supported inputs
 
   - `nil` → `{:ok, nil}`
   - `%{"logic" => ..., "blocks" => ...}` → pass through
+  - `%{"logic" => ..., "rules" => ...}` → normalize the legacy flat shape
   - JSON string → decode to map
   """
   @spec decode_condition(term()) :: {:ok, map() | nil}
   def decode_condition(nil), do: {:ok, nil}
   def decode_condition(""), do: {:ok, nil}
 
-  def decode_condition(%{"logic" => _, "blocks" => _} = condition), do: {:ok, condition}
+  def decode_condition(%{} = condition), do: {:ok, normalize_condition(condition)}
 
   def decode_condition(json_string) when is_binary(json_string) do
     case Jason.decode(json_string) do
-      {:ok, %{"logic" => _, "blocks" => _} = condition} -> {:ok, condition}
+      {:ok, %{} = condition} -> {:ok, normalize_condition(condition)}
       _ -> {:ok, nil}
     end
   end
 
   def decode_condition(_other), do: {:ok, nil}
+
+  defp normalize_condition(%{"logic" => _, "blocks" => blocks} = condition) when is_list(blocks), do: condition
+
+  defp normalize_condition(%{"logic" => logic, "rules" => rules}) when is_list(rules) do
+    blocks =
+      case rules do
+        [] ->
+          []
+
+        _rules ->
+          [
+            %{
+              "id" => "legacy_flat",
+              "type" => "block",
+              "logic" => logic,
+              "rules" => rules
+            }
+          ]
+      end
+
+    %{"logic" => logic, "blocks" => blocks}
+  end
+
+  defp normalize_condition(_condition), do: nil
 
   # ---------------------------------------------------------------------------
   # Rule extraction (flattens blocks → rules)

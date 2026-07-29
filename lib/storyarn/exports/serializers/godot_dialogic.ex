@@ -17,6 +17,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.ExpressionTranspiler
   alias Storyarn.Exports.LocalizationCatalog
+  alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
   alias Storyarn.Localization.SourceContract
@@ -43,7 +44,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
     flows = project_data.flows || []
     variables = Helpers.collect_variables(sheets)
     speaker_map = Helpers.build_speaker_map(sheets)
-    flow_shortcuts_by_id = flow_shortcuts_by_id(flows)
+    flow_shortcuts_by_id = Helpers.flow_shortcuts_by_id(project_data, flows)
     return_targets = collect_return_targets(flows, flow_shortcuts_by_id)
 
     dtl_files =
@@ -55,7 +56,16 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
 
     metadata = build_metadata(project_data.project, sheets, variables, flows)
 
-    localization_files = LocalizationCatalog.files(Map.get(project_data, :localization), opts, :godot)
+    reachable_flow_node_ids = LocalizationCatalog.reachable_flow_node_ids(flows)
+
+    localization_files =
+      LocalizationCatalog.files(
+        Map.get(project_data, :localization),
+        opts,
+        :godot,
+        reachable_flow_node_ids
+      )
+
     {:ok, dtl_files ++ [{"metadata.json", Jason.encode!(metadata, pretty: true)}] ++ localization_files}
   end
 
@@ -222,12 +232,15 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
     ["#{indent(depth)}jump #{target}/"]
   end
 
-  defp render_instruction({:jump, node, target_label}, _ctx, depth) do
+  defp render_instruction({:jump, node, target_label}, ctx, depth) do
+    data = node.data || %{}
+
     target =
-      if get_in(node.data || %{}, ["target_flow_shortcut"]) do
-        "#{target_label}/"
-      else
+      if FlowControlResolver.target_hub_id(data) do
         target_label
+      else
+        resolved = resolve_flow_shortcut(data, ctx) || target_label
+        "#{Helpers.shortcut_to_identifier(resolved)}/"
       end
 
     ["#{indent(depth)}jump #{target}"]
@@ -308,15 +321,13 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
   defp terminal_command(%{is_return_target: true}, depth), do: "#{indent(depth)}return"
   defp terminal_command(_ctx, depth), do: "#{indent(depth)}[end_timeline]"
 
-  defp flow_shortcuts_by_id(flows) do
-    Map.new(flows, fn flow -> {to_string(flow.id), flow.shortcut} end)
-  end
-
   defp collect_return_targets(flows, flow_shortcuts_by_id) do
     flows
     |> Enum.flat_map(fn flow ->
+      reachable_node_ids = GraphTraversal.reachable_node_ids(flow)
+
       (flow.nodes || [])
-      |> Enum.filter(&(&1.type == "subflow"))
+      |> Enum.filter(&(&1.type == "subflow" and MapSet.member?(reachable_node_ids, &1.id)))
       |> Enum.map(&resolve_flow_shortcut(&1.data || %{}, flow_shortcuts_by_id))
       |> Enum.reject(&StringUtils.blank?/1)
     end)
@@ -328,9 +339,10 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
   end
 
   defp resolve_flow_shortcut(data, flow_shortcuts_by_id) do
-    data["flow_shortcut"] ||
-      data["referenced_flow_shortcut"] ||
-      flow_shortcuts_by_id[to_string(data["referenced_flow_id"])]
+    referenced_id = FlowControlResolver.referenced_flow_id(data)
+
+    flow_shortcuts_by_id[referenced_id] ||
+      FlowControlResolver.referenced_flow_shortcut(data)
   end
 
   # Dialogic uses TAB characters for indentation

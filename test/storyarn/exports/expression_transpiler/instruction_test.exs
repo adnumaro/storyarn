@@ -328,6 +328,25 @@ defmodule Storyarn.Exports.ExpressionTranspiler.InstructionTest do
       assert result == ""
     end
 
+    test "operatorless draft is skipped when mixed with a valid assignment in every engine" do
+      valid = assignment("set")
+      draft = assignment(nil, nil, variable: "draft")
+
+      expected_by_engine = %{
+        ink: "~ mc_jaime_health = 10",
+        yarn: "<<set $mc_jaime_health to 10>>",
+        unity: ~s(Variable["mc.jaime.health"] = 10),
+        godot: "set {mc_jaime.health} = 10",
+        unreal: "mc.jaime.health = 10",
+        articy: "mc.jaime.health = 10"
+      }
+
+      for {engine, expected} <- expected_by_engine do
+        assert {:ok, ^expected, []} =
+                 ExpressionTranspiler.transpile_instruction([valid, draft], engine)
+      end
+    end
+
     test "unknown engine returns error" do
       result = ExpressionTranspiler.transpile_instruction([assignment("set")], :unknown)
       assert {:error, {:unknown_engine, :unknown}} = result

@@ -1140,28 +1140,59 @@ defmodule Storyarn.Sheets.SheetQueries do
     )
   end
 
+  @type stale_node_variable_refs_by_flow :: %{
+          integer() => %{integer() => MapSet.t(String.t())}
+        }
+
+  @doc """
+  Stale variable references for MANY flows at once, keyed by flow and node.
+
+  The per-flow pair costs two queries each, so a project-wide sweep over N flows
+  would otherwise pay 2N. This returns the same information in two queries total
+  while retaining the original full reference needed to distinguish exportable
+  expressions from draft rows on the same node.
+  """
+  @spec list_stale_node_variable_refs_by_flow([integer()]) ::
+          stale_node_variable_refs_by_flow()
+  def list_stale_node_variable_refs_by_flow([]), do: %{}
+
+  def list_stale_node_variable_refs_by_flow(flow_ids) do
+    regular = stale_regular_refs(flow_ids)
+    table = stale_table_refs(flow_ids)
+
+    Enum.reduce(regular ++ table, %{}, fn
+      {flow_id, node_id, source_sheet, source_variable}, refs_by_flow ->
+        full_ref = "#{source_sheet}.#{source_variable}"
+
+        Map.update(
+          refs_by_flow,
+          flow_id,
+          %{node_id => MapSet.new([full_ref])},
+          &Map.update(&1, node_id, MapSet.new([full_ref]), fn refs ->
+            MapSet.put(refs, full_ref)
+          end)
+        )
+    end)
+  end
+
   @doc """
   Stale node ids for MANY flows at once, keyed by flow — the project-wide sweep.
 
-  The per-flow pair costs two queries each, so a dashboard over N flows paid 2N.
-  These two return the same sets in two queries total. `flow_nodes` carries no
-  `project_id`, hence the id list rather than a project filter.
+  This compatibility view is derived from
+  `list_stale_node_variable_refs_by_flow/1`, preserving the same two-query cost.
   """
   @spec list_stale_node_ids_by_flow([integer()]) :: %{integer() => MapSet.t()}
-  def list_stale_node_ids_by_flow([]), do: %{}
-
   def list_stale_node_ids_by_flow(flow_ids) do
-    regular = stale_regular_pairs(flow_ids)
-    table = stale_table_pairs(flow_ids)
-
-    (regular ++ table)
-    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-    |> Map.new(fn {flow_id, node_ids} -> {flow_id, MapSet.new(node_ids)} end)
+    flow_ids
+    |> list_stale_node_variable_refs_by_flow()
+    |> Map.new(fn {flow_id, refs_by_node} ->
+      {flow_id, refs_by_node |> Map.keys() |> MapSet.new()}
+    end)
   end
 
   # A reference is stale when the shortcut it was written against no longer names
   # its sheet, or the variable no longer carries its name.
-  defp stale_regular_pairs(flow_ids) do
+  defp stale_regular_refs(flow_ids) do
     Repo.all(
       from(vr in VariableReference,
         join: n in FlowNode,
@@ -1176,7 +1207,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         where: b.type != "table",
         where: vr.source_sheet != s.shortcut or vr.source_variable != b.variable_name,
         distinct: true,
-        select: {n.flow_id, n.id}
+        select: {n.flow_id, n.id, vr.source_sheet, vr.source_variable}
       )
     )
   end
@@ -1184,7 +1215,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   # A table reference spells its own path — `variable.row_slug.column_slug` — so
   # its second staleness cause is a row or column that no longer exists, which no
   # column on `variable_references` can answer. Hence the correlated subquery.
-  defp stale_table_pairs(flow_ids) do
+  defp stale_table_refs(flow_ids) do
     table_cell_exists =
       from(tr in TableRow,
         join: tc in TableColumn,
@@ -1216,7 +1247,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         where: b.type == "table",
         where: vr.source_sheet != s.shortcut or not exists(table_cell_exists),
         distinct: true,
-        select: {n.flow_id, n.id}
+        select: {n.flow_id, n.id, vr.source_sheet, vr.source_variable}
       )
     )
   end
@@ -1230,22 +1261,24 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   @spec list_stale_regular_node_ids(integer()) :: MapSet.t()
   def list_stale_regular_node_ids(flow_id) do
-    [flow_id] |> stale_regular_pairs() |> node_ids_for_flow(flow_id)
+    [flow_id] |> stale_regular_refs() |> node_ids_for_flow(flow_id)
   end
 
   @doc """
   Stale table node IDs in ONE flow, for the flow editor.
 
-  Same restriction of `stale_table_pairs/1`, for the same reason as
+  Same restriction of `stale_table_refs/1`, for the same reason as
   `list_stale_regular_node_ids/1`.
   """
   @spec list_stale_table_node_ids(integer()) :: MapSet.t()
   def list_stale_table_node_ids(flow_id) do
-    [flow_id] |> stale_table_pairs() |> node_ids_for_flow(flow_id)
+    [flow_id] |> stale_table_refs() |> node_ids_for_flow(flow_id)
   end
 
-  defp node_ids_for_flow(pairs, flow_id) do
-    for {^flow_id, node_id} <- pairs, into: MapSet.new(), do: node_id
+  defp node_ids_for_flow(refs, flow_id) do
+    for {^flow_id, node_id, _source_sheet, _source_variable} <- refs,
+        into: MapSet.new(),
+        do: node_id
   end
 
   @doc """

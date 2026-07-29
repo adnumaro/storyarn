@@ -22,6 +22,12 @@ defmodule Storyarn.Exports.ExpressionTranspiler.HelpersTest do
                "$mc_jaime_health"
     end
 
+    test "prefixes a leading digit only after composing flattened references" do
+      assert Helpers.format_var_ref("hero", "1hp", :underscore) == "hero_1hp"
+      assert Helpers.format_var_ref("hero", "1hp", :dollar_underscore) == "$hero_1hp"
+      assert Helpers.format_var_ref("1hero", "hp", :underscore) == "_1hero_hp"
+    end
+
     test "lua_dict style wraps in Variable[]" do
       assert Helpers.format_var_ref("mc.jaime", "health", :lua_dict) ==
                ~s(Variable["mc.jaime.health"])
@@ -165,9 +171,11 @@ defmodule Storyarn.Exports.ExpressionTranspiler.HelpersTest do
       assert Helpers.decode_condition(condition) == {:ok, condition}
     end
 
-    test "flat condition map without blocks returns {:ok, nil}" do
+    test "flat condition map is normalized to block format" do
       condition = %{"logic" => "all", "rules" => []}
-      assert Helpers.decode_condition(condition) == {:ok, nil}
+
+      assert Helpers.decode_condition(condition) ==
+               {:ok, %{"logic" => "all", "blocks" => []}}
     end
 
     test "JSON string with blocks is decoded" do
@@ -177,9 +185,17 @@ defmodule Storyarn.Exports.ExpressionTranspiler.HelpersTest do
       assert is_list(result["blocks"])
     end
 
-    test "JSON string without blocks returns {:ok, nil}" do
-      json = Jason.encode!(%{"logic" => "all", "rules" => [%{"op" => "eq"}]})
-      assert Helpers.decode_condition(json) == {:ok, nil}
+    test "JSON string with flat rules is normalized" do
+      rule = %{"sheet" => "hero", "variable" => "ready", "operator" => "is_true"}
+      json = Jason.encode!(%{"logic" => "all", "rules" => [rule]})
+
+      assert {:ok,
+              %{
+                "logic" => "all",
+                "blocks" => [
+                  %{"type" => "block", "logic" => "all", "rules" => [^rule]}
+                ]
+              }} = Helpers.decode_condition(json)
     end
 
     test "valid JSON but wrong shape returns {:ok, nil}" do
