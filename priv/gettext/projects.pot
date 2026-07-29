@@ -1021,12 +1021,12 @@ msgstr ""
 msgid "The restoration job is still active. Please wait for it to finish."
 msgstr ""
 
-#: lib/storyarn/exports/artifact_validator.ex:1752
+#: lib/storyarn/exports/artifact_validator.ex:1770
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" contains an expression that cannot be exported to %{format}"
 msgstr ""
 
-#: lib/storyarn/exports/artifact_validator.ex:1772
+#: lib/storyarn/exports/artifact_validator.ex:1790
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\": %{warning}"
 msgstr ""

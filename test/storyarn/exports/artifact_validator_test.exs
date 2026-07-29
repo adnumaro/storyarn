@@ -160,6 +160,119 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
     assert Enum.map(invalid, & &1.node_id) == [403]
   end
 
+  test "transient incomplete instruction rows are no-ops in every format", %{
+    project: project
+  } do
+    incomplete_assignment = %{
+      "id" => "draft-assignment",
+      "sheet" => nil,
+      "variable" => nil,
+      "operator" => "set",
+      "value" => nil,
+      "value_type" => "literal",
+      "value_sheet" => nil
+    }
+
+    flow =
+      flow(42, "Draft instructions", "draft-instructions", [
+        node(421, "instruction", %{"assignments" => [incomplete_assignment]}),
+        node(422, "dialogue", %{
+          "localization_id" => "draft_response_instruction",
+          "responses" => [
+            %{
+              "id" => "draft_response",
+              "instruction_assignments" => [incomplete_assignment]
+            }
+          ]
+        })
+      ])
+
+    for format <- [:ink, :yarn, :unity, :godot, :unreal, :articy] do
+      invalid =
+        project.id
+        |> findings(format, [flow], [])
+        |> Enum.filter(&(&1.rule == :invalid_export_expression))
+
+      refute Enum.any?(invalid, &(&1.node_id in [421, 422]))
+    end
+  end
+
+  test "valid instruction rows still transpile when mixed with an incomplete row", %{
+    project: project
+  } do
+    sheet = sheet_fixture(project, %{name: "State", shortcut: "state"})
+    block = block_fixture(sheet, %{variable_name: "visited"})
+
+    incomplete_assignment = %{
+      "id" => "draft-assignment",
+      "sheet" => nil,
+      "variable" => nil,
+      "operator" => "set",
+      "value" => nil,
+      "value_type" => "literal",
+      "value_sheet" => nil
+    }
+
+    flow =
+      flow(43, "Mixed instructions", "mixed-instructions", [
+        node(431, "instruction", %{
+          "assignments" => [
+            incomplete_assignment,
+            assignment(sheet.shortcut, block.variable_name, operator: "set_if_unset")
+          ]
+        })
+      ])
+
+    for format <- [:ink, :yarn, :unity, :godot, :unreal, :articy] do
+      refute Enum.any?(
+               findings(project.id, format, [flow], [sheet_brief(sheet)]),
+               &(&1.rule == :invalid_export_expression and &1.node_id == 431)
+             )
+    end
+
+    assert Enum.any?(
+             findings(project.id, :ink, [flow], [sheet_brief(sheet)]),
+             &(&1.rule == :semantic_loss and &1.node_id == 431)
+           )
+  end
+
+  test "incomplete instruction rows that serializers would emit still block export", %{
+    project: project
+  } do
+    sheet = sheet_fixture(project, %{name: "State", shortcut: "state"})
+    block = block_fixture(sheet, %{variable_name: "visited"})
+
+    flow =
+      flow(44, "Incomplete instructions", "incomplete-instructions", [
+        node(441, "instruction", %{
+          "assignments" => [
+            assignment(sheet.shortcut, block.variable_name, value: nil)
+          ]
+        })
+      ])
+
+    for format <- [:ink, :yarn, :unity, :godot, :unreal, :articy] do
+      assert Enum.any?(
+               findings(project.id, format, [flow], [sheet_brief(sheet)]),
+               &(&1.rule == :invalid_export_expression and &1.node_id == 441)
+             )
+    end
+  end
+
+  test "malformed instruction containers still block export", %{project: project} do
+    flow =
+      flow(45, "Malformed instructions", "malformed-instructions", [
+        node(451, "instruction", %{"assignments" => %{}})
+      ])
+
+    for format <- [:ink, :yarn, :unity, :godot, :unreal, :articy] do
+      assert Enum.any?(
+               findings(project.id, format, [flow], []),
+               &(&1.rule == :invalid_export_expression and &1.node_id == 451)
+             )
+    end
+  end
+
   test "legacy flat conditions are validated and transpiled", %{project: project} do
     sheet = sheet_fixture(project, %{name: "State", shortcut: "state"})
     block = block_fixture(sheet, %{variable_name: "ready"})

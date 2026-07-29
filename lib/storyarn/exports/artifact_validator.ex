@@ -1705,27 +1705,45 @@ defmodule Storyarn.Exports.ArtifactValidator do
 
   defp transpile_instruction_findings(_format, _flow, _node, _source, assignments) when assignments in [nil, []], do: []
 
-  defp transpile_instruction_findings(format, flow, node, source, assignments) do
-    if instruction_has_incomplete_assignments?(assignments) do
-      [
-        expression_error_finding(
-          flow,
-          node,
-          source,
-          format,
-          :incomplete_instruction_assignment
-        )
-      ]
-    else
-      case ExpressionTranspiler.transpile_instruction(assignments, format) do
-        {:ok, expression, warnings} ->
-          empty_expression_finding(expression, flow, node, source, format) ++
+  defp transpile_instruction_findings(format, flow, node, source, assignments) when is_list(assignments) do
+    export_candidates = Enum.filter(assignments, &instruction_export_candidate?/1)
+
+    cond do
+      export_candidates == [] ->
+        []
+
+      Enum.any?(export_candidates, &(not Instruction.complete_assignment?(&1))) ->
+        [
+          expression_error_finding(
+            flow,
+            node,
+            source,
+            format,
+            :incomplete_instruction_assignment
+          )
+        ]
+
+      true ->
+        case ExpressionTranspiler.transpile_instruction(assignments, format) do
+          {:ok, _expression, warnings} ->
             transpiler_warning_findings(warnings, flow, node, source, format)
 
-        {:error, reason} ->
-          [expression_error_finding(flow, node, source, format, reason)]
-      end
+          {:error, reason} ->
+            [expression_error_finding(flow, node, source, format, reason)]
+        end
     end
+  end
+
+  defp transpile_instruction_findings(format, flow, node, source, _assignments) do
+    [
+      expression_error_finding(
+        flow,
+        node,
+        source,
+        format,
+        :invalid_instruction_structure
+      )
+    ]
   end
 
   defp empty_expression_finding(expression, _flow, _node, _source, _format)
@@ -1865,13 +1883,11 @@ defmodule Storyarn.Exports.ArtifactValidator do
 
   defp complete_condition_rule?(_rule), do: false
 
-  defp instruction_has_incomplete_assignments?(assignments) when is_list(assignments) do
-    Enum.any?(assignments, &(not complete_instruction_assignment?(&1)))
+  defp instruction_export_candidate?(%{"sheet" => sheet, "variable" => variable, "operator" => _operator}) do
+    complete_reference?(sheet, variable)
   end
 
-  defp instruction_has_incomplete_assignments?(_assignments), do: true
-
-  defp complete_instruction_assignment?(assignment), do: Instruction.complete_assignment?(assignment)
+  defp instruction_export_candidate?(_assignment), do: false
 
   defp complete_reference?(sheet, variable) do
     is_binary(sheet) and sheet != "" and is_binary(variable) and variable != ""

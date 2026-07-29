@@ -1021,12 +1021,12 @@ msgstr "Descartar el error de instalación"
 msgid "The restoration job is still active. Please wait for it to finish."
 msgstr "El trabajo de restauración sigue activo. Espera a que termine."
 
-#: lib/storyarn/exports/artifact_validator.ex:1752
+#: lib/storyarn/exports/artifact_validator.ex:1770
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" contains an expression that cannot be exported to %{format}"
 msgstr "\"%{node}\" del flujo \"%{flow}\" contiene una expresión que no se puede exportar a %{format}"
 
-#: lib/storyarn/exports/artifact_validator.ex:1772
+#: lib/storyarn/exports/artifact_validator.ex:1790
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\": %{warning}"
 msgstr "\"%{node}\" del flujo \"%{flow}\": %{warning}"
