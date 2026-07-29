@@ -21,16 +21,20 @@ if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
   };
 }
 
-// Load all English locale files for component tests
+// Load the same locale tree as the browser app so interaction tests can
+// exercise translated workflows instead of silently falling back to English.
 type LocaleModule = { default?: JsonLocale };
-const localeModules: Record<string, LocaleModule> = import.meta.glob("../locales/en/*.json", {
+const localeModules: Record<string, LocaleModule> = import.meta.glob("../locales/*/*.json", {
   eager: true,
 });
 
-const enMessages: JsonLocale = {};
+const messages: Record<string, JsonLocale> = {};
 for (const path in localeModules) {
+  const locale = path.match(/\/locales\/([^/]+)\//)?.[1];
+  if (!locale) continue;
+
   const content = localeModules[path].default ?? (localeModules[path] as JsonLocale);
-  Object.assign(enMessages, content);
+  Object.assign((messages[locale] ??= {}), content);
 }
 
 const i18n = createI18n({
@@ -38,7 +42,7 @@ const i18n = createI18n({
   locale: "en",
   fallbackLocale: "en",
   missing: (_locale, key) => key,
-  messages: { en: enMessages },
+  messages,
 });
 config.global.plugins.push(i18n);
 

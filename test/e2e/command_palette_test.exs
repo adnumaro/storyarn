@@ -9,6 +9,7 @@ defmodule StoryarnWeb.E2E.CommandPaletteTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
   import StoryarnWeb.E2EHelpers
 
   alias Storyarn.Repo
@@ -22,6 +23,16 @@ defmodule StoryarnWeb.E2E.CommandPaletteTest do
     |> wait_for_palette()
     |> evaluate(open_palette_expression())
     |> assert_has("[data-slot='dialog-content'] [data-slot='command-input']")
+    |> refute_has("[data-slot='dialog-content'] [role='status']", timeout: 20_000)
+    |> assert_has(
+      "[data-operation-id='create'][data-operation-available='false']",
+      text: "Requires edit access to at least one project."
+    )
+    |> assert_has(
+      "[data-operation-id='run_command'][data-operation-available='false']",
+      text: "No commands are available in this view."
+    )
+    |> assert_has("[data-operation-id='open_view'][data-operation-available='true']")
     |> evaluate(active_palette_input_expression(), fn active? -> assert active? end)
     |> evaluate(close_palette_from_input_expression())
     |> refute_has("[data-slot='dialog-content'] [data-slot='command-input']")
@@ -46,6 +57,31 @@ defmodule StoryarnWeb.E2E.CommandPaletteTest do
     |> evaluate(escape_from_palette_expression())
     |> assert_has("[data-slot='dialog-content'] [data-slot='command-input']")
     |> assert_has("[data-slot='command-item']", text: "New Sheet")
+  end
+
+  test "generated help opens the guided goto operation and navigates on explicit submit",
+       %{conn: conn} do
+    user = user_fixture()
+    project = user |> project_fixture(%{name: "Veilbreak"}) |> Repo.preload(:workspace)
+    sheet = sheet_fixture(project, %{name: "Chapter Two"})
+    path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
+
+    conn
+    |> authenticate(user)
+    |> visit(path)
+    |> wait_for_palette()
+    |> evaluate(open_palette_expression())
+    |> refute_has("[data-slot='dialog-content'] [role='status']", timeout: 20_000)
+    |> assert_has("[data-operation-id='goto']", text: "Go to…")
+    |> click("[data-operation-id='goto']")
+    |> assert_has("[data-slot='palette-operation-input'] input[aria-label='destination']")
+    |> fill_in("[data-slot='palette-operation-input'] input", "destination", with: "Chapter Two")
+    |> assert_has("[data-slot='command-item']", text: "Chapter Two", timeout: 20_000)
+    |> click("[data-slot='command-item']", "Chapter Two")
+    |> evaluate(selected_operation_value_expression("Chapter Two"), fn visible? -> assert visible? end)
+    |> assert_has("[data-slot='command-item']", text: "Run operation")
+    |> click("[data-slot='command-item']", "Run operation")
+    |> assert_path("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}")
   end
 
   defp wait_for_palette(conn) do
@@ -75,5 +111,11 @@ defmodule StoryarnWeb.E2E.CommandPaletteTest do
 
   defp active_palette_input_expression do
     "document.activeElement?.getAttribute('data-slot') === 'command-input'"
+  end
+
+  defp selected_operation_value_expression(value) do
+    encoded_value = Jason.encode!(value)
+
+    "document.querySelector(\"[data-slot='palette-operation-input'] input\")?.value === #{encoded_value}"
   end
 end

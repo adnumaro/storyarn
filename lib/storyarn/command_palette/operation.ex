@@ -11,6 +11,8 @@ defmodule Storyarn.CommandPalette.Operation do
 
   schema "command_palette_operations" do
     field :event, :string
+    # Historical column name: this stores the client-generated execution ID
+    # used for idempotent replay, not the registered catalog operation ID.
     field :operation_id, :string
     field :result, :map
 

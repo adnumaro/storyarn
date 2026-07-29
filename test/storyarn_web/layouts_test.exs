@@ -15,6 +15,29 @@ defmodule StoryarnWeb.LayoutsTest do
 
   # ── flash_group/1 ───────────────────────────────────────────────────
 
+  describe "command_palette/1" do
+    test "passes the generated operation catalog to the LiveVue boundary" do
+      html =
+        render_component(&Layouts.command_palette/1,
+          socket: mock_socket(),
+          current_scope: %{user: nil}
+        )
+
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/CommandPalette")
+      catalog = vue.props["operation-catalog"]
+
+      assert Enum.map(catalog, & &1["id"]) ==
+               ~w(goto create delete run_command open_view)
+
+      assert Enum.all?(catalog, fn operation ->
+               Map.has_key?(operation, "parameters") and
+                 Map.has_key?(operation, "resultType") and
+                 Map.has_key?(operation, "help") and
+                 Enum.all?(operation["parameters"], &Map.has_key?(&1, "completionMode"))
+             end)
+    end
+  end
+
   describe "root/1" do
     test "renders brand icon metadata for browsers and search surfaces", %{conn: conn} do
       html =

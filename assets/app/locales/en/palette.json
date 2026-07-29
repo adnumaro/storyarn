@@ -3,6 +3,21 @@
     "title": "Command palette",
     "description": "Search and run commands",
     "placeholder": "Type a command or search…",
+    "help_keywords": "help capabilities commands actions",
+    "capabilities_title": "What Storyarn can do",
+    "capabilities_description": "Pick an operation to build it step by step.",
+    "recent_operations": "Recent operations",
+    "run_operation": "Run operation",
+    "operation_unavailable": {
+      "checking": "Checking availability…",
+      "availability_failed": "Storyarn couldn't verify whether this operation is available.",
+      "edit_content": "Requires edit access to at least one project.",
+      "commands": "No commands are available in this view.",
+      "views": "No views are available in this context."
+    },
+    "operation_options_failed": "Storyarn couldn't load the available options. Try again.",
+    "no_operation_options": "No matching options",
+    "no_deletable_content": "No sheets, flows or scenes are available to delete",
     "no_results": "No matching commands",
     "command_failed": "The command failed to run. Try again.",
     "ai_destination_failed": "The AI request was accepted, but its result view could not be opened.",
@@ -21,6 +36,69 @@
       "navigation": "Navigation",
       "view": "View",
       "actions": "Actions"
+    },
+    "operation_domains": {
+      "navigation": "Find and open",
+      "actions": "Actions"
+    },
+    "operations": {
+      "goto": {
+        "label": "Go to…",
+        "description": "Open a workspace, project, sheet, flow or scene by name.",
+        "example": "Go to Chapter 2",
+        "phrase": {
+          "prefix": "Go to"
+        },
+        "parameters": {
+          "destination": "destination"
+        }
+      },
+      "create": {
+        "label": "Create content…",
+        "description": "Create a sheet, flow or scene in a project you can edit.",
+        "example": "Create a flow in Veilbreak",
+        "phrase": {
+          "prefix": "Create",
+          "between": "in"
+        },
+        "parameters": {
+          "entity_type": "content type",
+          "project": "project"
+        }
+      },
+      "delete": {
+        "label": "Delete content…",
+        "description": "Find and delete a sheet, flow or scene you can edit.",
+        "example": "Delete Old draft",
+        "phrase": {
+          "prefix": "Delete"
+        },
+        "parameters": {
+          "entity": "sheet, flow or scene"
+        }
+      },
+      "run_command": {
+        "label": "Run a command…",
+        "description": "Run an action available in the current Storyarn view.",
+        "example": "Run Fit to view",
+        "phrase": {
+          "prefix": "Run"
+        },
+        "parameters": {
+          "command": "command"
+        }
+      },
+      "open_view": {
+        "label": "Open a view…",
+        "description": "Open a screen or settings destination available from the current view.",
+        "example": "Open Project settings",
+        "phrase": {
+          "prefix": "Open"
+        },
+        "parameters": {
+          "destination": "view"
+        }
+      }
     },
     "nav": {
       "projects": "Projects",

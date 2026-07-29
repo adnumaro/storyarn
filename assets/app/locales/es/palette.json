@@ -3,6 +3,21 @@
     "title": "Paleta de comandos",
     "description": "Busca y ejecuta comandos",
     "placeholder": "Escribe un comando o busca…",
+    "help_keywords": "ayuda capacidades comandos acciones help",
+    "capabilities_title": "Qué puede hacer Storyarn",
+    "capabilities_description": "Elige una operación para construirla paso a paso.",
+    "recent_operations": "Operaciones recientes",
+    "run_operation": "Ejecutar operación",
+    "operation_unavailable": {
+      "checking": "Comprobando disponibilidad…",
+      "availability_failed": "Storyarn no ha podido comprobar si esta operación está disponible.",
+      "edit_content": "Necesitas acceso de edición al menos a un proyecto.",
+      "commands": "No hay comandos disponibles en esta vista.",
+      "views": "No hay vistas disponibles en este contexto."
+    },
+    "operation_options_failed": "Storyarn no ha podido cargar las opciones disponibles. Inténtalo de nuevo.",
+    "no_operation_options": "No hay opciones que coincidan",
+    "no_deletable_content": "No hay fichas, flujos ni escenas que puedas eliminar",
     "no_results": "No hay comandos que coincidan",
     "command_failed": "El comando ha fallado al ejecutarse. Inténtalo de nuevo.",
     "ai_destination_failed": "La solicitud de IA fue aceptada, pero no se pudo abrir la vista del resultado.",
@@ -21,6 +36,69 @@
       "navigation": "Navegación",
       "view": "Vista",
       "actions": "Acciones"
+    },
+    "operation_domains": {
+      "navigation": "Buscar y abrir",
+      "actions": "Acciones"
+    },
+    "operations": {
+      "goto": {
+        "label": "Ir a…",
+        "description": "Abre un espacio de trabajo, proyecto, ficha, flujo o escena por su nombre.",
+        "example": "Ir a Capítulo 2",
+        "phrase": {
+          "prefix": "Ir a"
+        },
+        "parameters": {
+          "destination": "destino"
+        }
+      },
+      "create": {
+        "label": "Crear contenido…",
+        "description": "Crea una ficha, flujo o escena en un proyecto que puedas editar.",
+        "example": "Crear un flujo en Veilbreak",
+        "phrase": {
+          "prefix": "Crear",
+          "between": "en"
+        },
+        "parameters": {
+          "entity_type": "tipo de contenido",
+          "project": "proyecto"
+        }
+      },
+      "delete": {
+        "label": "Eliminar contenido…",
+        "description": "Busca y elimina una ficha, flujo o escena que puedas editar.",
+        "example": "Eliminar Borrador antiguo",
+        "phrase": {
+          "prefix": "Eliminar"
+        },
+        "parameters": {
+          "entity": "ficha, flujo o escena"
+        }
+      },
+      "run_command": {
+        "label": "Ejecutar un comando…",
+        "description": "Ejecuta una acción disponible en la vista actual de Storyarn.",
+        "example": "Ejecutar Encajar en pantalla",
+        "phrase": {
+          "prefix": "Ejecutar"
+        },
+        "parameters": {
+          "command": "comando"
+        }
+      },
+      "open_view": {
+        "label": "Abrir una vista…",
+        "description": "Abre una pantalla o ajuste disponible desde la vista actual.",
+        "example": "Abrir Ajustes del proyecto",
+        "phrase": {
+          "prefix": "Abrir"
+        },
+        "parameters": {
+          "destination": "vista"
+        }
+      }
     },
     "nav": {
       "projects": "Proyectos",

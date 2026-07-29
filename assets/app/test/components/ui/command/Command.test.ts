@@ -60,4 +60,39 @@ describe("Command", () => {
     expect(wrapper.findAll("[data-slot='command-item']")).toHaveLength(1);
     expect(wrapper.find("[data-slot='command-group']").attributes("hidden")).toBeUndefined();
   });
+
+  it("filters by an explicit searchText and reacts when that text changes", async () => {
+    const wrapper = mount({
+      components: {
+        Command,
+        CommandGroup,
+        CommandInput,
+        CommandItem,
+        CommandList,
+      },
+      template: `
+        <Command>
+          <CommandInput />
+          <CommandList>
+            <CommandGroup>
+              <CommandItem value="operation-id" :search-text="searchText">
+                Visible label
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      `,
+      data: () => ({ searchText: "Visible label Finds narrative content Example phrase" }),
+    });
+    const input = wrapper.find("[data-slot='command-input']");
+
+    await input.setValue("narrative");
+    expect(wrapper.findAll("[data-slot='command-item']")).toHaveLength(1);
+
+    await wrapper.setData({ searchText: "Visible label Another description" });
+    expect(wrapper.findAll("[data-slot='command-item']")).toHaveLength(0);
+
+    await wrapper.setData({ searchText: "Visible label Narrative content moved" });
+    expect(wrapper.findAll("[data-slot='command-item']")).toHaveLength(1);
+  });
 });

@@ -22,6 +22,9 @@ defmodule Storyarn.Analytics do
     "page viewed" => MapSet.new(~w(route_family)),
     "palette command executed" => MapSet.new(~w(command_id surface)),
     "palette opened" => MapSet.new(~w(surface)),
+    "palette operation abandoned" => MapSet.new(~w(operation_id surface)),
+    "palette operation completed" => MapSet.new(~w(operation_id surface)),
+    "palette operation selected" => MapSet.new(~w(operation_id surface)),
     "palette search no results" => MapSet.new(~w(query_length surface)),
     "project created" => MapSet.new(~w(project_id project_subtype project_type project_type_other workspace_id)),
     "project template installation requested" =>
