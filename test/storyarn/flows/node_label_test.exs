@@ -45,6 +45,36 @@ defmodule Storyarn.Flows.NodeLabelTest do
     end
   end
 
+  describe "type_label/1" do
+    test "matches the canonical flow-node vocabulary" do
+      assert %{
+               "annotation" => "Note",
+               "condition" => "Condition",
+               "dialogue" => "Dialogue",
+               "entry" => "Entry",
+               "exit" => "Exit",
+               "hub" => "Hub",
+               "instruction" => "Instruction",
+               "jump" => "Jump",
+               "sequence" => "Sequence",
+               "subflow" => "Subflow"
+             } ==
+               Map.new(
+                 ~w(annotation condition dialogue entry exit hub instruction jump sequence subflow),
+                 &{&1, NodeLabel.type_label(&1)}
+               )
+    end
+
+    test "translates known and generic fallback labels" do
+      Gettext.put_locale(Storyarn.Gettext, "es")
+
+      assert NodeLabel.for_node(%{type: "dialogue", data: %{}}) == "Diálogo"
+      assert NodeLabel.type_label("annotation") == "Nota"
+      assert NodeLabel.type_label("sequence") == "Secuencia"
+      assert NodeLabel.for_node(%{}) == "Nodo"
+    end
+  end
+
   describe "specific_for_node/1" do
     test "returns nil for nil data or a value without node data" do
       assert NodeLabel.specific_for_node(%{data: nil}) == nil

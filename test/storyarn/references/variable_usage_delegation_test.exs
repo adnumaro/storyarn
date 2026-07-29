@@ -113,10 +113,14 @@ defmodule Storyarn.References.VariableUsageDelegationTest do
 
       assert References.list_stale_node_ids_by_flow([context.flow.id]) ==
                Sheets.list_stale_node_ids_by_flow([context.flow.id])
+
+      assert References.list_stale_node_variable_refs_by_flow([context.flow.id]) ==
+               Sheets.list_stale_node_variable_refs_by_flow([context.flow.id])
     end
 
     test "short-circuits on an empty flow list", _context do
       assert References.list_stale_node_ids_by_flow([]) == %{}
+      assert References.list_stale_node_variable_refs_by_flow([]) == %{}
     end
   end
 

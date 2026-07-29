@@ -47,6 +47,57 @@ defmodule Storyarn.Flows.StructuralAnalysis.Topology do
   end
 
   @doc """
+  Builds topologies for already-loaded flows while resolving cross-flow node
+  data once for the whole batch.
+
+  Export validation already owns the selected flows with their nodes and
+  connections preloaded. Reusing them here avoids loading every topology in the
+  project and preserves the dashboard's batched reference resolution.
+  """
+  @spec from_loaded_many([Flow.t()]) :: [t()]
+  def from_loaded_many([]), do: []
+
+  def from_loaded_many(flows) when is_list(flows) do
+    flows
+    |> Enum.group_by(& &1.project_id)
+    |> Enum.flat_map(fn {project_id, project_flows} ->
+      nodes_by_flow =
+        Map.new(project_flows, fn flow ->
+          nodes =
+            Enum.map(
+              flow.nodes,
+              &%{
+                id: &1.id,
+                type: &1.type,
+                data: &1.data || %{}
+              }
+            )
+
+          {flow.id, nodes}
+        end)
+
+      all_nodes = nodes_by_flow |> Map.values() |> List.flatten()
+      subflow_cache = NodeCrud.batch_resolve_subflow_data(all_nodes, project_id)
+      exit_cache = NodeCrud.batch_resolve_exit_data(all_nodes, project_id)
+
+      Enum.map(project_flows, fn flow ->
+        nodes =
+          nodes_by_flow
+          |> Map.fetch!(flow.id)
+          |> resolve_nodes(project_id, subflow_cache, exit_cache)
+
+        build(
+          project_id,
+          flow.id,
+          flow.name,
+          nodes,
+          Enum.map(flow.connections, &normalize_connection/1)
+        )
+      end)
+    end)
+  end
+
+  @doc """
   Builds the topology from `Flows.serialize_for_canvas/2` output — node data
   is ALREADY resolved there (same `NodeCrud` resolution), so this path issues
   zero queries. Guarded by the from_serialized==DB parity test.

@@ -68,7 +68,17 @@ defmodule Storyarn.Exports.Serializers.Ink do
       {"metadata.json", Jason.encode!(metadata, pretty: true)}
     ]
 
-    {:ok, files ++ LocalizationCatalog.files(Map.get(project_data, :localization), opts, :generic)}
+    reachable_flow_node_ids = LocalizationCatalog.reachable_flow_node_ids(flows)
+
+    localization_files =
+      LocalizationCatalog.files(
+        Map.get(project_data, :localization),
+        opts,
+        :generic,
+        reachable_flow_node_ids
+      )
+
+    {:ok, files ++ localization_files}
   end
 
   @impl true
@@ -414,8 +424,10 @@ defmodule Storyarn.Exports.Serializers.Ink do
   defp collect_tunnel_targets(flows, flow_shortcuts_by_id) do
     flows
     |> Enum.flat_map(fn flow ->
+      reachable_node_ids = GraphTraversal.reachable_node_ids(flow)
+
       (flow.nodes || [])
-      |> Enum.filter(&(&1.type == "subflow"))
+      |> Enum.filter(&(&1.type == "subflow" and MapSet.member?(reachable_node_ids, &1.id)))
       |> Enum.map(&resolve_flow_shortcut(&1.data || %{}, flow_shortcuts_by_id))
       |> Enum.reject(&StringUtils.blank?/1)
     end)

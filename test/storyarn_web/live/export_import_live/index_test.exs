@@ -8,6 +8,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Imports
   alias Storyarn.Repo
   alias StoryarnWeb.ExportImportLive.Index
@@ -286,10 +287,13 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       sheet = sheet_fixture(project, %{name: "Variables"})
       flow = flow_fixture(project, %{name: "Stale References"})
 
-      node_fixture(flow, %{
-        type: "condition",
-        data: %{"condition" => condition(sheet.shortcut, "missing_variable")}
-      })
+      condition_node =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{"condition" => condition(sheet.shortcut, "missing_variable")}
+        })
+
+      connect_from_entry(flow, condition_node)
 
       {:ok, view, _html} = live(conn, export_url(project))
 
@@ -366,7 +370,11 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       project: project
     } do
       flow = flow_fixture(project, %{name: "Editorial"})
-      node_fixture(flow, %{type: "dialogue", data: %{"text" => "", "responses" => []}})
+
+      dialogue =
+        node_fixture(flow, %{type: "dialogue", data: %{"text" => "", "responses" => []}})
+
+      connect_from_entry(flow, dialogue)
       {:ok, view, _html} = live(conn, export_url(project))
 
       render_click(view, "validate_export", %{})
@@ -377,6 +385,49 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       assert finding["href"] ==
                ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
+    end
+
+    test "node health findings focus the affected node when only entity_id is available", %{
+      conn: conn,
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Stale Output"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Choose",
+            "localization_id" => "dialogue_stale_output",
+            "responses" => [%{"id" => "response_valid", "text" => "Continue"}]
+          }
+        })
+
+      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+
+      Repo.insert!(%FlowConnection{
+        flow_id: flow.id,
+        source_node_id: dialogue.id,
+        target_node_id: exit_node.id,
+        source_pin: "removed_response",
+        target_pin: "input"
+      })
+
+      connect_from_entry(flow, dialogue)
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_click(view, "validate_export", %{})
+
+      finding =
+        Enum.find(
+          export_config(view)["validation"]["errors"],
+          &(&1["rule"] == "invalid_output_pins")
+        )
+
+      base =
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+
+      assert finding["href"] == "#{base}?highlight=node:#{dialogue.id}"
     end
 
     test "loads entity counts asynchronously", %{conn: conn, project: project} do
@@ -446,6 +497,11 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     |> export_config()
     |> get_in(["validation", severity])
     |> Enum.any?(&(&1["rule"] == rule))
+  end
+
+  defp connect_from_entry(flow, node) do
+    entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
+    connection_fixture(flow, entry, node)
   end
 
   defp condition(sheet, variable) do

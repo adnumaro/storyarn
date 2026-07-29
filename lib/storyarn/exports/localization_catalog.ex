@@ -2,6 +2,7 @@ defmodule Storyarn.Exports.LocalizationCatalog do
   @moduledoc false
 
   alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
   alias Storyarn.Localization.ExportPolicy
   alias Storyarn.Localization.LocaleCode
@@ -33,13 +34,31 @@ defmodule Storyarn.Exports.LocalizationCatalog do
     end
   end
 
+  @type flow_node_scope :: :all | MapSet.t(String.t())
+
   @spec files(map() | nil, ExportOptions.t(), :generic | :godot | :unreal) ::
           [{String.t(), binary()}]
-  def files(_localization, %ExportOptions{include_localization: false}, _format), do: []
-  def files(nil, _opts, _format), do: []
+  def files(localization, opts, format), do: files(localization, opts, format, :all)
 
-  def files(localization, opts, :godot) do
-    rows = eligible_rows(localization, opts)
+  @doc """
+  Builds catalog files while restricting flow-node rows to nodes emitted by a
+  linear serializer.
+
+  Sheet and block rows remain eligible. The manifest uses the same effective
+  inventory, so its policy/readiness counts describe the artifact being
+  delivered rather than nodes discarded by graph traversal.
+  """
+  @spec files(
+          map() | nil,
+          ExportOptions.t(),
+          :generic | :godot | :unreal,
+          flow_node_scope()
+        ) :: [{String.t(), binary()}]
+  def files(_localization, %ExportOptions{include_localization: false}, _format, _scope), do: []
+  def files(nil, _opts, _format, _scope), do: []
+
+  def files(localization, opts, :godot, flow_node_scope) do
+    rows = eligible_rows(localization, opts, flow_node_scope)
     locales = rows |> Enum.map(& &1.locale) |> Enum.uniq() |> Enum.sort()
 
     catalog_files =
@@ -58,13 +77,13 @@ defmodule Storyarn.Exports.LocalizationCatalog do
         [{"translations.csv", Helpers.build_csv(["keys" | locales], matrix_rows)}]
       end
 
-    catalog_files ++ manifest_files(localization, opts)
+    catalog_files ++ manifest_files(localization, opts, flow_node_scope)
   end
 
-  def files(localization, opts, :unreal) do
+  def files(localization, opts, :unreal, flow_node_scope) do
     catalog_files =
       localization
-      |> eligible_rows(opts)
+      |> eligible_rows(opts, flow_node_scope)
       |> Enum.group_by(& &1.locale)
       |> Enum.sort_by(&elem(&1, 0))
       |> Enum.map(fn {locale, rows} ->
@@ -72,13 +91,13 @@ defmodule Storyarn.Exports.LocalizationCatalog do
         {"StringTable.#{locale}.csv", content}
       end)
 
-    catalog_files ++ manifest_files(localization, opts)
+    catalog_files ++ manifest_files(localization, opts, flow_node_scope)
   end
 
-  def files(localization, opts, :generic) do
+  def files(localization, opts, :generic, flow_node_scope) do
     catalog_files =
       localization
-      |> eligible_rows(opts)
+      |> eligible_rows(opts, flow_node_scope)
       |> Enum.group_by(& &1.locale)
       |> Enum.sort_by(&elem(&1, 0))
       |> Enum.map(fn {locale, rows} ->
@@ -88,15 +107,35 @@ defmodule Storyarn.Exports.LocalizationCatalog do
          Helpers.build_csv(["Key", "Text", "SourceType", "SourceId", "SourceField"], csv_rows)}
       end)
 
-    catalog_files ++ manifest_files(localization, opts)
+    catalog_files ++ manifest_files(localization, opts, flow_node_scope)
+  end
+
+  @doc """
+  Returns string-form IDs reached by the same traversal used by a linear
+  serializer. String normalization matches localization `source_id` values
+  coming from either database structs or map fixtures.
+  """
+  @spec reachable_flow_node_ids([map()], keyword()) :: MapSet.t(String.t())
+  def reachable_flow_node_ids(flows, traversal_opts \\ []) when is_list(flows) do
+    Enum.reduce(flows, MapSet.new(), fn flow, reachable_ids ->
+      flow
+      |> GraphTraversal.reachable_node_ids(traversal_opts)
+      |> Enum.reduce(reachable_ids, &MapSet.put(&2, to_string(&1)))
+    end)
   end
 
   @doc "Builds the machine-readable localization policy manifest sidecar."
-  def manifest_files(_localization, %ExportOptions{include_localization: false}), do: []
-  def manifest_files(nil, _opts), do: []
+  def manifest_files(localization, opts), do: manifest_files(localization, opts, :all)
 
-  def manifest_files(localization, opts) do
-    strings = target_strings(localization, opts)
+  @doc false
+  def manifest_files(_localization, %ExportOptions{include_localization: false}, _scope), do: []
+  def manifest_files(nil, _opts, _scope), do: []
+
+  def manifest_files(localization, opts, flow_node_scope) do
+    strings =
+      localization
+      |> target_strings(opts)
+      |> Enum.filter(&catalog_source_reachable?(&1, flow_node_scope))
 
     if strings == [] do
       []
@@ -148,10 +187,13 @@ defmodule Storyarn.Exports.LocalizationCatalog do
     }
   end
 
-  defp eligible_rows(localization, opts) do
+  defp eligible_rows(localization, opts, flow_node_scope) do
     localization
     |> target_strings(opts)
-    |> Enum.filter(&ExportPolicy.text_eligible?(&1, opts))
+    |> Enum.filter(
+      &(catalog_source_reachable?(&1, flow_node_scope) and
+          ExportPolicy.text_eligible?(&1, opts))
+    )
     |> Enum.map(fn text ->
       source_type = attr(text, :source_type)
       source_id = attr(text, :source_id)
@@ -167,6 +209,19 @@ defmodule Storyarn.Exports.LocalizationCatalog do
       }
     end)
     |> Enum.sort_by(&{&1.locale, &1.key})
+  end
+
+  defp catalog_source_reachable?(_text, :all), do: true
+
+  defp catalog_source_reachable?(text, %MapSet{} = reachable_flow_node_ids) do
+    if attr(text, :source_type) == "flow_node" do
+      case attr(text, :source_id) do
+        nil -> false
+        source_id -> MapSet.member?(reachable_flow_node_ids, to_string(source_id))
+      end
+    else
+      true
+    end
   end
 
   defp target_strings(localization, opts) do

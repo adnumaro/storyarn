@@ -17,7 +17,9 @@ defmodule Storyarn.Exports.ValidatorHealthBoundaryTest do
     %{project: project_fixture(user_fixture())}
   end
 
-  test "authoring-only structural health does not reach export", %{project: project} do
+  test "artifact loss is reported without leaking authoring-only structural rules", %{
+    project: project
+  } do
     flow = flow_fixture(project, %{name: "Authoring Health"})
     speaker = sheet_fixture(project, %{name: "Speaker"})
 
@@ -36,6 +38,7 @@ defmodule Storyarn.Exports.ValidatorHealthBoundaryTest do
     result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
     export_rules = MapSet.new(result.errors ++ result.warnings ++ result.info, & &1.rule)
 
+    assert :unreachable_node in export_rules
     refute :orphan_nodes in export_rules
     refute :unreachable_nodes in export_rules
     refute :isolated_node in export_rules
@@ -99,6 +102,9 @@ defmodule Storyarn.Exports.ValidatorHealthBoundaryTest do
       target_pin: "input"
     })
 
+    entry = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
+    connection_fixture(flow, entry, dialogue)
+
     result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
     assert result.status == :errors
@@ -109,16 +115,63 @@ defmodule Storyarn.Exports.ValidatorHealthBoundaryTest do
            )
   end
 
+  test "unreachable nodes do not block or inflate editorial summaries", %{project: project} do
+    flow = flow_fixture(project, %{name: "Discarded Branch"})
+
+    dialogue =
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{
+          "text" => "",
+          "speaker_sheet_id" => nil,
+          "localization_id" => "discarded_dialogue",
+          "responses" => [%{"id" => "response_valid", "text" => "Continue"}]
+        }
+      })
+
+    exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+
+    Repo.insert!(%FlowConnection{
+      flow_id: flow.id,
+      source_node_id: dialogue.id,
+      target_node_id: exit_node.id,
+      source_pin: "removed_response",
+      target_pin: "input"
+    })
+
+    dashboard = Flows.list_dashboard_health_findings(project.id)
+    assert Enum.any?(dashboard, &(&1.code == :invalid_output_pins and &1.entity_id == dialogue.id))
+    assert Enum.any?(dashboard, &(&1.code == :missing_dialogue_text and &1.entity_id == dialogue.id))
+
+    result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
+
+    assert Enum.any?(result.warnings, &(&1.rule == :unreachable_node and &1.entity_id == dialogue.id))
+    refute Enum.any?(result.errors, &(&1.rule == :invalid_output_pins))
+    refute Enum.any?(result.warnings, &(&1.rule == :empty_dialogue))
+    refute Enum.any?(result.warnings, &(&1.rule == :missing_speakers))
+  end
+
   test "editorial summaries use canonical health and respect partial selection", %{project: project} do
     selected = flow_fixture(project, %{name: "Selected"})
     excluded = flow_fixture(project, %{name: "Excluded"})
 
-    for flow <- [selected, selected, excluded] do
-      node_fixture(flow, %{
-        type: "dialogue",
-        data: %{"text" => "", "speaker_sheet_id" => nil}
-      })
-    end
+    selected_dialogues =
+      for flow <- [selected, selected] do
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "", "speaker_sheet_id" => nil}
+        })
+      end
+
+    node_fixture(excluded, %{
+      type: "dialogue",
+      data: %{"text" => "", "speaker_sheet_id" => nil}
+    })
+
+    entry = selected.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
+    [first, second] = selected_dialogues
+    connection_fixture(selected, entry, first)
+    connection_fixture(selected, first, second)
 
     dashboard = Flows.list_dashboard_health_findings(project.id)
     assert Enum.count(dashboard, &(&1.code == :missing_dialogue_text)) == 3

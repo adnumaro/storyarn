@@ -12,6 +12,7 @@ defmodule Storyarn.Exports.Validator do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Flows
   alias Storyarn.Localization
+  alias Storyarn.References
   alias Storyarn.Sheets
 
   @artifact_health_codes [
@@ -52,8 +53,38 @@ defmodule Storyarn.Exports.Validator do
   format it was exporting as got validated against a different one.
   """
   def validate_project(project_id, %ExportOptions{} = opts) do
-    findings = run_all_checks(project_id, opts)
+    validation_data = load_validation_data(project_id, opts)
 
+    project_id
+    |> run_checks_with_data(opts, validation_data)
+    |> build_result(project_id)
+  end
+
+  @doc """
+  Validate and return preloaded data for reuse by DataCollector.
+
+  Returns the result together with every export section already loaded by
+  validation: selected flows, selected full sheets, and the project-wide flow
+  shortcut map used to resolve cross-flow references.
+  """
+  def validate_with_data(project_id, %ExportOptions{} = opts) do
+    validation_data = load_validation_data(project_id, opts)
+
+    result =
+      project_id
+      |> run_checks_with_data(opts, validation_data)
+      |> build_result(project_id)
+
+    preloaded = %{
+      flows: validation_data.flows,
+      sheets: validation_data.sheets,
+      flow_shortcuts_by_id: Map.new(validation_data.active_flows, &{to_string(&1.id), &1.shortcut})
+    }
+
+    {result, preloaded}
+  end
+
+  defp build_result(findings, project_id) do
     errors = Enum.filter(findings, &(&1.level == :error))
     warnings = Enum.filter(findings, &(&1.level == :warning))
     info = Enum.filter(findings, &(&1.level == :info))
@@ -80,73 +111,41 @@ defmodule Storyarn.Exports.Validator do
     }
   end
 
-  @doc """
-  Validate and return preloaded data for reuse by DataCollector.
+  defp run_checks_with_data(project_id, opts, validation_data) do
+    effective_flow_result =
+      ArtifactValidator.effective_flows(opts.format, validation_data.flows)
 
-  Returns `{%ValidationResult{}, %{flows: flows_data}}` so that the caller
-  can thread the already-loaded flows into the data collection step.
-  """
-  def validate_with_data(project_id, %ExportOptions{} = opts) do
-    flows_data = load_flows_data(project_id, opts)
-    sheets = load_sheets(project_id, opts)
-
-    findings = run_checks_with_data(project_id, opts, flows_data, sheets)
-
-    errors = Enum.filter(findings, &(&1.level == :error))
-    warnings = Enum.filter(findings, &(&1.level == :warning))
-    info = Enum.filter(findings, &(&1.level == :info))
-
-    status =
-      cond do
-        errors != [] -> :errors
-        warnings != [] -> :warnings
-        true -> :passed
-      end
-
-    result = %ValidationResult{
-      status: status,
-      errors: errors,
-      warnings: warnings,
-      info: info,
-      statistics: %{
-        project_id: project_id,
-        total_findings: length(findings),
-        error_count: length(errors),
-        warning_count: length(warnings),
-        info_count: length(info)
-      }
+    artifact_context = %{
+      active_flows: validation_data.active_flows,
+      referenceable_variables: validation_data.referenceable_variables,
+      stale_node_variable_refs_by_flow: validation_data.stale_node_variable_refs_by_flow,
+      stale_node_ids_by_flow: validation_data.stale_node_ids_by_flow,
+      effective_flow_result: effective_flow_result
     }
 
-    {result, %{flows: flows_data}}
-  end
-
-  defp run_checks_with_data(project_id, opts, flows_data, sheets) do
-    checks = [
-      fn -> ArtifactValidator.findings(project_id, opts, flows_data, sheets) end,
-      fn -> check_canonical_flow_health(project_id, flows_data) end,
-      fn -> check_circular_subflows(flows_data) end,
-      fn -> check_missing_translations(project_id, opts) end,
-      fn -> check_orphan_sheets(project_id, sheets) end
-    ]
-
-    Enum.flat_map(checks, fn check -> check.() end)
-  end
-
-  # =============================================================================
-  # Check runner
-  # =============================================================================
-
-  defp run_all_checks(project_id, opts) do
-    # Load data needed for multiple checks
-    flows_data = load_flows_data(project_id, opts)
-    sheets = load_sheets(project_id, opts)
+    {artifact_flows, _reachability_findings} = effective_flow_result
 
     checks = [
-      fn -> ArtifactValidator.findings(project_id, opts, flows_data, sheets) end,
-      fn -> check_canonical_flow_health(project_id, flows_data) end,
-      fn -> check_circular_subflows(flows_data) end,
-      fn -> check_missing_translations(project_id, opts) end,
-      fn -> check_orphan_sheets(project_id, sheets) end
+      fn ->
+        ArtifactValidator.findings(
+          project_id,
+          opts,
+          validation_data.flows,
+          validation_data.sheets,
+          artifact_context
+        )
+      end,
+      fn ->
+        check_canonical_flow_health(
+          project_id,
+          validation_data.flows,
+          artifact_flows,
+          artifact_context
+        )
+      end,
+      fn -> check_circular_subflows(artifact_flows) end,
+      fn -> check_missing_translations(project_id, opts, artifact_flows) end,
+      fn -> check_orphan_sheets(project_id, validation_data.sheets) end
     ]
 
     Enum.flat_map(checks, fn check -> check.() end)
@@ -155,6 +154,40 @@ defmodule Storyarn.Exports.Validator do
   # =============================================================================
   # Data loading
   # =============================================================================
+
+  defp load_validation_data(project_id, opts) do
+    flows = load_flows_data(project_id, opts)
+    sheets = load_sheets(project_id, opts)
+    active_flows = load_active_flows(project_id, opts, flows)
+
+    referenceable_variables =
+      if flows == [], do: [], else: Flows.list_referenceable_variables(project_id)
+
+    stale_node_variable_refs_by_flow =
+      flows
+      |> Enum.map(& &1.id)
+      |> References.list_stale_node_variable_refs_by_flow()
+
+    stale_node_ids_by_flow =
+      Map.new(stale_node_variable_refs_by_flow, fn {flow_id, refs_by_node} ->
+        {flow_id, refs_by_node |> Map.keys() |> MapSet.new()}
+      end)
+
+    %{
+      flows: flows,
+      sheets: sheets,
+      active_flows: active_flows,
+      referenceable_variables: referenceable_variables,
+      stale_node_variable_refs_by_flow: stale_node_variable_refs_by_flow,
+      stale_node_ids_by_flow: stale_node_ids_by_flow
+    }
+  end
+
+  defp load_active_flows(_project_id, %{include_flows: true, flow_ids: :all}, flows), do: flows
+
+  defp load_active_flows(project_id, _opts, flows) when flows != [], do: Flows.list_flows(project_id)
+
+  defp load_active_flows(_project_id, _opts, _flows), do: []
 
   defp load_flows_data(_project_id, %ExportOptions{include_flows: false}), do: []
 
@@ -171,28 +204,31 @@ defmodule Storyarn.Exports.Validator do
   defp load_sheets(_project_id, %ExportOptions{include_sheets: false}), do: []
 
   defp load_sheets(project_id, %ExportOptions{sheet_ids: :all}) do
-    Sheets.list_sheets_brief(project_id)
+    Sheets.list_sheets_for_export(project_id)
   end
 
   defp load_sheets(_project_id, %ExportOptions{sheet_ids: []}), do: []
 
   defp load_sheets(project_id, %ExportOptions{sheet_ids: sheet_ids}) do
-    Sheets.list_sheets_brief(project_id, filter_ids: sheet_ids)
+    Sheets.list_sheets_for_export(project_id, filter_ids: sheet_ids)
   end
 
   # Export consumes canonical health as a boundary, never as a second dashboard.
   # Only health that invalidates every target artifact crosses that boundary;
   # editorial quality is reduced to summaries that link back to the dashboard,
   # where the individual authoring findings already live.
-  defp check_canonical_flow_health(_project_id, []), do: []
+  defp check_canonical_flow_health(_project_id, [], _artifact_flows, _context), do: []
 
-  defp check_canonical_flow_health(project_id, flows) do
-    selected_flow_ids = MapSet.new(flows, & &1.id)
+  defp check_canonical_flow_health(project_id, flows, artifact_flows, context) do
+    effective_nodes =
+      Map.new(artifact_flows, fn flow ->
+        {flow.id, MapSet.new(flow.nodes || [], & &1.id)}
+      end)
 
     health_findings =
       project_id
-      |> Flows.list_dashboard_health_findings()
-      |> Enum.filter(&MapSet.member?(selected_flow_ids, &1.flow_id))
+      |> Flows.list_export_health_findings(flows, context)
+      |> Enum.filter(&effective_health_finding?(&1, effective_nodes))
 
     artifact_findings =
       health_findings
@@ -200,6 +236,14 @@ defmodule Storyarn.Exports.Validator do
       |> Enum.map(&artifact_health_finding/1)
 
     artifact_findings ++ aggregate_editorial_findings(health_findings)
+  end
+
+  defp effective_health_finding?(%{entity_id: nil}, _effective_nodes), do: true
+
+  defp effective_health_finding?(finding, effective_nodes) do
+    effective_nodes
+    |> Map.get(finding.flow_id, MapSet.new())
+    |> MapSet.member?(finding.entity_id)
   end
 
   defp artifact_health_finding(%{code: :missing_entry, flow_id: flow_id, details: details}) do
@@ -357,9 +401,9 @@ defmodule Storyarn.Exports.Validator do
   # Check: missing_translations (warning)
   # =============================================================================
 
-  defp check_missing_translations(_project_id, %ExportOptions{include_localization: false}), do: []
+  defp check_missing_translations(_project_id, %ExportOptions{include_localization: false}, _artifact_flows), do: []
 
-  defp check_missing_translations(project_id, opts) do
+  defp check_missing_translations(project_id, opts, artifact_flows) do
     languages =
       project_id
       |> Localization.list_target_locale_codes()
@@ -368,15 +412,21 @@ defmodule Storyarn.Exports.Validator do
     if languages == [] do
       []
     else
-      do_check_missing_translations(project_id, languages, opts)
+      do_check_missing_translations(project_id, languages, opts, artifact_flows)
     end
   end
 
   defp selected_locales(locales, :all), do: locales
   defp selected_locales(locales, selected), do: Enum.filter(locales, &(&1 in selected))
 
-  defp do_check_missing_translations(project_id, languages, opts) do
-    readiness = Localization.export_readiness_by_locale(project_id, languages, opts)
+  defp do_check_missing_translations(project_id, languages, opts, artifact_flows) do
+    flow_node_ids =
+      for flow <- artifact_flows,
+          node <- flow.nodes,
+          do: node.id
+
+    readiness =
+      Localization.export_readiness_by_locale(project_id, languages, opts, flow_node_ids)
 
     Enum.flat_map(languages, fn locale ->
       counts = Map.get(readiness, locale, %{total: 0, preview_ready: 0, release_ready: 0})

@@ -3,6 +3,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
@@ -10,6 +11,7 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.Serializers.GodotDialogic
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Localization
   alias Storyarn.Repo
 
   # =============================================================================
@@ -51,6 +53,23 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
     {_name, content} = Enum.find(files, fn {name, _} -> name == "metadata.json" end)
     Jason.decode!(content)
   end
+
+  defp invalidate_collected_localization_id(project_data, node_id) do
+    update_in(
+      project_data.flows,
+      &Enum.map(&1, fn flow -> invalidate_flow_localization_id(flow, node_id) end)
+    )
+  end
+
+  defp invalidate_flow_localization_id(flow, node_id) do
+    nodes = Enum.map(flow.nodes || [], &invalidate_node_localization_id(&1, node_id))
+    %{flow | nodes: nodes}
+  end
+
+  defp invalidate_node_localization_id(%{id: node_id} = node, node_id),
+    do: %{node | data: Map.put(node.data || %{}, "localization_id", nil)}
+
+  defp invalidate_node_localization_id(node, _node_id), do: node
 
   defp lines(source), do: String.split(source, "\n")
 
@@ -107,6 +126,80 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       meta = metadata(export_dialogic(project))
       assert meta["storyarn_dialogic_metadata"] == "1.0.0"
       assert is_binary(meta["project"])
+    end
+  end
+
+  describe "localization catalog reachability" do
+    setup [:create_project]
+
+    test "omits an unreachable invalid dialogue but keeps a dialogue emitted through a hub", %{
+      project: project
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      flow = project |> flow_fixture(%{name: "Localized Dialogic"}) |> reload_flow()
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      unreachable =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Discarded source", "responses" => []}
+        })
+
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "localized_hub", "label" => "Localized hub"}
+        })
+
+      reachable =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Hub source", "responses" => []}
+        })
+
+      connection_fixture(flow, entry, hub)
+      connection_fixture(flow, hub, reachable)
+
+      [unreachable_text] = Localization.get_texts_for_source("flow_node", unreachable.id)
+      [reachable_text] = Localization.get_texts_for_source("flow_node", reachable.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(unreachable_text, %{
+                 translated_text: "No debe salir",
+                 status: "final"
+               })
+
+      assert {:ok, _text} =
+               Localization.update_text(reachable_text, %{
+                 translated_text: "Desde el hub",
+                 status: "final"
+               })
+
+      opts = default_opts()
+
+      project_data =
+        project.id
+        |> DataCollector.collect(opts)
+        |> invalidate_collected_localization_id(unreachable.id)
+
+      assert {:ok, files} = GodotDialogic.serialize(project_data, opts)
+
+      source = dtl_source(files)
+      assert source =~ "Hub source"
+      refute source =~ "Discarded source"
+
+      assert {"translations.csv", catalog} =
+               List.keyfind(files, "translations.csv", 0)
+
+      assert catalog =~ "Desde el hub"
+      refute catalog =~ "No debe salir"
+
+      assert {"localization-manifest.json", manifest_json} =
+               List.keyfind(files, "localization-manifest.json", 0)
+
+      assert Jason.decode!(manifest_json)["totalStrings"] == 1
     end
   end
 
@@ -636,16 +729,24 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       refute Enum.any?(files, fn {name, _content} -> name == "side_quest.dtl" end)
     end
 
-    test "exit in subflow target emits return", %{project: project} do
-      target_flow = flow_fixture(project, %{name: "Side Quest"})
+    test "only a reachable subflow target returns, including through a hub", %{
+      project: project
+    } do
+      target_flow = flow_fixture(project, %{name: "Side Quest", shortcut: "side-quest"})
       target_flow = reload_flow(target_flow)
       target_entry = Enum.find(target_flow.nodes, &(&1.type == "entry"))
       target_exit = node_fixture(target_flow, %{type: "exit", data: %{}})
       connection_fixture(target_flow, target_entry, target_exit)
 
-      caller_flow = flow_fixture(project, %{name: "Main"})
+      caller_flow = flow_fixture(project, %{name: "Main", shortcut: "main"})
       caller_flow = reload_flow(caller_flow)
       caller_entry = Enum.find(caller_flow.nodes, &(&1.type == "entry"))
+
+      hub =
+        node_fixture(caller_flow, %{
+          type: "hub",
+          data: %{"hub_id" => "subflow_hub", "label" => "Subflow hub"}
+        })
 
       subflow =
         node_fixture(caller_flow, %{
@@ -653,24 +754,24 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
           data: %{"referenced_flow_id" => target_flow.id}
         })
 
-      after_dialogue =
-        node_fixture(caller_flow, %{
-          type: "dialogue",
-          data: %{"text" => "Back!", "speaker_sheet_id" => nil, "responses" => []}
-        })
+      disconnected_target_source =
+        project
+        |> export_dialogic()
+        |> dtl_source_for(target_flow)
 
-      connection_fixture(caller_flow, caller_entry, subflow)
+      assert has_line?(disconnected_target_source, "[end_timeline]")
+      refute has_line?(disconnected_target_source, "return")
 
-      connection_fixture(caller_flow, subflow, after_dialogue, %{
-        source_pin: "exit_#{target_exit.id}"
-      })
+      connection_fixture(caller_flow, caller_entry, hub)
+      connection_fixture(caller_flow, hub, subflow)
 
-      files = export_dialogic(project)
-      target_source = dtl_source_for(files, target_flow)
-      caller_source = dtl_source_for(files, caller_flow)
+      reachable_target_source =
+        project
+        |> export_dialogic()
+        |> dtl_source_for(target_flow)
 
-      assert has_line?(target_source, "return")
-      assert caller_source =~ "Back!"
+      assert has_line?(reachable_target_source, "return")
+      refute has_line?(reachable_target_source, "[end_timeline]")
     end
 
     test "exit with flow_reference mode jumps to referenced timeline", %{project: project} do

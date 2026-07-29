@@ -121,6 +121,12 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     "#{base}?highlight=node:#{node_id}"
   end
 
+  defp finding_href(%{flow_id: flow_id, entity_type: entity_type, entity_id: entity_id}, assigns)
+       when entity_type != "flow" and not is_nil(entity_id) do
+    base = ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows/#{flow_id}"
+    "#{base}?highlight=node:#{entity_id}"
+  end
+
   defp finding_href(%{flow_id: flow_id}, assigns) do
     ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows/#{flow_id}"
   end

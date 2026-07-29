@@ -82,6 +82,34 @@ defmodule Storyarn.Exports.LocalizationCatalogTest do
     refute Enum.any?(files, fn {name, _content} -> name == "localization.en.csv" end)
   end
 
+  test "reachable scope removes only discarded flow nodes from catalogs and manifest" do
+    localization = %{
+      languages: [
+        %{locale_code: "en", is_source: true},
+        %{locale_code: "es", is_source: false}
+      ],
+      strings: [
+        text(1, "Reachable dialogue", "final", "hash", nil),
+        text(2, "Discarded dialogue", "final", "hash", nil),
+        source_text(3, "block", "value.content", "block.hero.bio", "Block value"),
+        source_text(4, "sheet", "name", "sheet.hero.name", "Sheet name")
+      ]
+    }
+
+    opts = %ExportOptions{format: :unreal, localization_policy: :release}
+    files = LocalizationCatalog.files(localization, opts, :generic, MapSet.new(["1"]))
+
+    assert {"localization.es.csv", csv} = List.keyfind(files, "localization.es.csv", 0)
+    assert csv =~ "Reachable dialogue"
+    refute csv =~ "Discarded dialogue"
+    assert csv =~ "Block value"
+    assert csv =~ "Sheet name"
+
+    manifest = manifest(files)
+    assert manifest["totalStrings"] == 3
+    assert manifest["exportedStrings"] == 3
+  end
+
   defp manifest(files) do
     {"localization-manifest.json", json} = List.keyfind(files, "localization-manifest.json", 0)
     Jason.decode!(json)
@@ -118,6 +146,21 @@ defmodule Storyarn.Exports.LocalizationCatalogTest do
       source_text_hash: "hash",
       translated_source_hash: translated_hash,
       archived_at: archived_at
+    }
+  end
+
+  defp source_text(id, source_type, source_field, localization_key, translation) do
+    %{
+      source_type: source_type,
+      source_id: id,
+      source_field: source_field,
+      localization_key: localization_key,
+      locale_code: "es",
+      translated_text: translation,
+      status: "final",
+      source_text_hash: "hash",
+      translated_source_hash: "hash",
+      archived_at: nil
     }
   end
 end

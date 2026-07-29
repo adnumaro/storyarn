@@ -348,7 +348,7 @@
       "error_findings": "Blocking issues",
       "warning_findings": "Warnings",
       "info_findings": "Additional information",
-      "more_findings": "{count} more findings are not shown.",
+      "more_findings": "{count} more finding is not shown. | {count} more findings are not shown.",
       "no_issues": "No issues found. Project is ready for export."
     }
   }

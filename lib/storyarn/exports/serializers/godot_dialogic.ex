@@ -56,7 +56,16 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
 
     metadata = build_metadata(project_data.project, sheets, variables, flows)
 
-    localization_files = LocalizationCatalog.files(Map.get(project_data, :localization), opts, :godot)
+    reachable_flow_node_ids = LocalizationCatalog.reachable_flow_node_ids(flows)
+
+    localization_files =
+      LocalizationCatalog.files(
+        Map.get(project_data, :localization),
+        opts,
+        :godot,
+        reachable_flow_node_ids
+      )
+
     {:ok, dtl_files ++ [{"metadata.json", Jason.encode!(metadata, pretty: true)}] ++ localization_files}
   end
 
@@ -315,8 +324,10 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
   defp collect_return_targets(flows, flow_shortcuts_by_id) do
     flows
     |> Enum.flat_map(fn flow ->
+      reachable_node_ids = GraphTraversal.reachable_node_ids(flow)
+
       (flow.nodes || [])
-      |> Enum.filter(&(&1.type == "subflow"))
+      |> Enum.filter(&(&1.type == "subflow" and MapSet.member?(reachable_node_ids, &1.id)))
       |> Enum.map(&resolve_flow_shortcut(&1.data || %{}, flow_shortcuts_by_id))
       |> Enum.reject(&StringUtils.blank?/1)
     end)

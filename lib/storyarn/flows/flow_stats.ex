@@ -122,24 +122,46 @@ defmodule Storyarn.Flows.FlowStats do
   made it the only O(N) sweep of the three. The dashboard also caches it for 30s.
   """
   def list_dashboard_health_findings(project_id) do
+    project_id
+    |> Topology.load_project()
+    |> health_findings(project_id, %{})
+  end
+
+  @doc """
+  Health findings for an already-loaded export selection.
+
+  Uses the same canonical health composition as the dashboard, but scopes graph
+  work and stale-reference loading to the flows selected for the artifact.
+  Callers that already loaded the project variable catalogue and stale-reference
+  index may pass both in `context` to keep the whole validation pass query-flat.
+  """
+  def list_export_health_findings(project_id, flows, context \\ %{}) when is_list(flows) and is_map(context) do
+    flows
+    |> Topology.from_loaded_many()
+    |> health_findings(project_id, context)
+  end
+
+  defp health_findings(topologies, project_id, context) do
     # The SAME set the editor uses, or the two surfaces disagree about type
     # warnings on any assignment to a scene pin or zone property. Keyed ONCE for
     # the whole sweep: rebuilt per node this was 1599 ms of a 1666 ms sweep at
     # 200 flows / 4000 variables — 96% of it.
     variable_types =
-      project_id
-      |> Flows.list_referenceable_variables()
+      context
+      |> Map.get_lazy(:referenceable_variables, fn ->
+        Flows.list_referenceable_variables(project_id)
+      end)
       |> Flows.variable_type_map()
-
-    topologies = Topology.load_project(project_id)
 
     # Batched, like the sheets and scenes sweeps: the per-flow pair of
     # stale-reference queries made this O(N) — 2 queries per flow — while the
     # other two domains are flat. Two queries total now.
     stale_by_flow =
-      topologies
-      |> Enum.map(& &1.flow_id)
-      |> References.list_stale_node_ids_by_flow()
+      Map.get_lazy(context, :stale_node_ids_by_flow, fn ->
+        topologies
+        |> Enum.map(& &1.flow_id)
+        |> References.list_stale_node_ids_by_flow()
+      end)
 
     Enum.flat_map(topologies, fn topology ->
       stale_node_ids = Map.get(stale_by_flow, topology.flow_id, MapSet.new())

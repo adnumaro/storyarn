@@ -363,6 +363,8 @@ defmodule StoryarnWeb.ExportControllerTest do
     } do
       flow = flow_fixture(project, %{name: "Localized flow"})
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello", "responses" => []}})
+      entry = Enum.find(Storyarn.Flows.list_nodes(flow.id), &(&1.type == "entry"))
+      connection_fixture(flow, entry, node)
       source_language_fixture(project, %{locale_code: "en", name: "English"})
       language_fixture(project, %{locale_code: "es", name: "Spanish"})
 

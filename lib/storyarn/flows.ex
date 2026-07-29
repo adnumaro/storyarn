@@ -1113,6 +1113,9 @@ defmodule Storyarn.Flows do
   @doc "Project-wide flow health findings for the dashboard (canonical shape)."
   defdelegate list_dashboard_health_findings(project_id), to: FlowStats
 
+  @doc "Canonical flow health findings scoped to already-loaded export flows."
+  defdelegate list_export_health_findings(project_id, flows, context \\ %{}), to: FlowStats
+
   @doc """
   Runs the canonical structural analysis for one flow.
   Returns `{:ok, %StructuralAnalysis.Analysis{}}` with deterministic findings.

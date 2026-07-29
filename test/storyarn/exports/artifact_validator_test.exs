@@ -4,14 +4,17 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Exports.ArtifactValidator
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets
 
   setup do
     user = user_fixture()
@@ -62,7 +65,7 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
            ]
   end
 
-  test "uses only variables declared by selected, active sheets", %{project: project} do
+  test "variable liveness is independent from the selected sheets", %{project: project} do
     selected = sheet_fixture(project, %{name: "Selected", shortcut: "selected"})
     _selected_block = block_fixture(selected, %{variable_name: "present"})
 
@@ -79,7 +82,7 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
     selected_only = [sheet_brief(selected)]
     all_sheets = [sheet_brief(selected), sheet_brief(excluded)]
 
-    assert Enum.any?(
+    refute Enum.any?(
              findings(project.id, :ink, [flow], selected_only),
              &(&1.rule == :stale_variable_reference and &1.node_id == 201)
            )
@@ -97,6 +100,178 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
              findings(project.id, :ink, [flow], all_sheets),
              &(&1.rule == :stale_variable_reference and &1.node_id == 201)
            )
+  end
+
+  test "pin and zone variables are live references", %{
+    project: project
+  } do
+    scene = scene_fixture(project)
+    pin = pin_fixture(scene, %{"label" => "Gate", "shortcut" => "gate"})
+    zone = zone_fixture(scene, %{"name" => "Courtyard", "shortcut" => "courtyard"})
+
+    flow =
+      flow(21, "Scene variables", "scene-variables", [
+        node(211, "condition", %{
+          "condition" => condition(pin.shortcut, "hidden", "equals")
+        }),
+        node(212, "condition", %{
+          "condition" => condition(zone.shortcut, "hidden", "equals")
+        })
+      ])
+
+    ink = findings(project.id, :ink, [flow], [])
+    yarn = findings(project.id, :yarn, [flow], [])
+
+    refute Enum.any?(
+             ink ++ yarn,
+             &(&1.rule == :stale_variable_reference and &1.node_id in [211, 212])
+           )
+  end
+
+  test "uses tracked reference identity when a stale shortcut resolves to another variable", %{
+    project: project
+  } do
+    original = sheet_fixture(project, %{name: "Original hero", shortcut: "hero"})
+    original_block = block_fixture(original, %{variable_name: "health"})
+    persisted_flow = flow_fixture(project, %{name: "Tracked reference"})
+
+    instruction =
+      node_fixture(persisted_flow, %{
+        type: "instruction",
+        data: %{
+          "assignments" => [
+            assignment(original.shortcut, original_block.variable_name)
+          ]
+        }
+      })
+
+    :ok = References.update_flow_node_variable_references(instruction)
+
+    persisted_flow = Repo.preload(persisted_flow, [:nodes, :connections], force: true)
+    entry = Enum.find(persisted_flow.nodes, &(&1.type == "entry"))
+    Storyarn.FlowsFixtures.connection_fixture(persisted_flow, entry, instruction)
+
+    {:ok, _renamed} = Sheets.update_sheet(original, %{shortcut: "protagonist"})
+    replacement = sheet_fixture(project, %{name: "Replacement hero", shortcut: "hero"})
+    _replacement_block = block_fixture(replacement, %{variable_name: "health"})
+
+    persisted_flow = Repo.preload(persisted_flow, [:nodes, :connections], force: true)
+
+    finding =
+      project.id
+      |> findings(:ink, [persisted_flow], [])
+      |> Enum.find(&(&1.rule == :stale_variable_reference and &1.node_id == instruction.id))
+
+    assert finding.level == :error
+    assert finding.details.references == ["hero.health"]
+    assert finding.details.tracked_reference_stale
+  end
+
+  test "tracked stale draft refs do not taint live condition or instruction rows", %{
+    project: project
+  } do
+    original = sheet_fixture(project, %{name: "Original hero", shortcut: "hero"})
+    original_block = block_fixture(original, %{variable_name: "health"})
+    live_sheet = sheet_fixture(project, %{name: "State", shortcut: "state"})
+    live_block = block_fixture(live_sheet, %{variable_name: "ready", type: "boolean"})
+    persisted_flow = flow_fixture(project, %{name: "Tracked draft references"})
+
+    stale_draft_rule = %{
+      "id" => "stale-draft",
+      "sheet" => original.shortcut,
+      "variable" => original_block.variable_name,
+      "operator" => nil,
+      "value" => nil
+    }
+
+    live_rule = %{
+      "id" => "live",
+      "sheet" => live_sheet.shortcut,
+      "variable" => live_block.variable_name,
+      "operator" => "is_true",
+      "value" => nil
+    }
+
+    condition_with = fn rules ->
+      %{
+        "logic" => "all",
+        "blocks" => [
+          %{"id" => "block", "type" => "block", "logic" => "all", "rules" => rules}
+        ]
+      }
+    end
+
+    stale_draft_assignment =
+      assignment(original.shortcut, original_block.variable_name, operator: nil)
+
+    live_assignment =
+      assignment(live_sheet.shortcut, live_block.variable_name, operator: "set_true")
+
+    draft_condition =
+      node_fixture(persisted_flow, %{
+        type: "condition",
+        data: %{"condition" => condition_with.([stale_draft_rule])}
+      })
+
+    mixed_condition =
+      node_fixture(persisted_flow, %{
+        type: "condition",
+        data: %{"condition" => condition_with.([live_rule, stale_draft_rule])}
+      })
+
+    draft_instruction =
+      node_fixture(persisted_flow, %{
+        type: "instruction",
+        data: %{"assignments" => [stale_draft_assignment]}
+      })
+
+    mixed_instruction =
+      node_fixture(persisted_flow, %{
+        type: "instruction",
+        data: %{"assignments" => [live_assignment, stale_draft_assignment]}
+      })
+
+    tracked_nodes = [draft_condition, mixed_condition, draft_instruction, mixed_instruction]
+    Enum.each(tracked_nodes, &References.update_flow_node_variable_references/1)
+
+    persisted_flow = Repo.preload(persisted_flow, [:nodes, :connections], force: true)
+    entry = Enum.find(persisted_flow.nodes, &(&1.type == "entry"))
+
+    Storyarn.FlowsFixtures.connection_fixture(persisted_flow, entry, draft_condition)
+
+    Storyarn.FlowsFixtures.connection_fixture(persisted_flow, draft_condition, mixed_condition, source_pin: "true")
+
+    Storyarn.FlowsFixtures.connection_fixture(persisted_flow, mixed_condition, draft_instruction, source_pin: "true")
+
+    Storyarn.FlowsFixtures.connection_fixture(persisted_flow, draft_instruction, mixed_instruction)
+
+    {:ok, _renamed} = Sheets.update_sheet(original, %{shortcut: "protagonist"})
+    replacement = sheet_fixture(project, %{name: "Replacement hero", shortcut: "hero"})
+    _replacement_block = block_fixture(replacement, %{variable_name: "health"})
+
+    stale_ref = "hero.health"
+
+    stale_by_node =
+      [persisted_flow.id]
+      |> References.list_stale_node_variable_refs_by_flow()
+      |> Map.fetch!(persisted_flow.id)
+
+    assert Enum.all?(tracked_nodes, fn node ->
+             Map.get(stale_by_node, node.id) == MapSet.new([stale_ref])
+           end)
+
+    persisted_flow = Repo.preload(persisted_flow, [:nodes, :connections], force: true)
+    tracked_node_ids = MapSet.new(tracked_nodes, & &1.id)
+
+    stale_findings =
+      project.id
+      |> findings(:ink, [persisted_flow], [])
+      |> Enum.filter(
+        &(&1.rule == :stale_variable_reference and
+            MapSet.member?(tracked_node_ids, &1.node_id))
+      )
+
+    assert stale_findings == []
   end
 
   test "legacy response instructions are transpiled when the structured list is empty", %{
@@ -173,6 +348,16 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
       "value_sheet" => nil
     }
 
+    operatorless_assignment = %{
+      "id" => "operatorless-draft",
+      "sheet" => "missing",
+      "variable" => "draft",
+      "operator" => nil,
+      "value" => nil,
+      "value_type" => "literal",
+      "value_sheet" => nil
+    }
+
     flow =
       flow(42, "Draft instructions", "draft-instructions", [
         node(421, "instruction", %{"assignments" => [incomplete_assignment]}),
@@ -184,6 +369,16 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
               "instruction_assignments" => [incomplete_assignment]
             }
           ]
+        }),
+        node(423, "instruction", %{"assignments" => [operatorless_assignment]}),
+        node(424, "dialogue", %{
+          "localization_id" => "operatorless_response_instruction",
+          "responses" => [
+            %{
+              "id" => "operatorless_response",
+              "instruction_assignments" => [operatorless_assignment]
+            }
+          ]
         })
       ])
 
@@ -193,7 +388,12 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
         |> findings(format, [flow], [])
         |> Enum.filter(&(&1.rule == :invalid_export_expression))
 
-      refute Enum.any?(invalid, &(&1.node_id in [421, 422]))
+      refute Enum.any?(invalid, &(&1.node_id in [421, 422, 423, 424]))
+
+      refute Enum.any?(
+               findings(project.id, format, [flow], []),
+               &(&1.rule == :stale_variable_reference and &1.node_id in [423, 424])
+             )
     end
   end
 
@@ -610,7 +810,67 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
            )
   end
 
-  test "incomplete and unknown condition rules block instead of being silently skipped", %{
+  test "condition rows without a target or operator are transient no-ops", %{
+    project: project
+  } do
+    draft_rule = %{
+      "id" => "draft",
+      "sheet" => nil,
+      "variable" => nil,
+      "operator" => "equals",
+      "value" => nil
+    }
+
+    valid_rule = %{
+      "id" => "valid",
+      "sheet" => "state",
+      "variable" => "ready",
+      "operator" => "equals",
+      "value" => true
+    }
+
+    missing_operator_rule = %{valid_rule | "id" => "missing-operator", "operator" => nil}
+
+    condition_with = fn rules ->
+      %{
+        "logic" => "all",
+        "blocks" => [
+          %{"id" => "block", "type" => "block", "logic" => "all", "rules" => rules}
+        ]
+      }
+    end
+
+    flow =
+      flow(105, "Draft conditions", "draft-conditions", [
+        node(1051, "condition", %{"condition" => condition_with.([draft_rule])}),
+        node(1052, "condition", %{
+          "condition" => condition_with.([valid_rule, draft_rule])
+        }),
+        node(1053, "condition", %{
+          "condition" => condition_with.([missing_operator_rule])
+        }),
+        node(1054, "condition", %{
+          "condition" => condition_with.([valid_rule, missing_operator_rule])
+        })
+      ])
+
+    for format <- [:ink, :yarn, :unity, :godot, :unreal, :articy] do
+      result = findings(project.id, format, [flow], [])
+
+      refute Enum.any?(
+               result,
+               &(&1.rule == :invalid_export_expression and
+                   &1.node_id in [1051, 1052, 1053, 1054])
+             )
+
+      refute Enum.any?(
+               result,
+               &(&1.rule == :stale_variable_reference and &1.node_id == 1053)
+             )
+    end
+  end
+
+  test "unknown operators, missing values, and impossible values block", %{
     project: project
   } do
     base_rule = %{
@@ -632,24 +892,27 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
 
     flow =
       flow(110, "Invalid conditions", "invalid-conditions", [
-        node(1101, "condition", %{
-          "condition" => condition_with.([base_rule, %{base_rule | "variable" => ""}])
-        }),
         node(1102, "condition", %{
           "condition" => condition_with.([%{base_rule | "operator" => "unknown_operator"}])
         }),
         node(1103, "condition", %{
           "condition" => condition_with.([%{base_rule | "value" => nil}])
+        }),
+        node(1104, "condition", %{
+          "condition" => condition_with.([%{base_rule | "value" => %{}}])
         })
       ])
 
-    invalid =
-      project.id
-      |> findings(:ink, [flow], [])
-      |> Enum.filter(&(&1.rule == :invalid_export_expression))
+    result = findings(project.id, :ink, [flow], [])
+    invalid = Enum.filter(result, &(&1.rule == :invalid_export_expression))
 
-    assert MapSet.new(invalid, & &1.node_id) == MapSet.new([1101, 1102, 1103])
+    assert MapSet.new(invalid, & &1.node_id) == MapSet.new([1102, 1103, 1104])
     assert Enum.all?(invalid, &(&1.level == :error))
+
+    assert Enum.any?(
+             result,
+             &(&1.rule == :stale_variable_reference and &1.node_id == 1103)
+           )
   end
 
   test "malformed dialogue and response data blocks even nil-tolerant formats", %{
@@ -695,14 +958,12 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
         })
       ])
 
-    for format <- [:ink, :yarn] do
-      assert Enum.any?(
-               findings(project.id, format, [flow], []),
-               &(&1.rule == :stale_variable_reference and &1.level == :error)
-             )
-    end
+    assert Enum.any?(
+             findings(project.id, :ink, [flow], []),
+             &(&1.rule == :stale_variable_reference and &1.level == :error)
+           )
 
-    for format <- [:unity, :godot, :unreal, :articy] do
+    for format <- [:yarn, :unity, :godot, :unreal, :articy] do
       assert Enum.any?(
                findings(project.id, format, [flow], []),
                &(&1.rule == :stale_variable_reference and &1.level == :warning)
@@ -710,11 +971,140 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
     end
   end
 
+  test "linear formats warn about unreachable nodes without validating omitted content", %{
+    project: project
+  } do
+    flow =
+      135
+      |> flow("Reachability", "reachability", [
+        node(1351, "entry", %{}),
+        node(1352, "exit", %{}),
+        node(1353, "dialogue", %{
+          "text" => "Detached",
+          "condition" => condition("missing", "variable", "equals"),
+          "responses" => []
+        })
+      ])
+      |> Map.put(:connections, [connection(1351, 1352)])
+
+    for format <- [:ink, :yarn, :godot] do
+      result = findings(project.id, format, [flow], [])
+
+      assert Enum.any?(
+               result,
+               &(&1.rule == :unreachable_node and &1.node_id == 1353 and
+                   &1.level == :warning)
+             )
+
+      refute Enum.any?(
+               result,
+               &(&1.node_id == 1353 and
+                   &1.rule in [
+                     :invalid_dialogue_runtime_id,
+                     :stale_variable_reference,
+                     :invalid_export_expression
+                   ])
+             )
+    end
+
+    unity = findings(project.id, :unity, [flow], [])
+    refute Enum.any?(unity, &(&1.rule == :unreachable_node))
+
+    assert Enum.any?(
+             unity,
+             &(&1.rule == :invalid_dialogue_runtime_id and &1.node_id == 1353)
+           )
+  end
+
+  test "linear formats validate nodes emitted inside hub sections", %{project: project} do
+    flow =
+      138
+      |> flow("Hub section", "hub-section", [
+        node(1381, "entry", %{}),
+        node(1382, "hub", %{"hub_id" => "meeting-point", "label" => "Meeting point"}),
+        node(1383, "dialogue", %{"text" => "Detached runtime id", "responses" => []}),
+        node(1384, "exit", %{})
+      ])
+      |> Map.put(:connections, [
+        connection(1381, 1382),
+        connection(1382, 1383),
+        connection(1383, 1384)
+      ])
+
+    for format <- [:ink, :yarn, :godot] do
+      result = findings(project.id, format, [flow], [])
+
+      assert Enum.any?(
+               result,
+               &(&1.rule == :invalid_dialogue_runtime_id and &1.node_id == 1383)
+             )
+
+      refute Enum.any?(
+               result,
+               &(&1.rule == :unreachable_node and &1.node_id == 1383)
+             )
+    end
+  end
+
+  test "Yarn reports unambiguous variable type mismatches without blocking", %{
+    project: project
+  } do
+    sheet = sheet_fixture(project, %{name: "State", shortcut: "state"})
+    block = block_fixture(sheet, %{variable_name: "name", type: "text"})
+
+    flow =
+      flow(136, "Type mismatch", "type-mismatch", [
+        node(1361, "instruction", %{
+          "assignments" => [
+            assignment(sheet.shortcut, block.variable_name, operator: "add", value: 1)
+          ]
+        })
+      ])
+
+    yarn = findings(project.id, :yarn, [flow], [sheet_brief(sheet)])
+
+    assert Enum.any?(
+             yarn,
+             &(&1.rule == :variable_type_mismatch and &1.node_id == 1361 and
+                 &1.level == :warning)
+           )
+
+    refute Enum.any?(
+             findings(project.id, :ink, [flow], [sheet_brief(sheet)]),
+             &(&1.rule == :variable_type_mismatch)
+           )
+  end
+
+  test "ambiguous sheet and pin variable types do not create a mismatch verdict", %{
+    project: project
+  } do
+    sheet = sheet_fixture(project, %{name: "Shared", shortcut: "shared"})
+    block = block_fixture(sheet, %{variable_name: "hidden", type: "text"})
+    scene = scene_fixture(project)
+    _pin = pin_fixture(scene, %{"label" => "Shared", "shortcut" => "shared"})
+
+    flow =
+      flow(137, "Ambiguous type", "ambiguous-type", [
+        node(1371, "instruction", %{
+          "assignments" => [
+            assignment(sheet.shortcut, block.variable_name, operator: "add", value: 1)
+          ]
+        })
+      ])
+
+    refute Enum.any?(
+             findings(project.id, :yarn, [flow], [sheet_brief(sheet)]),
+             &(&1.rule == :variable_type_mismatch)
+           )
+  end
+
   test "Yarn catches collisions between final dialogue and response line IDs", %{
     project: project
   } do
     flow =
-      flow(140, "Yarn IDs", "yarn-ids", [
+      140
+      |> flow("Yarn IDs", "yarn-ids", [
+        node(1400, "entry", %{}),
         node(1401, "dialogue", %{
           "localization_id" => "dialogue_a",
           "responses" => [%{"id" => "b", "text" => "Choice"}]
@@ -723,6 +1113,10 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
           "localization_id" => "dialogue_a_response_b",
           "responses" => []
         })
+      ])
+      |> Map.put(:connections, [
+        connection(1400, 1401),
+        connection(1401, 1402, "response_b")
       ])
 
     assert Enum.any?(

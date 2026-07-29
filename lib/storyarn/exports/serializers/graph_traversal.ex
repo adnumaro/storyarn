@@ -48,7 +48,24 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   - `hub_sections` is a list of `{hub_label, instructions}` for hub nodes
     that need to be emitted as separate sections (stitches/labels)
   """
-  def linearize(flow) do
+  def linearize(flow, opts \\ []) do
+    {instructions, sections, _reachable_node_ids} = do_linearize(flow, opts)
+    {instructions, sections}
+  end
+
+  @doc """
+  Returns the IDs reached by the same traversal used to serialize a flow.
+
+  The set includes transparent entry/sequence nodes and nodes visited while
+  building separately emitted hub or reconvergence sections. Nodes outside the
+  executable traversal are excluded.
+  """
+  def reachable_node_ids(flow, opts \\ []) do
+    {_instructions, _sections, reachable_node_ids} = do_linearize(flow, opts)
+    reachable_node_ids
+  end
+
+  defp do_linearize(flow, opts) do
     nodes = Helpers.node_index(flow)
     conn_graph = Helpers.connection_graph(flow)
     entry = Helpers.find_entry_node(flow)
@@ -56,12 +73,16 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
     if entry do
       # First pass: identify all hub nodes (they become labels)
       hub_refs = FlowControlResolver.hub_reference_map(flow.nodes)
+      reconvergence_refs = reconvergence_reference_map(flow, opts)
 
       # Second pass: traverse from entry, collecting instructions
       state = %{
         nodes: nodes,
         conn_graph: conn_graph,
         hub_refs: hub_refs,
+        reconvergence_refs: reconvergence_refs,
+        reconvergence_queue: [],
+        reconvergence_root: nil,
         visited: MapSet.new(),
         hub_queue: [],
         instructions: []
@@ -70,11 +91,16 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
       state = traverse(entry.id, state)
 
       # Third pass: traverse hub sections that weren't reached inline
-      {main_instructions, hub_sections} = process_hub_queue(state)
+      {sections, section_visited} = process_section_queue(state)
+      reachable_node_ids = MapSet.union(state.visited, section_visited)
 
-      {Enum.reverse(main_instructions), hub_sections}
+      {
+        Enum.reverse(state.instructions),
+        sections,
+        reachable_node_ids
+      }
     else
-      {[], []}
+      {[], [], MapSet.new()}
     end
   end
 
@@ -87,11 +113,14 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
     * `{:choices, node, [{response, index, body_instructions}]}`
     * `{:condition, node, [{pin, label, index, body_instructions}]}`
 
+  Set `:split_reconvergences` when the target format needs every shared tail
+  emitted once as a synthetic section reached by branch diverts.
+
   This keeps indentation-sensitive serializers from having to rediscover branch
   boundaries from the flat stream.
   """
-  def linearize_blocks(flow) do
-    {instructions, hub_sections} = linearize(flow)
+  def linearize_blocks(flow, opts \\ []) do
+    {instructions, hub_sections} = linearize(flow, opts)
 
     hub_sections =
       Enum.map(hub_sections, fn {label, instructions} ->
@@ -114,21 +143,46 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   # ---------------------------------------------------------------------------
 
   defp traverse(node_id, state) do
-    if MapSet.member?(state.visited, node_id) do
-      # Cycle detected — emit a divert to the node's label if it's a hub
-      case hub_target(state, node_id) do
-        {_hub_id, label} -> %{state | instructions: [{:divert, label} | state.instructions]}
-        nil -> state
-      end
-    else
-      state = %{state | visited: MapSet.put(state.visited, node_id)}
+    cond do
+      MapSet.member?(state.visited, node_id) ->
+        cycle_divert(node_id, state)
 
-      case Map.get(state.nodes, node_id) do
-        nil -> state
-        node -> traverse_node(node, state)
-      end
+      label = reconvergence_target(state, node_id) ->
+        divert_to_reconvergence(node_id, label, state)
+
+      true ->
+        state = %{state | visited: MapSet.put(state.visited, node_id)}
+
+        case Map.get(state.nodes, node_id) do
+          nil -> state
+          node -> traverse_node(node, state)
+        end
     end
   end
+
+  defp cycle_divert(node_id, state) do
+    case hub_target(state, node_id) do
+      {_hub_id, label} ->
+        %{state | instructions: [{:divert, label} | state.instructions]}
+
+      nil ->
+        case Map.get(state.reconvergence_refs, node_id) do
+          nil -> state
+          label -> divert_to_reconvergence(node_id, label, state)
+        end
+    end
+  end
+
+  defp divert_to_reconvergence(node_id, label, state) do
+    %{
+      state
+      | instructions: [{:divert, label} | state.instructions],
+        reconvergence_queue: [{node_id, label} | state.reconvergence_queue]
+    }
+  end
+
+  defp reconvergence_target(%{reconvergence_root: node_id}, node_id), do: nil
+  defp reconvergence_target(state, node_id), do: Map.get(state.reconvergence_refs, node_id)
 
   defp traverse_node(%{type: "entry"} = node, state) do
     # Entry is implicit — just follow connections
@@ -264,30 +318,146 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   end
 
   # ---------------------------------------------------------------------------
-  # Hub queue processing
+  # Section queue processing
   # ---------------------------------------------------------------------------
 
-  defp process_hub_queue(state) do
+  defp process_section_queue(state) do
+    state
+    |> queued_sections()
+    |> process_section_worklist(state, MapSet.new(), [], MapSet.new())
+  end
+
+  defp process_section_worklist([], _state, _processed, sections, visited) do
+    {Enum.reverse(sections), visited}
+  end
+
+  defp process_section_worklist([section | rest], state, processed, sections, visited) do
+    key = section_key(section)
+
+    if MapSet.member?(processed, key) do
+      process_section_worklist(rest, state, processed, sections, visited)
+    else
+      {rendered_section, section_state, section_visited} = process_section(section, state)
+      discovered_sections = queued_sections(section_state)
+
+      process_section_worklist(
+        rest ++ discovered_sections,
+        state,
+        MapSet.put(processed, key),
+        [rendered_section | sections],
+        MapSet.union(visited, section_visited)
+      )
+    end
+  end
+
+  defp process_section({:hub, hub_id, label}, state) do
+    section_state = fresh_section_state(state)
+    hub_node = Map.get(state.nodes, hub_id)
+
+    section_state =
+      if hub_node do
+        section_state
+        |> outgoing(hub_id)
+        |> traverse_targets(section_state)
+      else
+        section_state
+      end
+
+    {
+      {label, Enum.reverse(section_state.instructions)},
+      section_state,
+      MapSet.put(section_state.visited, hub_id)
+    }
+  end
+
+  defp process_section({:reconvergence, node_id, label}, state) do
+    section_state =
+      state
+      |> fresh_section_state()
+      |> Map.put(:reconvergence_root, node_id)
+      |> then(&traverse(node_id, &1))
+
+    {
+      {label, Enum.reverse(section_state.instructions)},
+      section_state,
+      section_state.visited
+    }
+  end
+
+  defp fresh_section_state(state) do
+    %{
+      state
+      | instructions: [],
+        visited: state.visited,
+        hub_queue: [],
+        reconvergence_queue: [],
+        reconvergence_root: nil
+    }
+  end
+
+  defp queued_sections(state) do
     hub_sections =
       state.hub_queue
       |> Enum.reverse()
-      |> Enum.uniq_by(fn {id, _} -> id end)
-      |> Enum.map(fn {hub_id, label} ->
-        hub_state = %{state | instructions: [], visited: state.visited}
-        hub_node = Map.get(state.nodes, hub_id)
+      |> Enum.uniq_by(fn {node_id, _label} -> node_id end)
+      |> Enum.map(fn {node_id, label} -> {:hub, node_id, label} end)
 
-        hub_state =
-          if hub_node do
-            targets = outgoing(hub_state, hub_id)
-            traverse_targets(targets, hub_state)
-          else
-            hub_state
-          end
+    reconvergence_sections =
+      state.reconvergence_queue
+      |> Enum.reverse()
+      |> Enum.uniq_by(fn {node_id, _label} -> node_id end)
+      |> Enum.map(fn {node_id, label} -> {:reconvergence, node_id, label} end)
 
-        {label, Enum.reverse(hub_state.instructions)}
+    hub_sections ++ reconvergence_sections
+  end
+
+  defp section_key({type, node_id, _label}), do: {type, node_id}
+
+  defp reconvergence_reference_map(_flow, opts) when not is_list(opts), do: %{}
+
+  defp reconvergence_reference_map(flow, opts) do
+    if Keyword.get(opts, :split_reconvergences, false) do
+      nodes = Helpers.node_index(flow)
+      flow_id = Map.get(flow, :id, "flow")
+      reserved_labels = reserved_section_labels(opts)
+
+      flow.connections
+      |> Kernel.||([])
+      |> Enum.frequencies_by(& &1.target_node_id)
+      |> Enum.filter(fn {node_id, incoming_count} ->
+        incoming_count > 1 and
+          match?(%{type: type} when type not in ["entry", "hub"], Map.get(nodes, node_id))
       end)
+      |> Enum.sort_by(fn {node_id, _incoming_count} -> to_string(node_id) end)
+      |> Enum.reduce({%{}, reserved_labels}, fn {node_id, _incoming_count}, {refs, reserved} ->
+        base_label = Helpers.shortcut_to_identifier("__storyarn_merge_#{flow_id}_#{node_id}")
+        label = available_section_label(base_label, reserved)
+        {Map.put(refs, node_id, label), MapSet.put(reserved, label)}
+      end)
+      |> elem(0)
+    else
+      %{}
+    end
+  end
 
-    {state.instructions, hub_sections}
+  defp reserved_section_labels(opts) do
+    case Keyword.get(opts, :reserved_section_labels, MapSet.new()) do
+      %MapSet{} = labels -> labels
+      labels when is_list(labels) -> MapSet.new(labels)
+      _labels -> MapSet.new()
+    end
+  end
+
+  defp available_section_label(base_label, reserved, suffix \\ 1)
+
+  defp available_section_label(base_label, reserved, suffix) do
+    candidate = if suffix == 1, do: base_label, else: "#{base_label}_#{suffix}"
+
+    if MapSet.member?(reserved, candidate) do
+      available_section_label(base_label, reserved, suffix + 1)
+    else
+      candidate
+    end
   end
 
   # ---------------------------------------------------------------------------

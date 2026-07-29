@@ -261,6 +261,24 @@ describe("ExportPanel", () => {
     expect(results.text()).toContain("55 errors");
   });
 
+  it("uses singular copy when exactly one finding is hidden", () => {
+    const props = baseProps();
+    props.validation = {
+      status: "errors",
+      errors: Array.from({ length: 51 }, (_, index) => ({
+        message: `Blocking issue ${index}`,
+        rule: "blocking_issue",
+      })),
+      warnings: [],
+      info: [],
+    };
+    const { wrapper } = mountPanel(props);
+
+    expect(wrapper.get("#export-validation-results").text()).toContain(
+      "1 more finding is not shown",
+    );
+  });
+
   it("blocks the download when validation has errors", () => {
     const props = baseProps();
     props.validation = {

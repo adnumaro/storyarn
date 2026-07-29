@@ -127,14 +127,13 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
             :groups -> transpile_groups(items)
           end
 
-        expression =
-          if parts == [] do
-            "true"
-          else
-            maybe_paren(join_condition(logic, parts), parts)
-          end
+        case parts do
+          [] ->
+            :skip
 
-        {:ok, expression, warnings}
+          _parts ->
+            {:ok, maybe_paren(join_condition(logic, parts), parts), warnings}
+        end
       end
 
       defp transpile_group(_), do: :skip
@@ -147,6 +146,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
     end
   end
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp condition_rules_ast do
     quote do
       defp transpile_rules(rules) do
@@ -164,7 +164,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
       defoverridable transpile_rules: 1
 
       defp transpile_rule(%{"sheet" => sheet, "variable" => var, "operator" => op} = rule)
-           when is_binary(sheet) and sheet != "" and is_binary(var) and var != "" do
+           when is_binary(sheet) and sheet != "" and is_binary(var) and var != "" and
+                  is_binary(op) and op != "" do
         ref = Helpers.format_var_ref(sheet, var, @var_style)
         {:ok, emit_condition_op(ref, op, rule["value"])}
       end
@@ -196,7 +197,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
       defoverridable transpile_instruction: 2
 
       defp transpile_assignment(%{"sheet" => s, "variable" => v, "operator" => op} = a)
-           when is_binary(s) and s != "" and is_binary(v) and v != "" do
+           when is_binary(s) and s != "" and is_binary(v) and v != "" and
+                  is_binary(op) and op != "" do
         ref = Helpers.format_var_ref(s, v, @var_style)
         {:ok, emit_assignment(ref, op, a)}
       end

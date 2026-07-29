@@ -59,6 +59,36 @@ defmodule Storyarn.Flows.HealthConsolidationTest do
   defp severity_rank(:warning), do: 1
   defp severity_rank(:info), do: 2
 
+  defp capture_queries(fun) when is_function(fun, 0) do
+    handler_id = "export-health-query-budget-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid, do: send(pid, {ref, query})
+        end,
+        {test_pid, marker}
+      )
+
+    try do
+      {fun.(), drain_queries(marker)}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp drain_queries(marker, queries \\ []) do
+    receive do
+      {^marker, query} -> drain_queries(marker, [query | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
+  end
+
   # The shape `list_referenceable_variables/1` returns, without the database:
   # what is being measured is the keying, not the query.
   defp variable_list(count) do
@@ -110,6 +140,59 @@ defmodule Storyarn.Flows.HealthConsolidationTest do
       refute Map.has_key?(by_flow, nil)
       assert Map.has_key?(by_flow, flow_a.id)
       assert Map.has_key?(by_flow, flow_b.id)
+    end
+
+    test "the export health path reuses a selected flow batch without widening scope", %{
+      project: project
+    } do
+      selected = flow_fixture(project, %{name: "Selected"})
+      excluded = flow_fixture(project, %{name: "Excluded"})
+      selected_dialogue = node_fixture(selected, %{type: "dialogue", data: %{"text" => ""}})
+      excluded_exit = node_fixture(excluded, %{type: "exit", data: %{"label" => "Return"}})
+
+      selected_subflow =
+        node_fixture(selected, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => excluded.id}
+        })
+
+      node_fixture(selected, %{
+        type: "exit",
+        data: %{
+          "exit_mode" => "flow_reference",
+          "referenced_flow_id" => excluded.id
+        }
+      })
+
+      connection_fixture(selected, selected_subflow, selected_dialogue, %{
+        source_pin: "exit_#{excluded_exit.id}"
+      })
+
+      [selected_flow] =
+        Flows.list_flows_for_export(project.id, filter_ids: [selected.id])
+
+      selected_flows = [%{selected_flow | name: "Loaded selection"}]
+
+      {export, queries} =
+        capture_queries(fn ->
+          Flows.list_export_health_findings(project.id, selected_flows)
+        end)
+
+      dashboard =
+        project.id
+        |> Flows.list_dashboard_health_findings()
+        |> Enum.filter(&(&1.flow_id == selected.id))
+
+      assert comparable(export) == comparable(dashboard)
+      assert Enum.all?(export, &(&1.details.flow_name == "Loaded selection"))
+      refute Enum.any?(export, &(&1.flow_id == excluded.id))
+      refute Enum.any?(queries, &String.contains?(&1, ~s(FROM "flow_connections")))
+
+      refute Enum.any?(
+               export,
+               &(&1.entity_id == selected_subflow.id and
+                   &1.code in [:invalid_output_pins, :stale_subflow_reference])
+             )
     end
 
     test "on the flags only the serializer used to compute", %{project: project} do

@@ -278,6 +278,40 @@ defmodule Storyarn.Exports.DataCollectorTest do
       assert data.flows == fake_flows
     end
 
+    test "uses preloaded sheets and flow shortcuts", %{project: project} do
+      sheet_fixture(project, %{name: "Real Sheet"})
+      flow_fixture(project, %{name: "Real Flow", shortcut: "real-flow"})
+
+      fake_sheets = [%{id: 998, name: "Preloaded Sheet", blocks: []}]
+      fake_shortcuts = %{"997" => "preloaded-flow"}
+      opts = %ExportOptions{format: :ink}
+
+      data =
+        DataCollector.collect(project.id, opts, %{
+          sheets: fake_sheets,
+          flow_shortcuts_by_id: fake_shortcuts
+        })
+
+      assert data.sheets == fake_sheets
+      assert data.flow_shortcuts_by_id == fake_shortcuts
+    end
+
+    test "disabled sections stay empty even when preloaded data is provided", %{
+      project: project
+    } do
+      opts = %ExportOptions{format: :ink, include_sheets: false, include_flows: false}
+
+      data =
+        DataCollector.collect(project.id, opts, %{
+          sheets: [%{id: 998, name: "Must not leak"}],
+          flows: [%{id: 997, name: "Must not leak"}]
+        })
+
+      assert data.sheets == []
+      assert data.flows == []
+      assert data.flow_shortcuts_by_id == %{}
+    end
+
     test "falls back to DB query when section not in preloaded", %{project: project} do
       flow_fixture(project, %{name: "DB Flow"})
 

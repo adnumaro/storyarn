@@ -65,6 +65,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       types = instruction_types(instructions)
       assert :dialogue in types
       assert :exit in types
+      assert GraphTraversal.reachable_node_ids(flow) == MapSet.new([1, 2, 3])
     end
 
     test "sequence nodes are transparent when encountered" do
@@ -87,6 +88,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       types = instruction_types(instructions)
       assert :dialogue in types
       assert :exit in types
+      assert GraphTraversal.reachable_node_ids(flow) == MapSet.new([1, 2, 3, 4])
     end
 
     test "dialogue with responses generates choices" do
@@ -210,6 +212,204 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
                Enum.any?(body, &match?({:dialogue, %{data: %{"text" => "Shared tail"}}}, &1)) and
                  Enum.any?(body, &match?({:exit, _}, &1))
              end)
+
+      {split, sections} = GraphTraversal.linearize_blocks(flow, split_reconvergences: true)
+
+      assert [
+               {:dialogue, _},
+               {:choices, _, split_branches}
+             ] = split
+
+      assert [{merge_label, [{:dialogue, %{id: 5}}, {:exit, %{id: 6}}]}] = sections
+
+      assert Enum.map(
+               split_branches,
+               fn {_response, _index, [{:dialogue, node}, {:divert, label}]} ->
+                 {node.id, label}
+               end
+             ) == [{3, merge_label}, {4, merge_label}]
+    end
+
+    test "split reconvergences extracts a tail shared by only some choice branches" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "responses" => [
+                %{"id" => "yes", "text" => "Yes"},
+                %{"id" => "no", "text" => "No"},
+                %{"id" => "leave", "text" => "Leave"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "Yes branch"}),
+            make_node(4, "dialogue", %{"text" => "No branch"}),
+            make_node(5, "dialogue", %{"text" => "Shared tail"}),
+            make_node(6, "exit"),
+            make_node(7, "dialogue", %{"text" => "Leave branch"}),
+            make_node(8, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "yes"),
+            make_conn(2, 4, "no"),
+            make_conn(2, 7, "leave"),
+            make_conn(3, 5),
+            make_conn(4, 5),
+            make_conn(5, 6),
+            make_conn(7, 8)
+          ]
+        )
+
+      {instructions, sections} =
+        GraphTraversal.linearize_blocks(flow, split_reconvergences: true)
+
+      assert [{:dialogue, _}, {:choices, _, branches}] = instructions
+      assert [{merge_label, [{:dialogue, %{id: 5}}, {:exit, %{id: 6}}]}] = sections
+
+      assert [
+               {_yes, 0, [{:dialogue, %{id: 3}}, {:divert, ^merge_label}]},
+               {_no, 1, [{:dialogue, %{id: 4}}, {:divert, ^merge_label}]},
+               {_leave, 2, [{:dialogue, %{id: 7}}, {:exit, %{id: 8}}]}
+             ] = branches
+    end
+
+    test "split reconvergences processes hubs discovered inside merge sections" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "responses" => [
+                %{"id" => "yes", "text" => "Yes"},
+                %{"id" => "no", "text" => "No"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "Yes branch"}),
+            make_node(4, "dialogue", %{"text" => "No branch"}),
+            make_node(5, "dialogue", %{"text" => "Shared tail"}),
+            make_node(6, "hub", %{"hub_id" => "after-merge", "label" => "After merge"}),
+            make_node(7, "dialogue", %{"text" => "Inside hub"}),
+            make_node(8, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "yes"),
+            make_conn(2, 4, "no"),
+            make_conn(3, 5),
+            make_conn(4, 5),
+            make_conn(5, 6),
+            make_conn(6, 7),
+            make_conn(7, 8)
+          ]
+        )
+
+      {instructions, sections} =
+        GraphTraversal.linearize_blocks(flow, split_reconvergences: true)
+
+      assert [{:dialogue, _}, {:choices, _, branches}] = instructions
+
+      assert [
+               {merge_label, [{:dialogue, %{id: 5}}, {:divert, "after_merge"}]},
+               {"after_merge", [{:dialogue, %{id: 7}}, {:exit, %{id: 8}}]}
+             ] = sections
+
+      assert Enum.all?(branches, fn {_response, _index, body} ->
+               List.last(body) == {:divert, merge_label}
+             end)
+
+      assert GraphTraversal.reachable_node_ids(flow, split_reconvergences: true) ==
+               MapSet.new(1..8)
+    end
+
+    test "split reconvergences does not emit unvisited joins behind terminals or stale pins" do
+      for terminal_type <- ["exit", "jump"] do
+        flow =
+          make_flow(
+            [
+              make_node(1, "entry"),
+              make_node(2, terminal_type, %{"target_flow_shortcut" => "elsewhere"}),
+              make_node(3, "dialogue", %{"text" => "Must stay omitted"}),
+              make_node(4, "exit")
+            ],
+            [
+              make_conn(1, 2),
+              make_conn(2, 3, "stale_a"),
+              make_conn(2, 3, "stale_b"),
+              make_conn(3, 4)
+            ]
+          )
+
+        {_instructions, sections} =
+          GraphTraversal.linearize_blocks(flow, split_reconvergences: true)
+
+        assert sections == []
+        assert GraphTraversal.reachable_node_ids(flow, split_reconvergences: true) == MapSet.new([1, 2])
+      end
+
+      stale_pin_flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "responses" => [%{"id" => "go", "text" => "Go"}]
+            }),
+            make_node(3, "exit"),
+            make_node(4, "dialogue", %{"text" => "Must stay omitted"}),
+            make_node(5, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "go"),
+            make_conn(2, 4, "stale_a"),
+            make_conn(2, 4, "stale_b"),
+            make_conn(4, 5)
+          ]
+        )
+
+      {_instructions, sections} =
+        GraphTraversal.linearize_blocks(stale_pin_flow, split_reconvergences: true)
+
+      assert sections == []
+
+      assert GraphTraversal.reachable_node_ids(stale_pin_flow, split_reconvergences: true) ==
+               MapSet.new([1, 2, 3])
+    end
+
+    test "split reconvergences avoids reserved Yarn node titles" do
+      flow =
+        [
+          make_node(1, "entry"),
+          make_node(2, "dialogue", %{
+            "responses" => [
+              %{"id" => "yes", "text" => "Yes"},
+              %{"id" => "no", "text" => "No"}
+            ]
+          }),
+          make_node(3, "dialogue", %{"text" => "Yes branch"}),
+          make_node(4, "dialogue", %{"text" => "No branch"}),
+          make_node(5, "dialogue", %{"text" => "Shared tail"})
+        ]
+        |> make_flow([
+          make_conn(1, 2),
+          make_conn(2, 3, "yes"),
+          make_conn(2, 4, "no"),
+          make_conn(3, 5),
+          make_conn(4, 5)
+        ])
+        |> Map.put(:id, 42)
+
+      reserved_label = "__storyarn_merge_42_5"
+
+      {_instructions, sections} =
+        GraphTraversal.linearize_blocks(
+          flow,
+          split_reconvergences: true,
+          reserved_section_labels: MapSet.new([reserved_label])
+        )
+
+      assert [{merge_label, [{:dialogue, %{id: 5}}]}] = sections
+      assert merge_label == "#{reserved_label}_2"
     end
 
     test "condition branches" do
@@ -307,6 +507,21 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
                Enum.any?(body, &match?({:dialogue, %{data: %{"text" => "Shared tail"}}}, &1)) and
                  Enum.any?(body, &match?({:exit, _}, &1))
              end)
+
+      {split, sections} = GraphTraversal.linearize_blocks(flow, split_reconvergences: true)
+
+      assert [
+               {:condition, _, split_branches}
+             ] = split
+
+      assert [{merge_label, [{:dialogue, %{id: 5}}, {:exit, %{id: 6}}]}] = sections
+
+      assert Enum.map(
+               split_branches,
+               fn {_pin, _label, _index, [{:dialogue, node}, {:divert, label}]} ->
+                 {node.id, label}
+               end
+             ) == [{3, merge_label}, {4, merge_label}]
     end
 
     test "linearize_blocks derives switch branches from condition blocks" do
@@ -559,6 +774,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       {instructions, hub_sections} = GraphTraversal.linearize(flow)
       assert [{:jump, _node, "safe_house"}] = instructions
       assert [{"safe_house", [exit: _exit_node]}] = hub_sections
+      assert GraphTraversal.reachable_node_ids(flow) == MapSet.new([1, 2, 3, 4])
     end
 
     test "jump without a persisted target does not infer one from an invalid connection" do

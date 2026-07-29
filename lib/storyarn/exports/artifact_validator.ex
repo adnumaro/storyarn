@@ -14,16 +14,19 @@ defmodule Storyarn.Exports.ArtifactValidator do
   alias Storyarn.Exports.ExpressionTranspiler
   alias Storyarn.Exports.ExpressionTranspiler.Helpers, as: ExpressionHelpers
   alias Storyarn.Exports.Serializers.FlowControlResolver
+  alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers, as: SerializerHelpers
   alias Storyarn.Exports.Serializers.Yarn
   alias Storyarn.Flows
   alias Storyarn.Flows.Condition
   alias Storyarn.Flows.Instruction
+  alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Localization.RuntimeKey
+  alias Storyarn.References
   alias Storyarn.Shared.StringUtils
   alias Storyarn.Sheets
 
-  @stale_variable_blocking_formats [:ink, :yarn]
+  @stale_variable_blocking_formats [:ink]
   @control_reference_blocking_formats [:ink, :yarn, :godot]
   @normalized_identifier_formats [:ink, :yarn, :godot, :unreal]
   @hub_identifier_formats [:ink, :yarn, :godot]
@@ -56,18 +59,146 @@ defmodule Storyarn.Exports.ArtifactValidator do
   ]
   @linear_formats [:ink, :yarn, :godot]
 
+  @type validation_context :: %{
+          optional(:active_flows) => [map()],
+          optional(:declared_variables) => [map()],
+          optional(:referenceable_variables) => [map()],
+          optional(:stale_node_variable_refs_by_flow) => %{
+            integer() => %{integer() => MapSet.t(String.t())}
+          },
+          optional(:stale_node_ids_by_flow) => %{integer() => MapSet.t(integer())},
+          optional(:effective_flow_result) => {[map()], [map()]}
+        }
+
   @spec findings(pos_integer(), ExportOptions.t(), [map()], [map()]) :: [map()]
   def findings(project_id, %ExportOptions{} = options, flows, sheets) do
-    declared_variables = declared_variables(project_id, sheets)
+    findings(project_id, options, flows, sheets, %{})
+  end
 
-    runtime_identifier_findings(options, flows, sheets) ++
+  @spec findings(pos_integer(), ExportOptions.t(), [map()], [map()], validation_context()) ::
+          [map()]
+  def findings(project_id, %ExportOptions{} = options, flows, sheets, validation_context)
+      when is_map(validation_context) do
+    declared_variables =
+      Map.get_lazy(
+        validation_context,
+        :declared_variables,
+        fn -> declared_variables(project_id, sheets) end
+      )
+
+    referenceable_variables =
+      Map.get_lazy(
+        validation_context,
+        :referenceable_variables,
+        fn -> referenceable_variables(project_id, flows) end
+      )
+
+    {artifact_flows, reachability_findings} =
+      Map.get_lazy(
+        validation_context,
+        :effective_flow_result,
+        fn -> effective_flows(options.format, flows) end
+      )
+
+    stale_node_variable_refs_by_flow =
+      Map.get_lazy(
+        validation_context,
+        :stale_node_variable_refs_by_flow,
+        fn -> stale_node_variable_refs_by_flow(artifact_flows) end
+      )
+
+    active_flows =
+      active_flows(project_id, artifact_flows, validation_context)
+
+    runtime_identifier_findings(options, artifact_flows, sheets) ++
       variable_identifier_findings(options.format, declared_variables) ++
-      identifier_collision_findings(options.format, flows, sheets, declared_variables) ++
-      dialogue_runtime_id_findings(options.format, flows) ++
-      yarn_line_id_findings(options.format, flows) ++
-      control_reference_findings(project_id, options.format, flows) ++
-      stale_variable_reference_findings(options.format, flows, declared_variables) ++
-      expression_findings(options.format, flows)
+      identifier_collision_findings(options.format, artifact_flows, sheets, declared_variables) ++
+      dialogue_runtime_id_findings(options.format, artifact_flows) ++
+      yarn_line_id_findings(options.format, artifact_flows) ++
+      control_reference_findings(options.format, artifact_flows, active_flows) ++
+      variable_reference_findings(
+        options.format,
+        artifact_flows,
+        referenceable_variables,
+        stale_node_variable_refs_by_flow
+      ) ++
+      variable_type_mismatch_findings(
+        options.format,
+        artifact_flows,
+        referenceable_variables
+      ) ++
+      expression_findings(options.format, artifact_flows) ++ reachability_findings
+  end
+
+  @doc false
+  @spec effective_flows(atom(), [map()]) :: {[map()], [map()]}
+  def effective_flows(format, flows) when format in @linear_formats do
+    Enum.map_reduce(flows, [], fn flow, findings ->
+      flow = normalize_artifact_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      if is_nil(entry) do
+        {flow, findings}
+      else
+        reachable_node_ids =
+          GraphTraversal.reachable_node_ids(flow, graph_traversal_options(format))
+
+        unreachable_findings =
+          flow.nodes
+          |> Enum.filter(
+            &(not MapSet.member?(reachable_node_ids, &1.id) and
+                NodeConnectionRules.can_be_unreachable?(&1.type))
+          )
+          |> Enum.map(&unreachable_node_finding(format, flow, &1))
+
+        {restrict_flow_to_nodes(flow, reachable_node_ids), findings ++ unreachable_findings}
+      end
+    end)
+  end
+
+  def effective_flows(_format, flows), do: {Enum.map(flows, &normalize_artifact_flow/1), []}
+
+  defp graph_traversal_options(:yarn), do: [split_reconvergences: true]
+  defp graph_traversal_options(_format), do: []
+
+  defp normalize_artifact_flow(flow) do
+    nodes =
+      flow.nodes
+      |> list_or_empty()
+      |> Enum.map(&Map.put(&1, :data, Map.get(&1, :data) || %{}))
+
+    %{flow | nodes: nodes, connections: list_or_empty(flow.connections)}
+  end
+
+  defp restrict_flow_to_nodes(flow, node_ids) do
+    nodes = flow.nodes |> list_or_empty() |> Enum.filter(&MapSet.member?(node_ids, &1.id))
+
+    connections =
+      flow.connections
+      |> list_or_empty()
+      |> Enum.filter(
+        &(MapSet.member?(node_ids, &1.source_node_id) and
+            MapSet.member?(node_ids, &1.target_node_id))
+      )
+
+    %{flow | nodes: nodes, connections: connections}
+  end
+
+  defp unreachable_node_finding(format, flow, node) do
+    node_finding(
+      :warning,
+      :unreachable_node,
+      flow,
+      node,
+      dgettext(
+        "projects",
+        ~s("%{node}" in flow "%{flow}" is not reachable from Entry and will not be included in the %{format} export),
+        node: Flows.node_label(node),
+        flow: flow.name,
+        format: format_label(format)
+      ),
+      format: format
+    )
   end
 
   defp runtime_identifier_findings(options, flows, sheets) do
@@ -753,10 +884,9 @@ defmodule Storyarn.Exports.ArtifactValidator do
 
   defp yarn_line_id_findings(_format, _flows), do: []
 
-  defp control_reference_findings(_project_id, _format, []), do: []
+  defp control_reference_findings(_format, [], _active_flows), do: []
 
-  defp control_reference_findings(project_id, format, flows) do
-    active_flows = Flows.list_flows(project_id)
+  defp control_reference_findings(format, flows, active_flows) do
     active_flows_by_id = Map.new(active_flows, &{to_string(&1.id), &1})
     active_flows_by_shortcut = Map.new(active_flows, &{&1.shortcut, &1})
     active_flow_ids = MapSet.new(active_flows, &to_string(&1.id))
@@ -1178,49 +1308,82 @@ defmodule Storyarn.Exports.ArtifactValidator do
     end
   end
 
-  defp stale_variable_reference_findings(_format, [], _declared_variables), do: []
+  defp variable_reference_findings(_format, [], _referenceable_variables, _stale_node_variable_refs_by_flow), do: []
 
-  defp stale_variable_reference_findings(format, flows, declared_variables) do
-    declared_refs = MapSet.new(declared_variables, & &1.full_ref)
-    level = integrity_level(:stale_variable_reference, format)
+  defp variable_reference_findings(format, flows, referenceable_variables, stale_node_variable_refs_by_flow) do
+    referenceable_refs =
+      referenceable_variables
+      |> Enum.map(&variable_descriptor_ref/1)
+      |> Enum.reject(&is_nil/1)
+      |> MapSet.new()
 
     Enum.flat_map(flows, fn flow ->
       Enum.flat_map(
         flow.nodes || [],
-        &stale_variable_reference_finding(&1, flow, format, level, declared_refs)
+        &variable_reference_findings(
+          &1,
+          flow,
+          format,
+          referenceable_refs,
+          Map.get(stale_node_variable_refs_by_flow, flow.id, %{})
+        )
       )
     end)
   end
 
-  defp stale_variable_reference_finding(node, flow, format, level, declared_refs) do
-    stale_refs =
+  defp variable_reference_findings(node, flow, format, referenceable_refs, tracked_stale_refs_by_node) do
+    references =
       node
       |> node_variable_references()
-      |> Enum.reject(&MapSet.member?(declared_refs, &1))
       |> Enum.uniq()
       |> Enum.sort()
 
-    if stale_refs == [] do
-      []
-    else
-      [
-        node_finding(
-          level,
-          :stale_variable_reference,
-          flow,
-          node,
-          dgettext(
-            "projects",
-            ~s("%{node}" in flow "%{flow}" references a variable that is not declared in the %{format} artifact),
-            node: Flows.node_label(node),
-            flow: flow.name,
-            format: format_label(format)
-          ),
-          format: format,
-          details: %{references: stale_refs}
-        )
-      ]
-    end
+    exported_refs = MapSet.new(references)
+    missing_refs = MapSet.difference(exported_refs, referenceable_refs)
+
+    tracked_stale_refs =
+      tracked_stale_refs_by_node
+      |> Map.get(node.id, MapSet.new())
+      |> MapSet.intersection(exported_refs)
+
+    stale_refs =
+      missing_refs
+      |> MapSet.union(tracked_stale_refs)
+      |> Enum.sort()
+
+    tracked_stale? = MapSet.size(tracked_stale_refs) > 0
+
+    stale_variable_reference_finding(
+      node,
+      flow,
+      format,
+      stale_refs,
+      tracked_stale?
+    )
+  end
+
+  defp stale_variable_reference_finding(_node, _flow, _format, [], false), do: []
+
+  defp stale_variable_reference_finding(node, flow, format, stale_refs, tracked_stale?) do
+    [
+      node_finding(
+        integrity_level(:stale_variable_reference, format),
+        :stale_variable_reference,
+        flow,
+        node,
+        dgettext(
+          "projects",
+          ~s("%{node}" in flow "%{flow}" references a variable that no longer exists),
+          node: Flows.node_label(node),
+          flow: flow.name
+        ),
+        format: format,
+        details: %{
+          references: stale_refs,
+          tracked_reference_stale: tracked_stale?
+        }
+      )
+    ]
   end
 
   defp node_variable_references(node) do
@@ -1272,36 +1435,117 @@ defmodule Storyarn.Exports.ArtifactValidator do
     raw_condition
     |> decode_condition()
     |> Condition.extract_all_rules()
+    |> Enum.filter(&condition_export_candidate?/1)
     |> Enum.flat_map(fn rule ->
       variable_reference(rule["sheet"], rule["variable"])
     end)
   end
 
   defp assignment_variable_references(assignments) when is_list(assignments) do
-    Enum.flat_map(assignments, fn
-      assignment when is_map(assignment) ->
-        write_ref = variable_reference(assignment["sheet"], assignment["variable"])
-
-        read_ref =
-          if assignment["value_type"] == "variable_ref" do
-            variable_reference(assignment["value_sheet"], assignment["value"])
-          else
-            []
-          end
-
-        write_ref ++ read_ref
-
-      _assignment ->
-        []
-    end)
+    Enum.flat_map(assignments, &assignment_references/1)
   end
 
   defp assignment_variable_references(_assignments), do: []
+
+  defp assignment_references(assignment) when is_map(assignment) do
+    if instruction_export_candidate?(assignment) do
+      variable_reference(assignment["sheet"], assignment["variable"]) ++
+        assignment_read_references(assignment)
+    else
+      []
+    end
+  end
+
+  defp assignment_references(_assignment), do: []
+
+  defp assignment_read_references(%{"value_type" => "variable_ref"} = assignment) do
+    variable_reference(assignment["value_sheet"], assignment["value"])
+  end
+
+  defp assignment_read_references(_assignment), do: []
 
   defp variable_reference(sheet, variable)
        when is_binary(sheet) and sheet != "" and is_binary(variable) and variable != "", do: ["#{sheet}.#{variable}"]
 
   defp variable_reference(_sheet, _variable), do: []
+
+  defp variable_type_mismatch_findings(:yarn, flows, referenceable_variables) do
+    type_map = unambiguous_variable_type_map(referenceable_variables)
+
+    Enum.flat_map(flows, fn flow ->
+      Enum.flat_map(flow.nodes || [], &variable_type_mismatch_finding(&1, flow, type_map))
+    end)
+  end
+
+  defp variable_type_mismatch_findings(_format, _flows, _referenceable_variables), do: []
+
+  defp variable_type_mismatch_finding(node, flow, type_map) do
+    if node_has_variable_type_mismatch?(node, type_map) do
+      [
+        node_finding(
+          :warning,
+          :variable_type_mismatch,
+          flow,
+          node,
+          dgettext(
+            "projects",
+            ~s("%{node}" in flow "%{flow}" contains an expression that cannot be exported to %{format}),
+            node: Flows.node_label(node),
+            flow: flow.name,
+            format: format_label(:yarn)
+          ),
+          format: :yarn
+        )
+      ]
+    else
+      []
+    end
+  end
+
+  defp unambiguous_variable_type_map(referenceable_variables) do
+    referenceable_variables
+    |> Enum.group_by(&variable_descriptor_ref/1)
+    |> Enum.reduce(%{}, fn
+      {nil, _variables}, type_map ->
+        type_map
+
+      {reference, variables}, type_map ->
+        types =
+          variables
+          |> Enum.map(&Map.get(&1, :block_type))
+          |> Enum.filter(&is_binary/1)
+          |> Enum.uniq()
+
+        case types do
+          [type] -> Map.put(type_map, reference, type)
+          _ambiguous_or_missing -> type_map
+        end
+    end)
+  end
+
+  defp node_has_variable_type_mismatch?(node, type_map) do
+    data = node.data || %{}
+
+    case node.type do
+      "instruction" ->
+        Instruction.has_type_warnings?(data["assignments"] || [], type_map)
+
+      "dialogue" ->
+        data
+        |> Map.get("responses", [])
+        |> list_or_empty()
+        |> Enum.any?(fn
+          response when is_map(response) ->
+            Instruction.has_type_warnings?(response_assignments(response), type_map)
+
+          _response ->
+            false
+        end)
+
+      _type ->
+        false
+    end
+  end
 
   defp expression_findings(format, flows) do
     Enum.flat_map(flows, fn flow ->
@@ -1680,26 +1924,60 @@ defmodule Storyarn.Exports.ArtifactValidator do
       noop_condition?(condition) ->
         []
 
-      condition_has_incomplete_rules?(condition) ->
-        [
-          expression_error_finding(
-            flow,
-            node,
-            source,
-            format,
-            :incomplete_condition_rule
-          )
-        ]
-
       true ->
-        case ExpressionTranspiler.transpile_condition(condition, format) do
-          {:ok, expression, warnings} ->
-            empty_expression_finding(expression, flow, node, source, format) ++
-              transpiler_warning_findings(warnings, flow, node, source, format)
+        rules =
+          condition
+          |> decode_condition()
+          |> Condition.extract_all_rules()
 
-          {:error, reason} ->
-            [expression_error_finding(flow, node, source, format, reason)]
+        export_candidates = Enum.filter(rules, &condition_export_candidate?/1)
+
+        cond do
+          Enum.any?(rules, &corrupt_condition_rule?/1) ->
+            [
+              expression_error_finding(
+                flow,
+                node,
+                source,
+                format,
+                :invalid_condition_rule
+              )
+            ]
+
+          export_candidates == [] ->
+            []
+
+          Enum.any?(export_candidates, &(not complete_condition_rule?(&1))) ->
+            [
+              expression_error_finding(
+                flow,
+                node,
+                source,
+                format,
+                :incomplete_condition_rule
+              )
+            ]
+
+          true ->
+            transpile_complete_condition_findings(
+              condition,
+              format,
+              flow,
+              node,
+              source
+            )
         end
+    end
+  end
+
+  defp transpile_complete_condition_findings(condition, format, flow, node, source) do
+    case ExpressionTranspiler.transpile_condition(condition, format) do
+      {:ok, expression, warnings} ->
+        empty_expression_finding(expression, flow, node, source, format) ++
+          transpiler_warning_findings(warnings, flow, node, source, format)
+
+      {:error, reason} ->
+        [expression_error_finding(flow, node, source, format, reason)]
     end
   end
 
@@ -1822,12 +2100,42 @@ defmodule Storyarn.Exports.ArtifactValidator do
   defp declared_variables(_project_id, []), do: []
 
   defp declared_variables(project_id, sheets) do
-    selected_sheet_ids = Enum.map(sheets, & &1.id)
+    if Enum.all?(sheets, &is_list(Map.get(&1, :blocks))) do
+      SerializerHelpers.collect_variables(sheets)
+    else
+      selected_sheet_ids = Enum.map(sheets, & &1.id)
 
-    project_id
-    |> Sheets.list_sheets_for_export(filter_ids: selected_sheet_ids)
-    |> SerializerHelpers.collect_variables()
+      project_id
+      |> Sheets.list_sheets_for_export(filter_ids: selected_sheet_ids)
+      |> SerializerHelpers.collect_variables()
+    end
   end
+
+  defp referenceable_variables(_project_id, []), do: []
+  defp referenceable_variables(project_id, _flows), do: Flows.list_referenceable_variables(project_id)
+
+  defp active_flows(_project_id, [], _validation_context), do: []
+
+  defp active_flows(project_id, _artifact_flows, validation_context) do
+    Map.get_lazy(validation_context, :active_flows, fn -> Flows.list_flows(project_id) end)
+  end
+
+  defp stale_node_variable_refs_by_flow(flows) do
+    flow_ids =
+      flows
+      |> Enum.map(& &1.id)
+      |> Enum.filter(&(is_integer(&1) and &1 > 0))
+      |> Enum.uniq()
+
+    References.list_stale_node_variable_refs_by_flow(flow_ids)
+  end
+
+  defp variable_descriptor_ref(%{full_ref: full_ref}) when is_binary(full_ref) and full_ref != "", do: full_ref
+
+  defp variable_descriptor_ref(%{sheet_shortcut: sheet, variable_name: variable})
+       when is_binary(sheet) and sheet != "" and is_binary(variable) and variable != "", do: "#{sheet}.#{variable}"
+
+  defp variable_descriptor_ref(_variable), do: nil
 
   defp response_assignments(response) do
     case response["instruction_assignments"] do
@@ -1859,16 +2167,10 @@ defmodule Storyarn.Exports.ArtifactValidator do
 
   defp noop_condition?(_condition), do: false
 
-  defp condition_has_incomplete_rules?(condition) do
-    decoded = decode_condition(condition)
-
-    Enum.any?(Condition.extract_all_rules(decoded), &(not complete_condition_rule?(&1)))
-  end
-
   defp condition_structure_invalid?(condition) do
     case decode_condition(condition) do
       %{} = decoded -> match?({:error, _reason}, Condition.validate(decoded))
-      nil -> false
+      nil -> not noop_condition?(condition)
     end
   end
 
@@ -1883,8 +2185,39 @@ defmodule Storyarn.Exports.ArtifactValidator do
 
   defp complete_condition_rule?(_rule), do: false
 
-  defp instruction_export_candidate?(%{"sheet" => sheet, "variable" => variable, "operator" => _operator}) do
-    complete_reference?(sheet, variable)
+  defp condition_export_candidate?(%{"sheet" => sheet, "variable" => variable, "operator" => operator}) do
+    complete_reference?(sheet, variable) and is_binary(operator) and operator != ""
+  end
+
+  defp condition_export_candidate?(_rule), do: false
+
+  defp corrupt_condition_rule?(rule) when is_map(rule) do
+    operator = rule["operator"]
+
+    impossible_condition_field?(rule["sheet"]) or
+      impossible_condition_field?(rule["variable"]) or
+      impossible_condition_operator?(operator) or
+      impossible_condition_value?(operator, rule["value"])
+  end
+
+  defp corrupt_condition_rule?(_rule), do: true
+
+  defp impossible_condition_field?(value), do: not (is_nil(value) or is_binary(value))
+
+  defp impossible_condition_operator?(operator) when operator in [nil, ""], do: false
+  defp impossible_condition_operator?(operator) when is_binary(operator), do: not Condition.valid_operator?(operator)
+  defp impossible_condition_operator?(_operator), do: true
+
+  defp impossible_condition_value?(_operator, value) when value in [nil, ""], do: false
+
+  defp impossible_condition_value?(operator, value) do
+    Condition.valid_operator?(operator) and
+      Condition.operator_requires_value?(operator) and
+      not exportable_condition_value?(value)
+  end
+
+  defp instruction_export_candidate?(%{"sheet" => sheet, "variable" => variable, "operator" => operator}) do
+    complete_reference?(sheet, variable) and is_binary(operator) and operator != ""
   end
 
   defp instruction_export_candidate?(_assignment), do: false

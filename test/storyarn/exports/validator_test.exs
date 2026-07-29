@@ -7,6 +7,7 @@ defmodule Storyarn.Exports.ValidatorTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Exports.DataCollector
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.Validator
   alias Storyarn.Exports.Validator.ValidationResult
@@ -97,11 +98,13 @@ defmodule Storyarn.Exports.ValidatorTest do
       flow = flow_fixture(project, %{name: "Empty Dialogue Flow"})
       speaker = sheet_fixture(project, %{name: "NPC"})
 
-      _empty =
+      empty =
         node_fixture(flow, %{
           type: "dialogue",
           data: %{"text" => "", "speaker_sheet_id" => speaker.id}
         })
+
+      connect_from_entry(flow, empty)
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       empty_warnings = Enum.filter(result.warnings, &(&1.rule == :empty_dialogue))
@@ -112,11 +115,13 @@ defmodule Storyarn.Exports.ValidatorTest do
       flow = flow_fixture(project, %{name: "HTML Only Flow"})
       speaker = sheet_fixture(project, %{name: "NPC"})
 
-      _html =
+      html =
         node_fixture(flow, %{
           type: "dialogue",
           data: %{"text" => "<p><br></p>", "speaker_sheet_id" => speaker.id}
         })
+
+      connect_from_entry(flow, html)
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       empty_warnings = Enum.filter(result.warnings, &(&1.rule == :empty_dialogue))
@@ -134,11 +139,13 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "reports warning for dialogue nodes without speaker", %{project: project} do
       flow = flow_fixture(project, %{name: "No Speaker Flow"})
 
-      _nospeaker =
+      no_speaker =
         node_fixture(flow, %{
           type: "dialogue",
           data: %{"text" => "Who says this?"}
         })
+
+      connect_from_entry(flow, no_speaker)
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       speaker_warnings = Enum.filter(result.warnings, &(&1.rule == :missing_speakers))
@@ -156,11 +163,13 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "reports error for jump node targeting non-existent hub", %{project: project} do
       flow = flow_fixture(project, %{name: "Broken Jump Flow"})
 
-      _jump =
+      jump =
         corrupt_node_fixture(flow, %{
           type: "jump",
           data: %{"target_hub_id" => "nonexistent_hub"}
         })
+
+      connect_from_entry(flow, jump)
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       broken = Enum.filter(result.errors, &(&1.rule == :stale_jump_target))
@@ -177,11 +186,13 @@ defmodule Storyarn.Exports.ValidatorTest do
           data: %{"hub_id" => "hub_1", "label" => "Main Hub"}
         })
 
-      _jump =
+      jump =
         node_fixture(flow, %{
           type: "jump",
           data: %{"target_hub_id" => "hub_1"}
         })
+
+      connect_from_entry(flow, jump)
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
@@ -194,11 +205,13 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "reports error for subflow targeting non-existent flow", %{project: project} do
       flow = flow_fixture(project, %{name: "Broken Subflow"})
 
-      _subflow =
+      subflow =
         corrupt_node_fixture(flow, %{
           type: "subflow",
           data: %{"referenced_flow_id" => -999}
         })
+
+      connect_from_entry(flow, subflow)
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
@@ -211,10 +224,13 @@ defmodule Storyarn.Exports.ValidatorTest do
       included = flow_fixture(project, %{name: "Included"})
       excluded = flow_fixture(project, %{name: "Excluded"})
 
-      node_fixture(included, %{
-        type: "subflow",
-        data: %{"referenced_flow_id" => excluded.id}
-      })
+      subflow =
+        node_fixture(included, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => excluded.id}
+        })
+
+      connect_from_entry(included, subflow)
 
       result =
         Validator.validate_project(project.id, %ExportOptions{
@@ -246,7 +262,8 @@ defmodule Storyarn.Exports.ValidatorTest do
         |> Map.put("localization_id", nil)
         |> Map.put("responses", [%{"text" => "Missing ID"}])
 
-      dialogue |> Ecto.Changeset.change(data: corrupt_data) |> Repo.update!()
+      dialogue = dialogue |> Ecto.Changeset.change(data: corrupt_data) |> Repo.update!()
+      connect_from_entry(flow, dialogue)
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
@@ -272,10 +289,13 @@ defmodule Storyarn.Exports.ValidatorTest do
     } do
       flow = flow_fixture(project, %{name: "Stale References"})
 
-      node_fixture(flow, %{
-        type: "condition",
-        data: %{"condition" => condition("missing_sheet", "missing_variable", "equals")}
-      })
+      condition_node =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{"condition" => condition("missing_sheet", "missing_variable", "equals")}
+        })
+
+      connect_from_entry(flow, condition_node)
 
       ink = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       unity = Validator.validate_project(project.id, %ExportOptions{format: :unity})
@@ -288,10 +308,13 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "surfaces target-transpiler warnings", %{project: project} do
       flow = flow_fixture(project, %{name: "Expressions"})
 
-      node_fixture(flow, %{
-        type: "condition",
-        data: %{"condition" => condition("inventory", "items", "contains")}
-      })
+      condition_node =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{"condition" => condition("inventory", "items", "contains")}
+        })
+
+      connect_from_entry(flow, condition_node)
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
@@ -304,10 +327,13 @@ defmodule Storyarn.Exports.ValidatorTest do
     test "blocks corrupt conditions that would become an always-true branch", %{project: project} do
       flow = flow_fixture(project, %{name: "Corrupt Condition"})
 
-      node_fixture(flow, %{
-        type: "condition",
-        data: %{"condition" => "{not-json"}
-      })
+      condition_node =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{"condition" => "{not-json"}
+        })
+
+      connect_from_entry(flow, condition_node)
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
@@ -385,8 +411,12 @@ defmodule Storyarn.Exports.ValidatorTest do
 
       included_flow = flow_fixture(project, %{name: "Included"})
       excluded_flow = flow_fixture(project, %{name: "Excluded"})
-      node_fixture(included_flow, %{type: "dialogue", data: %{"text" => "Included pending"}})
+
+      included_dialogue =
+        node_fixture(included_flow, %{type: "dialogue", data: %{"text" => "Included pending"}})
+
       node_fixture(excluded_flow, %{type: "dialogue", data: %{"text" => "Excluded pending"}})
+      connect_from_entry(included_flow, included_dialogue)
 
       result =
         Validator.validate_project(project.id, %ExportOptions{
@@ -397,6 +427,46 @@ defmodule Storyarn.Exports.ValidatorTest do
 
       assert [%{total_count: 1, excluded_count: 1}] =
                Enum.filter(result.warnings, &(&1.rule == :missing_translations))
+    end
+
+    test "ignores localization rows for nodes discarded by linear traversal", %{project: project} do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      flow = flow_fixture(project, %{name: "Effective localization"})
+
+      reachable =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Hello world", "localization_id" => "reachable_dialogue"}
+        })
+
+      unreachable =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Discarded", "localization_id" => "discarded_dialogue"}
+        })
+
+      connect_from_entry(flow, reachable)
+
+      localized_text_fixture(project.id, %{
+        source_id: reachable.id,
+        source_text: "Hello world",
+        translated_text: "Hola",
+        status: "final"
+      })
+
+      localized_text_fixture(project.id, %{
+        source_id: unreachable.id,
+        source_text: "Discarded",
+        translated_text: nil,
+        status: "pending"
+      })
+
+      result = Validator.validate_project(project.id, %ExportOptions{format: :yarn})
+
+      refute Enum.any?(result.warnings, &(&1.rule == :missing_translations))
+      assert Enum.any?(result.warnings, &(&1.rule == :unreachable_node))
     end
 
     # The other half of this test covered the native full-state backup format,
@@ -449,14 +519,14 @@ defmodule Storyarn.Exports.ValidatorTest do
       flow_b = flow_fixture(project, %{name: "Flow B"})
 
       # A references B via subflow
-      _subflow_a =
+      subflow_a =
         node_fixture(flow_a, %{
           type: "subflow",
           data: %{"referenced_flow_id" => flow_b.id}
         })
 
       # B references A (circular) — insert directly to bypass circular reference check
-      {:ok, _subflow_b} =
+      {:ok, subflow_b} =
         Repo.insert(%FlowNode{
           flow_id: flow_b.id,
           type: "subflow",
@@ -464,6 +534,9 @@ defmodule Storyarn.Exports.ValidatorTest do
           position_x: 100.0,
           position_y: 100.0
         })
+
+      connect_from_entry(flow_a, subflow_a)
+      connect_from_entry(flow_b, subflow_b)
 
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
       circular = Enum.filter(result.warnings, &(&1.rule == :circular_subflows))
@@ -581,10 +654,84 @@ defmodule Storyarn.Exports.ValidatorTest do
     end
   end
 
+  describe "validate_with_data/2" do
+    setup [:setup_project]
+
+    test "returns the exact full selections and project shortcut map for collection", %{
+      project: project
+    } do
+      selected_flow = flow_fixture(project, %{name: "Selected Flow", shortcut: "selected-flow"})
+      excluded_flow = flow_fixture(project, %{name: "External Flow", shortcut: "external-flow"})
+      selected_sheet = sheet_fixture(project, %{name: "Selected Sheet"})
+      excluded_sheet = sheet_fixture(project, %{name: "Excluded Sheet"})
+      selected_block = block_fixture(selected_sheet)
+
+      opts = %ExportOptions{
+        format: :unity,
+        flow_ids: [selected_flow.id],
+        sheet_ids: [selected_sheet.id],
+        include_scenes: false,
+        include_localization: false
+      }
+
+      {_result, preloaded} = Validator.validate_with_data(project.id, opts)
+
+      assert Enum.map(preloaded.flows, & &1.id) == [selected_flow.id]
+      assert Enum.map(preloaded.sheets, & &1.id) == [selected_sheet.id]
+      assert Enum.map(hd(preloaded.sheets).blocks, & &1.id) == [selected_block.id]
+      refute Enum.any?(preloaded.flows, &(&1.id == excluded_flow.id))
+      refute Enum.any?(preloaded.sheets, &(&1.id == excluded_sheet.id))
+
+      assert preloaded.flow_shortcuts_by_id == %{
+               to_string(selected_flow.id) => "selected-flow",
+               to_string(excluded_flow.id) => "external-flow"
+             }
+
+      collected = DataCollector.collect(project.id, opts, preloaded)
+      assert collected.flows == preloaded.flows
+      assert collected.sheets == preloaded.sheets
+      assert collected.flow_shortcuts_by_id == preloaded.flow_shortcuts_by_id
+    end
+
+    test "keeps disabled sections and their shortcut index empty", %{
+      project: project
+    } do
+      sheet_fixture(project, %{name: "Not Exported"})
+      flow_fixture(project, %{name: "Reference Target", shortcut: "reference-target"})
+
+      opts = %ExportOptions{
+        format: :unity,
+        include_flows: false,
+        include_sheets: false,
+        include_scenes: false,
+        include_localization: false
+      }
+
+      {_result, preloaded} = Validator.validate_with_data(project.id, opts)
+
+      assert preloaded.flows == []
+      assert preloaded.sheets == []
+      assert preloaded.flow_shortcuts_by_id == %{}
+
+      collected = DataCollector.collect(project.id, opts, preloaded)
+      assert collected.flows == []
+      assert collected.sheets == []
+    end
+  end
+
   defp corrupt_node_fixture(flow, attrs) do
     %FlowNode{flow_id: flow.id}
     |> FlowNode.create_changeset(attrs)
     |> Repo.insert!()
+  end
+
+  defp connect_from_entry(flow, node) do
+    entry =
+      flow.id
+      |> Storyarn.Flows.list_nodes()
+      |> Enum.find(&(&1.type == "entry"))
+
+    Storyarn.FlowsFixtures.connection_fixture(flow, entry, node)
   end
 
   defp condition(sheet, variable, operator) do

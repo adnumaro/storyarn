@@ -348,7 +348,7 @@
       "error_findings": "Problemas bloqueantes",
       "warning_findings": "Advertencias",
       "info_findings": "Información adicional",
-      "more_findings": "No se muestran {count} hallazgos más.",
+      "more_findings": "No se muestra {count} hallazgo más. | No se muestran {count} hallazgos más.",
       "no_issues": "No se encontraron problemas. El proyecto está listo para exportar."
     }
   }
