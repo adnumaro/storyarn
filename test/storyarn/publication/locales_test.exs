@@ -130,7 +130,7 @@ defmodule Storyarn.Publication.LocalesTest do
   # `~w(public docs blog)` — 3 of the 19 `.pot` files — which left every
   # app-facing domain unguarded: `es/projects.po` had drifted to 63 messages
   # short of `projects.pot` with a green suite. The catalog workflow this
-  # enforces is in `docs/conventions/domain-patterns.md`.
+  # enforces is in `docs/reference/domain-patterns.md`.
   defp assert_complete_gettext_catalog(locale, domain, template_keys) do
     relative_path = "priv/gettext/#{locale}/LC_MESSAGES/#{domain}.po"
     catalog = parse_po!(relative_path)

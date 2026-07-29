@@ -54,12 +54,12 @@ gh api -X POST repos/adnumaro/storyarn/branches/<old>/rename -f new_name='<new>'
 
 **Read these before writing code. Duplicating existing utilities is a bug.**
 
-| File                                    | Purpose                                                             |
-| --------------------------------------- | ------------------------------------------------------------------- |
-| `AGENTS.md`                             | Phoenix/LiveView/Ecto patterns (**MUST READ**)                      |
-| @docs/conventions/shared-utilities.md   | **Shared utility registry — search here BEFORE writing any helper** |
-| @docs/conventions/domain-patterns.md    | Context facades, CRUD templates, auth patterns                      |
-| @docs/conventions/component-registry.md | HEEx components, layouts, and the Vue UI primitives                 |
+| File                                  | Purpose                                                             |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `AGENTS.md`                           | Phoenix/LiveView/Ecto patterns (**MUST READ**)                      |
+| @docs/reference/shared-utilities.md   | **Shared utility registry — search here BEFORE writing any helper** |
+| @docs/reference/domain-patterns.md    | Context facades, CRUD templates, auth patterns                      |
+| @docs/reference/component-registry.md | HEEx components, layouts, and the Vue UI primitives                 |
 
 ## Frontend Architecture (Vue / TypeScript)
 
@@ -123,7 +123,7 @@ Locales: `en` (default), `es`
 1. **Check `lib/storyarn/shared/`** — CanonicalJSON, ColorUtils, EncryptedBinary, FormulaEngine, FormulaRuntime, HierarchicalSchema, HtmlSanitizer, HtmlUtils, ImportHelpers, InvitationNotifier, InvitationOperations, InvitationSchema, MapUtils, MembershipOperations, NameNormalizer, SearchHelpers, ShortcutHelpers, SoftDelete, TimeHelpers, TokenGenerator, Trashable, TreeOperations, Validations, WordCount
 2. **Check `lib/storyarn_web/helpers/`** — Authorize, AutoSnapshot, EntitySearch, SaveStatusTimer, UndoRedoStack, VersionEventHelpers, VersionHistoryHelpers
 3. **Check `lib/storyarn_web/live/shared/`** — CollaborationHelpers, DashboardHandlers, DashboardHelpers, InvitationHelpers, OnboardingHelpers, PickerSearch, ProjectChromeHelpers, RestorationHandlers
-4. **Read `docs/conventions/shared-utilities.md`** for the full registry with examples
+4. **Read `docs/reference/shared-utilities.md`** for the full registry with examples
 
 ## Commands
 
@@ -166,7 +166,7 @@ User → WorkspaceMembership (owner|admin|member|viewer)
                                     └→ Sheets, Flows, Scenes, Assets
 ```
 
-Contexts use facade with `defdelegate` → submodules (e.g., `sheets.ex` → `sheets/sheet_crud.ex`). See @docs/conventions/domain-patterns.md.
+Contexts use facade with `defdelegate` → submodules (e.g., `sheets.ex` → `sheets/sheet_crud.ex`). See @docs/reference/domain-patterns.md.
 
 ## Variable System
 
@@ -214,4 +214,4 @@ Reference implementations: `assets/app/components/command-palette/CommandPalette
 
 `AuthLayout.auth`, `PublicLayout.public`, `DocsLayout.docs`, `SettingsLayout.settings`, `ProjectLayout.project`, `WorkspaceLayout.workspace`, `CompareLayout.compare`
 
-All but `PublicLayout` mount a LiveVue shell (`v-component="live/layouts/{name}/Layout"`); `PublicLayout` is HEEx-native. `Layouts` itself (`layouts.ex`) is not a layout — it holds `<Layouts.flash_group>`, `<Layouts.command_palette>` and the SEO head components. See @docs/conventions/component-registry.md for full attrs.
+All but `PublicLayout` mount a LiveVue shell (`v-component="live/layouts/{name}/Layout"`); `PublicLayout` is HEEx-native. `Layouts` itself (`layouts.ex`) is not a layout — it holds `<Layouts.flash_group>`, `<Layouts.command_palette>` and the SEO head components. See @docs/reference/component-registry.md for full attrs.

@@ -4,8 +4,8 @@ defmodule Storyarn.AI.Provider do
 
   Adapters wrap the HTTP contract of a specific provider so `Storyarn.AI` can
   drive them uniformly. All providers in v1 authenticate with a user-supplied
-  API key (BYOK); OAuth was ruled out during Slice 0 research — see
-  `docs/features/ai-integrations/PROVIDERS.md`.
+  API key (BYOK). See `docs/reference/ai-provider-adapters.md` for the
+  code-adjacent adapter contract.
   """
 
   @typedoc "Provider identifier used in the database and URLs (e.g. `:anthropic`)."
@@ -13,8 +13,8 @@ defmodule Storyarn.AI.Provider do
 
   @typedoc """
   What a provider can be used for. Immutable per provider — owner-decided sets,
-  declared in each adapter's `metadata/0` (provider context in
-  `docs/features/ai-integrations/PROVIDERS.md`). Consumed by role assignments
+  declared in each adapter's `metadata/0` (see
+  `docs/reference/ai-provider-adapters.md`). Consumed by role assignments
   and lane resolution in later slices of the AI platform plan.
   """
   @type capability :: :translation | :suggestions | :tasks | :images | :speech

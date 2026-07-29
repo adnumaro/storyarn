@@ -22,7 +22,7 @@ defmodule Storyarn.Repo.Migrations.AddSequenceMediaConfig do
     * New table `flow_node_sequence_tracks`: one row per (sequence,
       kind) with `kind IN ('background', 'music', 'ambient')`. Each
       track has an optional asset + volume (0..1, three-decimal
-      numeric matching the spec in `docs/features/flow-relational-refactor/REFACTOR.md`).
+      numeric).
       The UNIQUE constraint on `(flow_node_id, kind)` enforces the
       "3 fixed slots per sequence" UX today; if we ever want
       stacked tracks per kind, drop the unique and start using the

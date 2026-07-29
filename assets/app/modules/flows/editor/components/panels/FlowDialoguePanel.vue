@@ -4,7 +4,7 @@
  *
  * Edits a `type="dialogue"` flow_node. The "screenplay" naming that survives
  * in `.sp-*` classes and `screenplay.css` refers to screenplay TYPOGRAPHY
- * (see docs/SCREENPLAY_FORMAT_CONVENTIONS.md), not to any document entity.
+ * (see docs/reference/flow-dialogue-typography.md), not to any document entity.
  *
  * Thin shell — header (title + close) + footer (status bar) + body. The
  * tabs / TipTap editor / save handlers live in `FlowDialogueEditorBody.vue`,
