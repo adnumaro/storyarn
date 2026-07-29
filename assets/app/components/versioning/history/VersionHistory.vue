@@ -10,7 +10,7 @@ import {
   Plus,
   RotateCcw,
   Trash2,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive";

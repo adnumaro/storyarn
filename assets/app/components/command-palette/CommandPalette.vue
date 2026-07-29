@@ -12,7 +12,7 @@ import {
   Settings,
   Trash2,
   type LucideIcon,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {

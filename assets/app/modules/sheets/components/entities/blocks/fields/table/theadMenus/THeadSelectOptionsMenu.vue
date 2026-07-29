@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Separator } from "@components/ui/separator";
-import { ArrowLeft } from "lucide-vue-next";
+import { ArrowLeft } from "@lucide/vue";
 import THeadBaseMenu from "@modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadBaseMenu.vue";
 import THeadMenuItem from "@modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadMenuItem.vue";
 import OptionEditor from "../../../OptionEditor.vue";

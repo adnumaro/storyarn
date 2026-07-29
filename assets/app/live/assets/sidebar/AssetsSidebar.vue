@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { File, Image, Music, Search } from "lucide-vue-next";
+import { File, Image, Music, Search } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import SidebarFrame from "@shell/SidebarFrame.vue";
 import { Input } from "@components/ui/input";

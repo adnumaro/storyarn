@@ -13,7 +13,7 @@ import {
   Minus,
   Quote,
   Strikethrough,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { onBeforeUnmount, watch } from "vue";
 
 const {

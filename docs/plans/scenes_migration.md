@@ -275,7 +275,7 @@ Time: 30 min. No commit.
   - **load_scene changes**: after `assign_scene_state`, broadcast `{:scene_payload_changed, %{layers, active_layer_id, edit_mode}}`.
   - **handle_event tree mutations**: REMOVE `create_scene`, `create_child_scene`, `set_pending_delete_scene`, `confirm_delete_scene`, `delete_scene`, `move_to_parent`. KEEP `create_child_scene_from_zone`.
   - **handle_event layer mutations** (per open question 1): REMOVE all layer mutations.
-  - **handle*event `tree_panel*\*`**: replace `handle_tree_panel_event` with `ProjectChromeHelpers.forward_tree_panel/3`.
+  - **handle_event `tree_panel_*`**: replace `handle_tree_panel_event` with `ProjectChromeHelpers.forward_tree_panel/3`.
   - **handle_event `switch_tree_tab`**: REMOVE — sidebar owns the tab state.
   - **handle_info changes**: add `{:active_scene, _}` (no-op for Show), `{:open_scene, id}` (push*navigate), `{:tree_changed, :scenes}` (no-op — sidebar handles), `{:active_layer_changed, id}` (assign `:active_layer_id`), `{:online_users, users}`, `{:toolbar_event, *, \_}` (no-op).
   - **Drop `import TreePanelHandlers`**.

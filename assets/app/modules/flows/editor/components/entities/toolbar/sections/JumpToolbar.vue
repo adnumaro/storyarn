@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Crosshair, LogOut } from "lucide-vue-next";
+import { Crosshair, LogOut } from "@lucide/vue";
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";

@@ -12,7 +12,7 @@ import {
   Search,
   Sparkles,
   X,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";

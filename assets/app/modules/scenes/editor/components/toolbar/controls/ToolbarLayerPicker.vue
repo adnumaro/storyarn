@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Layers } from "lucide-vue-next";
+import { Layers } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@components/ui/popover";

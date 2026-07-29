@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CloudFog, EllipsisVertical, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
+import { CloudFog, EllipsisVertical, Eye, EyeOff, Pencil, Plus, Trash2 } from "@lucide/vue";
 import { nextTick, ref } from "vue";
 import { Button } from "@components/ui/button";
 import {

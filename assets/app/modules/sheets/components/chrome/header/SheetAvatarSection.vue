@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutGrid, Plus, X } from "lucide-vue-next";
+import { LayoutGrid, Plus, X } from "@lucide/vue";
 import { computed } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import type { Sheet, SheetAvatar } from "../../../types";

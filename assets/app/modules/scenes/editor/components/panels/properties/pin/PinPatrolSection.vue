@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Route } from "lucide-vue-next";
+import { Route } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { NumberField, SelectField, SliderField } from "@components/forms/fields";

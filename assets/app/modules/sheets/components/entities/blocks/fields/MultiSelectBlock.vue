@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ListChecks, ChevronDown } from "lucide-vue-next";
+import { ListChecks, ChevronDown } from "@lucide/vue";
 import { computed } from "vue";
 import { Badge } from "@components/ui/badge";
 import { Checkbox } from "@components/ui/checkbox";

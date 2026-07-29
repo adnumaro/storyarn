@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PlugZap } from "lucide-vue-next";
+import { PlugZap } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import IntegrationCard, { type IntegrationCardData } from "./integrations/IntegrationCard.vue";

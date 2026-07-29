@@ -270,15 +270,16 @@ Restore without conflict detection is dangerous — you silently break reference
 ### Key concepts
 
 **Validation checks on restore:**
-| Reference type | Check | Resolution |
-|---|---|---|
-| `speaker_sheet_id` in flow node | Does sheet exist and not deleted? | Warn, nilify on restore |
-| `target_flow_id` in node/zone | Does flow exist and not deleted? | Warn, nilify on restore |
-| `target_scene_id` in node/zone | Does scene exist and not deleted? | Warn, nilify on restore |
-| `sheet_id` on pin | Does sheet exist? | Warn, nilify on restore |
-| Variable references in conditions | Does the sheet.variable still exist? | Warn, clear condition on restore |
-| Shortcut uniqueness | Is snapshot's shortcut taken by another entity? | Auto-rename with suffix, notify user |
-| Asset blob_hash | Does blob still exist in R2? | Warn, restore without asset |
+
+| Reference type                    | Check                                           | Resolution                           |
+| --------------------------------- | ----------------------------------------------- | ------------------------------------ |
+| `speaker_sheet_id` in flow node   | Does sheet exist and not deleted?               | Warn, nilify on restore              |
+| `target_flow_id` in node/zone     | Does flow exist and not deleted?                | Warn, nilify on restore              |
+| `target_scene_id` in node/zone    | Does scene exist and not deleted?               | Warn, nilify on restore              |
+| `sheet_id` on pin                 | Does sheet exist?                               | Warn, nilify on restore              |
+| Variable references in conditions | Does the sheet.variable still exist?            | Warn, clear condition on restore     |
+| Shortcut uniqueness               | Is snapshot's shortcut taken by another entity? | Auto-rename with suffix, notify user |
+| Asset blob_hash                   | Does blob still exist in R2?                    | Warn, restore without asset          |
 
 **Conflict report UI:**
 

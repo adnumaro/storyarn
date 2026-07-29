@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { RadioGroupRoot, useForwardPropsEmits, type AsTag } from "reka-ui";
+import { RadioGroupRoot, useForwardProps, type AcceptableValue, type AsTag } from "reka-ui";
 import { cn } from "../../../shared/utils/utils";
 
 const props = defineProps<{
@@ -17,13 +17,17 @@ const props = defineProps<{
   required?: boolean;
   class?: HTMLAttributes["class"];
 }>();
-const emits = defineEmits<{
+const emit = defineEmits<{
   "update:modelValue": [value: string];
 }>();
 
 const delegatedProps = reactiveOmit(props, "class");
 
-const forwarded = useForwardPropsEmits(delegatedProps, emits);
+const forwarded = useForwardProps(delegatedProps);
+
+function updateModelValue(value: AcceptableValue) {
+  if (typeof value === "string") emit("update:modelValue", value);
+}
 </script>
 
 <template>
@@ -32,6 +36,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
     data-slot="radio-group"
     :class="cn('grid gap-3', props.class)"
     v-bind="forwarded"
+    @update:model-value="updateModelValue"
   >
     <slot v-bind="slotProps" />
   </RadioGroupRoot>

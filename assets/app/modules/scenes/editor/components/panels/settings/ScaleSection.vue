@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ruler } from "lucide-vue-next";
+import { Ruler } from "@lucide/vue";
 import { computed } from "vue";
 import { useLive } from "@shared/composables/useLive.ts";
 

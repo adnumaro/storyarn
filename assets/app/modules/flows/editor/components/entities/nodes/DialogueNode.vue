@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { EditorContent } from "@tiptap/vue-3";
-import { MessageSquare, Volume2 } from "lucide-vue-next";
+import { MessageSquare, Volume2 } from "@lucide/vue";
 import { Ref } from "rete-vue-plugin";
 import { computed, inject, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";

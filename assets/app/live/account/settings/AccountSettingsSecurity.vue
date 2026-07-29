@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useLiveForm, type Form } from "live_vue";
-import { Info } from "lucide-vue-next";
+import { Info } from "@lucide/vue";
 import { computed, nextTick, ref, watch } from "vue";
 import PasswordInput from "@components/forms/PasswordInput.vue";
 import { Button } from "@components/ui/button";

@@ -184,6 +184,7 @@ Controllers automatically have `current_scope` available if they use the `:brows
 - The test port is `MIX_TEST_PORT` (default 4002), **not** `MIX_TEST_PARTITION` — that only moves the database. If 4002 is busy: `MIX_TEST_PORT=4112 MIX_TEST_PARTITION=2 mix test`. Never kill the port
 - Project-specific tasks: `mix convention.check`, `mix test.e2e`, `mix storyarn.ai.diagnose`, `mix storyarn.ai.grant`, `mix storyarn.templates.export`, `mix storyarn.templates.import`
 - `mix deps.clean --all` is **almost never needed**. **Avoid** using it unless you have good reason
+
 <!-- phoenix:elixir-end -->
 
 <!-- phoenix:phoenix-start -->
@@ -203,6 +204,7 @@ Controllers automatically have `current_scope` available if they use the `:brows
   the UserLive route would point to the `AppWeb.Admin.UserLive` module
 
 - `Phoenix.View` no longer is needed or included with Phoenix, don't use it
+
 <!-- phoenix:phoenix-end -->
 
 <!-- phoenix:ecto-start -->
@@ -218,6 +220,7 @@ Controllers automatically have `current_scope` available if they use the `:brows
 - **Always** filter soft-deleted rows: `where: is_nil(e.deleted_at)`
 - **Never** interpolate into a query — `convention.check` flags `from x in … #{}` and `Repo.query` interpolation. Pin with `^`
 - Any schema passed to Vue as a `<.vue>` prop needs `Protocol.derive(LiveVue.Encoder, …)` in `lib/storyarn/live_vue_encoders.ex`. Tests will not catch a missing derive
+
 <!-- phoenix:ecto-end -->
 
 <!-- phoenix:html-start -->
@@ -331,6 +334,7 @@ Controllers automatically have `current_scope` available if they use the `:brows
 - Vue: Vitest + `@vue/test-utils` + jsdom, under `assets/app/test/` mirroring `assets/app/`. Run with `just js-test`
 - Browser behaviour: `mix test.e2e`
 - Run `pnpm run typecheck` (`just js-typecheck`) before claiming a frontend change compiles — Vite will happily serve type-broken code
+
 <!-- phoenix:liveview-end -->
 
 <!-- usage-rules-end -->

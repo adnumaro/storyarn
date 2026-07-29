@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PanelLeft, PanelLeftClose } from "lucide-vue-next";
+import { PanelLeft, PanelLeftClose } from "@lucide/vue";
 import { onUnmounted, ref, watch } from "vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import WorkspaceSidebar from "@shell/WorkspaceSidebar.vue";

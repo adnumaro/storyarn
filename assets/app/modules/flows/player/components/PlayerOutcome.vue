@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Footprints, MousePointerClick, Variable, RotateCcw, ArrowLeft } from "lucide-vue-next";
+import { Footprints, MousePointerClick, Variable, RotateCcw, ArrowLeft } from "@lucide/vue";
 import { onMounted } from "vue";
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";

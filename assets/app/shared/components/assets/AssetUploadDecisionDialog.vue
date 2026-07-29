@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { FileImage, Loader2 } from "lucide-vue-next";
+import { FileImage, Loader2 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import {
   Dialog,

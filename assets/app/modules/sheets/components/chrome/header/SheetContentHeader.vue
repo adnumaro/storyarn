@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Image, Loader2, Trash2 } from "lucide-vue-next";
+import { Image, Loader2, Trash2 } from "@lucide/vue";
 import { ref, watch } from "vue";
 import ColorPickerPopover from "@components/forms/ColorPickerPopover.vue";
 import { Button } from "@components/ui/button";

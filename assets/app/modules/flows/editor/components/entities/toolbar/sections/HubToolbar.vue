@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Crosshair, LogIn } from "lucide-vue-next";
+import { Crosshair, LogIn } from "@lucide/vue";
 import { ToolbarColorPicker, ToolbarSeparator } from "@components/toolbar";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "../../../../../../../shared/composables/useLive";

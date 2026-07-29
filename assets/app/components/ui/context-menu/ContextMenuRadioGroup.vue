@@ -1,21 +1,29 @@
 <script setup lang="ts">
 import type { Component } from "vue";
-import { ContextMenuRadioGroup, useForwardPropsEmits, type AsTag } from "reka-ui";
+import { ContextMenuRadioGroup, useForwardProps, type AcceptableValue, type AsTag } from "reka-ui";
 
 const props = defineProps<{
   modelValue?: string;
   asChild?: boolean;
   as?: AsTag | Component;
 }>();
-const emits = defineEmits<{
+const emit = defineEmits<{
   "update:modelValue": [value: string];
 }>();
 
-const forwarded = useForwardPropsEmits(props, emits);
+const forwarded = useForwardProps(props);
+
+function updateModelValue(value: AcceptableValue) {
+  if (typeof value === "string") emit("update:modelValue", value);
+}
 </script>
 
 <template>
-  <ContextMenuRadioGroup data-slot="context-menu-radio-group" v-bind="forwarded">
+  <ContextMenuRadioGroup
+    data-slot="context-menu-radio-group"
+    v-bind="forwarded"
+    @update:model-value="updateModelValue"
+  >
     <slot />
   </ContextMenuRadioGroup>
 </template>

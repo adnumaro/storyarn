@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileText, Zap } from "lucide-vue-next";
+import { FileText, Zap } from "@lucide/vue";
 import { ref, watch } from "vue";
 
 interface MentionItem {

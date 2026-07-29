@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from "vue";
-import { List, MapPin, Star, User, Zap } from "lucide-vue-next";
+import { List, MapPin, Star, User, Zap } from "@lucide/vue";
 import { useLive } from "@shared/composables/useLive.ts";
 
 interface PinGroup {

@@ -2,7 +2,7 @@
 import type { HTMLAttributes } from "vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { Eye, EyeOff } from "lucide-vue-next";
+import { Eye, EyeOff } from "@lucide/vue";
 import { Input } from "@components/ui/input";
 import { cn } from "@shared/utils/utils";
 

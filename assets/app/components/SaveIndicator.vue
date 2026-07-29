@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Loader2 } from "lucide-vue-next";
+import { Check, Loader2 } from "@lucide/vue";
 
 const { status = "idle" } = defineProps<{
   status?: "idle" | "saving" | "saved";

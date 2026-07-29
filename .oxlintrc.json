@@ -5,6 +5,11 @@
   "categories": {
     "correctness": "error"
   },
+  "settings": {
+    "tailwindcss": {
+      "entryPoint": "assets/css/app.css"
+    }
+  },
   "rules": {
     "complexity": [
       "error",

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Save, Scan } from "lucide-vue-next";
+import { ArrowLeft, Save, Scan } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@shared/composables/useLive.ts";

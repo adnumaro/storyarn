@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { GitBranch, Settings } from "lucide-vue-next";
+import { GitBranch, Settings } from "@lucide/vue";
 import { ToolbarSeparator } from "@components/toolbar";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Badge } from "@components/ui/badge";

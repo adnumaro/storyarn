@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { Search } from "lucide-vue-next";
+import { Search } from "@lucide/vue";
 import { ListboxFilter, useForwardProps, type AsTag } from "reka-ui";
 import { computed, watch } from "vue";
 import { cn } from "../../../shared/utils/utils";

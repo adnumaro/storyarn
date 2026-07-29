@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Briefcase, CircleHelp, LayoutDashboard, LogOut, User } from "lucide-vue-next";
+import { Briefcase, CircleHelp, LayoutDashboard, LogOut, User } from "@lucide/vue";
 import { computed } from "vue";
 import {
   DropdownMenu,

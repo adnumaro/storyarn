@@ -9,7 +9,7 @@ import {
   TriangleAlert,
   Upload,
   X,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { computed, ref } from "vue";
 import { Button } from "@components/ui/button";
 import {

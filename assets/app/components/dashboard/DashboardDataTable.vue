@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="TRow extends DashboardTableRow">
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-vue-next";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "@lucide/vue";
 import type { Component } from "vue";
 import DashboardPagination from "./DashboardPagination.vue";
 import type { DashboardTableColumn, DashboardTablePagination, DashboardTableRow } from "./types";

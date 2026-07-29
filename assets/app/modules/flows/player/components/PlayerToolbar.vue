@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Eye, ScanEye, RotateCcw, X } from "lucide-vue-next";
+import { ArrowLeft, Eye, ScanEye, RotateCcw, X } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Toggle } from "@components/ui/toggle";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from "vue";
 import { useLiveVue } from "live_vue";
-import { AlertCircle, AlertTriangle, Info, LoaderCircle, X } from "lucide-vue-next";
+import { AlertCircle, AlertTriangle, Info, LoaderCircle, X } from "@lucide/vue";
 
 type FlashKind = "info" | "warning" | "error";
 

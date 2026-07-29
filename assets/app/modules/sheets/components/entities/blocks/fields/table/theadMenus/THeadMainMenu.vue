@@ -9,7 +9,7 @@ import {
   Settings,
   SlidersHorizontal,
   Trash2,
-} from "lucide-vue-next";
+} from "@lucide/vue";
 import { Separator } from "@components/ui/separator";
 import { TableColumn, THeadMenuType } from "@modules/sheets/types.ts";
 import THeadBaseMenu from "@modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadBaseMenu.vue";

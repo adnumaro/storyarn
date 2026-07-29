@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Cable, Hand, MousePointer2, Ruler, StickyNote } from "lucide-vue-next";
+import { Cable, Hand, MousePointer2, Ruler, StickyNote } from "@lucide/vue";
 import { useLive } from "@shared/composables/useLive.ts";
 import DockToolButton from "./DockToolButton.vue";
 import ZonesDropdown from "./ZonesDropdown.vue";

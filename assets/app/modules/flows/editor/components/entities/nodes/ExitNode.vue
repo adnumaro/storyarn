@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, ArrowRightToLine, CornerDownLeft } from "lucide-vue-next";
+import { ArrowRight, ArrowRightToLine, CornerDownLeft } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import NodeHeader from "../node-shell/NodeHeader.vue";

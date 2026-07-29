@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertCircle, FileText, GitBranch, Link, X, ChevronDown } from "lucide-vue-next";
+import { AlertCircle, FileText, GitBranch, Link, X, ChevronDown } from "@lucide/vue";
 import type { ComponentPublicInstance, FunctionalComponent } from "vue";
 import { computed, nextTick, onBeforeUpdate, ref, watch } from "vue";
 import {

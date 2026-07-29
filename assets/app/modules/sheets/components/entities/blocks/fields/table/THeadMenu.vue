@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Check, ChevronDown, Layers } from "lucide-vue-next";
+import { ArrowLeft, Check, ChevronDown, Layers } from "@lucide/vue";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Separator } from "@components/ui/separator";

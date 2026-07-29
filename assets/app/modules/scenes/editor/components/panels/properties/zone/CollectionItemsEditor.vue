@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus } from "lucide-vue-next";
+import { Plus } from "@lucide/vue";
 import { computed } from "vue";
 import { TextField, ToggleField } from "@components/forms/fields";
 import type { Variable } from "@shared/domain/variables.ts";

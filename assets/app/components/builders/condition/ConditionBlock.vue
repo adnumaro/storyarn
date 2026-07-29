@@ -3,7 +3,7 @@
  * Single condition block containing rule rows.
  */
 
-import { Plus, X } from "lucide-vue-next";
+import { Plus, X } from "@lucide/vue";
 import { generateId } from "../../../shared/domain/variables";
 import type { Variable } from "../../../shared/domain/variables";
 import type {

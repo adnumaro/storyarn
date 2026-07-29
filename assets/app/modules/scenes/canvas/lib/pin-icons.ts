@@ -1,10 +1,10 @@
 /**
  * Renders Lucide icons and initials to offscreen canvas for Konva image sources.
- * Konva cannot render Vue components, so we render lucide-vue-next icons
+ * Konva cannot render Vue components, so we render @lucide/vue icons
  * to a temporary DOM element, extract the SVG, and draw to canvas.
  */
 
-import { Lock, MapPin, Star, User, Zap } from "lucide-vue-next";
+import { Lock, MapPin, Star, User, Zap } from "@lucide/vue";
 import { type Component, createApp, h } from "vue";
 
 const PIN_TYPE_COMPONENTS: Record<string, Component> = {
@@ -88,7 +88,7 @@ function drawImageWhenReady(
 }
 
 /**
- * Renders a lucide-vue-next icon component to an SVG data URL.
+ * Renders a @lucide/vue icon component to an SVG data URL.
  * Uses a temporary Vue app to render the component, extracts the SVG markup,
  * and returns a browser-loadable data URL.
  */

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { makeDroppable } from "@vue-dnd-kit/core";
 import type { IDragEvent } from "@vue-dnd-kit/core";
-import { Link2 } from "lucide-vue-next";
+import { Link2 } from "@lucide/vue";
 import { inject, ref, useTemplateRef, watch } from "vue";
 import UserAvatar from "@components/UserAvatar.vue";
 import { useLive } from "@shared/composables/useLive";

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Layers, SlidersHorizontal } from "lucide-vue-next";
+import { Layers, SlidersHorizontal } from "@lucide/vue";
 import { computed } from "vue";
 import { useLive } from "@shared/composables/useLive.ts";
 import SceneLayerList from "./SceneLayerList.vue";

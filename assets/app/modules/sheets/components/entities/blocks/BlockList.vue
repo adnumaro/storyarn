@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DnDProvider } from "@vue-dnd-kit/core";
-import { ArrowUpRight, Link2Off } from "lucide-vue-next";
+import { ArrowUpRight, Link2Off } from "@lucide/vue";
 import { onMounted, onUnmounted, provide, ref } from "vue";
 import UserAvatar from "../../../../../components/UserAvatar.vue";
 import { useLive } from "../../../../../shared/composables/useLive";

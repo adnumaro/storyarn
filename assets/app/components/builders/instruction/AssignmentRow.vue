@@ -4,7 +4,7 @@
  * Uses .assignment-row, .sentence-text, .sentence-slot, .operator-selector CSS.
  */
 
-import { ArrowLeftRight, X } from "lucide-vue-next";
+import { ArrowLeftRight, X } from "@lucide/vue";
 import { computed, nextTick, ref } from "vue";
 import {
   ALL_OPERATORS,

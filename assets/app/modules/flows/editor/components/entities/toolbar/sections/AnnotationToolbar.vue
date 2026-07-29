@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Trash2 } from "lucide-vue-next";
+import { Trash2 } from "@lucide/vue";
 import { ToolbarColorPicker, ToolbarSeparator, ToolbarSizePicker } from "@components/toolbar";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "../../../../../../../shared/composables/useLive";

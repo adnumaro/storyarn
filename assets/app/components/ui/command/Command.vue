@@ -1,41 +1,24 @@
 <script setup lang="ts">
-import type { Component, HTMLAttributes } from "vue";
+import type { HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import {
   ListboxRoot,
   useFilter,
   useForwardPropsEmits,
-  type AcceptableValue,
-  type AsTag,
+  type ListboxRootEmits,
+  type ListboxRootProps,
 } from "reka-ui";
 import { computed, reactive, ref, watch } from "vue";
 import { cn } from "@shared/utils/utils.ts";
 import { provideCommandContext } from "./context";
 
-const props = defineProps<{
-  modelValue?: AcceptableValue | AcceptableValue[];
-  defaultValue?: AcceptableValue | AcceptableValue[];
-  multiple?: boolean;
-  orientation?: "horizontal" | "vertical";
-  dir?: "ltr" | "rtl";
-  disabled?: boolean;
-  selectionBehavior?: "toggle" | "replace";
-  highlightOnHover?: boolean;
-  by?: string | ((a: AcceptableValue, b: AcceptableValue) => boolean);
-  asChild?: boolean;
-  as?: AsTag | Component;
-  name?: string;
-  required?: boolean;
+interface CommandProps extends ListboxRootProps {
   disableFilter?: boolean;
   class?: HTMLAttributes["class"];
-}>();
+}
 
-const emits = defineEmits<{
-  "update:modelValue": [value: AcceptableValue | AcceptableValue[]];
-  highlight: [event: Event];
-  entryFocus: [event: Event];
-  leave: [event: Event];
-}>();
+const props = defineProps<CommandProps>();
+const emits = defineEmits<ListboxRootEmits>();
 
 const delegatedProps = reactiveOmit(props, "class", "disableFilter");
 

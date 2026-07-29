@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MapPin, X } from "lucide-vue-next";
+import { MapPin, X } from "@lucide/vue";
 
 interface PendingSheetData {
   id: number | string;
