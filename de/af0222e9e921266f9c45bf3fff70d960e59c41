@@ -1,0 +1,70 @@
+lib/storyarn/ai/providers/anthropic.ex
+  s_e50d89eac8126b::t_980966a85beaa9 9
+docs/reference/versioning-containment.md
+  s_e50d89eac8126b::t_ff20ebf2ee0e2e 3-6
+  s_e50d89eac8126b::t_0cc0e80f667e3b 7-8
+assets/app/modules/flows/editor/lib/context_menu_preset.ts
+  s_e50d89eac8126b::t_980966a85beaa9 8
+docs/reference/shared-utilities.md
+  s_e50d89eac8126b::t_0cc0e80f667e3b 7-8
+  s_e50d89eac8126b::t_ff20ebf2ee0e2e 3-6
+docs/reference/README.md
+  s_e50d89eac8126b::t_5932132f3c6d7f 22-25
+  s_e50d89eac8126b::t_ff20ebf2ee0e2e 3-6
+  s_e50d89eac8126b::t_0cc0e80f667e3b 1-2,7-21,26-44
+assets/css/screenplay.css
+  s_e50d89eac8126b::t_980966a85beaa9 14-15
+test/storyarn/publication/locales_test.exs
+  s_e50d89eac8126b::t_980966a85beaa9 133
+docs/reference/component-registry.md
+  s_e50d89eac8126b::t_980966a85beaa9 172
+  s_e50d89eac8126b::t_ff20ebf2ee0e2e 3-6
+  s_e50d89eac8126b::t_0cc0e80f667e3b 7-8
+  s_e50d89eac8126b::t_4f0e696dd02db2 121
+docs/reference/domain-patterns.md
+  s_e50d89eac8126b::t_ff20ebf2ee0e2e 3-6,53
+  s_e50d89eac8126b::t_0cc0e80f667e3b 7-8
+docs/reference/ai-operations.md
+  s_e50d89eac8126b::t_0cc0e80f667e3b 1-2,7-58
+  s_e50d89eac8126b::t_ff20ebf2ee0e2e 3-6
+assets/app/modules/flows/editor/components/panels/FlowDialoguePanel.vue
+  s_e50d89eac8126b::t_980966a85beaa9 7
+assets/app/modules/flows/editor/components/entities/nodes/DialogueNode.vue
+  s_e50d89eac8126b::t_980966a85beaa9 21,23-24
+priv/repo/migrations/20260424221053_add_sequence_media_config.exs
+  s_e50d89eac8126b::t_980966a85beaa9 25
+lib/storyarn/ai/provider.ex
+  s_e50d89eac8126b::t_980966a85beaa9 7-8,16-17
+lib/storyarn/ai/providers/open_ai.ex
+  s_e50d89eac8126b::t_980966a85beaa9 9
+docs/reference/ai-provider-adapters.md
+  s_e50d89eac8126b::t_0cc0e80f667e3b 1-2,7-25,35-39
+  s_e50d89eac8126b::t_ff20ebf2ee0e2e 3-6,26-34
+CLAUDE.md
+  s_e50d89eac8126b::t_980966a85beaa9 126,169,217
+  s_e50d89eac8126b::t_9774fdf6fc0dd8 60-62
+  s_e50d89eac8126b::t_a224804e3e3613 57-59
+lib/storyarn/ai/providers/google.ex
+  s_e50d89eac8126b::t_980966a85beaa9 11
+docs/reference/flow-dialogue-typography.md
+  s_e50d89eac8126b::t_0cc0e80f667e3b 1-2,7-26
+  s_e50d89eac8126b::t_ff20ebf2ee0e2e 3-6
+docs/features/ai-platform/OVERVIEW.md
+  s_e50d89eac8126b::t_1b2be85391fc12 39-60,86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "deaf0222e9e921266f9c45bf3fff70d960e59c41",
+  "prompts": {},
+  "sessions": {
+    "s_e50d89eac8126b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fadca-dea8-7f70-83b7-433cef604e04",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
