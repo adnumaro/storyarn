@@ -1,0 +1,21 @@
+package.json
+  s_1dd185fade4970::t_f24dbcc37d8e51 90
+pnpm-lock.yaml
+  s_1dd185fade4970::t_27333b8fda8cb4 205-206,3068-3070,3073-3075,6547,6549,6551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a4d1438125eec39700b9a1c9119917b8f4c3081a",
+  "prompts": {},
+  "sessions": {
+    "s_1dd185fade4970": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fade1-e690-7c63-bd27-d9d770916bd7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
