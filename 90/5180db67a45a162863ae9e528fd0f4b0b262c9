@@ -1,0 +1,28 @@
+docs/competitors/ARTICY_DRAFT_X_ANALYSIS.md
+  s_1dd185fade4970::t_f7daca6bd880de 332-340,422-431
+  s_1dd185fade4970::t_80360ea5bc243c 331
+AGENTS.md
+  s_1dd185fade4970::t_f7daca6bd880de 187,207,223,337
+docs/plans/scenes_migration.md
+  s_1dd185fade4970::t_4e61b98358050c 278
+docs/competitors/ARCWEAVE_ANALYSIS.md
+  s_1dd185fade4970::t_5e81833a077ca8 334-338
+docs/features/version-control/EPIC_1_ENTITY_VERSIONING.md
+  s_1dd185fade4970::t_f7daca6bd880de 273-282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "905180db67a45a162863ae9e528fd0f4b0b262c9",
+  "prompts": {},
+  "sessions": {
+    "s_1dd185fade4970": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fade1-e690-7c63-bd27-d9d770916bd7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
