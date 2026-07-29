@@ -1,0 +1,23 @@
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_6112f11c106698::t_0d323b9a8520a0 414-443,1312-1343
+  s_6112f11c106698::t_198d44ee0a89b8 1344
+assets/app/components/command-palette/CommandPalette.vue
+  s_6112f11c106698::t_8377184a582b4e 307-309
+  s_6112f11c106698::t_0d323b9a8520a0 382-386,960,992-993,1644-1646,1653,1681
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e1660f9991ef21a960a0d976b3c037711aa4c219",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
