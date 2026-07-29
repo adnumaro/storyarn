@@ -14,6 +14,7 @@ import {
   type PaletteCommand,
 } from "../../../shared/command-palette/registry";
 import type { AILaunchCommand } from "../../../shared/command-palette/aiCommands";
+import type { OperationDefinition } from "../../../shared/command-palette/operationCatalog";
 import type { LiveInterface } from "../../../shared/composables/useLive";
 import { createMockLive, setTestLocale } from "../../setup";
 
@@ -39,7 +40,7 @@ function livePlugin(live: LiveInterface) {
   };
 }
 
-function mountPalette() {
+function mountPalette(operationCatalog: OperationDefinition[] = []) {
   const live = createMockLive();
   vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
     if (!callback) return;
@@ -54,9 +55,14 @@ function mountPalette() {
         projects: [{ id: 11, label: "Veilbreak", context: "Acme" }],
       });
     }
+
+    if (event === "palette_operation_options") {
+      callback({ token: payload?.token as number, items: [] });
+    }
   });
   const wrapper = mount(CommandPalette, {
     attachTo: document.body,
+    props: { operationCatalog },
     global: {
       plugins: [livePlugin(live)],
       provide: { _live_vue: live },
@@ -66,6 +72,122 @@ function mountPalette() {
 
   return { live, wrapper };
 }
+
+const gotoOperation: OperationDefinition = {
+  id: "goto",
+  domain: "navigation",
+  parameters: [
+    {
+      id: "destination",
+      type: "destination",
+      completionSource: "navigation",
+      required: true,
+      labelKey: "palette.operations.goto.parameters.destination",
+    },
+  ],
+  latency: "interactive",
+  authorization: "view",
+  resultType: "navigation",
+  phrase: [
+    { kind: "text", textKey: "palette.operations.goto.phrase.prefix" },
+    { kind: "parameter", parameterId: "destination" },
+  ],
+  help: {
+    labelKey: "palette.operations.goto.label",
+    descriptionKey: "palette.operations.goto.description",
+    exampleKey: "palette.operations.goto.example",
+    pattern: null,
+  },
+};
+
+const createOperation: OperationDefinition = {
+  id: "create",
+  domain: "actions",
+  parameters: [
+    {
+      id: "entity_type",
+      type: "entity_type",
+      completionSource: "entity_types",
+      required: true,
+      labelKey: "palette.operations.create.parameters.entity_type",
+    },
+    {
+      id: "project",
+      type: "project",
+      completionSource: "editable_projects",
+      required: true,
+      labelKey: "palette.operations.create.parameters.project",
+    },
+  ],
+  latency: "instant",
+  authorization: "edit_content",
+  resultType: "mutation",
+  phrase: [
+    { kind: "text", textKey: "palette.operations.create.phrase.prefix" },
+    { kind: "parameter", parameterId: "entity_type" },
+    { kind: "text", textKey: "palette.operations.create.phrase.between" },
+    { kind: "parameter", parameterId: "project" },
+  ],
+  help: {
+    labelKey: "palette.operations.create.label",
+    descriptionKey: "palette.operations.create.description",
+    exampleKey: "palette.operations.create.example",
+    pattern: null,
+  },
+};
+
+function singleParameterOperation(
+  id: "delete" | "run_command" | "open_view",
+  parameterId: string,
+  completionSource: string,
+  resultType: string,
+): OperationDefinition {
+  return {
+    id,
+    domain: "actions",
+    parameters: [
+      {
+        id: parameterId,
+        type: parameterId,
+        completionSource,
+        required: true,
+        labelKey: `palette.operations.${id}.parameters.${parameterId}`,
+      },
+    ],
+    latency: id === "delete" ? "interactive" : "instant",
+    authorization: id === "delete" ? "edit_content" : "contextual",
+    resultType,
+    phrase: [
+      { kind: "text", textKey: `palette.operations.${id}.phrase.prefix` },
+      { kind: "parameter", parameterId },
+    ],
+    help: {
+      labelKey: `palette.operations.${id}.label`,
+      descriptionKey: `palette.operations.${id}.description`,
+      exampleKey: `palette.operations.${id}.example`,
+      pattern: null,
+    },
+  };
+}
+
+const deleteOperation = singleParameterOperation(
+  "delete",
+  "entity",
+  "deletable_entities",
+  "mutation",
+);
+const runCommandOperation = singleParameterOperation(
+  "run_command",
+  "command",
+  "commands",
+  "command",
+);
+const openViewOperation = singleParameterOperation(
+  "open_view",
+  "destination",
+  "views",
+  "navigation",
+);
 
 function pressPaletteShortcut(init: KeyboardEventInit = { ctrlKey: true }) {
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", bubbles: true, ...init }));
@@ -103,6 +225,8 @@ describe("CommandPalette", () => {
   beforeEach(() => {
     setTestLocale("en");
     resetPaletteRegistry();
+    localStorage.clear();
+    vi.mocked(liveNavigate).mockClear();
   });
 
   afterEach(() => {
@@ -196,6 +320,474 @@ describe("CommandPalette", () => {
     expect(wrapper.find("[data-slot='command-group-heading']").text()).toBe("Navigation");
   });
 
+  it("renders generated help on open and filters operations by their descriptions", async () => {
+    const { wrapper } = mountPalette([gotoOperation, createOperation]);
+    pressPaletteShortcut();
+    await nextTick();
+
+    expect(wrapper.text()).toContain("What Storyarn can do");
+    expect(wrapper.find("[data-operation-id='goto']").text()).toContain(
+      "Open a workspace, project, sheet, flow or scene by name.",
+    );
+    expect(wrapper.find("[data-operation-id='goto']").text()).toContain("Go to Chapter 2");
+
+    await wrapper.find("[data-slot='command-input']").setValue("workspace");
+    await nextTick();
+
+    expect(wrapper.find("[data-operation-id='goto']").exists()).toBe(true);
+    expect(wrapper.find("[data-operation-id='create']").exists()).toBe(false);
+
+    await wrapper.find("[data-slot='command-input']").setValue("help");
+    await nextTick();
+
+    expect(wrapper.find("[data-operation-id='goto']").exists()).toBe(true);
+    expect(wrapper.find("[data-operation-id='create']").exists()).toBe(true);
+  });
+
+  it("builds goto through an atomic slot and navigates only after explicit submit", async () => {
+    const { live, wrapper } = mountPalette([gotoOperation]);
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_operation_options") {
+        callback({
+          token: payload?.token as number,
+          items: [
+            {
+              id: "nav.project.41",
+              value: "/workspaces/acme/projects/veilbreak",
+              label: "Veilbreak",
+              context: "Acme",
+            },
+          ],
+        });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-goto");
+    await flushPromises();
+
+    expect(wrapper.find("[data-slot='palette-operation-input']").text()).toContain("Go to");
+    expect(wrapper.find("[data-slot='command-item'][data-highlighted]").text()).toContain(
+      "Veilbreak",
+    );
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "palette_operation_options",
+      expect.objectContaining({
+        operation_id: "goto",
+        parameter_id: "destination",
+        query: "",
+      }),
+      expect.any(Function),
+    );
+
+    selectItem(wrapper, "operation-option-nav.project.41");
+    await nextTick();
+    expect(liveNavigate).not.toHaveBeenCalled();
+
+    await wrapper
+      .find("[data-slot='palette-operation-input'] input")
+      .trigger("keydown", { key: "Enter" });
+    await nextTick();
+
+    expect(liveNavigate).toHaveBeenCalledWith("/workspaces/acme/projects/veilbreak");
+    expect(localStorage.getItem("storyarn.command-palette.recent-operations.v1")).toBe('["goto"]');
+  });
+
+  it("completes the generated-help round trip in Spanish", async () => {
+    setTestLocale("es");
+    const { live, wrapper } = mountPalette([gotoOperation]);
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_operation_options") {
+        callback({
+          token: payload?.token as number,
+          items: [
+            {
+              id: "nav.sheet.9",
+              value: "/workspaces/acme/projects/veilbreak/sheets/9",
+              label: "Capítulo dos",
+              context: "Veilbreak",
+            },
+          ],
+        });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    expect(wrapper.find("[data-operation-id='goto']").text()).toContain("Ir a Capítulo 2");
+
+    selectItem(wrapper, "operation-goto");
+    await flushPromises();
+    expect(wrapper.find("[data-slot='palette-operation-input']").text()).toContain("Ir a");
+    expect(
+      wrapper.find("[data-slot='palette-operation-input'] input").attributes("placeholder"),
+    ).toBe("destino");
+
+    selectItem(wrapper, "operation-option-nav.sheet.9");
+    await nextTick();
+    selectItem(wrapper, "operation.execute");
+    await nextTick();
+
+    expect(liveNavigate).toHaveBeenCalledWith("/workspaces/acme/projects/veilbreak/sheets/9");
+  });
+
+  it("clears a filled slot when editing and never executes its stale value", async () => {
+    const { live, wrapper } = mountPalette([gotoOperation]);
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_operation_options") {
+        callback({
+          token: payload?.token as number,
+          items: [
+            {
+              id: "nav.project.41",
+              value: "/workspaces/acme/projects/veilbreak",
+              label: "Veilbreak",
+              context: "Acme",
+            },
+          ],
+        });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-goto");
+    await nextTick();
+    selectItem(wrapper, "operation-option-nav.project.41");
+    await nextTick();
+
+    expect(itemValues(wrapper)).toContain("operation.execute");
+
+    const input = wrapper.find<HTMLInputElement>("[data-slot='palette-operation-input'] input");
+    await input.setValue("Run operation");
+    await nextTick();
+
+    expect(itemValues(wrapper)).not.toContain("operation.execute");
+    await input.trigger("keydown", { key: "Enter" });
+    await nextTick();
+    expect(liveNavigate).not.toHaveBeenCalled();
+  });
+
+  it("keeps shortcut-only operation completions visible in the client filter", async () => {
+    const { live, wrapper } = mountPalette([gotoOperation]);
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_operation_options") {
+        callback({
+          token: payload?.token as number,
+          items: [
+            {
+              id: "nav.sheet.9",
+              value: "/workspaces/acme/projects/veilbreak/sheets/9",
+              label: "Chapter Two",
+              context: "Veilbreak · Acme",
+              meta: { shortcut: "ch2" },
+            },
+          ],
+        });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-goto");
+    await nextTick();
+
+    await wrapper
+      .find<HTMLInputElement>("[data-slot='palette-operation-input'] input")
+      .setValue("ch2");
+    await nextTick();
+
+    expect(itemValues(wrapper)).toContain("operation-option-nav.sheet.9");
+  });
+
+  it("uses the guided-operation debounce without accelerating legacy navigation search", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPalette([gotoOperation]);
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-goto");
+    await nextTick();
+
+    const operationCalls = () =>
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_operation_options");
+
+    expect(operationCalls()).toHaveLength(1);
+    await wrapper
+      .find<HTMLInputElement>("[data-slot='palette-operation-input'] input")
+      .setValue("Chapter");
+
+    await vi.advanceTimersByTimeAsync(79);
+    expect(operationCalls()).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(operationCalls()).toHaveLength(2);
+  });
+
+  it("does not restore options from a completion reply that lands after selection", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPalette([gotoOperation]);
+    let operationRequestCount = 0;
+    let resolveLateOptions: (() => void) | undefined;
+
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_operation_options") {
+        operationRequestCount += 1;
+        const token = payload?.token as number;
+
+        if (operationRequestCount === 1) {
+          callback({
+            token,
+            items: [
+              {
+                id: "nav.project.41",
+                value: "/workspaces/acme/projects/veilbreak",
+                label: "Veilbreak",
+                context: "Acme",
+              },
+            ],
+          });
+        } else {
+          resolveLateOptions = () =>
+            callback({
+              token,
+              items: [
+                {
+                  id: "nav.project.99",
+                  value: "/workspaces/acme/projects/late",
+                  label: "Late result",
+                  context: "Acme",
+                },
+              ],
+            });
+        }
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-goto");
+    await nextTick();
+
+    const visibleOption = wrapper
+      .findAllComponents(CommandItem)
+      .find((candidate) => candidate.props("value") === "operation-option-nav.project.41");
+    expect(visibleOption).toBeDefined();
+
+    await wrapper
+      .find<HTMLInputElement>("[data-slot='palette-operation-input'] input")
+      .setValue("late");
+    vi.advanceTimersByTime(80);
+    expect(resolveLateOptions).toBeDefined();
+
+    // Vue has not flushed the removal caused by the request yet, matching the
+    // event/reply race at the boundary of a visible selection.
+    visibleOption!.vm.$emit("select", new Event("select"));
+    resolveLateOptions!();
+    await nextTick();
+
+    expect(itemValues(wrapper)).toContain("operation.execute");
+    expect(itemValues(wrapper)).not.toContain("operation-option-nav.project.99");
+  });
+
+  it("lets an active IME consume Escape without cancelling the guided operation", async () => {
+    const { wrapper } = mountPalette([gotoOperation]);
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-goto");
+    await nextTick();
+
+    const input = wrapper.find<HTMLInputElement>("[data-slot='palette-operation-input'] input");
+    input.element.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+    input.element.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        cancelable: true,
+        isComposing: true,
+      }),
+    );
+    await nextTick();
+
+    expect(wrapper.find("[data-slot='palette-operation-input']").exists()).toBe(true);
+    expect(wrapper.find("[data-operation-id='goto']").exists()).toBe(false);
+  });
+
+  it("advances create from content type to authorized project and keeps durable mutation execution", async () => {
+    const { live, wrapper } = mountPalette([createOperation]);
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_operation_options") {
+        callback({
+          token: payload?.token as number,
+          items: [{ id: "project:11", value: 11, label: "Veilbreak", context: "Acme" }],
+        });
+      } else if (event === "palette_create") {
+        callback({ url: "/workspaces/acme/projects/veilbreak/flows/42" });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-create");
+    await nextTick();
+    selectItem(wrapper, "operation-option-entity-type:flow");
+    await nextTick();
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "palette_operation_options",
+      expect.objectContaining({
+        operation_id: "create",
+        parameter_id: "project",
+      }),
+      expect.any(Function),
+    );
+
+    selectItem(wrapper, "operation-option-project:11");
+    await nextTick();
+    selectItem(wrapper, "operation.execute");
+    await nextTick();
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "palette_create",
+      expect.objectContaining({
+        type: "flow",
+        project_id: 11,
+        operation_id: expect.any(String),
+      }),
+      expect.any(Function),
+    );
+    expect(liveNavigate).toHaveBeenCalledWith("/workspaces/acme/projects/veilbreak/flows/42");
+  });
+
+  it("routes guided delete through the existing confirmation and durable delete event", async () => {
+    const { live, wrapper } = mountPalette([deleteOperation]);
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_operation_options") {
+        callback({
+          token: payload?.token as number,
+          items: [
+            {
+              id: "sheet:9",
+              value: { id: 9, type: "sheet", projectId: 11 },
+              label: "Old draft",
+              context: "Veilbreak · Acme",
+            },
+          ],
+        });
+      } else if (event === "palette_delete") {
+        callback({ deleted: true });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-delete");
+    await nextTick();
+    selectItem(wrapper, "operation-option-sheet:9");
+    await nextTick();
+    selectItem(wrapper, "operation.execute");
+    await nextTick();
+
+    expect(wrapper.text()).toContain("Old draft");
+    selectItem(wrapper, "palette.confirm-delete");
+    await nextTick();
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "palette_delete",
+      expect.objectContaining({
+        type: "sheet",
+        id: 9,
+        project_id: 11,
+        operation_id: expect.any(String),
+      }),
+      expect.any(Function),
+    );
+    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+  });
+
+  it("uses live registrations as completions for run_command and open_view", async () => {
+    const run = vi.fn();
+    registerPaletteCommands("flows", [
+      command("flows.fit", run),
+      {
+        id: "flows.panel",
+        label: "Flow settings",
+        groupKey: "palette.groups.view",
+        href: "/workspaces/acme/projects/veilbreak/flows/9/settings",
+      },
+    ]);
+
+    const { wrapper } = mountPalette([runCommandOperation, openViewOperation]);
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-run_command");
+    await nextTick();
+    selectItem(wrapper, "operation-option-command:flows.fit");
+    await nextTick();
+    selectItem(wrapper, "operation.execute");
+    await flushPromises();
+
+    expect(run).toHaveBeenCalledOnce();
+
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "operation-open_view");
+    await nextTick();
+    selectItem(wrapper, "operation-option-command:flows.panel");
+    await nextTick();
+    selectItem(wrapper, "operation.execute");
+    await nextTick();
+
+    expect(liveNavigate).toHaveBeenCalledWith(
+      "/workspaces/acme/projects/veilbreak/flows/9/settings",
+    );
+  });
+
   it("runs the command, tracks execution, and closes on select", async () => {
     let ran = false;
     registerPaletteCommands("flows", [
@@ -229,10 +821,18 @@ describe("CommandPalette", () => {
     await nextTick();
 
     await wrapper.find("[data-slot='command-input']").setValue("zzzz");
-    await vi.advanceTimersByTimeAsync(200);
+    await vi.advanceTimersByTimeAsync(199);
+    expect(
+      vi.mocked(live.pushEvent).mock.calls.filter(([event]) => event === "palette_nav"),
+    ).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(1);
     await nextTick();
 
     expect(wrapper.find("[data-slot='command-empty']").exists()).toBe(true);
+    expect(
+      vi.mocked(live.pushEvent).mock.calls.filter(([event]) => event === "palette_nav"),
+    ).toHaveLength(2);
     expect(live.pushEvent).toHaveBeenCalledWith(
       "palette_search_no_results",
       { query_length: 4, surface: "flows" },
@@ -419,19 +1019,6 @@ describe("CommandPalette", () => {
     selectItem(wrapper, "create.sheet");
     await nextTick();
     expect(wrapper.find('[role="alert"] button').exists()).toBe(false);
-  });
-
-  it("survives a dead socket — analytics failures never break the palette", async () => {
-    registerPaletteCommands("flows", [command("flows.a")]);
-    const { live, wrapper } = mountPalette();
-    vi.mocked(live.pushEvent).mockImplementation(() => {
-      throw new Error("socket gone");
-    });
-
-    pressPaletteShortcut();
-    await nextTick();
-
-    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
   });
 
   it("distinguishes a remote search failure from an empty result", async () => {

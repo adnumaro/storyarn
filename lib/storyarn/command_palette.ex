@@ -1,16 +1,18 @@
 defmodule Storyarn.CommandPalette do
   @moduledoc """
-  Durable execution boundary for mutating command-palette operations.
+  Public boundary for command-palette metadata and durable mutations.
 
-  Successful results are stored in the same database transaction as the
-  mutation. Replaying an operation ID after a LiveView reconnect therefore
-  returns the original result instead of creating or deleting twice.
+  The generated operation catalog is read-only metadata. Successful mutation
+  results are stored in the same database transaction as the mutation.
+  Replaying an operation ID after a LiveView reconnect therefore returns the
+  original result instead of creating or deleting twice.
   """
 
   import Ecto.Query
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.CommandPalette.Operation
+  alias Storyarn.CommandPalette.Registry
   alias Storyarn.Repo
 
   @events Operation.events()
@@ -19,6 +21,18 @@ defmodule Storyarn.CommandPalette do
   @retained_results 64
 
   @type reply :: %{optional(:url) => String.t(), optional(:deleted) => boolean(), optional(:error) => String.t()}
+
+  @doc "Returns the JSON-safe catalog consumed by the guided command palette."
+  @spec operation_catalog() :: [map()]
+  def operation_catalog, do: Registry.catalog()
+
+  @doc "Resolves one registered parameter's completion source without atomizing client input."
+  @spec completion_source(String.t(), String.t()) :: {:ok, atom()} | :error
+  def completion_source(operation_id, parameter_id) do
+    with {:ok, parameter} <- Registry.fetch_parameter(operation_id, parameter_id) do
+      {:ok, parameter.completion_source}
+    end
+  end
 
   @doc """
   Runs a palette mutation once per actor/event/operation ID.

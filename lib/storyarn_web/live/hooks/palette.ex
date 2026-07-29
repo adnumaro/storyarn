@@ -1,12 +1,14 @@
 defmodule StoryarnWeb.Live.Hooks.Palette do
   @moduledoc """
   Serves the command palette for every LiveView in the authenticated app
-  session: navigation search (`palette_nav`), entity creation
+  session: registry-backed parameter completion
+  (`palette_operation_options`), navigation search (`palette_nav`), entity creation
   (`palette_create_targets` / `palette_create`), entity deletion
   (`palette_delete_search` / `palette_delete`) and product analytics
   (`palette_opened` / `palette_command_executed` / `palette_search_no_results`).
 
-  Replies are built from `Storyarn.GlobalSearch` — authorization lives in
+  Server-backed completion replies are built from `Storyarn.GlobalSearch` —
+  authorization lives in
   the domain layer and derives from the socket's `current_scope` only; ids
   arriving from the client are re-validated against the composed authorized
   sets before any mutation. Mutations go through the same context facades
@@ -59,8 +61,9 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
                       )
 
   @nav_command_id_format ~r/^nav\.(workspace|project|project-settings|workspace-settings|sheet|flow|scene)\.[1-9]\d{0,19}$/
-  @palette_events ~w(palette_nav palette_create_targets palette_create palette_delete_search
-                     palette_delete palette_opened palette_command_executed palette_search_no_results)
+  @palette_events ~w(palette_operation_options palette_nav palette_create_targets palette_create
+                     palette_delete_search palette_delete palette_opened palette_command_executed
+                     palette_search_no_results)
   # Client-supplied ids above the PostgreSQL bigint range would raise on
   # parameter encoding instead of failing closed — bound them at the guard.
   @max_pg_bigint 9_223_372_036_854_775_807
@@ -79,6 +82,28 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
        :handle_event,
        &handle_palette_event/3
      )}
+  end
+
+  defp handle_palette_event(
+         "palette_operation_options",
+         %{"operation_id" => operation_id, "parameter_id" => parameter_id, "query" => query, "token" => token},
+         socket
+       )
+       when is_binary(operation_id) and byte_size(operation_id) <= 64 and is_binary(parameter_id) and
+              byte_size(parameter_id) <= 64 and is_binary(query) and byte_size(query) <= 400 and is_integer(token) do
+    case CommandPalette.completion_source(operation_id, parameter_id) do
+      {:ok, source}
+      when source in [:navigation, :editable_projects, :deletable_entities] ->
+        items = operation_options(source, socket.assigns.current_scope, query)
+        {:halt, %{token: token, items: items}, socket}
+
+      _invalid_or_client_side_source ->
+        {:halt, %{token: token, error: "invalid_request"}, socket}
+    end
+  end
+
+  defp handle_palette_event("palette_operation_options", %{"token" => token}, socket) when is_integer(token) do
+    {:halt, %{token: token, error: "invalid_request"}, socket}
   end
 
   defp handle_palette_event("palette_nav", %{"query" => query, "token" => token}, socket)
@@ -255,6 +280,78 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp handle_palette_event(_event, _params, socket), do: {:cont, socket}
+
+  defp operation_options(:navigation, scope, query) do
+    destinations = GlobalSearch.destinations(scope, query)
+
+    (destinations.workspaces ++ destinations.projects ++ destinations.entities)
+    |> Enum.map(&nav_item/1)
+    |> Enum.map(fn item ->
+      put_optional(
+        %{
+          id: item.id,
+          label: item.label,
+          value: item.url,
+          meta: put_optional(%{type: item.type}, :shortcut, Map.get(item, :shortcut))
+        },
+        :context,
+        Map.get(item, :context)
+      )
+    end)
+  end
+
+  defp operation_options(:editable_projects, scope, query) do
+    normalized_query = normalize_option_query(query)
+
+    scope
+    |> GlobalSearch.create_targets()
+    |> Enum.filter(fn target ->
+      option_matches?(target.name, normalized_query) or
+        option_matches?(target.workspace_name, normalized_query)
+    end)
+    |> Enum.map(fn target ->
+      %{
+        id: "project:#{target.id}",
+        label: target.name,
+        context: target.workspace_name,
+        value: target.id
+      }
+    end)
+  end
+
+  defp operation_options(:deletable_entities, scope, query) do
+    scope
+    |> GlobalSearch.deletable_entities(query)
+    |> Enum.map(fn destination ->
+      type = Atom.to_string(destination.type)
+
+      %{
+        id: "#{type}:#{destination.id}",
+        label: destination.name,
+        context: destination_context(destination),
+        value: %{id: destination.id, type: type, projectId: destination.project_id},
+        meta: put_optional(%{}, :shortcut, destination.shortcut)
+      }
+    end)
+  end
+
+  defp normalize_option_query(query) do
+    query
+    |> String.slice(0, 100)
+    |> String.trim()
+    |> String.downcase()
+  end
+
+  defp option_matches?(_value, ""), do: true
+
+  defp option_matches?(value, query) when is_binary(value) do
+    value
+    |> String.downcase()
+    |> String.contains?(query)
+  end
+
+  defp put_optional(map, _key, nil), do: map
+  defp put_optional(map, key, value), do: Map.put(map, key, value)
 
   defp valid_command_id?(command_id) do
     MapSet.member?(@static_command_ids, command_id) or

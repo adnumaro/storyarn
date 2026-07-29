@@ -10,6 +10,8 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.CommandPalette.Definition
+
   defmodule TestAdapter do
     @moduledoc false
     # Runs in the LiveView process, so the test pid travels via app env,
@@ -254,6 +256,183 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert_reply(view, %{token: 4, projects: projects})
       assert Enum.any?(projects, &(&1.id == project.id and &1.label == "Veilbreak" and &1.context == workspace.name))
       refute Enum.any?(projects, &(&1.id == viewer_project.id))
+    end
+  end
+
+  describe "palette_operation_options" do
+    test "goto.destination returns only authorized destinations", %{
+      view: view,
+      user: user
+    } do
+      workspace = workspace_fixture(user, %{name: "Visible destination workspace"})
+      project = project_fixture(user, %{workspace: workspace, name: "Visible project"})
+      sheet = sheet_fixture(project, %{name: "Visible destination"})
+
+      other_user = user_fixture()
+      other_workspace = workspace_fixture(other_user)
+      other_project = project_fixture(other_user, %{workspace: other_workspace})
+      hidden_sheet = sheet_fixture(other_project, %{name: "Visible destination leak"})
+
+      render_hook(view, "palette_operation_options", %{
+        "operation_id" => "goto",
+        "parameter_id" => "destination",
+        "query" => "Visible destination",
+        "token" => 31
+      })
+
+      assert_reply(view, %{token: 31, items: items})
+
+      assert Enum.any?(items, fn item ->
+               item.id == "nav.sheet.#{sheet.id}" and
+                 item.label == "Visible destination" and
+                 item.value ==
+                   "/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}" and
+                 item.meta.type == "sheet"
+             end)
+
+      assert hd(items).id == "nav.workspace.#{workspace.id}"
+      refute Enum.any?(items, &(&1.id == "nav.sheet.#{hidden_sheet.id}"))
+    end
+
+    test "create.project returns editable projects and filters out viewer access", %{
+      view: view,
+      user: user
+    } do
+      workspace = workspace_fixture(user)
+      editable_project = project_fixture(user, %{workspace: workspace, name: "Editable story"})
+
+      owner = user_fixture()
+      viewer_workspace = workspace_fixture(owner)
+      viewer_project = project_fixture(owner, %{workspace: viewer_workspace, name: "Viewer story"})
+      membership_fixture(viewer_project, user, "viewer")
+
+      render_hook(view, "palette_operation_options", %{
+        "operation_id" => "create",
+        "parameter_id" => "project",
+        "query" => "story",
+        "token" => 32
+      })
+
+      assert_reply(view, %{token: 32, items: items})
+
+      assert Enum.any?(items, fn item ->
+               item.id == "project:#{editable_project.id}" and
+                 item.value == editable_project.id and item.context == workspace.name
+             end)
+
+      refute Enum.any?(items, &(&1.value == viewer_project.id))
+    end
+
+    test "delete.entity returns entities only from editable projects", %{
+      view: view,
+      user: user
+    } do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      deletable_sheet = sheet_fixture(project, %{name: "Disposable sheet"})
+
+      owner = user_fixture()
+      viewer_workspace = workspace_fixture(owner)
+      viewer_project = project_fixture(owner, %{workspace: viewer_workspace})
+      hidden_sheet = sheet_fixture(viewer_project, %{name: "Disposable sheet hidden"})
+      membership_fixture(viewer_project, user, "viewer")
+
+      render_hook(view, "palette_operation_options", %{
+        "operation_id" => "delete",
+        "parameter_id" => "entity",
+        "query" => "Disposable",
+        "token" => 33
+      })
+
+      assert_reply(view, %{token: 33, items: items})
+
+      assert Enum.any?(items, fn item ->
+               item.id == "sheet:#{deletable_sheet.id}" and
+                 item.value == %{
+                   id: deletable_sheet.id,
+                   type: "sheet",
+                   projectId: project.id
+                 }
+             end)
+
+      refute Enum.any?(items, &(&1.id == "sheet:#{hidden_sheet.id}"))
+    end
+
+    test "fails closed for unknown operation, parameter, or client-side completion source",
+         %{view: view} do
+      invalid_pairs = [
+        {"forged", "destination"},
+        {"goto", "forged"},
+        {"run_command", "command"}
+      ]
+
+      for {{operation_id, parameter_id}, token} <- Enum.with_index(invalid_pairs, 34) do
+        render_hook(view, "palette_operation_options", %{
+          "operation_id" => operation_id,
+          "parameter_id" => parameter_id,
+          "query" => "",
+          "token" => token
+        })
+
+        assert_reply(view, %{token: ^token, error: "invalid_request"})
+      end
+    end
+
+    test "echoes the request token when a malformed options payload fails closed",
+         %{view: view} do
+      render_hook(view, "palette_operation_options", %{
+        "operation_id" => "goto",
+        "parameter_id" => "destination",
+        "query" => String.duplicate("x", 401),
+        "token" => 35
+      })
+
+      assert_reply(view, %{token: 35, error: "invalid_request"})
+    end
+
+    test "instant goto completion stays within its 150 ms budget at realistic size",
+         %{view: view, user: user} do
+      workspace = workspace_fixture(user, %{name: "Latency workspace"})
+
+      # Stay within the free-plan project allowance while keeping the result
+      # set large enough to exercise 144 project entities.
+      for project_index <- 1..3 do
+        project =
+          project_fixture(user, %{
+            workspace: workspace,
+            name: "Latency project #{project_index}"
+          })
+
+        for entity_index <- 1..16 do
+          sheet_fixture(project, %{name: "Latency sheet #{project_index}-#{entity_index}"})
+          flow_fixture(project, %{name: "Latency flow #{project_index}-#{entity_index}"})
+          scene_fixture(project, %{name: "Latency scene #{project_index}-#{entity_index}"})
+        end
+      end
+
+      # Warm the query plan and sandbox connection before measuring the
+      # interactive contract. The median rejects one scheduler hiccup while a
+      # systematic regression still fails the hard budget.
+      render_hook(view, "palette_operation_options", operation_options_payload(40))
+      assert_reply(view, %{token: 40, items: [_first | _rest]})
+
+      durations =
+        for token <- 41..43 do
+          {elapsed_microseconds, :ok} =
+            :timer.tc(fn ->
+              render_hook(view, "palette_operation_options", operation_options_payload(token))
+              assert_reply(view, %{token: ^token, items: [_first | _rest]})
+              :ok
+            end)
+
+          elapsed_microseconds
+        end
+
+      median_microseconds = durations |> Enum.sort() |> Enum.at(1)
+      budget_microseconds = Definition.latency_budget_ms(:instant) * 1_000
+
+      assert median_microseconds <= budget_microseconds,
+             "median goto completion was #{median_microseconds / 1_000} ms, budget is #{budget_microseconds / 1_000} ms"
     end
   end
 
@@ -534,6 +713,13 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
 
   test "malformed known palette events fail closed without reaching the host LiveView", %{view: view} do
     invalid_events = [
+      {"palette_operation_options",
+       %{
+         "operation_id" => "goto",
+         "parameter_id" => "destination",
+         "query" => "",
+         "token" => "bad"
+       }},
       {"palette_nav", %{"query" => "test", "token" => "bad"}},
       {"palette_create_targets", %{"token" => "bad"}},
       {"palette_create", %{"type" => "sheet", "project_id" => 1}},
@@ -548,5 +734,14 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       render_hook(view, event, payload)
       assert_reply(view, %{error: "invalid_request"})
     end
+  end
+
+  defp operation_options_payload(token) do
+    %{
+      "operation_id" => "goto",
+      "parameter_id" => "destination",
+      "query" => "Latency",
+      "token" => token
+    }
   end
 end

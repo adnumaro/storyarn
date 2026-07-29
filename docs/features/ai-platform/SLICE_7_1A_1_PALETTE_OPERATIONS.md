@@ -1,8 +1,9 @@
 # Slice 7.1a.1 — The platform can be asked, and it answers
 
-**Status:** specified, not started. No AI anywhere in this slice. It builds the
-substrate every later palette capability plugs into, including the AI door in
-7.1a.2.
+**Status:** in progress across reviewable PRs. PR-1, the health consolidation,
+merged as [#52](https://github.com/adnumaro/storyarn/pull/52). PR-2 (`ENG-40`) is
+in progress. No AI belongs anywhere in this slice. It builds the substrate
+every later palette capability plugs into, including the AI door in 7.1a.2.
 
 ## Objective
 
@@ -13,6 +14,27 @@ knowledge the platform already holds reachable from it.
 A designer should never have to think _"where did X happen"_, _"where is the sheet
 for Y"_, or _"where is the option to do Z"_. This slice removes the first and third
 for the cases that need no model.
+
+## Delivery plan
+
+This document is the product contract for the whole capability, **not the scope
+of one pull request**. The implementation-start audit confirmed that the original
+68–97 hour estimate crosses too many data, UI, grammar and migration boundaries
+to review safely as one change. Delivery is therefore:
+
+| PR   | Scope                                                                                                                                                                               | Status                                  |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| PR-1 | Health consolidation: one finding contract/catalog per domain, complete project sweeps, editor/dashboard agreement and uncapped cross-domain unused-variable detection              | **Merged as #52**                       |
+| PR-2 | `ENG-40`: operation catalog, generated help and guided door, limited to `goto`, `create`/`delete`, `run_command` and `open_view`                                                    | **In progress**                         |
+| PR-3 | Lookup/reference operations (`variable_definition`, `variable_usages`, `entity_usages`, `flow_callers`) and the reference-pattern door                                              | Pending after PR-2                      |
+| PR-4 | Authorized normalized `findings`, `incomplete` and `localization_gaps` operations; `missing_exit`, `inescapable_cycle`, `uncalled_flow`; convert-unused-variable-to-constant action | Pending after PR-3                      |
+| PR-5 | Cross-domain full-text `content_search`, including its index, bounded query API and write/repair lifecycle                                                                          | Pending after PR-4; independently sized |
+
+PR-2 must not quietly absorb a later row because an existing backend API makes
+one operation look cheap. In particular it ships no pattern parser, reference
+lookup, project health sweep, localization query, new deterministic rule or
+content index. PR-3's pattern work covers the dotted reference forms; quoted
+content becomes executable only with PR-5's `content_search`.
 
 ## Why this shape
 
@@ -190,42 +212,44 @@ thing.
 
 Backed by data that already exists:
 
-| Operation                    | Answers                                                  |
-| ---------------------------- | -------------------------------------------------------- |
-| `goto`                       | sheets, flows, scenes, projects by name                  |
-| `variable_definition`        | which block defines this variable                        |
-| `variable_usages`            | where it is read / written                               |
-| `entity_usages`              | backlinks for any entity                                 |
-| `flow_callers`               | which subflow/exit nodes reference this flow             |
-| `findings`                   | structural + sheet/scene health findings in a scope      |
-| `incomplete`                 | empty dialogue text, empty blocks, missing localizations |
-| `localization_gaps`          | untranslated text in a scope                             |
-| `create` / `delete`          | mutating, reauthorized per call                          |
-| `run_command` / `open_panel` | the capability index itself                              |
+| Operation                   | Answers                                                  | Delivery |
+| --------------------------- | -------------------------------------------------------- | -------- |
+| `goto`                      | sheets, flows, scenes, projects by name                  | PR-2     |
+| `variable_definition`       | which block defines this variable                        | PR-3     |
+| `variable_usages`           | where it is read / written                               | PR-3     |
+| `entity_usages`             | backlinks for any entity                                 | PR-3     |
+| `flow_callers`              | which subflow/exit nodes reference this flow             | PR-3     |
+| `findings`                  | structural + sheet/scene health findings in a scope      | PR-4     |
+| `incomplete`                | empty dialogue text, empty blocks, missing localizations | PR-4     |
+| `localization_gaps`         | untranslated text in a scope                             | PR-4     |
+| `create` / `delete`         | mutating, reauthorized per call                          | PR-2     |
+| `run_command` / `open_view` | the capability index itself                              | PR-2     |
 
 Needs one new index:
 
-| `content_search` | full-text over dialogue text, block values, scene annotations, screenplay elements |
+| Operation        | Answers                                                          | Delivery |
+| ---------------- | ---------------------------------------------------------------- | -------- |
+| `content_search` | full-text over dialogue text, block values and scene annotations | PR-5     |
 
 That index is the only substantial new infrastructure in the slice, and it is the
 gap that makes "the scene where Anna joins" unfindable today: the existing global
-search matches **names only**.
+destination search matches **names and shortcuts only**. The removed Screenplays
+tool is deliberately absent from the index; there are no screenplay elements in
+the current product.
 
 ## The health work, reframed
 
 `findings` and `incomplete` need one answer shape across domains. Sheets and
-Scenes already have one canonical health contract per domain; flows have three
-shapes and lose most of their analysis on the way out — the dashboard mapping
-collapses 15 canonical rules into 3 coarse buckets, discarding every
-reference-integrity error, invalid pin and orphan hub.
+Scenes already had one canonical health contract per domain; flows previously had
+three shapes and lost most of their analysis on the way out. PR-1 corrected that:
+all three domains now expose their complete canonical findings, and the flow
+editor and dashboard consume the same composition point. Dashboard numbers
+changed as reference-integrity errors started counting; that was the correction,
+not a regression.
 
-So the normalization lands here, but as the **backend of an operation the designer
-invokes**, not as internal tidying. Same work, a reason the user can feel.
-
-Decisions carried over unchanged:
-
-- dashboard numbers **will change** as reference-integrity errors start counting.
-  That is the correction, not a regression.
+PR-4 therefore does **not** repeat a health consolidation. It builds the
+authorized, bounded cross-domain operation adapter over the merged contracts and
+adds only the three genuinely new rules below.
 
 Decision REVERSED in PR-1 — recorded here because the reasoning changed, not the
 goal:
@@ -266,10 +290,11 @@ They exist so `incomplete` and `findings` have something worth returning.
    legitimately have no caller, so "entry point" is derived from having no parent in
    the tree — zero new state — and the rule is **validated against Veilbreak before
    it ships. If it is noisy there, it is not ready.**
-4. **Unused variables** — already detected. The work is the ten-row cap, a
-   **convert-to-constant** action, and a correctness risk: the check must union
-   flow, scene-zone and scene-pin references, or a variable used only in a scene
-   zone is reported unused.
+4. **Unused variables** — already detected and corrected in PR-1. The old ten-row
+   cap is gone, and the check already unions flow, scene-zone and scene-pin
+   references. The only remaining product work here is the authorized
+   **convert-to-constant** action; the union coverage remains as a regression
+   test.
 
 Vocabulary note (**corrected — the original claim was wrong**): there are **three**
 exit modes, not two. `lib/storyarn_web/live/flow_live/nodes/exit/node.ex:16`
@@ -345,31 +370,22 @@ the rest.
 - `mix precommit`, `just quality`, E2E green; changed dashboard counts updated with
   the reason recorded.
 
-## Estimate
+## Sizing
 
-| Phase                                                             | Hours     |
-| ----------------------------------------------------------------- | --------- |
-| 0 Re-verify current state against main                            | 0.5       |
-| 1 Operation registry + router + latency classes                   | 8-12      |
-| 2 Guided door: template insertion, focus model, atomic parameters | 10-14     |
-| 2b Pattern door: grammar extension (`**`, `?`, quotes)            | 4-6       |
-| 2c Help view: empty state, grouping, description search           | 5-7       |
-| 3 `content_search` index and operation                            | 8-12      |
-| 4 Lookup/navigation operations over existing data                 | 6-9       |
-| 5 Health contract + `findings`/`incomplete`/`localization_gaps`   | 8-12      |
-| 6 The four rules                                                  | 12-17     |
-| 7 i18n, latency tests, catalog pinning, dashboard test updates    | 6-8       |
-| **Total**                                                         | **68-97** |
-
-Phases 1, 2 and 2c are the substrate and are separable: shipping them with `goto`
-and the lookup operations is already user-testable — a designer can open the palette,
-see what it can do, pick an operation and be taken somewhere. Everything after is
-additive.
+The original combined estimate was 68–97 hours. It is retained only as the reason
+for the split, not as one implementation commitment. Each pending PR is estimated
+again from its then-current `main` before work starts. PR-2 is independently
+user-testable: a designer can open the palette, inspect generated help, pick one of
+the five delivered operation families and execute it. Every later PR is additive
+over that substrate.
 
 ## Inputs
 
-The merged deterministic analysis engine and its dismissal lifecycle. The existing
-global search (names only). The expression-editor Lezer grammar, autocomplete and
-build pipeline. Existing reference data: variable references with read/write kind,
-sheet backlinks, flow-caller lookup, cross-flow navigation history. The palette's
-current nav/create/delete events and local command registry.
+The merged deterministic analysis engine and PR-1 health consolidation. The
+dismissal lifecycle was removed and is **not an input**. The existing global
+destination search (names/shortcuts) and legacy flow-only deep search are not a
+cross-domain full-text index. The expression-editor Lezer grammar, autocomplete
+and build pipeline remain inputs to PR-3. Existing reference data includes variable
+references with read/write kind, sheet backlinks, flow-caller lookup and
+cross-flow navigation history. The palette's current nav/create/delete events and
+local command registry are the direct inputs to PR-2.

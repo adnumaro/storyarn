@@ -2,12 +2,14 @@
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit, useCurrentElement } from "@vueuse/core";
 import { ListboxItem, useForwardPropsEmits, useId, type AsTag } from "reka-ui";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { cn } from "../../../shared/utils/utils";
 import { useCommand, useCommandGroup } from "./context";
 
 const props = defineProps<{
   value: string;
+  /** Explicit filter text for rich rows whose description/example may not be visible. */
+  searchText?: string;
   disabled?: boolean;
   asChild?: boolean;
   as?: AsTag | Component;
@@ -17,7 +19,7 @@ const emits = defineEmits<{
   select: [event: Event];
 }>();
 
-const delegatedProps = reactiveOmit(props, "class");
+const delegatedProps = reactiveOmit(props, "class", "searchText");
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
 
@@ -43,11 +45,21 @@ const isRender = computed(() => {
 
 const itemRef = ref();
 const currentElement = useCurrentElement(itemRef);
+const fallbackFilterText = ref(props.value.toString());
+
+function updateFilterText(): void {
+  if (currentElement.value instanceof HTMLElement) {
+    fallbackFilterText.value = currentElement.value.textContent ?? props.value.toString();
+  }
+
+  allItems.value.set(id, props.searchText ?? fallbackFilterText.value);
+  filterItems();
+}
+
 onMounted(() => {
   if (!(currentElement.value instanceof HTMLElement)) return;
 
-  // textValue to perform filter
-  allItems.value.set(id, currentElement.value.textContent ?? props.value?.toString() ?? "");
+  updateFilterText();
 
   const groupId = groupContext?.id;
   if (groupId) {
@@ -60,6 +72,8 @@ onMounted(() => {
 
   filterItems();
 });
+
+watch(() => props.searchText, updateFilterText);
 onUnmounted(() => {
   allItems.value.delete(id);
   filterState.filtered.items.delete(id);

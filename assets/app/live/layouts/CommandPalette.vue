@@ -2,14 +2,20 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import CommandPalette from "@components/command-palette/CommandPalette.vue";
 import { accountPaletteCommands } from "@shared/command-palette/accountCommands";
+import type { OperationDefinition } from "@shared/command-palette/operationCatalog";
 import { GLOBAL_SURFACE, registerPaletteCommands } from "@shared/command-palette/registry";
 
 interface PaletteFeatureFlags {
   aiIntegrations?: boolean;
 }
 
-const { featureFlags = {}, sudoGrant = null } = defineProps<{
+const {
+  featureFlags = {},
+  operationCatalog = [],
+  sudoGrant = null,
+} = defineProps<{
   featureFlags?: PaletteFeatureFlags;
+  operationCatalog?: OperationDefinition[];
   sudoGrant?: string | null;
 }>();
 
@@ -30,6 +36,6 @@ onUnmounted(unregisterGlobalCommands);
 
 <template>
   <div class="contents" :data-command-palette-ready="ready">
-    <CommandPalette />
+    <CommandPalette :operation-catalog="operationCatalog" />
   </div>
 </template>

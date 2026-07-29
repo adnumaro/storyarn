@@ -170,7 +170,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/flow_sidebar_live.ex:91
 #: lib/storyarn_web/live/flow_sidebar_live.ex:106
-#: lib/storyarn_web/live/hooks/palette.ex:339
+#: lib/storyarn_web/live/hooks/palette.ex:436
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""

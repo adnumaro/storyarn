@@ -8,6 +8,7 @@ defmodule StoryarnWeb.Layouts do
 
   alias Phoenix.LiveView.JS
   alias Storyarn.Analytics
+  alias Storyarn.CommandPalette
   alias Storyarn.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.FeatureFlagHelpers
 
@@ -35,6 +36,7 @@ defmodule StoryarnWeb.Layouts do
         v-socket={@socket}
         id="command-palette-island"
         feature-flags={FeatureFlagHelpers.client_flags(@current_scope)}
+        operation-catalog={CommandPalette.operation_catalog()}
         sudo-grant={@sudo_grant}
       />
     </div>
