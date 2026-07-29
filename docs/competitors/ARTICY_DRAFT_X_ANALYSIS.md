@@ -328,15 +328,16 @@ Entities represent all types of game objects.
 ### Entity Properties
 
 Every entity has **built-in properties:**
-| Property | Description |
-|----------------|------------------------------|
-| Display Name | Human-readable name |
-| Technical Name | Script-addressable identifier|
-| ID | Unique identifier |
-| Text | Description field |
-| Preview Image | Visual thumbnail |
-| Color | Color coding |
-| Attachments | Linked assets/references |
+
+| Property       | Description                   |
+| -------------- | ----------------------------- |
+| Display Name   | Human-readable name           |
+| Technical Name | Script-addressable identifier |
+| ID             | Unique identifier             |
+| Text           | Description field             |
+| Preview Image  | Visual thumbnail              |
+| Color          | Color coding                  |
+| Attachments    | Linked assets/references      |
 
 Plus **custom properties** via templates.
 
@@ -418,15 +419,16 @@ decrementProp(speaker, "Player_Character.Morale", 20)
 ### Seen/Unseen Keywords (v4.1)
 
 Track whether the player has visited a node:
-| Keyword/Function | Description |
-|------------------------|--------------------------------------------------|
-| `seen` | Boolean: has this node been visited? |
-| `unseen` | Boolean: has this node NOT been visited? |
-| `seenCounter` | Integer: how many times visited |
-| `getSeenCounter()` | Get seen counter for a specific object |
-| `setSeenCounter()` | Manually set seen counter |
-| `resetAllSeenCounters()` | Reset all counters |
-| `fallback()` | Mark a path as fallback when all others are seen |
+
+| Keyword/Function         | Description                                      |
+| ------------------------ | ------------------------------------------------ |
+| `seen`                   | Boolean: has this node been visited?             |
+| `unseen`                 | Boolean: has this node NOT been visited?         |
+| `seenCounter`            | Integer: how many times visited                  |
+| `getSeenCounter()`       | Get seen counter for a specific object           |
+| `setSeenCounter()`       | Manually set seen counter                        |
+| `resetAllSeenCounters()` | Reset all counters                               |
+| `fallback()`             | Mark a path as fallback when all others are seen |
 
 ```
 // Show option only if not seen before

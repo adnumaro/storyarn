@@ -331,11 +331,11 @@ Arcweave's built-in scripting language for adding logic, conditions, and dynamic
 
 ### Logical Operators
 
-| Operator     | Meaning   |
-| ------------ | --------- | ------ | ----------------- |
-| `&&` / `and` | Both true |
-| `            |           | `/`or` | At least one true |
-| `!` / `not`  | Negation  |
+| Operator      | Meaning           |
+| ------------- | ----------------- |
+| `&&` / `and`  | Both true         |
+| `\|\|` / `or` | At least one true |
+| `!` / `not`   | Negation          |
 
 ### Conditional Statements
 
