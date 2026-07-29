@@ -1,0 +1,208 @@
+test/storyarn/global_search/reference_search_test.exs
+  s_6112f11c106698::t_33570f510ea3e1 1-7,9-15,17,19-147,150-188,190-195,197-247,249-257,319,352-381,384-395,397-412,414-419,431-437,443,446,449-460
+  s_6112f11c106698::t_18561f4599e1fa 16,258-318
+  s_6112f11c106698::t_fa01268b14950f 18,248,396,448
+  s_6112f11c106698::t_3ab0f5cb2eda0d 382-383
+  s_6112f11c106698::t_13ddc49040cbe9 8,320-351,413,420-430,438-442,444-445,447
+  s_6112f11c106698::t_944e7bdb7d1949 148-149
+  s_6112f11c106698::t_ab17ef95621b6c 189,196
+assets/app/components/ui/command/Command.vue
+  s_6112f11c106698::t_2be94cb6226e87 97
+lib/storyarn/global_search/destinations.ex
+  s_6112f11c106698::t_7374163a45d76f 97-114
+  s_1dd185fade4970::t_9d73a9c87a336f 94-96
+lib/storyarn/sheets.ex
+  s_6112f11c106698::t_12d5b1dd7136bd 40,185-198
+  s_6112f11c106698::t_3552823f05f0d6 199
+lib/storyarn/references/backlinks.ex
+  s_6112f11c106698::t_dc9d6463fd37cb 3,5-6
+  s_6112f11c106698::t_8779b1cba598a4 9-18,20-23,28-37,40-60,62-182
+  s_6112f11c106698::t_28f3aa1fbc8f71 38-39,61
+lib/storyarn/command_palette/definition.ex
+  s_6112f11c106698::t_cf2dd0a4364084 10-11,16-18,26,50-53,59-61,94
+assets/app/plugins/expression-editor/storyarn-expr.grammar
+  s_6112f11c106698::t_2cbc91ed3b6d8c 2,5,9-14,17,49-50
+  s_6112f11c106698::t_32daa1ad484d8f 15-16
+lib/storyarn_web/live/hooks/palette.ex
+  s_6112f11c106698::t_18d088ac659106 5-6,52,72-73,105-112,123-165,354,373,376,392-440,443-474
+lib/storyarn_web/live/sheet_live/show.ex
+  s_6112f11c106698::t_82e7dce9c7d414 396-401
+  s_6112f11c106698::t_29ee203c5d3586 41,113,149,176,191,348-349,372-373,383-395,402-458
+test/storyarn_web/layouts_test.exs
+  s_6112f11c106698::t_694b33b3a20fd1 30,38-52
+assets/app/live/sheet/show/SheetSurface.vue
+  s_6112f11c106698::t_d9b45381aca05d 73-75
+  s_6112f11c106698::t_8ac57aa8999ade 9-12,52,59,72,82-86
+assets/app/test/components/ui/command/Command.test.ts
+  s_6112f11c106698::t_2be94cb6226e87 51-64
+assets/app/test/components/ui/command/CommandDialog.test.ts
+  s_6112f11c106698::t_3a96adec38446f 15-33,37
+  s_6112f11c106698::t_2be94cb6226e87 1-14,34-36,38-39
+lib/storyarn_web/components/project_layout.ex
+  s_6112f11c106698::t_a42905d2998426 82
+test/storyarn/global_search/reference_pattern_test.exs
+  s_6112f11c106698::t_33570f510ea3e1 1-18,25-27
+  s_6112f11c106698::t_944e7bdb7d1949 19-24
+assets/app/locales/es/palette.json
+  s_6112f11c106698::t_751d5a1e0ac251 15
+  s_6112f11c106698::t_8a5c127e0089df 20,22-24,35-36,59,74-117
+  s_6112f11c106698::t_ed350b25278c2d 25-34
+lib/storyarn_web/components/layouts.ex
+  s_6112f11c106698::t_a42905d2998426 30,41
+lib/storyarn/global_search/reference_pattern.ex
+  s_6112f11c106698::t_944e7bdb7d1949 5-11
+  s_6112f11c106698::t_6aee1786287a18 12-17,27-28,30,32-34,36-44,48-55
+  s_6112f11c106698::t_d699bb394154bf 1-4,18-26,29,31,35,45-47,56
+assets/app/modules/sheets/components/chrome/header/SheetHealthStatus.vue
+  s_6112f11c106698::t_8ac57aa8999ade 4,37-38,40-44
+test/storyarn_web/live/hooks/palette_test.exs
+  s_6112f11c106698::t_50f44e2661c8dd 895-901
+  s_6112f11c106698::t_ca2cd69d7838a9 451-489,491-509,511-528,530-610
+  s_6112f11c106698::t_e1bd414fa9f6c0 490,510,529
+  s_6112f11c106698::t_83a103824df81d 14
+assets/app/shared/command-palette/lookupResults.ts
+  s_6112f11c106698::t_01e9f4010a00cb 1-24
+assets/app/components/ui/command/CommandDialog.vue
+  s_6112f11c106698::t_2be94cb6226e87 2,19,26-27,37
+assets/app/test/plugins/expression-editor/reference-pattern.test.ts
+  s_6112f11c106698::t_2cbc91ed3b6d8c 1-20,22-49,56-60,63-64,66-75,77,80-81,85-95
+  s_6112f11c106698::t_dc2fff83b0869c 50-55,76,78-79
+  s_6112f11c106698::t_67c1debe8cffcc 21,61-62,65,82-84
+assets/app/test/live/sheet/show/SheetSurface.test.ts
+  s_6112f11c106698::t_fcaeb0d1a5ae91 1-139
+test/storyarn/command_palette_test.exs
+  s_6112f11c106698::t_2e27dd4a9104a0 13,17-19,44-47,59-60
+  s_6112f11c106698::t_109eee0cd7d1cd 61
+assets/app/shared/command-palette/operationCatalog.ts
+  s_6112f11c106698::t_cf2dd0a4364084 3,6,12-13,20-22
+lib/storyarn/sheets/variable_catalog.ex
+  s_6112f11c106698::t_12d5b1dd7136bd 1-34,36-49,54-61,63,65-77,81-83,131-249,256-295,302,306,309-322
+  s_6112f11c106698::t_d209bd49fbe1d3 78-80
+  s_6112f11c106698::t_d234d796af912f 35,64,250-255,296-301
+  s_6112f11c106698::t_28f3aa1fbc8f71 50-53,62,84-130,303-305,307-308
+lib/storyarn/sheets/sheet_queries.ex
+  s_6112f11c106698::t_b8e949e8a50184 1064
+lib/storyarn/flows/variable_reference_tracker.ex
+  s_6112f11c106698::t_b8e949e8a50184 247
+lib/storyarn/global_search/reference_search.ex
+  s_6112f11c106698::t_d699bb394154bf 1-106,115-207,209-223,225-242,244-261,263-283,285-296,298-308,312-389,391-401
+  s_6112f11c106698::t_ab17ef95621b6c 107-114,208,224,243,262,284,297,309-311,390
+assets/app/test/live/layouts/CommandPaletteLayout.test.ts
+  s_6112f11c106698::t_694b33b3a20fd1 14-17,19-20,91-99
+  s_6112f11c106698::t_feb2cfb2b525d2 100-101
+lib/storyarn/global_search.ex
+  s_6112f11c106698::t_7374163a45d76f 15,20,23-34
+test/e2e/command_palette_test.exs
+  s_6112f11c106698::t_64ac23e84ce93a 87-116
+lib/storyarn/command_palette/registry.ex
+  s_6112f11c106698::t_cf2dd0a4364084 4,6-7,40-147
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_6112f11c106698::t_544b5619106308 696-713,1023-1025,1042-1044
+  s_6112f11c106698::t_d128c7656dcb5a 729-735
+  s_6112f11c106698::t_1797f12329fd5f 37,40,51,73
+  s_6112f11c106698::t_5c95f1b83c1a1c 208-252
+  s_6112f11c106698::t_3e10b5071d64bf 865-986,1029-1036,1038
+  s_6112f11c106698::t_ccf57a7170be58 618-695,714-728,736-864,987-1003,1007-1009
+  s_6112f11c106698::t_a2eefccb2251d1 1004-1006
+  s_6112f11c106698::t_d0a6cefbade77d 1010-1022,1026-1028,1037,1039-1041,1045-1047
+assets/app/modules/sheets/composables/useSheetHighlight.ts
+  s_6112f11c106698::t_d9b45381aca05d 44,51-52,54,57
+  s_6112f11c106698::t_8ac57aa8999ade 1-43,45-50,53,55-56,58-106
+assets/app/plugins/expression-editor/reference-pattern.ts
+  s_6112f11c106698::t_dc2fff83b0869c 68-74,101
+  s_6112f11c106698::t_30fd1fbddae8e4 128-131
+  s_6112f11c106698::t_67c1debe8cffcc 32,51,102-114,118-119,121-125,127,132,134
+  s_6112f11c106698::t_db809a03cd4460 47-50
+  s_6112f11c106698::t_17aa29b0a84def 12,145-151,155
+  s_6112f11c106698::t_2cbc91ed3b6d8c 1-11,13-31,33-46,52-63,65-67,77-79,81-100,115-117,120,126,133,135-144,152-154,156-158
+  s_6112f11c106698::t_c75722b39ebf44 64,75-76,80
+lib/storyarn/flows/node_crud.ex
+  s_6112f11c106698::t_fb484d306ceaa2 252,263-305
+  s_6112f11c106698::t_35984620609d4f 306-307
+assets/app/components/command-palette/CommandPalette.vue
+  s_6112f11c106698::t_9b006d684ffae5 2060-2063,2065-2073,2075-2086,2088-2092,2094-2099,2101-2132,2135-2141,2143-2169,2171-2245,2247-2268
+  s_6112f11c106698::t_bea5138cd18588 2064,2100
+  s_6112f11c106698::t_7d138f570b9900 306,311-312,1483
+  s_6112f11c106698::t_629bb788bd6625 380-381,383-384,477-478,499,502
+  s_6112f11c106698::t_efaeb36eca1817 855,861-868,1063
+  s_6112f11c106698::t_7642801ccf4bc2 635-636,645-646
+  s_6112f11c106698::t_219732967c7323 3,56-57,59,117-134,149,165-170,210-220,230,232,261-264,267,273,282-283,307-310
+  s_6112f11c106698::t_88b7c172b84408 378-379,382,386-391,393-395,399,401,425-436
+  s_6112f11c106698::t_0feb8b4a285981 677-678,699,703,754,760,771,787-789,798,800-806,819-823
+  s_6112f11c106698::t_3eb5fead5097ba 799,832-834,943-949,1439-1443,1520
+  s_6112f11c106698::t_00a284c75b490d 657,840-844,854,856-860,869-932,1047-1062,1064-1102
+  s_6112f11c106698::t_c0594d0dc9456b 550,553-558,581,593-618,637-644,647-654
+  s_6112f11c106698::t_dd67233144cda1 437,620,824,933,1413-1416,1433-1438,1444-1482,1484-1519,1521-1524
+  s_6112f11c106698::t_8d5890031aa09b 1940-1942,1958-1974
+  s_6112f11c106698::t_53bf3bc94481f4 313-314,438-439,474,503,619,621,655-656,675,835,950,1103-1105,1525-1527,1930,1935,1975
+assets/app/locales/en/palette.json
+  s_6112f11c106698::t_751d5a1e0ac251 15
+  s_6112f11c106698::t_ed350b25278c2d 25-34
+  s_6112f11c106698::t_8a5c127e0089df 20,22-24,35-36,59,74-117
+lib/storyarn/flows.ex
+  s_6112f11c106698::t_fb484d306ceaa2 478-479
+  s_6112f11c106698::t_3e3c028fa49fda 477
+lib/storyarn/references/variable_usage.ex
+  s_6112f11c106698::t_dc9d6463fd37cb 3,5-7
+  s_6112f11c106698::t_2305a2b5214d91 10-13,15-23,36-54,59,62,67,72-84,86-88,90-118,120-122,124-152,154-156,158-179,181-211
+  s_6112f11c106698::t_650e254a88007a 55-58,60-61,63-66,68-71,85,89,119,123,153,157,180
+test/storyarn_web/live/sheet_live/show_test.exs
+  s_6112f11c106698::t_d8ec3b77cca002 150-154
+  s_6112f11c106698::t_8c0424f8769ff2 56-61,91-149,155-165
+  s_1dd185fade4970::t_bb3a19e99a835d 166
+assets/app/live/layouts/CommandPalette.vue
+  s_6112f11c106698::t_a42905d2998426 15,20,41
+assets/app/components/command-palette/PaletteLookupResults.vue
+  s_6112f11c106698::t_cd3a42f97091d9 96,99-104,106-117,119-120,128
+  s_6112f11c106698::t_97fa3d3d126f8f 13-21,24-26,89-95,97,121-127
+  s_6112f11c106698::t_9dc8adedee9112 47-51,98,105
+  s_6112f11c106698::t_01e9f4010a00cb 1-12,22-23,27-46,52-88,118,129
+lib/storyarn/references.ex
+  s_6112f11c106698::t_8779b1cba598a4 28
+  s_6112f11c106698::t_2305a2b5214d91 49
+lib/storyarn/scenes/scene_crud.ex
+  s_6112f11c106698::t_b8e949e8a50184 882,928
+assets/app/test/components/command-palette/PaletteLookupResults.test.ts
+  s_6112f11c106698::t_01e9f4010a00cb 1-29,31-37,50-57,59,63-73,75-140,143,146-148,169-170
+  s_6112f11c106698::t_97fa3d3d126f8f 30,58,74,154-158,160-163,165-168
+  s_6112f11c106698::t_3a96adec38446f 38-49,60-62,159,164
+  s_6112f11c106698::t_9dc8adedee9112 141-142,144-145,149-153
+docs/features/ai-platform/SLICE_7_1A_1_PALETTE_OPERATIONS.md
+  s_6112f11c106698::t_1e2ccde8db70d4 4-8,30-31,132-135,243
+assets/app/plugins/expression-editor/parser-generated.js
+  s_6112f11c106698::t_88a94ef8d59c94 6,8-9,11-12,16-23
+assets/app/plugins/expression-editor/parser-generated.terms.js
+  s_6112f11c106698::t_caf2d18f16ec78 28-31
+priv/gettext/default.pot
+  s_6112f11c106698::t_11905159460228 14,19,24
+priv/gettext/flows.pot
+  s_6112f11c106698::t_2876edee26a0ee 181
+priv/gettext/scenes.pot
+  s_6112f11c106698::t_5576071c36dfbe 461
+priv/gettext/sheets.pot
+  s_6112f11c106698::t_2ada6f110b0e3e 108,124,298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2b8f93011bfbb225bb42633af94e0ca53b656773",
+  "prompts": {},
+  "sessions": {
+    "s_1dd185fade4970": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fade1-e690-7c63-bd27-d9d770916bd7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
