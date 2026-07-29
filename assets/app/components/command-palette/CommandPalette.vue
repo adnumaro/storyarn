@@ -162,12 +162,6 @@ const NAV_DEBOUNCE_MS = 200;
 const MUTATION_TIMEOUT_MS = 15_000;
 const RECENT_OPERATIONS_KEY = "storyarn.command-palette.recent-operations.v1";
 const MAX_RECENT_OPERATIONS = 5;
-const LOOKUP_OPERATION_IDS = new Set([
-  "variable_definition",
-  "variable_usages",
-  "entity_usages",
-  "flow_callers",
-]);
 
 const navIcons: Record<string, LucideIcon> = {
   workspace: Building2,
@@ -281,6 +275,7 @@ let mutationTimeout: ReturnType<typeof setTimeout> | null = null;
 let suppressQueryWatch = false;
 let rootComposing = false;
 let compositionFetchPending = false;
+let patternLifecycle: "idle" | "selected" | "completed" = "idle";
 
 const localOpen = computed({
   get: () => open.value,
@@ -306,11 +301,20 @@ const confirmItem = computed<DeleteItem | null>(() =>
 const lookupStep = computed(() => (step.value.kind === "lookup-results" ? step.value : null));
 
 const referencePattern = computed(() => classifyReferencePattern(query.value));
-const patternDoorActive = computed(() => referencePattern.value.state !== "normal");
+const invalidPatternCanNavigate = computed(() => {
+  if (referencePattern.value.state !== "invalid") return false;
+
+  const value = query.value;
+  return value === value.trim() && /\s/.test(value) && !/^[?"'`/]/.test(value);
+});
+const patternDoorActive = computed(
+  () => referencePattern.value.state !== "normal" && !invalidPatternCanNavigate.value,
+);
 const remoteLookupMode = computed(
   () =>
     step.value.kind === "lookup-results" || (step.value.kind === "root" && patternDoorActive.value),
 );
+const hasNavResults = computed(() => navGroups.value.some((group) => group.items.length > 0));
 
 const activeOperation = computed<OperationDefinition | null>(() => {
   const current = step.value;
@@ -423,7 +427,7 @@ function contextualOperationAvailability(operation: OperationDefinition): Operat
 }
 
 function resolveOperationAvailability(operation: OperationDefinition): OperationAvailability {
-  if (LOOKUP_OPERATION_IDS.has(operation.id) && !projectContext) {
+  if (operation.requiresProject && !projectContext) {
     return {
       enabled: false,
       reasonKey: "palette.operation_unavailable.project_context",
@@ -471,7 +475,9 @@ const activeErrorKey = computed<string | null>(() => {
 
   switch (step.value.kind) {
     case "root":
-      return patternDoorActive.value ? lookupErrorKey.value : navErrorKey.value;
+      return patternDoorActive.value
+        ? (lookupErrorKey.value ?? navErrorKey.value)
+        : navErrorKey.value;
     case "operation":
       return operationOptionsErrorKey.value;
     case "lookup-results":
@@ -496,7 +502,7 @@ const operationEmptyMessageKey = computed(() =>
 const activeLoading = computed(() => {
   switch (step.value.kind) {
     case "root":
-      return patternDoorActive.value ? lookupLoading.value : navLoading.value;
+      return patternDoorActive.value ? lookupLoading.value || navLoading.value : navLoading.value;
     case "operation":
       return operationOptionsLoading.value;
     case "lookup-results":
@@ -593,22 +599,20 @@ function prepareStepForQueryChange(): boolean {
 function prepareRootForQueryChange(): boolean {
   const classification = referencePattern.value;
 
-  if (classification.state === "normal") {
-    if (activeGuidedOperationId.value === "variable_definition") {
-      abandonActiveOperation();
-    }
+  if (!patternDoorActive.value) {
+    leavePatternLifecycle();
     resetLookupState();
     navLoading.value = true;
     navErrorKey.value = null;
     return false;
   }
 
-  navLoading.value = false;
+  navLoading.value = classification.state === "ready";
   navErrorKey.value = null;
-  navGroups.value = [];
   lookupErrorKey.value = null;
 
   if (classification.state !== "ready") {
+    navGroups.value = [];
     lookupLoading.value = false;
     lookupResults.value = [];
     lookupTruncated.value = false;
@@ -649,8 +653,9 @@ function onRootCompositionEnd(): void {
   compositionFetchPending = true;
 
   void nextTick(() => {
-    if (!compositionFetchPending || !open.value || step.value.kind !== "root") return;
+    if (!compositionFetchPending) return;
     compositionFetchPending = false;
+    if (!open.value || step.value.kind !== "root") return;
     handleQueryChange();
   });
 }
@@ -676,6 +681,7 @@ function openPalette(): void {
   createTargetsLoaded.value = false;
   rootComposing = false;
   compositionFetchPending = false;
+  patternLifecycle = "idle";
   step.value = { kind: "root" };
   open.value = true;
   focusPaletteInput();
@@ -697,6 +703,9 @@ function closePalette(): void {
   activeAICta.value = null;
   resetOperationState();
   resetLookupState();
+  patternLifecycle = "idle";
+  rootComposing = false;
+  compositionFetchPending = false;
   ++mutationToken;
   ++createTargetsToken;
   ++operationOptionsToken;
@@ -745,6 +754,8 @@ function resetQuery(): void {
 function enterStep(next: PaletteStep): void {
   if (busy.value) return;
 
+  rootComposing = false;
+  compositionFetchPending = false;
   step.value = next;
   errorKey.value = null;
   activeAICta.value = null;
@@ -839,7 +850,8 @@ function fetchForStep(): void {
   if (current.kind === "root") {
     if (referencePattern.value.state === "ready") {
       fetchReferencePattern();
-    } else if (referencePattern.value.state === "normal") {
+      fetchNavDestinations();
+    } else if (!patternDoorActive.value) {
       fetchNavDestinations();
     }
   } else if (current.kind === "operation") {
@@ -867,7 +879,8 @@ function fetchReferencePattern(): void {
     return;
   }
 
-  if (activeGuidedOperationId.value !== "variable_definition") {
+  if (patternLifecycle === "idle") {
+    patternLifecycle = "selected";
     activeGuidedOperationId.value = "variable_definition";
     track("palette_operation_selected", { operation_id: "variable_definition" });
   }
@@ -902,7 +915,7 @@ function fetchReferencePattern(): void {
         normalizeLookupResults(reply.items ?? []),
       );
       lookupTruncated.value = reply.truncated ?? false;
-      completeActiveOperation();
+      completePatternLifecycle();
       void restoreLookupHighlight(latestHighlightedResultId);
     },
     () => {
@@ -1366,6 +1379,21 @@ function completeActiveOperation(): void {
   activeGuidedOperationId.value = null;
 }
 
+function completePatternLifecycle(): void {
+  if (patternLifecycle !== "selected") return;
+
+  completeActiveOperation();
+  patternLifecycle = "completed";
+}
+
+function leavePatternLifecycle(): void {
+  if (patternLifecycle === "selected") {
+    abandonActiveOperation();
+  }
+
+  patternLifecycle = "idle";
+}
+
 function abandonActiveOperation(): void {
   const operationId = activeGuidedOperationId.value;
   if (!operationId) return;
@@ -1730,6 +1758,15 @@ function commandDisabledReasonKey(command: PaletteCommand): string | undefined {
 
 function onSelectNav(item: NavItem): void {
   runNavigationCommand(item.id, item.url);
+}
+
+function onSelectPatternNav(item: NavItem): void {
+  // Reka memoizes the delegated disabled prop. The keyed remount below keeps
+  // its visual state honest; this guard remains the authoritative barrier
+  // against selecting a stale row while the replacement query is in flight.
+  if (navLoading.value) return;
+
+  onSelectNav(item);
 }
 
 // Navigation tears down the current LiveView. Send telemetry first, while
@@ -2104,8 +2141,39 @@ function track(event: string, payload: Record<string, unknown>): void {
                 :truncated-label="t('palette.lookup_truncated')"
                 @select="onSelectLookupResult"
               />
+              <CommandGroup
+                v-for="group in navGroups"
+                :key="`pattern-nav-${group.key}`"
+                :heading="navGroupHeading(group.key)"
+              >
+                <CommandItem
+                  v-for="item in group.items"
+                  :key="`pattern-nav-${item.id}-${navLoading ? 'loading' : 'ready'}`"
+                  :value="item.id"
+                  :disabled="busy || navLoading"
+                  @select="onSelectPatternNav(item)"
+                >
+                  <component
+                    :is="navIcons[item.type]"
+                    v-if="navIcons[item.type]"
+                    class="size-4 shrink-0"
+                  />
+                  <span>{{ item.label }}</span>
+                  <span v-if="item.context" class="text-xs text-muted-foreground">
+                    {{ item.context }}
+                  </span>
+                  <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
+                </CommandItem>
+              </CommandGroup>
               <p
-                v-if="!lookupLoading && !lookupErrorKey && lookupResults.length === 0"
+                v-if="
+                  !lookupLoading &&
+                  !navLoading &&
+                  !lookupErrorKey &&
+                  !navErrorKey &&
+                  lookupResults.length === 0 &&
+                  !hasNavResults
+                "
                 class="py-6 text-center text-sm text-muted-foreground"
               >
                 {{ t("palette.no_lookup_results") }}

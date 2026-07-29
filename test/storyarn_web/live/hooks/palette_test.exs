@@ -11,7 +11,17 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.CommandPalette.Definition
+  alias Storyarn.CommandPalette.Registry
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.References.EntityReference
+  alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.TableRow
+
+  @latency_samples 5
+  @formula_latency_rows 250
+  @formula_latency_columns 12
 
   defmodule TestAdapter do
     @moduledoc false
@@ -332,6 +342,27 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       refute Enum.any?(items, &(&1.id == "nav.sheet.#{hidden_sheet.id}"))
     end
 
+    test "goto.destination reports when its bounded result set is truncated", %{
+      view: view,
+      user: user
+    } do
+      project = project_fixture(user, %{workspace: workspace_fixture(user)})
+
+      for index <- 1..9 do
+        sheet_fixture(project, %{name: "Palette overflow #{index}"})
+      end
+
+      render_hook(view, "palette_operation_options", %{
+        "operation_id" => "goto",
+        "parameter_id" => "destination",
+        "query" => "Palette overflow",
+        "token" => 32
+      })
+
+      assert_reply(view, %{token: 32, items: items, truncated: true})
+      assert length(items) == 8
+    end
+
     test "delete.entity returns entities only from editable projects", %{
       view: view,
       user: user
@@ -365,6 +396,27 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
              end)
 
       refute Enum.any?(items, &(&1.id == "sheet:#{hidden_sheet.id}"))
+    end
+
+    test "delete.entity reports when its bounded result set is truncated", %{
+      view: view,
+      user: user
+    } do
+      project = project_fixture(user, %{workspace: workspace_fixture(user)})
+
+      for index <- 1..9 do
+        sheet_fixture(project, %{name: "Disposable overflow #{index}"})
+      end
+
+      render_hook(view, "palette_operation_options", %{
+        "operation_id" => "delete",
+        "parameter_id" => "entity",
+        "query" => "Disposable overflow",
+        "token" => 34
+      })
+
+      assert_reply(view, %{token: 34, items: items, truncated: true})
+      assert length(items) == 8
     end
 
     test "fails closed for unknown operation, parameter, or client-side completion source",
@@ -605,6 +657,76 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       assert_reply(project_view, %{token: 56, items: items, truncated: false})
       assert Enum.map(items, & &1.label) == ["hero.health"]
       assert hd(items).url =~ "highlight=block:#{block.id}"
+    end
+
+    @tag timeout: 120_000
+    test "new instant reference completions and executions stay within their registered budget",
+         %{conn: conn, user: user} do
+      fixture = reference_latency_fixture(user)
+
+      {:ok, project_view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{fixture.workspace.slug}/projects/#{fixture.project.slug}/sheets/#{fixture.target_sheet.id}"
+        )
+
+      completion_routes = [
+        {"variable_definition completion", "variable_definition", "variable", "latency"},
+        {"variable_usages completion", "variable_usages", "variable", "latency"},
+        {"entity_usages completion", "entity_usages", "entity", "latency"},
+        {"flow_callers completion", "flow_callers", "flow", "latency"}
+      ]
+
+      for {{label, operation_id, parameter_id, query}, index} <-
+            Enum.with_index(completion_routes) do
+        assert_instant_route(
+          project_view,
+          operation_id,
+          label,
+          "palette_operation_options",
+          fn token ->
+            %{
+              "operation_id" => operation_id,
+              "parameter_id" => parameter_id,
+              "query" => query,
+              "token" => token
+            }
+          end,
+          700 + index * 10
+        )
+      end
+
+      execution_routes = [
+        {"variable_definition execution", "variable_definition",
+         %{
+           "block_id" => fixture.variable.id,
+           "qualified_ref" => fixture.qualified_ref
+         }},
+        {"variable_usages execution", "variable_usages",
+         %{
+           "block_id" => fixture.variable.id,
+           "qualified_ref" => fixture.qualified_ref
+         }},
+        {"entity_usages execution", "entity_usages", %{"type" => "sheet", "id" => fixture.target_sheet.id}},
+        {"flow_callers execution", "flow_callers", %{"id" => fixture.target_flow.id}}
+      ]
+
+      for {{label, operation_id, target}, index} <- Enum.with_index(execution_routes) do
+        assert_instant_route(
+          project_view,
+          operation_id,
+          label,
+          "palette_reference_lookup",
+          fn token ->
+            %{
+              "operation_id" => operation_id,
+              "target" => target,
+              "token" => token
+            }
+          end,
+          800 + index * 10
+        )
+      end
     end
   end
 
@@ -926,5 +1048,181 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       "query" => "Latency",
       "token" => token
     }
+  end
+
+  defp reference_latency_fixture(user) do
+    workspace = workspace_fixture(user, %{name: "Reference latency workspace"})
+    project = project_fixture(user, %{workspace: workspace, name: "Reference latency project"})
+    target_sheet = sheet_fixture(project, %{name: "Latency target", shortcut: "latency-target"})
+
+    variable =
+      block_fixture(target_sheet, %{
+        type: "number",
+        config: %{"label" => "Latency metric"},
+        variable_name: "latency_metric"
+      })
+
+    _decoy_variable =
+      block_fixture(target_sheet, %{
+        type: "number",
+        config: %{"label" => "Decoy metric"},
+        variable_name: "decoy_metric"
+      })
+
+    source_blocks =
+      Enum.flat_map(1..32, fn sheet_index ->
+        sheet =
+          sheet_fixture(project, %{
+            name: "Latency sheet #{sheet_index}",
+            shortcut: "latency-sheet-#{sheet_index}"
+          })
+
+        for block_index <- 1..3 do
+          block_fixture(sheet, %{
+            type: "number",
+            config: %{"label" => "Latency value #{block_index}"},
+            variable_name: "latency_value_#{sheet_index}_#{block_index}"
+          })
+        end
+      end)
+
+    # Keep completion catalogs representative across every entity type.
+    for index <- 1..32 do
+      flow_fixture(project, %{name: "Latency flow #{index}", shortcut: "latency-flow-#{index}"})
+      scene_fixture(project, %{name: "Latency scene #{index}", shortcut: "latency-scene-#{index}"})
+    end
+
+    seed_entity_usages(source_blocks, target_sheet)
+    target_flow = seed_flow_callers(project)
+
+    seed_formula_usages(
+      project,
+      "latency-target.latency_metric",
+      "latency-target.decoy_metric"
+    )
+
+    %{
+      workspace: workspace,
+      project: project,
+      target_sheet: target_sheet,
+      target_flow: target_flow,
+      variable: variable,
+      qualified_ref: "latency-target.latency_metric"
+    }
+  end
+
+  defp seed_entity_usages(source_blocks, target_sheet) do
+    source_blocks
+    |> Enum.take(30)
+    |> Enum.each(fn block ->
+      Repo.insert!(%EntityReference{
+        source_type: "block",
+        source_id: block.id,
+        target_type: "sheet",
+        target_id: target_sheet.id,
+        context: "latency"
+      })
+    end)
+  end
+
+  defp seed_flow_callers(project) do
+    target_flow = flow_fixture(project, %{name: "Latency caller target"})
+    caller_flow = flow_fixture(project, %{name: "Latency caller source"})
+
+    for _index <- 1..30 do
+      Repo.insert!(%FlowNode{
+        flow_id: caller_flow.id,
+        type: "subflow",
+        data: %{"referenced_flow_id" => to_string(target_flow.id)}
+      })
+    end
+
+    target_flow
+  end
+
+  defp seed_formula_usages(project, qualified_ref, decoy_ref) do
+    sheet = sheet_fixture(project, %{name: "Latency calculations", shortcut: "latency-calculations"})
+    table = table_block_fixture(sheet, %{label: "Latency formulas"})
+
+    formula_columns =
+      for index <- 1..@formula_latency_columns do
+        table_column_fixture(table, %{name: "Latency formula #{index}", type: "formula"})
+      end
+
+    decoy_cells =
+      Map.new(formula_columns, fn column ->
+        {column.slug, formula_latency_cell(decoy_ref)}
+      end)
+
+    target_column_slug = formula_columns |> List.last() |> Map.fetch!(:slug)
+    now = TimeHelpers.now()
+
+    rows =
+      for index <- 1..@formula_latency_rows do
+        cells =
+          if index == @formula_latency_rows do
+            Map.put(decoy_cells, target_column_slug, formula_latency_cell(qualified_ref))
+          else
+            decoy_cells
+          end
+
+        %{
+          block_id: table.id,
+          name: "Latency row #{index}",
+          slug: "latency_row_#{index}",
+          position: index,
+          cells: cells,
+          inserted_at: now,
+          updated_at: now
+        }
+      end
+
+    assert {@formula_latency_rows, nil} = Repo.insert_all(TableRow, rows)
+  end
+
+  defp formula_latency_cell(qualified_ref) do
+    %{
+      "expression" => "source + 1",
+      "bindings" => %{
+        "source" => %{"type" => "variable", "ref" => qualified_ref}
+      }
+    }
+  end
+
+  defp assert_instant_route(view, operation_id, label, event, payload_builder, token_base) do
+    assert {:ok, definition} = Registry.fetch(operation_id)
+    assert definition.latency == :instant
+
+    budget_microseconds = Definition.latency_budget_ms(definition.latency) * 1_000
+
+    request_and_assert_items(view, event, payload_builder.(token_base), token_base)
+
+    durations =
+      for offset <- 1..@latency_samples do
+        token = token_base + offset
+
+        {elapsed_microseconds, :ok} =
+          :timer.tc(fn ->
+            request_and_assert_items(view, event, payload_builder.(token), token)
+          end)
+
+        elapsed_microseconds
+      end
+
+    median_microseconds =
+      durations
+      |> Enum.sort()
+      |> Enum.at(div(@latency_samples, 2))
+
+    assert median_microseconds <= budget_microseconds,
+           "median #{label} was #{median_microseconds / 1_000} ms, " <>
+             "registered #{definition.latency} budget is #{budget_microseconds / 1_000} ms; " <>
+             "samples=#{inspect(Enum.map(durations, &(&1 / 1_000)))}"
+  end
+
+  defp request_and_assert_items(view, event, payload, token) do
+    render_hook(view, event, payload)
+    assert_reply(view, %{token: ^token, items: [_first | _rest]})
+    :ok
   end
 end

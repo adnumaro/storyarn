@@ -15,6 +15,8 @@ describe("classifyReferencePattern", () => {
   it.each([
     ["mc.health", "exact"],
     ["mc.jaime.health", "exact"],
+    ["2b.health", "exact"],
+    ["23410.health", "exact"],
     ["story.character.stats.health", "exact"],
     ["sheets.**.health", "deep_wildcard"],
     ["sheets.**.?heal", "deep_wildcard_partial"],

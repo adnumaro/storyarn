@@ -58,6 +58,7 @@ export interface OperationDefinition {
   parameters: OperationParameterDefinition[];
   latency: OperationLatency;
   authorization: OperationAuthorization;
+  requiresProject: boolean;
   resultType: OperationResultType;
   phrase: OperationPhrasePart[];
   help: OperationHelp;

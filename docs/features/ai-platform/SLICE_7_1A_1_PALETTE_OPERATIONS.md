@@ -137,6 +137,9 @@ the operations are disabled with an explicit reason.
 **Both doors must coexist.** If the input opens with a dotted reference, no template
 fires; if it opens with an operation word, the guided door does. Making the template
 the only path would kill the expert user the product is trying to create.
+Normal destination search also continues in parallel with a ready pattern, so a
+dotted sheet shortcut or a multi-word title is never hidden merely because it
+resembles reference syntax.
 
 ### Identifiers and content must look different
 
@@ -206,10 +209,10 @@ generated from the registry cannot.
 
 Every capability is one entry: an id, typed parameters with their completion
 sources and client/server delivery mode, a latency class, an authorization
-requirement, a result type, and its **help payload** (description, filled example,
-pattern equivalent). Help being part of the entry rather than a separate file is
-what keeps it from drifting. The palette is a **router** over it, never a special
-case per feature.
+requirement, whether it needs active project context, a result type, and its
+**help payload** (description, filled example, pattern equivalent). Help being part
+of the entry rather than a separate file is what keeps it from drifting. The
+palette is a **router** over it, never a special case per feature.
 
 Latency classes matter because they are a contract, not documentation. The
 instant class has a **budget of 150 ms** and a test that fails when it regresses —

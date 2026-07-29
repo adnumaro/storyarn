@@ -21,6 +21,18 @@ defmodule Storyarn.CommandPaletteTest do
       assert Definition.latency_budget_ms(:instant) == 150
       assert Definition.latency_budget_ms(:interactive) == nil
 
+      assert Map.new(definitions, &{&1.id, &1.requires_project}) == %{
+               "goto" => false,
+               "variable_definition" => true,
+               "variable_usages" => true,
+               "entity_usages" => true,
+               "flow_callers" => true,
+               "create" => false,
+               "delete" => false,
+               "run_command" => false,
+               "open_view" => false
+             }
+
       for definition <- definitions do
         assert definition.domain in Definition.enum_values(:domain)
         assert definition.latency in Definition.enum_values(:latency)
@@ -64,6 +76,9 @@ defmodule Storyarn.CommandPaletteTest do
       assert goto = Enum.find(catalog, &(&1.id == "goto"))
       assert goto.resultType == "navigation"
       assert goto.authorization == "view"
+      assert goto.requiresProject == false
+
+      assert Enum.find(catalog, &(&1.id == "variable_definition")).requiresProject == true
 
       assert [
                %{
@@ -122,6 +137,10 @@ defmodule Storyarn.CommandPaletteTest do
 
       assert_raise ArgumentError, ~r/invalid parameters/, fn ->
         Definition.validate!(%{definition | parameters: [invalid_parameter]})
+      end
+
+      assert_raise ArgumentError, ~r/invalid requires_project/, fn ->
+        Definition.validate!(%{definition | requires_project: :sometimes})
       end
 
       assert {:ok, %{completion_source: :navigation, completion_mode: :server}} =

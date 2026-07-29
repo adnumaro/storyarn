@@ -26,6 +26,7 @@ defmodule Storyarn.CommandPalette.Registry do
       latency: :instant,
       authorization: :view,
       result_type: :navigation,
+      requires_project: false,
       phrase: [
         %{kind: :text, text_key: "palette.operations.goto.phrase.prefix"},
         %{kind: :parameter, parameter_id: "destination"}
@@ -53,6 +54,7 @@ defmodule Storyarn.CommandPalette.Registry do
       latency: :instant,
       authorization: :view,
       result_type: :lookup,
+      requires_project: true,
       phrase: [
         %{kind: :text, text_key: "palette.operations.variable_definition.phrase.prefix"},
         %{kind: :parameter, parameter_id: "variable"}
@@ -80,6 +82,7 @@ defmodule Storyarn.CommandPalette.Registry do
       latency: :instant,
       authorization: :view,
       result_type: :lookup,
+      requires_project: true,
       phrase: [
         %{kind: :text, text_key: "palette.operations.variable_usages.phrase.prefix"},
         %{kind: :parameter, parameter_id: "variable"}
@@ -107,6 +110,7 @@ defmodule Storyarn.CommandPalette.Registry do
       latency: :instant,
       authorization: :view,
       result_type: :lookup,
+      requires_project: true,
       phrase: [
         %{kind: :text, text_key: "palette.operations.entity_usages.phrase.prefix"},
         %{kind: :parameter, parameter_id: "entity"}
@@ -134,6 +138,7 @@ defmodule Storyarn.CommandPalette.Registry do
       latency: :instant,
       authorization: :view,
       result_type: :lookup,
+      requires_project: true,
       phrase: [
         %{kind: :text, text_key: "palette.operations.flow_callers.phrase.prefix"},
         %{kind: :parameter, parameter_id: "flow"}
@@ -169,6 +174,7 @@ defmodule Storyarn.CommandPalette.Registry do
       latency: :interactive,
       authorization: :edit_content,
       result_type: :mutation,
+      requires_project: false,
       phrase: [
         %{kind: :text, text_key: "palette.operations.create.phrase.prefix"},
         %{kind: :parameter, parameter_id: "entity_type"},
@@ -198,6 +204,7 @@ defmodule Storyarn.CommandPalette.Registry do
       latency: :interactive,
       authorization: :edit_content,
       result_type: :mutation,
+      requires_project: false,
       phrase: [
         %{kind: :text, text_key: "palette.operations.delete.phrase.prefix"},
         %{kind: :parameter, parameter_id: "entity"}
@@ -225,6 +232,7 @@ defmodule Storyarn.CommandPalette.Registry do
       latency: :instant,
       authorization: :contextual,
       result_type: :command,
+      requires_project: false,
       phrase: [
         %{kind: :text, text_key: "palette.operations.run_command.phrase.prefix"},
         %{kind: :parameter, parameter_id: "command"}
@@ -252,6 +260,7 @@ defmodule Storyarn.CommandPalette.Registry do
       latency: :instant,
       authorization: :contextual,
       result_type: :navigation,
+      requires_project: false,
       phrase: [
         %{kind: :text, text_key: "palette.operations.open_view.phrase.prefix"},
         %{kind: :parameter, parameter_id: "destination"}

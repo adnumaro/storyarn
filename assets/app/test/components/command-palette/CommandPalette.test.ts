@@ -96,6 +96,7 @@ const gotoOperation: OperationDefinition = {
   ],
   latency: "interactive",
   authorization: "view",
+  requiresProject: false,
   resultType: "navigation",
   phrase: [
     { kind: "text", textKey: "palette.operations.goto.phrase.prefix" },
@@ -132,6 +133,7 @@ const createOperation: OperationDefinition = {
   ],
   latency: "instant",
   authorization: "edit_content",
+  requiresProject: false,
   resultType: "mutation",
   phrase: [
     { kind: "text", textKey: "palette.operations.create.phrase.prefix" },
@@ -169,6 +171,7 @@ function singleParameterOperation(
     ],
     latency: id === "delete" ? "interactive" : "instant",
     authorization: id === "delete" ? "edit_content" : "contextual",
+    requiresProject: false,
     resultType,
     phrase: [
       { kind: "text", textKey: `palette.operations.${id}.phrase.prefix` },
@@ -225,6 +228,7 @@ function referenceOperation(
     ],
     latency: "instant",
     authorization: "view",
+    requiresProject: true,
     resultType: "lookup",
     phrase: [
       { kind: "text", textKey: `palette.operations.${id}.phrase.prefix` },
@@ -630,6 +634,28 @@ describe("CommandPalette", () => {
     expect(wrapper.find("[data-slot='palette-operation-input']").exists()).toBe(false);
   });
 
+  it("derives project requirements from the reference-operation contract", async () => {
+    const futureReferenceOperation: OperationDefinition = {
+      ...variableDefinitionOperation,
+      id: "future_reference_lookup",
+    };
+    const { wrapper } = mountPalette([futureReferenceOperation]);
+
+    pressPaletteShortcut();
+    await nextTick();
+
+    const operation = wrapper.get("[data-operation-id='future_reference_lookup']");
+    const availability = operation.attributes("data-operation-available");
+    selectItem(wrapper, "operation-future_reference_lookup");
+    await nextTick();
+    const openedTemplate = wrapper.find("[data-slot='palette-operation-input']").exists();
+    pressPaletteShortcut();
+    await nextTick();
+
+    expect(availability).toBe("false");
+    expect(openedTemplate).toBe(false);
+  });
+
   it("runs a guided reference lookup with an opaque target and opens an authorized result", async () => {
     const { live, wrapper } = mountPalette([variableUsagesOperation], true);
 
@@ -796,9 +822,8 @@ describe("CommandPalette", () => {
     expect(wrapper.find("[data-lookup-result-id='sheet-block:9']").exists()).toBe(false);
   });
 
-  it("opens the reference-pattern door without leaking normal palette results", async () => {
+  it("keeps a dotted shortcut navigation result alongside the reference-pattern door", async () => {
     vi.useFakeTimers();
-    registerPaletteCommands("flows", [command("flows.fit")]);
     const { live, wrapper } = mountPalette([gotoOperation, variableDefinitionOperation], true);
 
     vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
@@ -807,59 +832,194 @@ describe("CommandPalette", () => {
       if (event === "palette_nav") {
         callback({
           token: payload?.token as number,
-          groups: [
-            {
-              key: "projects",
-              items: [
-                {
-                  id: "nav.project.1",
-                  type: "project",
-                  label: "Veilbreak",
-                  url: "/projects/veilbreak",
-                },
-              ],
-            },
-          ],
+          groups:
+            payload?.query === "mc.jaime"
+              ? [
+                  {
+                    key: "sheets",
+                    items: [
+                      {
+                        id: "nav.sheet.7",
+                        type: "sheet",
+                        label: "Jaime",
+                        shortcut: "mc.jaime",
+                        url: "/sheets/7",
+                      },
+                    ],
+                  },
+                ]
+              : [],
         });
       } else if (event === "palette_create_targets") {
         callback({ token: payload?.token as number, projects: [] });
       } else if (event === "palette_reference_pattern") {
         callback({
           token: payload?.token as number,
-          items: [
-            {
-              id: "sheet-cell:7:0:health",
-              kind: "definition",
-              type: "sheet",
-              label: "sheets.characters.health",
-              context: "Characters",
-              url: "/sheets/characters?highlight=cell:7:0:health",
-            },
-          ],
-          truncated: true,
+          items: [],
+          truncated: false,
         });
       }
     });
 
     pressPaletteShortcut();
     await nextTick();
-    await wrapper.find("[data-slot='command-input']").setValue("sheets.**.?heal");
-    await nextTick();
-
-    expect(wrapper.find("[data-operation-id='goto']").exists()).toBe(false);
-    expect(itemValues(wrapper)).not.toContain("flows.fit");
-    expect(itemValues(wrapper)).not.toContain("nav.project.1");
-
+    await wrapper.find("[data-slot='command-input']").setValue("mc.jaime");
     await vi.advanceTimersByTimeAsync(200);
     await nextTick();
 
-    expect(live.pushEvent).toHaveBeenCalledWith(
-      "palette_reference_pattern",
-      { pattern: "sheets.**.?heal", token: expect.any(Number) },
-      expect.any(Function),
+    const calls = vi.mocked(live.pushEvent).mock.calls;
+    const calledPattern = calls.some(
+      ([event, payload]) =>
+        event === "palette_reference_pattern" && payload?.pattern === "mc.jaime",
     );
-    expect(wrapper.find("[data-lookup-result-id='sheet-cell:7:0:health']").exists()).toBe(true);
-    expect(wrapper.text()).toContain("Showing the first results.");
+    const calledNavigation = calls.some(
+      ([event, payload]) => event === "palette_nav" && payload?.query === "mc.jaime",
+    );
+    const values = itemValues(wrapper);
+    const text = wrapper.text();
+    pressPaletteShortcut();
+    await nextTick();
+
+    expect(calledPattern).toBe(true);
+    expect(calledNavigation).toBe(true);
+    expect(values).toContain("nav.sheet.7");
+    expect(text).not.toContain("No references found");
+  });
+
+  it("blocks stale dotted-shortcut navigation while its replacement request is pending", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPalette([gotoOperation, variableDefinitionOperation], true);
+    let resolveReplacementNavigation: (() => void) | undefined;
+
+    const groups = [
+      {
+        key: "sheets",
+        items: [
+          {
+            id: "nav.sheet.7",
+            type: "sheet",
+            label: "Jaime",
+            shortcut: "mc.jaime",
+            url: "/sheets/7",
+          },
+        ],
+      },
+    ];
+
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        const reply = () => callback({ token: payload?.token as number, groups });
+
+        if (payload?.query === "mc.jaime.health") {
+          resolveReplacementNavigation = reply;
+        } else {
+          reply();
+        }
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_reference_pattern") {
+        callback({
+          token: payload?.token as number,
+          items: [],
+          truncated: false,
+        });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    const input = wrapper.find("[data-slot='command-input']");
+    await input.setValue("mc.jaime");
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+
+    const readyItem = wrapper
+      .findAllComponents(CommandItem)
+      .find((candidate) => candidate.props("value") === "nav.sheet.7");
+    expect(readyItem).toBeDefined();
+
+    await input.setValue("mc.jaime.health");
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+
+    const pendingItem = wrapper
+      .findAllComponents(CommandItem)
+      .find((candidate) => candidate.props("value") === "nav.sheet.7");
+    expect(pendingItem).toBeDefined();
+    expect(pendingItem!.vm).not.toBe(readyItem!.vm);
+    expect(pendingItem!.props("disabled")).toBe(true);
+
+    selectItem(wrapper, "nav.sheet.7");
+    expect(liveNavigate).not.toHaveBeenCalled();
+
+    resolveReplacementNavigation!();
+    await nextTick();
+
+    const restoredItem = wrapper
+      .findAllComponents(CommandItem)
+      .find((candidate) => candidate.props("value") === "nav.sheet.7");
+    expect(restoredItem).toBeDefined();
+    expect(restoredItem!.vm).not.toBe(pendingItem!.vm);
+    expect(restoredItem!.props("disabled")).toBe(false);
+
+    selectItem(wrapper, "nav.sheet.7");
+    await nextTick();
+    expect(liveNavigate).toHaveBeenCalledWith("/sheets/7");
+  });
+
+  it("treats multi-word navigation text with a dotted first token as normal search", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPalette([gotoOperation, variableDefinitionOperation], true);
+
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({
+          token: payload?.token as number,
+          groups:
+            payload?.query === "act1.scene two"
+              ? [
+                  {
+                    key: "sheets",
+                    items: [
+                      {
+                        id: "nav.sheet.8",
+                        type: "sheet",
+                        label: "Act 1 Scene Two",
+                        url: "/sheets/8",
+                      },
+                    ],
+                  },
+                ]
+              : [],
+        });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    await wrapper.find("[data-slot='command-input']").setValue("act1.scene two");
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+
+    const calledNavigation = vi
+      .mocked(live.pushEvent)
+      .mock.calls.some(
+        ([event, payload]) => event === "palette_nav" && payload?.query === "act1.scene two",
+      );
+    const values = itemValues(wrapper);
+    const text = wrapper.text();
+    pressPaletteShortcut();
+    await nextTick();
+
+    expect(calledNavigation).toBe(true);
+    expect(values).toContain("nav.sheet.8");
+    expect(text).not.toContain("That reference pattern isn't valid");
   });
 
   it("keeps prior pattern results disabled while resolving a new pattern", async () => {
@@ -935,6 +1095,50 @@ describe("CommandPalette", () => {
     await nextTick();
     expect(wrapper.find("[data-lookup-result-id='definition:health']").exists()).toBe(false);
     expect(wrapper.find("[data-lookup-result-id='definition:mana']").exists()).toBe(true);
+  });
+
+  it("emits one lifecycle pair for one continuous pattern-door session", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPalette([variableDefinitionOperation], true);
+
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        callback({ token: payload?.token as number, projects: [] });
+      } else if (event === "palette_reference_pattern") {
+        callback({
+          token: payload?.token as number,
+          items: [],
+          truncated: false,
+        });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+    vi.mocked(live.pushEvent).mockClear();
+    const input = wrapper.find("[data-slot='command-input']");
+
+    await input.setValue("?heal");
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+    await input.setValue("?health");
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+
+    const lifecycleEvents = vi
+      .mocked(live.pushEvent)
+      .mock.calls.filter(([event]) =>
+        ["palette_operation_selected", "palette_operation_completed"].includes(event),
+      )
+      .map(([event]) => event);
+    pressPaletteShortcut();
+    await nextTick();
+
+    expect(lifecycleEvents).toEqual(["palette_operation_selected", "palette_operation_completed"]);
   });
 
   it("ignores a superseded root navigation reply", async () => {
@@ -1043,6 +1247,43 @@ describe("CommandPalette", () => {
         .mocked(live.pushEvent)
         .mock.calls.filter(([event]) => event === "palette_reference_pattern"),
     ).toHaveLength(1);
+  });
+
+  it("resumes root navigation after composition ends across a step transition", async () => {
+    vi.useFakeTimers();
+    const { live, wrapper } = mountPalette([gotoOperation], true);
+
+    pressPaletteShortcut();
+    await nextTick();
+    const rootInput = wrapper.find<HTMLInputElement>("[data-slot='command-input']");
+
+    rootInput.element.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+    rootInput.element.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+    selectItem(wrapper, "operation-goto");
+    await nextTick();
+
+    const operationInput = wrapper.find<HTMLInputElement>(
+      "[data-slot='palette-operation-input'] input",
+    );
+    await operationInput.trigger("keydown", { key: "Backspace" });
+    await nextTick();
+
+    const navCallsBeforeTyping = vi
+      .mocked(live.pushEvent)
+      .mock.calls.filter(([event]) => event === "palette_nav").length;
+
+    await wrapper.find("[data-slot='command-input']").setValue("chapter");
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+
+    const navCallsAfterTyping = vi
+      .mocked(live.pushEvent)
+      .mock.calls.filter(([event]) => event === "palette_nav");
+    pressPaletteShortcut();
+    await nextTick();
+
+    expect(navCallsAfterTyping).toHaveLength(navCallsBeforeTyping + 1);
+    expect(navCallsAfterTyping.at(-1)?.[1]).toMatchObject({ query: "chapter" });
   });
 
   it("completes the generated-help round trip in Spanish", async () => {

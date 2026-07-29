@@ -144,7 +144,16 @@ defmodule Storyarn.Sheets.VariableCatalog do
           is_nil(block.deleted_at) and block.type in ^@variable_types and
           block.is_constant == false and not is_nil(block.variable_name) and
           block.variable_name != "",
-      order_by: [asc: sheet.name, asc: block.position, asc: block.id],
+      order_by: [
+        asc:
+          fragment(
+            "LOWER(COALESCE(?, CAST(? AS TEXT)) || '.' || ?) COLLATE \"C\"",
+            sheet.shortcut,
+            sheet.id,
+            block.variable_name
+          ),
+        asc: block.id
+      ],
       limit: ^limit,
       select: %{
         sheet_id: sheet.id,
@@ -188,10 +197,16 @@ defmodule Storyarn.Sheets.VariableCatalog do
           (column.is_constant == false or column.type == "formula") and
           not is_nil(block.variable_name) and block.variable_name != "",
       order_by: [
-        asc: sheet.name,
-        asc: block.position,
-        asc: row.position,
-        asc: column.position,
+        asc:
+          fragment(
+            "LOWER(COALESCE(?, CAST(? AS TEXT)) || '.' || ? || '.' || ? || '.' || ?) COLLATE \"C\"",
+            sheet.shortcut,
+            sheet.id,
+            block.variable_name,
+            row.slug,
+            column.slug
+          ),
+        asc: block.id,
         asc: row.id,
         asc: column.id
       ],

@@ -352,7 +352,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp handle_palette_event(_event, _params, socket), do: {:cont, socket}
 
   defp operation_options(:navigation, scope, _project_id, query) do
-    destinations = GlobalSearch.destinations(scope, query)
+    destinations = GlobalSearch.destinations_page(scope, query)
 
     items =
       (destinations.workspaces ++ destinations.projects ++ destinations.entities)
@@ -370,14 +370,14 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
         )
       end)
 
-    {:ok, %{items: items, truncated: false}}
+    {:ok, %{items: items, truncated: destinations.truncated}}
   end
 
   defp operation_options(:deletable_entities, scope, _project_id, query) do
+    page = GlobalSearch.deletable_entities_page(scope, query)
+
     items =
-      scope
-      |> GlobalSearch.deletable_entities(query)
-      |> Enum.map(fn destination ->
+      Enum.map(page.items, fn destination ->
         type = Atom.to_string(destination.type)
 
         %{
@@ -389,7 +389,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
         }
       end)
 
-    {:ok, %{items: items, truncated: false}}
+    {:ok, %{items: items, truncated: page.truncated}}
   end
 
   defp operation_options(source, scope, project_id, query)

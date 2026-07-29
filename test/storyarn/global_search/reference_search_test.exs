@@ -128,6 +128,64 @@ defmodule Storyarn.GlobalSearch.ReferenceSearchTest do
       end
     end
 
+    test "resolves definitions whose sheet reference starts with a digit",
+         %{scope: scope, project: project} do
+      sheet = sheet_fixture(project, %{name: "2B", shortcut: "2b"})
+
+      variable =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Health"},
+          variable_name: "health"
+        })
+
+      assert {:ok, %{items: [hit], truncated: false}} =
+               GlobalSearch.reference_pattern(scope, project.id, "2b.health")
+
+      assert hit.label == "2b.health"
+      assert hit.destination.id == sheet.id
+      assert hit.destination.focus == %{type: :block, id: variable.id}
+    end
+
+    test "limits the same qualified-reference ordering presented to the user",
+         %{scope: scope, project: project} do
+      for index <- 1..26 do
+        sheet =
+          sheet_fixture(project, %{
+            name: "Early sheet #{String.pad_leading(Integer.to_string(index), 2, "0")}",
+            shortcut: "z#{String.pad_leading(Integer.to_string(index), 2, "0")}"
+          })
+
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Ordering probe"},
+          variable_name: "ordering_probe"
+        })
+      end
+
+      alphabetically_first =
+        sheet_fixture(project, %{
+          name: "Last sheet by display name",
+          shortcut: "aaa"
+        })
+
+      block_fixture(alphabetically_first, %{
+        type: "number",
+        config: %{"label" => "Ordering probe"},
+        variable_name: "ordering_probe"
+      })
+
+      assert {:ok, %{items: items, truncated: true}} =
+               GlobalSearch.reference_options(
+                 scope,
+                 project.id,
+                 :sheet_variables,
+                 "ordering_probe"
+               )
+
+      assert hd(items).label == "aaa.ordering_probe"
+    end
+
     test "ILIKE wildcard characters remain literal and results are bounded",
          %{scope: scope, project: project, sheet: sheet} do
       for n <- 1..3 do

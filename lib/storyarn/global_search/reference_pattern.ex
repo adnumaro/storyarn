@@ -2,7 +2,7 @@ defmodule Storyarn.GlobalSearch.ReferencePattern do
   @moduledoc false
 
   @max_length 100
-  @identifier ~S([a-zA-Z_][a-zA-Z0-9_-]*)
+  @identifier ~S([a-zA-Z0-9_][a-zA-Z0-9_-]*)
   @partial ~S([a-zA-Z0-9_-]+)
   @global_partial Regex.compile!("^\\?(#{@partial})$")
   @sheet_all Regex.compile!("^(#{@identifier}(?:\\.#{@identifier})*)\\.\\?$")

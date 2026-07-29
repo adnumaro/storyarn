@@ -33,6 +33,7 @@ defmodule Storyarn.CommandPalette.Definition do
     :latency,
     :authorization,
     :result_type,
+    :requires_project,
     :phrase,
     :help
   ]
@@ -43,6 +44,7 @@ defmodule Storyarn.CommandPalette.Definition do
     :latency,
     :authorization,
     :result_type,
+    :requires_project,
     :phrase,
     :help
   ]
@@ -92,6 +94,7 @@ defmodule Storyarn.CommandPalette.Definition do
           latency: :instant | :interactive | :deferred,
           authorization: :view | :edit_content | :contextual,
           result_type: :navigation | :lookup | :mutation | :command,
+          requires_project: boolean(),
           phrase: [phrase_token()],
           help: help()
         }
@@ -143,6 +146,7 @@ defmodule Storyarn.CommandPalette.Definition do
       latency: Atom.to_string(definition.latency),
       authorization: Atom.to_string(definition.authorization),
       resultType: Atom.to_string(definition.result_type),
+      requiresProject: definition.requires_project,
       phrase: Enum.map(definition.phrase, &serialize_phrase_token/1),
       help: serialize_help(definition.help)
     }
@@ -165,6 +169,7 @@ defmodule Storyarn.CommandPalette.Definition do
     |> require(definition.latency in @latencies, "invalid latency")
     |> require(definition.authorization in @authorizations, "invalid authorization")
     |> require(definition.result_type in @result_types, "invalid result type")
+    |> require(is_boolean(definition.requires_project), "invalid requires_project")
     |> require(valid_help?(definition.help), "invalid help")
     |> Enum.reverse()
   end

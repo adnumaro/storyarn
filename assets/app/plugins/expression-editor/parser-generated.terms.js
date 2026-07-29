@@ -28,4 +28,5 @@ export const LineComment = 1,
   ExpressionProgram = 27,
   ReferencePatternProgram = 28,
   PartialIdentifier = 29,
-  DeepWildcard = 30;
+  PatternIdentifier = 30,
+  DeepWildcard = 31;

@@ -14,6 +14,7 @@ const definition: OperationDefinition = {
   domain: "navigation",
   latency: "instant",
   authorization: "contextual",
+  requiresProject: false,
   resultType: "navigation",
   parameters: [
     {

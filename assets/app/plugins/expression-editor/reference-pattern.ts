@@ -28,7 +28,7 @@ export type ReferencePatternClassification =
   | { state: "invalid"; raw: string }
   | { state: "ready"; pattern: ReferencePattern };
 
-const identifierPattern = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
+const identifierPattern = /^[a-zA-Z0-9_][a-zA-Z0-9_-]*$/;
 const partialIdentifierPattern = /^[a-zA-Z0-9_-]+$/;
 const patternParser = generatedParser.configure({ top: "ReferencePatternProgram" });
 
@@ -77,7 +77,7 @@ function patternIntent(input: string): boolean {
 
   // Once the first identifier is followed by a dot, the pattern door owns the
   // interaction, including incomplete and malformed forms such as `mc.`.
-  return /^[a-zA-Z_][a-zA-Z0-9_-]*\s*\./.test(candidate);
+  return /^[a-zA-Z0-9_][a-zA-Z0-9_-]*\s*\./.test(candidate);
 }
 
 function containsForbiddenSyntax(input: string): boolean {

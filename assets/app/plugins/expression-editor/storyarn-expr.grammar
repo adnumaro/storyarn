@@ -10,10 +10,10 @@
 
 referencePattern {
   PartialIdentifier |
-  Identifier ("." Identifier)+ |
-  Identifier ("." Identifier)* "." PartialIdentifier |
-  Identifier "." DeepWildcard "." Identifier |
-  Identifier "." DeepWildcard "." PartialIdentifier
+  PatternIdentifier ("." PatternIdentifier)+ |
+  PatternIdentifier ("." PatternIdentifier)* "." PartialIdentifier |
+  PatternIdentifier "." DeepWildcard "." PatternIdentifier |
+  PatternIdentifier "." DeepWildcard "." PartialIdentifier
 }
 
 assignment { VariableRef assignOp expression }
@@ -46,6 +46,7 @@ separator { ";" }
 
 @tokens {
   Identifier { $[a-zA-Z_] $[a-zA-Z0-9_\-]* }
+  PatternIdentifier { $[a-zA-Z0-9_] $[a-zA-Z0-9_\-]* }
   PartialIdentifier { "?" $[a-zA-Z0-9_\-]* }
   DeepWildcard { "**" }
   StringLiteral { '"' (!["\\] | "\\" _)* '"' }
