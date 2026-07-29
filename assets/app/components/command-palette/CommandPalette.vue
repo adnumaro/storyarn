@@ -304,6 +304,9 @@ const inputKey = computed(() => {
     : current.kind;
 });
 
+// Reka emits `select` before consulting its reactive disabled state, while its
+// list item DOM memo may still expose stale attributes. Every in-flight action
+// therefore treats the handler-level busy guard as the authoritative fence.
 const busy = computed(() => pendingMutation.value || pendingCommandId.value !== null);
 
 const canMutate = computed(
@@ -374,6 +377,11 @@ function operationAvailability(operation: OperationDefinition): OperationAvailab
   return (
     operationAvailabilityById.value.get(operation.id) ?? resolveOperationAvailability(operation)
   );
+}
+
+function operationAvailabilityKey(operation: OperationDefinition): string {
+  const availability = operationAvailability(operation);
+  return `${availability.enabled ? "enabled" : "disabled"}:${availability.reasonKey ?? "ready"}`;
 }
 
 function operationAvailable(operation: OperationDefinition): boolean {
@@ -949,7 +957,7 @@ function localOperationOptions(source: OperationCompletionSource): OperationValu
 }
 
 function enterOperation(operation: OperationDefinition): void {
-  if (!operationAvailable(operation)) return;
+  if (busy.value || step.value.kind !== "root" || !operationAvailable(operation)) return;
 
   if (activeGuidedOperationId.value && activeGuidedOperationId.value !== operation.id) {
     abandonActiveOperation();
@@ -981,6 +989,8 @@ function clearOperationParameter(parameterId: string): void {
 }
 
 function selectOperationOption(option: OperationValue): void {
+  if (busy.value || step.value.kind !== "operation") return;
+
   const operation = activeOperation.value;
   const parameterId = activeParameterId.value;
   if (!operation || !parameterId || !operationParameter(operation, parameterId)) return;
@@ -1631,16 +1641,16 @@ function track(event: string, payload: Record<string, unknown>): void {
               </div>
             </div>
           </div>
-          <!-- Reka's listbox item snapshots disabled and fallthrough attrs.
-               Availability belongs in both operation-row keys so a state
-               change remounts the row with matching interaction semantics. -->
+          <!-- Reka's listbox item memoizes disabled and fallthrough attrs.
+               The full availability signature belongs in both operation-row
+               keys so enabled and reason changes remount the affected row. -->
           <CommandGroup
             v-if="recentOperations.length > 0"
             :heading="t('palette.recent_operations')"
           >
             <CommandItem
               v-for="operation in recentOperations"
-              :key="`recent-operation-${operation.id}-${operationAvailable(operation)}`"
+              :key="`recent-operation-${operation.id}-${operationAvailabilityKey(operation)}`"
               :value="`recent-operation-${operation.id}`"
               :data-operation-id="operation.id"
               :data-operation-available="operationAvailable(operation)"
@@ -1668,7 +1678,7 @@ function track(event: string, payload: Record<string, unknown>): void {
           >
             <CommandItem
               v-for="operation in operationGroup.operations"
-              :key="`operation-${operation.id}-${operationAvailable(operation)}`"
+              :key="`operation-${operation.id}-${operationAvailabilityKey(operation)}`"
               :value="`operation-${operation.id}`"
               :data-operation-id="operation.id"
               :data-operation-available="operationAvailable(operation)"

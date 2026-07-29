@@ -411,6 +411,36 @@ describe("CommandPalette", () => {
     expect(wrapper.find("[data-slot='palette-operation-input']").exists()).toBe(false);
   });
 
+  it("replaces the checking reason when an operation remains unavailable", async () => {
+    const { live, wrapper } = mountPalette([createOperation]);
+    let resolveCreateTargets!: () => void;
+
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (!callback) return;
+
+      if (event === "palette_nav") {
+        callback({ token: payload?.token as number, groups: [] });
+      } else if (event === "palette_create_targets") {
+        const token = payload?.token as number;
+        resolveCreateTargets = () => callback({ token, projects: [] });
+      }
+    });
+
+    pressPaletteShortcut();
+    await nextTick();
+
+    const operation = () => wrapper.get("[data-operation-id='create']");
+    expect(operation().text()).toContain("Checking availability…");
+    expect(operation().attributes("title")).toBe("Checking availability…");
+
+    resolveCreateTargets();
+    await nextTick();
+
+    expect(operation().text()).toContain("Requires edit access to at least one project.");
+    expect(operation().text()).not.toContain("Checking availability…");
+    expect(operation().attributes("title")).toBe("Requires edit access to at least one project.");
+  });
+
   it("reactively invalidates cached contextual availability when local commands change", async () => {
     const { wrapper } = mountPalette([runCommandOperation]);
     pressPaletteShortcut();
@@ -1277,6 +1307,39 @@ describe("CommandPalette", () => {
       { command_id: "flows.async", surface: "flows" },
       undefined,
     );
+  });
+
+  it("ignores operation selection while a root command is pending", async () => {
+    let resolveCommand!: () => void;
+    registerPaletteCommands("flows", [
+      command(
+        "flows.async",
+        () =>
+          new Promise<void>((resolve) => {
+            resolveCommand = resolve;
+          }),
+      ),
+    ]);
+
+    const { live, wrapper } = mountPalette([gotoOperation]);
+    pressPaletteShortcut();
+    await nextTick();
+    selectItem(wrapper, "flows.async");
+    await nextTick();
+
+    // Bypass Reka's visual disabled state: the handler is the logical fence.
+    selectItem(wrapper, "operation-goto");
+    await nextTick();
+
+    expect(wrapper.find("[data-slot='palette-operation-input']").exists()).toBe(false);
+    expect(
+      vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_operation_selected"),
+    ).toHaveLength(0);
+
+    resolveCommand();
+    await flushPromises();
   });
 
   it("keeps the palette open when an async command rejects", async () => {
