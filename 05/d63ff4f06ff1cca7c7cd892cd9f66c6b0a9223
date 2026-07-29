@@ -1,0 +1,35 @@
+assets/app/locales/en/palette.json
+  s_6112f11c106698::t_c018f1ef15eea7 20
+assets/app/test/components/command-palette/CommandPalette.test.ts
+  s_6112f11c106698::t_aace2506da9dd5 12,424-426
+  s_6112f11c106698::t_c018f1ef15eea7 414-423,428-460,794-797,799-801,812-816
+  s_6112f11c106698::t_a22e823e40726b 427
+  s_6112f11c106698::t_fd7e3200136884 1673-1698
+lib/storyarn/command_palette/operation.ex
+  s_6112f11c106698::t_c018f1ef15eea7 14-15
+assets/app/locales/es/palette.json
+  s_6112f11c106698::t_c018f1ef15eea7 20
+assets/app/components/command-palette/CommandPalette.vue
+  s_6112f11c106698::t_838820f2e59209 1643,1671
+  s_6112f11c106698::t_fd7e3200136884 367-369,1634-1636
+  s_6112f11c106698::t_a546eec83c48c0 1813
+  s_6112f11c106698::t_85ee4107c4b6be 350-351
+  s_6112f11c106698::t_c018f1ef15eea7 317,364-365,370-378,407-412,1563,1575
+  s_6112f11c106698::t_0f368769a9e851 366
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "05d63ff4f06ff1cca7c7cd892cd9f66c6b0a9223",
+  "prompts": {},
+  "sessions": {
+    "s_6112f11c106698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89b7-96ce-73c1-8639-7be0374aaff0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
