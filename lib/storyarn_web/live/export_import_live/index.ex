@@ -285,13 +285,15 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   def handle_event("validate_export", _params, socket) do
-    opts = build_export_options(socket.assigns)
-    result = Exports.validate_project(socket.assigns.project.id, opts)
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      opts = build_export_options(socket.assigns)
+      result = Exports.validate_project(socket.assigns.project.id, opts)
 
-    {:noreply,
-     socket
-     |> assign(:validation_result, result)
-     |> assign(:validated_export_options, opts)}
+      {:noreply,
+       socket
+       |> assign(:validation_result, result)
+       |> assign(:validated_export_options, opts)}
+    end)
   end
 
   # ===========================================================================
@@ -301,14 +303,14 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   def handle_event("validate_upload", _params, socket), do: {:noreply, socket}
 
   def handle_event("parse_import", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       results = consume_import_upload(socket)
       {:noreply, apply_prepare_result(socket, List.first(results))}
     end)
   end
 
   def handle_event("set_strategy", %{"strategy" => strategy}, socket) when strategy in ~w(skip overwrite rename) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       {:noreply, update_import_state(socket, &Map.put(&1, :conflict_strategy, strategy))}
     end)
   end
@@ -316,7 +318,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   def handle_event("set_strategy", _params, socket), do: {:noreply, socket}
 
   def handle_event("save_import_review", %{"review_decisions" => decisions}, socket) when is_list(decisions) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       save_import_review_draft(socket, socket.assigns.import_state, decisions)
     end)
   end
@@ -331,7 +333,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         socket
       )
       when is_boolean(acknowledged?) and is_list(decisions) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       validate_import_review(
         socket,
         socket.assigns.import_state,
@@ -347,7 +349,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   def handle_event("execute_import", %{"review_confirmation_fingerprint" => fingerprint}, socket)
       when is_binary(fingerprint) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       execute_ready_import(
         socket,
         socket.assigns.import_state,
@@ -359,7 +361,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   def handle_event("execute_import", _params, socket), do: {:noreply, socket}
 
   def handle_event("reset_import", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       maybe_cancel_ready_import(socket)
       {:noreply, assign(socket, :import_state, empty_import_state())}
     end)
@@ -675,7 +677,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   defp reconcile_import_attempt(socket, attempt_id, opts \\ []) do
-    with :ok <- Authorize.authorize(socket, :edit_content),
+    with :ok <- Authorize.authorize(socket, :manage_project),
          {:ok, attempt, preview} <-
            Imports.resume_import(
              socket.assigns.current_scope,

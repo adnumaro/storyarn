@@ -17,8 +17,9 @@ defmodule StoryarnWeb.ExportController do
   def export(conn, %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "format" => format_str}) do
     with {:ok, format} <- parse_format(format_str),
          {:ok, serializer} <- Exports.get_serializer(format),
-         {:ok, project, _membership} <-
+         {:ok, project, membership} <-
            Projects.get_project_by_slugs(conn.assigns.current_scope, workspace_slug, project_slug),
+         :ok <- authorize_export(membership),
          {:ok, opts} <- build_options(conn.params, format),
          {:ok, output} <- Exports.export_project(project, opts) do
       slug = NameNormalizer.slugify(project.name)
@@ -32,6 +33,9 @@ defmodule StoryarnWeb.ExportController do
 
       {:error, :invalid_localization_policy} ->
         conn |> put_status(:bad_request) |> text(gettext("Invalid localization policy"))
+
+      {:error, :unauthorized} ->
+        conn |> put_status(:forbidden) |> text(gettext("You do not have permission to export this project"))
 
       {:error, :not_found} ->
         conn |> put_status(:not_found) |> text(gettext("Not found"))
@@ -159,6 +163,15 @@ defmodule StoryarnWeb.ExportController do
   # only interned once `ExportOptions` loads — `:storyarn` happened to always
   # exist because it is also the OTP application name, which is what kept the
   # bug hidden. Comparing strings has no such dependency and cannot raise.
+  # Membership alone is not enough: an export hands the caller the whole
+  # project's narrative in one file, so it takes the same role that may edit it.
+  # A viewer can read the project in the app but cannot walk out with it.
+  defp authorize_export(%{role: role}) when is_binary(role) do
+    if Projects.can?(role, :edit_content), do: :ok, else: {:error, :unauthorized}
+  end
+
+  defp authorize_export(_membership), do: {:error, :unauthorized}
+
   defp parse_format(format_str) do
     case Enum.find(Exports.valid_export_formats(), &(Atom.to_string(&1) == format_str)) do
       nil -> :error
