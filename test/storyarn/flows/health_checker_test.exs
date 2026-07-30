@@ -107,7 +107,15 @@ defmodule Storyarn.Flows.HealthCheckerTest do
           }),
           health_node(3, "condition", %{"condition" => incomplete_condition}),
           health_node(4, "instruction", %{"assignments" => [incomplete_assignment]}),
-          health_node(5, "subflow", %{"dead_end" => true})
+          health_node(5, "subflow", %{"dead_end" => true}),
+          # Node 2 presents a response, so it is a choice menu and needs no line
+          # of its own. Only a dialogue with neither text nor responses is
+          # incomplete, which is what this node covers.
+          health_node(6, "dialogue", %{
+            "text" => "",
+            "speaker_sheet_id" => "sheet-1",
+            "responses" => []
+          })
         ]
       }
 

@@ -3,6 +3,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
 
   alias Storyarn.Imports.ImportIssue
   alias Storyarn.Imports.Parsers.Yarn.Expression
+  alias Storyarn.Imports.Parsers.Yarn.Layout
   alias Storyarn.Imports.Parsers.Yarn.Shortcut
   alias Storyarn.Imports.Parsers.Yarn.SpeakerClassifier
   alias Storyarn.Shared.NameNormalizer
@@ -15,6 +16,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     with :ok <- validate_titles(documents),
          :ok <- validate_descriptions(documents),
          :ok <- SpeakerClassifier.validate_speaker_names(documents) do
+      {documents, unreachable_issues} = prune_unreachable(documents)
       {declarations, declaration_issues} = collect_declarations(documents)
       references = collect_references(documents)
       condition_references = collect_condition_references(documents)
@@ -49,7 +51,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
 
       issues =
         declaration_issues ++
-          variable_issues ++ speaker_classification.issues ++ flow_issues
+          unreachable_issues ++ variable_issues ++ speaker_classification.issues ++ flow_issues
 
       data = %{
         "storyarn_version" => "1.0.0",
@@ -78,6 +80,65 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       {:ok, data, issues, metadata}
     end
   end
+
+  # Yarn authors keep writing after a `<<jump>>` or `<<stop>>`. The compiler
+  # correctly drops that text — nothing can reach it — but the speaker review is
+  # built by walking the AST, so it used to count speakers that never became
+  # nodes. `ReviewDecisions.validate_plan_occurrences/2` then saw the two halves
+  # disagree and failed the whole import with `:invalid_import_review`: a message
+  # about the review, for a file whose only sin was dead code. Pruning here makes
+  # both halves read the same story and reports the dead code as what it is.
+  defp prune_unreachable(documents) do
+    Enum.map_reduce(documents, [], fn document, issues ->
+      {body, dropped} = prune_sequence(document.body, [], [])
+      {%{document | body: body}, issues ++ Enum.map(dropped, &new_issue(:warning, :unreachable_yarn_code, &1))}
+    end)
+  end
+
+  defp prune_sequence([], kept, dropped), do: {Enum.reverse(kept), dropped}
+
+  defp prune_sequence([item | rest], kept, dropped) do
+    {item, dropped} = prune_nested(item, dropped)
+
+    if terminal_item?(item) do
+      {Enum.reverse([item | kept]), dropped ++ Enum.map(rest, &item_meta/1)}
+    else
+      prune_sequence(rest, [item | kept], dropped)
+    end
+  end
+
+  defp prune_nested({:options, options, meta}, dropped) do
+    {options, dropped} =
+      Enum.map_reduce(options, dropped, fn option, acc ->
+        {body, acc} = prune_sequence(option.body, [], acc)
+        {%{option | body: body}, acc}
+      end)
+
+    {{:options, options, meta}, dropped}
+  end
+
+  defp prune_nested({:if, branches, else_body, meta}, dropped) do
+    {branches, dropped} =
+      Enum.map_reduce(branches, dropped, fn branch, acc ->
+        {body, acc} = prune_sequence(branch.body, [], acc)
+        {%{branch | body: body}, acc}
+      end)
+
+    {else_body, dropped} = prune_sequence(else_body, [], dropped)
+    {{:if, branches, else_body, meta}, dropped}
+  end
+
+  defp prune_nested(item, dropped), do: {item, dropped}
+
+  # Only these end a sequence. An unresolvable jump is already a hard error, so
+  # treating every jump as terminal costs nothing and keeps the rule simple.
+  defp terminal_item?({:command, name, _args, _meta}) when name in ["jump", "stop", "return"], do: true
+  defp terminal_item?(_item), do: false
+
+  defp item_meta({:line, _text, meta}), do: meta
+  defp item_meta({:options, _options, meta}), do: meta
+  defp item_meta({:if, _branches, _else_body, meta}), do: meta
+  defp item_meta({:command, _name, _args, meta}), do: meta
 
   defp validate_titles(documents) do
     titles = Enum.map(documents, & &1.title)
@@ -265,7 +326,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
           "id" => stable_id("variable_block", variable.variable),
           "type" => variable.type,
           "position" => index,
-          "config" => %{"label" => variable.variable},
+          "config" => %{"label" => Map.get(variable, :source_name) || variable.variable},
           "value" => %{"content" => variable.value},
           "is_constant" => false,
           "variable_name" => variable.variable,
@@ -305,12 +366,14 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     state = %{
       flow_id: flow_id,
       source: document.source,
-      nodes: [node(entry_id, "entry", %{"label" => "Start"}, 0)],
+      nodes: [node(entry_id, "entry", %{"label" => "Start"})],
       connections: [],
       next_index: 1,
       issues: [],
       flow_refs: flow_refs,
-      speaker_sheet_ids: speaker_sheet_ids
+      speaker_sheet_ids: speaker_sheet_ids,
+      annotation_anchors: %{},
+      current_speaker: nil
     }
 
     {outgoing, state} = compile_items(document.body, [{entry_id, "output"}], state)
@@ -323,6 +386,10 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
         connect_many(state, outgoing, exit_id)
       end
 
+    # Creation order, which `Layout` relies on to rank in a single pass.
+    nodes = Enum.reverse(state.nodes)
+    connections = Enum.reverse(state.connections)
+
     flow = %{
       "id" => flow_id,
       "name" => document.headers["title"] || document.title,
@@ -331,8 +398,8 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       "position" => position,
       "is_main" => position == 0,
       "settings" => %{"import_source" => "yarn_spinner"},
-      "nodes" => Enum.reverse(state.nodes),
-      "connections" => Enum.reverse(state.connections)
+      "nodes" => Layout.assign_positions(nodes, connections, state.annotation_anchors),
+      "connections" => connections
     }
 
     {flow, Enum.reverse(state.issues)}
@@ -351,7 +418,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
 
     data = dialogue_data(dialogue, speaker, text, meta, state, [])
     {node_id, state} = add_node(state, "dialogue", data)
-    state = connect_many(state, incoming, node_id)
+    state = state |> track_speaker(speaker) |> connect_many(incoming, node_id)
     compile_items(rest, [{node_id, "output"}], state)
   end
 
@@ -445,9 +512,14 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   defp compile_dialogue_with_options(text, meta, options, _option_meta, incoming, state) do
     {speaker, dialogue} = SpeakerClassifier.split(text)
     {responses, state} = build_responses(options, state)
-    data = dialogue_data(dialogue, speaker, text, meta, state, responses)
+
+    data =
+      dialogue
+      |> dialogue_data(speaker, text, meta, state, responses)
+      |> attribute_choice_block(state)
+
     {dialogue_id, state} = add_node(state, "dialogue", data)
-    state = connect_many(state, incoming, dialogue_id)
+    state = state |> track_speaker(speaker) |> connect_many(incoming, dialogue_id)
 
     {branch_outgoing, state} =
       Enum.reduce(Enum.zip(options, responses), {[], state}, fn {option, response}, {outgoing, acc} ->
@@ -497,7 +569,85 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     end
   end
 
+  # A lone `<<if>>` is a boolean fork; an `<<elseif>>` chain is a switch. Both
+  # exist in Storyarn's `condition` node — `switch_mode` swaps the fixed
+  # true/false pins for one pin per case plus `default`, and the evaluator walks
+  # the cases in order and halts on the first match
+  # (`condition_node_evaluator.ex:93`), which is exactly Yarn's elseif
+  # semantics. Emitting one switch node instead of a chain of N boolean nodes is
+  # therefore faithful, not an approximation.
+  defp compile_conditional([_only_branch] = branches, else_body, meta, incoming, state) do
+    compile_condition_chain(branches, else_body, meta, incoming, state)
+  end
+
   defp compile_conditional(branches, else_body, meta, incoming, state) do
+    case parse_branch_conditions(branches) do
+      {:ok, parsed} -> compile_condition_switch(parsed, else_body, incoming, state)
+      :error -> compile_condition_chain(branches, else_body, meta, incoming, state)
+    end
+  end
+
+  # Every case must parse before the switch is worth building: one unsupported
+  # condition in the chain and the whole node would need a fail-closed case,
+  # which reads worse than the boolean chain the fallback produces.
+  defp parse_branch_conditions(branches) do
+    branches
+    |> Enum.reduce_while({:ok, []}, fn branch, {:ok, acc} ->
+      case Expression.condition(branch.condition) do
+        {:ok, condition} -> {:cont, {:ok, [{branch, condition} | acc]}}
+        {:error, _reason} -> {:halt, :error}
+      end
+    end)
+    |> case do
+      {:ok, parsed} -> {:ok, Enum.reverse(parsed)}
+      :error -> :error
+    end
+  end
+
+  defp compile_condition_switch(parsed, else_body, incoming, state) do
+    blocks =
+      parsed
+      |> Enum.with_index()
+      |> Enum.map(fn {{branch, condition}, index} -> switch_case_block(branch, condition, index, state) end)
+
+    data = %{"condition" => %{"logic" => "any", "blocks" => blocks}, "switch_mode" => true}
+    {node_id, state} = add_node(state, "condition", data)
+    state = connect_many(state, incoming, node_id)
+
+    {case_exits, state} =
+      parsed
+      |> Enum.zip(blocks)
+      |> Enum.reduce({[], state}, fn {{branch, _condition}, block}, {exits, acc} ->
+        {branch_exits, acc} = compile_items(branch.body, [{node_id, block["id"]}], acc)
+        {exits ++ branch_exits, acc}
+      end)
+
+    # No `<<else>>` leaves `default` carrying the fall-through, so the pin stays
+    # connected either way and the node never reports a missing output.
+    {else_exits, state} = compile_items(else_body, [{node_id, "default"}], state)
+    merge_branches(case_exits ++ else_exits, state)
+  end
+
+  # The block id doubles as the case's output pin, so it has to be unique within
+  # the node: two branches testing the same expression would otherwise collide
+  # into one pin. The branch index guarantees uniqueness.
+  defp switch_case_block(branch, condition, index, state) do
+    rules =
+      case condition do
+        %{"blocks" => [%{"rules" => rules} | _rest]} when is_list(rules) -> rules
+        %{"rules" => rules} when is_list(rules) -> rules
+        _other -> []
+      end
+
+    %{
+      "id" => stable_id("condition_block", "#{state.flow_id}:#{index}:#{branch.condition}"),
+      "type" => "block",
+      "logic" => Map.get(condition, "logic", "all"),
+      "rules" => rules
+    }
+  end
+
+  defp compile_condition_chain(branches, else_body, meta, incoming, state) do
     {branch_exits, false_incoming, state} =
       Enum.reduce(branches, {[], incoming, state}, fn branch, {exits, branch_incoming, acc} ->
         branch_meta = Map.get(branch, :meta, meta)
@@ -531,13 +681,13 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     merge_branches(branch_exits ++ else_exits, state)
   end
 
-  defp merge_branches([], state), do: {[], state}
-
-  defp merge_branches(branch_outgoing, state) do
-    {hub_id, state} = add_node(state, "hub", %{"hub_id" => stable_id("hub", "#{state.flow_id}:#{state.next_index}")})
-    state = connect_many(state, branch_outgoing, hub_id)
-    {[{hub_id, "output"}], state}
-  end
+  # Branches converge by fanning their loose pins straight onto whatever node
+  # comes next: `flow_connections` is unique per
+  # (source_node, source_pin, target_node, target_pin), so one input pin accepts
+  # any number of sources. An intermediate node would add nothing —
+  # Storyarn's `hub` is a named jump target, not a join, and an unlabelled one
+  # renders as a "0 jumps" dead end.
+  defp merge_branches(branch_outgoing, state), do: {Enum.uniq(branch_outgoing), state}
 
   defp dialogue_data(text, speaker, original_text, meta, state, responses) do
     data = %{
@@ -562,6 +712,24 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     end
   end
 
+  defp track_speaker(state, speaker) when is_binary(speaker), do: %{state | current_speaker: speaker}
+  defp track_speaker(state, _speaker), do: state
+
+  # A choice block whose options do not follow a line of their own — options
+  # after an `<<if>>/<<endif>>`, or first in a Yarn node — still needs a node to
+  # host the responses, and that node has no speaker prefix to parse. Attribute
+  # it to the character speaking into it so the menu is not reported as a
+  # speakerless dialogue. Only `speaker_sheet_id` is filled: the node carries no
+  # literal Yarn speaker text, so the `import_yarn_*` fields stay absent.
+  defp attribute_choice_block(%{"speaker_sheet_id" => nil} = data, state) do
+    case Map.get(state.speaker_sheet_ids, state.current_speaker) do
+      nil -> data
+      speaker_sheet_id -> Map.put(data, "speaker_sheet_id", speaker_sheet_id)
+    end
+  end
+
+  defp attribute_choice_block(data, _state), do: data
+
   defp extract_option_condition(text) do
     case Regex.run(~r/^(.*?)\s*<<if\s+(.+?)>>\s*$/i, text, capture: :all_but_first) do
       [label, condition] -> {:ok, String.trim(label), String.trim(condition)}
@@ -577,7 +745,14 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       "import_line" => meta.line
     }
 
-    {_node_id, state} = add_node(state, "annotation", data)
+    {node_id, state} = add_node(state, "annotation", data)
+
+    # Annotations carry no edges, so record where the command sat in the graph.
+    # `Layout` uses it to park the note near its context instead of on top of an
+    # executable node.
+    anchors = Enum.map(incoming, fn {source_id, _pin} -> source_id end)
+    state = %{state | annotation_anchors: Map.put(state.annotation_anchors, node_id, anchors)}
+
     {incoming, state}
   end
 
@@ -622,16 +797,19 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
 
   defp add_node(state, type, data) do
     id = stable_id("node", "#{state.flow_id}:#{state.next_index}:#{type}")
-    node = node(id, type, data, state.next_index)
+    node = node(id, type, data)
     {id, %{state | nodes: [node | state.nodes], next_index: state.next_index + 1}}
   end
 
-  defp node(id, type, data, index) do
+  # Positions are left at the origin here and assigned by `Layout` once the whole
+  # graph is known — placement needs each node's depth, which is not available
+  # while the node is being created.
+  defp node(id, type, data) do
     %{
       "id" => id,
       "type" => type,
-      "position_x" => 80.0 + rem(index, 4) * 320.0,
-      "position_y" => 80.0 + div(index, 4) * 220.0,
+      "position_x" => 0.0,
+      "position_y" => 0.0,
       "source" => "manual",
       "data" => data
     }

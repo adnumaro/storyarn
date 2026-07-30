@@ -777,9 +777,12 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
 
       [flow] = plan.data["flows"]
 
-      assert Enum.map(Enum.filter(flow["nodes"], &(&1["type"] == "condition")), fn node ->
-               node["data"]["condition"]["logic"]
-             end) == ["all", "any", "all"]
+      # One switch node now carries the three cases, each keeping the logic its
+      # own operator implies: `&&` is all, `||` is any, and the `&&`/`||` inside
+      # the string literal is still not treated as an operator.
+      [condition] = Enum.filter(flow["nodes"], &(&1["type"] == "condition"))
+
+      assert Enum.map(condition["data"]["condition"]["blocks"], & &1["logic"]) == ["all", "any", "all"]
     end
 
     test "rejects symbolic boolean operators with an empty operand" do
@@ -817,11 +820,13 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert {:ok, plan} = Imports.parse_file("project.yarn", source)
       [flow] = plan.data["flows"]
 
+      # The elseif chain compiles to a single switch node, so the two cases are
+      # blocks of one condition rather than two separate condition nodes.
+      [condition] = Enum.filter(flow["nodes"], &(&1["type"] == "condition"))
+
       variables =
-        flow["nodes"]
-        |> Enum.filter(&(&1["type"] == "condition"))
-        |> Enum.map(fn node ->
-          [rule] = node["data"]["condition"]["blocks"] |> List.first() |> Map.fetch!("rules")
+        Enum.map(condition["data"]["condition"]["blocks"], fn block ->
+          [rule] = Map.fetch!(block, "rules")
           rule["variable"]
         end)
 
@@ -1520,6 +1525,354 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
 
       assert {:error, :yarn_statement_limit_exceeded} =
                Imports.parse_file("project.yarn", source)
+    end
+  end
+
+  describe "graph shape" do
+    @nested """
+    title: Start
+    ---
+    Guide: One.
+    Guide: Two.
+    -> First
+        Guide: Inside first.
+        -> Deeper
+            Guide: Bottom.
+    -> Second
+        Guide: Inside second.
+    -> Third
+        Guide: Inside third.
+    Guide: After the choices.
+    ===
+    """
+
+    test "converges branches onto the next node instead of emitting merge hubs" do
+      assert {:ok, plan} = Imports.parse_file("project.yarn", @nested)
+      refute ImportPlan.error?(plan)
+
+      flow = Enum.find(plan.data["flows"], &(&1["name"] == "Start"))
+
+      # A hub is a named jump target, not a join. Nothing in a Yarn import
+      # creates one, so an unlabelled "0 jumps" hub must never appear.
+      assert Enum.filter(flow["nodes"], &(&1["type"] == "hub")) == []
+
+      after_choices =
+        Enum.find(flow["nodes"], fn node ->
+          node["type"] == "dialogue" and node["data"]["text"] == "After the choices."
+        end)
+
+      # Every branch tail lands directly on the node that follows the block.
+      inbound =
+        Enum.filter(flow["connections"], &(&1["target_node_id"] == after_choices["id"]))
+
+      assert length(inbound) == 3
+      assert Enum.all?(inbound, &(&1["target_pin"] == "input"))
+      assert inbound |> Enum.map(& &1["source_node_id"]) |> Enum.uniq() |> length() == 3
+
+      assert_valid_graph(flow)
+    end
+
+    test "places nodes in dependency order so no successor sits left of its source" do
+      assert {:ok, plan} = Imports.parse_file("project.yarn", @nested)
+
+      flow = Enum.find(plan.data["flows"], &(&1["name"] == "Start"))
+      nodes_by_id = Map.new(flow["nodes"], &{&1["id"], &1})
+
+      for connection <- flow["connections"] do
+        source = Map.fetch!(nodes_by_id, connection["source_node_id"])
+        target = Map.fetch!(nodes_by_id, connection["target_node_id"])
+
+        assert target["position_x"] > source["position_x"],
+               "#{target["type"]} at x=#{target["position_x"]} is not right of its source #{source["type"]} at x=#{source["position_x"]}"
+      end
+    end
+
+    test "never overlaps two nodes on the canvas" do
+      assert {:ok, plan} = Imports.parse_file("project.yarn", @project)
+
+      for flow <- plan.data["flows"], a <- flow["nodes"], b <- flow["nodes"], a["id"] < b["id"] do
+        refute abs(a["position_x"] - b["position_x"]) < 190 and
+                 abs(a["position_y"] - b["position_y"]) < 130,
+               "#{a["type"]} and #{b["type"]} overlap in #{flow["name"]}"
+      end
+    end
+
+    test "parks retained command annotations clear of the executable graph" do
+      source = """
+      title: Start
+      ---
+      <<disable Ghost>>
+      Guide: Still here.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+
+      flow = Enum.find(plan.data["flows"], &(&1["name"] == "Start"))
+      annotation = Enum.find(flow["nodes"], &(&1["type"] == "annotation"))
+      graph_nodes = Enum.reject(flow["nodes"], &(&1["type"] == "annotation"))
+
+      assert annotation["data"]["text"] =~ "<<disable Ghost>>"
+
+      # Annotations are visual-only, so they carry no edges and must not be
+      # dropped into a column the graph is using.
+      graph_bottom = graph_nodes |> Enum.map(& &1["position_y"]) |> Enum.max()
+      assert annotation["position_y"] > graph_bottom
+    end
+  end
+
+  describe "elseif chains" do
+    @switch """
+    title: Start
+    ---
+    <<declare $rank = 0>>
+    <<if $rank == 3>>
+        Guide: Captain.
+    <<elseif $rank == 2>>
+        Guide: Mate.
+    <<elseif $rank == 1>>
+        Guide: Swab.
+    <<else>>
+        Guide: Stowaway.
+    <<endif>>
+    Guide: Move along.
+    ===
+    """
+
+    test "compiles an elseif chain into one switch condition node" do
+      assert {:ok, plan} = Imports.parse_file("project.yarn", @switch)
+      refute ImportPlan.error?(plan)
+
+      flow = Enum.find(plan.data["flows"], &(&1["name"] == "Start"))
+      conditions = Enum.filter(flow["nodes"], &(&1["type"] == "condition"))
+
+      # One switch node, not a chain of three boolean nodes.
+      assert length(conditions) == 1
+      [condition] = conditions
+      assert condition["data"]["switch_mode"] == true
+
+      blocks = condition["data"]["condition"]["blocks"]
+      assert length(blocks) == 3
+
+      # The block id doubles as the case's output pin, so ids must be distinct.
+      ids = Enum.map(blocks, & &1["id"])
+      assert Enum.uniq(ids) == ids
+
+      # Cases stay in source order: the evaluator halts on the first match, so
+      # order is semantics, not presentation.
+      assert Enum.map(blocks, fn b -> b["rules"] |> hd() |> Map.fetch!("value") end) == ["3.0", "2.0", "1.0"]
+
+      pins = Enum.map(ids, & &1) ++ ["default"]
+      assert NodeConnectionRules.output_pins("condition", condition["data"]) == pins
+
+      # Every case pin and the default are wired.
+      connected =
+        flow["connections"]
+        |> Enum.filter(&(&1["source_node_id"] == condition["id"]))
+        |> Enum.map(& &1["source_pin"])
+        |> Enum.sort()
+
+      assert connected == Enum.sort(pins)
+      assert_valid_graph(flow)
+    end
+
+    test "keeps the boolean chain when a case condition is unsupported" do
+      source = """
+      title: Start
+      ---
+      <<declare $rank = 0>>
+      <<if $rank == 1>>
+          Guide: One.
+      <<elseif visited("Somewhere")>>
+          Guide: Two.
+      <<endif>>
+      ===
+      """
+
+      # An unsupported condition is always an error issue, so this plan can never
+      # be imported. The fallback still has to produce a coherent graph: the plan
+      # is built to report the issue, and a half-formed switch would crash the
+      # preview instead of showing the user why the import was refused.
+      assert {:error, :import_plan_has_errors} = Imports.parse_file("project.yarn", source)
+      assert {:ok, plan} = raw_yarn_plan(source)
+      assert Enum.any?(plan.issues, &(&1.code == :unsupported_yarn_condition))
+
+      flow = Enum.find(plan.data["flows"], &(&1["name"] == "Start"))
+      conditions = Enum.filter(flow["nodes"], &(&1["type"] == "condition"))
+
+      assert length(conditions) == 2
+      assert Enum.all?(conditions, &(&1["data"]["switch_mode"] == false))
+      assert_valid_graph(flow)
+    end
+
+    test "still emits a boolean node for a lone if whose branches are not single lines" do
+      # Two lines in a branch cannot become one response, so this keeps the
+      # boolean condition node rather than folding.
+      source = """
+      title: Start
+      ---
+      <<declare $seen = false>>
+      <<if $seen>>
+          Guide: Again.
+          Guide: As I was saying.
+      <<else>>
+          Guide: First.
+      <<endif>>
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+
+      flow = Enum.find(plan.data["flows"], &(&1["name"] == "Start"))
+      [condition] = Enum.filter(flow["nodes"], &(&1["type"] == "condition"))
+
+      assert condition["data"]["switch_mode"] == false
+      assert NodeConnectionRules.output_pins("condition", condition["data"]) == ["true", "false"]
+    end
+  end
+
+  describe "unreachable code" do
+    test "imports a file with dead code after a terminal command, reporting it as a warning" do
+      # The compiler drops what a `<<stop>>` makes unreachable, but the speaker
+      # review is built from the AST. Counting a speaker the graph never gained
+      # used to fail the whole import as a tampered review — for a file whose
+      # only sin is dead code, which is normal in a script being rewritten.
+      source = """
+      title: Start
+      ---
+      Alice: Hello
+      <<stop>>
+      Bob: Dead code
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("dead.yarn", source)
+      refute ImportPlan.error?(plan)
+      assert plan.metadata.issue_counts_by_code == %{unreachable_yarn_code: 1}
+
+      # Bob never reaches the review, so both halves agree and the import runs.
+      assert Enum.map(plan.data["import_review"]["speaker_decisions"], & &1["speaker"]) == ["Alice"]
+
+      assert {:ok, _resolved} =
+               ReviewDecisions.apply(plan, true, [%{"speaker" => "Alice", "action" => "create_sheet"}])
+    end
+
+    test "prunes dead code inside option and conditional bodies" do
+      source = """
+      title: Start
+      ---
+      <<declare $seen = false>>
+      -> Go
+          Alice: Leaving.
+          <<jump Elsewhere>>
+          Bob: Never runs.
+      -> Stay
+          <<if $seen>>
+              Alice: Again.
+              <<stop>>
+              Carol: Also never runs.
+          <<endif>>
+      ===
+
+      title: Elsewhere
+      ---
+      Alice: Arrived.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("dead.yarn", source)
+      refute ImportPlan.error?(plan)
+      assert plan.metadata.issue_counts_by_code == %{unreachable_yarn_code: 2}
+
+      speakers = Enum.map(plan.data["import_review"]["speaker_decisions"], & &1["speaker"])
+      refute "Bob" in speakers
+      refute "Carol" in speakers
+
+      assert {:ok, _resolved} =
+               ReviewDecisions.apply(plan, true, [%{"speaker" => "Alice", "action" => "create_sheet"}])
+    end
+  end
+
+  describe "variable naming" do
+    test "splits camelCase Yarn variables instead of flattening them" do
+      source = """
+      title: Start
+      ---
+      <<declare $hasClueA = false>>
+      <<declare $spokenToLeftGrave = false>>
+      <<declare $already_snake = 0>>
+      Guide: Hello.
+      <<if $hasClueA>>
+          Guide: Clue found.
+      <<endif>>
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+      refute ImportPlan.error?(plan)
+
+      variable_sheet = Enum.find(plan.data["sheets"], &(&1["shortcut"] == "yarn"))
+
+      assert Enum.map(variable_sheet["blocks"], & &1["variable_name"]) == [
+               "already_snake",
+               "has_clue_a",
+               "spoken_to_left_grave"
+             ]
+
+      # The author's own spelling stays as the human-facing label.
+      labels = Map.new(variable_sheet["blocks"], &{&1["variable_name"], &1["config"]["label"]})
+      assert labels["has_clue_a"] == "hasClueA"
+      assert labels["spoken_to_left_grave"] == "spokenToLeftGrave"
+
+      # Conditions must reference the same identifier the block declares.
+      flow = Enum.find(plan.data["flows"], &(&1["name"] == "Start"))
+      condition = Enum.find(flow["nodes"], &(&1["type"] == "condition"))
+      rule = condition["data"]["condition"]["blocks"] |> hd() |> Map.fetch!("rules") |> hd()
+      assert rule["variable"] == "has_clue_a"
+    end
+  end
+
+  describe "choice blocks without a line of their own" do
+    test "attributes the hosting node to the character speaking into it" do
+      source = """
+      title: Start
+      ---
+      <<declare $seen = false>>
+      <<if not $seen>>
+          Louise: First time?
+          <<set $seen to true>>
+      <<else>>
+          Louise: Back again?
+      <<endif>>
+
+      -> Yes
+          Louise: Good.
+      -> No
+          Louise: Shame.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+      refute ImportPlan.error?(plan)
+
+      louise = Enum.find(plan.data["sheets"], &(&1["name"] == "Louise"))
+      flow = Enum.find(plan.data["flows"], &(&1["name"] == "Start"))
+
+      # Two text-less dialogue nodes exist here and they are different things:
+      # the folded `<<if>>/<<else>>` line selection, whose responses all carry
+      # conditions, and the player menu, whose responses carry none.
+      host =
+        Enum.find(flow["nodes"], fn node ->
+          node["type"] == "dialogue" and node["data"]["text"] == "" and
+            node["data"]["responses"] != [] and
+            Enum.all?(node["data"]["responses"], &is_nil(&1["condition"]))
+        end)
+
+      assert Enum.map(host["data"]["responses"], & &1["text"]) == ["Yes", "No"]
+      assert host["data"]["speaker_sheet_id"] == louise["id"]
+
+      # The menu has no literal Yarn speaker prefix of its own, so it claims none.
+      refute Map.has_key?(host["data"], "import_yarn_speaker")
     end
   end
 

@@ -21,7 +21,15 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
       [reference, raw_value] ->
         with {:ok, variable} <- variable(reference),
              {:ok, value, type} <- literal(raw_value) do
-          {:ok, %{variable: variable, value: value, type: type}}
+          # `source_name` keeps the author's own spelling for display; the
+          # normalized `variable` is the identifier everything else references.
+          {:ok,
+           %{
+             variable: variable,
+             source_name: String.trim_leading(reference, "$"),
+             value: value,
+             type: type
+           }}
         end
 
       _other ->
@@ -225,7 +233,18 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
     end
   end
 
-  defp normalize_variable(name), do: NameNormalizer.variablify(name)
+  # Yarn variables are conventionally camelCase (`$hasClueA`). `variablify/1`
+  # only lowercases, so on its own it would flatten that to `hascluea`; splitting
+  # the word boundaries into underscores first yields `has_clue_a`. Repeated or
+  # leading underscores do not need guarding here — `variablify/1` collapses and
+  # trims them.
+  defp normalize_variable(name) do
+    name
+    |> String.replace(~r/([A-Z]+)([A-Z][a-z])/, "\\1_\\2")
+    |> String.replace(~r/([^A-Z_.])([A-Z][a-z]+)/, "\\1_\\2")
+    |> String.replace(~r/([a-z0-9])([A-Z])/, "\\1_\\2")
+    |> NameNormalizer.variablify()
+  end
 
   defp without_string_literals(text) do
     text
