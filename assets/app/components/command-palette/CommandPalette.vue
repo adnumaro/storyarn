@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  ArrowLeft,
   Building2,
   CircleHelp,
   FileText,
@@ -27,6 +26,12 @@ import {
 import { useKeyboard } from "@shared/composables/useKeyboard";
 import { useLive } from "@shared/composables/useLive";
 import {
+  advancedSearchPrefixes,
+  routeAdvancedSearch,
+  type AdvancedSearchPrefixSymbol,
+  type AdvancedSearchRoute,
+} from "@shared/command-palette/advancedSearch";
+import {
   isAIPaletteCommand,
   runAICommandCta,
   runAIPaletteCommand,
@@ -52,9 +57,13 @@ import {
   type OperationValue,
   type OperationValues,
 } from "@shared/command-palette/operationCatalog";
+import type {
+  PaletteLookupResult,
+  PaletteLookupResultAction,
+  PaletteLookupResultIcon,
+} from "@shared/command-palette/lookupResults";
 import { liveNavigate } from "@shared/navigation/liveNavigate";
-import type { PaletteLookupResult } from "@shared/command-palette/lookupResults";
-import { classifyReferencePattern } from "@plugins/expression-editor/reference-pattern";
+import PaletteAdvancedSearchHelp from "./PaletteAdvancedSearchHelp.vue";
 import PaletteEmpty from "./PaletteEmpty.vue";
 import PaletteLookupResults from "./PaletteLookupResults.vue";
 import PaletteOperationInput from "./PaletteOperationInput.vue";
@@ -76,6 +85,29 @@ interface NavGroup {
 interface PaletteNavReply {
   token?: number;
   groups?: NavGroup[];
+}
+
+interface AdvancedSearchItem {
+  id?: string;
+  group?: string;
+  kind?: string;
+  type?: string;
+  label?: string;
+  context?: string | null;
+  action?: {
+    kind?: string;
+    url?: string;
+    value?: string;
+  };
+}
+
+interface AdvancedSearchReply {
+  token?: number;
+  mode?: string;
+  items?: AdvancedSearchItem[];
+  truncated?: boolean;
+  fallback?: "qualified_references";
+  error?: string;
 }
 
 type EntityType = "sheet" | "flow" | "scene";
@@ -114,24 +146,6 @@ interface MutationReply {
 interface OperationOptionsReply {
   token?: number;
   items?: OperationValue[];
-  truncated?: boolean;
-  error?: string;
-}
-
-interface RawLookupResult {
-  id: string;
-  kind: string;
-  type: string;
-  label: string;
-  context?: string | null;
-  url: string;
-  meta?: Record<string, unknown>;
-}
-
-interface LookupReply {
-  token?: number;
-  items?: RawLookupResult[];
-  truncated?: boolean;
   error?: string;
 }
 
@@ -146,7 +160,6 @@ interface OperationAvailability {
 type PaletteStep =
   | { kind: "root" }
   | { kind: "operation"; operationId: string }
-  | { kind: "lookup-results"; operationId: string }
   | { kind: "create-pick-project"; entityType: EntityType }
   | { kind: "delete-pick-entity" }
   | {
@@ -201,17 +214,7 @@ const errorMessageKeys: Record<string, string> = {
   create_failed: "palette.create_failed",
   delete_failed: "palette.delete_failed",
   invalid_request: "palette.invalid_request",
-  unavailable: "palette.operation_unavailable.project_context",
-  lookup_failed: "palette.lookup_failed",
-};
-
-const lookupKindLabelKeys: Record<string, string> = {
-  definition: "palette.lookup_kinds.definition",
-  read: "palette.lookup_kinds.read",
-  write: "palette.lookup_kinds.write",
-  formula_read: "palette.lookup_kinds.formula_read",
-  entity_usage: "palette.lookup_kinds.entity_usage",
-  flow_caller: "palette.lookup_kinds.flow_caller",
+  rate_limited: "palette.advanced_search.rate_limited",
 };
 
 function navGroupHeading(key: string): string | undefined {
@@ -219,7 +222,7 @@ function navGroupHeading(key: string): string | undefined {
   return labelKey ? t(labelKey) : undefined;
 }
 
-const { t } = useI18n();
+const { t, te } = useI18n();
 const live = useLive();
 const { operationCatalog = [], projectContext = false } = defineProps<{
   operationCatalog?: OperationDefinition[];
@@ -252,19 +255,21 @@ const activeParameterId = ref<string | null>(null);
 const operationOptions = ref<OperationValue[]>([]);
 const operationOptionsLoading = ref(false);
 const operationOptionsErrorKey = ref<string | null>(null);
-const lookupResults = ref<PaletteLookupResult[]>([]);
-const lookupLoading = ref(false);
-const lookupErrorKey = ref<string | null>(null);
-const lookupTruncated = ref(false);
 const recentOperationIds = ref<string[]>([]);
 const activeGuidedOperationId = ref<string | null>(null);
-const lookupResultsList = ref<InstanceType<typeof PaletteLookupResults> | null>(null);
+const advancedSearchResults = ref<PaletteLookupResult[]>([]);
+const advancedSearchLoading = ref(false);
+const advancedSearchErrorKey = ref<string | null>(null);
+const advancedSearchTruncated = ref(false);
+const advancedSearchFallback = ref<"qualified_references" | null>(null);
+const advancedSearchResultsRef = ref<InstanceType<typeof PaletteLookupResults> | null>(null);
+const submittedAdvancedQuery = ref<string | null>(null);
 
 // Stale-reply guard: only the latest request may update the results.
 let navToken = 0;
+let advancedSearchToken = 0;
 let createTargetsToken = 0;
 let operationOptionsToken = 0;
-let lookupToken = 0;
 // Mutation replies are checked against this separately from navToken (typing
 // must never invalidate an in-flight create/delete). The palette cannot close
 // while one is pending, so every accepted mutation reply is reconciled.
@@ -273,9 +278,6 @@ let retryExecution: { key: string; id: string } | null = null;
 let navDebounce: ReturnType<typeof setTimeout> | null = null;
 let mutationTimeout: ReturnType<typeof setTimeout> | null = null;
 let suppressQueryWatch = false;
-let rootComposing = false;
-let compositionFetchPending = false;
-let patternLifecycle: "idle" | "selected" | "completed" = "idle";
 
 const localOpen = computed({
   get: () => open.value,
@@ -298,29 +300,27 @@ const confirmItem = computed<DeleteItem | null>(() =>
   step.value.kind === "delete-confirm" ? step.value.item : null,
 );
 
-const lookupStep = computed(() => (step.value.kind === "lookup-results" ? step.value : null));
-
-const referencePattern = computed(() => classifyReferencePattern(query.value));
-const invalidPatternCanNavigate = computed(() => {
-  if (referencePattern.value.state !== "invalid") return false;
-
-  const value = query.value;
-  return value === value.trim() && /\s/.test(value) && !/^[?"'`/]/.test(value);
-});
-const patternDoorActive = computed(
-  () => referencePattern.value.state !== "normal" && !invalidPatternCanNavigate.value,
-);
-const remoteLookupMode = computed(
-  () =>
-    step.value.kind === "lookup-results" || (step.value.kind === "root" && patternDoorActive.value),
-);
-const hasNavResults = computed(() => navGroups.value.some((group) => group.items.length > 0));
-
 const activeOperation = computed<OperationDefinition | null>(() => {
   const current = step.value;
   if (current.kind !== "operation") return null;
   return operationCatalog.find((operation) => operation.id === current.operationId) ?? null;
 });
+
+const advancedSearchRoute = computed<AdvancedSearchRoute>(() => routeAdvancedSearch(query.value));
+
+const advancedSearchActive = computed(
+  () => step.value.kind === "root" && advancedSearchRoute.value.kind !== "normal",
+);
+
+const advancedSearchDefinition = computed(() => {
+  const route = advancedSearchRoute.value;
+  return route.kind === "search" || route.kind === "prefix-help" ? route.definition : null;
+});
+
+const advancedSearchHelpVisible = computed(
+  () =>
+    advancedSearchRoute.value.kind === "help" || advancedSearchRoute.value.kind === "prefix-help",
+);
 
 const operationGroups = computed(() => {
   const grouped = new Map<string, OperationDefinition[]>();
@@ -366,9 +366,9 @@ const inputKey = computed(() => {
     : current.kind;
 });
 
-// Reka emits `select` before consulting its reactive disabled state. Every
-// in-flight action therefore treats the handler-level busy guard as the
-// authoritative fence.
+// Reka emits `select` before consulting its reactive disabled state, while its
+// list item DOM memo may still expose stale attributes. Every in-flight action
+// therefore treats the handler-level busy guard as the authoritative fence.
 const busy = computed(() => pendingMutation.value || pendingCommandId.value !== null);
 
 const canMutate = computed(
@@ -379,30 +379,30 @@ const canMutate = computed(
     createTargets.value.length > 0,
 );
 
-function editOperationAvailability(): OperationAvailability {
-  if (!createTargetsLoaded.value && createTargetsLoading.value) {
-    return {
-      enabled: false,
-      reasonKey: "palette.operation_unavailable.checking",
-    };
-  }
+function resolveOperationAvailability(operation: OperationDefinition): OperationAvailability {
+  if (operation.authorization === "edit_content") {
+    if (!createTargetsLoaded.value && createTargetsLoading.value) {
+      return {
+        enabled: false,
+        reasonKey: "palette.operation_unavailable.checking",
+      };
+    }
 
-  if (createTargetsErrorKey.value) {
-    return {
-      enabled: false,
-      reasonKey: "palette.operation_unavailable.availability_failed",
-    };
-  }
+    if (createTargetsErrorKey.value) {
+      return {
+        enabled: false,
+        reasonKey: "palette.operation_unavailable.availability_failed",
+      };
+    }
 
-  return canMutate.value
-    ? { enabled: true }
-    : {
+    if (!canMutate.value) {
+      return {
         enabled: false,
         reasonKey: "palette.operation_unavailable.edit_content",
       };
-}
+    }
+  }
 
-function contextualOperationAvailability(operation: OperationDefinition): OperationAvailability {
   if (operation.authorization !== "contextual") return { enabled: true };
 
   const contextualParameter = operation.parameters.find(
@@ -424,21 +424,6 @@ function contextualOperationAvailability(operation: OperationDefinition): Operat
         ? "palette.operation_unavailable.commands"
         : "palette.operation_unavailable.views",
   };
-}
-
-function resolveOperationAvailability(operation: OperationDefinition): OperationAvailability {
-  if (operation.requiresProject && !projectContext) {
-    return {
-      enabled: false,
-      reasonKey: "palette.operation_unavailable.project_context",
-    };
-  }
-
-  if (operation.authorization === "edit_content") {
-    return editOperationAvailability();
-  }
-
-  return contextualOperationAvailability(operation);
 }
 
 const operationAvailabilityById = computed(
@@ -475,13 +460,9 @@ const activeErrorKey = computed<string | null>(() => {
 
   switch (step.value.kind) {
     case "root":
-      return patternDoorActive.value
-        ? (lookupErrorKey.value ?? navErrorKey.value)
-        : navErrorKey.value;
+      return advancedSearchActive.value ? advancedSearchErrorKey.value : navErrorKey.value;
     case "operation":
       return operationOptionsErrorKey.value;
-    case "lookup-results":
-      return lookupErrorKey.value;
     case "create-pick-project":
       return createTargetsErrorKey.value;
     case "delete-pick-entity":
@@ -502,11 +483,9 @@ const operationEmptyMessageKey = computed(() =>
 const activeLoading = computed(() => {
   switch (step.value.kind) {
     case "root":
-      return patternDoorActive.value ? lookupLoading.value || navLoading.value : navLoading.value;
+      return advancedSearchActive.value ? advancedSearchLoading.value : navLoading.value;
     case "operation":
       return operationOptionsLoading.value;
-    case "lookup-results":
-      return lookupLoading.value;
     case "create-pick-project":
       return createTargetsLoading.value;
     case "delete-pick-entity":
@@ -552,13 +531,12 @@ function handleQueryChange(): void {
   // Typing immediately invalidates any in-flight request — a reply for the
   // previous query must never land after the user has kept typing.
   ++navToken;
+  ++advancedSearchToken;
   ++operationOptionsToken;
-  ++lookupToken;
   if (navDebounce) clearTimeout(navDebounce);
 
-  if (step.value.kind === "root" && (rootComposing || compositionFetchPending)) {
-    navLoading.value = false;
-    lookupLoading.value = false;
+  if (step.value.kind === "root") {
+    prepareRootQueryChange();
     return;
   }
 
@@ -568,6 +546,44 @@ function handleQueryChange(): void {
   // Server-backed completions use the same measured cadence as root search
   // so typing cannot amplify the authorized 1+N lookup path.
   navDebounce = setTimeout(() => fetchForStep(), NAV_DEBOUNCE_MS);
+}
+
+function prepareRootQueryChange(): void {
+  const route = advancedSearchRoute.value;
+  submittedAdvancedQuery.value = null;
+
+  if (route.kind === "normal") {
+    clearAdvancedSearchState();
+    navLoading.value = true;
+    navErrorKey.value = null;
+    navDebounce = setTimeout(() => fetchNavDestinations(), NAV_DEBOUNCE_MS);
+    return;
+  }
+
+  navLoading.value = false;
+  navErrorKey.value = null;
+  navGroups.value = [];
+  clearAdvancedSearchState();
+
+  if (
+    route.kind !== "search" ||
+    !route.ready ||
+    !projectContext ||
+    route.definition.trigger === "submit"
+  ) {
+    return;
+  }
+
+  advancedSearchLoading.value = true;
+  navDebounce = setTimeout(() => fetchAdvancedSearch(false), NAV_DEBOUNCE_MS);
+}
+
+function clearAdvancedSearchState(): void {
+  advancedSearchResults.value = [];
+  advancedSearchLoading.value = false;
+  advancedSearchErrorKey.value = null;
+  advancedSearchTruncated.value = false;
+  advancedSearchFallback.value = null;
 }
 
 function clearActiveOperationValueForEdit(): void {
@@ -583,8 +599,6 @@ function clearActiveOperationValueForEdit(): void {
 
 function prepareStepForQueryChange(): boolean {
   switch (step.value.kind) {
-    case "root":
-      return prepareRootForQueryChange();
     case "operation":
       return prepareOperationForQueryChange();
     case "delete-pick-entity":
@@ -594,33 +608,6 @@ function prepareStepForQueryChange(): boolean {
     default:
       return false;
   }
-}
-
-function prepareRootForQueryChange(): boolean {
-  const classification = referencePattern.value;
-
-  if (!patternDoorActive.value) {
-    leavePatternLifecycle();
-    resetLookupState();
-    navLoading.value = true;
-    navErrorKey.value = null;
-    return false;
-  }
-
-  navLoading.value = classification.state === "ready";
-  navErrorKey.value = null;
-  lookupErrorKey.value = null;
-
-  if (classification.state !== "ready") {
-    navGroups.value = [];
-    lookupLoading.value = false;
-    lookupResults.value = [];
-    lookupTruncated.value = false;
-    return true;
-  }
-
-  lookupLoading.value = true;
-  return false;
 }
 
 function prepareOperationForQueryChange(): boolean {
@@ -636,37 +623,6 @@ function prepareOperationForQueryChange(): boolean {
   return true;
 }
 
-function onRootCompositionStart(): void {
-  if (step.value.kind !== "root") return;
-
-  rootComposing = true;
-  compositionFetchPending = false;
-  ++navToken;
-  ++lookupToken;
-  if (navDebounce) clearTimeout(navDebounce);
-}
-
-function onRootCompositionEnd(event: CompositionEvent): void {
-  if (step.value.kind !== "root") return;
-
-  rootComposing = false;
-  compositionFetchPending = true;
-
-  // Reka commits the composed value on its next tick. Capture it now so a
-  // render driven by our own pending-state update cannot reset the input
-  // before Reka reads event.target.value.
-  if (event.target instanceof HTMLInputElement && event.target.value !== query.value) {
-    query.value = event.target.value;
-  }
-
-  void nextTick(() => {
-    if (!compositionFetchPending) return;
-    compositionFetchPending = false;
-    if (!open.value || step.value.kind !== "root") return;
-    handleQueryChange();
-  });
-}
-
 onUnmounted(() => {
   if (navDebounce) clearTimeout(navDebounce);
   clearMutationTimeout();
@@ -678,17 +634,15 @@ function openPalette(): void {
   navGroups.value = [];
   createTargets.value = [];
   deleteItems.value = [];
+  clearAdvancedSearchState();
+  submittedAdvancedQuery.value = null;
   errorKey.value = null;
   navErrorKey.value = null;
   createTargetsErrorKey.value = null;
   deleteItemsErrorKey.value = null;
   activeAICta.value = null;
   resetOperationState();
-  resetLookupState();
   createTargetsLoaded.value = false;
-  rootComposing = false;
-  compositionFetchPending = false;
-  patternLifecycle = "idle";
   step.value = { kind: "root" };
   open.value = true;
   focusPaletteInput();
@@ -709,14 +663,10 @@ function closePalette(): void {
   errorKey.value = null;
   activeAICta.value = null;
   resetOperationState();
-  resetLookupState();
-  patternLifecycle = "idle";
-  rootComposing = false;
-  compositionFetchPending = false;
   ++mutationToken;
+  ++advancedSearchToken;
   ++createTargetsToken;
   ++operationOptionsToken;
-  ++lookupToken;
 }
 
 function startMutationTimeout(token: number): void {
@@ -761,21 +711,19 @@ function resetQuery(): void {
 function enterStep(next: PaletteStep): void {
   if (busy.value) return;
 
-  rootComposing = false;
-  compositionFetchPending = false;
   step.value = next;
   errorKey.value = null;
   activeAICta.value = null;
   ++mutationToken;
   ++navToken;
+  ++advancedSearchToken;
   ++operationOptionsToken;
-  ++lookupToken;
   if (navDebounce) clearTimeout(navDebounce);
   resetQuery();
 
   if (next.kind === "create-pick-project" && !createTargetsLoaded.value) {
     fetchCreateTargets();
-  } else if (next.kind !== "create-pick-project" && next.kind !== "lookup-results") {
+  } else if (next.kind !== "create-pick-project") {
     fetchForStep();
   }
 
@@ -786,7 +734,7 @@ function focusPaletteInput(): void {
   void nextTick(() => {
     if (step.value.kind === "operation") {
       operationInput.value?.focusActive();
-    } else if (step.value.kind !== "lookup-results") {
+    } else {
       paletteBody.value?.querySelector<HTMLInputElement>("[data-slot='command-input']")?.focus();
     }
   });
@@ -802,9 +750,6 @@ function goBack(): void {
     } else {
       enterStep({ kind: "delete-pick-entity" });
     }
-  } else if (current.kind === "lookup-results") {
-    resetLookupState();
-    enterStep({ kind: "operation", operationId: current.operationId });
   } else {
     if (current.kind === "operation") abandonActiveOperation();
     resetOperationState();
@@ -812,17 +757,34 @@ function goBack(): void {
   }
 }
 
+function shouldSubmitDeepSearch(event: KeyboardEvent): boolean {
+  const route = advancedSearchRoute.value;
+
+  return (
+    event.key === "Enter" &&
+    !event.isComposing &&
+    event.keyCode !== 229 &&
+    route.kind === "search" &&
+    route.definition.trigger === "submit" &&
+    route.ready &&
+    projectContext &&
+    !advancedSearchLoading.value &&
+    submittedAdvancedQuery.value !== query.value
+  );
+}
+
 function onPaletteKeydown(event: KeyboardEvent): void {
-  if (
-    step.value.kind === "root" &&
-    rootImeActive(event) &&
-    ["Enter", "Escape", "ArrowUp", "ArrowDown"].includes(event.key)
-  ) {
-    event.stopPropagation();
+  if (step.value.kind === "root") {
+    if (shouldSubmitDeepSearch(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      fetchAdvancedSearch(true);
+    }
+
     return;
   }
 
-  if (step.value.kind === "root" || step.value.kind === "operation") return;
+  if (step.value.kind === "operation") return;
 
   if (event.key === "Backspace" && query.value === "") {
     event.preventDefault();
@@ -834,12 +796,6 @@ function onPaletteKeydown(event: KeyboardEvent): void {
 // Reka owns Escape at the dismiss layer. Preventing that event is the only
 // reliable way to turn Escape into one-step-back for nested palette flows.
 function onDialogEscape(event: KeyboardEvent): void {
-  if (step.value.kind === "root" && rootImeActive(event)) {
-    event.preventDefault();
-    event.stopPropagation();
-    return;
-  }
-
   if (step.value.kind === "root" && !busy.value) return;
 
   event.preventDefault();
@@ -847,19 +803,20 @@ function onDialogEscape(event: KeyboardEvent): void {
   if (!busy.value) goBack();
 }
 
-function rootImeActive(event: KeyboardEvent): boolean {
-  return rootComposing || event.isComposing || event.keyCode === 229;
-}
-
 function fetchForStep(): void {
   const current = step.value;
 
   if (current.kind === "root") {
-    if (referencePattern.value.state === "ready") {
-      fetchReferencePattern();
+    const route = advancedSearchRoute.value;
+    if (route.kind === "normal") {
       fetchNavDestinations();
-    } else if (!patternDoorActive.value) {
-      fetchNavDestinations();
+    } else if (
+      route.kind === "search" &&
+      route.ready &&
+      route.definition.trigger === "debounced" &&
+      projectContext
+    ) {
+      fetchAdvancedSearch(false);
     }
   } else if (current.kind === "operation") {
     fetchOperationOptions();
@@ -868,87 +825,6 @@ function fetchForStep(): void {
   }
   // create-pick-project filters its already-loaded targets client-side;
   // delete-confirm has no data to fetch.
-}
-
-function fetchReferencePattern(): void {
-  const classification = referencePattern.value;
-  if (classification.state !== "ready") {
-    lookupLoading.value = false;
-    lookupResults.value = [];
-    return;
-  }
-
-  if (!projectContext) {
-    lookupLoading.value = false;
-    lookupResults.value = [];
-    lookupTruncated.value = false;
-    lookupErrorKey.value = "palette.operation_unavailable.project_context";
-    return;
-  }
-
-  if (patternLifecycle === "idle") {
-    patternLifecycle = "selected";
-    activeGuidedOperationId.value = "variable_definition";
-    track("palette_operation_selected", { operation_id: "variable_definition" });
-  }
-
-  const pattern = classification.pattern.raw;
-  const token = ++lookupToken;
-  const highlightedResultId = lookupResultsList.value?.highlightedResultId() ?? null;
-  lookupLoading.value = true;
-  lookupErrorKey.value = null;
-
-  live.pushEvent(
-    "palette_reference_pattern",
-    { pattern, token },
-    (reply: LookupReply) => {
-      if (!acceptsPatternReply(token, pattern, reply)) return;
-
-      lookupLoading.value = false;
-      if (reply.error) {
-        lookupResults.value = [];
-        lookupTruncated.value = false;
-        lookupErrorKey.value =
-          reply.error === "invalid_request"
-            ? "palette.pattern_invalid"
-            : (errorMessageKeys[reply.error] ?? "palette.lookup_failed");
-        return;
-      }
-
-      const latestHighlightedResultId =
-        lookupResultsList.value?.highlightedResultId() ?? highlightedResultId;
-      lookupResults.value = reconcileLookupResults(
-        lookupResults.value,
-        normalizeLookupResults(reply.items ?? []),
-      );
-      lookupTruncated.value = reply.truncated ?? false;
-      completePatternLifecycle();
-      void restoreLookupHighlight(latestHighlightedResultId);
-    },
-    () => {
-      if (!acceptsPatternRequest(token, pattern)) return;
-      lookupLoading.value = false;
-      lookupResults.value = [];
-      lookupTruncated.value = false;
-      lookupErrorKey.value = "palette.lookup_failed";
-    },
-  );
-}
-
-function acceptsPatternReply(token: number, pattern: string, reply: LookupReply): boolean {
-  return reply?.token === token && acceptsPatternRequest(token, pattern);
-}
-
-function acceptsPatternRequest(token: number, pattern: string): boolean {
-  const classification = referencePattern.value;
-
-  return (
-    token === lookupToken &&
-    open.value &&
-    step.value.kind === "root" &&
-    classification.state === "ready" &&
-    classification.pattern.raw === pattern
-  );
 }
 
 function fetchNavDestinations(): void {
@@ -960,14 +836,7 @@ function fetchNavDestinations(): void {
     "palette_nav",
     { query: query.value.trim(), token },
     (reply: PaletteNavReply) => {
-      if (
-        reply?.token !== token ||
-        token !== navToken ||
-        !open.value ||
-        step.value.kind !== "root"
-      ) {
-        return;
-      }
+      if (reply?.token !== token || !open.value || step.value.kind !== "root") return;
       navLoading.value = false;
       navGroups.value = reply.groups ?? [];
     },
@@ -978,6 +847,167 @@ function fetchNavDestinations(): void {
       navErrorKey.value = "palette.search_failed";
     },
   );
+}
+
+function fetchAdvancedSearch(submitted: boolean): void {
+  const route = advancedSearchRoute.value;
+  if (
+    route.kind !== "search" ||
+    !route.ready ||
+    !projectContext ||
+    (route.definition.trigger === "submit" && !submitted)
+  ) {
+    return;
+  }
+
+  const requestedQuery = query.value;
+  const requestedMode = route.definition.mode;
+  const token = ++advancedSearchToken;
+  const highlightedResultId = advancedSearchResultsRef.value?.highlightedResultId() ?? null;
+
+  advancedSearchLoading.value = true;
+  advancedSearchErrorKey.value = null;
+
+  live.pushEvent(
+    "palette_advanced_search",
+    { query: requestedQuery, submitted, token },
+    (reply: AdvancedSearchReply) => {
+      if (!acceptsAdvancedSearchReply(token, requestedQuery, requestedMode, reply)) return;
+
+      if (reply.error || reply.mode !== requestedMode) {
+        settleAdvancedSearchError(reply.error);
+        return;
+      }
+
+      const normalized = normalizeAdvancedSearchResults(reply.items);
+      advancedSearchLoading.value = false;
+      advancedSearchResults.value = reconcileAdvancedSearchResults(
+        advancedSearchResults.value,
+        normalized,
+      );
+      advancedSearchTruncated.value = reply.truncated === true;
+      advancedSearchFallback.value =
+        reply.fallback === "qualified_references" ? reply.fallback : null;
+      submittedAdvancedQuery.value = submitted ? requestedQuery : null;
+      void restoreAdvancedSearchHighlight(highlightedResultId);
+    },
+    () => {
+      if (!acceptsAdvancedSearchRequest(token, requestedQuery, requestedMode)) return;
+
+      advancedSearchLoading.value = false;
+      advancedSearchResults.value = [];
+      advancedSearchTruncated.value = false;
+      advancedSearchFallback.value = null;
+      advancedSearchErrorKey.value = "palette.advanced_search.search_failed";
+    },
+  );
+}
+
+function acceptsAdvancedSearchReply(
+  token: number,
+  requestedQuery: string,
+  requestedMode: string,
+  reply: AdvancedSearchReply,
+): boolean {
+  return (
+    reply?.token === token && acceptsAdvancedSearchRequest(token, requestedQuery, requestedMode)
+  );
+}
+
+function settleAdvancedSearchError(error: string | undefined): void {
+  advancedSearchLoading.value = false;
+  advancedSearchResults.value = [];
+  advancedSearchTruncated.value = false;
+  advancedSearchFallback.value = null;
+  advancedSearchErrorKey.value =
+    (error ? errorMessageKeys[error] : undefined) ?? "palette.advanced_search.search_failed";
+}
+
+function acceptsAdvancedSearchRequest(
+  token: number,
+  requestedQuery: string,
+  requestedMode: string,
+): boolean {
+  const route = advancedSearchRoute.value;
+
+  return (
+    token === advancedSearchToken &&
+    open.value &&
+    step.value.kind === "root" &&
+    query.value === requestedQuery &&
+    route.kind === "search" &&
+    route.definition.mode === requestedMode
+  );
+}
+
+function normalizeAdvancedSearchResults(
+  items: AdvancedSearchItem[] | undefined,
+): PaletteLookupResult[] {
+  if (!Array.isArray(items)) return [];
+
+  return items.flatMap((item) => {
+    if (typeof item.id !== "string" || typeof item.label !== "string") return [];
+
+    const action = normalizeAdvancedSearchAction(item.action);
+    if (!action) return [];
+
+    return [
+      {
+        id: item.id,
+        label: item.label,
+        context: typeof item.context === "string" ? item.context : undefined,
+        detail: typeof item.kind === "string" ? searchKindLabel(item.kind) : undefined,
+        group: typeof item.group === "string" ? item.group : undefined,
+        icon: advancedSearchIcon(item.type),
+        action,
+      },
+    ];
+  });
+}
+
+function normalizeAdvancedSearchAction(
+  action: AdvancedSearchItem["action"],
+): PaletteLookupResultAction | null {
+  if (action?.kind === "navigate" && typeof action.url === "string") {
+    return { kind: "navigate", url: action.url };
+  }
+
+  if (action?.kind === "complete" && typeof action.value === "string") {
+    return { kind: "complete", value: action.value };
+  }
+
+  return null;
+}
+
+function advancedSearchIcon(type: string | undefined): PaletteLookupResultIcon {
+  return type === "sheet" || type === "flow" || type === "scene" ? type : "reference";
+}
+
+function searchKindLabel(kind: string): string {
+  const key = `palette.advanced_search.kinds.${kind}`;
+  return te(key) ? t(key) : kind.replaceAll("_", " ");
+}
+
+function reconcileAdvancedSearchResults(
+  current: PaletteLookupResult[],
+  incoming: PaletteLookupResult[],
+): PaletteLookupResult[] {
+  const incomingById = new Map(incoming.map((item) => [item.id, item]));
+  const retained = current.flatMap((item) => {
+    const updated = incomingById.get(item.id);
+    if (!updated) return [];
+    incomingById.delete(item.id);
+    return [updated];
+  });
+  const appended = incoming.filter((item) => incomingById.has(item.id));
+
+  return [...retained, ...appended];
+}
+
+async function restoreAdvancedSearchHighlight(resultId: string | null): Promise<void> {
+  await nextTick();
+  if (!advancedSearchActive.value || advancedSearchResults.value.length === 0) return;
+  await advancedSearchResultsRef.value?.restoreHighlightedResult(resultId);
 }
 
 function fetchCreateTargets(): void {
@@ -1062,65 +1092,6 @@ function resetOperationState(): void {
   operationOptions.value = [];
   operationOptionsLoading.value = false;
   operationOptionsErrorKey.value = null;
-}
-
-function resetLookupState(): void {
-  lookupResults.value = [];
-  lookupLoading.value = false;
-  lookupErrorKey.value = null;
-  lookupTruncated.value = false;
-}
-
-function normalizeLookupResults(items: RawLookupResult[]): PaletteLookupResult[] {
-  return items.flatMap((item) => {
-    if (
-      typeof item.id !== "string" ||
-      typeof item.url !== "string" ||
-      typeof item.label !== "string"
-    ) {
-      return [];
-    }
-
-    const icon: PaletteLookupResult["icon"] =
-      item.type === "sheet" || item.type === "flow" || item.type === "scene"
-        ? item.type
-        : "reference";
-    const detailKey = lookupKindLabelKeys[item.kind];
-
-    return [
-      {
-        id: item.id,
-        url: item.url,
-        label: item.label,
-        context: typeof item.context === "string" ? item.context : undefined,
-        detail: detailKey ? t(detailKey) : undefined,
-        icon,
-      },
-    ];
-  });
-}
-
-function reconcileLookupResults(
-  current: PaletteLookupResult[],
-  incoming: PaletteLookupResult[],
-): PaletteLookupResult[] {
-  const incomingById = new Map(incoming.map((result) => [result.id, result]));
-  const retained = current.flatMap((result) => {
-    const updated = incomingById.get(result.id);
-    if (!updated) return [];
-    incomingById.delete(result.id);
-    return [updated];
-  });
-  const appended = incoming.filter((result) => incomingById.has(result.id));
-
-  return [...retained, ...appended];
-}
-
-async function restoreLookupHighlight(resultId: string | null): Promise<void> {
-  await nextTick();
-
-  if (!open.value || lookupResults.value.length === 0) return;
-  await lookupResultsList.value?.restoreHighlightedResult(resultId);
 }
 
 function activeOperationParameter(): OperationParameterDefinition | undefined {
@@ -1386,21 +1357,6 @@ function completeActiveOperation(): void {
   activeGuidedOperationId.value = null;
 }
 
-function completePatternLifecycle(): void {
-  if (patternLifecycle !== "selected") return;
-
-  completeActiveOperation();
-  patternLifecycle = "completed";
-}
-
-function leavePatternLifecycle(): void {
-  if (patternLifecycle === "selected") {
-    abandonActiveOperation();
-  }
-
-  patternLifecycle = "idle";
-}
-
 function abandonActiveOperation(): void {
   const operationId = activeGuidedOperationId.value;
   if (!operationId) return;
@@ -1445,10 +1401,6 @@ function executeOperation(operation: OperationDefinition): void {
 
 const operationExecutors: Readonly<Record<string, () => void>> = {
   goto: executeGotoOperation,
-  variable_definition: () => executeReferenceOperation("variable_definition", "variable"),
-  variable_usages: () => executeReferenceOperation("variable_usages", "variable"),
-  entity_usages: () => executeReferenceOperation("entity_usages", "entity"),
-  flow_callers: () => executeReferenceOperation("flow_callers", "flow"),
   create: executeCreateOperation,
   delete: executeDeleteOperation,
   run_command: () => runSelectedClientCommand("command"),
@@ -1463,101 +1415,6 @@ function executeGotoOperation(): void {
   }
 
   runNavigationCommand(destination.id, destination.value, completeActiveOperation);
-}
-
-function executeReferenceOperation(operationId: string, parameterId: string): void {
-  const target = operationRecord(operationValues.value[parameterId]);
-  if (!target || !projectContext) {
-    invalidateOperationParameter(parameterId);
-    return;
-  }
-
-  if (activeGuidedOperationId.value !== operationId) {
-    activeGuidedOperationId.value = operationId;
-    track("palette_operation_selected", { operation_id: operationId });
-  }
-
-  resetLookupState();
-  enterStep({ kind: "lookup-results", operationId });
-  const token = ++lookupToken;
-  lookupLoading.value = true;
-
-  live.pushEvent(
-    "palette_reference_lookup",
-    {
-      operation_id: operationId,
-      target,
-      token,
-    },
-    (reply: LookupReply) => {
-      if (!acceptsLookupReply(token, operationId, reply)) return;
-
-      lookupLoading.value = false;
-      if (reply.error) {
-        handleReferenceOperationError(operationId, parameterId, reply.error);
-        return;
-      }
-
-      lookupResults.value = reconcileLookupResults(
-        lookupResults.value,
-        normalizeLookupResults(reply.items ?? []),
-      );
-      lookupTruncated.value = reply.truncated ?? false;
-      completeActiveOperation();
-      void restoreLookupHighlight(null);
-    },
-    () => {
-      if (!acceptsLookupRequest(token, operationId)) return;
-      lookupLoading.value = false;
-      lookupResults.value = [];
-      lookupTruncated.value = false;
-      lookupErrorKey.value = "palette.lookup_failed";
-    },
-  );
-}
-
-function acceptsLookupReply(token: number, operationId: string, reply: LookupReply): boolean {
-  return reply?.token === token && acceptsLookupRequest(token, operationId);
-}
-
-function acceptsLookupRequest(token: number, operationId: string): boolean {
-  const current = step.value;
-
-  return (
-    token === lookupToken &&
-    open.value &&
-    current.kind === "lookup-results" &&
-    current.operationId === operationId
-  );
-}
-
-function handleReferenceOperationError(
-  operationId: string,
-  parameterId: string,
-  replyError: string,
-): void {
-  lookupResults.value = [];
-  lookupTruncated.value = false;
-
-  if (!["unauthorized", "not_found", "invalid_request", "unavailable"].includes(replyError)) {
-    lookupErrorKey.value = errorMessageKeys[replyError] ?? "palette.lookup_failed";
-    return;
-  }
-
-  operationErrors.value = {
-    ...operationErrors.value,
-    [parameterId]: t(errorMessageKeys[replyError] ?? "palette.invalid_request"),
-  };
-  activeParameterId.value = parameterId;
-  enterStep({ kind: "operation", operationId });
-}
-
-function onSelectLookupResult(result: PaletteLookupResult): void {
-  if (busy.value || lookupLoading.value) return;
-
-  track("palette_command_executed", { command_id: "reference.open" });
-  closePalette();
-  liveNavigate(result.url);
 }
 
 function executeCreateOperation(): void {
@@ -1767,12 +1624,21 @@ function onSelectNav(item: NavItem): void {
   runNavigationCommand(item.id, item.url);
 }
 
-function onSelectPatternNav(item: NavItem): void {
-  // Reka emits `select` before consulting disabled, so this handler remains
-  // the authoritative barrier while a replacement query is in flight.
-  if (navLoading.value) return;
+function selectAdvancedSearchPrefix(symbol: AdvancedSearchPrefixSymbol): void {
+  query.value = symbol;
+  focusPaletteInput();
+}
 
-  onSelectNav(item);
+function onSelectAdvancedSearchResult(result: PaletteLookupResult): void {
+  if (advancedSearchLoading.value) return;
+
+  if (result.action.kind === "complete") {
+    query.value = result.action.value;
+    focusPaletteInput();
+    return;
+  }
+
+  runNavigationCommand("advanced-search.open", result.action.url);
 }
 
 // Navigation tears down the current LiveView. Send telemetry first, while
@@ -1970,23 +1836,16 @@ function track(event: string, payload: Record<string, unknown>): void {
     v-model:open="localOpen"
     :title="t('palette.title')"
     :description="t('palette.description')"
-    :disable-filter="remoteLookupMode"
+    :disable-filter="advancedSearchActive"
     @escape-key-down="onDialogEscape"
   >
-    <div
-      ref="paletteBody"
-      class="contents"
-      @keydown="onPaletteKeydown"
-      @compositionstart.capture="onRootCompositionStart"
-      @compositionend.capture="onRootCompositionEnd"
-    >
+    <div ref="paletteBody" class="contents" @keydown="onPaletteKeydown">
       <CommandInput
-        v-if="!confirmItem && !activeOperation && !lookupStep"
+        v-if="!confirmItem && !activeOperation"
         :key="inputKey"
         v-model="query"
         :disabled="busy"
         :placeholder="inputPlaceholder"
-        :aria-label="inputPlaceholder"
       />
       <PaletteOperationInput
         v-else-if="activeOperation"
@@ -2002,24 +1861,6 @@ function track(event: string, payload: Record<string, unknown>): void {
         @cancel="cancelOperation"
         @submit="submitOperation"
       />
-      <div
-        v-else-if="lookupStep"
-        class="flex items-center gap-2 border-b px-3 py-2"
-        data-testid="palette-lookup-header"
-      >
-        <button
-          type="button"
-          class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          :aria-label="t('palette.back_to_operation')"
-          :disabled="busy"
-          @click="goBack"
-        >
-          <ArrowLeft class="size-4" />
-        </button>
-        <p class="min-w-0 flex-1 truncate text-sm font-medium">
-          {{ t("palette.lookup_results") }}
-        </p>
-      </div>
       <div
         v-if="activeErrorKey"
         role="alert"
@@ -2104,96 +1945,92 @@ function track(event: string, payload: Record<string, unknown>): void {
           </CommandGroup>
         </template>
 
-        <template v-else-if="lookupStep">
-          <PaletteLookupResults
-            ref="lookupResultsList"
-            :items="lookupResults"
-            :heading="t('palette.lookup_results')"
-            :disabled="busy || lookupLoading"
-            :loading="lookupLoading"
-            :truncated="lookupTruncated"
-            :truncated-label="t('palette.lookup_truncated')"
-            @select="onSelectLookupResult"
-          />
-          <p
-            v-if="!lookupLoading && !lookupErrorKey && lookupResults.length === 0"
-            class="py-6 text-center text-sm text-muted-foreground"
-          >
-            {{ t("palette.no_lookup_results") }}
-          </p>
-          <p v-if="lookupResults.length > 0" aria-live="polite" class="sr-only">
-            {{ t("palette.lookup_results_count", { count: lookupResults.length }) }}
-          </p>
-        </template>
-
         <template v-else-if="step.kind === 'root'">
-          <template v-if="patternDoorActive">
-            <p
-              v-if="referencePattern.state === 'incomplete'"
-              class="py-6 text-center text-sm text-muted-foreground"
+          <template v-if="advancedSearchActive">
+            <div
+              v-if="
+                projectContext &&
+                advancedSearchRoute.kind === 'search' &&
+                advancedSearchRoute.definition.cost === 'high'
+              "
+              role="note"
+              class="border-b border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
             >
-              {{ t("palette.pattern_incomplete") }}
-            </p>
-            <p
-              v-else-if="referencePattern.state === 'invalid'"
-              class="py-6 text-center text-sm text-muted-foreground"
+              {{ t("palette.advanced_search.high_cost_notice") }}
+            </div>
+            <PaletteAdvancedSearchHelp
+              v-if="advancedSearchHelpVisible"
+              :definitions="advancedSearchPrefixes"
+              :selected-prefix="advancedSearchDefinition?.symbol ?? null"
+              @select="selectAdvancedSearchPrefix"
+            />
+            <div
+              v-else-if="!projectContext"
+              role="status"
+              class="border-b px-3 py-3 text-sm text-muted-foreground"
             >
-              {{ t("palette.pattern_invalid") }}
-            </p>
-            <template v-else>
-              <PaletteLookupResults
-                ref="lookupResultsList"
-                :items="lookupResults"
-                :heading="t('palette.lookup_results')"
-                :disabled="busy || lookupLoading"
-                :loading="lookupLoading"
-                :truncated="lookupTruncated"
-                :truncated-label="t('palette.lookup_truncated')"
-                @select="onSelectLookupResult"
-              />
-              <CommandGroup
-                v-for="group in navGroups"
-                :key="`pattern-nav-${group.key}`"
-                :heading="navGroupHeading(group.key)"
-              >
-                <CommandItem
-                  v-for="item in group.items"
-                  :key="`pattern-nav-${item.id}`"
-                  :value="item.id"
-                  :disabled="busy || navLoading"
-                  @select="onSelectPatternNav(item)"
-                >
-                  <component
-                    :is="navIcons[item.type]"
-                    v-if="navIcons[item.type]"
-                    class="size-4 shrink-0"
-                  />
-                  <span>{{ item.label }}</span>
-                  <span v-if="item.context" class="text-xs text-muted-foreground">
-                    {{ item.context }}
-                  </span>
-                  <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
-                </CommandItem>
-              </CommandGroup>
-              <p
-                v-if="
-                  !lookupLoading &&
-                  !navLoading &&
-                  !lookupErrorKey &&
-                  !navErrorKey &&
-                  lookupResults.length === 0 &&
-                  !hasNavResults
-                "
-                class="py-6 text-center text-sm text-muted-foreground"
-              >
-                {{ t("palette.no_lookup_results") }}
-              </p>
-              <p v-if="lookupResults.length > 0" aria-live="polite" class="sr-only">
-                {{ t("palette.lookup_results_count", { count: lookupResults.length }) }}
-              </p>
-            </template>
+              {{ t("palette.advanced_search.project_required") }}
+            </div>
+            <div
+              v-else-if="advancedSearchRoute.kind === 'search' && !advancedSearchRoute.ready"
+              role="status"
+              class="border-b px-3 py-3 text-sm text-muted-foreground"
+            >
+              {{
+                t("palette.advanced_search.minimum_length", {
+                  count: advancedSearchRoute.definition.minimumLength,
+                })
+              }}
+            </div>
+            <div
+              v-else-if="
+                advancedSearchRoute.kind === 'search' &&
+                advancedSearchRoute.definition.trigger === 'submit' &&
+                !advancedSearchLoading &&
+                submittedAdvancedQuery !== query
+              "
+              role="status"
+              class="border-b px-3 py-3 text-sm text-muted-foreground"
+            >
+              {{ t("palette.advanced_search.press_enter") }}
+            </div>
+            <div
+              v-if="
+                advancedSearchFallback === 'qualified_references' &&
+                !advancedSearchLoading &&
+                !advancedSearchErrorKey
+              "
+              data-testid="palette-predicate-no-matches"
+              role="status"
+              class="border-b px-3 py-3 text-sm text-muted-foreground"
+            >
+              {{ t("palette.advanced_search.predicate_no_matches") }}
+            </div>
+            <PaletteEmpty
+              v-if="
+                projectContext &&
+                advancedSearchRoute.kind === 'search' &&
+                advancedSearchRoute.ready &&
+                !advancedSearchLoading &&
+                !advancedSearchErrorKey &&
+                (advancedSearchRoute.definition.trigger !== 'submit' ||
+                  submittedAdvancedQuery === query)
+              "
+              :enabled="true"
+              @no-results="onNoResults"
+            >
+              {{ t("palette.advanced_search.no_results") }}
+            </PaletteEmpty>
+            <PaletteLookupResults
+              ref="advancedSearchResultsRef"
+              :items="advancedSearchResults"
+              :disabled="advancedSearchLoading"
+              :loading="advancedSearchLoading"
+              :truncated="advancedSearchTruncated"
+              :truncated-label="t('palette.advanced_search.truncated')"
+              @select="onSelectAdvancedSearchResult"
+            />
           </template>
-
           <template v-else>
             <PaletteEmpty :enabled="!navLoading && !navErrorKey" @no-results="onNoResults">
               {{ t("palette.no_results") }}
@@ -2211,9 +2048,9 @@ function track(event: string, payload: Record<string, unknown>): void {
                 </div>
               </div>
             </div>
-            <!-- Reka 2.10 updates disabled reactively, but still memoizes
-                 fallthrough attributes such as title and data-operation-available.
-                 Availability belongs in the key so those attributes stay current. -->
+            <!-- Reka's listbox item memoizes disabled and fallthrough attrs.
+               The full availability signature belongs in both operation-row
+               keys so enabled and reason changes remount the affected row. -->
             <CommandGroup
               v-if="recentOperations.length > 0"
               :heading="t('palette.recent_operations')"
@@ -2339,7 +2176,7 @@ function track(event: string, payload: Record<string, unknown>): void {
                   item.context
                 }}</span>
                 <!-- Entities can match by shortcut server-side; keep it in the
-                   filterable textContent without showing it. -->
+                 filterable textContent without showing it. -->
                 <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
               </CommandItem>
             </CommandGroup>

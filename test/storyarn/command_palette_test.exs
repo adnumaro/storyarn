@@ -10,28 +10,14 @@ defmodule Storyarn.CommandPaletteTest do
   alias Storyarn.Repo
 
   describe "operation registry" do
-    test "contains exactly the delivered operations with unique, validated contracts" do
+    test "contains exactly the PR-2 operations with unique, validated contracts" do
       definitions = Registry.all()
       ids = Enum.map(definitions, & &1.id)
 
-      assert ids ==
-               ~w(goto variable_definition variable_usages entity_usages flow_callers create delete run_command open_view)
-
+      assert ids == ~w(goto create delete run_command open_view)
       assert Enum.uniq(ids) == ids
       assert Definition.latency_budget_ms(:instant) == 150
       assert Definition.latency_budget_ms(:interactive) == nil
-
-      assert Map.new(definitions, &{&1.id, &1.requires_project}) == %{
-               "goto" => false,
-               "variable_definition" => true,
-               "variable_usages" => true,
-               "entity_usages" => true,
-               "flow_callers" => true,
-               "create" => false,
-               "delete" => false,
-               "run_command" => false,
-               "open_view" => false
-             }
 
       for definition <- definitions do
         assert definition.domain in Definition.enum_values(:domain)
@@ -53,10 +39,6 @@ defmodule Storyarn.CommandPaletteTest do
              ) ==
                %{
                  {"goto", "destination"} => :server,
-                 {"variable_definition", "variable"} => :server,
-                 {"variable_usages", "variable"} => :server,
-                 {"entity_usages", "entity"} => :server,
-                 {"flow_callers", "flow"} => :server,
                  {"create", "entity_type"} => :client,
                  {"create", "project"} => :client,
                  {"delete", "entity"} => :server,
@@ -68,17 +50,12 @@ defmodule Storyarn.CommandPaletteTest do
     test "serializes the generated help catalog using the LiveVue contract" do
       catalog = CommandPalette.operation_catalog()
 
-      assert Enum.map(catalog, & &1.id) ==
-               ~w(goto variable_definition variable_usages entity_usages flow_callers create delete run_command open_view)
-
+      assert Enum.map(catalog, & &1.id) == ~w(goto create delete run_command open_view)
       assert Jason.encode!(catalog)
 
       assert goto = Enum.find(catalog, &(&1.id == "goto"))
       assert goto.resultType == "navigation"
       assert goto.authorization == "view"
-      assert goto.requiresProject == false
-
-      assert Enum.find(catalog, &(&1.id == "variable_definition")).requiresProject == true
 
       assert [
                %{
@@ -137,10 +114,6 @@ defmodule Storyarn.CommandPaletteTest do
 
       assert_raise ArgumentError, ~r/invalid parameters/, fn ->
         Definition.validate!(%{definition | parameters: [invalid_parameter]})
-      end
-
-      assert_raise ArgumentError, ~r/invalid requires_project/, fn ->
-        Definition.validate!(%{definition | requires_project: :sometimes})
       end
 
       assert {:ok, %{completion_source: :navigation, completion_mode: :server}} =

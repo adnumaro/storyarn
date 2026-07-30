@@ -70,7 +70,6 @@ describe("authenticated command palette boundary", () => {
             parameters: [],
             latency: "instant",
             authorization: "view",
-            requiresProject: false,
             resultType: "navigation",
             phrase: [],
             help: {

@@ -5,6 +5,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
   alias StoryarnWeb.Components.AuthLayout
   alias StoryarnWeb.Components.PublicLanguageSwitcher
+  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Layouts
 
   # ── Helpers ──────────────────────────────────────────────────────────
@@ -27,25 +28,25 @@ defmodule StoryarnWeb.LayoutsTest do
       catalog = vue.props["operation-catalog"]
 
       assert Enum.map(catalog, & &1["id"]) ==
-               ~w(goto variable_definition variable_usages entity_usages flow_callers create delete run_command open_view)
+               ~w(goto create delete run_command open_view)
 
       assert Enum.all?(catalog, fn operation ->
                Map.has_key?(operation, "parameters") and
                  Map.has_key?(operation, "resultType") and
-                 Map.has_key?(operation, "requiresProject") and
                  Map.has_key?(operation, "help") and
                  Enum.all?(operation["parameters"], &Map.has_key?(&1, "completionMode"))
              end)
-
-      refute vue.props["project-context"]
     end
 
-    test "marks project layout instances as reference-search contexts" do
+    test "project settings preserve project-scoped advanced search" do
       html =
-        render_component(&Layouts.command_palette/1,
+        render_component(&SettingsLayout.settings/1,
+          flash: %{},
           socket: mock_socket(),
           current_scope: %{user: nil},
-          project_context: true
+          current_path: "/workspaces/acme/projects/story/settings",
+          project: %{id: 7, name: "Story", slug: "story"},
+          inner_block: []
         )
 
       vue = LiveVue.Test.get_vue(html, name: "live/layouts/CommandPalette")

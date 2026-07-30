@@ -2,8 +2,8 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   @moduledoc """
   Serves the command palette for every LiveView in the authenticated app
   session: registry-backed parameter completion
-  (`palette_operation_options`), authorized reference lookups
-  (`palette_reference_lookup` / `palette_reference_pattern`), navigation search (`palette_nav`), entity creation
+  (`palette_operation_options`), authorized advanced project search
+  (`palette_advanced_search`), navigation search (`palette_nav`), entity creation
   (`palette_create_targets` / `palette_create`), entity deletion
   (`palette_delete_search` / `palette_delete`) and product analytics
   (`palette_opened`, command/search metrics and operation lifecycle metrics).
@@ -24,12 +24,15 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
+  import Phoenix.Component, only: [assign: 3]
+
   alias Storyarn.AI
   alias Storyarn.Analytics
   alias Storyarn.Collaboration
   alias Storyarn.CommandPalette
   alias Storyarn.Flows
   alias Storyarn.GlobalSearch
+  alias Storyarn.RateLimiter
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Workspaces
@@ -49,7 +52,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
                            workspace.toggle-sidebar flows.toggle-minimap
                            flows.fit-to-view flows.analyze scenes.fit-to-view
                            create.project create.sheet create.flow create.scene
-                           delete.sheet delete.flow delete.scene reference.open) ++
+                           delete.sheet delete.flow delete.scene advanced-search.open) ++
                           Enum.map(
                             ~w(dashboard sheets flows scenes assets localization),
                             &"project.go-to.#{&1}"
@@ -69,13 +72,14 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     "palette_operation_completed" => "palette operation completed",
     "palette_operation_abandoned" => "palette operation abandoned"
   }
-  @palette_events ~w(palette_operation_options palette_reference_lookup palette_reference_pattern
+  @palette_events ~w(palette_operation_options palette_advanced_search
                      palette_nav palette_create_targets palette_create
                      palette_delete_search palette_delete palette_opened palette_command_executed
                      palette_search_no_results) ++ @operation_analytics_events
   # Client-supplied ids above the PostgreSQL bigint range would raise on
   # parameter encoding instead of failing closed — bound them at the guard.
   @max_pg_bigint 9_223_372_036_854_775_807
+  @deep_search_minimum_interval_ms 750
 
   defguardp valid_database_id(value)
             when is_integer(value) and value > 0 and value <= @max_pg_bigint
@@ -84,13 +88,16 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
             when is_binary(value) and byte_size(value) > 0 and byte_size(value) <= 64
 
   def on_mount(:setup_palette, _params, _session, socket) do
-    {:cont,
-     Phoenix.LiveView.attach_hook(
-       socket,
-       :palette,
-       :handle_event,
-       &handle_palette_event/3
-     )}
+    socket =
+      socket
+      |> assign(:palette_deep_search_last_at, nil)
+      |> Phoenix.LiveView.attach_hook(
+        :palette,
+        :handle_event,
+        &handle_palette_event/3
+      )
+
+    {:cont, socket}
   end
 
   defp handle_palette_event(
@@ -102,14 +109,13 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
               byte_size(parameter_id) <= 64 and is_binary(query) and byte_size(query) <= 400 and is_integer(token) do
     with {:ok, %{mode: :server, source: source}} <-
            CommandPalette.parameter_completion(operation_id, parameter_id),
-         {:ok, page} <-
+         {:ok, items} <-
            operation_options(
              source,
              socket.assigns.current_scope,
-             current_project_id(socket),
              query
            ) do
-      {:halt, Map.merge(%{token: token}, page), socket}
+      {:halt, %{token: token, items: items}, socket}
     else
       _invalid_or_client_completion ->
         {:halt, %{token: token, error: "invalid_request"}, socket}
@@ -121,45 +127,32 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp handle_palette_event(
-         "palette_reference_lookup",
-         %{"operation_id" => operation_id, "target" => target, "token" => token},
+         "palette_advanced_search",
+         %{"query" => query, "submitted" => submitted, "token" => token},
          socket
        )
-       when is_binary(operation_id) and byte_size(operation_id) <= 64 and is_map(target) and is_integer(token) do
-    with project_id when is_integer(project_id) <- current_project_id(socket),
-         {:ok, page} <-
-           GlobalSearch.execute_reference_operation(
-             socket.assigns.current_scope,
-             project_id,
-             operation_id,
-             target
-           ) do
-      {:halt, reference_page_reply(page, token, socket), socket}
-    else
-      {:error, reason} ->
-        {:halt, %{token: token, error: reference_error(reason)}, socket}
+       when is_binary(query) and byte_size(query) <= 400 and is_boolean(submitted) and is_integer(token) do
+    case reserve_deep_search(socket, query, submitted) do
+      {:ok, socket} ->
+        with project_id when is_integer(project_id) <- current_project_id(socket),
+             {:ok, page} <-
+               GlobalSearch.advanced_project_search(
+                 socket.assigns.current_scope,
+                 project_id,
+                 query,
+                 submitted: submitted
+               ) do
+          {:halt, advanced_search_reply(page, token, socket), socket}
+        else
+          {:error, reason} ->
+            {:halt, %{token: token, error: advanced_search_error(reason)}, socket}
 
-      _no_project ->
-        {:halt, %{token: token, error: "unavailable"}, socket}
-    end
-  end
+          _no_project ->
+            {:halt, %{token: token, error: "unavailable"}, socket}
+        end
 
-  defp handle_palette_event("palette_reference_pattern", %{"pattern" => pattern, "token" => token}, socket)
-       when is_binary(pattern) and byte_size(pattern) <= 400 and is_integer(token) do
-    with project_id when is_integer(project_id) <- current_project_id(socket),
-         {:ok, page} <-
-           GlobalSearch.reference_pattern(
-             socket.assigns.current_scope,
-             project_id,
-             pattern
-           ) do
-      {:halt, reference_page_reply(page, token, socket), socket}
-    else
-      {:error, reason} ->
-        {:halt, %{token: token, error: reference_error(reason)}, socket}
-
-      _no_project ->
-        {:halt, %{token: token, error: "unavailable"}, socket}
+      {:error, :rate_limited, socket} ->
+        {:halt, %{token: token, error: "rate_limited"}, socket}
     end
   end
 
@@ -351,8 +344,8 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   defp handle_palette_event(_event, _params, socket), do: {:cont, socket}
 
-  defp operation_options(:navigation, scope, _project_id, query) do
-    destinations = GlobalSearch.destinations_page(scope, query)
+  defp operation_options(:navigation, scope, query) do
+    destinations = GlobalSearch.destinations(scope, query)
 
     items =
       (destinations.workspaces ++ destinations.projects ++ destinations.entities)
@@ -370,14 +363,14 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
         )
       end)
 
-    {:ok, %{items: items, truncated: destinations.truncated}}
+    {:ok, items}
   end
 
-  defp operation_options(:deletable_entities, scope, _project_id, query) do
-    page = GlobalSearch.deletable_entities_page(scope, query)
-
+  defp operation_options(:deletable_entities, scope, query) do
     items =
-      Enum.map(page.items, fn destination ->
+      scope
+      |> GlobalSearch.deletable_entities(query)
+      |> Enum.map(fn destination ->
         type = Atom.to_string(destination.type)
 
         %{
@@ -389,43 +382,77 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
         }
       end)
 
-    {:ok, %{items: items, truncated: page.truncated}}
+    {:ok, items}
   end
 
-  defp operation_options(source, scope, project_id, query)
-       when source in [:sheet_variables, :reference_entities, :flows] and is_integer(project_id) do
-    GlobalSearch.reference_options(scope, project_id, source, query)
-  end
-
-  defp operation_options(_client_or_unknown_source, _scope, _project_id, _query), do: :error
+  defp operation_options(_client_or_unknown_source, _scope, _query), do: :error
 
   defp current_project_id(%{assigns: %{project: %{id: project_id}}}) when is_integer(project_id), do: project_id
 
   defp current_project_id(_socket), do: nil
 
-  defp reference_page_reply(page, token, socket) do
-    %{
-      token: token,
-      items: Enum.map(page.items, &reference_hit_item(&1, socket)),
-      truncated: page.truncated
-    }
+  defp reserve_deep_search(socket, <<"*", _query::binary>>, true) do
+    now = System.monotonic_time(:millisecond)
+
+    with :ok <- RateLimiter.check_palette_deep_search(socket.assigns.current_scope.user.id),
+         :ok <- check_deep_search_interval(socket.assigns.palette_deep_search_last_at, now) do
+      {:ok, assign(socket, :palette_deep_search_last_at, now)}
+    else
+      {:error, :rate_limited} -> {:error, :rate_limited, socket}
+    end
   end
 
-  defp reference_hit_item(hit, socket) do
-    destination = hit.destination
+  defp reserve_deep_search(socket, _query, _submitted), do: {:ok, socket}
 
+  defp check_deep_search_interval(last_at, now)
+       when is_integer(last_at) and now - last_at < @deep_search_minimum_interval_ms, do: {:error, :rate_limited}
+
+  defp check_deep_search_interval(_last_at, _now), do: :ok
+
+  defp advanced_search_reply(page, token, socket) do
+    put_optional(
+      %{
+        token: token,
+        mode: Atom.to_string(page.mode),
+        items: Enum.map(page.items, &advanced_search_item(&1, socket)),
+        truncated: page.truncated
+      },
+      :fallback,
+      advanced_search_fallback(page)
+    )
+  end
+
+  defp advanced_search_fallback(%{fallback: fallback}) when is_atom(fallback), do: Atom.to_string(fallback)
+
+  defp advanced_search_fallback(_page), do: nil
+
+  defp advanced_search_item(%{action: %{kind: :complete, value: value}} = hit, _socket) do
     %{
       id: hit.id,
       kind: Atom.to_string(hit.kind),
-      type: Atom.to_string(destination.type),
+      group: Atom.to_string(hit.group),
+      type: Atom.to_string(hit.type),
       label: hit.label,
       context: hit.context,
-      url: reference_destination_url(destination, socket),
-      meta: stringify_reference_meta(hit.meta)
+      action: %{kind: "complete", value: value},
+      meta: stringify_advanced_search_meta(hit.meta)
     }
   end
 
-  defp reference_destination_url(destination, socket) do
+  defp advanced_search_item(%{action: %{kind: :navigate, destination: destination}} = hit, socket) do
+    %{
+      id: hit.id,
+      kind: Atom.to_string(hit.kind),
+      group: Atom.to_string(hit.group),
+      type: Atom.to_string(hit.type),
+      label: hit.label,
+      context: hit.context,
+      action: %{kind: "navigate", url: advanced_search_destination_url(destination, socket)},
+      meta: stringify_advanced_search_meta(hit.meta)
+    }
+  end
+
+  defp advanced_search_destination_url(destination, socket) do
     project = socket.assigns.project
     workspace = socket.assigns.workspace
 
@@ -437,41 +464,42 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
         workspace_slug: workspace.slug
       })
 
-    append_reference_focus(base, destination.focus)
+    append_search_focus(base, Map.get(destination, :focus))
   end
 
-  defp append_reference_focus(base, nil), do: base
+  defp append_search_focus(base, nil), do: base
 
-  defp append_reference_focus(base, %{type: :node, id: id}) when valid_database_id(id), do: "#{base}?highlight=node:#{id}"
+  defp append_search_focus(base, %{type: :node, id: id}) when valid_database_id(id), do: "#{base}?highlight=node:#{id}"
 
-  defp append_reference_focus(base, %{type: type, id: id}) when type in [:pin, :zone] and valid_database_id(id),
+  defp append_search_focus(base, %{type: type, id: id}) when type in [:pin, :zone] and valid_database_id(id),
     do: "#{base}?highlight=#{type}:#{id}"
 
-  defp append_reference_focus(base, %{type: :block, id: id}) when valid_database_id(id),
-    do: "#{base}?highlight=block:#{id}"
+  defp append_search_focus(base, %{type: :block, id: id}) when valid_database_id(id), do: "#{base}?highlight=block:#{id}"
 
-  defp append_reference_focus(base, %{type: :cell, block_id: block_id, row_id: row_id, column_id: column_id})
+  defp append_search_focus(base, %{type: :cell, block_id: block_id, row_id: row_id, column_id: column_id})
        when valid_database_id(block_id) and valid_database_id(row_id) and valid_database_id(column_id),
        do: "#{base}?highlight=cell:#{block_id}:#{row_id}:#{column_id}"
 
-  defp append_reference_focus(base, _invalid_focus), do: base
+  defp append_search_focus(base, _invalid_focus), do: base
 
-  defp stringify_reference_meta(meta) when is_map(meta) do
+  defp stringify_advanced_search_meta(meta) when is_map(meta) do
     Map.new(meta, fn
-      {key, value} when is_atom(key) -> {Atom.to_string(key), stringify_reference_meta_value(value)}
-      {key, value} -> {key, stringify_reference_meta_value(value)}
+      {key, value} when is_atom(key) -> {Atom.to_string(key), stringify_advanced_search_meta_value(value)}
+      {key, value} -> {key, stringify_advanced_search_meta_value(value)}
     end)
   end
 
-  defp stringify_reference_meta(_meta), do: %{}
+  defp stringify_advanced_search_meta(_meta), do: %{}
 
-  defp stringify_reference_meta_value(value) when is_atom(value), do: Atom.to_string(value)
-  defp stringify_reference_meta_value(value), do: value
+  defp stringify_advanced_search_meta_value(value) when is_atom(value), do: Atom.to_string(value)
+  defp stringify_advanced_search_meta_value(value), do: value
 
-  defp reference_error(:unauthorized), do: "unauthorized"
-  defp reference_error(:not_found), do: "not_found"
-  defp reference_error(:invalid_request), do: "invalid_request"
-  defp reference_error(_reason), do: "lookup_failed"
+  defp advanced_search_error(:unauthorized), do: "unauthorized"
+  defp advanced_search_error(:not_found), do: "not_found"
+  defp advanced_search_error(:invalid_request), do: "invalid_request"
+  defp advanced_search_error(:not_submitted), do: "not_submitted"
+  defp advanced_search_error(:rate_limited), do: "rate_limited"
+  defp advanced_search_error(_reason), do: "lookup_failed"
 
   defp put_optional(map, _key, nil), do: map
   defp put_optional(map, key, value), do: Map.put(map, key, value)

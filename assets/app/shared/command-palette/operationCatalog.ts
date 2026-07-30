@@ -1,25 +1,20 @@
 export type OperationSerializedValue = string | number | boolean | null | Record<string, unknown>;
 
-export type OperationDomain = "navigation" | "references" | "actions";
+export type OperationDomain = "navigation" | "actions";
 export type OperationLatency = "instant" | "interactive" | "deferred";
 export type OperationAuthorization = "view" | "edit_content" | "contextual";
-export type OperationResultType = "navigation" | "lookup" | "mutation" | "command";
+export type OperationResultType = "navigation" | "mutation" | "command";
 export type OperationParameterType =
   | "destination"
   | "entity_type"
   | "project"
   | "entity"
-  | "flow"
-  | "variable"
   | "command"
   | "view";
 export type OperationCompletionSource =
   | "navigation"
   | "editable_projects"
   | "deletable_entities"
-  | "reference_entities"
-  | "flows"
-  | "sheet_variables"
   | "entity_types"
   | "commands"
   | "views";
@@ -58,7 +53,6 @@ export interface OperationDefinition {
   parameters: OperationParameterDefinition[];
   latency: OperationLatency;
   authorization: OperationAuthorization;
-  requiresProject: boolean;
   resultType: OperationResultType;
   phrase: OperationPhrasePart[];
   help: OperationHelp;

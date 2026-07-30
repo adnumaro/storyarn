@@ -96,7 +96,6 @@ const gotoOperation: OperationDefinition = {
   ],
   latency: "interactive",
   authorization: "view",
-  requiresProject: false,
   resultType: "navigation",
   phrase: [
     { kind: "text", textKey: "palette.operations.goto.phrase.prefix" },
@@ -133,7 +132,6 @@ const createOperation: OperationDefinition = {
   ],
   latency: "instant",
   authorization: "edit_content",
-  requiresProject: false,
   resultType: "mutation",
   phrase: [
     { kind: "text", textKey: "palette.operations.create.phrase.prefix" },
@@ -171,7 +169,6 @@ function singleParameterOperation(
     ],
     latency: id === "delete" ? "interactive" : "instant",
     authorization: id === "delete" ? "edit_content" : "contextual",
-    requiresProject: false,
     resultType,
     phrase: [
       { kind: "text", textKey: `palette.operations.${id}.phrase.prefix` },
@@ -206,52 +203,6 @@ const openViewOperation = singleParameterOperation(
   "views",
   "client",
   "navigation",
-);
-
-function referenceOperation(
-  id: "variable_definition" | "variable_usages" | "entity_usages" | "flow_callers",
-  parameterId: "variable" | "entity" | "flow",
-  completionSource: "sheet_variables" | "reference_entities" | "flows",
-): OperationDefinition {
-  return {
-    id,
-    domain: "references",
-    parameters: [
-      {
-        id: parameterId,
-        type: parameterId,
-        completionSource,
-        completionMode: "server",
-        required: true,
-        labelKey: `palette.operations.${id}.parameters.${parameterId}`,
-      },
-    ],
-    latency: "instant",
-    authorization: "view",
-    requiresProject: true,
-    resultType: "lookup",
-    phrase: [
-      { kind: "text", textKey: `palette.operations.${id}.phrase.prefix` },
-      { kind: "parameter", parameterId },
-    ],
-    help: {
-      labelKey: `palette.operations.${id}.label`,
-      descriptionKey: `palette.operations.${id}.description`,
-      exampleKey: `palette.operations.${id}.example`,
-      pattern: id === "variable_definition" ? "mc.jaime.health" : null,
-    },
-  };
-}
-
-const variableDefinitionOperation = referenceOperation(
-  "variable_definition",
-  "variable",
-  "sheet_variables",
-);
-const variableUsagesOperation = referenceOperation(
-  "variable_usages",
-  "variable",
-  "sheet_variables",
 );
 
 function pressPaletteShortcut(init: KeyboardEventInit = { ctrlKey: true }) {
@@ -549,6 +500,582 @@ describe("CommandPalette", () => {
     expect(wrapper.text()).not.toContain("What Storyarn can do");
   });
 
+  describe("advanced search prefixes", () => {
+    it("opens prefix help with ? without issuing a server search", async () => {
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockClear();
+
+      await wrapper.find("[data-slot='command-input']").setValue("?");
+      await nextTick();
+
+      expect(wrapper.find('[data-testid="palette-advanced-search-help"]').exists()).toBe(true);
+      expect(wrapper.text()).toContain("Search prefixes");
+      expect(
+        vi
+          .mocked(live.pushEvent)
+          .mock.calls.filter(([event]) => event === "palette_advanced_search"),
+      ).toHaveLength(0);
+    });
+
+    it("explains contains and not-contains operators in variable search help", async () => {
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockClear();
+
+      await wrapper.find("[data-slot='command-input']").setValue("$");
+      await nextTick();
+
+      const help = wrapper.get('[data-testid="palette-advanced-search-help"]');
+      expect(help.attributes("data-selected-prefix")).toBe("$");
+      expect(help.text()).toContain("Variable value operators");
+      expect(help.text()).toContain("$faction ~ clav");
+      expect(help.text()).toContain("Contains text");
+      expect(help.text()).toContain(
+        "Matches values that include this text, ignoring uppercase and lowercase.",
+      );
+      expect(help.text()).toContain("$faction !~ clav");
+      expect(help.text()).toContain("Does not contain text");
+      expect(help.text()).toContain(
+        "Matches values that do not include this text, ignoring uppercase and lowercase.",
+      );
+      expect(
+        vi
+          .mocked(live.pushEvent)
+          .mock.calls.filter(([event]) => event === "palette_advanced_search"),
+      ).toHaveLength(0);
+    });
+
+    it("localizes contains and not-contains semantics in variable search help", async () => {
+      setTestLocale("es");
+      const { wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+
+      await wrapper.find("[data-slot='command-input']").setValue("$");
+      await nextTick();
+
+      const help = wrapper.get('[data-testid="palette-advanced-search-help"]');
+      expect(help.text()).toContain("Operadores de valor");
+      expect(help.text()).toContain("$faction ~ clav");
+      expect(help.text()).toContain("Contiene texto");
+      expect(help.text()).toContain(
+        "Coincide con valores que incluyen este texto, sin distinguir mayúsculas y minúsculas.",
+      );
+      expect(help.text()).toContain("$faction !~ clav");
+      expect(help.text()).toContain("No contiene texto");
+      expect(help.text()).toContain(
+        "Coincide con valores que no incluyen este texto, sin distinguir mayúsculas y minúsculas.",
+      );
+    });
+
+    it("keeps foo.bar on normal navigation search", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockClear();
+
+      await wrapper.find("[data-slot='command-input']").setValue("foo.bar");
+      await vi.advanceTimersByTimeAsync(200);
+      await nextTick();
+
+      const navCalls = vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_nav");
+      expect(navCalls).toHaveLength(1);
+      expect(navCalls[0]?.[1]).toMatchObject({ query: "foo.bar" });
+      expect(
+        vi
+          .mocked(live.pushEvent)
+          .mock.calls.filter(([event]) => event === "palette_advanced_search"),
+      ).toHaveLength(0);
+    });
+
+    it("debounces $ searches and sends the unmodified prefixed query", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockClear();
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_advanced_search" && callback) {
+          callback({
+            token: payload?.token as number,
+            mode: "variables",
+            items: [],
+            truncated: false,
+          });
+        }
+      });
+
+      await wrapper.find("[data-slot='command-input']").setValue("$health != 0");
+      await vi.advanceTimersByTimeAsync(199);
+      expect(
+        vi
+          .mocked(live.pushEvent)
+          .mock.calls.filter(([event]) => event === "palette_advanced_search"),
+      ).toHaveLength(0);
+
+      await vi.advanceTimersByTimeAsync(1);
+      await nextTick();
+
+      const advancedCalls = vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_advanced_search");
+      expect(advancedCalls).toHaveLength(1);
+      expect(advancedCalls[0]?.[1]).toMatchObject({
+        query: "$health != 0",
+        submitted: false,
+        token: expect.any(Number),
+      });
+    });
+
+    it("settles a current server error response instead of leaving the search loading", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_advanced_search" && callback) {
+          callback({
+            token: payload?.token as number,
+            error: "invalid_request",
+          });
+        }
+      });
+
+      await wrapper.find("[data-slot='command-input']").setValue("$health");
+      await vi.advanceTimersByTimeAsync(200);
+      await nextTick();
+
+      expect(wrapper.find('[role="alert"]').text()).toBe(
+        "The command request was invalid. Refresh and try again.",
+      );
+      expect(wrapper.text()).not.toContain("Loading…");
+    });
+
+    it("settles a malformed current response whose mode does not match the request", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_advanced_search" && callback) {
+          callback({
+            token: payload?.token as number,
+            mode: "flows",
+            items: [],
+          });
+        }
+      });
+
+      await wrapper.find("[data-slot='command-input']").setValue("$health");
+      await vi.advanceTimersByTimeAsync(200);
+      await nextTick();
+
+      expect(wrapper.find('[role="alert"]').text()).toBe(
+        "Storyarn couldn't complete this advanced search. Try again.",
+      );
+      expect(wrapper.text()).not.toContain("Loading…");
+    });
+
+    it("localizes result kinds instead of exposing backend identifiers", async () => {
+      vi.useFakeTimers();
+      setTestLocale("es");
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_advanced_search" && callback) {
+          callback({
+            token: payload?.token as number,
+            mode: "variables",
+            items: [
+              {
+                id: "definition:42",
+                group: "owner",
+                kind: "definition",
+                type: "sheet",
+                label: "hero.health",
+                action: { kind: "navigate", url: "/sheets/4" },
+              },
+            ],
+          });
+        }
+      });
+
+      await wrapper.find("[data-slot='command-input']").setValue("$health");
+      await vi.advanceTimersByTimeAsync(200);
+      await nextTick();
+
+      expect(wrapper.get("[data-lookup-result-id='definition:42']").text()).toContain("Definición");
+    });
+
+    it("shows qualified references only as fallback when a predicate has no matches", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_advanced_search" && callback) {
+          callback({
+            token: payload?.token as number,
+            mode: "variables",
+            fallback: "qualified_references",
+            items: [
+              {
+                id: "definition:nyx-faction",
+                group: "suggestion",
+                kind: "definition",
+                type: "sheet",
+                label: "nyx.faction",
+                action: {
+                  kind: "complete",
+                  value: "$nyx.faction = conclave",
+                },
+              },
+            ],
+          });
+        }
+      });
+
+      await wrapper.find("[data-slot='command-input']").setValue("$faction = conclave");
+      await vi.advanceTimersByTimeAsync(200);
+      await nextTick();
+
+      expect(wrapper.get('[data-testid="palette-predicate-no-matches"]').text()).toBe(
+        "No references matched this search.",
+      );
+      expect(wrapper.text()).toContain("Related references");
+
+      selectItem(wrapper, "lookup-result-definition:nyx-faction");
+      await nextTick();
+
+      expect(wrapper.find<HTMLInputElement>("[data-slot='command-input']").element.value).toBe(
+        "$nyx.faction = conclave",
+      );
+    });
+
+    it("does not show predicate fallback messaging when real matches exist", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_advanced_search" && callback) {
+          callback({
+            token: payload?.token as number,
+            mode: "variables",
+            items: [
+              {
+                id: "definition:kael-faction",
+                group: "initial",
+                kind: "definition",
+                type: "sheet",
+                label: "kael.faction",
+                action: { kind: "navigate", url: "/sheets/kael" },
+              },
+            ],
+          });
+        }
+      });
+
+      await wrapper.find("[data-slot='command-input']").setValue("$faction = conclave");
+      await vi.advanceTimersByTimeAsync(200);
+      await nextTick();
+
+      expect(wrapper.find('[data-testid="palette-predicate-no-matches"]').exists()).toBe(false);
+      expect(wrapper.find("[data-lookup-result-id='definition:kael-faction']").exists()).toBe(true);
+      expect(wrapper.text()).not.toContain("Related references");
+    });
+
+    it("applies a completion action without closing or navigating", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_advanced_search" && callback) {
+          callback({
+            token: payload?.token as number,
+            mode: "variables",
+            items: [
+              {
+                id: "variable:health",
+                group: "owner",
+                kind: "definition",
+                type: "sheet",
+                label: "mc.jaime.health",
+                context: "Jaime",
+                action: { kind: "complete", value: "$mc.jaime.health" },
+              },
+            ],
+          });
+        }
+      });
+
+      await wrapper.find("[data-slot='command-input']").setValue("$hea");
+      await vi.advanceTimersByTimeAsync(200);
+      await nextTick();
+
+      selectItem(wrapper, "lookup-result-variable:health");
+      await nextTick();
+
+      expect(wrapper.find<HTMLInputElement>("[data-slot='command-input']").element.value).toBe(
+        "$mc.jaime.health",
+      );
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
+      expect(liveNavigate).not.toHaveBeenCalled();
+    });
+
+    it("navigates only when an advanced result carries a navigate action", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_advanced_search" && callback) {
+          callback({
+            token: payload?.token as number,
+            mode: "variables",
+            items: [
+              {
+                id: "definition:42",
+                group: "owner",
+                kind: "definition",
+                type: "sheet",
+                label: "mc.jaime.health",
+                action: {
+                  kind: "navigate",
+                  url: "/workspaces/acme/projects/veilbreak/sheets/4?highlight=block:42",
+                },
+              },
+            ],
+          });
+        }
+      });
+
+      await wrapper.find("[data-slot='command-input']").setValue("$health");
+      await vi.advanceTimersByTimeAsync(200);
+      await nextTick();
+
+      selectItem(wrapper, "lookup-result-definition:42");
+      await nextTick();
+
+      expect(liveNavigate).toHaveBeenCalledWith(
+        "/workspaces/acme/projects/veilbreak/sheets/4?highlight=block:42",
+      );
+      expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
+      expect(live.pushEvent).toHaveBeenCalledWith(
+        "palette_command_executed",
+        { command_id: "advanced-search.open", surface: "global" },
+        undefined,
+      );
+    });
+
+    it("ignores stale advanced-search replies after the query changes", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette([], true);
+      let resolveHealth: (() => void) | undefined;
+      let resolveMana: (() => void) | undefined;
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event !== "palette_advanced_search" || !callback) return;
+
+        const token = payload?.token as number;
+        const query = payload?.query;
+        const reply = (id: string, label: string) =>
+          callback({
+            token,
+            mode: "variables",
+            items: [
+              {
+                id,
+                group: "owner",
+                kind: "definition",
+                type: "sheet",
+                label,
+                action: { kind: "navigate", url: `/sheets/${id}` },
+              },
+            ],
+          });
+
+        if (query === "$health") {
+          resolveHealth = () => reply("health", "Health");
+        } else if (query === "$mana") {
+          resolveMana = () => reply("mana", "Mana");
+        }
+      });
+
+      const input = wrapper.find("[data-slot='command-input']");
+      await input.setValue("$health");
+      await vi.advanceTimersByTimeAsync(200);
+      await input.setValue("$mana");
+      await vi.advanceTimersByTimeAsync(200);
+
+      resolveHealth!();
+      await nextTick();
+      expect(wrapper.find("[data-lookup-result-id='health']").exists()).toBe(false);
+
+      resolveMana!();
+      await nextTick();
+      expect(wrapper.find("[data-lookup-result-id='mana']").exists()).toBe(true);
+    });
+
+    it("runs * only on a non-IME Enter", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockClear();
+      vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+        if (event === "palette_advanced_search" && callback) {
+          callback({
+            token: payload?.token as number,
+            mode: "all",
+            items: [],
+            truncated: false,
+          });
+        }
+      });
+
+      const input = wrapper.find<HTMLInputElement>("[data-slot='command-input']");
+      await input.setValue("*ancient tome");
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(
+        vi
+          .mocked(live.pushEvent)
+          .mock.calls.filter(([event]) => event === "palette_advanced_search"),
+      ).toHaveLength(0);
+
+      input.element.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+          isComposing: true,
+        }),
+      );
+      await nextTick();
+      expect(
+        vi
+          .mocked(live.pushEvent)
+          .mock.calls.filter(([event]) => event === "palette_advanced_search"),
+      ).toHaveLength(0);
+
+      input.element.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+      await nextTick();
+
+      const advancedCalls = vi
+        .mocked(live.pushEvent)
+        .mock.calls.filter(([event]) => event === "palette_advanced_search");
+      expect(advancedCalls).toHaveLength(1);
+      expect(advancedCalls[0]?.[1]).toMatchObject({
+        query: "*ancient tome",
+        submitted: true,
+        token: expect.any(Number),
+      });
+    });
+
+    it("keeps the intensive-search warning visible without repeating the submit hint while loading", async () => {
+      const { live, wrapper } = mountPalette([], true);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockImplementation(() => {
+        // Keep the request pending to inspect the in-flight state.
+      });
+
+      const input = wrapper.find<HTMLInputElement>("[data-slot='command-input']");
+      await input.setValue("*ancient tome");
+
+      expect(wrapper.text()).toContain(
+        "Full search scans authored content across the project and may take longer.",
+      );
+      expect(wrapper.text()).toContain("Press Enter when you are ready to run this search.");
+
+      input.element.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+      await nextTick();
+
+      expect(wrapper.text()).toContain("Loading…");
+      expect(wrapper.text()).not.toContain("Press Enter when you are ready to run this search.");
+      expect(wrapper.text()).toContain(
+        "Full search scans authored content across the project and may take longer.",
+      );
+    });
+
+    it("keeps prefix help discoverable outside a project without issuing a search", async () => {
+      const { live, wrapper } = mountPalette([], false);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockClear();
+
+      await wrapper.find("[data-slot='command-input']").setValue("?");
+      await nextTick();
+
+      expect(wrapper.find('[data-testid="palette-advanced-search-help"]').exists()).toBe(true);
+      expect(wrapper.text()).toContain("Search prefixes");
+      expect(
+        vi
+          .mocked(live.pushEvent)
+          .mock.calls.filter(([event]) => event === "palette_advanced_search"),
+      ).toHaveLength(0);
+    });
+
+    it("does not request advanced search outside a project", async () => {
+      vi.useFakeTimers();
+      const { live, wrapper } = mountPalette([], false);
+
+      pressPaletteShortcut();
+      await nextTick();
+      vi.mocked(live.pushEvent).mockClear();
+
+      await wrapper.find("[data-slot='command-input']").setValue("$health");
+      await vi.advanceTimersByTimeAsync(500);
+      await nextTick();
+
+      expect(wrapper.text()).toContain(
+        "Advanced search is available while you are inside a project.",
+      );
+      expect(
+        vi
+          .mocked(live.pushEvent)
+          .mock.calls.filter(([event]) => event === "palette_advanced_search"),
+      ).toHaveLength(0);
+    });
+  });
+
   it("builds goto through an atomic slot and navigates only after explicit submit", async () => {
     const { live, wrapper } = mountPalette([gotoOperation]);
     vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
@@ -617,673 +1144,6 @@ describe("CommandPalette", () => {
       ["palette_operation_selected", { operation_id: "goto", surface: "global" }, undefined],
       ["palette_operation_completed", { operation_id: "goto", surface: "global" }, undefined],
     ]);
-  });
-
-  it("keeps reference operations visible but unavailable outside a project", async () => {
-    const { wrapper } = mountPalette([variableDefinitionOperation]);
-
-    pressPaletteShortcut();
-    await nextTick();
-
-    const operation = wrapper.get("[data-operation-id='variable_definition']");
-    expect(operation.attributes("data-operation-available")).toBe("false");
-    expect(operation.text()).toContain("Open a project to use reference lookups.");
-
-    selectItem(wrapper, "operation-variable_definition");
-    await nextTick();
-    expect(wrapper.find("[data-slot='palette-operation-input']").exists()).toBe(false);
-  });
-
-  it("derives project requirements from the reference-operation contract", async () => {
-    const futureReferenceOperation: OperationDefinition = {
-      ...variableDefinitionOperation,
-      id: "future_reference_lookup",
-    };
-    const { wrapper } = mountPalette([futureReferenceOperation]);
-
-    pressPaletteShortcut();
-    await nextTick();
-
-    const operation = wrapper.get("[data-operation-id='future_reference_lookup']");
-    const availability = operation.attributes("data-operation-available");
-    selectItem(wrapper, "operation-future_reference_lookup");
-    await nextTick();
-    const openedTemplate = wrapper.find("[data-slot='palette-operation-input']").exists();
-    pressPaletteShortcut();
-    await nextTick();
-
-    expect(availability).toBe("false");
-    expect(openedTemplate).toBe(false);
-  });
-
-  it("runs a guided reference lookup with an opaque target and opens an authorized result", async () => {
-    const { live, wrapper } = mountPalette([variableUsagesOperation], true);
-
-    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
-      if (!callback) return;
-
-      if (event === "palette_nav") {
-        callback({ token: payload?.token as number, groups: [] });
-      } else if (event === "palette_create_targets") {
-        callback({ token: payload?.token as number, projects: [] });
-      } else if (event === "palette_operation_options") {
-        callback({
-          token: payload?.token as number,
-          items: [
-            {
-              id: "variable:mc.jaime.health",
-              value: { block_id: 9, qualified_ref: "mc.jaime.health" },
-              label: "mc.jaime.health",
-              context: "Characters · Jaime",
-            },
-          ],
-        });
-      } else if (event === "palette_reference_lookup") {
-        callback({
-          token: payload?.token as number,
-          items: [
-            {
-              id: "flow-node:31",
-              kind: "read",
-              type: "flow",
-              label: "Check Jaime health",
-              context: "Opening",
-              url: "/workspaces/acme/projects/veilbreak/flows/opening?highlight=node:31",
-            },
-          ],
-          truncated: false,
-        });
-      }
-    });
-
-    pressPaletteShortcut();
-    await nextTick();
-    selectItem(wrapper, "operation-variable_usages");
-    await nextTick();
-    selectItem(wrapper, "operation-option-variable:mc.jaime.health");
-    await nextTick();
-    selectItem(wrapper, "operation.execute");
-    await flushPromises();
-
-    expect(live.pushEvent).toHaveBeenCalledWith(
-      "palette_reference_lookup",
-      {
-        operation_id: "variable_usages",
-        target: { block_id: 9, qualified_ref: "mc.jaime.health" },
-        token: expect.any(Number),
-      },
-      expect.any(Function),
-    );
-    expect(wrapper.find("[data-lookup-result-id='flow-node:31']").text()).toContain(
-      "Check Jaime health",
-    );
-    expect(wrapper.find("[data-slot='command-input']").exists()).toBe(false);
-
-    await wrapper.get('[data-testid="palette-lookup-header"] button').trigger("click");
-    await nextTick();
-    selectItem(wrapper, "operation.execute");
-    await flushPromises();
-
-    const lifecycleEvents = vi
-      .mocked(live.pushEvent)
-      .mock.calls.filter(([event]) =>
-        ["palette_operation_selected", "palette_operation_completed"].includes(event),
-      )
-      .map(([event]) => event);
-    expect(lifecycleEvents).toEqual([
-      "palette_operation_selected",
-      "palette_operation_completed",
-      "palette_operation_selected",
-      "palette_operation_completed",
-    ]);
-
-    selectItem(wrapper, "lookup-result-flow-node:31");
-    await nextTick();
-
-    expect(liveNavigate).toHaveBeenCalledWith(
-      "/workspaces/acme/projects/veilbreak/flows/opening?highlight=node:31",
-    );
-    expect(live.pushEvent).toHaveBeenCalledWith(
-      "palette_command_executed",
-      { command_id: "reference.open", surface: "global" },
-      undefined,
-    );
-    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(false);
-
-    const analyticsPayloads = vi
-      .mocked(live.pushEvent)
-      .mock.calls.filter(([event]) =>
-        [
-          "palette_operation_selected",
-          "palette_operation_completed",
-          "palette_command_executed",
-        ].includes(event),
-      )
-      .map(([, payload]) => JSON.stringify(payload));
-    expect(analyticsPayloads.every((payload) => !payload.includes("flow-node:31"))).toBe(true);
-    expect(analyticsPayloads.every((payload) => !payload.includes("mc.jaime.health"))).toBe(true);
-  });
-
-  it("ignores a guided reference reply after returning to its operation", async () => {
-    const { live, wrapper } = mountPalette([variableDefinitionOperation], true);
-    let resolveLookup: (() => void) | undefined;
-
-    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
-      if (!callback) return;
-
-      if (event === "palette_nav") {
-        callback({ token: payload?.token as number, groups: [] });
-      } else if (event === "palette_create_targets") {
-        callback({ token: payload?.token as number, projects: [] });
-      } else if (event === "palette_operation_options") {
-        callback({
-          token: payload?.token as number,
-          items: [
-            {
-              id: "variable:mc.jaime.health",
-              value: { block_id: 9, qualified_ref: "mc.jaime.health" },
-              label: "mc.jaime.health",
-            },
-          ],
-        });
-      } else if (event === "palette_reference_lookup") {
-        const token = payload?.token as number;
-        resolveLookup = () =>
-          callback({
-            token,
-            items: [
-              {
-                id: "sheet-block:9",
-                kind: "definition",
-                type: "sheet",
-                label: "Health",
-                url: "/sheets/characters?highlight=block:9",
-              },
-            ],
-          });
-      }
-    });
-
-    pressPaletteShortcut();
-    await nextTick();
-    selectItem(wrapper, "operation-variable_definition");
-    await nextTick();
-    selectItem(wrapper, "operation-option-variable:mc.jaime.health");
-    await nextTick();
-    selectItem(wrapper, "operation.execute");
-    await nextTick();
-
-    await wrapper.get('[data-testid="palette-lookup-header"] button').trigger("click");
-    await nextTick();
-    resolveLookup!();
-    await nextTick();
-
-    expect(wrapper.find("[data-slot='palette-operation-input']").exists()).toBe(true);
-    expect(wrapper.find("[data-lookup-result-id='sheet-block:9']").exists()).toBe(false);
-  });
-
-  it("keeps a dotted shortcut navigation result alongside the reference-pattern door", async () => {
-    vi.useFakeTimers();
-    const { live, wrapper } = mountPalette([gotoOperation, variableDefinitionOperation], true);
-
-    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
-      if (!callback) return;
-
-      if (event === "palette_nav") {
-        callback({
-          token: payload?.token as number,
-          groups:
-            payload?.query === "mc.jaime"
-              ? [
-                  {
-                    key: "sheets",
-                    items: [
-                      {
-                        id: "nav.sheet.7",
-                        type: "sheet",
-                        label: "Jaime",
-                        shortcut: "mc.jaime",
-                        url: "/sheets/7",
-                      },
-                    ],
-                  },
-                ]
-              : [],
-        });
-      } else if (event === "palette_create_targets") {
-        callback({ token: payload?.token as number, projects: [] });
-      } else if (event === "palette_reference_pattern") {
-        callback({
-          token: payload?.token as number,
-          items: [],
-          truncated: false,
-        });
-      }
-    });
-
-    pressPaletteShortcut();
-    await nextTick();
-    await wrapper.find("[data-slot='command-input']").setValue("mc.jaime");
-    await vi.advanceTimersByTimeAsync(200);
-    await nextTick();
-
-    const calls = vi.mocked(live.pushEvent).mock.calls;
-    const calledPattern = calls.some(
-      ([event, payload]) =>
-        event === "palette_reference_pattern" && payload?.pattern === "mc.jaime",
-    );
-    const calledNavigation = calls.some(
-      ([event, payload]) => event === "palette_nav" && payload?.query === "mc.jaime",
-    );
-    const values = itemValues(wrapper);
-    const text = wrapper.text();
-    pressPaletteShortcut();
-    await nextTick();
-
-    expect(calledPattern).toBe(true);
-    expect(calledNavigation).toBe(true);
-    expect(values).toContain("nav.sheet.7");
-    expect(text).not.toContain("No references found");
-  });
-
-  it("blocks stale dotted-shortcut navigation while its replacement request is pending", async () => {
-    vi.useFakeTimers();
-    const { live, wrapper } = mountPalette([gotoOperation, variableDefinitionOperation], true);
-    let resolveReplacementNavigation: (() => void) | undefined;
-
-    const groups = [
-      {
-        key: "sheets",
-        items: [
-          {
-            id: "nav.sheet.7",
-            type: "sheet",
-            label: "Jaime",
-            shortcut: "mc.jaime",
-            url: "/sheets/7",
-          },
-        ],
-      },
-    ];
-
-    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
-      if (!callback) return;
-
-      if (event === "palette_nav") {
-        const reply = () => callback({ token: payload?.token as number, groups });
-
-        if (payload?.query === "mc.jaime.health") {
-          resolveReplacementNavigation = reply;
-        } else {
-          reply();
-        }
-      } else if (event === "palette_create_targets") {
-        callback({ token: payload?.token as number, projects: [] });
-      } else if (event === "palette_reference_pattern") {
-        callback({
-          token: payload?.token as number,
-          items: [],
-          truncated: false,
-        });
-      }
-    });
-
-    pressPaletteShortcut();
-    await nextTick();
-    const input = wrapper.find("[data-slot='command-input']");
-    await input.setValue("mc.jaime");
-    await vi.advanceTimersByTimeAsync(200);
-    await nextTick();
-
-    const readyItem = wrapper
-      .findAllComponents(CommandItem)
-      .find((candidate) => candidate.props("value") === "nav.sheet.7");
-    expect(readyItem).toBeDefined();
-
-    await input.setValue("mc.jaime.health");
-    await vi.advanceTimersByTimeAsync(200);
-    await nextTick();
-
-    const pendingItem = wrapper
-      .findAllComponents(CommandItem)
-      .find((candidate) => candidate.props("value") === "nav.sheet.7");
-    expect(pendingItem).toBeDefined();
-    expect(pendingItem!.props("disabled")).toBe(true);
-    expect(pendingItem!.attributes("data-disabled")).toBeDefined();
-
-    selectItem(wrapper, "nav.sheet.7");
-    expect(liveNavigate).not.toHaveBeenCalled();
-
-    resolveReplacementNavigation!();
-    await nextTick();
-
-    const restoredItem = wrapper
-      .findAllComponents(CommandItem)
-      .find((candidate) => candidate.props("value") === "nav.sheet.7");
-    expect(restoredItem).toBeDefined();
-    expect(restoredItem!.props("disabled")).toBe(false);
-    expect(restoredItem!.attributes("data-disabled")).toBeUndefined();
-
-    selectItem(wrapper, "nav.sheet.7");
-    await nextTick();
-    expect(liveNavigate).toHaveBeenCalledWith("/sheets/7");
-  });
-
-  it("treats multi-word navigation text with a dotted first token as normal search", async () => {
-    vi.useFakeTimers();
-    const { live, wrapper } = mountPalette([gotoOperation, variableDefinitionOperation], true);
-
-    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
-      if (!callback) return;
-
-      if (event === "palette_nav") {
-        callback({
-          token: payload?.token as number,
-          groups:
-            payload?.query === "act1.scene two"
-              ? [
-                  {
-                    key: "sheets",
-                    items: [
-                      {
-                        id: "nav.sheet.8",
-                        type: "sheet",
-                        label: "Act 1 Scene Two",
-                        url: "/sheets/8",
-                      },
-                    ],
-                  },
-                ]
-              : [],
-        });
-      } else if (event === "palette_create_targets") {
-        callback({ token: payload?.token as number, projects: [] });
-      }
-    });
-
-    pressPaletteShortcut();
-    await nextTick();
-    await wrapper.find("[data-slot='command-input']").setValue("act1.scene two");
-    await vi.advanceTimersByTimeAsync(200);
-    await nextTick();
-
-    const calledNavigation = vi
-      .mocked(live.pushEvent)
-      .mock.calls.some(
-        ([event, payload]) => event === "palette_nav" && payload?.query === "act1.scene two",
-      );
-    const values = itemValues(wrapper);
-    const text = wrapper.text();
-    pressPaletteShortcut();
-    await nextTick();
-
-    expect(calledNavigation).toBe(true);
-    expect(values).toContain("nav.sheet.8");
-    expect(text).not.toContain("That reference pattern isn't valid");
-  });
-
-  it("keeps prior pattern results disabled while resolving a new pattern", async () => {
-    vi.useFakeTimers();
-    const { live, wrapper } = mountPalette([variableDefinitionOperation], true);
-    let patternRequestCount = 0;
-    let resolveSecondPattern: (() => void) | undefined;
-
-    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
-      if (!callback) return;
-
-      if (event === "palette_nav") {
-        callback({ token: payload?.token as number, groups: [] });
-      } else if (event === "palette_create_targets") {
-        callback({ token: payload?.token as number, projects: [] });
-      } else if (event === "palette_reference_pattern") {
-        patternRequestCount += 1;
-        const token = payload?.token as number;
-        const item = {
-          kind: "definition",
-          type: "sheet",
-          context: "Characters",
-        };
-
-        if (patternRequestCount === 1) {
-          callback({
-            token,
-            items: [
-              {
-                ...item,
-                id: "definition:health",
-                label: "hero.health",
-                url: "/sheets/hero?highlight=block:1",
-              },
-            ],
-          });
-        } else {
-          resolveSecondPattern = () =>
-            callback({
-              token,
-              items: [
-                {
-                  ...item,
-                  id: "definition:mana",
-                  label: "hero.mana",
-                  url: "/sheets/hero?highlight=block:2",
-                },
-              ],
-            });
-        }
-      }
-    });
-
-    pressPaletteShortcut();
-    await nextTick();
-    const input = wrapper.find("[data-slot='command-input']");
-    await input.setValue("?health");
-    await vi.advanceTimersByTimeAsync(200);
-    await nextTick();
-    expect(wrapper.find("[data-lookup-result-id='definition:health']").exists()).toBe(true);
-
-    await input.setValue("?mana");
-    await vi.advanceTimersByTimeAsync(200);
-    await nextTick();
-    expect(resolveSecondPattern).toBeDefined();
-
-    selectItem(wrapper, "lookup-result-definition:health");
-    await nextTick();
-    expect(liveNavigate).not.toHaveBeenCalled();
-    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
-
-    resolveSecondPattern!();
-    await nextTick();
-    expect(wrapper.find("[data-lookup-result-id='definition:health']").exists()).toBe(false);
-    expect(wrapper.find("[data-lookup-result-id='definition:mana']").exists()).toBe(true);
-  });
-
-  it("emits one lifecycle pair for one continuous pattern-door session", async () => {
-    vi.useFakeTimers();
-    const { live, wrapper } = mountPalette([variableDefinitionOperation], true);
-
-    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
-      if (!callback) return;
-
-      if (event === "palette_nav") {
-        callback({ token: payload?.token as number, groups: [] });
-      } else if (event === "palette_create_targets") {
-        callback({ token: payload?.token as number, projects: [] });
-      } else if (event === "palette_reference_pattern") {
-        callback({
-          token: payload?.token as number,
-          items: [],
-          truncated: false,
-        });
-      }
-    });
-
-    pressPaletteShortcut();
-    await nextTick();
-    vi.mocked(live.pushEvent).mockClear();
-    const input = wrapper.find("[data-slot='command-input']");
-
-    await input.setValue("?heal");
-    await vi.advanceTimersByTimeAsync(200);
-    await nextTick();
-    await input.setValue("?health");
-    await vi.advanceTimersByTimeAsync(200);
-    await nextTick();
-
-    const lifecycleEvents = vi
-      .mocked(live.pushEvent)
-      .mock.calls.filter(([event]) =>
-        ["palette_operation_selected", "palette_operation_completed"].includes(event),
-      )
-      .map(([event]) => event);
-    pressPaletteShortcut();
-    await nextTick();
-
-    expect(lifecycleEvents).toEqual(["palette_operation_selected", "palette_operation_completed"]);
-  });
-
-  it("ignores a superseded root navigation reply", async () => {
-    vi.useFakeTimers();
-    const { live, wrapper } = mountPalette();
-    let resolveInitial: (() => void) | undefined;
-    let resolveLatest: (() => void) | undefined;
-    let navRequestCount = 0;
-
-    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
-      if (!callback) return;
-
-      if (event === "palette_nav") {
-        navRequestCount += 1;
-        const token = payload?.token as number;
-        const reply = (id: string, label: string) => ({
-          token,
-          groups: [
-            {
-              key: "projects",
-              items: [{ id, type: "project", label, url: `/${id}` }],
-            },
-          ],
-        });
-
-        if (navRequestCount === 1) {
-          resolveInitial = () => callback(reply("nav.project.1", "Old project"));
-        } else {
-          resolveLatest = () => callback(reply("nav.project.2", "Latest project"));
-        }
-      } else if (event === "palette_create_targets") {
-        callback({ token: payload?.token as number, projects: [] });
-      }
-    });
-
-    pressPaletteShortcut();
-    await nextTick();
-    await wrapper.find("[data-slot='command-input']").setValue("latest");
-    await vi.advanceTimersByTimeAsync(200);
-
-    resolveInitial!();
-    await nextTick();
-    expect(itemValues(wrapper)).not.toContain("nav.project.1");
-
-    resolveLatest!();
-    await nextTick();
-    expect(itemValues(wrapper)).toContain("nav.project.2");
-  });
-
-  it("does not query incomplete or invalid reference patterns", async () => {
-    vi.useFakeTimers();
-    const { live, wrapper } = mountPalette([variableDefinitionOperation], true);
-
-    pressPaletteShortcut();
-    await nextTick();
-    const input = wrapper.find("[data-slot='command-input']");
-
-    await input.setValue("?");
-    await vi.advanceTimersByTimeAsync(250);
-    expect(wrapper.text()).toContain("Keep typing the reference pattern");
-
-    await input.setValue("mc..health");
-    await vi.advanceTimersByTimeAsync(250);
-    expect(wrapper.text()).toContain("That reference pattern isn't valid");
-
-    expect(
-      vi
-        .mocked(live.pushEvent)
-        .mock.calls.filter(([event]) => event === "palette_reference_pattern"),
-    ).toHaveLength(0);
-  });
-
-  it("waits for root IME composition before resolving a reference pattern", async () => {
-    vi.useFakeTimers();
-    const { live, wrapper } = mountPalette([variableDefinitionOperation], true);
-
-    pressPaletteShortcut();
-    await nextTick();
-    const input = wrapper.find<HTMLInputElement>("[data-slot='command-input']");
-
-    input.element.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
-    await input.setValue("?health");
-    await vi.advanceTimersByTimeAsync(250);
-
-    expect(
-      vi
-        .mocked(live.pushEvent)
-        .mock.calls.filter(([event]) => event === "palette_reference_pattern"),
-    ).toHaveLength(0);
-
-    input.element.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
-    input.element.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "Enter",
-        bubbles: true,
-        cancelable: true,
-        isComposing: true,
-      }),
-    );
-    await nextTick();
-    expect(wrapper.find('[data-testid="palette-dialog"]').exists()).toBe(true);
-    await vi.advanceTimersByTimeAsync(200);
-
-    expect(
-      vi
-        .mocked(live.pushEvent)
-        .mock.calls.filter(([event]) => event === "palette_reference_pattern"),
-    ).toHaveLength(1);
-  });
-
-  it("resumes root navigation after composition ends across a step transition", async () => {
-    vi.useFakeTimers();
-    const { live, wrapper } = mountPalette([gotoOperation], true);
-
-    pressPaletteShortcut();
-    await nextTick();
-    const rootInput = wrapper.find<HTMLInputElement>("[data-slot='command-input']");
-
-    rootInput.element.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
-    rootInput.element.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
-    selectItem(wrapper, "operation-goto");
-    await nextTick();
-
-    const operationInput = wrapper.find<HTMLInputElement>(
-      "[data-slot='palette-operation-input'] input",
-    );
-    await operationInput.trigger("keydown", { key: "Backspace" });
-    await nextTick();
-
-    const navCallsBeforeTyping = vi
-      .mocked(live.pushEvent)
-      .mock.calls.filter(([event]) => event === "palette_nav").length;
-
-    await wrapper.find("[data-slot='command-input']").setValue("chapter");
-    await vi.advanceTimersByTimeAsync(200);
-    await nextTick();
-
-    const navCallsAfterTyping = vi
-      .mocked(live.pushEvent)
-      .mock.calls.filter(([event]) => event === "palette_nav");
-    pressPaletteShortcut();
-    await nextTick();
-
-    expect(navCallsAfterTyping).toHaveLength(navCallsBeforeTyping + 1);
-    expect(navCallsAfterTyping.at(-1)?.[1]).toMatchObject({ query: "chapter" });
   });
 
   it("completes the generated-help round trip in Spanish", async () => {

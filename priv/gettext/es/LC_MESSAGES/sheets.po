@@ -105,7 +105,7 @@ msgstr "Destino de referencia no encontrado."
 msgid "Renamed sheet"
 msgstr "Ficha renombrada"
 
-#: lib/storyarn_web/live/sheet_live/show.ex:466
+#: lib/storyarn_web/live/sheet_live/show.ex:381
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr "Ficha no encontrada."
@@ -121,7 +121,7 @@ msgid "Unsupported file type."
 msgstr "Tipo de archivo no compatible."
 
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:457
-#: lib/storyarn_web/live/hooks/palette.ex:556
+#: lib/storyarn_web/live/hooks/palette.ex:426
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:90
 #, elixir-autogen, elixir-format
 msgid "Untitled"
@@ -295,7 +295,7 @@ msgstr "Recurso no encontrado."
 msgid "Invalid layout."
 msgstr "Diseño no válido."
 
-#: lib/storyarn_web/live/sheet_live/show.ex:982
+#: lib/storyarn_web/live/sheet_live/show.ex:897
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr "Desconocido"

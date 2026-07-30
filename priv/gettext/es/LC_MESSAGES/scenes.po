@@ -458,7 +458,7 @@ msgstr "Deshacer: creación de zona revertida."
 msgid "Undo: zone restored."
 msgstr "Deshacer: zona restaurada."
 
-#: lib/storyarn_web/live/hooks/palette.ex:562
+#: lib/storyarn_web/live/hooks/palette.ex:432
 #: lib/storyarn_web/live/scene_sidebar_live.ex:90
 #: lib/storyarn_web/live/scene_sidebar_live.ex:106
 #, elixir-autogen, elixir-format

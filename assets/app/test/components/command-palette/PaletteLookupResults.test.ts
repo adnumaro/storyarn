@@ -8,19 +8,25 @@ import type { PaletteLookupResult } from "../../../shared/command-palette/lookup
 const results: PaletteLookupResult[] = [
   {
     id: "definition:42",
-    url: "/workspaces/acme/projects/veilbreak/sheets/4",
     label: "mc.jaime.health",
     detail: "Definition",
     context: "Character · Veilbreak",
     icon: "sheet",
+    action: {
+      kind: "navigate",
+      url: "/workspaces/acme/projects/veilbreak/sheets/4",
+    },
   },
   {
     id: "usage:81",
-    url: "/workspaces/acme/projects/veilbreak/flows/7?node=81",
     label: "Opening sequence",
     detail: "Reads",
     context: "Flow · Veilbreak",
     icon: "flow",
+    action: {
+      kind: "navigate",
+      url: "/workspaces/acme/projects/veilbreak/flows/7?node=81",
+    },
   },
 ];
 

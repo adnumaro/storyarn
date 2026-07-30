@@ -1,18 +1,24 @@
 export type PaletteLookupResultIcon = "sheet" | "flow" | "scene" | "reference";
 
+export type PaletteLookupResultAction =
+  | { kind: "navigate"; url: string }
+  | { kind: "complete"; value: string };
+
 /**
- * One authorized, navigable result returned by a deterministic palette lookup.
+ * One authorized result returned by a deterministic palette lookup.
  *
  * `id` is presentation identity only. Callers must never forward it to
- * analytics; lookup telemetry uses closed operation ids without result data.
+ * analytics. An explicit action keeps completion candidates separate from
+ * server-validated navigation destinations.
  */
 export interface PaletteLookupResult {
   id: string;
-  url: string;
   label: string;
   context?: string;
   detail?: string;
+  group?: string;
   icon?: PaletteLookupResultIcon;
+  action: PaletteLookupResultAction;
 }
 
 export function lookupResultSearchText(result: PaletteLookupResult): string {

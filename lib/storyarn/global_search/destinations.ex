@@ -41,24 +41,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
           entities: [destination()]
         }
   def destinations(%Scope{} = scope, query, opts \\ []) do
-    scope
-    |> destinations_page(query, opts)
-    |> Map.take([:workspaces, :projects, :entities])
-  end
-
-  @doc """
-  Returns the bounded destination groups together with an honest truncation
-  flag. Each destination type is capped independently.
-  """
-  @spec destinations_page(Scope.t(), String.t(), keyword()) :: %{
-          workspaces: [destination()],
-          projects: [destination()],
-          entities: [destination()],
-          truncated: boolean()
-        }
-  def destinations_page(%Scope{} = scope, query, opts \\ []) do
     limit = Keyword.get(opts, :limit_per_type, @default_limit_per_type)
-    fetch_limit = limit + 1
     query = normalize_query(query)
 
     %{workspace_entries: workspace_entries, workspace_by_id: workspace_by_id, project_entries: project_entries} =
@@ -66,30 +49,18 @@ defmodule Storyarn.GlobalSearch.Destinations do
 
     projects_by_id = Map.new(project_entries, fn %{project: p} -> {p.id, p} end)
 
-    {workspaces, workspaces_truncated?} =
-      workspace_entries
-      |> Enum.filter(&String.contains?(String.downcase(&1.workspace.name), String.downcase(query)))
-      |> Enum.take(fetch_limit)
-      |> Enum.map(&workspace_destination/1)
-      |> take_page(limit)
-
-    {projects, projects_truncated?} =
-      project_entries
-      |> filter_project_entries_by_name(query)
-      |> Enum.take(fetch_limit)
-      |> Enum.map(&project_destination(&1, workspace_by_id))
-      |> take_page(limit)
-
-    {entities, entities_truncated?} =
-      projects_by_id
-      |> entity_destinations(workspace_by_id, query, fetch_limit)
-      |> take_per_type(limit)
-
     %{
-      workspaces: workspaces,
-      projects: projects,
-      entities: entities,
-      truncated: workspaces_truncated? or projects_truncated? or entities_truncated?
+      workspaces:
+        workspace_entries
+        |> Enum.filter(&String.contains?(String.downcase(&1.workspace.name), String.downcase(query)))
+        |> Enum.take(limit)
+        |> Enum.map(&workspace_destination/1),
+      projects:
+        project_entries
+        |> filter_project_entries_by_name(query)
+        |> Enum.take(limit)
+        |> Enum.map(&project_destination(&1, workspace_by_id)),
+      entities: entity_destinations(projects_by_id, workspace_by_id, query, limit)
     }
   end
 
@@ -125,21 +96,20 @@ defmodule Storyarn.GlobalSearch.Destinations do
   @doc """
   Authorizes `project_id` for read-only palette lookups.
 
-  The project is resolved from the caller's freshly composed membership set on
-  every request. A project id supplied by a client is therefore never enough to
-  make a project visible.
+  The lookup uses the canonical membership-scoped project and workspace reads
+  directly. A project id supplied by a client is therefore never enough to make
+  a project visible, and a debounced palette search does not enumerate every
+  workspace and project in the account on each keystroke.
   """
   @spec viewable_project(Scope.t(), integer()) ::
           {:ok, %{project: struct(), workspace: struct()}} | {:error, :unauthorized}
   def viewable_project(%Scope{} = scope, project_id) do
-    %{workspace_by_id: workspace_by_id, project_entries: project_entries} = authorized_entries(scope)
-
-    case Enum.find(project_entries, &(&1.project.id == project_id)) do
-      nil ->
-        {:error, :unauthorized}
-
-      %{project: project} ->
-        {:ok, %{project: project, workspace: Map.fetch!(workspace_by_id, project.workspace_id)}}
+    with {:ok, project, _project_membership} <- Projects.get_project(scope, project_id),
+         {:ok, workspace, _workspace_membership} <-
+           Workspaces.get_workspace(scope, project.workspace_id) do
+      {:ok, %{project: project, workspace: workspace}}
+    else
+      _not_visible -> {:error, :unauthorized}
     end
   end
 
@@ -151,49 +121,30 @@ defmodule Storyarn.GlobalSearch.Destinations do
   """
   @spec deletable_entities(Scope.t(), String.t(), keyword()) :: [destination()]
   def deletable_entities(%Scope{} = scope, query, opts \\ []) do
-    scope
-    |> deletable_entities_page(query, opts)
-    |> Map.fetch!(:items)
-  end
-
-  @doc """
-  Returns editable entity candidates together with an honest per-type
-  truncation flag.
-  """
-  @spec deletable_entities_page(Scope.t(), String.t(), keyword()) :: %{
-          items: [destination()],
-          truncated: boolean()
-        }
-  def deletable_entities_page(%Scope{} = scope, query, opts \\ []) do
     limit = Keyword.get(opts, :limit_per_type, @default_limit_per_type)
-    fetch_limit = limit + 1
     query = normalize_query(query)
 
     entries = editable_project_entries(scope)
     projects_by_id = Map.new(entries, fn %{project: p} -> {p.id, p} end)
     workspace_by_id = Map.new(entries, fn %{project: p, workspace: w} -> {p.workspace_id, w} end)
 
-    items =
-      cond do
-        map_size(projects_by_id) == 0 ->
-          []
+    cond do
+      map_size(projects_by_id) == 0 ->
+        []
 
-        query == "" ->
-          # The per-type searches are each recent-first, but concatenating them
-          # would let old sheets precede newer flows/scenes — the browse list
-          # must be recent-first ACROSS types. Enum.sort_by is stable, and each
-          # per-type list ties deterministically (id desc), so equal timestamps
-          # keep a stable order too.
-          projects_by_id
-          |> run_entity_searches(workspace_by_id, query, fetch_limit)
-          |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
+      query == "" ->
+        # The per-type searches are each recent-first, but concatenating them
+        # would let old sheets precede newer flows/scenes — the browse list
+        # must be recent-first ACROSS types. Enum.sort_by is stable, and each
+        # per-type list ties deterministically (id desc), so equal timestamps
+        # keep a stable order too.
+        projects_by_id
+        |> run_entity_searches(workspace_by_id, query, limit)
+        |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
 
-        true ->
-          run_entity_searches(projects_by_id, workspace_by_id, query, fetch_limit)
-      end
-
-    {items, truncated?} = take_per_type(items, limit)
-    %{items: items, truncated: truncated?}
+      true ->
+        run_entity_searches(projects_by_id, workspace_by_id, query, limit)
+    end
   end
 
   @doc """
@@ -321,25 +272,5 @@ defmodule Storyarn.GlobalSearch.Destinations do
         end)
       end
     )
-  end
-
-  defp take_page(items, limit) do
-    {Enum.take(items, limit), length(items) > limit}
-  end
-
-  defp take_per_type(items, limit) do
-    {kept, _counts, truncated?} =
-      Enum.reduce(items, {[], %{}, false}, fn item, {kept, counts, truncated?} ->
-        count = Map.get(counts, item.type, 0)
-        counts = Map.put(counts, item.type, count + 1)
-
-        if count < limit do
-          {[item | kept], counts, truncated?}
-        else
-          {kept, counts, true}
-        end
-      end)
-
-    {Enum.reverse(kept), truncated?}
   end
 end

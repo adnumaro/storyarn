@@ -7,15 +7,12 @@ defmodule Storyarn.CommandPalette.Definition do
   authorized domain boundaries that already own each capability.
   """
 
-  @domains [:navigation, :references, :actions]
-  @parameter_types [:destination, :entity_type, :project, :entity, :flow, :variable, :command, :view]
+  @domains [:navigation, :actions]
+  @parameter_types [:destination, :entity_type, :project, :entity, :command, :view]
   @completion_sources [
     :navigation,
     :editable_projects,
     :deletable_entities,
-    :reference_entities,
-    :flows,
-    :sheet_variables,
     :entity_types,
     :commands,
     :views
@@ -23,7 +20,7 @@ defmodule Storyarn.CommandPalette.Definition do
   @completion_modes [:server, :client]
   @latencies [:instant, :interactive, :deferred]
   @authorizations [:view, :edit_content, :contextual]
-  @result_types [:navigation, :lookup, :mutation, :command]
+  @result_types [:navigation, :mutation, :command]
   @id_format ~r/^[a-z][a-z0-9_]*$/
 
   @enforce_keys [
@@ -33,7 +30,6 @@ defmodule Storyarn.CommandPalette.Definition do
     :latency,
     :authorization,
     :result_type,
-    :requires_project,
     :phrase,
     :help
   ]
@@ -44,23 +40,17 @@ defmodule Storyarn.CommandPalette.Definition do
     :latency,
     :authorization,
     :result_type,
-    :requires_project,
     :phrase,
     :help
   ]
 
-  @type domain :: :navigation | :references | :actions
-
-  @type parameter_type ::
-          :destination | :entity_type | :project | :entity | :flow | :variable | :command | :view
+  @type domain :: :navigation | :actions
+  @type parameter_type :: :destination | :entity_type | :project | :entity | :command | :view
 
   @type completion_source ::
           :navigation
           | :editable_projects
           | :deletable_entities
-          | :reference_entities
-          | :flows
-          | :sheet_variables
           | :entity_types
           | :commands
           | :views
@@ -93,8 +83,7 @@ defmodule Storyarn.CommandPalette.Definition do
           parameters: [parameter()],
           latency: :instant | :interactive | :deferred,
           authorization: :view | :edit_content | :contextual,
-          result_type: :navigation | :lookup | :mutation | :command,
-          requires_project: boolean(),
+          result_type: :navigation | :mutation | :command,
           phrase: [phrase_token()],
           help: help()
         }
@@ -146,7 +135,6 @@ defmodule Storyarn.CommandPalette.Definition do
       latency: Atom.to_string(definition.latency),
       authorization: Atom.to_string(definition.authorization),
       resultType: Atom.to_string(definition.result_type),
-      requiresProject: definition.requires_project,
       phrase: Enum.map(definition.phrase, &serialize_phrase_token/1),
       help: serialize_help(definition.help)
     }
@@ -169,7 +157,6 @@ defmodule Storyarn.CommandPalette.Definition do
     |> require(definition.latency in @latencies, "invalid latency")
     |> require(definition.authorization in @authorizations, "invalid authorization")
     |> require(definition.result_type in @result_types, "invalid result type")
-    |> require(is_boolean(definition.requires_project), "invalid requires_project")
     |> require(valid_help?(definition.help), "invalid help")
     |> Enum.reverse()
   end

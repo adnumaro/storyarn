@@ -11,17 +11,6 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.CommandPalette.Definition
-  alias Storyarn.CommandPalette.Registry
-  alias Storyarn.Flows.FlowNode
-  alias Storyarn.References.EntityReference
-  alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.TableRow
-
-  @latency_samples 5
-  @formula_latency_rows 250
-  @formula_latency_columns 12
 
   defmodule TestAdapter do
     @moduledoc false
@@ -290,6 +279,232 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
     end
   end
 
+  describe "palette_advanced_search" do
+    test "is unavailable outside a project context and preserves the request token",
+         %{view: view} do
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "#kael",
+        "submitted" => false,
+        "token" => 21
+      })
+
+      assert_reply(view, %{token: 21, error: "unavailable"})
+    end
+
+    test "returns explicit completion and navigation actions for a hierarchy",
+         %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      root = sheet_fixture(project, %{name: "Main Characters", shortcut: "main-characters"})
+
+      branch =
+        sheet_fixture(project, %{
+          name: "Companions",
+          shortcut: "companions",
+          parent_id: root.id,
+          position: 0
+        })
+
+      leaf =
+        sheet_fixture(project, %{
+          name: "Kael",
+          shortcut: "kael",
+          parent_id: root.id,
+          position: 1
+        })
+
+      _grandchild =
+        sheet_fixture(project, %{
+          name: "Mira",
+          shortcut: "mira",
+          parent_id: branch.id
+        })
+
+      view = project_view(conn, workspace, project)
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "#main-characters.",
+        "submitted" => false,
+        "token" => 22
+      })
+
+      assert_reply(view, %{token: 22, mode: "sheets", items: items, truncated: false})
+
+      assert Enum.find(items, &(&1.id == "sheet:#{branch.id}")).action == %{
+               kind: "complete",
+               value: "#main-characters.companions."
+             }
+
+      assert Enum.find(items, &(&1.id == "sheet:#{leaf.id}")).action == %{
+               kind: "navigate",
+               url: "/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{leaf.id}"
+             }
+    end
+
+    test "keeps full search submit-only and searches authored nested content",
+         %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(project, %{name: "Archive", shortcut: "archive"})
+
+      _block =
+        block_fixture(sheet, %{
+          type: "text",
+          config: %{"label" => "Relic"},
+          value: %{"content" => "The ancient tome is sealed"}
+        })
+
+      view = project_view(conn, workspace, project)
+      payload = %{"query" => "*ancient tome", "submitted" => false, "token" => 23}
+
+      render_hook(view, "palette_advanced_search", payload)
+      assert_reply(view, %{token: 23, error: "not_submitted"})
+
+      render_hook(view, "palette_advanced_search", %{payload | "submitted" => true, "token" => 24})
+
+      assert_reply(view, %{token: 24, mode: "all", items: items})
+
+      assert Enum.any?(items, fn item ->
+               item.id == "sheet:#{sheet.id}" and
+                 item.action ==
+                   %{
+                     kind: "navigate",
+                     url: "/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+                   }
+             end)
+    end
+
+    test "rate limits consecutive submitted full searches without throttling scoped searches",
+         %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(project, %{name: "Cobalt Archive", shortcut: "cobalt-archive"})
+      view = project_view(conn, workspace, project)
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "*cobalt",
+        "submitted" => true,
+        "token" => 26
+      })
+
+      assert_reply(view, %{token: 26, mode: "all"})
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "*cobalt",
+        "submitted" => true,
+        "token" => 27
+      })
+
+      assert_reply(view, %{token: 27, error: "rate_limited"})
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "#cobalt",
+        "submitted" => false,
+        "token" => 28
+      })
+
+      assert_reply(view, %{token: 28, mode: "sheets", items: items})
+      assert Enum.any?(items, &(&1.id == "sheet:#{sheet.id}"))
+    end
+
+    test "marks qualified references as fallback when a variable predicate has no matches",
+         %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      kael = sheet_fixture(project, %{name: "Kael", shortcut: "kael"})
+      nyx = sheet_fixture(project, %{name: "Nyx", shortcut: "nyx"})
+
+      block_fixture(kael, %{
+        type: "select",
+        config: %{"label" => "Faction"},
+        value: %{"content" => "spiritbound"}
+      })
+
+      block_fixture(nyx, %{
+        type: "select",
+        config: %{"label" => "Faction"},
+        value: %{"content" => "independent"}
+      })
+
+      view = project_view(conn, workspace, project)
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "$faction = conclave",
+        "submitted" => false,
+        "token" => 29
+      })
+
+      assert_reply(view, %{
+        token: 29,
+        mode: "variables",
+        fallback: "qualified_references",
+        items: items
+      })
+
+      assert Enum.map(items, & &1.label) == ["kael.faction", "nyx.faction"]
+
+      assert Enum.all?(items, fn item ->
+               item.group == "suggestion" and item.action.kind == "complete" and
+                 String.ends_with?(item.action.value, " = conclave")
+             end)
+    end
+
+    test "maps variable owners and active usages to validated deep links",
+         %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(project, %{name: "Hero", shortcut: "hero"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Health"},
+          value: %{"content" => 10}
+        })
+
+      condition = variable_condition(sheet.shortcut, block.variable_name)
+      assignment = variable_assignment(sheet.shortcut, block.variable_name)
+
+      flow = flow_fixture(project, %{name: "Health logic"})
+
+      node =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{"assignments" => [assignment]}
+        })
+
+      :ok = Storyarn.References.update_flow_node_variable_references(node)
+
+      scene = scene_fixture(project, %{name: "Camp"})
+      pin = pin_fixture(scene, %{"label" => "Gate", "condition" => condition})
+
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Fountain",
+          "action_type" => "action",
+          "action_data" => %{"assignments" => [assignment]}
+        })
+
+      view = project_view(conn, workspace, project)
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "$hero.#{block.variable_name}",
+        "submitted" => false,
+        "token" => 25
+      })
+
+      assert_reply(view, %{token: 25, mode: "variables", items: items})
+
+      urls = MapSet.new(items, & &1.action.url)
+      base = "/workspaces/#{workspace.slug}/projects/#{project.slug}"
+
+      assert "#{base}/sheets/#{sheet.id}?highlight=block:#{block.id}" in urls
+      assert "#{base}/flows/#{flow.id}?highlight=node:#{node.id}" in urls
+      assert "#{base}/scenes/#{scene.id}?highlight=pin:#{pin.id}" in urls
+      assert "#{base}/scenes/#{scene.id}?highlight=zone:#{zone.id}" in urls
+    end
+  end
+
   describe "palette_create_targets" do
     test "replies editable projects only, with workspace context", %{view: view, user: user} do
       workspace = workspace_fixture(user)
@@ -342,27 +557,6 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       refute Enum.any?(items, &(&1.id == "nav.sheet.#{hidden_sheet.id}"))
     end
 
-    test "goto.destination reports when its bounded result set is truncated", %{
-      view: view,
-      user: user
-    } do
-      project = project_fixture(user, %{workspace: workspace_fixture(user)})
-
-      for index <- 1..9 do
-        sheet_fixture(project, %{name: "Palette overflow #{index}"})
-      end
-
-      render_hook(view, "palette_operation_options", %{
-        "operation_id" => "goto",
-        "parameter_id" => "destination",
-        "query" => "Palette overflow",
-        "token" => 32
-      })
-
-      assert_reply(view, %{token: 32, items: items, truncated: true})
-      assert length(items) == 8
-    end
-
     test "delete.entity returns entities only from editable projects", %{
       view: view,
       user: user
@@ -396,27 +590,6 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
              end)
 
       refute Enum.any?(items, &(&1.id == "sheet:#{hidden_sheet.id}"))
-    end
-
-    test "delete.entity reports when its bounded result set is truncated", %{
-      view: view,
-      user: user
-    } do
-      project = project_fixture(user, %{workspace: workspace_fixture(user)})
-
-      for index <- 1..9 do
-        sheet_fixture(project, %{name: "Disposable overflow #{index}"})
-      end
-
-      render_hook(view, "palette_operation_options", %{
-        "operation_id" => "delete",
-        "parameter_id" => "entity",
-        "query" => "Disposable overflow",
-        "token" => 34
-      })
-
-      assert_reply(view, %{token: 34, items: items, truncated: true})
-      assert length(items) == 8
     end
 
     test "fails closed for unknown operation, parameter, or client-side completion source",
@@ -497,236 +670,6 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
 
       assert median_microseconds <= budget_microseconds,
              "median goto completion was #{median_microseconds / 1_000} ms, budget is #{budget_microseconds / 1_000} ms"
-    end
-  end
-
-  describe "reference lookups" do
-    test "fail closed outside a project surface", %{view: view} do
-      render_hook(view, "palette_operation_options", %{
-        "operation_id" => "variable_definition",
-        "parameter_id" => "variable",
-        "query" => "",
-        "token" => 50
-      })
-
-      assert_reply(view, %{token: 50, error: "invalid_request"})
-
-      render_hook(view, "palette_reference_pattern", %{
-        "pattern" => "?health",
-        "token" => 51
-      })
-
-      assert_reply(view, %{token: 51, error: "unavailable"})
-
-      render_hook(view, "palette_reference_lookup", %{
-        "operation_id" => "variable_definition",
-        "target" => %{"block_id" => 1, "qualified_ref" => "mc.health"},
-        "token" => 52
-      })
-
-      assert_reply(view, %{token: 52, error: "unavailable"})
-    end
-
-    test "uses the socket project for completion, execution and deep links", %{
-      conn: conn,
-      user: user
-    } do
-      workspace = workspace_fixture(user)
-      project = project_fixture(user, %{workspace: workspace, name: "Veilbreak"})
-      sheet = sheet_fixture(project, %{name: "Jaime", shortcut: "mc.jaime"})
-
-      block =
-        block_fixture(sheet, %{
-          type: "number",
-          config: %{"label" => "Health"},
-          value: %{"content" => 987_654_321},
-          variable_name: "health"
-        })
-
-      {:ok, project_view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      render_hook(project_view, "palette_operation_options", %{
-        "operation_id" => "variable_definition",
-        "parameter_id" => "variable",
-        "query" => "health",
-        "token" => 53
-      })
-
-      assert_reply(project_view, %{token: 53, items: [option], truncated: false})
-      assert option.value == %{block_id: block.id, qualified_ref: "mc.jaime.health"}
-      refute Map.has_key?(option.value, :project_id)
-      refute inspect(option) =~ "987654321"
-
-      render_hook(project_view, "palette_reference_lookup", %{
-        "operation_id" => "variable_definition",
-        "target" => %{
-          "block_id" => block.id,
-          "qualified_ref" => "mc.jaime.health"
-        },
-        "token" => 54
-      })
-
-      assert_reply(project_view, %{token: 54, items: [result], truncated: false})
-      assert result.kind == "definition"
-      assert result.type == "sheet"
-      assert result.label == "mc.jaime.health"
-
-      assert result.url ==
-               "/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}?highlight=block:#{block.id}"
-
-      refute inspect(result) =~ "987654321"
-    end
-
-    test "never accepts a target from another accessible project", %{
-      conn: conn,
-      user: user
-    } do
-      workspace = workspace_fixture(user)
-      active_project = project_fixture(user, %{workspace: workspace, name: "Active"})
-      active_sheet = sheet_fixture(active_project)
-      other_project = project_fixture(user, %{workspace: workspace, name: "Other"})
-      other_sheet = sheet_fixture(other_project, %{shortcut: "other"})
-
-      other_block =
-        block_fixture(other_sheet, %{
-          type: "number",
-          config: %{"label" => "Secret"},
-          value: Block.default_value("number"),
-          variable_name: "secret"
-        })
-
-      {:ok, project_view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{workspace.slug}/projects/#{active_project.slug}/sheets/#{active_sheet.id}"
-        )
-
-      render_hook(project_view, "palette_reference_lookup", %{
-        "operation_id" => "variable_definition",
-        "target" => %{
-          "block_id" => other_block.id,
-          "qualified_ref" => "other.secret"
-        },
-        "token" => 55
-      })
-
-      assert_reply(project_view, %{token: 55, error: "not_found"})
-    end
-
-    test "pattern requests return definitions only from the active project", %{
-      conn: conn,
-      user: user
-    } do
-      workspace = workspace_fixture(user)
-      project = project_fixture(user, %{workspace: workspace})
-      sheet = sheet_fixture(project, %{shortcut: "hero"})
-
-      block =
-        block_fixture(sheet, %{
-          type: "number",
-          config: %{"label" => "Health"},
-          value: Block.default_value("number"),
-          variable_name: "health"
-        })
-
-      other_project = project_fixture(user, %{workspace: workspace})
-      other_sheet = sheet_fixture(other_project, %{shortcut: "villain"})
-
-      block_fixture(other_sheet, %{
-        type: "number",
-        config: %{"label" => "Health"},
-        value: Block.default_value("number"),
-        variable_name: "health"
-      })
-
-      {:ok, project_view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      render_hook(project_view, "palette_reference_pattern", %{
-        "pattern" => "sheets.**.?heal",
-        "token" => 56
-      })
-
-      assert_reply(project_view, %{token: 56, items: items, truncated: false})
-      assert Enum.map(items, & &1.label) == ["hero.health"]
-      assert hd(items).url =~ "highlight=block:#{block.id}"
-    end
-
-    @tag timeout: 120_000
-    test "new instant reference completions and executions stay within their registered budget",
-         %{conn: conn, user: user} do
-      fixture = reference_latency_fixture(user)
-
-      {:ok, project_view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{fixture.workspace.slug}/projects/#{fixture.project.slug}/sheets/#{fixture.target_sheet.id}"
-        )
-
-      completion_routes = [
-        {"variable_definition completion", "variable_definition", "variable", "latency"},
-        {"variable_usages completion", "variable_usages", "variable", "latency"},
-        {"entity_usages completion", "entity_usages", "entity", "latency"},
-        {"flow_callers completion", "flow_callers", "flow", "latency"}
-      ]
-
-      for {{label, operation_id, parameter_id, query}, index} <-
-            Enum.with_index(completion_routes) do
-        assert_instant_route(
-          project_view,
-          operation_id,
-          label,
-          "palette_operation_options",
-          fn token ->
-            %{
-              "operation_id" => operation_id,
-              "parameter_id" => parameter_id,
-              "query" => query,
-              "token" => token
-            }
-          end,
-          700 + index * 10
-        )
-      end
-
-      execution_routes = [
-        {"variable_definition execution", "variable_definition",
-         %{
-           "block_id" => fixture.variable.id,
-           "qualified_ref" => fixture.qualified_ref
-         }},
-        {"variable_usages execution", "variable_usages",
-         %{
-           "block_id" => fixture.variable.id,
-           "qualified_ref" => fixture.qualified_ref
-         }},
-        {"entity_usages execution", "entity_usages", %{"type" => "sheet", "id" => fixture.target_sheet.id}},
-        {"flow_callers execution", "flow_callers", %{"id" => fixture.target_flow.id}}
-      ]
-
-      for {{label, operation_id, target}, index} <- Enum.with_index(execution_routes) do
-        assert_instant_route(
-          project_view,
-          operation_id,
-          label,
-          "palette_reference_lookup",
-          fn token ->
-            %{
-              "operation_id" => operation_id,
-              "target" => target,
-              "token" => token
-            }
-          end,
-          800 + index * 10
-        )
-      end
     end
   end
 
@@ -1014,13 +957,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
          "query" => "",
          "token" => "bad"
        }},
-      {"palette_reference_lookup",
-       %{
-         "operation_id" => "variable_definition",
-         "target" => %{"block_id" => 1, "qualified_ref" => "mc.health"},
-         "token" => "bad"
-       }},
-      {"palette_reference_pattern", %{"pattern" => "?health", "token" => "bad"}},
+      {"palette_advanced_search", %{"query" => "#kael", "submitted" => false, "token" => "bad"}},
       {"palette_nav", %{"query" => "test", "token" => "bad"}},
       {"palette_create_targets", %{"token" => "bad"}},
       {"palette_create", %{"type" => "sheet", "project_id" => 1}},
@@ -1050,179 +987,43 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
     }
   end
 
-  defp reference_latency_fixture(user) do
-    workspace = workspace_fixture(user, %{name: "Reference latency workspace"})
-    project = project_fixture(user, %{workspace: workspace, name: "Reference latency project"})
-    target_sheet = sheet_fixture(project, %{name: "Latency target", shortcut: "latency-target"})
+  defp project_view(conn, workspace, project) do
+    {:ok, view, _html} =
+      live(conn, ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")
 
-    variable =
-      block_fixture(target_sheet, %{
-        type: "number",
-        config: %{"label" => "Latency metric"},
-        variable_name: "latency_metric"
-      })
+    view
+  end
 
-    _decoy_variable =
-      block_fixture(target_sheet, %{
-        type: "number",
-        config: %{"label" => "Decoy metric"},
-        variable_name: "decoy_metric"
-      })
-
-    source_blocks =
-      Enum.flat_map(1..32, fn sheet_index ->
-        sheet =
-          sheet_fixture(project, %{
-            name: "Latency sheet #{sheet_index}",
-            shortcut: "latency-sheet-#{sheet_index}"
-          })
-
-        for block_index <- 1..3 do
-          block_fixture(sheet, %{
-            type: "number",
-            config: %{"label" => "Latency value #{block_index}"},
-            variable_name: "latency_value_#{sheet_index}_#{block_index}"
-          })
-        end
-      end)
-
-    # Keep completion catalogs representative across every entity type.
-    for index <- 1..32 do
-      flow_fixture(project, %{name: "Latency flow #{index}", shortcut: "latency-flow-#{index}"})
-      scene_fixture(project, %{name: "Latency scene #{index}", shortcut: "latency-scene-#{index}"})
-    end
-
-    seed_entity_usages(source_blocks, target_sheet)
-    target_flow = seed_flow_callers(project)
-
-    seed_formula_usages(
-      project,
-      "latency-target.latency_metric",
-      "latency-target.decoy_metric"
-    )
-
+  defp variable_condition(sheet_shortcut, variable_name) do
     %{
-      workspace: workspace,
-      project: project,
-      target_sheet: target_sheet,
-      target_flow: target_flow,
-      variable: variable,
-      qualified_ref: "latency-target.latency_metric"
-    }
-  end
-
-  defp seed_entity_usages(source_blocks, target_sheet) do
-    source_blocks
-    |> Enum.take(30)
-    |> Enum.each(fn block ->
-      Repo.insert!(%EntityReference{
-        source_type: "block",
-        source_id: block.id,
-        target_type: "sheet",
-        target_id: target_sheet.id,
-        context: "latency"
-      })
-    end)
-  end
-
-  defp seed_flow_callers(project) do
-    target_flow = flow_fixture(project, %{name: "Latency caller target"})
-    caller_flow = flow_fixture(project, %{name: "Latency caller source"})
-
-    for _index <- 1..30 do
-      Repo.insert!(%FlowNode{
-        flow_id: caller_flow.id,
-        type: "subflow",
-        data: %{"referenced_flow_id" => to_string(target_flow.id)}
-      })
-    end
-
-    target_flow
-  end
-
-  defp seed_formula_usages(project, qualified_ref, decoy_ref) do
-    sheet = sheet_fixture(project, %{name: "Latency calculations", shortcut: "latency-calculations"})
-    table = table_block_fixture(sheet, %{label: "Latency formulas"})
-
-    formula_columns =
-      for index <- 1..@formula_latency_columns do
-        table_column_fixture(table, %{name: "Latency formula #{index}", type: "formula"})
-      end
-
-    decoy_cells =
-      Map.new(formula_columns, fn column ->
-        {column.slug, formula_latency_cell(decoy_ref)}
-      end)
-
-    target_column_slug = formula_columns |> List.last() |> Map.fetch!(:slug)
-    now = TimeHelpers.now()
-
-    rows =
-      for index <- 1..@formula_latency_rows do
-        cells =
-          if index == @formula_latency_rows do
-            Map.put(decoy_cells, target_column_slug, formula_latency_cell(qualified_ref))
-          else
-            decoy_cells
-          end
-
+      "logic" => "all",
+      "blocks" => [
         %{
-          block_id: table.id,
-          name: "Latency row #{index}",
-          slug: "latency_row_#{index}",
-          position: index,
-          cells: cells,
-          inserted_at: now,
-          updated_at: now
+          "id" => Ecto.UUID.generate(),
+          "type" => "block",
+          "logic" => "all",
+          "rules" => [
+            %{
+              "id" => Ecto.UUID.generate(),
+              "sheet" => sheet_shortcut,
+              "variable" => variable_name,
+              "operator" => "greater_than",
+              "value" => "0"
+            }
+          ]
         }
-      end
-
-    assert {@formula_latency_rows, nil} = Repo.insert_all(TableRow, rows)
-  end
-
-  defp formula_latency_cell(qualified_ref) do
-    %{
-      "expression" => "source + 1",
-      "bindings" => %{
-        "source" => %{"type" => "variable", "ref" => qualified_ref}
-      }
+      ]
     }
   end
 
-  defp assert_instant_route(view, operation_id, label, event, payload_builder, token_base) do
-    assert {:ok, definition} = Registry.fetch(operation_id)
-    assert definition.latency == :instant
-
-    budget_microseconds = Definition.latency_budget_ms(definition.latency) * 1_000
-
-    request_and_assert_items(view, event, payload_builder.(token_base), token_base)
-
-    durations =
-      for offset <- 1..@latency_samples do
-        token = token_base + offset
-
-        {elapsed_microseconds, :ok} =
-          :timer.tc(fn ->
-            request_and_assert_items(view, event, payload_builder.(token), token)
-          end)
-
-        elapsed_microseconds
-      end
-
-    median_microseconds =
-      durations
-      |> Enum.sort()
-      |> Enum.at(div(@latency_samples, 2))
-
-    assert median_microseconds <= budget_microseconds,
-           "median #{label} was #{median_microseconds / 1_000} ms, " <>
-             "registered #{definition.latency} budget is #{budget_microseconds / 1_000} ms; " <>
-             "samples=#{inspect(Enum.map(durations, &(&1 / 1_000)))}"
-  end
-
-  defp request_and_assert_items(view, event, payload, token) do
-    render_hook(view, event, payload)
-    assert_reply(view, %{token: ^token, items: [_first | _rest]})
-    :ok
+  defp variable_assignment(sheet_shortcut, variable_name) do
+    %{
+      "id" => Ecto.UUID.generate(),
+      "sheet" => sheet_shortcut,
+      "variable" => variable_name,
+      "operator" => "set",
+      "value" => "11",
+      "value_type" => "literal"
+    }
   end
 end

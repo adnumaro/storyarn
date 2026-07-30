@@ -12,28 +12,11 @@
       "checking": "Checking availability…",
       "availability_failed": "Storyarn couldn't verify whether this operation is available.",
       "edit_content": "Requires edit access to at least one project.",
-      "project_context": "Open a project to use reference lookups.",
       "commands": "No commands are available in this view.",
       "views": "No views are available in this context."
     },
     "operation_options_failed": "Storyarn couldn't load the available options. Try again.",
-    "lookup_failed": "Storyarn couldn't complete this reference lookup. Try again.",
     "no_operation_options": "No matching options",
-    "no_lookup_results": "No references found",
-    "lookup_results": "Reference results",
-    "lookup_results_count": "{count} reference result | {count} reference results",
-    "lookup_truncated": "Showing the first results. Refine the reference pattern to narrow the list.",
-    "back_to_operation": "Back to operation",
-    "lookup_kinds": {
-      "definition": "Definition",
-      "read": "Read",
-      "write": "Write",
-      "formula_read": "Formula",
-      "entity_usage": "Reference",
-      "flow_caller": "Caller"
-    },
-    "pattern_incomplete": "Keep typing the reference pattern",
-    "pattern_invalid": "That reference pattern isn't valid",
     "no_deletable_content": "No sheets, flows or scenes are available to delete",
     "no_results": "No matching commands",
     "command_failed": "The command failed to run. Try again.",
@@ -46,6 +29,95 @@
     "create_failed": "Storyarn couldn't create the item. Try again.",
     "delete_failed": "Storyarn couldn't delete the item. Try again.",
     "invalid_request": "The command request was invalid. Refresh and try again.",
+    "advanced_search": {
+      "title": "Advanced search",
+      "description": "Start with a prefix to search a specific kind of project content. Type ? at any time to see this guide.",
+      "prefixes_heading": "Search prefixes",
+      "variable_operators": {
+        "heading": "Variable value operators",
+        "contains": {
+          "label": "Contains text",
+          "description": "Matches values that include this text, ignoring uppercase and lowercase."
+        },
+        "not_contains": {
+          "label": "Does not contain text",
+          "description": "Matches values that do not include this text, ignoring uppercase and lowercase."
+        }
+      },
+      "high_cost": "Intensive",
+      "high_cost_notice": "Full search scans authored content across the project and may take longer.",
+      "submit_hint": "Type at least {count} characters, then press Enter.",
+      "minimum_length": "Type at least {count} characters to search.",
+      "press_enter": "Press Enter when you are ready to run this search.",
+      "project_required": "Advanced search is available while you are inside a project.",
+      "no_results": "No matching project content",
+      "predicate_no_matches": "No references matched this search.",
+      "truncated": "More results exist. Refine the query to narrow the list.",
+      "search_failed": "Storyarn couldn't complete this advanced search. Try again.",
+      "rate_limited": "That full search was requested too quickly. Wait a moment and try again.",
+      "kinds": {
+        "hierarchy": "Hierarchy",
+        "entity": "Entity",
+        "definition": "Definition",
+        "read": "Read",
+        "formula_read": "Formula read",
+        "condition": "Condition",
+        "condition_equals": "Equals condition",
+        "condition_not_equals": "Not-equal condition",
+        "condition_contains": "Contains condition",
+        "condition_not_contains": "Does-not-contain condition",
+        "condition_greater_than": "Greater-than condition",
+        "condition_greater_than_or_equal": "Greater-than-or-equal condition",
+        "condition_less_than": "Less-than condition",
+        "condition_less_than_or_equal": "Less-than-or-equal condition",
+        "condition_before": "Before date condition",
+        "condition_after": "After date condition",
+        "condition_is_true": "True condition",
+        "condition_is_false": "False condition",
+        "write": "Change",
+        "write_set": "Set value",
+        "write_set_if_unset": "Set value when empty",
+        "write_set_true": "Set true",
+        "write_set_false": "Set false",
+        "write_clear": "Clear value",
+        "write_add": "Add value",
+        "write_subtract": "Subtract value"
+      },
+      "groups": {
+        "owner": "Variable definitions",
+        "initial": "Initial values",
+        "read": "Reads and formulas",
+        "condition": "Conditions",
+        "write": "Writes and changes",
+        "suggestion": "Related references",
+        "sheet": "Sheets",
+        "flow": "Flows",
+        "scene": "Scenes",
+        "all": "All project content"
+      },
+      "prefixes": {
+        "variables": {
+          "label": "Variables and usages",
+          "description": "Find variable definitions, reads and changes; optionally filter by an authored value or operator."
+        },
+        "sheets": {
+          "label": "Sheets and hierarchy",
+          "description": "Find a sheet, complete its shortcut and drill into direct children or its whole subtree."
+        },
+        "flows": {
+          "label": "Flows and hierarchy",
+          "description": "Find flows and navigate through nested flow structures."
+        },
+        "scenes": {
+          "label": "Scenes and hierarchy",
+          "description": "Find scenes and navigate through nested scene structures."
+        },
+        "all": {
+          "label": "Full project search",
+          "description": "Search names and authored content across sheets, flows and scenes. It only runs when you press Enter."
+        }
+      }
+    },
     "delete_entity": "Delete sheet, flow or scene…",
     "pick_project_placeholder": "Create in project…",
     "no_editable_projects": "No projects where you can create content",
@@ -56,7 +128,6 @@
     },
     "operation_domains": {
       "navigation": "Find and open",
-      "references": "References",
       "actions": "Actions"
     },
     "operations": {
@@ -69,50 +140,6 @@
         },
         "parameters": {
           "destination": "destination"
-        }
-      },
-      "variable_definition": {
-        "label": "Find a variable definition…",
-        "description": "Find the sheet block or table cell that defines a project variable.",
-        "example": "Definition of mc.jaime.health",
-        "phrase": {
-          "prefix": "Definition of"
-        },
-        "parameters": {
-          "variable": "variable"
-        }
-      },
-      "variable_usages": {
-        "label": "Find variable usages…",
-        "description": "Show where a project variable is read or written in flows, scenes and formulas.",
-        "example": "Usages of mc.jaime.health",
-        "phrase": {
-          "prefix": "Usages of"
-        },
-        "parameters": {
-          "variable": "variable"
-        }
-      },
-      "entity_usages": {
-        "label": "Find entity references…",
-        "description": "Show the sheet blocks, flow nodes and scene elements that reference an entity.",
-        "example": "References to Chapter Two",
-        "phrase": {
-          "prefix": "References to"
-        },
-        "parameters": {
-          "entity": "sheet, flow or scene"
-        }
-      },
-      "flow_callers": {
-        "label": "Find flow callers…",
-        "description": "Show the subflow and flow-reference exit nodes that call a flow.",
-        "example": "Callers of Opening sequence",
-        "phrase": {
-          "prefix": "Callers of"
-        },
-        "parameters": {
-          "flow": "flow"
         }
       },
       "create": {

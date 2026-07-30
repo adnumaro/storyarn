@@ -17,6 +17,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   alias Storyarn.Shared.SearchHelpers
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
@@ -211,6 +212,8 @@ defmodule Storyarn.Sheets.SheetQueries do
   # =============================================================================
 
   @default_search_limit 20
+  @max_deep_search_limit 50
+  @max_deep_search_offset 10_000
 
   @doc """
   Searches sheets by name or shortcut across a pre-authorized set of projects.
@@ -290,6 +293,133 @@ defmodule Storyarn.Sheets.SheetQueries do
         ),
         log: false
       )
+    end
+  end
+
+  @doc """
+  Searches sheet metadata and authored content inside active blocks, tables,
+  and galleries.
+
+  The search remains scoped to one project and returns matching sheets rather
+  than the individual child records that matched.
+
+  ## Options
+    - `:limit` - Max results (default #{@default_search_limit}, max #{@max_deep_search_limit})
+    - `:offset` - Skip N results (default 0, max #{@max_deep_search_offset})
+  """
+  @spec search_sheets_deep(integer(), String.t(), keyword()) :: [Sheet.t()]
+  def search_sheets_deep(project_id, query, opts \\ []) when is_binary(query) do
+    limit = bounded_deep_search_limit(opts)
+    offset = bounded_deep_search_offset(opts)
+    query_str = String.trim(query)
+
+    if query_str == "" do
+      search_sheets(project_id, query_str, limit: limit, offset: offset)
+    else
+      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
+
+      Repo.all(
+        from(s in Sheet,
+          where: s.project_id == ^project_id and is_nil(s.deleted_at),
+          where:
+            ilike(s.name, ^search_term) or
+              ilike(s.shortcut, ^search_term) or
+              ilike(s.description, ^search_term) or
+              s.id in subquery(sheet_ids_matching_blocks(project_id, search_term)) or
+              s.id in subquery(sheet_ids_matching_table_columns(project_id, search_term)) or
+              s.id in subquery(sheet_ids_matching_table_rows(project_id, search_term)) or
+              s.id in subquery(sheet_ids_matching_gallery_images(project_id, search_term)),
+          order_by: [asc: s.name, asc: s.id],
+          limit: ^limit,
+          offset: ^offset
+        ),
+        log: false
+      )
+    end
+  end
+
+  defp sheet_ids_matching_blocks(project_id, search_term) do
+    from(b in Block,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
+      where:
+        ilike(b.variable_name, ^search_term) or
+          ilike(fragment("?->>'label'", b.config), ^search_term) or
+          ilike(fragment("?->>'placeholder'", b.config), ^search_term) or
+          ilike(fragment("?->>'content'", b.value), ^search_term) or
+          fragment(
+            """
+            EXISTS (
+              SELECT 1
+              FROM jsonb_array_elements(COALESCE(?->'options', '[]'::jsonb)) AS option(item)
+              WHERE CASE jsonb_typeof(option.item)
+                WHEN 'string' THEN option.item #>> '{}'
+                WHEN 'object' THEN COALESCE(option.item->>'value', '')
+                ELSE ''
+              END ILIKE ?
+            )
+            """,
+            b.config,
+            ^search_term
+          ),
+      select: b.sheet_id
+    )
+  end
+
+  defp sheet_ids_matching_table_columns(project_id, search_term) do
+    from(c in TableColumn,
+      join: b in Block,
+      on: b.id == c.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
+      where:
+        ilike(c.name, ^search_term) or
+          ilike(c.slug, ^search_term) or
+          ilike(fragment("CAST(?->'options' AS TEXT)", c.config), ^search_term),
+      select: b.sheet_id
+    )
+  end
+
+  defp sheet_ids_matching_table_rows(project_id, search_term) do
+    from(r in TableRow,
+      join: b in Block,
+      on: b.id == r.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
+      where:
+        ilike(r.name, ^search_term) or
+          ilike(r.slug, ^search_term) or
+          ilike(fragment("CAST(? AS TEXT)", r.cells), ^search_term),
+      select: b.sheet_id
+    )
+  end
+
+  defp sheet_ids_matching_gallery_images(project_id, search_term) do
+    from(i in BlockGalleryImage,
+      join: b in Block,
+      on: b.id == i.block_id,
+      join: s in Sheet,
+      on: s.id == b.sheet_id,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
+      where: ilike(i.label, ^search_term) or ilike(i.description, ^search_term),
+      select: b.sheet_id
+    )
+  end
+
+  defp bounded_deep_search_limit(opts) do
+    case Keyword.get(opts, :limit, @default_search_limit) do
+      limit when is_integer(limit) -> limit |> max(1) |> min(@max_deep_search_limit)
+      _invalid -> @default_search_limit
+    end
+  end
+
+  defp bounded_deep_search_offset(opts) do
+    case Keyword.get(opts, :offset, 0) do
+      offset when is_integer(offset) -> offset |> max(0) |> min(@max_deep_search_offset)
+      _invalid -> 0
     end
   end
 

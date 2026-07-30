@@ -9,6 +9,7 @@ defmodule Storyarn.References.VariableUsage do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Flows.Condition
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReferenceTracker
@@ -20,7 +21,9 @@ defmodule Storyarn.References.VariableUsage do
   alias Storyarn.Sheets
 
   @default_limit 25
-  @max_limit 50
+  # Predicate search may need to inspect more authored occurrences than the
+  # palette ultimately renders. This remains a hard scan ceiling.
+  @max_limit 250
 
   defdelegate get_variable_usage(block_id, project_id), to: VariableReferenceTracker
   defdelegate count_variable_usage(block_id), to: VariableReferenceTracker
@@ -88,11 +91,14 @@ defmodule Storyarn.References.VariableUsage do
     |> limit(^limit)
     |> select([reference, node, flow], %{
       reference_id: reference.id,
+      block_id: reference.block_id,
+      source_variable: reference.source_variable,
       kind: reference.kind,
       source_type: :flow_node,
       source_id: node.id,
       source_kind: node.type,
       source_label: nil,
+      source_data: node.data,
       container_type: :flow,
       container_id: flow.id,
       container_name: flow.name,
@@ -101,6 +107,12 @@ defmodule Storyarn.References.VariableUsage do
           reference.source_variable != ^definition.variable_name
     })
     |> Repo.all()
+    |> Enum.flat_map(fn usage ->
+      usage
+      |> expand_flow_usage(definition, limit)
+      |> keep_tracked_kind(usage.kind)
+    end)
+    |> Enum.take(limit)
   end
 
   defp pin_usages(project_id, definition, limit) do
@@ -122,11 +134,14 @@ defmodule Storyarn.References.VariableUsage do
     |> limit(^limit)
     |> select([reference, pin, scene], %{
       reference_id: reference.id,
+      block_id: reference.block_id,
+      source_variable: reference.source_variable,
       kind: reference.kind,
       source_type: :scene_pin,
       source_id: pin.id,
       source_kind: "pin",
       source_label: pin.label,
+      source_data: pin.condition,
       container_type: :scene,
       container_id: scene.id,
       container_name: scene.name,
@@ -135,6 +150,13 @@ defmodule Storyarn.References.VariableUsage do
           reference.source_variable != ^definition.variable_name
     })
     |> Repo.all()
+    |> Enum.flat_map(fn usage ->
+      usage
+      |> expand_condition_usage(definition, usage.source_data, limit)
+      |> prefer_specific_occurrences(usage)
+      |> keep_tracked_kind(usage.kind)
+    end)
+    |> Enum.take(limit)
   end
 
   defp zone_usages(project_id, definition, limit) do
@@ -156,11 +178,14 @@ defmodule Storyarn.References.VariableUsage do
     |> limit(^limit)
     |> select([reference, zone, scene], %{
       reference_id: reference.id,
+      block_id: reference.block_id,
+      source_variable: reference.source_variable,
       kind: reference.kind,
       source_type: :scene_zone,
       source_id: zone.id,
       source_kind: "zone",
       source_label: zone.name,
+      source_data: %{condition: zone.condition, action_data: zone.action_data},
       container_type: :scene,
       container_id: scene.id,
       container_name: scene.name,
@@ -169,6 +194,19 @@ defmodule Storyarn.References.VariableUsage do
           reference.source_variable != ^definition.variable_name
     })
     |> Repo.all()
+    |> Enum.flat_map(fn usage ->
+      condition = expand_condition_usage(usage, definition, usage.source_data.condition, limit)
+
+      assignments =
+        usage.source_data.action_data
+        |> Map.get("assignments", [])
+        |> expand_assignment_usage(usage, definition, limit)
+
+      (condition ++ assignments)
+      |> prefer_specific_occurrences(usage)
+      |> keep_tracked_kind(usage.kind)
+    end)
+    |> Enum.take(limit)
   end
 
   defp scope_definition(query, %{table_name: nil, block_id: block_id}) do
@@ -201,6 +239,174 @@ defmodule Storyarn.References.VariableUsage do
       column_id: usage.column_id,
       stale: false
     }
+  end
+
+  defp expand_flow_usage(%{source_kind: "instruction", source_data: data} = usage, definition, limit) do
+    data
+    |> Map.get("assignments", [])
+    |> expand_assignment_usage(usage, definition, limit)
+    |> prefer_specific_occurrences(usage)
+  end
+
+  defp expand_flow_usage(%{source_kind: "condition", source_data: data} = usage, definition, limit) do
+    usage
+    |> expand_condition_usage(definition, Map.get(data, "condition"), limit)
+    |> prefer_specific_occurrences(usage)
+  end
+
+  defp expand_flow_usage(%{source_kind: "dialogue", source_data: data} = usage, definition, limit) do
+    occurrences =
+      data
+      |> Map.get("responses", [])
+      |> Stream.filter(&is_map/1)
+      |> Stream.with_index()
+      |> Stream.flat_map(fn {response, index} ->
+        base = %{
+          usage
+          | reference_id: "#{usage.reference_id}:response:#{index}",
+            source_label: response_label(response, index)
+        }
+
+        condition =
+          expand_condition_usage(
+            base,
+            definition,
+            normalize_condition(Map.get(response, "condition")),
+            limit
+          )
+
+        assignments =
+          response
+          |> Map.get("instruction_assignments", legacy_assignments(response))
+          |> expand_assignment_usage(base, definition, limit)
+
+        condition ++ assignments
+      end)
+      |> Enum.take(limit)
+
+    prefer_specific_occurrences(occurrences, usage)
+  end
+
+  defp expand_flow_usage(usage, _definition, _limit), do: [Map.delete(usage, :source_data)]
+
+  defp expand_condition_usage(usage, definition, condition, limit) do
+    condition
+    |> normalize_condition()
+    |> Condition.extract_all_rules()
+    |> Stream.filter(&targets_definition?(&1, definition))
+    |> Stream.with_index()
+    |> Stream.map(fn {rule, index} ->
+      usage
+      |> Map.delete(:source_data)
+      |> Map.merge(%{
+        reference_id: "#{usage.reference_id}:condition:#{index}",
+        kind: "read",
+        semantic: :condition,
+        operator: Map.get(rule, "operator"),
+        operand: Map.get(rule, "value"),
+        value_type: "literal"
+      })
+    end)
+    |> Enum.take(limit)
+  end
+
+  defp expand_assignment_usage(assignments, usage, definition, limit) when is_list(assignments) do
+    assignments
+    |> Stream.flat_map(&assignment_occurrences(&1, usage, definition))
+    |> Enum.take(limit)
+  end
+
+  defp expand_assignment_usage(_assignments, _usage, _definition, _limit), do: []
+
+  defp assignment_occurrences(assignment, usage, definition) when is_map(assignment) do
+    write =
+      if targets_definition?(assignment, definition) do
+        [
+          usage
+          |> Map.delete(:source_data)
+          |> Map.merge(%{
+            reference_id: "#{usage.reference_id}:write:#{assignment_identity(assignment)}",
+            kind: "write",
+            semantic: :write,
+            operator: Map.get(assignment, "operator"),
+            operand: assignment_operand(assignment),
+            value_type: Map.get(assignment, "value_type", "literal")
+          })
+        ]
+      else
+        []
+      end
+
+    read =
+      if assignment_value_targets_definition?(assignment, definition) do
+        [
+          usage
+          |> Map.delete(:source_data)
+          |> Map.merge(%{
+            reference_id: "#{usage.reference_id}:read:#{assignment_identity(assignment)}",
+            kind: "read",
+            semantic: :read,
+            operator: "variable_ref",
+            operand: nil,
+            value_type: "variable_ref"
+          })
+        ]
+      else
+        []
+      end
+
+    write ++ read
+  end
+
+  defp assignment_occurrences(_assignment, _usage, _definition), do: []
+
+  defp targets_definition?(source, definition) do
+    source["sheet"] == definition.sheet_shortcut and
+      source["variable"] == definition.variable_name
+  end
+
+  defp assignment_value_targets_definition?(assignment, definition) do
+    assignment["value_type"] == "variable_ref" and
+      assignment["value_sheet"] == definition.sheet_shortcut and
+      assignment["value"] == definition.variable_name
+  end
+
+  defp assignment_operand(%{"operator" => "set_true"}), do: true
+  defp assignment_operand(%{"operator" => "set_false"}), do: false
+  defp assignment_operand(%{"operator" => "clear"}), do: ""
+  defp assignment_operand(assignment), do: Map.get(assignment, "value")
+
+  defp assignment_identity(assignment) do
+    case Map.get(assignment, "id") do
+      id when is_binary(id) and id != "" -> id
+      _missing -> :erlang.phash2(assignment)
+    end
+  end
+
+  defp response_label(response, index) do
+    case Map.get(response, "text") do
+      text when is_binary(text) and text != "" -> text
+      _missing -> "Response #{index + 1}"
+    end
+  end
+
+  defp legacy_assignments(%{"instruction" => assignment}) when is_map(assignment), do: [assignment]
+  defp legacy_assignments(_response), do: []
+
+  defp normalize_condition(condition) when is_map(condition), do: condition
+  defp normalize_condition(condition) when is_binary(condition), do: Condition.parse(condition)
+  defp normalize_condition(_condition), do: nil
+
+  defp prefer_specific_occurrences([], usage), do: [Map.delete(usage, :source_data)]
+  defp prefer_specific_occurrences(occurrences, _usage), do: occurrences
+
+  defp keep_tracked_kind(occurrences, tracked_kind) do
+    Enum.filter(occurrences, fn
+      %{semantic: :write} -> tracked_kind == "write"
+      %{semantic: semantic} when semantic in [:read, :condition] -> tracked_kind == "read"
+      %{kind: kind} -> kind == tracked_kind
+      _occurrence -> false
+    end)
   end
 
   defp bounded_limit(opts) do

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { FileText, GitBranch, Link, Map as MapIcon, type LucideIcon } from "@lucide/vue";
 import { injectListboxRootContext } from "reka-ui";
-import { nextTick, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { CommandGroup, CommandItem } from "@components/ui/command";
 import {
   lookupResultAccessibleLabel,
@@ -30,6 +31,8 @@ const emit = defineEmits<{
   select: [result: PaletteLookupResult];
 }>();
 
+const { t } = useI18n();
+
 const icons: Record<PaletteLookupResultIcon, LucideIcon> = {
   sheet: FileText,
   flow: GitBranch,
@@ -39,6 +42,24 @@ const icons: Record<PaletteLookupResultIcon, LucideIcon> = {
 
 const rootElement = ref<HTMLElement | null>(null);
 const listboxRoot = injectListboxRootContext();
+
+const resultGroups = computed(() => {
+  const grouped = new Map<string, PaletteLookupResult[]>();
+
+  for (const item of items) {
+    const key = item.group ?? "results";
+    const existing = grouped.get(key);
+    if (existing) existing.push(item);
+    else grouped.set(key, [item]);
+  }
+
+  return Array.from(grouped, ([key, groupItems]) => ({ key, items: groupItems }));
+});
+
+function groupHeading(key: string): string | undefined {
+  if (key === "results") return heading;
+  return t(`palette.advanced_search.groups.${key}`);
+}
 
 function resultIcon(result: PaletteLookupResult): LucideIcon {
   return icons[result.icon ?? "reference"];
@@ -92,9 +113,9 @@ defineExpose({
     :aria-busy="loading"
     :data-lookup-results-truncated="truncated"
   >
-    <CommandGroup v-if="items.length > 0" :heading="heading">
+    <CommandGroup v-for="group in resultGroups" :key="group.key" :heading="groupHeading(group.key)">
       <CommandItem
-        v-for="result in items"
+        v-for="result in group.items"
         :key="result.id"
         :value="`lookup-result-${result.id}`"
         :data-lookup-result-id="result.id"
