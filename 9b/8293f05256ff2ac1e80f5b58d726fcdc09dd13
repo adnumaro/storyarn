@@ -1,0 +1,62 @@
+test/storyarn/flows/health_checker_test.exs
+  s_b8bdf4186661a7::t_2adbeba43d73b8 110-118
+test/storyarn/flows/dashboard_health_coverage_test.exs
+  s_b8bdf4186661a7::t_4d5fddba72d282 286,304-312
+  s_b8bdf4186661a7::t_360dab01527faf 313-315
+lib/storyarn/imports/parsers/yarn/expression.ex
+  s_b8bdf4186661a7::t_8d6ebf5840e23b 236-247
+  s_b8bdf4186661a7::t_affa57dc5ae9e0 24-32
+test/storyarn/imports/parsers/yarn_test.exs
+  s_b8bdf4186661a7::t_2d5c4be309bb1e 1624-1691,1699-1704,1706-1707,1711-1716,1718-1733
+  s_b8bdf4186661a7::t_5cdc3c15413b54 823-826,828-829
+  s_b8bdf4186661a7::t_6ee1ac01d7b0b9 1734-1795
+  s_b8bdf4186661a7::t_907fbe7577b097 780-785
+  s_b8bdf4186661a7::t_c137deacb1ec5c 1531-1542,1545-1623,1796-1860,1864-1866,1869-1870,1872-1873,1875-1878
+  s_b8bdf4186661a7::t_ef72894f6224de 1692-1698,1705
+  s_b8bdf4186661a7::t_48b04b05c0e0f7 1543-1544
+  s_b8bdf4186661a7::t_28909106203bac 1708-1710,1717
+  s_b8bdf4186661a7::t_294c51d7962f6c 1861-1863,1867-1868,1871,1874
+lib/storyarn/imports/parsers/yarn/normalizer.ex
+  s_b8bdf4186661a7::t_7835f26d60cb53 684-689
+  s_b8bdf4186661a7::t_3eddc48335bc8f 515-520,522
+  s_b8bdf4186661a7::t_f2b416bce718c1 579-580
+  s_b8bdf4186661a7::t_127f16a898988b 376
+  s_b8bdf4186661a7::t_ded55140b5a034 594-595
+  s_b8bdf4186661a7::t_65897a704e61aa 369,374-375,389-392,401-402
+  s_b8bdf4186661a7::t_51bef03b1b26f2 19
+  s_b8bdf4186661a7::t_b787ba218a60d8 84-142
+  s_b8bdf4186661a7::t_ad5ad64806a74e 572-578,581-582,584-593,596-650
+  s_b8bdf4186661a7::t_fba219f845a646 6
+  s_b8bdf4186661a7::t_929cd2444c4b2d 421
+  s_b8bdf4186661a7::t_6e040dcab9afe4 800,804-807,811-812
+  s_b8bdf4186661a7::t_b1e9b7cd50006c 715-732
+  s_b8bdf4186661a7::t_4afd98a33ecfde 748-755
+  s_b8bdf4186661a7::t_d0715b4642d240 54
+  s_b8bdf4186661a7::t_439c142f9cdbaa 329
+  s_b8bdf4186661a7::t_ab24d73d8b5735 690
+lib/storyarn/imports/parsers/yarn/layout.ex
+  s_b8bdf4186661a7::t_339453b8d1c1d5 13-18,20-21,23-25
+  s_b8bdf4186661a7::t_32920b9372528d 1-12,19,22,26-184
+lib/storyarn/exports/serializers/yarn.ex
+  s_b8bdf4186661a7::t_34593363a3dd78 296-308
+test/storyarn/exports/validator_health_boundary_test.exs
+  s_b8bdf4186661a7::t_72fd220dc41c22 144-149
+lib/storyarn/flows/health_checker.ex
+  s_b8bdf4186661a7::t_475ba9427ee650 173-175,177-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9b8293f05256ff2ac1e80f5b58d726fcdc09dd13",
+  "prompts": {},
+  "sessions": {
+    "s_b8bdf4186661a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1658a32-00b8-4fb6-bbab-3e43f6b218e3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
