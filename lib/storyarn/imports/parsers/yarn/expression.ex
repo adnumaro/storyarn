@@ -13,6 +13,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
     {~r/^(.+?)\s*>\s*(.+)$/, "greater_than"},
     {~r/^(.+?)\s*<\s*(.+)$/, "less_than"}
   ]
+  @interpolation_regex ~r/\{\$([A-Za-z_][A-Za-z0-9_.]*)\}/
 
   @spec declaration(String.t()) :: {:ok, map()} | {:error, atom()}
   def declaration(args) when is_binary(args) do
@@ -59,7 +60,18 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
 
   @spec referenced_variables(String.t()) :: [String.t()]
   def referenced_variables(text) when is_binary(text) do
-    ~r/\$([A-Za-z_][A-Za-z0-9_.]*)/
+    text
+    |> without_string_literals()
+    |> then(&Regex.scan(~r/\$([A-Za-z_][A-Za-z0-9_.]*)/, &1, capture: :all_but_first))
+    |> Enum.map(fn [name] -> normalize_variable(name) end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  @doc false
+  @spec interpolated_variables(String.t()) :: [String.t()]
+  def interpolated_variables(text) when is_binary(text) do
+    @interpolation_regex
     |> Regex.scan(text, capture: :all_but_first)
     |> Enum.map(fn [name] -> normalize_variable(name) end)
     |> Enum.reject(&is_nil/1)
@@ -68,7 +80,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
 
   @spec interpolate(String.t(), :dialogue | :response) :: String.t()
   def interpolate(text, mode) when is_binary(text) do
-    Regex.replace(~r/\{\$([A-Za-z_][A-Za-z0-9_.]*)\}/, text, fn _match, name ->
+    Regex.replace(@interpolation_regex, text, fn _match, name ->
       variable = normalize_variable(name) || "variable"
       if mode == :dialogue, do: "{yarn.#{variable}}", else: "$yarn.#{variable}"
     end)
@@ -214,6 +226,38 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
   end
 
   defp normalize_variable(name), do: NameNormalizer.variablify(name)
+
+  defp without_string_literals(text) do
+    text
+    |> do_without_string_literals(false, false, [])
+    |> IO.iodata_to_binary()
+  end
+
+  defp do_without_string_literals(<<>>, _quoted?, _escaped?, acc), do: Enum.reverse(acc)
+
+  defp do_without_string_literals(<<?", rest::binary>>, false, _escaped?, acc) do
+    do_without_string_literals(rest, true, false, acc)
+  end
+
+  defp do_without_string_literals(<<byte, rest::binary>>, false, _escaped?, acc) do
+    do_without_string_literals(rest, false, false, [<<byte>> | acc])
+  end
+
+  defp do_without_string_literals(<<?\\, rest::binary>>, true, false, acc) do
+    do_without_string_literals(rest, true, true, acc)
+  end
+
+  defp do_without_string_literals(<<_byte, rest::binary>>, true, true, acc) do
+    do_without_string_literals(rest, true, false, acc)
+  end
+
+  defp do_without_string_literals(<<?", rest::binary>>, true, false, acc) do
+    do_without_string_literals(rest, false, false, acc)
+  end
+
+  defp do_without_string_literals(<<_byte, rest::binary>>, true, false, acc) do
+    do_without_string_literals(rest, true, false, acc)
+  end
 
   defp literal(value) when is_binary(value) do
     value = String.trim(value)

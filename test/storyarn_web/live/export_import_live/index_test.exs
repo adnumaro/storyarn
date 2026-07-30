@@ -10,6 +10,8 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   alias Storyarn.Accounts.Scope
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Imports
+  alias Storyarn.Imports.PlanStorage
+  alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Repo
   alias StoryarnWeb.ExportImportLive.Index
 
@@ -62,9 +64,398 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       props = get_export_vue(view).props
       assert props["can-edit"] == true
+      assert props["project-id"] == project.id
       assert is_map(props["upload-config"])
       assert import_state(view)["step"] == "upload"
       assert import_state(view)["conflictStrategy"] == "rename"
+    end
+
+    test "automatically restores the current user's latest active import on connected mount", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+
+      assert {:ok, expected, _preview} =
+               Imports.prepare_import(
+                 scope,
+                 project,
+                 "owner.yarn",
+                 "title: OwnerImport\n---\nHello\n===\n"
+               )
+
+      other_editor = user_fixture()
+      membership_fixture(project, other_editor, "editor")
+
+      assert {:ok, other_attempt, _preview} =
+               Imports.prepare_import(
+                 Scope.for_user(other_editor),
+                 project,
+                 "other-editor.yarn",
+                 "title: OtherEditorImport\n---\nHello\n===\n"
+               )
+
+      assert other_attempt.id > expected.id
+
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      state = import_state(view)
+      assert state["step"] == "preview"
+      assert state["attemptId"] == expected.id
+      assert state["status"] == "ready"
+      assert state["preview"]["counts"]["flows"] == 1
+    end
+
+    test "rehydrates a ready attempt and recomputes its conflict preview", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      _existing = flow_fixture(project, %{name: "Start"})
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 scope,
+                 project,
+                 "project.yarn",
+                 "title: Start\n---\nHello\n===\n"
+               )
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => ready.id})
+      assert_reply(view, %{ok: true, status: "ready"})
+
+      state = import_state(view)
+      assert state["step"] == "preview"
+      assert state["attemptId"] == ready.id
+      assert state["status"] == "ready"
+      assert state["preview"]["has_conflicts"]
+      assert state["preview"]["counts"]["flows"] == 1
+    end
+
+    test "persists and validates Yarn review before executing its exact confirmed revision", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+
+      source = """
+      title: Start
+      ---
+      <<clear_slide>>
+      <<start_slide>>
+      SlideHeader: Introduction
+      SlideImage: slide-1
+      <<end_slide>>
+      <<start_slide>>
+      SlideHeader: Summary
+      SlideImage: slide-2
+      <<end_slide>>
+      ===
+      """
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(scope, project, "presentation.yarn", source)
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => ready.id})
+      assert_reply(view, %{ok: true, status: "ready"})
+
+      review = import_state(view)["preview"]["import_review"]
+      issue_summary = import_state(view)["preview"]["issue_summary"]
+      assert review["variable_count"] == 0
+      assert review["preserved_channel_count"] == 2
+      assert review["speaker_decision_count"] == 2
+      assert review["compatibility_warning_count"] > 0
+      assert review["requires_acknowledgement"] == true
+      assert issue_summary["warning_count"] == review["compatibility_warning_count"]
+      assert issue_summary["counts_by_code"] == review["compatibility_warning_counts_by_code"]
+
+      assert review["speaker_decisions"]
+             |> Enum.filter(&(&1["suggested_action"] == "preserve_literal"))
+             |> Enum.map(& &1["speaker"])
+             |> Enum.sort() == ["SlideHeader", "SlideImage"]
+
+      assert review["possible_speaker_aliases"] == []
+
+      decisions =
+        Enum.map(review["speaker_decisions"], fn decision ->
+          %{
+            "speaker" => decision["speaker"],
+            "action" => decision["suggested_action"]
+          }
+        end)
+
+      render_hook(view, "execute_import", %{})
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+      assert import_state(view)["step"] == "preview"
+
+      render_hook(view, "validate_import_review", %{
+        "review_acknowledged" => "true",
+        "review_decisions" => decisions
+      })
+
+      assert_reply(view, %{ok: false, reason: "invalid"})
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+      assert import_state(view)["step"] == "preview"
+
+      render_hook(view, "validate_import_review", %{
+        "review_acknowledged" => false,
+        "review_decisions" => decisions
+      })
+
+      assert_reply(view, %{ok: false, reason: "invalid"})
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+      assert import_state(view)["step"] == "preview"
+
+      render_hook(view, "save_import_review", %{
+        "review_decisions" => [List.first(decisions)]
+      })
+
+      assert_reply(view, %{ok: true})
+      assert import_state(view)["preview"]["import_review_draft"]["decisions"] == [List.first(decisions)]
+
+      render_hook(view, "validate_import_review", %{
+        "review_acknowledged" => true,
+        "review_decisions" => decisions
+      })
+
+      assert_reply(
+        view,
+        %{ok: true, review_confirmation_fingerprint: fingerprint}
+      )
+
+      assert is_binary(fingerprint)
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+      assert import_state(view)["preview"]["import_review_resolution"]["decision_fingerprint"] == fingerprint
+
+      render_hook(view, "execute_import", %{
+        "review_confirmation_fingerprint" => "stale-fingerprint"
+      })
+
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+
+      render_hook(view, "execute_import", %{
+        "review_confirmation_fingerprint" => fingerprint
+      })
+
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "queued"
+      assert import_state(view)["step"] == "queued"
+    end
+
+    test "expires a stored import plan that predates deterministic review", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 scope,
+                 project,
+                 "legacy.yarn",
+                 "title: Start\n---\nAlice: Hello\n===\n"
+               )
+
+      assert {:ok, plan} = PlanStorage.load(ready.plan_storage_key)
+      legacy_plan = %{plan | data: Map.delete(plan.data, "import_review")}
+      assert {:ok, _storage_key} = PlanStorage.store_at(ready.plan_storage_key, legacy_plan)
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => ready.id})
+      assert_reply(view, %{ok: true, status: "ready"})
+
+      assert import_state(view)["preview"]["import_review"] == nil
+
+      render_hook(view, "execute_import", %{
+        "review_confirmation_fingerprint" => "not-required"
+      })
+
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "expired"
+      assert import_state(view)["step"] == "error"
+      assert {:error, :import_plan_unavailable} = PlanStorage.load(ready.plan_storage_key)
+    end
+
+    test "expires a stored import plan whose deterministic review is malformed", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 scope,
+                 project,
+                 "malformed-review.yarn",
+                 "title: Start\n---\nAlice: Hello\n===\n"
+               )
+
+      assert {:ok, plan} = PlanStorage.load(ready.plan_storage_key)
+
+      malformed_review =
+        plan.data
+        |> Map.fetch!("import_review")
+        |> Map.delete("requires_acknowledgement")
+
+      malformed_plan = %{plan | data: Map.put(plan.data, "import_review", malformed_review)}
+      assert {:ok, _storage_key} = PlanStorage.store_at(ready.plan_storage_key, malformed_plan)
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => ready.id})
+      assert_reply(view, %{ok: true, status: "ready"})
+
+      render_hook(view, "execute_import", %{
+        "review_confirmation_fingerprint" => "malformed-review"
+      })
+
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "expired"
+      assert import_state(view)["step"] == "error"
+      assert {:error, :import_plan_unavailable} = PlanStorage.load(ready.plan_storage_key)
+    end
+
+    test "reconciles a queued attempt after its completion broadcast was missed", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 scope,
+                 project,
+                 "project.yarn",
+                 "title: Start\n---\nHello\n===\n"
+               )
+
+      assert {:ok, queued} = Imports.enqueue_import(scope, ready.id, :rename)
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => queued.id})
+      assert_reply(view, %{ok: true, status: "queued"})
+      assert import_state(view)["step"] == "queued"
+
+      assert {:ok, completed} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+
+      render_hook(view, "reconcile_import", %{"attempt_id" => queued.id})
+      assert_reply(view, %{ok: true, status: "completed"})
+
+      state = import_state(view)
+      assert state["step"] == "done"
+      assert state["attemptId"] == completed.id
+      assert state["preview"]["counts"] == completed.counts
+    end
+
+    test "rehydrates a terminal attempt completed while the page was closed", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 scope,
+                 project,
+                 "project.yarn",
+                 "title: Start\n---\nHello\n===\n"
+               )
+
+      assert {:ok, queued} = Imports.enqueue_import(scope, ready.id, :rename)
+      assert {:ok, completed} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => completed.id})
+      assert_reply(view, %{ok: true, status: "completed"})
+
+      state = import_state(view)
+      assert state["step"] == "done"
+      assert state["attemptId"] == completed.id
+      assert state["preview"]["counts"] == completed.counts
+    end
+
+    test "rejects malformed, missing, and other-project resume references", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+      other_project = project_fixture(user)
+
+      assert {:ok, other_attempt, _preview} =
+               Imports.prepare_import(
+                 scope,
+                 other_project,
+                 "other.yarn",
+                 "title: Other\n---\nHello\n===\n"
+               )
+
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_hook(view, "resume_import", %{"attempt_id" => "invalid"})
+      assert_reply(view, %{ok: false, reason: "invalid"})
+      assert import_state(view)["step"] == "upload"
+
+      render_hook(view, "resume_import", %{"attempt_id" => 999_999_999})
+      assert_reply(view, %{ok: false, reason: "not_found"})
+      assert import_state(view)["step"] == "upload"
+
+      render_hook(view, "resume_import", %{"attempt_id" => other_attempt.id})
+      assert_reply(view, %{ok: false, reason: reason})
+      assert reason in ["not_found", "unauthorized"]
+      assert import_state(view)["step"] == "upload"
+    end
+
+    test "rejects unsafe numeric IDs before querying persistence", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_hook(view, "resume_import", %{"attempt_id" => 9_007_199_254_740_992})
+      assert_reply(view, %{ok: false, reason: "invalid"})
+      assert import_state(view)["step"] == "upload"
+    end
+
+    test "does not let a stale reconcile resurrect a reset queued attempt", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 scope,
+                 project,
+                 "project.yarn",
+                 "title: Start\n---\nHello\n===\n"
+               )
+
+      assert {:ok, queued} = Imports.enqueue_import(scope, ready.id, :rename)
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_hook(view, "resume_import", %{"attempt_id" => queued.id})
+      assert_reply(view, %{ok: true, status: "queued"})
+      assert import_state(view)["step"] == "queued"
+
+      render_hook(view, "reset_import", %{})
+      assert import_state(view)["step"] == "upload"
+
+      render_hook(view, "reconcile_import", %{"attempt_id" => queued.id})
+      assert_reply(view, %{ok: false, reason: "stale"})
+      assert import_state(view)["step"] == "upload"
+    end
+
+    test "stays connected when a linked process exits normally", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      send(view.pid, {:EXIT, self(), :normal})
+
+      assert render(view)
+      assert import_state(view)["step"] == "upload"
     end
 
     test "shows materialized counts and ignores stale import broadcasts", %{

@@ -3,13 +3,18 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
 
   alias Storyarn.Imports.ImportIssue
   alias Storyarn.Imports.Parsers.Yarn.Expression
+  alias Storyarn.Imports.Parsers.Yarn.Shortcut
+  alias Storyarn.Imports.Parsers.Yarn.SpeakerClassifier
   alias Storyarn.Shared.NameNormalizer
 
-  @max_issues 1_000
+  @max_title_length 200
+  @max_description_length 2_000
 
   @spec normalize([map()]) :: {:ok, map(), [ImportIssue.t()], map()} | {:error, atom()}
   def normalize(documents) when is_list(documents) do
-    with :ok <- validate_titles(documents) do
+    with :ok <- validate_titles(documents),
+         :ok <- validate_descriptions(documents),
+         :ok <- SpeakerClassifier.validate_speaker_names(documents) do
       {declarations, declaration_issues} = collect_declarations(documents)
       references = collect_references(documents)
       condition_references = collect_condition_references(documents)
@@ -18,8 +23,11 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       {variables, variable_issues} =
         merge_variables(declarations, references, condition_references, assignment_targets)
 
-      speakers = collect_speakers(documents)
-      {sheets, speaker_sheet_ids} = build_sheets(variables, speakers)
+      speaker_classification = SpeakerClassifier.classify(documents)
+
+      {sheets, speaker_sheet_ids} =
+        build_sheets(variables, speaker_classification.sheet_speakers)
+
       flow_refs = Map.new(documents, &{&1.title, stable_id("flow", &1.title)})
       flow_shortcuts = build_flow_shortcuts(documents)
 
@@ -39,7 +47,9 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
           {flow, issues ++ issues_for_flow}
         end)
 
-      issues = limit_issues(declaration_issues ++ variable_issues ++ flow_issues)
+      issues =
+        declaration_issues ++
+          variable_issues ++ speaker_classification.issues ++ flow_issues
 
       data = %{
         "storyarn_version" => "1.0.0",
@@ -48,6 +58,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
           "name" => "Yarn Spinner Import",
           "settings" => %{"import_source" => "yarn_spinner"}
         },
+        "import_review" => Map.put(speaker_classification.review, "variable_count", length(variables)),
         "sheets" => sheets,
         "flows" => flows,
         "scenes" => []
@@ -56,6 +67,9 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       metadata = %{
         flow_count: length(flows),
         sheet_count: length(sheets),
+        speaker_sheet_count: length(speaker_classification.sheet_speakers),
+        presentation_channel_count: MapSet.size(speaker_classification.presentation_channels),
+        possible_speaker_alias_count: speaker_classification.possible_alias_count,
         variable_count: length(variables),
         warning_count: Enum.count(issues, &(&1.severity == :warning)),
         error_count: Enum.count(issues, &(&1.severity == :error))
@@ -66,18 +80,34 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   end
 
   defp validate_titles(documents) do
-    duplicate? =
-      documents
-      |> Enum.map(& &1.title)
-      |> Enum.frequencies()
-      |> Enum.any?(fn {_title, count} -> count > 1 end)
+    titles = Enum.map(documents, & &1.title)
 
-    if duplicate?, do: {:error, :duplicate_yarn_node_title}, else: :ok
+    cond do
+      Enum.any?(titles, &(String.length(&1) > @max_title_length)) ->
+        {:error, :yarn_node_title_too_long}
+
+      titles |> Enum.frequencies() |> Enum.any?(fn {_title, count} -> count > 1 end) ->
+        {:error, :duplicate_yarn_node_title}
+
+      true ->
+        :ok
+    end
   end
 
-  defp limit_issues(issues) do
-    {errors, warnings} = Enum.split_with(issues, &(&1.severity == :error))
-    Enum.take(errors ++ warnings, @max_issues)
+  defp validate_descriptions(documents) do
+    if Enum.any?(documents, &description_too_long?/1),
+      do: {:error, :yarn_node_description_too_long},
+      else: :ok
+  end
+
+  defp description_too_long?(document) do
+    case Map.get(document.headers, "description") do
+      description when is_binary(description) ->
+        String.length(description) > @max_description_length
+
+      _no_description ->
+        false
+    end
   end
 
   defp collect_declarations(documents) do
@@ -106,10 +136,23 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     documents
     |> Enum.flat_map(&walk_items(&1.body))
     |> Enum.flat_map(fn
-      {:line, text, _meta} -> Expression.referenced_variables(text)
-      {:command, _name, args, _meta} -> Expression.referenced_variables(args)
-      {:if, branches, _else_body, _meta} -> Enum.flat_map(branches, &Expression.referenced_variables(&1.condition))
-      {:options, options, _meta} -> Enum.flat_map(options, &Expression.referenced_variables(&1.text))
+      {:line, text, _meta} ->
+        Expression.interpolated_variables(text)
+
+      {:command, "set", args, _meta} ->
+        Expression.referenced_variables(args)
+
+      {:command, _name, _args, _meta} ->
+        []
+
+      {:if, branches, _else_body, _meta} ->
+        Enum.flat_map(branches, &Expression.referenced_variables(&1.condition))
+
+      {:options, options, _meta} ->
+        Enum.flat_map(options, fn option ->
+          Expression.interpolated_variables(option.text) ++
+            option_condition_references(option)
+        end)
     end)
     |> MapSet.new()
   end
@@ -182,23 +225,6 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     {variables, issues}
   end
 
-  defp collect_speakers(documents) do
-    documents
-    |> Enum.flat_map(&walk_items(&1.body))
-    |> Enum.flat_map(fn
-      {:line, text, _meta} ->
-        case split_speaker(text) do
-          {speaker, _dialogue} when is_binary(speaker) -> [speaker]
-          _other -> []
-        end
-
-      _item ->
-        []
-    end)
-    |> Enum.uniq()
-    |> Enum.sort()
-  end
-
   defp build_sheets(variables, speakers) do
     variable_sheet = if variables == [], do: [], else: [build_variable_sheet(variables)]
     used = if variables == [], do: MapSet.new(), else: MapSet.new(["yarn"])
@@ -207,7 +233,11 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       speakers
       |> Enum.with_index(length(variable_sheet))
       |> Enum.reduce({[], %{}, used}, fn {speaker, index}, {sheets, ids, used_shortcuts} ->
-        shortcut = unique_shortcut(NameNormalizer.shortcutify(speaker), used_shortcuts)
+        shortcut =
+          speaker
+          |> NameNormalizer.shortcutify()
+          |> Shortcut.unique(used_shortcuts)
+
         id = stable_id("speaker_sheet", speaker)
 
         sheet = %{
@@ -260,8 +290,8 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       |> Enum.with_index()
       |> Enum.reduce({%{}, MapSet.new()}, fn {document, index}, {shortcuts, used} ->
         base = NameNormalizer.shortcutify(document.title)
-        base = if base == "", do: "yarn-flow-#{index + 1}", else: base
-        shortcut = unique_shortcut(base, used)
+        fallback = "yarn-flow-#{index + 1}"
+        shortcut = Shortcut.unique(base, used, fallback)
         {Map.put(shortcuts, document.title, shortcut), MapSet.put(used, shortcut)}
       end)
 
@@ -317,9 +347,9 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   end
 
   defp compile_items([{:line, text, meta} | rest], incoming, state) do
-    {speaker, dialogue} = split_speaker(text)
+    {speaker, dialogue} = SpeakerClassifier.split(text)
 
-    data = dialogue_data(dialogue, speaker, meta, state, [])
+    data = dialogue_data(dialogue, speaker, text, meta, state, [])
     {node_id, state} = add_node(state, "dialogue", data)
     state = connect_many(state, incoming, node_id)
     compile_items(rest, [{node_id, "output"}], state)
@@ -382,16 +412,22 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     end
   end
 
-  defp compile_items([{:command, "return", _args, _meta} | rest], incoming, state) do
+  defp compile_items([{:command, "return", "", _meta} | rest], incoming, state) do
     {node_id, state} = add_node(state, "exit", %{"label" => "Return", "exit_mode" => "caller_return"})
     state = connect_many(state, incoming, node_id)
     compile_items(rest, [], state)
   end
 
-  defp compile_items([{:command, "stop", _args, _meta} | rest], incoming, state) do
+  defp compile_items([{:command, "stop", "", _meta} | rest], incoming, state) do
     {node_id, state} = add_node(state, "exit", %{"label" => "Stop", "exit_mode" => "terminal"})
     state = connect_many(state, incoming, node_id)
     compile_items(rest, [], state)
+  end
+
+  defp compile_items([{:command, name, args, meta} | rest], incoming, state) when name in ["return", "stop"] do
+    state = add_issue(state, :unsupported_yarn_control_command, meta, :error)
+    {outgoing, state} = add_unsupported_annotation(state, incoming, meta, yarn_command(name, args))
+    compile_items(rest, outgoing, state)
   end
 
   defp compile_items([{:command, name, args, meta} | rest], incoming, state) when name in ["once", "endonce"] do
@@ -407,9 +443,9 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   end
 
   defp compile_dialogue_with_options(text, meta, options, _option_meta, incoming, state) do
-    {speaker, dialogue} = split_speaker(text)
+    {speaker, dialogue} = SpeakerClassifier.split(text)
     {responses, state} = build_responses(options, state)
-    data = dialogue_data(dialogue, speaker, meta, state, responses)
+    data = dialogue_data(dialogue, speaker, text, meta, state, responses)
     {dialogue_id, state} = add_node(state, "dialogue", data)
     state = connect_many(state, incoming, dialogue_id)
 
@@ -503,8 +539,8 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     {[{hub_id, "output"}], state}
   end
 
-  defp dialogue_data(text, speaker, meta, state, responses) do
-    %{
+  defp dialogue_data(text, speaker, original_text, meta, state, responses) do
+    data = %{
       "speaker_sheet_id" => Map.get(state.speaker_sheet_ids, speaker),
       "text" => Expression.interpolate(text, :dialogue),
       "stage_directions" => "",
@@ -515,17 +551,14 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       "avatar_id" => nil,
       "responses" => responses
     }
-  end
 
-  defp split_speaker(text) do
-    case Regex.run(~r/^([\p{L}\p{N}_][\p{L}\p{N} _.'-]{0,59}):\s+(.+)$/u, text, capture: :all_but_first) do
-      [speaker, dialogue] ->
-        if String.downcase(speaker) in ["http", "https"],
-          do: {nil, text},
-          else: {String.trim(speaker), dialogue}
-
-      _other ->
-        {nil, text}
+    if is_binary(speaker) do
+      Map.merge(data, %{
+        "import_yarn_speaker" => speaker,
+        "import_yarn_literal_text" => Expression.interpolate(original_text, :dialogue)
+      })
+    else
+      data
     end
   end
 
@@ -544,9 +577,8 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       "import_line" => meta.line
     }
 
-    {node_id, state} = add_node(state, "annotation", data)
-    state = connect_many(state, incoming, node_id)
-    {[{node_id, "output"}], state}
+    {_node_id, state} = add_node(state, "annotation", data)
+    {incoming, state}
   end
 
   defp yarn_command(name, ""), do: "<<#{name}>>"
@@ -621,12 +653,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   end
 
   defp resolve_flow_ref(flow_refs, target) do
-    target = String.trim(target)
-
-    Map.get(flow_refs, target) ||
-      Enum.find_value(flow_refs, fn {title, id} ->
-        if NameNormalizer.shortcutify(title) == NameNormalizer.shortcutify(target), do: id
-      end)
+    Map.get(flow_refs, String.trim(target))
   end
 
   defp walk_items(items) do
@@ -639,21 +666,6 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
 
       item ->
         [item]
-    end)
-  end
-
-  defp unique_shortcut("", used), do: unique_shortcut("character", used)
-
-  defp unique_shortcut(base, used) do
-    if MapSet.member?(used, base), do: next_unique_shortcut(base, used), else: base
-  end
-
-  defp next_unique_shortcut(base, used) do
-    2
-    |> Stream.iterate(&(&1 + 1))
-    |> Enum.find_value(fn suffix ->
-      candidate = "#{base}-#{suffix}"
-      if MapSet.member?(used, candidate), do: nil, else: candidate
     end)
   end
 

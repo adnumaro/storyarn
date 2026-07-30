@@ -21,6 +21,8 @@ defmodule Storyarn.Imports.Materializer do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Imports.ImportPlan
+  alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
+  alias Storyarn.Imports.Parsers.Yarn.Shortcut
   alias Storyarn.Localization
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.RuntimeKey
@@ -45,6 +47,10 @@ defmodule Storyarn.Imports.Materializer do
     localized_texts: 100_000,
     glossary_entries: 10_000
   }
+  @transient_import_node_data_keys ~w(
+    import_yarn_speaker
+    import_yarn_literal_text
+  )
 
   # =============================================================================
   # Plan validation
@@ -315,7 +321,8 @@ defmodule Storyarn.Imports.Materializer do
   def preview(project_id, data) do
     with :ok <- validate_structure(data),
          :ok <- validate_types(data),
-         :ok <- validate_runtime_identifiers(data) do
+         :ok <- validate_runtime_identifiers(data),
+         :ok <- validate_entity_counts(data) do
       counts = count_import_entities(data)
       conflicts = detect_conflicts(project_id, data)
 
@@ -323,7 +330,10 @@ defmodule Storyarn.Imports.Materializer do
        %{
          counts: counts,
          conflicts: conflicts,
-         has_conflicts: conflicts != %{}
+         has_conflicts: conflicts != %{},
+         import_review: Map.get(data, "import_review", %{}),
+         import_review_draft: Map.get(data, "import_review_draft"),
+         import_review_resolution: Map.get(data, "import_review_resolution")
        }}
     end
   end
@@ -390,10 +400,14 @@ defmodule Storyarn.Imports.Materializer do
 
   def execute(project, %ImportPlan{} = plan, opts) do
     result =
-      Repo.transact(
-        fn -> materialize_in_transaction(project, plan, opts) end,
-        timeout: to_timeout(minute: 5)
-      )
+      if ReviewDecisions.resolved?(plan) do
+        Repo.transact(
+          fn -> materialize_in_transaction(project, plan, opts) end,
+          timeout: to_timeout(minute: 5)
+        )
+      else
+        {:error, :invalid_import_review}
+      end
 
     case result do
       {:ok, _result} -> Collaboration.broadcast_dashboard_change(project.id, :all)
@@ -412,6 +426,7 @@ defmodule Storyarn.Imports.Materializer do
     cond do
       not Repo.in_transaction?() -> {:error, :import_transaction_required}
       ImportPlan.error?(plan) -> {:error, :import_plan_has_errors}
+      not ReviewDecisions.resolved?(plan) -> {:error, :invalid_import_review}
       true -> do_materialize_in_transaction(project, data, opts)
     end
   end
@@ -425,6 +440,7 @@ defmodule Storyarn.Imports.Materializer do
     cond do
       not Repo.in_transaction?() -> {:error, :import_transaction_required}
       ImportPlan.error?(plan) -> {:error, :import_plan_has_errors}
+      not ReviewDecisions.resolved?(plan) -> {:error, :invalid_import_review}
       true -> materialize_validated_project(project, data, opts)
     end
   end
@@ -630,18 +646,20 @@ defmodule Storyarn.Imports.Materializer do
   end
 
   defp do_import_sheets(project, sheets, id_map, strategy, existing_shortcuts) do
+    used_shortcuts = Map.fetch!(existing_shortcuts, :sheet)
+
     # Pass 1: create all sheets without parent_id
-    {id_map, sheet_records} =
-      Enum.reduce(sheets, {id_map, []}, fn sheet_data, {map, records} ->
+    {id_map, sheet_records, _used_shortcuts} =
+      Enum.reduce(sheets, {id_map, [], used_shortcuts}, fn sheet_data, {map, records, used} ->
         case resolve_shortcut(
                sheet_data["shortcut"],
                strategy,
                project.id,
                :sheet,
-               existing_shortcuts
+               used
              ) do
           :skip ->
-            {map, records}
+            {map, records, used}
 
           shortcut ->
             attrs = %{
@@ -666,7 +684,7 @@ defmodule Storyarn.Imports.Materializer do
             # Import blocks
             {map, _} = import_blocks(sheet.id, sheet_data["blocks"] || [], map)
 
-            {map, [{sheet, sheet_data} | records]}
+            {map, [{sheet, sheet_data} | records], reserve_shortcut(used, shortcut)}
         end
       end)
 
@@ -770,22 +788,30 @@ defmodule Storyarn.Imports.Materializer do
   end
 
   defp do_import_flows(project, flows, id_map, strategy, existing_shortcuts) do
+    used_shortcuts = Map.fetch!(existing_shortcuts, :flow)
+
     # Pass 1: create flows without parent_id
-    {id_map, flow_records, node_count} =
-      Enum.reduce(flows, {id_map, [], 0}, fn flow_data, {map, records, node_count} ->
+    {id_map, flow_records, node_count, _used_shortcuts} =
+      Enum.reduce(flows, {id_map, [], 0, used_shortcuts}, fn flow_data, {map, records, node_count, used} ->
         case resolve_shortcut(
                flow_data["shortcut"],
                strategy,
                project.id,
                :flow,
-               existing_shortcuts
+               used
              ) do
           :skip ->
-            {map, records, node_count}
+            {map, records, node_count, used}
 
           shortcut ->
             {map, flow, imported_node_count} = create_flow_record(project, flow_data, shortcut, map)
-            {map, [{flow, flow_data} | records], node_count + imported_node_count}
+
+            {
+              map,
+              [{flow, flow_data} | records],
+              node_count + imported_node_count,
+              reserve_shortcut(used, shortcut)
+            }
         end
       end)
 
@@ -904,6 +930,7 @@ defmodule Storyarn.Imports.Materializer do
 
   defp remap_node_data(data, map) do
     data
+    |> Map.drop(@transient_import_node_data_keys)
     |> remap_data_field(map, "speaker_sheet_id", :sheet)
     |> remap_data_field(map, "location_sheet_id", :sheet)
     |> remap_data_field(map, "avatar_id", :asset)
@@ -987,21 +1014,23 @@ defmodule Storyarn.Imports.Materializer do
   end
 
   defp do_import_scenes(project, scenes, id_map, strategy, existing_shortcuts) do
-    {id_map, scene_records} =
-      Enum.reduce(scenes, {id_map, []}, fn scene_data, {map, records} ->
+    used_shortcuts = Map.fetch!(existing_shortcuts, :scene)
+
+    {id_map, scene_records, _used_shortcuts} =
+      Enum.reduce(scenes, {id_map, [], used_shortcuts}, fn scene_data, {map, records, used} ->
         case resolve_shortcut(
                scene_data["shortcut"],
                strategy,
                project.id,
                :scene,
-               existing_shortcuts
+               used
              ) do
           :skip ->
-            {map, records}
+            {map, records, used}
 
           shortcut ->
             {map, scene} = create_scene_record(project, scene_data, shortcut, map)
-            {map, [{scene, scene_data} | records]}
+            {map, [{scene, scene_data} | records], reserve_shortcut(used, shortcut)}
         end
       end)
 
@@ -1532,11 +1561,13 @@ defmodule Storyarn.Imports.Materializer do
     if type, do: Map.get(map, {type, target_id})
   end
 
-  defp resolve_shortcut(nil, _strategy, _project_id, _entity_type, _existing_shortcuts), do: nil
+  defp reserve_shortcut(used, shortcut) when is_binary(shortcut), do: MapSet.put(used, shortcut)
+  defp reserve_shortcut(used, _shortcut), do: used
 
-  defp resolve_shortcut(shortcut, strategy, project_id, entity_type, existing_shortcuts) do
-    existing_set = Map.fetch!(existing_shortcuts, entity_type)
-    exists? = MapSet.member?(existing_set, shortcut)
+  defp resolve_shortcut(nil, _strategy, _project_id, _entity_type, _used_shortcuts), do: nil
+
+  defp resolve_shortcut(shortcut, strategy, project_id, entity_type, used_shortcuts) do
+    exists? = MapSet.member?(used_shortcuts, shortcut)
 
     cond do
       not exists? ->
@@ -1549,8 +1580,7 @@ defmodule Storyarn.Imports.Materializer do
         overwrite_existing(shortcut, project_id, entity_type)
 
       strategy == :rename ->
-        suffix = 4 |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower)
-        "#{shortcut}-#{suffix}"
+        Shortcut.unique(shortcut, used_shortcuts, shortcut)
 
       true ->
         shortcut

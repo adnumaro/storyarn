@@ -350,6 +350,49 @@ defmodule Storyarn.Imports.MaterializerTest do
       # One original, one with suffix
       assert Enum.any?(shortcuts, &String.contains?(&1, "-"))
     end
+
+    test "keeps renamed shortcuts within the persisted limit", %{target: target, parsed: parsed} do
+      shortcut = String.duplicate("a", 50)
+      sheet_fixture(target, %{name: "Existing Long Shortcut", shortcut: shortcut})
+
+      data = put_in(parsed.data, ["sheets", Access.at(0), "shortcut"], shortcut)
+      parsed = %{parsed | data: data}
+
+      assert {:ok, result} =
+               Imports.execute(target, parsed, conflict_strategy: :rename)
+
+      [imported_sheet] = result.sheets
+      assert String.length(imported_sheet.shortcut) <= 50
+      assert String.ends_with?(imported_sheet.shortcut, "-2")
+    end
+
+    test "reserves generated shortcuts across every entity in the same import", %{
+      target: target,
+      parsed: parsed
+    } do
+      sheet_fixture(target, %{name: "Existing", shortcut: "character"})
+      [source_sheet] = parsed.data["sheets"]
+
+      first =
+        source_sheet
+        |> Map.put("id", "first-character")
+        |> Map.put("name", "First character")
+        |> Map.put("shortcut", "character")
+
+      second =
+        source_sheet
+        |> Map.put("id", "second-character")
+        |> Map.put("name", "Second character")
+        |> Map.put("shortcut", "character-2")
+
+      parsed = %{parsed | data: Map.put(parsed.data, "sheets", [first, second])}
+
+      assert {:ok, result} = Imports.execute(target, parsed, conflict_strategy: :rename)
+
+      assert result.sheets
+             |> Enum.map(& &1.shortcut)
+             |> Enum.sort() == ["character-2", "character-2-2"]
+    end
   end
 
   # =============================================================================
@@ -742,7 +785,7 @@ defmodule Storyarn.Imports.MaterializerTest do
 
   defp import_plan(data) do
     %ImportPlan{
-      format: :yarn,
+      format: :test,
       parser_version: "1",
       source_kind: :file,
       data: data

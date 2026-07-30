@@ -7,6 +7,8 @@ defmodule Storyarn.Imports.SourceBundle do
   bounded to limit traversal and decompression-bomb attacks.
   """
 
+  alias Storyarn.Imports.SourceBundle.YarnProjectSources
+
   @max_upload_bytes 50_000_000
   @max_entry_bytes 10_000_000
   @max_expanded_bytes 50_000_000
@@ -68,9 +70,10 @@ defmodule Storyarn.Imports.SourceBundle do
          :ok <- validate_entry_count(entries),
          {:ok, selected} <- validate_entries(entries),
          {:ok, extracted} <- extract_selected(binary, selected),
-         {:ok, files} <- normalize_files(extracted),
-         :ok <- require_yarn(files) do
-      {:ok, %__MODULE__{kind: :archive, files: files}}
+         {:ok, normalized} <- normalize_files(extracted),
+         {:ok, selected_sources} <- YarnProjectSources.select(normalized),
+         :ok <- require_yarn(selected_sources) do
+      {:ok, %__MODULE__{kind: :archive, files: anonymize_files(selected_sources)}}
     end
   end
 
@@ -337,10 +340,10 @@ defmodule Storyarn.Imports.SourceBundle do
          :ok <- validate_nested_archive(metadata.extension),
          :ok <- validate_entry_size(metadata.size),
          :ok <- validate_expansion_ratio(metadata.size, metadata.compressed_size),
-         :ok <- validate_duplicate(metadata.name, names),
+         :ok <- validate_duplicate(metadata.path, names),
          :ok <- validate_total(total + metadata.size) do
       selected = maybe_select_entry(acc, metadata)
-      names = MapSet.put(names, String.downcase(metadata.name))
+      names = MapSet.put(names, String.downcase(metadata.path))
       {:cont, {:ok, selected, names, total + metadata.size}}
     else
       {:error, reason} -> {:halt, {:error, reason}}
@@ -356,11 +359,14 @@ defmodule Storyarn.Imports.SourceBundle do
   defp entry_metadata({:zip_file, raw_name, info, _comment, _offset, compressed_size}) do
     with {:ok, name} <- zip_name(raw_name),
          true <- is_tuple(info) and tuple_size(info) >= 3 do
+      path = canonical_archive_path(name)
+
       {:ok,
        %{
          raw_name: raw_name,
          name: name,
-         extension: name |> Path.extname() |> String.downcase(),
+         path: path,
+         extension: path |> Path.extname() |> String.downcase(),
          size: elem(info, 1),
          type: elem(info, 2),
          compressed_size: compressed_size
@@ -415,7 +421,9 @@ defmodule Storyarn.Imports.SourceBundle do
   defp validate_expansion_ratio(_size, _compressed_size), do: {:error, :invalid_archive_entry}
 
   defp validate_duplicate(name, names) do
-    if MapSet.member?(names, String.downcase(name)),
+    canonical_name = String.downcase(name)
+
+    if MapSet.member?(names, canonical_name),
       do: {:error, :duplicate_archive_entry},
       else: :ok
   end
@@ -440,13 +448,14 @@ defmodule Storyarn.Imports.SourceBundle do
 
   defp normalize_files(extracted) do
     extracted
-    |> Enum.with_index(1)
-    |> Enum.reduce_while({:ok, []}, fn {{raw_name, content}, index}, {:ok, acc} ->
+    |> Enum.reduce_while({:ok, []}, fn {raw_name, content}, {:ok, acc} ->
       with {:ok, name} <- zip_name(raw_name),
            {:ok, content} <- normalize_text(content) do
+        path = canonical_archive_path(name)
+
         file = %{
-          alias: "source_#{index}",
-          extension: name |> Path.extname() |> String.downcase(),
+          path: path,
+          extension: path |> Path.extname() |> String.downcase(),
           content: content
         }
 
@@ -459,6 +468,25 @@ defmodule Storyarn.Imports.SourceBundle do
       {:ok, files} -> {:ok, Enum.reverse(files)}
       error -> error
     end
+  end
+
+  defp anonymize_files(files) do
+    files
+    |> Enum.with_index(1)
+    |> Enum.map(fn {file, index} ->
+      %{
+        alias: "source_#{index}",
+        extension: file.extension,
+        content: file.content
+      }
+    end)
+  end
+
+  defp canonical_archive_path(name) do
+    name
+    |> String.normalize(:nfc)
+    |> String.split("/", trim: true)
+    |> Enum.join("/")
   end
 
   defp normalize_text(binary) do

@@ -356,6 +356,13 @@ defmodule Storyarn.Imports.Parsers.Yarn.Document do
   defp add_text_compatibility_warnings(issues, text, source, line) do
     issues
     |> maybe_add_issue(
+      explicit_character_markup?(text),
+      :error,
+      :unsupported_yarn_character_markup,
+      source,
+      line
+    )
+    |> maybe_add_issue(
       unsupported_interpolation?(text),
       :warning,
       :unsupported_yarn_interpolation,
@@ -384,6 +391,10 @@ defmodule Storyarn.Imports.Parsers.Yarn.Document do
     |> Enum.any?(fn [expression] ->
       not Regex.match?(~r/^\$[A-Za-z_][A-Za-z0-9_.]*$/, String.trim(expression))
     end)
+  end
+
+  defp explicit_character_markup?(text) do
+    Regex.match?(~r/\[\s*\/?\s*character(?:\s|=|\/?\])/iu, text)
   end
 
   defp maybe_add_issue(issues, false, _severity, _code, _source, _line), do: issues

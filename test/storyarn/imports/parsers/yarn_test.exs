@@ -6,10 +6,12 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
 
   alias Storyarn.Flows
   alias Storyarn.Flows.Evaluator.ConditionEval
+  alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.Materializer
   alias Storyarn.Imports.ParserRegistry
+  alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.SourceBundle
   alias Storyarn.Repo
@@ -48,7 +50,7 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert {:ok, %ImportPlan{format: :yarn} = plan} =
                Imports.parse_file("dialogue.yarn", @project)
 
-      assert plan.parser_version == "3"
+      assert plan.parser_version == "5"
       assert plan.source_kind == :file
       assert plan.metadata.flow_count == 2
       assert plan.metadata.variable_count == 2
@@ -77,6 +79,628 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert Enum.any?(ending_flow["nodes"], &(&1["type"] == "exit"))
     end
 
+    test "emits unique graph IDs, existing endpoints and native-valid pins" do
+      assert {:ok, plan} = Imports.parse_file("dialogue.yarn", @project)
+
+      Enum.each(plan.data["flows"], &assert_valid_graph/1)
+    end
+
+    test "extracts variables according to Yarn syntax context" do
+      source = """
+      title: Start
+      ---
+      The price is $usd, while {$dialogue_value} is interpolated.
+      -> Pay $usd with {$option_value} <<if $option_condition>>
+      <<if $branch_condition == "$condition_literal">>
+        Conditional branch
+      <<endif>>
+      <<set $assignment_target = $assignment_source>>
+      <<set $label = "price $assignment_literal">>
+      <<custom_command $command_argument>>
+      ===
+      """
+
+      assert {:ok, plan} = raw_yarn_plan(source)
+
+      variable_sheet = Enum.find(plan.data["sheets"], &(&1["shortcut"] == "yarn"))
+
+      assert variable_sheet["blocks"]
+             |> Enum.map(& &1["variable_name"])
+             |> Enum.sort() == [
+               "assignment_source",
+               "assignment_target",
+               "branch_condition",
+               "dialogue_value",
+               "label",
+               "option_condition",
+               "option_value"
+             ]
+
+      refute Enum.any?(variable_sheet["blocks"], fn block ->
+               block["variable_name"] in [
+                 "usd",
+                 "assignment_literal",
+                 "command_argument",
+                 "condition_literal"
+               ]
+             end)
+
+      [flow] = plan.data["flows"]
+      dialogue = Enum.find(flow["nodes"], &(&1["type"] == "dialogue"))
+      assert dialogue["data"]["text"] == "The price is $usd, while {yarn.dialogue_value} is interpolated."
+
+      assert Enum.any?(dialogue["data"]["responses"], fn response ->
+               response["text"] == "Pay $usd with $yarn.option_value"
+             end)
+    end
+
+    test "suggests scoped presentation channels and applies an explicit complete mapping" do
+      source = """
+      title: Start
+      ---
+      Capsley: Welcome to the samples.
+      <<start_slide>>
+      SlideHeader: Agenda
+      SlideBullet: Yarn Spinner
+      SlideImage: intro-1
+      <<end_slide>>
+      Capsley: Here is the code.
+      <<clear_slide>>
+      <<start_slide>>
+      SlideHeader: Code
+      SlideBullet: Storyarn
+      SlideImage: code-1
+      <<end_slide>>
+      Capsley: That is all.
+      Capsely: Thanks for watching.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("welcome.yarn", source)
+
+      assert plan.metadata.variable_count == 0
+      assert plan.metadata.sheet_count == 2
+      assert plan.metadata.speaker_sheet_count == 2
+      assert plan.metadata.presentation_channel_count == 3
+      assert plan.metadata.possible_speaker_alias_count == 1
+
+      assert plan.data["sheets"]
+             |> Enum.map(& &1["name"])
+             |> Enum.sort() == ["Capsely", "Capsley"]
+
+      assert Enum.all?(plan.data["sheets"], &(&1["blocks"] == []))
+
+      refute Enum.any?(plan.data["sheets"], fn sheet ->
+               sheet["name"] in ["SlideHeader", "SlideBullet", "SlideImage"]
+             end)
+
+      assert Enum.count(plan.issues, &(&1.code == :yarn_presentation_channel_preserved)) == 3
+      assert Enum.count(plan.issues, &(&1.code == :possible_yarn_speaker_alias)) == 1
+
+      [provisional_flow] = plan.data["flows"]
+      provisional_dialogues = Enum.filter(provisional_flow["nodes"], &(&1["type"] == "dialogue"))
+      assert length(provisional_dialogues) == 10
+
+      assert provisional_dialogues
+             |> Enum.filter(&(&1["data"]["import_yarn_speaker"] == "SlideImage"))
+             |> Enum.map(& &1["data"]["import_yarn_literal_text"])
+             |> Enum.sort() == ["SlideImage: code-1", "SlideImage: intro-1"]
+
+      review = plan.data["import_review"]
+      assert review["variable_count"] == 0
+      assert review["speaker_decision_count"] == 5
+      assert review["speaker_decisions_truncated"] == false
+      assert review["sheet_speaker_count"] == 2
+      assert review["preserved_channel_count"] == 3
+      assert review["possible_speaker_alias_count"] == 1
+      assert review["possible_speaker_aliases_truncated"] == false
+      assert review["requires_acknowledgement"] == true
+
+      assert review["speaker_decisions"]
+             |> Enum.filter(&(&1["suggested_action"] == "preserve_literal"))
+             |> Enum.map(& &1["speaker"])
+             |> Enum.sort() == ["SlideBullet", "SlideHeader", "SlideImage"]
+
+      assert Enum.all?(
+               Enum.filter(
+                 review["speaker_decisions"],
+                 &(&1["suggested_action"] == "preserve_literal")
+               ),
+               fn decision ->
+                 decision["confidence"] == "high" and
+                   decision["reasons"] == ["repeated_scoped_presentation_channel"] and
+                   decision["matched_scope_regions"] == 2 and
+                   decision["speaker_matched_scope_regions"] == 2
+               end
+             )
+
+      assert [
+               %{
+                 "decision" => "review",
+                 "evidence" => "single_adjacent_transposition_with_dominant_frequency",
+                 "less_frequent" => "Capsely",
+                 "more_frequent" => "Capsley"
+               }
+             ] = review["possible_speaker_aliases"]
+
+      decisions =
+        Enum.map(selected_suggestions(review), fn
+          %{"speaker" => "Capsely"} = decision ->
+            decision
+            |> Map.put("action", "map_to_sheet")
+            |> Map.put("target_speaker", "Capsley")
+
+          decision ->
+            decision
+        end)
+
+      assert {:ok, resolved_plan} = ReviewDecisions.apply(plan, true, decisions)
+
+      assert resolved_plan.data["import_review"]["speaker_decision_count"] == 5
+      assert resolved_plan.data["import_review_resolution"]["version"] == 2
+      assert is_binary(resolved_plan.data["import_review_resolution"]["decision_fingerprint"])
+      assert ReviewDecisions.resolved?(resolved_plan)
+
+      assert Enum.map(resolved_plan.data["sheets"], & &1["name"]) == ["Capsley"]
+
+      [flow] = resolved_plan.data["flows"]
+
+      presentation_dialogues =
+        Enum.filter(flow["nodes"], fn node ->
+          node["type"] == "dialogue" and
+            node["data"]["speaker_sheet_id"] == nil and
+            String.starts_with?(node["data"]["text"], ["SlideBullet:", "SlideHeader:", "SlideImage:"])
+        end)
+
+      assert presentation_dialogues
+             |> Enum.map(& &1["data"]["text"])
+             |> Enum.sort() == [
+               "SlideBullet: Storyarn",
+               "SlideBullet: Yarn Spinner",
+               "SlideHeader: Agenda",
+               "SlideHeader: Code",
+               "SlideImage: code-1",
+               "SlideImage: intro-1"
+             ]
+
+      connected_sources = MapSet.new(flow["connections"], & &1["source_node_id"])
+      connected_targets = MapSet.new(flow["connections"], & &1["target_node_id"])
+
+      assert Enum.all?(presentation_dialogues, fn dialogue ->
+               MapSet.member?(connected_sources, dialogue["id"]) and
+                 MapSet.member?(connected_targets, dialogue["id"])
+             end)
+
+      # The encrypted, unmaterialized plan retains bounded review metadata so
+      # a user can revise a decision without reparsing the uploaded file.
+      assert Enum.count(flow["nodes"], fn node ->
+               is_binary(node["data"]["import_yarn_speaker"])
+             end) == 10
+
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, preview} = Imports.preview(project.id, plan)
+      assert preview.import_review == review
+    end
+
+    test "treats paired-scope evidence as an editable suggestion, never semantic authority" do
+      source = """
+      title: Start
+      ---
+      <<clear_cutscene>>
+      <<start_cutscene>>
+      CutsceneCamera: pan-left
+      CutsceneOverlay: fade-in
+      Alice: We made it.
+      CutsceneNarrator: Inside the cutscene.
+      <<end_cutscene>>
+      CutsceneNarrator: Outside the cutscene.
+      <<start_cutscene>>
+      CutsceneCamera: pan-right
+      CutsceneOverlay: fade-out
+      <<end_cutscene>>
+      <<start_fx>>
+      FxNarrator: A lone matching name is not enough evidence.
+      <<end_fx>>
+      <<start_slide>>
+      SlideOnly: An unmatched opener is not evidence.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("custom-presenter.yarn", source)
+
+      sheet_names = plan.data["sheets"] |> Enum.map(& &1["name"]) |> Enum.sort()
+
+      assert sheet_names == ["Alice", "CutsceneNarrator", "FxNarrator", "SlideOnly"]
+      refute "CutsceneCamera" in sheet_names
+      refute "CutsceneOverlay" in sheet_names
+
+      assert Enum.find(
+               plan.data["import_review"]["speaker_decisions"],
+               &(&1["speaker"] == "FxNarrator")
+             )["suggested_action"] == "create_sheet"
+
+      decisions =
+        plan.data["import_review"]
+        |> selected_suggestions()
+        |> Enum.map(fn
+          %{"speaker" => "CutsceneCamera"} = decision ->
+            Map.put(decision, "action", "create_sheet")
+
+          decision ->
+            decision
+        end)
+
+      assert {:ok, resolved_plan} = ReviewDecisions.apply(plan, true, decisions)
+
+      resolved_sheet_names =
+        resolved_plan.data["sheets"] |> Enum.map(& &1["name"]) |> Enum.sort()
+
+      assert "CutsceneCamera" in resolved_sheet_names
+      refute "CutsceneOverlay" in resolved_sheet_names
+
+      [flow] = resolved_plan.data["flows"]
+
+      assert Enum.count(flow["nodes"], fn node ->
+               node["type"] == "dialogue" and
+                 node["data"]["speaker_sheet_id"] ==
+                   Enum.find(resolved_plan.data["sheets"], &(&1["name"] == "CutsceneCamera"))["id"]
+             end) == 2
+
+      assert flow["nodes"]
+             |> Enum.filter(fn node ->
+               node["type"] == "dialogue" and
+                 node["data"]["speaker_sheet_id"] == nil and
+                 String.starts_with?(node["data"]["text"], "CutsceneOverlay:")
+             end)
+             |> Enum.map(& &1["data"]["text"]) == [
+               "CutsceneOverlay: fade-in",
+               "CutsceneOverlay: fade-out"
+             ]
+    end
+
+    test "requires presentation lifecycle evidence and repeated regions per candidate" do
+      without_clear = """
+      title: Start
+      ---
+      <<start_slide>>
+      SlideHeader: First
+      SlideImage: first.png
+      <<end_slide>>
+      <<start_slide>>
+      SlideHeader: Second
+      SlideImage: second.png
+      <<end_slide>>
+      ===
+      """
+
+      assert {:ok, unclassified_plan} =
+               Imports.parse_file("no-presentation-lifecycle.yarn", without_clear)
+
+      assert unclassified_plan.metadata.presentation_channel_count == 0
+
+      assert unclassified_plan.data["sheets"]
+             |> Enum.map(& &1["name"])
+             |> Enum.sort() == ["SlideHeader", "SlideImage"]
+
+      assert unclassified_plan.data["import_review"]["requires_acknowledgement"] == true
+
+      assert Enum.all?(
+               unclassified_plan.data["import_review"]["speaker_decisions"],
+               &(&1["suggested_action"] == "create_sheet" and &1["confidence"] == "medium")
+             )
+
+      with_clear = """
+      title: Start
+      ---
+      <<clear_slide>>
+      <<start_slide>>
+      SlideHeader: First
+      SlideImage: first.png
+      SlideMayor: This is a real character.
+      <<end_slide>>
+      <<start_slide>>
+      SlideHeader: Second
+      SlideImage: second.png
+      <<end_slide>>
+      ===
+      """
+
+      assert {:ok, classified_plan} =
+               Imports.parse_file("presentation-lifecycle.yarn", with_clear)
+
+      assert classified_plan.metadata.presentation_channel_count == 2
+      assert Enum.map(classified_plan.data["sheets"], & &1["name"]) == ["SlideMayor"]
+
+      review = classified_plan.data["import_review"]
+      assert review["preserved_channel_count"] == 2
+      assert review["sheet_speaker_count"] == 1
+      assert review["requires_acknowledgement"] == true
+
+      assert Enum.find(review["speaker_decisions"], &(&1["speaker"] == "SlideMayor"))[
+               "suggested_action"
+             ] == "create_sheet"
+
+      override =
+        Enum.map(selected_suggestions(review), fn decision ->
+          Map.put(decision, "action", "create_sheet")
+        end)
+
+      assert {:ok, resolved_plan} = ReviewDecisions.apply(classified_plan, true, override)
+
+      assert resolved_plan.data["sheets"]
+             |> Enum.map(& &1["name"])
+             |> Enum.sort() == ["SlideHeader", "SlideImage", "SlideMayor"]
+
+      [resolved_flow] = resolved_plan.data["flows"]
+
+      assert Enum.all?(resolved_flow["nodes"], fn node ->
+               node["type"] != "dialogue" or
+                 not String.starts_with?(node["data"]["text"], ["SlideHeader:", "SlideImage:"])
+             end)
+    end
+
+    test "does not classify parameterized scopes or speaker lines followed by options" do
+      source = """
+      title: Start
+      ---
+      <<start_scene first>>
+      SceneCamera: pan-left
+      SceneOverlay: fade-in
+      <<end_scene first>>
+      <<start_scene second>>
+      SceneCamera: pan-right
+      SceneOverlay: fade-out
+      <<end_scene second>>
+      <<start_ui>>
+      UiHeader: Choose
+      UiImage: portrait
+      UiPrompt: Pick one
+      -> Continue
+      <<end_ui>>
+      <<clear_ui>>
+      <<start_ui>>
+      UiHeader: Again
+      UiImage: portrait-2
+      UiPrompt: Pick another
+      -> Stop
+      <<end_ui>>
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("ambiguous-presenters.yarn", source)
+
+      sheet_names = plan.data["sheets"] |> Enum.map(& &1["name"]) |> Enum.sort()
+
+      assert "SceneCamera" in sheet_names
+      assert "SceneOverlay" in sheet_names
+      assert "UiPrompt" in sheet_names
+      refute "UiHeader" in sheet_names
+      refute "UiImage" in sheet_names
+      assert plan.metadata.presentation_channel_count == 2
+
+      assert Enum.find(
+               plan.data["import_review"]["speaker_decisions"],
+               &(&1["speaker"] == "UiPrompt")
+             )["suggested_action"] == "create_sheet"
+
+      decisions =
+        plan.data["import_review"]
+        |> selected_suggestions()
+        |> Enum.map(fn
+          %{"speaker" => "UiPrompt"} = decision ->
+            Map.put(decision, "action", "preserve_literal")
+
+          decision ->
+            decision
+        end)
+
+      assert {:ok, resolved_plan} = ReviewDecisions.apply(plan, true, decisions)
+
+      [flow] = resolved_plan.data["flows"]
+
+      presentation_texts =
+        flow["nodes"]
+        |> Enum.filter(fn node ->
+          node["type"] == "dialogue" and
+            node["data"]["speaker_sheet_id"] == nil and
+            String.starts_with?(node["data"]["text"], ["UiHeader:", "UiImage:"])
+        end)
+        |> Enum.map(& &1["data"]["text"])
+
+      assert presentation_texts == [
+               "UiHeader: Choose",
+               "UiImage: portrait",
+               "UiHeader: Again",
+               "UiImage: portrait-2"
+             ]
+
+      assert Enum.count(flow["nodes"], fn node ->
+               node["type"] == "dialogue" and
+                 node["data"]["text"] == "UiPrompt: Pick one" and
+                 length(node["data"]["responses"]) == 1 and
+                 node["data"]["speaker_sheet_id"] == nil
+             end) == 1
+
+      assert Enum.count(flow["nodes"], fn node ->
+               node["type"] == "dialogue" and
+                 node["data"]["text"] == "UiPrompt: Pick another" and
+                 length(node["data"]["responses"]) == 1 and
+                 node["data"]["speaker_sheet_id"] == nil
+             end) == 1
+    end
+
+    test "does not suggest merging equally frequent adjacent-transposition names" do
+      source = """
+      title: Start
+      ---
+      Brian: Keep us separate.
+      Brain: This may be an intentional name.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("similar-names.yarn", source)
+
+      assert plan.data["sheets"]
+             |> Enum.map(& &1["name"])
+             |> Enum.sort() == ["Brain", "Brian"]
+
+      assert plan.data["import_review"]["possible_speaker_aliases"] == []
+      refute Enum.any?(plan.issues, &(&1.code == :possible_yarn_speaker_alias))
+    end
+
+    test "flags distinct NFKC-casefold speaker variants for explicit review without merging them" do
+      source = """
+      title: Start
+      ---
+      Alice: First.
+      Alice: Second.
+      ALICE: Third.
+      Ａlice: Fourth.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("case-variants.yarn", source)
+
+      assert plan.data["sheets"]
+             |> Enum.map(& &1["name"])
+             |> Enum.sort() == ["ALICE", "Alice", "Ａlice"]
+
+      aliases = plan.data["import_review"]["possible_speaker_aliases"]
+
+      assert Enum.map(aliases, & &1["right"]) == ["ALICE", "Ａlice"]
+
+      assert Enum.all?(aliases, fn alias_review ->
+               alias_review["decision"] == "review" and
+                 alias_review["evidence"] == "same_nfkc_casefold" and
+                 alias_review["left"] == "Alice" and
+                 alias_review["left_occurrences"] == 2 and
+                 alias_review["right_occurrences"] == 1 and
+                 alias_review["more_frequent"] == "Alice" and
+                 alias_review["less_frequent"] == alias_review["right"]
+             end)
+
+      assert plan.metadata.possible_speaker_alias_count == 2
+      assert Enum.count(plan.issues, &(&1.code == :possible_yarn_speaker_alias)) == 2
+    end
+
+    test "bounds speaker review details while reporting the complete total" do
+      lines =
+        Enum.map_join(1..1_001, "\n", fn index ->
+          "Speaker#{String.pad_leading(Integer.to_string(index), 4, "0")}: Line"
+        end)
+
+      source = """
+      title: Start
+      ---
+      #{lines}
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("many-speakers.yarn", source)
+
+      review = plan.data["import_review"]
+      assert review["speaker_decision_count"] == 1_001
+      assert review["speaker_decisions_truncated"] == true
+      assert length(review["speaker_decisions"]) == 1_000
+      assert review["sheet_speaker_count"] == 1_001
+      assert review["preserved_channel_count"] == 0
+      assert review["possible_speaker_alias_count"] == 0
+      assert review["possible_speaker_aliases_truncated"] == false
+      assert review["requires_acknowledgement"] == true
+
+      assert {:error, :import_review_too_large} =
+               ReviewDecisions.apply(plan, true, selected_suggestions(review))
+    end
+
+    test "requires acknowledgement for channels outside the truncated review details" do
+      ordinary_speakers =
+        Enum.map_join(1..1_000, "\n", fn index ->
+          "Speaker#{String.pad_leading(Integer.to_string(index), 4, "0")}: Line"
+        end)
+
+      source = """
+      title: Start
+      ---
+      #{ordinary_speakers}
+      <<clear_zulu>>
+      <<start_zulu>>
+      ZuluCamera: first
+      ZuluImage: first.png
+      <<end_zulu>>
+      <<start_zulu>>
+      ZuluCamera: second
+      ZuluImage: second.png
+      <<end_zulu>>
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("truncated-channel-review.yarn", source)
+
+      review = plan.data["import_review"]
+      assert review["speaker_decision_count"] == 1_002
+      assert review["speaker_decisions_truncated"] == true
+      assert length(review["speaker_decisions"]) == 1_000
+
+      assert review["speaker_decisions"]
+             |> Enum.take(2)
+             |> Enum.map(& &1["speaker"]) == ["ZuluCamera", "ZuluImage"]
+
+      assert Enum.count(
+               review["speaker_decisions"],
+               &(&1["suggested_action"] == "preserve_literal")
+             ) == 2
+
+      assert review["sheet_speaker_count"] == 1_000
+      assert review["preserved_channel_count"] == 2
+      assert review["requires_acknowledgement"] == true
+    end
+
+    test "bounds alias analysis work and blocks incomplete review" do
+      lines =
+        Enum.map_join(1..5_000, "\n", fn index ->
+          suffix = String.pad_leading(Integer.to_string(index), 4, "0")
+          "ExtremelyLongUniqueSpeakerNameForAliasBudget#{suffix}: Line"
+        end)
+
+      source = """
+      title: Start
+      ---
+      #{lines}
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("alias-budget.yarn", source)
+
+      review = plan.data["import_review"]
+      assert review["possible_speaker_aliases_truncated"] == true
+
+      assert {:error, :import_review_too_large} =
+               ReviewDecisions.apply(plan, true, selected_suggestions(review))
+    end
+
+    test "does not leak an empty paired scope into following dialogue" do
+      source = """
+      title: Start
+      ---
+      <<start_scene>>
+      <<end_scene>>
+      SceneCamera: A real speaker after the empty region.
+      SceneOverlay: Another real speaker after the empty region.
+      <<start_scene>>
+      <<end_scene>>
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("empty-scopes.yarn", source)
+
+      assert plan.data["sheets"]
+             |> Enum.map(& &1["name"])
+             |> Enum.sort() == ["SceneCamera", "SceneOverlay"]
+
+      assert plan.metadata.presentation_channel_count == 0
+    end
+
     test "retains unsupported commands as annotations and safe warning codes" do
       source = """
       title: Start
@@ -93,9 +717,22 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       refute inspect(plan.issues) =~ "private-character-name"
       refute inspect(plan.issues) =~ "SecretCharacterName"
 
+      review = plan.data["import_review"]
+      assert review["compatibility_warning_count"] == 1
+      assert review["compatibility_warning_counts_by_code"] == %{"unsupported_yarn_command" => 1}
+      assert review["requires_acknowledgement"] == true
+
       [flow] = plan.data["flows"]
       annotation = Enum.find(flow["nodes"], &(&1["type"] == "annotation"))
+      dialogue = Enum.find(flow["nodes"], &(&1["type"] == "dialogue"))
       assert annotation["data"]["text"] =~ "<<camera focus SecretCharacterName>>"
+
+      refute Enum.any?(flow["connections"], fn connection ->
+               annotation["id"] in [connection["source_node_id"], connection["target_node_id"]]
+             end)
+
+      assert Enum.any?(flow["connections"], &(&1["target_node_id"] == dialogue["id"]))
+      assert Enum.any?(flow["connections"], &(&1["source_node_id"] == dialogue["id"]))
     end
 
     test "keeps logical operator words inside string literals" do
@@ -369,10 +1006,39 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
              end)
 
       assert plan.metadata.warning_count == 1
+      review = plan.data["import_review"]
+
+      assert [
+               %{
+                 "speaker" => "{$speaker}",
+                 "suggested_action" => "preserve_literal",
+                 "confidence" => "high",
+                 "reasons" => ["dynamic_speaker_expression"]
+               }
+             ] = review["speaker_decisions"]
+
+      assert review["requires_acknowledgement"] == true
+      refute Enum.any?(plan.data["sheets"], &(&1["name"] == "{$speaker}"))
+
       [flow] = plan.data["flows"]
       dialogue = Enum.find(flow["nodes"], &(&1["type"] == "dialogue"))
       assert dialogue["data"]["speaker_sheet_id"] == nil
-      assert dialogue["data"]["text"] == "{yarn.speaker}: Hello"
+      assert dialogue["data"]["text"] == "Hello"
+
+      assert {:ok, resolved_plan} =
+               ReviewDecisions.apply(plan, true, [
+                 %{"speaker" => "{$speaker}", "action" => "preserve_literal"}
+               ])
+
+      [resolved_flow] = resolved_plan.data["flows"]
+      resolved_dialogue = Enum.find(resolved_flow["nodes"], &(&1["type"] == "dialogue"))
+      assert resolved_dialogue["data"]["speaker_sheet_id"] == nil
+      assert resolved_dialogue["data"]["text"] == "{yarn.speaker}: Hello"
+
+      assert {:error, :invalid_import_review_selection} =
+               ReviewDecisions.apply(plan, true, [
+                 %{"speaker" => "{$speaker}", "action" => "create_sheet"}
+               ])
     end
 
     test "rejects unknown inline commands in dialogue and options" do
@@ -409,11 +1075,48 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert :unsupported_yarn_tag in warning_codes
       assert plan.metadata.warning_count == 3
 
+      review = plan.data["import_review"]
+      assert review["compatibility_warning_count"] == 3
+
+      assert review["compatibility_warning_counts_by_code"] == %{
+               "unsupported_yarn_interpolation" => 1,
+               "unsupported_yarn_markup" => 1,
+               "unsupported_yarn_tag" => 1
+             }
+
+      assert review["requires_acknowledgement"] == true
+
       [flow] = plan.data["flows"]
       dialogue = Enum.find(flow["nodes"], &(&1["type"] == "dialogue"))
       assert dialogue["data"]["text"] =~ "{random_range(1, 10)}"
       assert dialogue["data"]["text"] =~ ~s([emotion="angry" /])
       assert dialogue["data"]["text"] =~ "#shadow:original_line"
+    end
+
+    test "blocks explicit Yarn character markup instead of guessing a static speaker" do
+      source = """
+      title: Start
+      ---
+      [character name="Alice"]Hello there.[/character]
+      ===
+      """
+
+      assert {:ok, plan} = raw_yarn_plan(source)
+
+      assert Enum.any?(plan.issues, fn issue ->
+               issue.code == :unsupported_yarn_character_markup and
+                 issue.severity == :error
+             end)
+
+      assert Enum.any?(plan.issues, fn issue ->
+               issue.code == :unsupported_yarn_markup and
+                 issue.severity == :warning
+             end)
+
+      refute inspect(plan.issues) =~ "Alice"
+
+      assert {:error, :import_plan_has_errors} =
+               Imports.parse_file("character-markup.yarn", source)
     end
 
     test "rejects assignments to undeclared variables whose type cannot be reproduced" do
@@ -488,6 +1191,31 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert {:error, :import_plan_has_errors} = Imports.parse_file("project.yarn", source)
     end
 
+    test "counts every normalization warning before retaining the bounded issue list" do
+      commands = Enum.map_join(1..1_001, "\n", &"<<custom_command #{&1}>>")
+
+      source = """
+      title: Start
+      ---
+      #{commands}
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+
+      assert length(plan.issues) == 1_000
+      assert plan.metadata.warning_count == 1_001
+      assert plan.metadata.error_count == 0
+      assert plan.metadata.issue_count == 1_001
+      assert plan.metadata.issues_truncated == true
+      assert plan.metadata.issue_counts_by_code == %{unsupported_yarn_command: 1_001}
+
+      review = plan.data["import_review"]
+      assert review["compatibility_warning_count"] == 1_001
+      assert review["compatibility_warning_counts_by_code"] == %{"unsupported_yarn_command" => 1_001}
+      assert review["requires_acknowledgement"] == true
+    end
+
     test "rejects malformed commands instead of treating them as annotations" do
       source = """
       title: Start
@@ -498,6 +1226,28 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       """
 
       assert {:error, :invalid_yarn_command} = Imports.parse_file("project.yarn", source)
+    end
+
+    test "rejects parameters on parameterless built-in control commands" do
+      Enum.each(["return unexpected", "stop unexpected"], fn command ->
+        source = """
+        title: Start
+        ---
+        <<#{command}>>
+        Reachable only if the invalid command were weakened.
+        ===
+        """
+
+        assert {:ok, plan} = raw_yarn_plan(source)
+
+        assert Enum.any?(plan.issues, fn issue ->
+                 issue.code == :unsupported_yarn_control_command and
+                   issue.severity == :error
+               end)
+
+        assert {:error, :import_plan_has_errors} =
+                 Imports.parse_file("project.yarn", source)
+      end)
     end
 
     test "does not materialize dialogue after terminal commands" do
@@ -631,6 +1381,30 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert {:error, :duplicate_yarn_node_title} = Imports.parse_file("project.yarn", source)
     end
 
+    test "rejects Yarn titles, descriptions and speaker names beyond native entity limits" do
+      long_title = String.duplicate("T", 201)
+      long_description = String.duplicate("D", 2_001)
+      long_speaker = String.duplicate("S", 201)
+
+      assert {:error, :yarn_node_title_too_long} =
+               Imports.parse_file(
+                 "long-title.yarn",
+                 "title: #{long_title}\n---\nLine\n===\n"
+               )
+
+      assert {:error, :yarn_node_description_too_long} =
+               Imports.parse_file(
+                 "long-description.yarn",
+                 "title: Start\ndescription: #{long_description}\n---\nLine\n===\n"
+               )
+
+      assert {:error, :yarn_speaker_name_too_long} =
+               Imports.parse_file(
+                 "long-speaker.yarn",
+                 "title: Start\n---\n#{long_speaker}: Hello\n===\n"
+               )
+    end
+
     test "rejects malformed conditional blocks" do
       source = """
       title: Start
@@ -657,6 +1431,35 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
 
       assert {:ok, plan} = Imports.parse_file("project.yarn", source)
       assert Enum.map(plan.data["flows"], & &1["shortcut"]) == ["a-b", "a-b-2"]
+    end
+
+    test "bounds generated shortcuts while reserving room for collision suffixes" do
+      shared_prefix = String.duplicate("A", 199)
+
+      source = """
+      title: #{shared_prefix}X
+      ---
+      #{String.duplicate("S", 200)}: First
+      ===
+      title: #{shared_prefix}Y
+      ---
+      Second
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("long-shortcuts.yarn", source)
+
+      flow_shortcuts = Enum.map(plan.data["flows"], & &1["shortcut"])
+      assert Enum.map(flow_shortcuts, &String.length/1) == [50, 50]
+      assert Enum.uniq(flow_shortcuts) == flow_shortcuts
+      assert flow_shortcuts |> List.last() |> String.ends_with?("-2")
+
+      speaker_sheet =
+        Enum.find(plan.data["sheets"], fn sheet ->
+          sheet["name"] == String.duplicate("S", 200)
+        end)
+
+      assert String.length(speaker_sheet["shortcut"]) == 50
     end
 
     test "rejects Yarn documents with excessive statement counts before normalization" do
@@ -720,13 +1523,92 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
     end
   end
 
+  describe "semantic review decisions" do
+    test "rejects missing, incomplete and tampered speaker mappings" do
+      source = """
+      title: Start
+      ---
+      Alice: Hello.
+      SlideImage: portrait
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("review.yarn", source)
+      review = plan.data["import_review"]
+      decisions = selected_suggestions(review)
+
+      assert {:error, :import_review_required} =
+               ReviewDecisions.apply(plan, false, decisions)
+
+      assert {:error, :import_review_required} =
+               ReviewDecisions.apply(plan, true, Enum.drop(decisions, 1))
+
+      tampered_review =
+        update_in(review["speaker_decisions"], fn [first | rest] ->
+          [Map.update!(first, "occurrences", &(&1 + 1)) | rest]
+        end)
+
+      tampered_plan = %{plan | data: Map.put(plan.data, "import_review", tampered_review)}
+
+      assert {:error, :invalid_import_review} =
+               ReviewDecisions.apply(tampered_plan, true, decisions)
+
+      assert {:ok, resolved_plan} = ReviewDecisions.apply(plan, true, decisions)
+      assert {:ok, ^resolved_plan} = ReviewDecisions.apply(resolved_plan, true, decisions)
+
+      [first | rest] = decisions
+      changed_action = if first["action"] == "create_sheet", do: "preserve_literal", else: "create_sheet"
+
+      original_fingerprint =
+        resolved_plan.data["import_review_resolution"]["decision_fingerprint"]
+
+      assert {:ok, revised_plan} =
+               ReviewDecisions.apply(
+                 resolved_plan,
+                 true,
+                 [Map.put(first, "action", changed_action) | rest]
+               )
+
+      refute revised_plan.data["import_review_resolution"]["decision_fingerprint"] ==
+               original_fingerprint
+
+      assert ReviewDecisions.resolved?(revised_plan)
+    end
+
+    test "rejects legacy Yarn plans and malformed review structures" do
+      assert {:ok, plan} =
+               Imports.parse_file(
+                 "review.yarn",
+                 "title: Start\n---\nAlice: Hello.\n===\n"
+               )
+
+      decisions = selected_suggestions(plan.data["import_review"])
+
+      assert {:error, :invalid_import_review} =
+               ReviewDecisions.apply(%{plan | parser_version: "4"}, true, decisions)
+
+      malformed_plan = %{plan | data: Map.delete(plan.data, "import_review")}
+
+      assert {:error, :invalid_import_review} =
+               ReviewDecisions.apply(malformed_plan, true, decisions)
+    end
+  end
+
   describe "execute/3" do
     test "materializes a Yarn plan atomically through the native importer" do
       user = user_fixture()
       project = project_fixture(user)
 
       assert {:ok, plan} = Imports.parse_file("dialogue.yarn", @project)
-      assert {:ok, result} = Imports.execute(project, plan, conflict_strategy: :rename)
+
+      assert {:ok, resolved_plan} =
+               ReviewDecisions.apply(
+                 plan,
+                 true,
+                 selected_suggestions(plan.data["import_review"])
+               )
+
+      assert {:ok, result} = Imports.execute(project, resolved_plan, conflict_strategy: :rename)
 
       assert length(result.flows) == 2
       assert length(result.sheets) == 2
@@ -739,6 +1621,10 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       dialogue = Enum.find(start_flow.nodes, &(&1.type == "dialogue"))
       assert dialogue.word_count > 0
       assert dialogue.word_count == WordCount.for_node_data("dialogue", dialogue.data)
+
+      refute Enum.any?(start_flow.nodes, fn node ->
+               Enum.any?(Map.keys(node.data), &String.starts_with?(&1, "import_yarn_"))
+             end)
 
       sheets = Sheets.list_all_sheets(project.id)
       assert Enum.any?(sheets, &(&1.shortcut == "yarn"))
@@ -784,5 +1670,41 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
          {:ok, bundle} <- SourceBundle.open("project.yarn", source) do
       parser.parse(bundle)
     end
+  end
+
+  defp selected_suggestions(review) do
+    Enum.map(review["speaker_decisions"], fn decision ->
+      %{
+        "speaker" => decision["speaker"],
+        "action" => decision["suggested_action"]
+      }
+    end)
+  end
+
+  defp assert_valid_graph(flow) do
+    nodes = flow["nodes"]
+    connections = flow["connections"]
+    node_ids = Enum.map(nodes, & &1["id"])
+    connection_ids = Enum.map(connections, & &1["id"])
+    nodes_by_id = Map.new(nodes, &{&1["id"], &1})
+
+    assert Enum.uniq(node_ids) == node_ids
+    assert Enum.uniq(connection_ids) == connection_ids
+
+    Enum.each(connections, fn connection ->
+      source = Map.fetch!(nodes_by_id, connection["source_node_id"])
+      target = Map.fetch!(nodes_by_id, connection["target_node_id"])
+
+      assert NodeConnectionRules.valid_output_pin?(
+               source["type"],
+               source["data"],
+               connection["source_pin"]
+             )
+
+      assert NodeConnectionRules.valid_input_pin?(
+               target["type"],
+               connection["target_pin"]
+             )
+    end)
   end
 end

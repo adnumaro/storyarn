@@ -94,6 +94,13 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     |> validate_common()
   end
 
+  def reviewed_changeset(attempt, attrs) do
+    attempt
+    |> cast(attrs, [:plan_storage_key, :plan_cleanup_request_id, :counts])
+    |> validate_required([:plan_storage_key, :plan_cleanup_request_id])
+    |> validate_common()
+  end
+
   def running_changeset(attempt, now) do
     attempt
     |> change(

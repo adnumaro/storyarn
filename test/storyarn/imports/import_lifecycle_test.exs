@@ -13,8 +13,10 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
   alias Storyarn.Imports.PlanCleanupRequest
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.ProjectImportAttempt
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets
 
   @private_filename "client-jane-doe-private-project.yarn"
   @private_content "Private dialogue about Jane Doe and account 12345"
@@ -58,6 +60,505 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert get_in(plan.data, ["flows", Access.at(0), "nodes"])
   end
 
+  test "persists draft review, confirms an exact revision, and materializes an explicit alias mapping", ctx do
+    source = alias_yarn()
+
+    assert {:ok, ready, preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "alias-review.yarn", source)
+
+    initial_key = ready.plan_storage_key
+    review = preview.import_review
+    assert review["compatibility_warning_count"] == 1
+    assert preview.issue_summary.warning_count == 1
+
+    draft_decisions = [
+      %{"speaker" => "Capsley", "action" => "create_sheet"}
+    ]
+
+    assert {:ok, drafted, draft_preview} =
+             Imports.save_import_review(ctx.scope, ready.id, draft_decisions)
+
+    refute drafted.plan_storage_key == initial_key
+    assert draft_preview.import_review_draft["decisions"] == draft_decisions
+    assert {:error, :import_plan_unavailable} = PlanStorage.load(initial_key)
+    assert {:ok, drafted_plan} = PlanStorage.load(drafted.plan_storage_key)
+    assert drafted_plan.data["import_review_draft"]["decisions"] == draft_decisions
+    assert drafted_plan.metadata.warning_count == 1
+
+    assert {:ok, resumed, resumed_preview} =
+             Imports.resume_import(ctx.scope, ctx.project, ready.id)
+
+    assert resumed.plan_storage_key == drafted.plan_storage_key
+    assert resumed_preview.import_review_draft["decisions"] == draft_decisions
+    assert resumed_preview.issue_summary.warning_count == 1
+
+    decisions = [
+      %{"speaker" => "Capsley", "action" => "create_sheet"},
+      %{
+        "speaker" => "Capsely",
+        "action" => "map_to_sheet",
+        "target_speaker" => "Capsley"
+      }
+    ]
+
+    assert {:ok, resolved, resolved_preview, fingerprint} =
+             Imports.resolve_import_review(ctx.scope, ready.id, true, decisions)
+
+    refute resolved.plan_storage_key == drafted.plan_storage_key
+    assert resolved_preview.counts.sheets == 1
+    assert resolved_preview.issue_summary.warning_count == 1
+    assert is_binary(fingerprint)
+    assert {:error, :import_plan_unavailable} = PlanStorage.load(drafted.plan_storage_key)
+
+    persisted = Repo.get!(ProjectImportAttempt, ready.id)
+    persisted_text = inspect(Map.from_struct(persisted))
+    refute persisted_text =~ "Capsley"
+    refute persisted_text =~ "Capsely"
+    refute persisted_text =~ "private"
+
+    assert {:error, :invalid_import_review_selection} =
+             Imports.enqueue_import(ctx.scope, ready.id, :rename,
+               review_confirmation_fingerprint: "stale-browser-fingerprint"
+             )
+
+    assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+    assert {:ok, _plan} = PlanStorage.load(resolved.plan_storage_key)
+
+    assert {:ok, queued} =
+             Imports.enqueue_import(ctx.scope, ready.id, :rename, review_confirmation_fingerprint: fingerprint)
+
+    assert {:ok, completed} =
+             Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+
+    assert completed.status == "completed"
+    assert Enum.map(Sheets.list_all_sheets(ctx.project.id), & &1.name) == ["Capsley"]
+
+    imported_nodes =
+      ctx.project.id
+      |> Flows.list_flows()
+      |> Enum.flat_map(&Flows.list_nodes(&1.id))
+
+    refute Enum.any?(imported_nodes, fn node ->
+             Map.has_key?(node.data, "import_yarn_speaker") or
+               Map.has_key?(node.data, "import_yarn_literal_text")
+           end)
+  end
+
+  test "cleans a stored review revision when edit access is revoked before pointer swap", ctx do
+    editor = user_fixture()
+    membership = membership_fixture(ctx.project, editor, "editor")
+    editor_scope = Scope.for_user(editor)
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(
+               editor_scope,
+               ctx.project,
+               "authorization-race.yarn",
+               alias_yarn()
+             )
+
+    original_key = ready.plan_storage_key
+    test_pid = self()
+
+    decisions = [
+      %{"speaker" => "Capsley", "action" => "create_sheet"},
+      %{
+        "speaker" => "Capsely",
+        "action" => "map_to_sheet",
+        "target_speaker" => "Capsley"
+      }
+    ]
+
+    assert {:error, :unauthorized} =
+             Imports.resolve_import_review(
+               editor_scope,
+               ready.id,
+               true,
+               decisions,
+               plan_store: fn storage_key, plan ->
+                 result = PlanStorage.store_at(storage_key, plan)
+                 send(test_pid, {:stored_review_revision, storage_key})
+                 Repo.delete!(membership)
+                 result
+               end
+             )
+
+    assert_receive {:stored_review_revision, rejected_key}
+    refute rejected_key == original_key
+    assert Repo.get!(ProjectImportAttempt, ready.id).plan_storage_key == original_key
+    assert {:ok, _original_plan} = PlanStorage.load(original_key)
+    assert {:error, :import_plan_unavailable} = PlanStorage.load(rejected_key)
+  end
+
+  test "resumes a ready import by rebuilding its preview and returns no preview after enqueue", ctx do
+    assert {:ok, ready, original_preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, resumed_ready, resumed_preview} =
+             Imports.resume_import(ctx.scope, ctx.project, ready.id)
+
+    assert resumed_ready.id == ready.id
+    assert resumed_ready.status == "ready"
+    assert resumed_preview == original_preview
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    test_pid = self()
+
+    assert {:ok, resumed_without_wake, nil} =
+             Imports.resume_import(ctx.scope, ctx.project, queued.id,
+               queue_notifier: fn payload ->
+                 send(test_pid, {:unexpected_resume_queue_wakeup, payload})
+                 :ok
+               end
+             )
+
+    assert resumed_without_wake.id == queued.id
+    refute_receive {:unexpected_resume_queue_wakeup, _payload}
+
+    assert {:ok, resumed_queued, nil} =
+             Imports.resume_import(ctx.scope, ctx.project, queued.id,
+               wake_queue: true,
+               queue_notifier: fn payload ->
+                 send(test_pid, {:resume_queue_wakeup, payload})
+                 :ok
+               end
+             )
+
+    assert resumed_queued.id == queued.id
+    assert resumed_queued.status == "queued"
+    assert_receive {:resume_queue_wakeup, %{queue: "imports"}}
+  end
+
+  test "recovers the latest active attempt scoped to the current project and user", ctx do
+    assert {:ok, _older, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "older.yarn", yarn("Older"))
+
+    assert {:ok, expected, expected_preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "latest.yarn", yarn("Latest"))
+
+    other_user = user_fixture()
+    membership_fixture(ctx.project, other_user, "editor")
+
+    assert {:ok, _other_user_attempt, _preview} =
+             Imports.prepare_import(
+               Scope.for_user(other_user),
+               ctx.project,
+               "other-user.yarn",
+               yarn("Other user")
+             )
+
+    other_project = project_fixture(ctx.user)
+
+    assert {:ok, _other_project_attempt, _preview} =
+             Imports.prepare_import(
+               ctx.scope,
+               other_project,
+               "other-project.yarn",
+               yarn("Other project")
+             )
+
+    assert {:ok, recovered, recovered_preview} =
+             Imports.resume_latest_active_import(ctx.scope, ctx.project)
+
+    assert recovered.id == expected.id
+    assert recovered.user_id == ctx.user.id
+    assert recovered.project_id == ctx.project.id
+    assert recovered_preview == expected_preview
+  end
+
+  test "latest active recovery returns no attempt and masks missing edit access", ctx do
+    assert {:ok, nil} = Imports.resume_latest_active_import(ctx.scope, ctx.project)
+
+    viewer = user_fixture()
+    membership_fixture(ctx.project, viewer, "viewer")
+
+    assert {:error, :not_found} =
+             Imports.resume_latest_active_import(Scope.for_user(viewer), ctx.project)
+  end
+
+  test "latest active recovery rechecks edit access after loading the preview", ctx do
+    editor = user_fixture()
+    membership = membership_fixture(ctx.project, editor, "editor")
+    editor_scope = Scope.for_user(editor)
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(editor_scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:error, :not_found} =
+             Imports.resume_latest_active_import(editor_scope, ctx.project,
+               plan_load: fn storage_key ->
+                 result = PlanStorage.load(storage_key)
+                 Repo.delete!(membership)
+                 result
+               end
+             )
+
+    assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+  end
+
+  test "resume plan loading failures are contained and reported without PII", ctx do
+    handler_id = "import-resume-#{System.unique_integer([:positive])}"
+    parser_version = "resume-#{System.unique_integer([:positive])}"
+    test_pid = self()
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(
+               ctx.scope,
+               ctx.project,
+               @private_filename,
+               yarn(@private_content)
+             )
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^ready.id),
+      set: [parser_version: parser_version]
+    )
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :import, :error],
+        fn _event, measurements, metadata, _config ->
+          send(test_pid, {:resume_error, measurements, metadata})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:error, :import_plan_unavailable} =
+             Imports.resume_latest_active_import(ctx.scope, ctx.project,
+               plan_load: fn _storage_key -> raise @private_content end
+             )
+
+    assert_receive {:resume_error, %{count: 1}, %{phase: "resume", parser_version: ^parser_version} = metadata}
+
+    assert metadata.error_code == "import_plan_unavailable"
+    assert metadata.exception_module == "none"
+    refute inspect(metadata) =~ @private_filename
+    refute inspect(metadata) =~ @private_content
+    refute Map.has_key?(metadata, :attempt_id)
+    refute Map.has_key?(metadata, :project_id)
+    refute Map.has_key?(metadata, :user_id)
+  end
+
+  test "resuming a completed import replays idempotent cache and PubSub side effects", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+    assert {:ok, completed} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+
+    :ok = Collaboration.subscribe_dashboard(ctx.project.id)
+    :ok = Imports.subscribe_project_imports(ctx.project)
+
+    assert {:ok, resumed, nil} =
+             Imports.resume_import(ctx.scope, ctx.project, completed.id)
+
+    assert resumed.status == "completed"
+    assert_received {:dashboard_invalidate, :all}
+    assert_received {:project_import_updated, broadcast}
+    assert broadcast.id == completed.id
+    assert broadcast.status == "completed"
+  end
+
+  test "preserves a transient plan storage failure while resuming a ready import", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert :ok = PlanStorage.delete(ready.plan_storage_key)
+
+    assert {:error, :import_plan_unavailable} =
+             Imports.resume_import(ctx.scope, ctx.project, ready.id)
+  end
+
+  test "does not resurrect a ready preview after its retention deadline", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    ready
+    |> Ecto.Changeset.change(expires_at: DateTime.add(TimeHelpers.now(), -60, :second))
+    |> Repo.update!()
+
+    assert {:ok, expired, nil} = Imports.resume_import(ctx.scope, ctx.project, ready.id)
+    assert expired.status == "expired"
+    assert {:error, :import_plan_unavailable} = PlanStorage.load(ready.plan_storage_key)
+  end
+
+  test "returns the current queued state when enqueue wins while a ready preview is loading", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, resumed, nil} =
+             Imports.resume_import(ctx.scope, ctx.project, ready.id,
+               plan_load: fn storage_key ->
+                 assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+                 assert queued.status == "queued"
+                 PlanStorage.load(storage_key)
+               end
+             )
+
+    assert resumed.status == "queued"
+    assert resumed.oban_job_id
+  end
+
+  test "rechecks edit access after loading a ready preview", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:error, :not_found} =
+             Imports.resume_import(ctx.scope, ctx.project, ready.id,
+               plan_load: fn storage_key ->
+                 result = PlanStorage.load(storage_key)
+
+                 membership =
+                   Repo.get_by!(ProjectMembership,
+                     project_id: ctx.project.id,
+                     user_id: ctx.user.id
+                   )
+
+                 Repo.delete!(membership)
+
+                 result
+               end
+             )
+  end
+
+  test "expires and cleans an accepted attempt immediately when its Oban job is terminal", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    queued.oban_job_id
+    |> then(&Repo.get!(Oban.Job, &1))
+    |> Ecto.Changeset.change(state: "discarded", discarded_at: DateTime.utc_now())
+    |> Repo.update!()
+
+    assert {:ok, expired, nil} = Imports.resume_import(ctx.scope, ctx.project, queued.id)
+    assert expired.status == "expired"
+    assert {:error, :import_plan_unavailable} = PlanStorage.load(queued.plan_storage_key)
+    assert Repo.get!(PlanCleanupRequest, queued.plan_cleanup_request_id).state == "completed"
+  end
+
+  test "expires and cleans an accepted attempt immediately when its Oban job is absent", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+    queued.oban_job_id |> then(&Repo.get!(Oban.Job, &1)) |> Repo.delete!()
+
+    assert {:ok, expired, nil} = Imports.resume_import(ctx.scope, ctx.project, queued.id)
+    assert expired.status == "expired"
+    assert {:error, :import_plan_unavailable} = PlanStorage.load(queued.plan_storage_key)
+  end
+
+  test "resume requires edit access and never returns an attempt from another project", ctx do
+    other_project = project_fixture(ctx.user)
+
+    assert {:ok, other_attempt, _preview} =
+             Imports.prepare_import(ctx.scope, other_project, "other.yarn", yarn("Other"))
+
+    assert {:error, :not_found} =
+             Imports.resume_import(ctx.scope, ctx.project, other_attempt.id)
+
+    assert {:error, :not_found} =
+             Imports.resume_import(ctx.scope, ctx.project, -1)
+
+    viewer = user_fixture()
+    membership_fixture(ctx.project, viewer, "viewer")
+
+    assert {:error, :not_found} =
+             Imports.resume_import(Scope.for_user(viewer), ctx.project, other_attempt.id)
+
+    assert {:error, :not_found} =
+             Imports.resume_import(
+               ctx.scope,
+               ctx.project,
+               9_007_199_254_740_992
+             )
+  end
+
+  test "wakes the imports queue only after the durable enqueue transaction commits", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    test_pid = self()
+
+    queue_notifier = fn payload ->
+      persisted = Repo.get!(ProjectImportAttempt, ready.id)
+      job = Repo.get!(Oban.Job, persisted.oban_job_id)
+
+      send(
+        test_pid,
+        {:queue_wakeup, payload, Repo.in_transaction?(), persisted.status, job.state}
+      )
+
+      :ok
+    end
+
+    assert {:ok, queued} =
+             Imports.enqueue_import(ctx.scope, ready.id, :rename, queue_notifier: queue_notifier)
+
+    assert queued.status == "queued"
+    assert_receive {:queue_wakeup, %{queue: "imports"}, false, "queued", "available"}
+  end
+
+  test "a queue wake-up failure never invalidates the durable job or leaks identifiers", ctx do
+    handler_id = "import-queue-wakeup-#{System.unique_integer([:positive])}"
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :import, :error],
+        fn _event, measurements, metadata, _config ->
+          send(test_pid, {:queue_wakeup_error, measurements, metadata})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    notifiers = [
+      fn _payload -> {:error, RuntimeError.exception(@private_content)} end,
+      fn _payload -> raise @private_content end,
+      fn _payload -> exit(@private_content) end
+    ]
+
+    queued_attempts =
+      notifiers
+      |> Enum.with_index(1)
+      |> Enum.map(fn {notifier, index} ->
+        assert {:ok, ready, _preview} =
+                 Imports.prepare_import(
+                   ctx.scope,
+                   ctx.project,
+                   "#{index}-#{@private_filename}",
+                   yarn(@private_content)
+                 )
+
+        assert {:ok, queued} =
+                 Imports.enqueue_import(ctx.scope, ready.id, :rename, queue_notifier: notifier)
+
+        queued
+      end)
+
+    Enum.each(queued_attempts, fn queued ->
+      assert Repo.get!(Oban.Job, queued.oban_job_id).state == "available"
+      assert Repo.get!(ProjectImportAttempt, queued.id).status == "queued"
+    end)
+
+    assert_receive {:queue_wakeup_error, %{count: 1}, metadata}
+    assert metadata.phase == "queue_wakeup"
+    assert metadata.error_code == "queue_wakeup_failed"
+    refute Map.has_key?(metadata, :project_id)
+    refute Map.has_key?(metadata, :user_id)
+    refute inspect(metadata) =~ @private_content
+    refute inspect(metadata) =~ @private_filename
+  end
+
   test "queues only the attempt id and materializes the encrypted plan idempotently", ctx do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
@@ -69,6 +570,8 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert job.args == %{"attempt_id" => ready.id}
 
     :ok = Collaboration.subscribe_dashboard(ctx.project.id)
+    :ok = Imports.subscribe_project_imports(ctx.project)
+
     assert {:ok, completed} = Imports.perform_import(ready.id, attempt: 1, max_attempts: 3)
     assert completed.status == "completed"
     assert completed.stage == "completed"
@@ -78,10 +581,17 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert Repo.get_by!(PlanCleanupRequest, plan_storage_key: ready.plan_storage_key).state == "completed"
     assert Enum.any?(Flows.list_flows(ctx.project.id), &(&1.name == "Start"))
     assert_received {:dashboard_invalidate, :all}
+    assert_received {:project_import_updated, first_broadcast}
+    assert first_broadcast.id == completed.id
+    assert first_broadcast.status == "completed"
 
     assert {:ok, same_completed} = Imports.perform_import(ready.id, attempt: 2, max_attempts: 3)
     assert same_completed.id == completed.id
     assert Enum.count(Flows.list_flows(ctx.project.id), &(&1.name == "Start")) == 1
+    assert_received {:dashboard_invalidate, :all}
+    assert_received {:project_import_updated, second_broadcast}
+    assert second_broadcast.id == completed.id
+    assert second_broadcast.status == "completed"
   end
 
   test "persists actual materialized counts after skip conflicts", ctx do
@@ -136,6 +646,42 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert {:ok, same_completed} = Imports.perform_import(queued.id, attempt: 3, max_attempts: 3)
     assert same_completed.id == completed.id
     assert Enum.count(Flows.list_flows(ctx.project.id), &(&1.name == "Start")) == 1
+  end
+
+  test "execution-error recovery replays side effects when a concurrent delivery already completed", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    :ok = Collaboration.subscribe_dashboard(ctx.project.id)
+    :ok = Imports.subscribe_project_imports(ctx.project)
+
+    result =
+      Imports.perform_import(queued.id,
+        attempt: 1,
+        max_attempts: 3,
+        before_materialization_transaction: fn ->
+          completed =
+            queued
+            |> ProjectImportAttempt.running_changeset(TimeHelpers.now())
+            |> Repo.update!()
+            |> ProjectImportAttempt.completed_changeset(TimeHelpers.now(), %{})
+            |> Repo.update!()
+
+          send(self(), {:concurrent_completion, completed.status})
+          raise "simulated late failure after concurrent completion"
+        end
+      )
+
+    assert_received {:concurrent_completion, "completed"}
+    assert {:ok, completed} = result
+
+    assert completed.status == "completed"
+    assert_received {:dashboard_invalidate, :all}
+    assert_received {:project_import_updated, broadcast}
+    assert broadcast.id == completed.id
+    assert broadcast.status == "completed"
   end
 
   test "serializes concurrent deliveries and materializes exactly once", ctx do
@@ -700,9 +1246,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
 
-    queued
-    |> Ecto.Changeset.change(expires_at: DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second))
-    |> Repo.update!()
+    mark_stale_for_sweep(queued, 60)
 
     queued.oban_job_id
     |> then(&Repo.get!(Oban.Job, &1))
@@ -717,6 +1261,339 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     refute expired.idempotency_key
     assert {:error, :import_plan_unavailable} = PlanStorage.load(queued.plan_storage_key)
     assert Repo.get!(PlanCleanupRequest, queued.plan_cleanup_request_id).state == "completed"
+  end
+
+  test "reports an expiration transition failure without exposing import identifiers or source", ctx do
+    handler_id = "import-expiration-#{System.unique_integer([:positive])}"
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :import, :error],
+        fn _event, measurements, metadata, _config ->
+          send(test_pid, {:expiration_error, measurements, metadata})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(
+               ctx.scope,
+               ctx.project,
+               @private_filename,
+               yarn(@private_content)
+             )
+
+    parser_version = "expiration-#{System.unique_integer([:positive])}"
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^ready.id),
+      set: [parser_version: parser_version]
+    )
+
+    on_exit(fn -> PlanStorage.delete(ready.plan_storage_key) end)
+
+    mark_stale_for_sweep(ready, 60)
+
+    ready.plan_cleanup_request_id
+    |> then(&Repo.get!(PlanCleanupRequest, &1))
+    |> Repo.delete!()
+
+    assert {:ok, 0, 1} = Imports.expire_stale_imports()
+    assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+
+    assert_receive {:expiration_error, %{count: 1}, metadata}
+    assert metadata.phase == "expiration"
+    assert metadata.error_code == "plan_cleanup_request_unavailable"
+    assert metadata.parser_version == parser_version
+    refute Map.has_key?(metadata, :attempt_id)
+    refute Map.has_key?(metadata, :project_id)
+    refute Map.has_key?(metadata, :user_id)
+    refute inspect(metadata) =~ @private_content
+    refute inspect(metadata) =~ @private_filename
+  end
+
+  test "a poison expiration row backs off so a later row progresses with batch size one", ctx do
+    assert {:ok, poison, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "poison.yarn", yarn("Poison"))
+
+    assert {:ok, valid, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "valid.yarn", yarn("Valid"))
+
+    mark_stale_for_sweep(poison, 120)
+    mark_stale_for_sweep(valid, 60)
+
+    poison.plan_cleanup_request_id
+    |> then(&Repo.get!(PlanCleanupRequest, &1))
+    |> Repo.delete!()
+
+    on_exit(fn -> PlanStorage.delete(poison.plan_storage_key) end)
+
+    assert {:ok, 0, 1} = Imports.expire_stale_imports(stale_batch_size: 1)
+
+    deferred = Repo.get!(ProjectImportAttempt, poison.id)
+    assert deferred.status == "ready"
+    refute DateTime.after?(deferred.expires_at, TimeHelpers.now())
+    assert DateTime.diff(TimeHelpers.now(), deferred.updated_at, :second) in 0..2
+
+    assert {:ok, 1} = Imports.expire_stale_imports(stale_batch_size: 1)
+
+    assert Repo.get!(ProjectImportAttempt, valid.id).status == "expired"
+    assert {:error, :import_plan_unavailable} = PlanStorage.load(valid.plan_storage_key)
+  end
+
+  test "does not expire accepted attempts while their Oban jobs remain executable", ctx do
+    past = DateTime.add(TimeHelpers.now(), -60, :second)
+    now = TimeHelpers.now()
+    oban_now = DateTime.utc_now()
+
+    attempts =
+      Enum.map(
+        [
+          {"queued", "available"},
+          {"running", "executing"},
+          {"retrying", "retryable"}
+        ],
+        fn {attempt_status, job_state} ->
+          assert {:ok, ready, _preview} =
+                   Imports.prepare_import(
+                     ctx.scope,
+                     ctx.project,
+                     "#{attempt_status}.yarn",
+                     yarn("Hello #{attempt_status}")
+                   )
+
+          assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+          attempt =
+            case attempt_status do
+              "queued" ->
+                queued
+
+              "running" ->
+                queued
+                |> ProjectImportAttempt.running_changeset(now)
+                |> Repo.update!()
+
+              "retrying" ->
+                queued
+                |> ProjectImportAttempt.retrying_changeset(%{
+                  status: "retrying",
+                  stage: "retrying",
+                  error_code: "temporary_failure",
+                  error_message: "The import will be retried automatically.",
+                  error_report: %{"attempt" => 1, "max_attempts" => 3},
+                  started_at: now,
+                  expires_at: past
+                })
+                |> Repo.update!()
+            end
+
+          attempt =
+            attempt
+            |> Ecto.Changeset.change(expires_at: past)
+            |> Repo.update!()
+
+          job_changes =
+            case job_state do
+              "available" ->
+                [state: "available"]
+
+              "executing" ->
+                [state: "executing", attempt: 1, attempted_at: oban_now]
+
+              "retryable" ->
+                [state: "retryable", attempt: 1, attempted_at: oban_now, scheduled_at: oban_now]
+            end
+
+          attempt.oban_job_id
+          |> then(&Repo.get!(Oban.Job, &1))
+          |> Ecto.Changeset.change(job_changes)
+          |> Repo.update!()
+
+          attempt
+        end
+      )
+
+    assert {:ok, 0} =
+             Imports.expire_stale_imports(queue_notifier: fn _payload -> :ok end)
+
+    Enum.each(attempts, fn attempt ->
+      persisted = Repo.get!(ProjectImportAttempt, attempt.id)
+      assert persisted.status == attempt.status
+      assert {:ok, _plan} = PlanStorage.load(attempt.plan_storage_key)
+    end)
+  end
+
+  test "caps accepted-plan retention at the absolute deadline", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    inserted_at = DateTime.add(TimeHelpers.now(), -(47 * 60 * 60), :second)
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^ready.id),
+      set: [inserted_at: inserted_at, updated_at: inserted_at]
+    )
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    seconds_until_expiration = DateTime.diff(queued.expires_at, TimeHelpers.now(), :second)
+    assert seconds_until_expiration in 3_500..3_600
+
+    on_exit(fn -> PlanStorage.delete(queued.plan_storage_key) end)
+  end
+
+  test "cancels an executable job and deletes its plan after the absolute deadline", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    overdue_at = DateTime.add(TimeHelpers.now(), -(3 * 24 * 60 * 60), :second)
+    rolling_expiration = DateTime.add(TimeHelpers.now(), 24 * 60 * 60, :second)
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^queued.id),
+      set: [
+        inserted_at: overdue_at,
+        updated_at: overdue_at,
+        expires_at: rolling_expiration
+      ]
+    )
+
+    assert Repo.get!(Oban.Job, queued.oban_job_id).state == "available"
+    assert {:ok, 1} = Imports.expire_stale_imports()
+
+    assert Repo.get!(Oban.Job, queued.oban_job_id).state == "cancelled"
+
+    expired = Repo.get!(ProjectImportAttempt, queued.id)
+    assert expired.status == "expired"
+    refute expired.user_id
+    refute expired.idempotency_key
+    assert {:error, :import_plan_unavailable} = PlanStorage.load(queued.plan_storage_key)
+    assert Repo.get!(PlanCleanupRequest, queued.plan_cleanup_request_id).state == "completed"
+  end
+
+  test "an absolute-deadline cancellation failure backs off without deleting the plan", ctx do
+    handler_id = "import-cancellation-#{System.unique_integer([:positive])}"
+    parser_version = "cancel-#{System.unique_integer([:positive])}"
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :import, :error],
+        fn _event, measurements, metadata, _config ->
+          send(test_pid, {:cancellation_error, measurements, metadata})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    overdue_at = DateTime.add(TimeHelpers.now(), -(3 * 24 * 60 * 60), :second)
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^queued.id),
+      set: [
+        parser_version: parser_version,
+        inserted_at: overdue_at,
+        updated_at: overdue_at,
+        expires_at: DateTime.add(TimeHelpers.now(), 24 * 60 * 60, :second)
+      ]
+    )
+
+    on_exit(fn -> PlanStorage.delete(queued.plan_storage_key) end)
+
+    assert {:ok, 0, 1} =
+             Imports.expire_stale_imports(job_cancel: fn _job_id -> {:error, @private_content} end)
+
+    deferred = Repo.get!(ProjectImportAttempt, queued.id)
+    assert deferred.status == "queued"
+    assert DateTime.after?(deferred.expires_at, TimeHelpers.now())
+    assert Repo.get!(Oban.Job, queued.oban_job_id).state == "available"
+    assert {:ok, _plan} = PlanStorage.load(queued.plan_storage_key)
+
+    assert_receive {:cancellation_error, %{count: 1}, metadata}
+    assert metadata.phase == "expiration"
+    assert metadata.error_code == "import_job_cancellation_failed"
+    assert metadata.parser_version == parser_version
+    refute inspect(metadata) =~ @private_content
+    refute Map.has_key?(metadata, :attempt_id)
+    refute Map.has_key?(metadata, :project_id)
+    refute Map.has_key?(metadata, :user_id)
+  end
+
+  test "expires an orphaned accepted attempt whose Oban job is already terminal", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    mark_stale_for_sweep(queued, 60)
+
+    queued.oban_job_id
+    |> then(&Repo.get!(Oban.Job, &1))
+    |> Ecto.Changeset.change(
+      state: "completed",
+      attempt: 1,
+      attempted_at: DateTime.utc_now(),
+      completed_at: DateTime.utc_now()
+    )
+    |> Repo.update!()
+
+    assert {:ok, 1} =
+             Imports.expire_stale_imports(queue_notifier: fn _payload -> :ok end)
+
+    expired = Repo.get!(ProjectImportAttempt, queued.id)
+    assert expired.status == "expired"
+    refute Enum.any?(Flows.list_flows(ctx.project.id), &(&1.name == "Start"))
+    assert {:error, :import_plan_unavailable} = PlanStorage.load(queued.plan_storage_key)
+    assert Repo.get!(PlanCleanupRequest, queued.plan_cleanup_request_id).state == "completed"
+  end
+
+  test "executable attempts cannot starve later terminal attempts from the expiration batch", ctx do
+    assert {:ok, ready_executable, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "executable.yarn", yarn("Executable"))
+
+    assert {:ok, executable} = Imports.enqueue_import(ctx.scope, ready_executable.id, :rename)
+
+    mark_stale_for_sweep(executable, 120)
+
+    assert {:ok, ready_terminal, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "terminal.yarn", yarn("Terminal"))
+
+    assert {:ok, terminal} = Imports.enqueue_import(ctx.scope, ready_terminal.id, :rename)
+
+    mark_stale_for_sweep(terminal, 60)
+
+    terminal.oban_job_id
+    |> then(&Repo.get!(Oban.Job, &1))
+    |> Ecto.Changeset.change(
+      state: "completed",
+      attempt: 1,
+      attempted_at: DateTime.utc_now(),
+      completed_at: DateTime.utc_now()
+    )
+    |> Repo.update!()
+
+    assert {:ok, 1} =
+             Imports.expire_stale_imports(
+               stale_batch_size: 1,
+               queue_notifier: fn _payload -> :ok end
+             )
+
+    assert Repo.get!(ProjectImportAttempt, executable.id).status == "queued"
+    assert Repo.get!(ProjectImportAttempt, terminal.id).status == "expired"
   end
 
   test "cleanup backoff lets requests beyond the first batch make progress", _ctx do
@@ -740,7 +1617,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     assert {101, nil} = Repo.insert_all(PlanCleanupRequest, rows)
 
-    assert {:ok, 0} =
+    assert {:ok, 0, 100} =
              Imports.expire_stale_imports(plan_delete: fn _storage_key -> {:error, :persistent_storage_failure} end)
 
     assert Repo.one(from(request in PlanCleanupRequest, select: count(request.id))) == 101
@@ -755,6 +1632,54 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     assert Repo.one(from(request in PlanCleanupRequest, where: request.state == "pending", select: count(request.id))) ==
              100
+  end
+
+  test "cleanup deletion failures are counted and reported without PII", _ctx do
+    handler_id = "import-cleanup-#{System.unique_integer([:positive])}"
+    parser_version = "cleanup-#{System.unique_integer([:positive])}"
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :import, :error],
+        fn _event, measurements, metadata, _config ->
+          send(test_pid, {:cleanup_error, measurements, metadata})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    now = TimeHelpers.now()
+
+    %PlanCleanupRequest{}
+    |> PlanCleanupRequest.reservation_changeset(%{
+      plan_storage_key: "imports/plans/#{Ecto.UUID.generate()}.plan.enc",
+      format: "yarn",
+      parser_version: parser_version,
+      state: "pending",
+      cleanup_after: DateTime.add(now, -60, :second)
+    })
+    |> Repo.insert!()
+
+    assert {:ok, 0, 1} =
+             Imports.expire_stale_imports(plan_delete: fn _storage_key -> {:error, @private_content} end)
+
+    assert_receive {:cleanup_error, %{count: 1}, metadata}
+
+    assert metadata == %{
+             format: "yarn",
+             parser_version: parser_version,
+             phase: "cleanup",
+             error_code: "plan_cleanup_failed",
+             exception_module: "none"
+           }
+
+    refute inspect(metadata) =~ @private_content
+    refute inspect(metadata) =~ @private_filename
+    refute Map.has_key?(metadata, :project_id)
+    refute Map.has_key?(metadata, :user_id)
   end
 
   test "deduplicates simultaneous preparation of identical source", ctx do
@@ -848,9 +1773,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert {:ok, attempt, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
 
-    attempt
-    |> Ecto.Changeset.change(expires_at: DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second))
-    |> Repo.update!()
+    mark_stale_for_sweep(attempt, 60)
 
     assert {:ok, 1} = Imports.expire_stale_imports()
 
@@ -869,5 +1792,31 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     <<stop>>
     ===
     """
+  end
+
+  defp alias_yarn do
+    """
+    title: Start
+    ---
+    Capsley: First line.
+    Capsley: Second line.
+    Capsley: Third line.
+    Capsely: Possible typo.
+    <<stop>>
+    ===
+    """
+  end
+
+  defp mark_stale_for_sweep(attempt, seconds_ago) do
+    now = TimeHelpers.now()
+    expires_at = DateTime.add(now, -seconds_ago, :second)
+    updated_at = DateTime.add(now, -600, :second)
+
+    Repo.update_all(
+      from(candidate in ProjectImportAttempt, where: candidate.id == ^attempt.id),
+      set: [expires_at: expires_at, updated_at: updated_at]
+    )
+
+    Repo.get!(ProjectImportAttempt, attempt.id)
   end
 end

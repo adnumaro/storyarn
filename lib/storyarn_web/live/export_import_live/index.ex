@@ -36,6 +36,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         v-socket={@socket}
         v-inject="settings-layout"
         id="export-import-vue"
+        project-id={@project.id}
         can-edit={@can_edit}
         import-state={serialize_import_state(@import_state)}
         upload-config={if(@can_edit, do: @uploads.import_file, else: nil)}
@@ -189,7 +190,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         max_file_size: 50_000_000
       )
 
-    if connected?(socket), do: Imports.subscribe_project_imports(project)
+    socket =
+      if connected?(socket) do
+        :ok = Imports.subscribe_project_imports(project)
+        recover_latest_import(socket)
+      else
+        socket
+      end
 
     {:ok, socket}
   end
@@ -308,11 +315,48 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   def handle_event("set_strategy", _params, socket), do: {:noreply, socket}
 
-  def handle_event("execute_import", _params, socket) do
+  def handle_event("save_import_review", %{"review_decisions" => decisions}, socket) when is_list(decisions) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      execute_ready_import(socket, socket.assigns.import_state)
+      save_import_review_draft(socket, socket.assigns.import_state, decisions)
     end)
   end
+
+  def handle_event("save_import_review", _params, socket) do
+    {:reply, %{ok: false, reason: "invalid"}, socket}
+  end
+
+  def handle_event(
+        "validate_import_review",
+        %{"review_acknowledged" => acknowledged?, "review_decisions" => decisions},
+        socket
+      )
+      when is_boolean(acknowledged?) and is_list(decisions) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      validate_import_review(
+        socket,
+        socket.assigns.import_state,
+        acknowledged?,
+        decisions
+      )
+    end)
+  end
+
+  def handle_event("validate_import_review", _params, socket) do
+    {:reply, %{ok: false, reason: "invalid"}, socket}
+  end
+
+  def handle_event("execute_import", %{"review_confirmation_fingerprint" => fingerprint}, socket)
+      when is_binary(fingerprint) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      execute_ready_import(
+        socket,
+        socket.assigns.import_state,
+        fingerprint
+      )
+    end)
+  end
+
+  def handle_event("execute_import", _params, socket), do: {:noreply, socket}
 
   def handle_event("reset_import", _params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
@@ -321,7 +365,27 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     end)
   end
 
+  def handle_event("resume_import", %{"attempt_id" => attempt_id}, socket)
+      when is_integer(attempt_id) and attempt_id > 0 and attempt_id <= 9_007_199_254_740_991 do
+    reconcile_import_attempt(socket, attempt_id, wake_queue: true)
+  end
+
+  def handle_event("reconcile_import", %{"attempt_id" => attempt_id}, socket)
+      when is_integer(attempt_id) and attempt_id > 0 and attempt_id <= 9_007_199_254_740_991 do
+    if socket.assigns.import_state.attempt_id == attempt_id do
+      reconcile_import_attempt(socket, attempt_id)
+    else
+      {:reply, %{ok: false, reason: "stale"}, socket}
+    end
+  end
+
+  def handle_event(event, _params, socket) when event in ["resume_import", "reconcile_import"] do
+    {:reply, %{ok: false, reason: "invalid"}, socket}
+  end
+
   @impl true
+  def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
+
   def handle_info({:project_import_updated, %ProjectImportAttempt{} = attempt}, socket) do
     if socket.assigns.import_state.attempt_id == attempt.id do
       # PubSub delivery is not ordered across the enqueue caller and Oban
@@ -436,30 +500,74 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     end
   end
 
-  defp execute_ready_import(socket, %{step: "preview", attempt_id: attempt_id} = state) when is_integer(attempt_id) do
-    case Imports.enqueue_import(socket.assigns.current_scope, attempt_id, state.conflict_strategy) do
-      {:ok, attempt} -> {:noreply, assign_import_attempt(socket, attempt)}
-      {:error, reason} -> {:noreply, assign_import_error(socket, reason)}
+  defp execute_ready_import(socket, %{step: "preview", attempt_id: attempt_id} = state, confirmation_fingerprint)
+       when is_integer(attempt_id) do
+    case Imports.enqueue_import(socket.assigns.current_scope, attempt_id, state.conflict_strategy,
+           review_confirmation_fingerprint: confirmation_fingerprint
+         ) do
+      {:ok, attempt} ->
+        {:noreply, assign_import_attempt(socket, attempt)}
+
+      {:error, reason} when reason in [:import_review_required, :invalid_import_review_selection] ->
+        {:noreply, socket}
+
+      {:error, reason} ->
+        {:noreply, assign_import_error(socket, reason)}
     end
   end
 
-  defp execute_ready_import(socket, _state), do: {:noreply, socket}
+  defp execute_ready_import(socket, _state, _confirmation_fingerprint), do: {:noreply, socket}
 
-  defp apply_prepare_result(socket, {:ok, attempt, preview}) do
-    step = if attempt.status == "ready", do: "preview", else: "queued"
+  defp save_import_review_draft(socket, %{step: "preview", attempt_id: attempt_id}, decisions)
+       when is_integer(attempt_id) do
+    case Imports.save_import_review(socket.assigns.current_scope, attempt_id, decisions) do
+      {:ok, attempt, preview} ->
+        {:reply, %{ok: true}, assign_import_attempt(socket, attempt, preview)}
 
-    state = %{
-      step: step,
-      attempt_id: attempt.id,
-      preview: serialize_preview(preview),
-      error: nil,
-      conflict_strategy: "rename",
-      warning_codes: attempt.warning_codes,
-      status: attempt.status
-    }
-
-    assign(socket, :import_state, state)
+      {:error, reason} ->
+        {:reply, %{ok: false, reason: import_review_failure(reason)}, socket}
+    end
   end
+
+  defp save_import_review_draft(socket, _state, _decisions) do
+    {:reply, %{ok: false, reason: "stale"}, socket}
+  end
+
+  defp validate_import_review(socket, %{step: "preview", attempt_id: attempt_id}, acknowledged?, decisions)
+       when is_integer(attempt_id) do
+    case Imports.resolve_import_review(
+           socket.assigns.current_scope,
+           attempt_id,
+           acknowledged?,
+           decisions
+         ) do
+      {:ok, attempt, preview, fingerprint} ->
+        {:reply, %{ok: true, review_confirmation_fingerprint: fingerprint},
+         assign_import_attempt(socket, attempt, preview)}
+
+      {:error, reason} ->
+        {:reply, %{ok: false, reason: import_review_failure(reason)}, socket}
+    end
+  end
+
+  defp validate_import_review(socket, _state, _acknowledged?, _decisions) do
+    {:reply, %{ok: false, reason: "stale"}, socket}
+  end
+
+  defp import_review_failure(reason)
+       when reason in [
+              :import_review_required,
+              :invalid_import_review,
+              :invalid_import_review_selection,
+              :import_review_too_large
+            ], do: "invalid"
+
+  defp import_review_failure(reason) when reason in [:not_found, :import_not_ready, :stale_import_review], do: "stale"
+
+  defp import_review_failure(:unauthorized), do: "unauthorized"
+  defp import_review_failure(_reason), do: "unavailable"
+
+  defp apply_prepare_result(socket, {:ok, attempt, preview}), do: assign_import_attempt(socket, attempt, preview)
 
   defp apply_prepare_result(socket, {:error, reason}), do: assign_import_error(socket, reason)
   defp apply_prepare_result(socket, nil), do: assign_import_error(socket, :upload_unavailable)
@@ -468,7 +576,11 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     %{
       counts: stringify_map_keys(preview.counts),
       conflicts: stringify_conflicts(preview.conflicts),
-      has_conflicts: preview.has_conflicts
+      has_conflicts: preview.has_conflicts,
+      import_review: serialize_import_review(Map.get(preview, :import_review)),
+      import_review_draft: serialize_import_review_state(Map.get(preview, :import_review_draft)),
+      import_review_resolution: serialize_import_review_state(Map.get(preview, :import_review_resolution)),
+      issue_summary: serialize_issue_summary(Map.get(preview, :issue_summary))
     }
   end
 
@@ -478,9 +590,45 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     Map.new(conflicts, fn {key, values} -> {to_string(key), values} end)
   end
 
-  defp assign_import_attempt(socket, attempt) do
-    state = socket.assigns.import_state
+  defp serialize_import_review(review) when is_map(review) and map_size(review) > 0, do: review
+  defp serialize_import_review(_review), do: nil
 
+  defp serialize_import_review_state(state) when is_map(state) and map_size(state) > 0, do: state
+
+  defp serialize_import_review_state(_state), do: nil
+
+  defp serialize_issue_summary(summary) when is_map(summary) do
+    %{
+      warning_count: Map.get(summary, :warning_count, 0),
+      error_count: Map.get(summary, :error_count, 0),
+      issue_count: Map.get(summary, :issue_count, 0),
+      issues_truncated: Map.get(summary, :issues_truncated, false),
+      counts_by_code: Map.get(summary, :counts_by_code, %{})
+    }
+  end
+
+  defp serialize_issue_summary(_summary), do: nil
+
+  defp recover_latest_import(%{assigns: %{can_edit: true}} = socket) do
+    case Imports.resume_latest_active_import(
+           socket.assigns.current_scope,
+           socket.assigns.project,
+           wake_queue: true
+         ) do
+      {:ok, %ProjectImportAttempt{} = attempt, preview} ->
+        assign_import_attempt(socket, attempt, preview)
+
+      {:ok, nil} ->
+        socket
+
+      {:error, _reason} ->
+        socket
+    end
+  end
+
+  defp recover_latest_import(socket), do: socket
+
+  defp assign_import_attempt(socket, attempt, resumed_preview \\ nil) do
     step =
       case attempt.status do
         "ready" -> "preview"
@@ -489,27 +637,82 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         _status -> "error"
       end
 
-    preview =
-      if step == "done" do
-        Map.put(
-          state.preview || %{counts: %{}, conflicts: %{}, has_conflicts: false},
-          :counts,
-          stringify_map_keys(attempt.counts)
-        )
-      else
-        state.preview
-      end
+    preview = import_attempt_preview(socket.assigns.import_state, attempt, step, resumed_preview)
 
     state = %{
-      state
-      | step: step,
-        status: attempt.status,
-        preview: preview,
-        error: if(step == "error", do: attempt.error_message || generic_import_error())
+      step: step,
+      attempt_id: attempt.id,
+      preview: preview,
+      error: if(step == "error", do: attempt.error_message || generic_import_error()),
+      conflict_strategy: attempt.conflict_strategy || "rename",
+      warning_codes: attempt.warning_codes || [],
+      status: attempt.status
     }
 
     assign(socket, :import_state, state)
   end
+
+  defp import_attempt_preview(_state, attempt, "done", _resumed_preview) do
+    %{
+      counts: stringify_map_keys(attempt.counts || %{}),
+      conflicts: %{},
+      has_conflicts: false
+    }
+  end
+
+  defp import_attempt_preview(_state, _attempt, _step, resumed_preview) when not is_nil(resumed_preview),
+    do: serialize_preview(resumed_preview)
+
+  defp import_attempt_preview(%{attempt_id: attempt_id, preview: preview}, %{id: attempt_id}, _step, _resumed_preview)
+       when not is_nil(preview), do: preview
+
+  defp import_attempt_preview(_state, attempt, _step, _resumed_preview) do
+    %{
+      counts: stringify_map_keys(attempt.counts || %{}),
+      conflicts: %{},
+      has_conflicts: false
+    }
+  end
+
+  defp reconcile_import_attempt(socket, attempt_id, opts \\ []) do
+    with :ok <- Authorize.authorize(socket, :edit_content),
+         {:ok, attempt, preview} <-
+           Imports.resume_import(
+             socket.assigns.current_scope,
+             socket.assigns.project,
+             attempt_id,
+             opts
+           ) do
+      {:reply, %{ok: true, status: attempt.status}, assign_import_attempt(socket, attempt, preview)}
+    else
+      {:error, reason} ->
+        reconcile_import_failure(socket, attempt_id, reason)
+
+      _reason ->
+        reconcile_import_failure(socket, attempt_id, :unavailable)
+    end
+  end
+
+  defp reconcile_import_failure(socket, attempt_id, reason) do
+    failure = import_resume_failure(reason)
+
+    socket =
+      if failure in ["invalid", "not_found", "unauthorized"] and
+           socket.assigns.import_state.attempt_id == attempt_id do
+        assign(socket, :import_state, empty_import_state())
+      else
+        socket
+      end
+
+    {:reply, %{ok: false, reason: failure}, socket}
+  end
+
+  defp import_resume_failure(reason)
+       when reason in [:not_found, :import_not_found, :attempt_not_found, :project_mismatch], do: "not_found"
+
+  defp import_resume_failure(reason) when reason in [:unauthorized, :forbidden], do: "unauthorized"
+  defp import_resume_failure(:invalid_attempt_id), do: "invalid"
+  defp import_resume_failure(_reason), do: "unavailable"
 
   defp assign_import_error(socket, reason) do
     state = %{
@@ -554,6 +757,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
               :file_too_large,
               :invalid_archive,
               :invalid_archive_path,
+              :invalid_json,
+              :invalid_json_structure,
               :invalid_text_encoding,
               :nested_archive_not_allowed,
               :unsupported_archive_entry,
