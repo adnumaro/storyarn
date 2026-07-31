@@ -292,7 +292,7 @@ defmodule Storyarn.Imports do
     with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
          {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
          :ok <- run_before_cancel_transaction(opts),
-         {:ok, expired} <- cancel_attempt(attempt.id, attempt.project_id, scope.user.id, opts) do
+         {:ok, expired} <- cancel_attempt(attempt, scope.user.id, opts) do
       PlanCleanup.cleanup_plan(expired)
       Queue.broadcast(expired)
       {:ok, expired}
@@ -302,16 +302,31 @@ defmodule Storyarn.Imports do
     end
   end
 
-  defp cancel_attempt(attempt_id, project_id, user_id, opts) do
+  # Lock order is project, membership, job, attempt — the one global order
+  # every import transaction follows: the worker takes project, membership,
+  # attempt; resume and the expiry sweep take job, attempt. `Oban.cancel_job/1`
+  # dispatches onto this connection inside this transaction, so the job row is
+  # taken exclusively *before* the attempt: taking the attempt first inverted
+  # the documented order (`Expiration`) and could deadlock against a concurrent
+  # resume or sweep of the same attempt, crashing the resume side's mount.
+  defp cancel_attempt(%ProjectImportAttempt{} = candidate, user_id, opts) do
     Repo.transact(fn ->
-      with {:ok, :authorized} <- authorize_import_locked(Repo, project_id, user_id),
-           %ProjectImportAttempt{} = attempt <- lock_cancel_attempt(attempt_id, project_id) do
-        transition_cancelled_attempt(attempt, opts)
-      else
-        nil -> {:error, :not_found}
-        {:error, reason} -> {:error, reason}
+      with {:ok, :authorized} <- authorize_import_locked(Repo, candidate.project_id, user_id) do
+        cancel_locked_attempt(candidate, opts)
       end
     end)
+  end
+
+  defp cancel_locked_attempt(candidate, opts) do
+    Expiration.lock_import_job_state_for_update(candidate.oban_job_id)
+
+    case lock_cancel_attempt(candidate.id, candidate.project_id) do
+      %ProjectImportAttempt{} = attempt ->
+        transition_cancelled_attempt(attempt, candidate.oban_job_id, opts)
+
+      nil ->
+        {:error, :not_found}
+    end
   end
 
   defp lock_cancel_attempt(attempt_id, project_id) do
@@ -335,17 +350,24 @@ defmodule Storyarn.Imports do
   #
   # `running` and `retrying` are deliberately not cancellable: that import is
   # materializing, and letting the UI pretend otherwise is worse than showing it.
-  defp transition_cancelled_attempt(%ProjectImportAttempt{status: "ready"} = attempt, _opts) do
+  #
+  # The queued clause also requires the locked attempt to still carry the job id
+  # read before the transaction — that is the row locked above. A binding that
+  # moved in between (accepted in another tab, job replaced) means the held lock
+  # is not this attempt's job, so cancelling would update a row the transaction
+  # does not hold; refuse and let reconciliation own that state.
+  defp transition_cancelled_attempt(%ProjectImportAttempt{status: "ready"} = attempt, _candidate_job_id, _opts) do
     expire_cancelled_attempt(attempt)
   end
 
-  defp transition_cancelled_attempt(%ProjectImportAttempt{status: "queued"} = attempt, opts) do
+  defp transition_cancelled_attempt(%ProjectImportAttempt{status: "queued", oban_job_id: job_id} = attempt, job_id, opts) do
     with :ok <- cancel_queued_import_job(attempt, opts) do
       expire_cancelled_attempt(attempt)
     end
   end
 
-  defp transition_cancelled_attempt(%ProjectImportAttempt{}, _opts), do: {:error, :import_not_cancellable}
+  defp transition_cancelled_attempt(%ProjectImportAttempt{}, _candidate_job_id, _opts),
+    do: {:error, :import_not_cancellable}
 
   defp cancel_queued_import_job(%ProjectImportAttempt{oban_job_id: job_id}, opts) when is_integer(job_id) do
     job_cancel = Keyword.get(opts, :job_cancel, &Oban.cancel_job/1)

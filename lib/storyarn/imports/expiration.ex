@@ -310,6 +310,26 @@ defmodule Storyarn.Imports.Expiration do
     end
   end
 
+  # Exclusive variant for the caller that goes on to update the job row in the
+  # same transaction (`cancel_import` — `Oban.cancel_job/1` dispatches onto the
+  # caller's connection inside an open transaction). Taken `FOR SHARE` the later
+  # update would upgrade the lock, and two concurrent cancels of the same
+  # attempt could deadlock each other on the upgrade.
+  def lock_import_job_state_for_update(nil), do: :absent
+
+  def lock_import_job_state_for_update(job_id) do
+    job =
+      Oban.Job
+      |> where([job], job.id == ^job_id)
+      |> lock("FOR UPDATE")
+      |> Repo.one()
+
+    case job do
+      %Oban.Job{state: state} -> state
+      nil -> :absent
+    end
+  end
+
   defp report_expiration_error(attempt, reason) do
     {error_code, _message, _permanent?} = Error.classify(reason)
 

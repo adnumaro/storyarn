@@ -833,6 +833,80 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     refute_receive {^marker, _unexpected_lock}
   end
 
+  test "locks the job before the attempt when cancelling a queued import", ctx do
+    # `Oban.cancel_job/1` dispatches onto the caller's connection inside the
+    # cancel transaction, so the job row must be locked before the attempt —
+    # the order resume and the expiry sweep take. Attempt-then-job is an ABBA
+    # inversion that can deadlock a concurrent resume, crashing its mount.
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    handler_id = "import-cancel-queued-lock-order-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    parent = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid do
+            lock =
+              cond do
+                String.contains?(query, ~s("oban_jobs")) and String.contains?(query, "FOR UPDATE") ->
+                  :job
+
+                String.contains?(query, ~s("project_import_attempts")) and
+                    String.contains?(query, "FOR UPDATE") ->
+                  :attempt
+
+                true ->
+                  nil
+              end
+
+            if lock, do: send(pid, {ref, lock})
+          end
+        end,
+        {parent, marker}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:ok, expired} = Imports.cancel_import(ctx.scope, queued.id)
+    assert expired.status == "expired"
+
+    lock_order =
+      Enum.map(1..2, fn _index ->
+        assert_receive {^marker, lock}
+        lock
+      end)
+
+    assert lock_order == [:job, :attempt]
+    refute_receive {^marker, _unexpected_lock}
+  end
+
+  test "refuses to cancel when the job binding moved after the pre-transaction read", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    # A reset racing an accept in another tab: the attempt gains its job after
+    # `cancel_import` read it but before the transaction locked it. The row
+    # locked up front is not this attempt's job, so the cancel must refuse
+    # rather than cancel a job the transaction does not hold.
+    assert {:error, :import_not_cancellable} =
+             Imports.cancel_import(ctx.scope, ready.id,
+               before_cancel_transaction: fn ->
+                 assert {:ok, _queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+               end
+             )
+
+    reloaded = Repo.get!(ProjectImportAttempt, ready.id)
+    assert reloaded.status == "queued"
+    assert reloaded.oban_job_id
+  end
+
   test "rechecks import authorization at the cancellation boundary", ctx do
     co_owner = user_fixture()
     membership = membership_fixture(ctx.project, co_owner, "owner")
