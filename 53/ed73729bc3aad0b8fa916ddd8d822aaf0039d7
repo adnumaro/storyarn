@@ -1,0 +1,21 @@
+test/storyarn/imports/parsers/yarn_test.exs
+  s_4a035ed2898f8e::t_b956e627e0e37a 1794-1824
+lib/storyarn/imports/parsers/yarn/normalizer.ex
+  s_4a035ed2898f8e::t_e8634285bd0503 19-23,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "53ed73729bc3aad0b8fa916ddd8d822aaf0039d7",
+  "prompts": {},
+  "sessions": {
+    "s_4a035ed2898f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e33c65-8259-4fc8-a28e-47e1a25c1e9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
