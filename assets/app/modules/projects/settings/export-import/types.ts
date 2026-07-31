@@ -156,8 +156,26 @@ export interface ImportState {
   status?: ImportAttemptStatus | null;
 }
 
+export interface SpeakerActionOption {
+  value: string;
+  action: YarnSpeakerAction;
+  targetSpeaker?: string;
+  labelKey: string;
+  descriptionKey: string;
+  accent: "primary" | "warning" | "info";
+  suggested: boolean;
+}
+
 export interface ImportPanelProps {
   projectId: number;
+  /** `:edit_content` — kept for surfaces an editor may still see. */
   canEdit: boolean;
+  /**
+   * `:manage_project`. Importing rewrites project content, so it is owner-only.
+   * The panel used to render its file picker for `canEdit`, which showed
+   * editors an upload they were then rejected for.
+   */
+  canImport: boolean;
+  currentUserId: number;
   importState: ImportState;
 }

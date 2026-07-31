@@ -146,14 +146,27 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     |> validate_common()
   end
 
-  def expired_changeset(attempt, now) do
+  @doc """
+  Terminalizes an attempt as `expired`.
+
+  `error_code` separates the two things that reach this state. A preview that
+  simply aged out carries no code and must not be reported as a failure; an
+  attempt rejected for an unusable review carries the reason so the UI can say
+  which one happened. `user_id` and `idempotency_key` are dropped like every
+  other terminal transition, which is why resuming a terminal attempt can only
+  ever be authorized by project, never by owner.
+  """
+  def expired_changeset(attempt, now, error_code \\ nil) do
     attempt
     |> change(
       status: "expired",
       stage: "expired",
       completed_at: now,
       user_id: nil,
-      idempotency_key: nil
+      idempotency_key: nil,
+      error_code: error_code,
+      error_message: nil,
+      error_report: %{}
     )
     |> validate_common()
   end

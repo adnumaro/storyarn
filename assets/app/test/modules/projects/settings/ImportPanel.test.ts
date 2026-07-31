@@ -141,19 +141,25 @@ function resolvedPreviewState(): ImportState {
   return state;
 }
 
+const CURRENT_USER_ID = 42;
+
 function mountPanel(importState: ImportState = uploadState(), projectId = 7) {
   return mount(ImportPanel, {
     props: {
       projectId,
       canEdit: true,
+      canImport: true,
+      currentUserId: CURRENT_USER_ID,
       importState,
       uploadConfig: null,
     },
   });
 }
 
-function storageKey(projectId = 7) {
-  return `storyarn:project-import:${projectId}`;
+// The stored reference is scoped to the signed-in user as well as the project,
+// so a shared browser cannot hand one member's in-flight attempt to the next.
+function storageKey(projectId = 7, userId = CURRENT_USER_ID) {
+  return `storyarn:project-import:${projectId}:${userId}`;
 }
 
 function storedAttempt(attemptId = 42, savedAt = Date.now()) {

@@ -66,24 +66,24 @@ msgstr ""
 msgid "moved a node"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:46
-#: lib/storyarn_web/controllers/export_controller.ex:52
-#: lib/storyarn_web/controllers/export_controller.ex:97
+#: lib/storyarn_web/controllers/export_controller.ex:50
+#: lib/storyarn_web/controllers/export_controller.ex:56
+#: lib/storyarn_web/controllers/export_controller.ex:101
 #, elixir-autogen, elixir-format
 msgid "Export failed"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:31
+#: lib/storyarn_web/controllers/export_controller.ex:32
 #, elixir-autogen, elixir-format
 msgid "Invalid format"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:37
+#: lib/storyarn_web/controllers/export_controller.ex:41
 #, elixir-autogen, elixir-format
 msgid "Not found"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:28
+#: lib/storyarn_web/controllers/export_controller.ex:29
 #, elixir-autogen, elixir-format
 msgid "Unknown format"
 msgstr ""
@@ -190,14 +190,14 @@ msgstr ""
 msgid "You don't have permission to edit."
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:40
-#: lib/storyarn_web/controllers/export_controller.ex:70
-#: lib/storyarn_web/controllers/export_controller.ex:94
+#: lib/storyarn_web/controllers/export_controller.ex:44
+#: lib/storyarn_web/controllers/export_controller.ex:74
+#: lib/storyarn_web/controllers/export_controller.ex:98
 #, elixir-autogen, elixir-format
 msgid "Export is too large"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:34
+#: lib/storyarn_web/controllers/export_controller.ex:35
 #, elixir-autogen, elixir-format
 msgid "Invalid localization policy"
 msgstr ""
@@ -205,4 +205,9 @@ msgstr ""
 #: lib/storyarn_web/controllers/private_media_controller.ex:87
 #, elixir-autogen, elixir-format
 msgid "Media not found"
+msgstr ""
+
+#: lib/storyarn_web/controllers/export_controller.ex:38
+#, elixir-autogen, elixir-format
+msgid "You do not have permission to export this project"
 msgstr ""

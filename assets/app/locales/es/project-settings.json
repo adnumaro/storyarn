@@ -298,7 +298,7 @@
       "success": "El proyecto Yarn se ha importado correctamente.",
       "import_another": "Importar otro proyecto",
       "try_again": "Probar otro archivo",
-      "no_permission": "Necesitas permiso para editar contenido e importar en este proyecto.",
+      "no_permission": "Solo los propietarios del proyecto pueden importar en este proyecto. Importar sustituye el contenido del proyecto.",
       "entities": {
         "sheets": "Fichas y personajes",
         "flows": "Flujos",

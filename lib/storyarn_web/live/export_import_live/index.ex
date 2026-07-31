@@ -38,8 +38,10 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         id="export-import-vue"
         project-id={@project.id}
         can-edit={@can_edit}
+        can-import={@can_import}
+        current-user-id={@current_scope.user.id}
         import-state={serialize_import_state(@import_state)}
-        upload-config={if(@can_edit, do: @uploads.import_file, else: nil)}
+        upload-config={if(@can_import, do: @uploads.import_file, else: nil)}
         export-config={
           %{
             formatConfig: %{
@@ -157,6 +159,11 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     %{project: project} = socket.assigns
+
+    # Import rewrites project content wholesale, so it is owner-only. `can_edit`
+    # is `:edit_content` and would have shown an editor a working file picker
+    # that every import handler then rejects.
+    can_import? = Authorize.authorize(socket, :manage_project) == :ok
     formats = visible_export_formats()
     default_format = List.first(formats)
     default_sections = default_format.sections
@@ -184,6 +191,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       # Import state. Files are consumed from LiveView's bounded temporary
       # upload and are never written under their client-provided filename.
       |> assign(:import_state, empty_import_state())
+      |> assign(:can_import, can_import?)
       |> allow_upload(:import_file,
         accept: [".yarn", ".zip"],
         max_entries: 1,
@@ -362,8 +370,21 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   def handle_event("reset_import", _params, socket) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      maybe_cancel_ready_import(socket)
-      {:noreply, assign(socket, :import_state, empty_import_state())}
+      case cancel_resettable_import(socket) do
+        :ok ->
+          {:noreply, assign(socket, :import_state, empty_import_state())}
+
+        {:error, :import_not_cancellable} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext(
+               "projects",
+               "This import is already running and cannot be dismissed. It will finish in the background."
+             )
+           )}
+      end
     end)
   end
 
@@ -611,7 +632,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp serialize_issue_summary(_summary), do: nil
 
-  defp recover_latest_import(%{assigns: %{can_edit: true}} = socket) do
+  defp recover_latest_import(%{assigns: %{can_import: true}} = socket) do
     case Imports.resume_latest_active_import(
            socket.assigns.current_scope,
            socket.assigns.project,
@@ -645,7 +666,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       step: step,
       attempt_id: attempt.id,
       preview: preview,
-      error: if(step == "error", do: attempt.error_message || generic_import_error()),
+      error: if(step == "error", do: import_attempt_error(attempt)),
       conflict_strategy: attempt.conflict_strategy || "rename",
       warning_codes: attempt.warning_codes || [],
       status: attempt.status
@@ -731,14 +752,68 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     assign(socket, :import_state, fun.(socket.assigns.import_state))
   end
 
-  defp maybe_cancel_ready_import(socket) do
+  # Clearing the panel is not enough on its own: `recover_latest_import/1` reads
+  # the durable attempt on every mount, so an attempt left active comes straight
+  # back on the next navigation. Reset therefore has to terminalize what it
+  # dismisses. `ready` and `queued` are cancellable — nothing has been written.
+  # `running` and `retrying` are refused: that import is materializing into the
+  # project and hiding it would be a lie.
+  defp cancel_resettable_import(socket) do
     case socket.assigns.import_state do
-      %{attempt_id: attempt_id, status: "ready"} when is_integer(attempt_id) ->
-        Imports.cancel_import(socket.assigns.current_scope, attempt_id)
+      %{attempt_id: attempt_id, status: status}
+      when is_integer(attempt_id) and status in ["ready", "queued"] ->
+        cancellation_outcome(Imports.cancel_import(socket.assigns.current_scope, attempt_id))
 
-      _other ->
+      %{status: status} when status in ["running", "retrying"] ->
+        {:error, :import_not_cancellable}
+
+      _nothing_to_cancel ->
         :ok
     end
+  end
+
+  # A cancellation that lost the race to the worker must keep the attempt on
+  # screen. Any other failure means there is nothing actionable left, and
+  # leaving the user stuck on a dead panel would be worse than clearing it.
+  defp cancellation_outcome({:error, :import_not_cancellable}), do: {:error, :import_not_cancellable}
+  defp cancellation_outcome(_result), do: :ok
+
+  # Three different things terminalize an attempt as `expired`, and the durable
+  # row carries no message for any of them. Reporting all three as "the import
+  # could not be completed" told a user whose preview simply aged out overnight
+  # that their import had failed.
+  defp import_attempt_error(%ProjectImportAttempt{status: "expired"} = attempt) do
+    expired_import_message(attempt.error_code)
+  end
+
+  defp import_attempt_error(%ProjectImportAttempt{error_code: "project_already_has_main_flow"}) do
+    dgettext(
+      "projects",
+      "This project already has a main flow, so the imported one could not be created. No project content was changed."
+    )
+  end
+
+  defp import_attempt_error(%ProjectImportAttempt{error_message: message}) when is_binary(message) and message != "",
+    do: message
+
+  defp import_attempt_error(_attempt), do: generic_import_error()
+
+  defp expired_import_message("import_cancelled") do
+    dgettext("projects", "The import was cancelled. No project content was changed.")
+  end
+
+  defp expired_import_message(code) when is_binary(code) do
+    dgettext(
+      "projects",
+      "This import could not be validated and was discarded. Validate the file again before importing."
+    )
+  end
+
+  defp expired_import_message(_no_code) do
+    dgettext(
+      "projects",
+      "This import preview expired before the import was started. Upload the file again."
+    )
   end
 
   defp import_error_message(reason) when reason in [:duplicate_yarn_node_title, :import_plan_has_errors] do

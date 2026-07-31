@@ -13,6 +13,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias StoryarnWeb.ExportImportLive.Index
 
   defp get_settings_layout(view) do
@@ -85,15 +86,15 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
                  "title: OwnerImport\n---\nHello\n===\n"
                )
 
-      other_editor = user_fixture()
-      membership_fixture(project, other_editor, "editor")
+      other_owner = user_fixture()
+      membership_fixture(project, other_owner, "owner")
 
       assert {:ok, other_attempt, _preview} =
                Imports.prepare_import(
-                 Scope.for_user(other_editor),
+                 Scope.for_user(other_owner),
                  project,
-                 "other-editor.yarn",
-                 "title: OtherEditorImport\n---\nHello\n===\n"
+                 "other-owner.yarn",
+                 "title: OtherOwnerImport\n---\nHello\n===\n"
                )
 
       assert other_attempt.id > expected.id
@@ -447,6 +448,99 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       render_hook(view, "reconcile_import", %{"attempt_id" => queued.id})
       assert_reply(view, %{ok: false, reason: "stale"})
       assert import_state(view)["step"] == "upload"
+    end
+
+    test "reset cancels a queued attempt so a later mount does not restore it", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(scope, project, "project.yarn", "title: Start\n---\nHi\n===\n")
+
+      assert {:ok, queued} = Imports.enqueue_import(scope, ready.id, :rename)
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => queued.id})
+      assert_reply(view, %{ok: true, status: "queued"})
+      assert import_state(view)["step"] == "queued"
+
+      render_hook(view, "reset_import", %{})
+      assert import_state(view)["step"] == "upload"
+
+      # The durable attempt is what `mount/3` reads, so clearing the panel is
+      # not enough: a live attempt comes straight back on the next navigation.
+      assert Repo.get!(ProjectImportAttempt, queued.id).status == "expired"
+
+      {:ok, remounted, _html} = live(conn, export_url(project))
+      assert import_state(remounted)["step"] == "upload"
+      refute import_state(remounted)["attemptId"]
+    end
+
+    test "reset refuses to dismiss a running import", %{conn: conn, project: project, user: user} do
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(scope, project, "project.yarn", "title: Start\n---\nHi\n===\n")
+
+      assert {:ok, queued} = Imports.enqueue_import(scope, ready.id, :rename)
+
+      running =
+        queued
+        |> ProjectImportAttempt.running_changeset(TimeHelpers.now())
+        |> Repo.update!()
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => running.id})
+      assert_reply(view, %{ok: true, status: "running"})
+
+      render_hook(view, "reset_import", %{})
+
+      # An import that is materializing must stay on screen: it is writing.
+      assert import_state(view)["step"] == "queued"
+      assert Repo.get!(ProjectImportAttempt, running.id).status == "running"
+    end
+
+    test "an expired preview is reported as expired, not as a failure", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(scope, project, "project.yarn", "title: Start\n---\nHi\n===\n")
+
+      expired =
+        ready
+        |> ProjectImportAttempt.expired_changeset(TimeHelpers.now())
+        |> Repo.update!()
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => expired.id})
+      assert_reply(view, %{ok: true, status: "expired"})
+
+      state = import_state(view)
+      assert state["step"] == "error"
+      assert state["error"] =~ "expired"
+      refute state["error"] =~ "could not be completed"
+    end
+
+    test "an editor sees no import surface", %{project: project} do
+      editor = user_fixture()
+      membership_fixture(project, editor, "editor")
+
+      {:ok, view, _html} =
+        build_conn()
+        |> log_in_user(editor)
+        |> live(export_url(project))
+
+      vue = get_export_vue(view)
+
+      refute vue.props["can-import"]
+      refute vue.props["upload-config"]
     end
 
     test "stays connected when a linked process exits normally", %{conn: conn, project: project} do

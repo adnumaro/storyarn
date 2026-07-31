@@ -41,7 +41,7 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     |> authenticate(user)
     |> visit(import_path)
     |> assert_has("[data-testid='yarn-import-processing']")
-    |> store_attempt_reference(project.id, queued.id)
+    |> store_attempt_reference(project.id, user.id, queued.id)
     |> visit(project_path)
     |> assert_has("[data-testid='project-stat-flows']")
     |> unwrap(fn _browser ->
@@ -55,7 +55,7 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     |> assert_has("[data-testid='yarn-import-reset']")
     |> click("[data-testid='yarn-import-reset']")
     |> assert_has("#yarn-import-file-picker")
-    |> assert_attempt_reference_cleared(project.id)
+    |> assert_attempt_reference_cleared(project.id, user.id)
     |> visit(project_path)
     |> assert_has("[data-testid='project-stat-flows']")
     |> visit(import_path)
@@ -63,7 +63,7 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     |> refute_has("span", text: "The Yarn project was imported successfully.")
   end
 
-  defp store_attempt_reference(session, project_id, attempt_id) do
+  defp store_attempt_reference(session, project_id, user_id, attempt_id) do
     evaluate(
       session,
       """
@@ -76,20 +76,22 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
       """,
       is_function: true,
       arg: %{
-        "key" => storage_key(project_id),
+        "key" => storage_key(project_id, user_id),
         "attemptId" => attempt_id
       }
     )
   end
 
-  defp assert_attempt_reference_cleared(session, project_id) do
+  defp assert_attempt_reference_cleared(session, project_id, user_id) do
     evaluate(
       session,
       "key => window.localStorage.getItem(key)",
-      [is_function: true, arg: storage_key(project_id)],
+      [is_function: true, arg: storage_key(project_id, user_id)],
       fn value -> assert is_nil(value) end
     )
   end
 
-  defp storage_key(project_id), do: "storyarn:project-import:#{project_id}"
+  # Scoped to the signed-in user as well as the project, so a shared browser
+  # cannot hand one member's in-flight attempt to the next.
+  defp storage_key(project_id, user_id), do: "storyarn:project-import:#{project_id}:#{user_id}"
 end

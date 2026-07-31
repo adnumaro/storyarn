@@ -144,14 +144,14 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
            end)
   end
 
-  test "cleans a stored review revision when edit access is revoked before pointer swap", ctx do
-    editor = user_fixture()
-    membership = membership_fixture(ctx.project, editor, "editor")
-    editor_scope = Scope.for_user(editor)
+  test "cleans a stored review revision when import access is revoked before pointer swap", ctx do
+    co_owner = user_fixture()
+    membership = membership_fixture(ctx.project, co_owner, "owner")
+    co_owner_scope = Scope.for_user(co_owner)
 
     assert {:ok, ready, _preview} =
              Imports.prepare_import(
-               editor_scope,
+               co_owner_scope,
                ctx.project,
                "authorization-race.yarn",
                alias_yarn()
@@ -171,7 +171,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     assert {:error, :unauthorized} =
              Imports.resolve_import_review(
-               editor_scope,
+               co_owner_scope,
                ready.id,
                true,
                decisions,
@@ -238,7 +238,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
              Imports.prepare_import(ctx.scope, ctx.project, "latest.yarn", yarn("Latest"))
 
     other_user = user_fixture()
-    membership_fixture(ctx.project, other_user, "editor")
+    membership_fixture(ctx.project, other_user, "owner")
 
     assert {:ok, _other_user_attempt, _preview} =
              Imports.prepare_import(
@@ -267,7 +267,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert recovered_preview == expected_preview
   end
 
-  test "latest active recovery returns no attempt and masks missing edit access", ctx do
+  test "latest active recovery returns no attempt and masks missing import access", ctx do
     assert {:ok, nil} = Imports.resume_latest_active_import(ctx.scope, ctx.project)
 
     viewer = user_fixture()
@@ -277,16 +277,16 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
              Imports.resume_latest_active_import(Scope.for_user(viewer), ctx.project)
   end
 
-  test "latest active recovery rechecks edit access after loading the preview", ctx do
-    editor = user_fixture()
-    membership = membership_fixture(ctx.project, editor, "editor")
-    editor_scope = Scope.for_user(editor)
+  test "latest active recovery rechecks import access after loading the preview", ctx do
+    co_owner = user_fixture()
+    membership = membership_fixture(ctx.project, co_owner, "owner")
+    co_owner_scope = Scope.for_user(co_owner)
 
     assert {:ok, ready, _preview} =
-             Imports.prepare_import(editor_scope, ctx.project, "project.yarn", yarn("Hello"))
+             Imports.prepare_import(co_owner_scope, ctx.project, "project.yarn", yarn("Hello"))
 
     assert {:error, :not_found} =
-             Imports.resume_latest_active_import(editor_scope, ctx.project,
+             Imports.resume_latest_active_import(co_owner_scope, ctx.project,
                plan_load: fn storage_key ->
                  result = PlanStorage.load(storage_key)
                  Repo.delete!(membership)
@@ -833,18 +833,21 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     refute_receive {^marker, _unexpected_lock}
   end
 
-  test "rechecks edit authorization at the cancellation boundary", ctx do
-    editor = user_fixture()
-    membership = membership_fixture(ctx.project, editor, "editor")
-    editor_scope = Scope.for_user(editor)
+  test "rechecks import authorization at the cancellation boundary", ctx do
+    co_owner = user_fixture()
+    membership = membership_fixture(ctx.project, co_owner, "owner")
+    co_owner_scope = Scope.for_user(co_owner)
 
     assert {:ok, ready, _preview} =
-             Imports.prepare_import(editor_scope, ctx.project, "project.yarn", yarn("Hello"))
+             Imports.prepare_import(co_owner_scope, ctx.project, "project.yarn", yarn("Hello"))
 
     assert {:error, :unauthorized} =
-             Imports.cancel_import(editor_scope, ready.id,
+             Imports.cancel_import(co_owner_scope, ready.id,
                before_cancel_transaction: fn ->
-                 assert {:ok, _membership} = Storyarn.Projects.remove_member(membership)
+                 # Demoted rather than removed: `remove_member/1` refuses to drop
+                 # an owner, and a role change is the realistic way import access
+                 # disappears mid-flight.
+                 Repo.update!(Ecto.Changeset.change(membership, role: "viewer"))
                end
              )
 
@@ -865,21 +868,21 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
   end
 
   test "rechecks and locks authorization at the materialization boundary", ctx do
-    editor = user_fixture()
-    membership = membership_fixture(ctx.project, editor, "editor")
-    editor_scope = Scope.for_user(editor)
+    co_owner = user_fixture()
+    membership = membership_fixture(ctx.project, co_owner, "owner")
+    co_owner_scope = Scope.for_user(co_owner)
 
     assert {:ok, ready, _preview} =
-             Imports.prepare_import(editor_scope, ctx.project, "project.yarn", yarn("Hello"))
+             Imports.prepare_import(co_owner_scope, ctx.project, "project.yarn", yarn("Hello"))
 
-    assert {:ok, queued} = Imports.enqueue_import(editor_scope, ready.id, :rename)
+    assert {:ok, queued} = Imports.enqueue_import(co_owner_scope, ready.id, :rename)
 
     assert {:ok, failed} =
              Imports.perform_import(queued.id,
                attempt: 1,
                max_attempts: 3,
                before_materialization_transaction: fn ->
-                 assert {:ok, _membership} = Storyarn.Projects.remove_member(membership)
+                 Repo.update!(Ecto.Changeset.change(membership, role: "viewer"))
                end
              )
 
@@ -1782,6 +1785,84 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert expired.stage == "expired"
     assert Repo.get_by!(PlanCleanupRequest, plan_storage_key: attempt.plan_storage_key).state == "completed"
     assert {:error, :import_plan_unavailable} = PlanStorage.load(attempt.plan_storage_key)
+  end
+
+  describe "owner-only import authorization" do
+    setup ctx do
+      editor = user_fixture()
+      membership_fixture(ctx.project, editor, "editor")
+      %{editor_scope: Scope.for_user(editor)}
+    end
+
+    test "an editor cannot prepare an import", ctx do
+      assert {:error, :unauthorized} =
+               Imports.prepare_import(ctx.editor_scope, ctx.project, "p.yarn", yarn("Hello"))
+    end
+
+    test "an editor cannot enqueue, resume or cancel an owner's import", ctx do
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(ctx.scope, ctx.project, "p.yarn", yarn("Hello"))
+
+      assert {:error, :unauthorized} = Imports.enqueue_import(ctx.editor_scope, ready.id, :rename)
+      # Both resume paths mask the missing permission as `:not_found` rather
+      # than confirming an import exists.
+      assert {:error, :not_found} = Imports.resume_import(ctx.editor_scope, ctx.project, ready.id)
+
+      assert {:error, :not_found} =
+               Imports.resume_latest_active_import(ctx.editor_scope, ctx.project)
+
+      assert {:error, :unauthorized} = Imports.cancel_import(ctx.editor_scope, ready.id)
+
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+    end
+  end
+
+  describe "cancelling an accepted import" do
+    test "a queued attempt is cancellable and releases its plan", ctx do
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(ctx.scope, ctx.project, "p.yarn", yarn("Hello"))
+
+      assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+      assert queued.status == "queued"
+
+      assert {:ok, cancelled} = Imports.cancel_import(ctx.scope, queued.id)
+
+      assert cancelled.status == "expired"
+      assert cancelled.error_code == "import_cancelled"
+      refute cancelled.user_id
+
+      # No longer active, so `resume_latest_active_import/2` cannot bring it back
+      # on the next mount — which is what made reset look like it had worked.
+      assert {:ok, nil} = Imports.resume_latest_active_import(ctx.scope, ctx.project)
+    end
+
+    test "a cancelled queued import materializes nothing if its worker still runs", ctx do
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(ctx.scope, ctx.project, "p.yarn", yarn("Hello"))
+
+      assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+      assert {:ok, _cancelled} = Imports.cancel_import(ctx.scope, queued.id)
+
+      assert {:ok, terminal} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+
+      assert terminal.status == "expired"
+      assert Flows.list_flows(ctx.project.id) == []
+    end
+
+    test "a running attempt is not cancellable", ctx do
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(ctx.scope, ctx.project, "p.yarn", yarn("Hello"))
+
+      assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+      running =
+        queued
+        |> ProjectImportAttempt.running_changeset(TimeHelpers.now())
+        |> Repo.update!()
+
+      assert {:error, :import_not_cancellable} = Imports.cancel_import(ctx.scope, running.id)
+      assert Repo.get!(ProjectImportAttempt, running.id).status == "running"
+    end
   end
 
   defp yarn(dialogue) do
