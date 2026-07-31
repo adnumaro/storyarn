@@ -1,0 +1,28 @@
+lib/storyarn/imports/expiration.ex
+  s_4a035ed2898f8e::t_eca9cb2a4ef540 313-332
+test/storyarn/imports/import_lifecycle_test.exs
+  s_4a035ed2898f8e::t_3a8bd9aab5e978 836-909
+lib/storyarn/imports.ex
+  s_4a035ed2898f8e::t_1dd9e803ff8b2a 295
+  s_4a035ed2898f8e::t_0268705d442cf7 363
+  s_4a035ed2898f8e::t_5cbde9793e6e81 305-312,314
+  s_4a035ed2898f8e::t_f3c7a836ee822e 315,320-329
+  s_4a035ed2898f8e::t_52f677a22d71ff 353-359,369-370
+  s_4a035ed2898f8e::t_4fcf558288d48e 330-331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "428910077f79941d1ee8bcb728af0b5634eca9ad",
+  "prompts": {},
+  "sessions": {
+    "s_4a035ed2898f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e33c65-8259-4fc8-a28e-47e1a25c1e9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
