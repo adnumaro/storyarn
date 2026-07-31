@@ -783,6 +783,33 @@ defmodule Storyarn.Imports.MaterializerTest do
   # matching builder alongside any new fixture that needs them.
   # =============================================================================
 
+  describe "main flow collision" do
+    setup [:setup_projects]
+
+    test "returns a clear error instead of raising when the project has a main flow", %{
+      source: source,
+      target: target
+    } do
+      flow_fixture(source, %{name: "Imported Main", is_main: true})
+      flow_fixture(target, %{name: "Existing Main", is_main: true})
+
+      plan = import_plan(project_plan_data(source))
+
+      # `flows_project_id_is_main_index` had no matching `unique_constraint`, so
+      # this raised `Ecto.ConstraintError` — a raw 500 with no usable message.
+      assert {:error, :project_already_has_main_flow} =
+               Imports.execute(target, plan, conflict_strategy: :rename)
+
+      # The failure is permanent, so the worker must not spend three attempts on
+      # a constraint violation that can only ever fail again.
+      assert {"project_already_has_main_flow", _message, true} =
+               Storyarn.Imports.Error.classify(:project_already_has_main_flow)
+
+      main_flows = target.id |> Flows.list_flows() |> Enum.filter(& &1.is_main)
+      assert [%{name: "Existing Main"}] = main_flows
+    end
+  end
+
   defp import_plan(data) do
     %ImportPlan{
       format: :test,

@@ -392,7 +392,9 @@ defmodule Storyarn.Imports.Materializer do
   Execute the import into a project.
 
   Options:
-  - `:conflict_strategy` — `:skip` | `:overwrite` | `:rename` (default: `:skip`)
+  - `:conflict_strategy` — `:skip` | `:overwrite` | `:rename` (default: `:rename`,
+    the same default the schema and the LiveView carry; three layers used to
+    disagree here)
 
   Uses a database transaction. Returns `{:ok, result}` or `{:error, reason}`.
   """
@@ -456,7 +458,7 @@ defmodule Storyarn.Imports.Materializer do
   end
 
   defp materialize_validated_project(project, data, opts) do
-    strategy = Keyword.get(opts, :conflict_strategy, :skip)
+    strategy = Keyword.get(opts, :conflict_strategy, :rename)
 
     with :ok <- validate_structure(data),
          :ok <- validate_types(data),
@@ -833,7 +835,10 @@ defmodule Storyarn.Imports.Materializer do
     }
 
     flow =
-      facade_insert_or_rollback!(Flows.import_flow(project.id, attrs), {:flow, flow_data["name"]})
+      project.id
+      |> Flows.import_flow(attrs)
+      |> reject_duplicate_main_flow()
+      |> facade_insert_or_rollback!({:flow, flow_data["name"]})
 
     map = Map.put(map, {:flow, flow_data["id"]}, flow.id)
     {map, node_results} = import_nodes(project.id, flow.id, flow_data["nodes"] || [], map)
@@ -1601,6 +1606,18 @@ defmodule Storyarn.Imports.Materializer do
     Scenes.soft_delete_scene_by_shortcut(project_id, shortcut)
     shortcut
   end
+
+  # A project may hold exactly one main flow. Rolling back with a named reason
+  # keeps this out of the generic retry path: a unique-constraint violation is
+  # deterministic, so retrying it three times can only fail three times and
+  # then report "it may be retried automatically" about something that cannot.
+  defp reject_duplicate_main_flow({:error, %Ecto.Changeset{errors: errors}} = result) do
+    if Keyword.has_key?(errors, :is_main),
+      do: Repo.rollback(:project_already_has_main_flow),
+      else: result
+  end
+
+  defp reject_duplicate_main_flow(result), do: result
 
   defp facade_insert_or_rollback!({:ok, record}, _context), do: record
 

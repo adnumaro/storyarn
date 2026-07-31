@@ -89,6 +89,7 @@ defmodule Storyarn.Flows.Flow do
     |> HierarchicalSchema.validate_core_fields()
     |> HierarchicalSchema.validate_description()
     |> validate_shortcut()
+    |> validate_single_main_flow()
     |> foreign_key_constraint(:parent_id)
     |> foreign_key_constraint(:scene_id)
   end
@@ -111,6 +112,7 @@ defmodule Storyarn.Flows.Flow do
     |> HierarchicalSchema.validate_core_fields()
     |> HierarchicalSchema.validate_description()
     |> validate_shortcut()
+    |> validate_single_main_flow()
     |> foreign_key_constraint(:parent_id)
     |> foreign_key_constraint(:scene_id)
   end
@@ -154,6 +156,18 @@ defmodule Storyarn.Flows.Flow do
   def deleted?(flow), do: HierarchicalSchema.deleted?(flow)
 
   # Private functions
+
+  # `flows_project_id_is_main_index` is a partial unique index over
+  # `(project_id, is_main) where is_main = true`. Without a matching
+  # `unique_constraint` the database raises `Ecto.ConstraintError` instead of
+  # returning a changeset error — which is how a second import into a project
+  # that already had a main flow produced a raw 500 with no usable message.
+  defp validate_single_main_flow(changeset) do
+    unique_constraint(changeset, :is_main,
+      name: :flows_project_id_is_main_index,
+      message: "this project already has a main flow"
+    )
+  end
 
   defp validate_shortcut(changeset) do
     changeset

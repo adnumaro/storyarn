@@ -31,6 +31,7 @@ defmodule Storyarn.Imports.Error do
     missing_yarn_endif
     nested_archive_not_allowed
     not_found
+    project_already_has_main_flow
     unauthorized
     unsupported_archive_entry
     unsupported_import_format
