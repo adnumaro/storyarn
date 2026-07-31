@@ -16,8 +16,13 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     with :ok <- validate_titles(documents),
          :ok <- validate_descriptions(documents),
          :ok <- SpeakerClassifier.validate_speaker_names(documents) do
-      {documents, unreachable_issues} = prune_unreachable(documents)
+      # Declarations are collected before pruning: in the Yarn compiler they
+      # are compile-time and flow-insensitive, so a `<<declare>>` after a
+      # `<<jump>>`/`<<stop>>` still takes effect — the documented "Setup node"
+      # pattern. Pruning first undeclared every variable the live graph read
+      # from such a node and failed the whole import.
       {declarations, declaration_issues} = collect_declarations(documents)
+      {documents, unreachable_issues} = prune_unreachable(documents)
       references = collect_references(documents)
       condition_references = collect_condition_references(documents)
       assignment_targets = collect_assignment_targets(documents)

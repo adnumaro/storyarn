@@ -1791,6 +1791,37 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert {:ok, _resolved} =
                ReviewDecisions.apply(plan, true, [%{"speaker" => "Alice", "action" => "create_sheet"}])
     end
+
+    test "keeps declarations that sit after a terminal command" do
+      # Yarn's declaration collection is flow-insensitive — the docs' "Setup
+      # node" is a node of declares nobody ever runs. Pruning before collecting
+      # ate the declaration and failed a valid project with
+      # `undeclared_yarn_condition_variable`.
+      source = """
+      title: Setup
+      ---
+      <<jump Start>>
+      <<declare $has_key = false>>
+      ===
+
+      title: Start
+      ---
+      <<if $has_key>>
+          Alice: You have the key.
+      <<endif>>
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("setup.yarn", source)
+      refute ImportPlan.error?(plan)
+
+      # The declaration takes effect; the dead statement is still reported as
+      # discarded, matching the compiler's unreachable-code diagnostic.
+      assert plan.metadata.issue_counts_by_code == %{unreachable_yarn_code: 1}
+
+      variable_sheet = Enum.find(plan.data["sheets"], &(&1["shortcut"] == "yarn"))
+      assert Enum.map(variable_sheet["blocks"], & &1["variable_name"]) == ["has_key"]
+    end
   end
 
   describe "variable naming" do
