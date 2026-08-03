@@ -1,0 +1,83 @@
+priv/repo/migrations/20260803170000_add_object_format_to_project_snapshots.exs
+  s_c2ae682cd97119::t_2f50e591d7d02a 1-16,18-45
+  s_c2ae682cd97119::t_861155b9bc7b84 17
+test/storyarn/versioning/project_snapshot_test.exs
+  s_c2ae682cd97119::t_1bb2c6074c9750 122-173
+lib/storyarn/assets/storage.ex
+  s_c2ae682cd97119::t_e87b0451208b44 193-195
+  s_c2ae682cd97119::t_3ce9bf4ba6b2fc 24,60-69,180-192,196-205,207-210,220-221
+  s_c2ae682cd97119::t_588acf0da70e5b 206,211-219
+  s_c2ae682cd97119::t_21a41cccadc287 222
+lib/storyarn/assets/storage/r2.ex
+  s_c2ae682cd97119::t_3ce9bf4ba6b2fc 13,30-51,221-248
+  s_6ce2be7da793bc::t_f50c445d498ec0 249
+lib/storyarn/versioning/project_snapshot.ex
+  s_c2ae682cd97119::t_e87b0451208b44 5-8
+  s_c2ae682cd97119::t_2f50e591d7d02a 27-35,51-59,69-144,190-225
+lib/storyarn/assets/storage/local.ex
+  s_c2ae682cd97119::t_861155b9bc7b84 31-33
+  s_c2ae682cd97119::t_3ce9bf4ba6b2fc 28-30,34-40,226-228,230-236,239
+  s_c2ae682cd97119::t_cdfef828c03848 229,240-251
+  s_c2ae682cd97119::t_33b82e06db703f 252
+  s_c2ae682cd97119::t_eb314016ca4420 27,237-238,253
+test/storyarn/versioning/snapshot_object_format_test.exs
+  s_c2ae682cd97119::t_cb3283a10e0f7e 86
+  s_c2ae682cd97119::t_1bb2c6074c9750 1-85,87-89,110-123,130-153
+  s_c2ae682cd97119::t_a6946c96a1594d 90-109,124-129
+lib/storyarn/versioning/snapshot_object_storage.ex
+  s_c2ae682cd97119::t_dd27ba4eadfe47 1-45,48-68,71-73,75-120,122-136,138-162,165-180,183-187,190-219,222-237,240-248,250-255,257-358,360-387,389-395
+  s_c2ae682cd97119::t_861155b9bc7b84 69-70,74,121,137,163-164,188-189,220-221,238-239,249,256,359,388
+  s_c2ae682cd97119::t_a80e9eea2b84af 181-182
+  s_c2ae682cd97119::t_1697838bd0226f 46-47
+lib/storyarn/versioning/snapshot_object_format.ex
+  s_c2ae682cd97119::t_bcd59a053057fe 91-93
+  s_c2ae682cd97119::t_95c7144b8f6608 427,432
+  s_c2ae682cd97119::t_fb4d0f5b986564 69,112-134,168-169,218-219,341-342,452,481,520-521,561
+  s_c2ae682cd97119::t_060f51f9276c27 426,428-431,433-438,562-563,565-568,574,579-582,585,587-588,591-606
+  s_c2ae682cd97119::t_2dc5c19cf264a0 1-36,39-68,70-72,85-90,94-95,98-111,135-159,162-164,166,173-217,220-327,329-340,343-379,381-425,439-451,453-460,462-480,482-519,522-547,553-554,556-557,559-560,564,569-573,575-578,583-584,586,589-590,607-620,622-631,633-634,636-640,642-644,656-662
+  s_c2ae682cd97119::t_dd27ba4eadfe47 73-75,78-80,82-84
+  s_c2ae682cd97119::t_c16cbdf9890f9c 37-38,96-97,160-161,165,167,170-172,328,380
+  s_c2ae682cd97119::t_ae7eac15ef6275 461,555,558
+  s_c2ae682cd97119::t_a80e9eea2b84af 548-552
+  s_c2ae682cd97119::t_37ad6a577b948e 621,632,652-655
+  s_c2ae682cd97119::t_cdfef828c03848 635,641,645-651
+  s_c2ae682cd97119::t_861155b9bc7b84 76-77,81
+test/storyarn/versioning/snapshot_object_storage_test.exs
+  s_c2ae682cd97119::t_c0fba4a1dba604 111
+  s_c2ae682cd97119::t_1bb2c6074c9750 1-28,30-110,112-134,164-238
+  s_c2ae682cd97119::t_a6946c96a1594d 135-163
+  s_c2ae682cd97119::t_cb3283a10e0f7e 29
+test/support/failing_stream_storage.ex
+  s_c2ae682cd97119::t_8fb8dbd070d202 16-17
+  s_c2ae682cd97119::t_c36cce29b2b86c 15
+test/storyarn/assets/storage/local_test.exs
+  s_c2ae682cd97119::t_60c1f1bf48d7d6 91,93
+  s_c2ae682cd97119::t_e87b0451208b44 85-90,92,94-107
+lib/storyarn/versioning.ex
+  s_c2ae682cd97119::t_2f50e591d7d02a 200-203,205-210,212-213
+  s_c2ae682cd97119::t_861155b9bc7b84 23,204,211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6eda075cfa8700afefe9875cfdeabbbdb2015a6e",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
