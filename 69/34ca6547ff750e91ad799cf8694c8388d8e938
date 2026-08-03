@@ -1,0 +1,22 @@
+assets/app/modules/projects/settings/export-import/composables/useImportResume.ts
+  s_4a035ed2898f8e::t_65687761a23d95 431,433-450
+assets/app/test/modules/projects/settings/ImportPanel.test.ts
+  s_4a035ed2898f8e::t_90d0758af83f87 954-981
+  s_4a035ed2898f8e::t_a60a0854498ad4 951-953
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6934ca6547ff750e91ad799cf8694c8388d8e938",
+  "prompts": {},
+  "sessions": {
+    "s_4a035ed2898f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e33c65-8259-4fc8-a28e-47e1a25c1e9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
