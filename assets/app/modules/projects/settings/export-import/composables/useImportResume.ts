@@ -428,10 +428,26 @@ export function useImportResume(options: UseImportResumeOptions): UseImportResum
     () => [importState().attemptId, importState().status] as const,
     ([attemptId, status]) => {
       if (attemptId !== observedAttemptId) {
+        const previousAttemptId = observedAttemptId;
         observedAttemptId = attemptId;
-        invalidateRequests();
-        pendingAttemptId = null;
-        resumeAttemptCount = 0;
+
+        // The transition invalidates the machinery bound to the attempts it
+        // involves. A pending resume for an UNRELATED attempt — a newer
+        // cross-tab import arriving while this panel resets to empty — must
+        // survive it, or a confirmed reset of the old attempt cancels what
+        // the user just started in the other tab. Stragglers from the
+        // previous attempt self-neutralize through the state guards in
+        // reconcileReply and syncReconcileTimer.
+        const pendingUnrelated =
+          validAttemptId(pendingAttemptId) &&
+          pendingAttemptId !== previousAttemptId &&
+          pendingAttemptId !== attemptId;
+
+        if (!pendingUnrelated) {
+          invalidateRequests();
+          pendingAttemptId = null;
+          resumeAttemptCount = 0;
+        }
       }
 
       if (

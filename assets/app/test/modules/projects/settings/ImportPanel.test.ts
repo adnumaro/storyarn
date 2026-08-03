@@ -951,6 +951,37 @@ describe("ImportPanel resume state", () => {
     wrapper.unmount();
   });
 
+  it("a confirmed reset does not cancel a newer cross-tab resume in flight", async () => {
+    const wrapper = mountPanel(attemptState("completed", "done", 42));
+
+    // Another tab starts a newer import while the old attempt is displayed.
+    window.localStorage.setItem(storageKey(), storedAttempt(43));
+    dispatchStorageChange(7, null, storedAttempt(43));
+
+    expect(reviewEventCalls("resume_import")).toHaveLength(1);
+
+    // Reset of the old attempt confirms and the server empties the panel —
+    // the attempt-id transition used to invalidate the unrelated pending
+    // resume right after the dismissal had deliberately preserved it.
+    await wrapper.get('[data-testid="yarn-import-reset"]').trigger("click");
+    const resetCall = vi
+      .mocked(mockLive.pushEvent)
+      .mock.calls.find(([event]) => event === "reset_import");
+    resetCall?.[2]?.({ ok: true });
+    await wrapper.setProps({ importState: uploadState() });
+
+    // The newer resume is still alive: a transient failure schedules a retry.
+    const resumeCall = vi
+      .mocked(mockLive.pushEvent)
+      .mock.calls.find(([event]) => event === "resume_import");
+    resumeCall?.[2]?.({ ok: false, reason: "unavailable" });
+
+    vi.advanceTimersByTime(1_000);
+    expect(reviewEventCalls("resume_import")).toHaveLength(2);
+
+    wrapper.unmount();
+  });
+
   it("a delayed save reply from a previous attempt cannot corrupt the new review", async () => {
     const wrapper = mountPanel(reviewedPreviewState());
 
