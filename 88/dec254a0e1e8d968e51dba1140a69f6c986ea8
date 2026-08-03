@@ -1,0 +1,30 @@
+assets/app/test/modules/projects/settings/ImportPanel.test.ts
+  s_4a035ed2898f8e::t_15392e9e04cf92 872-888
+  s_4a035ed2898f8e::t_810fd1579047a1 871
+assets/app/modules/projects/settings/export-import/composables/useYarnImportReview.ts
+  s_4a035ed2898f8e::t_d30763ee4d4166 945
+  s_4a035ed2898f8e::t_88f4a724c75b14 668
+  s_4a035ed2898f8e::t_4249541d1671c1 734-747,752-753,765-768
+  s_4a035ed2898f8e::t_9d699fdb058c20 824,834,836-839,841-846,848-849,861,870,873-874,876-877
+  s_4a035ed2898f8e::t_188886d2fbe7f0 28-31
+  s_4a035ed2898f8e::t_5d305cd689e14d 704-710
+  s_4a035ed2898f8e::t_db70b3d0724297 904-909,934
+assets/app/modules/projects/settings/export-import/composables/useImportResume.ts
+  s_4a035ed2898f8e::t_b6c32bfe56bb8f 367-373
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "88dec254a0e1e8d968e51dba1140a69f6c986ea8",
+  "prompts": {},
+  "sessions": {
+    "s_4a035ed2898f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e33c65-8259-4fc8-a28e-47e1a25c1e9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
