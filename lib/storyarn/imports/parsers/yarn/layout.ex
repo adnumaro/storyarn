@@ -10,28 +10,52 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
   # order rather than sorting defensively — a caller that reorders the list
   # silently degrades the layout instead of raising.
 
-  # Kept in step with the editor's ELK options in
+  # Gaps mirror the editor's ELK options in
   # `assets/app/modules/flows/editor/services/flowAutoLayout.ts`
-  # (`nodeNodeBetweenLayers: 120`, `nodeNode: 60`) over the 190x130 default node
-  # box in `lib/flow-node.ts`. Import placement has to agree with what the
-  # auto-layout button produces, otherwise pressing it reflows the whole flow.
-  @node_width 190.0
-  @node_height 130.0
+  # (`nodeNodeBetweenLayers: 120`, `nodeNode: 60`). Sizes deliberately do NOT
+  # mirror the 190x130 default box in `lib/flow-node.ts`: that box is only the
+  # pre-measure placeholder — the canvas measures the rendered DOM
+  # (`syncNodeSize`) and the auto-layout button lays out with those real
+  # boxes. Import placement therefore estimates what will render; spacing by
+  # the placeholder overlapped every dialogue-heavy column, because a
+  # `DialogueNode` renders 280-350px wide and grows with its content.
   @layer_gap 120.0
   @row_gap 60.0
   @pin_height 35.0
   @origin_x 80.0
   @origin_y 80.0
-  @column_gap @node_width + @layer_gap
   @annotation_band_gap 140.0
+
+  @default_node_width 280.0
+  @node_widths %{
+    "dialogue" => 350.0,
+    "condition" => 300.0,
+    "instruction" => 300.0,
+    "annotation" => 300.0,
+    "subflow" => 280.0,
+    "hub" => 260.0,
+    "jump" => 260.0,
+    "entry" => 220.0,
+    "exit" => 220.0
+  }
+
+  @default_node_height 120.0
+  @node_heights %{
+    "dialogue" => 170.0,
+    "condition" => 150.0,
+    "instruction" => 140.0,
+    "annotation" => 140.0
+  }
 
   @doc """
   Returns `nodes` with `position_x`/`position_y` assigned from graph structure.
 
   Nodes are ranked by longest path from the entry node, so a rank is a canvas
-  column. Within a column, nodes are ordered by the mean vertical centre of
-  their predecessors, which keeps an option's branches next to the choice that
-  opened them instead of scattering them by creation index.
+  column. Column stride follows the widest estimated node in each column, and
+  vertical spacing follows each node's estimated height, so real rendered
+  boxes do not overlap. Within a column, nodes are ordered by the mean
+  vertical centre of their predecessors, which keeps an option's branches next
+  to the choice that opened them instead of scattering them by creation index.
 
   Nodes with no edges at all — annotations retained for unsupported commands —
   are laid out in a band below the graph, in the column after whichever node
@@ -48,8 +72,11 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
     {graph_nodes, floating_nodes} = Enum.split_with(nodes, &MapSet.member?(connected, &1["id"]))
 
     ranks = compute_ranks(graph_nodes, predecessors)
-    {positions, bottom} = place_graph_nodes(graph_nodes, ranks, predecessors, index_by_id)
-    positions = place_floating_nodes(floating_nodes, annotation_anchors, ranks, bottom, positions)
+    {column_xs, after_graph_x} = column_positions(graph_nodes, ranks)
+    {positions, bottom} = place_graph_nodes(graph_nodes, ranks, predecessors, index_by_id, column_xs)
+
+    positions =
+      place_floating_nodes(floating_nodes, annotation_anchors, ranks, bottom, positions, column_xs, after_graph_x)
 
     Enum.map(nodes, fn node ->
       {x, y} = Map.get(positions, node["id"], {@origin_x, @origin_y})
@@ -98,7 +125,20 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
     end)
   end
 
-  defp place_graph_nodes(graph_nodes, ranks, predecessors, index_by_id) do
+  # Each column is as wide as its widest estimated node; the next column starts
+  # after it plus the layer gap. Returns the x per rank and the x of the first
+  # column after the graph, where trailing annotation bands land.
+  defp column_positions(graph_nodes, ranks) do
+    graph_nodes
+    |> Enum.group_by(&Map.fetch!(ranks, &1["id"]))
+    |> Enum.sort_by(fn {rank, _nodes} -> rank end)
+    |> Enum.reduce({%{}, @origin_x}, fn {rank, rank_nodes}, {xs, x} ->
+      width = rank_nodes |> Enum.map(&node_width/1) |> Enum.max()
+      {Map.put(xs, rank, x), x + width + @layer_gap}
+    end)
+  end
+
+  defp place_graph_nodes(graph_nodes, ranks, predecessors, index_by_id, column_xs) do
     graph_nodes
     |> Enum.group_by(&Map.fetch!(ranks, &1["id"]))
     |> Enum.sort_by(fn {rank, _nodes} -> rank end)
@@ -108,7 +148,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
           {barycentre(node, predecessors, centres), Map.fetch!(index_by_id, node["id"])}
         end)
 
-      x = @origin_x + rank * @column_gap
+      x = Map.fetch!(column_xs, rank)
 
       {positions, centres, column_bottom} =
         Enum.reduce(ordered, {positions, centres, @origin_y}, fn node, {pos, cen, y} ->
@@ -139,21 +179,21 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
     end
   end
 
-  defp place_floating_nodes([], _anchors, _ranks, _bottom, positions), do: positions
+  defp place_floating_nodes([], _anchors, _ranks, _bottom, positions, _column_xs, _after_graph_x), do: positions
 
-  defp place_floating_nodes(floating_nodes, annotation_anchors, ranks, bottom, positions) do
+  defp place_floating_nodes(floating_nodes, annotation_anchors, ranks, bottom, positions, column_xs, after_graph_x) do
     band_top = bottom + @annotation_band_gap
 
     floating_nodes
     |> Enum.group_by(&anchor_rank(&1, annotation_anchors, ranks))
     |> Enum.reduce(positions, fn {rank, band_nodes}, acc ->
-      x = @origin_x + rank * @column_gap
+      x = Map.get(column_xs, rank, after_graph_x)
 
       band_nodes
-      |> Enum.with_index()
-      |> Enum.reduce(acc, fn {node, row}, inner ->
-        Map.put(inner, node["id"], {x, band_top + row * (@node_height + @row_gap)})
+      |> Enum.reduce({acc, band_top}, fn node, {inner, y} ->
+        {Map.put(inner, node["id"], {x, y}), y + node_height(node) + @row_gap}
       end)
+      |> elem(0)
     end)
   end
 
@@ -168,17 +208,27 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
     end
   end
 
-  # Mirrors the canvas: a node is 130px tall and grows by one pin row per extra
-  # response, so a dialogue with many choices does not overlap its neighbour.
-  defp node_height(%{"type" => "dialogue", "data" => data}) when is_map(data) do
+  @doc false
+  @spec node_width(map()) :: float()
+  def node_width(%{"type" => type}), do: Map.get(@node_widths, type, @default_node_width)
+  def node_width(_node), do: @default_node_width
+
+  # A dialogue grows by one pin row per extra response, so a node with many
+  # choices does not overlap its neighbour below.
+  @doc false
+  @spec node_height(map()) :: float()
+  def node_height(%{"type" => "dialogue", "data" => data} = node) when is_map(data) do
     case data["responses"] do
       responses when is_list(responses) ->
-        @node_height + max(length(responses) - 1, 0) * @pin_height
+        base_node_height(node) + max(length(responses) - 1, 0) * @pin_height
 
       _no_responses ->
-        @node_height
+        base_node_height(node)
     end
   end
 
-  defp node_height(_node), do: @node_height
+  def node_height(node), do: base_node_height(node)
+
+  defp base_node_height(%{"type" => type}), do: Map.get(@node_heights, type, @default_node_height)
+  defp base_node_height(_node), do: @default_node_height
 end

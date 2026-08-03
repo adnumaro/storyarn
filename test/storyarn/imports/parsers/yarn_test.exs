@@ -11,6 +11,7 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.Materializer
   alias Storyarn.Imports.ParserRegistry
+  alias Storyarn.Imports.Parsers.Yarn.Layout
   alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.SourceBundle
@@ -1616,13 +1617,45 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       end
     end
 
-    test "never overlaps two nodes on the canvas" do
+    test "never overlaps two nodes on the canvas at their estimated rendered sizes" do
+      # The canvas renders far larger boxes than the 190x130 placeholder — a
+      # dialogue is 280-350px wide and grows with content — so disjointness is
+      # asserted against the layout's own per-type estimates.
       assert {:ok, plan} = Imports.parse_file("project.yarn", @project)
 
       for flow <- plan.data["flows"], a <- flow["nodes"], b <- flow["nodes"], a["id"] < b["id"] do
-        refute abs(a["position_x"] - b["position_x"]) < 190 and
-                 abs(a["position_y"] - b["position_y"]) < 130,
+        overlap_x =
+          a["position_x"] < b["position_x"] + Layout.node_width(b) and
+            b["position_x"] < a["position_x"] + Layout.node_width(a)
+
+        overlap_y =
+          a["position_y"] < b["position_y"] + Layout.node_height(b) and
+            b["position_y"] < a["position_y"] + Layout.node_height(a)
+
+        refute overlap_x and overlap_y,
                "#{a["type"]} and #{b["type"]} overlap in #{flow["name"]}"
+      end
+    end
+
+    test "column stride follows the widest node of the column, not a fixed box" do
+      # A dialogue-heavy column is 350px wide; the next column must start
+      # beyond it plus the 120px layer gap, or real rendered nodes touch.
+      assert {:ok, plan} = Imports.parse_file("project.yarn", @project)
+
+      for flow <- plan.data["flows"] do
+        columns =
+          flow["nodes"]
+          |> Enum.group_by(& &1["position_x"])
+          |> Enum.sort_by(fn {x, _nodes} -> x end)
+
+        columns
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.each(fn [{left_x, left_nodes}, {right_x, _right_nodes}] ->
+          widest = left_nodes |> Enum.map(&Layout.node_width/1) |> Enum.max()
+
+          assert right_x - left_x >= widest + 120.0,
+                 "column at #{right_x} starts inside the #{widest}px column at #{left_x} in #{flow["name"]}"
+        end)
       end
     end
 
