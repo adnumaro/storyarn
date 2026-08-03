@@ -1,0 +1,64 @@
+lib/storyarn/imports/parsers/yarn/layout.ex
+  s_4a035ed2898f8e::t_127e4832daa167 233-235,237-243
+lib/storyarn/imports/parsers/yarn/normalizer.ex
+  s_4a035ed2898f8e::t_b778de789c5f26 173-193
+  s_4a035ed2898f8e::t_c6a96e0cdb1c6c 17-18
+lib/storyarn/imports/parsers/yarn/expression.ex
+  s_4a035ed2898f8e::t_a2df057c465fc2 89-99
+assets/app/modules/projects/settings/export-import/composables/useYarnImportReview.ts
+  s_4a035ed2898f8e::t_d18b0b4f814c84 883-886
+  s_4a035ed2898f8e::t_8485c60b520093 847-849,851
+  s_4a035ed2898f8e::t_5f30cff14097ad 733,738,743-747,756-761,775
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_4a035ed2898f8e::t_8e543a4a7b1201 888,893,898,1252,1257,1267,1272,1277,1282,1286-1290
+priv/gettext/projects.pot
+  s_4a035ed2898f8e::t_8e543a4a7b1201 888,893,898,1252,1257,1267,1272,1277,1282,1286-1289
+  s_4a035ed2898f8e::t_76fa362fe8936a 1290
+lib/storyarn/imports/materializer.ex
+  s_4a035ed2898f8e::t_a2fcc7bfd688fc 1166-1172
+  s_4a035ed2898f8e::t_1d92d37a3020c1 1234,1236
+  s_4a035ed2898f8e::t_99f47759850494 780-786
+  s_4a035ed2898f8e::t_115b79f1c82640 1199,1201
+  s_4a035ed2898f8e::t_cdeb643b8f2a83 475
+  s_4a035ed2898f8e::t_16aa130b2132c9 750-754
+  s_4a035ed2898f8e::t_c62dbd00813843 1140
+  s_4a035ed2898f8e::t_34c7d233715d21 1106,1111,1114,1130
+  s_4a035ed2898f8e::t_8e543a4a7b1201 1202
+assets/app/test/modules/projects/settings/ImportPanel.test.ts
+  s_4a035ed2898f8e::t_23a65a6f47f289 946
+  s_4a035ed2898f8e::t_5ddf9caaed5e09 921-922,926-933,937-942,950-1034
+  s_4a035ed2898f8e::t_c2a25bc8b950e3 920,923-924,934-936,943-945,947-949
+  s_4a035ed2898f8e::t_24871c4690a5a5 925
+assets/app/modules/projects/settings/export-import/composables/useImportResume.ts
+  s_4a035ed2898f8e::t_ff8044445beecd 368-386,389-390
+  s_4a035ed2898f8e::t_e65b890e75e000 391
+test/storyarn/imports/materializer_test.exs
+  s_4a035ed2898f8e::t_7b22c8944b3ec4 421-456
+test/storyarn/imports/import_lifecycle_test.exs
+  s_4a035ed2898f8e::t_613cbdf092f035 918-934
+test/storyarn/imports/parsers/yarn_test.exs
+  s_4a035ed2898f8e::t_774136fa461e74 2113-2126
+  s_4a035ed2898f8e::t_fef54105e1d928 1660-1675
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_4a035ed2898f8e::t_8e543a4a7b1201 888,893,898,1252,1257,1267,1272,1277,1282,1286-1289
+  s_4a035ed2898f8e::t_7ae85105931136 1290
+lib/storyarn_web/live/export_import_live/index.ex
+  s_4a035ed2898f8e::t_7af904052f3b4d 817-820,822-824
+  s_4a035ed2898f8e::t_19e95514aa501b 392-403
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "df3327c465f3032331ddd835ccac580db97442c2",
+  "prompts": {},
+  "sessions": {
+    "s_4a035ed2898f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e33c65-8259-4fc8-a28e-47e1a25c1e9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
