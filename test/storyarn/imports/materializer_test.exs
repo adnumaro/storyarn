@@ -10,6 +10,7 @@ defmodule Storyarn.Imports.MaterializerTest do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Flows.Flow
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
@@ -345,6 +346,11 @@ defmodule Storyarn.Imports.MaterializerTest do
           Guide: Rich enough.
       <<endif>>
       <<set $gold to 5>>
+      Guide: Choose.
+      -> Pay <<if $gold >= 5>>
+          Guide: Paid.
+      -> Leave
+          Guide: Left.
       ===
       """
 
@@ -362,7 +368,7 @@ defmodule Storyarn.Imports.MaterializerTest do
       # ENG-73: the importer claims is_main positionally, so a second import
       # collides with the first one's main flow before reaching the sheets.
       # Clear it here — that behaviour ships separately.
-      Repo.update_all(Storyarn.Flows.Flow, set: [is_main: false])
+      Repo.update_all(Flow, set: [is_main: false])
 
       assert {:ok, _second} = import_once.()
 
@@ -386,6 +392,18 @@ defmodule Storyarn.Imports.MaterializerTest do
       assert assignment["sheet"] == "yarn-2"
       assert assignment["variable"] == "gold"
 
+      # Response conditions are persisted as JSON-encoded strings; the rename
+      # must reach inside them or the option gates on the wrong sheet.
+      choice =
+        Enum.find(nodes, fn node ->
+          node.type == "dialogue" and is_list(node.data["responses"]) and node.data["responses"] != []
+        end)
+
+      pay_response = Enum.find(choice.data["responses"], &is_binary(&1["condition"]))
+      [response_rule] = Jason.decode!(pay_response["condition"])["blocks"] |> hd() |> Map.fetch!("rules")
+      assert response_rule["sheet"] == "yarn-2"
+      assert response_rule["variable"] == "gold"
+
       dialogue_texts =
         for node <- nodes, node.type == "dialogue", is_binary(node.data["text"]), do: node.data["text"]
 
@@ -398,6 +416,40 @@ defmodule Storyarn.Imports.MaterializerTest do
       first_condition = Enum.find(first_nodes, &(&1.type == "condition"))
       [first_rule] = first_condition.data["condition"]["blocks"] |> hd() |> Map.fetch!("rules")
       assert first_rule["sheet"] == "yarn"
+    end
+
+    test "annotation nodes keep their verbatim Yarn source across a rename", %{target: target} do
+      # The annotation exists to show the operator the unsupported source
+      # verbatim: in Yarn, `$yarn.gold` is a variable literally named
+      # "yarn.gold", not a sheet reference, so the rename must not touch it.
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      Guide: Hello.
+      <<mystery $yarn.gold and {yarn.silver}>>
+      ===
+      """
+
+      import_once = fn ->
+        assert {:ok, plan} = Imports.parse_file("mystery.yarn", source)
+
+        assert {:ok, resolved} =
+                 ReviewDecisions.apply(plan, true, [%{"speaker" => "Guide", "action" => "create_sheet"}])
+
+        Imports.execute(target, resolved, conflict_strategy: :rename)
+      end
+
+      assert {:ok, _first} = import_once.()
+      Repo.update_all(Flow, set: [is_main: false])
+      assert {:ok, _second} = import_once.()
+
+      second_flow = Enum.find(Flows.list_flows(target.id), &(&1.shortcut == "start-2"))
+      annotation = Enum.find(Flows.list_nodes(second_flow.id), &(&1.type == "annotation"))
+
+      assert annotation
+      assert annotation.data["text"] =~ "$yarn.gold"
+      assert annotation.data["text"] =~ "{yarn.silver}"
     end
 
     test "two renames where one's target is the other's source never chain", %{target: target} do

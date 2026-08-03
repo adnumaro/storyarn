@@ -2035,6 +2035,20 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert {:error, :import_plan_has_errors} = Imports.parse_file("collision.yarn", source)
     end
 
+    test "rejects a declaration whose name has no usable characters" do
+      # variablify("_") is "" — persisting an empty variable_name passes the
+      # preview and aborts materialization, the worst place to find out.
+      source = """
+      title: Start
+      ---
+      <<declare $_ = 1>>
+      Guide: Hello.
+      ===
+      """
+
+      assert {:error, :import_plan_has_errors} = Imports.parse_file("underscore.yarn", source)
+    end
+
     test "tolerates re-declaring the same spelling twice" do
       source = """
       title: Start

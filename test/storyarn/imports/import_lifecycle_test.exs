@@ -948,6 +948,50 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert resumed.status == "completed"
   end
 
+  test "an active attempt whose owner was nilified is closed to everyone", ctx do
+    # The users FK nilifies on delete, so an active attempt with no owner is a
+    # legal row. A security predicate must fail closed on it — inferring
+    # terminality from a nil user_id opened it to every project owner.
+    co_owner = user_fixture()
+    membership_fixture(ctx.project, co_owner, "owner")
+    co_owner_scope = Scope.for_user(co_owner)
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^ready.id),
+      set: [user_id: nil]
+    )
+
+    assert {:error, :not_found} = Imports.resume_import(co_owner_scope, ctx.project, ready.id)
+    assert {:error, :not_found} = Imports.resume_import(ctx.scope, ctx.project, ready.id)
+    assert {:error, :not_found} = Imports.cancel_import(ctx.scope, ready.id)
+  end
+
+  test "review revisions refuse another member's attempt before any work", ctx do
+    co_owner = user_fixture()
+    membership_fixture(ctx.project, co_owner, "owner")
+    co_owner_scope = Scope.for_user(co_owner)
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    cleanup_requests_before = Repo.aggregate(PlanCleanupRequest, :count)
+
+    assert {:error, :not_found} = Imports.save_import_review(co_owner_scope, ready.id, [])
+    assert {:error, :not_found} = Imports.resolve_import_review(co_owner_scope, ready.id, true, [])
+
+    # Refused before any plan is decrypted or a revision object written.
+    assert Repo.aggregate(PlanCleanupRequest, :count) == cleanup_requests_before
+
+    # A non-ready attempt of another member is indistinguishable from a
+    # missing one — the not-ready error was a state oracle.
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+    assert {:error, :not_found} = Imports.save_import_review(co_owner_scope, queued.id, [])
+    assert {:error, :import_not_ready} = Imports.save_import_review(ctx.scope, queued.id, [])
+  end
+
   test "rechecks import authorization at the cancellation boundary", ctx do
     co_owner = user_fixture()
     membership = membership_fixture(ctx.project, co_owner, "owner")

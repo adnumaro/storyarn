@@ -402,10 +402,16 @@ defmodule Storyarn.Imports do
   defp revise_import_review(scope, attempt_id, opts, revision_fun) do
     plan_load = Keyword.get(opts, :plan_load, &PlanStorage.load/1)
 
-    with %ProjectImportAttempt{status: "ready"} = attempt <-
-           Repo.get(ProjectImportAttempt, attempt_id),
+    with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
          {:ok, project, _membership} <-
            Projects.authorize(scope, attempt.project_id, @import_action),
+         # Before the status is even distinguished, let alone a plan decrypted
+         # or a revision object written: a non-owner must be refused here,
+         # indistinguishably from a missing attempt — the review lock's user
+         # filter only catches them after the work, and the not-ready error
+         # would otherwise be a state oracle for other members' attempts.
+         :ok <- authorize_attempt_owner(attempt, scope.user.id),
+         :ok <- ensure_attempt_ready_for_review(attempt),
          false <- ready_plan_deadline_reached?(attempt, TimeHelpers.now()),
          {:ok, plan} <- Shared.safely_load_plan(plan_load, attempt.plan_storage_key),
          :ok <- Shared.validate_attempt_plan_binding(attempt, plan),
@@ -424,11 +430,13 @@ defmodule Storyarn.Imports do
       {:ok, revised_attempt, preview, revised_plan}
     else
       nil -> {:error, :not_found}
-      %ProjectImportAttempt{} -> {:error, :import_not_ready}
       true -> {:error, :import_expired}
       {:error, reason} -> {:error, reason}
     end
   end
+
+  defp ensure_attempt_ready_for_review(%ProjectImportAttempt{status: "ready"}), do: :ok
+  defp ensure_attempt_ready_for_review(%ProjectImportAttempt{}), do: {:error, :import_not_ready}
 
   defp safely_revise_plan(revision_fun, plan) when is_function(revision_fun, 1) do
     case revision_fun.(plan) do

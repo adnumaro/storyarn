@@ -869,6 +869,51 @@ describe("ImportPanel resume state", () => {
     wrapper.unmount();
   });
 
+  it("keeps the acknowledgement through a clean echo of the current selections", async () => {
+    const wrapper = mountPanel(reviewedPreviewState());
+
+    await wrapper.findAll('[data-testid="yarn-import-action-create-sheet"]')[0]!.trigger("click");
+    await wrapper.get('[data-testid="yarn-import-action-map-to-sheet"]').trigger("click");
+    await wrapper
+      .findAll('[data-testid="yarn-import-action-preserve-literal"]')
+      .at(-1)!
+      .trigger("click");
+
+    // The draft save round-trips, so the review is clean and props echoes
+    // reach restoreDecisions instead of being skipped by the dirty guard.
+    vi.advanceTimersByTime(500);
+    const saveCall = reviewEventCalls("save_import_review")[0];
+    saveCall?.[2]?.({ ok: true });
+
+    await wrapper.get("#yarn-import-review-acknowledgement").trigger("click");
+
+    const validate = wrapper.get("#yarn-import-validate");
+    expect(validate.attributes("disabled")).toBeUndefined();
+
+    // The echo carries exactly what is on screen; the tick routinely lands
+    // inside the save's round-trip, and losing it here meant a silently
+    // re-disabled Validate with no explanation.
+    await wrapper.setProps({
+      importState: draftPreviewState([
+        { speaker: "Capsley", action: "create_sheet" },
+        { speaker: "Capsely", action: "map_to_sheet", target_speaker: "Capsley" },
+        { speaker: "SlideImage", action: "preserve_literal" },
+      ]),
+    });
+
+    expect(validate.attributes("disabled")).toBeUndefined();
+
+    // A draft that differs from the screen is not an echo: selections are
+    // adopted and the acknowledgement resets.
+    await wrapper.setProps({
+      importState: draftPreviewState([{ speaker: "Capsley", action: "create_sheet" }]),
+    });
+
+    expect(wrapper.get("#yarn-import-validate").attributes("disabled")).toBeDefined();
+
+    wrapper.unmount();
+  });
+
   it("surfaces a draft save whose reply never arrives", async () => {
     const wrapper = mountPanel(reviewedPreviewState());
 

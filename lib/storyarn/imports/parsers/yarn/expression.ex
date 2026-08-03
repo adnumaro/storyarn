@@ -238,12 +238,19 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
   # the word boundaries into underscores first yields `has_clue_a`. Repeated or
   # leading underscores do not need guarding here — `variablify/1` collapses and
   # trims them.
+  # `variablify/1` returns "" (not nil) for a name with no usable characters,
+  # such as `$_` — collapsing that to nil here keeps every `|| fallback` and
+  # nil guard downstream honest, so an unusable name fails the parse instead
+  # of persisting an empty `variable_name` that aborts materialization later.
   defp normalize_variable(name) do
-    name
-    |> String.replace(~r/([A-Z]+)([A-Z][a-z])/, "\\1_\\2")
-    |> String.replace(~r/([^A-Z_.])([A-Z][a-z]+)/, "\\1_\\2")
-    |> String.replace(~r/([a-z0-9])([A-Z])/, "\\1_\\2")
-    |> NameNormalizer.variablify()
+    normalized =
+      name
+      |> String.replace(~r/([A-Z]+)([A-Z][a-z])/, "\\1_\\2")
+      |> String.replace(~r/([^A-Z_.])([A-Z][a-z]+)/, "\\1_\\2")
+      |> String.replace(~r/([a-z0-9])([A-Z])/, "\\1_\\2")
+      |> NameNormalizer.variablify()
+
+    if normalized == "", do: nil, else: normalized
   end
 
   defp without_string_literals(text) do

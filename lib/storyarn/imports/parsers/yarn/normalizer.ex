@@ -745,7 +745,10 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     if is_binary(speaker) do
       Map.merge(data, %{
         "import_yarn_speaker" => speaker,
-        "import_yarn_literal_text" => Expression.interpolate(original_text, :dialogue)
+        # Built from the raw line, so the `\:` escape must be unescaped here
+        # too or preserve_literal writes a visible backslash into the node.
+        "import_yarn_literal_text" =>
+          original_text |> SpeakerClassifier.unescape_colons() |> Expression.interpolate(:dialogue)
       })
     else
       data

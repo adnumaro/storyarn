@@ -59,9 +59,15 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
   another member's in-flight import by guessing its id. Terminal attempts have
   had `user_id` stripped by the terminal-privacy constraint and read as
   project-level records for anyone the project-level authorization admits.
+
+  Terminality is decided by `status`, never by a nil `user_id`: the users FK
+  nilifies on delete, so an active attempt with no owner is a legal row, and a
+  security predicate must fail closed on it rather than open it to everyone.
   """
   @spec owned_or_ownerless?(%__MODULE__{}, pos_integer()) :: boolean()
-  def owned_or_ownerless?(%__MODULE__{user_id: owner_id}, user_id), do: owner_id == user_id or is_nil(owner_id)
+  def owned_or_ownerless?(%__MODULE__{} = attempt, user_id) do
+    attempt.user_id == user_id or attempt.status not in @active_statuses
+  end
 
   def ready_changeset(attempt, attrs) do
     attempt

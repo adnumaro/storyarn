@@ -708,6 +708,13 @@ defmodule Storyarn.Imports.Materializer do
   # generated text. When a colliding sheet shortcut is suffixed on import,
   # every one of those references must follow the rename, or the imported
   # nodes silently read the previous import's sheet.
+  # Annotation nodes exist to show the operator the unsupported Yarn source
+  # verbatim — in Yarn, `$yarn.gold` is a variable literally named
+  # "yarn.gold", not a `sheet.variable` reference, so rewriting it there
+  # falsifies the very text the node preserves.
+  defp rewrite_imported_refs(node_data, "annotation", _renames), do: node_data
+  defp rewrite_imported_refs(node_data, _type, renames), do: rewrite_variable_shortcuts(node_data, renames)
+
   defp rewrite_variable_shortcuts(node_data, renames) when renames == %{} or not is_map(node_data), do: node_data
 
   defp rewrite_variable_shortcuts(node_data, renames),
@@ -733,9 +740,26 @@ defmodule Storyarn.Imports.Materializer do
       {key, value} when key in ["sheet", "value_sheet"] and is_binary(value) ->
         {key, Map.get(renames, value, value)}
 
+      # Response conditions are persisted as a JSON-encoded string, so the
+      # embedded-reference pass cannot see their "sheet" fields; decode,
+      # rewrite structurally, re-encode. Anything that is not the JSON shape
+      # is ordinary text and takes the embedded pass.
+      {"condition" = key, value} when is_binary(value) ->
+        {key, rewrite_encoded_condition(value, rewrite)}
+
       {key, value} ->
         {key, deep_rewrite_refs(value, rewrite)}
     end)
+  end
+
+  defp rewrite_encoded_condition(value, rewrite) do
+    case Jason.decode(value) do
+      {:ok, decoded} when is_map(decoded) or is_list(decoded) ->
+        decoded |> deep_rewrite_refs(rewrite) |> Jason.encode!()
+
+      _not_structured ->
+        deep_rewrite_refs(value, rewrite)
+    end
   end
 
   defp deep_rewrite_refs(list, rewrite) when is_list(list), do: Enum.map(list, &deep_rewrite_refs(&1, rewrite))
@@ -910,7 +934,7 @@ defmodule Storyarn.Imports.Materializer do
       Enum.reduce(nodes, {id_map, [], existing_dialogue_ids}, fn node_data, {map, results, dialogue_ids} ->
         {data, dialogue_ids} =
           node_data["data"]
-          |> rewrite_variable_shortcuts(sheet_shortcut_renames)
+          |> rewrite_imported_refs(node_data["type"], sheet_shortcut_renames)
           |> remap_node_data(map)
           |> normalize_legacy_hub_color(node_data["type"])
           |> rekey_conflicting_import_dialogue(node_data["type"], dialogue_ids)

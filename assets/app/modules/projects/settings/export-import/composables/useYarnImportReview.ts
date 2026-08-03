@@ -884,11 +884,17 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
 
   function restoreDecisions() {
     const persisted = resolution.value?.decisions ?? draft.value?.decisions ?? [];
+    const echoOfCurrent = sameReviewDecisions(buildDecisions(), persisted);
 
     selectedDecisions.value = new Map(
       persisted.map((decision) => [decision.speaker, { ...decision }]),
     );
-    acknowledged.value = false;
+
+    // A clean echo of the very selections on screen must not cost the user
+    // their acknowledgement: the checkbox appears on the same click that
+    // starts the save debounce, so it is routinely ticked inside that window
+    // and the save's own round-trip used to wipe it.
+    if (!echoOfCurrent) acknowledged.value = false;
   }
 
   const stateFingerprint = computed(() =>

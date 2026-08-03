@@ -112,7 +112,9 @@ defmodule Storyarn.Imports.Parsers.Yarn.SpeakerClassifier do
       Regex.run(@dynamic_speaker_pattern, text, capture: :all_but_first)
   end
 
-  defp unescape_colons(text), do: String.replace(text, "\\:", ":")
+  @doc false
+  @spec unescape_colons(String.t()) :: String.t()
+  def unescape_colons(text), do: String.replace(text, "\\:", ":")
 
   defp collect_occurrences(documents) do
     Enum.reduce(documents, {%{}, %{}}, fn document, {occurrences, scope_counts} ->

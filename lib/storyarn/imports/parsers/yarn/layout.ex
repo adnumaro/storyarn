@@ -31,7 +31,8 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
     "dialogue" => 350.0,
     "condition" => 300.0,
     "instruction" => 300.0,
-    "annotation" => 300.0,
+    # AnnotationNode.vue renders a fixed 200x120 box; flowPlacement.ts agrees.
+    "annotation" => 200.0,
     "subflow" => 280.0,
     "hub" => 260.0,
     "jump" => 260.0,
@@ -44,7 +45,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
     "dialogue" => 170.0,
     "condition" => 150.0,
     "instruction" => 140.0,
-    "annotation" => 140.0
+    "annotation" => 120.0
   }
 
   @doc """

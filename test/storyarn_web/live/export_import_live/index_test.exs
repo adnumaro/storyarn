@@ -191,6 +191,9 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
         end)
 
       render_hook(view, "execute_import", %{})
+      # Consume this event's own reply so later assert_reply calls cannot
+      # accidentally match it out of the mailbox.
+      assert_reply(view, %{ok: false, reason: "invalid"})
       assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
       assert import_state(view)["step"] == "preview"
 
@@ -497,6 +500,9 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert_reply(view, %{ok: true, status: "running"})
 
       render_hook(view, "reset_import", %{})
+      # The refusal reason is what the client special-cases: it keeps the
+      # durable browser reference when it sees it.
+      assert_reply(view, %{ok: false, reason: "import_not_cancellable"})
 
       # An import that is materializing must stay on screen: it is writing.
       assert import_state(view)["step"] == "queued"
