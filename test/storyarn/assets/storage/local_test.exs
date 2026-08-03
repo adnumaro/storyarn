@@ -82,6 +82,29 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     end
   end
 
+  describe "upload_stream/3" do
+    test "writes bounded chunks without assembling a caller-side binary", %{
+      test_key: key,
+      test_dir: test_dir
+    } do
+      chunks = [{:ok, "first-"}, {:ok, "second-"}, {:ok, "third"}]
+      expected_url = "/test-uploads/#{key}"
+
+      assert {:ok, ^expected_url} = Local.upload_stream(key, chunks, "text/plain")
+      assert File.read!(Path.join(test_dir, key)) == "first-second-third"
+    end
+
+    test "removes a partial object when the source stream fails", %{
+      test_key: key,
+      test_dir: test_dir
+    } do
+      chunks = [{:ok, "partial"}, {:error, :source_timeout}]
+
+      assert {:error, :source_timeout} = Local.upload_stream(key, chunks, "text/plain")
+      refute File.exists?(Path.join(test_dir, key))
+    end
+  end
+
   # =============================================================================
   # delete/1
   # =============================================================================

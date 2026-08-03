@@ -26,6 +26,20 @@ defmodule Storyarn.Assets.Storage.Local do
 
   @impl true
   # sobelow_skip ["Traversal.FileModule"]
+  def upload_stream(key, chunks, _content_type) do
+    with {:ok, path} <- file_path(key),
+         :ok <- ensure_directory(path) do
+      result = write_stream(path, chunks)
+
+      case result do
+        :ok -> {:ok, get_url(key)}
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  @impl true
+  # sobelow_skip ["Traversal.FileModule"]
   def put_if_absent(key, data, _content_type) do
     with {:ok, path} <- file_path(key),
          :ok <- ensure_directory(path) do
@@ -208,6 +222,34 @@ defmodule Storyarn.Assets.Storage.Local do
         {:error, reason}
     end
   end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp write_stream(path, chunks) do
+    case File.open(path, [:write, :binary, :exclusive], fn destination ->
+           Enum.reduce_while(chunks, :ok, &write_stream_chunk(&1, &2, destination))
+         end) do
+      {:ok, :ok} ->
+        :ok
+
+      {:ok, {:error, reason}} ->
+        _removed = File.rm(path)
+        {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp write_stream_chunk({:ok, chunk}, :ok, destination) when is_binary(chunk) do
+    case IO.binwrite(destination, chunk) do
+      :ok -> {:cont, :ok}
+      {:error, reason} -> {:halt, {:error, reason}}
+    end
+  end
+
+  defp write_stream_chunk({:error, reason}, :ok, _destination), do: {:halt, {:error, reason}}
+
+  defp write_stream_chunk(_unexpected, :ok, _destination), do: {:halt, {:error, :unexpected_blob_stream_chunk}}
 
   # sobelow_skip ["Traversal.FileModule"]
   defp publish_temporary_copy(temporary_path, temporary_key, dest_path) do

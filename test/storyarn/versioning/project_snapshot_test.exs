@@ -119,4 +119,56 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       assert changeset.valid?
     end
   end
+
+  describe "object_set_changeset/2" do
+    test "persists independently verified ready object-set metadata" do
+      attrs = %{
+        project_id: 1,
+        version_number: 1,
+        project_storage_key: "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/project.json",
+        project_size_bytes: 1_024,
+        project_checksum: @checksum,
+        format_version: 1,
+        object_prefix: "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp",
+        manifest_storage_key: "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/manifest.json",
+        manifest_size_bytes: 512,
+        manifest_checksum: String.duplicate("b", 64),
+        total_size_bytes: 4_096,
+        object_count: 4,
+        asset_count: 3,
+        blob_count: 2
+      }
+
+      changeset = ProjectSnapshot.object_set_changeset(%ProjectSnapshot{}, attrs)
+
+      assert changeset.valid?
+      assert Ecto.Changeset.get_field(changeset, :storage_key) == attrs.project_storage_key
+      assert Ecto.Changeset.get_field(changeset, :snapshot_size_bytes) == 1_024
+      assert Ecto.Changeset.get_field(changeset, :checksum) == @checksum
+    end
+
+    test "rejects inconsistent object and deduplication counts" do
+      attrs = %{
+        project_id: 1,
+        version_number: 1,
+        project_storage_key: "project.json",
+        project_size_bytes: 10,
+        project_checksum: @checksum,
+        format_version: 1,
+        object_prefix: "ready/prefix",
+        manifest_storage_key: "ready/prefix/manifest.json",
+        manifest_size_bytes: 10,
+        manifest_checksum: @checksum,
+        total_size_bytes: 20,
+        object_count: 9,
+        asset_count: 1,
+        blob_count: 2
+      }
+
+      changeset = ProjectSnapshot.object_set_changeset(%ProjectSnapshot{}, attrs)
+
+      refute changeset.valid?
+      assert %{object_count: [_]} = errors_on(changeset)
+    end
+  end
 end

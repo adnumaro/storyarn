@@ -10,6 +10,7 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   @conditional_copy_attempts 3
   @stream_chunk_size 1_048_576
+  @multipart_chunk_size 5 * 1024 * 1024
 
   @impl true
   def upload(key, data, content_type) do
@@ -23,6 +24,28 @@ defmodule Storyarn.Assets.Storage.R2 do
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  @impl true
+  def upload_stream(key, chunks, content_type) do
+    multipart_stream = multipart_chunks(chunks)
+
+    try do
+      case multipart_stream
+           |> ExAws.S3.upload(bucket(), key,
+             content_type: content_type,
+             max_concurrency: 1,
+             timeout: 120_000
+           )
+           |> ExAws.request() do
+        {:ok, :done} -> {:ok, get_url(key)}
+        {:ok, _response} -> {:ok, get_url(key)}
+        {:error, reason} -> {:error, reason}
+      end
+    catch
+      {:snapshot_stream_error, reason} -> {:error, reason}
+      kind, reason -> {:error, {:multipart_upload_failed, kind, reason}}
     end
   end
 
@@ -193,6 +216,35 @@ defmodule Storyarn.Assets.Storage.R2 do
     |> Stream.map(fn {first_byte, last_byte, expected_length} ->
       download_range(key, first_byte, last_byte, expected_length, etag)
     end)
+  end
+
+  defp multipart_chunks(chunks) do
+    Stream.transform(
+      chunks,
+      fn -> {[], 0} end,
+      fn
+        {:ok, chunk}, {buffer, size} when is_binary(chunk) ->
+          new_buffer = [buffer, chunk]
+          new_size = size + byte_size(chunk)
+
+          if new_size >= @multipart_chunk_size do
+            {[IO.iodata_to_binary(new_buffer)], {[], 0}}
+          else
+            {[], {new_buffer, new_size}}
+          end
+
+        {:error, reason}, _state ->
+          throw({:snapshot_stream_error, reason})
+
+        _unexpected, _state ->
+          throw({:snapshot_stream_error, :unexpected_blob_stream_chunk})
+      end,
+      fn
+        {[], 0} -> []
+        {buffer, _size} -> [IO.iodata_to_binary(buffer)]
+      end,
+      fn _state -> :ok end
+    )
   end
 
   defp download_range(key, first_byte, last_byte, expected_length, etag) do
