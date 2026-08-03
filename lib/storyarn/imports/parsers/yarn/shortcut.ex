@@ -27,17 +27,21 @@ defmodule Storyarn.Imports.Parsers.Yarn.Shortcut do
     end)
   end
 
+  # `String.trim_trailing/2` strips the literal two-char pair ".-", not a
+  # character class — a bound that cut right after a separator left a shortcut
+  # ending in `-` or `.`, which `Validations.validate_shortcut/1` rejects at
+  # materialization, after the user already accepted the preview.
   defp bounded_base(base, max_length, fallback) do
     base
     |> String.slice(0, max_length)
-    |> String.trim_trailing(".-")
+    |> String.replace(~r/[.\-]+$/, "")
     |> fallback_if_empty(fallback, max_length)
   end
 
   defp fallback_if_empty("", fallback, max_length) do
     fallback
     |> String.slice(0, max_length)
-    |> String.trim_trailing(".-")
+    |> String.replace(~r/[.\-]+$/, "")
   end
 
   defp fallback_if_empty(base, _fallback, _max_length), do: base
