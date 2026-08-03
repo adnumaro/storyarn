@@ -1,0 +1,19 @@
+lib/storyarn/imports/parsers/yarn/shortcut.ex
+  s_4a035ed2898f8e::t_a5cf327feb5207 30-33,37,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "eba246e9016ec2e2159dc084ad12a6761454911d",
+  "prompts": {},
+  "sessions": {
+    "s_4a035ed2898f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e33c65-8259-4fc8-a28e-47e1a25c1e9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
