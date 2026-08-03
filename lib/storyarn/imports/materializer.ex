@@ -468,14 +468,14 @@ defmodule Storyarn.Imports.Materializer do
       id_map = %{}
       {id_map, asset_results} = import_assets(project.id, data, id_map)
 
-      {id_map, sheet_results} =
+      {id_map, sheet_results, sheet_shortcut_renames} =
         import_sheets(project, data, id_map, strategy, existing_shortcuts)
 
       {id_map, scene_results} =
         import_scenes(project, data, id_map, strategy, existing_shortcuts)
 
       {id_map, flow_results, node_count} =
-        import_flows(project, data, id_map, strategy, existing_shortcuts)
+        import_flows(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
 
       # Pass 3: link scene→flow references now that flows exist in id_map
       link_scene_flow_references(data, id_map)
@@ -643,7 +643,7 @@ defmodule Storyarn.Imports.Materializer do
     sheets = data["sheets"] || []
 
     if sheets == [],
-      do: {id_map, []},
+      do: {id_map, [], %{}},
       else: do_import_sheets(project, sheets, id_map, strategy, existing_shortcuts)
   end
 
@@ -651,8 +651,8 @@ defmodule Storyarn.Imports.Materializer do
     used_shortcuts = Map.fetch!(existing_shortcuts, :sheet)
 
     # Pass 1: create all sheets without parent_id
-    {id_map, sheet_records, _used_shortcuts} =
-      Enum.reduce(sheets, {id_map, [], used_shortcuts}, fn sheet_data, {map, records, used} ->
+    {id_map, sheet_records, shortcut_renames, _used_shortcuts} =
+      Enum.reduce(sheets, {id_map, [], %{}, used_shortcuts}, fn sheet_data, {map, records, renames, used} ->
         case resolve_shortcut(
                sheet_data["shortcut"],
                strategy,
@@ -661,7 +661,7 @@ defmodule Storyarn.Imports.Materializer do
                used
              ) do
           :skip ->
-            {map, records, used}
+            {map, records, renames, used}
 
           shortcut ->
             attrs = %{
@@ -686,15 +686,53 @@ defmodule Storyarn.Imports.Materializer do
             # Import blocks
             {map, _} = import_blocks(sheet.id, sheet_data["blocks"] || [], map)
 
-            {map, [{sheet, sheet_data} | records], reserve_shortcut(used, shortcut)}
+            renames = record_shortcut_rename(renames, sheet_data["shortcut"], shortcut)
+            {map, [{sheet, sheet_data} | records], renames, reserve_shortcut(used, shortcut)}
         end
       end)
 
     # Pass 2: set parent_id references
     link_parent_ids(sheet_records, id_map, :sheet)
 
-    {id_map, Enum.map(sheet_records, fn {sheet, _} -> sheet end)}
+    {id_map, Enum.map(sheet_records, fn {sheet, _} -> sheet end), shortcut_renames}
   end
+
+  defp record_shortcut_rename(renames, imported, resolved)
+       when is_binary(imported) and is_binary(resolved) and imported != resolved, do: Map.put(renames, imported, resolved)
+
+  defp record_shortcut_rename(renames, _imported, _resolved), do: renames
+
+  # Imported node data references variables through their sheet shortcut — as
+  # the `"sheet"`/`"value_sheet"` fields of condition rules and instruction
+  # assignments, and as `{shortcut.name}` / `$shortcut.name` forms embedded in
+  # generated text. When a colliding sheet shortcut is suffixed on import,
+  # every one of those references must follow the rename, or the imported
+  # nodes silently read the previous import's sheet.
+  defp rewrite_variable_shortcuts(node_data, renames) when renames == %{} or not is_map(node_data), do: node_data
+
+  defp rewrite_variable_shortcuts(node_data, renames), do: deep_rewrite_refs(node_data, renames)
+
+  defp deep_rewrite_refs(%{} = map, renames) do
+    Map.new(map, fn
+      {key, value} when key in ["sheet", "value_sheet"] and is_binary(value) ->
+        {key, Map.get(renames, value, value)}
+
+      {key, value} ->
+        {key, deep_rewrite_refs(value, renames)}
+    end)
+  end
+
+  defp deep_rewrite_refs(list, renames) when is_list(list), do: Enum.map(list, &deep_rewrite_refs(&1, renames))
+
+  defp deep_rewrite_refs(value, renames) when is_binary(value) do
+    Enum.reduce(renames, value, fn {imported, resolved}, text ->
+      text
+      |> String.replace("{#{imported}.", "{#{resolved}.")
+      |> String.replace("$#{imported}.", "$#{resolved}.")
+    end)
+  end
+
+  defp deep_rewrite_refs(value, _renames), do: value
 
   defp import_blocks(sheet_id, blocks, id_map) do
     Enum.reduce(blocks, {id_map, []}, fn block_data, {map, results} ->
@@ -781,15 +819,15 @@ defmodule Storyarn.Imports.Materializer do
   # Flows import (two-pass for parent_id)
   # =============================================================================
 
-  defp import_flows(project, data, id_map, strategy, existing_shortcuts) do
+  defp import_flows(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames) do
     flows = data["flows"] || []
 
     if flows == [],
       do: {id_map, [], 0},
-      else: do_import_flows(project, flows, id_map, strategy, existing_shortcuts)
+      else: do_import_flows(project, flows, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
   end
 
-  defp do_import_flows(project, flows, id_map, strategy, existing_shortcuts) do
+  defp do_import_flows(project, flows, id_map, strategy, existing_shortcuts, sheet_shortcut_renames) do
     used_shortcuts = Map.fetch!(existing_shortcuts, :flow)
 
     # Pass 1: create flows without parent_id
@@ -806,7 +844,8 @@ defmodule Storyarn.Imports.Materializer do
             {map, records, node_count, used}
 
           shortcut ->
-            {map, flow, imported_node_count} = create_flow_record(project, flow_data, shortcut, map)
+            {map, flow, imported_node_count} =
+              create_flow_record(project, flow_data, shortcut, map, sheet_shortcut_renames)
 
             {
               map,
@@ -823,7 +862,7 @@ defmodule Storyarn.Imports.Materializer do
     {id_map, Enum.map(flow_records, fn {flow, _} -> flow end), node_count}
   end
 
-  defp create_flow_record(project, flow_data, shortcut, map) do
+  defp create_flow_record(project, flow_data, shortcut, map, sheet_shortcut_renames) do
     attrs = %{
       "name" => flow_data["name"],
       "shortcut" => shortcut,
@@ -841,19 +880,23 @@ defmodule Storyarn.Imports.Materializer do
       |> facade_insert_or_rollback!({:flow, flow_data["name"]})
 
     map = Map.put(map, {:flow, flow_data["id"]}, flow.id)
-    {map, node_results} = import_nodes(project.id, flow.id, flow_data["nodes"] || [], map)
+
+    {map, node_results} =
+      import_nodes(project.id, flow.id, flow_data["nodes"] || [], map, sheet_shortcut_renames)
+
     {map, _} = import_flow_connections(flow.id, flow_data["connections"] || [], map)
 
     {map, flow, length(node_results)}
   end
 
-  defp import_nodes(project_id, flow_id, nodes, id_map) do
+  defp import_nodes(project_id, flow_id, nodes, id_map, sheet_shortcut_renames) do
     existing_dialogue_ids = load_dialogue_localization_ids(project_id)
 
     {id_map, results, _dialogue_ids} =
       Enum.reduce(nodes, {id_map, [], existing_dialogue_ids}, fn node_data, {map, results, dialogue_ids} ->
         {data, dialogue_ids} =
           node_data["data"]
+          |> rewrite_variable_shortcuts(sheet_shortcut_renames)
           |> remap_node_data(map)
           |> normalize_legacy_hub_color(node_data["type"])
           |> rekey_conflicting_import_dialogue(node_data["type"], dialogue_ids)

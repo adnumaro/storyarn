@@ -14,6 +14,7 @@ defmodule Storyarn.Imports.MaterializerTest do
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.Materializer
+  alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Localization
   alias Storyarn.References.EntityReference
   alias Storyarn.Repo
@@ -324,6 +325,79 @@ defmodule Storyarn.Imports.MaterializerTest do
       hero_sheets = Enum.filter(sheets, &(&1.name == "Hero"))
       assert length(hero_sheets) == 1
       assert hd(hero_sheets).id == existing.id
+    end
+  end
+
+  describe "re-importing rewrites references to renamed sheets" do
+    setup [:setup_projects]
+
+    test "a suffixed variables sheet drags every imported reference with it", %{target: target} do
+      # Importing the same file twice suffixes the second `yarn` sheet to
+      # `yarn-2`. Conditions, assignments and text interpolations in the second
+      # import's nodes must follow the rename, or they silently read the first
+      # import's sheet.
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      Guide: You have {$gold} coins.
+      <<if $gold >= 5>>
+          Guide: Rich enough.
+      <<endif>>
+      <<set $gold to 5>>
+      ===
+      """
+
+      import_once = fn ->
+        assert {:ok, plan} = Imports.parse_file("wallet.yarn", source)
+
+        assert {:ok, resolved} =
+                 ReviewDecisions.apply(plan, true, [%{"speaker" => "Guide", "action" => "create_sheet"}])
+
+        Imports.execute(target, resolved, conflict_strategy: :rename)
+      end
+
+      assert {:ok, _first} = import_once.()
+
+      # ENG-73: the importer claims is_main positionally, so a second import
+      # collides with the first one's main flow before reaching the sheets.
+      # Clear it here — that behaviour ships separately.
+      Repo.update_all(Storyarn.Flows.Flow, set: [is_main: false])
+
+      assert {:ok, _second} = import_once.()
+
+      sheets = Sheets.list_all_sheets(target.id)
+      assert Enum.any?(sheets, &(&1.shortcut == "yarn"))
+      assert Enum.any?(sheets, &(&1.shortcut == "yarn-2"))
+
+      flows = Flows.list_flows(target.id)
+      second_flow = Enum.find(flows, &(&1.shortcut == "start-2"))
+      assert second_flow
+
+      nodes = Flows.list_nodes(second_flow.id)
+
+      condition = Enum.find(nodes, &(&1.type == "condition"))
+      [rule] = condition.data["condition"]["blocks"] |> hd() |> Map.fetch!("rules")
+      assert rule["sheet"] == "yarn-2"
+      assert rule["variable"] == "gold"
+
+      instruction = Enum.find(nodes, &(&1.type == "instruction"))
+      [assignment] = instruction.data["assignments"]
+      assert assignment["sheet"] == "yarn-2"
+      assert assignment["variable"] == "gold"
+
+      dialogue_texts =
+        for node <- nodes, node.type == "dialogue", is_binary(node.data["text"]), do: node.data["text"]
+
+      assert Enum.any?(dialogue_texts, &String.contains?(&1, "{yarn-2.gold}"))
+      refute Enum.any?(dialogue_texts, &String.contains?(&1, "{yarn.gold}"))
+
+      # The first import is untouched.
+      first_flow = Enum.find(flows, &(&1.shortcut == "start"))
+      first_nodes = Flows.list_nodes(first_flow.id)
+      first_condition = Enum.find(first_nodes, &(&1.type == "condition"))
+      [first_rule] = first_condition.data["condition"]["blocks"] |> hd() |> Map.fetch!("rules")
+      assert first_rule["sheet"] == "yarn"
     end
   end
 
