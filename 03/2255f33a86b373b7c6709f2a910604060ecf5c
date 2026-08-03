@@ -1,0 +1,66 @@
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_4a035ed2898f8e::t_55bc6d9f3e34e3 1280
+  s_4a035ed2898f8e::t_7ecd6d23776fd1 888,893,898,1252,1257,1262,1267,1272,1276-1279
+lib/storyarn_web/live/export_import_live/index.ex
+  s_4a035ed2898f8e::t_119e59ca4cb71a 537,540-543,546,550-552
+  s_4a035ed2898f8e::t_b58c22fcd9dcb8 373-375,380,383
+  s_4a035ed2898f8e::t_4f47f15802a21e 658-664
+  s_4a035ed2898f8e::t_e3db7dc5bf9bb0 369-371
+assets/app/locales/en/project-settings.json
+  s_4a035ed2898f8e::t_6db831e686b9c6 278-281
+lib/storyarn/imports/execution.ex
+  s_4a035ed2898f8e::t_2046af4775fe27 243-246
+priv/gettext/projects.pot
+  s_4a035ed2898f8e::t_7ecd6d23776fd1 888,893,898,1252,1257,1262,1267,1272,1276-1279
+  s_4a035ed2898f8e::t_1c1fceb2c77dd0 1280
+assets/app/test/modules/projects/settings/ImportPanel.test.ts
+  s_4a035ed2898f8e::t_e1f9eda520d202 8-10,576,684,817,934,955,971
+  s_4a035ed2898f8e::t_a7922c21756eef 818,832,835
+  s_4a035ed2898f8e::t_74b8af087d71c3 578-585,601-611,623-630,708-720,773-781,801-808,820-831
+  s_4a035ed2898f8e::t_19b9a13f1310df 819,833-834,836-857,860-862,865,872-900
+  s_4a035ed2898f8e::t_cfc9ef3ece259f 490,496-507,509-525
+assets/app/modules/projects/settings/export-import/composables/useImportResume.ts
+  s_4a035ed2898f8e::t_6bcd16f2d0aad0 59-65
+  s_4a035ed2898f8e::t_442c00e8907eee 447
+  s_4a035ed2898f8e::t_31524bf47b734e 363-370,372-373
+assets/app/modules/projects/settings/export-import/composables/useYarnImportReview.ts
+  s_4a035ed2898f8e::t_75b2aa19c2dd6d 923-924
+  s_4a035ed2898f8e::t_d63dfc736124a9 866-871,878-879,883-888,891
+  s_4a035ed2898f8e::t_1c836ce28de980 655-699,721-740
+  s_4a035ed2898f8e::t_cd5e71fbac3cd8 28
+  s_4a035ed2898f8e::t_9edb49033f6257 790,793-815,820,822-841
+  s_4a035ed2898f8e::t_c9e5b4c09dab27 65-66
+  s_4a035ed2898f8e::t_b3b411be26b9b7 41-45
+  s_4a035ed2898f8e::t_177504dae92fa3 776-777
+assets/app/locales/es/project-settings.json
+  s_4a035ed2898f8e::t_6db831e686b9c6 278-281
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_4a035ed2898f8e::t_de2cbca841359a 1280
+  s_4a035ed2898f8e::t_7ecd6d23776fd1 888,893,898,1252,1257,1262,1267,1272,1276-1279
+test/storyarn/imports/import_lifecycle_test.exs
+  s_4a035ed2898f8e::t_7c3bd026d3b1a8 1572-1597
+assets/app/modules/projects/settings/export-import/components/ImportPanel.vue
+  s_4a035ed2898f8e::t_7d492b7aa03459 302
+  s_4a035ed2898f8e::t_2b7ca2810aef90 125-129,131-133
+  s_4a035ed2898f8e::t_6b401f05b7132f 98-115
+  s_4a035ed2898f8e::t_29127753f02dda 274,283,293-301
+lib/storyarn/imports/parsers/yarn/normalizer.ex
+  s_4a035ed2898f8e::t_fe646665f194de 205
+  s_4a035ed2898f8e::t_540d30cc0b8ca2 218-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "032255f33a86b373b7c6709f2a910604060ecf5c",
+  "prompts": {},
+  "sessions": {
+    "s_4a035ed2898f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e33c65-8259-4fc8-a28e-47e1a25c1e9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
