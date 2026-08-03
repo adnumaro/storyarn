@@ -1,0 +1,30 @@
+lib/storyarn/imports/materializer.ex
+  s_4a035ed2898f8e::t_f44496b33fca3c 471,478
+  s_4a035ed2898f8e::t_b59ae0796a6a99 646,654-655,664,689-690,697,700-704
+  s_4a035ed2898f8e::t_d167a2bdee2176 712-718,724-736,830,865,892
+  s_4a035ed2898f8e::t_c1027bd44a6244 885-886
+  s_4a035ed2898f8e::t_7b905a64b9258f 706-711,719-723
+  s_4a035ed2898f8e::t_69e946f678ffdd 705,822,827,847-848,883-884,899
+test/storyarn/imports/materializer_test.exs
+  s_4a035ed2898f8e::t_d995e938afd30e 381-382,386-387
+  s_4a035ed2898f8e::t_d5762967cf87db 17
+  s_4a035ed2898f8e::t_91bda9ba6901a2 331-360,367-380,383-385,388-399,401-403
+  s_4a035ed2898f8e::t_e953daca2fb4d0 400
+  s_4a035ed2898f8e::t_f4a67e0f7b595b 361-366
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6a75a3395f01026f66d13257f00fcd5d308f17d8",
+  "prompts": {},
+  "sessions": {
+    "s_4a035ed2898f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e33c65-8259-4fc8-a28e-47e1a25c1e9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
