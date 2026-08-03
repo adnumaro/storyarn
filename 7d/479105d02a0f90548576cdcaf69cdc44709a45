@@ -1,0 +1,21 @@
+lib/storyarn/imports/queue.ex
+  s_4a035ed2898f8e::t_0ba617384568ad 19-21
+lib/storyarn/imports/expiration.ex
+  s_4a035ed2898f8e::t_5dcb22e58e88d4 10-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7d479105d02a0f90548576cdcaf69cdc44709a45",
+  "prompts": {},
+  "sessions": {
+    "s_4a035ed2898f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e33c65-8259-4fc8-a28e-47e1a25c1e9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
