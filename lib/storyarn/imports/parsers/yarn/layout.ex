@@ -1,6 +1,8 @@
 defmodule Storyarn.Imports.Parsers.Yarn.Layout do
   @moduledoc false
 
+  alias Storyarn.Imports.Parsers.Yarn.Expression
+
   # Layered left-to-right canvas placement for a compiled Yarn flow.
   #
   # The compiler only ever connects already-created nodes to a newly created
@@ -221,11 +223,21 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
   @dialogue_text_chars_per_line 38
   @dialogue_text_line_height 28.0
   @response_label_chars_per_row 38
+  @condition_output_height 35.0
 
   @doc false
   @spec node_height(map()) :: float()
   def node_height(%{"type" => "dialogue", "data" => data} = node) when is_map(data) do
-    base_node_height(node) + dialogue_text_height(data["text"]) + dialogue_responses_height(data["responses"])
+    rendered_text_height = dialogue_text_height(data["text"])
+    source_text_height = interpolated_text_height(data["import_yarn_source_text"], :dialogue)
+    legacy_preserved_text_height = dialogue_text_height(data["import_yarn_literal_text"])
+
+    base_node_height(node) + Enum.max([rendered_text_height, source_text_height, legacy_preserved_text_height]) +
+      dialogue_responses_height(data["responses"])
+  end
+
+  def node_height(%{"type" => "condition", "data" => data} = node) when is_map(data) do
+    base_node_height(node) + condition_outputs_height(data)
   end
 
   def node_height(node), do: base_node_height(node)
@@ -246,18 +258,57 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
 
   defp dialogue_text_height(_no_text), do: 0.0
 
+  defp interpolated_text_height(source_text, mode) when is_binary(source_text) do
+    source_text
+    |> Expression.interpolate(mode)
+    |> dialogue_text_height()
+  end
+
+  defp interpolated_text_height(_no_source, _mode), do: 0.0
+
   # The base height also covers one response pin row; wrapped labels add rows.
   defp dialogue_responses_height(responses) when is_list(responses) and responses != [] do
     total_rows =
       Enum.reduce(responses, 0, fn response, rows ->
-        label = if is_binary(response["text"]), do: response["text"], else: ""
-        rows + max(ceil(String.length(label) / @response_label_chars_per_row), 1)
+        rendered_rows = response_label_rows(response["text"])
+
+        source_rows =
+          response["import_yarn_source_text"]
+          |> interpolate_response_source()
+          |> response_label_rows()
+
+        rows + max(rendered_rows, source_rows)
       end)
 
     max(total_rows - 1, 0) * @pin_height
   end
 
   defp dialogue_responses_height(_no_responses), do: 0.0
+
+  defp interpolate_response_source(source_text) when is_binary(source_text),
+    do: Expression.interpolate(source_text, :response)
+
+  defp interpolate_response_source(_no_source), do: nil
+
+  defp response_label_rows(label) when is_binary(label) do
+    max(ceil(String.length(label) / @response_label_chars_per_row), 1)
+  end
+
+  defp response_label_rows(_no_label), do: 1
+
+  # The base estimate covers the input plus the two boolean outputs. A switch
+  # renders one row for every rule/block and a final default row, so large
+  # elseif chains need to reserve their full socket stack during import layout.
+  defp condition_outputs_height(%{"switch_mode" => true, "condition" => condition}) when is_map(condition) do
+    output_count = switch_output_count(condition) + 1
+    max(output_count - 2, 0) * @condition_output_height
+  end
+
+  defp condition_outputs_height(_boolean_or_invalid), do: 0.0
+
+  defp switch_output_count(%{"blocks" => blocks}) when is_list(blocks), do: length(blocks)
+  defp switch_output_count(%{"rules" => rules}) when is_list(rules), do: length(rules)
+  defp switch_output_count(_condition), do: 0
 
   defp base_node_height(%{"type" => type}), do: Map.get(@node_heights, type, @default_node_height)
   defp base_node_height(_node), do: @default_node_height

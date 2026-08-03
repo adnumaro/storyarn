@@ -25,9 +25,8 @@ import type { ImportPanelProps } from "@modules/projects/settings/export-import/
 const { t } = useI18n();
 
 const {
-  projectId,
   canImport,
-  currentUserId,
+  resumeStorageKey,
   importState,
   uploadConfig = null,
 } = defineProps<
@@ -39,8 +38,7 @@ const {
 const live = useLive();
 
 const resume = useImportResume({
-  projectId,
-  currentUserId,
+  resumeStorageKey,
   canImport: () => canImport,
   importState: () => importState,
 });
@@ -113,12 +111,72 @@ const reviewErrorMessage = computed(() => {
   }
 });
 
+const INVALID_FILE_ERROR_CODES = new Set([
+  "archive_entry_too_large",
+  "archive_expansion_ratio_exceeded",
+  "archive_missing_yarn_files",
+  "archive_too_large",
+  "archive_too_many_entries",
+  "duplicate_archive_entry",
+  "empty_yarn_project",
+  "entity_limits_exceeded",
+  "file_too_large",
+  "import_plan_too_large",
+  "import_review_too_large",
+  "invalid_archive",
+  "invalid_archive_entry",
+  "invalid_archive_path",
+  "invalid_json",
+  "invalid_json_structure",
+  "invalid_text_encoding",
+  "invalid_yarn_command",
+  "missing_yarn_body_end",
+  "missing_yarn_body_start",
+  "missing_yarn_endif",
+  "nested_archive_not_allowed",
+  "unsupported_archive_entry",
+  "unsupported_import_format",
+  "unsupported_yarn_character_markup",
+  "yarn_document_limit_exceeded",
+  "yarn_node_description_too_long",
+  "yarn_node_title_too_long",
+  "yarn_statement_limit_exceeded",
+]);
+
+const TERMINAL_ERROR_KEYS_BY_CODE: Readonly<Record<string, string>> = {
+  import_cancelled: "project_settings.import.errors.cancelled",
+  import_expired: "project_settings.import.errors.expired",
+  project_already_has_main_flow: "project_settings.import.errors.project_has_main_flow",
+  duplicate_yarn_node_title: "project_settings.import.errors.unsupported_narrative",
+  import_plan_has_errors: "project_settings.import.errors.unsupported_narrative",
+  unauthorized: "project_settings.import.errors.unauthorized",
+};
+
+const terminalErrorMessage = computed(() => {
+  const code = importState.errorCode;
+  const directKey = code ? TERMINAL_ERROR_KEYS_BY_CODE[code] : undefined;
+
+  if (directKey) return t(directKey);
+  if (importState.status === "expired" && code) {
+    return t("project_settings.import.errors.discarded");
+  }
+  if (importState.status === "expired") return t("project_settings.import.errors.preview_expired");
+  if (code && INVALID_FILE_ERROR_CODES.has(code)) {
+    return t("project_settings.import.errors.invalid_file");
+  }
+
+  return t("project_settings.import.errors.generic");
+});
+
 function handleUploadSubmit() {
   upload?.submit();
 }
 
 function setStrategy(strategy: string) {
-  live.pushEvent("set_strategy", { strategy });
+  const attemptId = importState.attemptId;
+  if (typeof attemptId !== "number" || !Number.isSafeInteger(attemptId)) return;
+
+  live.pushEvent("set_strategy", { attempt_id: attemptId, strategy });
 }
 
 function resetImport() {
@@ -128,8 +186,22 @@ function resetImport() {
   const attemptId = importState.attemptId;
 
   review.clearSaveTimer();
-  live.pushEvent("reset_import", {}, (reply) => {
-    if (reply.ok === true) resume.dismissAttempt(typeof attemptId === "number" ? attemptId : null);
+
+  if (attemptId === null) {
+    // Pre-attempt validation/upload errors have no durable row to tombstone.
+    // The explicit null still lets the server reject this reset as stale if a
+    // cross-tab resume became authoritative before the event was processed.
+    live.pushEvent("reset_import", { attempt_id: null });
+    return;
+  }
+
+  if (typeof attemptId !== "number" || !Number.isSafeInteger(attemptId)) return;
+
+  live.pushEvent("reset_import", { attempt_id: attemptId }, (reply) => {
+    const resetAttemptId = reply.attempt_id;
+    if (reply.ok === true && resetAttemptId === attemptId) {
+      resume.dismissAttempt(attemptId);
+    }
   });
 }
 
@@ -141,10 +213,10 @@ function formatFileSize(bytes: number) {
 </script>
 
 <template>
-  <section class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm sm:p-6">
+  <section class="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
     <div class="mb-5 space-y-1">
       <h2 class="text-lg font-semibold">{{ $t("project_settings.import.title") }}</h2>
-      <p class="text-sm text-base-content/65">
+      <p class="text-sm text-muted-foreground">
         {{ $t("project_settings.import.description") }}
       </p>
     </div>
@@ -163,7 +235,7 @@ function formatFileSize(bytes: number) {
           >
             {{ $t("project_settings.import.choose_file") }}
           </Button>
-          <p class="text-xs text-base-content/55">
+          <p class="text-xs text-muted-foreground">
             {{ $t("project_settings.import.file_help") }}
           </p>
         </div>
@@ -228,9 +300,12 @@ function formatFileSize(bytes: number) {
           </div>
 
           <div class="space-y-2">
-            <Label>{{ $t("project_settings.import.conflict_strategy") }}</Label>
+            <Label id="yarn-import-conflict-strategy-label">
+              {{ $t("project_settings.import.conflict_strategy") }}
+            </Label>
             <RadioGroup
               :model-value="importState.conflictStrategy"
+              aria-labelledby="yarn-import-conflict-strategy-label"
               class="flex flex-col gap-1"
               @update:model-value="setStrategy"
             >
@@ -305,7 +380,7 @@ function formatFileSize(bytes: number) {
       <!-- Step: Queued / running -->
       <div v-if="importState.step === 'queued'" class="space-y-3">
         <div
-          class="alert border-info/25 bg-info/10 text-sm text-info-content"
+          class="flex items-start gap-3 rounded-lg border border-sky-500/25 bg-sky-500/10 p-3 text-sm text-foreground"
           data-testid="yarn-import-processing"
         >
           <Clock3 class="size-5 shrink-0 animate-pulse" />
@@ -362,10 +437,11 @@ function formatFileSize(bytes: number) {
       <!-- Step: Error -->
       <div v-if="importState.step === 'error'" class="space-y-3">
         <div
+          data-testid="yarn-import-terminal-error"
           class="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
         >
           <AlertTriangle class="size-5 shrink-0" />
-          <span>{{ importState.error }}</span>
+          <span>{{ terminalErrorMessage }}</span>
         </div>
 
         <Button data-testid="yarn-import-reset" variant="ghost" size="sm" @click="resetImport">

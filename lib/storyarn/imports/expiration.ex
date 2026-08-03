@@ -315,6 +315,16 @@ defmodule Storyarn.Imports.Expiration do
     end
   end
 
+  @doc false
+  def import_job_state(nil), do: :absent
+
+  def import_job_state(job_id) do
+    case Repo.get(Oban.Job, job_id) do
+      %Oban.Job{state: state} -> state
+      nil -> :absent
+    end
+  end
+
   # Exclusive variant for the caller that goes on to update the job row in the
   # same transaction (`cancel_import` — `Oban.cancel_job/1` dispatches onto the
   # caller's connection inside an open transaction). Taken `FOR SHARE` the later

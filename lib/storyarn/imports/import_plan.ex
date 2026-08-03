@@ -9,13 +9,14 @@ defmodule Storyarn.Imports.ImportPlan do
   alias Storyarn.Imports.ImportIssue
 
   @enforce_keys [:format, :parser_version, :data]
-  defstruct [:format, :parser_version, :data, :source_kind, issues: [], metadata: %{}]
+  defstruct [:format, :parser_version, :data, :source_kind, :attempt_binding, issues: [], metadata: %{}]
 
   @type t :: %__MODULE__{
           format: atom(),
           parser_version: String.t(),
           data: map(),
           source_kind: atom() | nil,
+          attempt_binding: String.t() | nil,
           issues: [ImportIssue.t()],
           metadata: map()
         }

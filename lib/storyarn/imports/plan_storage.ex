@@ -42,15 +42,8 @@ defmodule Storyarn.Imports.PlanStorage do
     if ImportPlan.error?(plan) do
       {:error, :import_plan_has_errors}
     else
-      with {:ok, source_kind} <- encode_source_kind(plan.source_kind),
-           {:ok, issue_summary} <- encode_issue_summary(plan.metadata),
-           payload = %{
-             "format" => to_string(plan.format),
-             "parser_version" => plan.parser_version,
-             "source_kind" => source_kind,
-             "data" => plan.data,
-             "issue_summary" => issue_summary
-           },
+      with {:ok, persisted_payload} <- encode_persisted_payload(plan),
+           payload = maybe_put_attempt_binding(persisted_payload, plan.attempt_binding),
            {:ok, max_json_bytes} <- max_json_bytes(opts),
            {:ok, json_iodata} <- Jason.encode_to_iodata(payload),
            :ok <- validate_json_size(json_iodata, max_json_bytes),
@@ -64,6 +57,15 @@ defmodule Storyarn.Imports.PlanStorage do
         {:error, :import_plan_too_large} = error -> error
         _error -> {:error, :import_plan_storage_failed}
       end
+    end
+  end
+
+  @doc false
+  @spec canonical_binding_payload(ImportPlan.t()) :: {:ok, binary()} | {:error, :import_plan_storage_failed}
+  def canonical_binding_payload(%ImportPlan{} = plan) do
+    case encode_persisted_payload(plan) do
+      {:ok, payload} -> {:ok, :erlang.term_to_binary(payload, [:deterministic])}
+      {:error, _reason} -> {:error, :import_plan_storage_failed}
     end
   end
 
@@ -173,12 +175,14 @@ defmodule Storyarn.Imports.PlanStorage do
        when is_binary(parser_version) and is_map(data) do
     with {:ok, format} <- decode_format(format),
          {:ok, source_kind} <- decode_source_kind(Map.get(payload, "source_kind", "file")),
+         {:ok, attempt_binding} <- decode_attempt_binding(Map.get(payload, "attempt_binding")),
          {:ok, metadata} <- decode_issue_summary(Map.get(payload, "issue_summary")) do
       {:ok,
        %ImportPlan{
          format: format,
          parser_version: parser_version,
          source_kind: source_kind,
+         attempt_binding: attempt_binding,
          data: data,
          metadata: metadata
        }}
@@ -212,6 +216,35 @@ defmodule Storyarn.Imports.PlanStorage do
   defp decode_source_kind("file"), do: {:ok, :file}
   defp decode_source_kind("archive"), do: {:ok, :archive}
   defp decode_source_kind(_source_kind), do: {:error, :invalid_import_plan}
+
+  # Unbound plans remain loadable for low-level storage callers and for a safe
+  # error at the attempt boundary. Plans created by the import pipeline always
+  # carry the 64-character HMAC binding validated by `Imports.Shared`.
+  defp decode_attempt_binding(nil), do: {:ok, nil}
+
+  defp decode_attempt_binding(binding) when is_binary(binding) and byte_size(binding) == 64, do: {:ok, binding}
+
+  defp decode_attempt_binding(_binding), do: {:error, :invalid_import_plan}
+
+  defp maybe_put_attempt_binding(payload, nil), do: payload
+  defp maybe_put_attempt_binding(payload, binding), do: Map.put(payload, "attempt_binding", binding)
+
+  # The HMAC and stored object deliberately share this exact payload builder.
+  # A newly persisted field therefore cannot silently fall outside identity
+  # validation while remaining part of the materialized plan.
+  defp encode_persisted_payload(plan) do
+    with {:ok, source_kind} <- encode_source_kind(plan.source_kind),
+         {:ok, issue_summary} <- encode_issue_summary(plan.metadata) do
+      {:ok,
+       %{
+         "format" => to_string(plan.format),
+         "parser_version" => plan.parser_version,
+         "source_kind" => source_kind,
+         "data" => plan.data,
+         "issue_summary" => issue_summary
+       }}
+    end
+  end
 
   defp encode_issue_summary(metadata) when is_map(metadata) do
     with {:ok, warning_count} <- encode_non_negative_count(metadata, :warning_count),

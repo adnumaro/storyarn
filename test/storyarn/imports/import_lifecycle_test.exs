@@ -4,6 +4,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.Scope
   alias Storyarn.Assets.Storage
   alias Storyarn.Collaboration
@@ -228,6 +229,73 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert resumed_queued.id == queued.id
     assert resumed_queued.status == "queued"
     assert_receive {:resume_queue_wakeup, %{queue: "imports"}}
+  end
+
+  test "rebuilds a ready preview when another tab saves a new review revision", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "alias-review.yarn", alias_yarn())
+
+    initial_key = ready.plan_storage_key
+    test_pid = self()
+    marker = make_ref()
+
+    plan_load = fn storage_key ->
+      if Process.get(marker) do
+        PlanStorage.load(storage_key)
+      else
+        Process.put(marker, true)
+        assert storage_key == initial_key
+        assert {:ok, initial_plan} = PlanStorage.load(storage_key)
+
+        decisions = [%{"speaker" => "Capsley", "action" => "create_sheet"}]
+
+        assert {:ok, revised, _preview} =
+                 Imports.save_import_review(ctx.scope, ready.id, decisions)
+
+        send(test_pid, {:review_revised, revised.plan_storage_key, decisions})
+        {:ok, initial_plan}
+      end
+    end
+
+    assert {:ok, resumed, resumed_preview} =
+             Imports.resume_import(ctx.scope, ctx.project, ready.id, plan_load: plan_load)
+
+    assert_receive {:review_revised, revised_key, decisions}
+    refute revised_key == initial_key
+    assert resumed.status == "ready"
+    assert resumed.plan_storage_key == revised_key
+    assert resumed_preview.import_review_draft["decisions"] == decisions
+  end
+
+  test "bounds ready preview rebuilds instead of returning a mismatched preview", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "alias-review.yarn", alias_yarn())
+
+    marker = make_ref()
+    Process.put(marker, 0)
+
+    revisions = [
+      [%{"speaker" => "Capsley", "action" => "create_sheet"}],
+      [%{"speaker" => "Capsely", "action" => "preserve_literal"}],
+      [%{"speaker" => "Capsley", "action" => "preserve_literal"}]
+    ]
+
+    plan_load = fn storage_key ->
+      assert {:ok, plan} = PlanStorage.load(storage_key)
+      revision = Process.get(marker)
+      Process.put(marker, revision + 1)
+
+      assert {:ok, _revised, _preview} =
+               Imports.save_import_review(ctx.scope, ready.id, Enum.at(revisions, revision))
+
+      {:ok, plan}
+    end
+
+    assert {:error, :import_state_changed} =
+             Imports.resume_import(ctx.scope, ctx.project, ready.id, plan_load: plan_load)
+
+    assert Process.get(marker) == 3
+    assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
   end
 
   test "recovers the latest active attempt scoped to the current project and user", ctx do
@@ -589,9 +657,12 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert Repo.get_by!(PlanCleanupRequest, plan_storage_key: ready.plan_storage_key).state == "completed"
     assert Enum.any?(Flows.list_flows(ctx.project.id), &(&1.name == "Start"))
     assert_received {:dashboard_invalidate, :all}
-    assert_received {:project_import_updated, first_broadcast}
-    assert first_broadcast.id == completed.id
-    assert first_broadcast.status == "completed"
+    assert_received {:project_import_updated, running_broadcast}
+    assert running_broadcast.id == completed.id
+    assert running_broadcast.status == "running"
+    assert_received {:project_import_updated, completed_broadcast}
+    assert completed_broadcast.id == completed.id
+    assert completed_broadcast.status == "completed"
 
     assert {:ok, same_completed} = Imports.perform_import(ready.id, attempt: 2, max_attempts: 3)
     assert same_completed.id == completed.id
@@ -656,6 +727,106 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert Enum.count(Flows.list_flows(ctx.project.id), &(&1.name == "Start")) == 1
   end
 
+  test "publishes running before materialization and resumes without waiting for its locks" do
+    setup =
+      Sandbox.unboxed_run(Repo, fn ->
+        user = user_fixture(%{email: "import-running-#{Ecto.UUID.generate()}@example.com"})
+        project = project_fixture(user)
+        scope = Scope.for_user(user)
+
+        assert {:ok, ready, _preview} =
+                 Imports.prepare_import(scope, project, "running.yarn", yarn("Hello"))
+
+        assert {:ok, queued} = Imports.enqueue_import(scope, ready.id, :rename)
+
+        %{
+          user: user,
+          project: project,
+          scope: scope,
+          queued: queued,
+          workspace_id: project.workspace_id
+        }
+      end)
+
+    parent = self()
+
+    importer =
+      Task.async(fn ->
+        :ok = Sandbox.checkout(Repo, sandbox: false)
+
+        try do
+          Imports.perform_import(setup.queued.id,
+            attempt: 1,
+            max_attempts: 3,
+            before_attempt_completion: fn ->
+              send(parent, {:materialization_paused, self()})
+
+              receive do
+                :finish_materialization -> :ok
+              end
+            end
+          )
+        after
+          Sandbox.checkin(Repo)
+        end
+      end)
+
+    try do
+      assert_receive {:materialization_paused, worker_pid}, 5_000
+      assert worker_pid == importer.pid
+
+      visible_status =
+        Sandbox.unboxed_run(Repo, fn ->
+          Repo.get!(ProjectImportAttempt, setup.queued.id).status
+        end)
+
+      assert visible_status == "running"
+
+      resumer =
+        Task.async(fn ->
+          :ok = Sandbox.checkout(Repo, sandbox: false)
+
+          try do
+            Imports.resume_import(setup.scope, setup.project, setup.queued.id)
+          after
+            Sandbox.checkin(Repo)
+          end
+        end)
+
+      try do
+        assert {:ok, {:ok, resumed, nil}} = Task.yield(resumer, 500)
+        assert resumed.status == "running"
+      after
+        Task.shutdown(resumer, :brutal_kill)
+      end
+
+      send(worker_pid, :finish_materialization)
+      assert {:ok, completed} = Task.await(importer, 5_000)
+      assert completed.status == "completed"
+    after
+      send(importer.pid, :finish_materialization)
+      Task.shutdown(importer, :brutal_kill)
+
+      Sandbox.unboxed_run(Repo, fn ->
+        PlanStorage.delete(setup.queued.plan_storage_key)
+        Repo.delete_all(from project in Storyarn.Projects.Project, where: project.id == ^setup.project.id)
+        Repo.delete_all(from job in Oban.Job, where: job.id == ^setup.queued.oban_job_id)
+
+        Repo.delete_all(
+          from request in PlanCleanupRequest,
+            where: request.id == ^setup.queued.plan_cleanup_request_id
+        )
+
+        Repo.delete_all(
+          from workspace in Storyarn.Workspaces.Workspace,
+            where: workspace.id == ^setup.workspace_id
+        )
+
+        Repo.delete_all(from user in Storyarn.Accounts.User, where: user.id == ^setup.user.id)
+      end)
+    end
+  end
+
   test "execution-error recovery replays side effects when a concurrent delivery already completed", ctx do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
@@ -687,9 +858,12 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     assert completed.status == "completed"
     assert_received {:dashboard_invalidate, :all}
-    assert_received {:project_import_updated, broadcast}
-    assert broadcast.id == completed.id
-    assert broadcast.status == "completed"
+    assert_received {:project_import_updated, running_broadcast}
+    assert running_broadcast.id == completed.id
+    assert running_broadcast.status == "running"
+    assert_received {:project_import_updated, completed_broadcast}
+    assert completed_broadcast.id == completed.id
+    assert completed_broadcast.status == "completed"
   end
 
   test "serializes concurrent deliveries and materializes exactly once", ctx do
@@ -1002,30 +1176,68 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
              Imports.prepare_import(ctx.scope, ctx.project, "other.yarn", yarn("Different"))
 
     assert {:ok, other_plan} = PlanStorage.load(other_ready.plan_storage_key)
-    mismatched_plan = %{other_plan | parser_version: "0.0.0-other"}
 
-    # A valid plan that is not bound to THIS attempt must never be shown as
-    # its resumed preview — the user would review the wrong data and only
-    # find out when enqueue rejects the attempt.
+    assert to_string(other_plan.format) == ready.format
+    assert other_plan.parser_version == ready.parser_version
+    assert to_string(other_plan.source_kind) == ready.source_kind
+
+    # Even when the coarse format fields are identical, a valid plan belonging
+    # to another attempt must never be shown as this attempt's resumed preview.
     assert {:error, _reason} =
-             Imports.resume_import(ctx.scope, ctx.project, ready.id, plan_load: fn _key -> {:ok, mismatched_plan} end)
+             Imports.resume_import(ctx.scope, ctx.project, ready.id, plan_load: fn _key -> {:ok, other_plan} end)
   end
 
-  test "a crashed import emits exactly one execute stop", ctx do
+  test "a resumed preview refuses mutated content retaining this attempt's binding", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, stored_plan} = PlanStorage.load(ready.plan_storage_key)
+    mutated_plan = %{stored_plan | data: Map.put(stored_plan.data, "tampered", true)}
+
+    assert mutated_plan.attempt_binding == stored_plan.attempt_binding
+
+    assert {:error, :invalid_import_review} =
+             Imports.resume_import(ctx.scope, ctx.project, ready.id, plan_load: fn _key -> {:ok, mutated_plan} end)
+  end
+
+  test "a repeated source cannot reuse a plan from an earlier terminal attempt", ctx do
+    source = yarn("Same source across generations")
+
+    assert {:ok, first_ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "first.yarn", source)
+
+    assert {:ok, first_plan} = PlanStorage.load(first_ready.plan_storage_key)
+    assert {:ok, first_queued} = Imports.enqueue_import(ctx.scope, first_ready.id, :rename)
+    assert {:ok, completed} = Imports.perform_import(first_queued.id, attempt: 1, max_attempts: 3)
+    assert completed.status == "completed"
+
+    assert {:ok, next_ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "next.yarn", source)
+
+    refute next_ready.id == first_ready.id
+    refute next_ready.plan_storage_key == first_ready.plan_storage_key
+
+    assert {:error, :invalid_import_review} =
+             Imports.resume_import(ctx.scope, ctx.project, next_ready.id, plan_load: fn _key -> {:ok, first_plan} end)
+  end
+
+  test "a crashed import emits exactly one error and one execute stop", ctx do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
 
     assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
 
-    handler_id = "import-crash-single-stop-#{System.unique_integer([:positive])}"
+    handler_id = "import-crash-single-events-#{System.unique_integer([:positive])}"
     marker = make_ref()
     parent = self()
 
     :ok =
-      :telemetry.attach(
+      :telemetry.attach_many(
         handler_id,
-        [:storyarn, :import, :execute, :stop],
-        fn _event, _measurements, _metadata, {pid, ref} -> send(pid, {ref, :stop}) end,
+        [[:storyarn, :import, :error], [:storyarn, :import, :execute, :stop]],
+        fn event, measurements, metadata, {pid, ref} ->
+          send(pid, {ref, event, measurements, metadata})
+        end,
         {parent, marker}
       )
 
@@ -1035,13 +1247,18 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
              Imports.perform_import(queued.id,
                attempt: 1,
                max_attempts: 3,
-               before_materialization_transaction: fn -> raise "boom" end
+               before_materialization_transaction: fn -> raise ArgumentError, "boom" end
              )
 
-    # The rescue records the exception identity; the state transition owns the
-    # single stop. Two stops per crash inflated import telemetry.
-    assert_receive {^marker, :stop}
-    refute_receive {^marker, :stop}
+    assert_receive {^marker, [:storyarn, :import, :error], %{count: 1}, error_metadata}
+    assert error_metadata.error_code == "unexpected_import_error"
+    assert error_metadata.exception_module == "ArgumentError"
+
+    assert_receive {^marker, [:storyarn, :import, :execute, :stop], %{count: 1}, stop_metadata}
+    assert stop_metadata.error_code == "unexpected_import_error"
+
+    refute_receive {^marker, [:storyarn, :import, :error], _measurements, _metadata}
+    refute_receive {^marker, [:storyarn, :import, :execute, :stop], _measurements, _metadata}
   end
 
   test "review revisions refuse another member's attempt before any work", ctx do
@@ -1703,6 +1920,22 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     :ok = Imports.subscribe_project_imports(ctx.project)
 
+    handler_id = "import-worker-expiration-stop-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    parent = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :import, :execute, :stop],
+        fn _event, measurements, metadata, {pid, ref} ->
+          send(pid, {ref, measurements, metadata})
+        end,
+        {parent, marker}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
     assert {:ok, expired} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
     assert expired.status == "expired"
 
@@ -1714,6 +1947,9 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     # open page kept showing "queued" until its polling backstop noticed.
     assert_receive {:project_import_updated, %ProjectImportAttempt{id: broadcast_id, status: "expired"}}
     assert broadcast_id == queued.id
+
+    assert_receive {^marker, %{count: 1}, %{status: "expired", error_code: "import_expired"}}
+    refute_receive {^marker, _measurements, _metadata}
 
     on_exit(fn -> PlanStorage.delete(queued.plan_storage_key) end)
   end
@@ -1964,6 +2200,127 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
              Imports.prepare_import(ctx.scope, ctx.project, "second.yarn", source)
 
     assert second.id == first.id
+  end
+
+  test "an idempotent upload returns the durable reviewed preview", ctx do
+    source = alias_yarn()
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "first.yarn", source)
+
+    decisions = [
+      %{"speaker" => "Capsley", "action" => "create_sheet"},
+      %{
+        "speaker" => "Capsely",
+        "action" => "map_to_sheet",
+        "target_speaker" => "Capsley"
+      }
+    ]
+
+    assert {:ok, resolved, resolved_preview, fingerprint} =
+             Imports.resolve_import_review(ctx.scope, ready.id, true, decisions)
+
+    assert {:ok, duplicate, duplicate_preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "same-content.yarn", source)
+
+    assert duplicate.id == resolved.id
+    assert duplicate.plan_storage_key == resolved.plan_storage_key
+    assert duplicate_preview.import_review_resolution == resolved_preview.import_review_resolution
+    assert duplicate_preview.import_review_resolution["decision_fingerprint"] == fingerprint
+
+    assert {:ok, durable_plan} = PlanStorage.load(duplicate.plan_storage_key)
+
+    assert duplicate_preview.import_review_resolution ==
+             durable_plan.data["import_review_resolution"]
+  end
+
+  test "an idempotent upload rebuilds from a concurrently revised plan pointer", ctx do
+    source = alias_yarn()
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "first.yarn", source)
+
+    initial_key = ready.plan_storage_key
+    marker = make_ref()
+    Process.put(marker, false)
+
+    decisions = [%{"speaker" => "Capsley", "action" => "create_sheet"}]
+
+    plan_load = fn storage_key ->
+      if Process.get(marker) do
+        PlanStorage.load(storage_key)
+      else
+        Process.put(marker, true)
+        assert storage_key == initial_key
+        assert {:ok, initial_plan} = PlanStorage.load(storage_key)
+
+        assert {:ok, revised, _preview} =
+                 Imports.save_import_review(ctx.scope, ready.id, decisions)
+
+        Process.put({marker, :revised_key}, revised.plan_storage_key)
+        {:ok, initial_plan}
+      end
+    end
+
+    assert {:ok, duplicate, duplicate_preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "same-content.yarn", source, plan_load: plan_load)
+
+    revised_key = Process.get({marker, :revised_key})
+    assert duplicate.id == ready.id
+    assert duplicate.plan_storage_key == revised_key
+    refute revised_key == initial_key
+    assert duplicate_preview.import_review_draft["decisions"] == decisions
+  end
+
+  test "an idempotent upload adopts an already accepted attempt without rebuilding its preview", ctx do
+    source = yarn("Hello")
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "first.yarn", source)
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    assert {:ok, duplicate, nil} =
+             Imports.prepare_import(ctx.scope, ctx.project, "same-content.yarn", source)
+
+    assert duplicate.id == queued.id
+    assert duplicate.status == "queued"
+    assert duplicate.plan_storage_key == queued.plan_storage_key
+  end
+
+  test "persists a ready attempt conflict strategy for recovery", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "strategy.yarn", yarn("Hello"))
+
+    assert {:ok, updated} = Imports.update_import_strategy(ctx.scope, ready.id, :skip)
+    assert updated.conflict_strategy == "skip"
+    assert Repo.get!(ProjectImportAttempt, ready.id).conflict_strategy == "skip"
+
+    assert {:ok, resumed, _preview} = Imports.resume_import(ctx.scope, ctx.project, ready.id)
+    assert resumed.conflict_strategy == "skip"
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :overwrite)
+    assert queued.conflict_strategy == "overwrite"
+    assert {:error, :import_not_ready} = Imports.update_import_strategy(ctx.scope, ready.id, :rename)
+  end
+
+  test "builds stable scoped import resume storage keys without raw identifiers", ctx do
+    same_key = Imports.resume_storage_key(ctx.scope, ctx.project)
+    assert same_key == Imports.resume_storage_key(ctx.scope, ctx.project)
+    assert String.starts_with?(same_key, "storyarn:project-import:")
+
+    opaque = String.replace_prefix(same_key, "storyarn:project-import:", "")
+    assert opaque =~ ~r/^[A-Za-z0-9_-]{43}$/
+    refute same_key == "storyarn:project-import:#{ctx.project.id}:#{ctx.user.id}"
+    refute same_key =~ ":#{ctx.project.id}:"
+    refute String.ends_with?(same_key, ":#{ctx.user.id}")
+
+    other_project = project_fixture(ctx.user)
+    refute Imports.resume_storage_key(ctx.scope, other_project) == same_key
+
+    other_user = user_fixture()
+    membership_fixture(ctx.project, other_user, "owner")
+    refute Imports.resume_storage_key(Scope.for_user(other_user), ctx.project) == same_key
   end
 
   test "rechecks edit authorization in the context", %{project: project} do

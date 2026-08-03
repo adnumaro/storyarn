@@ -4,12 +4,19 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   alias Storyarn.Imports.ImportIssue
   alias Storyarn.Imports.Parsers.Yarn.Expression
   alias Storyarn.Imports.Parsers.Yarn.Layout
+  alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Imports.Parsers.Yarn.Shortcut
   alias Storyarn.Imports.Parsers.Yarn.SpeakerClassifier
+  alias Storyarn.Imports.Parsers.Yarn.SpeakerSheets
   alias Storyarn.Shared.NameNormalizer
 
   @max_title_length 200
   @max_description_length 2_000
+  # `blocks.variable_name` is backed by PostgreSQL varchar(255). Reject the
+  # normalized identifier here so every declaration/use form fails during
+  # parsing instead of letting a background materialization hit the database
+  # limit after the user accepted the preview.
+  @max_variable_name_length 255
 
   @spec normalize([map()]) :: {:ok, map(), [ImportIssue.t()], map()} | {:error, atom()}
   def normalize(documents) when is_list(documents) do
@@ -22,6 +29,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       # pattern. Pruning first undeclared every variable the live graph read
       # from such a node and failed the whole import.
       {declarations, declaration_issues} = collect_declarations(documents)
+      variable_name_issues = collect_variable_name_issues(documents)
       {documents, unreachable_issues} = prune_unreachable(documents)
       references = collect_references(documents)
       condition_references = collect_condition_references(documents)
@@ -56,6 +64,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
 
       issues =
         declaration_issues ++
+          variable_name_issues ++
           unreachable_issues ++ variable_issues ++ speaker_classification.issues ++ flow_issues
 
       data = %{
@@ -65,7 +74,10 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
           "name" => "Yarn Spinner Import",
           "settings" => %{"import_source" => "yarn_spinner"}
         },
-        "import_review" => Map.put(speaker_classification.review, "variable_count", length(variables)),
+        "import_review" =>
+          speaker_classification.review
+          |> ReviewDecisions.put_allowed_actions()
+          |> Map.put("variable_count", length(variables)),
         "sheets" => sheets,
         "flows" => flows,
         "scenes" => []
@@ -243,23 +255,89 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     {declarations, Enum.reverse(issues)}
   end
 
-  # Two distinct Yarn variables can normalize onto one identifier —
-  # `$hasClueA` and `$has_clue_a` both become `has_clue_a`. References cannot
-  # disambiguate the pair after normalization, so merging them would silently
-  # fuse two states every condition and assignment then shares; the import
-  # fails loudly instead. Re-declaring the identical spelling stays tolerated.
-  defp register_declaration(declarations, declaration, meta, issues) do
-    case Map.fetch(declarations, declaration.variable) do
-      :error ->
-        {Map.put(declarations, declaration.variable, declaration), issues}
+  # The namespace-wide collision pass below validates source spellings. This
+  # collector only needs a deterministic declaration to build the block when a
+  # collision has already made the plan non-executable.
+  defp register_declaration(declarations, declaration, _meta, issues) do
+    {Map.put_new(declarations, declaration.variable, declaration), issues}
+  end
 
-      {:ok, %{source_name: source_name}} when source_name == declaration.source_name ->
-        {declarations, issues}
+  # Validate the complete namespace across declarations and every semantic use.
+  # Looking only at declarations misses both storage-boundary violations and
+  # `$hasClueA` versus `$has_clue_a` collisions when one spelling appears only
+  # in a condition, assignment, or interpolation. Issues intentionally contain
+  # only stable codes and source locations, never the variable names themselves.
+  defp collect_variable_name_issues(documents) do
+    documents
+    |> Enum.flat_map(&walk_items(&1.body))
+    |> Enum.flat_map(&variable_occurrences_for_item/1)
+    |> Enum.group_by(& &1.variable)
+    |> Enum.sort_by(fn {normalized, _occurrences} -> normalized end)
+    |> Enum.flat_map(fn {normalized, occurrences} ->
+      variable_length_issues(normalized, occurrences) ++ variable_collision_issues(occurrences)
+    end)
+  end
 
-      {:ok, _distinct_source} ->
-        {declarations, [new_issue(:error, :yarn_variable_name_collision, meta) | issues]}
+  defp variable_length_issues(normalized, [first | _rest]) do
+    if String.length(normalized) > @max_variable_name_length,
+      do: [new_issue(:error, :yarn_variable_name_too_long, first.meta)],
+      else: []
+  end
+
+  defp variable_length_issues(_normalized, _occurrences), do: []
+
+  defp variable_collision_issues(occurrences) do
+    case Enum.uniq_by(occurrences, & &1.source_name) do
+      [_single_spelling] ->
+        []
+
+      [_first_spelling, collision | _rest] ->
+        [new_issue(:error, :yarn_variable_name_collision, collision.meta)]
+
+      [] ->
+        []
     end
   end
+
+  defp variable_occurrences_for_item({:command, "declare", args, meta}) do
+    case Expression.declaration(args) do
+      {:ok, declaration} -> [Map.put(declaration, :meta, meta)]
+      {:error, _reason} -> []
+    end
+  end
+
+  defp variable_occurrences_for_item({:command, "set", args, meta}) do
+    with_occurrence_meta(Expression.referenced_variable_occurrences(args), meta)
+  end
+
+  defp variable_occurrences_for_item({:line, text, meta}) do
+    with_occurrence_meta(Expression.interpolated_variable_occurrences(text), meta)
+  end
+
+  defp variable_occurrences_for_item({:if, branches, _else_body, _meta}) do
+    Enum.flat_map(branches, fn branch ->
+      with_occurrence_meta(Expression.referenced_variable_occurrences(branch.condition), Map.get(branch, :meta, branch))
+    end)
+  end
+
+  defp variable_occurrences_for_item({:options, options, _meta}) do
+    Enum.flat_map(options, fn option ->
+      interpolations = Expression.interpolated_variable_occurrences(option.text)
+
+      conditions =
+        case extract_option_condition(option.text) do
+          {:ok, _label, nil} -> []
+          {:ok, _label, condition} -> Expression.referenced_variable_occurrences(condition)
+          {:error, :unsupported_yarn_condition} -> Expression.referenced_variable_occurrences(option.text)
+        end
+
+      with_occurrence_meta(interpolations ++ conditions, option)
+    end)
+  end
+
+  defp variable_occurrences_for_item(_item), do: []
+
+  defp with_occurrence_meta(occurrences, meta), do: Enum.map(occurrences, &Map.put(&1, :meta, meta))
 
   defp collect_references(documents) do
     documents
@@ -356,33 +434,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
 
   defp build_sheets(variables, speakers) do
     variable_sheet = if variables == [], do: [], else: [build_variable_sheet(variables)]
-    used = if variables == [], do: MapSet.new(), else: MapSet.new(["yarn"])
-
-    {speaker_sheets, speaker_ids, _used} =
-      speakers
-      |> Enum.with_index(length(variable_sheet))
-      |> Enum.reduce({[], %{}, used}, fn {speaker, index}, {sheets, ids, used_shortcuts} ->
-        shortcut =
-          speaker
-          |> NameNormalizer.shortcutify()
-          |> Shortcut.unique(used_shortcuts)
-
-        id = stable_id("speaker_sheet", speaker)
-
-        sheet = %{
-          "id" => id,
-          "name" => speaker,
-          "shortcut" => shortcut,
-          "description" => "Imported Yarn Spinner character",
-          "color" => "#8b5cf6",
-          "position" => index,
-          "blocks" => []
-        }
-
-        {[sheet | sheets], Map.put(ids, speaker, id), MapSet.put(used_shortcuts, shortcut)}
-      end)
-
-    {variable_sheet ++ Enum.reverse(speaker_sheets), speaker_ids}
+    SpeakerSheets.append(variable_sheet, speakers)
   end
 
   defp build_variable_sheet(variables) do
@@ -466,6 +518,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       "position" => position,
       "is_main" => position == 0,
       "settings" => %{"import_source" => "yarn_spinner"},
+      "import_yarn_annotation_anchors" => state.annotation_anchors,
       "nodes" => Layout.assign_positions(nodes, connections, state.annotation_anchors),
       "connections" => connections
     }
@@ -486,7 +539,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
 
     data = dialogue_data(dialogue, speaker, text, meta, state, [])
     {node_id, state} = add_node(state, "dialogue", data)
-    state = state |> track_speaker(speaker) |> connect_many(incoming, node_id)
+    state = state |> track_speaker(speaker, dialogue) |> connect_many(incoming, node_id)
     compile_items(rest, [{node_id, "output"}], state)
   end
 
@@ -587,15 +640,17 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       |> attribute_choice_block(state)
 
     {dialogue_id, state} = add_node(state, "dialogue", data)
-    state = state |> track_speaker(speaker) |> connect_many(incoming, dialogue_id)
+    state = state |> track_speaker(speaker, dialogue) |> connect_many(incoming, dialogue_id)
+    branch_speaker = state.current_speaker
 
-    {branch_outgoing, state} =
-      Enum.reduce(Enum.zip(options, responses), {[], state}, fn {option, response}, {outgoing, acc} ->
+    {branch_outgoing, branch_speakers, state} =
+      Enum.reduce(Enum.zip(options, responses), {[], [], state}, fn {option, response}, {outgoing, speakers, acc} ->
+        acc = %{acc | current_speaker: branch_speaker}
         {branch_outgoing, acc} = compile_items(option.body, [{dialogue_id, response["id"]}], acc)
-        {outgoing ++ branch_outgoing, acc}
+        {outgoing ++ branch_outgoing, record_branch_speaker(speakers, branch_outgoing, acc), acc}
       end)
 
-    merge_branches(branch_outgoing, state)
+    merge_branches(branch_outgoing, merge_branch_speakers(state, branch_speakers))
   end
 
   defp build_responses(options, state) do
@@ -605,6 +660,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       response = %{
         "id" => runtime_id("response", option.source, option.line, option.line_id),
         "text" => Expression.interpolate(label, :response),
+        "import_yarn_source_text" => label,
         "condition" => condition,
         "instruction" => nil
       }
@@ -681,19 +737,23 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     data = %{"condition" => %{"logic" => "any", "blocks" => blocks}, "switch_mode" => true}
     {node_id, state} = add_node(state, "condition", data)
     state = connect_many(state, incoming, node_id)
+    branch_speaker = state.current_speaker
 
-    {case_exits, state} =
+    {case_exits, case_speakers, state} =
       parsed
       |> Enum.zip(blocks)
-      |> Enum.reduce({[], state}, fn {{branch, _condition}, block}, {exits, acc} ->
+      |> Enum.reduce({[], [], state}, fn {{branch, _condition}, block}, {exits, speakers, acc} ->
+        acc = %{acc | current_speaker: branch_speaker}
         {branch_exits, acc} = compile_items(branch.body, [{node_id, block["id"]}], acc)
-        {exits ++ branch_exits, acc}
+        {exits ++ branch_exits, record_branch_speaker(speakers, branch_exits, acc), acc}
       end)
 
     # No `<<else>>` leaves `default` carrying the fall-through, so the pin stays
     # connected either way and the node never reports a missing output.
+    state = %{state | current_speaker: branch_speaker}
     {else_exits, state} = compile_items(else_body, [{node_id, "default"}], state)
-    merge_branches(case_exits ++ else_exits, state)
+    branch_speakers = record_branch_speaker(case_speakers, else_exits, state)
+    merge_branches(case_exits ++ else_exits, merge_branch_speakers(state, branch_speakers))
   end
 
   # The block id doubles as the case's output pin, so it has to be unique within
@@ -716,8 +776,11 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   end
 
   defp compile_condition_chain(branches, else_body, meta, incoming, state) do
-    {branch_exits, false_incoming, state} =
-      Enum.reduce(branches, {[], incoming, state}, fn branch, {exits, branch_incoming, acc} ->
+    branch_speaker = state.current_speaker
+
+    {branch_exits, branch_speakers, false_incoming, state} =
+      Enum.reduce(branches, {[], [], incoming, state}, fn branch, {exits, speakers, branch_incoming, acc} ->
+        acc = %{acc | current_speaker: branch_speaker}
         branch_meta = Map.get(branch, :meta, meta)
 
         {condition, branch_incoming, acc} =
@@ -742,11 +805,19 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
         {condition_id, acc} = add_node(acc, "condition", %{"condition" => condition, "switch_mode" => false})
         acc = connect_many(acc, branch_incoming, condition_id)
         {true_exits, acc} = compile_items(branch.body, [{condition_id, "true"}], acc)
-        {exits ++ true_exits, [{condition_id, "false"}], acc}
+
+        {
+          exits ++ true_exits,
+          record_branch_speaker(speakers, true_exits, acc),
+          [{condition_id, "false"}],
+          acc
+        }
       end)
 
+    state = %{state | current_speaker: branch_speaker}
     {else_exits, state} = compile_items(else_body, false_incoming, state)
-    merge_branches(branch_exits ++ else_exits, state)
+    branch_speakers = record_branch_speaker(branch_speakers, else_exits, state)
+    merge_branches(branch_exits ++ else_exits, merge_branch_speakers(state, branch_speakers))
   end
 
   # Branches converge by fanning their loose pins straight onto whatever node
@@ -757,10 +828,32 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   # renders as a "0 jumps" dead end.
   defp merge_branches(branch_outgoing, state), do: {Enum.uniq(branch_outgoing), state}
 
+  defp record_branch_speaker(speakers, [], _state), do: speakers
+  defp record_branch_speaker(speakers, _outgoing, state), do: [state.current_speaker | speakers]
+
+  defp merge_branch_speakers(state, speakers) do
+    current_speaker =
+      case Enum.uniq(speakers) do
+        [speaker] -> speaker
+        _ambiguous_or_terminal -> nil
+      end
+
+    %{state | current_speaker: current_speaker}
+  end
+
   defp dialogue_data(text, speaker, original_text, meta, state, responses) do
+    source_text =
+      if is_binary(speaker),
+        do: SpeakerClassifier.unescape_colons(original_text),
+        else: text
+
     data = %{
       "speaker_sheet_id" => Map.get(state.speaker_sheet_ids, speaker),
       "text" => Expression.interpolate(text, :dialogue),
+      # Keep one authored source alongside the rendered text. Explicit speaker
+      # lines retain the complete line so review choices remain reversible;
+      # ordinary and inherited dialogue already use their complete text here.
+      "import_yarn_source_text" => source_text,
       "stage_directions" => "",
       "menu_text" => "",
       "audio_asset_id" => nil,
@@ -771,32 +864,35 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
     }
 
     if is_binary(speaker) do
-      Map.merge(data, %{
-        "import_yarn_speaker" => speaker,
-        # Built from the raw line, so the `\:` escape must be unescaped here
-        # too or preserve_literal writes a visible backslash into the node.
-        "import_yarn_literal_text" =>
-          original_text |> SpeakerClassifier.unescape_colons() |> Expression.interpolate(:dialogue)
-      })
+      Map.put(data, "import_yarn_speaker", speaker)
     else
       data
     end
   end
 
-  defp track_speaker(state, speaker) when is_binary(speaker), do: %{state | current_speaker: speaker}
-  defp track_speaker(state, _speaker), do: state
+  defp track_speaker(state, speaker, _dialogue) when is_binary(speaker), do: %{state | current_speaker: speaker}
+
+  # A synthetic, textless choice host belongs to the speaker flowing into it.
+  # Authored speakerless dialogue is different: it explicitly breaks that
+  # attribution, while commands between a speaker and a menu continue to keep
+  # the speaker state unchanged.
+  defp track_speaker(state, nil, ""), do: state
+  defp track_speaker(state, _speaker, _authored_dialogue), do: %{state | current_speaker: nil}
 
   # A choice block whose options do not follow a line of their own — options
   # after an `<<if>>/<<endif>>`, or first in a Yarn node — still needs a node to
   # host the responses, and that node has no speaker prefix to parse. Attribute
   # it to the character speaking into it so the menu is not reported as a
-  # speakerless dialogue. Only `speaker_sheet_id` is filled: the node carries no
-  # literal Yarn speaker text, so the `import_yarn_*` fields stay absent.
-  defp attribute_choice_block(%{"speaker_sheet_id" => nil} = data, state) do
-    case Map.get(state.speaker_sheet_ids, state.current_speaker) do
-      nil -> data
-      speaker_sheet_id -> Map.put(data, "speaker_sheet_id", speaker_sheet_id)
-    end
+  # speakerless dialogue. Keep the inherited speaker as review-only metadata so
+  # create/preserve/map decisions can update this host along with the explicit
+  # speaker lines instead of leaving an id for a sheet the review removed.
+  defp attribute_choice_block(%{"import_yarn_speaker" => _speaker} = data, _state), do: data
+
+  defp attribute_choice_block(%{"speaker_sheet_id" => nil, "text" => ""} = data, %{current_speaker: speaker} = state)
+       when is_binary(speaker) do
+    data
+    |> Map.put("import_yarn_inherited_speaker", speaker)
+    |> Map.put("speaker_sheet_id", Map.get(state.speaker_sheet_ids, speaker))
   end
 
   defp attribute_choice_block(data, _state), do: data

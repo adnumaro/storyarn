@@ -14,6 +14,7 @@ const { default: ExportPanel } =
 
 function baseProps(): ExportPanelProps {
   return {
+    canExport: true,
     formatConfig: {
       selected: "ink",
       formats: [
@@ -190,6 +191,28 @@ describe("ExportPanel", () => {
     expect(wrapper.text()).toContain("Select at least one supported content type");
     expect(wrapper.find('[data-testid="download-export"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="validate-export"]').attributes("disabled")).toBeDefined();
+  });
+
+  it("does not validate or expose a download when edit permission is missing", async () => {
+    const props = baseProps();
+    props.canExport = false;
+    props.options.validateBeforeExport = false;
+    const { live, wrapper } = mountPanel(props);
+
+    expect(wrapper.get('[data-testid="export-no-permission"]').text()).toContain("edit permission");
+    expect(wrapper.get('[data-testid="validate-export"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="download-export"]').exists()).toBe(false);
+    expect(
+      wrapper.get('[data-testid="export-format-unity"] [role="radio"]').attributes("disabled"),
+    ).toBeDefined();
+    expect(
+      wrapper.get('[data-testid="export-section-sheets"] [role="checkbox"]').attributes("disabled"),
+    ).toBeDefined();
+
+    await wrapper.get('[data-testid="export-format-unity"] [role="radio"]').trigger("click");
+    await wrapper.get('[data-testid="export-section-sheets"] [role="checkbox"]').trigger("click");
+    await wrapper.get('[data-testid="validate-export"]').trigger("click");
+    expect(live.pushEvent).not.toHaveBeenCalled();
   });
 
   it("requires a current validation result while preflight is enabled", () => {

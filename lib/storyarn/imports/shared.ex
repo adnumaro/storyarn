@@ -7,8 +7,11 @@ defmodule Storyarn.Imports.Shared do
   """
 
   alias Storyarn.Imports.ImportPlan
+  alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Repo
+
+  @plan_binding_domain "storyarn:import-plan:attempt-binding:v2"
 
   @doc "Loads an attempt with the associations the worker and telemetry need."
   @spec get_attempt(pos_integer()) :: ProjectImportAttempt.t() | nil
@@ -31,6 +34,15 @@ defmodule Storyarn.Imports.Shared do
     Map.new(map, fn {key, value} -> {to_string(key), value} end)
   end
 
+  @doc "Binds a plan to its unique encrypted-storage identity and exact persisted content."
+  @spec bind_plan_to_attempt(ImportPlan.t(), String.t()) ::
+          {:ok, ImportPlan.t()} | {:error, :import_plan_storage_failed}
+  def bind_plan_to_attempt(%ImportPlan{} = plan, plan_storage_key) when is_binary(plan_storage_key) do
+    with {:ok, canonical_payload} <- PlanStorage.canonical_binding_payload(plan) do
+      {:ok, %{plan | attempt_binding: expected_plan_binding(plan_storage_key, canonical_payload)}}
+    end
+  end
+
   @doc """
   Confirms a loaded plan is the one the attempt was created from.
 
@@ -39,13 +51,30 @@ defmodule Storyarn.Imports.Shared do
   described.
   """
   def validate_attempt_plan_binding(attempt, plan) do
-    if attempt.format == to_string(plan.format) and
-         attempt.parser_version == plan.parser_version and
-         attempt.source_kind == to_string(plan.source_kind) do
+    with true <- attempt.format == to_string(plan.format),
+         true <- attempt.parser_version == plan.parser_version,
+         true <- attempt.source_kind == to_string(plan.source_kind),
+         {:ok, canonical_payload} <- PlanStorage.canonical_binding_payload(plan),
+         true <- valid_plan_binding?(attempt.plan_storage_key, plan.attempt_binding, canonical_payload) do
       :ok
     else
-      {:error, :invalid_import_review}
+      _mismatch_or_invalid_payload -> {:error, :invalid_import_review}
     end
+  end
+
+  defp valid_plan_binding?(plan_storage_key, stored_binding, canonical_payload)
+       when is_binary(plan_storage_key) and is_binary(stored_binding) and byte_size(stored_binding) == 64 do
+    Plug.Crypto.secure_compare(expected_plan_binding(plan_storage_key, canonical_payload), stored_binding)
+  end
+
+  defp valid_plan_binding?(_plan_storage_key, _stored_binding, _canonical_payload), do: false
+
+  defp expected_plan_binding(plan_storage_key, canonical_payload) do
+    secret = Application.fetch_env!(:storyarn, :import_idempotency_secret)
+
+    :hmac
+    |> :crypto.mac(:sha256, secret, [@plan_binding_domain, <<0>>, plan_storage_key, <<0>>, canonical_payload])
+    |> Base.encode16(case: :lower)
   end
 
   @doc """

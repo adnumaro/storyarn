@@ -54,6 +54,8 @@ export interface ExportConfig {
 }
 
 export interface ExportPanelProps {
+  /** `:edit_content` — matches the permission enforced by the download controller. */
+  canExport: boolean;
   formatConfig: FormatConfig;
   sectionConfig: SectionConfig;
   options: ExportOptions;
@@ -80,6 +82,7 @@ export interface YarnSpeakerDecision {
   speaker: string;
   occurrences: number;
   suggested_action: YarnSpeakerDirectAction;
+  allowed_actions: YarnSpeakerAction[];
   confidence: YarnSpeakerConfidence;
   reasons: string[];
 }
@@ -150,7 +153,8 @@ export interface ImportState {
   step: ImportStep;
   attemptId?: number | null;
   preview?: ImportPreview | null;
-  error?: string | null;
+  /** Stable, content-free server code. UI copy is always resolved through i18n. */
+  errorCode?: string | null;
   conflictStrategy?: string;
   warningCodes?: string[];
   status?: ImportAttemptStatus | null;
@@ -167,15 +171,13 @@ export interface SpeakerActionOption {
 }
 
 export interface ImportPanelProps {
-  projectId: number;
-  /** `:edit_content` — kept for surfaces an editor may still see. */
-  canEdit: boolean;
   /**
    * `:manage_project`. Importing rewrites project content, so it is owner-only.
    * The panel used to render its file picker for `canEdit`, which showed
    * editors an upload they were then rejected for.
    */
   canImport: boolean;
-  currentUserId: number;
+  /** Opaque, server-derived namespace; contains no user or project identifier. */
+  resumeStorageKey: string;
   importState: ImportState;
 }

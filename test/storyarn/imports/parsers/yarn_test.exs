@@ -184,8 +184,13 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
 
       assert provisional_dialogues
              |> Enum.filter(&(&1["data"]["import_yarn_speaker"] == "SlideImage"))
-             |> Enum.map(& &1["data"]["import_yarn_literal_text"])
+             |> Enum.map(& &1["data"]["import_yarn_source_text"])
              |> Enum.sort() == ["SlideImage: code-1", "SlideImage: intro-1"]
+
+      refute Enum.any?(provisional_dialogues, fn dialogue ->
+               Map.has_key?(dialogue["data"], "import_yarn_literal_text") or
+                 Map.has_key?(dialogue["data"], "import_yarn_literal_source_text")
+             end)
 
       review = plan.data["import_review"]
       assert review["variable_count"] == 0
@@ -1030,6 +1035,9 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       dialogue = Enum.find(flow["nodes"], &(&1["type"] == "dialogue"))
       assert dialogue["data"]["speaker_sheet_id"] == nil
       assert dialogue["data"]["text"] == "Hello"
+      assert dialogue["data"]["import_yarn_source_text"] == "{$speaker}: Hello"
+      refute Map.has_key?(dialogue["data"], "import_yarn_literal_text")
+      refute Map.has_key?(dialogue["data"], "import_yarn_literal_source_text")
 
       assert {:ok, resolved_plan} =
                ReviewDecisions.apply(plan, true, [
@@ -1040,6 +1048,7 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       resolved_dialogue = Enum.find(resolved_flow["nodes"], &(&1["type"] == "dialogue"))
       assert resolved_dialogue["data"]["speaker_sheet_id"] == nil
       assert resolved_dialogue["data"]["text"] == "{yarn.speaker}: Hello"
+      assert resolved_dialogue["data"]["import_yarn_source_text"] == "{$speaker}: Hello"
 
       assert {:error, :invalid_import_review_selection} =
                ReviewDecisions.apply(plan, true, [
@@ -1673,6 +1682,80 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert Layout.node_height(multiline) > Layout.node_height(flat)
     end
 
+    test "condition height reserves every switch output row" do
+      switch = fn id, output_count ->
+        %{
+          "id" => id,
+          "type" => "condition",
+          "data" => %{
+            "switch_mode" => true,
+            "condition" => %{
+              "blocks" =>
+                Enum.map(1..output_count, fn index ->
+                  %{"id" => "#{id}-#{index}", "type" => "block", "rules" => []}
+                end)
+            }
+          }
+        }
+      end
+
+      small = switch.("small", 1)
+      large = switch.("large", 10)
+      assert Layout.node_height(large) > Layout.node_height(small) + 250
+
+      nodes = [
+        %{"id" => "entry", "type" => "entry", "data" => %{}},
+        large,
+        switch.("parallel", 10)
+      ]
+
+      connections = [
+        %{"source_node_id" => "entry", "target_node_id" => "large"},
+        %{"source_node_id" => "entry", "target_node_id" => "parallel"}
+      ]
+
+      positioned = Layout.assign_positions(nodes, connections)
+      first = Enum.find(positioned, &(&1["id"] == "large"))
+      second = Enum.find(positioned, &(&1["id"] == "parallel"))
+
+      assert second["position_y"] >= first["position_y"] + Layout.node_height(first) + 60
+    end
+
+    test "dialogue height reserves a longer preserve-literal rendering" do
+      long_literal = "PresentationChannel: " <> String.duplicate("long preserved source ", 18)
+
+      preserved = %{
+        "id" => "preserved",
+        "type" => "dialogue",
+        "data" => %{
+          "text" => "Short body.",
+          "import_yarn_source_text" => long_literal,
+          "responses" => []
+        }
+      }
+
+      ordinary = %{
+        "id" => "ordinary",
+        "type" => "dialogue",
+        "data" => %{"text" => "Short body.", "responses" => []}
+      }
+
+      assert Layout.node_height(preserved) > Layout.node_height(ordinary) + 200
+
+      nodes = [%{"id" => "entry", "type" => "entry", "data" => %{}}, preserved, ordinary]
+
+      connections = [
+        %{"source_node_id" => "entry", "target_node_id" => "preserved"},
+        %{"source_node_id" => "entry", "target_node_id" => "ordinary"}
+      ]
+
+      positioned = Layout.assign_positions(nodes, connections)
+      first = Enum.find(positioned, &(&1["id"] == "preserved"))
+      second = Enum.find(positioned, &(&1["id"] == "ordinary"))
+
+      assert second["position_y"] >= first["position_y"] + Layout.node_height(first) + 60
+    end
+
     test "column stride follows the widest node of the column, not a fixed box" do
       # A dialogue-heavy column is 350px wide; the next column must start
       # beyond it plus the 120px layer gap, or real rendered nodes touch.
@@ -2080,6 +2163,56 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
   end
 
   describe "variable naming" do
+    test "accepts a normalized variable name at the database boundary" do
+      variable = String.duplicate("a", 255)
+
+      source = """
+      title: Start
+      ---
+      <<declare $#{variable} = false>>
+      Guide: Value {\u0024#{variable}}.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("boundary-variable.yarn", source)
+      variable_sheet = Enum.find(plan.data["sheets"], &(&1["shortcut"] == "yarn"))
+      assert Enum.any?(variable_sheet["blocks"], &(&1["variable_name"] == variable))
+    end
+
+    test "rejects normalized variable names above the database boundary in every use form" do
+      variable = String.duplicate("a", 256)
+
+      uses = [
+        "<<declare $#{variable} = false>>",
+        "Guide: Value {\u0024#{variable}}.",
+        "<<if $#{variable}>>\n    Guide: Seen.\n<<endif>>",
+        "<<set $#{variable} to true>>",
+        "-> Value {\u0024#{variable}}",
+        "-> Continue <<if $#{variable}>>"
+      ]
+
+      Enum.each(uses, fn use ->
+        source = """
+        title: Start
+        ---
+        #{use}
+        ===
+        """
+
+        assert {:ok, plan} = raw_yarn_plan(source)
+
+        length_issue =
+          Enum.find(plan.issues, fn issue ->
+            issue.code == :yarn_variable_name_too_long and issue.severity == :error
+          end)
+
+        assert length_issue
+        refute inspect(length_issue) =~ variable
+
+        assert {:error, :import_plan_has_errors} = Imports.parse_file("long-variable.yarn", source)
+      end)
+    end
+
     test "rejects two distinct declarations that normalize onto one identifier" do
       # $hasClueA and $has_clue_a both variablify to has_clue_a. References
       # cannot disambiguate them after normalization, so merging silently
@@ -2094,6 +2227,29 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       """
 
       assert {:error, :import_plan_has_errors} = Imports.parse_file("collision.yarn", source)
+    end
+
+    test "rejects collisions between declarations and every variable use form without exposing names" do
+      uses = [
+        "Guide: Value {\u0024has_clue_a}.",
+        "<<if \u0024has_clue_a>>\n    Guide: Seen.\n<<endif>>",
+        "<<set \u0024has_clue_a to true>>"
+      ]
+
+      Enum.each(uses, fn use ->
+        source = """
+        title: Start
+        ---
+        <<declare $hasClueA = false>>
+        #{use}
+        ===
+        """
+
+        assert {:ok, plan} = raw_yarn_plan(source)
+        assert [%{code: :yarn_variable_name_collision} = issue] = plan.issues
+        refute inspect(issue) =~ "hasClueA"
+        refute inspect(issue) =~ "has_clue_a"
+      end)
     end
 
     test "rejects a declaration whose name has no usable characters" do
@@ -2174,6 +2330,26 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       rule = condition["data"]["condition"]["blocks"] |> hd() |> Map.fetch!("rules") |> hd()
       assert rule["variable"] == "has_clue_a"
     end
+
+    test "rejects an overflowing numeric literal without raising" do
+      number = String.duplicate("9", 309)
+
+      source = """
+      title: Start
+      ---
+      <<declare $score = #{number}>>
+      Guide: Hello.
+      ===
+      """
+
+      assert {:ok, plan} = raw_yarn_plan(source)
+
+      assert Enum.any?(plan.issues, fn issue ->
+               issue.code == :unsupported_yarn_declaration and issue.severity == :error
+             end)
+
+      assert {:error, :import_plan_has_errors} = Imports.parse_file("overflow.yarn", source)
+    end
   end
 
   describe "choice blocks without a line of their own" do
@@ -2218,9 +2394,356 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       # The menu has no literal Yarn speaker prefix of its own, so it claims none.
       refute Map.has_key?(host["data"], "import_yarn_speaker")
     end
+
+    test "does not attribute a speakerless prompt that has authored text" do
+      source = """
+      title: Start
+      ---
+      Capsley: First.
+      Capsley: Second.
+      Capsley: Third.
+      Capsely: A possible alias.
+      What do you do?
+      -> Continue
+          Capsley: Done.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("speakerless-prompt.yarn", source)
+      [flow] = plan.data["flows"]
+      prompt = Enum.find(flow["nodes"], &(get_in(&1, ["data", "text"]) == "What do you do?"))
+
+      assert prompt["data"]["speaker_sheet_id"] == nil
+      refute Map.has_key?(prompt["data"], "import_yarn_speaker")
+      refute Map.has_key?(prompt["data"], "import_yarn_inherited_speaker")
+
+      preserve_decisions = [
+        %{"speaker" => "Capsley", "action" => "create_sheet"},
+        %{"speaker" => "Capsely", "action" => "preserve_literal"}
+      ]
+
+      assert {:ok, preserved_plan} = ReviewDecisions.apply(plan, true, preserve_decisions)
+      [preserved_flow] = preserved_plan.data["flows"]
+      preserved_prompt = Enum.find(preserved_flow["nodes"], &(get_in(&1, ["data", "text"]) == "What do you do?"))
+
+      assert preserved_prompt["data"]["speaker_sheet_id"] == nil
+      refute Map.has_key?(preserved_prompt["data"], "import_yarn_inherited_speaker")
+
+      map_decisions = [
+        %{"speaker" => "Capsley", "action" => "create_sheet"},
+        %{
+          "speaker" => "Capsely",
+          "action" => "map_to_sheet",
+          "target_speaker" => "Capsley"
+        }
+      ]
+
+      assert {:ok, mapped_plan} = ReviewDecisions.apply(plan, true, map_decisions)
+      [mapped_flow] = mapped_plan.data["flows"]
+      mapped_prompt = Enum.find(mapped_flow["nodes"], &(get_in(&1, ["data", "text"]) == "What do you do?"))
+
+      assert mapped_prompt["data"]["speaker_sheet_id"] == nil
+      refute Map.has_key?(mapped_prompt["data"], "import_yarn_inherited_speaker")
+    end
+
+    test "does not carry speaker inheritance through authored speakerless dialogue" do
+      source = """
+      title: Start
+      ---
+      <<declare $ready = false>>
+      Alice: Spoken dialogue.
+      A speakerless narration beat.
+      <<set $ready to true>>
+      -> Continue
+          Guide: Done.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("speakerless-break.yarn", source)
+      [flow] = plan.data["flows"]
+
+      narration =
+        Enum.find(flow["nodes"], &(get_in(&1, ["data", "text"]) == "A speakerless narration beat."))
+
+      host =
+        Enum.find(flow["nodes"], fn node ->
+          node["type"] == "dialogue" and node["data"]["text"] == "" and
+            Enum.any?(node["data"]["responses"], &(&1["text"] == "Continue"))
+        end)
+
+      assert narration["data"]["speaker_sheet_id"] == nil
+      assert host["data"]["speaker_sheet_id"] == nil
+      refute Map.has_key?(host["data"], "import_yarn_inherited_speaker")
+    end
+
+    test "does not inherit the last compiled speaker when control-flow paths disagree" do
+      source = """
+      title: Start
+      ---
+      <<declare $left = false>>
+      <<if $left>>
+          Alice: Left branch.
+      <<else>>
+          Bob: Right branch.
+      <<endif>>
+      -> Continue
+          Guide: Done.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("ambiguous-speaker.yarn", source)
+      [flow] = plan.data["flows"]
+
+      host =
+        Enum.find(flow["nodes"], fn node ->
+          node["type"] == "dialogue" and node["data"]["text"] == "" and
+            Enum.any?(node["data"]["responses"], &(&1["text"] == "Continue"))
+        end)
+
+      assert host["data"]["speaker_sheet_id"] == nil
+      refute Map.has_key?(host["data"], "import_yarn_inherited_speaker")
+    end
+
+    test "keeps speaker inheritance path-sensitive across choice branches" do
+      source = """
+      title: Start
+      ---
+      <<declare $continued = false>>
+      Narrator: Pick.
+      -> Left
+          Alice: Left branch.
+      -> Right
+          Bob: Right branch.
+      <<set $continued to true>>
+      -> Continue
+          Guide: Done.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("choice-speakers.yarn", source)
+      [flow] = plan.data["flows"]
+
+      hosts =
+        Enum.filter(flow["nodes"], fn node ->
+          node["type"] == "dialogue" and node["data"]["text"] == "" and node["data"]["responses"] != []
+        end)
+
+      assert Enum.any?(hosts, fn host -> Enum.any?(host["data"]["responses"], &(&1["text"] == "Continue")) end)
+
+      continue_host =
+        Enum.find(hosts, fn host -> Enum.any?(host["data"]["responses"], &(&1["text"] == "Continue")) end)
+
+      assert continue_host["data"]["speaker_sheet_id"] == nil
+      refute Map.has_key?(continue_host["data"], "import_yarn_inherited_speaker")
+    end
+
+    test "review decisions update inherited textless hosts for create, preserve, and map" do
+      source = """
+      title: Start
+      ---
+      <<declare $ready = false>>
+      Capsley: First.
+      Capsley: Still here.
+      Capsley: One more line.
+      Capsely: Second.
+      <<set $ready to true>>
+      -> Continue
+          Capsley: Done.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("inherited-review.yarn", source)
+
+      resolve_host = fn decisions ->
+        assert {:ok, resolved} = ReviewDecisions.apply(plan, true, decisions)
+        [flow] = resolved.data["flows"]
+
+        Enum.find(flow["nodes"], fn node ->
+          node["type"] == "dialogue" and node["data"]["text"] == "" and
+            Enum.any?(node["data"]["responses"], &(&1["text"] == "Continue"))
+        end)
+      end
+
+      create_host =
+        resolve_host.([
+          %{"speaker" => "Capsley", "action" => "create_sheet"},
+          %{"speaker" => "Capsely", "action" => "create_sheet"}
+        ])
+
+      assert is_binary(create_host["data"]["speaker_sheet_id"])
+
+      preserve_host =
+        resolve_host.([
+          %{"speaker" => "Capsley", "action" => "create_sheet"},
+          %{"speaker" => "Capsely", "action" => "preserve_literal"}
+        ])
+
+      assert preserve_host["data"]["speaker_sheet_id"] == nil
+
+      mapped_host =
+        resolve_host.([
+          %{"speaker" => "Capsley", "action" => "create_sheet"},
+          %{
+            "speaker" => "Capsely",
+            "action" => "map_to_sheet",
+            "target_speaker" => "Capsley"
+          }
+        ])
+
+      capsley_sheet = Enum.find(plan.data["sheets"], &(&1["name"] == "Capsley"))
+      assert mapped_host["data"]["speaker_sheet_id"] == capsley_sheet["id"]
+    end
   end
 
   describe "semantic review decisions" do
+    test "keeps the single explicit source reversible when decisions are reapplied" do
+      source = """
+      title: Start
+      ---
+      <<declare $mood = "ready">>
+      Alice: Alice: {$mood}
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("reversible-review.yarn", source)
+      decision = [%{"speaker" => "Alice", "action" => "create_sheet"}]
+
+      assert {:ok, linked_plan} = ReviewDecisions.apply(plan, true, decision)
+      [linked_flow] = linked_plan.data["flows"]
+      linked_dialogue = Enum.find(linked_flow["nodes"], &(&1["type"] == "dialogue"))
+
+      assert linked_dialogue["data"]["text"] == "Alice: {yarn.mood}"
+      assert linked_dialogue["data"]["import_yarn_source_text"] == "Alice: Alice: {$mood}"
+      refute Map.has_key?(linked_dialogue["data"], "import_yarn_literal_text")
+      refute Map.has_key?(linked_dialogue["data"], "import_yarn_literal_source_text")
+
+      assert {:ok, preserved_plan} =
+               ReviewDecisions.apply(linked_plan, true, [
+                 %{"speaker" => "Alice", "action" => "preserve_literal"}
+               ])
+
+      [preserved_flow] = preserved_plan.data["flows"]
+      preserved_dialogue = Enum.find(preserved_flow["nodes"], &(&1["type"] == "dialogue"))
+
+      assert preserved_dialogue["data"]["text"] == "Alice: Alice: {yarn.mood}"
+      assert preserved_dialogue["data"]["import_yarn_source_text"] == "Alice: Alice: {$mood}"
+
+      assert {:ok, relinked_plan} = ReviewDecisions.apply(preserved_plan, true, decision)
+      [relinked_flow] = relinked_plan.data["flows"]
+      relinked_dialogue = Enum.find(relinked_flow["nodes"], &(&1["type"] == "dialogue"))
+
+      assert relinked_dialogue["data"]["text"] == "Alice: {yarn.mood}"
+      assert relinked_dialogue["data"]["import_yarn_source_text"] == "Alice: Alice: {$mood}"
+    end
+
+    test "keeps rendered-only legacy speaker plans reversible after a create decision" do
+      source = """
+      title: Start
+      ---
+      <<declare $mood = "ready">>
+      Alice: Alice: {$mood}
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("legacy-review.yarn", source)
+
+      legacy_plan =
+        update_in(plan.data["flows"], fn flows ->
+          Enum.map(flows, fn flow ->
+            Map.update!(flow, "nodes", fn nodes ->
+              Enum.map(nodes, fn
+                %{"type" => "dialogue", "data" => %{"import_yarn_speaker" => "Alice"} = data} = node ->
+                  legacy_data =
+                    data
+                    |> Map.delete("import_yarn_source_text")
+                    |> Map.put("import_yarn_literal_text", "Alice: Alice: {yarn.mood}")
+
+                  Map.put(node, "data", legacy_data)
+
+                node ->
+                  node
+              end)
+            end)
+          end)
+        end)
+
+      create_decision = [%{"speaker" => "Alice", "action" => "create_sheet"}]
+
+      assert {:ok, linked_plan} = ReviewDecisions.apply(legacy_plan, true, create_decision)
+      [linked_flow] = linked_plan.data["flows"]
+      linked_dialogue = Enum.find(linked_flow["nodes"], &(&1["type"] == "dialogue"))
+
+      assert linked_dialogue["data"]["text"] == "Alice: {yarn.mood}"
+      assert linked_dialogue["data"]["import_yarn_literal_text"] == "Alice: Alice: {yarn.mood}"
+
+      assert {:ok, preserved_plan} =
+               ReviewDecisions.apply(linked_plan, true, [
+                 %{"speaker" => "Alice", "action" => "preserve_literal"}
+               ])
+
+      [preserved_flow] = preserved_plan.data["flows"]
+      preserved_dialogue = Enum.find(preserved_flow["nodes"], &(&1["type"] == "dialogue"))
+
+      assert preserved_dialogue["data"]["text"] == "Alice: Alice: {yarn.mood}"
+      assert preserved_dialogue["data"]["import_yarn_literal_text"] == "Alice: Alice: {yarn.mood}"
+
+      assert {:ok, relinked_plan} = ReviewDecisions.apply(preserved_plan, true, create_decision)
+      [relinked_flow] = relinked_plan.data["flows"]
+      relinked_dialogue = Enum.find(relinked_flow["nodes"], &(&1["type"] == "dialogue"))
+
+      assert relinked_dialogue["data"]["text"] == "Alice: {yarn.mood}"
+      assert relinked_dialogue["data"]["import_yarn_literal_text"] == "Alice: Alice: {yarn.mood}"
+
+      assert {:ok, directly_preserved_plan} =
+               ReviewDecisions.apply(legacy_plan, true, [
+                 %{"speaker" => "Alice", "action" => "preserve_literal"}
+               ])
+
+      assert {:ok, linked_after_preserve_plan} =
+               ReviewDecisions.apply(directly_preserved_plan, true, create_decision)
+
+      [linked_after_preserve_flow] = linked_after_preserve_plan.data["flows"]
+
+      linked_after_preserve_dialogue =
+        Enum.find(linked_after_preserve_flow["nodes"], &(&1["type"] == "dialogue"))
+
+      assert linked_after_preserve_dialogue["data"]["text"] == "Alice: {yarn.mood}"
+    end
+
+    test "serializes the same allowed actions enforced by the server" do
+      source = """
+      title: Start
+      ---
+      Alice: Hello.
+      {$speaker}: Dynamic hello.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("allowed-actions.yarn", source)
+      decisions = plan.data["import_review"]["speaker_decisions"]
+
+      assert Enum.find(decisions, &(&1["speaker"] == "Alice"))["allowed_actions"] == [
+               "create_sheet",
+               "preserve_literal",
+               "map_to_sheet"
+             ]
+
+      assert Enum.find(decisions, &(&1["speaker"] == "{$speaker}"))["allowed_actions"] == [
+               "preserve_literal"
+             ]
+
+      legacy_plan =
+        update_in(plan.data["import_review"]["speaker_decisions"], fn entries ->
+          Enum.map(entries, &Map.delete(&1, "allowed_actions"))
+        end)
+
+      assert {:ok, _resolved} =
+               ReviewDecisions.apply(legacy_plan, true, selected_suggestions(legacy_plan.data["import_review"]))
+
+      assert {:ok, preview} = Materializer.preview(-1, legacy_plan.data)
+      assert Enum.all?(preview.import_review["speaker_decisions"], &is_list(&1["allowed_actions"]))
+    end
+
     test "rejects missing, incomplete and tampered speaker mappings" do
       source = """
       title: Start

@@ -114,7 +114,7 @@ defmodule Storyarn.Imports do
   has already checked its socket membership.
   """
   @spec prepare_import(Scope.t(), Project.t(), String.t(), binary()) ::
-          {:ok, ProjectImportAttempt.t(), map()} | {:error, term()}
+          {:ok, ProjectImportAttempt.t(), map() | nil} | {:error, term()}
   def prepare_import(%Scope{} = scope, %Project{} = project, filename, binary) do
     prepare_import(scope, project, filename, binary, [])
   end
@@ -129,10 +129,11 @@ defmodule Storyarn.Imports do
       with {:ok, _project, _membership} <- Projects.authorize(scope, project.id, @import_action),
            {:ok, %ImportPlan{} = plan} <- parse_file(filename, binary),
            {:ok, preview} <- preview(project.id, plan),
-           {:ok, attempt} <- persist_import_plan(scope, project, plan, preview, binary, opts) do
+           {:ok, attempt, persisted_preview} <-
+             persist_import_plan(scope, project, plan, preview, binary, opts) do
         Telemetry.emit_stop(:prepare, started_at, Telemetry.plan_metadata(plan, "completed", "none"))
         Queue.broadcast(attempt)
-        {:ok, attempt, preview}
+        {:ok, attempt, persisted_preview}
       else
         {:error, reason} ->
           Telemetry.report_prepare_error(reason, initial_metadata, started_at)
@@ -202,6 +203,45 @@ defmodule Storyarn.Imports do
   end
 
   def resolve_import_review(%Scope{}, _attempt_id, _acknowledged?, _decisions, _opts), do: {:error, :not_found}
+
+  @doc """
+  Persists the conflict strategy selected for a ready import preview.
+
+  This makes navigation and cross-tab recovery restore the user's selection
+  before the import has been accepted by the queue.
+  """
+  @spec update_import_strategy(Scope.t(), pos_integer(), String.t() | atom()) ::
+          {:ok, ProjectImportAttempt.t()} | {:error, term()}
+  def update_import_strategy(%Scope{} = scope, attempt_id, strategy) when is_integer(attempt_id) and attempt_id > 0 do
+    with {:ok, strategy} <- normalize_strategy(strategy),
+         %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
+         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
+         :ok <- authorize_attempt_owner(attempt, scope.user.id),
+         {:ok, updated} <- persist_import_strategy(attempt, scope.user.id, strategy) do
+      Queue.broadcast(updated)
+      {:ok, updated}
+    else
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def update_import_strategy(%Scope{}, _attempt_id, _strategy), do: {:error, :not_found}
+
+  @doc """
+  Returns the opaque browser-storage key for one user's import in one project.
+
+  The HMAC prevents raw project and user identifiers from being persisted in
+  `localStorage`; the key is a namespace only and grants no server access.
+  """
+  @spec resume_storage_key(Scope.t(), Project.t()) :: String.t()
+  def resume_storage_key(%Scope{user: %{id: user_id}}, %Project{id: project_id}) do
+    secret = Application.fetch_env!(:storyarn, :import_idempotency_secret)
+    payload = :erlang.term_to_binary({:project_import_resume, project_id, user_id})
+    digest = :crypto.mac(:hmac, :sha256, secret, payload)
+
+    "storyarn:project-import:" <> Base.url_encode64(digest, padding: false)
+  end
 
   @doc """
   Queues a ready import. The Oban payload contains only `attempt_id`.
@@ -454,7 +494,8 @@ defmodule Storyarn.Imports do
     storage_key = PlanStorage.storage_key(project.id)
     cleanup_after = PlanCleanup.plan_cleanup_deadline(attempt)
 
-    with {:ok, cleanup_request} <-
+    with {:ok, plan} <- Shared.bind_plan_to_attempt(plan, storage_key),
+         {:ok, cleanup_request} <-
            reserve_plan_cleanup(project, plan, storage_key, cleanup_after) do
       persist_reserved_plan_revision(
         cleanup_request,
@@ -555,8 +596,10 @@ defmodule Storyarn.Imports do
   defp persist_import_plan(scope, project, plan, preview, binary, opts) do
     storage_key = PlanStorage.storage_key(project.id)
     expires_at = DateTime.add(TimeHelpers.now(), @plan_retention_seconds, :second)
+    idempotency_key = idempotency_key(scope, project, plan, binary)
 
-    with {:ok, cleanup_request} <-
+    with {:ok, plan} <- Shared.bind_plan_to_attempt(plan, storage_key),
+         {:ok, cleanup_request} <-
            reserve_plan_cleanup(project, plan, storage_key, expires_at) do
       import = %{
         scope: scope,
@@ -565,7 +608,7 @@ defmodule Storyarn.Imports do
         preview: preview,
         storage_key: storage_key,
         expires_at: expires_at,
-        binary: binary,
+        idempotency_key: idempotency_key,
         opts: opts
       }
 
@@ -587,21 +630,35 @@ defmodule Storyarn.Imports do
   end
 
   defp persist_stored_plan(cleanup_request, import) do
-    %{scope: scope, project: project, plan: plan, preview: preview, expires_at: expires_at, binary: binary} = import
+    %{
+      scope: scope,
+      project: project,
+      plan: plan,
+      preview: preview,
+      expires_at: expires_at,
+      idempotency_key: idempotency_key
+    } = import
 
     scope
-    |> insert_ready_attempt(project, plan, preview, cleanup_request, expires_at, binary)
-    |> handle_stored_plan_result(cleanup_request)
+    |> insert_ready_attempt(project, plan, preview, cleanup_request, expires_at, idempotency_key)
+    |> handle_stored_plan_result(cleanup_request, import)
   end
 
-  defp handle_stored_plan_result({:ok, attempt}, _cleanup_request), do: {:ok, attempt}
+  defp handle_stored_plan_result({:ok, attempt}, _cleanup_request, %{preview: preview}), do: {:ok, attempt, preview}
 
-  defp handle_stored_plan_result({:existing, attempt}, cleanup_request) do
+  defp handle_stored_plan_result({:existing, attempt}, cleanup_request, %{scope: scope, project: project, opts: opts}) do
     PlanCleanup.cleanup_reserved_plan(cleanup_request)
-    {:ok, attempt}
+
+    # The idempotency key deliberately survives review revisions. Returning
+    # the newly parsed preview beside the existing attempt would pair two
+    # different plans and let a subsequent draft overwrite the durable review.
+    # Recovery also re-reads the row after loading its plan, so a concurrent
+    # review revision cannot pair K1's preview with the attempt now pointing at
+    # K2. Accepted attempts intentionally return no preview.
+    Resume.resume_import(scope, project, attempt.id, opts)
   end
 
-  defp handle_stored_plan_result({:error, reason}, cleanup_request) do
+  defp handle_stored_plan_result({:error, reason}, cleanup_request, _import) do
     PlanCleanup.cleanup_reserved_plan(cleanup_request)
     {:error, reason}
   end
@@ -663,14 +720,14 @@ defmodule Storyarn.Imports do
     end
   end
 
-  defp insert_ready_attempt(scope, project, plan, preview, cleanup_request, expires_at, binary) do
+  defp insert_ready_attempt(scope, project, plan, preview, cleanup_request, expires_at, idempotency_key) do
     attrs = %{
       status: "ready",
       stage: "parsed",
       format: to_string(plan.format),
       source_kind: to_string(plan.source_kind),
       parser_version: plan.parser_version,
-      idempotency_key: idempotency_key(scope, project, plan, binary),
+      idempotency_key: idempotency_key,
       plan_storage_key: cleanup_request.plan_storage_key,
       counts: stringify_keys(preview.counts),
       warning_codes: Enum.map(ImportPlan.warning_codes(plan), &to_string/1),
@@ -773,6 +830,34 @@ defmodule Storyarn.Imports do
       attempt -> {:ok, attempt}
     end
   end
+
+  defp persist_import_strategy(attempt, user_id, strategy) do
+    Repo.transact(fn ->
+      with {:ok, :authorized} <- authorize_import_locked(Repo, attempt.project_id, user_id),
+           %ProjectImportAttempt{} = locked_attempt <-
+             ProjectImportAttempt
+             |> where(
+               [candidate],
+               candidate.id == ^attempt.id and candidate.project_id == ^attempt.project_id and
+                 candidate.user_id == ^user_id
+             )
+             |> lock("FOR UPDATE")
+             |> Repo.one() do
+        update_locked_import_strategy(locked_attempt, strategy)
+      else
+        nil -> {:error, :not_found}
+        {:error, reason} -> {:error, reason}
+      end
+    end)
+  end
+
+  defp update_locked_import_strategy(%ProjectImportAttempt{status: "ready"} = attempt, strategy) do
+    attempt
+    |> ProjectImportAttempt.conflict_strategy_changeset(strategy)
+    |> Repo.update()
+  end
+
+  defp update_locked_import_strategy(%ProjectImportAttempt{}, _strategy), do: {:error, :import_not_ready}
 
   defp enqueue_locked_attempt(attempt_id, project_id, user_id, strategy, opts) do
     with {:ok, :authorized} <- authorize_import_locked(Repo, project_id, user_id),

@@ -302,7 +302,18 @@
       "success": "The Yarn project was imported successfully.",
       "import_another": "Import another project",
       "try_again": "Try another file",
-      "no_permission": "Only project owners can import into this project. Importing replaces project content.",
+      "no_permission": "Only project owners can import into this project.",
+      "errors": {
+        "cancelled": "The import was cancelled. No project content was changed.",
+        "discarded": "This import could not be validated and was discarded. Validate the file again before importing.",
+        "expired": "The import could not run before its retention deadline. No project content was changed.",
+        "generic": "The import could not be completed. No project content was changed.",
+        "invalid_file": "The selected Yarn project is invalid or exceeds the import safety limits.",
+        "project_has_main_flow": "This project already has a main flow, so the imported one could not be created. No project content was changed.",
+        "preview_expired": "This import preview expired before the import was started. Upload the file again.",
+        "unauthorized": "You no longer have permission to import into this project.",
+        "unsupported_narrative": "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
+      },
       "issue_codes": {
         "dynamic_yarn_speaker": "Dynamic speaker preserved",
         "possible_yarn_speaker_alias": "Possible speaker alias",
@@ -404,6 +415,7 @@
       "validate": "Validate",
       "validating": "Validating…",
       "download": "Download .{ext}",
+      "no_permission": "You need edit permission to validate or download an export.",
       "download_blocked": "Resolve the blocking issues below and validate again before downloading.",
       "download_failed": "The export could not be downloaded. Try again.",
       "download_failed_validation": "The export could not be generated. Validate again and review the blocking findings.",

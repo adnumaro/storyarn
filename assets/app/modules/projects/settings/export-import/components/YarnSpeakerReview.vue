@@ -137,7 +137,12 @@ function actionTestId(action: YarnSpeakerAction) {
         >
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="min-w-0">
-              <p class="break-words text-sm font-semibold">{{ decision.speaker }}</p>
+              <p
+                :id="`yarn-speaker-${decisionIndex}-label`"
+                class="break-words text-sm font-semibold"
+              >
+                {{ decision.speaker }}
+              </p>
               <p class="text-xs text-muted-foreground">
                 {{ occurrencesLabel(decision.occurrences) }}
               </p>
@@ -161,6 +166,7 @@ function actionTestId(action: YarnSpeakerAction) {
           </ul>
           <RadioGroup
             :model-value="review.selectedActionValue(decision.speaker)"
+            :aria-labelledby="`yarn-speaker-${decisionIndex}-label`"
             class="grid gap-2 lg:grid-cols-3"
             @update:model-value="review.setAction(decision.speaker, $event)"
           >

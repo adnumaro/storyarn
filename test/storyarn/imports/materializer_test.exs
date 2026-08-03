@@ -15,6 +15,7 @@ defmodule Storyarn.Imports.MaterializerTest do
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.Materializer
+  alias Storyarn.Imports.Parsers.Yarn.Layout
   alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Localization
   alias Storyarn.References.EntityReference
@@ -486,6 +487,131 @@ defmodule Storyarn.Imports.MaterializerTest do
       assert annotation
       assert annotation.data["text"] =~ "$yarn.gold"
       assert annotation.data["text"] =~ "{yarn.silver}"
+    end
+
+    test "renames semantic references without mutating dialogue, response, or assignment literals", %{target: target} do
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      <<declare $speaker = "Guide">>
+      Guide: Literal {yarn.gold} and $yarn.gold; semantic {$gold}.
+      {$speaker}: Literal {yarn.gold}; semantic {$gold}.
+      <<set $gold to "$yarn.gold">>
+      Guide: Choose.
+      -> Literal {yarn.gold} and $yarn.gold; semantic {$gold}
+          Guide: Done.
+      ===
+      """
+
+      import_once = fn ->
+        assert {:ok, plan} = Imports.parse_file("literal-refs.yarn", source)
+
+        assert {:ok, resolved} =
+                 ReviewDecisions.apply(plan, true, [
+                   %{"speaker" => "Guide", "action" => "create_sheet"},
+                   %{"speaker" => "{$speaker}", "action" => "preserve_literal"}
+                 ])
+
+        Imports.execute(target, resolved, conflict_strategy: :rename)
+      end
+
+      assert {:ok, _first} = import_once.()
+      Repo.update_all(Flow, set: [is_main: false])
+      assert {:ok, _second} = import_once.()
+
+      second_flow = Enum.find(Flows.list_flows(target.id), &(&1.shortcut == "start-2"))
+      nodes = Flows.list_nodes(second_flow.id)
+
+      interpolated_dialogue = Enum.find(nodes, &String.contains?(&1.data["text"] || "", "semantic"))
+
+      assert interpolated_dialogue.data["text"] ==
+               "Literal {yarn.gold} and $yarn.gold; semantic {yarn-2.gold}."
+
+      preserved_dialogue = Enum.find(nodes, &String.starts_with?(&1.data["text"] || "", "{yarn-2.speaker}:"))
+
+      assert preserved_dialogue.data["text"] ==
+               "{yarn-2.speaker}: Literal {yarn.gold}; semantic {yarn-2.gold}."
+
+      instruction = Enum.find(nodes, &(&1.type == "instruction"))
+      [assignment] = instruction.data["assignments"]
+      assert assignment["sheet"] == "yarn-2"
+      assert assignment["value_type"] == "literal"
+      assert assignment["value"] == "$yarn.gold"
+
+      choice = Enum.find(nodes, &(is_list(&1.data["responses"]) and &1.data["responses"] != []))
+      [response] = choice.data["responses"]
+      assert response["text"] == "Literal {yarn.gold} and $yarn.gold; semantic $yarn-2.gold"
+
+      refute Enum.any?(nodes, fn node ->
+               node_has_import_metadata? =
+                 Enum.any?(Map.keys(node.data), fn key ->
+                   is_binary(key) and String.starts_with?(key, "import_yarn_")
+                 end)
+
+               response_has_import_metadata? =
+                 Enum.any?(node.data["responses"] || [], fn imported_response ->
+                   Enum.any?(Map.keys(imported_response), fn key ->
+                     is_binary(key) and String.starts_with?(key, "import_yarn_")
+                   end)
+                 end)
+
+               node_has_import_metadata? or response_has_import_metadata?
+             end)
+    end
+
+    test "reflows parallel Yarn branches after shortcut rewrites change rendered height", %{target: target} do
+      semantic_refs = Enum.map_join(1..50, " ", fn _index -> "{$gold}" end)
+
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      Guide: Choose a branch.
+      -> Long
+          Guide: #{semantic_refs}
+      -> Short
+          Guide: Short branch.
+      ===
+      """
+
+      import_once = fn ->
+        assert {:ok, plan} = Imports.parse_file("parallel-layout.yarn", source)
+
+        assert {:ok, resolved} =
+                 ReviewDecisions.apply(plan, true, [
+                   %{"speaker" => "Guide", "action" => "create_sheet"}
+                 ])
+
+        Imports.execute(target, resolved, conflict_strategy: :rename)
+      end
+
+      assert {:ok, _first} = import_once.()
+      Repo.update_all(Flow, set: [is_main: false])
+      assert {:ok, _second} = import_once.()
+
+      second_flow = Enum.find(Flows.list_flows(target.id), &(&1.shortcut == "start-2"))
+
+      branch_nodes =
+        second_flow.id
+        |> Flows.list_nodes()
+        |> Enum.filter(fn node ->
+          String.contains?(node.data["text"] || "", "yarn-2.gold") or
+            node.data["text"] == "Short branch."
+        end)
+        |> Enum.map(fn node ->
+          %{
+            "id" => node.id,
+            "type" => node.type,
+            "data" => node.data,
+            "position_x" => node.position_x,
+            "position_y" => node.position_y
+          }
+        end)
+
+      assert [first, second] = Enum.sort_by(branch_nodes, & &1["position_y"])
+      assert first["position_x"] == second["position_x"]
+      assert second["position_y"] >= first["position_y"] + Layout.node_height(first) + 60
     end
 
     test "two renames where one's target is the other's source never chain", %{target: target} do

@@ -119,6 +119,12 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     |> validate_common()
   end
 
+  def conflict_strategy_changeset(attempt, strategy) do
+    attempt
+    |> change(conflict_strategy: strategy)
+    |> validate_common()
+  end
+
   def running_changeset(attempt, now) do
     attempt
     |> change(

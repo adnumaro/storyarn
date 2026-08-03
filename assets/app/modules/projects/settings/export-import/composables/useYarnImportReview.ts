@@ -34,6 +34,7 @@ const SPEAKER_DIRECT_ACTIONS = new Set<YarnSpeakerDirectAction>([
   "create_sheet",
   "preserve_literal",
 ]);
+const SPEAKER_ACTIONS = new Set<YarnSpeakerAction>([...SPEAKER_DIRECT_ACTIONS, "map_to_sheet"]);
 const SPEAKER_CONFIDENCE_LEVELS = new Set<YarnSpeakerConfidence>(["high", "medium", "low"]);
 
 export interface UseYarnImportReviewOptions {
@@ -143,6 +144,15 @@ function validReasons(value: unknown): value is string[] {
   return Array.isArray(value) && value.length > 0 && value.every(nonEmptyString);
 }
 
+function validAllowedActions(value: unknown): value is YarnSpeakerAction[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    new Set(value).size === value.length &&
+    value.every((action) => SPEAKER_ACTIONS.has(action as YarnSpeakerAction))
+  );
+}
+
 function isSpeakerDecision(value: unknown): value is YarnSpeakerDecision {
   if (!value || typeof value !== "object") return false;
 
@@ -151,6 +161,9 @@ function isSpeakerDecision(value: unknown): value is YarnSpeakerDecision {
     nonEmptyString(decision.speaker),
     positiveSafeInteger(decision.occurrences),
     SPEAKER_DIRECT_ACTIONS.has(decision.suggested_action as YarnSpeakerDirectAction),
+    validAllowedActions(decision.allowed_actions),
+    Array.isArray(decision.allowed_actions) &&
+      decision.allowed_actions.includes(decision.suggested_action as YarnSpeakerAction),
     SPEAKER_CONFIDENCE_LEVELS.has(decision.confidence as YarnSpeakerConfidence),
     validReasons(decision.reasons),
   ].every(Boolean);
@@ -282,10 +295,6 @@ function aliasMappingValue(targetSpeaker: string) {
   return `map_to_sheet:${targetSpeaker}`;
 }
 
-function preservesLiteralOnly(decision: YarnSpeakerDecision) {
-  return decision.reasons.includes("dynamic_speaker_expression");
-}
-
 export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnImportReviewApi {
   const { canImport, importState } = options;
   const live = useLive();
@@ -370,22 +379,27 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
       suggested: decision.suggested_action === "preserve_literal",
     };
 
-    if (preservesLiteralOnly(decision)) return [preserveLiteralOption];
+    const options: SpeakerActionOption[] = [];
 
-    const options: SpeakerActionOption[] = [
-      {
+    if (decision.allowed_actions.includes("create_sheet")) {
+      options.push({
         value: "create_sheet",
         action: "create_sheet",
         labelKey: "project_settings.import.review_create_sheet",
         descriptionKey: "project_settings.import.review_create_sheet_description",
         accent: "primary",
         suggested: decision.suggested_action === "create_sheet",
-      },
-      preserveLiteralOption,
-    ];
+      });
+    }
 
-    for (const targetSpeaker of aliasTargetsForSpeaker(decision.speaker)) {
-      if (selectedAction(targetSpeaker) === "create_sheet") {
+    if (decision.allowed_actions.includes("preserve_literal")) {
+      options.push(preserveLiteralOption);
+    }
+
+    if (decision.allowed_actions.includes("map_to_sheet")) {
+      for (const targetSpeaker of aliasTargetsForSpeaker(decision.speaker)) {
+        if (selectedAction(targetSpeaker) !== "create_sheet") continue;
+
         options.push({
           value: aliasMappingValue(targetSpeaker),
           action: "map_to_sheet",
@@ -404,16 +418,16 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
   function decisionIsCurrentlyValid(decision: YarnReviewDecision) {
     const entry = decisions.value.find((candidate) => candidate.speaker === decision.speaker);
     if (!entry) return false;
-    if (preservesLiteralOnly(entry)) {
-      return decision.action === "preserve_literal" && decision.target_speaker === undefined;
-    }
 
     if (SPEAKER_DIRECT_ACTIONS.has(decision.action as YarnSpeakerDirectAction)) {
-      return decision.target_speaker === undefined;
+      return (
+        entry.allowed_actions.includes(decision.action) && decision.target_speaker === undefined
+      );
     }
 
     return (
       decision.action === "map_to_sheet" &&
+      entry.allowed_actions.includes("map_to_sheet") &&
       nonEmptyString(decision.target_speaker) &&
       aliasTargetsForSpeaker(decision.speaker).includes(decision.target_speaker) &&
       selectedAction(decision.target_speaker) === "create_sheet"
@@ -518,8 +532,10 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
   function parsePersistedAliasMapping(
     candidate: Partial<YarnReviewDecision>,
   ): YarnReviewDecision | null {
+    const entry = decisions.value.find((decision) => decision.speaker === candidate.speaker);
     const validMapping = [
       candidate.action === "map_to_sheet",
+      entry?.allowed_actions.includes("map_to_sheet") === true,
       nonEmptyString(candidate.speaker),
       nonEmptyString(candidate.target_speaker),
       aliasTargetsForSpeaker(candidate.speaker ?? "").includes(candidate.target_speaker ?? ""),
@@ -532,6 +548,19 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
           target_speaker: candidate.target_speaker!,
         }
       : null;
+  }
+
+  function parsePersistedDirectDecision(
+    candidate: Partial<YarnReviewDecision>,
+    entry: YarnSpeakerDecision,
+  ): YarnReviewDecision | null {
+    const action = candidate.action as YarnSpeakerDirectAction;
+
+    if (!entry.allowed_actions.includes(action) || candidate.target_speaker !== undefined) {
+      return null;
+    }
+
+    return { speaker: candidate.speaker!, action };
   }
 
   function parsePersistedDecision(
@@ -549,10 +578,11 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
     ].every(Boolean);
     if (!speakerIsValid || !candidate.speaker) return null;
 
+    const entry = decisions.value.find((decision) => decision.speaker === candidate.speaker);
+    if (!entry) return null;
+
     if (SPEAKER_DIRECT_ACTIONS.has(candidate.action as YarnSpeakerDirectAction)) {
-      return candidate.target_speaker === undefined
-        ? { speaker: candidate.speaker, action: candidate.action as YarnSpeakerDirectAction }
-        : null;
+      return parsePersistedDirectDecision(candidate, entry);
     }
 
     return parsePersistedAliasMapping(candidate);
@@ -751,7 +781,7 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
 
       live.pushEvent(
         "save_import_review",
-        { review_decisions: buildDecisions() },
+        { attempt_id: sentAttemptId, review_decisions: buildDecisions() },
         (reply) => {
           // Revisions reset per attempt, so a reply is only meaningful for
           // the attempt it was sent for — a delayed reply from a previous
@@ -837,6 +867,7 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
     live.pushEvent(
       "validate_import_review",
       {
+        attempt_id: sentAttemptId,
         review_acknowledged: acknowledged.value,
         review_decisions: buildDecisions(),
       },
@@ -874,6 +905,7 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
     live.pushEvent(
       "execute_import",
       {
+        attempt_id: sentAttemptId,
         review_confirmation_fingerprint: current.decision_fingerprint,
       },
       (reply) => {

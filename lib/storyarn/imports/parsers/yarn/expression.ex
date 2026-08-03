@@ -69,21 +69,35 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
   @spec referenced_variables(String.t()) :: [String.t()]
   def referenced_variables(text) when is_binary(text) do
     text
+    |> referenced_variable_occurrences()
+    |> Enum.map(& &1.variable)
+    |> Enum.uniq()
+  end
+
+  @doc false
+  @spec referenced_variable_occurrences(String.t()) :: [%{variable: String.t(), source_name: String.t()}]
+  def referenced_variable_occurrences(text) when is_binary(text) do
+    text
     |> without_string_literals()
     |> then(&Regex.scan(~r/\$([A-Za-z_][A-Za-z0-9_.]*)/, &1, capture: :all_but_first))
-    |> Enum.map(fn [name] -> normalize_variable(name) end)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
+    |> variable_occurrences()
   end
 
   @doc false
   @spec interpolated_variables(String.t()) :: [String.t()]
   def interpolated_variables(text) when is_binary(text) do
+    text
+    |> interpolated_variable_occurrences()
+    |> Enum.map(& &1.variable)
+    |> Enum.uniq()
+  end
+
+  @doc false
+  @spec interpolated_variable_occurrences(String.t()) :: [%{variable: String.t(), source_name: String.t()}]
+  def interpolated_variable_occurrences(text) when is_binary(text) do
     @interpolation_regex
     |> Regex.scan(text, capture: :all_but_first)
-    |> Enum.map(fn [name] -> normalize_variable(name) end)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
+    |> variable_occurrences()
   end
 
   @doc false
@@ -97,11 +111,11 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
     |> Enum.any?(fn [name] -> is_nil(normalize_variable(name)) end)
   end
 
-  @spec interpolate(String.t(), :dialogue | :response) :: String.t()
-  def interpolate(text, mode) when is_binary(text) do
+  @spec interpolate(String.t(), :dialogue | :response, String.t()) :: String.t()
+  def interpolate(text, mode, shortcut \\ "yarn") when is_binary(text) and is_binary(shortcut) do
     Regex.replace(@interpolation_regex, text, fn _match, name ->
       variable = normalize_variable(name) || "variable"
-      if mode == :dialogue, do: "{yarn.#{variable}}", else: "$yarn.#{variable}"
+      if mode == :dialogue, do: "{#{shortcut}.#{variable}}", else: "$#{shortcut}.#{variable}"
     end)
   end
 
@@ -264,6 +278,18 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
     if normalized == "", do: nil, else: normalized
   end
 
+  defp variable_occurrences(captures) do
+    captures
+    |> Enum.reduce([], fn [source_name], occurrences ->
+      case normalize_variable(source_name) do
+        nil -> occurrences
+        variable -> [%{variable: variable, source_name: source_name} | occurrences]
+      end
+    end)
+    |> Enum.reverse()
+    |> Enum.uniq()
+  end
+
   defp without_string_literals(text) do
     text
     |> do_without_string_literals(false, false, [])
@@ -313,6 +339,11 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
       {number, ""} -> {:ok, number, "number"}
       _other -> {:error, :unsupported_yarn_literal}
     end
+  rescue
+    # OTP raises for syntactically numeric values outside the finite float
+    # range. Treat them like every other unsupported Yarn literal instead of
+    # letting an uploaded source escape the parser's tagged-error contract.
+    ArgumentError -> {:error, :unsupported_yarn_literal}
   end
 
   defp parse_string(value) do

@@ -2,16 +2,46 @@ defmodule Storyarn.Imports.Parsers.Yarn.ReviewDecisions do
   @moduledoc false
 
   alias Storyarn.Imports.ImportPlan
-  alias Storyarn.Imports.Parsers.Yarn.Shortcut
-  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Imports.Parsers.Yarn.Expression
+  alias Storyarn.Imports.Parsers.Yarn.SpeakerClassifier
+  alias Storyarn.Imports.Parsers.Yarn.SpeakerSheets
 
   @parser_version "5"
   @speaker_metadata_keys ~w(
+    import_yarn_inherited_speaker
     import_yarn_speaker
     import_yarn_literal_text
+    import_yarn_literal_source_text
+    import_yarn_source_text
   )
   @direct_actions ~w(create_sheet preserve_literal)
   @actions @direct_actions ++ ["map_to_sheet"]
+
+  @doc false
+  @spec put_allowed_actions(map()) :: map()
+  def put_allowed_actions(%{"speaker_decisions" => decisions} = review) when is_list(decisions) do
+    Map.put(
+      review,
+      "speaker_decisions",
+      Enum.map(decisions, fn
+        %{"reasons" => reasons} = decision when is_list(reasons) ->
+          Map.put(decision, "allowed_actions", allowed_actions(reasons))
+
+        decision ->
+          decision
+      end)
+    )
+  end
+
+  def put_allowed_actions(review), do: review
+
+  @doc false
+  @spec allowed_actions([String.t()]) :: [String.t()]
+  def allowed_actions(reasons) when is_list(reasons) do
+    if "dynamic_speaker_expression" in reasons,
+      do: ["preserve_literal"],
+      else: @actions
+  end
 
   @spec apply(ImportPlan.t(), boolean(), term()) ::
           {:ok, ImportPlan.t()}
@@ -309,24 +339,26 @@ defmodule Storyarn.Imports.Parsers.Yarn.ReviewDecisions do
     end
   end
 
-  defp validate_review_entry(%{
-         "speaker" => speaker,
-         "suggested_action" => suggested_action,
-         "occurrences" => occurrences,
-         "confidence" => confidence,
-         "reasons" => reasons
-       }) do
-    if valid_review_entry_fields?(speaker, suggested_action, occurrences, confidence, reasons) do
+  defp validate_review_entry(
+         %{
+           "speaker" => speaker,
+           "suggested_action" => suggested_action,
+           "occurrences" => occurrences,
+           "confidence" => confidence,
+           "reasons" => reasons
+         } = entry
+       ) do
+    expected_allowed_actions = allowed_actions(reasons)
+    serialized_allowed_actions = Map.get(entry, "allowed_actions", expected_allowed_actions)
+
+    if valid_review_entry_fields?(speaker, suggested_action, occurrences, confidence, reasons) and
+         serialized_allowed_actions == expected_allowed_actions do
       {:ok,
        %{
          speaker: speaker,
          suggested_action: suggested_action,
          occurrences: occurrences,
-         allowed_actions:
-           if("dynamic_speaker_expression" in reasons,
-             do: ["preserve_literal"],
-             else: @actions
-           )
+         allowed_actions: expected_allowed_actions
        }}
     else
       {:error, :invalid_import_review}
@@ -662,37 +694,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.ReviewDecisions do
         _other -> false
       end)
 
-    used_shortcuts =
-      retained_sheets
-      |> Enum.map(&Map.get(&1, "shortcut"))
-      |> Enum.filter(&is_binary/1)
-      |> MapSet.new()
-
-    {speaker_sheets, speaker_ids, _used_shortcuts} =
-      selected_speakers
-      |> Enum.with_index(length(retained_sheets))
-      |> Enum.reduce({[], %{}, used_shortcuts}, fn {speaker, position}, {built, ids, used} ->
-        shortcut =
-          speaker
-          |> NameNormalizer.shortcutify()
-          |> Shortcut.unique(used)
-
-        id = stable_id("speaker_sheet", speaker)
-
-        sheet = %{
-          "id" => id,
-          "name" => speaker,
-          "shortcut" => shortcut,
-          "description" => "Imported Yarn Spinner character",
-          "color" => "#8b5cf6",
-          "position" => position,
-          "blocks" => []
-        }
-
-        {[sheet | built], Map.put(ids, speaker, id), MapSet.put(used, shortcut)}
-      end)
-
-    {retained_sheets ++ Enum.reverse(speaker_sheets), speaker_ids}
+    SpeakerSheets.append(retained_sheets, selected_speakers)
   end
 
   defp rebuild_speaker_sheets(_sheets, _selected_speakers), do: {[], %{}}
@@ -731,9 +733,12 @@ defmodule Storyarn.Imports.Parsers.Yarn.ReviewDecisions do
 
   defp apply_to_node(%{"type" => "dialogue", "data" => data} = node, selected_actions, speaker_sheet_ids)
        when is_map(data) do
-    case Map.get(data, "import_yarn_speaker") do
-      speaker when is_binary(speaker) ->
+    case {Map.get(data, "import_yarn_speaker"), Map.get(data, "import_yarn_inherited_speaker")} do
+      {speaker, _inherited} when is_binary(speaker) ->
         resolve_speaker_node(node, data, speaker, selected_actions, speaker_sheet_ids)
+
+      {_explicit, speaker} when is_binary(speaker) ->
+        resolve_inherited_speaker_node(node, data, speaker, selected_actions, speaker_sheet_ids)
 
       _ordinary_dialogue ->
         {:ok, node}
@@ -750,69 +755,141 @@ defmodule Storyarn.Imports.Parsers.Yarn.ReviewDecisions do
 
   defp resolve_speaker_node(node, data, speaker, selected_actions, speaker_sheet_ids) do
     with {:ok, decision} <- Map.fetch(selected_actions, speaker),
-         literal_text when is_binary(literal_text) <- Map.get(data, "import_yarn_literal_text") do
-      clean_data = Map.drop(data, @speaker_metadata_keys)
-
-      case decision.action do
-        "create_sheet" ->
-          {:ok,
-           Map.put(
-             node,
-             "data",
-             clean_data
-             |> Map.put("speaker_sheet_id", Map.fetch!(speaker_sheet_ids, speaker))
-             |> retain_review_metadata(data)
-           )}
-
-        "preserve_literal" ->
-          preserve_literal_node(node, clean_data, data, literal_text)
-
-        "map_to_sheet" ->
-          {:ok,
-           Map.put(
-             node,
-             "data",
-             clean_data
-             |> Map.put(
-               "speaker_sheet_id",
-               Map.fetch!(speaker_sheet_ids, decision.target_speaker)
-             )
-             |> retain_review_metadata(data)
-           )}
-      end
+         responses when is_list(responses) <- Map.get(data, "responses"),
+         {:ok, source} <- explicit_speaker_source(data, speaker) do
+      {:ok, Map.put(node, "data", resolve_explicit_speaker_data(data, speaker, decision, speaker_sheet_ids, source))}
     else
       _missing_or_invalid -> {:error, :invalid_import_review}
     end
   end
 
-  defp preserve_literal_node(node, clean_data, source_data, literal_text) do
-    case Map.get(clean_data, "responses") do
-      responses when is_list(responses) ->
+  defp resolve_explicit_speaker_data(data, speaker, decision, speaker_sheet_ids, source) do
+    {speaker_sheet_id, rendered_text} =
+      case decision.action do
+        "create_sheet" ->
+          {Map.fetch!(speaker_sheet_ids, speaker), render_speaker_source(source, :body, data)}
+
+        "preserve_literal" ->
+          {nil, render_speaker_source(source, :full, data)}
+
+        "map_to_sheet" ->
+          {Map.fetch!(speaker_sheet_ids, decision.target_speaker), render_speaker_source(source, :body, data)}
+      end
+
+    data
+    |> Map.drop(@speaker_metadata_keys)
+    |> Map.put("speaker_sheet_id", speaker_sheet_id)
+    |> Map.put("text", rendered_text)
+    |> retain_review_identity(data)
+    |> retain_speaker_source(source)
+  end
+
+  # Current plans keep exactly one raw source for an explicit speaker: the
+  # complete authored line. The literal-source candidate reads revisions made
+  # before that consolidation; once applied, those plans are rewritten to the
+  # same single-source shape. Plans old enough to have only rendered literal
+  # text retain that one legacy value so their decisions can still be revised.
+  defp explicit_speaker_source(data, speaker) do
+    literal_source = Map.get(data, "import_yarn_literal_source_text")
+    source_text = Map.get(data, "import_yarn_source_text")
+
+    cond do
+      match?({:ok, {:raw, _full, _body}}, split_explicit_source(literal_source, speaker)) ->
+        split_explicit_source(literal_source, speaker)
+
+      is_binary(Map.get(data, "import_yarn_literal_text")) and is_binary(source_text) ->
+        # Transitional plans stored the semantic body in `source_text` and the
+        # rendered full line separately. Rebuild a canonical raw full line;
+        # current plans never enter this branch because they have no literal key.
+        {:ok, {:raw, "#{speaker}: #{source_text}", source_text}}
+
+      match?({:ok, {:raw, _full, _body}}, split_explicit_source(source_text, speaker)) ->
+        split_explicit_source(source_text, speaker)
+
+      true ->
+        case Map.get(data, "import_yarn_literal_text") do
+          literal_text when is_binary(literal_text) -> legacy_rendered_source(literal_text, speaker)
+          _missing_legacy_text -> {:error, :invalid_import_review}
+        end
+    end
+  end
+
+  defp split_explicit_source(source_text, speaker) when is_binary(source_text) do
+    case SpeakerClassifier.split(source_text) do
+      {^speaker, body} -> {:ok, {:raw, source_text, body}}
+      _other -> {:error, :invalid_import_review}
+    end
+  end
+
+  defp split_explicit_source(_source_text, _speaker), do: {:error, :invalid_import_review}
+
+  defp legacy_rendered_source(literal_text, speaker) do
+    rendered_prefix = Expression.interpolate(speaker, :dialogue) <> ":"
+
+    case literal_text do
+      ^rendered_prefix <> remainder ->
+        case String.trim_leading(remainder) do
+          "" -> {:error, :invalid_import_review}
+          body_text -> {:ok, {:legacy_rendered_only, literal_text, body_text}}
+        end
+
+      _wrong_speaker_prefix ->
+        {:error, :invalid_import_review}
+    end
+  end
+
+  defp render_speaker_source({:raw, full_source, _body_source}, :full, _data),
+    do: Expression.interpolate(full_source, :dialogue)
+
+  defp render_speaker_source({:raw, _full_source, body_source}, :body, _data),
+    do: Expression.interpolate(body_source, :dialogue)
+
+  defp render_speaker_source({:legacy_rendered_only, literal_text, _body_text}, :full, _data), do: literal_text
+
+  defp render_speaker_source({:legacy_rendered_only, _literal_text, body_text}, :body, _data), do: body_text
+
+  defp retain_speaker_source(data, {:raw, full_source, _body_source}) do
+    Map.put(data, "import_yarn_source_text", full_source)
+  end
+
+  defp retain_speaker_source(data, {:legacy_rendered_only, literal_text, _body_text}) do
+    Map.put(data, "import_yarn_literal_text", literal_text)
+  end
+
+  defp resolve_inherited_speaker_node(node, data, speaker, selected_actions, speaker_sheet_ids) do
+    case Map.fetch(selected_actions, speaker) do
+      {:ok, decision} ->
+        clean_data = Map.drop(data, @speaker_metadata_keys)
+
+        speaker_sheet_id =
+          case decision.action do
+            "create_sheet" -> Map.fetch!(speaker_sheet_ids, speaker)
+            "preserve_literal" -> nil
+            "map_to_sheet" -> Map.fetch!(speaker_sheet_ids, decision.target_speaker)
+          end
+
         {:ok,
          Map.put(
            node,
            "data",
            clean_data
-           |> Map.put("speaker_sheet_id", nil)
-           |> Map.put("text", literal_text)
-           |> retain_review_metadata(source_data)
+           |> Map.put("speaker_sheet_id", speaker_sheet_id)
+           |> retain_review_identity(data)
+           |> retain_source_text(data)
          )}
 
-      _invalid_responses ->
+      _missing_or_invalid ->
         {:error, :invalid_import_review}
     end
   end
 
-  defp retain_review_metadata(data, source_data) do
-    Map.merge(data, Map.take(source_data, @speaker_metadata_keys))
+  defp retain_review_identity(data, source_data) do
+    Map.merge(data, Map.take(source_data, ~w(import_yarn_inherited_speaker import_yarn_speaker)))
   end
 
-  defp stable_id(prefix, value), do: "#{prefix}_#{digest(value)}"
-
-  defp digest(value) do
-    :sha256
-    |> :crypto.hash(value)
-    |> Base.url_encode64(padding: false)
-    |> binary_part(0, 16)
+  defp retain_source_text(data, %{"import_yarn_source_text" => source_text}) when is_binary(source_text) do
+    Map.put(data, "import_yarn_source_text", source_text)
   end
+
+  defp retain_source_text(data, _source_data), do: data
 end

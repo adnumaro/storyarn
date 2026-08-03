@@ -48,12 +48,14 @@ interface FormatVisual {
 }
 
 const {
+  canExport,
   formatConfig,
   sectionConfig,
   options,
   validation = null,
   exportDownloadUrl,
 } = defineProps<{
+  canExport: boolean;
   formatConfig: FormatConfig;
   sectionConfig: SectionConfig;
   options: ExportOptions;
@@ -167,11 +169,12 @@ const selectedAssetMode = computed(
     assetModeOptions.value.find((assetMode) => assetMode.value === options.assetMode) ??
     assetModeOptions.value[0],
 );
-const canExport = computed(() => includedSections.value.length > 0);
+const hasExportableContent = computed(() => includedSections.value.length > 0);
 const validationIsStale = computed(() => validation?.stale === true);
 const canDownload = computed(
   () =>
-    canExport.value &&
+    canExport &&
+    hasExportableContent.value &&
     (!options.validateBeforeExport ||
       (validation != null && !validationIsStale.value && validation.status !== "errors")),
 );
@@ -210,7 +213,7 @@ function hasEntityCount(section: string) {
 }
 
 function setFormat(format: string) {
-  if (format !== formatConfig.selected) live.pushEvent("set_format", { format });
+  if (canExport && format !== formatConfig.selected) live.pushEvent("set_format", { format });
 }
 
 watch(
@@ -231,15 +234,17 @@ watch(
 );
 
 function toggleSection(section: string) {
-  if (supportedSet.value.has(section)) live.pushEvent("toggle_section", { section });
+  if (canExport && supportedSet.value.has(section)) {
+    live.pushEvent("toggle_section", { section });
+  }
 }
 
 function setAssetMode(mode: string) {
-  live.pushEvent("set_asset_mode", { mode });
+  if (canExport) live.pushEvent("set_asset_mode", { mode });
 }
 
 function setLocalizationPolicy(policy: string) {
-  if (policy === "release" || policy === "preview") {
+  if (canExport && (policy === "release" || policy === "preview")) {
     live.pushEvent("set_localization_policy", { policy });
   }
 }
@@ -249,11 +254,11 @@ function localizationModeLabel(mode: LocalizationMode) {
 }
 
 function toggleOption(option: string) {
-  live.pushEvent("toggle_option", { option });
+  if (canExport) live.pushEvent("toggle_option", { option });
 }
 
 function validateExport() {
-  if (validating.value || !canExport.value) return;
+  if (!canExport || validating.value || !hasExportableContent.value) return;
 
   validating.value = true;
   const epoch = ++validationEpoch;
@@ -370,38 +375,40 @@ function validationDescription(status: string) {
 }
 
 function validationPanelClass(status: string) {
-  if (validationIsStale.value) return "border-warning/30 bg-warning/5";
-  if (status === "passed") return "border-success/30 bg-success/5";
-  if (status === "warnings") return "border-warning/30 bg-warning/5";
-  if (status === "errors") return "border-error/30 bg-error/5";
-  return "border-base-300 bg-base-100";
+  if (validationIsStale.value) return "border-amber-500/30 bg-amber-500/5";
+  if (status === "passed") return "border-emerald-500/30 bg-emerald-500/5";
+  if (status === "warnings") return "border-amber-500/30 bg-amber-500/5";
+  if (status === "errors") return "border-destructive/30 bg-destructive/5";
+  return "border-border bg-card";
 }
 
 function validationIconClass(status: string) {
-  if (validationIsStale.value) return "bg-warning/15 text-warning";
-  if (status === "passed") return "bg-success/15 text-success";
-  if (status === "warnings") return "bg-warning/15 text-warning";
-  if (status === "errors") return "bg-error/15 text-error";
-  return "bg-info/15 text-info";
+  if (validationIsStale.value) return "bg-amber-500/15 text-amber-700 dark:text-amber-300";
+  if (status === "passed") return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+  if (status === "warnings") return "bg-amber-500/15 text-amber-700 dark:text-amber-300";
+  if (status === "errors") return "bg-destructive/15 text-destructive";
+  return "bg-sky-500/15 text-sky-700 dark:text-sky-300";
 }
 </script>
 
 <template>
   <section id="export-workspace" class="space-y-5">
-    <div class="overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm">
+    <div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <header
-        class="flex flex-col gap-3 border-b border-base-300 bg-base-200/40 px-5 py-4 sm:flex-row sm:items-center"
+        class="flex flex-col gap-3 border-b border-border bg-muted/40 px-5 py-4 sm:flex-row sm:items-center"
       >
         <div class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <Download class="size-5" />
         </div>
         <div class="min-w-0 flex-1">
           <h2 class="font-semibold">{{ $t("project_settings.export.workspace_title") }}</h2>
-          <p class="mt-1 text-sm text-base-content/55">
+          <p class="mt-1 text-sm text-muted-foreground">
             {{ $t("project_settings.export.workspace_description") }}
           </p>
         </div>
-        <span class="badge badge-outline badge-sm whitespace-nowrap">
+        <span
+          class="inline-flex items-center whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground"
+        >
           {{
             $t(
               "project_settings.export.format_count",
@@ -416,12 +423,13 @@ function validationIconClass(status: string) {
         <legend class="text-sm font-semibold">
           {{ $t("project_settings.export.choose_format") }}
         </legend>
-        <p class="mt-1 text-xs text-base-content/50">
+        <p class="mt-1 text-xs text-muted-foreground">
           {{ $t("project_settings.export.choose_format_description") }}
         </p>
 
         <RadioGroup
           :model-value="formatConfig.selected"
+          :disabled="!canExport"
           class="mt-3 grid gap-2 sm:grid-cols-2"
           @update:model-value="setFormat"
         >
@@ -433,11 +441,12 @@ function validationIconClass(status: string) {
               'group relative flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-all duration-200 focus-within:ring-2 focus-within:ring-primary/30',
               formatConfig.selected === format.format
                 ? 'border-primary/45 bg-primary/5 shadow-sm'
-                : 'border-base-300 bg-base-100 hover:-translate-y-0.5 hover:border-base-content/25 hover:shadow-sm',
+                : 'border-border bg-background hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-sm',
             ]"
           >
             <RadioGroupItem
               :value="format.format"
+              :disabled="!canExport"
               :aria-label="format.label"
               class="absolute size-px opacity-0"
             />
@@ -445,8 +454,8 @@ function validationIconClass(status: string) {
               :class="[
                 'flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors',
                 formatConfig.selected === format.format
-                  ? 'bg-primary text-primary-content'
-                  : 'bg-base-200 text-base-content/65 group-hover:bg-base-300',
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground group-hover:bg-accent',
               ]"
             >
               <component :is="formatVisual(format.format).icon" class="size-4" />
@@ -454,14 +463,19 @@ function validationIconClass(status: string) {
             <span class="min-w-0 flex-1">
               <span class="flex items-center gap-2">
                 <span class="truncate text-sm font-medium">{{ formatName(format) }}</span>
-                <span v-if="format.extension" class="badge badge-ghost badge-xs uppercase">
+                <span
+                  v-if="format.extension"
+                  class="inline-flex rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground"
+                >
                   {{ extensionLabel(format.extension) }}
                 </span>
               </span>
-              <span class="mt-1 block text-xs leading-relaxed text-base-content/50">
+              <span class="mt-1 block text-xs leading-relaxed text-muted-foreground">
                 {{ formatDescription(format.format) }}
               </span>
-              <span class="badge badge-ghost badge-sm mt-2">
+              <span
+                class="mt-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+              >
                 {{ localizationModeLabel(format.localizationMode) }}
               </span>
             </span>
@@ -477,15 +491,17 @@ function validationIconClass(status: string) {
     <template v-if="selectedFormatVisible">
       <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
         <div class="space-y-5">
-          <section class="rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
+          <section class="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div class="flex items-start justify-between gap-4">
               <div>
                 <h3 class="font-semibold">{{ $t("project_settings.export.content") }}</h3>
-                <p class="mt-1 text-xs text-base-content/50">
+                <p class="mt-1 text-xs text-muted-foreground">
                   {{ $t("project_settings.export.content_description") }}
                 </p>
               </div>
-              <span class="badge badge-primary badge-outline badge-sm whitespace-nowrap">
+              <span
+                class="inline-flex items-center whitespace-nowrap rounded-full border border-primary/30 px-2 py-0.5 text-xs font-medium text-primary"
+              >
                 {{
                   $t(
                     "project_settings.export.selected_count",
@@ -504,50 +520,60 @@ function validationIconClass(status: string) {
                 :class="[
                   'flex items-start gap-3 rounded-lg border p-3 transition-colors',
                   supportedSet.has(section.key)
-                    ? 'cursor-pointer border-base-300 hover:bg-base-200/45'
-                    : 'cursor-not-allowed border-base-300/60 bg-base-200/30 opacity-55',
+                    ? 'cursor-pointer border-border hover:bg-muted/45'
+                    : 'cursor-not-allowed border-border/60 bg-muted/30 opacity-55',
                 ]"
               >
                 <Checkbox
                   :model-value="supportedSet.has(section.key) && sectionsSet.has(section.key)"
-                  :disabled="!supportedSet.has(section.key)"
+                  :disabled="!canExport || !supportedSet.has(section.key)"
                   :aria-label="section.label"
                   class="mt-0.5"
                   @update:model-value="toggleSection(section.key)"
                 />
-                <component :is="section.icon" class="mt-0.5 size-4 shrink-0 text-base-content/55" />
+                <component
+                  :is="section.icon"
+                  class="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                />
                 <span class="min-w-0 flex-1">
                   <span class="flex items-center justify-between gap-2">
                     <span class="text-sm font-medium">{{ section.label }}</span>
                     <span
                       v-if="supportedSet.has(section.key)"
-                      class="badge badge-ghost badge-xs tabular-nums"
+                      class="inline-flex rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground"
                     >
                       {{
                         hasEntityCount(section.key) ? sectionConfig.entityCounts[section.key] : "—"
                       }}
                     </span>
-                    <span v-else class="badge badge-ghost badge-xs">
+                    <span
+                      v-else
+                      class="inline-flex rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    >
                       {{ $t("project_settings.export.not_supported") }}
                     </span>
                   </span>
-                  <span class="mt-0.5 block text-xs leading-relaxed text-base-content/45">
+                  <span class="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
                     {{ section.description }}
                   </span>
                 </span>
               </label>
             </div>
 
-            <div v-if="!canExport" class="alert alert-warning mt-4 py-2.5 text-sm" role="alert">
+            <div
+              v-if="!hasExportableContent"
+              class="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground"
+              role="alert"
+            >
               <AlertTriangle class="size-4" />
               <span>{{ $t("project_settings.export.select_content_warning") }}</span>
             </div>
           </section>
 
-          <section class="overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm">
-            <div class="border-b border-base-300 px-5 py-4">
+          <section class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <div class="border-b border-border px-5 py-4">
               <h3 class="font-semibold">{{ $t("project_settings.export.output_settings") }}</h3>
-              <p class="mt-1 text-xs text-base-content/50">
+              <p class="mt-1 text-xs text-muted-foreground">
                 {{ $t("project_settings.export.output_settings_description") }}
               </p>
             </div>
@@ -555,13 +581,14 @@ function validationIconClass(status: string) {
             <fieldset
               v-if="supportedSet.has('localization') && sectionsSet.has('localization')"
               id="export-localization-policy-options"
-              class="border-b border-base-300 p-5"
+              class="border-b border-border p-5"
             >
               <legend class="text-sm font-medium">
                 {{ $t("project_settings.export.localization_policy") }}
               </legend>
               <RadioGroup
                 :model-value="options.localizationPolicy"
+                :disabled="!canExport"
                 class="mt-3 grid gap-2 sm:grid-cols-2"
                 @update:model-value="setLocalizationPolicy"
               >
@@ -573,11 +600,12 @@ function validationIconClass(status: string) {
                     'relative flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-primary/30',
                     options.localizationPolicy === policy.value
                       ? 'border-primary/45 bg-primary/5'
-                      : 'border-base-300 hover:bg-base-200/40',
+                      : 'border-border hover:bg-muted/40',
                   ]"
                 >
                   <RadioGroupItem
                     :value="policy.value"
+                    :disabled="!canExport"
                     :aria-label="policy.label"
                     class="absolute size-px opacity-0"
                   />
@@ -593,16 +621,17 @@ function validationIconClass(status: string) {
             <fieldset
               v-if="assetsSupported"
               id="export-asset-mode-options"
-              class="border-b border-base-300 p-5"
+              class="border-b border-border p-5"
             >
               <legend class="text-sm font-medium">
                 {{ $t("project_settings.export.assets") }}
               </legend>
-              <p class="mt-1 text-xs text-base-content/50">
+              <p class="mt-1 text-xs text-muted-foreground">
                 {{ $t("project_settings.export.assets_description") }}
               </p>
               <RadioGroup
                 :model-value="options.assetMode"
+                :disabled="!canExport"
                 class="mt-3 grid gap-2 sm:grid-cols-3"
                 @update:model-value="setAssetMode"
               >
@@ -614,33 +643,34 @@ function validationIconClass(status: string) {
                     'relative flex cursor-pointer flex-col gap-2 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-primary/30',
                     options.assetMode === assetMode.value
                       ? 'border-primary/45 bg-primary/5'
-                      : 'border-base-300 hover:bg-base-200/40',
+                      : 'border-border hover:bg-muted/40',
                   ]"
                 >
                   <RadioGroupItem
                     :value="assetMode.value"
+                    :disabled="!canExport"
                     :aria-label="assetMode.label"
                     class="absolute size-px opacity-0"
                   />
                   <span class="flex items-center gap-2">
-                    <component :is="assetMode.icon" class="size-4 text-base-content/60" />
+                    <component :is="assetMode.icon" class="size-4 text-muted-foreground" />
                     <span class="text-sm font-medium">{{ assetMode.label }}</span>
                     <Check
                       v-if="options.assetMode === assetMode.value"
                       class="ml-auto size-3.5 text-primary"
                     />
                   </span>
-                  <span class="text-xs leading-relaxed text-base-content/45">
+                  <span class="text-xs leading-relaxed text-muted-foreground">
                     {{ assetMode.description }}
                   </span>
                 </label>
               </RadioGroup>
             </fieldset>
 
-            <div class="divide-y divide-base-300 px-5">
+            <div class="divide-y divide-border px-5">
               <div class="flex items-center gap-3 py-4">
                 <div
-                  class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info"
+                  class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300"
                 >
                   <ShieldCheck class="size-4" />
                 </div>
@@ -648,20 +678,21 @@ function validationIconClass(status: string) {
                   <span class="block text-sm font-medium">
                     {{ $t("project_settings.export.validate_before") }}
                   </span>
-                  <span class="mt-0.5 block text-xs text-base-content/50">
+                  <span class="mt-0.5 block text-xs text-muted-foreground">
                     {{ $t("project_settings.export.validate_before_description") }}
                   </span>
                 </label>
                 <Switch
                   id="validate-before-export"
                   :model-value="options.validateBeforeExport"
+                  :disabled="!canExport"
                   @update:model-value="toggleOption('validate_before_export')"
                 />
               </div>
 
               <div v-if="prettyPrintSupported" class="flex items-center gap-3 py-4">
                 <div
-                  class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary"
+                  class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground"
                 >
                   <Braces class="size-4" />
                 </div>
@@ -669,13 +700,14 @@ function validationIconClass(status: string) {
                   <span class="block text-sm font-medium">
                     {{ $t("project_settings.export.pretty_print") }}
                   </span>
-                  <span class="mt-0.5 block text-xs text-base-content/50">
+                  <span class="mt-0.5 block text-xs text-muted-foreground">
                     {{ $t("project_settings.export.pretty_print_description") }}
                   </span>
                 </label>
                 <Switch
                   id="pretty-print-output"
                   :model-value="options.prettyPrint"
+                  :disabled="!canExport"
                   @update:model-value="toggleOption('pretty_print')"
                 />
               </div>
@@ -685,10 +717,10 @@ function validationIconClass(status: string) {
 
         <aside
           data-testid="export-summary"
-          class="rounded-xl border border-base-300 bg-base-100 shadow-sm xl:sticky xl:top-5"
+          class="rounded-xl border border-border bg-card shadow-sm xl:sticky xl:top-5"
         >
-          <div class="border-b border-base-300 px-4 py-3.5">
-            <p class="text-xs font-semibold uppercase tracking-wider text-base-content/45">
+          <div class="border-b border-border px-4 py-3.5">
+            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {{ $t("project_settings.export.summary") }}
             </p>
           </div>
@@ -696,22 +728,22 @@ function validationIconClass(status: string) {
           <div class="space-y-4 p-4">
             <div class="flex items-center gap-3">
               <div
-                class="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-content"
+                class="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"
               >
                 <component :is="formatVisual(formatConfig.selected).icon" class="size-4" />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-semibold">{{ formatName(selectedFormat) }}</p>
-                <p class="text-xs text-base-content/50">
+                <p class="text-xs text-muted-foreground">
                   {{ $t("project_settings.export.download_file") }}
                   <span class="font-medium uppercase">.{{ formatConfig.extension }}</span>
                 </p>
               </div>
             </div>
 
-            <dl class="space-y-2.5 border-y border-base-300 py-3 text-xs">
+            <dl class="space-y-2.5 border-y border-border py-3 text-xs">
               <div class="flex items-center justify-between gap-3">
-                <dt class="text-base-content/50">{{ $t("project_settings.export.content") }}</dt>
+                <dt class="text-muted-foreground">{{ $t("project_settings.export.content") }}</dt>
                 <dd class="font-medium">
                   {{
                     $t(
@@ -723,18 +755,18 @@ function validationIconClass(status: string) {
                 </dd>
               </div>
               <div class="flex items-center justify-between gap-3">
-                <dt class="text-base-content/50">{{ $t("project_settings.export.entities") }}</dt>
+                <dt class="text-muted-foreground">{{ $t("project_settings.export.entities") }}</dt>
                 <dd class="font-medium tabular-nums">{{ includedEntityCount }}</dd>
               </div>
               <div v-if="assetsSupported" class="flex items-center justify-between gap-3">
-                <dt class="text-base-content/50">{{ $t("project_settings.export.assets") }}</dt>
+                <dt class="text-muted-foreground">{{ $t("project_settings.export.assets") }}</dt>
                 <dd class="truncate font-medium">{{ selectedAssetMode.label }}</dd>
               </div>
               <div
                 v-if="supportedSet.has('localization') && sectionsSet.has('localization')"
                 class="flex items-center justify-between gap-3"
               >
-                <dt class="text-base-content/50">
+                <dt class="text-muted-foreground">
                   {{ $t("project_settings.export.localization_policy") }}
                 </dt>
                 <dd class="truncate font-medium">
@@ -746,10 +778,13 @@ function validationIconClass(status: string) {
                 </dd>
               </div>
               <div class="flex items-center justify-between gap-3">
-                <dt class="text-base-content/50">{{ $t("project_settings.export.preflight") }}</dt>
+                <dt class="text-muted-foreground">{{ $t("project_settings.export.preflight") }}</dt>
                 <dd class="flex items-center gap-1.5 font-medium">
-                  <CheckCircle2 v-if="options.validateBeforeExport" class="size-3.5 text-success" />
-                  <CircleX v-else class="size-3.5 text-base-content/35" />
+                  <CheckCircle2
+                    v-if="options.validateBeforeExport"
+                    class="size-3.5 text-emerald-600 dark:text-emerald-400"
+                  />
+                  <CircleX v-else class="size-3.5 text-muted-foreground" />
                   {{
                     options.validateBeforeExport
                       ? $t("project_settings.export.enabled")
@@ -760,11 +795,20 @@ function validationIconClass(status: string) {
             </dl>
 
             <div class="space-y-2">
+              <p
+                v-if="!canExport"
+                data-testid="export-no-permission"
+                class="flex items-start gap-2 rounded-lg border border-border bg-muted p-3 text-xs text-muted-foreground"
+                role="status"
+              >
+                <ShieldCheck class="mt-0.5 size-3.5 shrink-0" />
+                <span>{{ $t("project_settings.export.no_permission") }}</span>
+              </p>
               <Button
                 type="button"
                 variant="outline"
                 class="w-full"
-                :disabled="validating || !canExport"
+                :disabled="!canExport || validating || !hasExportableContent"
                 data-testid="validate-export"
                 @click="validateExport"
               >
@@ -799,12 +843,15 @@ function validationIconClass(status: string) {
             <p
               v-if="
                 canExport &&
+                hasExportableContent &&
                 options.validateBeforeExport &&
                 (!validation || validationIsStale || validation.status === 'errors')
               "
               :class="[
                 'flex items-start gap-2 text-xs leading-relaxed',
-                !validation || validationIsStale ? 'text-warning' : 'text-error',
+                !validation || validationIsStale
+                  ? 'text-amber-700 dark:text-amber-300'
+                  : 'text-destructive',
               ]"
               role="alert"
             >
@@ -825,14 +872,14 @@ function validationIconClass(status: string) {
             <p
               v-if="downloadError"
               id="export-download-error"
-              class="flex items-start gap-2 text-xs leading-relaxed text-error"
+              class="flex items-start gap-2 text-xs leading-relaxed text-destructive"
               role="alert"
             >
               <CircleX class="mt-0.5 size-3.5 shrink-0" />
               <span>{{ downloadError }}</span>
             </p>
 
-            <p class="flex items-start gap-2 text-xs leading-relaxed text-base-content/45">
+            <p class="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
               <Info class="mt-0.5 size-3.5 shrink-0" />
               <span>{{ $t("project_settings.export.download_note") }}</span>
             </p>
@@ -874,11 +921,17 @@ function validationIconClass(status: string) {
               </h3>
               <span
                 :class="[
-                  'badge badge-sm badge-outline',
-                  validationIsStale && 'badge-warning',
-                  !validationIsStale && validation.status === 'passed' && 'badge-success',
-                  !validationIsStale && validation.status === 'warnings' && 'badge-warning',
-                  !validationIsStale && validation.status === 'errors' && 'badge-error',
+                  'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium',
+                  validationIsStale && 'border-amber-500/30 text-amber-700 dark:text-amber-300',
+                  !validationIsStale &&
+                    validation.status === 'passed' &&
+                    'border-emerald-500/30 text-emerald-700 dark:text-emerald-300',
+                  !validationIsStale &&
+                    validation.status === 'warnings' &&
+                    'border-amber-500/30 text-amber-700 dark:text-amber-300',
+                  !validationIsStale &&
+                    validation.status === 'errors' &&
+                    'border-destructive/30 text-destructive',
                 ]"
               >
                 {{
@@ -888,7 +941,7 @@ function validationIconClass(status: string) {
                 }}
               </span>
             </div>
-            <p v-if="!validationIsStale" class="mt-1 text-sm text-base-content/55">
+            <p v-if="!validationIsStale" class="mt-1 text-sm text-muted-foreground">
               {{ validationDescription(validation.status) }}
             </p>
           </div>
@@ -900,7 +953,7 @@ function validationIconClass(status: string) {
         >
           <div v-if="validation.errors?.length" class="space-y-2 lg:col-span-2">
             <h4
-              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-error"
+              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-destructive"
             >
               <CircleX class="size-3.5" />
               {{ $t("project_settings.export.error_findings") }}
@@ -908,7 +961,7 @@ function validationIconClass(status: string) {
             <div
               v-for="(finding, index) in visibleErrors"
               :key="`error-${index}`"
-              class="rounded-lg border border-error/20 bg-base-100/65 px-3 py-2.5 text-sm"
+              class="rounded-lg border border-destructive/20 bg-card/65 px-3 py-2.5 text-sm"
             >
               <LiveLink
                 v-if="finding.href"
@@ -921,7 +974,7 @@ function validationIconClass(status: string) {
             </div>
             <p
               v-if="hiddenFindingCount(validationCounts.errors)"
-              class="text-xs text-base-content/55"
+              class="text-xs text-muted-foreground"
             >
               {{
                 $t("project_settings.export.more_findings", {
@@ -933,7 +986,7 @@ function validationIconClass(status: string) {
 
           <div v-if="validation.warnings?.length" class="space-y-2">
             <h4
-              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-warning"
+              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300"
             >
               <AlertTriangle class="size-3.5" />
               {{ $t("project_settings.export.warning_findings") }}
@@ -941,7 +994,7 @@ function validationIconClass(status: string) {
             <div
               v-for="(finding, index) in visibleWarnings"
               :key="`warning-${index}`"
-              class="rounded-lg border border-warning/20 bg-base-100/65 px-3 py-2.5 text-sm"
+              class="rounded-lg border border-amber-500/20 bg-card/65 px-3 py-2.5 text-sm"
             >
               <LiveLink
                 v-if="finding.href"
@@ -954,7 +1007,7 @@ function validationIconClass(status: string) {
             </div>
             <p
               v-if="hiddenFindingCount(validationCounts.warnings)"
-              class="text-xs text-base-content/55"
+              class="text-xs text-muted-foreground"
             >
               {{
                 $t("project_settings.export.more_findings", {
@@ -966,7 +1019,7 @@ function validationIconClass(status: string) {
 
           <div v-if="validation.info?.length" class="space-y-2">
             <h4
-              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-info"
+              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300"
             >
               <Info class="size-3.5" />
               {{ $t("project_settings.export.info_findings") }}
@@ -974,7 +1027,7 @@ function validationIconClass(status: string) {
             <div
               v-for="(finding, index) in visibleInfo"
               :key="`info-${index}`"
-              class="rounded-lg border border-info/20 bg-base-100/65 px-3 py-2.5 text-sm"
+              class="rounded-lg border border-sky-500/20 bg-card/65 px-3 py-2.5 text-sm"
             >
               <LiveLink
                 v-if="finding.href"
@@ -987,7 +1040,7 @@ function validationIconClass(status: string) {
             </div>
             <p
               v-if="hiddenFindingCount(validationCounts.info)"
-              class="text-xs text-base-content/55"
+              class="text-xs text-muted-foreground"
             >
               {{
                 $t("project_settings.export.more_findings", {
@@ -1000,7 +1053,7 @@ function validationIconClass(status: string) {
 
         <div
           v-if="!validationIsStale && validation.status === 'passed' && !validation.info?.length"
-          class="flex items-center gap-2 border-t border-success/15 px-5 py-3 text-sm text-success"
+          class="flex items-center gap-2 border-t border-emerald-500/15 px-5 py-3 text-sm text-emerald-700 dark:text-emerald-300"
         >
           <CheckCircle2 class="size-4" />
           <span>{{ $t("project_settings.export.no_issues") }}</span>

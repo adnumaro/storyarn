@@ -34,6 +34,7 @@ defmodule Storyarn.Imports.Resume do
   @executable_import_job_states ~w(available scheduled retryable executing)
   @terminal_import_job_states ~w(cancelled completed discarded)
   @import_action :manage_project
+  @max_ready_preview_rebuilds 2
 
   @doc """
   Recovers the newest active import owned by the current user in a project.
@@ -124,14 +125,33 @@ defmodule Storyarn.Imports.Resume do
     user_id = scope.user.id
 
     with {:ok, attempt} <- reconcile_resumed_attempt(project.id, attempt_id, user_id, opts) do
-      preview_result = resume_preview(project.id, attempt, opts)
+      resume_consistent_attempt(
+        scope,
+        project,
+        attempt_id,
+        user_id,
+        attempt,
+        opts,
+        @max_ready_preview_rebuilds
+      )
+    end
+  end
 
-      with {:ok, _project, _membership} <- Projects.authorize(scope, project.id, @import_action),
-           {:ok, current_attempt} <- reconcile_resumed_attempt(project.id, attempt_id, user_id, opts) do
-        finish_resumed_import(attempt, current_attempt, preview_result, opts)
-      else
-        _not_authorized_or_missing -> {:error, :not_found}
-      end
+  defp resume_consistent_attempt(scope, project, attempt_id, user_id, attempt, opts, rebuilds_left) do
+    preview_result = resume_preview(project.id, attempt, opts)
+
+    with {:ok, _project, _membership} <- Projects.authorize(scope, project.id, @import_action),
+         {:ok, current_attempt} <- reconcile_resumed_attempt(project.id, attempt_id, user_id, opts) do
+      finish_resumed_import(
+        {scope, project, attempt_id, user_id},
+        attempt,
+        current_attempt,
+        preview_result,
+        opts,
+        rebuilds_left
+      )
+    else
+      _not_authorized_or_missing -> {:error, :not_found}
     end
   end
 
@@ -148,7 +168,6 @@ defmodule Storyarn.Imports.Resume do
         safely_build_resumed_preview(project_id, plan)
       end
 
-    report_resume_failure(attempt, result)
     result
   end
 
@@ -156,7 +175,7 @@ defmodule Storyarn.Imports.Resume do
 
   defp safely_build_resumed_preview(project_id, %ImportPlan{} = plan) do
     case Preview.preview(project_id, plan) do
-      {:ok, preview} -> {:ok, preview}
+      {:ok, preview} when is_map(preview) -> {:ok, preview}
       {:error, reason} -> {:error, reason}
       _unexpected -> {:error, :unexpected_import_error}
     end
@@ -181,35 +200,80 @@ defmodule Storyarn.Imports.Resume do
   defp report_resume_failure(_attempt, _result), do: :ok
 
   defp finish_resumed_import(
+         _resume_context,
          %ProjectImportAttempt{status: "ready", plan_storage_key: storage_key},
          %ProjectImportAttempt{status: "ready", plan_storage_key: storage_key} = current_attempt,
          {:ok, preview},
-         _opts
+         _opts,
+         _rebuilds_left
        ) do
     {:ok, current_attempt, preview}
   end
 
   defp finish_resumed_import(
+         _resume_context,
          %ProjectImportAttempt{status: "ready", plan_storage_key: storage_key},
-         %ProjectImportAttempt{status: "ready", plan_storage_key: storage_key},
+         %ProjectImportAttempt{status: "ready", plan_storage_key: storage_key} = current_attempt,
          {:error, reason},
-         _opts
+         _opts,
+         _rebuilds_left
        ) do
+    report_resume_failure(current_attempt, {:error, reason})
     {:error, reason}
   end
 
   defp finish_resumed_import(
+         {scope, project, attempt_id, user_id},
+         _initial_attempt,
+         %ProjectImportAttempt{status: "ready"} = current_attempt,
+         _preview_result,
+         opts,
+         rebuilds_left
+       )
+       when rebuilds_left > 0 do
+    # Review saves replace the encrypted plan with a newly bound revision. If
+    # that happens while this process is rebuilding the preview, the preview
+    # just built belongs to the old key. Rebuild from the durable current key
+    # and re-check authorization/state again before returning it.
+    resume_consistent_attempt(
+      scope,
+      project,
+      attempt_id,
+      user_id,
+      current_attempt,
+      opts,
+      rebuilds_left - 1
+    )
+  end
+
+  defp finish_resumed_import(
+         _resume_context,
+         _initial_attempt,
+         %ProjectImportAttempt{status: "ready"},
+         _preview_result,
+         _opts,
+         0
+       ) do
+    # A tab that keeps replacing the review revision cannot make us return a
+    # ready attempt without its matching preview. The client treats this as a
+    # transient reconciliation failure and can retry from the latest key.
+    {:error, :import_state_changed}
+  end
+
+  defp finish_resumed_import(
+         _resume_context,
          _initial_attempt,
          %ProjectImportAttempt{status: "completed"} = current_attempt,
          _preview_result,
-         opts
+         opts,
+         _rebuilds_left
        ) do
     PlanCleanup.cleanup_plan_if_pending(current_attempt, opts)
     Execution.replay_completed_side_effects(current_attempt)
     {:ok, current_attempt, nil}
   end
 
-  defp finish_resumed_import(_initial_attempt, current_attempt, _preview_result, opts) do
+  defp finish_resumed_import(_resume_context, _initial_attempt, current_attempt, _preview_result, opts, _rebuilds_left) do
     maybe_wake_resumed_import(current_attempt, opts)
     {:ok, current_attempt, nil}
   end
@@ -258,6 +322,19 @@ defmodule Storyarn.Imports.Resume do
   end
 
   defp reconcile_accepted_attempt(%ProjectImportAttempt{} = candidate) do
+    case Expiration.import_job_state(candidate.oban_job_id) do
+      state when state in @executable_import_job_states ->
+        # The worker commits `running` before taking the long materialization
+        # locks. Returning that snapshot is deliberately non-blocking: the next
+        # PubSub update or reconciliation will observe a concurrent completion.
+        {:ok, {:current, candidate}}
+
+      _terminal_or_unknown ->
+        reconcile_non_executable_attempt(candidate)
+    end
+  end
+
+  defp reconcile_non_executable_attempt(candidate) do
     Repo.transact(fn ->
       job_state = Expiration.lock_import_job_state(candidate.oban_job_id)
       attempt = lock_active_import_attempt(candidate.id, candidate.project_id, candidate.user_id)

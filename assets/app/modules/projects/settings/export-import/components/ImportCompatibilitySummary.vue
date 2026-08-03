@@ -102,7 +102,10 @@ const issueRows = computed(() =>
     </p>
   </section>
 
-  <div v-else-if="warningCodes.length > 0" class="alert alert-warning text-sm">
+  <div
+    v-else-if="warningCodes.length > 0"
+    class="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground"
+  >
     <AlertTriangle class="size-5 shrink-0" />
     <span>{{ $t("project_settings.import.compatibility_warnings") }}</span>
   </div>

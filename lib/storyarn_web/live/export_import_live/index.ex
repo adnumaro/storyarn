@@ -11,6 +11,11 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   @all_sections ~w(sheets flows scenes localization)a
   @archive_export_formats ~w(ink yarn godot unreal articy)a
+  @max_safe_import_attempt_id 9_007_199_254_740_991
+
+  defguardp valid_import_attempt_id(attempt_id)
+            when is_integer(attempt_id) and attempt_id > 0 and
+                   attempt_id <= @max_safe_import_attempt_id
 
   @impl true
   def render(assigns) do
@@ -36,10 +41,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         v-socket={@socket}
         v-inject="settings-layout"
         id="export-import-vue"
-        project-id={@project.id}
         can-edit={@can_edit}
         can-import={@can_import}
-        current-user-id={@current_scope.user.id}
+        resume-storage-key={Imports.resume_storage_key(@current_scope, @project)}
         import-state={serialize_import_state(@import_state)}
         upload-config={if(@can_import, do: @uploads.import_file, else: nil)}
         export-config={
@@ -145,7 +149,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       step: state.step,
       attemptId: state.attempt_id,
       preview: state.preview,
-      error: state.error,
+      errorCode: state.error_code,
       conflictStrategy: state.conflict_strategy,
       warningCodes: state.warning_codes,
       status: state.status
@@ -317,17 +321,28 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     end)
   end
 
-  def handle_event("set_strategy", %{"strategy" => strategy}, socket) when strategy in ~w(skip overwrite rename) do
+  def handle_event("set_strategy", %{"attempt_id" => attempt_id, "strategy" => strategy}, socket)
+      when valid_import_attempt_id(attempt_id) and strategy in ~w(skip overwrite rename) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      {:noreply, update_import_state(socket, &Map.put(&1, :conflict_strategy, strategy))}
+      case socket.assigns.import_state do
+        %{step: "preview", attempt_id: ^attempt_id} ->
+          update_import_strategy(socket, attempt_id, strategy)
+
+        _stale_state ->
+          {:noreply, socket}
+      end
     end)
   end
 
   def handle_event("set_strategy", _params, socket), do: {:noreply, socket}
 
-  def handle_event("save_import_review", %{"review_decisions" => decisions}, socket) when is_list(decisions) do
+  def handle_event("save_import_review", %{"attempt_id" => attempt_id, "review_decisions" => decisions}, socket)
+      when valid_import_attempt_id(attempt_id) and is_list(decisions) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      save_import_review_draft(socket, socket.assigns.import_state, decisions)
+      case current_import_state(socket, attempt_id) do
+        {:ok, state} -> save_import_review_draft(socket, state, decisions)
+        :stale -> {:reply, %{ok: false, reason: "stale"}, socket}
+      end
     end)
   end
 
@@ -337,17 +352,15 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   def handle_event(
         "validate_import_review",
-        %{"review_acknowledged" => acknowledged?, "review_decisions" => decisions},
+        %{"attempt_id" => attempt_id, "review_acknowledged" => acknowledged?, "review_decisions" => decisions},
         socket
       )
-      when is_boolean(acknowledged?) and is_list(decisions) do
+      when valid_import_attempt_id(attempt_id) and is_boolean(acknowledged?) and is_list(decisions) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      validate_import_review(
-        socket,
-        socket.assigns.import_state,
-        acknowledged?,
-        decisions
-      )
+      case current_import_state(socket, attempt_id) do
+        {:ok, state} -> validate_import_review(socket, state, acknowledged?, decisions)
+        :stale -> {:reply, %{ok: false, reason: "stale"}, socket}
+      end
     end)
   end
 
@@ -355,14 +368,17 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     {:reply, %{ok: false, reason: "invalid"}, socket}
   end
 
-  def handle_event("execute_import", %{"review_confirmation_fingerprint" => fingerprint}, socket)
-      when is_binary(fingerprint) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
-      execute_ready_import(
-        socket,
-        socket.assigns.import_state,
-        fingerprint
+  def handle_event(
+        "execute_import",
+        %{"attempt_id" => attempt_id, "review_confirmation_fingerprint" => fingerprint},
+        socket
       )
+      when valid_import_attempt_id(attempt_id) and is_binary(fingerprint) do
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
+      case current_import_state(socket, attempt_id) do
+        {:ok, state} -> execute_ready_import(socket, state, fingerprint)
+        :stale -> {:reply, %{ok: false, reason: "stale"}, socket}
+      end
     end)
   end
 
@@ -373,45 +389,31 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # The reply is the client's cue to drop its durable browser reference: it
   # must never clear it before the server has actually terminalized the
   # attempt, or a refused reset silently loses the completed-restore path.
-  def handle_event("reset_import", _params, socket) do
+  def handle_event("reset_import", %{"attempt_id" => nil}, socket) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      case cancel_resettable_import(socket) do
-        :ok ->
-          {:reply, %{ok: true}, assign(socket, :import_state, empty_import_state())}
-
-        {:error, :import_not_cancellable} ->
-          {:reply, %{ok: false, reason: "import_not_cancellable"},
-           put_flash(
-             socket,
-             :error,
-             dgettext(
-               "projects",
-               "This import is already running and cannot be dismissed. It will finish in the background."
-             )
-           )}
-
-        {:error, :reset_failed} ->
-          # The queued job could not be cancelled: the import is still live,
-          # so the panel and the durable browser reference must both survive.
-          # Reporting success here dropped the reference while the queued
-          # import went on to materialize.
-          {:reply, %{ok: false, reason: "reset_failed"},
-           put_flash(
-             socket,
-             :error,
-             dgettext("projects", "The import could not be dismissed. Try again.")
-           )}
+      if is_nil(socket.assigns.import_state.attempt_id) do
+        {:reply, %{ok: true, attempt_id: nil}, assign(socket, :import_state, empty_import_state())}
+      else
+        {:reply, %{ok: false, reason: "stale"}, socket}
       end
     end)
   end
 
-  def handle_event("resume_import", %{"attempt_id" => attempt_id}, socket)
-      when is_integer(attempt_id) and attempt_id > 0 and attempt_id <= 9_007_199_254_740_991 do
-    reconcile_import_attempt(socket, attempt_id, wake_queue: true)
+  def handle_event("reset_import", %{"attempt_id" => attempt_id}, socket) when valid_import_attempt_id(attempt_id) do
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
+      reset_import_attempt(socket, attempt_id)
+    end)
   end
 
-  def handle_event("reconcile_import", %{"attempt_id" => attempt_id}, socket)
-      when is_integer(attempt_id) and attempt_id > 0 and attempt_id <= 9_007_199_254_740_991 do
+  def handle_event("reset_import", _params, socket) do
+    {:reply, %{ok: false, reason: "invalid"}, socket}
+  end
+
+  def handle_event("resume_import", %{"attempt_id" => attempt_id}, socket) when valid_import_attempt_id(attempt_id) do
+    reconcile_import_attempt(socket, attempt_id, wake_queue: true, protect_active: true)
+  end
+
+  def handle_event("reconcile_import", %{"attempt_id" => attempt_id}, socket) when valid_import_attempt_id(attempt_id) do
     if socket.assigns.import_state.attempt_id == attempt_id do
       reconcile_import_attempt(socket, attempt_id)
     else
@@ -432,8 +434,12 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       # worker. Reload the durable attempt so a late queued/running message
       # cannot move a completed import back to an in-progress UI state.
       case Imports.get_import_attempt(socket.assigns.current_scope, attempt.id) do
-        {:ok, current_attempt} -> {:noreply, assign_import_attempt(socket, current_attempt)}
-        {:error, _reason} -> {:noreply, socket}
+        {:ok, current_attempt} ->
+          socket = assign_import_attempt(socket, current_attempt)
+          {:noreply, maybe_recover_active_after_terminal(socket, current_attempt)}
+
+        {:error, _reason} ->
+          {:noreply, socket}
       end
     else
       {:noreply, socket}
@@ -506,12 +512,130 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # Helpers — Import
   # ===========================================================================
 
+  defp current_import_state(socket, attempt_id) do
+    case socket.assigns.import_state do
+      %{attempt_id: ^attempt_id} = state -> {:ok, state}
+      _stale_state -> :stale
+    end
+  end
+
+  defp reset_import_attempt(socket, attempt_id) do
+    finish_import_reset(socket, attempt_id, cancel_import_attempt(socket, attempt_id))
+  end
+
+  defp finish_import_reset(socket, attempt_id, :ok) do
+    socket =
+      case current_import_state(socket, attempt_id) do
+        {:ok, _state} -> socket |> assign(:import_state, empty_import_state()) |> recover_latest_import()
+        :stale -> socket
+      end
+
+    {:reply, %{ok: true, attempt_id: attempt_id}, socket}
+  end
+
+  defp finish_import_reset(socket, attempt_id, {:error, :import_not_cancellable}) do
+    case load_project_import_attempt(socket, attempt_id) do
+      {:ok, attempt} ->
+        finish_loaded_non_cancellable_reset(socket, attempt_id, attempt)
+
+      :unavailable ->
+        import_not_cancellable_reply(socket)
+    end
+  end
+
+  # The queued job could not be cancelled: the import is still live, so the
+  # panel and durable browser reference must both survive.
+  defp finish_import_reset(socket, _attempt_id, {:error, :reset_failed}) do
+    {:reply, %{ok: false, reason: "reset_failed"},
+     put_flash(
+       socket,
+       :error,
+       dgettext("projects", "The import could not be dismissed. Try again.")
+     )}
+  end
+
+  defp finish_loaded_non_cancellable_reset(socket, attempt_id, attempt) do
+    if attempt.status in ProjectImportAttempt.active_statuses() do
+      socket
+      |> refresh_displayed_import_attempt(attempt_id, attempt)
+      |> import_not_cancellable_reply()
+    else
+      # The socket lost the terminal PubSub update and tried to cancel the
+      # stale ready/queued snapshot. The durable row is already safe to
+      # dismiss, so acknowledge the reset instead of trapping the panel.
+      finish_import_reset(socket, attempt_id, :ok)
+    end
+  end
+
+  defp refresh_displayed_import_attempt(socket, attempt_id, attempt) do
+    case current_import_state(socket, attempt_id) do
+      {:ok, _state} -> assign_import_attempt(socket, attempt)
+      :stale -> socket
+    end
+  end
+
+  defp import_not_cancellable_reply(socket) do
+    {:reply, %{ok: false, reason: "import_not_cancellable"},
+     put_flash(
+       socket,
+       :error,
+       dgettext(
+         "projects",
+         "This import is already running and cannot be dismissed. It will finish in the background."
+       )
+     )}
+  end
+
+  defp update_import_strategy(socket, attempt_id, strategy) do
+    case Imports.update_import_strategy(socket.assigns.current_scope, attempt_id, strategy) do
+      {:ok, attempt} ->
+        {:noreply, assign_import_attempt(socket, attempt)}
+
+      {:error, reason} ->
+        {:noreply,
+         reconcile_failed_import_mutation(socket, attempt_id, fn current_socket ->
+           assign_import_error(current_socket, reason, current_socket.assigns.import_state.status)
+         end)}
+    end
+  end
+
+  # Every mutation starts from an exact attempt id, but another tab can move
+  # that row after the client rendered its ready snapshot. On any failure,
+  # adopt a durable non-ready state before projecting a local error. Otherwise
+  # a missed PubSub message can leave Reset operating forever on stale state.
+  defp reconcile_failed_import_mutation(socket, attempt_id, ready_fallback) do
+    case load_project_import_attempt(socket, attempt_id) do
+      {:ok, %ProjectImportAttempt{status: "ready"}} ->
+        ready_fallback.(socket)
+
+      {:ok, attempt} ->
+        socket
+        |> assign_import_attempt(attempt)
+        |> maybe_recover_active_after_terminal(attempt)
+
+      :unavailable ->
+        ready_fallback.(socket)
+    end
+  end
+
+  defp load_project_import_attempt(socket, attempt_id) do
+    case Imports.get_import_attempt(socket.assigns.current_scope, attempt_id) do
+      {:ok, %ProjectImportAttempt{project_id: project_id} = attempt}
+      when project_id == socket.assigns.project.id ->
+        {:ok, attempt}
+
+      _unavailable ->
+        :unavailable
+    end
+  end
+
   defp empty_import_state do
     %{
       step: "upload",
       attempt_id: nil,
       preview: nil,
       error: nil,
+      error_code: nil,
       conflict_strategy: "rename",
       warning_codes: [],
       status: nil
@@ -552,10 +676,17 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         # The stored review no longer authorizes this fingerprint; the client
         # must revalidate. A silent {:noreply} here left the button doing
         # nothing with no explanation.
-        {:reply, %{ok: false, reason: "stale"}, socket}
+        {:reply, %{ok: false, reason: "stale"},
+         reconcile_failed_import_mutation(socket, attempt_id, &Function.identity/1)}
 
       {:error, reason} ->
-        {:reply, %{ok: false, reason: import_review_failure(reason)}, assign_import_error(socket, reason)}
+        # Plan storage can fail without changing the durable attempt. Preserve
+        # its ready status so Reset still terminalizes it instead of clearing
+        # only the browser state and letting mount restore it again.
+        {:reply, %{ok: false, reason: import_review_failure(reason)},
+         reconcile_failed_import_mutation(socket, attempt_id, fn current_socket ->
+           assign_import_error(current_socket, reason, state.status)
+         end)}
     end
   end
 
@@ -570,7 +701,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         {:reply, %{ok: true}, assign_import_attempt(socket, attempt, preview)}
 
       {:error, reason} ->
-        {:reply, %{ok: false, reason: import_review_failure(reason)}, socket}
+        {:reply, %{ok: false, reason: import_review_failure(reason)},
+         reconcile_failed_import_mutation(socket, attempt_id, &Function.identity/1)}
     end
   end
 
@@ -591,7 +723,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
          assign_import_attempt(socket, attempt, preview)}
 
       {:error, reason} ->
-        {:reply, %{ok: false, reason: import_review_failure(reason)}, socket}
+        {:reply, %{ok: false, reason: import_review_failure(reason)},
+         reconcile_failed_import_mutation(socket, attempt_id, &Function.identity/1)}
     end
   end
 
@@ -666,7 +799,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       {:ok, nil} ->
         socket
 
-      {:error, _reason, %ProjectImportAttempt{} = attempt} ->
+      {:error, reason, %ProjectImportAttempt{} = attempt} ->
         # The durable attempt exists but its preview could not be rebuilt.
         # An in-panel error keeps the attempt id on screen, so Reset can
         # terminalize it — a flash over an empty uploader left the user with
@@ -680,6 +813,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
               "projects",
               "Your previous import could not be restored. Reset it and upload the file again."
             ),
+          error_code: import_error_code(reason),
           conflict_strategy: attempt.conflict_strategy || "rename",
           warning_codes: attempt.warning_codes || [],
           status: attempt.status
@@ -708,6 +842,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       attempt_id: attempt.id,
       preview: preview,
       error: if(step == "error", do: import_attempt_error(attempt)),
+      error_code: attempt.error_code,
       conflict_strategy: attempt.conflict_strategy || "rename",
       warning_codes: attempt.warning_codes || [],
       status: attempt.status
@@ -739,15 +874,24 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   defp reconcile_import_attempt(socket, attempt_id, opts \\ []) do
+    protect_active? = Keyword.get(opts, :protect_active, false)
+    resume_opts = Keyword.delete(opts, :protect_active)
+
     with :ok <- Authorize.authorize(socket, :manage_project),
          {:ok, attempt, preview} <-
            Imports.resume_import(
              socket.assigns.current_scope,
              socket.assigns.project,
              attempt_id,
-             opts
+             resume_opts
            ) do
-      {:reply, %{ok: true, status: attempt.status}, assign_import_attempt(socket, attempt, preview)}
+      case protect_active_import(socket, attempt, protect_active?) do
+        {:preserve, protected_socket} ->
+          {:reply, %{ok: false, reason: "superseded"}, protected_socket}
+
+        {:replace, replace_socket} ->
+          replace_reconciled_import(replace_socket, attempt, preview, protect_active?)
+      end
     else
       {:error, reason} ->
         reconcile_import_failure(socket, attempt_id, reason)
@@ -755,6 +899,73 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       _reason ->
         reconcile_import_failure(socket, attempt_id, :unavailable)
     end
+  end
+
+  defp replace_reconciled_import(socket, attempt, preview, protect_active?) do
+    socket = assign_import_attempt(socket, attempt, preview)
+
+    socket =
+      if protect_active? do
+        socket
+      else
+        maybe_recover_active_after_terminal(socket, attempt)
+      end
+
+    {:reply, %{ok: true, status: socket.assigns.import_state.status}, socket}
+  end
+
+  # Browser references may outlive their attempt. A newer terminal reference
+  # must not replace an older import that is still writing merely because its
+  # numeric id sorts later. Re-read the displayed row: the socket can lag a
+  # worker transition, while the durable status is authoritative.
+  defp protect_active_import(socket, _requested_attempt, false), do: {:replace, socket}
+
+  defp protect_active_import(socket, requested_attempt, true) do
+    active_statuses = ProjectImportAttempt.active_statuses()
+
+    if requested_attempt.status in active_statuses do
+      {:replace, socket}
+    else
+      socket = recover_visible_active_import(socket, requested_attempt.id)
+
+      case socket.assigns.import_state do
+        %{attempt_id: current_id, status: status}
+        when is_integer(current_id) and current_id != requested_attempt.id and
+               status in ["ready", "queued", "running", "retrying"] ->
+          {:preserve, socket}
+
+        _not_active ->
+          {:replace, socket}
+      end
+    end
+  end
+
+  defp recover_visible_active_import(socket, requested_attempt_id) do
+    current_attempt_id = socket.assigns.import_state.attempt_id
+
+    socket =
+      if is_integer(current_attempt_id) and current_attempt_id != requested_attempt_id do
+        case load_project_import_attempt(socket, current_attempt_id) do
+          {:ok, attempt} -> assign_import_attempt(socket, attempt)
+          :unavailable -> socket
+        end
+      else
+        socket
+      end
+
+    case socket.assigns.import_state do
+      %{attempt_id: current_id, status: status}
+      when is_integer(current_id) and current_id != requested_attempt_id and
+             status in ["ready", "queued", "running", "retrying"] ->
+        socket
+
+      _not_active ->
+        recover_latest_import(socket)
+    end
+  end
+
+  defp maybe_recover_active_after_terminal(socket, attempt) do
+    if attempt.status in ProjectImportAttempt.active_statuses(), do: socket, else: recover_latest_import(socket)
   end
 
   defp reconcile_import_failure(socket, attempt_id, reason) do
@@ -778,37 +989,31 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp import_resume_failure(:invalid_attempt_id), do: "invalid"
   defp import_resume_failure(_reason), do: "unavailable"
 
-  defp assign_import_error(socket, reason) do
+  defp assign_import_error(socket, reason, status \\ "failed") do
     state = %{
       socket.assigns.import_state
       | step: "error",
         error: import_error_message(reason),
-        status: "failed"
+        error_code: import_error_code(reason),
+        status: status
     }
 
     assign(socket, :import_state, state)
   end
 
-  defp update_import_state(socket, fun) do
-    assign(socket, :import_state, fun.(socket.assigns.import_state))
-  end
-
-  # Clearing the panel is not enough on its own: `recover_latest_import/1` reads
-  # the durable attempt on every mount, so an attempt left active comes straight
-  # back on the next navigation. Reset therefore has to terminalize what it
-  # dismisses. `ready` and `queued` are cancellable — nothing has been written.
-  # `running` and `retrying` are refused: that import is materializing into the
-  # project and hiding it would be a lie.
-  defp cancel_resettable_import(socket) do
-    case socket.assigns.import_state do
-      %{attempt_id: attempt_id, status: status}
-      when is_integer(attempt_id) and status in ["ready", "queued"] ->
+  # The payload identity records what the user actually dismissed. Honor that
+  # exact cancellation even if a preceding cross-tab resume event changed this
+  # socket before the click reached the server. The context reauthorizes and
+  # locks the row; success clears the panel only when it still displays the
+  # same id, so a delayed reset cannot erase a newer attempt.
+  defp cancel_import_attempt(socket, attempt_id) do
+    case load_project_import_attempt(socket, attempt_id) do
+      {:ok, _attempt} ->
         cancellation_outcome(Imports.cancel_import(socket.assigns.current_scope, attempt_id))
 
-      %{status: status} when status in ["running", "retrying"] ->
-        {:error, :import_not_cancellable}
-
-      _nothing_to_cancel ->
+      :unavailable ->
+        # Missing, unauthorized and cross-project ids remain indistinguishable.
+        # There is nothing in this LiveView's project that may be dismissed.
         :ok
     end
   end
@@ -838,10 +1043,41 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     )
   end
 
-  defp import_attempt_error(%ProjectImportAttempt{error_message: message}) when is_binary(message) and message != "",
-    do: message
+  defp import_attempt_error(%ProjectImportAttempt{error_code: code})
+       when code in ["duplicate_yarn_node_title", "import_plan_has_errors"] do
+    import_error_message(:import_plan_has_errors)
+  end
+
+  defp import_attempt_error(%ProjectImportAttempt{error_code: code})
+       when code in [
+              "archive_entry_too_large",
+              "archive_expansion_ratio_exceeded",
+              "archive_missing_yarn_files",
+              "archive_too_large",
+              "archive_too_many_entries",
+              "duplicate_archive_entry",
+              "file_too_large",
+              "invalid_archive",
+              "invalid_archive_path",
+              "invalid_json",
+              "invalid_json_structure",
+              "invalid_text_encoding",
+              "nested_archive_not_allowed",
+              "unsupported_archive_entry",
+              "unsupported_import_format",
+              "yarn_document_limit_exceeded",
+              "yarn_statement_limit_exceeded"
+            ] do
+    import_error_message(:invalid_archive)
+  end
 
   defp import_attempt_error(_attempt), do: generic_import_error()
+
+  defp import_error_code(reason) when is_atom(reason), do: to_string(reason)
+  defp import_error_code(reason) when is_binary(reason), do: reason
+  defp import_error_code({reason, _details}) when is_atom(reason), do: to_string(reason)
+  defp import_error_code({reason, _one, _two}) when is_atom(reason), do: to_string(reason)
+  defp import_error_code(_reason), do: "unexpected_import_error"
 
   defp expired_import_message("import_cancelled") do
     dgettext("projects", "The import was cancelled. No project content was changed.")

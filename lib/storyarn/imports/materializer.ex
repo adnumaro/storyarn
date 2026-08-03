@@ -21,8 +21,11 @@ defmodule Storyarn.Imports.Materializer do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Imports.ImportPlan
+  alias Storyarn.Imports.Parsers.Yarn.Expression
+  alias Storyarn.Imports.Parsers.Yarn.Layout
   alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Imports.Parsers.Yarn.Shortcut
+  alias Storyarn.Imports.Parsers.Yarn.SpeakerClassifier
   alias Storyarn.Localization
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.RuntimeKey
@@ -48,9 +51,13 @@ defmodule Storyarn.Imports.Materializer do
     glossary_entries: 10_000
   }
   @transient_import_node_data_keys ~w(
+    import_yarn_inherited_speaker
     import_yarn_speaker
     import_yarn_literal_text
+    import_yarn_literal_source_text
+    import_yarn_source_text
   )
+  @transient_import_response_data_keys ~w(import_yarn_source_text)
 
   # =============================================================================
   # Plan validation
@@ -331,7 +338,10 @@ defmodule Storyarn.Imports.Materializer do
          counts: counts,
          conflicts: conflicts,
          has_conflicts: conflicts != %{},
-         import_review: Map.get(data, "import_review", %{}),
+         import_review:
+           data
+           |> Map.get("import_review", %{})
+           |> ReviewDecisions.put_allowed_actions(),
          import_review_draft: Map.get(data, "import_review_draft"),
          import_review_resolution: Map.get(data, "import_review_resolution")
        }}
@@ -702,40 +712,26 @@ defmodule Storyarn.Imports.Materializer do
 
   defp record_shortcut_rename(renames, _imported, _resolved), do: renames
 
-  # Imported node data references variables through their sheet shortcut — as
-  # the `"sheet"`/`"value_sheet"` fields of condition rules and instruction
-  # assignments, and as `{shortcut.name}` / `$shortcut.name` forms embedded in
-  # generated text. When a colliding sheet shortcut is suffixed on import,
-  # every one of those references must follow the rename, or the imported
-  # nodes silently read the previous import's sheet.
-  # Annotation nodes exist to show the operator the unsupported Yarn source
-  # verbatim — in Yarn, `$yarn.gold` is a variable literally named
-  # "yarn.gold", not a `sheet.variable` reference, so rewriting it there
-  # falsifies the very text the node preserves.
+  # Imported node data references variables through semantic fields: structured
+  # `sheet`/`value_sheet`/`variable_ref` keys, encoded response conditions, and
+  # the interpolation syntax understood by dialogue/response rendering. Rewrite
+  # only those sites. A recursive rewrite of every string corrupts authored
+  # prose and assignment literals that merely happen to contain `$yarn.gold`.
   defp rewrite_imported_refs(node_data, "annotation", _renames), do: node_data
+
+  defp rewrite_imported_refs(node_data, "dialogue", renames) do
+    node_data
+    |> rewrite_variable_shortcuts(renames)
+    |> rewrite_dialogue_interpolations(renames)
+  end
+
   defp rewrite_imported_refs(node_data, _type, renames), do: rewrite_variable_shortcuts(node_data, renames)
 
   defp rewrite_variable_shortcuts(node_data, renames) when renames == %{} or not is_map(node_data), do: node_data
 
-  defp rewrite_variable_shortcuts(node_data, renames),
-    do: deep_rewrite_refs(node_data, {renames, embedded_ref_pattern(renames)})
+  defp rewrite_variable_shortcuts(node_data, renames), do: deep_rewrite_refs(node_data, renames)
 
-  # Single pass on purpose: applying the renames one by one would let one
-  # rename's output contain another's search pattern ("yarn"→"yarn-2" chased
-  # by "yarn-2"→"yarn-3" chains), with map iteration order deciding the
-  # result. One alternation match per site cannot chain. Compiled once per
-  # node, not once per string.
-  defp embedded_ref_pattern(renames) do
-    alternation =
-      renames
-      |> Map.keys()
-      |> Enum.sort_by(&byte_size/1, :desc)
-      |> Enum.map_join("|", &Regex.escape/1)
-
-    Regex.compile!("([{$])(" <> alternation <> ")\\.")
-  end
-
-  defp deep_rewrite_refs(%{} = map, {renames, _pattern} = rewrite) do
+  defp deep_rewrite_refs(%{} = map, renames) do
     Map.new(map, fn
       {key, value} when key in ["sheet", "value_sheet"] and is_binary(value) ->
         {key, Map.get(renames, value, value)}
@@ -745,7 +741,7 @@ defmodule Storyarn.Imports.Materializer do
       # rewrite structurally, re-encode. Anything that is not the JSON shape
       # is ordinary text and takes the embedded pass.
       {"condition" = key, value} when is_binary(value) ->
-        {key, rewrite_encoded_condition(value, rewrite)}
+        {key, rewrite_encoded_condition(value, renames)}
 
       # Display zones reference a variable as a bare "shortcut.name" string,
       # with no sigil for the embedded pass to key on.
@@ -753,28 +749,123 @@ defmodule Storyarn.Imports.Materializer do
         {key, rewrite_bare_variable_ref(value, renames)}
 
       {key, value} ->
-        {key, deep_rewrite_refs(value, rewrite)}
+        {key, deep_rewrite_refs(value, renames)}
     end)
   end
 
-  defp deep_rewrite_refs(list, rewrite) when is_list(list), do: Enum.map(list, &deep_rewrite_refs(&1, rewrite))
+  defp deep_rewrite_refs(list, renames) when is_list(list), do: Enum.map(list, &deep_rewrite_refs(&1, renames))
 
-  defp deep_rewrite_refs(value, {renames, pattern}) when is_binary(value) do
-    Regex.replace(pattern, value, fn _match, sigil, imported ->
-      sigil <> Map.fetch!(renames, imported) <> "."
-    end)
-  end
+  defp deep_rewrite_refs(value, _renames), do: value
 
-  defp deep_rewrite_refs(value, _rewrite), do: value
-
-  defp rewrite_encoded_condition(value, rewrite) do
+  defp rewrite_encoded_condition(value, renames) do
     case Jason.decode(value) do
       {:ok, decoded} when is_map(decoded) or is_list(decoded) ->
-        decoded |> deep_rewrite_refs(rewrite) |> Jason.encode!()
+        decoded |> deep_rewrite_refs(renames) |> Jason.encode!()
 
       _not_structured ->
-        deep_rewrite_refs(value, rewrite)
+        value
     end
+  end
+
+  defp rewrite_dialogue_interpolations(data, renames) when renames == %{} or not is_map(data), do: data
+
+  defp rewrite_dialogue_interpolations(data, renames) do
+    data
+    |> rewrite_dialogue_text(renames)
+    |> Map.update("responses", [], fn
+      responses when is_list(responses) ->
+        Enum.map(responses, fn
+          response when is_map(response) ->
+            rewrite_response_interpolations(response, renames)
+
+          response ->
+            response
+        end)
+
+      responses ->
+        responses
+    end)
+  end
+
+  defp rewrite_dialogue_text(%{"import_yarn_source_text" => source_text} = data, renames) when is_binary(source_text) do
+    shortcut = Map.get(renames, "yarn", "yarn")
+
+    data
+    |> dialogue_source_for_rendering(source_text)
+    |> Expression.interpolate(:dialogue, shortcut)
+    |> then(&Map.put(data, "text", &1))
+  end
+
+  # Backwards-compatible fallback for a stored plan created before Yarn source
+  # text was retained. New plans always take the source-aware clause above.
+  defp rewrite_dialogue_text(data, renames) do
+    Map.update(data, "text", nil, &rewrite_semantic_interpolations(&1, renames, :dialogue))
+  end
+
+  # Explicit dialogue keeps its complete authored source so review decisions
+  # can be revised without reparsing. A linked speaker renders only the body;
+  # preserve-literal renders the complete line. Legacy revisions may carry a
+  # separate literal source and are folded through the same path before their
+  # metadata is removed on persistence.
+  defp dialogue_source_for_rendering(data, source_text) do
+    case Map.get(data, "import_yarn_speaker") do
+      speaker when is_binary(speaker) ->
+        full_source = legacy_literal_source(data) || source_text
+
+        if is_nil(Map.get(data, "speaker_sheet_id")),
+          do: full_source,
+          else: explicit_dialogue_body(full_source, source_text, speaker)
+
+      _ordinary_or_inherited ->
+        source_text
+    end
+  end
+
+  defp legacy_literal_source(%{"import_yarn_literal_source_text" => source_text}) when is_binary(source_text),
+    do: source_text
+
+  defp legacy_literal_source(_data), do: nil
+
+  defp explicit_dialogue_body(full_source, fallback_source, speaker) do
+    case SpeakerClassifier.split(full_source) do
+      {^speaker, body} -> body
+      _legacy_body_only -> fallback_source
+    end
+  end
+
+  # A single alternation avoids rename chains (`yarn` -> `yarn-2` followed by
+  # `yarn-2` -> `yarn-2-2`). Curly interpolation is semantic in dialogue text;
+  # dollar interpolation is semantic in response labels. Other strings remain
+  # byte-for-byte authored prose.
+  defp rewrite_semantic_interpolations(value, renames, mode) when is_binary(value) do
+    {prefix, suffix} = if(mode == :dialogue, do: {"{", "}"}, else: {"$", ""})
+
+    alternation =
+      renames
+      |> Map.keys()
+      |> Enum.sort_by(&byte_size/1, :desc)
+      |> Enum.map_join("|", &Regex.escape/1)
+
+    pattern =
+      Regex.compile!(
+        Regex.escape(prefix) <> "(" <> alternation <> ")\\.([A-Za-z_][A-Za-z0-9_.]*)" <> Regex.escape(suffix)
+      )
+
+    Regex.replace(pattern, value, fn _match, imported, variable ->
+      prefix <> Map.fetch!(renames, imported) <> "." <> variable <> suffix
+    end)
+  end
+
+  defp rewrite_semantic_interpolations(value, _renames, _mode), do: value
+
+  defp rewrite_response_interpolations(%{"import_yarn_source_text" => source_text} = response, renames)
+       when is_binary(source_text) do
+    shortcut = Map.get(renames, "yarn", "yarn")
+    Map.put(response, "text", Expression.interpolate(source_text, :response, shortcut))
+  end
+
+  defp rewrite_response_interpolations(response, renames) do
+    Map.update(response, "text", nil, &rewrite_semantic_interpolations(&1, renames, :response))
   end
 
   defp rewrite_bare_variable_ref(value, renames) do
@@ -913,6 +1004,8 @@ defmodule Storyarn.Imports.Materializer do
   end
 
   defp create_flow_record(project, flow_data, shortcut, map, sheet_shortcut_renames) do
+    flow_data = finalize_import_flow_layout(flow_data, sheet_shortcut_renames)
+
     attrs = %{
       "name" => flow_data["name"],
       "shortcut" => shortcut,
@@ -938,6 +1031,43 @@ defmodule Storyarn.Imports.Materializer do
 
     {map, flow, length(node_results)}
   end
+
+  # Yarn layout is initially computed while the review is still unresolved and
+  # before target-project shortcut conflicts are known. Re-measure the final
+  # rendered data immediately before persistence so review decisions and
+  # semantic shortcut rewrites cannot make parallel nodes overlap. Only copy
+  # positions back: applying the rewrites to the persisted input here would
+  # allow chained shortcut maps to be rewritten a second time in `import_nodes`.
+  defp finalize_import_flow_layout(
+         %{"settings" => %{"import_source" => "yarn_spinner"}, "nodes" => nodes} = flow_data,
+         shortcut_renames
+       )
+       when is_list(nodes) do
+    layout_nodes =
+      Enum.map(nodes, fn node ->
+        Map.update(node, "data", %{}, &rewrite_imported_refs(&1, node["type"], shortcut_renames))
+      end)
+
+    positions =
+      layout_nodes
+      |> Layout.assign_positions(
+        flow_data["connections"] || [],
+        flow_data["import_yarn_annotation_anchors"] || %{}
+      )
+      |> Map.new(&{&1["id"], {&1["position_x"], &1["position_y"]}})
+
+    positioned_nodes =
+      Enum.map(nodes, fn node ->
+        case Map.fetch(positions, node["id"]) do
+          {:ok, {x, y}} -> node |> Map.put("position_x", x) |> Map.put("position_y", y)
+          :error -> node
+        end
+      end)
+
+    Map.put(flow_data, "nodes", positioned_nodes)
+  end
+
+  defp finalize_import_flow_layout(flow_data, _shortcut_renames), do: flow_data
 
   defp import_nodes(project_id, flow_id, nodes, id_map, sheet_shortcut_renames) do
     existing_dialogue_ids = load_dialogue_localization_ids(project_id)
@@ -1049,7 +1179,7 @@ defmodule Storyarn.Imports.Materializer do
   defp clean_responses(%{"responses" => responses} = data) when is_list(responses) do
     cleaned =
       Enum.map(responses, fn resp ->
-        Map.delete(resp, "instruction_assignments")
+        Map.drop(resp, ["instruction_assignments" | @transient_import_response_data_keys])
       end)
 
     Map.put(data, "responses", cleaned)

@@ -7,44 +7,54 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
 
   use PhoenixTest.Playwright.Case, async: false
 
+  import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import StoryarnWeb.E2EHelpers
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Imports
+  alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Repo
 
   @moduletag :e2e
 
   test "restores a completed import after navigation and reset does not resurrect it", %{conn: conn} do
     user = user_fixture()
-    scope = Scope.for_user(user)
     project = user |> project_fixture(%{name: "Import Resume Project"}) |> Repo.preload(:workspace)
-
-    assert {:ok, ready, _preview} =
-             Imports.prepare_import(
-               scope,
-               project,
-               "resume-project.yarn",
-               "title: Resume Start\n---\nHello after navigation\n===\n"
-             )
-
-    assert {:ok, queued} = Imports.enqueue_import(scope, ready.id, :rename)
+    yarn_path = yarn_fixture()
 
     import_path =
       "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
 
     project_path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+    resume_storage_key = Imports.resume_storage_key(Scope.for_user(user), project)
 
     conn
     |> authenticate(user)
     |> visit(import_path)
+    |> assert_has("#yarn-import-file-picker")
+    |> unwrap(fn %{frame_id: frame_id} ->
+      {:ok, _} =
+        PlaywrightEx.Frame.set_input_files(frame_id,
+          selector: "input[name='import_file']",
+          local_paths: [yarn_path],
+          timeout: 10_000
+        )
+    end)
+    |> assert_has("span", text: Path.basename(yarn_path))
+    |> click("#yarn-import-preview")
+    |> assert_has("#yarn-import-validate:not([disabled])")
+    |> click("#yarn-import-validate")
+    |> assert_has("#yarn-import-confirm:not([disabled])")
+    |> click("#yarn-import-confirm")
     |> assert_has("[data-testid='yarn-import-processing']")
-    |> store_attempt_reference(project.id, user.id, queued.id)
+    |> assert_attempt_reference_matches_latest(project.id, user.id, resume_storage_key)
     |> visit(project_path)
     |> assert_has("[data-testid='project-stat-flows']")
     |> unwrap(fn _browser ->
+      queued = latest_active_attempt(project.id, user.id)
+
       assert {:ok, completed} =
                Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
 
@@ -55,7 +65,7 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     |> assert_has("[data-testid='yarn-import-reset']")
     |> click("[data-testid='yarn-import-reset']")
     |> assert_has("#yarn-import-file-picker")
-    |> assert_attempt_reference_cleared(project.id, user.id)
+    |> assert_attempt_reference_cleared(resume_storage_key)
     |> visit(project_path)
     |> assert_has("[data-testid='project-stat-flows']")
     |> visit(import_path)
@@ -63,35 +73,55 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     |> refute_has("span", text: "The Yarn project was imported successfully.")
   end
 
-  defp store_attempt_reference(session, project_id, user_id, attempt_id) do
+  defp assert_attempt_reference_matches_latest(session, project_id, user_id, resume_storage_key) do
+    attempt = latest_active_attempt(project_id, user_id)
+    attempt_storage_key = "#{resume_storage_key}:attempt:#{attempt.id}"
+
     evaluate(
       session,
       """
-      ({ key, attemptId }) => {
-        window.localStorage.setItem(
-          key,
-          JSON.stringify({ version: 1, attemptId, savedAt: Date.now() })
-        );
-      }
+      key => JSON.parse(window.localStorage.getItem(key))
       """,
-      is_function: true,
-      arg: %{
-        "key" => storage_key(project_id, user_id),
-        "attemptId" => attempt_id
-      }
+      [is_function: true, arg: attempt_storage_key],
+      fn stored ->
+        assert stored["version"] == 1
+        assert stored["attemptId"] == attempt.id
+        assert is_number(stored["savedAt"])
+      end
     )
   end
 
-  defp assert_attempt_reference_cleared(session, project_id, user_id) do
+  defp assert_attempt_reference_cleared(session, resume_storage_key) do
     evaluate(
       session,
-      "key => window.localStorage.getItem(key)",
-      [is_function: true, arg: storage_key(project_id, user_id)],
-      fn value -> assert is_nil(value) end
+      """
+      namespace => Object.keys(window.localStorage).filter(
+        key => key === namespace || key.startsWith(`${namespace}:attempt:`)
+      )
+      """,
+      [is_function: true, arg: resume_storage_key],
+      fn keys -> assert keys == [] end
     )
   end
 
-  # Scoped to the signed-in user as well as the project, so a shared browser
-  # cannot hand one member's in-flight attempt to the next.
-  defp storage_key(project_id, user_id), do: "storyarn:project-import:#{project_id}:#{user_id}"
+  defp latest_active_attempt(project_id, user_id) do
+    Repo.one!(
+      from attempt in ProjectImportAttempt,
+        where:
+          attempt.project_id == ^project_id and attempt.user_id == ^user_id and
+            attempt.status in ["ready", "queued", "running", "retrying"],
+        order_by: [desc: attempt.id],
+        limit: 1
+    )
+  end
+
+  defp yarn_fixture do
+    filename = "storyarn-import-resume-#{System.unique_integer([:positive])}.yarn"
+    path = Path.join(System.tmp_dir!(), filename)
+
+    File.write!(path, "title: Resume Start\n---\nHello after navigation\n===\n")
+    on_exit(fn -> File.rm(path) end)
+
+    path
+  end
 end

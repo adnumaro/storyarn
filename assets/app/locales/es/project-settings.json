@@ -302,7 +302,18 @@
       "success": "El proyecto Yarn se ha importado correctamente.",
       "import_another": "Importar otro proyecto",
       "try_again": "Probar otro archivo",
-      "no_permission": "Solo los propietarios del proyecto pueden importar en este proyecto. Importar sustituye el contenido del proyecto.",
+      "no_permission": "Solo los propietarios del proyecto pueden importar en este proyecto.",
+      "errors": {
+        "cancelled": "La importación se canceló. No se modificó ningún contenido del proyecto.",
+        "discarded": "Esta importación no se pudo validar y se descartó. Vuelve a validar el archivo antes de importarlo.",
+        "expired": "La importación no pudo ejecutarse antes de vencer el plazo de retención. No se modificó ningún contenido del proyecto.",
+        "generic": "No se pudo completar la importación. No se modificó ningún contenido del proyecto.",
+        "invalid_file": "El proyecto de Yarn seleccionado no es válido o supera los límites de seguridad de la importación.",
+        "project_has_main_flow": "Este proyecto ya tiene un flujo principal, por lo que no se pudo crear el importado. No se modificó ningún contenido del proyecto.",
+        "preview_expired": "Esta previsualización de importación caducó antes de iniciarse. Vuelve a subir el archivo.",
+        "unauthorized": "Ya no tienes permiso para importar en este proyecto.",
+        "unsupported_narrative": "Este proyecto de Yarn usa lógica narrativa que Storyarn no puede importar de forma segura. No se modificó ningún contenido del proyecto."
+      },
       "issue_codes": {
         "dynamic_yarn_speaker": "Speaker dinámico conservado",
         "possible_yarn_speaker_alias": "Posible alias de personaje",
@@ -404,6 +415,7 @@
       "validate": "Validar",
       "validating": "Validando…",
       "download": "Descargar .{ext}",
+      "no_permission": "Necesitas permiso de edición para validar o descargar una exportación.",
       "download_blocked": "Resuelve los problemas bloqueantes y vuelve a validar antes de descargar.",
       "download_failed": "No se ha podido descargar la exportación. Inténtalo de nuevo.",
       "download_failed_validation": "No se ha podido generar la exportación. Vuelve a validar y revisa los hallazgos bloqueantes.",
