@@ -1,0 +1,22 @@
+lib/storyarn/imports/materializer.ex
+  s_4a035ed2898f8e::t_dbc73860dc43f9 744-745
+  s_4a035ed2898f8e::t_dd352cd57bac4d 713-714,716-731,737,741,743,749
+test/storyarn/imports/materializer_test.exs
+  s_4a035ed2898f8e::t_6e15d4790dda3b 402-435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7668bb8a81fd042ecd221adcfbc19a0c20b73ec8",
+  "prompts": {},
+  "sessions": {
+    "s_4a035ed2898f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e33c65-8259-4fc8-a28e-47e1a25c1e9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
