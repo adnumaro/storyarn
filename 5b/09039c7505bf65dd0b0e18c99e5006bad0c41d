@@ -1,0 +1,21 @@
+assets/app/modules/projects/settings/export-import/composables/useYarnImportReview.ts
+  s_4a035ed2898f8e::t_b5496c309f3086 1
+  s_4a035ed2898f8e::t_f3ee630f560578 895-898
+  s_4a035ed2898f8e::t_5f210bbc733b0d 899
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5b09039c7505bf65dd0b0e18c99e5006bad0c41d",
+  "prompts": {},
+  "sessions": {
+    "s_4a035ed2898f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e33c65-8259-4fc8-a28e-47e1a25c1e9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
