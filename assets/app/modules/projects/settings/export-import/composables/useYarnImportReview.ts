@@ -25,7 +25,10 @@ import type {
  */
 
 const REVIEW_SAVE_DEBOUNCE_MS = 500;
-const OPERATION_WATCHDOG_MS = 5_000;
+// Validate resolves the whole review server-side (plan-scale read-modify-write
+// plus a confirmation hash), so this is deliberately looser than the
+// single-row reconcile watchdog in useImportResume.
+const OPERATION_WATCHDOG_MS = 10_000;
 
 const SPEAKER_DIRECT_ACTIONS = new Set<YarnSpeakerDirectAction>([
   "create_sheet",
@@ -662,6 +665,7 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
   let syncedRevision = 0;
   let operationToken = 0;
   let operationWatchdog: ReturnType<typeof setTimeout> | null = null;
+  let saveWatchdog: ReturnType<typeof setTimeout> | null = null;
 
   function surfaceTransportError(operation: "save" | "validate" | "execute", reason: unknown) {
     transportError.value = {
@@ -697,6 +701,13 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
     }
   }
 
+  function clearSaveWatchdog() {
+    if (saveWatchdog !== null) {
+      clearTimeout(saveWatchdog);
+      saveWatchdog = null;
+    }
+  }
+
   function clearSaveTimer() {
     if (saveTimer !== null) {
       clearTimeout(saveTimer);
@@ -720,10 +731,26 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
       saveTimer = null;
       const sentRevision = localRevision;
 
+      // The one failure neither callback covers is a push that is accepted
+      // and never answered — exactly what leaves the dirty guard blocking
+      // remote adoption with no signal. The watchdog gives that case a voice;
+      // a newer push re-arms it, and an attempt change zeroes the revisions
+      // it checks.
+      clearSaveWatchdog();
+      saveWatchdog = setTimeout(() => {
+        saveWatchdog = null;
+
+        if (sentRevision === localRevision && syncedRevision < sentRevision) {
+          surfaceTransportError("save", "unavailable");
+        }
+      }, OPERATION_WATCHDOG_MS);
+
       live.pushEvent(
         "save_import_review",
         { review_decisions: buildDecisions() },
         (reply) => {
+          if (sentRevision === localRevision) clearSaveWatchdog();
+
           if (reply.ok === true) {
             syncedRevision = Math.max(syncedRevision, sentRevision);
             if (transportError.value?.operation === "save") transportError.value = null;
@@ -735,7 +762,10 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
           if (sentRevision === localRevision) surfaceTransportError("save", reply.reason);
         },
         () => {
-          if (sentRevision === localRevision) surfaceTransportError("save", "unavailable");
+          if (sentRevision === localRevision) {
+            clearSaveWatchdog();
+            surfaceTransportError("save", "unavailable");
+          }
         },
       );
     }, REVIEW_SAVE_DEBOUNCE_MS);
@@ -791,6 +821,7 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
 
     clearSaveTimer();
     const sentRevision = localRevision;
+    const sentAttemptId = importState().attemptId;
     const token = beginOperation("validate");
 
     live.pushEvent(
@@ -800,14 +831,22 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
         review_decisions: buildDecisions(),
       },
       (reply) => {
-        if (!settleOperation(token)) return;
+        const settled = settleOperation(token);
 
+        // A success that arrives after the watchdog gave up is still a
+        // success: the server accepted exactly what was sent, so the review
+        // is synced and a watchdog complaint is stale — as long as the panel
+        // still shows the attempt the reply belongs to.
         if (reply.ok === true) {
-          syncedRevision = Math.max(syncedRevision, sentRevision);
-          transportError.value = null;
-        } else {
-          surfaceTransportError("validate", reply.reason);
+          if (importState().attemptId === sentAttemptId) {
+            syncedRevision = Math.max(syncedRevision, sentRevision);
+            transportError.value = null;
+          }
+
+          return;
         }
+
+        if (settled) surfaceTransportError("validate", reply.reason);
       },
       () => {
         if (settleOperation(token)) surfaceTransportError("validate", "unavailable");
@@ -819,6 +858,7 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
     const current = resolution.value;
     if (!canExecute.value || !current || pendingOperation.value !== null) return;
 
+    const sentAttemptId = importState().attemptId;
     const token = beginOperation("execute");
 
     live.pushEvent(
@@ -827,13 +867,14 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
         review_confirmation_fingerprint: current.decision_fingerprint,
       },
       (reply) => {
-        if (!settleOperation(token)) return;
+        const settled = settleOperation(token);
 
         if (reply.ok === true) {
-          transportError.value = null;
-        } else {
-          surfaceTransportError("execute", reply.reason);
+          if (importState().attemptId === sentAttemptId) transportError.value = null;
+          return;
         }
+
+        if (settled) surfaceTransportError("execute", reply.reason);
       },
       () => {
         if (settleOperation(token)) surfaceTransportError("execute", "unavailable");
@@ -860,6 +901,12 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
     }),
   );
 
+  // Watcher order is load-bearing: Vue runs same-flush watchers in creation
+  // order, so on an attempt change this fingerprint watcher fires FIRST while
+  // the revisions still describe the previous attempt — the dirty guard bails
+  // — and the attemptId watcher below then does the full reset + restore.
+  // Registered the other way round, a dirty review would carry stale
+  // decisions into the next file's review.
   watch(
     stateFingerprint,
     () => {
@@ -884,6 +931,7 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
       syncedRevision = 0;
       operationToken += 1;
       clearOperationWatchdog();
+      clearSaveWatchdog();
       pendingOperation.value = null;
       transportError.value = null;
       acknowledged.value = false;
@@ -894,6 +942,7 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
 
   onUnmounted(() => {
     clearSaveTimer();
+    clearSaveWatchdog();
     clearOperationWatchdog();
   });
 

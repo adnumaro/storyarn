@@ -869,6 +869,24 @@ describe("ImportPanel resume state", () => {
     wrapper.unmount();
   });
 
+  it("surfaces a draft save whose reply never arrives", async () => {
+    const wrapper = mountPanel(reviewedPreviewState());
+
+    await wrapper.findAll('[data-testid="yarn-import-action-create-sheet"]')[0]!.trigger("click");
+    vi.advanceTimersByTime(500);
+    expect(reviewEventCalls("save_import_review")).toHaveLength(1);
+
+    // The push was accepted and went silent: no reply, no error callback.
+    // This is the exact case only a watchdog can voice.
+    vi.advanceTimersByTime(10_000);
+    await wrapper.vm.$nextTick();
+
+    const banner = wrapper.get('[data-testid="yarn-import-review-error"]');
+    expect(banner.text().length).toBeGreaterThan(0);
+
+    wrapper.unmount();
+  });
+
   it("surfaces a rejected validate instead of failing silently", async () => {
     const wrapper = mountPanel(reviewedPreviewState());
 
