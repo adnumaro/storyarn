@@ -240,6 +240,10 @@ defmodule Storyarn.Imports.Execution do
 
   defp finish_import({:terminal, attempt}, _started_at, opts) do
     PlanCleanup.cleanup_plan_if_pending(attempt, opts)
+    # Every terminal transition announces itself. This one covers the worker
+    # expiring an attempt at the absolute deadline — without it, an open page
+    # kept showing "queued" until its polling backstop noticed.
+    Queue.broadcast(attempt)
     {:ok, attempt}
   end
 

@@ -95,6 +95,24 @@ const showAcknowledgement = computed(
     !review.matchesResolution.value,
 );
 
+// Server rejections carry coarse reason codes; each maps to catalog copy so
+// raw codes never render as UI text.
+const reviewErrorMessage = computed(() => {
+  const failure = review.transportError.value;
+  if (!failure) return null;
+
+  if (failure.operation === "save") return t("project_settings.import.review_error_save");
+
+  switch (failure.reason) {
+    case "stale":
+      return t("project_settings.import.review_error_stale");
+    case "unauthorized":
+      return t("project_settings.import.review_error_unauthorized");
+    default:
+      return t("project_settings.import.review_error_failed");
+  }
+});
+
 function handleUploadSubmit() {
   upload?.submit();
 }
@@ -104,9 +122,15 @@ function setStrategy(strategy: string) {
 }
 
 function resetImport() {
+  // The durable browser reference is dropped only once the server confirms
+  // the reset. A refused reset (the import is already running) keeps both the
+  // reference and the reconcile backstop; the server explains it via flash.
+  const attemptId = importState.attemptId;
+
   review.clearSaveTimer();
-  resume.dismissActiveAttempt();
-  live.pushEvent("reset_import", {});
+  live.pushEvent("reset_import", {}, (reply) => {
+    if (reply.ok === true) resume.dismissAttempt(typeof attemptId === "number" ? attemptId : null);
+  });
 }
 
 function formatFileSize(bytes: number) {
@@ -247,7 +271,7 @@ function formatFileSize(bytes: number) {
             id="yarn-import-validate"
             variant="outline"
             size="sm"
-            :disabled="!review.canValidate.value"
+            :disabled="!review.canValidate.value || review.pendingOperation.value !== null"
             @click="review.validate"
           >
             <Eye class="size-4" />
@@ -256,7 +280,7 @@ function formatFileSize(bytes: number) {
           <Button
             id="yarn-import-confirm"
             size="sm"
-            :disabled="!review.canExecute.value"
+            :disabled="!review.canExecute.value || review.pendingOperation.value !== null"
             @click="review.execute"
           >
             <Upload class="size-4" />
@@ -265,6 +289,16 @@ function formatFileSize(bytes: number) {
           <Button data-testid="yarn-import-reset" variant="ghost" size="sm" @click="resetImport">
             {{ $t("project_settings.import.cancel") }}
           </Button>
+        </div>
+
+        <div
+          v-if="reviewErrorMessage"
+          data-testid="yarn-import-review-error"
+          role="alert"
+          class="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+        >
+          <AlertTriangle class="mt-0.5 size-4 shrink-0" />
+          <span>{{ reviewErrorMessage }}</span>
         </div>
       </div>
 

@@ -25,6 +25,7 @@ import type {
  */
 
 const REVIEW_SAVE_DEBOUNCE_MS = 500;
+const OPERATION_WATCHDOG_MS = 5_000;
 
 const SPEAKER_DIRECT_ACTIONS = new Set<YarnSpeakerDirectAction>([
   "create_sheet",
@@ -35,6 +36,11 @@ const SPEAKER_CONFIDENCE_LEVELS = new Set<YarnSpeakerConfidence>(["high", "mediu
 export interface UseYarnImportReviewOptions {
   canImport: () => boolean;
   importState: () => ImportState;
+}
+
+export interface YarnReviewTransportError {
+  operation: "save" | "validate" | "execute";
+  reason: string;
 }
 
 export interface YarnImportReviewApi {
@@ -56,6 +62,8 @@ export interface YarnImportReviewApi {
   sheetSpeakerCount: ComputedRef<number | undefined>;
   preservedChannelCount: ComputedRef<number | undefined>;
   mappedAliasCount: ComputedRef<number>;
+  pendingOperation: Ref<"validate" | "execute" | null>;
+  transportError: Ref<YarnReviewTransportError | null>;
   selectedAction: (speaker: string) => YarnSpeakerAction | undefined;
   selectedActionValue: (speaker: string) => string | undefined;
   actionOptions: (decision: YarnSpeakerDecision) => SpeakerActionOption[];
@@ -644,6 +652,51 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
       nonEmptyString(resolution.value?.decision_fingerprint),
   );
 
+  const pendingOperation = ref<"validate" | "execute" | null>(null);
+  const transportError = ref<YarnReviewTransportError | null>(null);
+
+  // Monotone revisions correlate local edits with server acknowledgements: a
+  // props echo of an older save must never clobber newer local selections,
+  // and a reply for an outdated push must never surface as a fresh failure.
+  let localRevision = 0;
+  let syncedRevision = 0;
+  let operationToken = 0;
+  let operationWatchdog: ReturnType<typeof setTimeout> | null = null;
+
+  function surfaceTransportError(operation: "save" | "validate" | "execute", reason: unknown) {
+    transportError.value = {
+      operation,
+      reason: typeof reason === "string" && reason !== "" ? reason : "unavailable",
+    };
+  }
+
+  function beginOperation(operation: "validate" | "execute"): number {
+    pendingOperation.value = operation;
+    const token = ++operationToken;
+
+    clearOperationWatchdog();
+    operationWatchdog = setTimeout(() => {
+      if (settleOperation(token)) surfaceTransportError(operation, "unavailable");
+    }, OPERATION_WATCHDOG_MS);
+
+    return token;
+  }
+
+  function settleOperation(token: number): boolean {
+    if (token !== operationToken || pendingOperation.value === null) return false;
+
+    clearOperationWatchdog();
+    pendingOperation.value = null;
+    return true;
+  }
+
+  function clearOperationWatchdog() {
+    if (operationWatchdog !== null) {
+      clearTimeout(operationWatchdog);
+      operationWatchdog = null;
+    }
+  }
+
   function clearSaveTimer() {
     if (saveTimer !== null) {
       clearTimeout(saveTimer);
@@ -665,7 +718,26 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
 
     saveTimer = setTimeout(() => {
       saveTimer = null;
-      live.pushEvent("save_import_review", { review_decisions: buildDecisions() });
+      const sentRevision = localRevision;
+
+      live.pushEvent(
+        "save_import_review",
+        { review_decisions: buildDecisions() },
+        (reply) => {
+          if (reply.ok === true) {
+            syncedRevision = Math.max(syncedRevision, sentRevision);
+            if (transportError.value?.operation === "save") transportError.value = null;
+            return;
+          }
+
+          // Only the newest outstanding save may complain; an older one lost
+          // a race that the newer push resolves either way.
+          if (sentRevision === localRevision) surfaceTransportError("save", reply.reason);
+        },
+        () => {
+          if (sentRevision === localRevision) surfaceTransportError("save", "unavailable");
+        },
+      );
     }, REVIEW_SAVE_DEBOUNCE_MS);
   }
 
@@ -701,6 +773,8 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
 
     selectedDecisions.value = next;
     acknowledged.value = false;
+    localRevision += 1;
+    transportError.value = null;
     scheduleDraftSave();
   }
 
@@ -713,22 +787,58 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
   }
 
   function validate() {
-    if (!canValidate.value) return;
+    if (!canValidate.value || pendingOperation.value !== null) return;
 
     clearSaveTimer();
-    live.pushEvent("validate_import_review", {
-      review_acknowledged: acknowledged.value,
-      review_decisions: buildDecisions(),
-    });
+    const sentRevision = localRevision;
+    const token = beginOperation("validate");
+
+    live.pushEvent(
+      "validate_import_review",
+      {
+        review_acknowledged: acknowledged.value,
+        review_decisions: buildDecisions(),
+      },
+      (reply) => {
+        if (!settleOperation(token)) return;
+
+        if (reply.ok === true) {
+          syncedRevision = Math.max(syncedRevision, sentRevision);
+          transportError.value = null;
+        } else {
+          surfaceTransportError("validate", reply.reason);
+        }
+      },
+      () => {
+        if (settleOperation(token)) surfaceTransportError("validate", "unavailable");
+      },
+    );
   }
 
   function execute() {
     const current = resolution.value;
-    if (!canExecute.value || !current) return;
+    if (!canExecute.value || !current || pendingOperation.value !== null) return;
 
-    live.pushEvent("execute_import", {
-      review_confirmation_fingerprint: current.decision_fingerprint,
-    });
+    const token = beginOperation("execute");
+
+    live.pushEvent(
+      "execute_import",
+      {
+        review_confirmation_fingerprint: current.decision_fingerprint,
+      },
+      (reply) => {
+        if (!settleOperation(token)) return;
+
+        if (reply.ok === true) {
+          transportError.value = null;
+        } else {
+          surfaceTransportError("execute", reply.reason);
+        }
+      },
+      () => {
+        if (settleOperation(token)) surfaceTransportError("execute", "unavailable");
+      },
+    );
   }
 
   function restoreDecisions() {
@@ -753,19 +863,32 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
   watch(
     stateFingerprint,
     () => {
+      // Local selections ahead of the last acknowledged save win over a props
+      // echo of older server state — restoring here would cancel the pending
+      // save and silently revert what the user just chose. The in-flight save
+      // reconciles both sides when it lands.
+      if (localRevision > syncedRevision) return;
+
       clearSaveTimer();
       restoreDecisions();
     },
     { immediate: true },
   );
 
-  // A different attempt is a different review. Never carry an acknowledgement
-  // of one file's conversions over to another's.
+  // A different attempt is a different review. Never carry an acknowledgement,
+  // a pending operation, an error or an edit revision over to another file's.
   watch(
     () => importState().attemptId,
     () => {
+      localRevision = 0;
+      syncedRevision = 0;
+      operationToken += 1;
+      clearOperationWatchdog();
+      pendingOperation.value = null;
+      transportError.value = null;
       acknowledged.value = false;
       clearSaveTimer();
+      restoreDecisions();
     },
   );
 
@@ -797,5 +920,7 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
     validate,
     execute,
     clearSaveTimer,
+    pendingOperation,
+    transportError,
   };
 }

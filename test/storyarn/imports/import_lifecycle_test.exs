@@ -1569,6 +1569,32 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     on_exit(fn -> PlanStorage.delete(queued.plan_storage_key) end)
   end
 
+  test "broadcasts when the worker itself expires an attempt at the absolute deadline", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    overdue_at = DateTime.add(TimeHelpers.now(), -(3 * 24 * 60 * 60), :second)
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^queued.id),
+      set: [inserted_at: overdue_at, updated_at: overdue_at]
+    )
+
+    :ok = Imports.subscribe_project_imports(ctx.project)
+
+    assert {:ok, expired} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+    assert expired.status == "expired"
+
+    # Every terminal transition announces itself: without this broadcast an
+    # open page kept showing "queued" until its polling backstop noticed.
+    assert_receive {:project_import_updated, %ProjectImportAttempt{id: broadcast_id, status: "expired"}}
+    assert broadcast_id == queued.id
+
+    on_exit(fn -> PlanStorage.delete(queued.plan_storage_key) end)
+  end
+
   test "cancels an executable job and deletes its plan after the absolute deadline", ctx do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))

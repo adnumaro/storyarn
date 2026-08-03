@@ -56,10 +56,13 @@ export interface UseImportResumeOptions {
 }
 
 export interface UseImportResume {
-  /** Drops the reference so a dismissed attempt is never resumed again. */
-  dismissActiveAttempt: () => void;
-  /** Cancels in-flight requests and timers without touching stored state. */
-  invalidateRequests: () => void;
+  /**
+   * Drops the given attempt's reference so a dismissed attempt is never
+   * resumed again. Callers must invoke this only after the server confirmed
+   * the reset: clearing first silently loses the completed-restore path when
+   * the server refuses.
+   */
+  dismissAttempt: (attemptId: number | null) => void;
 }
 
 export function validAttemptId(value: unknown): value is number {
@@ -357,17 +360,21 @@ export function useImportResume(options: UseImportResumeOptions): UseImportResum
     }
   }
 
-  function dismissActiveAttempt() {
-    const state = importState();
-    const activeAttemptId = validAttemptId(state.attemptId) ? state.attemptId : pendingAttemptId;
+  function dismissAttempt(attemptId: number | null) {
+    if (validAttemptId(attemptId)) {
+      dismissedAttemptIds.add(attemptId);
+      clearStoredAttemptIfMatching(attemptId);
+    } else {
+      // No specific attempt was on screen; drop whatever reference remains.
+      clearStoredAttempt();
+    }
 
-    if (validAttemptId(activeAttemptId)) {
-      dismissedAttemptIds.add(activeAttemptId);
+    if (validAttemptId(pendingAttemptId)) {
+      dismissedAttemptIds.add(pendingAttemptId);
     }
 
     invalidateRequests();
     pendingAttemptId = null;
-    clearStoredAttempt();
     stopReconcileTimer();
   }
 
@@ -437,5 +444,5 @@ export function useImportResume(options: UseImportResumeOptions): UseImportResum
     window.removeEventListener("storage", handleStorageChange);
   });
 
-  return { dismissActiveAttempt, invalidateRequests };
+  return { dismissAttempt };
 }

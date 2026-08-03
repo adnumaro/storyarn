@@ -202,22 +202,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
         {:command, "declare", args, meta}, {declarations, issues} ->
           case Expression.declaration(args) do
             {:ok, declaration} ->
-              declaration = Map.put(declaration, :meta, meta)
-
-              case Map.fetch(declarations, declaration.variable) do
-                :error ->
-                  {Map.put(declarations, declaration.variable, declaration), issues}
-
-                {:ok, %{source_name: source_name}} when source_name == declaration.source_name ->
-                  {declarations, issues}
-
-                {:ok, _distinct_source} ->
-                  # Two distinct Yarn variables normalize onto one identifier —
-                  # `$hasClueA` and `$has_clue_a` both become `has_clue_a`.
-                  # Merging them would silently fuse two states every condition
-                  # and assignment then shares; fail the import loudly instead.
-                  {declarations, [new_issue(:error, :yarn_variable_name_collision, meta) | issues]}
-              end
+              register_declaration(declarations, Map.put(declaration, :meta, meta), meta, issues)
 
             {:error, _reason} ->
               {declarations, [new_issue(:error, :unsupported_yarn_declaration, meta) | issues]}
@@ -228,6 +213,24 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
       end)
 
     {declarations, Enum.reverse(issues)}
+  end
+
+  # Two distinct Yarn variables can normalize onto one identifier —
+  # `$hasClueA` and `$has_clue_a` both become `has_clue_a`. References cannot
+  # disambiguate the pair after normalization, so merging them would silently
+  # fuse two states every condition and assignment then shares; the import
+  # fails loudly instead. Re-declaring the identical spelling stays tolerated.
+  defp register_declaration(declarations, declaration, meta, issues) do
+    case Map.fetch(declarations, declaration.variable) do
+      :error ->
+        {Map.put(declarations, declaration.variable, declaration), issues}
+
+      {:ok, %{source_name: source_name}} when source_name == declaration.source_name ->
+        {declarations, issues}
+
+      {:ok, _distinct_source} ->
+        {declarations, [new_issue(:error, :yarn_variable_name_collision, meta) | issues]}
+    end
   end
 
   defp collect_references(documents) do

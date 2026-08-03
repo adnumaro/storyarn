@@ -366,16 +366,21 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     end)
   end
 
-  def handle_event("execute_import", _params, socket), do: {:noreply, socket}
+  def handle_event("execute_import", _params, socket) do
+    {:reply, %{ok: false, reason: "invalid"}, socket}
+  end
 
+  # The reply is the client's cue to drop its durable browser reference: it
+  # must never clear it before the server has actually terminalized the
+  # attempt, or a refused reset silently loses the completed-restore path.
   def handle_event("reset_import", _params, socket) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
       case cancel_resettable_import(socket) do
         :ok ->
-          {:noreply, assign(socket, :import_state, empty_import_state())}
+          {:reply, %{ok: true}, assign(socket, :import_state, empty_import_state())}
 
         {:error, :import_not_cancellable} ->
-          {:noreply,
+          {:reply, %{ok: false, reason: "import_not_cancellable"},
            put_flash(
              socket,
              :error,
@@ -529,17 +534,22 @@ defmodule StoryarnWeb.ExportImportLive.Index do
            review_confirmation_fingerprint: confirmation_fingerprint
          ) do
       {:ok, attempt} ->
-        {:noreply, assign_import_attempt(socket, attempt)}
+        {:reply, %{ok: true}, assign_import_attempt(socket, attempt)}
 
       {:error, reason} when reason in [:import_review_required, :invalid_import_review_selection] ->
-        {:noreply, socket}
+        # The stored review no longer authorizes this fingerprint; the client
+        # must revalidate. A silent {:noreply} here left the button doing
+        # nothing with no explanation.
+        {:reply, %{ok: false, reason: "stale"}, socket}
 
       {:error, reason} ->
-        {:noreply, assign_import_error(socket, reason)}
+        {:reply, %{ok: false, reason: import_review_failure(reason)}, assign_import_error(socket, reason)}
     end
   end
 
-  defp execute_ready_import(socket, _state, _confirmation_fingerprint), do: {:noreply, socket}
+  defp execute_ready_import(socket, _state, _confirmation_fingerprint) do
+    {:reply, %{ok: false, reason: "stale"}, socket}
+  end
 
   defp save_import_review_draft(socket, %{step: "preview", attempt_id: attempt_id}, decisions)
        when is_integer(attempt_id) do
@@ -645,7 +655,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         socket
 
       {:error, _reason} ->
-        socket
+        # There IS a durable attempt but its state could not be rebuilt —
+        # showing a silently empty uploader would read as "nothing happened".
+        put_flash(
+          socket,
+          :error,
+          dgettext("projects", "Your previous import could not be restored.")
+        )
     end
   end
 

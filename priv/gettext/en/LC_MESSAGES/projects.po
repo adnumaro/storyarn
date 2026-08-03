@@ -885,17 +885,17 @@ msgstr "Import & Export"
 msgid "Move narrative content into or out of this project."
 msgstr "Move narrative content into or out of this project."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:846
+#: lib/storyarn_web/live/export_import_live/index.ex:862
 #, elixir-autogen, elixir-format
 msgid "The selected Yarn project is invalid or exceeds the import safety limits."
 msgstr "The selected Yarn project is invalid or exceeds the import safety limits."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:852
+#: lib/storyarn_web/live/export_import_live/index.ex:868
 #, elixir-autogen, elixir-format
 msgid "The import could not be completed. No project content was changed."
 msgstr "The import could not be completed. No project content was changed."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:820
+#: lib/storyarn_web/live/export_import_live/index.ex:836
 #, elixir-autogen, elixir-format
 msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
@@ -1249,27 +1249,32 @@ msgstr ""
 msgid "\"%{node}\" in flow \"%{flow}\" references a variable that no longer exists"
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:802
+#: lib/storyarn_web/live/export_import_live/index.ex:818
 #, elixir-autogen, elixir-format
 msgid "The import was cancelled. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:806
+#: lib/storyarn_web/live/export_import_live/index.ex:822
 #, elixir-autogen, elixir-format
 msgid "This import could not be validated and was discarded. Validate the file again before importing."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:382
+#: lib/storyarn_web/live/export_import_live/index.ex:387
 #, elixir-autogen, elixir-format
 msgid "This import is already running and cannot be dismissed. It will finish in the background."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:813
+#: lib/storyarn_web/live/export_import_live/index.ex:829
 #, elixir-autogen, elixir-format
 msgid "This import preview expired before the import was started. Upload the file again."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:790
+#: lib/storyarn_web/live/export_import_live/index.ex:806
 #, elixir-autogen, elixir-format
 msgid "This project already has a main flow, so the imported one could not be created. No project content was changed."
+msgstr ""
+
+#: lib/storyarn_web/live/export_import_live/index.ex:663
+#, elixir-autogen, elixir-format
+msgid "Your previous import could not be restored."
 msgstr ""

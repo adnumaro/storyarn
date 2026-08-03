@@ -5,6 +5,9 @@ import { createMockLive } from "../../../setup";
 
 const mockLive = createMockLive();
 
+const reviewEventCalls = (event: string) =>
+  vi.mocked(mockLive.pushEvent).mock.calls.filter(([name]) => name === event);
+
 vi.mock("@shared/composables/useLive", () => ({
   useLive: () => mockLive,
 }));
@@ -484,14 +487,42 @@ describe("ImportPanel resume state", () => {
     storageSpy.mockRestore();
   });
 
-  it("clears the persisted reference when a terminal result is acknowledged", async () => {
+  it("clears the persisted reference only after the server confirms the reset", async () => {
     const wrapper = mountPanel(attemptState("completed", "done"));
     expect(window.localStorage.getItem(storageKey())).not.toBeNull();
 
     await wrapper.get('[data-testid="yarn-import-reset"]').trigger("click");
 
+    expect(mockLive.pushEvent).toHaveBeenCalledWith("reset_import", {}, expect.any(Function));
+
+    // The durable reference must survive until the server has terminalized
+    // the attempt — clearing first re-creates the original lost-progress bug.
+    expect(window.localStorage.getItem(storageKey())).not.toBeNull();
+
+    const resetCall = vi
+      .mocked(mockLive.pushEvent)
+      .mock.calls.find(([event]) => event === "reset_import");
+
+    resetCall?.[2]?.({ ok: true });
+
     expect(window.localStorage.getItem(storageKey())).toBeNull();
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("reset_import", {});
+
+    wrapper.unmount();
+  });
+
+  it("keeps the persisted reference when the server refuses the reset", async () => {
+    const wrapper = mountPanel(attemptState("completed", "done"));
+    expect(window.localStorage.getItem(storageKey())).not.toBeNull();
+
+    await wrapper.get('[data-testid="yarn-import-reset"]').trigger("click");
+
+    const resetCall = vi
+      .mocked(mockLive.pushEvent)
+      .mock.calls.find(([event]) => event === "reset_import");
+
+    resetCall?.[2]?.({ ok: false, reason: "import_not_cancellable" });
+
+    expect(window.localStorage.getItem(storageKey())).not.toBeNull();
 
     wrapper.unmount();
   });
@@ -542,11 +573,16 @@ describe("ImportPanel resume state", () => {
     ).toBe("true");
 
     vi.advanceTimersByTime(499);
-    expect(mockLive.pushEvent).not.toHaveBeenCalledWith("save_import_review", expect.anything());
+    expect(reviewEventCalls("save_import_review")).toHaveLength(0);
     vi.advanceTimersByTime(1);
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("save_import_review", {
-      review_decisions: [{ speaker: "Capsley", action: "create_sheet" }],
-    });
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "save_import_review",
+      {
+        review_decisions: [{ speaker: "Capsley", action: "create_sheet" }],
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
 
     wrapper.unmount();
   });
@@ -562,12 +598,17 @@ describe("ImportPanel resume state", () => {
     expect(wrapper.get('[data-testid="yarn-import-mapped-alias-count"]').text()).toBe("1");
 
     vi.advanceTimersByTime(500);
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("save_import_review", {
-      review_decisions: [
-        { speaker: "Capsley", action: "create_sheet" },
-        { speaker: "Capsely", action: "map_to_sheet", target_speaker: "Capsley" },
-      ],
-    });
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "save_import_review",
+      {
+        review_decisions: [
+          { speaker: "Capsley", action: "create_sheet" },
+          { speaker: "Capsely", action: "map_to_sheet", target_speaker: "Capsley" },
+        ],
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
 
     vi.clearAllMocks();
     const preserveActions = wrapper.findAll('[data-testid="yarn-import-action-preserve-literal"]');
@@ -579,9 +620,14 @@ describe("ImportPanel resume state", () => {
     expect(wrapper.get('[data-testid="yarn-import-mapped-alias-count"]').text()).toBe("0");
 
     vi.advanceTimersByTime(500);
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("save_import_review", {
-      review_decisions: [{ speaker: "Capsley", action: "preserve_literal" }],
-    });
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "save_import_review",
+      {
+        review_decisions: [{ speaker: "Capsley", action: "preserve_literal" }],
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
 
     wrapper.unmount();
   });
@@ -635,7 +681,7 @@ describe("ImportPanel resume state", () => {
     expect(wrapper.get("#yarn-import-confirm").attributes("disabled")).toBeDefined();
 
     vi.advanceTimersByTime(5_000);
-    expect(mockLive.pushEvent).not.toHaveBeenCalledWith("save_import_review", expect.anything());
+    expect(reviewEventCalls("save_import_review")).toHaveLength(0);
 
     wrapper.unmount();
   });
@@ -659,14 +705,19 @@ describe("ImportPanel resume state", () => {
     expect(confirm.attributes("disabled")).toBeDefined();
 
     await validate.trigger("click");
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("validate_import_review", {
-      review_acknowledged: true,
-      review_decisions: [
-        { speaker: "Capsley", action: "create_sheet" },
-        { speaker: "Capsely", action: "create_sheet" },
-        { speaker: "SlideImage", action: "preserve_literal" },
-      ],
-    });
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "validate_import_review",
+      {
+        review_acknowledged: true,
+        review_decisions: [
+          { speaker: "Capsley", action: "create_sheet" },
+          { speaker: "Capsely", action: "create_sheet" },
+          { speaker: "SlideImage", action: "preserve_literal" },
+        ],
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
 
     wrapper.unmount();
   });
@@ -719,10 +770,15 @@ describe("ImportPanel resume state", () => {
     expect(validate.attributes("disabled")).toBeUndefined();
     await validate.trigger("click");
 
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("validate_import_review", {
-      review_acknowledged: true,
-      review_decisions: [],
-    });
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "validate_import_review",
+      {
+        review_acknowledged: true,
+        review_decisions: [],
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
 
     wrapper.unmount();
   });
@@ -742,9 +798,14 @@ describe("ImportPanel resume state", () => {
     expect(confirm.attributes("disabled")).toBeUndefined();
 
     await confirm.trigger("click");
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("execute_import", {
-      review_confirmation_fingerprint: "resolution-fingerprint",
-    });
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "execute_import",
+      {
+        review_confirmation_fingerprint: "resolution-fingerprint",
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
 
     vi.clearAllMocks();
     const createActions = wrapper.findAll('[data-testid="yarn-import-action-create-sheet"]');
@@ -753,16 +814,86 @@ describe("ImportPanel resume state", () => {
     expect(wrapper.find('[data-testid="yarn-import-review-validated"]').exists()).toBe(false);
     expect(confirm.attributes("disabled")).toBeDefined();
     await confirm.trigger("click");
-    expect(mockLive.pushEvent).not.toHaveBeenCalledWith("execute_import", expect.anything());
+    expect(reviewEventCalls("execute_import")).toHaveLength(0);
 
     vi.advanceTimersByTime(500);
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("save_import_review", {
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "save_import_review",
+      {
+        review_decisions: [
+          { speaker: "Capsley", action: "create_sheet" },
+          { speaker: "Capsely", action: "map_to_sheet", target_speaker: "Capsley" },
+          { speaker: "SlideImage", action: "create_sheet" },
+        ],
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
+
+    wrapper.unmount();
+  });
+
+  it("does not revert newer selections when an older save reply echoes back", async () => {
+    const wrapper = mountPanel(reviewedPreviewState());
+    const decisions = wrapper.findAll('[data-testid="yarn-import-speaker-decision"]');
+
+    await wrapper.findAll('[data-testid="yarn-import-action-create-sheet"]')[0]!.trigger("click");
+    vi.advanceTimersByTime(500);
+
+    const firstSave = reviewEventCalls("save_import_review")[0];
+    expect(firstSave).toBeDefined();
+
+    // A newer edit lands while the first save is still in flight.
+    await wrapper.findAll('[data-testid="yarn-import-action-create-sheet"]')[1]!.trigger("click");
+
+    // The first save round-trips and its older state echoes back through
+    // props. Restoring from it here would silently revert the newer edit and
+    // cancel its pending save.
+    firstSave?.[2]?.({ ok: true });
+    await wrapper.setProps({
+      importState: draftPreviewState([{ speaker: "Capsley", action: "create_sheet" }]),
+    });
+
+    expect(decisions[1]?.attributes("data-decision")).toBe("create_sheet");
+
+    vi.advanceTimersByTime(500);
+
+    const secondSave = reviewEventCalls("save_import_review")[1];
+    expect(secondSave?.[1]).toEqual({
       review_decisions: [
         { speaker: "Capsley", action: "create_sheet" },
-        { speaker: "Capsely", action: "map_to_sheet", target_speaker: "Capsley" },
-        { speaker: "SlideImage", action: "create_sheet" },
+        { speaker: "Capsely", action: "create_sheet" },
       ],
     });
+
+    wrapper.unmount();
+  });
+
+  it("surfaces a rejected validate instead of failing silently", async () => {
+    const wrapper = mountPanel(reviewedPreviewState());
+
+    await wrapper.findAll('[data-testid="yarn-import-action-create-sheet"]')[0]!.trigger("click");
+    await wrapper.get('[data-testid="yarn-import-action-map-to-sheet"]').trigger("click");
+    await wrapper
+      .findAll('[data-testid="yarn-import-action-preserve-literal"]')
+      .at(-1)!
+      .trigger("click");
+    await wrapper.get("#yarn-import-review-acknowledgement").trigger("click");
+
+    const validate = wrapper.get("#yarn-import-validate");
+    expect(validate.attributes("disabled")).toBeUndefined();
+    await validate.trigger("click");
+
+    // Locked while the reply is outstanding; no double-push.
+    expect(validate.attributes("disabled")).toBeDefined();
+
+    const call = reviewEventCalls("validate_import_review")[0];
+    call?.[2]?.({ ok: false, reason: "stale" });
+    await wrapper.vm.$nextTick();
+
+    const banner = wrapper.get('[data-testid="yarn-import-review-error"]');
+    expect(banner.text().length).toBeGreaterThan(0);
+    expect(validate.attributes("disabled")).toBeUndefined();
 
     wrapper.unmount();
   });
@@ -800,7 +931,7 @@ describe("ImportPanel resume state", () => {
     expect(confirm.attributes("disabled")).toBeDefined();
     expect(wrapper.find("#yarn-import-review-acknowledgement").exists()).toBe(false);
     await confirm.trigger("click");
-    expect(mockLive.pushEvent).not.toHaveBeenCalledWith("execute_import", expect.anything());
+    expect(reviewEventCalls("execute_import")).toHaveLength(0);
 
     wrapper.unmount();
   });
@@ -821,7 +952,7 @@ describe("ImportPanel resume state", () => {
     expect(wrapper.find('[data-testid="yarn-import-review-incomplete"]').exists()).toBe(true);
     expect(confirm.attributes("disabled")).toBeDefined();
     await confirm.trigger("click");
-    expect(mockLive.pushEvent).not.toHaveBeenCalledWith("execute_import", expect.anything());
+    expect(reviewEventCalls("execute_import")).toHaveLength(0);
 
     wrapper.unmount();
   });
@@ -837,7 +968,7 @@ describe("ImportPanel resume state", () => {
     expect(confirm.attributes("disabled")).toBeDefined();
     await confirm.trigger("click");
 
-    expect(mockLive.pushEvent).not.toHaveBeenCalledWith("execute_import", expect.anything());
+    expect(reviewEventCalls("execute_import")).toHaveLength(0);
 
     wrapper.unmount();
   });
