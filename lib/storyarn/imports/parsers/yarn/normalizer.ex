@@ -203,7 +203,21 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
           case Expression.declaration(args) do
             {:ok, declaration} ->
               declaration = Map.put(declaration, :meta, meta)
-              {Map.put_new(declarations, declaration.variable, declaration), issues}
+
+              case Map.fetch(declarations, declaration.variable) do
+                :error ->
+                  {Map.put(declarations, declaration.variable, declaration), issues}
+
+                {:ok, %{source_name: source_name}} when source_name == declaration.source_name ->
+                  {declarations, issues}
+
+                {:ok, _distinct_source} ->
+                  # Two distinct Yarn variables normalize onto one identifier —
+                  # `$hasClueA` and `$has_clue_a` both become `has_clue_a`.
+                  # Merging them would silently fuse two states every condition
+                  # and assignment then shares; fail the import loudly instead.
+                  {declarations, [new_issue(:error, :yarn_variable_name_collision, meta) | issues]}
+              end
 
             {:error, _reason} ->
               {declarations, [new_issue(:error, :unsupported_yarn_declaration, meta) | issues]}

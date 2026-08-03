@@ -1986,6 +1986,36 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
   end
 
   describe "variable naming" do
+    test "rejects two distinct declarations that normalize onto one identifier" do
+      # $hasClueA and $has_clue_a both variablify to has_clue_a. References
+      # cannot disambiguate them after normalization, so merging silently
+      # fuses two distinct states — the import must refuse instead.
+      source = """
+      title: Start
+      ---
+      <<declare $hasClueA = false>>
+      <<declare $has_clue_a = 0>>
+      Guide: Hello.
+      ===
+      """
+
+      assert {:error, :import_plan_has_errors} = Imports.parse_file("collision.yarn", source)
+    end
+
+    test "tolerates re-declaring the same spelling twice" do
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      <<declare $gold = 10>>
+      Guide: Hello.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("redeclare.yarn", source)
+      refute ImportPlan.error?(plan)
+    end
+
     test "splits camelCase Yarn variables instead of flattening them" do
       source = """
       title: Start
