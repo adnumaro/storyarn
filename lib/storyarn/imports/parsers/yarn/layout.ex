@@ -214,21 +214,42 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
   def node_width(%{"type" => type}), do: Map.get(@node_widths, type, @default_node_width)
   def node_width(_node), do: @default_node_width
 
-  # A dialogue grows by one pin row per extra response, so a node with many
-  # choices does not overlap its neighbour below.
+  # Content-aware estimates: a dialogue grows with its text (~38 chars per
+  # rendered line at 350px) and every response row wraps at ~38 chars per row.
+  # The numbers are deliberate overestimates — whitespace is recoverable,
+  # overlap is not.
+  @dialogue_text_chars_per_line 38
+  @dialogue_text_line_height 28.0
+  @response_label_chars_per_row 38
+
   @doc false
   @spec node_height(map()) :: float()
   def node_height(%{"type" => "dialogue", "data" => data} = node) when is_map(data) do
-    case data["responses"] do
-      responses when is_list(responses) ->
-        base_node_height(node) + max(length(responses) - 1, 0) * @pin_height
-
-      _no_responses ->
-        base_node_height(node)
-    end
+    base_node_height(node) + dialogue_text_height(data["text"]) + dialogue_responses_height(data["responses"])
   end
 
   def node_height(node), do: base_node_height(node)
+
+  # The base height already covers the first rendered text line.
+  defp dialogue_text_height(text) when is_binary(text) and text != "" do
+    lines = text |> String.length() |> Kernel./(@dialogue_text_chars_per_line) |> Float.ceil() |> trunc()
+    max(lines - 1, 0) * @dialogue_text_line_height
+  end
+
+  defp dialogue_text_height(_no_text), do: 0.0
+
+  # The base height also covers one response pin row; wrapped labels add rows.
+  defp dialogue_responses_height(responses) when is_list(responses) and responses != [] do
+    total_rows =
+      Enum.reduce(responses, 0, fn response, rows ->
+        label = if is_binary(response["text"]), do: response["text"], else: ""
+        rows + max(ceil(String.length(label) / @response_label_chars_per_row), 1)
+      end)
+
+    max(total_rows - 1, 0) * @pin_height
+  end
+
+  defp dialogue_responses_height(_no_responses), do: 0.0
 
   defp base_node_height(%{"type" => type}), do: Map.get(@node_heights, type, @default_node_height)
   defp base_node_height(_node), do: @default_node_height

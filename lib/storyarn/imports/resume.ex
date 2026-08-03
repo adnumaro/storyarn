@@ -43,7 +43,10 @@ defmodule Storyarn.Imports.Resume do
   the attempt is reconciled and, for ready attempts, its preview is rebuilt.
   """
   @spec resume_latest_active_import(Scope.t(), Project.t()) ::
-          {:ok, ProjectImportAttempt.t(), map() | nil} | {:ok, nil} | {:error, term()}
+          {:ok, ProjectImportAttempt.t(), map() | nil}
+          | {:ok, nil}
+          | {:error, term()}
+          | {:error, term(), ProjectImportAttempt.t()}
   def resume_latest_active_import(%Scope{} = scope, %Project{} = project) do
     resume_latest_active_import(scope, project, [])
   end
@@ -54,7 +57,7 @@ defmodule Storyarn.Imports.Resume do
       {:ok, _project, _membership} ->
         case latest_active_import_attempt(project.id, scope.user.id) do
           %ProjectImportAttempt{} = attempt ->
-            resume_import(scope, project, attempt.id, opts)
+            resume_found_import(scope, project, attempt, opts)
 
           nil ->
             {:ok, nil}
@@ -62,6 +65,18 @@ defmodule Storyarn.Imports.Resume do
 
       _not_authorized ->
         {:error, :not_found}
+    end
+  end
+
+  # A rebuild failure keeps the attempt in the return so the page can show it
+  # as an error with a working Reset, instead of a silently empty uploader
+  # that resurrects the same failure on every mount. An attempt that vanished
+  # mid-flight is simply nothing to restore.
+  defp resume_found_import(scope, project, attempt, opts) do
+    case resume_import(scope, project, attempt.id, opts) do
+      {:ok, _attempt, _preview} = resumed -> resumed
+      {:error, :not_found} -> {:ok, nil}
+      {:error, reason} -> {:error, reason, attempt}
     end
   end
 
@@ -124,7 +139,12 @@ defmodule Storyarn.Imports.Resume do
     plan_load = Keyword.get(opts, :plan_load, &PlanStorage.load/1)
 
     result =
-      with {:ok, plan} <- Shared.safely_load_plan(plan_load, attempt.plan_storage_key) do
+      with {:ok, plan} <- Shared.safely_load_plan(plan_load, attempt.plan_storage_key),
+           # The same binding check enqueue and the worker enforce: a valid
+           # plan that is not THIS attempt's plan must never be shown as its
+           # resumed preview — the user would review the wrong data and only
+           # find out when enqueue rejects it.
+           :ok <- Shared.validate_attempt_plan_binding(attempt, plan) do
         safely_build_resumed_preview(project_id, plan)
       end
 

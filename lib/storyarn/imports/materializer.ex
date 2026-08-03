@@ -752,16 +752,6 @@ defmodule Storyarn.Imports.Materializer do
     end)
   end
 
-  defp rewrite_encoded_condition(value, rewrite) do
-    case Jason.decode(value) do
-      {:ok, decoded} when is_map(decoded) or is_list(decoded) ->
-        decoded |> deep_rewrite_refs(rewrite) |> Jason.encode!()
-
-      _not_structured ->
-        deep_rewrite_refs(value, rewrite)
-    end
-  end
-
   defp deep_rewrite_refs(list, rewrite) when is_list(list), do: Enum.map(list, &deep_rewrite_refs(&1, rewrite))
 
   defp deep_rewrite_refs(value, {renames, pattern}) when is_binary(value) do
@@ -771,6 +761,16 @@ defmodule Storyarn.Imports.Materializer do
   end
 
   defp deep_rewrite_refs(value, _rewrite), do: value
+
+  defp rewrite_encoded_condition(value, rewrite) do
+    case Jason.decode(value) do
+      {:ok, decoded} when is_map(decoded) or is_list(decoded) ->
+        decoded |> deep_rewrite_refs(rewrite) |> Jason.encode!()
+
+      _not_structured ->
+        deep_rewrite_refs(value, rewrite)
+    end
+  end
 
   defp import_blocks(sheet_id, blocks, id_map) do
     Enum.reduce(blocks, {id_map, []}, fn block_data, {map, results} ->
@@ -1693,9 +1693,18 @@ defmodule Storyarn.Imports.Materializer do
   # deterministic, so retrying it three times can only fail three times and
   # then report "it may be retried automatically" about something that cannot.
   defp reject_duplicate_main_flow({:error, %Ecto.Changeset{errors: errors}} = result) do
-    if Keyword.has_key?(errors, :is_main),
-      do: Repo.rollback(:project_already_has_main_flow),
-      else: result
+    # Only the named partial unique index means "this project already has a
+    # main flow" — any other `:is_main` error (a cast failure, a future
+    # validation) must keep its own changeset instead of borrowing that
+    # message about a main flow the project may not even have.
+    duplicate_main? =
+      errors
+      |> Keyword.get_values(:is_main)
+      |> Enum.any?(fn {_message, meta} ->
+        meta[:constraint] == :unique and meta[:constraint_name] == "flows_project_id_is_main_index"
+      end)
+
+    if duplicate_main?, do: Repo.rollback(:project_already_has_main_flow), else: result
   end
 
   defp reject_duplicate_main_flow(result), do: result

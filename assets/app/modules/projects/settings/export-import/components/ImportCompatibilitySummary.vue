@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { AlertTriangle } from "@lucide/vue";
+import { useI18n } from "vue-i18n";
 import type { YarnImportIssueSummary } from "@modules/projects/settings/export-import/types";
 
 /**
@@ -13,15 +14,21 @@ const { summary = null, warningCodes = [] } = defineProps<{
   warningCodes?: string[];
 }>();
 
+const { t, te } = useI18n();
+
+// Issue codes render through the catalog, never raw — a Spanish user must not
+// read "dynamic text preserved" in English. Unknown codes fall back to a
+// generic, still-localized label rather than leaking the identifier.
+function issueLabel(code: string) {
+  const key = `project_settings.import.issue_codes.${code}`;
+  return te(key) ? t(key) : t("project_settings.import.issue_codes.unknown");
+}
+
 const issueRows = computed(() =>
   Object.entries(summary?.counts_by_code ?? {})
-    .map(([code, count]) => ({ code, count }))
-    .sort((left, right) => left.code.localeCompare(right.code)),
+    .map(([code, count]) => ({ code, count, label: issueLabel(code) }))
+    .sort((left, right) => left.label.localeCompare(right.label)),
 );
-
-function formatIssueCode(code: string) {
-  return code.replaceAll("_", " ");
-}
 </script>
 
 <template>
@@ -81,7 +88,7 @@ function formatIssueCode(code: string) {
         :key="issue.code"
         class="rounded-full border border-border bg-background px-2 py-1 text-xs"
       >
-        <span class="capitalize">{{ formatIssueCode(issue.code) }}</span>
+        <span>{{ issue.label }}</span>
         <span class="ml-1 font-semibold tabular-nums">{{ issue.count }}</span>
       </li>
     </ul>

@@ -509,6 +509,35 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert Repo.get!(ProjectImportAttempt, running.id).status == "running"
     end
 
+    test "a preview that cannot be rebuilt is shown as a resettable error", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(scope, project, "project.yarn", "title: Start\n---\nHello\n===\n")
+
+      # The encrypted plan is gone; the attempt survives. A silently empty
+      # uploader left no way to clear it — it must surface as an error with
+      # the attempt id on screen so Reset can terminalize it.
+      :ok = PlanStorage.delete(ready.plan_storage_key)
+
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      state = import_state(view)
+      assert state["step"] == "error"
+      assert state["attemptId"] == ready.id
+      assert is_binary(state["error"]) and state["error"] != ""
+
+      render_hook(view, "reset_import", %{})
+      assert_reply(view, %{ok: true})
+
+      assert import_state(view)["step"] == "upload"
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "expired"
+    end
+
     test "an expired preview is reported as expired, not as a failure", %{
       conn: conn,
       project: project,

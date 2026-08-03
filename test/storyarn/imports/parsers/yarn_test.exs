@@ -1637,6 +1637,26 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       end
     end
 
+    test "dialogue height estimates grow with text and wrapped response labels" do
+      short = %{"type" => "dialogue", "data" => %{"text" => "Hi", "responses" => []}}
+
+      long_text = %{
+        "type" => "dialogue",
+        "data" => %{"text" => String.duplicate("a", 150), "responses" => []}
+      }
+
+      assert Layout.node_height(long_text) > Layout.node_height(short)
+
+      short_label = %{"type" => "dialogue", "data" => %{"text" => "Hi", "responses" => [%{"text" => "Ok"}]}}
+
+      wrapped_label = %{
+        "type" => "dialogue",
+        "data" => %{"text" => "Hi", "responses" => [%{"text" => String.duplicate("b", 80)}]}
+      }
+
+      assert Layout.node_height(wrapped_label) > Layout.node_height(short_label)
+    end
+
     test "column stride follows the widest node of the column, not a fixed box" do
       # A dialogue-heavy column is 350px wide; the next column must start
       # beyond it plus the 120px layer gap, or real rendered nodes touch.
@@ -1963,6 +1983,31 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
 
       speakers = Enum.map(plan.data["import_review"]["speaker_decisions"], & &1["speaker"])
       refute "Carol" in speakers
+    end
+
+    test "a stop or return with arguments does not hide the content after it" do
+      # `<<stop now>>` is not the zero-argument control command: it is already
+      # reported as an error, and pruning after it would additionally hide
+      # reachable content behind that already-reported problem.
+      source = """
+      title: Start
+      ---
+      Guide: Before.
+      <<stop now>>
+      Guide: After.
+      ===
+      """
+
+      assert {:ok, parser} = ParserRegistry.parser_for("argstop.yarn")
+      assert {:ok, bundle} = SourceBundle.open("argstop.yarn", source)
+      assert {:ok, plan} = parser.parse(bundle)
+
+      assert Enum.any?(plan.issues, &(&1.code == :unsupported_yarn_control_command))
+      refute Enum.any?(plan.issues, &(&1.code == :unreachable_yarn_code))
+
+      [flow] = plan.data["flows"]
+      texts = for node <- flow["nodes"], node["type"] == "dialogue", do: node["data"]["text"]
+      assert Enum.any?(texts, &(is_binary(&1) and &1 =~ "After."))
     end
 
     test "an if without an else falls through and keeps the tail" do

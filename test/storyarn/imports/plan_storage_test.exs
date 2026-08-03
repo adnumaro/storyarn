@@ -20,6 +20,17 @@ defmodule Storyarn.Imports.PlanStorageTest do
     assert {:ok, %ImportPlan{source_kind: :file}} = PlanStorage.load(key)
   end
 
+  test "load stops inflating the moment the size cap is crossed" do
+    # The limit must be protective, not post-validation: with a plain gunzip
+    # the whole binary materializes before any check can look at it.
+    key = storage_key()
+    on_exit(fn -> PlanStorage.delete(key) end)
+
+    assert {:ok, ^key} = PlanStorage.store_at(key, plan(:file))
+    assert {:error, :import_plan_unavailable} = PlanStorage.load(key, max_json_bytes: 8)
+    assert {:ok, %ImportPlan{}} = PlanStorage.load(key)
+  end
+
   test "archive source_kind roundtrips unchanged" do
     key = storage_key()
     on_exit(fn -> PlanStorage.delete(key) end)

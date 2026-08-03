@@ -736,7 +736,7 @@ describe("ImportPanel resume state", () => {
       possible_speaker_aliases: [],
       compatibility_warning_count: 2,
       compatibility_warning_counts_by_code: {
-        unsupported_markup: 1,
+        unreachable_yarn_code: 1,
         dynamic_text_preserved: 1,
       },
       requires_acknowledgement: true,
@@ -747,7 +747,7 @@ describe("ImportPanel resume state", () => {
       issue_count: 2,
       issues_truncated: true,
       counts_by_code: {
-        unsupported_markup: 1,
+        unreachable_yarn_code: 1,
         dynamic_text_preserved: 1,
       },
     };
@@ -760,9 +760,12 @@ describe("ImportPanel resume state", () => {
     expect(wrapper.get('[data-testid="yarn-import-warning-count"]').text()).toBe("2");
     expect(wrapper.get('[data-testid="yarn-import-error-count"]').text()).toBe("0");
     expect(wrapper.get('[data-testid="yarn-import-issue-count"]').text()).toBe("2");
-    expect(wrapper.get('[data-testid="yarn-import-issue-code-counts"]').text()).toContain(
-      "unsupported markup",
-    );
+    // Known codes render their catalog label; unknown ones fall back to a
+    // generic, still-localized label — raw codes never reach the screen.
+    const codeCounts = wrapper.get('[data-testid="yarn-import-issue-code-counts"]').text();
+    expect(codeCounts).toContain("Unreachable text discarded");
+    expect(codeCounts).toContain("Compatibility issue");
+    expect(codeCounts).not.toContain("dynamic text preserved");
     expect(summary.text()).not.toContain("private dialogue");
     expect(validate.attributes("disabled")).toBeDefined();
 

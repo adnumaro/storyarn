@@ -303,6 +303,23 @@
       "import_another": "Import another project",
       "try_again": "Try another file",
       "no_permission": "Only project owners can import into this project. Importing replaces project content.",
+      "issue_codes": {
+        "dynamic_yarn_speaker": "Dynamic speaker preserved",
+        "possible_yarn_speaker_alias": "Possible speaker alias",
+        "unknown": "Compatibility issue",
+        "unknown_yarn_detour_target": "Unknown detour target",
+        "unknown_yarn_jump_target": "Unknown jump target",
+        "unreachable_yarn_code": "Unreachable text discarded",
+        "unsupported_yarn_assignment": "Unsupported assignment",
+        "unsupported_yarn_command": "Unsupported command preserved",
+        "unsupported_yarn_condition": "Unsupported condition",
+        "unsupported_yarn_control_command": "Unsupported control command",
+        "unsupported_yarn_declaration": "Unsupported declaration",
+        "unsupported_yarn_node_condition": "Unsupported node condition",
+        "undeclared_yarn_condition_variable": "Undeclared variable in a condition",
+        "yarn_presentation_channel_preserved": "Presentation channel preserved",
+        "yarn_variable_name_collision": "Variable name collision"
+      },
       "entities": {
         "sheets": "Sheets and characters",
         "flows": "Flows",

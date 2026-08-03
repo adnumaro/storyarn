@@ -303,6 +303,23 @@
       "import_another": "Importar otro proyecto",
       "try_again": "Probar otro archivo",
       "no_permission": "Solo los propietarios del proyecto pueden importar en este proyecto. Importar sustituye el contenido del proyecto.",
+      "issue_codes": {
+        "dynamic_yarn_speaker": "Speaker dinámico conservado",
+        "possible_yarn_speaker_alias": "Posible alias de personaje",
+        "unknown": "Incidencia de compatibilidad",
+        "unknown_yarn_detour_target": "Destino de detour desconocido",
+        "unknown_yarn_jump_target": "Destino de jump desconocido",
+        "unreachable_yarn_code": "Texto inalcanzable descartado",
+        "unsupported_yarn_assignment": "Asignación no soportada",
+        "unsupported_yarn_command": "Comando no soportado conservado",
+        "unsupported_yarn_condition": "Condición no soportada",
+        "unsupported_yarn_control_command": "Comando de control no soportado",
+        "unsupported_yarn_declaration": "Declaración no soportada",
+        "unsupported_yarn_node_condition": "Condición de nodo no soportada",
+        "undeclared_yarn_condition_variable": "Variable sin declarar en una condición",
+        "yarn_presentation_channel_preserved": "Canal de presentación conservado",
+        "yarn_variable_name_collision": "Colisión de nombres de variable"
+      },
       "entities": {
         "sheets": "Fichas y personajes",
         "flows": "Flujos",

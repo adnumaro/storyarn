@@ -285,7 +285,11 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(co_owner_scope, ctx.project, "project.yarn", yarn("Hello"))
 
-    assert {:error, :not_found} =
+    # Access revoked while the preview was being rebuilt: nothing is restored
+    # and no preview escapes. Deliberately indistinguishable from an attempt
+    # that vanished mid-flight, so revocation is not observable through the
+    # return shape either.
+    assert {:ok, nil} =
              Imports.resume_latest_active_import(co_owner_scope, ctx.project,
                plan_load: fn storage_key ->
                  result = PlanStorage.load(storage_key)
@@ -327,10 +331,14 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     on_exit(fn -> :telemetry.detach(handler_id) end)
 
-    assert {:error, :import_plan_unavailable} =
+    # The rebuild failure carries the attempt so the page can show it as a
+    # resettable error instead of a silently empty uploader.
+    assert {:error, :import_plan_unavailable, %ProjectImportAttempt{id: failed_id}} =
              Imports.resume_latest_active_import(ctx.scope, ctx.project,
                plan_load: fn _storage_key -> raise @private_content end
              )
+
+    assert failed_id == ready.id
 
     assert_receive {:resume_error, %{count: 1}, %{phase: "resume", parser_version: ^parser_version} = metadata}
 
@@ -967,6 +975,56 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert {:error, :not_found} = Imports.resume_import(co_owner_scope, ctx.project, ready.id)
     assert {:error, :not_found} = Imports.resume_import(ctx.scope, ctx.project, ready.id)
     assert {:error, :not_found} = Imports.cancel_import(ctx.scope, ready.id)
+  end
+
+  test "a resumed preview refuses a plan that is not this attempt's plan", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, other_ready, _other_preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "other.yarn", yarn("Different"))
+
+    assert {:ok, other_plan} = PlanStorage.load(other_ready.plan_storage_key)
+    mismatched_plan = %{other_plan | parser_version: "0.0.0-other"}
+
+    # A valid plan that is not bound to THIS attempt must never be shown as
+    # its resumed preview — the user would review the wrong data and only
+    # find out when enqueue rejects the attempt.
+    assert {:error, _reason} =
+             Imports.resume_import(ctx.scope, ctx.project, ready.id, plan_load: fn _key -> {:ok, mismatched_plan} end)
+  end
+
+  test "a crashed import emits exactly one execute stop", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    handler_id = "import-crash-single-stop-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    parent = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :import, :execute, :stop],
+        fn _event, _measurements, _metadata, {pid, ref} -> send(pid, {ref, :stop}) end,
+        {parent, marker}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:error, :retryable_import_error} =
+             Imports.perform_import(queued.id,
+               attempt: 1,
+               max_attempts: 3,
+               before_materialization_transaction: fn -> raise "boom" end
+             )
+
+    # The rescue records the exception identity; the state transition owns the
+    # single stop. Two stops per crash inflated import telemetry.
+    assert_receive {^marker, :stop}
+    refute_receive {^marker, :stop}
   end
 
   test "review revisions refuse another member's attempt before any work", ctx do
@@ -1631,6 +1689,10 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert {:ok, expired} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
     assert expired.status == "expired"
 
+    # An accepted import running out of retention is a real outcome, not a
+    # preview that aged out; without the code the UI says "upload again".
+    assert expired.error_code == "import_expired"
+
     # Every terminal transition announces itself: without this broadcast an
     # open page kept showing "queued" until its polling backstop noticed.
     assert_receive {:project_import_updated, %ProjectImportAttempt{id: broadcast_id, status: "expired"}}
@@ -1664,6 +1726,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     expired = Repo.get!(ProjectImportAttempt, queued.id)
     assert expired.status == "expired"
+    assert expired.error_code == "import_expired"
     refute expired.user_id
     refute expired.idempotency_key
     assert {:error, :import_plan_unavailable} = PlanStorage.load(queued.plan_storage_key)

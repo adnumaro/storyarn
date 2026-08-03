@@ -136,8 +136,14 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
 
   # Only these end a sequence outright. An unresolvable jump is already a hard
   # error, so treating every jump as terminal costs nothing and keeps the rule
-  # simple.
-  defp terminal_item?({:command, name, _args, _meta}) when name in ["jump", "stop", "return"], do: true
+  # simple. `<<stop now>>` / `<<return 5>>` are NOT the zero-argument control
+  # commands: the compiler reports them and continues, so pruning after them
+  # would hide reachable content behind an already-reported problem.
+  defp terminal_item?({:command, "jump", _args, _meta}), do: true
+
+  defp terminal_item?({:command, name, args, _meta}) when name in ["stop", "return"] do
+    args == nil or (is_binary(args) and String.trim(args) == "")
+  end
 
   # Terminality propagates through control flow: an `<<if>>` whose every branch
   # ends terminally — with an `<<else>>` doing the same, otherwise the false

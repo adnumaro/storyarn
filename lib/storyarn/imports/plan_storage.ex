@@ -73,7 +73,7 @@ defmodule Storyarn.Imports.PlanStorage do
          {:ok, encrypted} <- Storage.download(key),
          {:ok, envelope} <- Vault.decrypt(encrypted),
          {:ok, compressed} <- verify_storage_key_binding(key, envelope),
-         {:ok, json} <- gunzip(compressed),
+         {:ok, json} <- gunzip(compressed, max_json_bytes),
          :ok <- validate_json_size(json, max_json_bytes),
          {:ok, payload} when is_map(payload) <- Jason.decode(json),
          {:ok, plan} <- decode_plan(payload) do
@@ -136,10 +136,37 @@ defmodule Storyarn.Imports.PlanStorage do
     :crypto.hash(:sha256, [@binding_domain, <<0>>, nonce, <<0>>, key])
   end
 
-  defp gunzip(compressed) do
-    {:ok, :zlib.gunzip(compressed)}
-  rescue
-    ErlangError -> {:error, :invalid_import_plan}
+  # `:zlib.gunzip/1` materializes the whole binary before any size check can
+  # look at it. Inflating in bounded chunks keeps the load-side limit
+  # protective rather than merely post-validation: decompression stops the
+  # moment the cap is crossed.
+  defp gunzip(compressed, max_json_bytes) do
+    handle = :zlib.open()
+
+    try do
+      # 16 + 15: gzip framing with the maximum window, matching `:zlib.gzip/1`.
+      :ok = :zlib.inflateInit(handle, 16 + 15)
+      inflate_bounded(handle, :zlib.safeInflate(handle, compressed), [], 0, max_json_bytes)
+    rescue
+      ErlangError -> {:error, :invalid_import_plan}
+    after
+      :zlib.close(handle)
+    end
+  end
+
+  defp inflate_bounded(handle, {status, chunk}, acc, inflated_bytes, max_json_bytes) do
+    inflated_bytes = inflated_bytes + IO.iodata_length(chunk)
+
+    cond do
+      inflated_bytes > max_json_bytes ->
+        {:error, :import_plan_too_large}
+
+      status == :finished ->
+        {:ok, IO.iodata_to_binary([acc | chunk])}
+
+      true ->
+        inflate_bounded(handle, :zlib.safeInflate(handle, []), [acc | chunk], inflated_bytes, max_json_bytes)
+    end
   end
 
   defp decode_plan(%{"format" => format, "parser_version" => parser_version, "data" => data} = payload)

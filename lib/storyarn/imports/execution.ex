@@ -82,12 +82,16 @@ defmodule Storyarn.Imports.Execution do
         end
       rescue
         exception ->
-          Telemetry.report_exception(
-            :execute,
-            Telemetry.attempt_metadata(attempt, "failed", "exception"),
-            exception,
-            started_at
-          )
+          # `handle_execution_error` below persists the transition and emits
+          # the single execute/stop for this failure; only the exception's
+          # identity is recorded here, or every crashed import counts twice.
+          Error.report(%{
+            format: attempt.format,
+            parser_version: attempt.parser_version,
+            phase: "execute",
+            error_code: "exception",
+            exception_module: inspect(exception.__struct__)
+          })
 
           handled_execution_error(
             attempt,
@@ -190,9 +194,13 @@ defmodule Storyarn.Imports.Execution do
   defp materialize_locked_attempt(_attempt, _project, _plan, _opts), do: {:error, :import_not_queued}
 
   defp expire_locked_import_attempt(attempt) do
+    # Only accepted statuses reach here, and an accepted import that ran out
+    # of retention is a real outcome, not a preview that aged out: without the
+    # code the UI reports "preview expired, upload again" about an import the
+    # user had already started.
     with {:ok, expired} <-
            attempt
-           |> ProjectImportAttempt.expired_changeset(TimeHelpers.now())
+           |> ProjectImportAttempt.expired_changeset(TimeHelpers.now(), "import_expired")
            |> Repo.update(),
          :ok <- PlanCleanup.mark_plan_cleanup_pending(expired.plan_storage_key) do
       {:ok, {:terminal, expired}}

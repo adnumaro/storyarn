@@ -654,14 +654,27 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       {:ok, nil} ->
         socket
 
+      {:error, _reason, %ProjectImportAttempt{} = attempt} ->
+        # The durable attempt exists but its preview could not be rebuilt.
+        # An in-panel error keeps the attempt id on screen, so Reset can
+        # terminalize it — a flash over an empty uploader left the user with
+        # no way to clear the attempt, resurfacing the failure every mount.
+        assign(socket, :import_state, %{
+          step: "error",
+          attempt_id: attempt.id,
+          preview: nil,
+          error:
+            dgettext(
+              "projects",
+              "Your previous import could not be restored. Reset it and upload the file again."
+            ),
+          conflict_strategy: attempt.conflict_strategy || "rename",
+          warning_codes: attempt.warning_codes || [],
+          status: attempt.status
+        })
+
       {:error, _reason} ->
-        # There IS a durable attempt but its state could not be rebuilt —
-        # showing a silently empty uploader would read as "nothing happened".
-        put_flash(
-          socket,
-          :error,
-          dgettext("projects", "Your previous import could not be restored.")
-        )
+        socket
     end
   end
 
@@ -816,6 +829,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp expired_import_message("import_cancelled") do
     dgettext("projects", "The import was cancelled. No project content was changed.")
+  end
+
+  defp expired_import_message("import_expired") do
+    dgettext(
+      "projects",
+      "The import could not run before its retention deadline. No project content was changed."
+    )
   end
 
   defp expired_import_message(code) when is_binary(code) do

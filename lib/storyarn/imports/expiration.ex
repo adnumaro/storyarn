@@ -289,8 +289,12 @@ defmodule Storyarn.Imports.Expiration do
     end
   end
 
+  # An accepted import expiring is a real outcome the user must be told about;
+  # a `ready` preview aging out carries no code and reads as exactly that.
   def expire_stale_attempt_record(attempt, now) do
-    with {:ok, expired} <- attempt |> ProjectImportAttempt.expired_changeset(now) |> Repo.update(),
+    error_code = if attempt.status in ~w(queued running retrying), do: "import_expired"
+
+    with {:ok, expired} <- attempt |> ProjectImportAttempt.expired_changeset(now, error_code) |> Repo.update(),
          :ok <- PlanCleanup.mark_plan_cleanup_pending(expired.plan_storage_key) do
       {:ok, {:expired, expired}}
     end
