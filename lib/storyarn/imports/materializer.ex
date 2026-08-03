@@ -710,29 +710,43 @@ defmodule Storyarn.Imports.Materializer do
   # nodes silently read the previous import's sheet.
   defp rewrite_variable_shortcuts(node_data, renames) when renames == %{} or not is_map(node_data), do: node_data
 
-  defp rewrite_variable_shortcuts(node_data, renames), do: deep_rewrite_refs(node_data, renames)
+  defp rewrite_variable_shortcuts(node_data, renames),
+    do: deep_rewrite_refs(node_data, {renames, embedded_ref_pattern(renames)})
 
-  defp deep_rewrite_refs(%{} = map, renames) do
+  # Single pass on purpose: applying the renames one by one would let one
+  # rename's output contain another's search pattern ("yarn"→"yarn-2" chased
+  # by "yarn-2"→"yarn-3" chains), with map iteration order deciding the
+  # result. One alternation match per site cannot chain. Compiled once per
+  # node, not once per string.
+  defp embedded_ref_pattern(renames) do
+    alternation =
+      renames
+      |> Map.keys()
+      |> Enum.sort_by(&byte_size/1, :desc)
+      |> Enum.map_join("|", &Regex.escape/1)
+
+    Regex.compile!("([{$])(" <> alternation <> ")\\.")
+  end
+
+  defp deep_rewrite_refs(%{} = map, {renames, _pattern} = rewrite) do
     Map.new(map, fn
       {key, value} when key in ["sheet", "value_sheet"] and is_binary(value) ->
         {key, Map.get(renames, value, value)}
 
       {key, value} ->
-        {key, deep_rewrite_refs(value, renames)}
+        {key, deep_rewrite_refs(value, rewrite)}
     end)
   end
 
-  defp deep_rewrite_refs(list, renames) when is_list(list), do: Enum.map(list, &deep_rewrite_refs(&1, renames))
+  defp deep_rewrite_refs(list, rewrite) when is_list(list), do: Enum.map(list, &deep_rewrite_refs(&1, rewrite))
 
-  defp deep_rewrite_refs(value, renames) when is_binary(value) do
-    Enum.reduce(renames, value, fn {imported, resolved}, text ->
-      text
-      |> String.replace("{#{imported}.", "{#{resolved}.")
-      |> String.replace("$#{imported}.", "$#{resolved}.")
+  defp deep_rewrite_refs(value, {renames, pattern}) when is_binary(value) do
+    Regex.replace(pattern, value, fn _match, sigil, imported ->
+      sigil <> Map.fetch!(renames, imported) <> "."
     end)
   end
 
-  defp deep_rewrite_refs(value, _renames), do: value
+  defp deep_rewrite_refs(value, _rewrite), do: value
 
   defp import_blocks(sheet_id, blocks, id_map) do
     Enum.reduce(blocks, {id_map, []}, fn block_data, {map, results} ->

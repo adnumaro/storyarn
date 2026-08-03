@@ -399,6 +399,40 @@ defmodule Storyarn.Imports.MaterializerTest do
       [first_rule] = first_condition.data["condition"]["blocks"] |> hd() |> Map.fetch!("rules")
       assert first_rule["sheet"] == "yarn"
     end
+
+    test "two renames where one's target is the other's source never chain", %{target: target} do
+      # The project already holds `yarn`, and the file also ships a speaker
+      # whose shortcut is `yarn-2`. Depending on materialization order this
+      # produces renames like yarn→yarn-2 alongside yarn-2→yarn-2-2 — applied
+      # sequentially, the first rewrite's output feeds the second and the text
+      # ends up pointing at the speaker sheet. The rewrite must be single-pass.
+      sheet_fixture(target, %{name: "Yarn"})
+
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      Yarn 2: You have {$gold} coins.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("chain.yarn", source)
+
+      assert {:ok, resolved} =
+               ReviewDecisions.apply(plan, true, [%{"speaker" => "Yarn 2", "action" => "create_sheet"}])
+
+      assert {:ok, _result} = Imports.execute(target, resolved, conflict_strategy: :rename)
+
+      sheets = Sheets.list_all_sheets(target.id)
+      variables_sheet = Enum.find(sheets, &(&1.name == "Yarn Variables"))
+      assert variables_sheet
+
+      flow = Enum.find(Flows.list_flows(target.id), &(&1.shortcut == "start"))
+      nodes = Flows.list_nodes(flow.id)
+
+      dialogue = Enum.find(nodes, &(&1.type == "dialogue"))
+      assert String.contains?(dialogue.data["text"], "{#{variables_sheet.shortcut}.gold}")
+    end
   end
 
   # =============================================================================
