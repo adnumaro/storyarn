@@ -472,7 +472,7 @@ defmodule Storyarn.Imports.Materializer do
         import_sheets(project, data, id_map, strategy, existing_shortcuts)
 
       {id_map, scene_results} =
-        import_scenes(project, data, id_map, strategy, existing_shortcuts)
+        import_scenes(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
 
       {id_map, flow_results, node_count} =
         import_flows(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
@@ -747,6 +747,11 @@ defmodule Storyarn.Imports.Materializer do
       {"condition" = key, value} when is_binary(value) ->
         {key, rewrite_encoded_condition(value, rewrite)}
 
+      # Display zones reference a variable as a bare "shortcut.name" string,
+      # with no sigil for the embedded pass to key on.
+      {"variable_ref" = key, value} when is_binary(value) ->
+        {key, rewrite_bare_variable_ref(value, renames)}
+
       {key, value} ->
         {key, deep_rewrite_refs(value, rewrite)}
     end)
@@ -769,6 +774,13 @@ defmodule Storyarn.Imports.Materializer do
 
       _not_structured ->
         deep_rewrite_refs(value, rewrite)
+    end
+  end
+
+  defp rewrite_bare_variable_ref(value, renames) do
+    case String.split(value, ".", parts: 2) do
+      [shortcut, rest] -> Map.get(renames, shortcut, shortcut) <> "." <> rest
+      _no_prefix -> value
     end
   end
 
@@ -1091,15 +1103,15 @@ defmodule Storyarn.Imports.Materializer do
   # Scenes import (two-pass for parent_id)
   # =============================================================================
 
-  defp import_scenes(project, data, id_map, strategy, existing_shortcuts) do
+  defp import_scenes(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames) do
     scenes = data["scenes"] || []
 
     if scenes == [],
       do: {id_map, []},
-      else: do_import_scenes(project, scenes, id_map, strategy, existing_shortcuts)
+      else: do_import_scenes(project, scenes, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
   end
 
-  defp do_import_scenes(project, scenes, id_map, strategy, existing_shortcuts) do
+  defp do_import_scenes(project, scenes, id_map, strategy, existing_shortcuts, sheet_shortcut_renames) do
     used_shortcuts = Map.fetch!(existing_shortcuts, :scene)
 
     {id_map, scene_records, _used_shortcuts} =
@@ -1115,7 +1127,7 @@ defmodule Storyarn.Imports.Materializer do
             {map, records, used}
 
           shortcut ->
-            {map, scene} = create_scene_record(project, scene_data, shortcut, map)
+            {map, scene} = create_scene_record(project, scene_data, shortcut, map, sheet_shortcut_renames)
             {map, [{scene, scene_data} | records], reserve_shortcut(used, shortcut)}
         end
       end)
@@ -1125,7 +1137,7 @@ defmodule Storyarn.Imports.Materializer do
     {id_map, Enum.map(scene_records, fn {scene, _} -> scene end)}
   end
 
-  defp create_scene_record(project, scene_data, shortcut, map) do
+  defp create_scene_record(project, scene_data, shortcut, map, sheet_shortcut_renames) do
     attrs = %{
       "name" => scene_data["name"],
       "shortcut" => shortcut,
@@ -1151,8 +1163,13 @@ defmodule Storyarn.Imports.Materializer do
 
     map = Map.put(map, {:scene, scene_data["id"]}, scene.id)
     {map, _} = import_layers(scene.id, scene_data["layers"] || [], map)
-    {map, _} = import_pins(scene.id, scene_data["pins"] || [], map)
-    {map, _} = import_zones(scene.id, scene_data["zones"] || [], map)
+
+    # Pin and zone payloads carry the same variable references flow nodes do
+    # (conditions, action assignments, display variable_refs), so a renamed
+    # sheet shortcut must follow them too. Scene annotations stay verbatim —
+    # they are prose, not references.
+    {map, _} = import_pins(scene.id, scene_data["pins"] || [], map, sheet_shortcut_renames)
+    {map, _} = import_zones(scene.id, scene_data["zones"] || [], map, sheet_shortcut_renames)
     {map, _} = import_scene_connections(scene.id, scene_data["connections"] || [], map)
     {map, _} = import_annotations(scene.id, scene_data["annotations"] || [], map)
 
@@ -1179,8 +1196,10 @@ defmodule Storyarn.Imports.Materializer do
     end)
   end
 
-  defp import_pins(scene_id, pins, id_map) do
+  defp import_pins(scene_id, pins, id_map, sheet_shortcut_renames) do
     Enum.reduce(pins, {id_map, []}, fn pin_data, {map, results} ->
+      pin_data = rewrite_variable_shortcuts(pin_data, sheet_shortcut_renames)
+
       attrs = %{
         "layer_id" => remap_id(map, :layer, pin_data["layer_id"]),
         "position_x" => pin_data["position_x"] || 0.0,
@@ -1212,8 +1231,9 @@ defmodule Storyarn.Imports.Materializer do
     end)
   end
 
-  defp import_zones(scene_id, zones, id_map) do
+  defp import_zones(scene_id, zones, id_map, sheet_shortcut_renames) do
     Enum.reduce(zones, {id_map, []}, fn zone_data, {map, results} ->
+      zone_data = rewrite_variable_shortcuts(zone_data, sheet_shortcut_renames)
       attrs = import_zone_attrs(zone_data, map)
 
       zone =

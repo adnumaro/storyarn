@@ -365,16 +365,29 @@ export function useImportResume(options: UseImportResumeOptions): UseImportResum
       dismissedAttemptIds.add(attemptId);
       clearStoredAttemptIfMatching(attemptId);
 
-      // A late reply must not reach past its own attempt: when the panel or a
-      // cross-tab resume already moved on to a different attempt, dropping the
-      // old reference is all there is to do — dismissing the newer attempt or
-      // stopping its backstop would break what the user just started.
-      const currentAttemptId = importState().attemptId;
-      if (currentAttemptId !== attemptId && pendingAttemptId !== attemptId) return;
-    } else {
-      // No specific attempt was on screen; drop whatever reference remains.
-      clearStoredAttempt();
+      const dismissingCurrent = importState().attemptId === attemptId;
+      const dismissingPending = pendingAttemptId === attemptId;
+
+      // A late reply must not reach past its own attempt: when the panel and
+      // the resume machinery both moved on, dropping the old reference is all
+      // there is to do.
+      if (!dismissingCurrent && !dismissingPending) return;
+
+      // Only the machinery that belongs to the dismissed attempt is touched.
+      // A newer cross-tab resume may be pending while the old attempt is
+      // still displayed; invalidating it would cancel what the user just
+      // started in the other tab.
+      if (dismissingPending) {
+        invalidateRequests();
+        pendingAttemptId = null;
+      }
+
+      if (dismissingCurrent) stopReconcileTimer();
+      return;
     }
+
+    // No specific attempt was on screen; drop whatever reference remains.
+    clearStoredAttempt();
 
     if (validAttemptId(pendingAttemptId)) {
       dismissedAttemptIds.add(pendingAttemptId);

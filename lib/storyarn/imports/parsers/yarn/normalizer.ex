@@ -14,7 +14,8 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   @spec normalize([map()]) :: {:ok, map(), [ImportIssue.t()], map()} | {:error, atom()}
   def normalize(documents) when is_list(documents) do
     with :ok <- validate_titles(documents),
-         :ok <- validate_descriptions(documents) do
+         :ok <- validate_descriptions(documents),
+         :ok <- validate_interpolations(documents) do
       # Declarations are collected before pruning: in the Yarn compiler they
       # are compile-time and flow-insensitive, so a `<<declare>>` after a
       # `<<jump>>`/`<<stop>>` still takes effect — the documented "Setup node"
@@ -168,6 +169,27 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   defp item_meta({:options, _options, meta}), do: meta
   defp item_meta({:if, _branches, _else_body, meta}), do: meta
   defp item_meta({:command, _name, _args, meta}), do: meta
+
+  # Flow-insensitive like the compiler's own checks: an interpolation that
+  # normalizes to nothing — `{$_}` — must fail the parse instead of being
+  # silently rewritten to the shared fallback variable.
+  defp validate_interpolations(documents) do
+    invalid? =
+      documents
+      |> Enum.flat_map(&walk_items(&1.body))
+      |> Enum.any?(fn
+        {:line, text, _meta} ->
+          Expression.invalid_interpolation?(text)
+
+        {:options, options, _meta} ->
+          Enum.any?(options, &Expression.invalid_interpolation?(&1.text))
+
+        _item ->
+          false
+      end)
+
+    if invalid?, do: {:error, :invalid_yarn_interpolation}, else: :ok
+  end
 
   defp validate_titles(documents) do
     titles = Enum.map(documents, & &1.title)

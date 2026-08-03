@@ -86,6 +86,17 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
     |> Enum.uniq()
   end
 
+  @doc false
+  # An interpolation that matches the syntax but normalizes to nothing — `{$_}`
+  # — would otherwise be silently rewritten to the shared fallback variable
+  # and materialize as a dangling reference.
+  @spec invalid_interpolation?(String.t()) :: boolean()
+  def invalid_interpolation?(text) when is_binary(text) do
+    @interpolation_regex
+    |> Regex.scan(text, capture: :all_but_first)
+    |> Enum.any?(fn [name] -> is_nil(normalize_variable(name)) end)
+  end
+
   @spec interpolate(String.t(), :dialogue | :response) :: String.t()
   def interpolate(text, mode) when is_binary(text) do
     Regex.replace(@interpolation_regex, text, fn _match, name ->

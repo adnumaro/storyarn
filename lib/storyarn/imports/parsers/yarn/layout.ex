@@ -230,9 +230,17 @@ defmodule Storyarn.Imports.Parsers.Yarn.Layout do
 
   def node_height(node), do: base_node_height(node)
 
-  # The base height already covers the first rendered text line.
+  # The base height already covers the first rendered text line. Newlines are
+  # preserved by the canvas (whitespace-pre-wrap), so every newline-separated
+  # segment renders as at least one line of its own.
   defp dialogue_text_height(text) when is_binary(text) and text != "" do
-    lines = text |> String.length() |> Kernel./(@dialogue_text_chars_per_line) |> Float.ceil() |> trunc()
+    lines =
+      text
+      |> String.split("\n")
+      |> Enum.reduce(0, fn segment, total ->
+        total + max(ceil(String.length(segment) / @dialogue_text_chars_per_line), 1)
+      end)
+
     max(lines - 1, 0) * @dialogue_text_line_height
   end
 

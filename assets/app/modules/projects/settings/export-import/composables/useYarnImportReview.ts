@@ -730,17 +730,21 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
     saveTimer = setTimeout(() => {
       saveTimer = null;
       const sentRevision = localRevision;
+      const sentAttemptId = importState().attemptId;
 
       // The one failure neither callback covers is a push that is accepted
       // and never answered — exactly what leaves the dirty guard blocking
       // remote adoption with no signal. The watchdog gives that case a voice;
-      // a newer push re-arms it, and an attempt change zeroes the revisions
-      // it checks.
+      // a newer push re-arms it, and an attempt change disarms it.
       clearSaveWatchdog();
       saveWatchdog = setTimeout(() => {
         saveWatchdog = null;
 
-        if (sentRevision === localRevision && syncedRevision < sentRevision) {
+        if (
+          importState().attemptId === sentAttemptId &&
+          sentRevision === localRevision &&
+          syncedRevision < sentRevision
+        ) {
           surfaceTransportError("save", "unavailable");
         }
       }, OPERATION_WATCHDOG_MS);
@@ -749,6 +753,12 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
         "save_import_review",
         { review_decisions: buildDecisions() },
         (reply) => {
+          // Revisions reset per attempt, so a reply is only meaningful for
+          // the attempt it was sent for — a delayed reply from a previous
+          // attempt must not clear the watchdog, advance the revisions or
+          // surface an error into the new review.
+          if (importState().attemptId !== sentAttemptId) return;
+
           if (sentRevision === localRevision) clearSaveWatchdog();
 
           if (reply.ok === true) {
@@ -762,7 +772,7 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
           if (sentRevision === localRevision) surfaceTransportError("save", reply.reason);
         },
         () => {
-          if (sentRevision === localRevision) {
+          if (importState().attemptId === sentAttemptId && sentRevision === localRevision) {
             clearSaveWatchdog();
             surfaceTransportError("save", "unavailable");
           }
@@ -834,11 +844,11 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
         const settled = settleOperation(token);
 
         // A success that arrives after the watchdog gave up is still a
-        // success: the server accepted exactly what was sent, so the review
-        // is synced and a watchdog complaint is stale — as long as the panel
-        // still shows the attempt the reply belongs to.
+        // success — but only while it is the LATEST operation: a newer
+        // validate/execute owns the banner now, and a stale success must not
+        // erase that retry's failure.
         if (reply.ok === true) {
-          if (importState().attemptId === sentAttemptId) {
+          if (token === operationToken && importState().attemptId === sentAttemptId) {
             syncedRevision = Math.max(syncedRevision, sentRevision);
             transportError.value = null;
           }
@@ -870,7 +880,10 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
         const settled = settleOperation(token);
 
         if (reply.ok === true) {
-          if (importState().attemptId === sentAttemptId) transportError.value = null;
+          if (token === operationToken && importState().attemptId === sentAttemptId) {
+            transportError.value = null;
+          }
+
           return;
         }
 

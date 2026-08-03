@@ -418,6 +418,42 @@ defmodule Storyarn.Imports.MaterializerTest do
       assert first_rule["sheet"] == "yarn"
     end
 
+    test "a renamed sheet drags scene pin references with it", %{source: source, target: target} do
+      # Pin and zone payloads carry the same variable references flow nodes
+      # do; a rename that only followed flow nodes left scene conditions and
+      # display refs bound to the pre-existing sheet.
+      sheet_fixture(source, %{name: "Yarn"})
+      sheet_fixture(target, %{name: "Yarn"})
+
+      scene = scene_fixture(source, %{name: "World"})
+
+      pin_fixture(scene, %{
+        "label" => "Gate",
+        "condition" => %{
+          "logic" => "all",
+          "blocks" => [
+            %{
+              "type" => "block",
+              "logic" => "all",
+              "rules" => [
+                %{"sheet" => "yarn", "variable" => "gold", "operator" => "greater_than", "value" => "5"}
+              ]
+            }
+          ]
+        }
+      })
+
+      parsed = import_plan(project_plan_data(source))
+      assert {:ok, _result} = Imports.execute(target, parsed, conflict_strategy: :rename)
+
+      imported_scene = target.id |> Scenes.list_scenes() |> Enum.find(&(&1.name == "World"))
+      [pin] = Scenes.list_pins(imported_scene.id)
+
+      [rule] = pin.condition["blocks"] |> hd() |> Map.fetch!("rules")
+      assert rule["sheet"] == "yarn-2"
+      assert rule["variable"] == "gold"
+    end
+
     test "annotation nodes keep their verbatim Yarn source across a rename", %{target: target} do
       # The annotation exists to show the operator the unsupported source
       # verbatim: in Yarn, `$yarn.gold` is a variable literally named

@@ -389,6 +389,18 @@ defmodule StoryarnWeb.ExportImportLive.Index do
                "This import is already running and cannot be dismissed. It will finish in the background."
              )
            )}
+
+        {:error, :reset_failed} ->
+          # The queued job could not be cancelled: the import is still live,
+          # so the panel and the durable browser reference must both survive.
+          # Reporting success here dropped the reference while the queued
+          # import went on to materialize.
+          {:reply, %{ok: false, reason: "reset_failed"},
+           put_flash(
+             socket,
+             :error,
+             dgettext("projects", "The import could not be dismissed. Try again.")
+           )}
       end
     end)
   end
@@ -802,10 +814,14 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   # A cancellation that lost the race to the worker must keep the attempt on
-  # screen. Any other failure means there is nothing actionable left, and
-  # leaving the user stuck on a dead panel would be worse than clearing it.
+  # screen. A vanished attempt is genuinely nothing to keep — clearing is
+  # right. Every other failure means the attempt (and possibly its queued
+  # job) is still live, so reporting success would drop the durable browser
+  # reference while the import goes on to materialize.
   defp cancellation_outcome({:error, :import_not_cancellable}), do: {:error, :import_not_cancellable}
-  defp cancellation_outcome(_result), do: :ok
+  defp cancellation_outcome({:ok, _expired}), do: :ok
+  defp cancellation_outcome({:error, :not_found}), do: :ok
+  defp cancellation_outcome(_failure), do: {:error, :reset_failed}
 
   # Three different things terminalize an attempt as `expired`, and the durable
   # row carries no message for any of them. Reporting all three as "the import

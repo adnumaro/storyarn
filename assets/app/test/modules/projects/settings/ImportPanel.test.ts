@@ -917,6 +917,121 @@ describe("ImportPanel resume state", () => {
     wrapper.unmount();
   });
 
+  it("an old reset reply does not permanently dismiss a newer cross-tab attempt", async () => {
+    const wrapper = mountPanel(attemptState("completed", "done", 42));
+
+    // Another tab starts a newer import; its reference lands via storage and
+    // this tab begins resuming it while still displaying the old attempt.
+    window.localStorage.setItem(storageKey(), storedAttempt(43));
+    dispatchStorageChange(7, null, storedAttempt(43));
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "resume_import",
+      { attempt_id: 43 },
+      expect.any(Function),
+      expect.any(Function),
+    );
+
+    // The reset of the OLD attempt round-trips afterwards. Dismissing the
+    // pending newer attempt here marked it dismissed forever: it could never
+    // be stored or resumed again in this session.
+    await wrapper.get('[data-testid="yarn-import-reset"]').trigger("click");
+    const resetCall = vi
+      .mocked(mockLive.pushEvent)
+      .mock.calls.find(([event]) => event === "reset_import");
+    resetCall?.[2]?.({ ok: true });
+
+    // The newer attempt reaches the panel; its reference must persist again.
+    window.localStorage.removeItem(storageKey());
+    await wrapper.setProps({ importState: attemptState("queued", "queued", 43) });
+
+    const stored = window.localStorage.getItem(storageKey());
+    expect(stored).not.toBeNull();
+    expect(JSON.parse(stored!).attemptId).toBe(43);
+
+    wrapper.unmount();
+  });
+
+  it("a delayed save reply from a previous attempt cannot corrupt the new review", async () => {
+    const wrapper = mountPanel(reviewedPreviewState());
+
+    // Three edits on attempt A; the save goes out and stays unanswered.
+    await wrapper.findAll('[data-testid="yarn-import-action-create-sheet"]')[0]!.trigger("click");
+    await wrapper.get('[data-testid="yarn-import-action-map-to-sheet"]').trigger("click");
+    await wrapper
+      .findAll('[data-testid="yarn-import-action-preserve-literal"]')
+      .at(-1)!
+      .trigger("click");
+    vi.advanceTimersByTime(500);
+
+    const oldSave = reviewEventCalls("save_import_review")[0];
+    expect(oldSave).toBeDefined();
+
+    // The panel moves to a different attempt and the user makes ONE edit.
+    const nextAttempt = reviewedPreviewState();
+    nextAttempt.attemptId = 43;
+    await wrapper.setProps({ importState: nextAttempt });
+
+    const decisions = wrapper.findAll('[data-testid="yarn-import-speaker-decision"]');
+    await wrapper.findAll('[data-testid="yarn-import-action-create-sheet"]')[0]!.trigger("click");
+    expect(decisions[0]?.attributes("data-decision")).toBe("create_sheet");
+
+    // Attempt A's save reply lands late. If it advanced the new attempt's
+    // syncedRevision past localRevision, the next props echo would restore
+    // over the unsaved local edit.
+    oldSave?.[2]?.({ ok: true });
+
+    const echo = reviewedPreviewState();
+    echo.attemptId = 43;
+    if (echo.preview) {
+      echo.preview.import_review_draft = {
+        version: 1,
+        decisions: [],
+        decision_fingerprint: "other-draft",
+      };
+    }
+    await wrapper.setProps({ importState: echo });
+
+    expect(decisions[0]?.attributes("data-decision")).toBe("create_sheet");
+
+    wrapper.unmount();
+  });
+
+  it("a late validate success does not erase a newer retry's failure", async () => {
+    const wrapper = mountPanel(reviewedPreviewState());
+
+    await wrapper.findAll('[data-testid="yarn-import-action-create-sheet"]')[0]!.trigger("click");
+    await wrapper.get('[data-testid="yarn-import-action-map-to-sheet"]').trigger("click");
+    await wrapper
+      .findAll('[data-testid="yarn-import-action-preserve-literal"]')
+      .at(-1)!
+      .trigger("click");
+    await wrapper.get("#yarn-import-review-acknowledgement").trigger("click");
+
+    const validate = wrapper.get("#yarn-import-validate");
+    await validate.trigger("click");
+
+    // The first validate times out; its watchdog surfaces a failure and
+    // re-enables the button.
+    vi.advanceTimersByTime(10_000);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="yarn-import-review-error"]').exists()).toBe(true);
+
+    // The user retries; the retry is rejected and owns the banner now.
+    await validate.trigger("click");
+    const [firstValidate, retryValidate] = reviewEventCalls("validate_import_review");
+    retryValidate?.[2]?.({ ok: false, reason: "stale" });
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="yarn-import-review-error"]').exists()).toBe(true);
+
+    // The FIRST validate's success arrives after everything. It is stale:
+    // clearing the retry's failure would leave the panel reporting nothing.
+    firstValidate?.[2]?.({ ok: true });
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="yarn-import-review-error"]').exists()).toBe(true);
+
+    wrapper.unmount();
+  });
+
   it("surfaces a draft save whose reply never arrives", async () => {
     const wrapper = mountPanel(reviewedPreviewState());
 

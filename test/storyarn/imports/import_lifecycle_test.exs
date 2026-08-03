@@ -915,6 +915,23 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert reloaded.oban_job_id
   end
 
+  test "a failed job cancellation keeps the attempt and reports the failure", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    # The queued job could not be cancelled: the import is still live, so the
+    # caller must see the failure — reporting success here made the UI drop
+    # the durable reference while the queued import went on to materialize.
+    assert {:error, :import_job_cancellation_failed} =
+             Imports.cancel_import(ctx.scope, queued.id, job_cancel: fn _job_id -> :error end)
+
+    reloaded = Repo.get!(ProjectImportAttempt, queued.id)
+    assert reloaded.status == "queued"
+    assert reloaded.oban_job_id
+  end
+
   test "active attempts are not operable by other members of the project", ctx do
     # Project permission alone must not let one owner adopt, reconcile,
     # enqueue or cancel another member's in-flight import by guessing its id.

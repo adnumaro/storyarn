@@ -1657,6 +1657,22 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert Layout.node_height(wrapped_label) > Layout.node_height(short_label)
     end
 
+    test "newlines count as rendered lines in dialogue height estimates" do
+      # The canvas preserves newlines (whitespace-pre-wrap), so six short
+      # lines are six rendered lines even though they are few characters.
+      multiline = %{
+        "type" => "dialogue",
+        "data" => %{"text" => String.duplicate("line\n", 6) <> "end", "responses" => []}
+      }
+
+      flat = %{
+        "type" => "dialogue",
+        "data" => %{"text" => String.duplicate("line ", 6) <> "end", "responses" => []}
+      }
+
+      assert Layout.node_height(multiline) > Layout.node_height(flat)
+    end
+
     test "column stride follows the widest node of the column, not a fixed box" do
       # A dialogue-heavy column is 350px wide; the next column must start
       # beyond it plus the 120px layer gap, or real rendered nodes touch.
@@ -2092,6 +2108,20 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       """
 
       assert {:error, :import_plan_has_errors} = Imports.parse_file("underscore.yarn", source)
+    end
+
+    test "rejects an interpolation whose name has no usable characters" do
+      # `{$_}` matched the syntax, was dropped from reference collection, and
+      # then materialized as the shared fallback variable — a dangling
+      # reference the user never wrote.
+      source = """
+      title: Start
+      ---
+      Guide: You have {$_} coins.
+      ===
+      """
+
+      assert {:error, :invalid_yarn_interpolation} = Imports.parse_file("underscore-ref.yarn", source)
     end
 
     test "tolerates re-declaring the same spelling twice" do
