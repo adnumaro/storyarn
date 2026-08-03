@@ -7,7 +7,6 @@ defmodule Storyarn.Imports.Parsers.Yarn.SpeakerClassifier do
   @max_alias_work 200_000
   @minimum_alias_length 5
   @minimum_alias_frequency_ratio 3
-  @max_speaker_length 200
 
   @type speaker_stats :: %{
           count: pos_integer(),
@@ -82,27 +81,38 @@ defmodule Storyarn.Imports.Parsers.Yarn.SpeakerClassifier do
     }
   end
 
+  # A character name may contain spaces — "Captain Reyes", "Old Man" — matching
+  # every shipped Yarn implementation, which reads the name as the text up to
+  # the first colon. The class stays narrower than Yarn's on purpose: letters,
+  # digits, space and `_.'-` up to 60 chars, so a long prose clause ending in a
+  # colon is dialogue, not a character. A `\:` escape (Yarn 3.2+) suppresses
+  # the split entirely; the escape is unescaped in the returned text.
+  @speaker_pattern ~r/^([\p{L}\p{N}_][\p{L}\p{N} _.'-]{0,59}):\s+(.+)$/u
+
+  # A speaker that is exactly one `{$variable}` interpolation is recognized
+  # separately so `dynamic_speaker?/1` can route it to the preserve-literal
+  # review instead of losing the line's computed speaker in its text.
+  @dynamic_speaker_pattern ~r/^(\{\$[A-Za-z_][A-Za-z0-9_.]*\}):\s+(.+)$/u
+
   @spec split(String.t()) :: {String.t() | nil, String.t()}
   def split(text) when is_binary(text) do
-    case Regex.run(~r/^([^\s:]+):[ \t]*(.*)$/u, text, capture: :all_but_first) do
+    case run_speaker_patterns(text) do
       [speaker, dialogue] ->
         if String.downcase(speaker) in ["http", "https"],
-          do: {nil, text},
-          else: {speaker, dialogue}
+          do: {nil, unescape_colons(text)},
+          else: {String.trim(speaker), unescape_colons(dialogue)}
 
-      _other ->
-        {nil, text}
+      _no_speaker ->
+        {nil, unescape_colons(text)}
     end
   end
 
-  @spec validate_speaker_names([map()]) :: :ok | {:error, :yarn_speaker_name_too_long}
-  def validate_speaker_names(documents) when is_list(documents) do
-    {speaker_stats, _scope_counts} = collect_occurrences(documents)
-
-    if Enum.any?(Map.keys(speaker_stats), &(String.length(&1) > @max_speaker_length)),
-      do: {:error, :yarn_speaker_name_too_long},
-      else: :ok
+  defp run_speaker_patterns(text) do
+    Regex.run(@speaker_pattern, text, capture: :all_but_first) ||
+      Regex.run(@dynamic_speaker_pattern, text, capture: :all_but_first)
   end
+
+  defp unescape_colons(text), do: String.replace(text, "\\:", ":")
 
   defp collect_occurrences(documents) do
     Enum.reduce(documents, {%{}, %{}}, fn document, {occurrences, scope_counts} ->

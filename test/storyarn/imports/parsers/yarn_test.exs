@@ -1386,10 +1386,9 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert {:error, :duplicate_yarn_node_title} = Imports.parse_file("project.yarn", source)
     end
 
-    test "rejects Yarn titles, descriptions and speaker names beyond native entity limits" do
+    test "rejects Yarn titles and descriptions beyond native entity limits" do
       long_title = String.duplicate("T", 201)
       long_description = String.duplicate("D", 2_001)
-      long_speaker = String.duplicate("S", 201)
 
       assert {:error, :yarn_node_title_too_long} =
                Imports.parse_file(
@@ -1402,12 +1401,21 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
                  "long-description.yarn",
                  "title: Start\ndescription: #{long_description}\n---\nLine\n===\n"
                )
+    end
 
-      assert {:error, :yarn_speaker_name_too_long} =
+    test "treats a colon prefix longer than a plausible name as dialogue, not a speaker" do
+      # The recognizer caps names at 60 chars, so a long clause before a colon
+      # stays prose instead of becoming a character or failing the import.
+      long_prefix = String.duplicate("S", 61)
+
+      assert {:ok, plan} =
                Imports.parse_file(
                  "long-speaker.yarn",
-                 "title: Start\n---\n#{long_speaker}: Hello\n===\n"
+                 "title: Start\n---\n#{long_prefix}: Hello\n===\n"
                )
+
+      refute ImportPlan.error?(plan)
+      assert plan.data["import_review"]["speaker_decisions"] == []
     end
 
     test "rejects malformed conditional blocks" do
@@ -1444,7 +1452,7 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       source = """
       title: #{shared_prefix}X
       ---
-      #{String.duplicate("S", 200)}: First
+      #{String.duplicate("S", 60)}: First
       ===
       title: #{shared_prefix}Y
       ---
@@ -1461,10 +1469,31 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
 
       speaker_sheet =
         Enum.find(plan.data["sheets"], fn sheet ->
-          sheet["name"] == String.duplicate("S", 200)
+          sheet["name"] == String.duplicate("S", 60)
         end)
 
       assert String.length(speaker_sheet["shortcut"]) == 50
+    end
+
+    test "a bound that cuts at a separator never emits a trailing separator" do
+      # 49 chars + a space: shortcutified this is "a…a-bcd…", and the 50-char
+      # cut lands exactly on the hyphen. The shortcut must stay valid for
+      # `validate_shortcut` — materialization is too late to find out.
+      name = String.duplicate("A", 49) <> " " <> String.duplicate("B", 10)
+
+      source = """
+      title: Start
+      ---
+      #{name}: Hello there
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("boundary.yarn", source)
+      speaker_sheet = Enum.find(plan.data["sheets"], &(&1["name"] == name))
+
+      assert speaker_sheet
+      assert String.length(speaker_sheet["shortcut"]) <= 50
+      assert speaker_sheet["shortcut"] =~ ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
     end
 
     test "rejects Yarn documents with excessive statement counts before normalization" do
@@ -1790,6 +1819,57 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
 
       assert {:ok, _resolved} =
                ReviewDecisions.apply(plan, true, [%{"speaker" => "Alice", "action" => "create_sheet"}])
+    end
+
+    test "recognizes multi-word speakers, matching shipped Yarn implementations" do
+      # Regression guard: the strict `[^\s:]+` recognizer silently demoted
+      # "Captain Reyes" to dialogue text — no sheet, no review entry — while
+      # every shipped Yarn implementation reads the name up to the first colon.
+      source = """
+      title: Start
+      ---
+      Captain Reyes: Hold position.
+      Old Man: The gate opens at dawn.
+      Mae: Wow!
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("crew.yarn", source)
+      refute ImportPlan.error?(plan)
+
+      speakers = Enum.map(plan.data["import_review"]["speaker_decisions"], & &1["speaker"])
+      assert "Captain Reyes" in speakers
+      assert "Old Man" in speakers
+      assert "Mae" in speakers
+
+      sheet_names = Enum.map(plan.data["sheets"], & &1["name"])
+      assert "Captain Reyes" in sheet_names
+
+      captain = Enum.find(plan.data["sheets"], &(&1["name"] == "Captain Reyes"))
+      assert captain["shortcut"] == "captain-reyes"
+    end
+
+    test "an escaped colon suppresses the speaker split and is unescaped in the text" do
+      # Yarn 3.2+: `Mae\: Wow!` is a speakerless line reading "Mae: Wow!".
+      source = """
+      title: Start
+      ---
+      Mae\\: Wow!
+      Alice: The odds are 3\\:1 against.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("escapes.yarn", source)
+      refute ImportPlan.error?(plan)
+
+      speakers = Enum.map(plan.data["import_review"]["speaker_decisions"], & &1["speaker"])
+      assert speakers == ["Alice"]
+
+      flow = Enum.find(plan.data["flows"], &(&1["name"] == "Start"))
+      texts = for node <- flow["nodes"], node["type"] == "dialogue", do: get_in(node, ["data", "text"])
+
+      assert Enum.any?(texts, &(is_binary(&1) and &1 =~ "Mae: Wow!"))
+      assert Enum.any?(texts, &(is_binary(&1) and &1 =~ "3:1 against"))
     end
 
     test "keeps declarations that sit after a terminal command" do

@@ -39,7 +39,6 @@ defmodule Storyarn.Imports.Error do
     yarn_document_limit_exceeded
     yarn_node_description_too_long
     yarn_node_title_too_long
-    yarn_speaker_name_too_long
     yarn_statement_limit_exceeded
   )
 

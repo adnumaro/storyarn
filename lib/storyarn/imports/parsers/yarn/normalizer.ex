@@ -14,8 +14,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   @spec normalize([map()]) :: {:ok, map(), [ImportIssue.t()], map()} | {:error, atom()}
   def normalize(documents) when is_list(documents) do
     with :ok <- validate_titles(documents),
-         :ok <- validate_descriptions(documents),
-         :ok <- SpeakerClassifier.validate_speaker_names(documents) do
+         :ok <- validate_descriptions(documents) do
       # Declarations are collected before pruning: in the Yarn compiler they
       # are compile-time and flow-insensitive, so a `<<declare>>` after a
       # `<<jump>>`/`<<stop>>` still takes effect — the documented "Setup node"
