@@ -907,6 +907,47 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert reloaded.oban_job_id
   end
 
+  test "active attempts are not operable by other members of the project", ctx do
+    # Project permission alone must not let one owner adopt, reconcile,
+    # enqueue or cancel another member's in-flight import by guessing its id.
+    # The refusal is indistinguishable from a missing attempt.
+    co_owner = user_fixture()
+    membership_fixture(ctx.project, co_owner, "owner")
+    co_owner_scope = Scope.for_user(co_owner)
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:error, :not_found} = Imports.resume_import(co_owner_scope, ctx.project, ready.id)
+    assert {:error, :not_found} = Imports.cancel_import(co_owner_scope, ready.id)
+    assert {:error, :not_found} = Imports.enqueue_import(co_owner_scope, ready.id, :rename)
+    assert {:error, :not_found} = Imports.get_import_attempt(co_owner_scope, ready.id)
+
+    assert {:ok, %ProjectImportAttempt{id: resumed_id}, _resumed_preview} =
+             Imports.resume_import(ctx.scope, ctx.project, ready.id)
+
+    assert resumed_id == ready.id
+  end
+
+  test "terminal attempts read as project records for any authorized member", ctx do
+    # Terminal transitions strip `user_id` under the terminal-privacy CHECK, so
+    # a completed import is an ownerless project record: any member the
+    # project-level authorization admits may see its outcome.
+    co_owner = user_fixture()
+    membership_fixture(ctx.project, co_owner, "owner")
+    co_owner_scope = Scope.for_user(co_owner)
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+    assert {:ok, completed} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+    assert completed.status == "completed"
+
+    assert {:ok, resumed, nil} = Imports.resume_import(co_owner_scope, ctx.project, ready.id)
+    assert resumed.status == "completed"
+  end
+
   test "rechecks import authorization at the cancellation boundary", ctx do
     co_owner = user_fixture()
     membership = membership_fixture(ctx.project, co_owner, "owner")
@@ -927,7 +968,11 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
     assert {:ok, _plan} = PlanStorage.load(ready.plan_storage_key)
-    assert {:ok, _expired} = Imports.cancel_import(ctx.scope, ready.id)
+
+    # Active attempts are owner-private, so the surviving attempt is cancelled
+    # by its owner once the role comes back — not by another member.
+    membership |> Repo.reload!() |> Ecto.Changeset.change(role: "owner") |> Repo.update!()
+    assert {:ok, _expired} = Imports.cancel_import(co_owner_scope, ready.id)
   end
 
   test "does not disclose cancellable attempts to project non-members", ctx do

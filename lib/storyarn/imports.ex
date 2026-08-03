@@ -216,7 +216,8 @@ defmodule Storyarn.Imports do
   def enqueue_import(%Scope{} = scope, attempt_id, strategy, opts) when is_list(opts) do
     with {:ok, strategy} <- normalize_strategy(strategy),
          %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
-         {:ok, project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action) do
+         {:ok, project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
+         :ok <- authorize_attempt_owner(attempt, scope.user.id) do
       fn -> enqueue_locked_attempt(attempt.id, project.id, scope.user.id, strategy, opts) end
       |> Repo.transact()
       |> case do
@@ -243,12 +244,21 @@ defmodule Storyarn.Imports do
           {:ok, ProjectImportAttempt.t()} | {:error, :not_found | :unauthorized}
   def get_import_attempt(%Scope{} = scope, attempt_id) do
     with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
-         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, :view) do
+         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, :view),
+         :ok <- authorize_attempt_owner(attempt, scope.user.id) do
       {:ok, attempt}
     else
       nil -> {:error, :not_found}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  # See `ProjectImportAttempt.owned_or_ownerless?/2`: active attempts are
+  # operable only by the member who started them; terminal attempts are
+  # ownerless project records. The refusal is indistinguishable from a missing
+  # attempt so an id probe learns nothing.
+  defp authorize_attempt_owner(%ProjectImportAttempt{} = attempt, user_id) do
+    if ProjectImportAttempt.owned_or_ownerless?(attempt, user_id), do: :ok, else: {:error, :not_found}
   end
 
   @doc """
@@ -291,6 +301,7 @@ defmodule Storyarn.Imports do
   def cancel_import(%Scope{} = scope, attempt_id, opts) when is_list(opts) do
     with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
          {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
+         :ok <- authorize_attempt_owner(attempt, scope.user.id),
          :ok <- run_before_cancel_transaction(opts),
          {:ok, expired} <- cancel_attempt(attempt, scope.user.id, opts) do
       PlanCleanup.cleanup_plan(expired)
@@ -761,7 +772,8 @@ defmodule Storyarn.Imports do
            ProjectImportAttempt
            |> where(
              [candidate],
-             candidate.id == ^attempt_id and candidate.project_id == ^project_id
+             candidate.id == ^attempt_id and candidate.project_id == ^project_id and
+               candidate.user_id == ^user_id
            )
            |> lock("FOR UPDATE")
            |> Repo.one() do

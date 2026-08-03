@@ -106,11 +106,13 @@ defmodule Storyarn.Imports.Resume do
   def resume_import(%Scope{}, %Project{}, _attempt_id, _opts), do: {:error, :not_found}
 
   defp resume_authorized_import(scope, project, attempt_id, opts) do
-    with {:ok, attempt} <- reconcile_resumed_attempt(project.id, attempt_id, opts) do
+    user_id = scope.user.id
+
+    with {:ok, attempt} <- reconcile_resumed_attempt(project.id, attempt_id, user_id, opts) do
       preview_result = resume_preview(project.id, attempt, opts)
 
       with {:ok, _project, _membership} <- Projects.authorize(scope, project.id, @import_action),
-           {:ok, current_attempt} <- reconcile_resumed_attempt(project.id, attempt_id, opts) do
+           {:ok, current_attempt} <- reconcile_resumed_attempt(project.id, attempt_id, user_id, opts) do
         finish_resumed_import(attempt, current_attempt, preview_result, opts)
       else
         _not_authorized_or_missing -> {:error, :not_found}
@@ -192,33 +194,38 @@ defmodule Storyarn.Imports.Resume do
     {:ok, current_attempt, nil}
   end
 
-  defp reconcile_resumed_attempt(project_id, attempt_id, opts) do
+  defp reconcile_resumed_attempt(project_id, attempt_id, user_id, opts) do
     case Repo.get_by(ProjectImportAttempt, id: attempt_id, project_id: project_id) do
-      %ProjectImportAttempt{status: status} = candidate
-      when status in ["ready", "queued", "running", "retrying"] ->
-        reconcile_active_resumed_attempt(candidate, project_id, attempt_id, opts)
+      %ProjectImportAttempt{} = candidate ->
+        cond do
+          not ProjectImportAttempt.owned_or_ownerless?(candidate, user_id) ->
+            {:error, :not_found}
 
-      %ProjectImportAttempt{} = attempt ->
-        {:ok, attempt}
+          candidate.status in ["ready", "queued", "running", "retrying"] ->
+            reconcile_active_resumed_attempt(candidate, project_id, attempt_id, user_id, opts)
+
+          true ->
+            {:ok, candidate}
+        end
 
       nil ->
         {:error, :not_found}
     end
   end
 
-  defp reconcile_active_resumed_attempt(candidate, project_id, attempt_id, opts) do
+  defp reconcile_active_resumed_attempt(candidate, project_id, attempt_id, user_id, opts) do
     now = TimeHelpers.now()
 
     cond do
       PlanCleanup.absolute_plan_deadline_reached?(candidate, now) ->
         candidate
         |> Expiration.expire_stale_attempt_safely(now, opts)
-        |> finish_attempt_reconciliation(project_id, attempt_id, opts)
+        |> finish_attempt_reconciliation(project_id, attempt_id, user_id, opts)
 
       candidate.status in ["queued", "running", "retrying"] ->
         candidate
         |> reconcile_accepted_attempt()
-        |> finish_attempt_reconciliation(project_id, attempt_id, opts)
+        |> finish_attempt_reconciliation(project_id, attempt_id, user_id, opts)
 
       DateTime.after?(candidate.expires_at, now) ->
         {:ok, candidate}
@@ -226,14 +233,14 @@ defmodule Storyarn.Imports.Resume do
       true ->
         candidate
         |> Expiration.expire_stale_attempt(now)
-        |> finish_attempt_reconciliation(project_id, attempt_id, opts)
+        |> finish_attempt_reconciliation(project_id, attempt_id, user_id, opts)
     end
   end
 
   defp reconcile_accepted_attempt(%ProjectImportAttempt{} = candidate) do
     Repo.transact(fn ->
       job_state = Expiration.lock_import_job_state(candidate.oban_job_id)
-      attempt = lock_active_import_attempt(candidate.id, candidate.project_id)
+      attempt = lock_active_import_attempt(candidate.id, candidate.project_id, candidate.user_id)
 
       cond do
         is_nil(attempt) ->
@@ -254,35 +261,39 @@ defmodule Storyarn.Imports.Resume do
     end)
   end
 
-  defp lock_active_import_attempt(attempt_id, project_id) do
+  defp lock_active_import_attempt(attempt_id, project_id, user_id) do
     active_statuses = ProjectImportAttempt.active_statuses()
 
     ProjectImportAttempt
     |> where(
       [candidate],
       candidate.id == ^attempt_id and candidate.project_id == ^project_id and
-        candidate.status in ^active_statuses
+        candidate.user_id == ^user_id and candidate.status in ^active_statuses
     )
     |> lock("FOR UPDATE")
     |> Repo.one()
   end
 
-  defp finish_attempt_reconciliation({:ok, {:expired, expired}}, _project_id, _attempt_id, opts) do
+  defp finish_attempt_reconciliation({:ok, {:expired, expired}}, _project_id, _attempt_id, _user_id, opts) do
     PlanCleanup.cleanup_plan(expired, opts)
     Queue.broadcast(expired)
     {:ok, expired}
   end
 
-  defp finish_attempt_reconciliation({:ok, {:current, current}}, _project_id, _attempt_id, _opts), do: {:ok, current}
+  defp finish_attempt_reconciliation({:ok, {:current, current}}, _project_id, _attempt_id, _user_id, _opts),
+    do: {:ok, current}
 
-  defp finish_attempt_reconciliation({:ok, :changed}, project_id, attempt_id, _opts) do
+  defp finish_attempt_reconciliation({:ok, :changed}, project_id, attempt_id, user_id, _opts) do
     case Repo.get_by(ProjectImportAttempt, id: attempt_id, project_id: project_id) do
-      %ProjectImportAttempt{} = current -> {:ok, current}
-      nil -> {:error, :not_found}
+      %ProjectImportAttempt{} = current ->
+        if ProjectImportAttempt.owned_or_ownerless?(current, user_id), do: {:ok, current}, else: {:error, :not_found}
+
+      nil ->
+        {:error, :not_found}
     end
   end
 
-  defp finish_attempt_reconciliation({:error, reason}, _project_id, _attempt_id, _opts), do: {:error, reason}
+  defp finish_attempt_reconciliation({:error, reason}, _project_id, _attempt_id, _user_id, _opts), do: {:error, reason}
 
   defp maybe_wake_resumed_import(%ProjectImportAttempt{status: status} = attempt, opts)
        when status in ["queued", "running", "retrying"] do

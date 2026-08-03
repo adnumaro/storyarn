@@ -51,6 +51,18 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
   def active_statuses, do: @active_statuses
   def strategies, do: @strategies
 
+  @doc """
+  Whether the attempt may be operated on by the given member.
+
+  Active attempts are private to the member who started them: project
+  permission alone must not let one owner adopt, reconcile, enqueue or cancel
+  another member's in-flight import by guessing its id. Terminal attempts have
+  had `user_id` stripped by the terminal-privacy constraint and read as
+  project-level records for anyone the project-level authorization admits.
+  """
+  @spec owned_or_ownerless?(%__MODULE__{}, pos_integer()) :: boolean()
+  def owned_or_ownerless?(%__MODULE__{user_id: owner_id}, user_id), do: owner_id == user_id or is_nil(owner_id)
+
   def ready_changeset(attempt, attrs) do
     attempt
     |> cast(attrs, [
