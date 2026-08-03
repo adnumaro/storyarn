@@ -134,10 +134,29 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
 
   defp prune_nested(item, dropped), do: {item, dropped}
 
-  # Only these end a sequence. An unresolvable jump is already a hard error, so
-  # treating every jump as terminal costs nothing and keeps the rule simple.
+  # Only these end a sequence outright. An unresolvable jump is already a hard
+  # error, so treating every jump as terminal costs nothing and keeps the rule
+  # simple.
   defp terminal_item?({:command, name, _args, _meta}) when name in ["jump", "stop", "return"], do: true
+
+  # Terminality propagates through control flow: an `<<if>>` whose every branch
+  # ends terminally — with an `<<else>>` doing the same, otherwise the false
+  # path falls through — cannot continue, and neither can an options block
+  # whose every option body ends terminally. Without this, dialogue after such
+  # a block was counted by the speaker review but never wired into the graph,
+  # and the halves disagreeing failed the import as an unresolvable review.
+  defp terminal_item?({:if, branches, else_body, _meta}) do
+    branches != [] and terminal_body?(else_body) and Enum.all?(branches, &terminal_body?(&1.body))
+  end
+
+  defp terminal_item?({:options, options, _meta}) do
+    options != [] and Enum.all?(options, &terminal_body?(&1.body))
+  end
+
   defp terminal_item?(_item), do: false
+
+  defp terminal_body?(items) when is_list(items) and items != [], do: terminal_item?(List.last(items))
+  defp terminal_body?(_empty_or_missing), do: false
 
   defp item_meta({:line, _text, meta}), do: meta
   defp item_meta({:options, _options, meta}), do: meta

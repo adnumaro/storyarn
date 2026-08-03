@@ -1872,6 +1872,87 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert Enum.any?(texts, &(is_binary(&1) and &1 =~ "3:1 against"))
     end
 
+    test "propagates terminality through an if/else whose branches all terminate" do
+      # Dialogue after such a block used to be counted by the speaker review
+      # but never wired into the graph; the halves disagreeing failed the
+      # import as an unresolvable review.
+      source = """
+      title: Start
+      ---
+      <<declare $key = false>>
+      <<if $key>>
+          Alice: With key.
+          <<jump Vault>>
+      <<else>>
+          Alice: Without key.
+          <<stop>>
+      <<endif>>
+      Bob: Never reachable.
+      ===
+
+      title: Vault
+      ---
+      Alice: Inside.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("terminal-if.yarn", source)
+      refute ImportPlan.error?(plan)
+      assert plan.metadata.issue_counts_by_code == %{unreachable_yarn_code: 1}
+
+      speakers = Enum.map(plan.data["import_review"]["speaker_decisions"], & &1["speaker"])
+      assert speakers == ["Alice"]
+
+      assert {:ok, _resolved} =
+               ReviewDecisions.apply(plan, true, [%{"speaker" => "Alice", "action" => "create_sheet"}])
+    end
+
+    test "propagates terminality through options whose bodies all terminate" do
+      source = """
+      title: Start
+      ---
+      -> Fight
+          <<jump Battle>>
+      -> Flee
+          <<stop>>
+      Carol: Never reachable.
+      ===
+
+      title: Battle
+      ---
+      Alice: Charge!
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("terminal-options.yarn", source)
+      refute ImportPlan.error?(plan)
+      assert plan.metadata.issue_counts_by_code == %{unreachable_yarn_code: 1}
+
+      speakers = Enum.map(plan.data["import_review"]["speaker_decisions"], & &1["speaker"])
+      refute "Carol" in speakers
+    end
+
+    test "an if without an else falls through and keeps the tail" do
+      source = """
+      title: Start
+      ---
+      <<declare $key = false>>
+      <<if $key>>
+          Alice: With key.
+          <<stop>>
+      <<endif>>
+      Bob: Reachable on the false path.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("fallthrough.yarn", source)
+      refute ImportPlan.error?(plan)
+      assert plan.metadata.issue_counts_by_code == %{}
+
+      speakers = Enum.map(plan.data["import_review"]["speaker_decisions"], & &1["speaker"])
+      assert "Bob" in speakers
+    end
+
     test "keeps declarations that sit after a terminal command" do
       # Yarn's declaration collection is flow-insensitive — the docs' "Setup
       # node" is a node of declares nobody ever runs. Pruning before collecting
