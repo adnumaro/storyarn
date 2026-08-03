@@ -16,8 +16,9 @@ defmodule Storyarn.Imports.Queue do
   notifier has no transactional delivery guarantee: its insert signal can arrive
   before the job is visible on another connection. Callers therefore send this
   second signal **after** the outer commit. The job stays durable either way —
-  Oban's stager is the eventual fallback, and the expiry sweep wakes any job
-  still sitting `available`.
+  for a lost wake on a fresh import the prompt net is Oban's stager interval,
+  and the expiry sweep additionally wakes `available` jobs whose attempts have
+  aged past the rolling retention window.
   """
   @spec wake(ProjectImportAttempt.t(), keyword()) :: :ok
   def wake(%ProjectImportAttempt{} = attempt, opts \\ []) do

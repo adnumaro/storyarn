@@ -7,9 +7,10 @@ defmodule Storyarn.Imports.Expiration do
   under a row lock taken in the same order the worker takes it, so a sweep can
   never terminalize an attempt that is materializing.
 
-  The sweep is also the standing safety net for a lost queue notification: any
-  job still sitting `available` gets woken here rather than waiting on Oban's
-  stager.
+  The sweep is also a late safety net for a lost queue notification — but only
+  for attempts already past the rolling retention window, which is what the
+  candidate query selects. A fresh import whose wake-up was lost is claimed by
+  Oban's stager interval, not by this sweep.
   """
 
   import Ecto.Query, warn: false
