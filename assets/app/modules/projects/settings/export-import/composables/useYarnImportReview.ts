@@ -1,4 +1,4 @@
-import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
+import { computed, onUnmounted, ref, watch, type ComputedRef, type Ref } from "vue";
 import { useLive } from "@shared/composables/useLive";
 import type {
   ImportState,
@@ -891,6 +891,11 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
       restoreDecisions();
     },
   );
+
+  onUnmounted(() => {
+    clearSaveTimer();
+    clearOperationWatchdog();
+  });
 
   return {
     review,
