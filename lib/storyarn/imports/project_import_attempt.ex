@@ -51,6 +51,24 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
   def active_statuses, do: @active_statuses
   def strategies, do: @strategies
 
+  @doc """
+  Whether the attempt may be operated on by the given member.
+
+  Active attempts are private to the member who started them: project
+  permission alone must not let one owner adopt, reconcile, enqueue or cancel
+  another member's in-flight import by guessing its id. Terminal attempts have
+  had `user_id` stripped by the terminal-privacy constraint and read as
+  project-level records for anyone the project-level authorization admits.
+
+  Terminality is decided by `status`, never by a nil `user_id`: the users FK
+  nilifies on delete, so an active attempt with no owner is a legal row, and a
+  security predicate must fail closed on it rather than open it to everyone.
+  """
+  @spec owned_or_ownerless?(%__MODULE__{}, pos_integer()) :: boolean()
+  def owned_or_ownerless?(%__MODULE__{} = attempt, user_id) do
+    attempt.user_id == user_id or attempt.status not in @active_statuses
+  end
+
   def ready_changeset(attempt, attrs) do
     attempt
     |> cast(attrs, [
@@ -91,6 +109,19 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
       error_message: nil,
       error_report: %{}
     )
+    |> validate_common()
+  end
+
+  def reviewed_changeset(attempt, attrs) do
+    attempt
+    |> cast(attrs, [:plan_storage_key, :plan_cleanup_request_id, :counts])
+    |> validate_required([:plan_storage_key, :plan_cleanup_request_id])
+    |> validate_common()
+  end
+
+  def conflict_strategy_changeset(attempt, strategy) do
+    attempt
+    |> change(conflict_strategy: strategy)
     |> validate_common()
   end
 
@@ -139,14 +170,27 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     |> validate_common()
   end
 
-  def expired_changeset(attempt, now) do
+  @doc """
+  Terminalizes an attempt as `expired`.
+
+  `error_code` separates the two things that reach this state. A preview that
+  simply aged out carries no code and must not be reported as a failure; an
+  attempt rejected for an unusable review carries the reason so the UI can say
+  which one happened. `user_id` and `idempotency_key` are dropped like every
+  other terminal transition, which is why resuming a terminal attempt can only
+  ever be authorized by project, never by owner.
+  """
+  def expired_changeset(attempt, now, error_code \\ nil) do
     attempt
     |> change(
       status: "expired",
       stage: "expired",
       completed_at: now,
       user_id: nil,
-      idempotency_key: nil
+      idempotency_key: nil,
+      error_code: error_code,
+      error_message: nil,
+      error_report: %{}
     )
     |> validate_common()
   end

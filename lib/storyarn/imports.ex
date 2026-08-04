@@ -16,15 +16,22 @@ defmodule Storyarn.Imports do
 
   alias Ecto.Multi
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Collaboration
-  alias Storyarn.Imports.Error
+  alias Storyarn.Imports.Execution
+  alias Storyarn.Imports.Expiration
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.Materializer
   alias Storyarn.Imports.ParserRegistry
+  alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
+  alias Storyarn.Imports.PlanCleanup
   alias Storyarn.Imports.PlanCleanupRequest
   alias Storyarn.Imports.PlanStorage
+  alias Storyarn.Imports.Preview
   alias Storyarn.Imports.ProjectImportAttempt
+  alias Storyarn.Imports.Queue
+  alias Storyarn.Imports.Resume
+  alias Storyarn.Imports.Shared
   alias Storyarn.Imports.SourceBundle
+  alias Storyarn.Imports.Telemetry
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
@@ -33,12 +40,14 @@ defmodule Storyarn.Imports do
   alias Storyarn.Workers.ImportProjectWorker
 
   @plan_retention_seconds 86_400
-  @cleanup_tombstone_retention_seconds 604_800
-  @cleanup_delete_lease_seconds 300
-  @cleanup_retry_base_seconds 60
-  @cleanup_retry_max_seconds 3_600
   @plan_store_timeout 300_000
-  @materialization_timeout 300_000
+
+  # Importing replaces and rewrites project content wholesale, so it is an
+  # owner-level action rather than a content edit. This is the single place that
+  # decides it: the web layer restricted imports to owners while the context
+  # still accepted any editor, so the rule was only enforced where the UI
+  # happened to check it.
+  @import_action :manage_project
 
   @doc """
   Parse an import file and detect its format.
@@ -61,36 +70,21 @@ defmodule Storyarn.Imports do
     end
   end
 
-  @doc """
-  Preview what an import would do without executing it.
-
-  Requires the complete `ImportPlan` so blocking parser issues cannot be
-  discarded by passing only its native data map.
-
-  Returns a preview struct with entity counts and detected conflicts.
-  """
-  def preview(project_id, %ImportPlan{data: parsed_data} = plan) do
-    if ImportPlan.error?(plan) do
-      {:error, :import_plan_has_errors}
-    else
-      Materializer.preview(project_id, parsed_data)
-    end
-  end
-
-  def preview(_project_id, parsed_data) when is_map(parsed_data), do: {:error, :import_plan_required}
+  defdelegate preview(project_id, plan), to: Preview
 
   @doc """
   Execute an import into a project.
 
   ## Authorization
 
-  Caller MUST verify the current user has `:edit_content` permission on the
-  target project before calling this function. The Imports context does not
-  enforce authorization — that responsibility belongs to the LiveView layer.
+  Caller MUST verify the current user has `:manage_project` permission on the
+  target project before calling this function. This entry point takes a plan
+  that is already authorized and materializes it, so it enforces nothing
+  itself. Every other entry point in this module authorizes for itself.
 
   ## Options
 
-  - `:conflict_strategy` — `:skip` | `:overwrite` | `:rename` (default: `:skip`)
+  - `:conflict_strategy` — `:skip` | `:overwrite` | `:rename` (default: `:rename`)
 
   Requires the complete `ImportPlan`; raw native maps are intentionally
   rejected so parser errors cannot be bypassed.
@@ -100,10 +94,15 @@ defmodule Storyarn.Imports do
   def execute(project, plan, opts \\ [])
 
   def execute(project, %ImportPlan{} = plan, opts) do
-    if ImportPlan.error?(plan) do
-      {:error, :import_plan_has_errors}
-    else
-      Materializer.execute(project, plan, opts)
+    cond do
+      ImportPlan.error?(plan) ->
+        {:error, :import_plan_has_errors}
+
+      not ReviewDecisions.resolved?(plan) ->
+        {:error, :invalid_import_review}
+
+      true ->
+        Materializer.execute(project, plan, opts)
     end
   end
 
@@ -115,7 +114,7 @@ defmodule Storyarn.Imports do
   has already checked its socket membership.
   """
   @spec prepare_import(Scope.t(), Project.t(), String.t(), binary()) ::
-          {:ok, ProjectImportAttempt.t(), map()} | {:error, term()}
+          {:ok, ProjectImportAttempt.t(), map() | nil} | {:error, term()}
   def prepare_import(%Scope{} = scope, %Project{} = project, filename, binary) do
     prepare_import(scope, project, filename, binary, [])
   end
@@ -124,30 +123,124 @@ defmodule Storyarn.Imports do
   def prepare_import(%Scope{} = scope, %Project{} = project, filename, binary, opts)
       when is_binary(filename) and is_binary(binary) and is_list(opts) do
     started_at = System.monotonic_time()
-    initial_metadata = source_metadata(filename)
+    initial_metadata = Telemetry.source_metadata(filename)
 
     try do
-      with {:ok, _project, _membership} <- Projects.authorize(scope, project.id, :edit_content),
+      with {:ok, _project, _membership} <- Projects.authorize(scope, project.id, @import_action),
            {:ok, %ImportPlan{} = plan} <- parse_file(filename, binary),
            {:ok, preview} <- preview(project.id, plan),
-           {:ok, attempt} <- persist_import_plan(scope, project, plan, preview, binary, opts) do
-        emit_stop(:prepare, started_at, plan_metadata(plan, "completed", "none"))
-        broadcast(attempt)
-        {:ok, attempt, preview}
+           {:ok, attempt, persisted_preview} <-
+             persist_import_plan(scope, project, plan, preview, binary, opts) do
+        Telemetry.emit_stop(:prepare, started_at, Telemetry.plan_metadata(plan, "completed", "none"))
+        Queue.broadcast(attempt)
+        {:ok, attempt, persisted_preview}
       else
         {:error, reason} ->
-          report_prepare_error(reason, initial_metadata, started_at)
+          Telemetry.report_prepare_error(reason, initial_metadata, started_at)
           {:error, reason}
       end
     rescue
       exception ->
-        report_exception(:prepare, initial_metadata, exception, started_at)
+        Telemetry.report_exception(:prepare, initial_metadata, exception, started_at)
         {:error, :unexpected_import_error}
     catch
       _kind, _reason ->
-        report_prepare_error(:unexpected_import_error, initial_metadata, started_at)
+        Telemetry.report_prepare_error(:unexpected_import_error, initial_metadata, started_at)
         {:error, :unexpected_import_error}
     end
+  end
+
+  @doc """
+  Persists an incomplete Yarn review inside the encrypted plan.
+
+  The durable attempt row and telemetry remain content-free. Each revision is
+  written to a new storage key and the attempt pointer is swapped only after
+  authorization and state are revalidated under database locks.
+  """
+  @spec save_import_review(Scope.t(), pos_integer(), list()) ::
+          {:ok, ProjectImportAttempt.t(), map()} | {:error, term()}
+  def save_import_review(%Scope{} = scope, attempt_id, decisions) do
+    save_import_review(scope, attempt_id, decisions, [])
+  end
+
+  @doc false
+  def save_import_review(%Scope{} = scope, attempt_id, decisions, opts)
+      when is_integer(attempt_id) and attempt_id > 0 and is_list(opts) do
+    case revise_import_review(scope, attempt_id, opts, fn plan ->
+           ReviewDecisions.save_draft(plan, decisions)
+         end) do
+      {:ok, attempt, preview, _revised_plan} -> {:ok, attempt, preview}
+      error -> error
+    end
+  end
+
+  def save_import_review(%Scope{}, _attempt_id, _decisions, _opts), do: {:error, :not_found}
+
+  @doc """
+  Applies every explicit Yarn review decision and returns the exact preview
+  that can subsequently be queued.
+
+  No import job is created here. The caller must present the returned
+  confirmation fingerprint when enqueueing, which prevents a stale browser
+  preview from accepting a different plan revision.
+  """
+  @spec resolve_import_review(Scope.t(), pos_integer(), boolean(), list()) ::
+          {:ok, ProjectImportAttempt.t(), map(), String.t()} | {:error, term()}
+  def resolve_import_review(%Scope{} = scope, attempt_id, acknowledged?, decisions) do
+    resolve_import_review(scope, attempt_id, acknowledged?, decisions, [])
+  end
+
+  @doc false
+  def resolve_import_review(%Scope{} = scope, attempt_id, acknowledged?, decisions, opts)
+      when is_integer(attempt_id) and attempt_id > 0 and is_boolean(acknowledged?) and is_list(opts) do
+    with {:ok, attempt, preview, plan} <-
+           revise_import_review(scope, attempt_id, opts, fn plan ->
+             ReviewDecisions.apply(plan, acknowledged?, decisions)
+           end),
+         {:ok, fingerprint} <- ReviewDecisions.confirmation_fingerprint(plan) do
+      {:ok, attempt, preview, fingerprint}
+    end
+  end
+
+  def resolve_import_review(%Scope{}, _attempt_id, _acknowledged?, _decisions, _opts), do: {:error, :not_found}
+
+  @doc """
+  Persists the conflict strategy selected for a ready import preview.
+
+  This makes navigation and cross-tab recovery restore the user's selection
+  before the import has been accepted by the queue.
+  """
+  @spec update_import_strategy(Scope.t(), pos_integer(), String.t() | atom()) ::
+          {:ok, ProjectImportAttempt.t()} | {:error, term()}
+  def update_import_strategy(%Scope{} = scope, attempt_id, strategy) when is_integer(attempt_id) and attempt_id > 0 do
+    with {:ok, strategy} <- normalize_strategy(strategy),
+         %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
+         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
+         :ok <- authorize_attempt_owner(attempt, scope.user.id),
+         {:ok, updated} <- persist_import_strategy(attempt, scope.user.id, strategy) do
+      Queue.broadcast(updated)
+      {:ok, updated}
+    else
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def update_import_strategy(%Scope{}, _attempt_id, _strategy), do: {:error, :not_found}
+
+  @doc """
+  Returns the opaque browser-storage key for one user's import in one project.
+
+  The HMAC prevents raw project and user identifiers from being persisted in
+  `localStorage`; the key is a namespace only and grants no server access.
+  """
+  @spec resume_storage_key(Scope.t(), Project.t()) :: String.t()
+  def resume_storage_key(%Scope{user: %{id: user_id}}, %Project{id: project_id}) do
+    secret = Application.fetch_env!(:storyarn, :import_idempotency_secret)
+    payload = :erlang.term_to_binary({:project_import_resume, project_id, user_id})
+    digest = :crypto.mac(:hmac, :sha256, secret, payload)
+
+    "storyarn:project-import:" <> Base.url_encode64(digest, padding: false)
   end
 
   @doc """
@@ -156,15 +249,27 @@ defmodule Storyarn.Imports do
   @spec enqueue_import(Scope.t(), pos_integer(), String.t() | atom()) ::
           {:ok, ProjectImportAttempt.t()} | {:error, term()}
   def enqueue_import(%Scope{} = scope, attempt_id, strategy) do
+    enqueue_import(scope, attempt_id, strategy, [])
+  end
+
+  @doc false
+  def enqueue_import(%Scope{} = scope, attempt_id, strategy, opts) when is_list(opts) do
     with {:ok, strategy} <- normalize_strategy(strategy),
          %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
-         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, :edit_content) do
-      fn -> enqueue_locked_attempt(attempt.id, strategy) end
+         {:ok, project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
+         :ok <- authorize_attempt_owner(attempt, scope.user.id) do
+      fn -> enqueue_locked_attempt(attempt.id, project.id, scope.user.id, strategy, opts) end
       |> Repo.transact()
       |> case do
-        {:ok, attempt} ->
-          broadcast(attempt)
+        {:ok, {:queued, attempt}} ->
+          Queue.wake(attempt, opts)
+          Queue.broadcast(attempt)
           {:ok, attempt}
+
+        {:ok, {:rejected, attempt, reason}} ->
+          PlanCleanup.cleanup_plan(attempt, opts)
+          Queue.broadcast(attempt)
+          {:error, reason}
 
         error ->
           error
@@ -175,34 +280,12 @@ defmodule Storyarn.Imports do
     end
   end
 
-  @doc false
-  @spec perform_import(pos_integer(), keyword()) ::
-          {:ok, ProjectImportAttempt.t() | :attempt_not_found} | {:error, term()}
-  def perform_import(attempt_id, opts \\ []) do
-    case get_attempt(attempt_id) do
-      nil ->
-        {:ok, :attempt_not_found}
-
-      %ProjectImportAttempt{} = attempt ->
-        case attempt.status do
-          status when status in ["completed", "failed", "expired"] ->
-            cleanup_plan_if_pending(attempt)
-            {:ok, attempt}
-
-          "ready" ->
-            {:error, :import_not_queued}
-
-          _status ->
-            run_import(attempt, opts)
-        end
-    end
-  end
-
   @spec get_import_attempt(Scope.t(), pos_integer()) ::
           {:ok, ProjectImportAttempt.t()} | {:error, :not_found | :unauthorized}
   def get_import_attempt(%Scope{} = scope, attempt_id) do
     with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
-         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, :view) do
+         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, :view),
+         :ok <- authorize_attempt_owner(attempt, scope.user.id) do
       {:ok, attempt}
     else
       nil -> {:error, :not_found}
@@ -210,6 +293,44 @@ defmodule Storyarn.Imports do
     end
   end
 
+  # See `ProjectImportAttempt.owned_or_ownerless?/2`: active attempts are
+  # operable only by the member who started them; terminal attempts are
+  # ownerless project records. The refusal is indistinguishable from a missing
+  # attempt so an id probe learns nothing.
+  defp authorize_attempt_owner(%ProjectImportAttempt{} = attempt, user_id) do
+    if ProjectImportAttempt.owned_or_ownerless?(attempt, user_id), do: :ok, else: {:error, :not_found}
+  end
+
+  @doc """
+  Restores the durable state of an import after navigation or reload.
+  """
+  defdelegate resume_latest_active_import(scope, project), to: Resume
+  defdelegate resume_latest_active_import(scope, project, opts), to: Resume
+  defdelegate resume_import(scope, project, attempt_id), to: Resume
+  defdelegate resume_import(scope, project, attempt_id, opts), to: Resume
+
+  @doc """
+  Runs an accepted import to a terminal state. Driven by `ImportProjectWorker`.
+  """
+  defdelegate perform_import(attempt_id), to: Execution
+  defdelegate perform_import(attempt_id, opts), to: Execution
+
+  @doc """
+  Reconciles stale attempts. Driven by `ExpireProjectImportsWorker`.
+  """
+  defdelegate expire_stale_imports(), to: Expiration
+  defdelegate expire_stale_imports(opts), to: Expiration
+  defdelegate expire_stale_imports_batch(), to: Expiration
+  defdelegate expire_stale_imports_batch(opts), to: Expiration
+
+  @doc """
+  Cancels an import that has not begun writing.
+
+  `ready` and `queued` attempts are cancellable; both reach `expired` and
+  release their plan. `running` and `retrying` are not — they return
+  `{:error, :import_not_cancellable}`, because that import is materializing and
+  the caller must not be able to make it disappear from the UI while it writes.
+  """
   @spec cancel_import(Scope.t(), pos_integer()) ::
           {:ok, ProjectImportAttempt.t()} | {:error, term()}
   def cancel_import(%Scope{} = scope, attempt_id) do
@@ -219,11 +340,12 @@ defmodule Storyarn.Imports do
   @doc false
   def cancel_import(%Scope{} = scope, attempt_id, opts) when is_list(opts) do
     with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
-         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, :edit_content),
+         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
+         :ok <- authorize_attempt_owner(attempt, scope.user.id),
          :ok <- run_before_cancel_transaction(opts),
-         {:ok, expired} <- cancel_ready_attempt(attempt.id, attempt.project_id, scope.user.id) do
-      cleanup_plan(expired)
-      broadcast(expired)
+         {:ok, expired} <- cancel_attempt(attempt, scope.user.id, opts) do
+      PlanCleanup.cleanup_plan(expired)
+      Queue.broadcast(expired)
       {:ok, expired}
     else
       nil -> {:error, :not_found}
@@ -231,16 +353,31 @@ defmodule Storyarn.Imports do
     end
   end
 
-  defp cancel_ready_attempt(attempt_id, project_id, user_id) do
+  # Lock order is project, membership, job, attempt — the one global order
+  # every import transaction follows: the worker takes project, membership,
+  # attempt; resume and the expiry sweep take job, attempt. `Oban.cancel_job/1`
+  # dispatches onto this connection inside this transaction, so the job row is
+  # taken exclusively *before* the attempt: taking the attempt first inverted
+  # the documented order (`Expiration`) and could deadlock against a concurrent
+  # resume or sweep of the same attempt, crashing the resume side's mount.
+  defp cancel_attempt(%ProjectImportAttempt{} = candidate, user_id, opts) do
     Repo.transact(fn ->
-      with {:ok, :authorized} <- authorize_edit_locked(Repo, project_id, user_id),
-           %ProjectImportAttempt{} = attempt <- lock_cancel_attempt(attempt_id, project_id) do
-        transition_cancelled_attempt(attempt)
-      else
-        nil -> {:error, :not_found}
-        {:error, reason} -> {:error, reason}
+      with {:ok, :authorized} <- authorize_import_locked(Repo, candidate.project_id, user_id) do
+        cancel_locked_attempt(candidate, opts)
       end
     end)
+  end
+
+  defp cancel_locked_attempt(candidate, opts) do
+    Expiration.lock_import_job_state_for_update(candidate.oban_job_id)
+
+    case lock_cancel_attempt(candidate.id, candidate.project_id) do
+      %ProjectImportAttempt{} = attempt ->
+        transition_cancelled_attempt(attempt, candidate.oban_job_id, opts)
+
+      nil ->
+        {:error, :not_found}
+    end
   end
 
   defp lock_cancel_attempt(attempt_id, project_id) do
@@ -253,94 +390,216 @@ defmodule Storyarn.Imports do
     |> Repo.one()
   end
 
-  defp transition_cancelled_attempt(%ProjectImportAttempt{status: "ready"} = attempt) do
+  # A `ready` attempt has no job behind it. A `queued` one has a job that has
+  # not started, so cancelling it destroys nothing: no content has been written.
+  # This runs under the same `FOR UPDATE` row lock that
+  # `materialize_locked_attempt/4` takes, so either the cancel lands first and
+  # the worker then finds a terminal attempt, or the worker marks the attempt
+  # `running` first and this reports it as no longer cancellable. There is no
+  # interleaving where content is written into a project the user was told the
+  # import had been dropped from.
+  #
+  # `running` and `retrying` are deliberately not cancellable: that import is
+  # materializing, and letting the UI pretend otherwise is worse than showing it.
+  #
+  # The queued clause also requires the locked attempt to still carry the job id
+  # read before the transaction — that is the row locked above. A binding that
+  # moved in between (accepted in another tab, job replaced) means the held lock
+  # is not this attempt's job, so cancelling would update a row the transaction
+  # does not hold; refuse and let reconciliation own that state.
+  defp transition_cancelled_attempt(%ProjectImportAttempt{status: "ready"} = attempt, _candidate_job_id, _opts) do
+    expire_cancelled_attempt(attempt)
+  end
+
+  defp transition_cancelled_attempt(%ProjectImportAttempt{status: "queued", oban_job_id: job_id} = attempt, job_id, opts) do
+    with :ok <- cancel_queued_import_job(attempt, opts) do
+      expire_cancelled_attempt(attempt)
+    end
+  end
+
+  defp transition_cancelled_attempt(%ProjectImportAttempt{}, _candidate_job_id, _opts),
+    do: {:error, :import_not_cancellable}
+
+  defp cancel_queued_import_job(%ProjectImportAttempt{oban_job_id: job_id}, opts) when is_integer(job_id) do
+    job_cancel = Keyword.get(opts, :job_cancel, &Oban.cancel_job/1)
+    Expiration.safely_cancel_import_job(job_cancel, job_id)
+  end
+
+  # Oban's pruner can have nilified the reference already. Nothing is left to
+  # cancel, and the attempt still has to reach a terminal state.
+  defp cancel_queued_import_job(%ProjectImportAttempt{}, _opts), do: :ok
+
+  defp expire_cancelled_attempt(attempt) do
     with {:ok, expired} <-
            attempt
-           |> ProjectImportAttempt.expired_changeset(TimeHelpers.now())
+           |> ProjectImportAttempt.expired_changeset(TimeHelpers.now(), "import_cancelled")
            |> Repo.update(),
-         :ok <- mark_plan_cleanup_pending(expired.plan_storage_key) do
+         :ok <- PlanCleanup.mark_plan_cleanup_pending(expired.plan_storage_key) do
       {:ok, expired}
     end
   end
 
-  defp transition_cancelled_attempt(%ProjectImportAttempt{}), do: {:error, :import_not_cancellable}
+  defp revise_import_review(scope, attempt_id, opts, revision_fun) do
+    plan_load = Keyword.get(opts, :plan_load, &PlanStorage.load/1)
 
-  @doc false
-  @spec expire_stale_imports() :: {:ok, non_neg_integer()}
-  def expire_stale_imports do
-    expire_stale_imports([])
+    with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
+         {:ok, project, _membership} <-
+           Projects.authorize(scope, attempt.project_id, @import_action),
+         # Before the status is even distinguished, let alone a plan decrypted
+         # or a revision object written: a non-owner must be refused here,
+         # indistinguishably from a missing attempt — the review lock's user
+         # filter only catches them after the work, and the not-ready error
+         # would otherwise be a state oracle for other members' attempts.
+         :ok <- authorize_attempt_owner(attempt, scope.user.id),
+         :ok <- ensure_attempt_ready_for_review(attempt),
+         false <- ready_plan_deadline_reached?(attempt, TimeHelpers.now()),
+         {:ok, plan} <- Shared.safely_load_plan(plan_load, attempt.plan_storage_key),
+         :ok <- Shared.validate_attempt_plan_binding(attempt, plan),
+         {:ok, revised_plan} <- safely_revise_plan(revision_fun, plan),
+         {:ok, preview} <- preview(project.id, revised_plan),
+         {:ok, revised_attempt} <-
+           persist_plan_revision(
+             scope,
+             project,
+             attempt,
+             revised_plan,
+             preview,
+             opts
+           ) do
+      Queue.broadcast(revised_attempt)
+      {:ok, revised_attempt, preview, revised_plan}
+    else
+      nil -> {:error, :not_found}
+      true -> {:error, :import_expired}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
-  @doc false
-  def expire_stale_imports(opts) when is_list(opts) do
-    now = TimeHelpers.now()
-    active_statuses = ProjectImportAttempt.active_statuses()
+  defp ensure_attempt_ready_for_review(%ProjectImportAttempt{status: "ready"}), do: :ok
+  defp ensure_attempt_ready_for_review(%ProjectImportAttempt{}), do: {:error, :import_not_ready}
 
-    attempts =
-      Repo.all(
-        from attempt in ProjectImportAttempt,
-          where: attempt.status in ^active_statuses and attempt.expires_at <= ^now,
-          order_by: [asc: attempt.expires_at, asc: attempt.id],
-          limit: 100
+  defp safely_revise_plan(revision_fun, plan) when is_function(revision_fun, 1) do
+    case revision_fun.(plan) do
+      {:ok, %ImportPlan{} = revised_plan} -> {:ok, revised_plan}
+      {:error, reason} -> {:error, reason}
+      _unexpected -> {:error, :invalid_import_review}
+    end
+  rescue
+    _exception -> {:error, :invalid_import_review}
+  catch
+    _kind, _reason -> {:error, :invalid_import_review}
+  end
+
+  defp persist_plan_revision(scope, project, attempt, plan, preview, opts) do
+    storage_key = PlanStorage.storage_key(project.id)
+    cleanup_after = PlanCleanup.plan_cleanup_deadline(attempt)
+
+    with {:ok, plan} <- Shared.bind_plan_to_attempt(plan, storage_key),
+         {:ok, cleanup_request} <-
+           reserve_plan_cleanup(project, plan, storage_key, cleanup_after) do
+      persist_reserved_plan_revision(
+        cleanup_request,
+        scope,
+        project,
+        attempt,
+        plan,
+        preview,
+        opts
       )
+    end
+  end
 
-    expired_count =
-      Enum.reduce(attempts, 0, fn attempt, count ->
-        case expire_stale_attempt(attempt.id, now) do
-          {:ok, expired} ->
-            cleanup_plan(expired, opts)
-            broadcast(expired)
-            count + 1
+  defp persist_reserved_plan_revision(cleanup_request, scope, project, attempt, plan, preview, opts) do
+    plan_store = Keyword.get(opts, :plan_store, &PlanStorage.store_at/2)
+    storage_key = cleanup_request.plan_storage_key
 
-          {:error, _reason} ->
-            count
+    case safely_store_plan(plan_store, storage_key, plan, plan_store_timeout(opts)) do
+      {:ok, ^storage_key} ->
+        swap_stored_plan_revision(
+          cleanup_request,
+          scope,
+          project,
+          attempt,
+          preview,
+          opts
+        )
+
+      {:error, reason} ->
+        PlanCleanup.defer_uncertain_plan_cleanup(cleanup_request)
+        {:error, reason}
+    end
+  end
+
+  defp swap_stored_plan_revision(cleanup_request, scope, project, attempt, preview, opts) do
+    result =
+      Repo.transact(fn ->
+        with {:ok, :authorized} <-
+               authorize_import_locked(Repo, project.id, scope.user.id),
+             %ProjectImportAttempt{} = locked <-
+               lock_reviewable_attempt(attempt.id, project.id, scope.user.id),
+             true <- locked.plan_storage_key == attempt.plan_storage_key,
+             false <- ready_plan_deadline_reached?(locked, TimeHelpers.now()),
+             {:ok, :retained} <- retain_reserved_plan(Repo, cleanup_request.id),
+             :ok <- PlanCleanup.mark_plan_cleanup_pending(Repo, locked.plan_storage_key),
+             {:ok, revised} <-
+               locked
+               |> ProjectImportAttempt.reviewed_changeset(%{
+                 plan_storage_key: cleanup_request.plan_storage_key,
+                 plan_cleanup_request_id: cleanup_request.id,
+                 counts: stringify_keys(preview.counts)
+               })
+               |> Repo.update() do
+          {:ok, revised}
+        else
+          nil -> {:error, :not_found}
+          false -> {:error, :stale_import_review}
+          true -> {:error, :import_expired}
+          {:error, reason} -> {:error, reason}
         end
       end)
 
-    retry_pending_plan_cleanup(opts)
-    {:ok, expired_count}
+    case result do
+      {:ok, revised_attempt} ->
+        cleanup_superseded_plan(attempt.plan_cleanup_request_id, opts)
+        {:ok, revised_attempt}
+
+      {:error, reason} ->
+        PlanCleanup.cleanup_reserved_plan(cleanup_request)
+        {:error, reason}
+    end
   end
 
-  defp expire_stale_attempt(attempt_id, now) do
-    Repo.transact(fn ->
-      attempt_id
-      |> lock_stale_attempt(now)
-      |> transition_stale_attempt(now)
-    end)
-  end
-
-  defp lock_stale_attempt(attempt_id, now) do
-    active_statuses = ProjectImportAttempt.active_statuses()
-
+  defp lock_reviewable_attempt(attempt_id, project_id, user_id) do
     ProjectImportAttempt
     |> where(
       [candidate],
-      candidate.id == ^attempt_id and candidate.status in ^active_statuses and
-        candidate.expires_at <= ^now
+      candidate.id == ^attempt_id and candidate.project_id == ^project_id and
+        candidate.user_id == ^user_id and candidate.status == "ready"
     )
     |> lock("FOR UPDATE")
     |> Repo.one()
   end
 
-  defp transition_stale_attempt(%ProjectImportAttempt{} = attempt, now) do
-    with {:ok, expired} <- attempt |> ProjectImportAttempt.expired_changeset(now) |> Repo.update(),
-         :ok <- mark_plan_cleanup_pending(expired.plan_storage_key) do
-      {:ok, expired}
+  defp cleanup_superseded_plan(cleanup_request_id, opts) do
+    case Repo.get(PlanCleanupRequest, cleanup_request_id) do
+      %PlanCleanupRequest{} = cleanup_request ->
+        PlanCleanup.cleanup_request(cleanup_request, opts)
+
+      nil ->
+        :ok
     end
   end
 
-  defp transition_stale_attempt(nil, _now), do: {:error, :import_not_stale}
-
   @spec subscribe_project_imports(Project.t()) :: :ok | {:error, term()}
-  def subscribe_project_imports(%Project{id: project_id}) do
-    Phoenix.PubSub.subscribe(Storyarn.PubSub, project_topic(project_id))
-  end
+  def subscribe_project_imports(%Project{id: project_id}), do: Queue.subscribe(project_id)
 
   defp persist_import_plan(scope, project, plan, preview, binary, opts) do
     storage_key = PlanStorage.storage_key(project.id)
     expires_at = DateTime.add(TimeHelpers.now(), @plan_retention_seconds, :second)
+    idempotency_key = idempotency_key(scope, project, plan, binary)
 
-    with {:ok, cleanup_request} <-
+    with {:ok, plan} <- Shared.bind_plan_to_attempt(plan, storage_key),
+         {:ok, cleanup_request} <-
            reserve_plan_cleanup(project, plan, storage_key, expires_at) do
       import = %{
         scope: scope,
@@ -349,7 +608,7 @@ defmodule Storyarn.Imports do
         preview: preview,
         storage_key: storage_key,
         expires_at: expires_at,
-        binary: binary,
+        idempotency_key: idempotency_key,
         opts: opts
       }
 
@@ -365,28 +624,42 @@ defmodule Storyarn.Imports do
         persist_stored_plan(cleanup_request, import)
 
       {:error, reason} ->
-        defer_uncertain_plan_cleanup(cleanup_request)
+        PlanCleanup.defer_uncertain_plan_cleanup(cleanup_request)
         {:error, reason}
     end
   end
 
   defp persist_stored_plan(cleanup_request, import) do
-    %{scope: scope, project: project, plan: plan, preview: preview, expires_at: expires_at, binary: binary} = import
+    %{
+      scope: scope,
+      project: project,
+      plan: plan,
+      preview: preview,
+      expires_at: expires_at,
+      idempotency_key: idempotency_key
+    } = import
 
     scope
-    |> insert_ready_attempt(project, plan, preview, cleanup_request, expires_at, binary)
-    |> handle_stored_plan_result(cleanup_request)
+    |> insert_ready_attempt(project, plan, preview, cleanup_request, expires_at, idempotency_key)
+    |> handle_stored_plan_result(cleanup_request, import)
   end
 
-  defp handle_stored_plan_result({:ok, attempt}, _cleanup_request), do: {:ok, attempt}
+  defp handle_stored_plan_result({:ok, attempt}, _cleanup_request, %{preview: preview}), do: {:ok, attempt, preview}
 
-  defp handle_stored_plan_result({:existing, attempt}, cleanup_request) do
-    cleanup_reserved_plan(cleanup_request)
-    {:ok, attempt}
+  defp handle_stored_plan_result({:existing, attempt}, cleanup_request, %{scope: scope, project: project, opts: opts}) do
+    PlanCleanup.cleanup_reserved_plan(cleanup_request)
+
+    # The idempotency key deliberately survives review revisions. Returning
+    # the newly parsed preview beside the existing attempt would pair two
+    # different plans and let a subsequent draft overwrite the durable review.
+    # Recovery also re-reads the row after loading its plan, so a concurrent
+    # review revision cannot pair K1's preview with the attempt now pointing at
+    # K2. Accepted attempts intentionally return no preview.
+    Resume.resume_import(scope, project, attempt.id, opts)
   end
 
-  defp handle_stored_plan_result({:error, reason}, cleanup_request) do
-    cleanup_reserved_plan(cleanup_request)
+  defp handle_stored_plan_result({:error, reason}, cleanup_request, _import) do
+    PlanCleanup.cleanup_reserved_plan(cleanup_request)
     {:error, reason}
   end
 
@@ -405,6 +678,7 @@ defmodule Storyarn.Imports do
 
     case result do
       {:ok, {:ok, ^storage_key}} -> {:ok, storage_key}
+      {:ok, {:error, :import_plan_too_large}} -> {:error, :import_plan_too_large}
       _error -> {:error, :import_plan_storage_failed}
     end
   rescue
@@ -446,14 +720,14 @@ defmodule Storyarn.Imports do
     end
   end
 
-  defp insert_ready_attempt(scope, project, plan, preview, cleanup_request, expires_at, binary) do
+  defp insert_ready_attempt(scope, project, plan, preview, cleanup_request, expires_at, idempotency_key) do
     attrs = %{
       status: "ready",
       stage: "parsed",
       format: to_string(plan.format),
       source_kind: to_string(plan.source_kind),
       parser_version: plan.parser_version,
-      idempotency_key: idempotency_key(scope, project, plan, binary),
+      idempotency_key: idempotency_key,
       plan_storage_key: cleanup_request.plan_storage_key,
       counts: stringify_keys(preview.counts),
       warning_codes: Enum.map(ImportPlan.warning_codes(plan), &to_string/1),
@@ -472,7 +746,7 @@ defmodule Storyarn.Imports do
 
     Multi.new()
     |> Multi.run(:authorization, fn repo, _changes ->
-      authorize_edit_locked(repo, project.id, scope.user.id)
+      authorize_import_locked(repo, project.id, scope.user.id)
     end)
     |> Multi.insert(:attempt, attempt_changeset)
     |> Multi.run(:retain_plan, fn repo, _changes ->
@@ -521,7 +795,7 @@ defmodule Storyarn.Imports do
   defp normalize_existing_ready_attempt({:ok, attempt}), do: {:existing, attempt}
   defp normalize_existing_ready_attempt(error), do: error
 
-  defp authorize_edit_locked(repo, project_id, user_id) do
+  defp authorize_import_locked(repo, project_id, user_id) do
     with %Project{} <-
            Project
            |> where([project], project.id == ^project_id and is_nil(project.deleted_at))
@@ -535,7 +809,7 @@ defmodule Storyarn.Imports do
            )
            |> lock("FOR SHARE")
            |> repo.one(),
-         true <- ProjectMembership.can?(membership.role, :edit_content) do
+         true <- ProjectMembership.can?(membership.role, @import_action) do
       {:ok, :authorized}
     else
       nil -> {:error, :unauthorized}
@@ -557,216 +831,130 @@ defmodule Storyarn.Imports do
     end
   end
 
-  defp enqueue_locked_attempt(attempt_id, strategy) do
-    attempt =
-      ProjectImportAttempt
-      |> where([attempt], attempt.id == ^attempt_id)
-      |> lock("FOR UPDATE")
-      |> Repo.one!()
-
-    case attempt.status do
-      "ready" ->
-        with {:ok, job} <- %{"attempt_id" => attempt.id} |> ImportProjectWorker.new() |> Oban.insert() do
-          attempt
-          |> ProjectImportAttempt.queued_changeset(
-            strategy,
-            job.id,
-            DateTime.add(TimeHelpers.now(), @plan_retention_seconds, :second)
-          )
-          |> Repo.update()
-        end
-
-      status when status in ["queued", "running", "retrying"] ->
-        {:ok, attempt}
-
-      _status ->
-        {:error, :import_not_ready}
-    end
-  end
-
-  defp run_import(attempt, opts) do
-    started_at = System.monotonic_time()
-    attempt_number = Keyword.get(opts, :attempt, 1)
-    max_attempts = Keyword.get(opts, :max_attempts, 1)
-
-    result =
-      try do
-        with {:ok, project, _membership} <- authorize_worker(attempt),
-             {:ok, plan} <- PlanStorage.load(attempt.plan_storage_key),
-             :ok <- run_before_materialization_transaction(opts),
-             {:ok, outcome} <- materialize_once(attempt, project, plan, opts) do
-          {:materialized, outcome}
-        else
-          {:error, reason} ->
-            handled_execution_error(attempt, reason, attempt_number, max_attempts, started_at, opts)
-        end
-      rescue
-        exception ->
-          report_exception(:execute, attempt_metadata(attempt, "failed", "exception"), exception, started_at)
-
-          handled_execution_error(
-            attempt,
-            :unexpected_import_error,
-            attempt_number,
-            max_attempts,
-            started_at,
-            opts
-          )
-      catch
-        _kind, _reason ->
-          handled_execution_error(
-            attempt,
-            :unexpected_import_error,
-            attempt_number,
-            max_attempts,
-            started_at,
-            opts
-          )
+  defp persist_import_strategy(attempt, user_id, strategy) do
+    Repo.transact(fn ->
+      with {:ok, :authorized} <- authorize_import_locked(Repo, attempt.project_id, user_id),
+           %ProjectImportAttempt{} = locked_attempt <-
+             ProjectImportAttempt
+             |> where(
+               [candidate],
+               candidate.id == ^attempt.id and candidate.project_id == ^attempt.project_id and
+                 candidate.user_id == ^user_id
+             )
+             |> lock("FOR UPDATE")
+             |> Repo.one() do
+        update_locked_import_strategy(locked_attempt, strategy)
+      else
+        nil -> {:error, :not_found}
+        {:error, reason} -> {:error, reason}
       end
-
-    case result do
-      {:materialized, outcome} -> finish_import(outcome, started_at, opts)
-      {:handled, handled_result} -> handled_result
-    end
+    end)
   end
 
-  defp authorize_worker(attempt) do
-    Projects.authorize(Scope.for_user(attempt.user), attempt.project_id, :edit_content)
+  defp update_locked_import_strategy(%ProjectImportAttempt{status: "ready"} = attempt, strategy) do
+    attempt
+    |> ProjectImportAttempt.conflict_strategy_changeset(strategy)
+    |> Repo.update()
   end
 
-  defp handled_execution_error(attempt, reason, attempt_number, max_attempts, started_at, opts) do
-    {:handled, handle_execution_error(attempt, reason, attempt_number, max_attempts, started_at, opts)}
-  end
+  defp update_locked_import_strategy(%ProjectImportAttempt{}, _strategy), do: {:error, :import_not_ready}
 
-  # Keep the lock order aligned with project deletion: project, membership,
-  # then attempt. A permanent project delete takes the project row first and
-  # reaches attempts through the foreign-key cascade, so taking the attempt
-  # first here would allow the two transactions to deadlock.
-  #
-  # The attempt row remains locked for the rest of the materialization
-  # transaction. Imported entities and the completed status therefore commit
-  # together, and a concurrent delivery observes the completed state.
-  defp materialize_once(attempt, project, plan, opts) do
-    Repo.transact(
-      fn ->
-        with {:ok, authorized_project} <- authorize_worker_locked(attempt, attempt.user),
-             true <- authorized_project.id == project.id,
-             %ProjectImportAttempt{} = locked_attempt <-
-               lock_import_attempt(attempt.id, authorized_project.id, attempt.user.id) do
-          materialize_locked_attempt(locked_attempt, authorized_project, plan, opts)
-        else
-          nil -> {:error, :not_found}
-          false -> {:error, :unauthorized}
-          {:error, reason} -> {:error, reason}
-        end
-      end,
-      timeout: @materialization_timeout
-    )
-  end
-
-  defp lock_import_attempt(attempt_id, project_id, user_id) do
-    ProjectImportAttempt
-    |> where(
-      [candidate],
-      candidate.id == ^attempt_id and candidate.project_id == ^project_id and
-        candidate.user_id == ^user_id
-    )
-    |> lock("FOR UPDATE")
-    |> Repo.one()
-  end
-
-  defp materialize_locked_attempt(%{status: "completed"} = attempt, _project, _plan, _opts) do
-    {:ok, {:already_completed, attempt}}
-  end
-
-  defp materialize_locked_attempt(%{status: status} = attempt, _project, _plan, _opts)
-       when status in ["failed", "expired"] do
-    {:ok, {:terminal, attempt}}
-  end
-
-  defp materialize_locked_attempt(%{status: status} = attempt, project, plan, opts)
-       when status in ["queued", "running", "retrying"] do
-    with {:ok, running} <- mark_running(attempt),
-         {:ok, result} <-
-           Materializer.materialize_locked_project_in_transaction(project, plan,
-             conflict_strategy: strategy_atom(running.conflict_strategy)
-           ),
-         :ok <- run_before_attempt_completion(opts),
-         {:ok, completed} <- complete_attempt(running, result.counts),
-         :ok <- mark_plan_cleanup_pending(completed.plan_storage_key) do
-      {:ok, {:materialized, completed}}
-    end
-  end
-
-  defp materialize_locked_attempt(_attempt, _project, _plan, _opts), do: {:error, :import_not_queued}
-
-  # Lock the project exclusively before the membership and attempt. Besides
-  # preventing deletion, this serializes all imports into the same project and
-  # avoids upgrading the project lock after the attempt row is held.
-  defp authorize_worker_locked(attempt, user) do
-    with %Project{} = project <-
-           Project
-           |> where([candidate], candidate.id == ^attempt.project_id and is_nil(candidate.deleted_at))
-           |> lock("FOR UPDATE")
-           |> Repo.one(),
-         %ProjectMembership{} = locked_membership <-
-           ProjectMembership
+  defp enqueue_locked_attempt(attempt_id, project_id, user_id, strategy, opts) do
+    with {:ok, :authorized} <- authorize_import_locked(Repo, project_id, user_id),
+         %ProjectImportAttempt{} = attempt <-
+           ProjectImportAttempt
            |> where(
              [candidate],
-             candidate.project_id == ^attempt.project_id and candidate.user_id == ^user.id
+             candidate.id == ^attempt_id and candidate.project_id == ^project_id and
+               candidate.user_id == ^user_id
            )
-           |> lock("FOR SHARE")
-           |> Repo.one(),
-         true <- ProjectMembership.can?(locked_membership.role, :edit_content) do
-      {:ok, project}
+           |> lock("FOR UPDATE")
+           |> Repo.one() do
+      enqueue_locked_attempt_by_status(attempt, strategy, opts)
     else
-      nil -> {:error, :unauthorized}
-      false -> {:error, :unauthorized}
+      nil -> {:error, :not_found}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp finish_import({:materialized, completed}, started_at, opts) do
-    cleanup_plan(completed, opts)
-    emit_stop(:execute, started_at, attempt_metadata(completed, "completed", "none"))
-    Collaboration.broadcast_dashboard_change(completed.project_id, :all)
-    broadcast(completed)
-    {:ok, completed}
+  defp enqueue_locked_attempt_by_status(%ProjectImportAttempt{status: "ready"} = attempt, strategy, opts) do
+    if ready_plan_deadline_reached?(attempt, TimeHelpers.now()),
+      do: reject_invalid_review_attempt(attempt, :import_expired),
+      else: enqueue_ready_attempt(attempt, strategy, opts)
   end
 
-  defp finish_import({:already_completed, completed}, _started_at, opts) do
-    cleanup_plan_if_pending(completed, opts)
-    {:ok, completed}
+  defp enqueue_locked_attempt_by_status(%ProjectImportAttempt{status: status} = attempt, _strategy, _opts)
+       when status in ["queued", "running", "retrying"] do
+    {:ok, {:queued, attempt}}
   end
 
-  defp finish_import({:terminal, attempt}, _started_at, _opts), do: {:ok, attempt}
+  defp enqueue_locked_attempt_by_status(%ProjectImportAttempt{}, _strategy, _opts), do: {:error, :import_not_ready}
 
-  defp mark_running(attempt) do
-    attempt
-    |> ProjectImportAttempt.running_changeset(TimeHelpers.now())
-    |> Repo.update()
-  end
+  defp enqueue_ready_attempt(attempt, strategy, opts) do
+    plan_load = Keyword.get(opts, :plan_load, &PlanStorage.load/1)
 
-  defp run_before_attempt_completion(opts) do
-    case Keyword.get(opts, :before_attempt_completion) do
-      nil ->
-        :ok
+    with {:ok, plan} <- Shared.safely_load_plan(plan_load, attempt.plan_storage_key),
+         :ok <- Shared.validate_attempt_plan_binding(attempt, plan),
+         true <- ReviewDecisions.resolved?(plan),
+         :ok <-
+           ReviewDecisions.confirm(
+             plan,
+             Keyword.get(opts, :review_confirmation_fingerprint)
+           ) do
+      queue_resolved_import(attempt, plan, strategy)
+    else
+      false ->
+        reject_invalid_review_attempt(attempt, :invalid_import_review)
 
-      callback when is_function(callback, 0) ->
-        callback.()
-        :ok
+      {:error, :invalid_import_review_selection} ->
+        {:error, :invalid_import_review_selection}
+
+      {:error, reason}
+      when reason in [
+             :invalid_import_review,
+             :import_review_too_large
+           ] ->
+        reject_invalid_review_attempt(attempt, reason)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
-  defp run_before_materialization_transaction(opts) do
-    case Keyword.get(opts, :before_materialization_transaction) do
-      nil ->
-        :ok
-
-      callback when is_function(callback, 0) ->
-        callback.()
-        :ok
+  defp queue_resolved_import(attempt, plan, strategy) do
+    with {:ok, preview} <- preview(attempt.project_id, plan),
+         {:ok, job} <-
+           %{"attempt_id" => attempt.id}
+           |> ImportProjectWorker.new()
+           |> Oban.insert(),
+         {:ok, queued} <-
+           attempt
+           |> ProjectImportAttempt.queued_changeset(
+             strategy,
+             job.id,
+             PlanCleanup.bounded_plan_retention_deadline(attempt, TimeHelpers.now())
+           )
+           |> Ecto.Changeset.put_change(:counts, stringify_keys(preview.counts))
+           |> Repo.update() do
+      {:ok, {:queued, queued}}
     end
+  end
+
+  # Carries the reason as the attempt's `error_code` so a resumed attempt can be
+  # told apart from a preview that merely aged out. Both land on `expired`.
+  defp reject_invalid_review_attempt(attempt, reason) do
+    with {:ok, expired} <-
+           attempt
+           |> ProjectImportAttempt.expired_changeset(TimeHelpers.now(), to_string(reason))
+           |> Repo.update(),
+         :ok <- PlanCleanup.mark_plan_cleanup_pending(expired.plan_storage_key) do
+      {:ok, {:rejected, expired, reason}}
+    end
+  end
+
+  defp ready_plan_deadline_reached?(%ProjectImportAttempt{} = attempt, now) do
+    not DateTime.after?(attempt.expires_at, now) or
+      PlanCleanup.absolute_plan_deadline_reached?(attempt, now)
   end
 
   defp run_before_cancel_transaction(opts) do
@@ -780,472 +968,10 @@ defmodule Storyarn.Imports do
     end
   end
 
-  defp complete_attempt(attempt, counts) do
-    attempt
-    |> ProjectImportAttempt.completed_changeset(TimeHelpers.now(), stringify_keys(counts))
-    |> Repo.update()
-  end
-
-  defp handle_execution_error(attempt, reason, attempt_number, max_attempts, started_at, opts) do
-    {code, message, permanent?} = Error.classify(reason)
-    terminal? = permanent? or attempt_number >= max_attempts
-
-    case persist_execution_error(attempt.id, code, message, attempt_number, max_attempts, terminal?) do
-      {:ok, {:terminal, terminal_attempt}} ->
-        cleanup_plan_if_pending(terminal_attempt, opts)
-        {:ok, terminal_attempt}
-
-      {:ok, {:failed, failed}} ->
-        metadata = attempt_metadata(failed, "failed", code)
-        Error.report(Map.merge(metadata, %{phase: "execute", error_code: code}))
-        cleanup_plan(failed, opts)
-        emit_stop(:execute, started_at, metadata)
-        broadcast(failed)
-        {:ok, failed}
-
-      {:ok, {:retrying, retrying}} ->
-        metadata = attempt_metadata(retrying, "retrying", code)
-        Error.report(Map.merge(metadata, %{phase: "execute", error_code: code}))
-        emit_stop(:execute, started_at, metadata)
-        broadcast(retrying)
-        {:error, :retryable_import_error}
-
-      {:ok, :attempt_not_found} ->
-        cleanup_plan(attempt, opts)
-
-        emit_stop(
-          :execute,
-          started_at,
-          attempt_metadata(attempt, "discarded", "attempt_not_found")
-        )
-
-        {:ok, :attempt_not_found}
-
-      {:error, transition_reason} ->
-        {:error, transition_reason}
-    end
-  end
-
-  defp persist_execution_error(attempt_id, code, message, attempt_number, max_attempts, terminal?) do
-    Repo.transact(fn ->
-      locked_attempt =
-        ProjectImportAttempt
-        |> where([candidate], candidate.id == ^attempt_id)
-        |> lock("FOR UPDATE")
-        |> Repo.one()
-
-      case locked_attempt do
-        nil ->
-          {:ok, :attempt_not_found}
-
-        %ProjectImportAttempt{} = attempt ->
-          transition_execution_error(attempt, code, message, attempt_number, max_attempts, terminal?)
-      end
-    end)
-  end
-
-  defp transition_execution_error(%{status: status} = attempt, _code, _message, _number, _max, _terminal?)
-       when status in ["completed", "failed", "expired"] do
-    {:ok, {:terminal, attempt}}
-  end
-
-  defp transition_execution_error(%{status: status} = attempt, code, message, number, max, true)
-       when status in ["queued", "running", "retrying"] do
-    attrs = %{
-      status: "failed",
-      stage: "failed",
-      error_code: code,
-      error_message: message,
-      error_report: %{attempt: number, max_attempts: max},
-      completed_at: TimeHelpers.now()
-    }
-
-    with {:ok, failed} <- attempt |> ProjectImportAttempt.failed_changeset(attrs) |> Repo.update(),
-         :ok <- mark_plan_cleanup_pending(failed.plan_storage_key) do
-      {:ok, {:failed, failed}}
-    end
-  end
-
-  defp transition_execution_error(%{status: status} = attempt, code, _message, number, max, false)
-       when status in ["queued", "running", "retrying"] do
-    attrs = %{
-      status: "retrying",
-      stage: "retrying",
-      error_code: code,
-      error_message: "The import will be retried automatically.",
-      error_report: %{attempt: number, max_attempts: max},
-      started_at: attempt.started_at || TimeHelpers.now(),
-      expires_at: DateTime.add(TimeHelpers.now(), @plan_retention_seconds, :second)
-    }
-
-    with {:ok, retrying} <- attempt |> ProjectImportAttempt.retrying_changeset(attrs) |> Repo.update() do
-      {:ok, {:retrying, retrying}}
-    end
-  end
-
-  defp transition_execution_error(_attempt, _code, _message, _number, _max, _terminal?) do
-    {:error, :import_not_queued}
-  end
-
-  defp mark_plan_cleanup_pending(storage_key) do
-    now = TimeHelpers.now()
-
-    case Repo.update_all(
-           from(request in PlanCleanupRequest,
-             where:
-               request.plan_storage_key == ^storage_key and
-                 request.state in ["reserved", "retained", "pending"]
-           ),
-           set: [state: "pending", cleanup_after: now, updated_at: now]
-         ) do
-      {1, _rows} -> :ok
-      {_count, _rows} -> {:error, :plan_cleanup_request_unavailable}
-    end
-  end
-
-  defp cleanup_reserved_plan(cleanup_request) do
-    with {:ok, pending} <- force_plan_cleanup(cleanup_request.id) do
-      cleanup_request(pending, [])
-    end
-
-    :ok
-  end
-
-  # A failed or timed-out PUT has an ambiguous remote outcome: object storage
-  # may still commit it after the caller receives the error. Invalidate any
-  # stale delete claim, then wait a full retention window before the scanner's
-  # definitive delete instead of falsely declaring the key clean immediately.
-  defp defer_uncertain_plan_cleanup(%PlanCleanupRequest{} = request) do
-    now = TimeHelpers.now()
-    cleanup_after = DateTime.add(now, @plan_retention_seconds, :second)
-
-    Repo.update_all(
-      from(candidate in PlanCleanupRequest, where: candidate.id == ^request.id),
-      set: [
-        state: "pending",
-        cleanup_after: cleanup_after,
-        completed_at: nil,
-        last_error_code: "upload_outcome_uncertain",
-        updated_at: now
-      ],
-      inc: [generation: 1]
-    )
-
-    :ok
-  end
-
-  defp cleanup_plan(attempt, opts \\ []) do
-    with {:ok, cleanup_request} <- ensure_cleanup_request(attempt),
-         {:ok, pending} <- request_plan_cleanup(cleanup_request) do
-      cleanup_request(pending, opts)
-    else
-      _error ->
-        report_cleanup_failure(attempt.format, attempt.parser_version)
-        {:error, :plan_cleanup_failed}
-    end
-  end
-
-  defp ensure_cleanup_request(attempt) do
-    case Repo.get(PlanCleanupRequest, attempt.plan_cleanup_request_id) do
-      %PlanCleanupRequest{plan_storage_key: storage_key} = request
-      when storage_key == attempt.plan_storage_key ->
-        {:ok, request}
-
-      %PlanCleanupRequest{} ->
-        {:error, :plan_cleanup_request_mismatch}
-
-      nil ->
-        ensure_legacy_cleanup_request(attempt)
-    end
-  end
-
-  defp ensure_legacy_cleanup_request(attempt) do
-    attrs = %{
-      plan_storage_key: attempt.plan_storage_key,
-      format: attempt.format,
-      parser_version: attempt.parser_version,
-      state: "pending",
-      cleanup_after: TimeHelpers.now()
-    }
-
-    %PlanCleanupRequest{}
-    |> PlanCleanupRequest.reservation_changeset(attrs)
-    |> Repo.insert()
-    |> case do
-      {:ok, request} -> {:ok, request}
-      {:error, _changeset} -> cleanup_request_after_insert_race(attempt.plan_storage_key)
-    end
-  end
-
-  defp cleanup_request_after_insert_race(storage_key) do
-    case Repo.get_by(PlanCleanupRequest, plan_storage_key: storage_key) do
-      %PlanCleanupRequest{} = request -> {:ok, request}
-      nil -> {:error, :plan_cleanup_request_unavailable}
-    end
-  end
-
-  defp request_plan_cleanup(%PlanCleanupRequest{} = request) do
-    now = TimeHelpers.now()
-
-    Repo.update_all(
-      from(candidate in PlanCleanupRequest,
-        where: candidate.id == ^request.id and candidate.state in ["reserved", "retained", "pending"]
-      ),
-      set: [state: "pending", cleanup_after: now, completed_at: nil, updated_at: now]
-    )
-
-    case Repo.get(PlanCleanupRequest, request.id) do
-      %PlanCleanupRequest{} = pending -> {:ok, pending}
-      nil -> {:error, :plan_cleanup_request_unavailable}
-    end
-  end
-
-  defp force_plan_cleanup(request_id) do
-    now = TimeHelpers.now()
-
-    case Repo.update_all(
-           from(candidate in PlanCleanupRequest, where: candidate.id == ^request_id),
-           set: [
-             state: "pending",
-             cleanup_after: now,
-             completed_at: nil,
-             last_error_code: nil,
-             updated_at: now
-           ],
-           inc: [generation: 1]
-         ) do
-      {1, _rows} ->
-        {:ok, Repo.get!(PlanCleanupRequest, request_id)}
-
-      {_count, _rows} ->
-        {:error, :plan_cleanup_request_unavailable}
-    end
-  end
-
-  defp cleanup_request(%PlanCleanupRequest{} = request, opts) do
-    with :ok <- run_before_cleanup_claim(opts, request),
-         {:ok, claim} <- claim_plan_cleanup(request.id) do
-      cleanup_claim(claim, opts)
-    end
-  end
-
-  defp run_before_cleanup_claim(opts, request) do
-    case Keyword.get(opts, :before_cleanup_claim) do
-      nil ->
-        :ok
-
-      callback when is_function(callback, 1) ->
-        callback.(request)
-        :ok
-    end
-  end
-
-  defp claim_plan_cleanup(request_id) do
-    now = TimeHelpers.now()
-    lease_until = DateTime.add(now, @cleanup_delete_lease_seconds, :second)
-
-    Repo.transact(fn ->
-      request =
-        PlanCleanupRequest
-        |> where([candidate], candidate.id == ^request_id)
-        |> lock("FOR UPDATE")
-        |> Repo.one()
-
-      case request do
-        %PlanCleanupRequest{} = request ->
-          claim_locked_plan_cleanup(request, now, lease_until)
-
-        nil ->
-          {:error, :plan_cleanup_request_unavailable}
-      end
-    end)
-  end
-
-  defp claim_locked_plan_cleanup(request, now, lease_until) do
-    cond do
-      cleanup_claimable?(request, now) ->
-        request
-        |> Ecto.Changeset.change(
-          state: "deleting",
-          cleanup_after: lease_until,
-          generation: request.generation + 1,
-          updated_at: now
-        )
-        |> Repo.update()
-
-      request.state == "completed" ->
-        {:ok, :already_completed}
-
-      request.state == "deleting" ->
-        {:ok, :in_progress}
-
-      true ->
-        {:ok, :not_due}
-    end
-  end
-
-  defp cleanup_claimable?(%PlanCleanupRequest{state: "retained", project_id: nil}, _now), do: true
-
-  defp cleanup_claimable?(%PlanCleanupRequest{state: state, cleanup_after: cleanup_after}, now)
-       when state in ["reserved", "pending", "deleting"] and not is_nil(cleanup_after) do
-    DateTime.compare(cleanup_after, now) in [:lt, :eq]
-  end
-
-  defp cleanup_claimable?(_request, _now), do: false
-
-  defp cleanup_claim(status, _opts) when status in [:already_completed, :in_progress, :not_due], do: :ok
-
-  defp cleanup_claim(%PlanCleanupRequest{} = claim, opts) do
-    delete_plan = Keyword.get(opts, :plan_delete, &PlanStorage.delete/1)
-
-    case safely_delete_plan(delete_plan, claim.plan_storage_key) do
-      :ok ->
-        complete_plan_cleanup(claim)
-
-      {:error, _reason} ->
-        record_plan_cleanup_failure(claim)
-        report_cleanup_failure(claim.format, claim.parser_version)
-        {:error, :plan_cleanup_failed}
-    end
-  end
-
-  defp safely_delete_plan(delete_plan, storage_key) do
-    case delete_plan.(storage_key) do
-      :ok -> :ok
-      {:error, reason} -> {:error, reason}
-      _other -> {:error, :unexpected_delete_result}
-    end
-  rescue
-    _exception -> {:error, :delete_exception}
-  catch
-    _kind, _reason -> {:error, :delete_exception}
-  end
-
-  defp complete_plan_cleanup(request) do
-    now = TimeHelpers.now()
-
-    Repo.update_all(
-      from(candidate in PlanCleanupRequest,
-        where:
-          candidate.id == ^request.id and candidate.state == "deleting" and
-            candidate.generation == ^request.generation
-      ),
-      set: [
-        state: "completed",
-        project_id: nil,
-        completed_at: now,
-        cleanup_after: nil,
-        last_error_code: nil,
-        updated_at: now
-      ]
-    )
-
-    :ok
-  end
-
-  defp record_plan_cleanup_failure(request) do
-    now = TimeHelpers.now()
-    retry_at = DateTime.add(now, cleanup_retry_delay(request.attempt_count), :second)
-
-    Repo.update_all(
-      from(candidate in PlanCleanupRequest,
-        where:
-          candidate.id == ^request.id and candidate.state == "deleting" and
-            candidate.generation == ^request.generation
-      ),
-      set: [
-        state: "pending",
-        cleanup_after: retry_at,
-        last_error_code: "plan_cleanup_failed",
-        updated_at: now
-      ],
-      inc: [attempt_count: 1]
-    )
-
-    :ok
-  end
-
-  defp cleanup_retry_delay(attempt_count) do
-    exponent = min(attempt_count, 6)
-    min(@cleanup_retry_base_seconds * Integer.pow(2, exponent), @cleanup_retry_max_seconds)
-  end
-
-  defp report_cleanup_failure(format, parser_version) do
-    Error.report(%{
-      format: format,
-      parser_version: parser_version,
-      phase: "cleanup",
-      error_code: "plan_cleanup_failed",
-      exception_module: "none"
-    })
-  end
-
-  defp cleanup_plan_if_pending(%ProjectImportAttempt{} = attempt, opts \\ []) do
-    cleanup_plan(attempt, opts)
-  end
-
-  defp retry_pending_plan_cleanup(opts) do
-    retry_terminal_attempt_cleanup(opts)
-    retry_due_plan_cleanup(opts)
-    purge_completed_cleanup_tombstones()
-  end
-
-  defp retry_terminal_attempt_cleanup(opts) do
-    ProjectImportAttempt
-    |> join(:inner, [attempt], request in PlanCleanupRequest, on: request.id == attempt.plan_cleanup_request_id)
-    |> where(
-      [attempt, request],
-      attempt.status in ["completed", "failed", "expired"] and request.state == "retained"
-    )
-    |> order_by([attempt], asc: attempt.id)
-    |> limit(100)
-    |> Repo.all()
-    |> Enum.each(&cleanup_plan(&1, opts))
-  end
-
-  defp retry_due_plan_cleanup(opts) do
-    now = TimeHelpers.now()
-
-    PlanCleanupRequest
-    |> where(
-      [request],
-      (request.state in ["reserved", "pending", "deleting"] and
-         not is_nil(request.cleanup_after) and request.cleanup_after <= ^now) or
-        (request.state == "retained" and is_nil(request.project_id))
-    )
-    |> order_by([request], asc_nulls_first: request.cleanup_after, asc: request.id)
-    |> limit(100)
-    |> Repo.all()
-    |> Enum.each(&cleanup_request(&1, opts))
-  end
-
-  defp purge_completed_cleanup_tombstones do
-    cutoff = DateTime.add(TimeHelpers.now(), -@cleanup_tombstone_retention_seconds, :second)
-
-    Repo.delete_all(
-      from(request in PlanCleanupRequest,
-        where: request.state == "completed" and request.completed_at <= ^cutoff
-      )
-    )
-
-    :ok
-  end
-
   defp normalize_strategy(strategy) when is_atom(strategy), do: normalize_strategy(to_string(strategy))
 
   defp normalize_strategy(strategy) when strategy in ~w(skip overwrite rename), do: {:ok, strategy}
   defp normalize_strategy(_strategy), do: {:error, :invalid_conflict_strategy}
-
-  defp strategy_atom("skip"), do: :skip
-  defp strategy_atom("overwrite"), do: :overwrite
-  defp strategy_atom("rename"), do: :rename
-
-  defp get_attempt(attempt_id) do
-    case Repo.get(ProjectImportAttempt, attempt_id) do
-      nil -> nil
-      %ProjectImportAttempt{} = attempt -> Repo.preload(attempt, [:user, :project])
-    end
-  end
 
   defp idempotency_key(scope, project, plan, binary) do
     source_digest = :crypto.hash(:sha256, binary)
@@ -1260,71 +986,4 @@ defmodule Storyarn.Imports do
   defp stringify_keys(map) do
     Map.new(map, fn {key, value} -> {to_string(key), value} end)
   end
-
-  defp source_metadata(filename) do
-    extension = filename |> Path.extname() |> String.downcase()
-
-    %{
-      format: if(extension in [".yarn", ".zip"], do: "yarn", else: "unknown"),
-      source_kind: if(extension == ".zip", do: "archive", else: "file"),
-      parser_version: "unknown"
-    }
-  end
-
-  defp plan_metadata(plan, status, error_code) do
-    %{
-      format: to_string(plan.format),
-      source_kind: to_string(plan.source_kind),
-      parser_version: plan.parser_version,
-      status: status,
-      error_code: error_code
-    }
-  end
-
-  defp attempt_metadata(attempt, status, error_code) do
-    %{
-      format: attempt.format,
-      source_kind: attempt.source_kind,
-      parser_version: attempt.parser_version,
-      status: status,
-      error_code: error_code
-    }
-  end
-
-  defp report_prepare_error(reason, metadata, started_at) do
-    {code, _message, _permanent?} = Error.classify(reason)
-    Error.report(Map.merge(metadata, %{phase: "prepare", error_code: code, exception_module: "none"}))
-    emit_stop(:prepare, started_at, Map.merge(metadata, %{status: "failed", error_code: code}))
-  end
-
-  defp report_exception(phase, metadata, exception, started_at) do
-    error_metadata = %{
-      format: Map.get(metadata, :format, "unknown"),
-      parser_version: Map.get(metadata, :parser_version, "unknown"),
-      phase: to_string(phase),
-      error_code: "exception",
-      exception_module: inspect(exception.__struct__)
-    }
-
-    Error.report(error_metadata)
-    emit_stop(phase, started_at, Map.merge(metadata, %{status: "failed", error_code: "exception"}))
-  end
-
-  defp emit_stop(phase, started_at, metadata) do
-    :telemetry.execute(
-      [:storyarn, :import, phase, :stop],
-      %{count: 1, duration: System.monotonic_time() - started_at},
-      metadata
-    )
-  end
-
-  defp broadcast(attempt) do
-    Phoenix.PubSub.broadcast(
-      Storyarn.PubSub,
-      project_topic(attempt.project_id),
-      {:project_import_updated, attempt}
-    )
-  end
-
-  defp project_topic(project_id), do: "project_imports:project:#{project_id}"
 end

@@ -283,7 +283,7 @@ defmodule Storyarn.Flows.DashboardHealthCoverageTest do
       data: %{"assignments" => [incomplete_assignment()]}
     })
 
-    # missing_dialogue_text + missing_dialogue_speaker + empty_dialogue_response
+    # missing_dialogue_speaker + empty_dialogue_response
     # + incomplete_response_condition + incomplete_response_assignment
     node_fixture(flow, %{
       type: "dialogue",
@@ -298,6 +298,18 @@ defmodule Storyarn.Flows.DashboardHealthCoverageTest do
             "instruction_assignments" => [incomplete_assignment()]
           }
         ]
+      }
+    })
+
+    # missing_dialogue_text needs its own node: a dialogue that presents
+    # responses is a choice menu and needs no line of its own, so only one with
+    # neither text nor responses is incomplete.
+    node_fixture(flow, %{
+      type: "dialogue",
+      data: %{
+        "text" => "",
+        "speaker_sheet_id" => sheet.id,
+        "responses" => []
       }
     })
 

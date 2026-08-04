@@ -271,6 +271,32 @@ defmodule StoryarnWeb.ExportControllerTest do
       assert get_resp_header(conn, "x-storyarn-export-error") == ["validation"]
     end
 
+    test "forbids a viewer from exporting", %{conn: conn, user: user} do
+      # An export hands the caller the whole project in one file. Membership is
+      # not enough — a viewer may read the project in the app but not walk out
+      # with it.
+      owner = user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+
+      {:ok, _membership} = Storyarn.Projects.create_membership(project.id, user.id, "viewer")
+
+      conn = get(conn, export_url(project, "unity"))
+
+      assert conn.status == 403
+      assert conn.resp_body =~ "permission"
+    end
+
+    test "allows an editor to export", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+
+      {:ok, _membership} = Storyarn.Projects.create_membership(project.id, user.id, "editor")
+
+      conn = get(conn, export_url(project, "unity"))
+
+      assert conn.status == 200
+    end
+
     test "returns 404 for non-member project", %{conn: conn} do
       other_user = user_fixture()
       other_project = other_user |> project_fixture() |> Repo.preload(:workspace)

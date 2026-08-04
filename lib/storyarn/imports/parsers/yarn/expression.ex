@@ -13,6 +13,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
     {~r/^(.+?)\s*>\s*(.+)$/, "greater_than"},
     {~r/^(.+?)\s*<\s*(.+)$/, "less_than"}
   ]
+  @interpolation_regex ~r/\{\$([A-Za-z_][A-Za-z0-9_.]*)\}/
 
   @spec declaration(String.t()) :: {:ok, map()} | {:error, atom()}
   def declaration(args) when is_binary(args) do
@@ -20,7 +21,15 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
       [reference, raw_value] ->
         with {:ok, variable} <- variable(reference),
              {:ok, value, type} <- literal(raw_value) do
-          {:ok, %{variable: variable, value: value, type: type}}
+          # `source_name` keeps the author's own spelling for display; the
+          # normalized `variable` is the identifier everything else references.
+          {:ok,
+           %{
+             variable: variable,
+             source_name: String.trim_leading(reference, "$"),
+             value: value,
+             type: type
+           }}
         end
 
       _other ->
@@ -59,18 +68,54 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
 
   @spec referenced_variables(String.t()) :: [String.t()]
   def referenced_variables(text) when is_binary(text) do
-    ~r/\$([A-Za-z_][A-Za-z0-9_.]*)/
-    |> Regex.scan(text, capture: :all_but_first)
-    |> Enum.map(fn [name] -> normalize_variable(name) end)
-    |> Enum.reject(&is_nil/1)
+    text
+    |> referenced_variable_occurrences()
+    |> Enum.map(& &1.variable)
     |> Enum.uniq()
   end
 
-  @spec interpolate(String.t(), :dialogue | :response) :: String.t()
-  def interpolate(text, mode) when is_binary(text) do
-    Regex.replace(~r/\{\$([A-Za-z_][A-Za-z0-9_.]*)\}/, text, fn _match, name ->
+  @doc false
+  @spec referenced_variable_occurrences(String.t()) :: [%{variable: String.t(), source_name: String.t()}]
+  def referenced_variable_occurrences(text) when is_binary(text) do
+    text
+    |> without_string_literals()
+    |> then(&Regex.scan(~r/\$([A-Za-z_][A-Za-z0-9_.]*)/, &1, capture: :all_but_first))
+    |> variable_occurrences()
+  end
+
+  @doc false
+  @spec interpolated_variables(String.t()) :: [String.t()]
+  def interpolated_variables(text) when is_binary(text) do
+    text
+    |> interpolated_variable_occurrences()
+    |> Enum.map(& &1.variable)
+    |> Enum.uniq()
+  end
+
+  @doc false
+  @spec interpolated_variable_occurrences(String.t()) :: [%{variable: String.t(), source_name: String.t()}]
+  def interpolated_variable_occurrences(text) when is_binary(text) do
+    @interpolation_regex
+    |> Regex.scan(text, capture: :all_but_first)
+    |> variable_occurrences()
+  end
+
+  @doc false
+  # An interpolation that matches the syntax but normalizes to nothing — `{$_}`
+  # — would otherwise be silently rewritten to the shared fallback variable
+  # and materialize as a dangling reference.
+  @spec invalid_interpolation?(String.t()) :: boolean()
+  def invalid_interpolation?(text) when is_binary(text) do
+    @interpolation_regex
+    |> Regex.scan(text, capture: :all_but_first)
+    |> Enum.any?(fn [name] -> is_nil(normalize_variable(name)) end)
+  end
+
+  @spec interpolate(String.t(), :dialogue | :response, String.t()) :: String.t()
+  def interpolate(text, mode, shortcut \\ "yarn") when is_binary(text) and is_binary(shortcut) do
+    Regex.replace(@interpolation_regex, text, fn _match, name ->
       variable = normalize_variable(name) || "variable"
-      if mode == :dialogue, do: "{yarn.#{variable}}", else: "$yarn.#{variable}"
+      if mode == :dialogue, do: "{#{shortcut}.#{variable}}", else: "$#{shortcut}.#{variable}"
     end)
   end
 
@@ -213,7 +258,69 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
     end
   end
 
-  defp normalize_variable(name), do: NameNormalizer.variablify(name)
+  # Yarn variables are conventionally camelCase (`$hasClueA`). `variablify/1`
+  # only lowercases, so on its own it would flatten that to `hascluea`; splitting
+  # the word boundaries into underscores first yields `has_clue_a`. Repeated or
+  # leading underscores do not need guarding here — `variablify/1` collapses and
+  # trims them.
+  # `variablify/1` returns "" (not nil) for a name with no usable characters,
+  # such as `$_` — collapsing that to nil here keeps every `|| fallback` and
+  # nil guard downstream honest, so an unusable name fails the parse instead
+  # of persisting an empty `variable_name` that aborts materialization later.
+  defp normalize_variable(name) do
+    normalized =
+      name
+      |> String.replace(~r/([A-Z]+)([A-Z][a-z])/, "\\1_\\2")
+      |> String.replace(~r/([^A-Z_.])([A-Z][a-z]+)/, "\\1_\\2")
+      |> String.replace(~r/([a-z0-9])([A-Z])/, "\\1_\\2")
+      |> NameNormalizer.variablify()
+
+    if normalized == "", do: nil, else: normalized
+  end
+
+  defp variable_occurrences(captures) do
+    captures
+    |> Enum.reduce([], fn [source_name], occurrences ->
+      case normalize_variable(source_name) do
+        nil -> occurrences
+        variable -> [%{variable: variable, source_name: source_name} | occurrences]
+      end
+    end)
+    |> Enum.reverse()
+    |> Enum.uniq()
+  end
+
+  defp without_string_literals(text) do
+    text
+    |> do_without_string_literals(false, false, [])
+    |> IO.iodata_to_binary()
+  end
+
+  defp do_without_string_literals(<<>>, _quoted?, _escaped?, acc), do: Enum.reverse(acc)
+
+  defp do_without_string_literals(<<?", rest::binary>>, false, _escaped?, acc) do
+    do_without_string_literals(rest, true, false, acc)
+  end
+
+  defp do_without_string_literals(<<byte, rest::binary>>, false, _escaped?, acc) do
+    do_without_string_literals(rest, false, false, [<<byte>> | acc])
+  end
+
+  defp do_without_string_literals(<<?\\, rest::binary>>, true, false, acc) do
+    do_without_string_literals(rest, true, true, acc)
+  end
+
+  defp do_without_string_literals(<<_byte, rest::binary>>, true, true, acc) do
+    do_without_string_literals(rest, true, false, acc)
+  end
+
+  defp do_without_string_literals(<<?", rest::binary>>, true, false, acc) do
+    do_without_string_literals(rest, false, false, acc)
+  end
+
+  defp do_without_string_literals(<<_byte, rest::binary>>, true, false, acc) do
+    do_without_string_literals(rest, true, false, acc)
+  end
 
   defp literal(value) when is_binary(value) do
     value = String.trim(value)
@@ -232,6 +339,11 @@ defmodule Storyarn.Imports.Parsers.Yarn.Expression do
       {number, ""} -> {:ok, number, "number"}
       _other -> {:error, :unsupported_yarn_literal}
     end
+  rescue
+    # OTP raises for syntactically numeric values outside the finite float
+    # range. Treat them like every other unsupported Yarn literal instead of
+    # letting an uploaded source escape the parser's tagged-error contract.
+    ArgumentError -> {:error, :unsupported_yarn_literal}
   end
 
   defp parse_string(value) do

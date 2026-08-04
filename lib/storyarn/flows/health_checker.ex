@@ -170,8 +170,14 @@ defmodule Storyarn.Flows.HealthChecker do
 
   defp response_type_warning?(_responses), do: false
 
+  # A dialogue that presents responses is a choice menu, and a menu needs no line
+  # of its own: whatever leads into it already spoke. Only a node with neither
+  # text nor responses is genuinely incomplete.
   defp dialogue_text_empty?(data) do
-    data |> Map.get("text") |> HtmlUtils.strip_html() |> String.trim() == ""
+    responses = Map.get(data, "responses")
+
+    (not is_list(responses) or responses == []) and
+      data |> Map.get("text") |> HtmlUtils.strip_html() |> String.trim() == ""
   end
 
   defp empty_response_text?(responses) when is_list(responses) do

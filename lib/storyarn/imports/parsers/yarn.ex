@@ -16,7 +16,7 @@ defmodule Storyarn.Imports.Parsers.Yarn do
   alias Storyarn.Imports.Parsers.Yarn.Normalizer
   alias Storyarn.Imports.SourceBundle
 
-  @parser_version "3"
+  @parser_version "5"
   @max_documents 500
   @max_statements_per_document 5_000
   @max_total_statements 100_000
@@ -43,8 +43,10 @@ defmodule Storyarn.Imports.Parsers.Yarn do
            ),
          false <- documents == [],
          {:ok, data, normalization_issues, metadata} <- Normalizer.normalize(documents) do
-      issues = limit_issues(document_issues ++ normalization_issues)
-      metadata = issue_metadata(metadata, issues)
+      all_issues = document_issues ++ normalization_issues
+      issues = limit_issues(all_issues)
+      metadata = issue_metadata(metadata, all_issues, issues)
+      data = put_compatibility_review(data, all_issues)
 
       plan = %ImportPlan{
         format: format(),
@@ -68,9 +70,41 @@ defmodule Storyarn.Imports.Parsers.Yarn do
     Enum.take(errors ++ warnings, @max_issues)
   end
 
-  defp issue_metadata(metadata, issues) do
+  defp issue_metadata(metadata, all_issues, retained_issues) do
+    counts_by_code =
+      all_issues
+      |> Enum.frequencies_by(& &1.code)
+      |> Enum.sort()
+      |> Map.new()
+
     metadata
-    |> Map.put(:warning_count, Enum.count(issues, &(&1.severity == :warning)))
-    |> Map.put(:error_count, Enum.count(issues, &(&1.severity == :error)))
+    |> Map.put(:warning_count, Enum.count(all_issues, &(&1.severity == :warning)))
+    |> Map.put(:error_count, Enum.count(all_issues, &(&1.severity == :error)))
+    |> Map.put(:issue_count, length(all_issues))
+    |> Map.put(:issues_truncated, length(retained_issues) < length(all_issues))
+    |> Map.put(:issue_counts_by_code, counts_by_code)
+  end
+
+  defp put_compatibility_review(%{"import_review" => review} = data, issues) when is_map(review) do
+    warning_counts_by_code =
+      issues
+      |> Enum.filter(&(&1.severity == :warning))
+      |> Enum.frequencies_by(&Atom.to_string(&1.code))
+      |> Enum.sort()
+      |> Map.new()
+
+    warning_count = Enum.sum(Map.values(warning_counts_by_code))
+
+    review =
+      review
+      |> Map.put("compatibility_warning_count", warning_count)
+      |> Map.put("compatibility_warning_counts_by_code", warning_counts_by_code)
+      |> Map.update(
+        "requires_acknowledgement",
+        warning_count > 0,
+        &(&1 or warning_count > 0)
+      )
+
+    Map.put(data, "import_review", review)
   end
 end

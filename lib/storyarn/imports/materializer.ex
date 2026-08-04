@@ -21,6 +21,11 @@ defmodule Storyarn.Imports.Materializer do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Imports.ImportPlan
+  alias Storyarn.Imports.Parsers.Yarn.Expression
+  alias Storyarn.Imports.Parsers.Yarn.Layout
+  alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
+  alias Storyarn.Imports.Parsers.Yarn.Shortcut
+  alias Storyarn.Imports.Parsers.Yarn.SpeakerClassifier
   alias Storyarn.Localization
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.RuntimeKey
@@ -45,6 +50,14 @@ defmodule Storyarn.Imports.Materializer do
     localized_texts: 100_000,
     glossary_entries: 10_000
   }
+  @transient_import_node_data_keys ~w(
+    import_yarn_inherited_speaker
+    import_yarn_speaker
+    import_yarn_literal_text
+    import_yarn_literal_source_text
+    import_yarn_source_text
+  )
+  @transient_import_response_data_keys ~w(import_yarn_source_text)
 
   # =============================================================================
   # Plan validation
@@ -315,7 +328,8 @@ defmodule Storyarn.Imports.Materializer do
   def preview(project_id, data) do
     with :ok <- validate_structure(data),
          :ok <- validate_types(data),
-         :ok <- validate_runtime_identifiers(data) do
+         :ok <- validate_runtime_identifiers(data),
+         :ok <- validate_entity_counts(data) do
       counts = count_import_entities(data)
       conflicts = detect_conflicts(project_id, data)
 
@@ -323,7 +337,13 @@ defmodule Storyarn.Imports.Materializer do
        %{
          counts: counts,
          conflicts: conflicts,
-         has_conflicts: conflicts != %{}
+         has_conflicts: conflicts != %{},
+         import_review:
+           data
+           |> Map.get("import_review", %{})
+           |> ReviewDecisions.put_allowed_actions(),
+         import_review_draft: Map.get(data, "import_review_draft"),
+         import_review_resolution: Map.get(data, "import_review_resolution")
        }}
     end
   end
@@ -382,7 +402,9 @@ defmodule Storyarn.Imports.Materializer do
   Execute the import into a project.
 
   Options:
-  - `:conflict_strategy` — `:skip` | `:overwrite` | `:rename` (default: `:skip`)
+  - `:conflict_strategy` — `:skip` | `:overwrite` | `:rename` (default: `:rename`,
+    the same default the schema and the LiveView carry; three layers used to
+    disagree here)
 
   Uses a database transaction. Returns `{:ok, result}` or `{:error, reason}`.
   """
@@ -390,10 +412,14 @@ defmodule Storyarn.Imports.Materializer do
 
   def execute(project, %ImportPlan{} = plan, opts) do
     result =
-      Repo.transact(
-        fn -> materialize_in_transaction(project, plan, opts) end,
-        timeout: to_timeout(minute: 5)
-      )
+      if ReviewDecisions.resolved?(plan) do
+        Repo.transact(
+          fn -> materialize_in_transaction(project, plan, opts) end,
+          timeout: to_timeout(minute: 5)
+        )
+      else
+        {:error, :invalid_import_review}
+      end
 
     case result do
       {:ok, _result} -> Collaboration.broadcast_dashboard_change(project.id, :all)
@@ -412,6 +438,7 @@ defmodule Storyarn.Imports.Materializer do
     cond do
       not Repo.in_transaction?() -> {:error, :import_transaction_required}
       ImportPlan.error?(plan) -> {:error, :import_plan_has_errors}
+      not ReviewDecisions.resolved?(plan) -> {:error, :invalid_import_review}
       true -> do_materialize_in_transaction(project, data, opts)
     end
   end
@@ -425,6 +452,7 @@ defmodule Storyarn.Imports.Materializer do
     cond do
       not Repo.in_transaction?() -> {:error, :import_transaction_required}
       ImportPlan.error?(plan) -> {:error, :import_plan_has_errors}
+      not ReviewDecisions.resolved?(plan) -> {:error, :invalid_import_review}
       true -> materialize_validated_project(project, data, opts)
     end
   end
@@ -440,7 +468,7 @@ defmodule Storyarn.Imports.Materializer do
   end
 
   defp materialize_validated_project(project, data, opts) do
-    strategy = Keyword.get(opts, :conflict_strategy, :skip)
+    strategy = Keyword.get(opts, :conflict_strategy, :rename)
 
     with :ok <- validate_structure(data),
          :ok <- validate_types(data),
@@ -450,14 +478,14 @@ defmodule Storyarn.Imports.Materializer do
       id_map = %{}
       {id_map, asset_results} = import_assets(project.id, data, id_map)
 
-      {id_map, sheet_results} =
+      {id_map, sheet_results, sheet_shortcut_renames} =
         import_sheets(project, data, id_map, strategy, existing_shortcuts)
 
       {id_map, scene_results} =
-        import_scenes(project, data, id_map, strategy, existing_shortcuts)
+        import_scenes(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
 
       {id_map, flow_results, node_count} =
-        import_flows(project, data, id_map, strategy, existing_shortcuts)
+        import_flows(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
 
       # Pass 3: link scene→flow references now that flows exist in id_map
       link_scene_flow_references(data, id_map)
@@ -625,23 +653,25 @@ defmodule Storyarn.Imports.Materializer do
     sheets = data["sheets"] || []
 
     if sheets == [],
-      do: {id_map, []},
+      do: {id_map, [], %{}},
       else: do_import_sheets(project, sheets, id_map, strategy, existing_shortcuts)
   end
 
   defp do_import_sheets(project, sheets, id_map, strategy, existing_shortcuts) do
+    used_shortcuts = Map.fetch!(existing_shortcuts, :sheet)
+
     # Pass 1: create all sheets without parent_id
-    {id_map, sheet_records} =
-      Enum.reduce(sheets, {id_map, []}, fn sheet_data, {map, records} ->
+    {id_map, sheet_records, shortcut_renames, _used_shortcuts} =
+      Enum.reduce(sheets, {id_map, [], %{}, used_shortcuts}, fn sheet_data, {map, records, renames, used} ->
         case resolve_shortcut(
                sheet_data["shortcut"],
                strategy,
                project.id,
                :sheet,
-               existing_shortcuts
+               used
              ) do
           :skip ->
-            {map, records}
+            {map, records, renames, used}
 
           shortcut ->
             attrs = %{
@@ -666,14 +696,183 @@ defmodule Storyarn.Imports.Materializer do
             # Import blocks
             {map, _} = import_blocks(sheet.id, sheet_data["blocks"] || [], map)
 
-            {map, [{sheet, sheet_data} | records]}
+            renames = record_shortcut_rename(renames, sheet_data["shortcut"], shortcut)
+            {map, [{sheet, sheet_data} | records], renames, reserve_shortcut(used, shortcut)}
         end
       end)
 
     # Pass 2: set parent_id references
     link_parent_ids(sheet_records, id_map, :sheet)
 
-    {id_map, Enum.map(sheet_records, fn {sheet, _} -> sheet end)}
+    {id_map, Enum.map(sheet_records, fn {sheet, _} -> sheet end), shortcut_renames}
+  end
+
+  defp record_shortcut_rename(renames, imported, resolved)
+       when is_binary(imported) and is_binary(resolved) and imported != resolved, do: Map.put(renames, imported, resolved)
+
+  defp record_shortcut_rename(renames, _imported, _resolved), do: renames
+
+  # Imported node data references variables through semantic fields: structured
+  # `sheet`/`value_sheet`/`variable_ref` keys, encoded response conditions, and
+  # the interpolation syntax understood by dialogue/response rendering. Rewrite
+  # only those sites. A recursive rewrite of every string corrupts authored
+  # prose and assignment literals that merely happen to contain `$yarn.gold`.
+  defp rewrite_imported_refs(node_data, "annotation", _renames), do: node_data
+
+  defp rewrite_imported_refs(node_data, "dialogue", renames) do
+    node_data
+    |> rewrite_variable_shortcuts(renames)
+    |> rewrite_dialogue_interpolations(renames)
+  end
+
+  defp rewrite_imported_refs(node_data, _type, renames), do: rewrite_variable_shortcuts(node_data, renames)
+
+  defp rewrite_variable_shortcuts(node_data, renames) when renames == %{} or not is_map(node_data), do: node_data
+
+  defp rewrite_variable_shortcuts(node_data, renames), do: deep_rewrite_refs(node_data, renames)
+
+  defp deep_rewrite_refs(%{} = map, renames) do
+    Map.new(map, fn
+      {key, value} when key in ["sheet", "value_sheet"] and is_binary(value) ->
+        {key, Map.get(renames, value, value)}
+
+      # Response conditions are persisted as a JSON-encoded string, so the
+      # embedded-reference pass cannot see their "sheet" fields; decode,
+      # rewrite structurally, re-encode. Anything that is not the JSON shape
+      # is ordinary text and takes the embedded pass.
+      {"condition" = key, value} when is_binary(value) ->
+        {key, rewrite_encoded_condition(value, renames)}
+
+      # Display zones reference a variable as a bare "shortcut.name" string,
+      # with no sigil for the embedded pass to key on.
+      {"variable_ref" = key, value} when is_binary(value) ->
+        {key, rewrite_bare_variable_ref(value, renames)}
+
+      {key, value} ->
+        {key, deep_rewrite_refs(value, renames)}
+    end)
+  end
+
+  defp deep_rewrite_refs(list, renames) when is_list(list), do: Enum.map(list, &deep_rewrite_refs(&1, renames))
+
+  defp deep_rewrite_refs(value, _renames), do: value
+
+  defp rewrite_encoded_condition(value, renames) do
+    case Jason.decode(value) do
+      {:ok, decoded} when is_map(decoded) or is_list(decoded) ->
+        decoded |> deep_rewrite_refs(renames) |> Jason.encode!()
+
+      _not_structured ->
+        value
+    end
+  end
+
+  defp rewrite_dialogue_interpolations(data, renames) when renames == %{} or not is_map(data), do: data
+
+  defp rewrite_dialogue_interpolations(data, renames) do
+    data
+    |> rewrite_dialogue_text(renames)
+    |> Map.update("responses", [], fn
+      responses when is_list(responses) ->
+        Enum.map(responses, fn
+          response when is_map(response) ->
+            rewrite_response_interpolations(response, renames)
+
+          response ->
+            response
+        end)
+
+      responses ->
+        responses
+    end)
+  end
+
+  defp rewrite_dialogue_text(%{"import_yarn_source_text" => source_text} = data, renames) when is_binary(source_text) do
+    shortcut = Map.get(renames, "yarn", "yarn")
+
+    data
+    |> dialogue_source_for_rendering(source_text)
+    |> Expression.interpolate(:dialogue, shortcut)
+    |> then(&Map.put(data, "text", &1))
+  end
+
+  # Backwards-compatible fallback for a stored plan created before Yarn source
+  # text was retained. New plans always take the source-aware clause above.
+  defp rewrite_dialogue_text(data, renames) do
+    Map.update(data, "text", nil, &rewrite_semantic_interpolations(&1, renames, :dialogue))
+  end
+
+  # Explicit dialogue keeps its complete authored source so review decisions
+  # can be revised without reparsing. A linked speaker renders only the body;
+  # preserve-literal renders the complete line. Legacy revisions may carry a
+  # separate literal source and are folded through the same path before their
+  # metadata is removed on persistence.
+  defp dialogue_source_for_rendering(data, source_text) do
+    case Map.get(data, "import_yarn_speaker") do
+      speaker when is_binary(speaker) ->
+        full_source = legacy_literal_source(data) || source_text
+
+        if is_nil(Map.get(data, "speaker_sheet_id")),
+          do: full_source,
+          else: explicit_dialogue_body(full_source, source_text, speaker)
+
+      _ordinary_or_inherited ->
+        source_text
+    end
+  end
+
+  defp legacy_literal_source(%{"import_yarn_literal_source_text" => source_text}) when is_binary(source_text),
+    do: source_text
+
+  defp legacy_literal_source(_data), do: nil
+
+  defp explicit_dialogue_body(full_source, fallback_source, speaker) do
+    case SpeakerClassifier.split(full_source) do
+      {^speaker, body} -> body
+      _legacy_body_only -> fallback_source
+    end
+  end
+
+  # A single alternation avoids rename chains (`yarn` -> `yarn-2` followed by
+  # `yarn-2` -> `yarn-2-2`). Curly interpolation is semantic in dialogue text;
+  # dollar interpolation is semantic in response labels. Other strings remain
+  # byte-for-byte authored prose.
+  defp rewrite_semantic_interpolations(value, renames, mode) when is_binary(value) do
+    {prefix, suffix} = if(mode == :dialogue, do: {"{", "}"}, else: {"$", ""})
+
+    alternation =
+      renames
+      |> Map.keys()
+      |> Enum.sort_by(&byte_size/1, :desc)
+      |> Enum.map_join("|", &Regex.escape/1)
+
+    pattern =
+      Regex.compile!(
+        Regex.escape(prefix) <> "(" <> alternation <> ")\\.([A-Za-z_][A-Za-z0-9_.]*)" <> Regex.escape(suffix)
+      )
+
+    Regex.replace(pattern, value, fn _match, imported, variable ->
+      prefix <> Map.fetch!(renames, imported) <> "." <> variable <> suffix
+    end)
+  end
+
+  defp rewrite_semantic_interpolations(value, _renames, _mode), do: value
+
+  defp rewrite_response_interpolations(%{"import_yarn_source_text" => source_text} = response, renames)
+       when is_binary(source_text) do
+    shortcut = Map.get(renames, "yarn", "yarn")
+    Map.put(response, "text", Expression.interpolate(source_text, :response, shortcut))
+  end
+
+  defp rewrite_response_interpolations(response, renames) do
+    Map.update(response, "text", nil, &rewrite_semantic_interpolations(&1, renames, :response))
+  end
+
+  defp rewrite_bare_variable_ref(value, renames) do
+    case String.split(value, ".", parts: 2) do
+      [shortcut, rest] -> Map.get(renames, shortcut, shortcut) <> "." <> rest
+      _no_prefix -> value
+    end
   end
 
   defp import_blocks(sheet_id, blocks, id_map) do
@@ -761,31 +960,40 @@ defmodule Storyarn.Imports.Materializer do
   # Flows import (two-pass for parent_id)
   # =============================================================================
 
-  defp import_flows(project, data, id_map, strategy, existing_shortcuts) do
+  defp import_flows(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames) do
     flows = data["flows"] || []
 
     if flows == [],
       do: {id_map, [], 0},
-      else: do_import_flows(project, flows, id_map, strategy, existing_shortcuts)
+      else: do_import_flows(project, flows, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
   end
 
-  defp do_import_flows(project, flows, id_map, strategy, existing_shortcuts) do
+  defp do_import_flows(project, flows, id_map, strategy, existing_shortcuts, sheet_shortcut_renames) do
+    used_shortcuts = Map.fetch!(existing_shortcuts, :flow)
+
     # Pass 1: create flows without parent_id
-    {id_map, flow_records, node_count} =
-      Enum.reduce(flows, {id_map, [], 0}, fn flow_data, {map, records, node_count} ->
+    {id_map, flow_records, node_count, _used_shortcuts} =
+      Enum.reduce(flows, {id_map, [], 0, used_shortcuts}, fn flow_data, {map, records, node_count, used} ->
         case resolve_shortcut(
                flow_data["shortcut"],
                strategy,
                project.id,
                :flow,
-               existing_shortcuts
+               used
              ) do
           :skip ->
-            {map, records, node_count}
+            {map, records, node_count, used}
 
           shortcut ->
-            {map, flow, imported_node_count} = create_flow_record(project, flow_data, shortcut, map)
-            {map, [{flow, flow_data} | records], node_count + imported_node_count}
+            {map, flow, imported_node_count} =
+              create_flow_record(project, flow_data, shortcut, map, sheet_shortcut_renames)
+
+            {
+              map,
+              [{flow, flow_data} | records],
+              node_count + imported_node_count,
+              reserve_shortcut(used, shortcut)
+            }
         end
       end)
 
@@ -795,7 +1003,9 @@ defmodule Storyarn.Imports.Materializer do
     {id_map, Enum.map(flow_records, fn {flow, _} -> flow end), node_count}
   end
 
-  defp create_flow_record(project, flow_data, shortcut, map) do
+  defp create_flow_record(project, flow_data, shortcut, map, sheet_shortcut_renames) do
+    flow_data = finalize_import_flow_layout(flow_data, sheet_shortcut_renames)
+
     attrs = %{
       "name" => flow_data["name"],
       "shortcut" => shortcut,
@@ -807,22 +1017,66 @@ defmodule Storyarn.Imports.Materializer do
     }
 
     flow =
-      facade_insert_or_rollback!(Flows.import_flow(project.id, attrs), {:flow, flow_data["name"]})
+      project.id
+      |> Flows.import_flow(attrs)
+      |> reject_duplicate_main_flow()
+      |> facade_insert_or_rollback!({:flow, flow_data["name"]})
 
     map = Map.put(map, {:flow, flow_data["id"]}, flow.id)
-    {map, node_results} = import_nodes(project.id, flow.id, flow_data["nodes"] || [], map)
+
+    {map, node_results} =
+      import_nodes(project.id, flow.id, flow_data["nodes"] || [], map, sheet_shortcut_renames)
+
     {map, _} = import_flow_connections(flow.id, flow_data["connections"] || [], map)
 
     {map, flow, length(node_results)}
   end
 
-  defp import_nodes(project_id, flow_id, nodes, id_map) do
+  # Yarn layout is initially computed while the review is still unresolved and
+  # before target-project shortcut conflicts are known. Re-measure the final
+  # rendered data immediately before persistence so review decisions and
+  # semantic shortcut rewrites cannot make parallel nodes overlap. Only copy
+  # positions back: applying the rewrites to the persisted input here would
+  # allow chained shortcut maps to be rewritten a second time in `import_nodes`.
+  defp finalize_import_flow_layout(
+         %{"settings" => %{"import_source" => "yarn_spinner"}, "nodes" => nodes} = flow_data,
+         shortcut_renames
+       )
+       when is_list(nodes) do
+    layout_nodes =
+      Enum.map(nodes, fn node ->
+        Map.update(node, "data", %{}, &rewrite_imported_refs(&1, node["type"], shortcut_renames))
+      end)
+
+    positions =
+      layout_nodes
+      |> Layout.assign_positions(
+        flow_data["connections"] || [],
+        flow_data["import_yarn_annotation_anchors"] || %{}
+      )
+      |> Map.new(&{&1["id"], {&1["position_x"], &1["position_y"]}})
+
+    positioned_nodes =
+      Enum.map(nodes, fn node ->
+        case Map.fetch(positions, node["id"]) do
+          {:ok, {x, y}} -> node |> Map.put("position_x", x) |> Map.put("position_y", y)
+          :error -> node
+        end
+      end)
+
+    Map.put(flow_data, "nodes", positioned_nodes)
+  end
+
+  defp finalize_import_flow_layout(flow_data, _shortcut_renames), do: flow_data
+
+  defp import_nodes(project_id, flow_id, nodes, id_map, sheet_shortcut_renames) do
     existing_dialogue_ids = load_dialogue_localization_ids(project_id)
 
     {id_map, results, _dialogue_ids} =
       Enum.reduce(nodes, {id_map, [], existing_dialogue_ids}, fn node_data, {map, results, dialogue_ids} ->
         {data, dialogue_ids} =
           node_data["data"]
+          |> rewrite_imported_refs(node_data["type"], sheet_shortcut_renames)
           |> remap_node_data(map)
           |> normalize_legacy_hub_color(node_data["type"])
           |> rekey_conflicting_import_dialogue(node_data["type"], dialogue_ids)
@@ -904,6 +1158,7 @@ defmodule Storyarn.Imports.Materializer do
 
   defp remap_node_data(data, map) do
     data
+    |> Map.drop(@transient_import_node_data_keys)
     |> remap_data_field(map, "speaker_sheet_id", :sheet)
     |> remap_data_field(map, "location_sheet_id", :sheet)
     |> remap_data_field(map, "avatar_id", :asset)
@@ -924,7 +1179,7 @@ defmodule Storyarn.Imports.Materializer do
   defp clean_responses(%{"responses" => responses} = data) when is_list(responses) do
     cleaned =
       Enum.map(responses, fn resp ->
-        Map.delete(resp, "instruction_assignments")
+        Map.drop(resp, ["instruction_assignments" | @transient_import_response_data_keys])
       end)
 
     Map.put(data, "responses", cleaned)
@@ -978,30 +1233,32 @@ defmodule Storyarn.Imports.Materializer do
   # Scenes import (two-pass for parent_id)
   # =============================================================================
 
-  defp import_scenes(project, data, id_map, strategy, existing_shortcuts) do
+  defp import_scenes(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames) do
     scenes = data["scenes"] || []
 
     if scenes == [],
       do: {id_map, []},
-      else: do_import_scenes(project, scenes, id_map, strategy, existing_shortcuts)
+      else: do_import_scenes(project, scenes, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
   end
 
-  defp do_import_scenes(project, scenes, id_map, strategy, existing_shortcuts) do
-    {id_map, scene_records} =
-      Enum.reduce(scenes, {id_map, []}, fn scene_data, {map, records} ->
+  defp do_import_scenes(project, scenes, id_map, strategy, existing_shortcuts, sheet_shortcut_renames) do
+    used_shortcuts = Map.fetch!(existing_shortcuts, :scene)
+
+    {id_map, scene_records, _used_shortcuts} =
+      Enum.reduce(scenes, {id_map, [], used_shortcuts}, fn scene_data, {map, records, used} ->
         case resolve_shortcut(
                scene_data["shortcut"],
                strategy,
                project.id,
                :scene,
-               existing_shortcuts
+               used
              ) do
           :skip ->
-            {map, records}
+            {map, records, used}
 
           shortcut ->
-            {map, scene} = create_scene_record(project, scene_data, shortcut, map)
-            {map, [{scene, scene_data} | records]}
+            {map, scene} = create_scene_record(project, scene_data, shortcut, map, sheet_shortcut_renames)
+            {map, [{scene, scene_data} | records], reserve_shortcut(used, shortcut)}
         end
       end)
 
@@ -1010,7 +1267,7 @@ defmodule Storyarn.Imports.Materializer do
     {id_map, Enum.map(scene_records, fn {scene, _} -> scene end)}
   end
 
-  defp create_scene_record(project, scene_data, shortcut, map) do
+  defp create_scene_record(project, scene_data, shortcut, map, sheet_shortcut_renames) do
     attrs = %{
       "name" => scene_data["name"],
       "shortcut" => shortcut,
@@ -1036,8 +1293,13 @@ defmodule Storyarn.Imports.Materializer do
 
     map = Map.put(map, {:scene, scene_data["id"]}, scene.id)
     {map, _} = import_layers(scene.id, scene_data["layers"] || [], map)
-    {map, _} = import_pins(scene.id, scene_data["pins"] || [], map)
-    {map, _} = import_zones(scene.id, scene_data["zones"] || [], map)
+
+    # Pin and zone payloads carry the same variable references flow nodes do
+    # (conditions, action assignments, display variable_refs), so a renamed
+    # sheet shortcut must follow them too. Scene annotations stay verbatim —
+    # they are prose, not references.
+    {map, _} = import_pins(scene.id, scene_data["pins"] || [], map, sheet_shortcut_renames)
+    {map, _} = import_zones(scene.id, scene_data["zones"] || [], map, sheet_shortcut_renames)
     {map, _} = import_scene_connections(scene.id, scene_data["connections"] || [], map)
     {map, _} = import_annotations(scene.id, scene_data["annotations"] || [], map)
 
@@ -1064,8 +1326,10 @@ defmodule Storyarn.Imports.Materializer do
     end)
   end
 
-  defp import_pins(scene_id, pins, id_map) do
+  defp import_pins(scene_id, pins, id_map, sheet_shortcut_renames) do
     Enum.reduce(pins, {id_map, []}, fn pin_data, {map, results} ->
+      pin_data = rewrite_variable_shortcuts(pin_data, sheet_shortcut_renames)
+
       attrs = %{
         "layer_id" => remap_id(map, :layer, pin_data["layer_id"]),
         "position_x" => pin_data["position_x"] || 0.0,
@@ -1097,8 +1361,9 @@ defmodule Storyarn.Imports.Materializer do
     end)
   end
 
-  defp import_zones(scene_id, zones, id_map) do
+  defp import_zones(scene_id, zones, id_map, sheet_shortcut_renames) do
     Enum.reduce(zones, {id_map, []}, fn zone_data, {map, results} ->
+      zone_data = rewrite_variable_shortcuts(zone_data, sheet_shortcut_renames)
       attrs = import_zone_attrs(zone_data, map)
 
       zone =
@@ -1532,11 +1797,13 @@ defmodule Storyarn.Imports.Materializer do
     if type, do: Map.get(map, {type, target_id})
   end
 
-  defp resolve_shortcut(nil, _strategy, _project_id, _entity_type, _existing_shortcuts), do: nil
+  defp reserve_shortcut(used, shortcut) when is_binary(shortcut), do: MapSet.put(used, shortcut)
+  defp reserve_shortcut(used, _shortcut), do: used
 
-  defp resolve_shortcut(shortcut, strategy, project_id, entity_type, existing_shortcuts) do
-    existing_set = Map.fetch!(existing_shortcuts, entity_type)
-    exists? = MapSet.member?(existing_set, shortcut)
+  defp resolve_shortcut(nil, _strategy, _project_id, _entity_type, _used_shortcuts), do: nil
+
+  defp resolve_shortcut(shortcut, strategy, project_id, entity_type, used_shortcuts) do
+    exists? = MapSet.member?(used_shortcuts, shortcut)
 
     cond do
       not exists? ->
@@ -1549,8 +1816,7 @@ defmodule Storyarn.Imports.Materializer do
         overwrite_existing(shortcut, project_id, entity_type)
 
       strategy == :rename ->
-        suffix = 4 |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower)
-        "#{shortcut}-#{suffix}"
+        Shortcut.unique(shortcut, used_shortcuts, shortcut)
 
       true ->
         shortcut
@@ -1571,6 +1837,27 @@ defmodule Storyarn.Imports.Materializer do
     Scenes.soft_delete_scene_by_shortcut(project_id, shortcut)
     shortcut
   end
+
+  # A project may hold exactly one main flow. Rolling back with a named reason
+  # keeps this out of the generic retry path: a unique-constraint violation is
+  # deterministic, so retrying it three times can only fail three times and
+  # then report "it may be retried automatically" about something that cannot.
+  defp reject_duplicate_main_flow({:error, %Ecto.Changeset{errors: errors}} = result) do
+    # Only the named partial unique index means "this project already has a
+    # main flow" — any other `:is_main` error (a cast failure, a future
+    # validation) must keep its own changeset instead of borrowing that
+    # message about a main flow the project may not even have.
+    duplicate_main? =
+      errors
+      |> Keyword.get_values(:is_main)
+      |> Enum.any?(fn {_message, meta} ->
+        meta[:constraint] == :unique and meta[:constraint_name] == "flows_project_id_is_main_index"
+      end)
+
+    if duplicate_main?, do: Repo.rollback(:project_already_has_main_flow), else: result
+  end
+
+  defp reject_duplicate_main_flow(result), do: result
 
   defp facade_insert_or_rollback!({:ok, record}, _context), do: record
 

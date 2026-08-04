@@ -113,6 +113,9 @@ defmodule StoryarnWeb.Telemetry do
       sum("storyarn.import.expiration.stop.failure_count",
         tags: [:status, :error_code]
       ),
+      sum("storyarn.import.expiration.stop.continuation_count",
+        tags: [:status, :error_code]
+      ),
       summary("storyarn.import.expiration.stop.duration",
         tags: [:status, :error_code],
         unit: {:native, :millisecond}

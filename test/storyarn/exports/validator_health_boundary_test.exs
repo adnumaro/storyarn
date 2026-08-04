@@ -141,7 +141,12 @@ defmodule Storyarn.Exports.ValidatorHealthBoundaryTest do
 
     dashboard = Flows.list_dashboard_health_findings(project.id)
     assert Enum.any?(dashboard, &(&1.code == :invalid_output_pins and &1.entity_id == dialogue.id))
-    assert Enum.any?(dashboard, &(&1.code == :missing_dialogue_text and &1.entity_id == dialogue.id))
+
+    # The editorial sample is the missing speaker: this dialogue presents a
+    # response, so it is a choice menu and its empty text is not a finding. The
+    # pairing with the `missing_speakers` refute below is the actual boundary —
+    # the dashboard reports it, the export does not.
+    assert Enum.any?(dashboard, &(&1.code == :missing_dialogue_speaker and &1.entity_id == dialogue.id))
 
     result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 

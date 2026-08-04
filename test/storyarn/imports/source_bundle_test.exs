@@ -4,13 +4,241 @@ defmodule Storyarn.Imports.SourceBundleTest do
   alias Storyarn.Imports.SourceBundle
 
   test "opens a ZIP in memory and exposes only opaque source aliases" do
-    zip = zip!([{"Dialogue/intro.yarn", yarn("Start")}, {"project.yarnproject", "{}"}])
+    zip = zip!([{"Dialogue/intro.yarn", yarn("Start")}, {"project.yarnproject", project_json()}])
 
     assert {:ok, bundle} = SourceBundle.open("private-project-name.zip", zip)
     assert bundle.kind == :archive
     assert Enum.map(bundle.files, & &1.alias) == ["source_1", "source_2"]
     refute inspect(bundle) =~ "private-project-name"
     refute inspect(bundle) =~ "Dialogue/intro.yarn"
+  end
+
+  test "selects only Yarn sources included by a project and applies exclusions last" do
+    project =
+      project_json(
+        ["Dialogue/**/*.yarn", "../Shared/*.yarn"],
+        ["Dialogue/**/backup/**", "Dialogue/**/*.test.yarn"]
+      )
+
+    zip =
+      zip!([
+        {"Game/project.yarnproject", project},
+        {"Game/Dialogue/intro.yarn", yarn("Intro")},
+        {"Game/Dialogue/Chapter/quest.yarn", yarn("Quest")},
+        {"Game/Dialogue/backup/intro.yarn", yarn("OldIntro")},
+        {"Game/Dialogue/Chapter/quest.test.yarn", yarn("TestQuest")},
+        {"Shared/common.yarn", yarn("Common")},
+        {"Unrelated/other.yarn", yarn("Other")}
+      ])
+
+    assert {:ok, bundle} = SourceBundle.open("project.zip", zip)
+
+    assert bundle
+           |> SourceBundle.yarn_files()
+           |> Enum.map(& &1.content)
+           |> Enum.sort() ==
+             Enum.sort([yarn("Common"), yarn("Intro"), yarn("Quest")])
+  end
+
+  test "globstar includes files beside the project and in nested directories" do
+    zip =
+      zip!([
+        {"Game/project.yarnproject", project_json()},
+        {"Game/root.yarn", yarn("Root")},
+        {"Game/Nested/child.yarn", yarn("Child")},
+        {"outside.yarn", yarn("Outside")}
+      ])
+
+    assert {:ok, bundle} = SourceBundle.open("project.zip", zip)
+
+    assert bundle
+           |> SourceBundle.yarn_files()
+           |> Enum.map(& &1.content)
+           |> Enum.sort() == Enum.sort([yarn("Child"), yarn("Root")])
+  end
+
+  test "resolves parent source patterns within the archive boundary" do
+    zip =
+      zip!([
+        {"Game/Dialogue/project.yarnproject", project_json(["../../Shared.yarn"])},
+        {"Shared.yarn", yarn("Shared")},
+        {"Game/Dialogue/local.yarn", yarn("Local")}
+      ])
+
+    assert {:ok, bundle} = SourceBundle.open("project.zip", zip)
+    assert [%{content: content}] = SourceBundle.yarn_files(bundle)
+    assert content == yarn("Shared")
+  end
+
+  test "keeps official implicit-project behavior when no yarnproject exists" do
+    zip =
+      zip!([
+        {"Dialogue/intro.yarn", yarn("Intro")},
+        {"backup/intro.yarn", yarn("Backup")}
+      ])
+
+    assert {:ok, bundle} = SourceBundle.open("project.zip", zip)
+    assert length(SourceBundle.yarn_files(bundle)) == 2
+  end
+
+  test "rejects multiple yarnprojects instead of merging independent programs" do
+    zip =
+      zip!([
+        {"Main/project.yarnproject", project_json()},
+        {"Main/main.yarn", yarn("Main")},
+        {"Barks/project.yarnproject", project_json()},
+        {"Barks/bark.yarn", yarn("Bark")}
+      ])
+
+    assert {:error, :invalid_json_structure} = SourceBundle.open("project.zip", zip)
+  end
+
+  test "rejects malformed and structurally invalid yarnprojects" do
+    malformed = zip!([{"project.yarnproject", "{"}, {"intro.yarn", yarn("Intro")}])
+
+    invalid_version =
+      zip!([
+        {"project.yarnproject", project_json(["**/*.yarn"], [], 99)},
+        {"intro.yarn", yarn("Intro")}
+      ])
+
+    missing_sources =
+      zip!([
+        {"project.yarnproject", Jason.encode!(%{"projectFileVersion" => 3})},
+        {"intro.yarn", yarn("Intro")}
+      ])
+
+    assert {:error, :invalid_json} = SourceBundle.open("project.zip", malformed)
+    assert {:error, :invalid_json_structure} = SourceBundle.open("project.zip", invalid_version)
+    assert {:error, :invalid_json_structure} = SourceBundle.open("project.zip", missing_sources)
+  end
+
+  test "rejects source patterns that escape the archive or use unsupported glob syntax" do
+    escaping =
+      zip!([
+        {"project.yarnproject", project_json(["../outside.yarn"])},
+        {"inside.yarn", yarn("Inside")}
+      ])
+
+    unsupported =
+      zip!([
+        {"project.yarnproject", project_json(["Dialogue/[ab].yarn"])},
+        {"Dialogue/a.yarn", yarn("A")}
+      ])
+
+    embedded_globstar =
+      zip!([
+        {"project.yarnproject", project_json(["Dialogue/foo**.yarn"])},
+        {"Dialogue/foo.yarn", yarn("Foo")}
+      ])
+
+    assert {:error, :invalid_json_structure} = SourceBundle.open("project.zip", escaping)
+    assert {:error, :invalid_json_structure} = SourceBundle.open("project.zip", unsupported)
+    assert {:error, :invalid_json_structure} = SourceBundle.open("project.zip", embedded_globstar)
+  end
+
+  test "rejects a yarnproject whose patterns select no Yarn sources" do
+    zip =
+      zip!([
+        {"project.yarnproject", project_json(["Dialogue/*.yarn"])},
+        {"Other/intro.yarn", yarn("Intro")}
+      ])
+
+    assert {:error, :archive_missing_yarn_files} = SourceBundle.open("project.zip", zip)
+  end
+
+  test "bounds yarnproject glob count" do
+    patterns = Enum.map(1..101, &"Dialogue/#{&1}.yarn")
+
+    zip =
+      zip!([
+        {"project.yarnproject", project_json(patterns)},
+        {"Dialogue/1.yarn", yarn("Intro")}
+      ])
+
+    assert {:error, :invalid_json_structure} = SourceBundle.open("project.zip", zip)
+  end
+
+  test "bounds aggregate wildcard matching work for large projects" do
+    wildcard = String.duplicate("*a", 100)
+    patterns = Enum.map(1..100, &"Dialogue/#{wildcard}#{&1}.yarn")
+
+    yarn_files =
+      Enum.map(1..100, fn index ->
+        {"Dialogue/#{String.duplicate("x", 100)}#{index}.yarn", yarn("Node#{index}")}
+      end)
+
+    zip = zip!([{"project.yarnproject", project_json(patterns)} | yarn_files])
+
+    assert {:error, :invalid_json_structure} = SourceBundle.open("project.zip", zip)
+  end
+
+  test "accepts current Yarn Spinner project file versions 2 through 4" do
+    for version <- [2, 3, 4] do
+      zip =
+        zip!([
+          {"project.yarnproject", project_json(["*.yarn"], [], version)},
+          {"intro.yarn", yarn("Intro")}
+        ])
+
+      assert {:ok, bundle} = SourceBundle.open("project.zip", zip)
+      assert [%{content: content}] = SourceBundle.yarn_files(bundle)
+      assert content == yarn("Intro")
+    end
+  end
+
+  test "rejects undocumented future Yarn project versions" do
+    zip =
+      zip!([
+        {"project.yarnproject", project_json(["*.yarn"], [], 5)},
+        {"intro.yarn", yarn("Intro")}
+      ])
+
+    assert {:error, :invalid_json_structure} = SourceBundle.open("project.zip", zip)
+  end
+
+  test "matches Yarn project patterns case-insensitively like Yarn Spinner" do
+    zip =
+      zip!([
+        {"Game/project.yarnproject", project_json(["DIALOGUE/*.YARN"])},
+        {"Game/Dialogue/intro.yarn", yarn("Intro")}
+      ])
+
+    assert {:ok, bundle} = SourceBundle.open("project.zip", zip)
+    assert [%{content: content}] = SourceBundle.yarn_files(bundle)
+    assert content == yarn("Intro")
+  end
+
+  test "supports the documented single-character wildcard" do
+    zip =
+      zip!([
+        {"project.yarnproject", project_json(["Dialogue/scene?.yarn"])},
+        {"Dialogue/scene1.yarn", yarn("Included")},
+        {"Dialogue/scene10.yarn", yarn("Excluded")}
+      ])
+
+    assert {:ok, bundle} = SourceBundle.open("project.zip", zip)
+    assert [%{content: content}] = SourceBundle.yarn_files(bundle)
+    assert content == yarn("Included")
+  end
+
+  test "reads relevant yarnproject properties case-insensitively like Yarn Spinner" do
+    project =
+      Jason.encode!(%{
+        "PROJECTFILEVERSION" => 3,
+        "SOURCEFILES" => ["Dialogue/*.yarn"],
+        "EXCLUDEFILES" => []
+      })
+
+    zip =
+      zip!([
+        {"project.yarnproject", project},
+        {"Dialogue/intro.yarn", yarn("Intro")}
+      ])
+
+    assert {:ok, bundle} = SourceBundle.open("project.zip", zip)
+    assert [%{content: content}] = SourceBundle.yarn_files(bundle)
+    assert content == yarn("Intro")
   end
 
   test "accepts ordinary directory entries in project archives" do
@@ -35,13 +263,28 @@ defmodule Storyarn.Imports.SourceBundleTest do
     assert {:error, :duplicate_archive_entry} = SourceBundle.open("project.zip", zip)
   end
 
+  test "rejects duplicate paths after separator and Unicode normalization" do
+    repeated_separator =
+      zip!([{"Dialogue//intro.yarn", yarn("A")}, {"dialogue/intro.yarn", yarn("B")}])
+
+    decomposed = "Cafe\u0301.yarn"
+    composed = "Café.yarn"
+    unicode_equivalent = zip!([{decomposed, yarn("A")}, {composed, yarn("B")}])
+
+    assert {:error, :duplicate_archive_entry} =
+             SourceBundle.open("project.zip", repeated_separator)
+
+    assert {:error, :duplicate_archive_entry} =
+             SourceBundle.open("project.zip", unicode_equivalent)
+  end
+
   test "rejects highly compressed expansion bombs" do
     zip = zip!([{"bomb.yarn", String.duplicate("a", 1_000_000)}])
     assert {:error, :archive_expansion_ratio_exceeded} = SourceBundle.open("project.zip", zip)
   end
 
   test "requires at least one Yarn source" do
-    zip = zip!([{"project.yarnproject", "{}"}])
+    zip = zip!([{"project.yarnproject", project_json()}])
     assert {:error, :archive_missing_yarn_files} = SourceBundle.open("project.zip", zip)
   end
 
@@ -117,6 +360,14 @@ defmodule Storyarn.Imports.SourceBundleTest do
   end
 
   defp yarn(title), do: "title: #{title}\n---\nHello\n===\n"
+
+  defp project_json(source_files \\ ["**/*.yarn"], exclude_files \\ [], version \\ 3) do
+    Jason.encode!(%{
+      "projectFileVersion" => version,
+      "sourceFiles" => source_files,
+      "excludeFiles" => exclude_files
+    })
+  end
 
   defp zip!(files) do
     entries = Enum.map(files, fn {name, content} -> {String.to_charlist(name), content} end)

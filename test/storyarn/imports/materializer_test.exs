@@ -10,10 +10,13 @@ defmodule Storyarn.Imports.MaterializerTest do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Flows.Flow
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.Materializer
+  alias Storyarn.Imports.Parsers.Yarn.Layout
+  alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Localization
   alias Storyarn.References.EntityReference
   alias Storyarn.Repo
@@ -327,6 +330,325 @@ defmodule Storyarn.Imports.MaterializerTest do
     end
   end
 
+  describe "re-importing rewrites references to renamed sheets" do
+    setup [:setup_projects]
+
+    test "a suffixed variables sheet drags every imported reference with it", %{target: target} do
+      # Importing the same file twice suffixes the second `yarn` sheet to
+      # `yarn-2`. Conditions, assignments and text interpolations in the second
+      # import's nodes must follow the rename, or they silently read the first
+      # import's sheet.
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      Guide: You have {$gold} coins.
+      <<if $gold >= 5>>
+          Guide: Rich enough.
+      <<endif>>
+      <<set $gold to 5>>
+      Guide: Choose.
+      -> Pay <<if $gold >= 5>>
+          Guide: Paid.
+      -> Leave
+          Guide: Left.
+      ===
+      """
+
+      import_once = fn ->
+        assert {:ok, plan} = Imports.parse_file("wallet.yarn", source)
+
+        assert {:ok, resolved} =
+                 ReviewDecisions.apply(plan, true, [%{"speaker" => "Guide", "action" => "create_sheet"}])
+
+        Imports.execute(target, resolved, conflict_strategy: :rename)
+      end
+
+      assert {:ok, _first} = import_once.()
+
+      # ENG-73: the importer claims is_main positionally, so a second import
+      # collides with the first one's main flow before reaching the sheets.
+      # Clear it here — that behaviour ships separately.
+      Repo.update_all(Flow, set: [is_main: false])
+
+      assert {:ok, _second} = import_once.()
+
+      sheets = Sheets.list_all_sheets(target.id)
+      assert Enum.any?(sheets, &(&1.shortcut == "yarn"))
+      assert Enum.any?(sheets, &(&1.shortcut == "yarn-2"))
+
+      flows = Flows.list_flows(target.id)
+      second_flow = Enum.find(flows, &(&1.shortcut == "start-2"))
+      assert second_flow
+
+      nodes = Flows.list_nodes(second_flow.id)
+
+      condition = Enum.find(nodes, &(&1.type == "condition"))
+      [rule] = condition.data["condition"]["blocks"] |> hd() |> Map.fetch!("rules")
+      assert rule["sheet"] == "yarn-2"
+      assert rule["variable"] == "gold"
+
+      instruction = Enum.find(nodes, &(&1.type == "instruction"))
+      [assignment] = instruction.data["assignments"]
+      assert assignment["sheet"] == "yarn-2"
+      assert assignment["variable"] == "gold"
+
+      # Response conditions are persisted as JSON-encoded strings; the rename
+      # must reach inside them or the option gates on the wrong sheet.
+      choice =
+        Enum.find(nodes, fn node ->
+          node.type == "dialogue" and is_list(node.data["responses"]) and node.data["responses"] != []
+        end)
+
+      pay_response = Enum.find(choice.data["responses"], &is_binary(&1["condition"]))
+      [response_rule] = Jason.decode!(pay_response["condition"])["blocks"] |> hd() |> Map.fetch!("rules")
+      assert response_rule["sheet"] == "yarn-2"
+      assert response_rule["variable"] == "gold"
+
+      dialogue_texts =
+        for node <- nodes, node.type == "dialogue", is_binary(node.data["text"]), do: node.data["text"]
+
+      assert Enum.any?(dialogue_texts, &String.contains?(&1, "{yarn-2.gold}"))
+      refute Enum.any?(dialogue_texts, &String.contains?(&1, "{yarn.gold}"))
+
+      # The first import is untouched.
+      first_flow = Enum.find(flows, &(&1.shortcut == "start"))
+      first_nodes = Flows.list_nodes(first_flow.id)
+      first_condition = Enum.find(first_nodes, &(&1.type == "condition"))
+      [first_rule] = first_condition.data["condition"]["blocks"] |> hd() |> Map.fetch!("rules")
+      assert first_rule["sheet"] == "yarn"
+    end
+
+    test "a renamed sheet drags scene pin references with it", %{source: source, target: target} do
+      # Pin and zone payloads carry the same variable references flow nodes
+      # do; a rename that only followed flow nodes left scene conditions and
+      # display refs bound to the pre-existing sheet.
+      sheet_fixture(source, %{name: "Yarn"})
+      sheet_fixture(target, %{name: "Yarn"})
+
+      scene = scene_fixture(source, %{name: "World"})
+
+      pin_fixture(scene, %{
+        "label" => "Gate",
+        "condition" => %{
+          "logic" => "all",
+          "blocks" => [
+            %{
+              "type" => "block",
+              "logic" => "all",
+              "rules" => [
+                %{"sheet" => "yarn", "variable" => "gold", "operator" => "greater_than", "value" => "5"}
+              ]
+            }
+          ]
+        }
+      })
+
+      parsed = import_plan(project_plan_data(source))
+      assert {:ok, _result} = Imports.execute(target, parsed, conflict_strategy: :rename)
+
+      imported_scene = target.id |> Scenes.list_scenes() |> Enum.find(&(&1.name == "World"))
+      [pin] = Scenes.list_pins(imported_scene.id)
+
+      [rule] = pin.condition["blocks"] |> hd() |> Map.fetch!("rules")
+      assert rule["sheet"] == "yarn-2"
+      assert rule["variable"] == "gold"
+    end
+
+    test "annotation nodes keep their verbatim Yarn source across a rename", %{target: target} do
+      # The annotation exists to show the operator the unsupported source
+      # verbatim: in Yarn, `$yarn.gold` is a variable literally named
+      # "yarn.gold", not a sheet reference, so the rename must not touch it.
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      Guide: Hello.
+      <<mystery $yarn.gold and {yarn.silver}>>
+      ===
+      """
+
+      import_once = fn ->
+        assert {:ok, plan} = Imports.parse_file("mystery.yarn", source)
+
+        assert {:ok, resolved} =
+                 ReviewDecisions.apply(plan, true, [%{"speaker" => "Guide", "action" => "create_sheet"}])
+
+        Imports.execute(target, resolved, conflict_strategy: :rename)
+      end
+
+      assert {:ok, _first} = import_once.()
+      Repo.update_all(Flow, set: [is_main: false])
+      assert {:ok, _second} = import_once.()
+
+      second_flow = Enum.find(Flows.list_flows(target.id), &(&1.shortcut == "start-2"))
+      annotation = Enum.find(Flows.list_nodes(second_flow.id), &(&1.type == "annotation"))
+
+      assert annotation
+      assert annotation.data["text"] =~ "$yarn.gold"
+      assert annotation.data["text"] =~ "{yarn.silver}"
+    end
+
+    test "renames semantic references without mutating dialogue, response, or assignment literals", %{target: target} do
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      <<declare $speaker = "Guide">>
+      Guide: Literal {yarn.gold} and $yarn.gold; semantic {$gold}.
+      {$speaker}: Literal {yarn.gold}; semantic {$gold}.
+      <<set $gold to "$yarn.gold">>
+      Guide: Choose.
+      -> Literal {yarn.gold} and $yarn.gold; semantic {$gold}
+          Guide: Done.
+      ===
+      """
+
+      import_once = fn ->
+        assert {:ok, plan} = Imports.parse_file("literal-refs.yarn", source)
+
+        assert {:ok, resolved} =
+                 ReviewDecisions.apply(plan, true, [
+                   %{"speaker" => "Guide", "action" => "create_sheet"},
+                   %{"speaker" => "{$speaker}", "action" => "preserve_literal"}
+                 ])
+
+        Imports.execute(target, resolved, conflict_strategy: :rename)
+      end
+
+      assert {:ok, _first} = import_once.()
+      Repo.update_all(Flow, set: [is_main: false])
+      assert {:ok, _second} = import_once.()
+
+      second_flow = Enum.find(Flows.list_flows(target.id), &(&1.shortcut == "start-2"))
+      nodes = Flows.list_nodes(second_flow.id)
+
+      interpolated_dialogue = Enum.find(nodes, &String.contains?(&1.data["text"] || "", "semantic"))
+
+      assert interpolated_dialogue.data["text"] ==
+               "Literal {yarn.gold} and $yarn.gold; semantic {yarn-2.gold}."
+
+      preserved_dialogue = Enum.find(nodes, &String.starts_with?(&1.data["text"] || "", "{yarn-2.speaker}:"))
+
+      assert preserved_dialogue.data["text"] ==
+               "{yarn-2.speaker}: Literal {yarn.gold}; semantic {yarn-2.gold}."
+
+      instruction = Enum.find(nodes, &(&1.type == "instruction"))
+      [assignment] = instruction.data["assignments"]
+      assert assignment["sheet"] == "yarn-2"
+      assert assignment["value_type"] == "literal"
+      assert assignment["value"] == "$yarn.gold"
+
+      choice = Enum.find(nodes, &(is_list(&1.data["responses"]) and &1.data["responses"] != []))
+      [response] = choice.data["responses"]
+      assert response["text"] == "Literal {yarn.gold} and $yarn.gold; semantic $yarn-2.gold"
+
+      refute Enum.any?(nodes, fn node ->
+               node_has_import_metadata? =
+                 Enum.any?(Map.keys(node.data), fn key ->
+                   is_binary(key) and String.starts_with?(key, "import_yarn_")
+                 end)
+
+               response_has_import_metadata? =
+                 Enum.any?(node.data["responses"] || [], fn imported_response ->
+                   Enum.any?(Map.keys(imported_response), fn key ->
+                     is_binary(key) and String.starts_with?(key, "import_yarn_")
+                   end)
+                 end)
+
+               node_has_import_metadata? or response_has_import_metadata?
+             end)
+    end
+
+    test "reflows parallel Yarn branches after shortcut rewrites change rendered height", %{target: target} do
+      semantic_refs = Enum.map_join(1..50, " ", fn _index -> "{$gold}" end)
+
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      Guide: Choose a branch.
+      -> Long
+          Guide: #{semantic_refs}
+      -> Short
+          Guide: Short branch.
+      ===
+      """
+
+      import_once = fn ->
+        assert {:ok, plan} = Imports.parse_file("parallel-layout.yarn", source)
+
+        assert {:ok, resolved} =
+                 ReviewDecisions.apply(plan, true, [
+                   %{"speaker" => "Guide", "action" => "create_sheet"}
+                 ])
+
+        Imports.execute(target, resolved, conflict_strategy: :rename)
+      end
+
+      assert {:ok, _first} = import_once.()
+      Repo.update_all(Flow, set: [is_main: false])
+      assert {:ok, _second} = import_once.()
+
+      second_flow = Enum.find(Flows.list_flows(target.id), &(&1.shortcut == "start-2"))
+
+      branch_nodes =
+        second_flow.id
+        |> Flows.list_nodes()
+        |> Enum.filter(fn node ->
+          String.contains?(node.data["text"] || "", "yarn-2.gold") or
+            node.data["text"] == "Short branch."
+        end)
+        |> Enum.map(fn node ->
+          %{
+            "id" => node.id,
+            "type" => node.type,
+            "data" => node.data,
+            "position_x" => node.position_x,
+            "position_y" => node.position_y
+          }
+        end)
+
+      assert [first, second] = Enum.sort_by(branch_nodes, & &1["position_y"])
+      assert first["position_x"] == second["position_x"]
+      assert second["position_y"] >= first["position_y"] + Layout.node_height(first) + 60
+    end
+
+    test "two renames where one's target is the other's source never chain", %{target: target} do
+      # The project already holds `yarn`, and the file also ships a speaker
+      # whose shortcut is `yarn-2`. Depending on materialization order this
+      # produces renames like yarn→yarn-2 alongside yarn-2→yarn-2-2 — applied
+      # sequentially, the first rewrite's output feeds the second and the text
+      # ends up pointing at the speaker sheet. The rewrite must be single-pass.
+      sheet_fixture(target, %{name: "Yarn"})
+
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      Yarn 2: You have {$gold} coins.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("chain.yarn", source)
+
+      assert {:ok, resolved} =
+               ReviewDecisions.apply(plan, true, [%{"speaker" => "Yarn 2", "action" => "create_sheet"}])
+
+      assert {:ok, _result} = Imports.execute(target, resolved, conflict_strategy: :rename)
+
+      sheets = Sheets.list_all_sheets(target.id)
+      variables_sheet = Enum.find(sheets, &(&1.name == "Yarn Variables"))
+      assert variables_sheet
+
+      flow = Enum.find(Flows.list_flows(target.id), &(&1.shortcut == "start"))
+      nodes = Flows.list_nodes(flow.id)
+
+      dialogue = Enum.find(nodes, &(&1.type == "dialogue"))
+      assert String.contains?(dialogue.data["text"], "{#{variables_sheet.shortcut}.gold}")
+    end
+  end
+
   # =============================================================================
   # Conflict Resolution: :rename
   # =============================================================================
@@ -349,6 +671,49 @@ defmodule Storyarn.Imports.MaterializerTest do
       shortcuts = hero_sheets |> Enum.map(& &1.shortcut) |> Enum.sort()
       # One original, one with suffix
       assert Enum.any?(shortcuts, &String.contains?(&1, "-"))
+    end
+
+    test "keeps renamed shortcuts within the persisted limit", %{target: target, parsed: parsed} do
+      shortcut = String.duplicate("a", 50)
+      sheet_fixture(target, %{name: "Existing Long Shortcut", shortcut: shortcut})
+
+      data = put_in(parsed.data, ["sheets", Access.at(0), "shortcut"], shortcut)
+      parsed = %{parsed | data: data}
+
+      assert {:ok, result} =
+               Imports.execute(target, parsed, conflict_strategy: :rename)
+
+      [imported_sheet] = result.sheets
+      assert String.length(imported_sheet.shortcut) <= 50
+      assert String.ends_with?(imported_sheet.shortcut, "-2")
+    end
+
+    test "reserves generated shortcuts across every entity in the same import", %{
+      target: target,
+      parsed: parsed
+    } do
+      sheet_fixture(target, %{name: "Existing", shortcut: "character"})
+      [source_sheet] = parsed.data["sheets"]
+
+      first =
+        source_sheet
+        |> Map.put("id", "first-character")
+        |> Map.put("name", "First character")
+        |> Map.put("shortcut", "character")
+
+      second =
+        source_sheet
+        |> Map.put("id", "second-character")
+        |> Map.put("name", "Second character")
+        |> Map.put("shortcut", "character-2")
+
+      parsed = %{parsed | data: Map.put(parsed.data, "sheets", [first, second])}
+
+      assert {:ok, result} = Imports.execute(target, parsed, conflict_strategy: :rename)
+
+      assert result.sheets
+             |> Enum.map(& &1.shortcut)
+             |> Enum.sort() == ["character-2", "character-2-2"]
     end
   end
 
@@ -740,9 +1105,36 @@ defmodule Storyarn.Imports.MaterializerTest do
   # matching builder alongside any new fixture that needs them.
   # =============================================================================
 
+  describe "main flow collision" do
+    setup [:setup_projects]
+
+    test "returns a clear error instead of raising when the project has a main flow", %{
+      source: source,
+      target: target
+    } do
+      flow_fixture(source, %{name: "Imported Main", is_main: true})
+      flow_fixture(target, %{name: "Existing Main", is_main: true})
+
+      plan = import_plan(project_plan_data(source))
+
+      # `flows_project_id_is_main_index` had no matching `unique_constraint`, so
+      # this raised `Ecto.ConstraintError` — a raw 500 with no usable message.
+      assert {:error, :project_already_has_main_flow} =
+               Imports.execute(target, plan, conflict_strategy: :rename)
+
+      # The failure is permanent, so the worker must not spend three attempts on
+      # a constraint violation that can only ever fail again.
+      assert {"project_already_has_main_flow", _message, true} =
+               Storyarn.Imports.Error.classify(:project_already_has_main_flow)
+
+      main_flows = target.id |> Flows.list_flows() |> Enum.filter(& &1.is_main)
+      assert [%{name: "Existing Main"}] = main_flows
+    end
+  end
+
   defp import_plan(data) do
     %ImportPlan{
-      format: :yarn,
+      format: :test,
       parser_version: "1",
       source_kind: :file,
       data: data

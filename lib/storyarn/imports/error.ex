@@ -12,24 +12,33 @@ defmodule Storyarn.Imports.Error do
     duplicate_archive_entry
     duplicate_yarn_node_title
     empty_yarn_project
+    entity_limits_exceeded
     file_too_large
     import_plan_has_errors
+    import_plan_too_large
+    import_expired
+    import_review_too_large
     invalid_archive
     invalid_archive_entry
     invalid_archive_path
     invalid_yarn_command
     invalid_json
     invalid_json_structure
+    invalid_import_review
     invalid_text_encoding
     missing_yarn_body_end
     missing_yarn_body_start
     missing_yarn_endif
     nested_archive_not_allowed
     not_found
+    project_already_has_main_flow
     unauthorized
     unsupported_archive_entry
     unsupported_import_format
+    unsupported_yarn_character_markup
     yarn_document_limit_exceeded
+    yarn_node_description_too_long
+    yarn_node_title_too_long
     yarn_statement_limit_exceeded
   )
 

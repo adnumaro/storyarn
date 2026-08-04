@@ -293,14 +293,19 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
     line_id = dialogue_line_id(node)
 
-    line =
-      if speaker do
-        "#{indent(depth)}#{speaker}: #{text} #line:#{line_id}"
-      else
-        "#{indent(depth)}#{text} #line:#{line_id}"
-      end
+    cond do
+      # A dialogue that only hosts choices has no line to speak. Emitting
+      # `Speaker: ` would show the player a blank line of dialogue, and there is
+      # nothing to localize, so the node contributes only its choices.
+      String.trim(text) == "" ->
+        []
 
-    [line]
+      speaker ->
+        ["#{indent(depth)}#{speaker}: #{text} #line:#{line_id}"]
+
+      true ->
+        ["#{indent(depth)}#{text} #line:#{line_id}"]
+    end
   end
 
   defp render_instruction({:choices_start, _node}, _ctx, _depth), do: []
