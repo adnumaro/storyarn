@@ -249,6 +249,7 @@ defmodule Storyarn.Flows.NodeCrud do
         join: f in Flow,
         on: n.flow_id == f.id,
         where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        where: is_nil(n.deleted_at),
         where:
           (n.type == "subflow" and fragment("?->>'referenced_flow_id' = ?", n.data, ^flow_id_str)) or
             (n.type == "exit" and fragment("?->>'exit_mode'", n.data) == "flow_reference" and

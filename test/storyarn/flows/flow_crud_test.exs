@@ -192,6 +192,47 @@ defmodule Storyarn.Flows.FlowCrudTest do
       assert length(results) == 1
     end
 
+    test "searches flow descriptions" do
+      %{project: project} = create_project_and_flow()
+
+      flow =
+        flow_fixture(project, %{
+          name: "Description Search Flow",
+          description: "Charted beneath the obsidian meridian"
+        })
+
+      results = Flows.search_flows_deep(project.id, "obsidian meridian")
+      assert Enum.map(results, & &1.id) == [flow.id]
+    end
+
+    test "searches connection labels" do
+      %{project: project} = create_project_and_flow()
+      flow = flow_fixture(project, %{name: "Connection Search Flow"})
+      loaded_flow = Flows.get_flow(project.id, flow.id)
+      source = Enum.find(loaded_flow.nodes, &(&1.type == "entry"))
+      target = Enum.find(loaded_flow.nodes, &(&1.type == "exit"))
+
+      Storyarn.FlowsFixtures.connection_fixture(flow, source, target, %{
+        label: "Passage through the cobalt gate"
+      })
+
+      results = Flows.search_flows_deep(project.id, "cobalt gate")
+      assert Enum.map(results, & &1.id) == [flow.id]
+    end
+
+    test "searches instruction descriptions nested in node data" do
+      %{project: project} = create_project_and_flow()
+      flow = flow_fixture(project, %{name: "Instruction Search Flow"})
+
+      node_fixture(flow, %{
+        type: "instruction",
+        data: %{"description" => "Lower the crystal portcullis"}
+      })
+
+      results = Flows.search_flows_deep(project.id, "crystal portcullis")
+      assert Enum.map(results, & &1.id) == [flow.id]
+    end
+
     test "searches node content (dialogue text)" do
       %{project: project} = create_project_and_flow()
       flow = flow_fixture(project, %{name: "NodeSearch Flow"})
@@ -200,6 +241,22 @@ defmodule Storyarn.Flows.FlowCrudTest do
       results = Flows.search_flows_deep(project.id, "UniqueNodeDialogue999")
       assert results != []
       assert Enum.any?(results, &(&1.id == flow.id))
+    end
+
+    test "searches dialogue response text nested in node data" do
+      %{project: project} = create_project_and_flow()
+      flow = flow_fixture(project, %{name: "Response Search Flow"})
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{
+          "text" => "Choose a route",
+          "responses" => [%{"text" => "Follow the forgotten aqueduct"}]
+        }
+      })
+
+      results = Flows.search_flows_deep(project.id, "forgotten aqueduct")
+      assert Enum.map(results, & &1.id) == [flow.id]
     end
 
     test "respects exclude_id option" do

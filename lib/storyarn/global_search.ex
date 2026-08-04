@@ -11,11 +11,17 @@ defmodule Storyarn.GlobalSearch do
   belongs to the web layer.
   """
 
+  alias Storyarn.GlobalSearch.AdvancedSearch
   alias Storyarn.GlobalSearch.Destinations
 
   defdelegate destinations(scope, query, opts \\ []), to: Destinations
   defdelegate create_targets(scope), to: Destinations
   defdelegate editable_project(scope, project_id), to: Destinations
+  defdelegate viewable_project(scope, project_id), to: Destinations
   defdelegate deletable_entities(scope, query, opts \\ []), to: Destinations
   defdelegate deletable_entity(scope, type, project_id, id), to: Destinations
+
+  defdelegate advanced_project_search(scope, project_id, query, opts \\ []),
+    to: AdvancedSearch,
+    as: :search
 end

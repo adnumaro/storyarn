@@ -48,6 +48,20 @@ describe("Command", () => {
     expect(wrapper.findAll("[data-slot='command-item']")).toHaveLength(1);
   });
 
+  it("recomputes the mounted result set when remote filtering is toggled", async () => {
+    const wrapper = mountCommand();
+    const input = wrapper.find("[data-slot='command-input']");
+
+    await input.setValue("shortcut-only");
+    expect(wrapper.findAll("[data-slot='command-item']")).toHaveLength(0);
+
+    await wrapper.setData({ disableFilter: true });
+    expect(wrapper.findAll("[data-slot='command-item']")).toHaveLength(1);
+
+    await wrapper.setData({ disableFilter: false });
+    expect(wrapper.findAll("[data-slot='command-item']")).toHaveLength(0);
+  });
+
   it("restores every item and group when the search contains only whitespace", async () => {
     const wrapper = mountCommand();
     const input = wrapper.find("[data-slot='command-input']");

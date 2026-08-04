@@ -8,6 +8,7 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.ReferenceIntegrity
@@ -65,6 +66,8 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   @default_search_limit 25
+  @max_deep_search_limit 50
+  @max_deep_search_offset 1_000
 
   @doc "Returns the default search limit used by search_flows/3 and search_flows_deep/3."
   def default_search_limit, do: @default_search_limit
@@ -156,10 +159,8 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   @doc """
-  Deep search: searches flow names/shortcuts AND node content (dialogue text,
-  labels, technical IDs, hub IDs, expressions, stage directions, menu text, locations).
-
-  Uses JSONB text search on the flow_nodes.data column via a subquery.
+  Deep search over flow metadata, connection labels, and every authored string
+  nested inside active node data.
 
   ## Options
     - `:limit` - Max results (default #{@default_search_limit})
@@ -172,8 +173,8 @@ defmodule Storyarn.Flows.FlowCrud do
     if query_str == "" do
       search_flows(project_id, query_str, opts)
     else
-      limit = Keyword.get(opts, :limit, @default_search_limit)
-      offset = Keyword.get(opts, :offset, 0)
+      limit = bounded_deep_search_limit(opts)
+      offset = bounded_deep_search_offset(opts)
       exclude_id = Keyword.get(opts, :exclude_id)
 
       search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
@@ -183,7 +184,9 @@ defmodule Storyarn.Flows.FlowCrud do
         where:
           ilike(f.name, ^search_term) or
             ilike(f.shortcut, ^search_term) or
-            f.id in subquery(node_content_subquery(project_id, search_term)),
+            ilike(f.description, ^search_term) or
+            f.id in subquery(node_content_subquery(project_id, search_term)) or
+            f.id in subquery(connection_content_subquery(project_id, search_term)),
         order_by: [asc: f.name],
         limit: ^limit,
         offset: ^offset
@@ -193,21 +196,50 @@ defmodule Storyarn.Flows.FlowCrud do
     end
   end
 
-  # Subquery matching node JSONB data fields against a search term.
-  @searchable_jsonb_keys ~w(text label technical_id hub_id expression stage_directions menu_text location)
   defp node_content_subquery(project_id, search_term) do
-    conditions =
-      Enum.reduce(@searchable_jsonb_keys, dynamic(false), fn key, acc ->
-        dynamic([n], ^acc or ilike(fragment("?->>?", n.data, ^key), ^search_term))
-      end)
-
     from(n in FlowNode,
       join: fl in Flow,
       on: n.flow_id == fl.id,
       where: fl.project_id == ^project_id and is_nil(fl.deleted_at) and is_nil(n.deleted_at),
-      where: ^conditions,
+      where:
+        fragment(
+          """
+          EXISTS (
+            SELECT 1
+            FROM jsonb_path_query(COALESCE(?, '{}'::jsonb), '$.** \\? (@.type() == "string")')
+              AS authored(value)
+            WHERE authored.value #>> '{}' ILIKE ?
+          )
+          """,
+          n.data,
+          ^search_term
+        ),
       select: n.flow_id
     )
+  end
+
+  defp connection_content_subquery(project_id, search_term) do
+    from(connection in FlowConnection,
+      join: flow in Flow,
+      on: flow.id == connection.flow_id,
+      where: flow.project_id == ^project_id and is_nil(flow.deleted_at),
+      where: ilike(connection.label, ^search_term),
+      select: connection.flow_id
+    )
+  end
+
+  defp bounded_deep_search_limit(opts) do
+    case Keyword.get(opts, :limit, @default_search_limit) do
+      limit when is_integer(limit) -> limit |> max(1) |> min(@max_deep_search_limit)
+      _invalid -> @default_search_limit
+    end
+  end
+
+  defp bounded_deep_search_offset(opts) do
+    case Keyword.get(opts, :offset, 0) do
+      offset when is_integer(offset) -> offset |> max(0) |> min(@max_deep_search_offset)
+      _invalid -> 0
+    end
   end
 
   def get_flow(project_id, flow_id) do
@@ -1352,7 +1384,7 @@ defmodule Storyarn.Flows.FlowCrud do
   Returns the inserted records.
   """
   def bulk_import_connections(attrs_list) do
-    ImportHelpers.bulk_insert(Storyarn.Flows.FlowConnection, attrs_list)
+    ImportHelpers.bulk_insert(FlowConnection, attrs_list)
   end
 
   # =============================================================================

@@ -6,6 +6,10 @@ import SheetContentHeader from "@modules/sheets/components/chrome/header/SheetCo
 import BlockList from "@modules/sheets/components/entities/blocks/BlockList.vue";
 import SheetShowPanels from "@modules/sheets/components/panels/SheetShowPanels.vue";
 import SheetTabs from "@modules/sheets/components/panels/tabs/SheetTabs.vue";
+import {
+  type SheetDeepLinkTarget,
+  useSheetHighlight,
+} from "@modules/sheets/composables/useSheetHighlight";
 import type { Sheet, SheetHealth } from "@modules/sheets/types";
 
 type ServerPayload = any;
@@ -45,12 +49,14 @@ const {
   sheet: initialSheet = null,
   canEdit: initialCanEdit = false,
   sourceShortcut: initialSourceShortcut = null,
+  highlightTarget: initialHighlightTarget = null,
   surface: initialSurface,
   panels: initialPanels = null,
 } = defineProps<{
   sheet?: Sheet | null;
   canEdit?: boolean;
   sourceShortcut?: string | null;
+  highlightTarget?: SheetDeepLinkTarget | null;
   surface: SheetSurface;
   panels?: SheetPanelsProps | null;
 }>();
@@ -63,11 +69,20 @@ const canEdit = computed(() => (live.vue?.props?.canEdit as boolean | undefined)
 const sourceShortcut = computed(
   () => (live.vue?.props?.sourceShortcut as string | null | undefined) ?? initialSourceShortcut,
 );
+const highlightTarget = computed(() => {
+  const liveTarget = live.vue?.props?.highlightTarget as SheetDeepLinkTarget | null | undefined;
+  return liveTarget === undefined ? initialHighlightTarget : liveTarget;
+});
 const surface = computed(
   () => (live.vue?.props?.surface as SheetSurface | undefined) ?? initialSurface,
 );
 const panels = computed(
   () => (live.vue?.props?.panels as SheetPanelsProps | null | undefined) ?? initialPanels,
+);
+
+useSheetHighlight(
+  highlightTarget,
+  computed(() => surface.value.content != null),
 );
 </script>
 

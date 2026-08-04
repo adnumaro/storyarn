@@ -72,6 +72,7 @@ defmodule StoryarnWeb.Components.SettingsLayout do
       <Layouts.command_palette
         socket={@socket}
         current_scope={@current_scope}
+        project_context={not is_nil(@project)}
         sudo_grant={@sudo_grant}
       />
       <Layouts.flash_group flash={@flash} socket={@socket} />

@@ -5,6 +5,7 @@ defmodule StoryarnWeb.LayoutsTest do
 
   alias StoryarnWeb.Components.AuthLayout
   alias StoryarnWeb.Components.PublicLanguageSwitcher
+  alias StoryarnWeb.Components.SettingsLayout
   alias StoryarnWeb.Layouts
 
   # ── Helpers ──────────────────────────────────────────────────────────
@@ -35,6 +36,22 @@ defmodule StoryarnWeb.LayoutsTest do
                  Map.has_key?(operation, "help") and
                  Enum.all?(operation["parameters"], &Map.has_key?(&1, "completionMode"))
              end)
+    end
+
+    test "project settings preserve project-scoped advanced search" do
+      html =
+        render_component(&SettingsLayout.settings/1,
+          flash: %{},
+          socket: mock_socket(),
+          current_scope: %{user: nil},
+          current_path: "/workspaces/acme/projects/story/settings",
+          project: %{id: 7, name: "Story", slug: "story"},
+          inner_block: []
+        )
+
+      vue = LiveVue.Test.get_vue(html, name: "live/layouts/CommandPalette")
+
+      assert vue.props["project-context"]
     end
   end
 

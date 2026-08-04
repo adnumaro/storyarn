@@ -26,6 +26,12 @@ import {
 import { useKeyboard } from "@shared/composables/useKeyboard";
 import { useLive } from "@shared/composables/useLive";
 import {
+  advancedSearchPrefixes,
+  routeAdvancedSearch,
+  type AdvancedSearchPrefixSymbol,
+  type AdvancedSearchRoute,
+} from "@shared/command-palette/advancedSearch";
+import {
   isAIPaletteCommand,
   runAICommandCta,
   runAIPaletteCommand,
@@ -51,8 +57,15 @@ import {
   type OperationValue,
   type OperationValues,
 } from "@shared/command-palette/operationCatalog";
+import type {
+  PaletteLookupResult,
+  PaletteLookupResultAction,
+  PaletteLookupResultIcon,
+} from "@shared/command-palette/lookupResults";
 import { liveNavigate } from "@shared/navigation/liveNavigate";
+import PaletteAdvancedSearchHelp from "./PaletteAdvancedSearchHelp.vue";
 import PaletteEmpty from "./PaletteEmpty.vue";
+import PaletteLookupResults from "./PaletteLookupResults.vue";
 import PaletteOperationInput from "./PaletteOperationInput.vue";
 
 interface NavItem {
@@ -72,6 +85,29 @@ interface NavGroup {
 interface PaletteNavReply {
   token?: number;
   groups?: NavGroup[];
+}
+
+interface AdvancedSearchItem {
+  id?: string;
+  group?: string;
+  kind?: string;
+  type?: string;
+  label?: string;
+  context?: string | null;
+  action?: {
+    kind?: string;
+    url?: string;
+    value?: string;
+  };
+}
+
+interface AdvancedSearchReply {
+  token?: number;
+  mode?: string;
+  items?: AdvancedSearchItem[];
+  truncated?: boolean;
+  fallback?: "qualified_references";
+  error?: string;
 }
 
 type EntityType = "sheet" | "flow" | "scene";
@@ -178,6 +214,7 @@ const errorMessageKeys: Record<string, string> = {
   create_failed: "palette.create_failed",
   delete_failed: "palette.delete_failed",
   invalid_request: "palette.invalid_request",
+  rate_limited: "palette.advanced_search.rate_limited",
 };
 
 function navGroupHeading(key: string): string | undefined {
@@ -185,10 +222,11 @@ function navGroupHeading(key: string): string | undefined {
   return labelKey ? t(labelKey) : undefined;
 }
 
-const { t } = useI18n();
+const { t, te } = useI18n();
 const live = useLive();
-const { operationCatalog = [] } = defineProps<{
+const { operationCatalog = [], projectContext = false } = defineProps<{
   operationCatalog?: OperationDefinition[];
+  projectContext?: boolean;
 }>();
 
 const open = ref(false);
@@ -219,9 +257,17 @@ const operationOptionsLoading = ref(false);
 const operationOptionsErrorKey = ref<string | null>(null);
 const recentOperationIds = ref<string[]>([]);
 const activeGuidedOperationId = ref<string | null>(null);
+const advancedSearchResults = ref<PaletteLookupResult[]>([]);
+const advancedSearchLoading = ref(false);
+const advancedSearchErrorKey = ref<string | null>(null);
+const advancedSearchTruncated = ref(false);
+const advancedSearchFallback = ref<"qualified_references" | null>(null);
+const advancedSearchResultsRef = ref<InstanceType<typeof PaletteLookupResults> | null>(null);
+const submittedAdvancedQuery = ref<string | null>(null);
 
 // Stale-reply guard: only the latest request may update the results.
 let navToken = 0;
+let advancedSearchToken = 0;
 let createTargetsToken = 0;
 let operationOptionsToken = 0;
 // Mutation replies are checked against this separately from navToken (typing
@@ -259,6 +305,22 @@ const activeOperation = computed<OperationDefinition | null>(() => {
   if (current.kind !== "operation") return null;
   return operationCatalog.find((operation) => operation.id === current.operationId) ?? null;
 });
+
+const advancedSearchRoute = computed<AdvancedSearchRoute>(() => routeAdvancedSearch(query.value));
+
+const advancedSearchActive = computed(
+  () => step.value.kind === "root" && advancedSearchRoute.value.kind !== "normal",
+);
+
+const advancedSearchDefinition = computed(() => {
+  const route = advancedSearchRoute.value;
+  return route.kind === "search" || route.kind === "prefix-help" ? route.definition : null;
+});
+
+const advancedSearchHelpVisible = computed(
+  () =>
+    advancedSearchRoute.value.kind === "help" || advancedSearchRoute.value.kind === "prefix-help",
+);
 
 const operationGroups = computed(() => {
   const grouped = new Map<string, OperationDefinition[]>();
@@ -398,7 +460,7 @@ const activeErrorKey = computed<string | null>(() => {
 
   switch (step.value.kind) {
     case "root":
-      return navErrorKey.value;
+      return advancedSearchActive.value ? advancedSearchErrorKey.value : navErrorKey.value;
     case "operation":
       return operationOptionsErrorKey.value;
     case "create-pick-project":
@@ -421,7 +483,7 @@ const operationEmptyMessageKey = computed(() =>
 const activeLoading = computed(() => {
   switch (step.value.kind) {
     case "root":
-      return navLoading.value;
+      return advancedSearchActive.value ? advancedSearchLoading.value : navLoading.value;
     case "operation":
       return operationOptionsLoading.value;
     case "create-pick-project":
@@ -469,8 +531,14 @@ function handleQueryChange(): void {
   // Typing immediately invalidates any in-flight request — a reply for the
   // previous query must never land after the user has kept typing.
   ++navToken;
+  ++advancedSearchToken;
   ++operationOptionsToken;
   if (navDebounce) clearTimeout(navDebounce);
+
+  if (step.value.kind === "root") {
+    prepareRootQueryChange();
+    return;
+  }
 
   if (prepareStepForQueryChange()) return;
 
@@ -478,6 +546,44 @@ function handleQueryChange(): void {
   // Server-backed completions use the same measured cadence as root search
   // so typing cannot amplify the authorized 1+N lookup path.
   navDebounce = setTimeout(() => fetchForStep(), NAV_DEBOUNCE_MS);
+}
+
+function prepareRootQueryChange(): void {
+  const route = advancedSearchRoute.value;
+  submittedAdvancedQuery.value = null;
+
+  if (route.kind === "normal") {
+    clearAdvancedSearchState();
+    navLoading.value = true;
+    navErrorKey.value = null;
+    navDebounce = setTimeout(() => fetchNavDestinations(), NAV_DEBOUNCE_MS);
+    return;
+  }
+
+  navLoading.value = false;
+  navErrorKey.value = null;
+  navGroups.value = [];
+  clearAdvancedSearchState();
+
+  if (
+    route.kind !== "search" ||
+    !route.ready ||
+    !projectContext ||
+    route.definition.trigger === "submit"
+  ) {
+    return;
+  }
+
+  advancedSearchLoading.value = true;
+  navDebounce = setTimeout(() => fetchAdvancedSearch(false), NAV_DEBOUNCE_MS);
+}
+
+function clearAdvancedSearchState(): void {
+  advancedSearchResults.value = [];
+  advancedSearchLoading.value = false;
+  advancedSearchErrorKey.value = null;
+  advancedSearchTruncated.value = false;
+  advancedSearchFallback.value = null;
 }
 
 function clearActiveOperationValueForEdit(): void {
@@ -493,10 +599,6 @@ function clearActiveOperationValueForEdit(): void {
 
 function prepareStepForQueryChange(): boolean {
   switch (step.value.kind) {
-    case "root":
-      navLoading.value = true;
-      navErrorKey.value = null;
-      return false;
     case "operation":
       return prepareOperationForQueryChange();
     case "delete-pick-entity":
@@ -532,6 +634,8 @@ function openPalette(): void {
   navGroups.value = [];
   createTargets.value = [];
   deleteItems.value = [];
+  clearAdvancedSearchState();
+  submittedAdvancedQuery.value = null;
   errorKey.value = null;
   navErrorKey.value = null;
   createTargetsErrorKey.value = null;
@@ -560,6 +664,7 @@ function closePalette(): void {
   activeAICta.value = null;
   resetOperationState();
   ++mutationToken;
+  ++advancedSearchToken;
   ++createTargetsToken;
   ++operationOptionsToken;
 }
@@ -611,6 +716,7 @@ function enterStep(next: PaletteStep): void {
   activeAICta.value = null;
   ++mutationToken;
   ++navToken;
+  ++advancedSearchToken;
   ++operationOptionsToken;
   if (navDebounce) clearTimeout(navDebounce);
   resetQuery();
@@ -651,8 +757,34 @@ function goBack(): void {
   }
 }
 
+function shouldSubmitDeepSearch(event: KeyboardEvent): boolean {
+  const route = advancedSearchRoute.value;
+
+  return (
+    event.key === "Enter" &&
+    !event.isComposing &&
+    event.keyCode !== 229 &&
+    route.kind === "search" &&
+    route.definition.trigger === "submit" &&
+    route.ready &&
+    projectContext &&
+    !advancedSearchLoading.value &&
+    submittedAdvancedQuery.value !== query.value
+  );
+}
+
 function onPaletteKeydown(event: KeyboardEvent): void {
-  if (step.value.kind === "root" || step.value.kind === "operation") return;
+  if (step.value.kind === "root") {
+    if (shouldSubmitDeepSearch(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      fetchAdvancedSearch(true);
+    }
+
+    return;
+  }
+
+  if (step.value.kind === "operation") return;
 
   if (event.key === "Backspace" && query.value === "") {
     event.preventDefault();
@@ -675,7 +807,17 @@ function fetchForStep(): void {
   const current = step.value;
 
   if (current.kind === "root") {
-    fetchNavDestinations();
+    const route = advancedSearchRoute.value;
+    if (route.kind === "normal") {
+      fetchNavDestinations();
+    } else if (
+      route.kind === "search" &&
+      route.ready &&
+      route.definition.trigger === "debounced" &&
+      projectContext
+    ) {
+      fetchAdvancedSearch(false);
+    }
   } else if (current.kind === "operation") {
     fetchOperationOptions();
   } else if (current.kind === "delete-pick-entity") {
@@ -705,6 +847,167 @@ function fetchNavDestinations(): void {
       navErrorKey.value = "palette.search_failed";
     },
   );
+}
+
+function fetchAdvancedSearch(submitted: boolean): void {
+  const route = advancedSearchRoute.value;
+  if (
+    route.kind !== "search" ||
+    !route.ready ||
+    !projectContext ||
+    (route.definition.trigger === "submit" && !submitted)
+  ) {
+    return;
+  }
+
+  const requestedQuery = query.value;
+  const requestedMode = route.definition.mode;
+  const token = ++advancedSearchToken;
+  const highlightedResultId = advancedSearchResultsRef.value?.highlightedResultId() ?? null;
+
+  advancedSearchLoading.value = true;
+  advancedSearchErrorKey.value = null;
+
+  live.pushEvent(
+    "palette_advanced_search",
+    { query: requestedQuery, submitted, token },
+    (reply: AdvancedSearchReply) => {
+      if (!acceptsAdvancedSearchReply(token, requestedQuery, requestedMode, reply)) return;
+
+      if (reply.error || reply.mode !== requestedMode) {
+        settleAdvancedSearchError(reply.error);
+        return;
+      }
+
+      const normalized = normalizeAdvancedSearchResults(reply.items);
+      advancedSearchLoading.value = false;
+      advancedSearchResults.value = reconcileAdvancedSearchResults(
+        advancedSearchResults.value,
+        normalized,
+      );
+      advancedSearchTruncated.value = reply.truncated === true;
+      advancedSearchFallback.value =
+        reply.fallback === "qualified_references" ? reply.fallback : null;
+      submittedAdvancedQuery.value = submitted ? requestedQuery : null;
+      void restoreAdvancedSearchHighlight(highlightedResultId);
+    },
+    () => {
+      if (!acceptsAdvancedSearchRequest(token, requestedQuery, requestedMode)) return;
+
+      advancedSearchLoading.value = false;
+      advancedSearchResults.value = [];
+      advancedSearchTruncated.value = false;
+      advancedSearchFallback.value = null;
+      advancedSearchErrorKey.value = "palette.advanced_search.search_failed";
+    },
+  );
+}
+
+function acceptsAdvancedSearchReply(
+  token: number,
+  requestedQuery: string,
+  requestedMode: string,
+  reply: AdvancedSearchReply,
+): boolean {
+  return (
+    reply?.token === token && acceptsAdvancedSearchRequest(token, requestedQuery, requestedMode)
+  );
+}
+
+function settleAdvancedSearchError(error: string | undefined): void {
+  advancedSearchLoading.value = false;
+  advancedSearchResults.value = [];
+  advancedSearchTruncated.value = false;
+  advancedSearchFallback.value = null;
+  advancedSearchErrorKey.value =
+    (error ? errorMessageKeys[error] : undefined) ?? "palette.advanced_search.search_failed";
+}
+
+function acceptsAdvancedSearchRequest(
+  token: number,
+  requestedQuery: string,
+  requestedMode: string,
+): boolean {
+  const route = advancedSearchRoute.value;
+
+  return (
+    token === advancedSearchToken &&
+    open.value &&
+    step.value.kind === "root" &&
+    query.value === requestedQuery &&
+    route.kind === "search" &&
+    route.definition.mode === requestedMode
+  );
+}
+
+function normalizeAdvancedSearchResults(
+  items: AdvancedSearchItem[] | undefined,
+): PaletteLookupResult[] {
+  if (!Array.isArray(items)) return [];
+
+  return items.flatMap((item) => {
+    if (typeof item.id !== "string" || typeof item.label !== "string") return [];
+
+    const action = normalizeAdvancedSearchAction(item.action);
+    if (!action) return [];
+
+    return [
+      {
+        id: item.id,
+        label: item.label,
+        context: typeof item.context === "string" ? item.context : undefined,
+        detail: typeof item.kind === "string" ? searchKindLabel(item.kind) : undefined,
+        group: typeof item.group === "string" ? item.group : undefined,
+        icon: advancedSearchIcon(item.type),
+        action,
+      },
+    ];
+  });
+}
+
+function normalizeAdvancedSearchAction(
+  action: AdvancedSearchItem["action"],
+): PaletteLookupResultAction | null {
+  if (action?.kind === "navigate" && typeof action.url === "string") {
+    return { kind: "navigate", url: action.url };
+  }
+
+  if (action?.kind === "complete" && typeof action.value === "string") {
+    return { kind: "complete", value: action.value };
+  }
+
+  return null;
+}
+
+function advancedSearchIcon(type: string | undefined): PaletteLookupResultIcon {
+  return type === "sheet" || type === "flow" || type === "scene" ? type : "reference";
+}
+
+function searchKindLabel(kind: string): string {
+  const key = `palette.advanced_search.kinds.${kind}`;
+  return te(key) ? t(key) : kind.replaceAll("_", " ");
+}
+
+function reconcileAdvancedSearchResults(
+  current: PaletteLookupResult[],
+  incoming: PaletteLookupResult[],
+): PaletteLookupResult[] {
+  const incomingById = new Map(incoming.map((item) => [item.id, item]));
+  const retained = current.flatMap((item) => {
+    const updated = incomingById.get(item.id);
+    if (!updated) return [];
+    incomingById.delete(item.id);
+    return [updated];
+  });
+  const appended = incoming.filter((item) => incomingById.has(item.id));
+
+  return [...retained, ...appended];
+}
+
+async function restoreAdvancedSearchHighlight(resultId: string | null): Promise<void> {
+  await nextTick();
+  if (!advancedSearchActive.value || advancedSearchResults.value.length === 0) return;
+  await advancedSearchResultsRef.value?.restoreHighlightedResult(resultId);
 }
 
 function fetchCreateTargets(): void {
@@ -1321,6 +1624,23 @@ function onSelectNav(item: NavItem): void {
   runNavigationCommand(item.id, item.url);
 }
 
+function selectAdvancedSearchPrefix(symbol: AdvancedSearchPrefixSymbol): void {
+  query.value = symbol;
+  focusPaletteInput();
+}
+
+function onSelectAdvancedSearchResult(result: PaletteLookupResult): void {
+  if (advancedSearchLoading.value) return;
+
+  if (result.action.kind === "complete") {
+    query.value = result.action.value;
+    focusPaletteInput();
+    return;
+  }
+
+  runNavigationCommand("advanced-search.open", result.action.url);
+}
+
 // Navigation tears down the current LiveView. Send telemetry first, while
 // the socket is still connected, then close and navigate synchronously.
 function runNavigationCommand(commandId: string, url: string, onSuccess?: () => void): void {
@@ -1516,6 +1836,7 @@ function track(event: string, payload: Record<string, unknown>): void {
     v-model:open="localOpen"
     :title="t('palette.title')"
     :description="t('palette.description')"
+    :disable-filter="advancedSearchActive"
     @escape-key-down="onDialogEscape"
   >
     <div ref="paletteBody" class="contents" @keydown="onPaletteKeydown">
@@ -1625,154 +1946,241 @@ function track(event: string, payload: Record<string, unknown>): void {
         </template>
 
         <template v-else-if="step.kind === 'root'">
-          <PaletteEmpty :enabled="!navLoading && !navErrorKey" @no-results="onNoResults">
-            {{ t("palette.no_results") }}
-          </PaletteEmpty>
-          <div v-if="showHelpIntro" class="border-b px-3 py-3">
-            <div class="flex items-start gap-2.5">
-              <div class="rounded-md bg-primary/10 p-1.5 text-primary">
-                <CircleHelp class="size-4" />
-              </div>
-              <div>
-                <p class="text-sm font-medium">{{ t("palette.capabilities_title") }}</p>
-                <p class="mt-0.5 text-xs text-muted-foreground">
-                  {{ t("palette.capabilities_description") }}
-                </p>
+          <template v-if="advancedSearchActive">
+            <div
+              v-if="
+                projectContext &&
+                advancedSearchRoute.kind === 'search' &&
+                advancedSearchRoute.definition.cost === 'high'
+              "
+              role="note"
+              class="border-b border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-200"
+            >
+              {{ t("palette.advanced_search.high_cost_notice") }}
+            </div>
+            <PaletteAdvancedSearchHelp
+              v-if="advancedSearchHelpVisible"
+              :definitions="advancedSearchPrefixes"
+              :selected-prefix="advancedSearchDefinition?.symbol ?? null"
+              @select="selectAdvancedSearchPrefix"
+            />
+            <div
+              v-else-if="!projectContext"
+              role="status"
+              class="border-b px-3 py-3 text-sm text-muted-foreground"
+            >
+              {{ t("palette.advanced_search.project_required") }}
+            </div>
+            <div
+              v-else-if="advancedSearchRoute.kind === 'search' && !advancedSearchRoute.ready"
+              role="status"
+              class="border-b px-3 py-3 text-sm text-muted-foreground"
+            >
+              {{
+                t("palette.advanced_search.minimum_length", {
+                  count: advancedSearchRoute.definition.minimumLength,
+                })
+              }}
+            </div>
+            <div
+              v-else-if="
+                advancedSearchRoute.kind === 'search' &&
+                advancedSearchRoute.definition.trigger === 'submit' &&
+                !advancedSearchLoading &&
+                submittedAdvancedQuery !== query
+              "
+              role="status"
+              class="border-b px-3 py-3 text-sm text-muted-foreground"
+            >
+              {{ t("palette.advanced_search.press_enter") }}
+            </div>
+            <div
+              v-if="
+                advancedSearchFallback === 'qualified_references' &&
+                !advancedSearchLoading &&
+                !advancedSearchErrorKey
+              "
+              data-testid="palette-predicate-no-matches"
+              role="status"
+              class="border-b px-3 py-3 text-sm text-muted-foreground"
+            >
+              {{ t("palette.advanced_search.predicate_no_matches") }}
+            </div>
+            <PaletteEmpty
+              v-if="
+                projectContext &&
+                advancedSearchRoute.kind === 'search' &&
+                advancedSearchRoute.ready &&
+                !advancedSearchLoading &&
+                !advancedSearchErrorKey &&
+                (advancedSearchRoute.definition.trigger !== 'submit' ||
+                  submittedAdvancedQuery === query)
+              "
+              :enabled="true"
+              @no-results="onNoResults"
+            >
+              {{ t("palette.advanced_search.no_results") }}
+            </PaletteEmpty>
+            <PaletteLookupResults
+              ref="advancedSearchResultsRef"
+              :items="advancedSearchResults"
+              :disabled="advancedSearchLoading"
+              :loading="advancedSearchLoading"
+              :truncated="advancedSearchTruncated"
+              :truncated-label="t('palette.advanced_search.truncated')"
+              @select="onSelectAdvancedSearchResult"
+            />
+          </template>
+          <template v-else>
+            <PaletteEmpty :enabled="!navLoading && !navErrorKey" @no-results="onNoResults">
+              {{ t("palette.no_results") }}
+            </PaletteEmpty>
+            <div v-if="showHelpIntro" class="border-b px-3 py-3">
+              <div class="flex items-start gap-2.5">
+                <div class="rounded-md bg-primary/10 p-1.5 text-primary">
+                  <CircleHelp class="size-4" />
+                </div>
+                <div>
+                  <p class="text-sm font-medium">{{ t("palette.capabilities_title") }}</p>
+                  <p class="mt-0.5 text-xs text-muted-foreground">
+                    {{ t("palette.capabilities_description") }}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-          <!-- Reka's listbox item memoizes disabled and fallthrough attrs.
+            <!-- Reka's listbox item memoizes disabled and fallthrough attrs.
                The full availability signature belongs in both operation-row
                keys so enabled and reason changes remount the affected row. -->
-          <CommandGroup
-            v-if="recentOperations.length > 0"
-            :heading="t('palette.recent_operations')"
-          >
-            <CommandItem
-              v-for="operation in recentOperations"
-              :key="`recent-operation-${operation.id}-${operationAvailabilityKey(operation)}`"
-              :value="`recent-operation-${operation.id}`"
-              :data-operation-id="operation.id"
-              :data-operation-available="operationAvailable(operation)"
-              :search-text="`${operationSearchText(operation, t)} ${t('palette.help_keywords')}`"
-              :disabled="busy || !operationAvailable(operation)"
-              :title="operationUnavailableReason(operation)"
-              @select="enterOperation(operation)"
+            <CommandGroup
+              v-if="recentOperations.length > 0"
+              :heading="t('palette.recent_operations')"
             >
-              <History class="size-4 shrink-0" />
-              <span class="min-w-0">
-                <span class="block">{{ t(operation.help.labelKey) }}</span>
-                <span
-                  v-if="!operationAvailable(operation)"
-                  class="block truncate text-xs font-normal text-muted-foreground"
-                >
-                  {{ operationUnavailableReason(operation) }}
-                </span>
-              </span>
-            </CommandItem>
-          </CommandGroup>
-          <CommandGroup
-            v-for="operationGroup in operationGroups"
-            :key="`operations-${operationGroup.domain}`"
-            :heading="t(`palette.operation_domains.${operationGroup.domain}`)"
-          >
-            <CommandItem
-              v-for="operation in operationGroup.operations"
-              :key="`operation-${operation.id}-${operationAvailabilityKey(operation)}`"
-              :value="`operation-${operation.id}`"
-              :data-operation-id="operation.id"
-              :data-operation-available="operationAvailable(operation)"
-              :search-text="`${operationSearchText(operation, t)} ${t('palette.help_keywords')}`"
-              class="items-start py-2.5"
-              :disabled="busy || !operationAvailable(operation)"
-              :title="operationUnavailableReason(operation)"
-              @select="enterOperation(operation)"
-            >
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center justify-between gap-3">
-                  <span class="font-medium">{{ t(operation.help.labelKey) }}</span>
-                  <span class="shrink-0 text-xs text-muted-foreground">
-                    {{ t(operation.help.exampleKey) }}
+              <CommandItem
+                v-for="operation in recentOperations"
+                :key="`recent-operation-${operation.id}-${operationAvailabilityKey(operation)}`"
+                :value="`recent-operation-${operation.id}`"
+                :data-operation-id="operation.id"
+                :data-operation-available="operationAvailable(operation)"
+                :search-text="`${operationSearchText(operation, t)} ${t('palette.help_keywords')}`"
+                :disabled="busy || !operationAvailable(operation)"
+                :title="operationUnavailableReason(operation)"
+                @select="enterOperation(operation)"
+              >
+                <History class="size-4 shrink-0" />
+                <span class="min-w-0">
+                  <span class="block">{{ t(operation.help.labelKey) }}</span>
+                  <span
+                    v-if="!operationAvailable(operation)"
+                    class="block truncate text-xs font-normal text-muted-foreground"
+                  >
+                    {{ operationUnavailableReason(operation) }}
                   </span>
+                </span>
+              </CommandItem>
+            </CommandGroup>
+            <CommandGroup
+              v-for="operationGroup in operationGroups"
+              :key="`operations-${operationGroup.domain}`"
+              :heading="t(`palette.operation_domains.${operationGroup.domain}`)"
+            >
+              <CommandItem
+                v-for="operation in operationGroup.operations"
+                :key="`operation-${operation.id}-${operationAvailabilityKey(operation)}`"
+                :value="`operation-${operation.id}`"
+                :data-operation-id="operation.id"
+                :data-operation-available="operationAvailable(operation)"
+                :search-text="`${operationSearchText(operation, t)} ${t('palette.help_keywords')}`"
+                class="items-start py-2.5"
+                :disabled="busy || !operationAvailable(operation)"
+                :title="operationUnavailableReason(operation)"
+                @select="enterOperation(operation)"
+              >
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="font-medium">{{ t(operation.help.labelKey) }}</span>
+                    <span class="shrink-0 text-xs text-muted-foreground">
+                      {{ t(operation.help.exampleKey) }}
+                    </span>
+                  </div>
+                  <p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    {{ t(operation.help.descriptionKey) }}
+                  </p>
+                  <p
+                    v-if="!operationAvailable(operation)"
+                    class="mt-1 text-xs font-medium text-muted-foreground"
+                  >
+                    {{ operationUnavailableReason(operation) }}
+                  </p>
+                  <p
+                    v-if="operation.help.pattern"
+                    class="mt-1 font-mono text-[11px] text-muted-foreground"
+                  >
+                    {{ operation.help.pattern }}
+                  </p>
                 </div>
-                <p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                  {{ t(operation.help.descriptionKey) }}
-                </p>
-                <p
-                  v-if="!operationAvailable(operation)"
-                  class="mt-1 text-xs font-medium text-muted-foreground"
-                >
-                  {{ operationUnavailableReason(operation) }}
-                </p>
-                <p
-                  v-if="operation.help.pattern"
-                  class="mt-1 font-mono text-[11px] text-muted-foreground"
-                >
-                  {{ operation.help.pattern }}
-                </p>
-              </div>
-            </CommandItem>
-          </CommandGroup>
-          <CommandGroup v-for="group in paletteGroups" :key="group.key" :heading="t(group.key)">
-            <CommandItem
-              v-for="command in group.commands"
-              :key="command.id"
-              :value="command.id"
-              :disabled="busy || !commandEnabled(command)"
-              :title="
-                !commandEnabled(command) && commandDisabledReasonKey(command)
-                  ? t(commandDisabledReasonKey(command)!)
-                  : undefined
-              "
-              @select="onSelect(command)"
+              </CommandItem>
+            </CommandGroup>
+            <CommandGroup v-for="group in paletteGroups" :key="group.key" :heading="t(group.key)">
+              <CommandItem
+                v-for="command in group.commands"
+                :key="command.id"
+                :value="command.id"
+                :disabled="busy || !commandEnabled(command)"
+                :title="
+                  !commandEnabled(command) && commandDisabledReasonKey(command)
+                    ? t(commandDisabledReasonKey(command)!)
+                    : undefined
+                "
+                @select="onSelect(command)"
+              >
+                <component :is="command.icon" v-if="command.icon" class="size-4 shrink-0" />
+                <span>{{ commandLabel(command) }}</span>
+                <CommandShortcut v-if="command.shortcut">{{ command.shortcut }}</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandGroup v-if="canMutate" :heading="t('palette.groups.actions')">
+              <CommandItem
+                v-for="entityType in entityTypes"
+                :key="`create.${entityType}`"
+                :value="`create.${entityType}`"
+                :disabled="busy"
+                @select="enterCreateStep(entityType)"
+              >
+                <component :is="navIcons[entityType]" class="size-4 shrink-0" />
+                <span>{{ t(createLabelKeys[entityType]) }}</span>
+              </CommandItem>
+              <CommandItem value="palette.delete-entity" :disabled="busy" @select="enterDeleteStep">
+                <Trash2 class="size-4 shrink-0" />
+                <span>{{ t("palette.delete_entity") }}</span>
+              </CommandItem>
+            </CommandGroup>
+            <CommandGroup
+              v-for="group in navGroups"
+              :key="`nav-${group.key}`"
+              :heading="navGroupHeading(group.key)"
             >
-              <component :is="command.icon" v-if="command.icon" class="size-4 shrink-0" />
-              <span>{{ commandLabel(command) }}</span>
-              <CommandShortcut v-if="command.shortcut">{{ command.shortcut }}</CommandShortcut>
-            </CommandItem>
-          </CommandGroup>
-          <CommandGroup v-if="canMutate" :heading="t('palette.groups.actions')">
-            <CommandItem
-              v-for="entityType in entityTypes"
-              :key="`create.${entityType}`"
-              :value="`create.${entityType}`"
-              :disabled="busy"
-              @select="enterCreateStep(entityType)"
-            >
-              <component :is="navIcons[entityType]" class="size-4 shrink-0" />
-              <span>{{ t(createLabelKeys[entityType]) }}</span>
-            </CommandItem>
-            <CommandItem value="palette.delete-entity" :disabled="busy" @select="enterDeleteStep">
-              <Trash2 class="size-4 shrink-0" />
-              <span>{{ t("palette.delete_entity") }}</span>
-            </CommandItem>
-          </CommandGroup>
-          <CommandGroup
-            v-for="group in navGroups"
-            :key="`nav-${group.key}`"
-            :heading="navGroupHeading(group.key)"
-          >
-            <CommandItem
-              v-for="item in group.items"
-              :key="item.id"
-              :value="item.id"
-              :disabled="busy"
-              @select="onSelectNav(item)"
-            >
-              <component
-                :is="navIcons[item.type]"
-                v-if="navIcons[item.type]"
-                class="size-4 shrink-0"
-              />
-              <span>{{ item.label }}</span>
-              <span v-if="item.context" class="text-xs text-muted-foreground">{{
-                item.context
-              }}</span>
-              <!-- Entities can match by shortcut server-side; keep it in the
+              <CommandItem
+                v-for="item in group.items"
+                :key="item.id"
+                :value="item.id"
+                :disabled="busy"
+                @select="onSelectNav(item)"
+              >
+                <component
+                  :is="navIcons[item.type]"
+                  v-if="navIcons[item.type]"
+                  class="size-4 shrink-0"
+                />
+                <span>{{ item.label }}</span>
+                <span v-if="item.context" class="text-xs text-muted-foreground">{{
+                  item.context
+                }}</span>
+                <!-- Entities can match by shortcut server-side; keep it in the
                  filterable textContent without showing it. -->
-              <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
-            </CommandItem>
-          </CommandGroup>
+                <span v-if="item.shortcut" class="sr-only">{{ item.shortcut }}</span>
+              </CommandItem>
+            </CommandGroup>
+          </template>
         </template>
 
         <template v-else-if="createEntityType">

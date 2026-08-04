@@ -244,6 +244,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         where: vr.block_id == ^block_id,
         where: f.project_id == ^project_id,
         where: is_nil(f.deleted_at),
+        where: is_nil(n.deleted_at),
         select: %{
           source_type: vr.source_type,
           kind: vr.kind,

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { reactiveOmit } from "@vueuse/core";
 import { useForwardPropsEmits } from "reka-ui";
 import {
   Dialog,
@@ -15,13 +16,15 @@ const props = defineProps<{
   modal?: boolean;
   title?: string;
   description?: string;
+  disableFilter?: boolean;
 }>();
 const emit = defineEmits<{
   "update:open": [value: boolean];
   escapeKeyDown: [event: KeyboardEvent];
 }>();
 
-const forwarded = useForwardPropsEmits(props, emit);
+const dialogProps = reactiveOmit(props, "disableFilter");
+const forwarded = useForwardPropsEmits(dialogProps, emit);
 </script>
 
 <template>
@@ -31,7 +34,7 @@ const forwarded = useForwardPropsEmits(props, emit);
         <DialogTitle>{{ title }}</DialogTitle>
         <DialogDescription>{{ description }}</DialogDescription>
       </DialogHeader>
-      <Command>
+      <Command :disable-filter="props.disableFilter">
         <slot v-bind="slotProps" />
       </Command>
     </DialogContent>

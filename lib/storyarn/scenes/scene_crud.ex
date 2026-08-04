@@ -14,6 +14,8 @@ defmodule Storyarn.Scenes.SceneCrud do
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneAnnotation
+  alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneReferenceIntegrity
@@ -137,6 +139,8 @@ defmodule Storyarn.Scenes.SceneCrud do
   end
 
   @default_search_limit 20
+  @max_deep_search_limit 50
+  @max_deep_search_offset 10_000
 
   @doc """
   Searches scenes by name or shortcut across a pre-authorized set of projects.
@@ -214,6 +218,122 @@ defmodule Storyarn.Scenes.SceneCrud do
         ),
         log: false
       )
+    end
+  end
+
+  @doc """
+  Searches scene metadata and authored text inside layers, pins, zones, and
+  annotations.
+
+  The search remains scoped to one project and returns matching scenes rather
+  than the individual child records that matched.
+
+  ## Options
+    - `:limit` - Max results (default #{@default_search_limit}, max #{@max_deep_search_limit})
+    - `:offset` - Skip N results (default 0, max #{@max_deep_search_offset})
+  """
+  @spec search_scenes_deep(integer(), String.t(), keyword()) :: [Scene.t()]
+  def search_scenes_deep(project_id, query, opts \\ []) when is_binary(query) do
+    limit = bounded_deep_search_limit(opts)
+    offset = bounded_deep_search_offset(opts)
+    query_str = String.trim(query)
+
+    if query_str == "" do
+      search_scenes(project_id, query_str, limit: limit, offset: offset)
+    else
+      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
+      run_deep_search(project_id, search_term, limit, offset)
+    end
+  end
+
+  defp run_deep_search(project_id, search_term, limit, offset) do
+    Repo.all(
+      from(m in Scene,
+        where: m.project_id == ^project_id and is_nil(m.deleted_at),
+        where:
+          ilike(m.name, ^search_term) or
+            ilike(m.shortcut, ^search_term) or
+            ilike(m.description, ^search_term) or
+            m.id in subquery(scene_ids_matching_layers(project_id, search_term)) or
+            m.id in subquery(scene_ids_matching_pins(project_id, search_term)) or
+            m.id in subquery(scene_ids_matching_zones(project_id, search_term)) or
+            m.id in subquery(scene_ids_matching_annotations(project_id, search_term)) or
+            m.id in subquery(scene_ids_matching_connections(project_id, search_term)),
+        order_by: [asc: m.name, asc: m.id],
+        limit: ^limit,
+        offset: ^offset
+      ),
+      log: false
+    )
+  end
+
+  defp scene_ids_matching_layers(project_id, search_term) do
+    from(l in SceneLayer,
+      join: m in Scene,
+      on: m.id == l.scene_id,
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
+      where: ilike(l.name, ^search_term),
+      select: l.scene_id
+    )
+  end
+
+  defp scene_ids_matching_pins(project_id, search_term) do
+    from(p in ScenePin,
+      join: m in Scene,
+      on: m.id == p.scene_id,
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
+      where:
+        ilike(p.label, ^search_term) or
+          ilike(p.shortcut, ^search_term) or
+          ilike(p.tooltip, ^search_term),
+      select: p.scene_id
+    )
+  end
+
+  defp scene_ids_matching_zones(project_id, search_term) do
+    from(z in SceneZone,
+      join: m in Scene,
+      on: m.id == z.scene_id,
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
+      where:
+        ilike(z.name, ^search_term) or
+          ilike(z.shortcut, ^search_term) or
+          ilike(z.tooltip, ^search_term),
+      select: z.scene_id
+    )
+  end
+
+  defp scene_ids_matching_annotations(project_id, search_term) do
+    from(a in SceneAnnotation,
+      join: m in Scene,
+      on: m.id == a.scene_id,
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
+      where: ilike(a.text, ^search_term),
+      select: a.scene_id
+    )
+  end
+
+  defp scene_ids_matching_connections(project_id, search_term) do
+    from(connection in SceneConnection,
+      join: scene in Scene,
+      on: scene.id == connection.scene_id,
+      where: scene.project_id == ^project_id and is_nil(scene.deleted_at),
+      where: ilike(connection.label, ^search_term),
+      select: connection.scene_id
+    )
+  end
+
+  defp bounded_deep_search_limit(opts) do
+    case Keyword.get(opts, :limit, @default_search_limit) do
+      limit when is_integer(limit) -> limit |> max(1) |> min(@max_deep_search_limit)
+      _invalid -> @default_search_limit
+    end
+  end
+
+  defp bounded_deep_search_offset(opts) do
+    case Keyword.get(opts, :offset, 0) do
+      offset when is_integer(offset) -> offset |> max(0) |> min(@max_deep_search_offset)
+      _invalid -> 0
     end
   end
 
@@ -879,7 +999,7 @@ defmodule Storyarn.Scenes.SceneCrud do
       join: m in Scene,
       on: p.scene_id == m.id,
       where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: m.project_id == ^project_id,
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
       select: %{
         id: r.id,
         source_type: r.source_type,
@@ -925,7 +1045,7 @@ defmodule Storyarn.Scenes.SceneCrud do
       join: m in Scene,
       on: z.scene_id == m.id,
       where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: m.project_id == ^project_id,
+      where: m.project_id == ^project_id and is_nil(m.deleted_at),
       select: %{
         id: r.id,
         source_type: r.source_type,
@@ -1015,14 +1135,14 @@ defmodule Storyarn.Scenes.SceneCrud do
   Bulk-inserts scene connections from a list of attr maps.
   """
   def bulk_import_connections(attrs_list) do
-    ImportHelpers.bulk_insert(Storyarn.Scenes.SceneConnection, attrs_list)
+    ImportHelpers.bulk_insert(SceneConnection, attrs_list)
   end
 
   @doc """
   Bulk-inserts scene annotations from a list of attr maps.
   """
   def bulk_import_annotations(attrs_list) do
-    ImportHelpers.bulk_insert(Storyarn.Scenes.SceneAnnotation, attrs_list)
+    ImportHelpers.bulk_insert(SceneAnnotation, attrs_list)
   end
 
   # =============================================================================

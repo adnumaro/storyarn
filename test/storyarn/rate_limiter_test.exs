@@ -125,6 +125,19 @@ defmodule Storyarn.RateLimiterTest do
     end
   end
 
+  describe "check_palette_deep_search/2" do
+    test "limits full searches per user without sharing the bucket" do
+      with_rate_limiting_enabled(fn ->
+        user_id = System.unique_integer([:positive])
+        other_user_id = System.unique_integer([:positive])
+
+        assert :ok = RateLimiter.check_palette_deep_search(user_id, 1)
+        assert {:error, :rate_limited} = RateLimiter.check_palette_deep_search(user_id, 1)
+        assert :ok = RateLimiter.check_palette_deep_search(other_user_id, 1)
+      end)
+    end
+  end
+
   # A configured URL is the ONLY thing that selects Redis, so "Redis without a
   # URL" is not a state a test can set up either.
   defp with_redis_url(url, fun) do

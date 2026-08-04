@@ -38,6 +38,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
 
   @sheet_tabs ~w(content references audio history)
+  @max_pg_bigint 9_223_372_036_854_775_807
 
   @impl true
   def render(assigns) do
@@ -109,6 +110,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         formula_search_has_more={@formula_search_has_more}
         block_locks={@block_locks}
         current_user_id={@current_scope.user.id}
+        highlight_target={@highlight_target}
         compact={false}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
@@ -144,6 +146,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         formula_search_has_more={@formula_search_has_more}
         block_locks={@block_locks}
         current_user_id={@current_scope.user.id}
+        highlight_target={@highlight_target}
         compact={true}
       />
     </StoryarnWeb.Components.CompareLayout.compare>
@@ -170,6 +173,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   attr :formula_search_has_more, :boolean, default: false
   attr :block_locks, :map, default: %{}
   attr :current_user_id, :integer, default: nil
+  attr :highlight_target, :map, default: nil
   attr :compact, :boolean, default: false
   attr :inject, :string, default: nil
 
@@ -184,6 +188,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       sheet={prepare_sheet_for_vue(@sheet)}
       can-edit={@can_edit}
       source-shortcut={@source_shortcut}
+      highlight-target={@highlight_target}
       surface={sheet_surface_props(assigns)}
       panels={sheet_panels_props(assigns)}
     />
@@ -340,6 +345,8 @@ defmodule StoryarnWeb.SheetLive.Show do
      |> assign(:formula_search_query, "")
      |> assign(:formula_search_offset, 0)
      |> assign(:formula_search_has_more, false)
+     |> assign(:highlight_target, nil)
+     |> assign(:highlight_revision, 0)
      |> UndoRedoStack.init()}
   end
 
@@ -362,6 +369,8 @@ defmodule StoryarnWeb.SheetLive.Show do
         load_sheet(socket, sheet_id)
       end
 
+    socket = assign_sheet_highlight(socket, sheet_id, params["highlight"])
+
     Phoenix.PubSub.broadcast(
       Storyarn.PubSub,
       StoryarnWeb.SheetsSidebarLive.shell_topic(socket.assigns.project.id),
@@ -369,6 +378,82 @@ defmodule StoryarnWeb.SheetLive.Show do
     )
 
     {:noreply, socket}
+  end
+
+  defp assign_sheet_highlight(socket, requested_sheet_id, raw_highlight) do
+    revision = socket.assigns.highlight_revision + 1
+
+    highlight_target =
+      with %{id: loaded_sheet_id} <- socket.assigns.sheet,
+           true <- to_string(loaded_sheet_id) == requested_sheet_id,
+           target when not is_nil(target) <- parse_sheet_highlight(raw_highlight),
+           target when not is_nil(target) <- validate_sheet_highlight(target, socket.assigns) do
+        Map.put(target, :requestId, revision)
+      else
+        _invalid_or_foreign_target -> nil
+      end
+
+    socket =
+      socket
+      |> assign(:highlight_revision, revision)
+      |> assign(:highlight_target, highlight_target)
+
+    if highlight_target, do: assign(socket, :current_tab, "content"), else: socket
+  end
+
+  defp parse_sheet_highlight(raw_highlight) when is_binary(raw_highlight) and byte_size(raw_highlight) <= 96 do
+    case String.split(raw_highlight, ":") do
+      ["block", block_id] ->
+        case parse_database_id(block_id) do
+          {:ok, block_id} -> %{kind: "block", blockId: block_id}
+          _invalid_id -> nil
+        end
+
+      ["cell", block_id, row_id, column_id] ->
+        with {:ok, block_id} <- parse_database_id(block_id),
+             {:ok, row_id} <- parse_database_id(row_id),
+             {:ok, column_id} <- parse_database_id(column_id) do
+          %{
+            kind: "cell",
+            blockId: block_id,
+            rowId: row_id,
+            columnId: column_id
+          }
+        else
+          _invalid_id -> nil
+        end
+
+      _unsupported_shape ->
+        nil
+    end
+  end
+
+  defp parse_sheet_highlight(_raw_highlight), do: nil
+
+  defp parse_database_id(value) do
+    case Integer.parse(value) do
+      {id, ""} when id > 0 and id <= @max_pg_bigint -> {:ok, id}
+      _invalid_id -> :error
+    end
+  end
+
+  defp validate_sheet_highlight(%{kind: "block", blockId: block_id} = target, assigns) do
+    if own_sheet_block?(assigns.blocks, block_id), do: target
+  end
+
+  defp validate_sheet_highlight(%{kind: "cell", blockId: block_id, rowId: row_id, columnId: column_id} = target, assigns) do
+    with true <- own_sheet_block?(assigns.blocks, block_id),
+         %{rows: rows, columns: columns} <- Map.get(assigns.table_data, block_id),
+         true <- Enum.any?(rows, &(&1.id == row_id)),
+         true <- Enum.any?(columns, &(&1.id == column_id)) do
+      target
+    else
+      _missing_or_foreign_cell -> nil
+    end
+  end
+
+  defp own_sheet_block?(blocks, block_id) do
+    Enum.any?(blocks, &(&1.id == block_id))
   end
 
   defp load_sheet(socket, sheet_id) do

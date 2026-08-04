@@ -12,10 +12,12 @@ interface PaletteFeatureFlags {
 const {
   featureFlags = {},
   operationCatalog = [],
+  projectContext = false,
   sudoGrant = null,
 } = defineProps<{
   featureFlags?: PaletteFeatureFlags;
   operationCatalog?: OperationDefinition[];
+  projectContext?: boolean;
   sudoGrant?: string | null;
 }>();
 
@@ -36,6 +38,6 @@ onUnmounted(unregisterGlobalCommands);
 
 <template>
   <div class="contents" :data-command-palette-ready="ready">
-    <CommandPalette :operation-catalog="operationCatalog" />
+    <CommandPalette :operation-catalog="operationCatalog" :project-context="projectContext" />
   </div>
 </template>

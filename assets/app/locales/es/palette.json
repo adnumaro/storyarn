@@ -29,6 +29,95 @@
     "create_failed": "Storyarn no ha podido crear el elemento. Inténtalo de nuevo.",
     "delete_failed": "Storyarn no ha podido eliminar el elemento. Inténtalo de nuevo.",
     "invalid_request": "La solicitud del comando no es válida. Recarga la página e inténtalo de nuevo.",
+    "advanced_search": {
+      "title": "Búsqueda avanzada",
+      "description": "Empieza por un prefijo para buscar un tipo concreto de contenido del proyecto. Escribe ? para volver a ver esta guía.",
+      "prefixes_heading": "Prefijos de búsqueda",
+      "variable_operators": {
+        "heading": "Operadores de valor",
+        "contains": {
+          "label": "Contiene texto",
+          "description": "Coincide con valores que incluyen este texto, sin distinguir mayúsculas y minúsculas."
+        },
+        "not_contains": {
+          "label": "No contiene texto",
+          "description": "Coincide con valores que no incluyen este texto, sin distinguir mayúsculas y minúsculas."
+        }
+      },
+      "high_cost": "Intensiva",
+      "high_cost_notice": "La búsqueda completa examina el contenido escrito de todo el proyecto y puede tardar más.",
+      "submit_hint": "Escribe al menos {count} caracteres y pulsa Intro.",
+      "minimum_length": "Escribe al menos {count} caracteres para buscar.",
+      "press_enter": "Pulsa Intro cuando quieras ejecutar esta búsqueda.",
+      "project_required": "La búsqueda avanzada está disponible cuando estás dentro de un proyecto.",
+      "no_results": "No hay contenido del proyecto que coincida",
+      "predicate_no_matches": "No se han encontrado referencias con esta búsqueda.",
+      "truncated": "Hay más resultados. Concreta la búsqueda para reducir la lista.",
+      "search_failed": "Storyarn no ha podido completar esta búsqueda avanzada. Inténtalo de nuevo.",
+      "rate_limited": "La búsqueda completa se ha solicitado demasiado rápido. Espera un momento e inténtalo de nuevo.",
+      "kinds": {
+        "hierarchy": "Jerarquía",
+        "entity": "Entidad",
+        "definition": "Definición",
+        "read": "Lectura",
+        "formula_read": "Lectura de fórmula",
+        "condition": "Condición",
+        "condition_equals": "Condición de igualdad",
+        "condition_not_equals": "Condición de desigualdad",
+        "condition_contains": "Condición contiene",
+        "condition_not_contains": "Condición no contiene",
+        "condition_greater_than": "Condición mayor que",
+        "condition_greater_than_or_equal": "Condición mayor o igual que",
+        "condition_less_than": "Condición menor que",
+        "condition_less_than_or_equal": "Condición menor o igual que",
+        "condition_before": "Condición de fecha anterior",
+        "condition_after": "Condición de fecha posterior",
+        "condition_is_true": "Condición verdadera",
+        "condition_is_false": "Condición falsa",
+        "write": "Cambio",
+        "write_set": "Asignación de valor",
+        "write_set_if_unset": "Asignación si está vacío",
+        "write_set_true": "Asignación a verdadero",
+        "write_set_false": "Asignación a falso",
+        "write_clear": "Borrado de valor",
+        "write_add": "Incremento",
+        "write_subtract": "Decremento"
+      },
+      "groups": {
+        "owner": "Definiciones de variables",
+        "initial": "Valores iniciales",
+        "read": "Lecturas y fórmulas",
+        "condition": "Condiciones",
+        "write": "Escrituras y cambios",
+        "suggestion": "Referencias relacionadas",
+        "sheet": "Fichas",
+        "flow": "Flujos",
+        "scene": "Escenas",
+        "all": "Todo el contenido del proyecto"
+      },
+      "prefixes": {
+        "variables": {
+          "label": "Variables y usos",
+          "description": "Encuentra definiciones, lecturas y cambios de variables; puedes filtrar por un valor u operador definido."
+        },
+        "sheets": {
+          "label": "Fichas y jerarquía",
+          "description": "Encuentra una ficha, completa su atajo y recorre sus hijos directos o todo su subárbol."
+        },
+        "flows": {
+          "label": "Flujos y jerarquía",
+          "description": "Encuentra flujos y navega por estructuras de flujos anidados."
+        },
+        "scenes": {
+          "label": "Escenas y jerarquía",
+          "description": "Encuentra escenas y navega por estructuras de escenas anidadas."
+        },
+        "all": {
+          "label": "Búsqueda completa del proyecto",
+          "description": "Busca nombres y contenido escrito en fichas, flujos y escenas. Solo se ejecuta al pulsar Intro."
+        }
+      }
+    },
     "delete_entity": "Eliminar ficha, flujo o escena…",
     "pick_project_placeholder": "Crear en el proyecto…",
     "no_editable_projects": "No hay proyectos donde puedas crear contenido",

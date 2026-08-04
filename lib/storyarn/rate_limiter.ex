@@ -15,6 +15,7 @@ defmodule Storyarn.RateLimiter do
   - Magic link requests: 3 per minute per email
   - Registration: 3 per minute per IP
   - Password reset: 3 per 15 minutes per IP and per email address
+  - Full project search: 12 per 10 seconds per user
   - Invitations: 10 per hour per user (configured in invitation modules)
 
   ## Configuration
@@ -66,6 +67,12 @@ defmodule Storyarn.RateLimiter do
   @ai_preflight_limit 60
   @ai_execution_limit 20
   @ai_execution_window_ms 60_000
+
+  # Full project search deliberately scans authored content across several
+  # entity domains. It is submit-only in the UI, but this server-side bucket
+  # prevents forged events or multiple sessions from bypassing that policy.
+  @palette_deep_search_limit 12
+  @palette_deep_search_window_ms 10_000
 
   @doc """
   Checks if a login attempt is allowed for the given IP address.
@@ -135,6 +142,18 @@ defmodule Storyarn.RateLimiter do
   def check_ai_execution(user_id, task_id, limit \\ @ai_execution_limit)
       when is_integer(user_id) and user_id > 0 and is_binary(task_id) and is_integer(limit) and limit > 0 do
     check_rate("ai_execution:#{user_id}:#{task_id}", @ai_execution_window_ms, limit)
+  end
+
+  @doc "Checks per-user volume for the command palette's full project search."
+  @spec check_palette_deep_search(pos_integer(), pos_integer()) ::
+          :ok | {:error, :rate_limited}
+  def check_palette_deep_search(user_id, limit \\ @palette_deep_search_limit)
+      when is_integer(user_id) and user_id > 0 and is_integer(limit) and limit > 0 do
+    check_rate(
+      "palette_deep_search:#{user_id}",
+      @palette_deep_search_window_ms,
+      limit
+    )
   end
 
   @doc """

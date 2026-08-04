@@ -279,6 +279,232 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
     end
   end
 
+  describe "palette_advanced_search" do
+    test "is unavailable outside a project context and preserves the request token",
+         %{view: view} do
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "#kael",
+        "submitted" => false,
+        "token" => 21
+      })
+
+      assert_reply(view, %{token: 21, error: "unavailable"})
+    end
+
+    test "returns explicit completion and navigation actions for a hierarchy",
+         %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      root = sheet_fixture(project, %{name: "Main Characters", shortcut: "main-characters"})
+
+      branch =
+        sheet_fixture(project, %{
+          name: "Companions",
+          shortcut: "companions",
+          parent_id: root.id,
+          position: 0
+        })
+
+      leaf =
+        sheet_fixture(project, %{
+          name: "Kael",
+          shortcut: "kael",
+          parent_id: root.id,
+          position: 1
+        })
+
+      _grandchild =
+        sheet_fixture(project, %{
+          name: "Mira",
+          shortcut: "mira",
+          parent_id: branch.id
+        })
+
+      view = project_view(conn, workspace, project)
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "#main-characters.",
+        "submitted" => false,
+        "token" => 22
+      })
+
+      assert_reply(view, %{token: 22, mode: "sheets", items: items, truncated: false})
+
+      assert Enum.find(items, &(&1.id == "sheet:#{branch.id}")).action == %{
+               kind: "complete",
+               value: "#main-characters.companions."
+             }
+
+      assert Enum.find(items, &(&1.id == "sheet:#{leaf.id}")).action == %{
+               kind: "navigate",
+               url: "/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{leaf.id}"
+             }
+    end
+
+    test "keeps full search submit-only and searches authored nested content",
+         %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(project, %{name: "Archive", shortcut: "archive"})
+
+      _block =
+        block_fixture(sheet, %{
+          type: "text",
+          config: %{"label" => "Relic"},
+          value: %{"content" => "The ancient tome is sealed"}
+        })
+
+      view = project_view(conn, workspace, project)
+      payload = %{"query" => "*ancient tome", "submitted" => false, "token" => 23}
+
+      render_hook(view, "palette_advanced_search", payload)
+      assert_reply(view, %{token: 23, error: "not_submitted"})
+
+      render_hook(view, "palette_advanced_search", %{payload | "submitted" => true, "token" => 24})
+
+      assert_reply(view, %{token: 24, mode: "all", items: items})
+
+      assert Enum.any?(items, fn item ->
+               item.id == "sheet:#{sheet.id}" and
+                 item.action ==
+                   %{
+                     kind: "navigate",
+                     url: "/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
+                   }
+             end)
+    end
+
+    test "rate limits consecutive submitted full searches without throttling scoped searches",
+         %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(project, %{name: "Cobalt Archive", shortcut: "cobalt-archive"})
+      view = project_view(conn, workspace, project)
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "*cobalt",
+        "submitted" => true,
+        "token" => 26
+      })
+
+      assert_reply(view, %{token: 26, mode: "all"})
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "*cobalt",
+        "submitted" => true,
+        "token" => 27
+      })
+
+      assert_reply(view, %{token: 27, error: "rate_limited"})
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "#cobalt",
+        "submitted" => false,
+        "token" => 28
+      })
+
+      assert_reply(view, %{token: 28, mode: "sheets", items: items})
+      assert Enum.any?(items, &(&1.id == "sheet:#{sheet.id}"))
+    end
+
+    test "marks qualified references as fallback when a variable predicate has no matches",
+         %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      kael = sheet_fixture(project, %{name: "Kael", shortcut: "kael"})
+      nyx = sheet_fixture(project, %{name: "Nyx", shortcut: "nyx"})
+
+      block_fixture(kael, %{
+        type: "select",
+        config: %{"label" => "Faction"},
+        value: %{"content" => "spiritbound"}
+      })
+
+      block_fixture(nyx, %{
+        type: "select",
+        config: %{"label" => "Faction"},
+        value: %{"content" => "independent"}
+      })
+
+      view = project_view(conn, workspace, project)
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "$faction = conclave",
+        "submitted" => false,
+        "token" => 29
+      })
+
+      assert_reply(view, %{
+        token: 29,
+        mode: "variables",
+        fallback: "qualified_references",
+        items: items
+      })
+
+      assert Enum.map(items, & &1.label) == ["kael.faction", "nyx.faction"]
+
+      assert Enum.all?(items, fn item ->
+               item.group == "suggestion" and item.action.kind == "complete" and
+                 String.ends_with?(item.action.value, " = conclave")
+             end)
+    end
+
+    test "maps variable owners and active usages to validated deep links",
+         %{conn: conn, user: user} do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      sheet = sheet_fixture(project, %{name: "Hero", shortcut: "hero"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Health"},
+          value: %{"content" => 10}
+        })
+
+      condition = variable_condition(sheet.shortcut, block.variable_name)
+      assignment = variable_assignment(sheet.shortcut, block.variable_name)
+
+      flow = flow_fixture(project, %{name: "Health logic"})
+
+      node =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{"assignments" => [assignment]}
+        })
+
+      :ok = Storyarn.References.update_flow_node_variable_references(node)
+
+      scene = scene_fixture(project, %{name: "Camp"})
+      pin = pin_fixture(scene, %{"label" => "Gate", "condition" => condition})
+
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Fountain",
+          "action_type" => "action",
+          "action_data" => %{"assignments" => [assignment]}
+        })
+
+      view = project_view(conn, workspace, project)
+
+      render_hook(view, "palette_advanced_search", %{
+        "query" => "$hero.#{block.variable_name}",
+        "submitted" => false,
+        "token" => 25
+      })
+
+      assert_reply(view, %{token: 25, mode: "variables", items: items})
+
+      urls = MapSet.new(items, & &1.action.url)
+      base = "/workspaces/#{workspace.slug}/projects/#{project.slug}"
+
+      assert "#{base}/sheets/#{sheet.id}?highlight=block:#{block.id}" in urls
+      assert "#{base}/flows/#{flow.id}?highlight=node:#{node.id}" in urls
+      assert "#{base}/scenes/#{scene.id}?highlight=pin:#{pin.id}" in urls
+      assert "#{base}/scenes/#{scene.id}?highlight=zone:#{zone.id}" in urls
+    end
+  end
+
   describe "palette_create_targets" do
     test "replies editable projects only, with workspace context", %{view: view, user: user} do
       workspace = workspace_fixture(user)
@@ -731,6 +957,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
          "query" => "",
          "token" => "bad"
        }},
+      {"palette_advanced_search", %{"query" => "#kael", "submitted" => false, "token" => "bad"}},
       {"palette_nav", %{"query" => "test", "token" => "bad"}},
       {"palette_create_targets", %{"token" => "bad"}},
       {"palette_create", %{"type" => "sheet", "project_id" => 1}},
@@ -757,6 +984,46 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       "parameter_id" => "destination",
       "query" => "Latency",
       "token" => token
+    }
+  end
+
+  defp project_view(conn, workspace, project) do
+    {:ok, view, _html} =
+      live(conn, ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}")
+
+    view
+  end
+
+  defp variable_condition(sheet_shortcut, variable_name) do
+    %{
+      "logic" => "all",
+      "blocks" => [
+        %{
+          "id" => Ecto.UUID.generate(),
+          "type" => "block",
+          "logic" => "all",
+          "rules" => [
+            %{
+              "id" => Ecto.UUID.generate(),
+              "sheet" => sheet_shortcut,
+              "variable" => variable_name,
+              "operator" => "greater_than",
+              "value" => "0"
+            }
+          ]
+        }
+      ]
+    }
+  end
+
+  defp variable_assignment(sheet_shortcut, variable_name) do
+    %{
+      "id" => Ecto.UUID.generate(),
+      "sheet" => sheet_shortcut,
+      "variable" => variable_name,
+      "operator" => "set",
+      "value" => "11",
+      "value_type" => "literal"
     }
   end
 end

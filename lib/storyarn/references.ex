@@ -45,6 +45,7 @@ defmodule Storyarn.References do
 
   defdelegate count_variable_usage(block_id), to: VariableUsage
   defdelegate referenced_block_ids(block_ids), to: VariableUsage
+  defdelegate list_variable_usages(project_id, definition, opts \\ []), to: VariableUsage
 
   defdelegate count_stale_variable_references(block_ids, project_id),
     to: VariableUsage,

@@ -37,6 +37,7 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.SheetStats
   alias Storyarn.Sheets.TableCrud
   alias Storyarn.Sheets.TreeOperations
+  alias Storyarn.Sheets.VariableCatalog
   alias Storyarn.Versioning
   alias Storyarn.Versioning.EntityVersion
 
@@ -69,6 +70,10 @@ defmodule Storyarn.Sheets do
 
   @doc "Searches sheets by name/shortcut with pagination. Options: :limit, :offset."
   defdelegate search_sheets(project_id, query, opts \\ []), to: SheetQueries
+
+  @doc "Searches sheet metadata and authored block, table, and gallery content."
+  @spec search_sheets_deep(id(), String.t(), keyword()) :: [sheet()]
+  defdelegate search_sheets_deep(project_id, query, opts \\ []), to: SheetQueries
 
   @doc "Cross-project sheet search over a pre-authorized project set (see `Storyarn.GlobalSearch`)."
   @spec search_sheets_in_projects([integer()], String.t(), keyword()) :: [sheet()]
@@ -180,6 +185,31 @@ defmodule Storyarn.Sheets do
   """
   @spec list_project_variables(id()) :: [map()]
   defdelegate list_project_variables(project_id), to: SheetQueries
+
+  @doc "Searches bounded variable definitions for an authorized project search."
+  defdelegate search_variable_definitions(project_id, filter \\ :all, opts \\ []),
+    to: VariableCatalog,
+    as: :list_definitions
+
+  @doc "Searches authored variable initial values after applying a typed predicate."
+  defdelegate search_variable_initial_value_matches(project_id, filter, operator, literal, opts \\ []),
+    to: VariableCatalog,
+    as: :list_initial_value_matches
+
+  @doc "Resolves one active variable definition inside a project."
+  defdelegate get_variable_definition(project_id, block_id, qualified_ref),
+    to: VariableCatalog,
+    as: :get_definition
+
+  @doc "Resolves normalized predicate aliases without exposing field configuration."
+  defdelegate variable_predicate_string_aliases(project_id, definition, operator, literal),
+    to: VariableCatalog,
+    as: :predicate_string_aliases
+
+  @doc "Lists bounded formula cells that read one qualified variable reference."
+  defdelegate list_formula_variable_usages(project_id, qualified_ref, opts \\ []),
+    to: VariableCatalog,
+    as: :list_formula_usages
 
   @doc """
   Resolves current default values for a list of variable references.
