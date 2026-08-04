@@ -12,6 +12,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   """
 
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageHash
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotStorage
@@ -50,7 +51,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
 
     with :ok <- validate_token(token),
          {:ok, project} <- SnapshotObjectFormat.portable_project(project_snapshot),
-         {:ok, catalog} <- SnapshotObjectFormat.build_catalog(assets, opts),
+         {:ok, catalog} <- SnapshotObjectFormat.build_catalog(assets, Keyword.put(opts, :project_id, project_id)),
          {:ok, project_descriptor, project_json} <- project_descriptor(project, opts),
          {:ok, manifest} <-
            SnapshotObjectFormat.build_manifest(
@@ -91,7 +92,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
            ),
          {:ok, manifest} <- decode_json(manifest_json, SnapshotObjectFormat.manifest_path()),
          :ok <- SnapshotObjectFormat.validate_manifest(manifest, opts),
-         :ok <- verify_inventory(ready_prefix, manifest["objects"]),
+         :ok <- verify_blob_inventory(ready_prefix, manifest["objects"]),
          project_descriptor = manifest["project"],
          {:ok, project_json} <- read_descriptor_bytes(ready_prefix, project_descriptor),
          {:ok, project} <- decode_json(project_json, SnapshotObjectFormat.project_path()),
@@ -160,7 +161,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   defp stage_small_object(prefix, descriptor, data) do
     key = object_key(prefix, descriptor["path"])
 
-    with {:ok, _url, _created?} <- Storage.put_if_absent(key, data, descriptor["content_type"]) do
+    with {:ok, _url, _created?} <- put_snapshot_object_if_absent(key, data, descriptor["content_type"]) do
       verify_object(key, descriptor)
     end
   end
@@ -180,7 +181,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   defp copy_and_verify(source_key, destination_key, descriptor) when is_binary(source_key) do
     with :ok <- verify_object(source_key, descriptor),
          {:ok, _created?} <-
-           Storage.copy_if_absent_or_stream(
+           copy_snapshot_object(
              source_key,
              destination_key,
              descriptor["size_bytes"],
@@ -212,7 +213,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
 
     with :ok <- verify_object(source_key, descriptor),
          {:ok, _created?} <-
-           Storage.copy_if_absent_or_stream(
+           copy_snapshot_object(
              source_key,
              destination_key,
              descriptor["size_bytes"],
@@ -222,8 +223,52 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
     end
   end
 
-  defp verify_inventory(prefix, objects) do
-    Enum.reduce_while(objects, :ok, fn descriptor, :ok ->
+  defp put_snapshot_object_if_absent(key, data, content_type) do
+    case Storage.put_if_absent(key, data, content_type) do
+      {:error, {:storage_write_cleanup_required, cleanup_key, _write_reason, _cleanup_reason} = reason} ->
+        return_after_compensation(reason, [cleanup_key])
+
+      result ->
+        result
+    end
+  end
+
+  defp copy_snapshot_object(source_key, destination_key, size_bytes, content_type) do
+    case Storage.copy_if_absent_or_stream(source_key, destination_key, size_bytes, content_type) do
+      {:error, {:conditional_copy_cleanup_required, created?, cleanup_key, _cleanup_reason} = reason}
+      when is_boolean(created?) and is_binary(cleanup_key) ->
+        cleanup_keys =
+          if created?,
+            do: [destination_key, cleanup_key],
+            else: [cleanup_key]
+
+        return_after_compensation(reason, cleanup_keys)
+
+      {:error, {:storage_write_cleanup_required, cleanup_key, _write_reason, _cleanup_reason} = reason} ->
+        return_after_compensation(reason, [cleanup_key])
+
+      result ->
+        result
+    end
+  end
+
+  defp return_after_compensation(original_reason, cleanup_keys) do
+    tracker = StorageCompensation.new()
+    Enum.each(cleanup_keys, &StorageCompensation.track_force_delete(tracker, &1))
+
+    case StorageCompensation.cleanup_after_rollback(tracker) do
+      :ok ->
+        {:error, original_reason}
+
+      {:error, cleanup_reason} ->
+        {:error, {:snapshot_object_cleanup_not_persisted, original_reason, cleanup_reason}}
+    end
+  end
+
+  defp verify_blob_inventory(prefix, objects) do
+    objects
+    |> Enum.reject(&(&1["kind"] == "project"))
+    |> Enum.reduce_while(:ok, fn descriptor, :ok ->
       case verify_object(object_key(prefix, descriptor["path"]), descriptor) do
         :ok -> {:cont, :ok}
         {:error, _reason} = error -> {:halt, error}
@@ -307,11 +352,12 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
     }
 
     with :ok <- validate_size_limit(expected_size, max_size, :json_object),
-         :ok <- verify_object(key, descriptor),
          {:ok, stat} <- Storage.stat(key),
+         :ok <- verify_stat(stat, descriptor),
          {:ok, chunks} <- Storage.stream(key, 0, expected_size, conditional_opts(stat)),
          {:ok, bytes} <- consume_binary_chunks(chunks, max_size),
-         true <- byte_size(bytes) == expected_size do
+         true <- byte_size(bytes) == expected_size,
+         :ok <- compare_sha256(sha256(bytes), expected_sha256) do
       {:ok, bytes}
     else
       false -> {:error, {:snapshot_object_size_mismatch, key}}

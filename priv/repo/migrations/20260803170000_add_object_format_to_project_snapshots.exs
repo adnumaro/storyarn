@@ -31,14 +31,16 @@ defmodule Storyarn.Repo.Migrations.AddObjectFormatToProjectSnapshots do
     create constraint(:project_snapshots, :project_snapshots_object_counts,
              check: """
              (object_count IS NULL AND asset_count IS NULL AND blob_count IS NULL) OR
-             (object_count = blob_count + 2 AND blob_count >= 0 AND asset_count >= blob_count)
+             (object_count IS NOT NULL AND asset_count IS NOT NULL AND blob_count IS NOT NULL AND
+              object_count = blob_count + 2 AND blob_count >= 0 AND asset_count >= blob_count)
              """
            )
 
     create constraint(:project_snapshots, :project_snapshots_object_sizes,
              check: """
              (manifest_size_bytes IS NULL AND total_size_bytes IS NULL) OR
-             (manifest_size_bytes > 0 AND total_size_bytes >= manifest_size_bytes)
+             (manifest_size_bytes IS NOT NULL AND total_size_bytes IS NOT NULL AND
+              manifest_size_bytes > 0 AND total_size_bytes >= manifest_size_bytes)
              """
            )
   end

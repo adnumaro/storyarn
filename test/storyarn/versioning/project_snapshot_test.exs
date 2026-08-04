@@ -170,5 +170,29 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       refute changeset.valid?
       assert %{object_count: [_]} = errors_on(changeset)
     end
+
+    test "rejects a total size smaller than the manifest before insert" do
+      attrs = %{
+        project_id: 1,
+        version_number: 1,
+        project_storage_key: "project.json",
+        project_size_bytes: 10,
+        project_checksum: @checksum,
+        format_version: 1,
+        object_prefix: "ready/prefix",
+        manifest_storage_key: "ready/prefix/manifest.json",
+        manifest_size_bytes: 11,
+        manifest_checksum: @checksum,
+        total_size_bytes: 10,
+        object_count: 2,
+        asset_count: 0,
+        blob_count: 0
+      }
+
+      changeset = ProjectSnapshot.object_set_changeset(%ProjectSnapshot{}, attrs)
+
+      refute changeset.valid?
+      assert %{total_size_bytes: ["must be at least the manifest size"]} = errors_on(changeset)
+    end
   end
 end

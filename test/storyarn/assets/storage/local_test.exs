@@ -80,6 +80,24 @@ defmodule Storyarn.Assets.Storage.LocalTest do
 
       assert File.read!(Path.join(test_dir, key)) == "first"
     end
+
+    test "reports cleanup ownership when a failed exclusive write cannot be removed", %{
+      test_key: key,
+      test_dir: test_dir
+    } do
+      configure_put_if_absent_write(fn path, _data ->
+        :ok = File.write(path, "partial", [:binary, :exclusive])
+        {:error, :enospc}
+      end)
+
+      configure_failed_write_remove(fn _path -> {:error, :eacces} end)
+
+      assert {:error, {:storage_write_cleanup_required, ^key, :enospc, :eacces}} =
+               Local.put_if_absent(key, "complete", "text/plain")
+
+      assert File.read!(Path.join(test_dir, key)) == "partial"
+      assert :ok = Local.delete(key)
+    end
   end
 
   describe "upload_stream/3" do
@@ -102,6 +120,20 @@ defmodule Storyarn.Assets.Storage.LocalTest do
 
       assert {:error, :source_timeout} = Local.upload_stream(key, chunks, "text/plain")
       refute File.exists?(Path.join(test_dir, key))
+    end
+
+    test "reports cleanup ownership when partial stream removal fails", %{
+      test_key: key,
+      test_dir: test_dir
+    } do
+      configure_failed_write_remove(fn _path -> {:error, :ebusy} end)
+      chunks = [{:ok, "partial"}, {:error, :source_timeout}]
+
+      assert {:error, {:storage_write_cleanup_required, ^key, :source_timeout, :ebusy}} =
+               Local.upload_stream(key, chunks, "text/plain")
+
+      assert File.read!(Path.join(test_dir, key)) == "partial"
+      assert :ok = Local.delete(key)
     end
   end
 
@@ -477,6 +509,24 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       :storyarn
       |> Application.get_env(:storage, [])
       |> Keyword.put(:conditional_copy_file_rm, remove)
+
+    Application.put_env(:storyarn, :storage, config)
+  end
+
+  defp configure_failed_write_remove(remove) do
+    config =
+      :storyarn
+      |> Application.get_env(:storage, [])
+      |> Keyword.put(:failed_write_file_rm, remove)
+
+    Application.put_env(:storyarn, :storage, config)
+  end
+
+  defp configure_put_if_absent_write(write) do
+    config =
+      :storyarn
+      |> Application.get_env(:storage, [])
+      |> Keyword.put(:put_if_absent_file_write, write)
 
     Application.put_env(:storyarn, :storage, config)
   end

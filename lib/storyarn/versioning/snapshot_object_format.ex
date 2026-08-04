@@ -94,11 +94,12 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     limits = limits(opts)
 
     with :ok <- validate_limits(limits),
+         {:ok, project_id} <- validate_asset_collection(assets, opts),
          :ok <- validate_collection_limit(length(assets), limits.max_assets, :assets) do
       assets
       |> Enum.sort_by(&{&1.inserted_at, &1.id})
       |> logical_assets()
-      |> build_catalog_entries(limits)
+      |> build_catalog_entries(limits, project_id)
     end
   end
 
@@ -212,12 +213,13 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     end)
   end
 
-  defp build_catalog_entries(logical_assets, limits) do
+  defp build_catalog_entries(logical_assets, limits, project_id) do
     logical_ids = Map.new(logical_assets, fn {%Asset{id: id}, logical_id} -> {to_string(id), logical_id} end)
 
     logical_assets
     |> Enum.reduce_while({:ok, [], %{}, %{}}, fn {asset, logical_id}, {:ok, entries, blobs, sources} ->
-      with {:ok, entry, blob, source_key} <- catalog_entry(asset, logical_id, logical_ids, limits),
+      with {:ok, entry, blob, source_key} <-
+             catalog_entry(asset, logical_id, logical_ids, limits, project_id),
            {:ok, blobs} <- put_blob(blobs, blob),
            {:ok, sources} <- put_source(sources, blob["sha256"], source_key) do
         {:cont, {:ok, [entry | entries], blobs, sources}}
@@ -239,14 +241,14 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     end
   end
 
-  defp catalog_entry(%Asset{} = asset, logical_id, logical_ids, limits) do
+  defp catalog_entry(%Asset{} = asset, logical_id, logical_ids, limits, project_id) do
     metadata = asset.metadata || %{}
 
     with :ok <- validate_sha256(asset.blob_hash),
          :ok <- validate_filename(asset.filename),
          :ok <- validate_content_type(asset.content_type),
          :ok <- validate_size(asset.size, limits.max_asset_bytes, :asset),
-         :ok <- validate_source_key(asset.key),
+         :ok <- validate_source_key(asset.key, project_id),
          {:ok, relationships} <- relationships(metadata, logical_ids),
          {:ok, intrinsic_metadata} <- intrinsic_metadata(metadata, limits) do
       path = blob_path(asset.blob_hash, asset.content_type)
@@ -538,11 +540,50 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
 
   defp validate_sha256(sha256), do: {:error, {:invalid_sha256, sha256}}
 
-  defp validate_source_key(key) when is_binary(key) do
-    if Storage.canonical_key?(key), do: :ok, else: {:error, {:invalid_asset_source_key, key}}
+  defp validate_asset_collection([], opts) do
+    case Keyword.get(opts, :project_id) do
+      nil -> {:ok, nil}
+      project_id when is_integer(project_id) and project_id > 0 -> {:ok, project_id}
+      _invalid -> {:error, :invalid_asset_project_id}
+    end
   end
 
-  defp validate_source_key(key), do: {:error, {:invalid_asset_source_key, key}}
+  defp validate_asset_collection(assets, opts) do
+    if Enum.all?(assets, &match?(%Asset{}, &1)) do
+      expected_project_id = Keyword.get(opts, :project_id, hd(assets).project_id)
+
+      cond do
+        not (is_integer(expected_project_id) and expected_project_id > 0) ->
+          {:error, :invalid_asset_project_id}
+
+        Enum.all?(assets, &(&1.project_id == expected_project_id)) ->
+          {:ok, expected_project_id}
+
+        true ->
+          actual_project_ids = assets |> Enum.map(& &1.project_id) |> Enum.uniq() |> Enum.sort()
+          {:error, {:asset_project_mismatch, expected_project_id, actual_project_ids}}
+      end
+    else
+      {:error, :invalid_asset_collection}
+    end
+  end
+
+  defp validate_source_key(key, project_id) when is_binary(key) and is_integer(project_id) do
+    expected_project_id = Integer.to_string(project_id)
+
+    case String.split(key, "/", trim: false) do
+      ["projects", ^expected_project_id, "assets", asset_uuid, filename] ->
+        if Storage.canonical_key?(key) and match?({:ok, _uuid}, Ecto.UUID.cast(asset_uuid)) and
+             filename not in ["", ".", "..", ".storyarn-copy"],
+           do: :ok,
+           else: {:error, {:invalid_asset_source_key, key}}
+
+      _other ->
+        {:error, {:asset_source_project_mismatch, project_id, key}}
+    end
+  end
+
+  defp validate_source_key(key, _project_id), do: {:error, {:invalid_asset_source_key, key}}
 
   defp validate_size(size, max_size, label) when is_integer(size) and size >= 0 do
     cond do

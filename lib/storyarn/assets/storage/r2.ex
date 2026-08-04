@@ -29,23 +29,94 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   @impl true
   def upload_stream(key, chunks, content_type) do
-    multipart_stream = multipart_chunks(chunks)
-
-    try do
-      case multipart_stream
-           |> ExAws.S3.upload(bucket(), key,
-             content_type: content_type,
-             max_concurrency: 1,
-             timeout: 120_000
-           )
-           |> ExAws.request() do
-        {:ok, :done} -> {:ok, get_url(key)}
-        {:ok, _response} -> {:ok, get_url(key)}
-        {:error, reason} -> {:error, reason}
+    with {:ok, upload_id} <- initiate_multipart_upload(key, content_type) do
+      case perform_multipart_upload(key, upload_id, chunks) do
+        :ok -> {:ok, get_url(key)}
+        {:error, reason} -> abort_failed_multipart_upload(key, upload_id, reason)
       end
-    catch
-      {:snapshot_stream_error, reason} -> {:error, reason}
-      kind, reason -> {:error, {:multipart_upload_failed, kind, reason}}
+    end
+  end
+
+  defp initiate_multipart_upload(key, content_type) do
+    case bucket()
+         |> ExAws.S3.initiate_multipart_upload(key, content_type: content_type)
+         |> ExAws.request() do
+      {:ok, %{body: %{upload_id: upload_id}}} when is_binary(upload_id) and upload_id != "" ->
+        {:ok, upload_id}
+
+      {:ok, response} ->
+        {:error, {:invalid_multipart_upload_response, response}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp perform_multipart_upload(key, upload_id, chunks) do
+    with {:ok, parts} <- upload_multipart_parts(key, upload_id, chunks),
+         {:ok, _response} <-
+           bucket()
+           |> ExAws.S3.complete_multipart_upload(key, upload_id, parts)
+           |> ExAws.request() do
+      :ok
+    end
+  rescue
+    error -> {:error, {:multipart_upload_failed, :error, error}}
+  catch
+    {:snapshot_stream_error, reason} -> {:error, reason}
+    kind, reason -> {:error, {:multipart_upload_failed, kind, reason}}
+  end
+
+  defp upload_multipart_parts(key, upload_id, chunks) do
+    result =
+      chunks
+      |> multipart_chunks()
+      |> Stream.with_index(1)
+      |> Enum.reduce_while({:ok, []}, fn {chunk, part_number}, {:ok, parts} ->
+        case upload_multipart_part(key, upload_id, part_number, chunk) do
+          {:ok, etag} -> {:cont, {:ok, [{part_number, etag} | parts]}}
+          {:error, _reason} = error -> {:halt, error}
+        end
+      end)
+
+    case result do
+      {:ok, []} ->
+        with {:ok, etag} <- upload_multipart_part(key, upload_id, 1, "") do
+          {:ok, [{1, etag}]}
+        end
+
+      {:ok, parts} ->
+        {:ok, Enum.reverse(parts)}
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp upload_multipart_part(key, upload_id, part_number, chunk) do
+    case bucket()
+         |> ExAws.S3.upload_part(key, upload_id, part_number, chunk)
+         |> ExAws.request() do
+      {:ok, %{headers: headers}} ->
+        case header(headers, "etag") do
+          nil -> {:error, {:missing_multipart_etag, part_number}}
+          etag -> {:ok, etag}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp abort_failed_multipart_upload(key, upload_id, upload_reason) do
+    case bucket()
+         |> ExAws.S3.abort_multipart_upload(key, upload_id)
+         |> ExAws.request() do
+      {:ok, _response} ->
+        {:error, upload_reason}
+
+      {:error, abort_reason} ->
+        {:error, {:multipart_upload_abort_failed, upload_reason, abort_reason}}
     end
   end
 
@@ -240,8 +311,8 @@ defmodule Storyarn.Assets.Storage.R2 do
           throw({:snapshot_stream_error, :unexpected_blob_stream_chunk})
       end,
       fn
-        {[], 0} -> []
-        {buffer, _size} -> [IO.iodata_to_binary(buffer)]
+        {[], 0} = state -> {[], state}
+        {buffer, _size} -> {[IO.iodata_to_binary(buffer)], {[], 0}}
       end,
       fn _state -> :ok end
     )

@@ -19,6 +19,8 @@ defmodule Storyarn.Assets.Storage do
   @type conditional_copy_cleanup_error ::
           {:conditional_copy_cleanup_required, destination_created? :: boolean(), pending_cleanup_key :: key(),
            cleanup_reason :: term()}
+  @type storage_write_cleanup_error ::
+          {:storage_write_cleanup_required, cleanup_key :: key(), write_reason :: term(), cleanup_reason :: term()}
 
   @callback upload(key, binary_data, content_type) :: {:ok, url} | {:error, term()}
   @callback upload_stream(key, Enumerable.t(), content_type) :: {:ok, url} | {:error, term()}

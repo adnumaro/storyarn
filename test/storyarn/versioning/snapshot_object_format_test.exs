@@ -50,6 +50,24 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
       assert {:error, {:collection_limit_exceeded, :assets, 0}} =
                SnapshotObjectFormat.build_catalog([asset(41, "portrait.png", @hash)], max_assets: 0)
     end
+
+    test "rejects malformed collections and mixed-project source ownership" do
+      assert {:error, :invalid_asset_collection} =
+               SnapshotObjectFormat.build_catalog([asset(41, "portrait.png", @hash), :invalid])
+
+      foreign_asset = %{asset(42, "foreign.png", @hash) | project_id: 8}
+
+      assert {:error, {:asset_project_mismatch, 7, [7, 8]}} =
+               SnapshotObjectFormat.build_catalog([asset(41, "portrait.png", @hash), foreign_asset])
+
+      wrong_key = %{
+        asset(43, "wrong-key.png", @hash)
+        | key: "projects/8/assets/00000000-0000-0000-0000-000000000003/wrong-key.png"
+      }
+
+      assert {:error, {:asset_source_project_mismatch, 7, _key}} =
+               SnapshotObjectFormat.build_catalog([wrong_key])
+    end
   end
 
   describe "manifest validation" do

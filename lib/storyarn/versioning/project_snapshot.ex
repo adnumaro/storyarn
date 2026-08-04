@@ -129,10 +129,12 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_format(:checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:manifest_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_object_counts()
+    |> validate_total_size()
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:created_by_id)
     |> check_constraint(:format_version, name: :project_snapshots_object_format_version)
     |> check_constraint(:object_count, name: :project_snapshots_object_counts)
+    |> check_constraint(:total_size_bytes, name: :project_snapshots_object_sizes)
     |> check_constraint(:checksum, name: :project_snapshots_checksum_format)
     |> check_constraint(:manifest_checksum, name: :project_snapshots_manifest_checksum_format)
     |> unique_constraint(:object_prefix)
@@ -222,5 +224,14 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       true ->
         changeset
     end
+  end
+
+  defp validate_total_size(changeset) do
+    manifest_size = get_field(changeset, :manifest_size_bytes)
+    total_size = get_field(changeset, :total_size_bytes)
+
+    if is_integer(manifest_size) and is_integer(total_size) and total_size < manifest_size,
+      do: add_error(changeset, :total_size_bytes, "must be at least the manifest size"),
+      else: changeset
   end
 end

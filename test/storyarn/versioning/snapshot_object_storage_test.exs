@@ -1,8 +1,15 @@
 defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
-  use Storyarn.DataCase, async: true
+  use Storyarn.DataCase, async: false
+
+  import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
 
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Repo
+  alias Storyarn.SnapshotReadSwitchStorage
+  alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Versioning.SnapshotStorage
 
@@ -160,6 +167,163 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
 
       _deleted = Storage.delete(key)
       _deleted = Storage.delete(SnapshotObjectStorage.staging_prefix(project_id, token) <> "/project.json")
+    end
+
+    test "hashes and decodes the same manifest and project byte buffers" do
+      project_id = unique_project_id()
+      token = SnapshotStorage.unique_key_suffix()
+      content = "single read verification"
+      hash = sha256(content)
+      source = source_key(project_id, "single-read.png")
+      assert {:ok, _url} = Storage.upload(source, content, "image/png")
+      asset = asset(501, project_id, "single-read.png", source, content, hash)
+
+      assert {:ok, stored} =
+               SnapshotObjectStorage.persist(project_id, project_object(asset), [asset], token: token)
+
+      project_key = stored.project_storage_key
+
+      replacements = %{
+        stored.manifest_storage_key => String.duplicate(" ", stored.manifest_size_bytes),
+        project_key => String.duplicate(" ", stored.project_size_bytes)
+      }
+
+      original_config = Application.get_env(:storyarn, :storage, [])
+      {:ok, _pid} = SnapshotReadSwitchStorage.start_link(replacements)
+
+      Application.put_env(
+        :storyarn,
+        :storage,
+        Keyword.put(original_config, :adapter, SnapshotReadSwitchStorage)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, :storage, original_config)
+
+        if Process.whereis(SnapshotReadSwitchStorage) do
+          Agent.stop(SnapshotReadSwitchStorage)
+        end
+      end)
+
+      SnapshotReadSwitchStorage.reset_counts()
+
+      assert {:ok, loaded} =
+               SnapshotObjectStorage.load_verified(
+                 stored.manifest_storage_key,
+                 stored.manifest_checksum,
+                 stored.manifest_size_bytes
+               )
+
+      assert loaded.project["format_version"] == 2
+      assert SnapshotReadSwitchStorage.stream_count(stored.manifest_storage_key) == 1
+      assert SnapshotReadSwitchStorage.stream_count(project_key) == 1
+
+      cleanup_object_set(project_id, token, loaded.manifest, [source])
+    end
+
+    test "durably compensates a failed local staging write before returning" do
+      project_id = unique_project_id()
+      token = SnapshotStorage.unique_key_suffix()
+      content = "staging write cleanup"
+      source = source_key(project_id, "staging.png")
+      assert {:ok, _url} = Storage.upload(source, content, "image/png")
+      asset = asset(601, project_id, "staging.png", source, content, sha256(content))
+      original_config = Application.get_env(:storyarn, :storage, [])
+
+      write_partial = fn path, _data ->
+        :ok = File.write(path, "partial", [:binary, :exclusive])
+        {:error, :enospc}
+      end
+
+      Application.put_env(
+        :storyarn,
+        :storage,
+        original_config
+        |> Keyword.put(:put_if_absent_file_write, write_partial)
+        |> Keyword.put(:failed_write_file_rm, fn _path -> {:error, :eacces} end)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, :storage, original_config) end)
+
+      staging_project = SnapshotObjectStorage.staging_prefix(project_id, token) <> "/project.json"
+
+      assert {:error, {:storage_write_cleanup_required, ^staging_project, :enospc, :eacces}} =
+               SnapshotObjectStorage.persist(project_id, project_object(asset), [asset], token: token)
+
+      assert {:error, :enoent} = Storage.stat(staging_project)
+      assert :ok = Storage.delete(source)
+    end
+
+    test "compensates a published snapshot object and pending conditional-copy key" do
+      project_id = unique_project_id()
+      token = SnapshotStorage.unique_key_suffix()
+      content = "conditional snapshot cleanup"
+      hash = sha256(content)
+      source = source_key(project_id, "conditional.png")
+      assert {:ok, _url} = Storage.upload(source, content, "image/png")
+      asset = asset(701, project_id, "conditional.png", source, content, hash)
+      original_config = Application.get_env(:storyarn, :storage, [])
+
+      Application.put_env(
+        :storyarn,
+        :storage,
+        Keyword.put(original_config, :conditional_copy_file_rm, fn _path -> {:error, :ebusy} end)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, :storage, original_config) end)
+
+      assert {:error, {:conditional_copy_cleanup_required, true, pending_cleanup_key, :ebusy}} =
+               SnapshotObjectStorage.persist(project_id, project_object(asset), [asset], token: token)
+
+      staging_prefix = SnapshotObjectStorage.staging_prefix(project_id, token)
+      staging_blob = staging_prefix <> "/blobs/#{hash}.png"
+      assert {:error, :enoent} = Storage.stat(staging_blob)
+
+      upload_dir =
+        :storyarn
+        |> Application.get_env(:storage, [])
+        |> Keyword.get(:upload_dir, "priv/static/uploads")
+        |> Path.expand()
+
+      refute File.exists?(Path.join(upload_dir, pending_cleanup_key))
+
+      assert :ok = Storage.delete(staging_prefix <> "/project.json")
+      assert :ok = Storage.delete(source)
+    end
+
+    test "deferred compensation retains an object set adopted by a committed snapshot row" do
+      user = user_fixture()
+      project_record = project_fixture(user)
+      project_id = project_record.id
+      token = SnapshotStorage.unique_key_suffix()
+      content = "adopted snapshot object"
+      source = source_key(project_id, "adopted.png")
+      assert {:ok, _url} = Storage.upload(source, content, "image/png")
+      asset = asset(801, project_id, "adopted.png", source, content, sha256(content))
+
+      assert {:ok, stored} =
+               SnapshotObjectStorage.persist(project_id, project_object(asset), [asset], token: token)
+
+      attrs = Map.merge(stored, %{project_id: project_id, version_number: 1})
+
+      assert {:ok, _snapshot} =
+               %ProjectSnapshot{}
+               |> ProjectSnapshot.object_set_changeset(attrs)
+               |> Repo.insert()
+
+      tracker = StorageCompensation.new()
+      :ok = StorageCompensation.track_force_delete(tracker, stored.project_storage_key)
+      assert :ok = StorageCompensation.cleanup_after_rollback(tracker)
+      assert {:ok, _stat} = Storage.stat(stored.project_storage_key)
+
+      assert {:ok, loaded} =
+               SnapshotObjectStorage.load_verified(
+                 stored.manifest_storage_key,
+                 stored.manifest_checksum,
+                 stored.manifest_size_bytes
+               )
+
+      cleanup_object_set(project_id, token, loaded.manifest, [source])
     end
   end
 
