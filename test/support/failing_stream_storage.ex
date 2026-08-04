@@ -13,6 +13,9 @@ defmodule Storyarn.FailingStreamStorage do
   def upload(_key, _data, _content_type), do: {:error, :unsupported}
 
   @impl true
+  def upload_stream(_key, _chunks, _content_type), do: {:error, :unsupported}
+
+  @impl true
   def put_if_absent(_key, _data, _content_type), do: {:error, :unsupported}
 
   @impl true

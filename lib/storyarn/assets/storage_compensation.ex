@@ -13,6 +13,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
+  alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   require Logger
@@ -30,6 +31,8 @@ defmodule Storyarn.Assets.StorageCompensation do
   @conditional_copy_suffix_pattern ~r/\A[A-Za-z0-9_-]{16}\z/
   @template_namespace_pattern ~r/\A[a-z0-9][a-z0-9_-]{0,127}\z/
   @template_filename_pattern ~r/\A[\w.-]{1,255}\z/u
+  @snapshot_token_pattern ~r/\A[A-Za-z0-9_-]{16}\z/
+  @snapshot_blob_filename_pattern ~r/\A[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z/
 
   @spec new() :: reference()
   def new do
@@ -771,6 +774,9 @@ defmodule Storyarn.Assets.StorageCompensation do
       committed_template_storage_key?(storage_key) ->
         retain_committed_template_storage(storage_key)
 
+      committed_snapshot_storage_key?(storage_key) ->
+        retain_committed_snapshot_storage(storage_key)
+
       force_delete? ->
         delete_if_still_invalid(storage_key)
 
@@ -864,6 +870,19 @@ defmodule Storyarn.Assets.StorageCompensation do
     end
   end
 
+  defp committed_snapshot_storage_key?(storage_key) do
+    case snapshot_object_storage_identity(storage_key) do
+      {:object, project_id, :ready, object_prefix, false} ->
+        Repo.exists?(
+          from snapshot in ProjectSnapshot,
+            where: snapshot.project_id == ^project_id and snapshot.object_prefix == ^object_prefix
+        )
+
+      _other ->
+        false
+    end
+  end
+
   defp committed_template_version_storage_key?(storage_key) do
     Repo.exists?(
       from version in ProjectTemplateVersion,
@@ -932,6 +951,16 @@ defmodule Storyarn.Assets.StorageCompensation do
     :ok
   end
 
+  defp retain_committed_snapshot_storage(_storage_key) do
+    :telemetry.execute(
+      [:storyarn, :assets, :storage_compensation, :snapshot_storage_retained],
+      %{count: 1},
+      %{key_type: :snapshot_object}
+    )
+
+    :ok
+  end
+
   defp report_unpersisted_cleanup(failed_keys, enqueue_error, persistence_reason) do
     Logger.error(
       "Copied asset cleanup could not be completed or persisted failed_count=#{length(failed_keys)} enqueue_error=#{inspect(enqueue_error)} persistence_error=#{safe_error(persistence_reason)}"
@@ -949,7 +978,8 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp valid_storage_key?(storage_key) when is_binary(storage_key) do
     String.valid?(storage_key) and
-      (project_storage_key?(storage_key) or template_storage_key?(storage_key))
+      (project_storage_key?(storage_key) or template_storage_key?(storage_key) or
+         snapshot_object_storage_key?(storage_key))
   end
 
   @doc false
@@ -998,6 +1028,50 @@ defmodule Storyarn.Assets.StorageCompensation do
         false
     end
   end
+
+  defp snapshot_object_storage_key?(storage_key) do
+    match?({:object, _project_id, _state, _object_prefix, _temporary?}, snapshot_object_storage_identity(storage_key))
+  end
+
+  defp snapshot_object_storage_identity(storage_key) do
+    case String.split(storage_key, "/", trim: false) do
+      ["projects", project_id, "snapshots", "object-sets", "v1", state, token | tail] ->
+        with true <- valid_project_id?(project_id),
+             {:ok, state} <- snapshot_state(state),
+             true <- String.match?(token, @snapshot_token_pattern),
+             {:ok, temporary?} <- snapshot_object_tail(tail) do
+          object_prefix =
+            Enum.join(["projects", project_id, "snapshots", "object-sets", "v1", Atom.to_string(state), token], "/")
+
+          {:object, String.to_integer(project_id), state, object_prefix, temporary?}
+        else
+          _invalid -> :error
+        end
+
+      _other ->
+        :error
+    end
+  end
+
+  defp snapshot_state("staging"), do: {:ok, :staging}
+  defp snapshot_state("ready"), do: {:ok, :ready}
+  defp snapshot_state(_state), do: :error
+
+  defp snapshot_object_tail([filename]) when filename in ["manifest.json", "project.json"], do: {:ok, false}
+
+  defp snapshot_object_tail(["blobs", filename]) do
+    if String.match?(filename, @snapshot_blob_filename_pattern), do: {:ok, false}, else: :error
+  end
+
+  defp snapshot_object_tail([".storyarn-copy", suffix]) do
+    if String.match?(suffix, @conditional_copy_suffix_pattern), do: {:ok, true}, else: :error
+  end
+
+  defp snapshot_object_tail(["blobs", ".storyarn-copy", suffix]) do
+    if String.match?(suffix, @conditional_copy_suffix_pattern), do: {:ok, true}, else: :error
+  end
+
+  defp snapshot_object_tail(_tail), do: :error
 
   defp valid_project_id?(project_id) do
     case Integer.parse(project_id) do

@@ -26,13 +26,27 @@ defmodule Storyarn.Assets.Storage.Local do
 
   @impl true
   # sobelow_skip ["Traversal.FileModule"]
+  def upload_stream(key, chunks, _content_type) do
+    with {:ok, path} <- file_path(key),
+         :ok <- ensure_directory(path) do
+      result = write_stream(key, path, chunks)
+
+      case result do
+        :ok -> {:ok, get_url(key)}
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  @impl true
+  # sobelow_skip ["Traversal.FileModule"]
   def put_if_absent(key, data, _content_type) do
     with {:ok, path} <- file_path(key),
          :ok <- ensure_directory(path) do
-      case File.write(path, data, [:binary, :exclusive]) do
+      case write_file_if_absent(path, data) do
         :ok -> {:ok, get_url(key), true}
         {:error, :eexist} -> {:ok, get_url(key), false}
-        {:error, reason} -> {:error, reason}
+        {:error, reason} -> cleanup_failed_write(key, path, reason)
       end
     end
   end
@@ -208,6 +222,63 @@ defmodule Storyarn.Assets.Storage.Local do
         {:error, reason}
     end
   end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp write_stream(key, path, chunks) do
+    case File.open(path, [:write, :binary, :exclusive], fn destination ->
+           Enum.reduce_while(chunks, :ok, &write_stream_chunk(&1, &2, destination))
+         end) do
+      {:ok, :ok} ->
+        :ok
+
+      {:ok, {:error, reason}} ->
+        cleanup_failed_write(key, path, reason)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp write_file_if_absent(path, data) do
+    case config()[:put_if_absent_file_write] do
+      write when is_function(write, 2) -> write.(path, data)
+      _other -> File.write(path, data, [:binary, :exclusive])
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp cleanup_failed_write(key, path, write_reason) do
+    case remove_failed_write(path) do
+      :ok ->
+        {:error, write_reason}
+
+      {:error, :enoent} ->
+        {:error, write_reason}
+
+      {:error, cleanup_reason} ->
+        {:error, {:storage_write_cleanup_required, key, write_reason, cleanup_reason}}
+    end
+  end
+
+  # sobelow_skip ["Traversal.FileModule"]
+  defp remove_failed_write(path) do
+    case config()[:failed_write_file_rm] do
+      remove when is_function(remove, 1) -> remove.(path)
+      _other -> File.rm(path)
+    end
+  end
+
+  defp write_stream_chunk({:ok, chunk}, :ok, destination) when is_binary(chunk) do
+    case IO.binwrite(destination, chunk) do
+      :ok -> {:cont, :ok}
+      {:error, reason} -> {:halt, {:error, reason}}
+    end
+  end
+
+  defp write_stream_chunk({:error, reason}, :ok, _destination), do: {:halt, {:error, reason}}
+
+  defp write_stream_chunk(_unexpected, :ok, _destination), do: {:halt, {:error, :unexpected_blob_stream_chunk}}
 
   # sobelow_skip ["Traversal.FileModule"]
   defp publish_temporary_copy(temporary_path, temporary_key, dest_path) do

@@ -19,8 +19,11 @@ defmodule Storyarn.Assets.Storage do
   @type conditional_copy_cleanup_error ::
           {:conditional_copy_cleanup_required, destination_created? :: boolean(), pending_cleanup_key :: key(),
            cleanup_reason :: term()}
+  @type storage_write_cleanup_error ::
+          {:storage_write_cleanup_required, cleanup_key :: key(), write_reason :: term(), cleanup_reason :: term()}
 
   @callback upload(key, binary_data, content_type) :: {:ok, url} | {:error, term()}
+  @callback upload_stream(key, Enumerable.t(), content_type) :: {:ok, url} | {:error, term()}
   @callback put_if_absent(key, binary_data, content_type) ::
               {:ok, url, created? :: boolean()} | {:error, term()}
   @callback delete(key) :: :ok | {:error, term()}
@@ -54,6 +57,16 @@ defmodule Storyarn.Assets.Storage do
   """
   def upload(key, data, content_type) do
     adapter().upload(key, data, content_type)
+  end
+
+  @doc """
+  Uploads a bounded stream without assembling the complete object in memory.
+
+  Adapters must consume `{:ok, binary}` chunks and stop on `{:error, reason}`.
+  S3-compatible adapters use multipart upload.
+  """
+  def upload_stream(key, chunks, content_type) do
+    adapter().upload_stream(key, chunks, content_type)
   end
 
   @doc """
@@ -164,6 +177,49 @@ defmodule Storyarn.Assets.Storage do
   """
   def copy_if_absent(source_key, dest_key) do
     adapter().copy_if_absent(source_key, dest_key)
+  end
+
+  @doc """
+  Uses conditional server-side copy when available and falls back to a bounded
+  private read plus streaming/multipart upload.
+
+  The fallback is intended for immutable snapshot-owned namespaces. Callers
+  must verify the destination digest and size before publishing readiness.
+  """
+  def copy_if_absent_or_stream(source_key, dest_key, size_bytes, content_type)
+      when is_integer(size_bytes) and size_bytes >= 0 do
+    case copy_if_absent(source_key, dest_key) do
+      {:error, reason} when reason in [:not_supported, :copy_not_supported] ->
+        copy_via_stream(source_key, dest_key, size_bytes, content_type)
+
+      {:error, {:http_error, status, _response}} when status in [405, 501] ->
+        copy_via_stream(source_key, dest_key, size_bytes, content_type)
+
+      result ->
+        result
+    end
+  end
+
+  defp copy_via_stream(source_key, dest_key, size_bytes, content_type) do
+    case stat(dest_key) do
+      {:ok, _stat} ->
+        {:ok, false}
+
+      {:error, reason} when reason == :enoent ->
+        with {:ok, chunks} <- stream(source_key, 0, size_bytes),
+             {:ok, _url} <- upload_stream(dest_key, chunks, content_type) do
+          {:ok, true}
+        end
+
+      {:error, {:http_error, 404, _response}} ->
+        with {:ok, chunks} <- stream(source_key, 0, size_bytes),
+             {:ok, _url} <- upload_stream(dest_key, chunks, content_type) do
+          {:ok, true}
+        end
+
+      {:error, reason} ->
+        {:error, {:destination_stat_failed, reason}}
+    end
   end
 
   @doc """

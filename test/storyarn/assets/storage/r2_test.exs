@@ -98,6 +98,45 @@ defmodule Storyarn.Assets.Storage.R2Test do
     end
   end
 
+  describe "upload_stream/3" do
+    test "aborts an initialized multipart upload when a part fails" do
+      key = "projects/1/snapshots/object-sets/v1/staging/AbCdEfGhIjKlMnOp/blobs/hash.png"
+
+      Req.Test.expect(__MODULE__, 3, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        case conn.method do
+          "POST" ->
+            assert conn.query_params == %{"uploads" => "1"}
+
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              """
+              <InitiateMultipartUploadResult>
+                <Bucket>private-bucket</Bucket>
+                <Key>#{key}</Key>
+                <UploadId>upload-123</UploadId>
+              </InitiateMultipartUploadResult>
+              """
+            )
+
+          "PUT" ->
+            assert conn.query_params["uploadId"] == "upload-123"
+            assert conn.query_params["partNumber"] == "1"
+            Plug.Conn.send_resp(conn, 400, "<Error><Code>InvalidPart</Code></Error>")
+
+          "DELETE" ->
+            assert conn.query_params == %{"uploadId" => "upload-123"}
+            Plug.Conn.send_resp(conn, 204, "")
+        end
+      end)
+
+      assert {:error, {:http_error, 400, _response}} =
+               R2.upload_stream(key, [{:ok, "bounded chunk"}], "image/png")
+    end
+  end
+
   describe "copy_if_absent/2" do
     test "uses a server-side destination-conditional copy" do
       Req.Test.expect(__MODULE__, fn conn ->

@@ -20,6 +20,7 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.ProjectSnapshotCrud
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
+  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Versioning.SnapshotViewer
   alias Storyarn.Versioning.VersionCrud
 
@@ -195,6 +196,20 @@ defmodule Storyarn.Versioning do
   Deletes auto snapshots older than the given retention period.
   """
   defdelegate prune_expired_snapshots(project_id, retention_days), to: ProjectSnapshotCrud
+
+  @doc """
+  Persists a canonical snapshot-owned object set without scheduling capture.
+  """
+  defdelegate persist_snapshot_object_set(project_id, project_snapshot, assets, opts \\ []),
+    to: SnapshotObjectStorage,
+    as: :persist
+
+  @doc """
+  Loads a ready object set after verifying its manifest and complete inventory.
+  """
+  defdelegate load_snapshot_object_set(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts \\ []),
+    to: SnapshotObjectStorage,
+    as: :load_verified
 
   # ========== Project Recovery ==========
 
