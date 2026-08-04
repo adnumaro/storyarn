@@ -20,7 +20,7 @@ import ImportCompatibilitySummary from "@modules/projects/settings/export-import
 import YarnSpeakerReview from "@modules/projects/settings/export-import/components/YarnSpeakerReview.vue";
 import { useImportResume } from "@modules/projects/settings/export-import/composables/useImportResume";
 import { useYarnImportReview } from "@modules/projects/settings/export-import/composables/useYarnImportReview";
-import type { ImportPanelProps } from "@modules/projects/settings/export-import/types";
+import type { ImportPanelProps } from "../types";
 
 const { t } = useI18n();
 
