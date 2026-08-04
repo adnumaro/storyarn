@@ -7,6 +7,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.Scope
   alias Storyarn.Assets.Storage
+  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Imports
@@ -671,6 +672,25 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert_received {:project_import_updated, second_broadcast}
     assert second_broadcast.id == completed.id
     assert second_broadcast.status == "completed"
+  end
+
+  test "materializes and completes while holding the workspace storage-accounting lock", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    assert {:ok, completed} =
+             Imports.perform_import(queued.id,
+               attempt: 1,
+               max_attempts: 3,
+               before_attempt_completion: fn ->
+                 send(self(), {:workspace_lock_held, Billing.workspace_lock_held?(ctx.project.workspace_id)})
+               end
+             )
+
+    assert completed.status == "completed"
+    assert_received {:workspace_lock_held, true}
   end
 
   test "persists actual materialized counts after skip conflicts", ctx do

@@ -10,7 +10,6 @@ defmodule StoryarnWeb.UploadController do
 
   alias Storyarn.Assets
   alias Storyarn.Assets.UploadPolicy
-  alias Storyarn.Billing
   alias Storyarn.Projects
   alias StoryarnWeb.PrivateMedia
 
@@ -71,7 +70,6 @@ defmodule StoryarnWeb.UploadController do
            Projects.get_project_by_slugs(scope, workspace_slug, project_slug),
          true <- Projects.can?(membership.role, :edit_content),
          {:ok, binary_data} <- read_upload(upload),
-         :ok <- Billing.can_upload_asset_for_project?(project, byte_size(binary_data)),
          {:ok, asset} <-
            create_asset(binary_data, upload, conn.params["purpose"], project, scope.user) do
       json(conn, upload_response(asset))

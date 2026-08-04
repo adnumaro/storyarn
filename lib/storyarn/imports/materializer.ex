@@ -16,6 +16,7 @@ defmodule Storyarn.Imports.Materializer do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets
+  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
@@ -110,6 +111,7 @@ defmodule Storyarn.Imports.Materializer do
 
     bad_nested =
       invalid_entity_entries(data) ++
+        invalid_asset_entries(data) ++
         invalid_flow_entries(data) ++
         invalid_localization_entries(data)
 
@@ -117,6 +119,32 @@ defmodule Storyarn.Imports.Materializer do
       [] -> :ok
       fields -> {:error, {:invalid_field_types, Enum.uniq(fields)}}
     end
+  end
+
+  defp invalid_asset_entries(data) do
+    case data["assets"] do
+      nil ->
+        []
+
+      assets when not is_map(assets) ->
+        ["assets"]
+
+      assets ->
+        invalid_asset_items(assets["items"])
+    end
+  end
+
+  defp invalid_asset_items(nil), do: []
+  defp invalid_asset_items(items) when not is_list(items), do: ["assets.items"]
+
+  defp invalid_asset_items(items) do
+    items
+    |> Enum.with_index()
+    |> Enum.flat_map(fn
+      {%{"size" => size}, _index} when is_integer(size) and size > 0 -> []
+      {item, index} when is_map(item) -> ["assets.items[#{index}].size"]
+      {_item, index} -> ["assets.items[#{index}]"]
+    end)
   end
 
   defp invalid_entity_entries(data) do
@@ -413,10 +441,16 @@ defmodule Storyarn.Imports.Materializer do
   def execute(project, %ImportPlan{} = plan, opts) do
     result =
       if ReviewDecisions.resolved?(plan) do
-        Repo.transact(
-          fn -> materialize_in_transaction(project, plan, opts) end,
+        project.workspace_id
+        |> Billing.transact_with_workspace_lock(
+          fn _workspace ->
+            project
+            |> materialize_in_transaction(plan, opts)
+            |> normalize_transaction_result()
+          end,
           timeout: to_timeout(minute: 5)
         )
+        |> restore_transaction_result()
       else
         {:error, :invalid_import_review}
       end
@@ -431,12 +465,21 @@ defmodule Storyarn.Imports.Materializer do
 
   def execute(_project, data, _opts) when is_map(data), do: {:error, :import_plan_required}
 
+  defp normalize_transaction_result({:error, reason, details}), do: {:error, {:detailed_import_error, reason, details}}
+
+  defp normalize_transaction_result(result), do: result
+
+  defp restore_transaction_result({:error, {:detailed_import_error, reason, details}}), do: {:error, reason, details}
+
+  defp restore_transaction_result(result), do: result
+
   @doc false
   def materialize_in_transaction(project, plan, opts \\ [])
 
   def materialize_in_transaction(project, %ImportPlan{data: data} = plan, opts) do
     cond do
       not Repo.in_transaction?() -> {:error, :import_transaction_required}
+      not Billing.workspace_lock_held?(project.workspace_id) -> {:error, :storage_accounting_lock_required}
       ImportPlan.error?(plan) -> {:error, :import_plan_has_errors}
       not ReviewDecisions.resolved?(plan) -> {:error, :invalid_import_review}
       true -> do_materialize_in_transaction(project, data, opts)
@@ -451,6 +494,7 @@ defmodule Storyarn.Imports.Materializer do
   def materialize_locked_project_in_transaction(%Project{deleted_at: nil} = project, %ImportPlan{data: data} = plan, opts) do
     cond do
       not Repo.in_transaction?() -> {:error, :import_transaction_required}
+      not Billing.workspace_lock_held?(project.workspace_id) -> {:error, :storage_accounting_lock_required}
       ImportPlan.error?(plan) -> {:error, :import_plan_has_errors}
       not ReviewDecisions.resolved?(plan) -> {:error, :invalid_import_review}
       true -> materialize_validated_project(project, data, opts)
@@ -474,48 +518,54 @@ defmodule Storyarn.Imports.Materializer do
          :ok <- validate_types(data),
          :ok <- validate_runtime_identifiers(data),
          :ok <- validate_entity_counts(data) do
-      existing_shortcuts = preload_existing_shortcuts(project.id)
-      id_map = %{}
-      {id_map, asset_results} = import_assets(project.id, data, id_map)
-
-      {id_map, sheet_results, sheet_shortcut_renames} =
-        import_sheets(project, data, id_map, strategy, existing_shortcuts)
-
-      {id_map, scene_results} =
-        import_scenes(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
-
-      {id_map, flow_results, node_count} =
-        import_flows(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
-
-      # Pass 3: link scene→flow references now that flows exist in id_map
-      link_scene_flow_references(data, id_map)
-
-      # Pass 4: link node→flow references (referenced_flow_id, target_id)
-      # now that all flows exist in id_map
-      link_node_flow_references(data, id_map)
-
-      {_id_map, loc_results} = import_localization(project.id, data, id_map)
-
-      rebuild_imported_references!(project.id)
-
-      counts = %{
-        assets: length(asset_results),
-        sheets: length(sheet_results),
-        flows: length(flow_results),
-        nodes: node_count,
-        scenes: length(scene_results)
-      }
-
-      {:ok,
-       %{
-         assets: asset_results,
-         sheets: sheet_results,
-         flows: flow_results,
-         scenes: scene_results,
-         localization: loc_results,
-         counts: counts
-       }}
+      Assets.with_import_capacity(project, imported_asset_bytes(data), fn ->
+        materialize_capacity_authorized_project(project, data, strategy)
+      end)
     end
+  end
+
+  defp materialize_capacity_authorized_project(project, data, strategy) do
+    existing_shortcuts = preload_existing_shortcuts(project.id)
+    id_map = %{}
+    {id_map, asset_results} = import_assets(project, data, id_map)
+
+    {id_map, sheet_results, sheet_shortcut_renames} =
+      import_sheets(project, data, id_map, strategy, existing_shortcuts)
+
+    {id_map, scene_results} =
+      import_scenes(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
+
+    {id_map, flow_results, node_count} =
+      import_flows(project, data, id_map, strategy, existing_shortcuts, sheet_shortcut_renames)
+
+    # Pass 3: link scene→flow references now that flows exist in id_map
+    link_scene_flow_references(data, id_map)
+
+    # Pass 4: link node→flow references (referenced_flow_id, target_id)
+    # now that all flows exist in id_map
+    link_node_flow_references(data, id_map)
+
+    {_id_map, loc_results} = import_localization(project.id, data, id_map)
+
+    rebuild_imported_references!(project.id)
+
+    counts = %{
+      assets: length(asset_results),
+      sheets: length(sheet_results),
+      flows: length(flow_results),
+      nodes: node_count,
+      scenes: length(scene_results)
+    }
+
+    {:ok,
+     %{
+       assets: asset_results,
+       sheets: sheet_results,
+       flows: flow_results,
+       scenes: scene_results,
+       localization: loc_results,
+       counts: counts
+     }}
   end
 
   defp rebuild_imported_references!(project_id) do
@@ -622,7 +672,12 @@ defmodule Storyarn.Imports.Materializer do
   # Assets import
   # =============================================================================
 
-  defp import_assets(project_id, data, id_map) do
+  defp imported_asset_bytes(data) do
+    items = get_in(data, ["assets", "items"]) || []
+    Enum.reduce(items, 0, fn item, total -> total + item["size"] end)
+  end
+
+  defp import_assets(project, data, id_map) do
     items = get_in(data, ["assets", "items"]) || []
 
     Enum.reduce(items, {id_map, []}, fn item, {map, results} ->
@@ -630,14 +685,14 @@ defmodule Storyarn.Imports.Materializer do
         "filename" => item["filename"],
         "content_type" => item["content_type"],
         "size" => item["size"],
-        "key" => regenerate_asset_key(item["filename"]),
+        "key" => Assets.generate_key(project, item["filename"]),
         "url" => item["url"],
         "metadata" => item["metadata"] || %{}
       }
 
       asset =
         facade_insert_or_rollback!(
-          Assets.import_asset(project_id, attrs),
+          Assets.import_asset(project, attrs),
           {:asset, item["filename"]}
         )
 
@@ -1862,12 +1917,6 @@ defmodule Storyarn.Imports.Materializer do
   defp facade_insert_or_rollback!({:ok, record}, _context), do: record
 
   defp facade_insert_or_rollback!({:error, changeset}, context), do: Repo.rollback({:import_failed, context, changeset})
-
-  defp regenerate_asset_key(filename) do
-    uuid = Ecto.UUID.generate()
-    sanitized = String.replace(filename || "unknown", ~r/[^\w\-.]/, "_")
-    "imports/#{uuid}/#{sanitized}"
-  end
 
   defp import_sheet_avatars(sheet, sheet_data, id_map) do
     case sheet_data["avatars"] do

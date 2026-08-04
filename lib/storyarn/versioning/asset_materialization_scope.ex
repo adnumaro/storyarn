@@ -19,7 +19,6 @@ defmodule Storyarn.Versioning.AssetMaterializationScope do
           opts
           |> Keyword.put(:asset_materialization_cache, cache)
           |> Keyword.put(:asset_copy_tracker, copy_tracker)
-          |> Keyword.put(:asset_error_mode, :strict)
 
         case invoke(fun, scoped_opts, cache, owns_cache?, copy_tracker, owns_copy_tracker?) do
           {:asset_copy_error, asset_id, reason} ->

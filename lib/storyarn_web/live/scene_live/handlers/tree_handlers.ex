@@ -52,7 +52,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
         create_child_scene_without_image(zone_id, scene, socket)
 
       {:error, :limit_reached, _details} ->
-        {:noreply, put_flash(socket, :error, dgettext("scenes", "Item limit reached for your plan"))}
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("assets", "Storage limit reached. Upgrade your plan.")
+         )}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not create child scene."))}

@@ -132,10 +132,23 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       assert nil == AssetHashResolver.resolve_asset_fk(nil, %{}, 1)
     end
 
-    test "returns ID when asset still exists", %{project: project, user: user} do
-      asset = asset_fixture(project, user)
+    test "reuses a verified asset owned by the destination project", %{project: project, user: user} do
+      {asset, _hash} =
+        materializable_asset(
+          project,
+          user,
+          "verified reusable asset",
+          filename: "reusable.jpg",
+          content_type: "image/jpeg"
+        )
 
-      result = AssetHashResolver.resolve_asset_fk(asset.id, %{}, project.id)
+      result =
+        AssetHashResolver.resolve_asset_fk(
+          asset.id,
+          strict_snapshot(asset, project.id),
+          project.id
+        )
+
       assert result == asset.id
     end
 
@@ -177,7 +190,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       assert new_asset.blob_hash == hash
     end
 
-    test "drops or raises instead of returning a foreign ID when blob metadata is unavailable", %{
+    test "only drops explicitly when portable metadata is unavailable", %{
       project: destination_project,
       user: user
     } do
@@ -189,7 +202,8 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
                  foreign_asset.id,
                  %{},
                  destination_project.id,
-                 user.id
+                 user.id,
+                 asset_mode: :drop
                )
 
       error =
@@ -198,8 +212,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
             foreign_asset.id,
             %{},
             destination_project.id,
-            user.id,
-            asset_error_mode: :strict
+            user.id
           )
         end
 
@@ -213,19 +226,15 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       ext = "mp3"
       {:ok, _key} = BlobStore.ensure_blob(project.id, hash, ext, content)
 
-      asset = asset_fixture(project, user, %{content_type: "audio/mpeg", filename: "track.mp3"})
-      asset_id_str = to_string(asset.id)
+      asset =
+        asset_fixture(project, user, %{
+          content_type: "audio/mpeg",
+          filename: "track.mp3",
+          blob_hash: hash,
+          size: byte_size(content)
+        })
 
-      snapshot = %{
-        "asset_blob_hashes" => %{asset_id_str => hash},
-        "asset_metadata" => %{
-          asset_id_str => %{
-            "filename" => "track.mp3",
-            "content_type" => "audio/mpeg",
-            "size" => byte_size(content)
-          }
-        }
-      }
+      snapshot = strict_snapshot(asset, project.id)
 
       Repo.delete!(asset)
 
@@ -239,7 +248,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       assert new_asset.blob_hash == hash
     end
 
-    test "returns nil when asset deleted and no blob info in snapshot", %{
+    test "rejects a deleted asset without portable catalog data", %{
       project: project,
       user: user
     } do
@@ -247,11 +256,17 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       Repo.delete!(asset)
 
       snapshot = %{"asset_blob_hashes" => %{}, "asset_metadata" => %{}}
-      result = AssetHashResolver.resolve_asset_fk(asset.id, snapshot, project.id)
-      assert is_nil(result)
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(asset.id, snapshot, project.id)
+        end
+
+      assert error.asset_id == asset.id
+      assert error.reason == :missing_blob_hash
     end
 
-    test "returns nil for malformed snapshot asset metadata", %{project: project, user: user} do
+    test "rejects malformed snapshot asset metadata", %{project: project, user: user} do
       asset_id = 999_991
 
       snapshot = %{
@@ -261,24 +276,9 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
         }
       }
 
-      assert nil ==
-               AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project.id, user.id, asset_mode: :copy)
-    end
-
-    test "raises the domain error for malformed metadata in strict mode", %{project: project, user: user} do
-      asset_id = 999_992
-
-      snapshot = %{
-        "asset_blob_hashes" => %{to_string(asset_id) => "abc123"},
-        "asset_metadata" => %{to_string(asset_id) => %{"content_type" => "image/png"}}
-      }
-
       error =
         assert_raise AssetCopyError, fn ->
-          AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project.id, user.id,
-            asset_mode: :copy,
-            asset_error_mode: :strict
-          )
+          AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project.id, user.id, asset_mode: :copy)
         end
 
       assert error.asset_id == asset_id
@@ -305,7 +305,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
 
       opts = [
         asset_mode: :copy,
-        asset_error_mode: :strict,
         asset_materialization_cache: cache
       ]
 
@@ -360,7 +359,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
 
       opts = [
         asset_mode: :copy,
-        asset_error_mode: :strict,
         asset_materialization_cache: cache
       ]
 
@@ -428,7 +426,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
           destination_project.id,
           user.id,
           asset_mode: :copy,
-          asset_error_mode: :strict,
           asset_materialization_cache: cache
         )
 
@@ -440,7 +437,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
             destination_project.id,
             user.id,
             asset_mode: :reuse,
-            asset_error_mode: :strict,
             asset_materialization_cache: cache
           )
         end
@@ -468,7 +464,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
 
       opts = [
         asset_mode: :copy,
-        asset_error_mode: :strict,
         asset_materialization_cache: cache
       ]
 
@@ -519,7 +514,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
 
       opts = [
         asset_mode: :copy,
-        asset_error_mode: :strict,
         asset_materialization_cache: cache
       ]
 
@@ -580,8 +574,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
           snapshot,
           destination_project.id,
           user.id,
-          asset_mode: :copy,
-          asset_error_mode: :strict
+          asset_mode: :copy
         )
 
       assert %Asset{project_id: project_id} = Repo.get!(Asset, destination_id)
@@ -627,7 +620,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
           destination_project.id,
           user.id,
           asset_mode: :copy,
-          asset_error_mode: :strict,
           asset_source_keys: %{blob_hash => source_key}
         )
 
@@ -680,7 +672,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
             destination_project.id,
             user.id,
             asset_mode: :copy,
-            asset_error_mode: :strict,
             asset_source_keys: %{blob_hash => source_key}
           )
         end
@@ -722,8 +713,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
             invalid_snapshot,
             destination_project.id,
             user.id,
-            asset_mode: :copy,
-            asset_error_mode: :strict
+            asset_mode: :copy
           )
 
         destination_asset = Repo.get!(Asset, destination_id)
@@ -785,7 +775,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
           destination_project.id,
           user.id,
           asset_mode: :copy,
-          asset_error_mode: :strict,
           asset_source_keys: %{
             blob_hash => BlobStore.blob_key(source_project.id, blob_hash, "mp3")
           }
@@ -832,7 +821,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
             destination_project.id,
             user.id,
             asset_mode: :copy,
-            asset_error_mode: :strict,
             asset_source_keys: %{blob_hash => source_key}
           )
         end
@@ -866,7 +854,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
             destination_project.id,
             user.id,
             asset_mode: :copy,
-            asset_error_mode: :strict,
             asset_source_keys: %{}
           )
         end
@@ -907,8 +894,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
           first_snapshot,
           first_clone.id,
           user.id,
-          asset_mode: :copy,
-          asset_error_mode: :strict
+          asset_mode: :copy
         )
 
       first_asset = Repo.get!(Asset, first_asset_id)
@@ -928,8 +914,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
           second_snapshot,
           second_clone.id,
           user.id,
-          asset_mode: :copy,
-          asset_error_mode: :strict
+          asset_mode: :copy
         )
 
       second_asset = Repo.get!(Asset, second_asset_id)

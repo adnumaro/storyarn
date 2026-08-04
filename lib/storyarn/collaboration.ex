@@ -248,53 +248,6 @@ defmodule Storyarn.Collaboration do
   def cursors_topic({type, id}), do: "#{type}:#{id}:cursors"
 
   # =============================================================================
-  # Project Restoration
-  # =============================================================================
-
-  @doc false
-  def restoration_topic(project_id), do: "project:#{project_id}:restoration"
-
-  @doc """
-  Subscribes to restoration events for a project.
-  """
-  def subscribe_restoration(project_id) do
-    PubSub.subscribe(Storyarn.PubSub, restoration_topic(project_id))
-  end
-
-  @doc """
-  Broadcasts that a project restoration has started.
-  """
-  def broadcast_restoration_started(project_id, payload) do
-    PubSub.broadcast(
-      Storyarn.PubSub,
-      restoration_topic(project_id),
-      {:project_restoration_started, payload}
-    )
-  end
-
-  @doc """
-  Broadcasts that a project restoration has completed.
-  """
-  def broadcast_restoration_completed(project_id, payload) do
-    PubSub.broadcast(
-      Storyarn.PubSub,
-      restoration_topic(project_id),
-      {:project_restoration_completed, payload}
-    )
-  end
-
-  @doc """
-  Broadcasts that a project restoration has failed.
-  """
-  def broadcast_restoration_failed(project_id, payload) do
-    PubSub.broadcast(
-      Storyarn.PubSub,
-      restoration_topic(project_id),
-      {:project_restoration_failed, payload}
-    )
-  end
-
-  # =============================================================================
   # Dashboard Invalidation
   # =============================================================================
 

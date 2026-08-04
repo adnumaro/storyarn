@@ -6,6 +6,7 @@ defmodule StoryarnWeb.TelemetryTest do
   # Fully qualified to avoid alias conflict with StoryarnWeb.Telemetry
   @summary_mod :"Elixir.Telemetry.Metrics.Summary"
   @sum_mod :"Elixir.Telemetry.Metrics.Sum"
+  @last_value_mod :"Elixir.Telemetry.Metrics.LastValue"
 
   # ── metrics/0 ───────────────────────────────────────────────────────
 
@@ -17,12 +18,30 @@ defmodule StoryarnWeb.TelemetryTest do
       assert Enum.all?(metrics, &is_struct/1)
     end
 
-    test "all metrics are Telemetry.Metrics summary or sum types" do
+    test "all metrics use supported Telemetry.Metrics types" do
       metrics = Telemetry.metrics()
 
       assert Enum.all?(metrics, fn metric ->
-               metric.__struct__ in [@summary_mod, @sum_mod]
+               metric.__struct__ in [@summary_mod, @sum_mod, @last_value_mod]
              end)
+    end
+
+    test "exposes accounted and provider storage measurements without workspace-id tags" do
+      metrics = Telemetry.metrics()
+
+      storage_metrics =
+        Enum.filter(metrics, fn metric ->
+          List.starts_with?(metric.name, [:storyarn, :storage])
+        end)
+
+      assert length(storage_metrics) == 11
+      assert Enum.all?(storage_metrics, &(&1.__struct__ == @last_value_mod))
+      assert Enum.all?(storage_metrics, &(:workspace_id not in &1.tags))
+
+      names = Enum.map(storage_metrics, & &1.name)
+      assert [:storyarn, :storage, :accounting, :updated, :accounted_bytes] in names
+      assert [:storyarn, :storage, :provider_footprint, :physical_bytes] in names
+      assert [:storyarn, :storage, :provider_footprint, :drift_bytes] in names
     end
 
     # -- Phoenix metrics --
@@ -168,8 +187,9 @@ defmodule StoryarnWeb.TelemetryTest do
     test "defines exactly the expected number of metrics" do
       metrics = Telemetry.metrics()
 
-      # 9 Phoenix + 5 DB + 3 template installation + 9 import + 3 AI expiration + 4 VM = 33
-      assert length(metrics) == 33
+      # 9 Phoenix + 5 DB + 3 template installation + 9 import + 11 storage +
+      # 3 AI expiration + 4 VM = 44
+      assert length(metrics) == 44
     end
   end
 

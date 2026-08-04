@@ -38,7 +38,6 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
     opts
     |> Keyword.take([
       :asset_copy_tracker,
-      :asset_error_mode,
       :asset_materialization_cache,
       :asset_source_keys
     ])

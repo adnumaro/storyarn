@@ -367,7 +367,7 @@ socket
 
 Domain-agnostic LiveView helpers also live in `lib/storyarn_web/live/shared/`:
 `CollaborationHelpers`, `DashboardHandlers`, `DashboardHelpers`, `InvitationHelpers`,
-`OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`, `RestorationHandlers`.
+`OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`.
 
 ---
 

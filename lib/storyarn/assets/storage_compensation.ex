@@ -14,6 +14,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   require Logger
@@ -33,6 +34,11 @@ defmodule Storyarn.Assets.StorageCompensation do
   @template_filename_pattern ~r/\A[\w.-]{1,255}\z/u
   @snapshot_token_pattern ~r/\A[A-Za-z0-9_-]{16}\z/
   @snapshot_blob_filename_pattern ~r/\A[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z/
+  @storage_reservation_kinds ~w(snapshot-build linked-to-full-conversion restore-staging snapshot-export)
+  @storage_reservation_lease_pattern ~r/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
+  @storage_reservation_path_segment_pattern ~r/\A[A-Za-z0-9][A-Za-z0-9._-]{0,127}\z/
+  @max_storage_reservation_relative_key_bytes 512
+  @max_storage_reservation_path_segments 16
 
   @spec new() :: reference()
   def new do
@@ -875,8 +881,15 @@ defmodule Storyarn.Assets.StorageCompensation do
       {:object, project_id, :ready, object_prefix, false} ->
         Repo.exists?(
           from snapshot in ProjectSnapshot,
-            where: snapshot.project_id == ^project_id and snapshot.object_prefix == ^object_prefix
-        )
+            where:
+              snapshot.project_id == ^project_id and snapshot.object_prefix == ^object_prefix and
+                snapshot.lifecycle_state in ["ready", "deleting"] and
+                snapshot.accounting_version == 1 and not is_nil(snapshot.accounted_size_bytes)
+        ) or
+          Repo.exists?(
+            from claim in SnapshotObjectPublicationClaim,
+              where: claim.object_prefix == ^object_prefix and claim.status == "published"
+          )
 
       _other ->
         false
@@ -979,7 +992,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp valid_storage_key?(storage_key) when is_binary(storage_key) do
     String.valid?(storage_key) and
       (project_storage_key?(storage_key) or template_storage_key?(storage_key) or
-         snapshot_object_storage_key?(storage_key))
+         snapshot_object_storage_key?(storage_key) or storage_reservation_key?(storage_key))
   end
 
   @doc false
@@ -993,6 +1006,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp project_storage_key?(storage_key) do
     project_blob_storage_key?(storage_key) or
       project_asset_storage_key?(storage_key) or
+      project_thumbnail_storage_key?(storage_key) or
       project_conditional_copy_key?(storage_key)
   end
 
@@ -1004,6 +1018,19 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp project_asset_storage_key?(storage_key) do
     case String.split(storage_key, "/") do
       ["projects", project_id, "assets", asset_uuid, filename] ->
+        valid_project_id?(project_id) and
+          String.match?(asset_uuid, @asset_uuid_pattern) and
+          filename not in [".", "..", ".storyarn-copy"] and
+          String.match?(filename, @asset_filename_pattern)
+
+      _parts ->
+        false
+    end
+  end
+
+  defp project_thumbnail_storage_key?(storage_key) do
+    case String.split(storage_key, "/") do
+      ["projects", project_id, "thumbnails", asset_uuid, filename] ->
         valid_project_id?(project_id) and
           String.match?(asset_uuid, @asset_uuid_pattern) and
           filename not in [".", "..", ".storyarn-copy"] and
@@ -1072,6 +1099,44 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp snapshot_object_tail(_tail), do: :error
+
+  defp storage_reservation_key?(storage_key) do
+    case String.split(storage_key, "/", trim: false) do
+      ["projects", project_id, "storage-reservations", "v1", kind, lease_token | tail] ->
+        valid_project_id?(project_id) and
+          kind in @storage_reservation_kinds and
+          String.match?(lease_token, @storage_reservation_lease_pattern) and
+          valid_storage_reservation_tail?(tail)
+
+      _parts ->
+        false
+    end
+  end
+
+  defp valid_storage_reservation_tail?(tail) when is_list(tail) and tail != [] do
+    relative_key = Enum.join(tail, "/")
+
+    byte_size(relative_key) <= @max_storage_reservation_relative_key_bytes and
+      length(tail) <= @max_storage_reservation_path_segments and
+      valid_storage_reservation_segments?(tail)
+  end
+
+  defp valid_storage_reservation_tail?(_tail), do: false
+
+  defp valid_storage_reservation_segments?(tail) do
+    case Enum.split(tail, -2) do
+      {parents, [".storyarn-copy", suffix]} ->
+        String.match?(suffix, @conditional_copy_suffix_pattern) and
+          Enum.all?(parents, &valid_storage_reservation_segment?/1)
+
+      {_parents, _suffix} ->
+        Enum.all?(tail, &valid_storage_reservation_segment?/1)
+    end
+  end
+
+  defp valid_storage_reservation_segment?(segment) do
+    String.match?(segment, @storage_reservation_path_segment_pattern)
+  end
 
   defp valid_project_id?(project_id) do
     case Integer.parse(project_id) do

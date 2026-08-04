@@ -16,6 +16,8 @@ defmodule Storyarn.AssetsTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
@@ -173,6 +175,58 @@ defmodule Storyarn.AssetsTest do
       assert asset.uploaded_by_id == nil
     end
 
+    test "create_asset/3 enforces workspace storage capacity under the common lock", %{
+      project: project,
+      user: user
+    } do
+      limit = Billing.plan_limit("free", :storage_bytes_per_workspace)
+      max_asset_size = 52_428_800
+      assert limit == max_asset_size * 5
+
+      Enum.each(1..5, fn index ->
+        filename = "fills-workspace-#{index}.pdf"
+
+        assert {:ok, _asset} =
+                 Assets.create_asset(project, user, %{
+                   filename: filename,
+                   content_type: "application/pdf",
+                   size: max_asset_size,
+                   key: Assets.generate_key(project, filename)
+                 })
+      end)
+
+      assert {:error, :limit_reached, details} =
+               Assets.create_asset(project, user, %{
+                 filename: "over-limit.pdf",
+                 content_type: "application/pdf",
+                 size: 1,
+                 key: Assets.generate_key(project, "over-limit.pdf")
+               })
+
+      assert details.required == 1
+      assert details.available == 0
+      assert Assets.count_assets(project.id) == 5
+    end
+
+    test "create_asset/3 rejects a project struct spoofing another workspace", %{
+      project: project,
+      user: user
+    } do
+      other_project = project_fixture()
+      spoofed_project = %{project | workspace_id: other_project.workspace_id}
+
+      assert {:error, :project_workspace_mismatch} =
+               Assets.create_asset(spoofed_project, user, %{
+                 filename: "spoofed-workspace.pdf",
+                 content_type: "application/pdf",
+                 size: 1,
+                 key: Assets.generate_key(project, "spoofed-workspace.pdf")
+               })
+
+      assert Assets.count_assets(project.id) == 0
+      assert Assets.count_assets(other_project.id) == 0
+    end
+
     test "create_asset/3 rejects a stale struct for a trashed project", %{
       project: project,
       user: user
@@ -210,12 +264,46 @@ defmodule Storyarn.AssetsTest do
 
     test "delete_asset/1 deletes an asset", %{project: project, user: user} do
       asset = asset_fixture(project, user)
+      thumbnail_key = Assets.thumbnail_key(asset.key)
+      {:ok, asset} = Assets.update_asset(asset, %{metadata: %{"thumbnail_key" => thumbnail_key}})
       :ok = Collaboration.subscribe_dashboard(project.id)
 
       assert {:ok, _} = Assets.delete_asset(asset)
       assert Assets.get_asset(project.id, asset.id) == nil
+
+      assert Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
+               Enum.sort(request.storage_keys) == Enum.sort([asset.key, thumbnail_key])
+             end)
+
       assert_receive {:dashboard_invalidate, :all}
       refute_receive {:dashboard_invalidate, :all}, 10
+    end
+
+    test "delete_asset/1 derives thumbnail cleanup from the owned asset key", %{
+      project: project,
+      user: user
+    } do
+      other_project = project_fixture(user)
+      asset = asset_fixture(project, user)
+      other_asset = asset_fixture(other_project, user)
+      hostile_thumbnail_key = Assets.thumbnail_key(other_asset.key)
+
+      {:ok, asset} =
+        Assets.update_asset(asset, %{
+          metadata: %{"thumbnail_key" => hostile_thumbnail_key}
+        })
+
+      assert {:ok, _deleted_asset} = Assets.delete_asset(asset)
+
+      expected_keys = Enum.sort([asset.key, Assets.thumbnail_key(asset.key)])
+
+      assert Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
+               Enum.sort(request.storage_keys) == expected_keys
+             end)
+
+      refute Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
+               hostile_thumbnail_key in request.storage_keys
+             end)
     end
 
     test "delete_asset/1 refuses stale writes after the project enters trash", %{
@@ -969,7 +1057,7 @@ defmodule Storyarn.AssetsTest do
         url: "/uploads/imported.png"
       }
 
-      assert {:ok, asset} = Assets.import_asset(project.id, attrs)
+      assert {:ok, asset} = import_asset_for_test(project, attrs)
       assert asset.filename == "imported.png"
       assert asset.project_id == project.id
       assert asset.uploaded_by_id == nil
@@ -977,8 +1065,48 @@ defmodule Storyarn.AssetsTest do
 
     test "returns error for invalid attrs" do
       project = project_fixture()
-      assert {:error, changeset} = Assets.import_asset(project.id, %{})
+      assert {:error, changeset} = import_asset_for_test(project, %{})
       assert errors_on(changeset).filename != []
+    end
+
+    test "rejects raw inserts outside the workspace capacity guard" do
+      project = project_fixture()
+
+      attrs = %{
+        filename: "unguarded.png",
+        content_type: "image/png",
+        size: 5000,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/unguarded.png"
+      }
+
+      assert {:error, :storage_accounting_lock_required} = Assets.import_asset(project, attrs)
+
+      assert {:error, :asset_import_capacity_required} =
+               Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+                 Assets.import_asset(project, attrs)
+               end)
+
+      assert Assets.count_assets(project.id) == 0
+    end
+
+    test "rejects inserts larger than the capacity-authorized import total" do
+      project = project_fixture()
+
+      attrs = %{
+        filename: "over-budget.png",
+        content_type: "image/png",
+        size: 5000,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/over-budget.png"
+      }
+
+      assert {:error, :asset_import_capacity_exceeded} =
+               Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+                 Assets.with_import_capacity(project, 4999, fn ->
+                   Assets.import_asset(project, attrs)
+                 end)
+               end)
+
+      assert Assets.count_assets(project.id) == 0
     end
   end
 
@@ -1337,12 +1465,10 @@ defmodule Storyarn.AssetsTest do
                      asset.blob_hash == ^BlobStore.compute_hash(content)
              )
 
-      assert [cleanup_job] = all_enqueued(worker: DeleteStorageObjectsWorker)
-      assert [cleanup_target] = cleanup_job.args["storage_keys"]
-      refute cleanup_target == blob_key
-      assert String.ends_with?(cleanup_target, blob_key)
-
-      assert :ok = perform_job(DeleteStorageObjectsWorker, cleanup_job.args)
+      # Rollback compensation owns the verified-invalid object and removes it
+      # immediately. A durable cleanup job is only needed when that delete
+      # cannot complete.
+      assert [] = all_enqueued(worker: DeleteStorageObjectsWorker)
       assert {:error, :enoent} = Storage.download(blob_key)
 
       assert {:ok, asset} =
@@ -1582,7 +1708,7 @@ defmodule Storyarn.AssetsTest do
         metadata: %{"width" => 1920, "height" => 1080}
       }
 
-      assert {:ok, asset} = Assets.import_asset(project.id, attrs)
+      assert {:ok, asset} = import_asset_for_test(project, attrs)
       assert asset.metadata == %{"width" => 1920, "height" => 1080}
     end
 
@@ -1597,7 +1723,7 @@ defmodule Storyarn.AssetsTest do
         url: "/uploads/bad.exe"
       }
 
-      assert {:error, changeset} = Assets.import_asset(project.id, attrs)
+      assert {:error, changeset} = import_asset_for_test(project, attrs)
       assert errors_on(changeset).content_type != []
     end
 
@@ -1612,7 +1738,7 @@ defmodule Storyarn.AssetsTest do
         url: "/uploads/zero.png"
       }
 
-      assert {:error, changeset} = Assets.import_asset(project.id, attrs)
+      assert {:error, changeset} = import_asset_for_test(project, attrs)
       assert errors_on(changeset).size != []
     end
   end
@@ -1941,6 +2067,17 @@ defmodule Storyarn.AssetsTest do
         File.rm(tmp_path_y)
       end
     end
+  end
+
+  defp import_asset_for_test(project, attrs) do
+    size = Map.get(attrs, :size, Map.get(attrs, "size", 0))
+    capacity_bytes = if is_integer(size) and size > 0, do: size, else: 0
+
+    Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+      Assets.with_import_capacity(project, capacity_bytes, fn ->
+        Assets.import_asset(project, attrs)
+      end)
+    end)
   end
 
   defp blob_key_for(project, content, content_type) do

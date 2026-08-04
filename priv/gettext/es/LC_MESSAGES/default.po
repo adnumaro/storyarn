@@ -92,7 +92,7 @@ msgstr "Formato desconocido"
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:466
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:188
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:264
-#: lib/storyarn_web/live/flow_live/show.ex:1701
+#: lib/storyarn_web/live/flow_live/show.ex:1682
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:95
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:112
 #, elixir-autogen, elixir-format
@@ -132,46 +132,25 @@ msgstr "actualizó el flujo"
 msgid "Auto-snapshot"
 msgstr "Auto-snapshot"
 
-#: lib/storyarn/versioning/version_crud.ex:741
+#: lib/storyarn/versioning/version_crud.ex:740
 #, elixir-autogen, elixir-format
 msgid "Changes from previous version"
 msgstr "Cambios respecto a la versión anterior"
 
-#: lib/storyarn/versioning/version_crud.ex:728
+#: lib/storyarn/versioning/version_crud.ex:727
 #, elixir-autogen, elixir-format
 msgid "Initial version"
 msgstr "Versión inicial"
-
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:50
-#, elixir-autogen, elixir-format
-msgid "Invalid snapshot ID"
-msgstr "ID de snapshot no válido"
 
 #: lib/storyarn/versioning/snapshot_diff.ex:60
 #, elixir-autogen, elixir-format
 msgid "No changes detected"
 msgstr "No se detectaron cambios"
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:41
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:44
-#, elixir-autogen, elixir-format
-msgid "Project not found"
-msgstr "Proyecto no encontrado"
-
 #: lib/storyarn_web/live/compare_live/sheet.ex:64
 #, elixir-autogen, elixir-format
 msgid "Sheet not found"
 msgstr "Ficha no encontrada"
-
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:37
-#, elixir-autogen, elixir-format
-msgid "Snapshot file not found"
-msgstr "Archivo de snapshot no encontrado"
-
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:47
-#, elixir-autogen, elixir-format
-msgid "Snapshot not found"
-msgstr "Snapshot no encontrada"
 
 #: lib/storyarn_web/live/compare_live/flow.ex:103
 #: lib/storyarn_web/live/compare_live/scene.ex:103
@@ -211,3 +190,8 @@ msgstr "Archivo multimedia no encontrado"
 #, elixir-autogen, elixir-format
 msgid "You do not have permission to export this project"
 msgstr "No tienes permiso para exportar este proyecto"
+
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:13
+#, elixir-autogen, elixir-format
+msgid "Snapshot download is not available"
+msgstr "La descarga de snapshots no está disponible"

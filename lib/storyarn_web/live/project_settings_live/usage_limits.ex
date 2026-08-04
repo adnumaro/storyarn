@@ -55,7 +55,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
       workspace: %{
         projects: serialize_bucket(usage.workspace.projects),
         members: serialize_bucket(usage.workspace.members),
-        storageBytes: serialize_bucket(usage.workspace.storage_bytes)
+        storageBytes: serialize_storage_bucket(usage.workspace.storage_bytes)
       },
       itemBreakdown: %{
         sheets: usage.item_breakdown.sheets,
@@ -64,9 +64,49 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
         flowNodes: usage.item_breakdown.flow_nodes
       },
       storage: %{
-        projectBytes: usage.storage.project_bytes,
-        assetCount: usage.storage.asset_count
+        projectAccountedBytes: serialize_byte_count(usage.storage.project_bytes),
+        projectAssetBytes: serialize_byte_count(usage.storage.project_asset_bytes),
+        projectSnapshotBytes: serialize_byte_count(usage.storage.project_snapshot_bytes),
+        projectReservationBytes: serialize_byte_count(usage.storage.project_reservation_bytes),
+        assetCount: usage.storage.asset_count,
+        workspace:
+          serialize_storage_usage(
+            usage.storage.workspace,
+            usage.workspace.storage_bytes.limit
+          )
       }
+    }
+  end
+
+  defp serialize_storage_usage(storage, limit) do
+    %{
+      currentAssetsBytes: serialize_byte_count(storage.current_assets.bytes),
+      fullSnapshotsBytes: serialize_byte_count(storage.full_snapshots.bytes),
+      linkedSnapshotsBytes: serialize_byte_count(storage.linked_snapshots.bytes),
+      activeReservationsBytes: serialize_byte_count(storage.active_reservations.bytes),
+      totalAccountedBytes: serialize_byte_count(storage.accounted_bytes),
+      limitBytes: serialized_storage_limit(limit),
+      remainingBytes: remaining_bytes(storage.accounted_bytes, limit),
+      limitKind: limit_kind(limit)
+    }
+  end
+
+  defp remaining_bytes(used, limit) when is_integer(limit) and limit >= 0, do: serialize_byte_count(max(limit - used, 0))
+
+  defp remaining_bytes(_used, _limit), do: nil
+
+  defp limit_kind(limit) when is_integer(limit) and limit >= 0, do: "limited"
+  defp limit_kind(limit) when limit in [:unlimited, :infinity], do: "unlimited"
+  defp limit_kind(_limit), do: "unknown"
+
+  defp serialized_storage_limit(limit) when is_integer(limit) and limit >= 0, do: serialize_byte_count(limit)
+
+  defp serialized_storage_limit(_limit), do: nil
+
+  defp serialize_storage_bucket(bucket) do
+    %{
+      used: serialize_byte_count(bucket.used),
+      limit: serialized_storage_limit(bucket.limit)
     }
   end
 
@@ -76,6 +116,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
       limit: bucket.limit
     }
   end
+
+  defp serialize_byte_count(value) when is_integer(value) and value >= 0, do: Integer.to_string(value)
 
   # ===========================================================================
   # Mount & handle_params

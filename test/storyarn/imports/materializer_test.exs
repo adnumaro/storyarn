@@ -8,6 +8,10 @@ defmodule Storyarn.Imports.MaterializerTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
@@ -199,6 +203,16 @@ defmodule Storyarn.Imports.MaterializerTest do
       assert "localization.strings[0].translations.es" in fields
       assert "localization.glossary[0].translations.es" in fields
     end
+
+    test "rejects asset sizes that cannot be included in a safe total" do
+      data =
+        Map.put(minimal_import_data(), "assets", %{
+          "items" => [asset_import_entry(%{"size" => 100}), asset_import_entry(%{"size" => -100})]
+        })
+
+      assert {:error, {:invalid_field_types, fields}} = Materializer.validate_plan_data(data)
+      assert "assets.items[1].size" in fields
+    end
   end
 
   # =============================================================================
@@ -236,6 +250,15 @@ defmodule Storyarn.Imports.MaterializerTest do
                Imports.execute(target, import_plan(minimal_import_data()))
     end
 
+    test "rejects a transaction that bypasses the common workspace lock", %{target: target} do
+      plan = import_plan(plan_data(%{}))
+
+      assert {:ok, {:error, :storage_accounting_lock_required}} =
+               Repo.transact(fn ->
+                 {:ok, Materializer.materialize_in_transaction(target, plan)}
+               end)
+    end
+
     test "counts every inserted node when source IDs are duplicated", %{target: target} do
       source_id = Ecto.UUID.generate()
 
@@ -261,6 +284,62 @@ defmodule Storyarn.Imports.MaterializerTest do
 
       assert [flow] = result.flows
       assert flow.id |> Flows.list_nodes() |> length() == 2
+    end
+  end
+
+  describe "execute — asset storage capacity" do
+    setup [:setup_projects]
+
+    test "accounts the complete imported asset size", %{target: target} do
+      items = [asset_import_entry(%{"size" => 384}), asset_import_entry(%{"size" => 640})]
+      data = plan_data(%{"assets" => %{"items" => items}})
+
+      assert {:ok, result} = Imports.execute(target, import_plan(data))
+      assert result.counts.assets == 2
+
+      usage = Billing.workspace_storage_usage(target.workspace_id)
+      assert usage.current_assets == %{bytes: 1_024, count: 2}
+    end
+
+    test "imports assets into their project-owned namespace so deletion can hand off cleanup", %{
+      target: target
+    } do
+      data = plan_data(%{"assets" => %{"items" => [asset_import_entry(%{"size" => 384})]}})
+
+      assert {:ok, %{assets: [asset]}} = Imports.execute(target, import_plan(data))
+      assert String.starts_with?(asset.key, "projects/#{target.id}/assets/")
+
+      assert {:ok, _deleted_asset} = Assets.delete_asset(asset)
+
+      assert Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
+               request.storage_keys == [asset.key]
+             end)
+    end
+
+    test "rejects the total before inserting when individual assets would fit", %{target: target} do
+      limit = Billing.plan_limit("free", :storage_bytes_per_workspace)
+      max_asset_size = 52_428_800
+      assert limit == max_asset_size * 5
+
+      Enum.each(1..5, fn index ->
+        size = if index == 5, do: max_asset_size - 700, else: max_asset_size
+
+        Repo.insert!(%Asset{
+          project_id: target.id,
+          filename: "existing-#{index}.pdf",
+          content_type: "application/pdf",
+          size: size,
+          key: "projects/#{target.id}/assets/existing-#{index}.pdf"
+        })
+      end)
+
+      items = [asset_import_entry(%{"size" => 400}), asset_import_entry(%{"size" => 400})]
+      data = plan_data(%{"assets" => %{"items" => items}})
+
+      assert {:error, :limit_reached, details} = Imports.execute(target, import_plan(data))
+      assert details.required == 800
+      assert details.available == 700
+      assert Assets.count_assets(target.id) == 5
     end
   end
 
@@ -1157,6 +1236,20 @@ defmodule Storyarn.Imports.MaterializerTest do
 
   defp minimal_import_data(nodes \\ []) do
     plan_data(%{"flows" => [%{"id" => "flow-1", "nodes" => nodes}]})
+  end
+
+  defp asset_import_entry(attrs) do
+    Map.merge(
+      %{
+        "id" => Ecto.UUID.generate(),
+        "filename" => "imported-#{System.unique_integer([:positive])}.png",
+        "content_type" => "image/png",
+        "size" => 1_024,
+        "url" => "/uploads/imported.png",
+        "metadata" => %{}
+      },
+      attrs
+    )
   end
 
   defp dialogue_import_node(localization_id, responses) do

@@ -4,7 +4,6 @@ defmodule StoryarnWeb.AssetLive.Index do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Assets
-  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
@@ -277,17 +276,7 @@ defmodule StoryarnWeb.AssetLive.Index do
     if Assets.allowed_content_type?(content_type) do
       project = socket.assigns.project
       user = socket.assigns.current_scope.user
-
-      case Billing.can_upload_asset_for_project?(project, byte_size(binary_data)) do
-        :ok ->
-          do_upload_file(socket, project, user, filename, content_type, binary_data)
-
-        {:error, :limit_reached, _details} ->
-          {:noreply,
-           socket
-           |> assign(:uploading, false)
-           |> put_flash(:error, dgettext("assets", "Storage limit reached. Upgrade your plan."))}
-      end
+      do_upload_file(socket, project, user, filename, content_type, binary_data)
     else
       {:noreply,
        socket
@@ -317,6 +306,12 @@ defmodule StoryarnWeb.AssetLive.Index do
          |> load_assets()
          |> put_flash(:info, dgettext("assets", "Asset uploaded successfully."))}
 
+      {:error, :limit_reached, _details} ->
+        {:noreply,
+         socket
+         |> assign(:uploading, false)
+         |> put_flash(:error, dgettext("assets", "Storage limit reached. Upgrade your plan."))}
+
       {:error, reason} ->
         {:noreply,
          socket
@@ -336,8 +331,6 @@ defmodule StoryarnWeb.AssetLive.Index do
       asset ->
         case Assets.delete_asset(asset) do
           {:ok, _} ->
-            delete_asset_files(asset)
-
             type_counts = Assets.count_assets_by_type(socket.assigns.project.id)
             broadcast_asset_change(socket.assigns.project.id, :asset_deleted)
 
@@ -385,17 +378,6 @@ defmodule StoryarnWeb.AssetLive.Index do
   end
 
   defp parse_page(_page), do: 1
-
-  defp delete_asset_files(asset) do
-    Assets.storage_delete(asset.key)
-
-    (asset.metadata || %{})
-    |> Map.get("thumbnail_key")
-    |> then(fn
-      nil -> :ok
-      thumbnail_key -> Assets.storage_delete(thumbnail_key)
-    end)
-  end
 
   defp filter_opts("all"), do: []
   defp filter_opts("image"), do: [content_type: "image/"]

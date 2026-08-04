@@ -3,9 +3,9 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   Handles storing and loading version snapshots as compressed JSON in object storage.
 
   Snapshots are gzipped JSON stored via the configured storage adapter (R2/Local).
-  Key format: `projects/{project_id}/snapshots/{entity_type}/{entity_id}/{version_number}.json.gz`
-  or, for uniquely owned write attempts,
-  `projects/{project_id}/snapshots/{entity_type}/{entity_id}/{version_number}-{suffix}.json.gz`.
+  Key format:
+  `projects/{project_id}/snapshots/{entity_type}/{entity_id}/{version_number}-{attempt_suffix}.json.gz`.
+  Every write owns a unique attempt key.
   """
 
   alias Storyarn.Assets.Storage
@@ -21,10 +21,8 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   """
   @spec store_snapshot(integer(), String.t(), integer(), integer(), map()) ::
           {:ok, String.t(), integer()} | {:error, term()}
-  @spec store_snapshot(integer(), String.t(), integer(), integer(), map(), String.t() | nil) ::
-          {:ok, String.t(), integer()} | {:error, term()}
-  def store_snapshot(project_id, entity_type, entity_id, version_number, snapshot, suffix \\ nil) do
-    store_snapshot(project_id, entity_type, entity_id, version_number, snapshot, suffix, [])
+  def store_snapshot(project_id, entity_type, entity_id, version_number, snapshot) do
+    store_snapshot(project_id, entity_type, entity_id, version_number, snapshot, [])
   end
 
   @spec store_snapshot(
@@ -33,11 +31,10 @@ defmodule Storyarn.Versioning.SnapshotStorage do
           integer(),
           integer(),
           map(),
-          String.t() | nil,
           keyword()
         ) ::
           {:ok, String.t(), integer()} | {:error, term()}
-  def store_snapshot(project_id, entity_type, entity_id, version_number, snapshot, suffix, opts) when is_list(opts) do
+  def store_snapshot(project_id, entity_type, entity_id, version_number, snapshot, opts) when is_list(opts) do
     with {:ok, key, size_bytes, _checksum} <-
            store_snapshot_with_checksum(
              project_id,
@@ -45,7 +42,6 @@ defmodule Storyarn.Versioning.SnapshotStorage do
              entity_id,
              version_number,
              snapshot,
-             suffix,
              opts
            ) do
       {:ok, key, size_bytes}
@@ -64,21 +60,12 @@ defmodule Storyarn.Versioning.SnapshotStorage do
           integer(),
           integer(),
           map(),
-          String.t() | nil,
           keyword()
         ) ::
           {:ok, String.t(), integer(), String.t()} | {:error, term()}
-  def store_snapshot_with_checksum(
-        project_id,
-        entity_type,
-        entity_id,
-        version_number,
-        snapshot,
-        suffix \\ nil,
-        opts \\ []
-      )
+  def store_snapshot_with_checksum(project_id, entity_type, entity_id, version_number, snapshot, opts \\ [])
       when is_list(opts) do
-    key = build_key(project_id, entity_type, entity_id, version_number, suffix)
+    key = build_key(project_id, entity_type, entity_id, version_number, unique_key_suffix())
 
     with {:ok, compressed, size_bytes, checksum} <- encode_snapshot(snapshot, opts),
          {:ok, _url} <- Storage.upload(key, compressed, "application/gzip") do
@@ -107,8 +94,8 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   Loads a snapshot and returns the SHA-256 checksum of the exact compressed
   bytes read from object storage.
 
-  Project recovery compares this digest with independently persisted metadata
-  before materializing any data.
+  Verified callers compare this digest with independently persisted metadata
+  before consuming any data.
   """
   @spec load_snapshot_with_checksum(String.t()) ::
           {:ok, map(), String.t()} | {:error, term()}
@@ -505,47 +492,19 @@ defmodule Storyarn.Versioning.SnapshotStorage do
   @doc """
   Builds the storage key for a snapshot.
   """
-  @spec build_key(integer(), String.t(), integer(), integer()) :: String.t()
-  @spec build_key(integer(), String.t(), integer(), integer(), String.t() | nil) :: String.t()
-  def build_key(project_id, entity_type, entity_id, version_number, suffix \\ nil) do
-    version_segment = version_segment(version_number, suffix)
-    "projects/#{project_id}/snapshots/#{entity_type}/#{entity_id}/#{version_segment}.json.gz"
+  @spec build_key(integer(), String.t(), integer(), integer(), String.t()) :: String.t()
+  def build_key(project_id, entity_type, entity_id, version_number, suffix) do
+    if Regex.match?(~r/\A[0-9a-f]{16}\z/, suffix) do
+      "projects/#{project_id}/snapshots/#{entity_type}/#{entity_id}/#{version_number}-#{suffix}.json.gz"
+    else
+      raise ArgumentError, "invalid snapshot attempt suffix"
+    end
   end
-
-  @doc """
-  Builds the storage key for a project-level snapshot.
-  """
-  @spec build_project_key(integer(), integer()) :: String.t()
-  @spec build_project_key(integer(), integer(), String.t() | nil) :: String.t()
-  def build_project_key(project_id, version_number, suffix \\ nil) do
-    version_segment = version_segment(version_number, suffix)
-    "projects/#{project_id}/snapshots/project/#{version_segment}.json.gz"
-  end
-
-  @doc """
-  Returns whether a storage key is the canonical key for the given project
-  snapshot identity.
-
-  Both the original deterministic key and the current attempt-owned key are
-  accepted. This prevents a database row scoped to one project from making a
-  recovery path read an object owned by a different project or version.
-  """
-  @spec project_key?(term(), term(), term()) :: boolean()
-  def project_key?(storage_key, project_id, version_number)
-      when is_binary(storage_key) and is_integer(project_id) and project_id > 0 and is_integer(version_number) and
-             version_number > 0 do
-    base = "projects/#{project_id}/snapshots/project/#{version_number}"
-
-    storage_key == "#{base}.json.gz" or
-      Regex.match?(~r/\A#{Regex.escape(base)}-[0-9a-f]{16}\.json\.gz\z/, storage_key)
-  end
-
-  def project_key?(_storage_key, _project_id, _version_number), do: false
 
   @doc """
   Returns whether a storage key belongs to the exact entity-version identity.
 
-  Both deterministic legacy keys and attempt-owned suffixed keys are accepted.
+  Only attempt-owned suffixed keys are accepted.
   """
   @spec entity_key?(term(), term(), term(), term(), term()) :: boolean()
   def entity_key?(storage_key, project_id, entity_type, entity_id, version_number)
@@ -554,15 +513,10 @@ defmodule Storyarn.Versioning.SnapshotStorage do
     base =
       "projects/#{project_id}/snapshots/#{entity_type}/#{entity_id}/#{version_number}"
 
-    storage_key == "#{base}.json.gz" or
-      Regex.match?(~r/\A#{Regex.escape(base)}-[0-9a-f]{16}\.json\.gz\z/, storage_key)
+    Regex.match?(~r/\A#{Regex.escape(base)}-[0-9a-f]{16}\.json\.gz\z/, storage_key)
   end
 
   def entity_key?(_storage_key, _project_id, _entity_type, _entity_id, _version_number), do: false
-
-  defp version_segment(version_number, nil), do: to_string(version_number)
-  defp version_segment(version_number, ""), do: to_string(version_number)
-  defp version_segment(version_number, suffix), do: "#{version_number}-#{suffix}"
 
   defp checksum(bytes) do
     :sha256

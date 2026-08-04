@@ -26,11 +26,6 @@ interface ProjectChrome {
   canManageProject: boolean;
 }
 
-interface RestorationBanner {
-  user_email?: string;
-  userEmail?: string;
-}
-
 interface OnboardingConfig {
   guide: string;
   autoShow: boolean;
@@ -41,7 +36,6 @@ const {
   currentUser,
   onlineUsers = [],
   urls,
-  restorationBanner = null,
   canvasMode = false,
   onboarding = null,
 } = defineProps<{
@@ -49,7 +43,6 @@ const {
   currentUser: CurrentUser;
   onlineUsers?: OnlineUser[];
   urls: ProjectLayoutUrls;
-  restorationBanner?: RestorationBanner | null;
   canvasMode?: boolean;
   onboarding?: OnboardingConfig | null;
 }>();
@@ -136,27 +129,6 @@ onUnmounted(() => {
 
 <template>
   <div class="relative h-screen overflow-hidden">
-    <div
-      v-if="restorationBanner"
-      class="fixed top-0 left-0 right-0 z-42 flex justify-center pointer-events-none"
-    >
-      <div
-        class="bg-destructive text-destructive-foreground px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2 text-sm pointer-events-auto"
-      >
-        <span
-          class="size-4 border-2 border-current/30 border-t-current rounded-full animate-spin"
-          aria-hidden="true"
-        />
-        <span>
-          {{
-            $t("layout.project_restoration.in_progress", {
-              user: restorationBanner.user_email || restorationBanner.userEmail || "another user",
-            })
-          }}
-        </span>
-      </div>
-    </div>
-
     <div
       id="project-main-shell"
       :class="[

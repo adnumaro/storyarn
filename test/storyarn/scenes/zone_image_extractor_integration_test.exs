@@ -29,6 +29,9 @@ defmodule Storyarn.Scenes.ZoneImageExtractorIntegrationTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Billing
+  alias Storyarn.Repo
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Scenes.ZoneImageExtractor
 
@@ -296,6 +299,19 @@ defmodule Storyarn.Scenes.ZoneImageExtractorIntegrationTest do
   # ===========================================================================
 
   describe "extract/3 errors" do
+    test "returns the atomic storage quota error without persisting an extracted asset", ctx do
+      fill_workspace_storage(ctx.project)
+      asset_count_before = Repo.aggregate(Asset, :count)
+      usage_before = Billing.workspace_storage_usage(ctx.project.workspace_id)
+      zone = %SceneZone{name: "Over quota", vertices: rect(10.0, 10.0, 90.0, 90.0)}
+
+      assert {:error, :limit_reached, %{resource: :storage_bytes_per_workspace}} =
+               ZoneImageExtractor.extract(ctx.parent_map, zone, ctx.project)
+
+      assert Repo.aggregate(Asset, :count) == asset_count_before
+      assert Billing.workspace_storage_usage(ctx.project.workspace_id) == usage_before
+    end
+
     test "nil background_asset_id", _ctx do
       zone = %SceneZone{name: "T", vertices: rect(10.0, 10.0, 90.0, 90.0)}
 
@@ -327,6 +343,31 @@ defmodule Storyarn.Scenes.ZoneImageExtractorIntegrationTest do
       zone = %SceneZone{name: "T", vertices: rect(10.0, 10.0, 90.0, 90.0)}
       assert {:error, :no_background_image} = ZoneImageExtractor.extract(%{}, zone, %{})
     end
+  end
+
+  defp fill_workspace_storage(project) do
+    limit = Billing.plan_limit(Billing.default_plan(), :storage_bytes_per_workspace)
+    used = Billing.workspace_storage_usage(project.workspace_id).accounted_bytes
+
+    (limit - used)
+    |> Stream.unfold(fn
+      0 ->
+        nil
+
+      remaining ->
+        chunk = min(remaining, 52_428_800)
+        {chunk, remaining - chunk}
+    end)
+    |> Enum.with_index()
+    |> Enum.each(fn {size, index} ->
+      Repo.insert!(%Asset{
+        project_id: project.id,
+        filename: "quota-filler-#{index}.bin",
+        content_type: "application/octet-stream",
+        size: size,
+        key: Assets.generate_key(project, "quota-filler-#{index}.bin")
+      })
+    end)
   end
 
   # ===========================================================================

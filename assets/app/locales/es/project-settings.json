@@ -116,25 +116,77 @@
       "limit": "límite"
     },
     "snapshots": {
-      "restoration_in_progress": "Hay una restauración en curso. Espera a que se complete.",
-      "clear_lock": "Limpiar bloqueo",
-      "snapshot_title": "Título de la snapshot",
-      "snapshot_placeholder": "p. ej., Antes del playtest v2",
-      "description": "Descripción",
-      "create_snapshot": "Crear snapshot",
-      "limit_reached": "Límite de snapshots alcanzado para tu plan.",
+      "storage_heading": "Almacenamiento contabilizado en tu plan",
+      "storage_description": "Los recursos, las snapshots conservadas y las reservas activas comparten la capacidad del workspace.",
+      "storage_progress_label": "Uso de almacenamiento del workspace: {percent}",
+      "storage_remaining": "Capacidad restante",
+      "storage_reservations": "Reservas activas",
+      "storage_counted_note": "Los recursos de proyectos conservados, incluidos los de proyectos eliminados que aún pueden recuperarse, se contabilizan junto con las snapshots conservadas y las reservas activas. La replicación del proveedor, los objetos huérfanos y los residuos de limpieza se excluyen de la cuota del plan.",
+      "storage_breakdown": {
+        "current_assets": "Recursos de proyectos conservados",
+        "full_snapshots": "Snapshots completas",
+        "linked_snapshots": "Datos propios de snapshots enlazadas"
+      },
+      "storage_status": {
+        "unlimited": "Sin límite",
+        "unknown": "Desconocido",
+        "zero_capacity": "Sin capacidad de almacenamiento",
+        "over_limit": "Límite superado",
+        "less_than_percent": "<{percent}"
+      },
+      "accessibility": {
+        "workspace_percentage": "Almacenamiento usado del workspace: {percent}",
+        "snapshot_percentage": "{percent} del límite del workspace",
+        "mode": "Modo de la snapshot: {status}",
+        "lifecycle": "Estado de la snapshot: {status}",
+        "integrity": "Integridad de la snapshot: {status}",
+        "measurement": "{label}: {value}"
+      },
+      "mode": {
+        "full": "Completa",
+        "linked": "Enlazada",
+        "unknown": "Modo desconocido"
+      },
+      "lifecycle": {
+        "pending": "Pendiente",
+        "building": "Creando",
+        "verifying": "Verificando",
+        "ready": "Lista",
+        "failed": "Fallida",
+        "cancelled": "Cancelada",
+        "deleting": "Eliminando",
+        "unknown": "Estado desconocido"
+      },
+      "integrity": {
+        "unknown": "Integridad desconocida",
+        "verified": "Verificada",
+        "at_risk": "En riesgo",
+        "missing": "Faltan datos",
+        "corrupt": "Dañada",
+        "incomplete": "Incompleta"
+      },
+      "measurements": {
+        "accounted_size": "Almacenamiento de la snapshot",
+        "project_data": "Datos del proyecto",
+        "metadata": "Manifest y catálogo",
+        "unique_blobs": "Blobs de recursos únicos",
+        "inventory": "Recursos lógicos: {assets} · Blobs únicos: {blobs}",
+        "measured": "Contabilidad v{version} medida el {date}",
+        "active_reservation": "Reserva de trabajo activa: {storage}",
+        "export_reservation": "Reserva de exportación ZIP: {storage}"
+      },
+      "entity_types": {
+        "sheets": "{count} ficha | {count} fichas",
+        "flows": "{count} flujo | {count} flujos",
+        "scenes": "{count} escena | {count} escenas",
+        "languages": "{count} idioma | {count} idiomas",
+        "localized_texts": "{count} texto localizado | {count} textos localizados",
+        "glossary_entries": "{count} entrada de glosario | {count} entradas de glosario"
+      },
       "snapshots_heading": "Snapshots",
       "empty_title": "Aún no hay snapshots",
-      "empty_description": "Crea una snapshot para guardar una copia de seguridad de todo el proyecto.",
-      "untitled": "Snapshot sin título",
-      "download": "Descargar",
-      "restore": "Restaurar",
-      "restore_confirm_title": "¿Restaurar snapshot del proyecto?",
-      "restore_confirm_description": "Esto sobrescribirá todos los datos actuales del proyecto con el estado de esta snapshot. Se creará una snapshot de seguridad antes de restaurar.",
-      "delete_confirm_title": "¿Eliminar snapshot?",
-      "delete_confirm_description": "Se eliminará permanentemente esta snapshot. Esta acción no se puede deshacer.",
-      "cancel": "Cancelar",
-      "delete": "Eliminar"
+      "empty_description": "Este proyecto no tiene snapshots conservadas.",
+      "untitled": "Snapshot sin título"
     },
     "trash": {
       "title": "Papelera",
@@ -169,9 +221,6 @@
       "empty_confirm_description": "Todos los elementos eliminados del proyecto se eliminarán permanentemente. Esta acción no se puede deshacer."
     },
     "version_control": {
-      "auto_snapshots": "Snapshots automáticas",
-      "enable_daily": "Activar snapshots automáticas diarias",
-      "daily_description": "Crea una copia de seguridad diaria a las 3:00 AM UTC cuando se detectan cambios.",
       "auto_versioning": "Versionado automático",
       "auto_versioning_description": "Crear versiones automáticamente al editar entidades.",
       "flows": "Flujos",
@@ -189,7 +238,20 @@
       "project_limits_description": "Estos contadores bloquean nuevas entidades o versiones dentro de este proyecto.",
       "workspace_limits": "Límites del workspace",
       "workspace_limits_description": "Estas cuotas son compartidas por todos los proyectos del workspace.",
-      "project_storage_note": "Este proyecto usa {storage} en {assets} recursos.",
+      "project_storage_note": "Este proyecto contabiliza {storage}: {assetStorage} en {assets} recursos, {snapshots} en snapshots y {reservations} en reservas activas.",
+      "storage_progress_label": "Uso de almacenamiento del workspace: {percent}",
+      "storage_counted_note": "El almacenamiento mostrado cuenta para el plan. Los recursos de proyectos conservados incluyen los de proyectos eliminados que aún pueden recuperarse. La replicación del proveedor, los objetos huérfanos y los residuos de limpieza se excluyen de la cuota y no se muestran aquí.",
+      "storage_summary": {
+        "counted": "Almacenamiento contabilizado",
+        "remaining": "Capacidad restante",
+        "reservations": "Reservas activas"
+      },
+      "storage_breakdown": {
+        "current_assets": "Recursos de proyectos conservados",
+        "full_snapshots": "Snapshots completas",
+        "linked_snapshots": "Datos propios de snapshots enlazadas",
+        "reservations": "Reservas"
+      },
       "rows": {
         "items": "Items",
         "project_snapshots": "Snapshots del proyecto",
@@ -200,9 +262,9 @@
       },
       "descriptions": {
         "items": "Fichas, flujos, escenas y nodos de flujo en este proyecto.",
-        "project_snapshots": "Snapshots manuales y automáticas almacenadas para este proyecto.",
+        "project_snapshots": "Snapshots canónicas conservadas, incluidas las creaciones y reservas activas, de este proyecto.",
         "named_versions": "Versiones promocionadas de entidades que cuentan contra la cuota del proyecto.",
-        "storage": "Almacenamiento total de recursos usado por todos los proyectos del workspace.",
+        "storage": "Recursos, snapshots conservadas y reservas activas contabilizadas en el plan para este workspace.",
         "projects": "Proyectos activos en este workspace.",
         "members": "Usuarios únicos con membresía de workspace o de proyecto."
       },
@@ -216,7 +278,14 @@
         "available": "Disponible",
         "near_limit": "Cerca del límite",
         "limit_reached": "Límite alcanzado",
-        "no_limit": "Sin límite"
+        "no_limit": "Sin límite",
+        "unknown": "Desconocido",
+        "zero_capacity": "Sin capacidad de almacenamiento",
+        "over_limit": "Límite superado",
+        "less_than_percent": "<{percent}"
+      },
+      "accessibility": {
+        "status": "Estado de {label}: {status}"
       }
     },
     "import": {

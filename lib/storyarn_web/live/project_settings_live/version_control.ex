@@ -25,7 +25,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
     >
       <:title>{dgettext("projects", "Version Control")}</:title>
       <:subtitle>
-        {dgettext("projects", "Configure automatic snapshots and auto-versioning")}
+        {dgettext("projects", "Configure automatic entity versioning")}
       </:subtitle>
 
       <.vue
@@ -33,7 +33,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
         v-socket={@socket}
         v-inject="settings-layout"
         id="project-settings-version-control"
-        auto-snapshots-enabled={version_control_value(@version_control_form, :auto_snapshots_enabled)}
         auto-version-flows={version_control_value(@version_control_form, :auto_version_flows)}
         auto-version-scenes={version_control_value(@version_control_form, :auto_version_scenes)}
         auto-version-sheets={version_control_value(@version_control_form, :auto_version_sheets)}
@@ -121,7 +120,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
   def handle_event("save_version_control", %{"version_control" => params}, socket) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
       attrs = %{
-        auto_snapshots_enabled: params["auto_snapshots_enabled"] == "true",
         auto_version_flows: params["auto_version_flows"] == "true",
         auto_version_scenes: params["auto_version_scenes"] == "true",
         auto_version_sheets: params["auto_version_sheets"] == "true"
@@ -148,7 +146,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
 
   defp track_version_control_settings(socket, project, attrs) do
     Analytics.track(socket.assigns.current_scope, "version control settings updated", %{
-      auto_snapshots_enabled: attrs.auto_snapshots_enabled,
       auto_version_flows: attrs.auto_version_flows,
       auto_version_scenes: attrs.auto_version_scenes,
       auto_version_sheets: attrs.auto_version_sheets,
@@ -162,14 +159,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
 
   defp version_control_changeset(project) do
     types = %{
-      auto_snapshots_enabled: :boolean,
       auto_version_flows: :boolean,
       auto_version_scenes: :boolean,
       auto_version_sheets: :boolean
     }
 
     data = %{
-      auto_snapshots_enabled: project.auto_snapshots_enabled,
       auto_version_flows: project.auto_version_flows,
       auto_version_scenes: project.auto_version_scenes,
       auto_version_sheets: project.auto_version_sheets

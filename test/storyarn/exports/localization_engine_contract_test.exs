@@ -348,7 +348,9 @@ defmodule Storyarn.Exports.LocalizationEngineContractTest do
     snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
     assert {:ok, recovered} =
-             ProjectRecovery.recover_project(project.workspace_id, snapshot, user.id, name: "Recovered localization keys")
+             ProjectRecovery.materialize_template(project.workspace_id, snapshot, user.id,
+               name: "Recovered localization keys"
+             )
 
     recovered_keys = recovered.id |> serialize_project(opts) |> catalog_keys()
 

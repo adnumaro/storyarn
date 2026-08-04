@@ -8,6 +8,7 @@ defmodule Storyarn.Assets.UploadDecisionTest do
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Assets.Storage
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
   alias Storyarn.Repo
@@ -129,7 +130,7 @@ defmodule Storyarn.Assets.UploadDecisionTest do
     cleanup_asset_storage(stored_assets)
   end
 
-  test "keeps a newly persisted original when a later variant exceeds storage", %{
+  test "rolls back the original when a later purpose variant exceeds storage", %{
     project: project,
     user: user
   } do
@@ -137,6 +138,7 @@ defmodule Storyarn.Assets.UploadDecisionTest do
     source_hash = BlobStore.compute_hash(binary)
     storage_limit = Billing.plan_limit(Billing.default_plan(), :storage_bytes_per_workspace)
     insert_filler_asset(project, user, storage_limit - byte_size(binary))
+    usage_before = Billing.workspace_storage_usage(project.workspace_id)
 
     assert {:error, :limit_reached, %{resource: :storage_bytes_per_workspace}} =
              Assets.upload_binary_for_purpose(
@@ -146,10 +148,17 @@ defmodule Storyarn.Assets.UploadDecisionTest do
                user
              )
 
-    original = Repo.one!(from(a in Asset, where: a.project_id == ^project.id and a.blob_hash == ^source_hash))
-    assert {:ok, ^binary} = Storyarn.Assets.Storage.download(original.key)
+    refute Repo.exists?(from(a in Asset, where: a.project_id == ^project.id and a.blob_hash == ^source_hash))
+    usage_after = Billing.workspace_storage_usage(project.workspace_id)
+    assert Map.delete(usage_after, :measured_at) == Map.delete(usage_before, :measured_at)
 
-    cleanup_asset_storage([original])
+    # The project blob is a conservative content-addressed cache. It is not
+    # product-accounted storage and may be retained for an already committed
+    # entity version even though the surrounding asset transaction rolled back.
+    blob_key = BlobStore.blob_key(project.id, source_hash, BlobStore.ext_from_content_type("image/png"))
+    assert {:ok, ^binary} = Storage.download(blob_key)
+
+    Storage.adapter().delete(blob_key)
   end
 
   defp insert_filler_asset(project, user, size) do

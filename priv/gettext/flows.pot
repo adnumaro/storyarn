@@ -50,7 +50,7 @@ msgstr ""
 msgid "Could not delete flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1258
+#: lib/storyarn_web/live/flow_live/show.ex:1250
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr ""
@@ -111,7 +111,7 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/index.ex:482
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:225
 #: lib/storyarn_web/live/flow_live/player_live.ex:87
-#: lib/storyarn_web/live/flow_live/show.ex:368
+#: lib/storyarn_web/live/flow_live/show.ex:360
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr ""
@@ -213,7 +213,7 @@ msgstr ""
 msgid "Could not restore flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1704
+#: lib/storyarn_web/live/flow_live/show.ex:1685
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr ""
@@ -223,7 +223,7 @@ msgstr ""
 msgid "Could not update node positions."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:979
+#: lib/storyarn_web/live/flow_live/show.ex:971
 #, elixir-autogen, elixir-format
 msgid "Could not update scene map."
 msgstr ""
@@ -284,37 +284,37 @@ msgstr ""
 msgid "Set or modify variable values"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4906
+#: lib/storyarn/versioning/builders/flow_builder.ex:4217
 #, elixir-autogen, elixir-format
 msgid "Added %{type} node"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4971
+#: lib/storyarn/versioning/builders/flow_builder.ex:4282
 #, elixir-autogen, elixir-format
 msgid "Added connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4795
+#: lib/storyarn/versioning/builders/flow_builder.ex:4106
 #, elixir-autogen, elixir-format
 msgid "Changed description"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4802
+#: lib/storyarn/versioning/builders/flow_builder.ex:4113
 #, elixir-autogen, elixir-format
 msgid "Changed scene"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4809
+#: lib/storyarn/versioning/builders/flow_builder.ex:4120
 #, elixir-autogen, elixir-format
 msgid "Changed settings"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4788
+#: lib/storyarn/versioning/builders/flow_builder.ex:4099
 #, elixir-autogen, elixir-format
 msgid "Changed shortcut"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5001
+#: lib/storyarn/versioning/builders/flow_builder.ex:4312
 #, elixir-autogen, elixir-format
 msgid "Flow backdrop scene"
 msgstr ""
@@ -324,47 +324,47 @@ msgstr ""
 msgid "Flow not found"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4919
+#: lib/storyarn/versioning/builders/flow_builder.ex:4230
 #, elixir-autogen, elixir-format
 msgid "Modified %{type} node"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4987
+#: lib/storyarn/versioning/builders/flow_builder.ex:4298
 #, elixir-autogen, elixir-format
 msgid "Modified connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5025
+#: lib/storyarn/versioning/builders/flow_builder.ex:4336
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — audio"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5020
+#: lib/storyarn/versioning/builders/flow_builder.ex:4331
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — referenced flow"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5015
+#: lib/storyarn/versioning/builders/flow_builder.ex:4326
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — speaker"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4907
+#: lib/storyarn/versioning/builders/flow_builder.ex:4218
 #, elixir-autogen, elixir-format
 msgid "Removed %{type} node"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4972
+#: lib/storyarn/versioning/builders/flow_builder.ex:4283
 #, elixir-autogen, elixir-format
 msgid "Removed connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4781
+#: lib/storyarn/versioning/builders/flow_builder.ex:4092
 #, elixir-autogen, elixir-format
 msgid "Renamed flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:918
+#: lib/storyarn_web/live/flow_live/show.ex:910
 #, elixir-autogen, elixir-format
 msgid "Node not found."
 msgstr ""
@@ -402,32 +402,32 @@ msgid "Debug session started"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:150
-#: lib/storyarn_web/live/flow_live/show.ex:1182
+#: lib/storyarn_web/live/flow_live/show.ex:1174
 #, elixir-autogen, elixir-format
 msgid "Could not create sequence"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1178
+#: lib/storyarn_web/live/flow_live/show.ex:1170
 #, elixir-autogen, elixir-format
 msgid "Nodes must belong to the same container"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1171
+#: lib/storyarn_web/live/flow_live/show.ex:1163
 #, elixir-autogen, elixir-format
 msgid "Select at least one node first"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1168
+#: lib/storyarn_web/live/flow_live/show.ex:1160
 #, elixir-autogen, elixir-format
 msgid "Sequence created"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5049
+#: lib/storyarn/versioning/builders/flow_builder.ex:4360
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} sequence track #%{track} — audio"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5068
+#: lib/storyarn/versioning/builders/flow_builder.ex:4379
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} sequence visual layer #%{layer}"
 msgstr ""
@@ -440,7 +440,7 @@ msgstr ""
 msgid "Flow"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5089
+#: lib/storyarn/versioning/builders/flow_builder.ex:4400
 #, elixir-autogen, elixir-format
 msgid "Localization row #%{n} — voice-over"
 msgstr ""

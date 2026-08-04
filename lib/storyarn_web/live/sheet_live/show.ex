@@ -6,7 +6,6 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.Live.Shared.RestorationHandlers, only: [check_restoration_lock: 2]
   import StoryarnWeb.SheetLive.Helpers.AudioDataHelpers
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
   import StoryarnWeb.SheetLive.Helpers.HealthHelpers
@@ -24,7 +23,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
-  alias StoryarnWeb.Live.Shared.RestorationHandlers
   alias StoryarnWeb.SheetLive.Handlers.AudioHandlers
   alias StoryarnWeb.SheetLive.Handlers.BlockHandlers
   alias StoryarnWeb.SheetLive.Handlers.FormulaHandlers
@@ -62,7 +60,6 @@ defmodule StoryarnWeb.SheetLive.Show do
       urls={@urls}
       active_tool={:sheets}
       online_users={@online_users}
-      restoration_banner={@restoration_banner}
       onboarding={@onboarding}
       onboarding_autostart
       sidebar_module={StoryarnWeb.SheetsSidebarLive}
@@ -309,7 +306,6 @@ defmodule StoryarnWeb.SheetLive.Show do
     %{project: project, can_edit: can_edit} = socket.assigns
 
     if connected?(socket) do
-      Collaboration.subscribe_restoration(project.id)
       Collaboration.subscribe_changes({:project, project.id})
 
       Phoenix.PubSub.subscribe(
@@ -318,12 +314,9 @@ defmodule StoryarnWeb.SheetLive.Show do
       )
     end
 
-    {can_edit, restoration_banner} = check_restoration_lock(project.id, can_edit)
-
     {:ok,
      socket
      |> assign(:can_edit, can_edit)
-     |> assign(:restoration_banner, restoration_banner)
      |> assign(:compact, false)
      |> assign(:sheet, nil)
      |> assign(:blocks, [])
@@ -868,17 +861,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   # Handle Info
   # ===========================================================================
 
-  @impl true
-  def handle_info({:project_restoration_started, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
-
-  def handle_info({:project_restoration_completed, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_completed, payload}, socket)
-
-  def handle_info({:project_restoration_failed, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
-
   # Shell-topic messages from SheetsSidebarLive:
+  @impl true
   def handle_info({:open_sheet, sheet_id}, socket) do
     path =
       ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet_id}"

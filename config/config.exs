@@ -10,9 +10,7 @@ import Config
 # Keep every object-storage socket phase bounded well below the import-plan
 # reservation lease. The importer also wraps the whole PUT in a wall-clock
 # deadline because a send timeout only limits individual blocked writes.
-alias Storyarn.Workers.DailySnapshotWorker
 alias Storyarn.Workers.ExpireAIResultsWorker
-alias Storyarn.Workers.SnapshotRetentionWorker
 alias Storyarn.Workers.TrashRetentionWorker
 
 config :ex_aws, :req_opts,
@@ -82,10 +80,6 @@ config :posthog,
   enable_error_tracking: false,
   in_app_otp_apps: [:storyarn]
 
-# Daily backup creation remains active, but automatic deletion of older
-# recovery points is frozen.
-config :storyarn, DailySnapshotWorker, pruning_enabled: false
-
 # Oban background job processing
 #
 # Cadence is a database-cost decision, not just a latency one. The production
@@ -135,8 +129,6 @@ config :storyarn, Oban,
       # Each entry is paired with the window it enforces. Nothing may be finer
       # than 15 minutes without re-doing the compute-budget arithmetic in ENG-37.
       crontab: [
-        {"0 3 * * *", DailySnapshotWorker},
-        {"0 4 * * *", SnapshotRetentionWorker},
         # 24h retention (`Billing.Plan` `trash_retention_hours: 24`); 4h is still
         # six times finer than the window.
         {"0 */4 * * *", TrashRetentionWorker},
@@ -155,9 +147,6 @@ config :storyarn, Oban,
     }
   ]
 
-# Automatic retention for deleted-project snapshots is frozen during the
-# recovery hardening phase. The worker also refuses to hard-delete projects.
-config :storyarn, SnapshotRetentionWorker, enabled: false
 config :storyarn, Storyarn.AI.CredentialResolver, Storyarn.AI.CredentialResolver.Unavailable
 config :storyarn, Storyarn.AI.InferenceProviders, providers: %{}
 config :storyarn, Storyarn.AI.RouteOptions, ttl_seconds: 300
@@ -202,15 +191,14 @@ config :storyarn, Storyarn.Vault,
     }
   ]
 
-# Restores remain disabled by default while their referential-integrity
-# guarantees are being hardened. Runtime configuration can enable each surface
-# independently after it passes audit.
+# Entity-version restores remain disabled by default while their
+# referential-integrity guarantees are being hardened. Project snapshot
+# lifecycle operations have no runtime enable switch until their canonical
+# workflows are connected.
 config :storyarn, Storyarn.Versioning.RestorePolicy,
   sheet_version_restore: false,
   flow_version_restore: false,
-  scene_version_restore: false,
-  project_snapshot_restore: false,
-  deleted_project_recovery: false
+  scene_version_restore: false
 
 # Configures the endpoint
 config :storyarn, StoryarnWeb.Endpoint,

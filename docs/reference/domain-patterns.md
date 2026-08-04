@@ -279,11 +279,10 @@ Topic format: `"{type}:{id}:{channel}"` where channel is `presence`, `changes`,
 
 Project-wide channels take a bare `project_id`, not a scope tuple:
 
-| Channel     | Subscribe                 | Topic                      |
-| ----------- | ------------------------- | -------------------------- |
-| Flow graph  | `subscribe_flow_graph/1`  | `project:{id}:flow_graph`  |
-| Restoration | `subscribe_restoration/1` | `project:{id}:restoration` |
-| Dashboard   | `subscribe_dashboard/1`   | `project:{id}:dashboard`   |
+| Channel    | Subscribe                | Topic                     |
+| ---------- | ------------------------ | ------------------------- |
+| Flow graph | `subscribe_flow_graph/1` | `project:{id}:flow_graph` |
+| Dashboard  | `subscribe_dashboard/1`  | `project:{id}:dashboard`  |
 
 ---
 

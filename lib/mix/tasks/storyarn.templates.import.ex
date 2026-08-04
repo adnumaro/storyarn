@@ -21,7 +21,6 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
     * `--description`
     * `--version-notes`
     * `--update-existing`
-    * `--repair-legacy-snapshot` explicitly repairs the pre-sequence portable format
     * `--yes`
 
   `public` templates are intended for controlled admin/operator imports, not
@@ -31,7 +30,6 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
   use Mix.Task
 
   alias Storyarn.ProjectTemplates
-  alias Storyarn.ProjectTemplates.LegacySnapshotRepair
 
   @requirements ["app.start"]
 
@@ -50,7 +48,6 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
           description: :string,
           version_notes: :string,
           update_existing: :boolean,
-          repair_legacy_snapshot: :boolean,
           yes: :boolean
         ]
       )
@@ -89,7 +86,6 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
   defp print_preview(path, manifest, opts) do
     template = manifest["template"] || %{}
     visibility = Keyword.get(opts, :visibility, "private")
-    repair_lines = repair_preview_lines!(manifest["legacy_snapshot_repair"])
 
     Mix.shell().info("Template bundle: #{path}")
     Mix.shell().info("Name: #{Keyword.get(opts, :name) || template["name"]}")
@@ -97,17 +93,8 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
     Mix.shell().info("Visibility: #{visibility}")
     Mix.shell().info("Verify user ID: #{Keyword.get(opts, :verify_user_id) || "missing"}")
     Mix.shell().info("Verify workspace ID: #{Keyword.get(opts, :verify_workspace_id) || "missing"}")
-    Mix.shell().info("Repair legacy snapshot: #{Keyword.get(opts, :repair_legacy_snapshot, false)}")
-    Enum.each(repair_lines, fn line -> Mix.shell().info(line) end)
     Mix.shell().info("Assets: #{manifest["asset_count"]}")
     Mix.shell().info("Checksum: #{manifest["checksum"]}")
-  end
-
-  defp repair_preview_lines!(report) do
-    case LegacySnapshotRepair.preview_lines(report) do
-      {:ok, lines} -> lines
-      {:error, reason} -> Mix.raise("Could not read template bundle: #{inspect(reason)}")
-    end
   end
 
   defp ensure_confirmed!(opts) do

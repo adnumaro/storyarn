@@ -31,9 +31,6 @@
       "account_settings": "Account settings",
       "all_workspaces": "All workspaces",
       "log_out": "Log out"
-    },
-    "project_restoration": {
-      "in_progress": "Project is being restored by {user}. Editing is temporarily disabled."
     }
   }
 }

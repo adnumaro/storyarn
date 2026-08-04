@@ -232,8 +232,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
 
   @doc """
   Performs the pure structural checks required before a stored template snapshot
-  can be installed. This keeps legacy artifacts that omitted sequence state from
-  silently materializing incomplete projects.
+  can be installed. Incomplete sequence state fails validation.
   """
   @spec validate_snapshot_integrity(map()) :: :ok | {:error, [map()]}
   def validate_snapshot_integrity(snapshot) when is_map(snapshot) do
@@ -1125,13 +1124,13 @@ defmodule Storyarn.ProjectTemplates.Audit do
     recovery_opts =
       opts
       |> Keyword.take([:asset_copy_tracker, :asset_source_keys])
-      |> Keyword.merge(name: name, template_clone: true)
+      |> Keyword.put(:name, name)
 
     Repo.transaction(
       fn ->
         result =
           with {:ok, recovered_project} <-
-                 ProjectRecovery.recover_project(workspace_id, snapshot, user_id, recovery_opts) do
+                 ProjectRecovery.materialize_template(workspace_id, snapshot, user_id, recovery_opts) do
             {:ok, materialized_entity_counts(recovered_project.id), materialized_project_errors(recovered_project.id)}
           end
 

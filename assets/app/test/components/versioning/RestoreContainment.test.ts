@@ -1,7 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import VersionHistory from "../../../components/versioning/history/VersionHistory.vue";
-import ProjectSettingsSnapshots from "../../../live/project/settings/ProjectSettingsSnapshots.vue";
 import WorkspaceSettingsDeletedProjects from "../../../live/workspace/settings/WorkspaceSettingsDeletedProjects.vue";
 import { createMockLive } from "../../setup";
 
@@ -147,33 +146,7 @@ describe("restore containment", () => {
     );
   });
 
-  it("hides project snapshot restore while preserving download and delete", () => {
-    const { global } = liveGlobal();
-
-    const wrapper = mount(ProjectSettingsSnapshots, {
-      props: {
-        snapshots: [
-          {
-            id: 21,
-            title: "Safe copy",
-            versionNumber: 2,
-            insertedAt: "2026-07-17T10:00:00Z",
-          },
-        ],
-        restoreEnabled: false,
-        workspaceSlug: "writers",
-        projectSlug: "story",
-      },
-      global,
-    });
-
-    expect(wrapper.find('[data-testid="restore-project-snapshot"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="delete-project-snapshot"]').exists()).toBe(true);
-    wrapper.get('a[href="/workspaces/writers/projects/story/snapshots/21/download"]');
-    wrapper.get("form");
-  });
-
-  it("hides deleted-project recovery and makes project expansion inert", async () => {
+  it("renders deleted projects as read-only inventory without recovery contracts", () => {
     const { live, global } = liveGlobal();
 
     const wrapper = mount(WorkspaceSettingsDeletedProjects, {
@@ -183,27 +156,16 @@ describe("restore containment", () => {
             id: 31,
             name: "Deleted story",
             deleted_time_ago: "Deleted today",
-            snapshot_count: 1,
           },
         ],
-        expandedProjectId: 31,
-        snapshots: [
-          {
-            id: 41,
-            version_number: 1,
-            formatted_date: "Today",
-          },
-        ],
-        recoveryEnabled: false,
       },
       global,
     });
 
+    expect(wrapper.text()).toContain("Project recovery is not available yet");
+    expect(wrapper.text()).toContain("Deleted story");
     expect(wrapper.find('[data-testid="recover-deleted-project"]').exists()).toBe(false);
-
-    const projectButton = wrapper.get("button");
-    expect(projectButton.attributes("disabled")).toBeDefined();
-    await projectButton.trigger("click");
+    expect(wrapper.find("button").exists()).toBe(false);
     expect(live.pushEvent).not.toHaveBeenCalled();
   });
 });

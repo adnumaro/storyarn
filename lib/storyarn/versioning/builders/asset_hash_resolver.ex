@@ -165,8 +165,8 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   Resolves an asset FK during snapshot restore.
 
   Resolution modes:
-  - `:reuse` (default) reuses an existing asset ID, recreating from blob only if
-    the row no longer exists.
+  - `:reuse` (default) reuses an existing asset ID only after its complete
+    portable catalog entry and backing object have been verified.
   - `:copy` always creates a new asset in the destination project from the
     snapshot blob/source storage key.
   - `:drop` returns nil.
@@ -175,8 +175,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   and `"asset_metadata"` top-level keys.
 
   Options:
-  - `:asset_error_mode` — `:tolerant` (legacy default) returns nil on copy
-    failures; `:strict` raises `AssetCopyError`.
   - `:asset_materialization_cache` — a reference created by
     `AssetMaterializationCache.new/0`. Supplying it enables portable catalog
     validation and preserves one source-to-destination identity.
@@ -196,25 +194,14 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
         nil
 
       mode when mode in [:reuse, :copy] ->
-        if portable_resolution?(opts) do
-          resolve_portable_asset(
-            asset_id,
-            snapshot,
-            project_id,
-            user_id,
-            mode,
-            opts
-          )
-        else
-          resolve_legacy_tolerant_asset(
-            asset_id,
-            snapshot,
-            project_id,
-            user_id,
-            mode,
-            opts
-          )
-        end
+        resolve_portable_asset(
+          asset_id,
+          snapshot,
+          project_id,
+          user_id,
+          mode,
+          opts
+        )
     end
   end
 
@@ -233,7 +220,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
 
     case result do
       {:ok, destination_asset_id} -> destination_asset_id
-      {:error, reason} -> handle_copy_error(asset_id, reason, opts)
+      {:error, reason} -> raise AssetCopyError, asset_id: asset_id, reason: reason
     end
   end
 
@@ -287,17 +274,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
     end
   end
 
-  defp resolve_legacy_tolerant_asset(asset_id, snapshot, project_id, user_id, :copy, opts) do
-    recreate_from_blob(asset_id, snapshot, project_id, user_id, opts)
-  end
-
-  defp resolve_legacy_tolerant_asset(asset_id, snapshot, project_id, user_id, :reuse, opts) do
-    case owned_reusable_asset(asset_id, project_id) do
-      %Asset{} -> asset_id
-      nil -> recreate_from_blob(asset_id, snapshot, project_id, user_id, opts)
-    end
-  end
-
   defp owned_reusable_asset(asset_id, project_id) do
     query =
       from(a in Asset,
@@ -307,39 +283,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
 
     query = if Repo.in_transaction?(), do: lock(query, "FOR UPDATE"), else: query
     Repo.one(query)
-  end
-
-  defp recreate_from_blob(asset_id, snapshot, project_id, user_id, opts) do
-    id_str = to_string(asset_id)
-    blob_hashes = Map.get(snapshot, "asset_blob_hashes", %{})
-    asset_metadata = Map.get(snapshot, "asset_metadata", %{})
-
-    with {:ok, blob_hash} <- fetch_blob_hash(blob_hashes, id_str),
-         {:ok, metadata} <- fetch_asset_metadata(asset_metadata, id_str),
-         {:ok, new_asset} <- create_from_blob(project_id, user_id, blob_hash, metadata, opts) do
-      new_asset.id
-    else
-      {:error, reason} -> handle_copy_error(asset_id, reason, opts)
-    end
-  end
-
-  defp create_from_blob(project_id, user_id, blob_hash, metadata, opts) do
-    with :ok <- validate_blob_hash(blob_hash),
-         :ok <- validate_asset_filename(metadata["filename"]),
-         :ok <- validate_asset_content_type(metadata, opts),
-         :ok <- validate_asset_size(metadata["size"]) do
-      ext = BlobStore.ext_from_content_type(metadata["content_type"])
-      source_key = source_storage_key(project_id, blob_hash, ext, metadata, opts)
-
-      BlobStore.create_asset_from_blob(
-        project_id,
-        user_id,
-        blob_hash,
-        source_key,
-        materialization_metadata(metadata),
-        opts
-      )
-    end
   end
 
   defp create_from_portable_entry(project_id, user_id, entry, opts) do
@@ -591,27 +534,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
       :drop -> :drop
       :copy -> :copy
       _reuse -> :reuse
-    end
-  end
-
-  defp portable_resolution?(opts) do
-    Keyword.get(opts, :asset_error_mode, :tolerant) == :strict or
-      Keyword.has_key?(opts, :asset_materialization_cache)
-  end
-
-  defp handle_copy_error(asset_id, reason, opts) do
-    if Keyword.get(opts, :asset_error_mode, :tolerant) == :strict do
-      raise AssetCopyError, asset_id: asset_id, reason: reason
-    end
-  end
-
-  defp source_storage_key(project_id, blob_hash, ext, metadata, opts) do
-    case Keyword.get(opts, :asset_mode, :reuse) do
-      :copy ->
-        metadata["blob_key"] || metadata["key"] || BlobStore.blob_key(project_id, blob_hash, ext)
-
-      _ ->
-        metadata["blob_key"] || BlobStore.blob_key(project_id, blob_hash, ext)
     end
   end
 end

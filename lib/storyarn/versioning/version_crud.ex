@@ -106,8 +106,7 @@ defmodule Storyarn.Versioning.VersionCrud do
            params.entity_type,
            params.entity_id,
            version_number,
-           params.snapshot,
-           SnapshotStorage.unique_key_suffix()
+           params.snapshot
          ) do
       {:ok, storage_key, size_bytes, checksum} ->
         case insert_version_record(

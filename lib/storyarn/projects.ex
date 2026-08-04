@@ -137,7 +137,7 @@ defmodule Storyarn.Projects do
   defdelegate permanently_delete_project(project), to: ProjectCrud
 
   @doc """
-  Lists soft-deleted projects in a workspace with snapshot counts.
+  Lists soft-deleted projects in a workspace.
   """
   @spec list_deleted_projects(integer()) :: [project()]
   defdelegate list_deleted_projects(workspace_id), to: ProjectCrud
@@ -148,11 +148,6 @@ defmodule Storyarn.Projects do
   @spec get_deleted_project(integer(), integer()) :: project() | nil
   defdelegate get_deleted_project(workspace_id, project_id), to: ProjectCrud
 
-  @doc """
-  Lists all projects with auto snapshots enabled.
-  """
-  @spec list_projects_with_auto_snapshots(keyword()) :: [project()]
-  defdelegate list_projects_with_auto_snapshots(opts \\ []), to: ProjectCrud
   defdelegate auto_versioning_enabled?(project_id, entity_type), to: ProjectCrud
 
   # =============================================================================
@@ -180,73 +175,6 @@ defmodule Storyarn.Projects do
 
   @doc false
   defdelegate delete_retention_candidate(item, delete_fun), to: ProjectTrash
-
-  # =============================================================================
-  # Restoration Lock
-  # =============================================================================
-
-  @doc """
-  Atomically acquires a restoration lock on a project.
-  """
-  @spec acquire_restoration_lock(integer(), integer(), integer()) ::
-          {:ok, project()} | {:error, :already_locked | :snapshot_not_found}
-  defdelegate acquire_restoration_lock(project_id, user_id, snapshot_id), to: ProjectCrud
-
-  @doc """
-  Releases the restoration lock on a project only when the token matches.
-  """
-  @spec release_restoration_lock(integer(), Ecto.UUID.t()) ::
-          {:ok, project()} | {:error, :not_found | :lock_mismatch}
-  defdelegate release_restoration_lock(project_id, token), to: ProjectCrud
-
-  @doc """
-  Releases a claimed restoration lock only for its matching token and job.
-  """
-  @spec release_restoration_lock(integer(), Ecto.UUID.t(), pos_integer()) ::
-          {:ok, project()} | {:error, :not_found | :lock_mismatch | :invalid_job_id}
-  defdelegate release_restoration_lock(project_id, token, job_id), to: ProjectCrud
-
-  @doc """
-  Verifies that a queued restore still owns the project's active lock.
-  """
-  @spec verify_restoration_lock(integer(), integer(), integer(), Ecto.UUID.t()) ::
-          {:ok, project()} | {:error, :not_found | :not_locked | :lock_mismatch}
-  defdelegate verify_restoration_lock(project_id, user_id, snapshot_id, token),
-    to: ProjectCrud
-
-  @doc """
-  Atomically claims an active restoration lock for one Oban job execution.
-  """
-  @spec claim_restoration_lock(
-          integer(),
-          integer(),
-          integer(),
-          Ecto.UUID.t(),
-          pos_integer()
-        ) ::
-          {:ok, project()}
-          | {:error,
-             :not_found
-             | :not_locked
-             | :lock_mismatch
-             | :already_claimed
-             | :invalid_job_id}
-  defdelegate claim_restoration_lock(project_id, user_id, snapshot_id, token, job_id),
-    to: ProjectCrud
-
-  @doc """
-  Checks if a restoration is in progress for a project.
-  """
-  @spec restoration_in_progress?(integer()) ::
-          {true, %{user_id: integer() | nil, started_at: DateTime.t() | nil}} | false
-  defdelegate restoration_in_progress?(project_id), to: ProjectCrud
-
-  @doc """
-  Clears a stale restoration lock if it's older than the given timeout.
-  """
-  @spec clear_stale_restoration_lock(integer(), non_neg_integer()) ::
-          {:ok, :cleared} | {:error, :not_stale | :restore_active}
-  defdelegate clear_stale_restoration_lock(project_id, timeout_minutes \\ 15), to: ProjectCrud
 
   # =============================================================================
   # Memberships

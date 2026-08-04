@@ -2415,9 +2415,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     action_type = normalize_zone_action_type(d["action_type"])
     action_data = normalize_zone_action_data(action_type, d["action_data"])
     {target_type, target_id} = normalize_zone_target(d["target_type"], d["target_id"])
-    convert_to_walkable? = legacy_walkable_only?(action_type, action_data, target_type, target_id, d["is_walkable"])
-
-    action_type = if convert_to_walkable?, do: "walkable", else: action_type
 
     %{
       target_type: if(action_type == "action", do: target_type),
@@ -2451,13 +2448,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     do: {target_type, target_id}
 
   defp normalize_zone_target(_target_type, _target_id), do: {nil, nil}
-
-  defp legacy_walkable_only?("action", action_data, nil, nil, true) do
-    assignments = action_data["assignments"] || []
-    assignments == []
-  end
-
-  defp legacy_walkable_only?(_action_type, _action_data, _target_type, _target_id, _is_walkable), do: false
 
   defp insert_single!(repo, schema, attrs, label) do
     case upsert_restore_rows(repo, schema, [attrs]) do

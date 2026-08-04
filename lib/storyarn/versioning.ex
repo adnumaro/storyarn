@@ -15,7 +15,6 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.ChangeDetector
   alias Storyarn.Versioning.ConflictDetector
   alias Storyarn.Versioning.EntityVersion
-  alias Storyarn.Versioning.ProjectRecovery
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotCrud
   alias Storyarn.Versioning.RestorePolicy
@@ -144,11 +143,6 @@ defmodule Storyarn.Versioning do
   # ========== Project Snapshots ==========
 
   @doc """
-  Creates a project-level snapshot of all entities.
-  """
-  defdelegate create_project_snapshot(project_id, user_id, opts \\ []), to: ProjectSnapshotCrud, as: :create_snapshot
-
-  @doc """
   Lists project snapshots, ordered by version number descending.
   """
   defdelegate list_project_snapshots(project_id, opts \\ []), to: ProjectSnapshotCrud, as: :list_snapshots
@@ -159,43 +153,35 @@ defmodule Storyarn.Versioning do
   defdelegate get_project_snapshot(project_id, id), to: ProjectSnapshotCrud, as: :get_snapshot_by_id
 
   @doc """
-  Restores all project entities from a snapshot.
-  """
-  def restore_project_snapshot(project_id, snapshot, opts \\ []) do
-    with :ok <- RestorePolicy.ensure_enabled(:project_snapshot_restore) do
-      ProjectSnapshotCrud.restore_snapshot(project_id, snapshot, opts)
-    end
-  end
-
-  @doc """
-  Deletes a project snapshot and its storage.
-  """
-  defdelegate delete_project_snapshot(snapshot), to: ProjectSnapshotCrud, as: :delete_snapshot
-
-  @doc false
-  defdelegate load_project_recovery_snapshot(project_id, snapshot),
-    to: ProjectSnapshotCrud,
-    as: :load_recovery_snapshot
-
-  @doc """
   Updates a project snapshot's title and description.
   """
   defdelegate update_project_snapshot(snapshot, attrs), to: ProjectSnapshotCrud, as: :update_snapshot
 
   @doc """
+  Finalizes or remeasures canonical snapshot accounting behind a generation fence.
+  """
+  defdelegate finalize_project_snapshot_object_set(snapshot_id, expected_generation, attrs),
+    to: ProjectSnapshotCrud,
+    as: :finalize_object_set
+
+  @doc """
+  Converts linked ownership to a self-contained full object set inside its reservation commit.
+  """
+  defdelegate convert_linked_project_snapshot_object_set(snapshot_id, expected_generation, attrs),
+    to: ProjectSnapshotCrud,
+    as: :convert_linked_object_set
+
+  @doc """
+  Reconfirms immutable snapshot accounting behind a workspace and generation fence.
+  """
+  defdelegate remeasure_project_snapshot_object_set(snapshot_id, expected_generation, attrs),
+    to: ProjectSnapshotCrud,
+    as: :remeasure_object_set
+
+  @doc """
   Counts project snapshots for billing limit checks.
   """
   defdelegate count_project_snapshots(project_id), to: ProjectSnapshotCrud, as: :count_snapshots
-
-  @doc """
-  Prunes the oldest auto-generated snapshot for a project.
-  """
-  defdelegate prune_auto_snapshots(project_id), to: ProjectSnapshotCrud
-
-  @doc """
-  Deletes auto snapshots older than the given retention period.
-  """
-  defdelegate prune_expired_snapshots(project_id, retention_days), to: ProjectSnapshotCrud
 
   @doc """
   Persists a canonical snapshot-owned object set without scheduling capture.
@@ -205,18 +191,25 @@ defmodule Storyarn.Versioning do
     as: :persist
 
   @doc """
+  Stages and verifies a canonical snapshot object set without publishing it.
+  """
+  defdelegate stage_snapshot_object_set(project_id, project_snapshot, assets, opts \\ []),
+    to: SnapshotObjectStorage,
+    as: :stage
+
+  @doc """
+  Publishes a staged object set after the supplied exact-size authorization.
+  """
+  defdelegate publish_snapshot_object_set(staged, before_publish),
+    to: SnapshotObjectStorage,
+    as: :publish
+
+  @doc """
   Loads a ready object set after verifying its manifest and complete inventory.
   """
   defdelegate load_snapshot_object_set(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts \\ []),
     to: SnapshotObjectStorage,
     as: :load_verified
-
-  # ========== Project Recovery ==========
-
-  @doc """
-  Creates a new project from snapshot data with full ID remapping.
-  """
-  defdelegate recover_project(workspace_id, snapshot_data, user_id, opts \\ []), to: ProjectRecovery
 
   # ========== Snapshot Diff ==========
 

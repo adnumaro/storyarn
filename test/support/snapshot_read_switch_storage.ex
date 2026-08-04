@@ -6,7 +6,10 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   alias Storyarn.Assets.Storage.Local
 
   def start_link(replacements) when is_map(replacements) do
-    Agent.start_link(fn -> %{counts: %{}, replacements: replacements} end, name: __MODULE__)
+    Agent.start_link(
+      fn -> %{counts: %{}, replacements: replacements, content_type_overrides: %{}} end,
+      name: __MODULE__
+    )
   end
 
   def reset_counts do
@@ -15,6 +18,10 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
 
   def stream_count(key) do
     Agent.get(__MODULE__, &Map.get(&1.counts, key, 0))
+  end
+
+  def override_content_type(key, content_type) do
+    Agent.update(__MODULE__, &put_in(&1, [:content_type_overrides, key], content_type))
   end
 
   @impl true
@@ -51,7 +58,14 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   defdelegate download(key), to: Local
 
   @impl true
-  defdelegate stat(key), to: Local
+  def stat(key) do
+    with {:ok, stat} <- Local.stat(key) do
+      case Agent.get(__MODULE__, &Map.fetch(&1.content_type_overrides, key)) do
+        {:ok, content_type} -> {:ok, %{stat | content_type: content_type}}
+        :error -> {:ok, stat}
+      end
+    end
+  end
 
   @impl true
   defdelegate presigned_upload_url(key, content_type, opts), to: Local

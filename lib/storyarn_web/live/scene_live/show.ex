@@ -40,7 +40,6 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.Live.Shared.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
-  alias StoryarnWeb.Live.Shared.RestorationHandlers
   alias StoryarnWeb.PrivateMedia
   alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
   alias StoryarnWeb.SceneLive.Handlers.CollaborationHandlers
@@ -83,7 +82,6 @@ defmodule StoryarnWeb.SceneLive.Show do
       urls={@urls}
       active_tool={:scenes}
       online_users={@online_users}
-      restoration_banner={@restoration_banner}
       onboarding={@onboarding}
       onboarding_autostart
       canvas_mode={true}
@@ -395,22 +393,16 @@ defmodule StoryarnWeb.SceneLive.Show do
     %{project: project, can_edit: can_edit} = socket.assigns
 
     if connected?(socket) do
-      Collaboration.subscribe_restoration(project.id)
-
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
         ProjectChromeHelpers.shell_topic(project.id)
       )
     end
 
-    {can_edit, restoration_banner} =
-      RestorationHandlers.check_restoration_lock(project.id, can_edit)
-
     socket =
       socket
       |> assign(:can_edit, can_edit)
       |> assign(:compact, false)
-      |> assign(:restoration_banner, restoration_banner)
       |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
       |> assign(:collab_scope, nil)
       |> assign(:entity_locks, %{})
@@ -1001,6 +993,9 @@ defmodule StoryarnWeb.SceneLive.Show do
            |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
         )
       else
+        {:error, :limit_reached, _details} ->
+          {:noreply, put_flash(socket, :error, asset_storage_limit_message())}
+
         {:error, message} when is_binary(message) ->
           {:noreply, put_flash(socket, :error, message)}
 
@@ -1051,6 +1046,9 @@ defmodule StoryarnWeb.SceneLive.Show do
            |> put_flash(:info, dgettext("scenes", "Zone icon updated."))}
         )
       else
+        {:error, :limit_reached, _details} ->
+          {:noreply, put_flash(socket, :error, asset_storage_limit_message())}
+
         {:error, message} when is_binary(message) ->
           {:noreply, put_flash(socket, :error, message)}
 
@@ -1735,18 +1733,6 @@ defmodule StoryarnWeb.SceneLive.Show do
   # Handle Info: Version History
   # ---------------------------------------------------------------------------
 
-  @impl true
-  def handle_info({:project_restoration_started, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
-
-  @impl true
-  def handle_info({:project_restoration_completed, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_completed, payload}, socket)
-
-  @impl true
-  def handle_info({:project_restoration_failed, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
-
   # ---------------------------------------------------------------------------
   # Handle Info: Collaboration
   # ---------------------------------------------------------------------------
@@ -1996,11 +1982,16 @@ defmodule StoryarnWeb.SceneLive.Show do
            purpose: :scene_background
          ) do
       {:ok, asset} -> {:ok, {:ok, asset}}
+      {:error, :limit_reached, details} -> {:ok, {:error, :limit_reached, details}}
       {:error, reason} -> {:ok, {:error, reason}}
     end
   end
 
   defp handle_background_result([{:ok, asset}], socket), do: process_background_upload(socket, asset)
+
+  defp handle_background_result([{:error, :limit_reached, _details}], socket) do
+    {:noreply, put_flash(socket, :error, asset_storage_limit_message())}
+  end
 
   defp handle_background_result(_results, socket),
     do: {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not upload background."))}
@@ -2082,6 +2073,10 @@ defmodule StoryarnWeb.SceneLive.Show do
       socket.assigns.project,
       socket.assigns.current_scope.user
     )
+  end
+
+  defp asset_storage_limit_message do
+    dgettext("assets", "Storage limit reached. Upgrade your plan.")
   end
 
   defp validate_zone_label_icon_size(binary) when byte_size(binary) <= @zone_label_icon_max_size, do: :ok

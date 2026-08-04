@@ -168,8 +168,8 @@ NEVER use `window.confirm/alert/prompt` or `data-confirm`.
 | `DashboardHandlers` | `use StoryarnWeb.Live.Shared.DashboardHandlers`   | Injects debounced dashboard-invalidation `handle_info` clauses                  |
 
 The rest of `lib/storyarn_web/live/shared/` (`CollaborationHelpers`,
-`InvitationHelpers`, `OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`,
-`RestorationHandlers`) is listed in @docs/reference/shared-utilities.md.
+`InvitationHelpers`, `OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`)
+is listed in @docs/reference/shared-utilities.md.
 
 ---
 

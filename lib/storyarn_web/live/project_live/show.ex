@@ -17,7 +17,6 @@ defmodule StoryarnWeb.ProjectLive.Show do
   alias Storyarn.Sheets
   alias StoryarnWeb.Live.Shared.DashboardHandlers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
-  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   require Logger
 
@@ -44,7 +43,6 @@ defmodule StoryarnWeb.ProjectLive.Show do
           "locale" => @locale
         }
       }
-      restoration_banner={@restoration_banner}
     >
       <.vue
         v-component="live/project/dashboard/ProjectDashboard"
@@ -69,13 +67,11 @@ defmodule StoryarnWeb.ProjectLive.Show do
   def mount(_params, _session, socket) do
     %{project: project, membership: membership} = socket.assigns
     can_manage = Projects.can?(membership.role, :manage_project)
-    {_, restoration_banner} = RestorationHandlers.check_restoration_lock(project.id, false)
 
     socket =
       socket
       |> assign(:page_title, project.name)
       |> assign(:can_manage, can_manage)
-      |> assign(:restoration_banner, restoration_banner)
       |> assign(:stats, nil)
       |> assign(:activity, [])
       |> assign(:tool_health, nil)
@@ -91,7 +87,6 @@ defmodule StoryarnWeb.ProjectLive.Show do
       Phoenix.PubSub.subscribe(Storyarn.PubSub, ProjectChromeHelpers.shell_topic(project.id))
       Collaboration.subscribe_dashboard(project.id)
       DashboardCache.subscribe_resets()
-      Collaboration.subscribe_restoration(project.id)
       send(self(), :load_dashboard_data)
     end
 
@@ -103,18 +98,6 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
   @impl true
   def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
-
-  @impl true
-  def handle_info({:project_restoration_started, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
-
-  @impl true
-  def handle_info({:project_restoration_completed, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_completed, payload}, socket)
-
-  @impl true
-  def handle_info({:project_restoration_failed, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
 
   def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 

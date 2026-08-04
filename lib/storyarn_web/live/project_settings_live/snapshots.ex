@@ -5,11 +5,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
 
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
-  alias Storyarn.Billing
-  alias Storyarn.Collaboration
   alias Storyarn.Projects
-  alias Storyarn.Versioning
-  alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
   # Render
@@ -28,7 +24,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     >
       <:title>{dgettext("projects", "Snapshots")}</:title>
       <:subtitle>
-        {dgettext("projects", "Create and restore point-in-time project backups")}
+        {dgettext("projects", "Review snapshot storage, reservations, and integrity")}
       </:subtitle>
 
       <.vue
@@ -36,12 +32,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         v-socket={@socket}
         v-inject="settings-layout"
         id="project-settings-snapshots"
-        snapshots={serialize_snapshots(@snapshots)}
-        can-create-snapshot={@can_create_snapshot}
-        restoration-in-progress={@restoration_in_progress}
-        restore-enabled={@restore_enabled}
-        workspace-slug={@workspace.slug}
-        project-slug={@project.slug}
+        snapshots={serialize_snapshots(@snapshots, @snapshot_reservations)}
+        storage-usage={serialize_storage_usage(@storage_usage, @storage_limit)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -51,20 +43,76 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   # Serialization helpers
   # ===========================================================================
 
-  defp serialize_snapshots(snapshots) do
+  defp serialize_snapshots(snapshots, reservations) do
     Enum.map(snapshots, fn s ->
+      reservation = Map.get(reservations, s.id, %{active_bytes: 0, export_bytes: 0})
+
       %{
         id: s.id,
         title: s.title,
         description: s.description,
         versionNumber: s.version_number,
         insertedAt: s.inserted_at && DateTime.to_iso8601(s.inserted_at),
-        snapshotSizeBytes: s.snapshot_size_bytes,
+        mode: s.mode,
+        lifecycleStatus: s.lifecycle_state,
+        integrityStatus: s.integrity_state,
+        accountedSizeBytes: serialize_optional_byte_count(s.accounted_size_bytes),
+        projectDataSizeBytes: s |> measured_project_data_bytes() |> serialize_optional_byte_count(),
+        metadataSizeBytes: s |> measured_metadata_bytes() |> serialize_optional_byte_count(),
+        assetBlobSizeBytes: serialize_optional_byte_count(s.asset_blob_size_bytes),
+        assetCount: s.asset_count,
+        blobCount: s.blob_count,
+        activeReservationBytes: reservation |> non_export_reservation_bytes() |> serialize_byte_count(),
+        exportReservationBytes: serialize_byte_count(reservation.export_bytes),
+        accountingVersion: s.accounting_version,
+        accountingMeasuredAt: s.accounting_measured_at && DateTime.to_iso8601(s.accounting_measured_at),
         entityCounts: s.entity_counts,
         createdByEmail: s.created_by && s.created_by.email
       }
     end)
   end
+
+  defp measured_project_data_bytes(%{accounting_version: 1, project_size_bytes: bytes}), do: bytes
+
+  defp measured_project_data_bytes(_snapshot), do: nil
+
+  defp measured_metadata_bytes(%{accounting_version: 1, manifest_size_bytes: bytes}), do: bytes
+
+  defp measured_metadata_bytes(_snapshot), do: nil
+
+  defp non_export_reservation_bytes(%{active_bytes: active_bytes, export_bytes: export_bytes}) do
+    max(active_bytes - export_bytes, 0)
+  end
+
+  defp serialize_storage_usage(storage, limit) do
+    %{
+      currentAssetsBytes: serialize_byte_count(storage.current_assets.bytes),
+      fullSnapshotsBytes: serialize_byte_count(storage.full_snapshots.bytes),
+      linkedSnapshotsBytes: serialize_byte_count(storage.linked_snapshots.bytes),
+      activeReservationsBytes: serialize_byte_count(storage.active_reservations.bytes),
+      totalAccountedBytes: serialize_byte_count(storage.accounted_bytes),
+      limitBytes: serialized_storage_limit(limit),
+      remainingBytes:
+        if(is_integer(limit) and limit >= 0,
+          do: serialize_byte_count(max(limit - storage.accounted_bytes, 0))
+        ),
+      limitKind: storage_limit_kind(limit)
+    }
+  end
+
+  defp serialized_storage_limit(limit) when is_integer(limit) and limit >= 0, do: serialize_byte_count(limit)
+
+  defp serialized_storage_limit(_limit), do: nil
+
+  defp serialize_optional_byte_count(value) when is_integer(value) and value >= 0, do: serialize_byte_count(value)
+
+  defp serialize_optional_byte_count(_value), do: nil
+
+  defp serialize_byte_count(value) when is_integer(value) and value >= 0, do: Integer.to_string(value)
+
+  defp storage_limit_kind(limit) when is_integer(limit) and limit >= 0, do: "limited"
+  defp storage_limit_kind(limit) when limit in [:unlimited, :infinity], do: "unlimited"
+  defp storage_limit_kind(_limit), do: "unknown"
 
   # ===========================================================================
   # Mount & handle_params
@@ -75,21 +123,15 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     %{project: project, membership: membership} = socket.assigns
 
     if Projects.can?(membership.role, :manage_project) do
+      accounting = snapshot_storage_accounting(project)
+
       socket =
         socket
         |> assign(:current_workspace, project.workspace)
-        |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
-        |> assign(
-          :can_create_snapshot,
-          Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
-        )
-        |> assign(:snapshot_form, to_form(snapshot_changeset(%{}), as: "snapshot"))
-        |> assign(:restoration_in_progress, restoration_in_progress?(project.id))
-        |> assign(
-          :restore_enabled,
-          Versioning.restore_enabled?(:project_snapshot_restore)
-        )
-        |> maybe_subscribe_restoration(project.id)
+        |> assign(:snapshots, accounting.snapshots)
+        |> assign(:snapshot_reservations, accounting.snapshot_reservations)
+        |> assign(:storage_usage, accounting.storage_usage)
+        |> assign(:storage_limit, accounting.storage_limit)
 
       {:ok, socket}
     else
@@ -113,121 +155,5 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       |> assign(:current_path, current_path)
 
     {:noreply, socket}
-  end
-
-  # ===========================================================================
-  # Events
-  # ===========================================================================
-
-  @impl true
-  def handle_event("create_snapshot", %{"snapshot" => params}, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
-      do_create_snapshot(socket, params)
-    end)
-  end
-
-  def handle_event("restore_snapshot", %{"id" => id}, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
-      do_restore_snapshot(socket, id)
-    end)
-  end
-
-  def handle_event("delete_snapshot", %{"id" => id}, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
-      do_delete_snapshot(socket, id)
-    end)
-  end
-
-  def handle_event("clear_stale_lock", _params, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
-      case Projects.clear_stale_restoration_lock(socket.assigns.project.id) do
-        {:ok, :cleared} ->
-          {:noreply,
-           socket
-           |> assign(:restoration_in_progress, false)
-           |> put_flash(:info, dgettext("projects", "Stale restoration lock cleared."))}
-
-        {:error, :not_stale} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("projects", "Lock is not stale yet. Please wait or let the restore finish.")
-           )}
-
-        {:error, :restore_active} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext(
-               "projects",
-               "The restoration job is still active. Please wait for it to finish."
-             )
-           )}
-      end
-    end)
-  end
-
-  # ===========================================================================
-  # Handle Info (restoration events)
-  # ===========================================================================
-
-  @impl true
-  def handle_info({:project_restoration_started, _payload}, socket) do
-    {:noreply, assign(socket, :restoration_in_progress, true)}
-  end
-
-  @impl true
-  def handle_info({:project_restoration_completed, payload}, socket) do
-    project = socket.assigns.project
-
-    {:noreply,
-     socket
-     |> assign(:restoration_in_progress, false)
-     |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
-     |> assign(
-       :can_create_snapshot,
-       Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
-     )
-     |> put_flash(
-       :info,
-       dgettext(
-         "projects",
-         "Project restored. %{restored} entities restored, %{skipped} skipped.",
-         restored: payload.restored,
-         skipped: payload.skipped
-       )
-     )}
-  end
-
-  @impl true
-  def handle_info({:project_restoration_failed, _payload}, socket) do
-    {:noreply,
-     socket
-     |> assign(:restoration_in_progress, false)
-     |> put_flash(
-       :error,
-       dgettext("projects", "Project restoration failed. Please try again.")
-     )}
-  end
-
-  @impl true
-  def handle_info(_msg, socket), do: {:noreply, socket}
-
-  # ===========================================================================
-  # Private
-  # ===========================================================================
-
-  defp maybe_subscribe_restoration(socket, project_id) do
-    if connected?(socket), do: Collaboration.subscribe_restoration(project_id)
-    socket
-  end
-
-  defp restoration_in_progress?(project_id) do
-    case Projects.restoration_in_progress?(project_id) do
-      {true, _} -> true
-      _ -> false
-    end
   end
 end

@@ -5,14 +5,15 @@ defmodule Storyarn.Imports.Execution do
   The `running` transition commits before materialization starts, so a returning
   page can observe progress without waiting for the write transaction. Project
   content and the terminal `completed` transition still happen atomically in a
-  second transaction under the same project-first lock order. Every exit is
-  idempotent — a replayed job observes `completed` and re-emits its side effects
-  rather than importing twice.
+  second transaction under the workspace-first storage-accounting lock order.
+  Every exit is idempotent — a replayed job observes `completed` and re-emits
+  its side effects rather than importing twice.
   """
 
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Imports.Error
   alias Storyarn.Imports.Materializer
@@ -159,9 +160,10 @@ defmodule Storyarn.Imports.Execution do
     end
   end
 
-  # Both import transactions use the same project, membership, attempt lock
-  # order. The short first transaction publishes `running`; the second keeps
-  # all imported entities and `completed` atomic.
+  # The short first transaction publishes `running` without touching storage
+  # accounting. The second takes the common workspace lock before project,
+  # membership, and attempt, and keeps all imported entities and `completed`
+  # atomic.
   defp begin_materialization(attempt, project) do
     Repo.transact(fn ->
       with {:ok, authorized_project} <- authorize_worker_locked(attempt, attempt.user_id),
@@ -199,22 +201,30 @@ defmodule Storyarn.Imports.Execution do
   defp tag_started_attempt({:error, reason}), do: {:error, reason}
 
   defp materialize_once(attempt, project, plan, opts) do
-    Repo.transact(
-      fn ->
-        with {:ok, authorized_project} <- authorize_worker_locked(attempt, attempt.user_id),
-             true <- authorized_project.id == project.id,
-             %ProjectImportAttempt{} = locked_attempt <-
-               lock_import_attempt(attempt.id, authorized_project.id, attempt.user_id) do
-          materialize_locked_attempt(locked_attempt, authorized_project, plan, opts)
-        else
-          nil -> {:error, :not_found}
-          false -> {:error, :unauthorized}
-          {:error, reason} -> {:error, reason}
-        end
+    Billing.transact_with_workspace_lock(
+      project.workspace_id,
+      fn _workspace ->
+        with_result =
+          with {:ok, authorized_project} <- authorize_worker_locked(attempt, attempt.user_id),
+               true <- authorized_project.id == project.id,
+               %ProjectImportAttempt{} = locked_attempt <-
+                 lock_import_attempt(attempt.id, authorized_project.id, attempt.user_id) do
+            materialize_locked_attempt(locked_attempt, authorized_project, plan, opts)
+          else
+            nil -> {:error, :not_found}
+            false -> {:error, :unauthorized}
+            {:error, reason} -> {:error, reason}
+          end
+
+        normalize_materialization_transaction_result(with_result)
       end,
       timeout: @materialization_timeout
     )
   end
+
+  defp normalize_materialization_transaction_result({:error, reason, details}), do: {:error, {reason, details}}
+
+  defp normalize_materialization_transaction_result(result), do: result
 
   defp lock_import_attempt(attempt_id, project_id, user_id) do
     ProjectImportAttempt

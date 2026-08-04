@@ -11,22 +11,22 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:67
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:64
 #, elixir-autogen, elixir-format
 msgid "All variable references are up to date."
 msgstr "Todas las referencias de variables están actualizadas."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:567
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:332
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the project owner."
 msgstr "No se puede eliminar al propietario del proyecto."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:129
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:126
 #, elixir-autogen, elixir-format
 msgid "Connection failed. Check your API key and endpoint."
 msgstr "Conexión fallida. Comprueba tu clave API y el punto de acceso."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:119
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:116
 #: lib/storyarn_web/live/project_settings_live/localization.ex:172
 #, elixir-autogen, elixir-format
 msgid "Connection successful."
@@ -42,12 +42,12 @@ msgstr "Crear proyecto"
 msgid "Failed to delete project."
 msgstr "Error al eliminar el proyecto."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:194
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:191
 #, elixir-autogen, elixir-format
 msgid "Failed to repair variable references."
 msgstr "Error al reparar las referencias de variables."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:122
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:119
 #, elixir-autogen, elixir-format
 msgid "Invalid API key."
 msgstr "Clave API no válida."
@@ -57,17 +57,17 @@ msgstr "Clave API no válida."
 msgid "Localization"
 msgstr "Localización"
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:571
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:336
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr "Miembro no encontrado."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:558
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:323
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr "Miembro eliminado."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:133
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:130
 #, elixir-autogen, elixir-format
 msgid "No API key configured."
 msgstr "No hay ninguna clave API configurada."
@@ -75,9 +75,9 @@ msgstr "No hay ninguna clave API configurada."
 #: lib/storyarn_web/live/project_settings_live/general.ex:117
 #: lib/storyarn_web/live/project_settings_live/localization.ex:107
 #: lib/storyarn_web/live/project_settings_live/members.ex:104
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:112
-#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:112
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:110
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:154
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:154
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:109
 #, elixir-autogen, elixir-format
 msgid "Project Settings"
 msgstr "Configuración del proyecto"
@@ -92,34 +92,34 @@ msgstr "Proyecto eliminado."
 msgid "Project updated successfully."
 msgstr "Proyecto actualizado exitosamente."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:156
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:153
 #: lib/storyarn_web/live/project_settings_live/localization.ex:145
 #, elixir-autogen, elixir-format
 msgid "Provider settings saved."
 msgstr "Configuración del proveedor guardada."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:70
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:67
 #, elixir-autogen, elixir-format
 msgid "Repaired %{count} node."
 msgid_plural "Repaired %{count} nodes."
 msgstr[0] "%{count} nodo reparado."
 msgstr[1] "%{count} nodos reparados."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:81
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:78
 #, elixir-autogen, elixir-format
 msgid "%{count} node repaired"
 msgid_plural "%{count} nodes repaired"
 msgstr[0] "%{count} nodo reparado"
 msgstr[1] "%{count} nodos reparados"
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:90
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:87
 #, elixir-autogen, elixir-format
 msgid "%{count} node failed"
 msgid_plural "%{count} nodes failed"
 msgstr[0] "%{count} nodo fallido"
 msgstr[1] "%{count} nodos fallidos"
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:98
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:95
 #, elixir-autogen, elixir-format
 msgid "Repair partially completed: %{repaired}; %{failed}."
 msgstr "Reparación parcial: %{repaired}; %{failed}."
@@ -189,9 +189,9 @@ msgstr "Algunos elementos no se pudieron eliminar."
 #: lib/storyarn_web/live/project_settings_live/localization.ex:95
 #: lib/storyarn_web/live/project_settings_live/members.ex:92
 #: lib/storyarn_web/live/project_settings_live/members.ex:149
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:100
-#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:100
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:98
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:142
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:142
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:97
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this project."
 msgstr "No tienes permiso para gestionar este proyecto."
@@ -251,37 +251,7 @@ msgstr "Detalles del proyecto, tema y mantenimiento"
 msgid "Translation provider configuration"
 msgstr "Configuración del proveedor de traducción"
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:309
-#, elixir-autogen, elixir-format
-msgid "A restoration is already in progress."
-msgstr "Ya hay una restauración en curso."
-
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:28
-#, elixir-autogen, elixir-format
-msgid "Configure automatic snapshots and auto-versioning"
-msgstr "Configurar snapshots automáticas y auto-versionado"
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:31
-#, elixir-autogen, elixir-format
-msgid "Create and restore point-in-time project backups"
-msgstr "Crear y restaurar copias de seguridad del proyecto"
-
-#: lib/storyarn/workers/daily_snapshot_worker.ex:61
-#, elixir-autogen, elixir-format
-msgid "Daily backup — %{date}"
-msgstr "Copia diaria — %{date}"
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:245
-#, elixir-autogen, elixir-format
-msgid "Failed to create snapshot. Please try again."
-msgstr "Error al crear la snapshot. Inténtalo de nuevo."
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:451
-#, elixir-autogen, elixir-format
-msgid "Failed to delete snapshot."
-msgstr "Error al eliminar la snapshot."
-
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:144
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:142
 #, elixir-autogen, elixir-format
 msgid "Failed to save settings."
 msgstr "Error al guardar la configuración."
@@ -291,67 +261,17 @@ msgstr "Error al guardar la configuración."
 msgid "Invalid color format. Use #RRGGBB."
 msgstr "Formato de color no válido. Usa #RRGGBB."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:155
-#, elixir-autogen, elixir-format
-msgid "Lock is not stale yet. Please wait or let the restore finish."
-msgstr "El bloqueo aún no es obsoleto. Espera o deja que la restauración termine."
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:274
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:356
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:211
-#, elixir-autogen, elixir-format
-msgid "Project restoration failed. Please try again."
-msgstr "La restauración del proyecto falló. Inténtalo de nuevo."
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:195
-#, elixir-autogen, elixir-format
-msgid "Project restored. %{restored} entities restored, %{skipped} skipped."
-msgstr "Proyecto restaurado. %{restored} entidades restauradas, %{skipped} omitidas."
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:236
-#, elixir-autogen, elixir-format
-msgid "Project snapshot created."
-msgstr "Snapshot del proyecto creada."
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:335
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:370
-#, elixir-autogen, elixir-format
-msgid "Restoration started. All editors will be notified when complete."
-msgstr "Restauración iniciada. Se notificará a todos los editores cuando termine."
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:448
-#, elixir-autogen, elixir-format
-msgid "Snapshot deleted."
-msgstr "Snapshot eliminada."
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:250
-#, elixir-autogen, elixir-format
-msgid "Snapshot limit reached for your plan."
-msgstr "Límite de snapshots alcanzado para tu plan."
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:285
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:313
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:436
-#, elixir-autogen, elixir-format
-msgid "Snapshot not found."
-msgstr "Snapshot no encontrada."
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:29
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:25
 #, elixir-autogen, elixir-format
 msgid "Snapshots"
 msgstr "Snapshots"
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:148
-#, elixir-autogen, elixir-format
-msgid "Stale restoration lock cleared."
-msgstr "Bloqueo de restauración obsoleto eliminado."
 
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:26
 #, elixir-autogen, elixir-format
 msgid "Version Control"
 msgstr "Control de versiones"
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:141
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:139
 #, elixir-autogen, elixir-format
 msgid "Version control settings saved."
 msgstr "Ajustes de control de versiones guardados."
@@ -900,47 +820,47 @@ msgstr "No se pudo completar la importación. No se modificó el contenido del p
 msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr "Este proyecto de Yarn usa lógica narrativa que Storyarn no puede importar de forma segura. No se modificó el contenido del proyecto."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:504
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:269
 #, elixir-autogen, elixir-format
 msgid "An invitation has already been sent to this email."
 msgstr "Ya se ha enviado una invitación a este correo."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:522
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:287
 #, elixir-autogen, elixir-format
 msgid "Could not send invitation."
 msgstr "No se ha podido enviar la invitación."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:474
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:239
 #, elixir-autogen, elixir-format
 msgid "Enter a valid email address and role."
 msgstr "Introduce una dirección de correo y un rol válidos."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:487
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:252
 #, elixir-autogen, elixir-format
 msgid "Invitation queued for delivery."
 msgstr "Invitación en cola para su envío."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:536
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:301
 #, elixir-autogen, elixir-format
 msgid "Invitation revoked."
 msgstr "Invitación revocada."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:539
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:304
 #, elixir-autogen, elixir-format
 msgid "Invitation not found."
 msgstr "No se ha encontrado la invitación."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:518
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:283
 #, elixir-autogen, elixir-format
 msgid "Member limit reached for your plan."
 msgstr "Has alcanzado el límite de miembros de tu plan."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:495
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:260
 #, elixir-autogen, elixir-format
 msgid "This person is already a member of this project."
 msgstr "Esta persona ya es miembro de este proyecto."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:513
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:278
 #, elixir-autogen, elixir-format
 msgid "Too many invitations have been sent. Try again later."
 msgstr "Se han enviado demasiadas invitaciones. Inténtalo de nuevo más tarde."
@@ -1015,11 +935,6 @@ msgstr "Ya no tienes permiso para instalar esta template."
 #, elixir-autogen, elixir-format
 msgid "Dismiss installation failure"
 msgstr "Descartar el error de instalación"
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:163
-#, elixir-autogen, elixir-format
-msgid "The restoration job is still active. Please wait for it to finish."
-msgstr "El trabajo de restauración sigue activo. Espera a que termine."
 
 #: lib/storyarn/exports/artifact_validator.ex:1490
 #: lib/storyarn/exports/artifact_validator.ex:2048
@@ -1249,42 +1164,52 @@ msgstr "\"%{node}\" del flujo \"%{flow}\" no es alcanzable desde Entrada y no se
 msgid "\"%{node}\" in flow \"%{flow}\" references a variable that no longer exists"
 msgstr "\"%{node}\" del flujo \"%{flow}\" referencia una variable que ya no existe"
 
-#: lib/storyarn_web/live/export_import_live/index.ex:847
+#: lib/storyarn_web/live/export_import_live/index.ex:1083
 #, elixir-autogen, elixir-format
 msgid "The import was cancelled. No project content was changed."
 msgstr "Se canceló la importación. No se modificó ningún contenido del proyecto."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:858
+#: lib/storyarn_web/live/export_import_live/index.ex:1094
 #, elixir-autogen, elixir-format
 msgid "This import could not be validated and was discarded. Validate the file again before importing."
 msgstr "No se pudo validar esta importación y se descartó. Valida el archivo otra vez antes de importar."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:387
+#: lib/storyarn_web/live/export_import_live/index.ex:582
 #, elixir-autogen, elixir-format
 msgid "This import is already running and cannot be dismissed. It will finish in the background."
 msgstr "Esta importación ya está en curso y no se puede descartar. Terminará en segundo plano."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:865
+#: lib/storyarn_web/live/export_import_live/index.ex:1101
 #, elixir-autogen, elixir-format
 msgid "This import preview expired before the import was started. Upload the file again."
 msgstr "Esta vista previa de importación caducó antes de iniciar la importación. Sube el archivo otra vez."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:835
+#: lib/storyarn_web/live/export_import_live/index.ex:1040
 #, elixir-autogen, elixir-format
 msgid "This project already has a main flow, so the imported one could not be created. No project content was changed."
 msgstr "Este proyecto ya tiene un flujo principal, así que no se pudo crear el importado. No se modificó ningún contenido del proyecto."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:851
+#: lib/storyarn_web/live/export_import_live/index.ex:1087
 #, elixir-autogen, elixir-format
 msgid "The import could not run before its retention deadline. No project content was changed."
 msgstr "La importación no pudo ejecutarse antes de su fecha límite de retención. No se modificó el contenido del proyecto."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:679
+#: lib/storyarn_web/live/export_import_live/index.ex:812
 #, elixir-autogen, elixir-format
 msgid "Your previous import could not be restored. Reset it and upload the file again."
 msgstr "No se pudo restaurar tu importación anterior. Reiníciala y sube el archivo de nuevo."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:402
+#: lib/storyarn_web/live/export_import_live/index.ex:553
 #, elixir-autogen, elixir-format
 msgid "The import could not be dismissed. Try again."
 msgstr "No se pudo descartar la importación. Inténtalo de nuevo."
+
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:28
+#, elixir-autogen, elixir-format
+msgid "Configure automatic entity versioning"
+msgstr "Configura el versionado automático de entidades"
+
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:27
+#, elixir-autogen, elixir-format
+msgid "Review snapshot storage, reservations, and integrity"
+msgstr "Revisa el almacenamiento, las reservas y la integridad de las snapshots"

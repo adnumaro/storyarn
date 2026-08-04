@@ -17,13 +17,11 @@ interface VersionUsage {
 }
 
 const {
-  autoSnapshotsEnabled = false,
   autoVersionFlows = false,
   autoVersionScenes = false,
   autoVersionSheets = false,
   versionUsage = null,
 } = defineProps<{
-  autoSnapshotsEnabled?: boolean;
   autoVersionFlows?: boolean;
   autoVersionScenes?: boolean;
   autoVersionSheets?: boolean;
@@ -32,17 +30,10 @@ const {
 
 const live = useLive();
 
-const autoSnapshots = ref(autoSnapshotsEnabled);
 const autoFlows = ref(autoVersionFlows);
 const autoScenes = ref(autoVersionScenes);
 const autoSheets = ref(autoVersionSheets);
 
-watch(
-  () => autoSnapshotsEnabled,
-  (v) => {
-    autoSnapshots.value = v;
-  },
-);
 watch(
   () => autoVersionFlows,
   (v) => {
@@ -65,7 +56,6 @@ watch(
 function saveVersionControl() {
   live.pushEvent("save_version_control", {
     version_control: {
-      auto_snapshots_enabled: String(autoSnapshots.value),
       auto_version_flows: String(autoFlows.value),
       auto_version_scenes: String(autoScenes.value),
       auto_version_sheets: String(autoSheets.value),
@@ -74,39 +64,22 @@ function saveVersionControl() {
 }
 
 function usagePct(used: number, limit: number | null) {
-  if (!limit || limit <= 0) return 0;
+  if (limit === null || limit <= 0) return 0;
   return Math.min(Math.round((used / limit) * 100), 100);
+}
+
+function hasCountCapacity(limit: number | null) {
+  return limit !== null && limit > 0;
+}
+
+function formatCountLimit(limit: number | null) {
+  return limit === null ? null : limit;
 }
 </script>
 
 <template>
   <div class="space-y-8">
     <form @submit.prevent="saveVersionControl">
-      <!-- Auto Daily Snapshots -->
-      <section>
-        <h3 class="text-lg font-semibold mb-4">
-          {{ $t("project_settings.version_control.auto_snapshots") }}
-        </h3>
-        <div class="rounded-lg border border-border bg-muted/30 p-4">
-          <label class="flex items-center gap-3 cursor-pointer">
-            <Switch
-              :checked="autoSnapshots"
-              @update:checked="(v: boolean) => (autoSnapshots = v)"
-            />
-            <div>
-              <span class="font-medium">{{
-                $t("project_settings.version_control.enable_daily")
-              }}</span>
-              <p class="text-sm text-muted-foreground">
-                {{ $t("project_settings.version_control.daily_description") }}
-              </p>
-            </div>
-          </label>
-        </div>
-      </section>
-
-      <Separator class="my-6" />
-
       <!-- Per-Entity Auto-Versioning -->
       <section>
         <h3 class="text-lg font-semibold mb-4">
@@ -147,10 +120,20 @@ function usagePct(used: number, limit: number | null) {
             <span>{{ $t("project_settings.version_control.project_snapshots") }}</span>
             <span class="text-muted-foreground">
               {{ versionUsage.projectSnapshots.used }} /
-              {{ versionUsage.projectSnapshots.limit || "\u221E" }}
+              {{
+                formatCountLimit(versionUsage.projectSnapshots.limit) ??
+                $t("project_settings.usage_limits.status.unknown")
+              }}
             </span>
           </div>
+          <p
+            v-if="versionUsage.projectSnapshots.limit === 0"
+            class="mb-1 text-xs font-medium text-destructive"
+          >
+            {{ $t("project_settings.usage_limits.status.limit_reached") }}
+          </p>
           <Progress
+            v-if="hasCountCapacity(versionUsage.projectSnapshots.limit)"
             :model-value="
               usagePct(versionUsage.projectSnapshots.used, versionUsage.projectSnapshots.limit)
             "
@@ -161,10 +144,20 @@ function usagePct(used: number, limit: number | null) {
             <span>{{ $t("project_settings.version_control.named_versions") }}</span>
             <span class="text-muted-foreground">
               {{ versionUsage.namedVersions.used }} /
-              {{ versionUsage.namedVersions.limit || "\u221E" }}
+              {{
+                formatCountLimit(versionUsage.namedVersions.limit) ??
+                $t("project_settings.usage_limits.status.unknown")
+              }}
             </span>
           </div>
+          <p
+            v-if="versionUsage.namedVersions.limit === 0"
+            class="mb-1 text-xs font-medium text-destructive"
+          >
+            {{ $t("project_settings.usage_limits.status.limit_reached") }}
+          </p>
           <Progress
+            v-if="hasCountCapacity(versionUsage.namedVersions.limit)"
             :model-value="
               usagePct(versionUsage.namedVersions.used, versionUsage.namedVersions.limit)
             "

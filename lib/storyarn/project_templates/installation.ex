@@ -19,8 +19,8 @@ defmodule Storyarn.ProjectTemplates.Installation do
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Versioning
   alias Storyarn.Versioning.Builders.AssetCopyError
+  alias Storyarn.Versioning.ProjectRecovery
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.InstallProjectTemplateWorker
   alias Storyarn.Workspaces
@@ -483,8 +483,9 @@ defmodule Storyarn.ProjectTemplates.Installation do
 
     try do
       result =
-        Repo.transaction(
-          fn ->
+        Billing.with_storage_accounting_lock(
+          workspace.id,
+          fn _locked_workspace ->
             project = instantiate_template_under_workspace_lock(scope, version, workspace, attrs, snapshot, opts)
 
             case StorageCompensation.prepare_unretained_cleanup(tracker) do
@@ -563,14 +564,18 @@ defmodule Storyarn.ProjectTemplates.Installation do
   end
 
   defp normalize_asset_copy_error({:error, {:asset_materialization_failed, _asset_id, reason}}),
-    do: {:error, {:asset_copy_failed, reason}}
+    do: normalize_materialization_error(reason)
 
   defp normalize_asset_copy_error(result), do: result
 
   defp normalize_entity_asset_copy_error({:asset_materialization_failed, _asset_id, reason}, _result),
-    do: {:error, {:asset_copy_failed, reason}}
+    do: normalize_materialization_error(reason)
 
   defp normalize_entity_asset_copy_error(_asset_error, result), do: result
+
+  defp normalize_materialization_error({:limit_reached, details}), do: {:error, {:storage_limit_reached, details}}
+
+  defp normalize_materialization_error(reason), do: {:error, {:asset_copy_failed, reason}}
 
   defp instantiate_template_under_workspace_lock(scope, version, workspace, attrs, snapshot, opts) do
     with :ok <- Projects.lock_and_check_workspace_capacity(workspace.id),
@@ -645,13 +650,11 @@ defmodule Storyarn.ProjectTemplates.Installation do
       |> Keyword.take([:asset_source_keys])
       |> Keyword.merge(
         name: install_name(attrs, version),
-        template_clone: true,
-        asset_error_mode: :strict,
         asset_copy_tracker: Keyword.fetch!(opts, :asset_copy_tracker)
       )
 
     with {:ok, project} <-
-           Versioning.recover_project(workspace.id, snapshot, scope.user.id, recovery_opts),
+           ProjectRecovery.materialize_template(workspace.id, snapshot, scope.user.id, recovery_opts),
          {:ok, project} <- mark_template_origin(project, version),
          {:ok, _install} <- complete_or_record_install(scope, version, workspace, project, attrs, opts) do
       {:ok, project}
@@ -780,6 +783,9 @@ defmodule Storyarn.ProjectTemplates.Installation do
 
   defp classify_error({:asset_copy_failed, _reason}),
     do: {"asset_copy_failed", "A template asset could not be copied.", true}
+
+  defp classify_error({:storage_limit_reached, _details}),
+    do: {"storage_limit_reached", "The workspace storage limit has been reached.", true}
 
   defp classify_error({:dynamic_exit_pin_not_materializable, _connection_id, _source_pin, _reason}) do
     {

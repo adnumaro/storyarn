@@ -8,18 +8,13 @@ defmodule Storyarn.Versioning.RestorePolicy do
   """
 
   @type entity_type :: String.t()
-  @type action ::
-          {:entity_version_restore, entity_type()}
-          | :project_snapshot_restore
-          | :deleted_project_recovery
+  @type action :: {:entity_version_restore, entity_type()}
 
   @entity_actions %{
     "sheet" => :sheet_version_restore,
     "flow" => :flow_version_restore,
     "scene" => :scene_version_restore
   }
-  @actions [:deleted_project_recovery]
-
   @spec enabled?(action()) :: boolean()
   def enabled?({:entity_version_restore, entity_type}) do
     case Map.fetch(@entity_actions, entity_type) do
@@ -28,14 +23,6 @@ defmodule Storyarn.Versioning.RestorePolicy do
     end
   end
 
-  def enabled?(:project_snapshot_restore) do
-    configured?(:project_snapshot_restore) and
-      Enum.all?(@entity_actions, fn {_entity_type, config_key} ->
-        configured?(config_key)
-      end)
-  end
-
-  def enabled?(action) when action in @actions, do: configured?(action)
   def enabled?(_action), do: false
 
   @spec ensure_enabled(action()) :: :ok | {:error, :restore_temporarily_disabled}
@@ -49,15 +36,6 @@ defmodule Storyarn.Versioning.RestorePolicy do
   def ensure_builder_enabled(entity_type, {:entity_version_restore, action_type} = action)
       when entity_type == action_type do
     ensure_enabled(action)
-  end
-
-  def ensure_builder_enabled(entity_type, :project_snapshot_restore) do
-    with {:ok, config_key} <- Map.fetch(@entity_actions, entity_type),
-         true <- configured?(config_key) do
-      ensure_enabled(:project_snapshot_restore)
-    else
-      _ -> {:error, :restore_temporarily_disabled}
-    end
   end
 
   def ensure_builder_enabled(_entity_type, _action), do: {:error, :restore_temporarily_disabled}
