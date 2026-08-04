@@ -754,8 +754,10 @@ defmodule Storyarn.Imports.Parsers.Yarn.ReviewDecisions do
   defp apply_to_node(_node, _selected_actions, _speaker_sheet_ids), do: {:error, :invalid_import_review}
 
   defp resolve_speaker_node(node, data, speaker, selected_actions, speaker_sheet_ids) do
+    # The normalized-plan contract permits dialogue without `responses` when
+    # there are no choices. Speaker resolution never traverses that collection,
+    # and the materializer already treats an absent value as an empty list.
     with {:ok, decision} <- Map.fetch(selected_actions, speaker),
-         responses when is_list(responses) <- Map.get(data, "responses"),
          {:ok, source} <- explicit_speaker_source(data, speaker) do
       {:ok, Map.put(node, "data", resolve_explicit_speaker_data(data, speaker, decision, speaker_sheet_ids, source))}
     else

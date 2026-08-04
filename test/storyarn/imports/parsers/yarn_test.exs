@@ -2710,6 +2710,56 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       assert linked_after_preserve_dialogue["data"]["text"] == "Alice: {yarn.mood}"
     end
 
+    test "accepts explicit-speaker dialogue without responses for sheet decisions" do
+      source = """
+      title: Start
+      ---
+      Capsley: First.
+      Capsley: Second.
+      Capsley: Third.
+      Capsely: A possible alias.
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("response-less-speakers.yarn", source)
+
+      legacy_plan =
+        update_in(plan.data["flows"], fn flows ->
+          Enum.map(flows, fn flow ->
+            Map.update!(flow, "nodes", fn nodes ->
+              Enum.map(nodes, fn
+                %{"type" => "dialogue", "data" => %{"import_yarn_speaker" => _speaker} = data} = node ->
+                  Map.put(node, "data", Map.delete(data, "responses"))
+
+                node ->
+                  node
+              end)
+            end)
+          end)
+        end)
+
+      decisions = [
+        %{"speaker" => "Capsley", "action" => "create_sheet"},
+        %{
+          "speaker" => "Capsely",
+          "action" => "map_to_sheet",
+          "target_speaker" => "Capsley"
+        }
+      ]
+
+      assert {:ok, resolved_plan} = ReviewDecisions.apply(legacy_plan, true, decisions)
+      capsley = Enum.find(resolved_plan.data["sheets"], &(&1["name"] == "Capsley"))
+
+      resolved_dialogue =
+        resolved_plan.data["flows"]
+        |> Enum.flat_map(& &1["nodes"])
+        |> Enum.filter(&(&1["type"] == "dialogue"))
+
+      assert length(resolved_dialogue) == 4
+      assert Enum.all?(resolved_dialogue, &(get_in(&1, ["data", "speaker_sheet_id"]) == capsley["id"]))
+      assert {:ok, _preview} = Materializer.preview(-1, resolved_plan.data)
+    end
+
     test "serializes the same allowed actions enforced by the server" do
       source = """
       title: Start

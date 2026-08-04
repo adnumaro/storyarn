@@ -2288,6 +2288,29 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert duplicate.plan_storage_key == queued.plan_storage_key
   end
 
+  test "an idempotent upload preserves a durable preview load failure", ctx do
+    source = yarn("Hello")
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "first.yarn", source)
+
+    plan_load = fn storage_key ->
+      assert storage_key == ready.plan_storage_key
+      {:error, :storage_unavailable}
+    end
+
+    assert {:error, :import_plan_unavailable} =
+             Imports.prepare_import(
+               ctx.scope,
+               ctx.project,
+               "same-content.yarn",
+               source,
+               plan_load: plan_load
+             )
+
+    assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+  end
+
   test "persists a ready attempt conflict strategy for recovery", ctx do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "strategy.yarn", yarn("Hello"))
