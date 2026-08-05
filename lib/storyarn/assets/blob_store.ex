@@ -14,6 +14,8 @@ defmodule Storyarn.Assets.BlobStore do
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageHash
   alias Storyarn.Assets.StorageKeyLock
+  alias Storyarn.Billing
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
@@ -119,26 +121,62 @@ defmodule Storyarn.Assets.BlobStore do
   def create_asset_from_blob(project_id, user_id, blob_hash, source_key, metadata, opts \\ []) do
     caller_transactional? = Repo.in_transaction?()
 
-    case asset_copy_tracker(opts, caller_transactional?) do
-      {:ok, tracker, owns_tracker?} ->
-        opts = Keyword.put(opts, :asset_copy_tracker, tracker)
+    with {:ok, workspace_id} <- project_workspace_id(project_id),
+         {:ok, tracker, owns_tracker?} <- asset_copy_tracker(opts, caller_transactional?) do
+      opts = Keyword.put(opts, :asset_copy_tracker, tracker)
 
-        try do
-          project_id
-          |> do_create_asset_from_blob(user_id, blob_hash, source_key, metadata, opts)
-          |> finalize_owned_asset_copies(tracker, owns_tracker?)
-        rescue
-          error ->
-            cleanup_owned_asset_copies(tracker, owns_tracker?)
-            reraise error, __STACKTRACE__
-        catch
-          kind, reason ->
-            cleanup_owned_asset_copies(tracker, owns_tracker?)
-            :erlang.raise(kind, reason, __STACKTRACE__)
-        end
+      try do
+        workspace_id
+        |> materialize_under_storage_lock(project_id, user_id, blob_hash, source_key, metadata, opts)
+        |> finalize_owned_asset_copies(tracker, owns_tracker?)
+      rescue
+        error ->
+          cleanup_owned_asset_copies(tracker, owns_tracker?)
+          reraise error, __STACKTRACE__
+      catch
+        kind, reason ->
+          cleanup_owned_asset_copies(tracker, owns_tracker?)
+          :erlang.raise(kind, reason, __STACKTRACE__)
+      end
+    end
+  end
 
-      {:error, reason} ->
-        {:error, reason}
+  defp materialize_under_storage_lock(workspace_id, project_id, user_id, blob_hash, source_key, metadata, opts) do
+    workspace_id
+    |> Billing.with_storage_accounting_lock(fn workspace ->
+      with {:ok, _project} <- lock_active_project(project_id, workspace_id),
+           :ok <- Billing.can_upload_asset?(workspace, metadata["size"]) do
+        do_create_asset_from_blob(project_id, user_id, blob_hash, source_key, metadata, opts)
+      else
+        {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}
+        {:error, _reason} = error -> error
+      end
+    end)
+    |> unwrap_storage_lock_result()
+  end
+
+  defp unwrap_storage_lock_result({:ok, result}), do: result
+  defp unwrap_storage_lock_result({:error, reason}), do: {:error, reason}
+
+  defp project_workspace_id(project_id) when is_integer(project_id) and project_id > 0 do
+    case Repo.one(from(project in Project, where: project.id == ^project_id, select: project.workspace_id)) do
+      workspace_id when is_integer(workspace_id) -> {:ok, workspace_id}
+      nil -> {:error, :project_not_found}
+    end
+  end
+
+  defp project_workspace_id(_project_id), do: {:error, :project_not_found}
+
+  defp lock_active_project(project_id, workspace_id) do
+    case Repo.one(
+           from(project in Project,
+             where: project.id == ^project_id and project.workspace_id == ^workspace_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Project{deleted_at: nil} = project -> {:ok, project}
+      %Project{} -> {:error, :project_not_active}
+      nil -> {:error, :project_not_found}
     end
   end
 

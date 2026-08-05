@@ -37,6 +37,10 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
       {:error, :no_background_image} = err ->
         err
 
+      {:error, :limit_reached, details, temp_path} ->
+        cleanup_temp(temp_path)
+        {:error, :limit_reached, details}
+
       {:error, reason, temp_path} ->
         cleanup_temp(temp_path)
         Logger.warning("[ZoneImageExtractor] Failed: #{inspect(reason)}")
@@ -87,6 +91,7 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
          {:ok, temp_path} <- write_temp(sharpened) do
       case upload_and_create_asset(temp_path, zone_name, project) do
         {:ok, uploaded_asset} -> {:ok, uploaded_asset, dims, temp_path}
+        {:error, :limit_reached, details} -> {:error, :limit_reached, details, temp_path}
         {:error, reason} -> {:error, reason, temp_path}
       end
     end

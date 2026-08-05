@@ -7,7 +7,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
   import Phoenix.LiveView, only: [put_flash: 3]
 
   alias Storyarn.Assets
-  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias StoryarnWeb.PrivateMedia
@@ -80,7 +79,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
     user = socket.assigns.current_scope.user
 
     with :ok <- validate_audio_content_type(content_type),
-         :ok <- Billing.can_upload_asset_for_project?(project, byte_size(binary_data)),
          {:ok, asset} <- upload_audio_asset(binary_data, filename, content_type, project, user) do
       Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
       update_node_audio(socket, node_id, asset.id)

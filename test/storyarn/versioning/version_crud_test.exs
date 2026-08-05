@@ -290,7 +290,14 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       {:ok, version} =
         Versioning.create_version("sheet", sheet, project.id, user.id)
 
-      wrong_key = SnapshotStorage.build_key(project.id + 1, "sheet", sheet.id, 1)
+      wrong_key =
+        SnapshotStorage.build_key(
+          project.id + 1,
+          "sheet",
+          sheet.id,
+          1,
+          SnapshotStorage.unique_key_suffix()
+        )
 
       Repo.update_all(
         from(candidate in EntityVersion, where: candidate.id == ^version.id),

@@ -67,14 +67,7 @@ if config_env() != :test do
   config :storyarn, Storyarn.Versioning.RestorePolicy,
     sheet_version_restore: bool_env.("SHEET_VERSION_RESTORE_ENABLED"),
     flow_version_restore: bool_env.("FLOW_VERSION_RESTORE_ENABLED"),
-    scene_version_restore: bool_env.("SCENE_VERSION_RESTORE_ENABLED"),
-    project_snapshot_restore: bool_env.("PROJECT_SNAPSHOT_RESTORE_ENABLED"),
-    deleted_project_recovery: bool_env.("DELETED_PROJECT_RECOVERY_ENABLED")
-
-  config :storyarn, Storyarn.Workers.DailySnapshotWorker, pruning_enabled: bool_env.("AUTO_SNAPSHOT_PRUNING_ENABLED")
-
-  config :storyarn, Storyarn.Workers.SnapshotRetentionWorker,
-    enabled: bool_env.("DELETED_PROJECT_SNAPSHOT_RETENTION_ENABLED")
+    scene_version_restore: bool_env.("SCENE_VERSION_RESTORE_ENABLED")
 
   config :storyarn, Storyarn.Workers.TrashRetentionWorker, enabled: bool_env.("ENTITY_TRASH_RETENTION_ENABLED")
 end

@@ -44,10 +44,7 @@ defmodule StoryarnWeb.PrivateMedia do
 
   @spec project_snapshot_asset_url(integer(), map()) :: String.t() | nil
   def project_snapshot_asset_url(project_id, metadata) when is_integer(project_id) and is_map(metadata) do
-    case project_url_from_key(project_id, metadata["key"]) do
-      nil -> project_url_from_stored(project_id, metadata["url"])
-      url -> url
-    end
+    project_url_from_key(project_id, metadata["key"])
   end
 
   def project_snapshot_asset_url(_project_id, _metadata), do: nil
@@ -71,16 +68,6 @@ defmodule StoryarnWeb.PrivateMedia do
   def project_media_key?(project_id, key) do
     scoped_project_key?(project_id, key, ["assets", "blobs"])
   end
-
-  @doc false
-  @spec project_snapshot_key?(integer(), String.t()) :: boolean()
-  def project_snapshot_key?(project_id, key) when is_integer(project_id) and is_binary(key) do
-    valid_storage_key?(key) and
-      String.starts_with?(key, "projects/#{project_id}/snapshots/project/") and
-      String.ends_with?(key, ".json.gz")
-  end
-
-  def project_snapshot_key?(_project_id, _key), do: false
 
   @doc false
   @spec valid_storage_key?(term()) :: boolean()

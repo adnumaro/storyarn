@@ -121,6 +121,43 @@ defmodule StoryarnWeb.Telemetry do
         unit: {:native, :millisecond}
       ),
 
+      # Product-accounted storage and provider footprint are separate signals.
+      # Workspace IDs remain event metadata rather than metric tags to avoid
+      # unbounded cardinality in reporters.
+      last_value("storyarn.storage.accounting.updated.accounted_bytes",
+        tags: [:action, :accounting_version]
+      ),
+      last_value("storyarn.storage.accounting.updated.reservation_bytes",
+        tags: [:action, :accounting_version]
+      ),
+      last_value("storyarn.storage.accounting.updated.total_bytes",
+        tags: [:action, :accounting_version]
+      ),
+      last_value("storyarn.storage.provider_footprint.physical_bytes",
+        tags: [:accounting_version]
+      ),
+      last_value("storyarn.storage.provider_footprint.temporary_bytes",
+        tags: [:accounting_version]
+      ),
+      last_value("storyarn.storage.provider_footprint.orphan_bytes",
+        tags: [:accounting_version]
+      ),
+      last_value("storyarn.storage.provider_footprint.duplicate_bytes",
+        tags: [:accounting_version]
+      ),
+      last_value("storyarn.storage.provider_footprint.cleanup_pending_bytes",
+        tags: [:accounting_version]
+      ),
+      last_value("storyarn.storage.provider_footprint.accounted_bytes",
+        tags: [:accounting_version]
+      ),
+      last_value("storyarn.storage.provider_footprint.reservation_bytes",
+        tags: [:accounting_version]
+      ),
+      last_value("storyarn.storage.provider_footprint.drift_bytes",
+        tags: [:accounting_version]
+      ),
+
       # AI result retention is content-free and bounded per worker batch.
       sum("storyarn.ai.expiration.stop.expired_count", tags: [:status]),
       sum("storyarn.ai.expiration.stop.failure_count", tags: [:status]),

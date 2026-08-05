@@ -109,7 +109,7 @@ msgstr "Espacio de trabajo no encontrado."
 msgid "Workspace updated successfully."
 msgstr "Espacio de trabajo actualizado exitosamente."
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:47
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:34
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:36
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:33
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:136
@@ -155,64 +155,43 @@ msgstr "Banner subido exitosamente."
 msgid "Invalid file data or upload failed."
 msgstr "Datos de archivo inválidos o la subida falló."
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:187
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:91
 #, elixir-autogen, elixir-format
 msgid "%{count} day ago"
 msgid_plural "%{count} days ago"
 msgstr[0] "hace %{count} día"
 msgstr[1] "hace %{count} días"
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:184
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:88
 #, elixir-autogen, elixir-format
 msgid "%{count} hour ago"
 msgid_plural "%{count} hours ago"
 msgstr[0] "hace %{count} hora"
 msgstr[1] "hace %{count} horas"
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:181
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:85
 #, elixir-autogen, elixir-format
 msgid "%{count} minute ago"
 msgid_plural "%{count} minutes ago"
 msgstr[0] "hace %{count} minuto"
 msgstr[1] "hace %{count} minutos"
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:85
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:68
 #, elixir-autogen, elixir-format
 msgid "Deleted %{time_ago}"
 msgstr "Eliminado %{time_ago}"
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:29
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:23
 #, elixir-autogen, elixir-format
 msgid "Deleted Projects"
 msgstr "Proyectos eliminados"
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:162
-#, elixir-autogen, elixir-format
-msgid "Project recovered as '%{name}'"
-msgstr "Proyecto recuperado como '%{name}'"
-
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:170
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:238
-#, elixir-autogen, elixir-format
-msgid "Recovery failed: %{reason}"
-msgstr "La recuperación falló: %{reason}"
-
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:213
-#, elixir-autogen, elixir-format
-msgid "Recovery started. This may take a moment..."
-msgstr "Recuperación iniciada. Esto puede tardar un momento..."
-
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:225
-#, elixir-autogen, elixir-format
-msgid "Workspace project limit reached. Upgrade your plan to recover this project."
-msgstr "Límite de proyectos del espacio de trabajo alcanzado. Mejora tu plan para recuperar este proyecto."
-
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:88
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:71
 #, elixir-autogen, elixir-format
 msgid "by %{email}"
 msgstr "por %{email}"
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:178
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:82
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr "ahora mismo"

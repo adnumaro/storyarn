@@ -11,22 +11,22 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:67
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:105
 #, elixir-autogen, elixir-format
 msgid "All variable references are up to date."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:567
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:372
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the project owner."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:129
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:167
 #, elixir-autogen, elixir-format
 msgid "Connection failed. Check your API key and endpoint."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:119
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:157
 #: lib/storyarn_web/live/project_settings_live/localization.ex:172
 #, elixir-autogen, elixir-format
 msgid "Connection successful."
@@ -42,12 +42,12 @@ msgstr ""
 msgid "Failed to delete project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:194
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:232
 #, elixir-autogen, elixir-format
 msgid "Failed to repair variable references."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:122
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:160
 #, elixir-autogen, elixir-format
 msgid "Invalid API key."
 msgstr ""
@@ -57,17 +57,17 @@ msgstr ""
 msgid "Localization"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:571
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:376
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:558
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:363
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:133
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:171
 #, elixir-autogen, elixir-format
 msgid "No API key configured."
 msgstr ""
@@ -75,9 +75,9 @@ msgstr ""
 #: lib/storyarn_web/live/project_settings_live/general.ex:117
 #: lib/storyarn_web/live/project_settings_live/localization.ex:107
 #: lib/storyarn_web/live/project_settings_live/members.ex:104
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:112
-#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:112
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:110
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:128
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:123
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:109
 #, elixir-autogen, elixir-format
 msgid "Project Settings"
 msgstr ""
@@ -92,34 +92,34 @@ msgstr ""
 msgid "Project updated successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:156
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:194
 #: lib/storyarn_web/live/project_settings_live/localization.ex:145
 #, elixir-autogen, elixir-format
 msgid "Provider settings saved."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:70
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:108
 #, elixir-autogen, elixir-format
 msgid "Repaired %{count} node."
 msgid_plural "Repaired %{count} nodes."
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:81
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:119
 #, elixir-autogen, elixir-format
 msgid "%{count} node repaired"
 msgid_plural "%{count} nodes repaired"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:90
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:128
 #, elixir-autogen, elixir-format
 msgid "%{count} node failed"
 msgid_plural "%{count} nodes failed"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:98
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:136
 #, elixir-autogen, elixir-format
 msgid "Repair partially completed: %{repaired}; %{failed}."
 msgstr ""
@@ -189,9 +189,9 @@ msgstr ""
 #: lib/storyarn_web/live/project_settings_live/localization.ex:95
 #: lib/storyarn_web/live/project_settings_live/members.ex:92
 #: lib/storyarn_web/live/project_settings_live/members.ex:149
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:100
-#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:100
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:98
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:116
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:111
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:97
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this project."
 msgstr ""
@@ -251,37 +251,7 @@ msgstr ""
 msgid "Translation provider configuration"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:309
-#, elixir-autogen, elixir-format
-msgid "A restoration is already in progress."
-msgstr ""
-
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:28
-#, elixir-autogen, elixir-format
-msgid "Configure automatic snapshots and auto-versioning"
-msgstr ""
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:31
-#, elixir-autogen, elixir-format
-msgid "Create and restore point-in-time project backups"
-msgstr ""
-
-#: lib/storyarn/workers/daily_snapshot_worker.ex:61
-#, elixir-autogen, elixir-format
-msgid "Daily backup — %{date}"
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:245
-#, elixir-autogen, elixir-format
-msgid "Failed to create snapshot. Please try again."
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:451
-#, elixir-autogen, elixir-format
-msgid "Failed to delete snapshot."
-msgstr ""
-
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:144
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:142
 #, elixir-autogen, elixir-format
 msgid "Failed to save settings."
 msgstr ""
@@ -291,59 +261,9 @@ msgstr ""
 msgid "Invalid color format. Use #RRGGBB."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:155
-#, elixir-autogen, elixir-format
-msgid "Lock is not stale yet. Please wait or let the restore finish."
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:274
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:356
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:211
-#, elixir-autogen, elixir-format
-msgid "Project restoration failed. Please try again."
-msgstr ""
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:195
-#, elixir-autogen, elixir-format
-msgid "Project restored. %{restored} entities restored, %{skipped} skipped."
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:236
-#, elixir-autogen, elixir-format
-msgid "Project snapshot created."
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:335
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:370
-#, elixir-autogen, elixir-format
-msgid "Restoration started. All editors will be notified when complete."
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:448
-#, elixir-autogen, elixir-format
-msgid "Snapshot deleted."
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:250
-#, elixir-autogen, elixir-format
-msgid "Snapshot limit reached for your plan."
-msgstr ""
-
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:285
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:313
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:436
-#, elixir-autogen, elixir-format
-msgid "Snapshot not found."
-msgstr ""
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:29
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:25
 #, elixir-autogen, elixir-format
 msgid "Snapshots"
-msgstr ""
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:148
-#, elixir-autogen, elixir-format
-msgid "Stale restoration lock cleared."
 msgstr ""
 
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:26
@@ -351,7 +271,7 @@ msgstr ""
 msgid "Version Control"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:141
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:139
 #, elixir-autogen, elixir-format
 msgid "Version control settings saved."
 msgstr ""
@@ -371,12 +291,12 @@ msgstr ""
 msgid "You don't have access to this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:26
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:29
 #, elixir-autogen, elixir-format
 msgid "Review project and workspace usage against plan limits"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:24
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:27
 #, elixir-autogen, elixir-format
 msgid "Usage Limits"
 msgstr ""
@@ -900,47 +820,47 @@ msgstr ""
 msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:504
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:309
 #, elixir-autogen, elixir-format
 msgid "An invitation has already been sent to this email."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:522
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:327
 #, elixir-autogen, elixir-format
 msgid "Could not send invitation."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:474
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:279
 #, elixir-autogen, elixir-format
 msgid "Enter a valid email address and role."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:487
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:292
 #, elixir-autogen, elixir-format
 msgid "Invitation queued for delivery."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:536
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:341
 #, elixir-autogen, elixir-format
 msgid "Invitation revoked."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:539
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:344
 #, elixir-autogen, elixir-format
 msgid "Invitation not found."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:518
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:323
 #, elixir-autogen, elixir-format
 msgid "Member limit reached for your plan."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:495
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:300
 #, elixir-autogen, elixir-format
 msgid "This person is already a member of this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:513
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:318
 #, elixir-autogen, elixir-format
 msgid "Too many invitations have been sent. Try again later."
 msgstr ""
@@ -1014,11 +934,6 @@ msgstr ""
 #: lib/storyarn_web/live/template_live/show.ex:434
 #, elixir-autogen, elixir-format
 msgid "Dismiss installation failure"
-msgstr ""
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:163
-#, elixir-autogen, elixir-format
-msgid "The restoration job is still active. Please wait for it to finish."
 msgstr ""
 
 #: lib/storyarn/exports/artifact_validator.ex:1490
@@ -1287,4 +1202,14 @@ msgstr ""
 #: lib/storyarn_web/live/export_import_live/index.ex:553
 #, elixir-autogen, elixir-format
 msgid "The import could not be dismissed. Try again."
+msgstr ""
+
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:28
+#, elixir-autogen, elixir-format
+msgid "Configure automatic entity versioning"
+msgstr ""
+
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:27
+#, elixir-autogen, elixir-format
+msgid "Review snapshot storage, reservations, and integrity"
 msgstr ""

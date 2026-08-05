@@ -16,7 +16,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Flows.NodeCreate
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
@@ -39,7 +38,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
-  alias Storyarn.Versioning.Builders.FlowSnapshotNormalizer
   alias Storyarn.Versioning.DiffHelpers
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
@@ -684,8 +682,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    snapshot = FlowSnapshotNormalizer.normalize_entity_ids(snapshot)
-
     with :ok <- validate_flow_snapshot(snapshot) do
       with_asset_materialization_scope(opts, fn scoped_opts ->
         instantiate_flow_snapshot_transaction(
@@ -1047,15 +1043,9 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   end
 
   defp do_restore_snapshot(flow, snapshot, opts) do
-    normalized_snapshot = FlowSnapshotNormalizer.normalize(snapshot)
-
-    if normalized_snapshot == snapshot do
-      case validate_restore_snapshot(flow, normalized_snapshot) do
-        :ok -> execute_restore_snapshot(flow, normalized_snapshot, opts)
-        {:error, _reason} = error -> error
-      end
-    else
-      {:error, :legacy_flow_snapshot_requires_identity_normalization}
+    case validate_restore_snapshot(flow, snapshot) do
+      :ok -> execute_restore_snapshot(flow, snapshot, opts)
+      {:error, _reason} = error -> error
     end
   end
 
@@ -1120,8 +1110,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         repo,
         locked_project.id,
         locked_flow.id,
-        nodes_data,
-        opts
+        nodes_data
       )
     end)
     |> Multi.run(:lock_restore_scope, fn repo,
@@ -1132,54 +1121,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
                                          } ->
       lock_restore_scope(repo, locked_flow.id)
     end)
-    |> Multi.run(:reconcile_sequence_transition_connections, fn repo,
-                                                                %{
-                                                                  lock_restore_scope: _scope
-                                                                } ->
-      reconcile_full_project_sequence_transition_connections(
-        repo,
-        flow.id,
-        nodes_data,
-        opts
-      )
-    end)
-    |> Multi.run(:reconcile_cross_boundary_connections, fn repo,
-                                                           %{
-                                                             lock_flow: locked_flow,
-                                                             lock_restore_scope: _scope,
-                                                             resolve_external_refs: external_refs,
-                                                             reconcile_sequence_transition_connections:
-                                                               _reconciled_connections
-                                                           } ->
-      reconcile_full_project_cross_boundary_connections(
-        repo,
-        locked_flow.project_id,
-        locked_flow.id,
-        external_refs.nodes,
-        opts
-      )
-    end)
-    |> Multi.run(:reconcile_sequence_transition_children, fn repo,
-                                                             %{
-                                                               lock_restore_scope: _scope,
-                                                               reconcile_cross_boundary_connections:
-                                                                 _reconciled_connections
-                                                             } ->
-      reconcile_full_project_sequence_transition_children(
-        repo,
-        flow.id,
-        nodes_data,
-        opts
-      )
-    end)
     |> Multi.run(:lock_localization_inventory, fn _repo,
                                                   %{
                                                     lock_flow: locked_flow,
                                                     lock_restore_scope: _scope,
-                                                    reconcile_sequence_transition_connections: _reconciled_connections,
-                                                    reconcile_cross_boundary_connections:
-                                                      _reconciled_cross_boundary_connections,
-                                                    reconcile_sequence_transition_children: _reconciled_children,
                                                     lock_project: _project
                                                   } ->
       :ok = LocalizableWords.lock_inventory!(locked_flow.project_id)
@@ -1655,7 +1600,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     case Map.fetch(node, key) do
       {:ok, value} when is_list(value) -> {:ok, value}
       {:ok, value} -> {:error, {:invalid_sequence_snapshot_collection, node["original_id"], key, value}}
-      :error -> {:error, {:legacy_sequence_snapshot_missing_ids, node["original_id"], key}}
+      :error -> {:error, {:missing_sequence_snapshot_collection, node["original_id"], key}}
     end
   end
 
@@ -1679,7 +1624,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         {:error, {:invalid_sequence_config_snapshot, node["original_id"], config}}
 
       :error ->
-        {:error, {:legacy_sequence_snapshot_missing_config, node["original_id"]}}
+        {:error, {:missing_sequence_config_snapshot, node["original_id"]}}
     end
   end
 
@@ -2335,7 +2280,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     end
   end
 
-  defp lock_and_validate_incoming_dynamic_pins(repo, project_id, restored_flow_id, snapshot_nodes, opts) do
+  defp lock_and_validate_incoming_dynamic_pins(repo, project_id, restored_flow_id, snapshot_nodes) do
     project_flow_ids =
       repo.all(
         from(flow in Flow,
@@ -2380,9 +2325,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       |> Enum.filter(&(&1["type"] == "exit"))
       |> MapSet.new(& &1["original_id"])
 
-    recoverable_connection_sources =
-      recoverable_full_project_connection_sources(opts)
-
     with :ok <-
            validate_project_connection_ownership(
              connections,
@@ -2396,23 +2338,12 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
              restored_flow_id,
              target_exit_ids
            ),
-         :ok <-
-           validate_recoverable_incoming_dynamic_connections(
-             invalid_connections,
-             recoverable_connection_sources
-           ),
-         {:ok, removed_connection_ids} <-
-           delete_incoming_dynamic_connections(
-             repo,
-             invalid_connections,
-             project_flow_ids,
-             source_node_ids
-           ) do
+         :ok <- validate_incoming_dynamic_connections(invalid_connections) do
       {:ok,
        %{
          source_nodes: source_node_ids,
          connections: Enum.map(connections, & &1.id),
-         removed_connections: removed_connection_ids
+         removed_connections: []
        }}
     end
   end
@@ -2475,103 +2406,9 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     end
   end
 
-  defp validate_recoverable_incoming_dynamic_connections([], _captured), do: :ok
+  defp validate_incoming_dynamic_connections([]), do: :ok
 
-  defp validate_recoverable_incoming_dynamic_connections(invalid_connections, %MapSet{} = captured) do
-    case Enum.find(invalid_connections, fn %{connection: connection, source_node: source_node} ->
-           not MapSet.member?(
-             captured,
-             {connection.flow_id, connection.id, source_node.id}
-           )
-         end) do
-      nil -> :ok
-      %{reason: reason} -> {:error, reason}
-    end
-  end
-
-  defp validate_recoverable_incoming_dynamic_connections([%{reason: reason} | _invalid_connections], _captured),
-    do: {:error, reason}
-
-  defp delete_incoming_dynamic_connections(_repo, [], _project_flow_ids, _source_node_ids), do: {:ok, []}
-
-  defp delete_incoming_dynamic_connections(repo, invalid_connections, project_flow_ids, source_node_ids) do
-    connection_ids =
-      invalid_connections
-      |> Enum.map(& &1.connection.id)
-      |> Enum.uniq()
-      |> Enum.sort()
-
-    case repo.delete_all(
-           from(connection in FlowConnection,
-             where:
-               connection.id in ^connection_ids and
-                 connection.flow_id in ^project_flow_ids and
-                 connection.source_node_id in ^source_node_ids
-           )
-         ) do
-      {count, _rows} when count == length(connection_ids) ->
-        {:ok, connection_ids}
-
-      {count, _rows} ->
-        {:error, {:incoming_dynamic_connection_delete_count_mismatch, length(connection_ids), count}}
-    end
-  end
-
-  defp recoverable_full_project_connection_sources(opts) do
-    if Keyword.get(opts, :full_project_restore, false) do
-      case Keyword.get(opts, :pre_restore_snapshot) do
-        %{"flows" => flow_entries} when is_list(flow_entries) ->
-          collect_pre_restore_connection_sources(flow_entries)
-
-        _missing_or_invalid ->
-          MapSet.new()
-      end
-    end
-  end
-
-  defp collect_pre_restore_connection_sources(flow_entries) do
-    Enum.reduce_while(flow_entries, MapSet.new(), fn
-      %{
-        "id" => flow_id,
-        "snapshot" => %{"nodes" => nodes, "connections" => connections}
-      },
-      captured
-      when is_integer(flow_id) and flow_id > 0 and is_list(nodes) and is_list(connections) ->
-        with {:ok, _node_ids} <- collect_positive_snapshot_ids(nodes),
-             {:ok, connection_sources} <-
-               collect_snapshot_connection_sources(
-                 flow_id,
-                 connections,
-                 nodes
-               ) do
-          {:cont, Enum.reduce(connection_sources, captured, &MapSet.put(&2, &1))}
-        else
-          {:error, _reason} -> {:halt, MapSet.new()}
-        end
-
-      _invalid_entry, _captured ->
-        {:halt, MapSet.new()}
-    end)
-  end
-
-  defp collect_snapshot_connection_sources(flow_id, connections, nodes) do
-    Enum.reduce_while(connections, {:ok, []}, fn
-      %{"original_id" => connection_id, "source_node_index" => source_node_index}, {:ok, captured}
-      when is_integer(connection_id) and connection_id > 0 and
-             is_integer(source_node_index) and source_node_index >= 0 ->
-        case Enum.at(nodes, source_node_index) do
-          %{"original_id" => source_node_id}
-          when is_integer(source_node_id) and source_node_id > 0 ->
-            {:cont, {:ok, [{flow_id, connection_id, source_node_id} | captured]}}
-
-          _missing_or_invalid_source ->
-            {:halt, {:error, :invalid_snapshot_connection_source}}
-        end
-
-      _invalid_connection, {:ok, _captured} ->
-        {:halt, {:error, :invalid_snapshot_connection_source}}
-    end)
-  end
+  defp validate_incoming_dynamic_connections([%{reason: reason} | _invalid_connections]), do: {:error, reason}
 
   defp validate_incoming_dynamic_pin_for_connection(connection, source_node, restored_flow_id, target_exit_ids) do
     referenced_flow_id =
@@ -2775,415 +2612,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     end
   end
 
-  defp reconcile_full_project_sequence_transition_connections(repo, flow_id, nodes, opts) do
-    if Keyword.get(opts, :full_project_restore, false) do
-      target_types = Map.new(nodes, &{&1["original_id"], &1["type"]})
-      target_node_ids = Map.keys(target_types)
-      transition_ids = sequence_transition_ids(repo, flow_id, target_types)
-
-      connection_ids =
-        sequence_transition_conflicts(
-          repo,
-          flow_id,
-          transition_ids,
-          target_node_ids
-        )
-
-      with :ok <-
-             validate_recoverable_sequence_transition_connections(
-               flow_id,
-               connection_ids,
-               opts
-             ) do
-        delete_sequence_transition_connections(
-          repo,
-          flow_id,
-          connection_ids
-        )
-      end
-    else
-      {:ok, []}
-    end
-  end
-
-  defp reconcile_full_project_cross_boundary_connections(repo, project_id, flow_id, nodes, opts) do
-    if Keyword.get(opts, :full_project_restore, false) do
-      target_nodes = Map.new(nodes, &{&1["original_id"], &1})
-      target_node_ids = Map.keys(target_nodes)
-
-      connections =
-        lock_cross_boundary_connections(
-          repo,
-          flow_id,
-          target_node_ids
-        )
-
-      with :ok <-
-             validate_cross_boundary_connection_ownership(
-               repo,
-               flow_id,
-               connections
-             ),
-           {:ok, invalid_connections} <-
-             invalid_future_cross_boundary_connections(
-               repo,
-               project_id,
-               connections,
-               target_nodes
-             ),
-           :ok <-
-             validate_recoverable_cross_boundary_connections(
-               flow_id,
-               invalid_connections,
-               opts
-             ) do
-        delete_cross_boundary_connections(
-          repo,
-          flow_id,
-          invalid_connections
-        )
-      end
-    else
-      {:ok, []}
-    end
-  end
-
-  defp lock_cross_boundary_connections(_repo, _flow_id, []), do: []
-
-  defp lock_cross_boundary_connections(repo, flow_id, target_node_ids) do
-    repo.all(
-      from(connection in FlowConnection,
-        where: connection.flow_id == ^flow_id,
-        where:
-          (connection.source_node_id in ^target_node_ids and
-             connection.target_node_id not in ^target_node_ids) or
-            (connection.target_node_id in ^target_node_ids and
-               connection.source_node_id not in ^target_node_ids),
-        order_by: [asc: connection.id],
-        lock: "FOR UPDATE"
-      )
-    )
-  end
-
-  defp validate_cross_boundary_connection_ownership(_repo, _flow_id, []), do: :ok
-
-  defp validate_cross_boundary_connection_ownership(repo, flow_id, connections) do
-    node_ids =
-      connections
-      |> Enum.flat_map(&[&1.source_node_id, &1.target_node_id])
-      |> Enum.uniq()
-
-    owners =
-      from(node in FlowNode,
-        where: node.id in ^node_ids,
-        select: {node.id, node.flow_id}
-      )
-      |> repo.all()
-      |> Map.new()
-
-    case Enum.find(
-           connections,
-           &cross_boundary_connection_ownership_conflict?(&1, flow_id, owners)
-         ) do
-      nil ->
-        :ok
-
-      connection ->
-        ownership_details =
-          cross_boundary_connection_ownership_details(connection, owners)
-
-        {:error, {:cross_boundary_connection_ownership_conflict, ownership_details}}
-    end
-  end
-
-  defp cross_boundary_connection_ownership_conflict?(connection, flow_id, owners) do
-    Map.get(owners, connection.source_node_id) != flow_id or
-      Map.get(owners, connection.target_node_id) != flow_id
-  end
-
-  defp cross_boundary_connection_ownership_details(connection, owners) do
-    {
-      connection.id,
-      connection.flow_id,
-      connection.source_node_id,
-      Map.get(owners, connection.source_node_id),
-      connection.target_node_id,
-      Map.get(owners, connection.target_node_id)
-    }
-  end
-
-  defp invalid_future_cross_boundary_connections(repo, project_id, connections, target_nodes) do
-    connections
-    |> Enum.reduce_while({:ok, []}, fn connection, {:ok, invalid} ->
-      case future_cross_boundary_connection_result(
-             repo,
-             project_id,
-             connection,
-             target_nodes
-           ) do
-        :ok ->
-          {:cont, {:ok, invalid}}
-
-        {:error, reason} ->
-          {:cont,
-           {:ok,
-            [
-              %{connection_id: connection.id, reason: reason}
-              | invalid
-            ]}}
-      end
-    end)
-    |> case do
-      {:ok, invalid} -> {:ok, Enum.reverse(invalid)}
-      {:error, _reason} = error -> error
-    end
-  end
-
-  defp future_cross_boundary_connection_result(repo, project_id, connection, target_nodes) do
-    case {
-      Map.get(target_nodes, connection.source_node_id),
-      Map.get(target_nodes, connection.target_node_id)
-    } do
-      {%{} = source_node, nil} ->
-        validate_future_source_pin(
-          repo,
-          project_id,
-          connection,
-          source_node
-        )
-
-      {nil, %{} = target_node} ->
-        validate_future_target_pin(connection, target_node)
-
-      endpoints ->
-        {:error, {:invalid_cross_boundary_connection_classification, connection.id, endpoints}}
-    end
-  end
-
-  defp validate_future_source_pin(repo, project_id, connection, source_node) do
-    case future_source_pin_valid?(
-           repo,
-           project_id,
-           source_node,
-           connection.source_pin
-         ) do
-      {:ok, true} ->
-        :ok
-
-      {:ok, false} ->
-        {:error, {:invalid_future_source_pin, connection.source_node_id, connection.source_pin, source_node["type"]}}
-
-      {:error, _reason} = error ->
-        error
-    end
-  end
-
-  defp future_source_pin_valid?(repo, project_id, %{"type" => "subflow", "data" => data}, source_pin) do
-    referenced_flow_id =
-      normalize_materialized_reference_id(data["referenced_flow_id"])
-
-    case referenced_flow_id do
-      nil ->
-        {:ok, false}
-
-      referenced_flow_id ->
-        validate_future_subflow_source_pin(
-          repo,
-          project_id,
-          referenced_flow_id,
-          source_pin
-        )
-    end
-  end
-
-  defp future_source_pin_valid?(_repo, _project_id, %{"type" => type, "data" => data}, source_pin) do
-    {:ok,
-     NodeConnectionRules.valid_output_pin?(
-       type,
-       data || %{},
-       source_pin
-     )}
-  end
-
-  defp validate_future_subflow_source_pin(repo, project_id, referenced_flow_id, source_pin) do
-    if future_referenced_flow_active?(
-         repo,
-         project_id,
-         referenced_flow_id
-       ) do
-      {:ok,
-       future_dynamic_exit_pin_valid?(
-         repo,
-         referenced_flow_id,
-         source_pin
-       )}
-    else
-      {:error, {:invalid_future_subflow_reference, referenced_flow_id}}
-    end
-  end
-
-  defp future_referenced_flow_active?(repo, project_id, referenced_flow_id) do
-    repo.exists?(
-      from(flow in Flow,
-        where:
-          flow.id == ^referenced_flow_id and
-            flow.project_id == ^project_id and
-            is_nil(flow.deleted_at)
-      )
-    )
-  end
-
-  defp future_dynamic_exit_pin_valid?(repo, referenced_flow_id, source_pin) do
-    case parse_dynamic_exit_pin(source_pin) do
-      {:ok, exit_id} ->
-        future_exit_active?(
-          repo,
-          referenced_flow_id,
-          exit_id
-        )
-
-      _not_valid_dynamic_pin ->
-        false
-    end
-  end
-
-  defp future_exit_active?(repo, referenced_flow_id, exit_id) do
-    repo.exists?(
-      from(node in FlowNode,
-        where:
-          node.id == ^exit_id and
-            node.flow_id == ^referenced_flow_id and
-            node.type == "exit" and
-            is_nil(node.deleted_at)
-      )
-    )
-  end
-
-  defp validate_future_target_pin(connection, target_node) do
-    if NodeConnectionRules.valid_input_pin?(
-         target_node["type"],
-         connection.target_pin
-       ) do
-      :ok
-    else
-      {:error, {:invalid_future_target_pin, connection.target_node_id, connection.target_pin, target_node["type"]}}
-    end
-  end
-
-  defp validate_recoverable_cross_boundary_connections(_flow_id, [], _opts), do: :ok
-
-  defp validate_recoverable_cross_boundary_connections(flow_id, invalid_connections, opts) do
-    case pre_restore_flow_connection_ids(flow_id, opts) do
-      {:ok, captured_ids} ->
-        missing =
-          Enum.reject(
-            invalid_connections,
-            &MapSet.member?(captured_ids, &1.connection_id)
-          )
-
-        if missing == [] do
-          :ok
-        else
-          {:error, {:cross_boundary_connections_missing_from_pre_restore_snapshot, flow_id, missing}}
-        end
-
-      {:error, reason} ->
-        {:error, {:cross_boundary_connections_not_recoverable, flow_id, invalid_connections, reason}}
-    end
-  end
-
-  defp delete_cross_boundary_connections(_repo, _flow_id, []), do: {:ok, []}
-
-  defp delete_cross_boundary_connections(repo, flow_id, invalid_connections) do
-    connection_ids =
-      invalid_connections
-      |> Enum.map(& &1.connection_id)
-      |> Enum.uniq()
-      |> Enum.sort()
-
-    case repo.delete_all(
-           from(connection in FlowConnection,
-             where:
-               connection.flow_id == ^flow_id and
-                 connection.id in ^connection_ids
-           )
-         ) do
-      {count, _rows} when count == length(connection_ids) ->
-        {:ok, connection_ids}
-
-      {count, _rows} ->
-        {:error, {:cross_boundary_connection_delete_count_mismatch, length(connection_ids), count}}
-    end
-  end
-
-  defp validate_recoverable_sequence_transition_connections(_flow_id, [], _opts), do: :ok
-
-  defp validate_recoverable_sequence_transition_connections(flow_id, connection_ids, opts) do
-    case pre_restore_flow_connection_ids(flow_id, opts) do
-      {:ok, captured_ids} ->
-        missing_ids =
-          connection_ids
-          |> Enum.reject(&MapSet.member?(captured_ids, &1))
-          |> Enum.sort()
-
-        if missing_ids == [] do
-          :ok
-        else
-          {:error, {:sequence_transition_connections_missing_from_pre_restore_snapshot, flow_id, missing_ids}}
-        end
-
-      {:error, reason} ->
-        {:error, {:sequence_transition_connections_not_recoverable, flow_id, Enum.sort(connection_ids), reason}}
-    end
-  end
-
-  defp pre_restore_flow_connection_ids(flow_id, opts) do
-    with %{"flows" => flow_entries} when is_list(flow_entries) <-
-           Keyword.get(opts, :pre_restore_snapshot),
-         %{"snapshot" => %{"connections" => connections}}
-         when is_list(connections) <-
-           Enum.find(flow_entries, &(&1["id"] == flow_id)),
-         {:ok, connection_ids} <- collect_positive_snapshot_ids(connections) do
-      {:ok, MapSet.new(connection_ids)}
-    else
-      nil -> {:error, :pre_restore_flow_missing}
-      _missing_or_invalid -> {:error, :invalid_pre_restore_snapshot}
-    end
-  end
-
-  defp collect_positive_snapshot_ids(entries) do
-    entries
-    |> Enum.reduce_while({:ok, []}, fn
-      %{"original_id" => id}, {:ok, ids} when is_integer(id) and id > 0 ->
-        {:cont, {:ok, [id | ids]}}
-
-      _invalid, {:ok, _ids} ->
-        {:halt, {:error, :invalid_snapshot_original_id}}
-    end)
-    |> case do
-      {:ok, ids} -> {:ok, Enum.reverse(ids)}
-      {:error, _reason} = error -> error
-    end
-  end
-
-  defp delete_sequence_transition_connections(_repo, _flow_id, []), do: {:ok, []}
-
-  defp delete_sequence_transition_connections(repo, flow_id, connection_ids) do
-    case repo.delete_all(
-           from(connection in FlowConnection,
-             where:
-               connection.flow_id == ^flow_id and
-                 connection.id in ^connection_ids
-           )
-         ) do
-      {count, _rows} when count == length(connection_ids) ->
-        {:ok, connection_ids}
-
-      {count, _rows} ->
-        {:error, {:sequence_transition_connection_delete_count_mismatch, length(connection_ids), count}}
-    end
-  end
-
   defp sequence_transition_ids(repo, flow_id, target_types) do
     node_ids = Map.keys(target_types)
 
@@ -3249,40 +2677,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     end
   end
 
-  defp reconcile_full_project_sequence_transition_children(repo, flow_id, nodes, opts) do
-    if Keyword.get(opts, :full_project_restore, false) do
-      target_types = Map.new(nodes, &{&1["original_id"], &1["type"]})
-      target_node_ids = Map.keys(target_types)
-
-      transition_ids =
-        sequence_to_nonsequence_transition_ids(
-          repo,
-          flow_id,
-          target_node_ids,
-          target_types
-        )
-
-      child_states =
-        sequence_transition_child_states(
-          repo,
-          flow_id,
-          transition_ids,
-          target_node_ids
-        )
-
-      with :ok <-
-             validate_recoverable_sequence_transition_children(
-               flow_id,
-               child_states,
-               opts
-             ) do
-        detach_sequence_transition_children(repo, flow_id, child_states)
-      end
-    else
-      {:ok, []}
-    end
-  end
-
   defp sequence_to_nonsequence_transition_ids(repo, flow_id, target_node_ids, target_types) do
     from(node in FlowNode,
       where:
@@ -3292,86 +2686,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     )
     |> repo.all()
     |> Enum.reject(&(Map.get(target_types, &1) == "sequence"))
-  end
-
-  defp sequence_transition_child_states(_repo, _flow_id, [], _target_node_ids), do: []
-
-  defp sequence_transition_child_states(repo, flow_id, transition_ids, target_node_ids) do
-    repo.all(
-      from(node in FlowNode,
-        where:
-          node.flow_id == ^flow_id and node.parent_id in ^transition_ids and
-            node.id not in ^target_node_ids,
-        order_by: [asc: node.id],
-        select: {node.id, node.parent_id}
-      )
-    )
-  end
-
-  defp validate_recoverable_sequence_transition_children(_flow_id, [], _opts), do: :ok
-
-  defp validate_recoverable_sequence_transition_children(flow_id, child_states, opts) do
-    case pre_restore_flow_node_parent_states(flow_id, opts) do
-      {:ok, captured_states} ->
-        missing_states =
-          child_states
-          |> Enum.reject(&MapSet.member?(captured_states, &1))
-          |> Enum.sort()
-
-        if missing_states == [] do
-          :ok
-        else
-          {:error, {:sequence_transition_children_missing_from_pre_restore_snapshot, flow_id, missing_states}}
-        end
-
-      {:error, reason} ->
-        {:error, {:sequence_transition_children_not_recoverable, flow_id, Enum.sort(child_states), reason}}
-    end
-  end
-
-  defp pre_restore_flow_node_parent_states(flow_id, opts) do
-    with %{"flows" => flow_entries} when is_list(flow_entries) <-
-           Keyword.get(opts, :pre_restore_snapshot),
-         %{"snapshot" => %{"nodes" => nodes}}
-         when is_list(nodes) <-
-           Enum.find(flow_entries, &(&1["id"] == flow_id)),
-         {:ok, node_parent_states} <- collect_snapshot_node_parent_states(nodes) do
-      {:ok, MapSet.new(node_parent_states)}
-    else
-      nil -> {:error, :pre_restore_flow_missing}
-      _missing_or_invalid -> {:error, :invalid_pre_restore_snapshot}
-    end
-  end
-
-  defp collect_snapshot_node_parent_states(nodes) do
-    Enum.reduce_while(nodes, {:ok, []}, fn
-      %{"original_id" => node_id, "parent_id" => parent_id}, {:ok, states}
-      when is_integer(node_id) and node_id > 0 and
-             (is_nil(parent_id) or (is_integer(parent_id) and parent_id > 0)) ->
-        {:cont, {:ok, [{node_id, parent_id} | states]}}
-
-      _invalid_node, {:ok, _states} ->
-        {:halt, {:error, :invalid_snapshot_node_parent_state}}
-    end)
-  end
-
-  defp detach_sequence_transition_children(_repo, _flow_id, []), do: {:ok, []}
-
-  defp detach_sequence_transition_children(repo, flow_id, child_states) do
-    child_ids = Enum.map(child_states, &elem(&1, 0))
-
-    case repo.update_all(
-           from(node in FlowNode,
-             where: node.flow_id == ^flow_id and node.id in ^child_ids
-           ),
-           set: [parent_id: nil, updated_at: MaterializationHelpers.now()]
-         ) do
-      {count, _rows} when count == length(child_ids) ->
-        {:ok, child_ids}
-
-      {count, _rows} ->
-        {:error, {:sequence_transition_child_detach_count_mismatch, length(child_ids), count}}
-    end
   end
 
   defp soft_delete_absent_active_nodes(repo, flow_id, target_node_ids) do
@@ -4764,11 +4078,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   # ========== Diff Snapshots ==========
 
-  # Fields excluded from node comparison (canvas position and denormalized counts are noise)
-  # "source" is a removed column. Snapshots written before the Screenplays
-  # feature was deleted still carry it, so it must not count as a change —
-  # otherwise every node in every pre-existing version reads as modified.
-  @node_ignore_fields ["position_x", "position_y", "original_id", "word_count", "source"]
+  # Snapshot identity and canvas position do not represent content changes.
+  @node_ignore_fields ["position_x", "position_y", "original_id"]
 
   @impl true
   def diff_snapshots(old_snapshot, new_snapshot) do

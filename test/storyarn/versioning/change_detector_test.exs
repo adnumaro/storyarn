@@ -4,8 +4,8 @@ defmodule Storyarn.Versioning.ChangeDetectorTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Projects.Project
   alias Storyarn.Versioning.ChangeDetector
-  alias Storyarn.Versioning.ProjectSnapshot
 
   describe "project_changed_since_last_snapshot?/1" do
     test "returns true when no snapshots exist" do
@@ -65,17 +65,9 @@ defmodule Storyarn.Versioning.ChangeDetectorTest do
     version = System.unique_integer([:positive])
 
     snapshot =
-      %ProjectSnapshot{}
-      |> ProjectSnapshot.changeset(%{
-        project_id: project_id,
-        version_number: version,
-        storage_key: "test/snapshot/#{version}.json.gz",
-        snapshot_size_bytes: 100,
-        checksum: String.duplicate("a", 64),
-        entity_counts: %{},
-        is_auto: is_auto
-      })
-      |> Repo.insert!()
+      project_id
+      |> then(&Repo.get!(Project, &1))
+      |> full_project_snapshot_fixture(%{version_number: version, is_auto: is_auto})
 
     if inserted_at do
       Repo.query!("UPDATE project_snapshots SET inserted_at = $1 WHERE id = $2", [

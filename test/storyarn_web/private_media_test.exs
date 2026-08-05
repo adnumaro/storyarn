@@ -38,7 +38,7 @@ defmodule StoryarnWeb.PrivateMediaTest do
              "/media/projects/7/files/#{encoded_key}"
   end
 
-  test "project_url_from_stored/2 converts a legacy storage URL" do
+  test "project_url_from_stored/2 converts a persisted storage URL" do
     stored_url = "/uploads/test/projects/7/assets/image.png"
 
     assert PrivateMedia.project_url_from_stored(7, stored_url) ==
@@ -73,17 +73,6 @@ defmodule StoryarnWeb.PrivateMediaTest do
     refute PrivateMedia.valid_storage_key?(nil)
   end
 
-  test "project snapshot keys are limited to project snapshot archives" do
-    assert PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/project/42.json.gz")
-
-    refute PrivateMedia.project_snapshot_key?(7, "projects/8/snapshots/project/42.json.gz")
-    refute PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/project/42.json")
-    refute PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/assets/42.json.gz")
-    refute PrivateMedia.project_snapshot_key?(7, "projects/7/snapshots/project/../42.json.gz")
-    refute PrivateMedia.project_snapshot_key?(7, <<255>>)
-    refute PrivateMedia.project_snapshot_key?(7, nil)
-  end
-
   describe "project_snapshot_asset_url/2" do
     test "uses the current snapshot key" do
       key = "projects/7/blobs/banner.png"
@@ -94,11 +83,10 @@ defmodule StoryarnWeb.PrivateMediaTest do
              }) == PrivateMedia.project_file_url(7, key)
     end
 
-    test "falls back to the legacy stored URL for older snapshots" do
-      stored_url = "/uploads/test/projects/7/assets/legacy-banner.png"
-
-      assert PrivateMedia.project_snapshot_asset_url(7, %{"url" => stored_url}) ==
-               PrivateMedia.project_file_url(7, "projects/7/assets/legacy-banner.png")
+    test "rejects snapshot metadata without a current storage key" do
+      assert PrivateMedia.project_snapshot_asset_url(7, %{
+               "url" => "/uploads/test/projects/7/assets/banner.png"
+             }) == nil
     end
 
     test "rejects metadata belonging to another project" do

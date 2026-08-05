@@ -146,24 +146,14 @@
       },
       "deleted_projects": {
         "title": "Deleted Projects",
-        "subtitle": "Recover deleted projects that have snapshots available",
+        "subtitle": "Review projects retained in workspace trash",
+        "unavailable": {
+          "title": "Project recovery is not available yet",
+          "description": "Deleted projects remain retained and count toward workspace storage. Recovery will return only after the canonical snapshot restore flow can verify the complete project before changing data."
+        },
         "empty": {
           "title": "No deleted projects",
-          "description": "Deleted projects with available snapshots will appear here."
-        },
-        "snapshot_count": "{n} snapshot | {n} snapshots",
-        "no_snapshots": "No snapshots available for this project.",
-        "snapshot_prefix": "Snapshot v",
-        "recover": "Recover",
-        "recover_modal": {
-          "title": "Recover project?",
-          "description": "This will create a new project from snapshot v{number}. The recovered project will appear in your workspace.",
-          "cancel": "Cancel"
-        },
-        "entities": {
-          "sheets": "{n} sheet | {n} sheets",
-          "flows": "{n} flow | {n} flows",
-          "scenes": "{n} scene | {n} scenes"
+          "description": "Projects moved to workspace trash will appear here."
         }
       }
     }

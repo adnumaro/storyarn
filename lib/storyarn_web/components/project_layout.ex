@@ -24,7 +24,6 @@ defmodule StoryarnWeb.Components.ProjectLayout do
   attr :online_users, :list, default: []
   attr :sidebar_module, :atom, default: nil
   attr :sidebar_session, :map, default: %{}
-  attr :restoration_banner, :map, default: nil
   attr :canvas_mode, :boolean, default: false
   attr :onboarding, :map, default: %{guides: %{}}
   attr :onboarding_autostart, :boolean, default: false
@@ -72,7 +71,6 @@ defmodule StoryarnWeb.Components.ProjectLayout do
         current-user={@current_user}
         online-users={@online_users}
         urls={@urls}
-        restoration-banner={@restoration_banner}
         canvas-mode={@canvas_mode}
         onboarding={OnboardingHelpers.client_config(@onboarding, @active_tool, @onboarding_autostart)}
       />

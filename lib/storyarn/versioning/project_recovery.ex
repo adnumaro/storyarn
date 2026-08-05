@@ -1,26 +1,24 @@
 defmodule Storyarn.Versioning.ProjectRecovery do
   @moduledoc """
-  Creates a new project from a project snapshot with full ID remapping.
+  Materializes a portable project-template snapshot into a new project.
 
-  Unlike `ProjectSnapshotBuilder.restore_snapshot/3` which restores into an
-  existing project by matching entity IDs, this module creates brand new entities
-  from snapshot data and remaps all internal cross-references to point to the
-  new autoincrement IDs.
+  Every entity receives a new database identity, internal references are
+  remapped, and every referenced asset is copied into the destination project.
+  This module is not a deleted-project recovery or project-snapshot restore API.
   """
 
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Billing
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.HubColors
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.Project
-  alias Storyarn.Projects.ProjectCrud
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.References
   alias Storyarn.References.AvatarIntegrity
@@ -35,11 +33,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.FlowBuilder
-  alias Storyarn.Versioning.Builders.FlowSnapshotNormalizer
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
-  alias Storyarn.Versioning.RestorePolicy
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   require Logger
 
@@ -65,24 +60,22 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   }
 
   @doc """
-  Recovers a project from snapshot data by creating a new project with all entities.
+  Materializes a portable template snapshot as a new project.
 
   Creates fresh entities with new IDs and remaps all internal cross-references.
-  Runs in a single transaction with a 5-minute timeout.
+  Referenced assets are always copied and failures are strict by default. The
+  caller must authorize the template operation before invoking this function.
 
   ## Options
-  - `:name` - Override the recovered project name (default: "{original} (Recovered)")
-  - `:template_clone` - Copy snapshot assets into the new project instead of
-    reusing source project asset IDs.
+  - `:name` - Name for the materialized project (default: "Recovered Project")
+  - `:asset_copy_tracker` - External compensation tracker when the caller owns
+    a surrounding transaction
+  - `:asset_source_keys` - Verified portable-bundle object keys
   """
-  @spec recover_project(integer(), map(), integer(), keyword()) ::
+  @spec materialize_template(integer(), map(), integer(), keyword()) ::
           {:ok, Project.t()} | {:error, term()}
-  def recover_project(workspace_id, snapshot_data, user_id, opts \\ []) do
-    with :ok <- ensure_recovery_enabled(opts) do
-      snapshot_data
-      |> FlowSnapshotNormalizer.normalize_project()
-      |> recover_project_with_asset_scope(workspace_id, user_id, opts)
-    end
+  def materialize_template(workspace_id, snapshot_data, user_id, opts \\ []) do
+    recover_project_with_asset_scope(snapshot_data, workspace_id, user_id, opts)
   end
 
   defp recover_project_with_asset_scope(snapshot_data, workspace_id, user_id, opts) do
@@ -117,8 +110,9 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
     try do
       result =
-        Repo.transaction(
-          fn ->
+        Billing.with_storage_accounting_lock(
+          workspace_id,
+          fn _workspace ->
             case do_recover(workspace_id, snapshot_data, user_id, name, opts) do
               {:ok, project} ->
                 case prepare_asset_cleanup_handoff(tracker, owns_tracker?) do
@@ -142,14 +136,6 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       kind, reason ->
         cleanup_owned_asset_copies(tracker, owns_tracker?)
         :erlang.raise(kind, reason, __STACKTRACE__)
-    end
-  end
-
-  defp ensure_recovery_enabled(opts) do
-    if template_clone?(opts) do
-      :ok
-    else
-      RestorePolicy.ensure_enabled(:deleted_project_recovery)
     end
   end
 
@@ -235,8 +221,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp do_recover(workspace_id, snapshot_data, user_id, name, opts) do
     now = TimeHelpers.now()
 
-    with :ok <- authorize_deleted_project_recovery(workspace_id, user_id, opts),
-         {:ok, project} <- create_project(workspace_id, user_id, name, snapshot_data),
+    with {:ok, project} <- create_project(workspace_id, user_id, name, snapshot_data),
          {:ok, _membership} <- create_owner_membership(project, user_id),
          {:ok, sheet_maps} <- recover_sheets(project.id, snapshot_data, user_id, opts),
          {:ok, scene_maps} <- recover_scenes(project.id, snapshot_data, sheet_maps.sheet, user_id, opts),
@@ -273,42 +258,6 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       end
     end
   end
-
-  defp authorize_deleted_project_recovery(workspace_id, user_id, opts) do
-    if template_clone?(opts) do
-      :ok
-    else
-      with :ok <- normalize_workspace_capacity(ProjectCrud.lock_and_check_workspace_capacity(workspace_id)),
-           %WorkspaceMembership{role: role}
-           when role in ["owner", "admin"] <-
-             lock_workspace_recovery_membership(workspace_id, user_id) do
-        :ok
-      else
-        %WorkspaceMembership{} -> {:error, :unauthorized}
-        nil -> {:error, :unauthorized}
-        {:error, reason} -> {:error, reason}
-      end
-    end
-  end
-
-  defp lock_workspace_recovery_membership(workspace_id, user_id) do
-    Repo.one(
-      from(membership in WorkspaceMembership,
-        where:
-          membership.workspace_id == ^workspace_id and
-            membership.user_id == ^user_id,
-        lock: "FOR UPDATE"
-      )
-    )
-  end
-
-  defp normalize_workspace_capacity(:ok), do: :ok
-
-  defp normalize_workspace_capacity({:error, :limit_reached, details}) do
-    {:error, {:limit_reached, details}}
-  end
-
-  defp normalize_workspace_capacity({:error, reason}), do: {:error, reason}
 
   # ========== Project Creation ==========
 
@@ -400,18 +349,13 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       recovery_opts
       |> Keyword.take([
         :asset_copy_tracker,
-        :asset_error_mode,
         :asset_materialization_cache,
         :asset_source_keys
       ])
       |> Keyword.merge(builder_opts)
       |> Keyword.put(:user_id, user_id)
 
-    if template_clone?(recovery_opts) do
-      Keyword.put(builder_opts, :asset_mode, :copy)
-    else
-      builder_opts
-    end
+    Keyword.put(builder_opts, :asset_mode, :copy)
   end
 
   defp materialize_entities(entries, entity_type, instantiate_fun) do
@@ -1088,11 +1032,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
              {:flow_node, source_node_id}
            ),
          {:ok, new_data} <-
-           AvatarIntegrity.lock_and_normalize_node_avatar(
-             new_flow_id,
-             node_type,
-             normalize_hub_color(data, node_type)
-           ) do
+           AvatarIntegrity.lock_and_normalize_node_avatar(new_flow_id, node_type, data) do
       persist_remapped_node_data(node_id, original_data, new_data)
     end
   end
@@ -1108,12 +1048,6 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       {count, _rows} -> {:error, {:materialized_row_count_mismatch, :flow_node, node_id, count}}
     end
   end
-
-  defp normalize_hub_color(data, "hub") do
-    Map.put(data, "color", HubColors.resolve_legacy(data["color"]))
-  end
-
-  defp normalize_hub_color(data, _node_type), do: data
 
   defp remap_node_data_reference(data, key, id_map, source_node_id) do
     case Map.fetch(data, key) do
@@ -2362,20 +2296,13 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp localization_asset_opts(opts) do
-    asset_mode = if template_clone?(opts), do: :copy, else: :reuse
-
     opts
     |> Keyword.take([
       :asset_copy_tracker,
-      :asset_error_mode,
       :asset_materialization_cache,
       :asset_source_keys
     ])
-    |> Keyword.put(:asset_mode, asset_mode)
-  end
-
-  defp template_clone?(opts) do
-    Keyword.get(opts, :template_clone, false) == true
+    |> Keyword.put(:asset_mode, :copy)
   end
 
   defp asset_copy_tracker(opts) do

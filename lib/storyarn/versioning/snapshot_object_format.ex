@@ -25,7 +25,16 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   @storage_metadata_keys ~w(
     blob_key key project_id storage_key thumbnail_key thumbnail_path url web_url
   )
-  @unsafe_metadata_key ~r/(?:\A|_)(?:id|key|path|url)\z/
+  @unsafe_metadata_snake_key ~r/(?:\A|_)(?:id|ids|key|keys|path|paths|url|urls)\z/i
+  @unsafe_metadata_camel_key ~r/(?:Id|Ids|Key|Keys|Path|Paths|Url|Urls)\z/
+  @unsafe_metadata_acronym_key ~r/[a-z0-9](?:ID|IDs|URL|URLs)\z/
+  @unsafe_project_storage_snake_key ~r/(?:\A|_)(?:blob|storage|thumbnail|presigned|signed|web|object|current_object)_(?:key|keys|path|paths|url|urls)\z/i
+  @unsafe_project_storage_compound_key ~r/(?:blob|storage|thumbnail|presigned|signed|web|object|currentobject)(?:key|keys|path|paths|url|urls)\z/i
+  @unsafe_project_url_snake_key ~r/(?:\A|_)(?:url|urls)\z/i
+  @unsafe_project_url_camel_key ~r/(?:Url|Urls)\z/
+  @unsafe_project_url_acronym_key ~r/[a-z0-9](?:URL|URLs)\z/
+  @unsafe_project_ownership_key ~r/\Aproject_?(?:id|ids)\z/i
+  @unsafe_project_generic_storage_key ~r/\A(?:key|keys|url|urls)\z/i
 
   @default_limits %{
     max_assets: 10_000,
@@ -48,6 +57,9 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   def format_version, do: @format_version
   def manifest_path, do: @manifest_path
   def project_path, do: @project_path
+
+  @doc false
+  def hard_limits, do: @default_limits
 
   @doc """
   Removes current-storage durability fields from the project payload.
@@ -549,7 +561,8 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   end
 
   defp validate_asset_collection(assets, opts) do
-    if Enum.all?(assets, &match?(%Asset{}, &1)) do
+    with true <- Enum.all?(assets, &match?(%Asset{}, &1)),
+         :ok <- validate_asset_ids(assets) do
       expected_project_id = Keyword.get(opts, :project_id, hd(assets).project_id)
 
       cond do
@@ -564,7 +577,26 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
           {:error, {:asset_project_mismatch, expected_project_id, actual_project_ids}}
       end
     else
-      {:error, :invalid_asset_collection}
+      false -> {:error, :invalid_asset_collection}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp validate_asset_ids(assets) do
+    ids = Enum.map(assets, & &1.id)
+    invalid_ids = Enum.reject(ids, &(is_integer(&1) and &1 > 0))
+
+    duplicates =
+      ids
+      |> Enum.frequencies()
+      |> Enum.filter(fn {_id, count} -> count > 1 end)
+      |> Enum.map(fn {id, _count} -> id end)
+      |> Enum.sort()
+
+    cond do
+      invalid_ids != [] -> {:error, {:invalid_asset_ids, invalid_ids}}
+      duplicates != [] -> {:error, {:duplicate_asset_ids, duplicates}}
+      true -> :ok
     end
   end
 
@@ -610,8 +642,8 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     Enum.reduce_while(value, :ok, fn {key, nested}, :ok ->
       cond do
         not is_binary(key) -> {:halt, {:error, :invalid_asset_metadata_key}}
-        key in @storage_metadata_keys -> {:halt, {:error, {:unsafe_asset_metadata_key, key}}}
-        Regex.match?(@unsafe_metadata_key, key) -> {:halt, {:error, {:unsafe_asset_metadata_key, key}}}
+        not String.valid?(key) -> {:halt, {:error, :invalid_asset_metadata_key}}
+        unsafe_asset_metadata_key?(key) -> {:halt, {:error, {:unsafe_asset_metadata_key, key}}}
         true -> continue_metadata_validation(nested, depth + 1, max_depth)
       end
     end)
@@ -632,21 +664,28 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     end
   end
 
-  defp validate_limits(limits) do
-    invalid =
-      Enum.find(limits, fn
-        {key, value} when key in [:max_assets, :max_objects] ->
-          not (is_integer(value) and value >= 0)
+  @doc false
+  def validate_limits(limits) when is_map(limits) do
+    if limits |> Map.keys() |> Enum.sort() == @default_limits |> Map.keys() |> Enum.sort() do
+      invalid =
+        Enum.find(limits, fn
+          {key, value} when key in [:max_assets, :max_objects] ->
+            not (is_integer(value) and value >= 0 and value <= Map.fetch!(@default_limits, key))
 
-        {_key, value} ->
-          not (is_integer(value) and value > 0)
-      end)
+          {key, value} ->
+            not (is_integer(value) and value > 0 and value <= Map.fetch!(@default_limits, key))
+        end)
 
-    case invalid do
-      nil -> :ok
-      {key, value} -> {:error, {:invalid_snapshot_object_limit, key, value}}
+      case invalid do
+        nil -> :ok
+        {key, value} -> {:error, {:invalid_snapshot_object_limit, key, value}}
+      end
+    else
+      {:error, :invalid_snapshot_object_limit_keys}
     end
   end
+
+  def validate_limits(limits), do: {:error, {:invalid_snapshot_object_limits, limits}}
 
   defp validate_json_value(value) do
     case Jason.encode(value) do
@@ -691,8 +730,26 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     end
   end
 
-  defp storage_metadata_key?(key) when is_binary(key), do: key in @storage_metadata_keys
-  defp storage_metadata_key?(key) when is_atom(key), do: Atom.to_string(key) in @storage_metadata_keys
+  defp unsafe_asset_metadata_key?(key) do
+    key in @storage_metadata_keys or
+      Regex.match?(@unsafe_metadata_snake_key, key) or
+      Regex.match?(@unsafe_metadata_camel_key, key) or
+      Regex.match?(@unsafe_metadata_acronym_key, key)
+  end
+
+  defp storage_metadata_key?(key) when is_binary(key) do
+    key in @storage_metadata_keys or
+      (String.valid?(key) and
+         (Regex.match?(@unsafe_project_storage_snake_key, key) or
+            Regex.match?(@unsafe_project_storage_compound_key, key) or
+            Regex.match?(@unsafe_project_url_snake_key, key) or
+            Regex.match?(@unsafe_project_url_camel_key, key) or
+            Regex.match?(@unsafe_project_url_acronym_key, key) or
+            Regex.match?(@unsafe_project_ownership_key, key) or
+            Regex.match?(@unsafe_project_generic_storage_key, key)))
+  end
+
+  defp storage_metadata_key?(key) when is_atom(key), do: key |> Atom.to_string() |> storage_metadata_key?()
   defp storage_metadata_key?(_key), do: false
 
   defp valid_optional_logical_id?(nil), do: true

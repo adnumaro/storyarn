@@ -1,94 +1,21 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronUp, Folder, RotateCcw, Trash2 } from "@lucide/vue";
-import { ref } from "vue";
-import { Badge } from "@components/ui/badge";
-import { Button } from "@components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@components/ui/dialog";
-import { useI18n } from "vue-i18n";
-import { useLive } from "@shared/composables/useLive";
-
-const { t } = useI18n();
+import { Folder, ShieldAlert, Trash2 } from "@lucide/vue";
 
 interface DeletedProject {
   id: number;
   name: string;
   deleted_time_ago: string;
   deleted_by_text?: string;
-  snapshot_count: number;
 }
 
-interface ProjectSnapshot {
-  id: number;
-  title?: string;
-  version_number: number;
-  formatted_date: string;
-  entity_counts?: Record<string, number>;
-}
-
-const {
-  deletedProjects,
-  expandedProjectId = null,
-  snapshots = [],
-  recovering = false,
-  recoveryEnabled,
-} = defineProps<{
+defineProps<{
   deletedProjects: DeletedProject[];
-  expandedProjectId?: number | null;
-  snapshots?: ProjectSnapshot[];
-  recovering?: boolean;
-  recoveryEnabled: boolean;
 }>();
-
-const live = useLive();
-
-const recoverDialogOpen = ref(false);
-const recoverSnapshot = ref<ProjectSnapshot | null>(null);
-const recoverProjectId = ref<number | null>(null);
-
-function toggleProject(projectId: number) {
-  if (!recoveryEnabled) return;
-  live.pushEvent("toggle_project", { id: String(projectId) });
-}
-
-function openRecoverDialog(snapshot: ProjectSnapshot, projectId: number) {
-  if (!recoveryEnabled) return;
-  recoverSnapshot.value = snapshot;
-  recoverProjectId.value = projectId;
-  recoverDialogOpen.value = true;
-}
-
-function confirmRecover() {
-  if (!recoveryEnabled) return;
-  if (recoverSnapshot.value && recoverProjectId.value) {
-    live.pushEvent("recover_project", {
-      snapshot_id: recoverSnapshot.value.id,
-      project_id: recoverProjectId.value,
-    });
-  }
-  recoverDialogOpen.value = false;
-}
-
-const ENTITY_KEYS = ["sheets", "flows", "scenes"] as const;
-
-function formatEntityCounts(counts: Record<string, number> | undefined) {
-  if (!counts) return "";
-  return ENTITY_KEYS.filter((key) => counts[key] > 0)
-    .map((key) => t(`settings.workspace.deleted_projects.entities.${key}`, counts[key]))
-    .join(", ");
-}
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="space-y-1.5 mb-8">
+  <div class="space-y-6">
+    <div class="space-y-1.5">
       <h1 class="text-2xl font-bold tracking-tight text-foreground">
         {{ $t("settings.workspace.deleted_projects.title") }}
       </h1>
@@ -97,10 +24,24 @@ function formatEntityCounts(counts: Record<string, number> | undefined) {
       </p>
     </div>
 
-    <!-- Empty state -->
+    <section
+      class="flex gap-3 rounded-xl border border-amber-500/25 bg-amber-500/8 p-4"
+      aria-labelledby="deleted-project-recovery-status"
+    >
+      <ShieldAlert class="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+      <div class="space-y-1">
+        <h2 id="deleted-project-recovery-status" class="text-sm font-semibold text-foreground">
+          {{ $t("settings.workspace.deleted_projects.unavailable.title") }}
+        </h2>
+        <p class="text-sm leading-relaxed text-muted-foreground">
+          {{ $t("settings.workspace.deleted_projects.unavailable.description") }}
+        </p>
+      </div>
+    </section>
+
     <div v-if="deletedProjects.length === 0" class="py-12 text-center">
-      <Trash2 class="size-12 text-muted-foreground/30 mx-auto mb-4" />
-      <h3 class="text-lg font-semibold mb-1">
+      <Trash2 class="mx-auto mb-4 size-12 text-muted-foreground/30" />
+      <h3 class="mb-1 text-lg font-semibold">
         {{ $t("settings.workspace.deleted_projects.empty.title") }}
       </h3>
       <p class="text-sm text-muted-foreground">
@@ -108,112 +49,23 @@ function formatEntityCounts(counts: Record<string, number> | undefined) {
       </p>
     </div>
 
-    <!-- Project list -->
-    <div
-      v-for="project in deletedProjects"
-      :key="project.id"
-      class="border border-border rounded-lg"
-    >
-      <button
-        type="button"
-        :disabled="!recoveryEnabled"
-        :class="[
-          'w-full flex items-center justify-between p-4 transition-colors',
-          recoveryEnabled ? 'hover:bg-accent/50' : 'cursor-default',
-        ]"
-        @click="toggleProject(project.id)"
+    <ul v-else class="grid gap-3" :aria-label="$t('settings.workspace.deleted_projects.title')">
+      <li
+        v-for="project in deletedProjects"
+        :key="project.id"
+        class="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm"
       >
-        <div class="flex items-center gap-3">
-          <Folder class="size-5 text-muted-foreground" />
-          <div class="text-left">
-            <div class="font-medium">{{ project.name }}</div>
-            <div class="text-sm text-muted-foreground">
-              {{ project.deleted_time_ago }}
-              <span v-if="project.deleted_by_text">
-                {{ project.deleted_by_text }}
-              </span>
-            </div>
+        <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-muted">
+          <Folder class="size-5 text-muted-foreground" aria-hidden="true" />
+        </span>
+        <div class="min-w-0">
+          <div class="truncate font-medium text-foreground">{{ project.name }}</div>
+          <div class="text-sm text-muted-foreground">
+            {{ project.deleted_time_ago }}
+            <span v-if="project.deleted_by_text">{{ project.deleted_by_text }}</span>
           </div>
         </div>
-        <div class="flex items-center gap-3">
-          <Badge variant="secondary">
-            {{ $t("settings.workspace.deleted_projects.snapshot_count", project.snapshot_count) }}
-          </Badge>
-          <template v-if="recoveryEnabled">
-            <ChevronUp
-              v-if="expandedProjectId === project.id"
-              class="size-4 text-muted-foreground"
-            />
-            <ChevronDown v-else class="size-4 text-muted-foreground" />
-          </template>
-        </div>
-      </button>
-
-      <!-- Expanded snapshots -->
-      <div v-if="expandedProjectId === project.id" class="border-t border-border p-4 space-y-3">
-        <div v-if="snapshots.length === 0" class="text-sm text-muted-foreground py-4 text-center">
-          {{ $t("settings.workspace.deleted_projects.no_snapshots") }}
-        </div>
-
-        <div
-          v-for="snapshot in snapshots"
-          :key="snapshot.id"
-          class="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-        >
-          <div>
-            <div class="font-medium text-sm">
-              {{
-                snapshot.title ||
-                `${$t("settings.workspace.deleted_projects.snapshot_prefix")}${snapshot.version_number}`
-              }}
-            </div>
-            <div class="text-xs text-muted-foreground mt-0.5">
-              {{ snapshot.formatted_date }}
-              <span v-if="snapshot.entity_counts">
-                &mdash; {{ formatEntityCounts(snapshot.entity_counts) }}
-              </span>
-            </div>
-          </div>
-          <Button
-            v-if="recoveryEnabled"
-            data-testid="recover-deleted-project"
-            size="sm"
-            :disabled="recovering"
-            @click="openRecoverDialog(snapshot, project.id)"
-          >
-            <RotateCcw class="size-3.5" />
-            {{ $t("settings.workspace.deleted_projects.recover") }}
-          </Button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Recover Confirmation Dialog -->
-    <Dialog v-if="recoveryEnabled" v-model:open="recoverDialogOpen">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{{
-            $t("settings.workspace.deleted_projects.recover_modal.title")
-          }}</DialogTitle>
-          <DialogDescription>
-            {{
-              $t("settings.workspace.deleted_projects.recover_modal.description", {
-                number: recoverSnapshot?.version_number ?? "",
-              })
-            }}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <DialogClose as-child>
-            <Button variant="outline">
-              {{ $t("settings.workspace.deleted_projects.recover_modal.cancel") }}
-            </Button>
-          </DialogClose>
-          <Button @click="confirmRecover">
-            {{ $t("settings.workspace.deleted_projects.recover") }}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </li>
+    </ul>
   </div>
 </template>

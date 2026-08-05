@@ -9,6 +9,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
 
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
+  alias Storyarn.Billing
   alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Sheets.SheetAvatar
@@ -559,6 +560,28 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       filenames = Enum.map(vue.props["assets"], & &1["filename"])
       assert "test_upload.png" in filenames
       assert vue.props["selected-asset"]["filename"] == "test_upload.png"
+    end
+
+    test "atomic storage limit failure stays visible without crashing", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      storage_limit = Billing.plan_limit(Billing.default_plan(), :storage_bytes_per_workspace)
+      fill_storage_fixture(project, user, storage_limit)
+      {:ok, view, _html} = live(conn, assets_path(project))
+      png_data = Base.encode64(<<137, 80, 78, 71, 13, 10, 26, 10>>)
+
+      html =
+        render_hook(view, "upload_asset", %{
+          "filename" => "over-limit.png",
+          "content_type" => "image/png",
+          "data" => "data:image/png;base64,#{png_data}"
+        })
+
+      assert html =~ "Storage limit reached. Upgrade your plan."
+      assert Process.alive?(view.pid)
+      refute Enum.any?(get_assets_vue(view).props["assets"], &(&1["filename"] == "over-limit.png"))
     end
 
     test "upload validation error keeps the asset UI mounted", %{conn: conn, project: project} do

@@ -11,10 +11,14 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
+  alias Storyarn.Billing.StorageReservation
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
+  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.SnapshotObjectPublicationClaim
 
   test "retries cleanup job persistence before returning an error" do
     {:ok, attempts} = Agent.start_link(fn -> 0 end)
@@ -717,6 +721,118 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert {:ok, "adoptable"} = Storage.download(storage_key)
   end
 
+  test "deferred cleanup removes partial ready objects while their snapshot is not committed" do
+    user = user_fixture()
+    project = project_fixture(user)
+    prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/PENDING123456789"
+    storage_key = prefix <> "/project.json"
+
+    %ProjectSnapshot{}
+    |> ProjectSnapshot.pending_object_set_changeset(%{
+      project_id: project.id,
+      version_number: 1,
+      object_prefix: prefix,
+      mode: "full"
+    })
+    |> Repo.insert!()
+
+    assert {:ok, _url} = Storage.upload(storage_key, "partial", "application/json")
+    assert :ok = StorageCompensation.delete_storage_keys([storage_key])
+    assert {:error, :enoent} = Storage.download(storage_key)
+  end
+
+  test "deferred cleanup retains ready snapshot objects with durable accounting ownership" do
+    user = user_fixture()
+    project = project_fixture(user)
+    prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/COMMITTED1234567"
+    storage_key = prefix <> "/project.json"
+    checksum = String.duplicate("a", 64)
+
+    snapshot =
+      %ProjectSnapshot{}
+      |> ProjectSnapshot.object_set_changeset(%{
+        project_id: project.id,
+        version_number: 1,
+        project_storage_key: storage_key,
+        project_size_bytes: 1,
+        project_checksum: checksum,
+        format_version: 1,
+        object_prefix: prefix,
+        manifest_storage_key: prefix <> "/manifest.json",
+        manifest_size_bytes: 1,
+        manifest_checksum: checksum,
+        total_size_bytes: 2,
+        object_count: 2,
+        asset_count: 0,
+        blob_count: 0
+      })
+      |> Repo.insert!()
+
+    assert {:ok, _url} = Storage.upload(storage_key, "p", "application/json")
+    on_exit(fn -> Storage.adapter().delete(storage_key) end)
+
+    assert :ok = StorageCompensation.delete_storage_keys([storage_key])
+    assert {:ok, "p"} = Storage.download(storage_key)
+
+    snapshot
+    |> Ecto.Changeset.change(integrity_state: "corrupt")
+    |> Repo.update!()
+
+    assert :ok = StorageCompensation.delete_storage_keys([storage_key])
+    assert {:ok, "p"} = Storage.download(storage_key)
+  end
+
+  test "a published claim fences ready cleanup before snapshot accounting commits" do
+    user = user_fixture()
+    project = project_fixture(user)
+
+    published_prefix =
+      "projects/#{project.id}/snapshots/object-sets/v1/ready/PUBLISHEDCLAIM01"
+
+    poisoned_prefix =
+      "projects/#{project.id}/snapshots/object-sets/v1/ready/POISONEDCLAIM001"
+
+    published_snapshot =
+      %ProjectSnapshot{}
+      |> ProjectSnapshot.pending_object_set_changeset(%{
+        project_id: project.id,
+        version_number: 1,
+        object_prefix: published_prefix,
+        mode: "full"
+      })
+      |> Repo.insert!()
+
+    poisoned_snapshot =
+      %ProjectSnapshot{}
+      |> ProjectSnapshot.pending_object_set_changeset(%{
+        project_id: project.id,
+        version_number: 2,
+        object_prefix: poisoned_prefix,
+        mode: "full"
+      })
+      |> Repo.insert!()
+
+    insert_snapshot_publication_claim!(project, published_snapshot, "published")
+    insert_snapshot_publication_claim!(project, poisoned_snapshot, "poisoned")
+
+    published_key = published_prefix <> "/project.json"
+    poisoned_key = poisoned_prefix <> "/project.json"
+
+    assert {:ok, _url} = Storage.upload(published_key, "published", "application/json")
+    assert {:ok, _url} = Storage.upload(poisoned_key, "poisoned", "application/json")
+
+    on_exit(fn ->
+      Storage.adapter().delete(published_key)
+      Storage.adapter().delete(poisoned_key)
+    end)
+
+    assert :ok = StorageCompensation.delete_storage_keys([published_key])
+    assert {:ok, "published"} = Storage.download(published_key)
+
+    assert :ok = StorageCompensation.delete_storage_keys([poisoned_key])
+    assert {:error, :enoent} = Storage.download(poisoned_key)
+  end
+
   test "deferred cleanup preserves unique storage adopted by a committed asset" do
     user = user_fixture()
     project = project_fixture(user)
@@ -986,6 +1102,50 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     end
   end
 
+  test "persists and deletes strictly scoped reservation namespace objects" do
+    project_id = 9_300_000_000 + System.unique_integer([:positive])
+    lease_token = Ecto.UUID.generate()
+
+    storage_keys =
+      for kind <- ~w(snapshot-build linked-to-full-conversion restore-staging snapshot-export),
+          suffix <- ["payload.bin", "nested/metadata.json"] do
+        "projects/#{project_id}/storage-reservations/v1/#{kind}/#{lease_token}/#{suffix}"
+      end
+
+    conditional_copy_key =
+      "projects/#{project_id}/storage-reservations/v1/restore-staging/#{lease_token}/nested/.storyarn-copy/AAAAAAAAAAAAAAAA"
+
+    for storage_key <- storage_keys do
+      assert {:ok, _url} = Storage.upload(storage_key, "temporary", "application/octet-stream")
+      on_exit(fn -> Storage.delete(storage_key) end)
+    end
+
+    upload_dir =
+      :storyarn
+      |> Application.fetch_env!(:storage)
+      |> Keyword.fetch!(:upload_dir)
+      |> Path.expand()
+
+    conditional_copy_path = Path.join(upload_dir, conditional_copy_key)
+    File.mkdir_p!(Path.dirname(conditional_copy_path))
+    File.write!(conditional_copy_path, "conditional")
+    on_exit(fn -> Storage.delete(conditional_copy_key) end)
+
+    cleanup_keys = storage_keys ++ [conditional_copy_key]
+
+    assert {:ok, %StorageCleanupRequest{storage_keys: persisted_keys}} =
+             StorageCompensation.persist_cleanup_request(cleanup_keys)
+
+    assert MapSet.new(persisted_keys) == MapSet.new(cleanup_keys)
+    assert :ok = StorageCompensation.delete_storage_keys(cleanup_keys)
+
+    for storage_key <- storage_keys do
+      assert {:error, :enoent} = Storage.download(storage_key)
+    end
+
+    refute File.exists?(conditional_copy_path)
+  end
+
   test "delete_or_enqueue! raises when no durable cleanup path is available" do
     storage_key = cleanup_blob_key("unrecoverable-orphan")
 
@@ -1048,6 +1208,8 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   test "rejects malformed project keys before immediate deletion or durable enqueue" do
     hash = String.duplicate("a", 64)
     uuid = Ecto.UUID.generate()
+    lease_token = Ecto.UUID.generate()
+    reservation_prefix = "projects/1/storage-reservations/v1/restore-staging/#{lease_token}"
 
     invalid_keys = [
       "projects/01/blobs/#{hash}.png",
@@ -1067,7 +1229,27 @@ defmodule Storyarn.Assets.StorageCompensationTest do
       "project_templates/imported_blobs/demo/run/#{hash}/nested/file.png",
       "project_templates/imports/../run/snapshot.json.gz",
       "project_templates/imports/demo/../snapshot.json.gz",
-      "project_templates/imports/demo/run/snapshot.json.gz.bak"
+      "project_templates/imports/demo/run/snapshot.json.gz.bak",
+      "projects/01/storage-reservations/v1/restore-staging/#{lease_token}/payload.bin",
+      "projects/9223372036854775808/storage-reservations/v1/restore-staging/#{lease_token}/payload.bin",
+      "projects/1/storage-reservations/v2/restore-staging/#{lease_token}/payload.bin",
+      "projects/1/storage-reservations/v1/unknown/#{lease_token}/payload.bin",
+      "projects/1/storage-reservations/v1/restore_staging/#{lease_token}/payload.bin",
+      "projects/1/storage-reservations/v1/restore-staging/not-a-uuid/payload.bin",
+      "projects/1/storage-reservations/v1/restore-staging/AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA/payload.bin",
+      reservation_prefix,
+      reservation_prefix <> "/",
+      reservation_prefix <> "/../payload.bin",
+      reservation_prefix <> "/nested//payload.bin",
+      reservation_prefix <> "/unsafe name.bin",
+      reservation_prefix <> "/nested\\payload.bin",
+      reservation_prefix <> "/#{String.duplicate("a", 129)}",
+      reservation_prefix <> "/#{Enum.join(List.duplicate(String.duplicate("a", 110), 5), "/")}",
+      reservation_prefix <> "/#{Enum.join(List.duplicate("part", 17), "/")}",
+      reservation_prefix <> "/.storyarn-copy",
+      reservation_prefix <> "/.storyarn-copy/short",
+      reservation_prefix <> "/.storyarn-copy/AAAAAAAAAAAAAAAA/extra",
+      reservation_prefix <> "/nested/.storyarn-copy/AAAAAAAAAAAAAAAA/extra"
     ]
 
     for storage_key <- invalid_keys do
@@ -1087,6 +1269,9 @@ defmodule Storyarn.Assets.StorageCompensationTest do
                  :ok
                end
              )
+
+    assert {:error, :no_valid_storage_keys} =
+             StorageCompensation.persist_cleanup_request(invalid_keys)
 
     refute_receive {:unexpected_delete, _key}
     refute_receive {:unexpected_enqueue, _keys}
@@ -1133,6 +1318,46 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert :ok = StorageCompensation.retry_persisted_cleanup_requests(1)
     refute Repo.get(StorageCleanupRequest, removable_request.id)
     assert {:error, :enoent} = Storage.download(removable_key)
+  end
+
+  defp insert_snapshot_publication_claim!(project, snapshot, status) do
+    lease_token = Ecto.UUID.generate()
+    now = TimeHelpers.now()
+
+    reservation =
+      Repo.insert!(%StorageReservation{
+        workspace_id: project.workspace_id,
+        project_id: project.id,
+        project_snapshot_id: snapshot.id,
+        workspace_id_snapshot: project.workspace_id,
+        project_id_snapshot: project.id,
+        project_snapshot_id_snapshot: snapshot.id,
+        idempotency_key: "storage-compensation-claim:#{Ecto.UUID.generate()}",
+        kind: "snapshot_build",
+        status: "active",
+        storage_namespace: "projects/#{project.id}/storage-reservations/v1/snapshot-build/#{lease_token}",
+        cleanup_object_prefix: snapshot.object_prefix,
+        reserved_bytes: 1,
+        lease_token: lease_token,
+        generation: 1,
+        expires_at: DateTime.add(now, 3_600, :second),
+        accounting_version: 1,
+        accounting_measured_at: now,
+        inserted_at: now,
+        updated_at: now
+      })
+
+    Repo.insert!(%SnapshotObjectPublicationClaim{
+      object_prefix: snapshot.object_prefix,
+      claim_token: Ecto.UUID.generate(),
+      inventory_digest: String.duplicate("d", 64),
+      storage_reservation_id_snapshot: reservation.id,
+      storage_reservation_lease_token: reservation.lease_token,
+      status: status,
+      lease_expires_at: nil,
+      inserted_at: now,
+      updated_at: now
+    })
   end
 
   defp cleanup_asset_key(label, project_id \\ 1) do

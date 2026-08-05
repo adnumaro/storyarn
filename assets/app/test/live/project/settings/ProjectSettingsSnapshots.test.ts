@@ -1,0 +1,214 @@
+import { mount } from "@vue/test-utils";
+import { afterEach, describe, expect, it } from "vitest";
+import ProjectSettingsSnapshots from "../../../../live/project/settings/ProjectSettingsSnapshots.vue";
+import type { WorkspaceStorageUsage } from "../../../../shared/utils/storage-accounting";
+import { setTestLocale } from "../../../setup";
+
+const storageUsage = {
+  currentAssetsBytes: String(640 * 1024),
+  fullSnapshotsBytes: String(256 * 1024),
+  linkedSnapshotsBytes: String(64 * 1024),
+  activeReservationsBytes: String(64 * 1024),
+  totalAccountedBytes: String(1024 * 1024),
+  limitBytes: String(4 * 1024 * 1024),
+  remainingBytes: String(3 * 1024 * 1024),
+  limitKind: "limited" as const,
+};
+
+interface SnapshotFixture {
+  id: number;
+  title: string;
+  description: string;
+  versionNumber: number;
+  insertedAt: string;
+  entityCounts: Record<string, number>;
+  createdByEmail: string;
+  mode: "full" | "linked" | null;
+  lifecycleStatus:
+    | "pending"
+    | "building"
+    | "verifying"
+    | "ready"
+    | "failed"
+    | "cancelled"
+    | "deleting"
+    | null;
+  integrityStatus: "unknown" | "verified" | "at_risk" | "missing" | "corrupt" | "incomplete" | null;
+  accountedSizeBytes: string | null;
+  projectDataSizeBytes: string | null;
+  metadataSizeBytes: string | null;
+  assetBlobSizeBytes: string | null;
+  assetCount: number | null;
+  blobCount: number | null;
+  activeReservationBytes: string;
+  exportReservationBytes: string;
+  accountingVersion: number | null;
+  accountingMeasuredAt: string | null;
+}
+
+const measuredSnapshot: SnapshotFixture = {
+  id: 21,
+  title: "Playtest checkpoint",
+  description: "Ready for QA",
+  versionNumber: 2,
+  insertedAt: "2026-07-17T10:00:00Z",
+  entityCounts: { sheets: 2 },
+  createdByEmail: "owner@example.com",
+  mode: "full",
+  lifecycleStatus: "ready",
+  integrityStatus: "verified",
+  accountedSizeBytes: String(6 * 1024),
+  projectDataSizeBytes: "1024",
+  metadataSizeBytes: String(2 * 1024),
+  assetBlobSizeBytes: String(3 * 1024),
+  assetCount: 2,
+  blobCount: 1,
+  activeReservationBytes: "768",
+  exportReservationBytes: "256",
+  accountingVersion: 1,
+  accountingMeasuredAt: "2026-07-17T10:00:00Z",
+};
+
+function mountSnapshots(
+  snapshot: SnapshotFixture = measuredSnapshot,
+  workspaceStorage: WorkspaceStorageUsage = storageUsage,
+) {
+  const wrapper = mount(ProjectSettingsSnapshots, {
+    props: {
+      snapshots: [snapshot],
+      storageUsage: workspaceStorage,
+    },
+  });
+
+  return wrapper;
+}
+
+afterEach(() => setTestLocale("en"));
+
+describe("ProjectSettingsSnapshots storage accounting", () => {
+  it("renders plan-counted workspace usage and its mutually exclusive categories", () => {
+    const wrapper = mountSnapshots();
+    const text = wrapper.text();
+
+    expect(text).toContain("Storage counted toward your plan");
+    expect(text).toContain("1 MB");
+    expect(text).toContain("25%");
+    expect(text).toContain("640 KB");
+    expect(text).not.toContain("Recoverable asset trash");
+    expect(text).toContain("256 KB");
+    expect(text).toContain("64 KB");
+    expect(text).toContain("3 MB");
+    expect(text).toContain("Active reservations");
+    wrapper.get('[data-testid="workspace-storage-progress"]');
+  });
+
+  it("renders canonical snapshot size, exact percentage, breakdown, inventory, and states", () => {
+    const wrapper = mountSnapshots();
+    const text = wrapper.text();
+
+    expect(text).toContain("Full");
+    expect(text).toContain("Ready");
+    expect(text).toContain("Verified");
+    expect(text).toContain("6 KB");
+    expect(text).toContain("0.15%");
+    expect(text).toContain("Project data");
+    expect(text).toContain("1 KB");
+    expect(text).toContain("Manifest and catalog");
+    expect(text).toContain("2 KB");
+    expect(text).toContain("Unique asset blobs");
+    expect(text).toContain("3 KB");
+    expect(text).toContain("Logical assets: 2 · Unique blobs: 1");
+    expect(text).toContain("Accounting v1 measured");
+    expect(text).toContain("Active work reservation: 768 B");
+    expect(text).toContain("ZIP export reservation: 256 B");
+    expect(text).toContain("2 sheets");
+
+    const modeBadge = wrapper.find('[aria-label="Snapshot mode: Full"]');
+    expect(modeBadge.exists()).toBe(true);
+    expect(wrapper.find('[aria-label="Snapshot state: Ready"]').exists()).toBe(true);
+    expect(wrapper.find('[aria-label="Snapshot integrity: Verified"]').exists()).toBe(true);
+    expect(wrapper.find('[aria-label="Snapshot storage: 6 KB"]').exists()).toBe(true);
+
+    expect(wrapper.find("form").exists()).toBe(false);
+    expect(wrapper.find("button").exists()).toBe(false);
+    expect(wrapper.find('a[href*="/snapshots/"]').exists()).toBe(false);
+  });
+
+  it("renders export reservation bytes independently from other active work", () => {
+    const wrapper = mountSnapshots({
+      ...measuredSnapshot,
+      activeReservationBytes: "0",
+      exportReservationBytes: "256",
+    });
+
+    expect(wrapper.text()).toContain("ZIP export reservation: 256 B");
+    expect(wrapper.text()).not.toContain("Active work reservation");
+  });
+
+  it("renders a pending canonical row before accounting measurements are available", () => {
+    const wrapper = mountSnapshots({
+      ...measuredSnapshot,
+      mode: null,
+      lifecycleStatus: null,
+      integrityStatus: null,
+      accountedSizeBytes: null,
+      projectDataSizeBytes: null,
+      metadataSizeBytes: null,
+      assetBlobSizeBytes: null,
+      assetCount: null,
+      blobCount: null,
+      activeReservationBytes: "0",
+      exportReservationBytes: "0",
+      accountingVersion: null,
+      accountingMeasuredAt: null,
+    });
+
+    const text = wrapper.text();
+    expect(text).toContain("Mode unknown");
+    expect(text).toContain("State unknown");
+    expect(text).toContain("Integrity unknown");
+    expect(text).toContain("—");
+    expect(wrapper.find("form").exists()).toBe(false);
+    expect(wrapper.find("button").exists()).toBe(false);
+    expect(wrapper.find('a[href*="/snapshots/"]').exists()).toBe(false);
+  });
+
+  it.each([
+    { limitKind: "unknown" as const, limitBytes: null, remainingBytes: null },
+    { limitKind: "unlimited" as const, limitBytes: null, remainingBytes: null },
+    { limitKind: "limited" as const, limitBytes: "0", remainingBytes: "0" },
+  ])("omits a determinate storage progressbar for $limitKind capacity", (limitState) => {
+    const wrapper = mountSnapshots(measuredSnapshot, {
+      ...storageUsage,
+      ...limitState,
+      totalAccountedBytes: limitState.limitBytes === "0" ? "0" : storageUsage.totalAccountedBytes,
+    });
+
+    expect(wrapper.find('[data-testid="workspace-storage-progress"]').exists()).toBe(false);
+  });
+
+  it("formats snapshot dates with the active locale", () => {
+    setTestLocale("es");
+    const wrapper = mountSnapshots();
+
+    expect(wrapper.text()).toContain("jul");
+    expect(wrapper.text()).toContain("Completa");
+    expect(wrapper.text()).toContain("Verificada");
+    expect(wrapper.text()).toContain("2 fichas");
+  });
+
+  it("shows positive storage below one basis point as less than 0.01%", () => {
+    const wrapper = mountSnapshots(measuredSnapshot, {
+      ...storageUsage,
+      currentAssetsBytes: "1",
+      fullSnapshotsBytes: "0",
+      linkedSnapshotsBytes: "0",
+      activeReservationsBytes: "0",
+      totalAccountedBytes: "1",
+      limitBytes: "20000",
+      remainingBytes: "19999",
+    });
+
+    expect(wrapper.text()).toContain("<0.01%");
+  });
+});

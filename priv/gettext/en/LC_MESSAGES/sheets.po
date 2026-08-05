@@ -11,17 +11,17 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3099
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3070
 #, elixir-autogen, elixir-format
 msgid "Changed avatar"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3113
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3084
 #, elixir-autogen, elixir-format
 msgid "Changed banner"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3078
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3049
 #, elixir-autogen, elixir-format
 msgid "Changed shortcut"
 msgstr ""
@@ -73,12 +73,12 @@ msgstr ""
 msgid "Could not save shortcut."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:71
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:70
 #, elixir-autogen, elixir-format
 msgid "Could not update audio."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:100
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:98
 #, elixir-autogen, elixir-format
 msgid "Could not upload audio file."
 msgstr ""
@@ -100,12 +100,12 @@ msgstr ""
 msgid "Reference target not found."
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3071
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3042
 #, elixir-autogen, elixir-format
 msgid "Renamed sheet"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:381
+#: lib/storyarn_web/live/sheet_live/show.ex:374
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr ""
@@ -115,7 +115,7 @@ msgstr ""
 msgid "Shortcut %{error}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:89
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:87
 #, elixir-autogen, elixir-format
 msgid "Unsupported file type."
 msgstr ""
@@ -218,58 +218,58 @@ msgstr ""
 msgid "Sheet moved to trash."
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3177
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3141
 #, elixir-autogen, elixir-format
 msgid "Added %{type} block"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3180
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3144
 #, elixir-autogen, elixir-format
 msgid "Added %{type} block \"%{name}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3221
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3226
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3185
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3190
 #, elixir-autogen, elixir-format
 msgid "Avatar image"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3204
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3168
 #, elixir-autogen, elixir-format
 msgid "Banner image"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3213
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3177
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} — inherited source"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3092
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3063
 #, elixir-autogen, elixir-format
 msgid "Changed color"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3189
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3153
 #, elixir-autogen, elixir-format
 msgid "Modified %{type} block"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3192
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3156
 #, elixir-autogen, elixir-format
 msgid "Modified %{type} block \"%{name}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3183
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3147
 #, elixir-autogen, elixir-format
 msgid "Removed %{type} block"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3186
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3150
 #, elixir-autogen, elixir-format
 msgid "Removed %{type} block \"%{name}\""
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:96
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:94
 #, elixir-autogen, elixir-format
 msgid "Storage limit reached. Upgrade your plan."
 msgstr ""
@@ -295,32 +295,32 @@ msgstr ""
 msgid "Invalid layout."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:897
+#: lib/storyarn_web/live/sheet_live/show.ex:881
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3242
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3206
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} gallery image"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3106
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3077
 #, elixir-autogen, elixir-format
 msgid "Changed avatars"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3085
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3056
 #, elixir-autogen, elixir-format
 msgid "Changed description"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3120
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3091
 #, elixir-autogen, elixir-format
 msgid "Changed hidden inherited blocks"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3235
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3199
 #, elixir-autogen, elixir-format
 msgid "Hidden inherited block"
 msgstr ""

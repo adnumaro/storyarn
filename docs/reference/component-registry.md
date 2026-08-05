@@ -152,7 +152,7 @@ shared component living outside `components/`.
 | `confirmText` | `string?` (default `"Confirm"`)           |
 | `cancelText`  | `string?` (default `"Cancel"`)            |
 | `variant`     | `"default" \| "destructive" \| "warning"` |
-| `icon`        | `Component?` (a `lucide-vue-next` icon)   |
+| `icon`        | `Component?` (an `@lucide/vue` icon)      |
 | `@confirm`    | emitted, then `open` is set to `false`    |
 | `@cancel`     | emitted                                   |
 
@@ -168,8 +168,8 @@ NEVER use `window.confirm/alert/prompt` or `data-confirm`.
 | `DashboardHandlers` | `use StoryarnWeb.Live.Shared.DashboardHandlers`   | Injects debounced dashboard-invalidation `handle_info` clauses                  |
 
 The rest of `lib/storyarn_web/live/shared/` (`CollaborationHelpers`,
-`InvitationHelpers`, `OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`,
-`RestorationHandlers`) is listed in @docs/reference/shared-utilities.md.
+`InvitationHelpers`, `OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`)
+is listed in @docs/reference/shared-utilities.md.
 
 ---
 

@@ -23,12 +23,7 @@ msgid_plural "%{count} missing %{type}"
 msgstr[0] "%{count} %{type} ausente"
 msgstr[1] "%{count} %{type} ausentes"
 
-#: lib/storyarn/versioning/project_snapshot_crud.ex:408
-#, elixir-autogen, elixir-format
-msgid "Before restore to project snapshot v%{number}"
-msgstr "Antes de restaurar a snapshot del proyecto v%{number}"
-
-#: lib/storyarn/versioning/version_crud.ex:477
+#: lib/storyarn/versioning/version_crud.ex:476
 #, elixir-autogen, elixir-format
 msgid "Before restore to v%{number}"
 msgstr "Antes de restaurar a v%{number}"
@@ -69,12 +64,7 @@ msgstr "No se pudo nombrar la versión."
 msgid "Could not restore version."
 msgstr "No se pudo restaurar la versión."
 
-#: lib/storyarn/versioning/project_snapshot_crud.ex:557
-#, elixir-autogen, elixir-format
-msgid "Restored from project snapshot v%{number}"
-msgstr "Restaurado desde snapshot del proyecto v%{number}"
-
-#: lib/storyarn/versioning/version_crud.ex:616
+#: lib/storyarn/versioning/version_crud.ex:615
 #, elixir-autogen, elixir-format
 msgid "Restored from v%{number}"
 msgstr "Restaurado desde v%{number}"

@@ -31,9 +31,6 @@
       "account_settings": "Ajustes de cuenta",
       "all_workspaces": "Todos los espacios",
       "log_out": "Cerrar sesión"
-    },
-    "project_restoration": {
-      "in_progress": "El proyecto está siendo restaurado por {user}. La edición está temporalmente deshabilitada."
     }
   }
 }

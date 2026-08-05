@@ -4,10 +4,12 @@ defmodule Storyarn.Assets.BlobStoreTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Billing
   alias Storyarn.Projects.Project
 
   setup do
@@ -524,6 +526,39 @@ defmodule Storyarn.Assets.BlobStoreTest do
       assert new_asset.content_type == "image/svg+xml"
       assert new_asset.metadata["sanitized_svg"] == true
       assert {:ok, ^content} = Storage.download(new_asset.key)
+    end
+
+    test "rejects materialization before copying when workspace capacity is exhausted", %{
+      project: project,
+      user: user
+    } do
+      limit = Billing.plan_limit("free", :storage_bytes_per_workspace)
+
+      Repo.insert!(%Asset{
+        project_id: project.id,
+        filename: "existing.pdf",
+        content_type: "application/pdf",
+        size: limit,
+        key: Assets.generate_key(project, "existing.pdf")
+      })
+
+      content = "cannot fit"
+      hash = BlobStore.compute_hash(content)
+      blob_key = BlobStore.blob_key(project.id, hash, "png")
+      assert {:ok, ^blob_key} = BlobStore.ensure_blob(project.id, hash, "png", content)
+
+      on_exit(fn -> delete_storage_blob(blob_key) end)
+
+      assert {:error, {:limit_reached, details}} =
+               BlobStore.create_asset_from_blob(project.id, user.id, hash, blob_key, %{
+                 "filename" => "restored.png",
+                 "content_type" => "image/png",
+                 "size" => byte_size(content)
+               })
+
+      assert details.required == byte_size(content)
+      assert details.available == 0
+      assert Repo.aggregate(from(asset in Asset, where: asset.project_id == ^project.id), :count) == 1
     end
   end
 

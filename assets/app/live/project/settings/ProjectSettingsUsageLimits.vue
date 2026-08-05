@@ -1,13 +1,26 @@
 <script setup lang="ts">
+import { Archive, Clock3, Image, Link2 } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";
 import { Progress } from "@components/ui/progress";
 import { Separator } from "@components/ui/separator";
+import {
+  formatBasisPoints,
+  formatBytes,
+  storagePercentage,
+  type ByteCount,
+  type WorkspaceStorageUsage,
+} from "@shared/utils/storage-accounting";
 
-interface UsageBucket {
+interface CountUsageBucket {
   used: number;
   limit: number | null;
+}
+
+interface StorageUsageBucket {
+  used: ByteCount;
+  limit: ByteCount | null;
 }
 
 interface UsageLimits {
@@ -16,14 +29,14 @@ interface UsageLimits {
     name: string;
   };
   project: {
-    items: UsageBucket;
-    projectSnapshots: UsageBucket;
-    namedVersions: UsageBucket;
+    items: CountUsageBucket;
+    projectSnapshots: CountUsageBucket;
+    namedVersions: CountUsageBucket;
   };
   workspace: {
-    projects: UsageBucket;
-    members: UsageBucket;
-    storageBytes: UsageBucket;
+    projects: CountUsageBucket;
+    members: CountUsageBucket;
+    storageBytes: StorageUsageBucket;
   };
   itemBreakdown: {
     sheets: number;
@@ -32,27 +45,32 @@ interface UsageLimits {
     flowNodes: number;
   };
   storage: {
-    projectBytes: number;
+    projectAccountedBytes: ByteCount;
+    projectAssetBytes: ByteCount;
+    projectSnapshotBytes: ByteCount;
+    projectReservationBytes: ByteCount;
     assetCount: number;
+    workspace: WorkspaceStorageUsage;
   };
 }
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
-type ValueFormat = "count" | "bytes";
 
-interface LimitRow {
+interface LimitRowBase {
   key: string;
   label: string;
   description: string;
-  bucket: UsageBucket;
-  format: ValueFormat;
 }
+
+type LimitRow =
+  | (LimitRowBase & { bucket: CountUsageBucket; format: "count" })
+  | (LimitRowBase & { bucket: StorageUsageBucket; format: "bytes" });
 
 const { usageLimits } = defineProps<{
   usageLimits: UsageLimits;
 }>();
 
-const { t } = useI18n();
+const { locale, t } = useI18n();
 
 const projectRows = computed<LimitRow[]>(() => [
   {
@@ -121,22 +139,39 @@ const itemBreakdown = computed(() => [
   },
 ]);
 
-function usageRatio(bucket: UsageBucket) {
-  if (!bucket.limit || bucket.limit <= 0) return 0;
+function usageRatio(bucket: CountUsageBucket) {
+  if (bucket.limit === null || bucket.limit <= 0) return 0;
   return bucket.used / bucket.limit;
 }
 
-function usagePercent(bucket: UsageBucket) {
-  if (!bucket.limit || bucket.limit <= 0) return 0;
-  return Math.min(Math.round(usageRatio(bucket) * 100), 100);
+function countHasDeterminateProgress(row: LimitRow) {
+  return row.format === "count" && row.bucket.limit !== null && row.bucket.limit > 0;
 }
 
-function statusFor(bucket: UsageBucket): { label: string; variant: BadgeVariant } {
-  if (!bucket.limit || bucket.limit <= 0) {
-    return { label: t("project_settings.usage_limits.status.no_limit"), variant: "outline" };
+function usagePercent(row: LimitRow) {
+  if (row.format === "bytes") {
+    return workspaceStoragePercentage.value.progressPercent;
   }
 
-  const ratio = usageRatio(bucket);
+  if (row.bucket.limit === null || row.bucket.limit <= 0) return 0;
+  return Math.min(Math.round(usageRatio(row.bucket) * 100), 100);
+}
+
+function statusFor(row: LimitRow): { label: string; variant: BadgeVariant } {
+  if (row.format === "bytes") return storageStatus.value;
+
+  if (row.bucket.limit === null) {
+    return { label: t("project_settings.usage_limits.status.unknown"), variant: "secondary" };
+  }
+
+  if (row.bucket.limit <= 0) {
+    return {
+      label: t("project_settings.usage_limits.status.limit_reached"),
+      variant: "destructive",
+    };
+  }
+
+  const ratio = usageRatio(row.bucket);
 
   if (ratio >= 1) {
     return {
@@ -152,32 +187,120 @@ function statusFor(bucket: UsageBucket): { label: string; variant: BadgeVariant 
   return { label: t("project_settings.usage_limits.status.available"), variant: "outline" };
 }
 
-function formatValue(value: number, format: ValueFormat) {
-  return format === "bytes" ? formatBytes(value) : new Intl.NumberFormat().format(value);
+function formatCount(value: number) {
+  return new Intl.NumberFormat(locale.value).format(value);
 }
 
-function formatLimit(bucket: UsageBucket, format: ValueFormat) {
-  return bucket.limit
-    ? formatValue(bucket.limit, format)
-    : t("project_settings.usage_limits.status.no_limit");
+function formatUsed(row: LimitRow) {
+  return row.format === "bytes"
+    ? formatBytes(row.bucket.used, locale.value)
+    : formatCount(row.bucket.used);
 }
 
-function formatBytes(bytes: number) {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+function formatLimit(row: LimitRow) {
+  if (row.format === "bytes") {
+    if (usageLimits.storage.workspace.limitKind === "unlimited") {
+      return t("project_settings.usage_limits.status.no_limit");
+    }
 
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let value = bytes;
-  let index = 0;
+    if (usageLimits.storage.workspace.limitKind === "unknown") {
+      return t("project_settings.usage_limits.status.unknown");
+    }
 
-  while (value >= 1024 && index < units.length - 1) {
-    value /= 1024;
-    index += 1;
+    return row.bucket.limit !== null
+      ? formatBytes(row.bucket.limit, locale.value)
+      : t("project_settings.usage_limits.status.unknown");
   }
 
-  const maximumFractionDigits = value >= 10 || index === 0 ? 0 : 1;
-  const formatted = new Intl.NumberFormat(undefined, { maximumFractionDigits }).format(value);
+  return row.bucket.limit !== null
+    ? formatCount(row.bucket.limit)
+    : t("project_settings.usage_limits.status.unknown");
+}
 
-  return `${formatted} ${units[index]}`;
+const workspaceStoragePercentage = computed(() =>
+  storagePercentage(
+    usageLimits.storage.workspace.totalAccountedBytes,
+    usageLimits.storage.workspace.limitBytes,
+    usageLimits.storage.workspace.limitKind,
+  ),
+);
+
+const workspaceStorageHasDeterminateProgress = computed(
+  () =>
+    workspaceStoragePercentage.value.basisPoints !== null &&
+    workspaceStoragePercentage.value.state !== "zero",
+);
+
+const storageStatus = computed<{ label: string; variant: BadgeVariant }>(() => {
+  const percentage = workspaceStoragePercentage.value;
+
+  if (percentage.state === "unlimited") {
+    return { label: t("project_settings.usage_limits.status.no_limit"), variant: "outline" };
+  }
+
+  if (percentage.state === "unknown") {
+    return { label: t("project_settings.usage_limits.status.unknown"), variant: "secondary" };
+  }
+
+  if (percentage.state === "zero") {
+    return {
+      label: t("project_settings.usage_limits.status.zero_capacity"),
+      variant: "destructive",
+    };
+  }
+
+  if (
+    percentage.state === "over_limit" ||
+    (percentage.basisPoints !== null && percentage.basisPoints >= 10_000n)
+  ) {
+    return {
+      label: t("project_settings.usage_limits.status.limit_reached"),
+      variant: "destructive",
+    };
+  }
+
+  if (percentage.basisPoints !== null && percentage.basisPoints >= 8_000n) {
+    return {
+      label: t("project_settings.usage_limits.status.near_limit"),
+      variant: "secondary",
+    };
+  }
+
+  return { label: t("project_settings.usage_limits.status.available"), variant: "outline" };
+});
+
+const workspaceStoragePercentLabel = computed(() => {
+  const percentage = workspaceStoragePercentage.value;
+
+  if (percentage.lessThanOneBasisPoint) {
+    return t("project_settings.usage_limits.status.less_than_percent", {
+      percent: formatBasisPoints(1n, locale.value),
+    });
+  }
+
+  if (percentage.basisPoints !== null) {
+    return formatBasisPoints(percentage.basisPoints, locale.value);
+  }
+
+  if (percentage.state === "over_limit") {
+    return t("project_settings.usage_limits.status.over_limit");
+  }
+
+  return storageStatus.value.label;
+});
+
+function formattedRemainingStorage() {
+  const storage = usageLimits.storage.workspace;
+
+  if (storage.limitKind === "unlimited") {
+    return t("project_settings.usage_limits.status.no_limit");
+  }
+
+  if (storage.limitKind === "unknown") {
+    return t("project_settings.usage_limits.status.unknown");
+  }
+
+  return formatBytes(storage.remainingBytes, locale.value);
 }
 </script>
 
@@ -218,20 +341,33 @@ function formatBytes(bytes: number) {
               <h4 class="font-medium">{{ row.label }}</h4>
               <p class="text-sm text-muted-foreground">{{ row.description }}</p>
             </div>
-            <Badge :variant="statusFor(row.bucket).variant">
-              {{ statusFor(row.bucket).label }}
+            <Badge
+              :variant="statusFor(row).variant"
+              :aria-label="
+                $t('project_settings.usage_limits.accessibility.status', {
+                  label: row.label,
+                  status: statusFor(row).label,
+                })
+              "
+            >
+              {{ statusFor(row).label }}
             </Badge>
           </div>
 
           <div class="mt-4 flex justify-between gap-4 text-sm">
             <span class="font-medium tabular-nums">
-              {{ formatValue(row.bucket.used, row.format) }}
+              {{ formatUsed(row) }}
             </span>
             <span class="text-muted-foreground tabular-nums">
-              {{ formatLimit(row.bucket, row.format) }}
+              {{ formatLimit(row) }}
             </span>
           </div>
-          <Progress :model-value="usagePercent(row.bucket)" class="mt-2" />
+          <Progress
+            v-if="countHasDeterminateProgress(row)"
+            :model-value="usagePercent(row)"
+            class="mt-2"
+            :aria-label="row.label"
+          />
         </div>
       </div>
 
@@ -243,7 +379,7 @@ function formatBytes(bytes: number) {
         >
           <div class="text-xs text-muted-foreground">{{ item.label }}</div>
           <div class="mt-1 text-lg font-semibold tabular-nums">
-            {{ item.value }}
+            {{ formatCount(item.value) }}
           </div>
         </div>
       </div>
@@ -270,29 +406,131 @@ function formatBytes(bytes: number) {
               <h4 class="font-medium">{{ row.label }}</h4>
               <p class="text-sm text-muted-foreground">{{ row.description }}</p>
             </div>
-            <Badge :variant="statusFor(row.bucket).variant">
-              {{ statusFor(row.bucket).label }}
+            <Badge
+              :variant="statusFor(row).variant"
+              :aria-label="
+                $t('project_settings.usage_limits.accessibility.status', {
+                  label: row.label,
+                  status: statusFor(row).label,
+                })
+              "
+            >
+              {{ statusFor(row).label }}
             </Badge>
           </div>
 
           <div class="mt-4 flex justify-between gap-4 text-sm">
             <span class="font-medium tabular-nums">
-              {{ formatValue(row.bucket.used, row.format) }}
+              {{ formatUsed(row) }}
             </span>
             <span class="text-muted-foreground tabular-nums">
-              {{ formatLimit(row.bucket, row.format) }}
+              {{ formatLimit(row) }}
             </span>
           </div>
-          <Progress :model-value="usagePercent(row.bucket)" class="mt-2" />
-
-          <p v-if="row.key === 'storageBytes'" class="mt-3 text-xs text-muted-foreground">
-            {{
-              $t("project_settings.usage_limits.project_storage_note", {
-                storage: formatBytes(usageLimits.storage.projectBytes),
-                assets: usageLimits.storage.assetCount,
+          <Progress
+            v-if="row.key === 'storageBytes' && workspaceStorageHasDeterminateProgress"
+            data-testid="workspace-storage-progress"
+            :model-value="usagePercent(row)"
+            class="mt-2"
+            :aria-label="
+              $t('project_settings.usage_limits.storage_progress_label', {
+                percent: workspaceStoragePercentLabel,
               })
-            }}
-          </p>
+            "
+          />
+          <Progress
+            v-else-if="row.key !== 'storageBytes' && countHasDeterminateProgress(row)"
+            :model-value="usagePercent(row)"
+            class="mt-2"
+            :aria-label="row.label"
+          />
+
+          <div v-if="row.key === 'storageBytes'" class="mt-5 space-y-4">
+            <div class="grid gap-3 sm:grid-cols-3">
+              <div class="rounded-md border border-border/70 bg-muted/25 p-3">
+                <div class="text-xs text-muted-foreground">
+                  {{ $t("project_settings.usage_limits.storage_summary.counted") }}
+                </div>
+                <div class="mt-1 font-semibold tabular-nums">
+                  {{ formatBytes(usageLimits.storage.workspace.totalAccountedBytes, locale) }}
+                </div>
+                <div class="mt-0.5 text-xs text-muted-foreground">
+                  {{ workspaceStoragePercentLabel }}
+                </div>
+              </div>
+              <div class="rounded-md border border-border/70 bg-muted/25 p-3">
+                <div class="text-xs text-muted-foreground">
+                  {{ $t("project_settings.usage_limits.storage_summary.remaining") }}
+                </div>
+                <div class="mt-1 font-semibold tabular-nums">
+                  {{ formattedRemainingStorage() }}
+                </div>
+              </div>
+              <div class="rounded-md border border-border/70 bg-muted/25 p-3">
+                <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock3 class="size-3.5" aria-hidden="true" />
+                  {{ $t("project_settings.usage_limits.storage_summary.reservations") }}
+                </div>
+                <div class="mt-1 font-semibold tabular-nums">
+                  {{ formatBytes(usageLimits.storage.workspace.activeReservationsBytes, locale) }}
+                </div>
+              </div>
+            </div>
+
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div class="rounded-md border border-border/60 p-3">
+                <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Image class="size-3.5" aria-hidden="true" />
+                  {{ $t("project_settings.usage_limits.storage_breakdown.current_assets") }}
+                </div>
+                <div class="mt-1 font-medium tabular-nums">
+                  {{ formatBytes(usageLimits.storage.workspace.currentAssetsBytes, locale) }}
+                </div>
+              </div>
+              <div class="rounded-md border border-border/60 p-3">
+                <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Archive class="size-3.5" aria-hidden="true" />
+                  {{ $t("project_settings.usage_limits.storage_breakdown.full_snapshots") }}
+                </div>
+                <div class="mt-1 font-medium tabular-nums">
+                  {{ formatBytes(usageLimits.storage.workspace.fullSnapshotsBytes, locale) }}
+                </div>
+              </div>
+              <div class="rounded-md border border-border/60 p-3">
+                <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Link2 class="size-3.5" aria-hidden="true" />
+                  {{ $t("project_settings.usage_limits.storage_breakdown.linked_snapshots") }}
+                </div>
+                <div class="mt-1 font-medium tabular-nums">
+                  {{ formatBytes(usageLimits.storage.workspace.linkedSnapshotsBytes, locale) }}
+                </div>
+              </div>
+              <div class="rounded-md border border-border/60 p-3">
+                <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock3 class="size-3.5" aria-hidden="true" />
+                  {{ $t("project_settings.usage_limits.storage_breakdown.reservations") }}
+                </div>
+                <div class="mt-1 font-medium tabular-nums">
+                  {{ formatBytes(usageLimits.storage.workspace.activeReservationsBytes, locale) }}
+                </div>
+              </div>
+            </div>
+
+            <p class="text-xs text-muted-foreground">
+              {{
+                $t("project_settings.usage_limits.project_storage_note", {
+                  storage: formatBytes(usageLimits.storage.projectAccountedBytes, locale),
+                  assetStorage: formatBytes(usageLimits.storage.projectAssetBytes, locale),
+                  assets: formatCount(usageLimits.storage.assetCount),
+                  snapshots: formatBytes(usageLimits.storage.projectSnapshotBytes, locale),
+                  reservations: formatBytes(usageLimits.storage.projectReservationBytes, locale),
+                })
+              }}
+            </p>
+            <p class="text-xs text-muted-foreground">
+              {{ $t("project_settings.usage_limits.storage_counted_note") }}
+            </p>
+          </div>
         </div>
       </div>
     </section>

@@ -13,7 +13,6 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   alias Storyarn.Projects
   alias Storyarn.ProjectTemplates.Artifact
   alias Storyarn.ProjectTemplates.Audit
-  alias Storyarn.ProjectTemplates.LegacySnapshotRepair
   alias Storyarn.ProjectTemplates.PortableBundle
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
@@ -33,13 +32,12 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   @max_asset_size 52_428_800
 
   @spec preview_bundle(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
-  def preview_bundle(path, opts \\ []) do
+  def preview_bundle(path, _opts \\ []) do
     with {:ok, bundle} <- PortableBundle.read(path),
          :ok <- validate_manifest(bundle.manifest),
          :ok <- verify_bundle_checksum(bundle),
-         {:ok, prepared_snapshot, repair_report} <- prepare_preview_snapshot(bundle.snapshot, opts),
-         :ok <- validate_bundle_preflight(%{bundle | snapshot: prepared_snapshot}) do
-      {:ok, put_repair_preview(bundle.manifest, repair_report)}
+         :ok <- validate_bundle_preflight(bundle) do
+      {:ok, bundle.manifest}
     end
   end
 
@@ -659,8 +657,7 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
       published_by_id: plan_published_by_id(opts, owner_id, verify_user_id),
       verify_user_id: verify_user_id,
       verify_workspace_id: normalize_integer(option(opts, :verify_workspace_id)),
-      version_notes: plan_version_notes(template, opts),
-      repair_legacy_snapshot: truthy?(option(opts, :repair_legacy_snapshot))
+      version_notes: plan_version_notes(template, opts)
     }
   end
 
@@ -786,28 +783,20 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
     resolve_existing_template(Repo.get_by(ProjectTemplate, visibility: "public", slug: slug), slug, opts)
   end
 
-  defp resolve_existing_template(existing_template, slug, opts) do
-    cond do
-      is_nil(existing_template) ->
-        {:ok, nil}
+  defp resolve_existing_template(nil, _slug, _opts), do: {:ok, nil}
 
-      truthy?(option(opts, :update_existing)) ->
-        {:ok, existing_template}
-
-      true ->
-        {:error, {:template_slug_exists, slug}}
-    end
+  defp resolve_existing_template(%ProjectTemplate{} = template, slug, opts) do
+    if enabled_option?(option(opts, :update_existing)),
+      do: {:ok, template},
+      else: {:error, {:template_slug_exists, slug}}
   end
 
   defp import_artifacts(bundle, plan) do
-    with {:ok, prepared_snapshot, repair_report} <- prepare_snapshot(bundle.snapshot, plan),
-         :ok <- validate_bundle_preflight(%{bundle | snapshot: prepared_snapshot}),
+    with :ok <- validate_bundle_preflight(bundle),
          {:ok, imported_blobs} <- upload_bundle_assets(bundle, plan) do
       case import_uploaded_artifacts(
              bundle,
              plan,
-             prepared_snapshot,
-             repair_report,
              imported_blobs
            ) do
         {:error, reason, cleanup_keys} -> cleanup_import_failure(reason, cleanup_keys)
@@ -822,8 +811,8 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
     end
   end
 
-  defp import_uploaded_artifacts(bundle, plan, prepared_snapshot, repair_report, imported_blobs) do
-    snapshot = rewrite_snapshot_assets(prepared_snapshot, imported_blobs)
+  defp import_uploaded_artifacts(bundle, plan, imported_blobs) do
+    snapshot = rewrite_snapshot_assets(bundle.snapshot, imported_blobs)
     asset_manifest = rewrite_asset_manifest(bundle.asset_manifest, imported_blobs)
 
     with {:ok, materialization_report} <-
@@ -840,7 +829,6 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
          asset_manifest_key: asset_manifest_key,
          checksum: Artifact.checksum(%{"snapshot" => snapshot, "asset_manifest" => asset_manifest}),
          materialization_report: materialization_report,
-         repair_report: repair_report,
          preview: Artifact.preview(snapshot, asset_manifest)
        }}
     end
@@ -860,28 +848,6 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
       )
 
       :erlang.raise(kind, reason, __STACKTRACE__)
-  end
-
-  defp prepare_snapshot(snapshot, %{repair_legacy_snapshot: true}) do
-    LegacySnapshotRepair.repair(snapshot)
-  end
-
-  defp prepare_snapshot(snapshot, _plan), do: {:ok, snapshot, nil}
-
-  defp prepare_preview_snapshot(snapshot, opts) do
-    if truthy?(option(opts, :repair_legacy_snapshot)) do
-      LegacySnapshotRepair.repair(snapshot)
-    else
-      {:ok, snapshot, nil}
-    end
-  end
-
-  defp put_repair_preview(manifest, nil), do: Map.delete(manifest, "legacy_snapshot_repair")
-
-  defp put_repair_preview(manifest, report) do
-    manifest
-    |> Map.delete("legacy_snapshot_repair")
-    |> Map.put("legacy_snapshot_repair", report)
   end
 
   defp upload_bundle_assets(bundle, plan) do
@@ -1179,13 +1145,11 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   defp authorize_locked_source_manager("public", %User{}), do: {:error, :public_template_source_requires_super_admin}
 
   defp materialize_source_project(plan, imported, tracker) do
-    ProjectRecovery.recover_project(
+    ProjectRecovery.materialize_template(
       plan.verify_workspace_id,
       imported.snapshot,
       plan.source_user_id,
       name: source_project_name(plan, imported.snapshot),
-      template_clone: true,
-      asset_error_mode: :strict,
       asset_copy_tracker: tracker,
       asset_source_keys: imported.asset_source_keys
     )
@@ -1268,13 +1232,9 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   end
 
   defp import_audit_report(bundle, imported) do
-    report =
-      Map.put(bundle.manifest["audit_report"], "import_materialization", imported.materialization_report)
-
-    case imported.repair_report do
-      nil -> report
-      repair_report -> Map.put(report, "legacy_snapshot_repair", repair_report)
-    end
+    bundle.manifest["audit_report"]
+    |> Map.delete("legacy_snapshot_repair")
+    |> Map.put("import_materialization", imported.materialization_report)
   end
 
   defp rewrite_snapshot_assets(%_struct{} = value, _imported_blobs), do: value
@@ -1373,8 +1333,8 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
     if to_string(option_key) == to_string(key), do: value
   end
 
-  defp truthy?(value) when value in [true, "true", "1", 1, "yes"], do: true
-  defp truthy?(_value), do: false
+  defp enabled_option?(value) when value in [true, "true", "1", 1, "yes"], do: true
+  defp enabled_option?(_value), do: false
 
   defp sha256(data), do: :sha256 |> :crypto.hash(data) |> Base.encode16(case: :lower)
 

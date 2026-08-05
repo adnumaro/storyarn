@@ -504,7 +504,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
         {:scene_layer, layer.id, update_snapshot_layer(snapshot, layer.id, &Map.put(&1, "name", ""))},
         {:scene_zone, zone.id,
          update_snapshot_layer_child(snapshot, "zones", zone.id, fn zone_snapshot ->
-           Map.put(zone_snapshot, "action_type", "legacy_instruction")
+           Map.put(zone_snapshot, "action_type", "invalid_instruction")
          end)},
         {:scene_pin, pin.id,
          update_snapshot_layer_child(snapshot, "pins", pin.id, fn pin_snapshot ->
@@ -1647,7 +1647,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert cloned_connection.to_pin_id != pin2.id
     end
 
-    test "rejects legacy or truncated zone payloads before materialization", %{
+    test "rejects malformed or truncated zone payloads before materialization", %{
       project: project,
       scene: scene
     } do
@@ -2165,7 +2165,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert {:error, {:asset_materialization_failed, broken_pin_asset_id, :missing_asset_metadata}} =
                SceneBuilder.instantiate_snapshot(target_project.id, snapshot,
                  asset_mode: :copy,
-                 asset_error_mode: :strict,
                  user_id: user.id,
                  reset_shortcut: true
                )

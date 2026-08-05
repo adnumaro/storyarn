@@ -26,6 +26,7 @@ defmodule Storyarn.DataCase do
       import Storyarn.DataCase
       import Storyarn.Factory
       import Storyarn.StorageTestHelpers
+      import Storyarn.VersioningFixtures
 
       alias Storyarn.Repo
     end

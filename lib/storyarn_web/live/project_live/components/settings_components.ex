@@ -12,15 +12,12 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
 
   alias Storyarn.Billing
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Projects
+  alias Storyarn.Repo
   alias Storyarn.Shared.Validations
   alias Storyarn.Versioning
-  alias Storyarn.Workers.RestoreProjectWorker
-
-  require Logger
 
   # ---------------------------------------------------------------------------
   # Form changesets
@@ -63,6 +60,47 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   end
 
   def format_number(n), do: to_string(n)
+
+  @doc false
+  def serialize_storage_usage(storage, limit) do
+    %{
+      currentAssetsBytes: serialize_byte_count(storage.current_assets.bytes),
+      fullSnapshotsBytes: serialize_byte_count(storage.full_snapshots.bytes),
+      linkedSnapshotsBytes: serialize_byte_count(storage.linked_snapshots.bytes),
+      activeReservationsBytes: serialize_byte_count(storage.active_reservations.bytes),
+      totalAccountedBytes: serialize_byte_count(storage.accounted_bytes),
+      limitBytes: serialized_storage_limit(limit),
+      remainingBytes: remaining_storage_bytes(storage.accounted_bytes, limit),
+      limitKind: storage_limit_kind(limit)
+    }
+  end
+
+  @doc false
+  def serialize_storage_bucket(bucket) do
+    %{
+      used: serialize_byte_count(bucket.used),
+      limit: serialized_storage_limit(bucket.limit)
+    }
+  end
+
+  @doc false
+  def serialize_byte_count(value) when is_integer(value) and value >= 0, do: Integer.to_string(value)
+
+  defp remaining_storage_bytes(used, limit) when is_integer(limit) and limit >= 0 do
+    serialize_byte_count(max(limit - used, 0))
+  end
+
+  defp remaining_storage_bytes(_used, _limit), do: nil
+
+  defp serialized_storage_limit(limit) when is_integer(limit) and limit >= 0 do
+    serialize_byte_count(limit)
+  end
+
+  defp serialized_storage_limit(_limit), do: nil
+
+  defp storage_limit_kind(limit) when is_integer(limit) and limit >= 0, do: "limited"
+  defp storage_limit_kind(limit) when limit in [:unlimited, :infinity], do: "unlimited"
+  defp storage_limit_kind(_limit), do: "unknown"
 
   def repair_message(0), do: dgettext("projects", "All variable references are up to date.")
 
@@ -196,260 +234,27 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     end
   end
 
-  def snapshot_changeset(params) do
-    types = %{title: :string, description: :string}
-    defaults = %{title: "", description: ""}
-
-    {defaults, types}
-    |> Ecto.Changeset.cast(params, Map.keys(types))
-    |> Ecto.Changeset.validate_length(:title, max: 255)
-    |> Ecto.Changeset.validate_length(:description, max: 500)
-  end
-
-  def format_snapshot_size(bytes) when is_integer(bytes) and bytes < 1024, do: "#{bytes} B"
-
-  def format_snapshot_size(bytes) when is_integer(bytes) and bytes < 1_048_576, do: "#{Float.round(bytes / 1024, 1)} KB"
-
-  def format_snapshot_size(bytes) when is_integer(bytes), do: "#{Float.round(bytes / 1_048_576, 1)} MB"
-
-  def format_snapshot_size(_), do: "—"
-
-  def do_create_snapshot(socket, params) do
-    project = socket.assigns.project
-    user_id = socket.assigns.current_scope.user.id
-
-    case Billing.can_create_project_snapshot?(project.id, project.workspace_id) do
-      :ok ->
-        opts =
-          Enum.reject([title: params["title"], description: params["description"]], fn {_k, v} -> v == "" or is_nil(v) end)
-
-        case Versioning.create_project_snapshot(project.id, user_id, opts) do
-          {:ok, _snapshot} ->
-            {:noreply,
-             socket
-             |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
-             |> assign(:snapshot_form, to_form(snapshot_changeset(%{}), as: "snapshot"))
-             |> assign(
-               :can_create_snapshot,
-               Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
-             )
-             |> put_flash(:info, dgettext("projects", "Project snapshot created."))}
-
-          {:error, reason} ->
-            Logger.error("Project snapshot creation failed: #{inspect(reason)}")
-
-            {:noreply,
-             put_flash(
-               socket,
-               :error,
-               dgettext("projects", "Failed to create snapshot. Please try again.")
-             )}
-        end
-
-      {:error, :limit_reached, _info} ->
-        {:noreply, put_flash(socket, :error, dgettext("projects", "Snapshot limit reached for your plan."))}
-    end
-  end
-
-  def do_restore_snapshot(socket, snapshot_id) do
-    do_restore_snapshot(socket, snapshot_id, [])
-  end
-
   @doc false
-  def do_restore_snapshot(socket, snapshot_id, opts) when is_list(opts) do
-    restore_ops = %{
-      enqueue: Keyword.get(opts, :enqueue_fun, &enqueue_project_restore/4),
-      release: Keyword.get(opts, :release_fun, &Projects.release_restoration_lock/2)
-    }
+  def snapshot_storage_accounting(project) do
+    result =
+      Repo.repeatable_read(
+        fn ->
+          snapshots = Versioning.list_project_snapshots(project.id)
+          plan = Billing.plan_for(project.workspace)
 
-    case Versioning.ensure_restore_enabled(:project_snapshot_restore) do
-      :ok ->
-        do_enabled_restore_snapshot(socket, snapshot_id, restore_ops)
-
-      {:error, :restore_temporarily_disabled} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "Project restoration failed. Please try again.")
-         )}
-    end
-  end
-
-  defp do_enabled_restore_snapshot(socket, snapshot_id, restore_ops) do
-    project = socket.assigns.project
-    user = socket.assigns.current_scope.user
-
-    case Versioning.get_project_snapshot(project.id, snapshot_id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, dgettext("projects", "Snapshot not found."))}
-
-      _snapshot ->
-        acquire_and_enqueue_restore(socket, project, user, snapshot_id, restore_ops)
-    end
-  end
-
-  defp acquire_and_enqueue_restore(socket, project, user, snapshot_id, restore_ops) do
-    case Projects.acquire_restoration_lock(project.id, user.id, snapshot_id) do
-      {:ok, locked_project} ->
-        enqueue_locked_restore(
-          socket,
-          project,
-          user,
-          snapshot_id,
-          locked_project.restoration_token,
-          restore_ops
-        )
-
-      {:error, :already_locked} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("projects", "A restoration is already in progress.")
-         )}
-
-      {:error, :snapshot_not_found} ->
-        {:noreply, put_flash(socket, :error, dgettext("projects", "Snapshot not found."))}
-    end
-  end
-
-  defp enqueue_locked_restore(socket, project, user, snapshot_id, lock_token, restore_ops) do
-    Collaboration.broadcast_restoration_started(project.id, %{
-      user_email: user.email
-    })
-
-    case safe_enqueue_project_restore(
-           restore_ops.enqueue,
-           project.id,
-           snapshot_id,
-           user.id,
-           lock_token
-         ) do
-      {:ok, _job} ->
-        {:noreply,
-         socket
-         |> assign(:restoration_in_progress, true)
-         |> put_flash(
-           :info,
-           dgettext(
-             "projects",
-             "Restoration started. All editors will be notified when complete."
-           )
-         )}
-
-      {:error, _reason} ->
-        compensate_failed_enqueue(socket, project.id, lock_token, restore_ops.release)
-    end
-  end
-
-  defp compensate_failed_enqueue(socket, project_id, lock_token, release_fun) do
-    case safe_release_enqueue_lock(release_fun, project_id, lock_token) do
-      :ok ->
-        Collaboration.broadcast_restoration_failed(project_id, %{reason: :enqueue_failed})
-
-        {:noreply,
-         socket
-         |> assign(:restoration_in_progress, false)
-         |> put_flash(
-           :error,
-           dgettext("projects", "Project restoration failed. Please try again.")
-         )}
-
-      {:error, _reason} ->
-        Logger.warning(
-          "Could not confirm project restore enqueue compensation " <>
-            "project=#{project_id}; preserving in-progress state"
-        )
-
-        {:noreply,
-         socket
-         |> assign(:restoration_in_progress, true)
-         |> put_flash(
-           :info,
-           dgettext(
-             "projects",
-             "Restoration started. All editors will be notified when complete."
-           )
-         )}
-    end
-  end
-
-  defp safe_release_enqueue_lock(release_fun, project_id, lock_token) do
-    case release_fun.(project_id, lock_token) do
-      {:ok, _project} -> :ok
-      {:error, reason} -> {:error, reason}
-      _unexpected -> {:error, :unexpected_release_result}
-    end
-  rescue
-    exception ->
-      Logger.warning(
-        "Project restore enqueue compensation raised " <>
-          "project=#{project_id} exception=#{inspect(exception.__struct__)}"
+          %{
+            snapshots: snapshots,
+            snapshot_reservations: Billing.active_storage_reservations_by_snapshot(Enum.map(snapshots, & &1.id)),
+            storage_usage: Billing.workspace_storage_usage(project.workspace_id),
+            storage_limit: Billing.plan_limit(plan, :storage_bytes_per_workspace)
+          }
+        end,
+        timeout: :infinity
       )
 
-      {:error, :release_exception}
-  catch
-    kind, _reason ->
-      Logger.warning(
-        "Project restore enqueue compensation terminated abnormally " <>
-          "project=#{project_id} kind=#{kind}"
-      )
-
-      {:error, :release_failure}
-  end
-
-  defp enqueue_project_restore(project_id, snapshot_id, user_id, lock_token) do
-    %{
-      project_id: project_id,
-      snapshot_id: snapshot_id,
-      user_id: user_id,
-      lock_token: lock_token
-    }
-    |> RestoreProjectWorker.new()
-    |> Oban.insert()
-  end
-
-  defp safe_enqueue_project_restore(enqueue_fun, project_id, snapshot_id, user_id, lock_token) do
-    project_id
-    |> enqueue_fun.(snapshot_id, user_id, lock_token)
-    |> normalize_enqueue_result()
-  rescue
-    error ->
-      Logger.error("Project restore enqueue raised: #{Exception.message(error)}")
-      {:error, :enqueue_exception}
-  catch
-    kind, reason ->
-      Logger.error("Project restore enqueue failed kind=#{kind} reason=#{inspect(reason)}")
-      {:error, :enqueue_failure}
-  end
-
-  defp normalize_enqueue_result({:ok, _job} = result), do: result
-  defp normalize_enqueue_result({:error, _reason} = result), do: result
-  defp normalize_enqueue_result(_result), do: {:error, :unexpected_enqueue_result}
-
-  def do_delete_snapshot(socket, snapshot_id) do
-    project = socket.assigns.project
-
-    case Versioning.get_project_snapshot(project.id, snapshot_id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, dgettext("projects", "Snapshot not found."))}
-
-      snapshot ->
-        case Versioning.delete_project_snapshot(snapshot) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
-             |> assign(
-               :can_create_snapshot,
-               Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
-             )
-             |> put_flash(:info, dgettext("projects", "Snapshot deleted."))}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to delete snapshot."))}
-        end
+    case result do
+      {:ok, accounting} -> accounting
+      {:error, reason} -> raise "snapshot accounting read failed: #{inspect(reason)}"
     end
   end
 

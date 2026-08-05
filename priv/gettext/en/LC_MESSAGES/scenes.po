@@ -32,7 +32,7 @@ msgstr ""
 msgid "Annotation pasted."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2021
+#: lib/storyarn_web/live/scene_live/show.ex:2012
 #, elixir-autogen, elixir-format
 msgid "Background image updated."
 msgstr ""
@@ -55,7 +55,7 @@ msgstr ""
 msgid "Cannot duplicate a locked element."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:138
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:143
 #, elixir-autogen, elixir-format
 msgid "Child scene created. Add a background image to continue."
 msgstr ""
@@ -80,8 +80,8 @@ msgstr ""
 msgid "Could not create annotation."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:58
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:149
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:63
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:154
 #, elixir-autogen, elixir-format
 msgid "Could not create child scene."
 msgstr ""
@@ -231,7 +231,7 @@ msgstr ""
 msgid "Could not update annotation."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2025
+#: lib/storyarn_web/live/scene_live/show.ex:2016
 #, elixir-autogen, elixir-format
 msgid "Could not update background."
 msgstr ""
@@ -246,15 +246,15 @@ msgstr ""
 msgid "Could not update fog settings."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1715
+#: lib/storyarn_web/live/scene_live/show.ex:1713
 #, elixir-autogen, elixir-format
 msgid "Could not update pin icon."
 msgstr ""
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:870
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:892
-#: lib/storyarn_web/live/scene_live/show.ex:1653
-#: lib/storyarn_web/live/scene_live/show.ex:1676
+#: lib/storyarn_web/live/scene_live/show.ex:1651
+#: lib/storyarn_web/live/scene_live/show.ex:1674
 #, elixir-autogen, elixir-format
 msgid "Could not update pin."
 msgstr ""
@@ -275,7 +275,7 @@ msgstr ""
 msgid "Could not update zone."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2006
+#: lib/storyarn_web/live/scene_live/show.ex:1997
 #, elixir-autogen, elixir-format
 msgid "Could not upload background."
 msgstr ""
@@ -291,7 +291,7 @@ msgid "Flow has no entry node."
 msgstr ""
 
 #: lib/storyarn_web/live/scene_live/exploration_live.ex:597
-#: lib/storyarn_web/live/scene_live/show.ex:1584
+#: lib/storyarn_web/live/scene_live/show.ex:1582
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr ""
@@ -370,8 +370,8 @@ msgstr ""
 msgid "Pin duplicated."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1001
-#: lib/storyarn_web/live/scene_live/show.ex:1711
+#: lib/storyarn_web/live/scene_live/show.ex:993
+#: lib/storyarn_web/live/scene_live/show.ex:1709
 #, elixir-autogen, elixir-format
 msgid "Pin icon updated."
 msgstr ""
@@ -388,7 +388,7 @@ msgid "Scene moved to trash."
 msgstr ""
 
 #: lib/storyarn_web/live/scene_live/exploration_live.ex:145
-#: lib/storyarn_web/live/scene_live/show.ex:501
+#: lib/storyarn_web/live/scene_live/show.ex:493
 #, elixir-autogen, elixir-format
 msgid "Scene not found."
 msgstr ""
@@ -403,7 +403,7 @@ msgstr ""
 msgid "Target flow has no entry node."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:74
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:79
 #, elixir-autogen, elixir-format
 msgid "The target scene no longer exists. The reference has been cleared."
 msgstr ""
@@ -486,7 +486,7 @@ msgid "Zone duplicated."
 msgstr ""
 
 #: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:38
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:152
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:157
 #, elixir-autogen, elixir-format
 msgid "Zone not found."
 msgstr ""
@@ -501,127 +501,127 @@ msgstr ""
 msgid "Shows a variable value on the map"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3627
+#: lib/storyarn/versioning/builders/scene_builder.ex:3617
 #, elixir-autogen, elixir-format
 msgid "Added annotation in layer \"%{layer}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3514
+#: lib/storyarn/versioning/builders/scene_builder.ex:3504
 #, elixir-autogen, elixir-format
 msgid "Added connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3568
+#: lib/storyarn/versioning/builders/scene_builder.ex:3558
 #, elixir-autogen, elixir-format
 msgid "Added layer \"%{name}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3578
+#: lib/storyarn/versioning/builders/scene_builder.ex:3568
 #, elixir-autogen, elixir-format
 msgid "Added pin \"%{label}\" in layer \"%{layer}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3603
+#: lib/storyarn/versioning/builders/scene_builder.ex:3593
 #, elixir-autogen, elixir-format
 msgid "Added zone \"%{name}\" in layer \"%{layer}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3648
+#: lib/storyarn/versioning/builders/scene_builder.ex:3638
 #, elixir-autogen, elixir-format
 msgid "Background image"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3264
+#: lib/storyarn/versioning/builders/scene_builder.ex:3254
 #, elixir-autogen, elixir-format
 msgid "Changed background"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3236
+#: lib/storyarn/versioning/builders/scene_builder.ex:3226
 #, elixir-autogen, elixir-format
 msgid "Changed default view"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3222
+#: lib/storyarn/versioning/builders/scene_builder.ex:3212
 #, elixir-autogen, elixir-format
 msgid "Changed description"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3229
+#: lib/storyarn/versioning/builders/scene_builder.ex:3219
 #, elixir-autogen, elixir-format
 msgid "Changed dimensions"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3243
+#: lib/storyarn/versioning/builders/scene_builder.ex:3233
 #, elixir-autogen, elixir-format
 msgid "Changed scale settings"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3215
+#: lib/storyarn/versioning/builders/scene_builder.ex:3205
 #, elixir-autogen, elixir-format
 msgid "Changed shortcut"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3671
+#: lib/storyarn/versioning/builders/scene_builder.ex:3661
 #, elixir-autogen, elixir-format
 msgid "Layer %{l}, Pin %{p}"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3685
+#: lib/storyarn/versioning/builders/scene_builder.ex:3675
 #, elixir-autogen, elixir-format
 msgid "Layer %{l}, Zone %{z}"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3633
+#: lib/storyarn/versioning/builders/scene_builder.ex:3623
 #, elixir-autogen, elixir-format
 msgid "Modified annotation in layer \"%{layer}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3520
+#: lib/storyarn/versioning/builders/scene_builder.ex:3510
 #, elixir-autogen, elixir-format
 msgid "Modified connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3449
+#: lib/storyarn/versioning/builders/scene_builder.ex:3439
 #, elixir-autogen, elixir-format
 msgid "Modified layer \"%{name}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3590
+#: lib/storyarn/versioning/builders/scene_builder.ex:3580
 #, elixir-autogen, elixir-format
 msgid "Modified pin \"%{label}\" in layer \"%{layer}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3615
+#: lib/storyarn/versioning/builders/scene_builder.ex:3605
 #, elixir-autogen, elixir-format
 msgid "Modified zone \"%{name}\" in layer \"%{layer}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3630
+#: lib/storyarn/versioning/builders/scene_builder.ex:3620
 #, elixir-autogen, elixir-format
 msgid "Removed annotation in layer \"%{layer}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3517
+#: lib/storyarn/versioning/builders/scene_builder.ex:3507
 #, elixir-autogen, elixir-format
 msgid "Removed connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3570
+#: lib/storyarn/versioning/builders/scene_builder.ex:3560
 #, elixir-autogen, elixir-format
 msgid "Removed layer \"%{name}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3584
+#: lib/storyarn/versioning/builders/scene_builder.ex:3574
 #, elixir-autogen, elixir-format
 msgid "Removed pin \"%{label}\" in layer \"%{layer}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3609
+#: lib/storyarn/versioning/builders/scene_builder.ex:3599
 #, elixir-autogen, elixir-format
 msgid "Removed zone \"%{name}\" in layer \"%{layer}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3208
+#: lib/storyarn/versioning/builders/scene_builder.ex:3198
 #, elixir-autogen, elixir-format
 msgid "Renamed scene"
 msgstr ""
@@ -636,23 +636,23 @@ msgstr ""
 msgid "Collection"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1271
-#: lib/storyarn_web/live/scene_live/show.ex:1287
+#: lib/storyarn_web/live/scene_live/show.ex:1269
+#: lib/storyarn_web/live/scene_live/show.ex:1285
 #, elixir-autogen, elixir-format
 msgid "Could not add ambient flow."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:572
+#: lib/storyarn_web/live/scene_live/show.ex:564
 #, elixir-autogen, elixir-format
 msgid "Could not remove ambient flow."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:612
+#: lib/storyarn_web/live/scene_live/show.ex:604
 #, elixir-autogen, elixir-format
 msgid "Could not reorder ambient flows."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:590
+#: lib/storyarn_web/live/scene_live/show.ex:582
 #, elixir-autogen, elixir-format
 msgid "Could not update ambient flow."
 msgstr ""
@@ -662,7 +662,7 @@ msgstr ""
 msgid "Could not update display mode."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:638
+#: lib/storyarn_web/live/scene_live/show.ex:630
 #, elixir-autogen, elixir-format
 msgid "Could not update trigger."
 msgstr ""
@@ -692,17 +692,17 @@ msgstr ""
 msgid "Saved scene no longer exists. Starting on current scene."
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3698
+#: lib/storyarn/versioning/builders/scene_builder.ex:3688
 #, elixir-autogen, elixir-format
 msgid "Scene Pin %{p}"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3711
+#: lib/storyarn/versioning/builders/scene_builder.ex:3701
 #, elixir-autogen, elixir-format
 msgid "Scene Zone %{z}"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3790
+#: lib/storyarn/versioning/builders/scene_builder.ex:3780
 #, elixir-autogen, elixir-format
 msgid "Scene root"
 msgstr ""
@@ -717,17 +717,17 @@ msgstr ""
 msgid "this flow is already linked to this scene"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2146
+#: lib/storyarn_web/live/scene_live/show.ex:2141
 #, elixir-autogen, elixir-format
 msgid "Could not upload file."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2137
+#: lib/storyarn_web/live/scene_live/show.ex:2132
 #, elixir-autogen, elixir-format
 msgid "File is too large. Maximum size is 50 MB."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2140
+#: lib/storyarn_web/live/scene_live/show.ex:2135
 #, elixir-autogen, elixir-format
 msgid "File type not supported. Please upload a JPEG, PNG, GIF, or WebP image."
 msgstr ""
@@ -737,17 +737,17 @@ msgstr ""
 msgid "timed trigger requires interval_ms >= 1000"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1008
+#: lib/storyarn_web/live/scene_live/show.ex:1003
 #, elixir-autogen, elixir-format
 msgid "Could not upload pin icon."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2127
+#: lib/storyarn_web/live/scene_live/show.ex:2122
 #, elixir-autogen, elixir-format
 msgid "Only SVG, PNG, or GIF icons are allowed."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2131
+#: lib/storyarn_web/live/scene_live/show.ex:2126
 #, elixir-autogen, elixir-format
 msgid "Icon is too large. Maximum size is 256 KB."
 msgstr ""
@@ -777,8 +777,7 @@ msgstr ""
 msgid "Event"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:55
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:146
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:151
 #: lib/storyarn_web/live/scene_sidebar_live.ex:95
 #: lib/storyarn_web/live/scene_sidebar_live.ex:113
 #, elixir-autogen, elixir-format
@@ -806,12 +805,12 @@ msgstr ""
 msgid "You don't have permission to edit."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1228
+#: lib/storyarn_web/live/scene_live/show.ex:1226
 #, elixir-autogen, elixir-format
 msgid "Asset not found."
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3250
+#: lib/storyarn/versioning/builders/scene_builder.ex:3240
 #, elixir-autogen, elixir-format
 msgid "Changed fog design"
 msgstr ""
@@ -821,7 +820,7 @@ msgstr ""
 msgid "Could not update fog design."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1058
+#: lib/storyarn_web/live/scene_live/show.ex:1056
 #, elixir-autogen, elixir-format
 msgid "Could not upload zone icon."
 msgstr ""
@@ -831,7 +830,7 @@ msgstr ""
 msgid "Runs optional variable instructions and can navigate to another scene or launch a flow"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1051
+#: lib/storyarn_web/live/scene_live/show.ex:1046
 #, elixir-autogen, elixir-format
 msgid "Zone icon updated."
 msgstr ""
@@ -861,32 +860,32 @@ msgstr ""
 msgid "%{type} #%{id}"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3735
+#: lib/storyarn/versioning/builders/scene_builder.ex:3725
 #, elixir-autogen, elixir-format
 msgid " — collection item %{item} sheet"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3310
+#: lib/storyarn/versioning/builders/scene_builder.ex:3300
 #, elixir-autogen, elixir-format
 msgid "Added ambient flow %{flow_id}"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3757
+#: lib/storyarn/versioning/builders/scene_builder.ex:3747
 #, elixir-autogen, elixir-format
 msgid "Ambient flow %{index}"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3257
+#: lib/storyarn/versioning/builders/scene_builder.ex:3247
 #, elixir-autogen, elixir-format
 msgid "Changed exploration display"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3316
+#: lib/storyarn/versioning/builders/scene_builder.ex:3306
 #, elixir-autogen, elixir-format
 msgid "Modified ambient flow %{flow_id}"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:3313
+#: lib/storyarn/versioning/builders/scene_builder.ex:3303
 #, elixir-autogen, elixir-format
 msgid "Removed ambient flow %{flow_id}"
 msgstr ""

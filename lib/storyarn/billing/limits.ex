@@ -6,8 +6,8 @@ defmodule Storyarn.Billing.Limits do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets.Asset
   alias Storyarn.Billing.Plan
+  alias Storyarn.Billing.StorageAccounting
   alias Storyarn.Billing.SubscriptionCrud
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
@@ -122,21 +122,7 @@ defmodule Storyarn.Billing.Limits do
   Checks if a workspace can accept an asset upload of the given size.
   """
   def can_upload_asset?(workspace, file_size) do
-    plan = SubscriptionCrud.plan_for(workspace)
-    limit = Plan.limit(plan, :storage_bytes_per_workspace)
-    used = total_workspace_storage(workspace.id)
-    new_total = used + file_size
-
-    cond do
-      is_nil(limit) ->
-        {:error, :limit_reached, %{resource: :storage_bytes_per_workspace, used: used, limit: 0}}
-
-      new_total <= limit ->
-        :ok
-
-      true ->
-        {:error, :limit_reached, %{resource: :storage_bytes_per_workspace, used: used, limit: limit}}
-    end
+    StorageAccounting.check_capacity(workspace, file_size)
   end
 
   @doc """
@@ -159,16 +145,6 @@ defmodule Storyarn.Billing.Limits do
   end
 
   @doc """
-  Checks if a project can have another project snapshot.
-  """
-  def can_create_project_snapshot?(project_id, workspace_id) do
-    plan = SubscriptionCrud.plan_for_workspace_id(workspace_id)
-    limit = Plan.limit(plan, :project_snapshots_per_project)
-    used = Storyarn.Versioning.count_project_snapshots(project_id)
-    check_limit(:project_snapshots_per_project, used, limit)
-  end
-
-  @doc """
   Checks if a project can have another named version.
   """
   def can_create_named_version?(project_id, workspace_id) do
@@ -186,7 +162,7 @@ defmodule Storyarn.Billing.Limits do
 
     %{
       project_snapshots: %{
-        used: Storyarn.Versioning.count_project_snapshots(project_id),
+        used: StorageAccounting.project_snapshot_slot_usage(project_id),
         limit: Plan.limit(plan, :project_snapshots_per_project)
       },
       named_versions: %{
@@ -203,8 +179,15 @@ defmodule Storyarn.Billing.Limits do
   containing workspace but directly affect project actions.
   """
   def project_limits_usage(%Project{} = project) do
+    consistent_usage_read(fn -> build_project_limits_usage(project) end)
+  end
+
+  defp build_project_limits_usage(project) do
     workspace = Repo.get!(Workspace, project.workspace_id)
     plan = SubscriptionCrud.plan_for(workspace)
+    storage_context = StorageAccounting.project_storage_context(project.id, workspace.id)
+    workspace_storage = storage_context.workspace
+    project_storage = storage_context.project
 
     %{
       plan: plan_summary(plan),
@@ -212,7 +195,7 @@ defmodule Storyarn.Billing.Limits do
         items: usage_bucket(count_project_items(project.id), Plan.limit(plan, :items_per_project)),
         project_snapshots:
           usage_bucket(
-            Storyarn.Versioning.count_project_snapshots(project.id),
+            storage_context.snapshot_slots,
             Plan.limit(plan, :project_snapshots_per_project)
           ),
         named_versions:
@@ -239,7 +222,7 @@ defmodule Storyarn.Billing.Limits do
           ),
         storage_bytes:
           usage_bucket(
-            total_workspace_storage(workspace.id),
+            workspace_storage.accounted_bytes,
             Plan.limit(plan, :storage_bytes_per_workspace)
           )
       },
@@ -250,10 +233,25 @@ defmodule Storyarn.Billing.Limits do
         flow_nodes: count_nodes(project.id)
       },
       storage: %{
-        project_bytes: total_project_storage(project.id),
-        asset_count: count_assets(project.id)
+        project_bytes: project_storage.accounted_bytes,
+        project_asset_bytes: project_storage.current_assets.bytes + project_storage.asset_trash.bytes,
+        project_snapshot_bytes: project_storage.full_snapshots.bytes + project_storage.linked_snapshots.bytes,
+        project_reservation_bytes: project_storage.active_reservations.bytes,
+        asset_count: project_storage.current_assets.count + project_storage.asset_trash.count,
+        workspace: workspace_storage
       }
     }
+  end
+
+  defp consistent_usage_read(fun) do
+    if Repo.in_transaction?() do
+      fun.()
+    else
+      case Repo.repeatable_read(fun, timeout: :infinity) do
+        {:ok, usage} -> usage
+        {:error, reason} -> raise "project limits usage read failed: #{inspect(reason)}"
+      end
+    end
   end
 
   @doc """
@@ -261,6 +259,7 @@ defmodule Storyarn.Billing.Limits do
   """
   def usage(workspace) do
     plan = SubscriptionCrud.plan_for(workspace)
+    storage = StorageAccounting.workspace_usage(workspace.id)
 
     %{
       plan: plan,
@@ -273,9 +272,10 @@ defmodule Storyarn.Billing.Limits do
         limit: Plan.limit(plan, :members_per_workspace)
       },
       storage_bytes: %{
-        used: total_workspace_storage(workspace.id),
+        used: storage.accounted_bytes,
         limit: Plan.limit(plan, :storage_bytes_per_workspace)
-      }
+      },
+      storage: storage
     }
   end
 
@@ -502,29 +502,5 @@ defmodule Storyarn.Billing.Limits do
 
   defp count_active(schema, project_id) do
     Repo.aggregate(from(s in schema, where: s.project_id == ^project_id and is_nil(s.deleted_at)), :count)
-  end
-
-  defp total_workspace_storage(workspace_id) do
-    Repo.one(
-      from(a in Asset,
-        join: p in Project,
-        on: a.project_id == p.id,
-        where: p.workspace_id == ^workspace_id,
-        select: coalesce(sum(a.size), 0)
-      )
-    )
-  end
-
-  defp total_project_storage(project_id) do
-    Repo.one(
-      from(a in Asset,
-        where: a.project_id == ^project_id,
-        select: coalesce(sum(a.size), 0)
-      )
-    )
-  end
-
-  defp count_assets(project_id) do
-    Repo.aggregate(from(a in Asset, where: a.project_id == ^project_id), :count)
   end
 end

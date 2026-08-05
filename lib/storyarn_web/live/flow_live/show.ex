@@ -37,7 +37,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.Live.Shared.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
-  alias StoryarnWeb.Live.Shared.RestorationHandlers
   alias StoryarnWeb.PrivateMedia
 
   # Node types are now rendered by flow_dock.ex
@@ -61,7 +60,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       urls={@urls}
       active_tool={:flows}
       online_users={@online_users}
-      restoration_banner={@restoration_banner}
       onboarding={@onboarding}
       onboarding_autostart
       canvas_mode={true}
@@ -174,16 +172,11 @@ defmodule StoryarnWeb.FlowLive.Show do
     %{project: project, can_edit: can_edit} = socket.assigns
 
     if connected?(socket) do
-      Collaboration.subscribe_restoration(project.id)
-
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
         ProjectChromeHelpers.shell_topic(project.id)
       )
     end
-
-    {can_edit, restoration_banner} =
-      RestorationHandlers.check_restoration_lock(project.id, can_edit)
 
     socket =
       socket
@@ -191,7 +184,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_session_id, params["debug_session"] || Ecto.UUID.generate())
       |> assign(:compact, false)
       |> assign(:loading, true)
-      |> assign(:restoration_banner, restoration_banner)
       |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
       # Defaults — flow loaded in handle_params
       |> assign(:flow, nil)
@@ -1376,17 +1368,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
 
   def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
-
-  def handle_info({:project_restoration_started, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
-
-  @impl true
-  def handle_info({:project_restoration_completed, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_completed, payload}, socket)
-
-  @impl true
-  def handle_info({:project_restoration_failed, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
 
   @impl true
   def handle_info({:try_auto_snapshot, token}, socket) do

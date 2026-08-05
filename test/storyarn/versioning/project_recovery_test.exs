@@ -8,7 +8,6 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
-  import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
@@ -16,16 +15,13 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Localization
-  alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Projects.Project
-  alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
-  alias Storyarn.Workspaces
 
   setup do
     user = user_fixture()
@@ -35,7 +31,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
     %{user: user, project: project, workspace_id: workspace_id}
   end
 
-  describe "recover_project/4" do
+  describe "materialize_template/4" do
     test "requires external transactions to provide a storage tracker", %{
       project: project,
       workspace_id: workspace_id,
@@ -45,7 +41,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
 
       assert {:ok, {:error, :asset_copy_tracker_required_in_transaction}} =
                Repo.transaction(fn ->
-                 ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+                 ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
                end)
     end
 
@@ -61,117 +57,11 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id, name: "My RPG (Recovered)")
+               ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id, name: "My RPG (Recovered)")
 
       assert recovered.name == "My RPG (Recovered)"
       assert recovered.workspace_id == workspace_id
       assert recovered.id != project.id
-    end
-
-    test "revalidates workspace manager authorization inside the recovery transaction", %{
-      project: project,
-      user: owner
-    } do
-      workspace = workspace_fixture(owner)
-      former_admin = user_fixture()
-      membership = workspace_membership_fixture(workspace, former_admin, "admin")
-      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
-      project_count = Repo.aggregate(Project, :count)
-
-      assert {:ok, _membership} = Workspaces.remove_member(membership)
-
-      assert {:error, :unauthorized} =
-               ProjectRecovery.recover_project(
-                 workspace.id,
-                 snapshot_data,
-                 former_admin.id
-               )
-
-      assert Repo.aggregate(Project, :count) == project_count
-    end
-
-    test "rechecks workspace capacity inside the recovery transaction", %{
-      project: project,
-      user: user
-    } do
-      workspace = workspace_fixture(user)
-      _second = project_fixture(user, %{workspace: workspace})
-      _third = project_fixture(user, %{workspace: workspace})
-      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
-      project_count = Repo.aggregate(Project, :count)
-
-      assert {:error, {:limit_reached, %{resource: :projects_per_workspace, used: 3, limit: 3}}} =
-               ProjectRecovery.recover_project(
-                 workspace.id,
-                 snapshot_data,
-                 user.id
-               )
-
-      assert Repo.aggregate(Project, :count) == project_count
-    end
-
-    test "repairs missing response identities while preserving valid response ids",
-         %{project: project, workspace_id: workspace_id, user: user} do
-      flow = flow_fixture(project, %{name: "Identity source"})
-
-      dialogue =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{
-            "text" => "Choose",
-            "responses" => [
-              %{"id" => "response_recovery_one", "text" => "One"},
-              %{"id" => "response_recovery_two", "text" => "Two"}
-            ]
-          }
-        })
-
-      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
-
-      legacy_snapshot =
-        update_in(snapshot_data, ["flows"], fn flows ->
-          Enum.map(flows, fn
-            %{"id" => flow_id, "snapshot" => flow_snapshot} = entry when flow_id == flow.id ->
-              invalid_flow_snapshot =
-                update_in(flow_snapshot, ["nodes"], fn nodes ->
-                  Enum.map(nodes, fn
-                    %{"original_id" => node_id, "data" => data} = node
-                    when node_id == dialogue.id ->
-                      responses = List.update_at(data["responses"], 1, &Map.delete(&1, "id"))
-
-                      put_in(node, ["data", "responses"], responses)
-
-                    node ->
-                      node
-                  end)
-                end)
-
-              Map.put(entry, "snapshot", invalid_flow_snapshot)
-
-            entry ->
-              entry
-          end)
-        end)
-
-      assert {:ok, recovered} =
-               ProjectRecovery.recover_project(
-                 workspace_id,
-                 legacy_snapshot,
-                 user.id,
-                 name: "Legacy response repair"
-               )
-
-      [recovered_flow] = Storyarn.Flows.list_flows(recovered.id)
-      recovered_flow = Repo.preload(recovered_flow, :nodes)
-      recovered_dialogue = Enum.find(recovered_flow.nodes, &(&1.type == "dialogue"))
-
-      assert [
-               %{"id" => "response_recovery_one"},
-               %{"id" => repaired_response_id}
-             ] = recovered_dialogue.data["responses"]
-
-      assert RuntimeKey.valid_response_id?(repaired_response_id)
-      assert repaired_response_id =~ "response_legacy_"
     end
 
     test "entity counts match original", %{
@@ -189,7 +79,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       {:ok, recovered} =
-        ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+        ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       new_sheets = Storyarn.Sheets.list_all_sheets(recovered.id)
       new_flows = Storyarn.Flows.list_flows(recovered.id)
@@ -212,7 +102,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       {:ok, recovered} =
-        ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+        ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       [new_sheet] = Storyarn.Sheets.list_all_sheets(recovered.id)
       [new_flow] = Storyarn.Flows.list_flows(recovered.id)
@@ -235,7 +125,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       {:ok, recovered} =
-        ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+        ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       membership = Storyarn.Projects.get_membership(recovered.id, user.id)
       assert membership
@@ -250,7 +140,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+               ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       assert Storyarn.Sheets.list_all_sheets(recovered.id) == []
       assert Storyarn.Flows.list_flows(recovered.id) == []
@@ -269,7 +159,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+               ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       assert [%{locale_code: "es", is_source: false}] =
                Localization.list_languages(recovered.id)
@@ -302,7 +192,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         end)
 
       assert {:error, {:project_snapshot_runtime_localization_row_mismatch, ^key}} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  malformed_snapshot,
                  user.id
@@ -329,7 +219,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         |> update_in(["entity_counts", "localized_texts"], &(&1 - 1))
 
       assert {:error, {:project_snapshot_runtime_localization_coverage_mismatch, %{missing: [^key], unexpected: []}}} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  malformed_snapshot,
                  user.id
@@ -366,7 +256,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert archived_row["archive_reason"] == "source_deleted"
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  snapshot_data,
                  user.id
@@ -397,7 +287,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       {:ok, recovered} =
-        ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+        ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       new_sheets = Storyarn.Sheets.list_all_sheets(recovered.id)
       new_parent = Enum.find(new_sheets, &(&1.name == "Parent Sheet"))
@@ -414,7 +304,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       {:ok, recovered} =
-        ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+        ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       assert recovered.name == "Recovered Project"
     end
@@ -541,7 +431,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       {:ok, recovered} =
-        ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+        ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       recovered_sheets = Storyarn.Sheets.list_all_sheets(recovered.id)
       recovered_flows = Storyarn.Flows.list_flows(recovered.id)
@@ -763,12 +653,11 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert {:error,
               {:materialization_failed, :flow, flow_id,
                {:avatar_speaker_mismatch, avatar_id, avatar_sheet_id, requested_speaker_id}}} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  tampered_snapshot,
                  user.id,
-                 name: "Rejected tampered recovery",
-                 template_clone: true
+                 name: "Rejected tampered recovery"
                )
 
       assert flow_id == flow.id
@@ -827,7 +716,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+               ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       recovered_flows = Storyarn.Flows.list_flows(recovered.id)
       recovered_referenced_flow = Enum.find(recovered_flows, &(&1.name == "Referenced Flow"))
@@ -910,7 +799,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  snapshot_data,
                  user.id
@@ -1020,7 +909,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert {:error,
               {:materialization_failed, :sheet, entry_id,
                {:project_snapshot_root_id_mismatch, reported_entry_id, snapshot_id}}} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  malformed_snapshot,
                  user.id
@@ -1046,7 +935,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         |> put_in(["tree", "sheets"], [])
 
       assert {:error, {:project_snapshot_entity_count_mismatch, "sheets", 1, 0}} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  truncated_snapshot,
                  user.id
@@ -1076,7 +965,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         end)
 
       assert {:error, {:project_snapshot_tree_cycle, :sheet, _id}} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  malformed_snapshot,
                  user.id
@@ -1118,7 +1007,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       project_count_before = workspace_project_count(workspace_id)
 
       assert {:error, {:project_snapshot_inheritance_cycle, block_id}} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  snapshot_data,
                  user.id
@@ -1169,7 +1058,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       project_count_before = workspace_project_count(workspace_id)
 
       assert {:error, {:circular_flow_reference, flow_id, node_id, target_flow_id}} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  snapshot_data,
                  user.id
@@ -1241,7 +1130,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         )
 
       assert {:error, {:dynamic_exit_pin_not_materializable, connection_id, source_pin, reason}} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+               ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       assert connection_id == connection.id
       assert source_pin == "exit_#{caller_exit.id}"
@@ -1252,87 +1141,6 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
                :count,
                :id
              ) == project_count_before
-    end
-
-    test "remaps subflow exit pins when snapshot IDs use mixed integer and string encodings", %{
-      project: project,
-      workspace_id: workspace_id,
-      user: user
-    } do
-      caller_flow = flow_fixture(project, %{name: "Caller Flow"})
-      referenced_flow = flow_fixture(project, %{name: "Referenced Flow"})
-
-      referenced_exit =
-        node_fixture(referenced_flow, %{
-          type: "exit",
-          data: %{"label" => "Returned", "exit_mode" => "caller_return"}
-        })
-
-      subflow_node =
-        node_fixture(caller_flow, %{
-          type: "subflow",
-          data: %{"referenced_flow_id" => to_string(referenced_flow.id)}
-        })
-
-      next_node = node_fixture(caller_flow, %{type: "hub"})
-
-      connection =
-        Storyarn.FlowsFixtures.connection_fixture(caller_flow, subflow_node, next_node, %{
-          source_pin: "exit_#{referenced_exit.id}"
-        })
-
-      snapshot_data =
-        project.id
-        |> ProjectSnapshotBuilder.build_snapshot()
-        |> update_flow_snapshot(caller_flow.id, fn snapshot ->
-          update_in(snapshot["connections"], fn connections ->
-            Enum.map(connections, fn
-              %{"original_id" => original_id} = entry when original_id == connection.id ->
-                Map.put(entry, "original_id", to_string(original_id))
-
-              entry ->
-                entry
-            end)
-          end)
-        end)
-        |> update_flow_snapshot(referenced_flow.id, fn snapshot ->
-          update_in(snapshot["nodes"], fn nodes ->
-            Enum.map(nodes, fn
-              %{"original_id" => original_id} = entry when original_id == referenced_exit.id ->
-                Map.put(entry, "original_id", to_string(original_id))
-
-              entry ->
-                entry
-            end)
-          end)
-        end)
-
-      assert {:ok, recovered} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
-
-      recovered_flows = Storyarn.Flows.list_flows(recovered.id)
-
-      recovered_caller =
-        recovered_flows
-        |> Enum.find(&(&1.name == "Caller Flow"))
-        |> Repo.preload([:connections, :nodes], force: true)
-
-      recovered_referenced =
-        recovered_flows
-        |> Enum.find(&(&1.name == "Referenced Flow"))
-        |> Repo.preload(:nodes, force: true)
-
-      recovered_exit =
-        Enum.find(
-          recovered_referenced.nodes,
-          &(&1.type == "exit" and &1.data["label"] == "Returned")
-        )
-
-      recovered_subflow = Enum.find(recovered_caller.nodes, &(&1.type == "subflow"))
-      recovered_connection = Enum.find(recovered_caller.connections, &(&1.source_node_id == recovered_subflow.id))
-
-      assert recovered_connection.source_pin == "exit_#{recovered_exit.id}"
-      assert {:ok, %{"status" => "passed"}} = Audit.run(recovered.id)
     end
 
     test "rolls back recovery when a subflow exit pin has no referenced exit node", %{
@@ -1372,7 +1180,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         end)
 
       assert {:error, {:dynamic_exit_pin_not_materializable, connection_id, source_pin, reason}} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+               ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       assert connection_id == connection.id
       assert source_pin == "exit_#{referenced_exit.id}"
@@ -1382,54 +1190,6 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
                from project in Project,
                  where: project.workspace_id == ^workspace_id and project.name == "Recovered Project"
              )
-    end
-
-    test "normalizes legacy Hub colors while remapping recovered node data", %{
-      project: project,
-      workspace_id: workspace_id,
-      user: user
-    } do
-      speaker = sheet_fixture(project, %{name: "Hub Reference"})
-      flow = flow_fixture(project, %{name: "Legacy Hub Flow"})
-
-      hub =
-        node_fixture(flow, %{
-          type: "hub",
-          data: %{
-            "hub_id" => "checkpoint",
-            "color" => "#3b82f6",
-            "speaker_sheet_id" => speaker.id
-          }
-        })
-
-      snapshot_data =
-        project.id
-        |> ProjectSnapshotBuilder.build_snapshot()
-        |> update_in(["flows", Access.at(0), "snapshot", "nodes"], fn nodes ->
-          Enum.map(nodes, fn
-            %{"original_id" => original_id, "data" => data} = node when original_id == hub.id ->
-              Map.put(node, "data", Map.put(data, "color", "blue"))
-
-            node ->
-              node
-          end)
-        end)
-
-      assert {:ok, recovered} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
-
-      [recovered_speaker] = Storyarn.Sheets.list_all_sheets(recovered.id)
-
-      recovered_hub =
-        recovered.id
-        |> Storyarn.Flows.list_flows()
-        |> List.first()
-        |> Repo.preload(:nodes)
-        |> Map.fetch!(:nodes)
-        |> Enum.find(&(&1.type == "hub"))
-
-      assert recovered_hub.data["speaker_sheet_id"] == recovered_speaker.id
-      assert recovered_hub.data["color"] == "#3b82f6"
     end
 
     test "remaps inherited blocks across recovered sheets", %{
@@ -1468,7 +1228,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       {:ok, recovered} =
-        ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+        ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       recovered_sheets = Storyarn.Sheets.list_all_sheets(recovered.id)
       recovered_parent = Enum.find(recovered_sheets, &(&1.name == "Parent Sheet"))
@@ -1513,7 +1273,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       # DB — exactly the state of a fresh import from an exported bundle.
       Repo.delete_all(from(b in Block, where: b.sheet_id in ^[parent.id, child.id]))
 
-      {:ok, recovered} = ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
+      {:ok, recovered} = ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id)
 
       recovered_sheets = Storyarn.Sheets.list_all_sheets(recovered.id)
       recovered_parent = Enum.find(recovered_sheets, &(&1.name == "Parent Sheet"))
@@ -1527,7 +1287,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert recovered_inherited.inherited_from_block_id == recovered_source.id
     end
 
-    test "template clone copies scene and flow assets into recovered project", %{
+    test "portable materialization copies scene and flow assets into the destination project", %{
       project: project,
       workspace_id: workspace_id,
       user: user
@@ -1567,10 +1327,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id,
-                 name: "Template Copy",
-                 template_clone: true
-               )
+               ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id, name: "Template Copy")
 
       recovered_scene =
         recovered.id
@@ -1618,7 +1375,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       on_exit(fn -> Assets.storage_delete(recovered_audio.key) end)
     end
 
-    test "template clone preserves one copied asset identity across sheet banner, avatar, and gallery", %{
+    test "portable materialization preserves one copied asset identity across sheet surfaces", %{
       project: project,
       workspace_id: workspace_id,
       user: user
@@ -1649,12 +1406,11 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  snapshot_data,
                  user.id,
-                 name: "Shared Sheet Asset Copy",
-                 template_clone: true
+                 name: "Shared Sheet Asset Copy"
                )
 
       recovered_sheet =
@@ -1697,7 +1453,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       on_exit(fn -> Assets.storage_delete(destination_asset.key) end)
     end
 
-    test "template clone copies localization voice assets into recovered project", %{
+    test "portable materialization copies localization voice assets into the destination project", %{
       project: project,
       workspace_id: workspace_id,
       user: user
@@ -1721,10 +1477,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id,
-                 name: "Template Copy",
-                 template_clone: true
-               )
+               ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id, name: "Template Copy")
 
       [recovered_text] = Localization.list_texts_for_export(recovered.id, ["es"])
       recovered_voice_asset = Repo.get!(Asset, recovered_text.vo_asset_id)
@@ -1760,7 +1513,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  snapshot_data,
                  user.id,
@@ -1783,30 +1536,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       refute response_text.speaker_sheet_id == speaker.id
     end
 
-    test "normal recovery preserves one asset identity across flow snapshots and global voice-over", %{
-      project: project,
-      workspace_id: workspace_id,
-      user: user
-    } do
-      {snapshot_data, source_asset} =
-        shared_flow_and_voice_asset_snapshot(
-          project,
-          user,
-          "normal-shared-#{System.unique_integer([:positive])}.mp3"
-        )
-
-      assert {:ok, recovered} =
-               ProjectRecovery.recover_project(
-                 workspace_id,
-                 snapshot_data,
-                 user.id,
-                 name: "Shared asset recovery"
-               )
-
-      assert_recovered_shared_asset_identity(recovered, source_asset)
-    end
-
-    test "template clone preserves one copied asset identity across flow snapshots and global voice-over", %{
+    test "portable materialization preserves one copied asset identity across flow and voice-over", %{
       project: project,
       workspace_id: workspace_id,
       user: user
@@ -1819,12 +1549,11 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         )
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  snapshot_data,
                  user.id,
-                 name: "Shared template asset",
-                 template_clone: true
+                 name: "Shared template asset"
                )
 
       assert_recovered_shared_asset_identity(recovered, source_asset)
@@ -1894,7 +1623,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       copied_paths_before = stored_asset_paths(good_asset.filename)
 
       assert {:error, {:asset_materialization_failed, missing_asset_id, {:asset_blob_unavailable, _reason}}} =
-               ProjectRecovery.recover_project(
+               ProjectRecovery.materialize_template(
                  workspace_id,
                  snapshot_data,
                  user.id,
@@ -1955,12 +1684,11 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       copied_paths_before = stored_asset_paths(asset.filename)
 
       recovery_result =
-        ProjectRecovery.recover_project(
+        ProjectRecovery.materialize_template(
           workspace_id,
           snapshot_data,
           user.id,
-          name: "Must reject corrupted blob",
-          template_clone: true
+          name: "Must reject corrupted blob"
         )
 
       assert {:error, {:materialization_failed, :flow, flow_id, asset_error}} =
@@ -1988,7 +1716,9 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id, name: "Recovered archived locale")
+               ProjectRecovery.materialize_template(workspace_id, snapshot_data, user.id,
+                 name: "Recovered archived locale"
+               )
 
       recovered_spanish =
         recovered.id

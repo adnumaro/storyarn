@@ -116,25 +116,77 @@
       "limit": "limit"
     },
     "snapshots": {
-      "restoration_in_progress": "A restoration is in progress. Please wait for it to complete.",
-      "clear_lock": "Clear stale lock",
-      "snapshot_title": "Snapshot Title",
-      "snapshot_placeholder": "e.g., Before playtest v2",
-      "description": "Description",
-      "create_snapshot": "Create Snapshot",
-      "limit_reached": "Snapshot limit reached for your plan.",
+      "storage_heading": "Storage counted toward your plan",
+      "storage_description": "Assets, retained snapshots, and active reservations share the workspace allowance.",
+      "storage_progress_label": "Workspace storage usage: {percent}",
+      "storage_remaining": "Remaining capacity",
+      "storage_reservations": "Active reservations",
+      "storage_counted_note": "Retained project assets, including assets held by recoverable deleted projects, are counted with retained snapshots and active reservations. Provider replication, orphaned objects, and cleanup residue are excluded from plan quota.",
+      "storage_breakdown": {
+        "current_assets": "Retained project assets",
+        "full_snapshots": "Full snapshots",
+        "linked_snapshots": "Linked snapshot payloads"
+      },
+      "storage_status": {
+        "unlimited": "No limit",
+        "unknown": "Unknown",
+        "zero_capacity": "No storage capacity",
+        "over_limit": "Over limit",
+        "less_than_percent": "<{percent}"
+      },
+      "accessibility": {
+        "workspace_percentage": "Workspace storage used: {percent}",
+        "snapshot_percentage": "Workspace allowance share: {percent}",
+        "mode": "Snapshot mode: {status}",
+        "lifecycle": "Snapshot state: {status}",
+        "integrity": "Snapshot integrity: {status}",
+        "measurement": "{label}: {value}"
+      },
+      "mode": {
+        "full": "Full",
+        "linked": "Linked",
+        "unknown": "Mode unknown"
+      },
+      "lifecycle": {
+        "pending": "Pending",
+        "building": "Building",
+        "verifying": "Verifying",
+        "ready": "Ready",
+        "failed": "Failed",
+        "cancelled": "Cancelled",
+        "deleting": "Deleting",
+        "unknown": "State unknown"
+      },
+      "integrity": {
+        "unknown": "Integrity unknown",
+        "verified": "Verified",
+        "at_risk": "At risk",
+        "missing": "Missing data",
+        "corrupt": "Corrupt",
+        "incomplete": "Incomplete"
+      },
+      "measurements": {
+        "accounted_size": "Snapshot storage",
+        "project_data": "Project data",
+        "metadata": "Manifest and catalog",
+        "unique_blobs": "Unique asset blobs",
+        "inventory": "Logical assets: {assets} · Unique blobs: {blobs}",
+        "measured": "Accounting v{version} measured {date}",
+        "active_reservation": "Active work reservation: {storage}",
+        "export_reservation": "ZIP export reservation: {storage}"
+      },
+      "entity_types": {
+        "sheets": "{count} sheet | {count} sheets",
+        "flows": "{count} flow | {count} flows",
+        "scenes": "{count} scene | {count} scenes",
+        "languages": "{count} language | {count} languages",
+        "localized_texts": "{count} localized text | {count} localized texts",
+        "glossary_entries": "{count} glossary entry | {count} glossary entries"
+      },
       "snapshots_heading": "Snapshots",
       "empty_title": "No snapshots yet",
-      "empty_description": "Create a snapshot to save a point-in-time backup of your entire project.",
-      "untitled": "Untitled Snapshot",
-      "download": "Download",
-      "restore": "Restore",
-      "restore_confirm_title": "Restore project snapshot?",
-      "restore_confirm_description": "This will overwrite all current project data with the state from this snapshot. A safety snapshot will be created before restoring.",
-      "delete_confirm_title": "Delete snapshot?",
-      "delete_confirm_description": "This will permanently delete this snapshot. This action cannot be undone.",
-      "cancel": "Cancel",
-      "delete": "Delete"
+      "empty_description": "This project has no retained snapshots.",
+      "untitled": "Untitled Snapshot"
     },
     "trash": {
       "title": "Trash",
@@ -169,11 +221,8 @@
       "empty_confirm_description": "All deleted project items will be permanently deleted. This action cannot be undone."
     },
     "version_control": {
-      "auto_snapshots": "Automatic Snapshots",
-      "enable_daily": "Enable daily automatic snapshots",
-      "daily_description": "Creates a daily backup at 3:00 AM UTC when changes are detected.",
       "auto_versioning": "Auto-Versioning",
-      "auto_versioning_description": "Automatically create version snapshots when editing entities.",
+      "auto_versioning_description": "Automatically create entity versions while editing.",
       "flows": "Flows",
       "scenes": "Scenes",
       "sheets": "Sheets",
@@ -189,7 +238,20 @@
       "project_limits_description": "These counters block new entities or versions inside this project.",
       "workspace_limits": "Workspace limits",
       "workspace_limits_description": "These quotas are shared by every project in the workspace.",
-      "project_storage_note": "This project uses {storage} across {assets} assets.",
+      "project_storage_note": "This project accounts for {storage}: {assetStorage} across {assets} assets, {snapshots} in snapshots, and {reservations} in active reservations.",
+      "storage_progress_label": "Workspace storage usage: {percent}",
+      "storage_counted_note": "Storage shown here is counted toward the plan. Retained project assets include assets held by recoverable deleted projects. Provider replication, orphaned objects, and cleanup residue are excluded from plan quota and are not shown here.",
+      "storage_summary": {
+        "counted": "Counted storage",
+        "remaining": "Remaining capacity",
+        "reservations": "Active reservations"
+      },
+      "storage_breakdown": {
+        "current_assets": "Retained project assets",
+        "full_snapshots": "Full snapshots",
+        "linked_snapshots": "Linked snapshot payloads",
+        "reservations": "Reservations"
+      },
       "rows": {
         "items": "Items",
         "project_snapshots": "Project snapshots",
@@ -200,9 +262,9 @@
       },
       "descriptions": {
         "items": "Sheets, flows, scenes, and flow nodes in this project.",
-        "project_snapshots": "Manual and automatic snapshots stored for this project.",
+        "project_snapshots": "Retained canonical snapshots, including active builds and reservations, for this project.",
         "named_versions": "Promoted entity versions that count against the project quota.",
-        "storage": "Total asset storage used by every project in this workspace.",
+        "storage": "Plan-counted assets, retained snapshots, and active reservations across this workspace.",
         "projects": "Active projects in this workspace.",
         "members": "Unique workspace and project members."
       },
@@ -216,7 +278,14 @@
         "available": "Available",
         "near_limit": "Near limit",
         "limit_reached": "Limit reached",
-        "no_limit": "No limit"
+        "no_limit": "No limit",
+        "unknown": "Unknown",
+        "zero_capacity": "No storage capacity",
+        "over_limit": "Over limit",
+        "less_than_percent": "<{percent}"
+      },
+      "accessibility": {
+        "status": "{label} status: {status}"
       }
     },
     "import": {

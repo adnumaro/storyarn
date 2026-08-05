@@ -38,13 +38,13 @@ defmodule Storyarn.Assets do
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
-  alias Storyarn.Workspaces.Workspace
 
   require Logger
 
   @svg_content_type "image/svg+xml"
   @upload_tracker_process_key {__MODULE__, :upload_storage_tracker}
   @post_commit_variant_jobs_process_key {__MODULE__, :post_commit_variant_jobs}
+  @import_capacity_process_key {__MODULE__, :import_capacity}
 
   # =============================================================================
   # Type Definitions
@@ -55,6 +55,8 @@ defmodule Storyarn.Assets do
   @type user :: User.t()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
+  @type upload_error :: {:error, term()} | {:error, :limit_reached, map()}
+  @type upload_result :: {:ok, asset()} | upload_error()
   @type list_opts :: [
           content_type: String.t(),
           images_only: boolean(),
@@ -210,25 +212,23 @@ defmodule Storyarn.Assets do
   globally-unique key and must not split a compensatable storage upload from
   this insert; use `upload_binary_and_create_asset/4` for that atomic lifecycle.
   """
-  @spec create_asset(project(), user(), attrs()) :: {:ok, asset()} | {:error, changeset()}
+  @spec create_asset(project(), user(), attrs()) ::
+          {:ok, asset()} | {:error, changeset() | term()} | {:error, :limit_reached, map()}
   def create_asset(%Project{} = project, %User{} = user, attrs) do
-    with_asset_storage_key_lock(attrs, fn ->
-      project
-      |> create_asset_record(user.id, attrs, :generic)
-      |> track_asset_created(user, attrs)
-    end)
+    project
+    |> create_asset_record(user.id, attrs, :generic)
+    |> track_asset_created(user, attrs)
   end
 
   @doc """
   Creates an asset record without a user (for system uploads).
   """
-  @spec create_asset(project(), attrs()) :: {:ok, asset()} | {:error, changeset()}
+  @spec create_asset(project(), attrs()) ::
+          {:ok, asset()} | {:error, changeset() | term()} | {:error, :limit_reached, map()}
   def create_asset(%Project{} = project, attrs) do
-    with_asset_storage_key_lock(attrs, fn ->
-      project
-      |> create_asset_record(nil, attrs, :generic)
-      |> track_asset_created(nil, attrs)
-    end)
+    project
+    |> create_asset_record(nil, attrs, :generic)
+    |> track_asset_created(nil, attrs)
   end
 
   @doc """
@@ -248,16 +248,21 @@ defmodule Storyarn.Assets do
   """
   @spec delete_asset(asset()) :: {:ok, asset()} | {:error, changeset() | term()}
   def delete_asset(%Asset{id: asset_id, project_id: project_id}) do
-    fn ->
-      with {:ok, _project} <- lock_active_project_for_asset_write(project_id),
-           {:ok, asset} <- lock_asset_for_write(asset_id, project_id) do
-        delete_asset_in_transaction(asset)
-      else
-        {:error, reason} -> Repo.rollback(reason)
+    with_result =
+      with {:ok, workspace_id} <- project_workspace_id(project_id) do
+        Billing.transact_with_workspace_lock(workspace_id, fn workspace ->
+          delete_asset_with_lock(workspace, project_id, asset_id)
+        end)
       end
+
+    Collaboration.broadcast_dashboard_result(with_result, project_id, :all)
+  end
+
+  defp delete_asset_with_lock(workspace, project_id, asset_id) do
+    with {:ok, _project} <- lock_active_project_for_asset_write(project_id, workspace.id),
+         {:ok, asset} <- lock_asset_for_write(asset_id, project_id) do
+      {:ok, delete_asset_in_transaction(asset)}
     end
-    |> Repo.transaction()
-    |> Collaboration.broadcast_dashboard_result(project_id, :all)
   end
 
   defp delete_asset_in_transaction(asset) do
@@ -276,9 +281,38 @@ defmodule Storyarn.Assets do
   end
 
   defp delete_asset_or_rollback(asset) do
-    case Repo.delete(asset) do
-      {:ok, deleted_asset} -> deleted_asset
-      {:error, changeset} -> Repo.rollback(changeset)
+    with {:ok, deleted_asset} <- Repo.delete(asset),
+         {:ok, _cleanup_request} <-
+           asset
+           |> asset_cleanup_targets()
+           |> StorageCompensation.persist_cleanup_request() do
+      deleted_asset
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp asset_cleanup_targets(%Asset{} = asset) do
+    if project_asset_key?(asset.key, asset.project_id) do
+      thumbnail_key =
+        if is_binary((asset.metadata || %{})["thumbnail_key"]),
+          do: thumbnail_key(asset.key)
+
+      [asset.key, thumbnail_key]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+    else
+      []
+    end
+  end
+
+  defp project_asset_key?(storage_key, project_id) when is_binary(storage_key) and is_integer(project_id) do
+    case String.split(storage_key, "/") do
+      ["projects", encoded_project_id, "assets", _asset_uuid, _filename] ->
+        encoded_project_id == Integer.to_string(project_id)
+
+      _parts ->
+        false
     end
   end
 
@@ -422,6 +456,32 @@ defmodule Storyarn.Assets do
     end
   end
 
+  defp lock_active_project_for_asset_write(project_id, workspace_id) do
+    case Repo.one(
+           from(project in Project,
+             where: project.id == ^project_id and project.workspace_id == ^workspace_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %Project{deleted_at: nil} = project -> {:ok, project}
+      %Project{} -> {:error, :project_not_active}
+      nil -> project_workspace_mismatch_error(project_id)
+    end
+  end
+
+  defp project_workspace_mismatch_error(project_id) do
+    if Repo.exists?(from(project in Project, where: project.id == ^project_id)),
+      do: {:error, :project_workspace_mismatch},
+      else: {:error, :project_not_found}
+  end
+
+  defp project_workspace_id(project_id) do
+    case Repo.one(from(project in Project, where: project.id == ^project_id, select: project.workspace_id)) do
+      workspace_id when is_integer(workspace_id) -> {:ok, workspace_id}
+      nil -> {:error, :project_not_found}
+    end
+  end
+
   defp lock_asset_for_write(asset_id, project_id) do
     case Repo.one(
            from(asset in Asset,
@@ -435,22 +495,40 @@ defmodule Storyarn.Assets do
   end
 
   defp create_asset_record(%Project{} = project, uploaded_by_id, attrs, upload_kind) do
-    Repo.transaction(fn ->
-      with {:ok, _project} <- lock_active_project_for_asset_write(project.id),
-           changeset =
-             asset_create_changeset(
-               %Asset{project_id: project.id, uploaded_by_id: uploaded_by_id},
-               attrs,
-               upload_kind
-             ),
-           {:ok, asset} <- Repo.insert(changeset) do
-        asset
-      else
-        {:error, reason} ->
-          Repo.rollback(reason)
-      end
+    project.workspace_id
+    |> Billing.transact_with_workspace_lock(fn workspace ->
+      create_asset_record_with_lock(workspace, project, uploaded_by_id, attrs, upload_kind)
     end)
+    |> normalize_asset_record_result()
   end
+
+  defp create_asset_record_with_lock(workspace, project, uploaded_by_id, attrs, upload_kind) do
+    with {:ok, locked_project} <-
+           lock_active_project_for_asset_write(project.id, workspace.id),
+         changeset =
+           asset_create_changeset(
+             %Asset{project_id: locked_project.id, uploaded_by_id: uploaded_by_id},
+             attrs,
+             upload_kind
+           ),
+         :ok <- check_asset_record_capacity(locked_project, changeset),
+         {:ok, asset} <- with_asset_storage_key_lock(attrs, fn -> Repo.insert(changeset) end) do
+      {:ok, asset}
+    else
+      {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp check_asset_record_capacity(%Project{} = project, %{valid?: true} = changeset) do
+    Billing.can_upload_asset_for_project?(project, Ecto.Changeset.get_field(changeset, :size))
+  end
+
+  defp check_asset_record_capacity(_project, _changeset), do: :ok
+
+  defp normalize_asset_record_result({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}
+
+  defp normalize_asset_record_result(result), do: result
 
   defp update_asset_in_transaction(asset, attrs) do
     with {:ok, _project} <- lock_active_project_for_asset_write(asset.project_id),
@@ -948,7 +1026,9 @@ defmodule Storyarn.Assets do
   Used by LiveView's `consume_uploaded_entries/3` to process file uploads directly
   from the parent LiveView.
 
-  Returns `{:ok, asset}` on success or `{:error, reason}` on failure.
+  Returns `{:ok, asset}` on success, `{:error, :limit_reached, details}` when
+  the atomic workspace check rejects the write, or `{:error, reason}` for other
+  failures.
   """
   @spec upload_and_create_asset(
           String.t(),
@@ -957,7 +1037,7 @@ defmodule Storyarn.Assets do
           user(),
           keyword()
         ) ::
-          {:ok, asset()} | {:error, term()}
+          upload_result()
   def upload_and_create_asset(path, entry, %Project{} = project, %User{} = user, opts \\ []) do
     do_upload_and_create_asset(path, entry, project, user, opts)
   end
@@ -1018,7 +1098,7 @@ defmodule Storyarn.Assets do
   again.
   """
   @spec materialize_upload_variant(project(), user() | nil, map()) ::
-          {:ok, asset(), map()} | {:error, term()}
+          {:ok, asset(), map()} | upload_error()
   def materialize_upload_variant(%Project{} = project, user, attrs) do
     with_workspace_upload_lock(project, fn _workspace ->
       do_materialize_upload_variant(project, user, attrs)
@@ -1050,7 +1130,7 @@ defmodule Storyarn.Assets do
   one is required.
   """
   @spec upload_binary_for_purpose(binary(), map(), project(), user() | nil) ::
-          {:ok, asset(), map()} | {:error, term()}
+          {:ok, asset(), map()} | upload_error()
   def upload_binary_for_purpose(binary_data, attrs, %Project{} = project, user \\ nil) do
     purpose = attrs |> Map.get(:purpose, Map.get(attrs, "purpose")) |> UploadPolicy.parse_purpose()
 
@@ -1081,10 +1161,11 @@ defmodule Storyarn.Assets do
     * `:content_type` — MIME type
     * `:metadata` — optional extra metadata map (default `%{}`)
 
-  Returns `{:ok, asset}` or `{:error, reason}`.
+  Returns `{:ok, asset}`, `{:error, :limit_reached, details}`, or another
+  `{:error, reason}`.
   """
   @spec upload_binary_and_create_asset(binary(), map(), project(), user() | nil) ::
-          {:ok, asset()} | {:error, term()}
+          upload_result()
   def upload_binary_and_create_asset(
         binary_data,
         %{filename: filename, content_type: content_type} = attrs,
@@ -1110,7 +1191,7 @@ defmodule Storyarn.Assets do
   intentional and the content must be sanitized before public storage.
   """
   @spec upload_sanitized_svg_and_create_asset(binary(), map(), project(), user() | nil) ::
-          {:ok, asset()} | {:error, term()}
+          upload_result()
   def upload_sanitized_svg_and_create_asset(binary_data, attrs, %Project{} = project, user \\ nil) when is_map(attrs) do
     with content_type when content_type == @svg_content_type <-
            Map.get(attrs, :content_type, Map.get(attrs, "content_type")),
@@ -1225,8 +1306,8 @@ defmodule Storyarn.Assets do
         maybe_schedule_variant(upload.binary_data, asset, project, user, attrs)
         {:ok, asset}
 
-      {:error, changeset} ->
-        {:error, changeset}
+      error ->
+        error
     end
   end
 
@@ -1269,6 +1350,9 @@ defmodule Storyarn.Assets do
           schedule_post_commit_variant_jobs()
           finalized_result
 
+        {:error, {:asset_upload_failed, error}} ->
+          finalize_failed_upload_transaction(tracker, error)
+
         {:error, reason} ->
           finalize_failed_upload_transaction(tracker, {:error, reason})
       end
@@ -1287,16 +1371,17 @@ defmodule Storyarn.Assets do
   end
 
   defp workspace_upload_transaction(project, fun) do
-    Repo.transaction(
-      fn ->
-        workspace = Repo.one!(from(w in Workspace, where: w.id == ^project.workspace_id, lock: "FOR UPDATE"))
-        fun.(workspace)
-      end,
-      timeout: :infinity
-    )
+    Billing.with_storage_accounting_lock(project.workspace_id, fn workspace ->
+      case fun.(workspace) do
+        {:error, _reason} = error -> Repo.rollback({:asset_upload_failed, error})
+        {:error, _reason, _details} = error -> Repo.rollback({:asset_upload_failed, error})
+        result -> result
+      end
+    end)
   end
 
   defp unwrap_workspace_upload_transaction({:ok, result}), do: result
+  defp unwrap_workspace_upload_transaction({:error, {:asset_upload_failed, error}}), do: error
   defp unwrap_workspace_upload_transaction({:error, reason}), do: {:error, reason}
 
   defp finalize_committed_upload_transaction(tracker, result) do
@@ -1637,9 +1722,7 @@ defmodule Storyarn.Assets do
   defp do_generate_variant(binary_data, original_asset, project, user, process_fn) do
     case process_fn.(binary_data) do
       {:ok, webp_data} ->
-        with :ok <- Billing.can_upload_asset_for_project?(project, byte_size(webp_data)) do
-          upload_and_link_variant(webp_data, original_asset, project, user)
-        end
+        upload_and_link_variant(webp_data, original_asset, project, user)
 
       {:error, reason} ->
         Logger.warning("[ImageOptimization] Failed to generate WebP for asset #{original_asset.id}: #{inspect(reason)}")
@@ -1664,6 +1747,14 @@ defmodule Storyarn.Assets do
         Logger.warning(
           "[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: " <>
             inspect(reason)
+        )
+
+        {:ok, original_asset}
+
+      {:error, reason, details} ->
+        Logger.warning(
+          "[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: " <>
+            inspect({reason, details})
         )
 
         {:ok, original_asset}
@@ -1709,11 +1800,9 @@ defmodule Storyarn.Assets do
   defp do_create_asset(project, user, attrs, :generic), do: do_create_asset(project, user, attrs)
 
   defp do_create_asset(%Project{} = project, user, attrs, :sanitized_svg) do
-    with_asset_storage_key_lock(attrs, fn ->
-      project
-      |> create_asset_record(uploaded_by_id(user), attrs, :sanitized_svg)
-      |> track_asset_created(user, attrs)
-    end)
+    project
+    |> create_asset_record(uploaded_by_id(user), attrs, :sanitized_svg)
+    |> track_asset_created(user, attrs)
   end
 
   defp do_create_asset(project, nil, attrs), do: create_asset(project, attrs)
@@ -1901,21 +1990,110 @@ defmodule Storyarn.Assets do
   end
 
   # =============================================================================
-  # Import helpers (raw insert, no side effects)
+  # Import helpers (raw insert, no upload side effects)
   # =============================================================================
 
   @doc """
-  Creates an asset record for import. Raw insert with no upload logic or user tracking.
-  Returns `{:ok, asset}` or `{:error, changeset}`.
+  Checks the complete logical size of one import and authorizes its asset rows.
+
+  The caller must already hold the workspace storage-accounting lock. The
+  authorization is process-scoped to the callback and tracks the remaining
+  byte budget, so `import_asset/2` cannot insert more logical bytes than were
+  checked against workspace capacity.
   """
-  @spec import_asset(integer(), attrs()) :: {:ok, asset()} | {:error, changeset()}
-  def import_asset(project_id, attrs) do
-    with_asset_storage_key_lock(attrs, fn ->
-      %Asset{project_id: project_id}
-      |> Asset.create_changeset(attrs)
-      |> Repo.insert()
-    end)
+  @spec with_import_capacity(Project.t(), non_neg_integer(), (-> result)) ::
+          result
+          | {:error,
+             :asset_import_capacity_already_authorized
+             | :invalid_storage_allocation
+             | :storage_accounting_lock_required}
+          | {:error, :limit_reached, map()}
+        when result: term()
+  def with_import_capacity(%Project{} = project, total_bytes, fun)
+      when is_integer(total_bytes) and total_bytes >= 0 and is_function(fun, 0) do
+    with true <- Billing.workspace_lock_held?(project.workspace_id),
+         :ok <- Billing.can_upload_asset_for_project?(project, total_bytes) do
+      with_import_capacity_marker(project, total_bytes, fun)
+    else
+      false -> {:error, :storage_accounting_lock_required}
+      {:error, _reason, _details} = error -> error
+      {:error, _reason} = error -> error
+    end
   end
+
+  def with_import_capacity(%Project{}, _total_bytes, _fun), do: {:error, :invalid_storage_allocation}
+
+  @doc """
+  Creates an asset record for an authorized import.
+
+  This is a raw database insert with no upload logic or user tracking. It is
+  only valid inside `with_import_capacity/3` while the matching workspace lock
+  remains held.
+  """
+  @spec import_asset(Project.t(), attrs()) ::
+          {:ok, asset()}
+          | {:error, changeset()}
+          | {:error,
+             :asset_import_capacity_exceeded
+             | :asset_import_capacity_required
+             | :storage_accounting_lock_required}
+  def import_asset(%Project{} = project, attrs) do
+    changeset = Asset.create_changeset(%Asset{project_id: project.id}, attrs)
+
+    with :ok <- authorize_import_asset(project, changeset) do
+      with_asset_storage_key_lock(attrs, fn -> Repo.insert(changeset) end)
+    end
+  end
+
+  defp with_import_capacity_marker(project, total_bytes, fun) do
+    case Process.get(@import_capacity_process_key) do
+      nil ->
+        Process.put(@import_capacity_process_key, %{
+          workspace_id: project.workspace_id,
+          project_id: project.id,
+          remaining_bytes: total_bytes
+        })
+
+        try do
+          fun.()
+        after
+          Process.delete(@import_capacity_process_key)
+        end
+
+      _capacity ->
+        {:error, :asset_import_capacity_already_authorized}
+    end
+  end
+
+  defp authorize_import_asset(project, changeset) do
+    if Billing.workspace_lock_held?(project.workspace_id),
+      do: consume_import_capacity(project, changeset),
+      else: {:error, :storage_accounting_lock_required}
+  end
+
+  defp consume_import_capacity(project, changeset) do
+    case Process.get(@import_capacity_process_key) do
+      %{workspace_id: workspace_id, project_id: project_id} = capacity
+      when workspace_id == project.workspace_id and project_id == project.id ->
+        consume_valid_import_size(capacity, changeset)
+
+      _capacity ->
+        {:error, :asset_import_capacity_required}
+    end
+  end
+
+  defp consume_valid_import_size(capacity, %{valid?: true} = changeset) do
+    size = Ecto.Changeset.get_field(changeset, :size)
+
+    if size <= capacity.remaining_bytes do
+      Process.put(@import_capacity_process_key, %{capacity | remaining_bytes: capacity.remaining_bytes - size})
+      :ok
+    else
+      {:error, :asset_import_capacity_exceeded}
+    end
+  end
+
+  defp consume_valid_import_size(_capacity, _changeset), do: :ok
 
   defp with_asset_storage_key_lock(attrs, fun) when is_map(attrs) and is_function(fun, 0) do
     case Map.get(attrs, :key, Map.get(attrs, "key")) do

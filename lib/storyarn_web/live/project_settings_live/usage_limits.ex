@@ -3,6 +3,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
 
   use StoryarnWeb, :live_view
 
+  import StoryarnWeb.ProjectLive.Components.SettingsComponents,
+    only: [serialize_byte_count: 1, serialize_storage_bucket: 1, serialize_storage_usage: 2]
+
   alias Storyarn.Billing
   alias Storyarn.Projects
 
@@ -55,7 +58,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
       workspace: %{
         projects: serialize_bucket(usage.workspace.projects),
         members: serialize_bucket(usage.workspace.members),
-        storageBytes: serialize_bucket(usage.workspace.storage_bytes)
+        storageBytes: serialize_storage_bucket(usage.workspace.storage_bytes)
       },
       itemBreakdown: %{
         sheets: usage.item_breakdown.sheets,
@@ -64,8 +67,16 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
         flowNodes: usage.item_breakdown.flow_nodes
       },
       storage: %{
-        projectBytes: usage.storage.project_bytes,
-        assetCount: usage.storage.asset_count
+        projectAccountedBytes: serialize_byte_count(usage.storage.project_bytes),
+        projectAssetBytes: serialize_byte_count(usage.storage.project_asset_bytes),
+        projectSnapshotBytes: serialize_byte_count(usage.storage.project_snapshot_bytes),
+        projectReservationBytes: serialize_byte_count(usage.storage.project_reservation_bytes),
+        assetCount: usage.storage.asset_count,
+        workspace:
+          serialize_storage_usage(
+            usage.storage.workspace,
+            usage.workspace.storage_bytes.limit
+          )
       }
     }
   end

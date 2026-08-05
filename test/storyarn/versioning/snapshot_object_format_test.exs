@@ -51,6 +51,36 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
                SnapshotObjectFormat.build_catalog([asset(41, "portrait.png", @hash)], max_assets: 0)
     end
 
+    test "rejects plural and camel-case durability metadata without matching ordinary words" do
+      for key <- [
+            "asset_ids",
+            "storage_keys",
+            "storageKeys",
+            "presignedUrls",
+            "thumbnailPaths",
+            "currentObjectID"
+          ] do
+        unsafe = asset(41, "portrait.png", @hash, %{"nested" => %{key => "current-object"}})
+
+        assert {:error, {:unsafe_asset_metadata_key, ^key}} =
+                 SnapshotObjectFormat.build_catalog([unsafe])
+      end
+
+      safe =
+        asset(41, "portrait.png", @hash, %{
+          "grid" => "twelve-column",
+          "monkey" => "capuchin",
+          "pathology" => "none",
+          "identity" => "portable"
+        })
+
+      assert {:ok, %{assets: [%{"metadata" => metadata}]}} =
+               SnapshotObjectFormat.build_catalog([safe])
+
+      assert metadata["grid"] == "twelve-column"
+      assert metadata["monkey"] == "capuchin"
+    end
+
     test "rejects malformed collections and mixed-project source ownership" do
       assert {:error, :invalid_asset_collection} =
                SnapshotObjectFormat.build_catalog([asset(41, "portrait.png", @hash), :invalid])
@@ -67,6 +97,24 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
 
       assert {:error, {:asset_source_project_mismatch, 7, _key}} =
                SnapshotObjectFormat.build_catalog([wrong_key])
+    end
+
+    test "requires one positive unique database id per logical asset" do
+      first = asset(41, "first.png", @hash)
+      duplicate_id = asset(41, "second.png", @hash)
+
+      assert {:error, {:duplicate_asset_ids, [41]}} =
+               SnapshotObjectFormat.build_catalog([first, duplicate_id])
+
+      assert {:error, {:duplicate_asset_ids, [41]}} =
+               SnapshotObjectFormat.build_catalog([first, first])
+
+      for invalid_id <- [nil, 0, -1] do
+        invalid = %{first | id: invalid_id}
+
+        assert {:error, {:invalid_asset_ids, [^invalid_id]}} =
+                 SnapshotObjectFormat.build_catalog([invalid])
+      end
     end
   end
 
@@ -145,6 +193,84 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
                  [asset(41, "portrait.png", @hash)],
                  max_asset_bytes: "large"
                )
+    end
+
+    test "scrubs project storage locators recursively while retaining logical entity ids" do
+      project = %{
+        "format_version" => 2,
+        "project" => %{"id" => 41, "project_id" => 7},
+        "sheets" => [
+          %{
+            "id" => 101,
+            "parent_id" => 41,
+            "grid" => "twelve-column",
+            "nested" => %{
+              "storageKeys" => ["current/key"],
+              "presignedUrls" => ["https://storage.invalid/current"],
+              "thumbnailPaths" => ["current/thumb.png"]
+            }
+          }
+        ]
+      }
+
+      assert {:ok, portable} = SnapshotObjectFormat.portable_project(project)
+      assert portable["project"]["id"] == 41
+      refute Map.has_key?(portable["project"], "project_id")
+      assert get_in(portable, ["sheets", Access.at(0), "id"]) == 101
+      assert get_in(portable, ["sheets", Access.at(0), "parent_id"]) == 41
+      assert get_in(portable, ["sheets", Access.at(0), "grid"]) == "twelve-column"
+      assert get_in(portable, ["sheets", Access.at(0), "nested"]) == %{}
+      assert :ok = SnapshotObjectFormat.validate_project(portable)
+    end
+
+    test "reader rejects recursive project storage locator variants" do
+      for key <- [
+            "storage_keys",
+            "storageKeys",
+            "presigned_url",
+            "presignedUrls",
+            "thumbnail_paths",
+            "thumbnailPaths",
+            "currentObjectUrls",
+            "projectId"
+          ] do
+        project = %{
+          "format_version" => 2,
+          "sheets" => [%{"id" => 101, "nested" => %{key => "current-object"}}]
+        }
+
+        assert {:error, {:unsafe_project_metadata_key, ^key}} =
+                 SnapshotObjectFormat.validate_project(project)
+      end
+
+      assert :ok =
+               SnapshotObjectFormat.validate_project(%{
+                 "format_version" => 2,
+                 "sheets" => [%{"id" => 101, "parent_id" => 41, "grid" => "safe"}]
+               })
+    end
+  end
+
+  describe "portable_project/1" do
+    test "removes every URL-shaped field from the canonical project object" do
+      project = %{
+        "format_version" => 2,
+        "project" => %{"name" => "Portable"},
+        "sheets" => [
+          %{
+            "avatar_url" => "https://storage.invalid/avatar.png",
+            "bannerUrl" => "/media/assets/42",
+            "externalURL" => "https://example.invalid/profile",
+            "label" => "Hero"
+          }
+        ]
+      }
+
+      assert {:ok, portable} = SnapshotObjectFormat.portable_project(project)
+      assert [%{"label" => "Hero"}] = portable["sheets"]
+
+      assert {:error, {:unsafe_project_metadata_key, "avatar_url"}} =
+               SnapshotObjectFormat.validate_project(project)
     end
   end
 

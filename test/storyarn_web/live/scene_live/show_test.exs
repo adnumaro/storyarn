@@ -9,6 +9,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -1335,6 +1336,31 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       updated = Scenes.get_zone!(zone.id)
       assert is_nil(updated.label_icon_asset_id)
+    end
+
+    test "shows the atomic storage limit without crashing", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      storage_limit = Billing.plan_limit(Billing.default_plan(), :storage_bytes_per_workspace)
+      fill_storage_fixture(project, user, storage_limit)
+      scene = scene_fixture(project)
+      zone = zone_fixture(scene)
+
+      {:ok, view, _html} =
+        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}")
+
+      svg = ~s(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>)
+
+      html =
+        render_hook(view, "upload_zone_label_icon", %{
+          "id" => to_string(zone.id),
+          "filename" => "over-limit.svg",
+          "content_type" => "image/svg+xml",
+          "data" => "data:image/svg+xml;base64,#{Base.encode64(svg)}"
+        })
+
+      assert html =~ "Storage limit reached. Upgrade your plan."
+      assert Process.alive?(view.pid)
+      assert is_nil(Scenes.get_zone!(zone.id).label_icon_asset_id)
     end
   end
 

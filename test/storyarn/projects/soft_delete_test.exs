@@ -55,17 +55,6 @@ defmodule Storyarn.Projects.SoftDeleteTest do
 
       assert Projects.list_projects_for_workspace(workspace.id, scope) == []
     end
-
-    test "soft-deleted projects are filtered from list_projects_with_auto_snapshots/0" do
-      user = user_fixture()
-      project = project_fixture(user)
-
-      {:ok, _} = Projects.delete_project(project, user.id)
-
-      projects = Projects.list_projects_with_auto_snapshots()
-      project_ids = Enum.map(projects, & &1.id)
-      refute project.id in project_ids
-    end
   end
 
   describe "list_deleted_projects/1" do
@@ -88,17 +77,6 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       _project = project_fixture(user, %{workspace: workspace})
 
       assert Projects.list_deleted_projects(workspace.id) == []
-    end
-
-    test "includes snapshot_count" do
-      user = user_fixture()
-      workspace = workspace_fixture(user)
-      project = project_fixture(user, %{workspace: workspace})
-
-      {:ok, _} = Projects.delete_project(project, user.id)
-
-      [deleted] = Projects.list_deleted_projects(workspace.id)
-      assert deleted.snapshot_count == 0
     end
 
     test "preloads deleted_by user" do

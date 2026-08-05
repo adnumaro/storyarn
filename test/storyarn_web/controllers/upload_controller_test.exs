@@ -1,11 +1,13 @@
 defmodule StoryarnWeb.UploadControllerTest do
   use StoryarnWeb.ConnCase, async: true
 
+  import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Assets
+  alias Storyarn.Billing
   alias StoryarnWeb.UploadController
 
   describe "create/2" do
@@ -118,6 +120,42 @@ defmodule StoryarnWeb.UploadControllerTest do
 
       assert %{"error" => "upload_failed"} = json_response(conn, 422)
       assert Assets.list_assets(project.id) == []
+    end
+
+    test "returns the stable 402 quota contract when the atomic asset insert rejects capacity", %{
+      conn: conn,
+      user: user
+    } do
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      storage_limit = Billing.plan_limit(Billing.default_plan(), :storage_bytes_per_workspace)
+      fill_storage_fixture(project, user, storage_limit)
+
+      path =
+        Path.join(
+          System.tmp_dir!(),
+          "storyarn-over-limit-upload-#{System.unique_integer([:positive])}.png"
+        )
+
+      File.write!(path, <<137, 80, 78, 71, 13, 10, 26, 10>>)
+      on_exit(fn -> File.rm(path) end)
+
+      upload = %Plug.Upload{path: path, filename: "over-limit.png", content_type: "image/png"}
+
+      params = %{
+        "workspace_slug" => workspace.slug,
+        "project_slug" => project.slug,
+        "file" => upload
+      }
+
+      conn =
+        conn
+        |> Map.put(:params, params)
+        |> assign(:current_scope, Scope.for_user(user))
+        |> UploadController.create(params)
+
+      assert %{"error" => "storage_limit_reached"} = json_response(conn, 402)
+      refute Enum.any?(Assets.list_assets(project.id), &(&1.filename == "over-limit.png"))
     end
   end
 end

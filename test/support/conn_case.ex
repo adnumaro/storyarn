@@ -27,6 +27,7 @@ defmodule StoryarnWeb.ConnCase do
       import Plug.Conn
       import Storyarn.Factory
       import Storyarn.StorageTestHelpers
+      import Storyarn.VersioningFixtures
       import StoryarnWeb.ConnCase
       # The default endpoint for testing
       @endpoint StoryarnWeb.Endpoint

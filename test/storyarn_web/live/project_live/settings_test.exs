@@ -11,11 +11,13 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Billing
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo
+  alias Storyarn.Versioning.ProjectSnapshot
 
   defp settings_path(project, section \\ nil) do
     base = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings"
@@ -28,6 +30,14 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
   defp get_usage_limits_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsUsageLimits")
+  end
+
+  defp get_snapshots_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsSnapshots")
+  end
+
+  defp get_version_control_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsVersionControl")
   end
 
   defp get_settings_layout_vue(view) do
@@ -348,6 +358,174 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
   end
 
+  describe "Snapshots section" do
+    setup :register_and_log_in_user
+
+    test "passes canonical accounting measurements and workspace categories to Vue", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      _asset = asset_fixture(project, user, %{size: 2_048})
+      token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
+      prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
+
+      snapshot =
+        %ProjectSnapshot{}
+        |> ProjectSnapshot.object_set_changeset(%{
+          project_id: project.id,
+          version_number: 1,
+          title: "Measured checkpoint",
+          project_storage_key: prefix <> "/project.json",
+          project_size_bytes: 100,
+          project_checksum: String.duplicate("a", 64),
+          format_version: 1,
+          object_prefix: prefix,
+          manifest_storage_key: prefix <> "/manifest.json",
+          manifest_size_bytes: 25,
+          manifest_checksum: String.duplicate("b", 64),
+          total_size_bytes: 175,
+          object_count: 3,
+          asset_count: 2,
+          blob_count: 1
+        })
+        |> Repo.insert!()
+
+      assert {:ok, _reservation} =
+               Billing.reserve_storage(%{
+                 workspace_id: project.workspace_id,
+                 project_id: project.id,
+                 project_snapshot_id: snapshot.id,
+                 idempotency_key: "settings-export:#{snapshot.id}",
+                 kind: "snapshot_export",
+                 reserved_bytes: 60
+               })
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+      vue = get_snapshots_vue(view)
+
+      assert vue.props |> Map.keys() |> Enum.sort() == ["snapshots", "storage-usage"]
+
+      assert [serialized] = vue.props["snapshots"]
+
+      assert Map.take(serialized, [
+               "mode",
+               "lifecycleStatus",
+               "integrityStatus",
+               "accountedSizeBytes",
+               "projectDataSizeBytes",
+               "metadataSizeBytes",
+               "assetBlobSizeBytes",
+               "assetCount",
+               "blobCount",
+               "activeReservationBytes",
+               "exportReservationBytes",
+               "accountingVersion"
+             ]) == %{
+               "mode" => "full",
+               "lifecycleStatus" => "ready",
+               "integrityStatus" => "verified",
+               "accountedSizeBytes" => "175",
+               "projectDataSizeBytes" => "100",
+               "metadataSizeBytes" => "25",
+               "assetBlobSizeBytes" => "50",
+               "assetCount" => 2,
+               "blobCount" => 1,
+               "activeReservationBytes" => "0",
+               "exportReservationBytes" => "60",
+               "accountingVersion" => 1
+             }
+
+      assert is_binary(serialized["accountingMeasuredAt"])
+
+      assert vue.props["storage-usage"] == %{
+               "currentAssetsBytes" => "2048",
+               "fullSnapshotsBytes" => "175",
+               "linkedSnapshotsBytes" => "0",
+               "activeReservationsBytes" => "60",
+               "totalAccountedBytes" => "2283",
+               "limitBytes" => "262144000",
+               "remainingBytes" => "262141717",
+               "limitKind" => "limited"
+             }
+    end
+
+    test "serializes bigint accounting measurements as exact decimal strings", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
+      prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
+      asset_blob_bytes = 9_007_199_254_740_993
+      total_bytes = asset_blob_bytes + 125
+
+      %ProjectSnapshot{}
+      |> ProjectSnapshot.object_set_changeset(%{
+        project_id: project.id,
+        version_number: 1,
+        title: "Large measured checkpoint",
+        project_storage_key: prefix <> "/project.json",
+        project_size_bytes: 100,
+        project_checksum: String.duplicate("a", 64),
+        format_version: 1,
+        object_prefix: prefix,
+        manifest_storage_key: prefix <> "/manifest.json",
+        manifest_size_bytes: 25,
+        manifest_checksum: String.duplicate("b", 64),
+        total_size_bytes: total_bytes,
+        asset_blob_size_bytes: asset_blob_bytes,
+        object_count: 3,
+        asset_count: 1,
+        blob_count: 1
+      })
+      |> Repo.insert!()
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+      vue = get_snapshots_vue(view)
+
+      assert [serialized] = vue.props["snapshots"]
+      assert serialized["assetBlobSizeBytes"] == "9007199254740993"
+      assert serialized["accountedSizeBytes"] == "9007199254741118"
+      assert vue.props["storage-usage"]["totalAccountedBytes"] == "9007199254741118"
+    end
+  end
+
+  describe "Entity auto-versioning settings" do
+    setup :register_and_log_in_user
+
+    test "exposes and persists only entity auto-version settings", %{conn: conn, user: user} do
+      project =
+        user
+        |> project_fixture(%{
+          auto_version_flows: true,
+          auto_version_scenes: true,
+          auto_version_sheets: true
+        })
+        |> Repo.preload(:workspace)
+
+      {:ok, view, _html} = live(conn, settings_path(project, "version-control"))
+      vue = get_version_control_vue(view)
+
+      assert vue.props["auto-version-flows"] == true
+      assert vue.props["auto-version-scenes"] == true
+      assert vue.props["auto-version-sheets"] == true
+
+      render_click(view, "save_version_control", %{
+        "version_control" => %{
+          "auto_version_flows" => "false",
+          "auto_version_scenes" => "false",
+          "auto_version_sheets" => "false"
+        }
+      })
+
+      updated = Repo.get!(Project, project.id)
+      refute updated.auto_version_flows
+      refute updated.auto_version_scenes
+      refute updated.auto_version_sheets
+    end
+  end
+
   describe "Usage limits section" do
     setup :register_and_log_in_user
 
@@ -380,11 +558,27 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                "flowNodes" => 3
              }
 
-      assert usage["storage"] == %{"projectBytes" => 2_048, "assetCount" => 1}
+      assert usage["storage"] == %{
+               "projectAccountedBytes" => "2048",
+               "projectAssetBytes" => "2048",
+               "projectSnapshotBytes" => "0",
+               "projectReservationBytes" => "0",
+               "assetCount" => 1,
+               "workspace" => %{
+                 "currentAssetsBytes" => "2048",
+                 "fullSnapshotsBytes" => "0",
+                 "linkedSnapshotsBytes" => "0",
+                 "activeReservationsBytes" => "0",
+                 "totalAccountedBytes" => "2048",
+                 "limitBytes" => "262144000",
+                 "remainingBytes" => "262141952",
+                 "limitKind" => "limited"
+               }
+             }
 
       assert usage["workspace"]["storageBytes"] == %{
-               "used" => 2_048,
-               "limit" => 262_144_000
+               "used" => "2048",
+               "limit" => "262144000"
              }
     end
 

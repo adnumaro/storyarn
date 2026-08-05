@@ -2874,7 +2874,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
              )
     end
 
-    test "rejects legacy sequence resources without historical IDs", %{flow: flow} do
+    test "rejects sequence resources without snapshot identities", %{flow: flow} do
       {:ok, sequence} =
         Flows.create_sequence(flow.id, %{
           "name" => "Strict sequence",
@@ -2889,7 +2889,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       snapshot = FlowBuilder.build_snapshot(flow)
 
-      legacy_snapshot =
+      malformed_snapshot =
         Map.update!(snapshot, "nodes", fn nodes ->
           Enum.map(nodes, fn
             %{"original_id" => node_id, "sequence_tracks" => [track_data]} = node
@@ -2902,7 +2902,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
         end)
 
       assert {:error, {:invalid_snapshot_original_id, :sequence_track, _invalid}} =
-               FlowBuilder.restore_snapshot(flow, legacy_snapshot, restore_action: {:entity_version_restore, "flow"})
+               FlowBuilder.restore_snapshot(flow, malformed_snapshot, restore_action: {:entity_version_restore, "flow"})
 
       assert Repo.get!(SequenceTrack, track.id).flow_node_id == sequence.id
     end
@@ -3386,7 +3386,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
         "position_x" => 10.0,
         "position_y" => 20.0,
         "data" => %{"text" => "No identity", "responses" => []},
-        "source" => "manual",
         "parent_id" => nil
       }
 
@@ -3406,7 +3405,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
     } do
       snapshot = FlowBuilder.build_snapshot(flow)
 
-      legacy_nodes =
+      malformed_nodes =
         [
           %{
             "original_id" => 99_998,
@@ -3414,11 +3413,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
             "position_x" => 10.0,
             "position_y" => 20.0,
             "data" => %{
-              "localization_id" => "legacy.dialogue",
+              "localization_id" => "invalid.dialogue",
               "text" => "Choose",
-              "responses" => [%{"id" => "legacy.choice", "text" => "Continue"}]
+              "responses" => [%{"id" => "invalid.choice", "text" => "Continue"}]
             },
-            "source" => "manual",
             "parent_id" => nil
           },
           %{
@@ -3427,24 +3425,23 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
             "position_x" => 30.0,
             "position_y" => 40.0,
             "data" => %{},
-            "source" => "manual",
             "parent_id" => nil
           }
         ] ++ Enum.filter(snapshot["nodes"], &(&1["type"] in ~w(entry exit)))
 
-      legacy_connection = %{
+      malformed_connection = %{
         "original_id" => 88_888,
         "source_node_index" => 0,
         "target_node_index" => 1,
-        "source_pin" => "legacy.choice",
+        "source_pin" => "invalid.choice",
         "target_pin" => "input",
         "label" => nil
       }
 
-      snapshot = Map.merge(snapshot, %{"nodes" => legacy_nodes, "connections" => [legacy_connection]})
+      snapshot = Map.merge(snapshot, %{"nodes" => malformed_nodes, "connections" => [malformed_connection]})
       flow_count = Repo.aggregate(from(candidate in Flow, where: candidate.project_id == ^project.id), :count)
 
-      assert {:error, {:invalid_snapshot_dialogue_localization_id, 99_998, "legacy.dialogue"}} =
+      assert {:error, {:invalid_snapshot_dialogue_localization_id, 99_998, "invalid.dialogue"}} =
                FlowBuilder.instantiate_snapshot(project.id, snapshot, reset_shortcut: true)
 
       assert Repo.aggregate(from(candidate in Flow, where: candidate.project_id == ^project.id), :count) ==
@@ -4175,7 +4172,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert {:error, {:asset_materialization_failed, broken_track_asset_id, :missing_asset_metadata}} =
                FlowBuilder.instantiate_snapshot(target_project.id, snapshot,
                  asset_mode: :copy,
-                 asset_error_mode: :strict,
                  user_id: user.id,
                  reset_shortcut: true
                )
@@ -4523,10 +4519,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert cloned_connection.source_pin == source_pin
     end
 
-    test "rejects legacy sequence snapshots without config", %{project: project, flow: flow} do
+    test "rejects sequence snapshots without config", %{project: project, flow: flow} do
       snapshot = FlowBuilder.build_snapshot(flow)
 
-      legacy_sequence = %{
+      malformed_sequence = %{
         "original_id" => 99_997,
         "type" => "sequence",
         "position_x" => 10.0,
@@ -4539,7 +4535,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
         "sequence_visual_layers" => []
       }
 
-      snapshot = Map.put(snapshot, "nodes", [legacy_sequence | snapshot["nodes"]])
+      snapshot = Map.put(snapshot, "nodes", [malformed_sequence | snapshot["nodes"]])
       flow_count_before = Repo.aggregate(Flow, :count)
 
       assert {:error, {:invalid_sequence_config_snapshot, 99_997, nil}} =
@@ -4664,32 +4660,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert detail =~ "Renamed"
     end
 
-    test "a legacy snapshot's removed \"source\" key is not a node change" do
-      # Snapshots written before the Screenplays feature was deleted carry
-      # "source" => "manual". Freshly built ones no longer do. Without this,
-      # every node of every pre-existing version reads as modified.
-      legacy_node = %{
-        "original_id" => 1,
-        "type" => "dialogue",
-        "position_x" => 0.0,
-        "position_y" => 0.0,
-        "data" => %{"text" => "hi"},
-        "source" => "manual",
-        "parent_id" => nil
-      }
-
-      current_node = Map.delete(legacy_node, "source")
-
-      old = %{"name" => "F", "nodes" => [legacy_node], "connections" => []}
-      new = %{"name" => "F", "nodes" => [current_node], "connections" => []}
-
-      assert FlowBuilder.diff_snapshots(old, new) == []
-
-      # Positive control: a real change on the same pair is still reported.
-      changed = %{"name" => "F", "nodes" => [put_in(current_node, ["data", "text"], "bye")], "connections" => []}
-      assert Enum.any?(FlowBuilder.diff_snapshots(old, changed), &(&1.category == :node && &1.action == :modified))
-    end
-
     test "detects added nodes" do
       old = %{"name" => "F", "nodes" => [], "connections" => []}
       new = %{"name" => "F", "nodes" => [%{"type" => "dialogue"}], "connections" => []}
@@ -4752,22 +4722,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       changes = FlowBuilder.diff_snapshots(old, new)
       assert changes == []
-    end
-
-    test "ignores legacy denormalized word counts" do
-      current_node = %{
-        "type" => "dialogue",
-        "original_id" => 1,
-        "data" => %{"text" => "Hi"},
-        "position_x" => 0,
-        "position_y" => 0
-      }
-
-      legacy_node = Map.put(current_node, "word_count", 1)
-      old = %{"name" => "F", "nodes" => [legacy_node], "connections" => []}
-      new = %{"name" => "F", "nodes" => [current_node], "connections" => []}
-
-      assert FlowBuilder.diff_snapshots(old, new) == []
     end
 
     test "returns empty list for identical snapshots" do

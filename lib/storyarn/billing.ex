@@ -7,6 +7,7 @@ defmodule Storyarn.Billing do
 
   alias Storyarn.Billing.Limits
   alias Storyarn.Billing.Plan
+  alias Storyarn.Billing.StorageAccounting
   alias Storyarn.Billing.SubscriptionCrud
 
   # Plan queries
@@ -32,10 +33,56 @@ defmodule Storyarn.Billing do
   defdelegate can_create_item?(project), to: Limits
   defdelegate can_create_items?(project, count), to: Limits
   defdelegate can_create_named_version?(project_id, workspace_id), to: Limits
-  defdelegate can_create_project_snapshot?(project_id, workspace_id), to: Limits
   defdelegate project_usage(project_id, workspace_id), to: Limits
   defdelegate project_limits_usage(project), to: Limits
   defdelegate usage(workspace), to: Limits
+
+  # Authoritative storage accounting and reservations
+  defdelegate workspace_storage_usage(workspace_id), to: StorageAccounting, as: :workspace_usage
+  defdelegate project_storage_usage(project_id), to: StorageAccounting, as: :project_usage
+
+  defdelegate active_storage_reservations_by_snapshot(snapshot_ids),
+    to: StorageAccounting,
+    as: :active_reservations_by_snapshot
+
+  defdelegate reserve_storage(attrs), to: StorageAccounting, as: :reserve
+
+  defdelegate extend_storage_reservation(reservation_id, lease_token, expected_generation, target_bytes),
+    to: StorageAccounting,
+    as: :extend_to
+
+  defdelegate mark_storage_reservation_started(reservation_id, lease_token, expected_generation, cleanup_plan),
+    to: StorageAccounting,
+    as: :mark_storage_started
+
+  defdelegate commit_storage_reservation(reservation_id, lease_token, expected_generation, actual_bytes, owner_fun),
+    to: StorageAccounting,
+    as: :commit
+
+  defdelegate release_storage_reservation(reservation_id, lease_token, expected_generation, attrs),
+    to: StorageAccounting,
+    as: :release
+
+  defdelegate storage_reservation_object_prefixes(reservation),
+    to: StorageAccounting,
+    as: :operation_object_prefixes
+
+  defdelegate with_storage_accounting_lock(workspace_id, fun, opts \\ []),
+    to: StorageAccounting,
+    as: :with_workspace_lock
+
+  defdelegate transact_with_workspace_lock(workspace_id, fun, opts \\ []),
+    to: StorageAccounting
+
+  defdelegate workspace_lock_held?(workspace_id), to: StorageAccounting
+
+  defdelegate snapshot_storage_commit_context?(snapshot_id, kind),
+    to: StorageAccounting,
+    as: :snapshot_commit_context?
+
+  defdelegate emit_provider_storage_footprint(workspace_id, measurements),
+    to: StorageAccounting,
+    as: :emit_provider_footprint
 
   # Subscription operations
   defdelegate plan_for(workspace), to: SubscriptionCrud
