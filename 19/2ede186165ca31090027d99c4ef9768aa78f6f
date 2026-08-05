@@ -1,0 +1,85 @@
+lib/storyarn/project_templates/portable_import.ex
+  s_c2ae682cd97119::t_d5783b247a1a27 789,1235-1237,1336-1337
+  s_c2ae682cd97119::t_7d3b0921ccd8b9 1338
+lib/storyarn/billing/storage_accounting.ex
+  s_c2ae682cd97119::t_cc4715cf8fc8f2 1923
+test/storyarn/versioning/snapshot_object_format_test.exs
+  s_c2ae682cd97119::t_aa080a22c223a9 254-276
+lib/storyarn/imports/materializer.ex
+  s_c2ae682cd97119::t_c01940bd8ffa93 144,149-154,156,158-160
+  s_c2ae682cd97119::t_f8dd5e5cea6b43 155,157
+  s_c2ae682cd97119::t_e660021a79ef1b 161
+lib/storyarn/versioning/snapshot_object_storage.ex
+  s_c2ae682cd97119::t_1be6f5dcca55a0 657-663,675-707
+assets/app/shared/utils/storage-accounting.ts
+  s_c2ae682cd97119::t_317e60747caca1 58-69,108-112
+  s_c2ae682cd97119::t_4aef3af66ee30a 82-84
+assets/app/test/live/project/settings/ProjectSettingsUsageLimits.test.ts
+  s_c2ae682cd97119::t_317e60747caca1 257-287
+CLAUDE.md
+  s_c2ae682cd97119::t_358be7c3ba49d6 191,195
+docs/reference/component-registry.md
+  s_c2ae682cd97119::t_358be7c3ba49d6 155
+lib/storyarn_web/live/project_settings_live/usage_limits.ex
+  s_c2ae682cd97119::t_2cd524abf7e072 6-8
+test/storyarn/project_templates/portable_test.exs
+  s_c2ae682cd97119::t_89061b67c6e5cf 74-96,127,1233
+priv/gettext/projects.pot
+  s_c2ae682cd97119::t_966758d1f77cf1 14,19,24,29,45,50,60,65,70,78-79,95,101,108,115,122,192-193,294,299,823,828,833,838,843,848,853,858,863
+lib/storyarn/repo.ex
+  s_c2ae682cd97119::t_f8dd5e5cea6b43 25
+  s_c2ae682cd97119::t_cc4715cf8fc8f2 5-24,26-30
+assets/app/live/workspace/settings/WorkspaceSettingsDeletedProjects.vue
+  s_c2ae682cd97119::t_bfcb575b15ab4e 52
+lib/storyarn/versioning/snapshot_object_format.ex
+  s_c2ae682cd97119::t_aa080a22c223a9 33-35,745-747
+test/storyarn/imports/materializer_test.exs
+  s_c2ae682cd97119::t_c01940bd8ffa93 216-225
+test/storyarn/versioning/snapshot_object_storage_test.exs
+  s_c2ae682cd97119::t_83e867a17f39cb 1393-1405
+  s_c2ae682cd97119::t_1be6f5dcca55a0 627-675
+  s_c2ae682cd97119::t_517f04c333dbb5 405,577,739,1138
+assets/app/locales/en/project-settings.json
+  s_c2ae682cd97119::t_358be7c3ba49d6 139
+test/storyarn/billing/storage_accounting_test.exs
+  s_c2ae682cd97119::t_517f04c333dbb5 192-197,387-392
+  s_c2ae682cd97119::t_6da0f160409166 140-166,235-238
+docs/reference/domain-patterns.md
+  s_c2ae682cd97119::t_358be7c3ba49d6 45,49,52
+assets/app/test/shared/utils/storage-accounting.test.ts
+  s_c2ae682cd97119::t_317e60747caca1 15,51-56
+  s_c2ae682cd97119::t_cb3d2e9ba30087 57
+assets/app/test/live/project/settings/ProjectSettingsVersionControl.test.ts
+  s_c2ae682cd97119::t_1a38191700e50c 11,17-22,31
+assets/app/locales/es/project-settings.json
+  s_c2ae682cd97119::t_358be7c3ba49d6 139
+test/storyarn_web/controllers/upload_controller_test.exs
+  s_c2ae682cd97119::t_6da0f160409166 4,10,124-144,151-152,154,156-158
+  s_c2ae682cd97119::t_517f04c333dbb5 145-150,153,155
+  s_c2ae682cd97119::t_0c54f6d8f88081 159
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_c2ae682cd97119::t_2cd524abf7e072 64-104
+  s_c2ae682cd97119::t_cc4715cf8fc8f2 240
+assets/app/live/project/settings/ProjectSettingsVersionControl.vue
+  s_c2ae682cd97119::t_1a38191700e50c 93,97,101
+lib/storyarn/billing/limits.ex
+  s_c2ae682cd97119::t_cc4715cf8fc8f2 250
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_c2ae682cd97119::t_358be7c3ba49d6 1210,1215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "192ede186165ca31090027d99c4ef9768aa78f6f",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
