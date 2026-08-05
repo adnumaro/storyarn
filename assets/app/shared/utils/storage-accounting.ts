@@ -43,36 +43,19 @@ export function formatBytes(bytes: ByteCount | null | undefined, locale?: string
   if (parsed === null) return "\u2014";
   if (parsed === 0n) return "0 B";
 
-  let divisor = 1n;
-  let unitIndex = 0;
+  const unit = byteUnit(parsed);
 
-  while (parsed >= divisor * BYTES_PER_UNIT && unitIndex < BYTE_UNITS.length - 1) {
-    divisor *= BYTES_PER_UNIT;
-    unitIndex += 1;
+  if (unit.index === 0) {
+    return `${new Intl.NumberFormat(locale).format(parsed)} ${BYTE_UNITS[unit.index]}`;
   }
 
-  if (unitIndex === 0) {
-    return `${new Intl.NumberFormat(locale).format(parsed)} ${BYTE_UNITS[unitIndex]}`;
-  }
-
-  let atLeastTenUnits = parsed >= divisor * 10n;
-  let scale = atLeastTenUnits ? 1n : 10n;
-  let rounded = (parsed * scale + divisor / 2n) / divisor;
-
-  if (rounded >= BYTES_PER_UNIT * scale && unitIndex < BYTE_UNITS.length - 1) {
-    divisor *= BYTES_PER_UNIT;
-    unitIndex += 1;
-    atLeastTenUnits = parsed >= divisor * 10n;
-    scale = atLeastTenUnits ? 1n : 10n;
-    rounded = (parsed * scale + divisor / 2n) / divisor;
-  }
-
-  const boundedValue = Number(rounded) / Number(scale);
+  const rounded = roundedByteUnit(parsed, unit);
+  const boundedValue = Number(rounded.value) / Number(rounded.scale);
   const formatted = new Intl.NumberFormat(locale, {
-    maximumFractionDigits: atLeastTenUnits ? 0 : 1,
+    maximumFractionDigits: rounded.atLeastTenUnits ? 0 : 1,
   }).format(boundedValue);
 
-  return `${formatted} ${BYTE_UNITS[unitIndex]}`;
+  return `${formatted} ${BYTE_UNITS[rounded.index]}`;
 }
 
 /**
@@ -105,6 +88,10 @@ export function storagePercentage(
     return used === 0n ? percentage("zero", 0n, 0) : percentage("over_limit", null, 100);
   }
 
+  return limitedPercentage(used, limit);
+}
+
+function limitedPercentage(used: bigint, limit: bigint): StoragePercentage {
   const roundedBasisPoints = (used * BASIS_POINTS_PER_WHOLE + limit / 2n) / limit;
   const exactBasisPoints =
     used < limit && roundedBasisPoints >= BASIS_POINTS_PER_WHOLE
@@ -162,6 +149,44 @@ function parseByteCount(value: ByteCount | null | undefined): bigint | null {
   if (typeof value !== "string" || !/^(0|[1-9]\d*)$/.test(value)) return null;
 
   return BigInt(value);
+}
+
+interface ByteUnit {
+  divisor: bigint;
+  index: number;
+}
+
+interface RoundedByteUnit extends ByteUnit {
+  atLeastTenUnits: boolean;
+  scale: bigint;
+  value: bigint;
+}
+
+function byteUnit(bytes: bigint): ByteUnit {
+  let divisor = 1n;
+  let index = 0;
+
+  while (bytes >= divisor * BYTES_PER_UNIT && index < BYTE_UNITS.length - 1) {
+    divisor *= BYTES_PER_UNIT;
+    index += 1;
+  }
+
+  return { divisor, index };
+}
+
+function roundedByteUnit(bytes: bigint, unit: ByteUnit): RoundedByteUnit {
+  const atLeastTenUnits = bytes >= unit.divisor * 10n;
+  const scale = atLeastTenUnits ? 1n : 10n;
+  const value = (bytes * scale + unit.divisor / 2n) / unit.divisor;
+
+  if (value >= BYTES_PER_UNIT * scale && unit.index < BYTE_UNITS.length - 1) {
+    return roundedByteUnit(bytes, {
+      divisor: unit.divisor * BYTES_PER_UNIT,
+      index: unit.index + 1,
+    });
+  }
+
+  return { ...unit, atLeastTenUnits, scale, value };
 }
 
 function percentage(
