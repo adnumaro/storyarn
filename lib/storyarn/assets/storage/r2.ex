@@ -8,6 +8,8 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   @behaviour Storyarn.Assets.Storage
 
+  alias Storyarn.Assets.Storage
+
   @conditional_copy_attempts 3
   @stream_chunk_size 1_048_576
   @multipart_chunk_size 5 * 1024 * 1024
@@ -166,6 +168,24 @@ defmodule Storyarn.Assets.Storage.R2 do
   def stream(_key, _offset, _length, _opts), do: {:error, :invalid_range}
 
   @impl true
+  def list_prefix(prefix, opts) when is_binary(prefix) and is_list(opts) do
+    with true <- Storage.canonical_prefix?(prefix) and Keyword.keyword?(opts),
+         {:ok, limit} <- list_limit(opts),
+         {:ok, request_opts} <- put_continuation_token([prefix: prefix, max_keys: limit], Keyword.get(opts, :cursor)) do
+      case bucket() |> ExAws.S3.list_objects_v2(request_opts) |> ExAws.request() do
+        {:ok, %{body: body}} when is_map(body) -> normalize_list_page(body, prefix)
+        {:error, reason} -> {:error, reason}
+        _invalid -> {:error, :invalid_list_response}
+      end
+    else
+      false -> {:error, :invalid_prefix}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def list_prefix(_prefix, _opts), do: {:error, :invalid_prefix}
+
+  @impl true
   def delete(key) do
     bucket = bucket()
 
@@ -174,6 +194,71 @@ defmodule Storyarn.Assets.Storage.R2 do
       {:error, reason} -> {:error, reason}
     end
   end
+
+  @impl true
+  def delete_if_matches(key, expected_identity)
+      when is_binary(expected_identity) and expected_identity != "" and byte_size(expected_identity) <= 1_024 do
+    request = ExAws.S3.delete_object(bucket(), key)
+    request = %{request | headers: Map.put(request.headers, "if-match", expected_identity)}
+
+    case ExAws.request(request) do
+      {:ok, _response} -> :ok
+      {:error, {:http_error, 404, _response}} -> :ok
+      {:error, {:http_error, 412, _response}} -> {:error, :object_changed}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def delete_if_matches(_key, _expected_identity), do: {:error, :invalid_object_identity}
+
+  @impl true
+  def namespace_fingerprint do
+    s3_config = Application.get_env(:ex_aws, :s3, [])
+
+    with {:ok, namespace_parts} <-
+           normalize_namespace_parts([
+             config()[:endpoint_url],
+             bucket(),
+             Keyword.get(s3_config, :host),
+             Keyword.get(s3_config, :scheme)
+           ]),
+         {:ok, port} <- normalize_namespace_port(Keyword.get(s3_config, :port)) do
+      fingerprint =
+        ([Atom.to_string(__MODULE__) | namespace_parts] ++ [port])
+        |> Jason.encode_to_iodata!()
+        |> then(&:crypto.hash(:sha256, &1))
+        |> Base.encode16(case: :lower)
+
+      {:ok, fingerprint}
+    end
+  end
+
+  defp normalize_namespace_parts(parts) do
+    parts
+    |> Enum.reduce_while({:ok, []}, fn part, {:ok, normalized} ->
+      case normalize_namespace_part(part) do
+        {:ok, value} -> {:cont, {:ok, [value | normalized]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, normalized} -> {:ok, Enum.reverse(normalized)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp normalize_namespace_part(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> {:error, :invalid_storage_namespace}
+      normalized -> {:ok, normalized}
+    end
+  end
+
+  defp normalize_namespace_part(_value), do: {:error, :invalid_storage_namespace}
+
+  defp normalize_namespace_port(nil), do: {:ok, nil}
+  defp normalize_namespace_port(port) when is_integer(port), do: {:ok, port}
+  defp normalize_namespace_port(_port), do: {:error, :invalid_storage_namespace}
 
   @impl true
   def get_url(key) do
@@ -399,6 +484,88 @@ defmodule Storyarn.Assets.Storage.R2 do
       request
     end
   end
+
+  defp put_continuation_token(opts, nil), do: {:ok, opts}
+
+  defp put_continuation_token(opts, token) when is_binary(token) and token != "",
+    do: {:ok, Keyword.put(opts, :continuation_token, token)}
+
+  defp put_continuation_token(_opts, _invalid), do: {:error, :invalid_cursor}
+
+  defp list_limit(opts) do
+    case Keyword.get(opts, :limit, 1_000) do
+      limit when is_integer(limit) and limit > 0 -> {:ok, min(limit, 1_000)}
+      _invalid -> {:error, :invalid_limit}
+    end
+  end
+
+  defp normalize_list_page(body, prefix) do
+    contents = Map.get(body, :contents, Map.get(body, "Contents", [])) || []
+    is_truncated = Map.get(body, :is_truncated, Map.get(body, "IsTruncated"))
+    continuation_token = Map.get(body, :next_continuation_token, Map.get(body, "NextContinuationToken"))
+
+    with true <- is_list(contents),
+         {:ok, objects} <- normalize_list_objects(contents, prefix),
+         {:ok, truncated?} <- normalize_is_truncated(is_truncated),
+         {:ok, cursor} <- normalize_list_cursor(continuation_token, truncated?) do
+      {:ok, %{objects: objects, cursor: cursor}}
+    else
+      _invalid -> {:error, :invalid_list_response}
+    end
+  end
+
+  defp normalize_list_objects(contents, prefix) do
+    contents
+    |> Enum.reduce_while({:ok, []}, fn object, {:ok, objects} ->
+      with true <- is_map(object),
+           key when is_binary(key) <- Map.get(object, :key, Map.get(object, "Key")),
+           true <- Storage.canonical_key?(key) and String.starts_with?(key, prefix),
+           {:ok, size} <- normalize_list_size(Map.get(object, :size, Map.get(object, "Size"))),
+           {:ok, identity} <- normalize_object_identity(object) do
+        {:cont, {:ok, [%{key: key, size: size, identity: identity} | objects]}}
+      else
+        _invalid -> {:halt, {:error, :invalid_list_response}}
+      end
+    end)
+    |> case do
+      {:ok, objects} -> {:ok, Enum.reverse(objects)}
+      error -> error
+    end
+  end
+
+  defp normalize_list_size(size) when is_integer(size) and size >= 0, do: {:ok, size}
+
+  defp normalize_list_size(size) when is_binary(size) do
+    case Integer.parse(size) do
+      {parsed, ""} when parsed >= 0 -> {:ok, parsed}
+      _invalid -> {:error, :invalid_list_response}
+    end
+  end
+
+  defp normalize_list_size(_size), do: {:error, :invalid_list_response}
+
+  defp normalize_object_identity(object) do
+    identity =
+      Map.get(
+        object,
+        :e_tag,
+        Map.get(object, :etag, Map.get(object, "ETag"))
+      )
+
+    if is_binary(identity) and identity != "" and byte_size(identity) <= 1_024,
+      do: {:ok, identity},
+      else: {:error, :invalid_list_response}
+  end
+
+  defp normalize_is_truncated(value) when value in [true, "true"], do: {:ok, true}
+  defp normalize_is_truncated(value) when value in [false, "false"], do: {:ok, false}
+  defp normalize_is_truncated(_value), do: {:error, :invalid_list_response}
+
+  defp normalize_list_cursor(cursor, true) when is_binary(cursor) and cursor != "" and byte_size(cursor) <= 4_096,
+    do: {:ok, cursor}
+
+  defp normalize_list_cursor(cursor, false) when cursor in [nil, ""], do: {:ok, nil}
+  defp normalize_list_cursor(_cursor, _truncated?), do: {:error, :invalid_list_response}
 
   defp cloudflare_r2_endpoint? do
     case URI.parse(config()[:endpoint_url] || "").host do

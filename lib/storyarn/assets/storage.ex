@@ -16,6 +16,13 @@ defmodule Storyarn.Assets.Storage do
           etag: String.t() | nil,
           content_type: String.t() | nil
         }
+  @type object_identity :: String.t()
+  @type listed_object :: %{
+          key: key(),
+          size: non_neg_integer(),
+          identity: object_identity()
+        }
+  @type list_page :: %{objects: [listed_object()], cursor: String.t() | nil}
   @type conditional_copy_cleanup_error ::
           {:conditional_copy_cleanup_required, destination_created? :: boolean(), pending_cleanup_key :: key(),
            cleanup_reason :: term()}
@@ -27,6 +34,17 @@ defmodule Storyarn.Assets.Storage do
   @callback put_if_absent(key, binary_data, content_type) ::
               {:ok, url, created? :: boolean()} | {:error, term()}
   @callback delete(key) :: :ok | {:error, term()}
+
+  @doc """
+  Deletes an object only when its opaque identity still matches the value
+  returned by `list_prefix/2`.
+
+  Backends without an atomic conditional delete must fail closed unless the
+  caller holds an external write fence for the complete verify/delete operation.
+  """
+  @callback delete_if_matches(key, object_identity()) :: :ok | {:error, term()}
+  @doc "Returns an opaque stable identity for the configured provider namespace."
+  @callback namespace_fingerprint() :: {:ok, String.t()} | {:error, term()}
   @callback get_url(key) :: url
   @callback download(key) :: {:ok, binary_data} | {:error, term()}
   @callback stat(key) :: {:ok, object_stat} | {:error, term()}
@@ -38,6 +56,7 @@ defmodule Storyarn.Assets.Storage do
   @callback copy_if_absent(source_key :: key, dest_key :: key) ::
               {:ok, created? :: boolean()} | {:error, term()}
   @callback key_from_url(url) :: {:ok, key} | {:error, :invalid_url}
+  @callback list_prefix(String.t(), keyword()) :: {:ok, list_page()} | {:error, term()}
 
   @doc """
   Returns the configured storage adapter.
@@ -100,6 +119,13 @@ defmodule Storyarn.Assets.Storage do
   """
   def stream(key, offset, length, opts \\ []) do
     adapter().stream(key, offset, length, opts)
+  end
+
+  @doc "Lists one bounded page of object metadata beneath an exact prefix."
+  def list_prefix(prefix, opts \\ []) when is_binary(prefix) and is_list(opts) do
+    if canonical_prefix?(prefix) and Keyword.keyword?(opts),
+      do: adapter().list_prefix(prefix, opts),
+      else: {:error, :invalid_prefix}
   end
 
   @doc """
@@ -254,6 +280,15 @@ defmodule Storyarn.Assets.Storage do
   end
 
   def canonical_key?(_key), do: false
+
+  @doc false
+  @spec canonical_prefix?(term()) :: boolean()
+  def canonical_prefix?(prefix) when is_binary(prefix) do
+    String.ends_with?(prefix, "/") and not String.ends_with?(prefix, "//") and
+      canonical_key?(String.trim_trailing(prefix, "/"))
+  end
+
+  def canonical_prefix?(_prefix), do: false
 
   defp canonical_segments?(segments) do
     segments != [] and

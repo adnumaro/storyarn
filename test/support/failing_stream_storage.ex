@@ -4,6 +4,9 @@ defmodule Storyarn.FailingStreamStorage do
   @behaviour Storyarn.Assets.Storage
 
   @impl true
+  defdelegate list_prefix(prefix, opts), to: Storyarn.Assets.Storage.Local
+
+  @impl true
   def stat(_key), do: {:ok, %{size: 8, etag: nil, content_type: "application/octet-stream"}}
 
   @impl true
@@ -20,6 +23,12 @@ defmodule Storyarn.FailingStreamStorage do
 
   @impl true
   def delete(_key), do: {:error, :unsupported}
+
+  @impl true
+  def delete_if_matches(_key, _identity), do: {:error, :unsupported}
+
+  @impl true
+  def namespace_fingerprint, do: {:ok, String.duplicate("a", 64)}
 
   @impl true
   def get_url(_key), do: ""

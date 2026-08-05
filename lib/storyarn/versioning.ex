@@ -18,6 +18,7 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCrud
+  alias Storyarn.Versioning.ProjectSnapshotReset
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
   alias Storyarn.Versioning.SnapshotObjectStorage
@@ -157,6 +158,30 @@ defmodule Storyarn.Versioning do
   defdelegate cancel_project_snapshot(current_scope, project, snapshot_id),
     to: ProjectSnapshotBuild,
     as: :cancel
+
+  @doc false
+  defdelegate prepare_project_snapshot_reset(workspace_id, environment, opts \\ []),
+    to: ProjectSnapshotReset,
+    as: :prepare
+
+  @doc false
+  defdelegate execute_project_snapshot_reset(plan, confirmation_digest, opts \\ []),
+    to: ProjectSnapshotReset,
+    as: :execute
+
+  @doc false
+  defdelegate prepare_project_snapshot_provider_reset(environment, opts \\ []),
+    to: ProjectSnapshotReset,
+    as: :prepare_provider
+
+  @doc false
+  defdelegate validate_project_snapshot_reset_plan(plan),
+    to: ProjectSnapshotReset,
+    as: :validate_plan
+
+  defdelegate verify_project_snapshot_reset_rollout_readiness(environment, opts \\ []),
+    to: ProjectSnapshotReset,
+    as: :verify_rollout_readiness
 
   @doc "Subscribes the current process to lifecycle changes for one project's snapshots."
   defdelegate subscribe_project_snapshots(project_id),

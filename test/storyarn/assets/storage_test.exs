@@ -48,6 +48,17 @@ defmodule Storyarn.Assets.StorageTest do
     end
   end
 
+  describe "canonical_prefix?/1" do
+    test "requires exactly one trailing slash" do
+      assert Storage.canonical_prefix?("projects/1/snapshots/")
+      refute Storage.canonical_prefix?("projects/1/snapshots")
+      refute Storage.canonical_prefix?("projects/1/snapshots//")
+
+      assert {:error, :invalid_prefix} =
+               Storage.list_prefix("projects/1/snapshots//")
+    end
+  end
+
   # =============================================================================
   # upload/3
   # =============================================================================
