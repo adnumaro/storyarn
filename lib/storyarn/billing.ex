@@ -40,6 +40,7 @@ defmodule Storyarn.Billing do
   # Authoritative storage accounting and reservations
   defdelegate workspace_storage_usage(workspace_id), to: StorageAccounting, as: :workspace_usage
   defdelegate project_storage_usage(project_id), to: StorageAccounting, as: :project_usage
+  defdelegate project_snapshot_slot_usage(project_id), to: StorageAccounting
 
   defdelegate active_storage_reservations_by_snapshot(snapshot_ids),
     to: StorageAccounting,

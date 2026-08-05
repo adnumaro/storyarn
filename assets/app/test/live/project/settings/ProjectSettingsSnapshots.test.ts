@@ -44,6 +44,15 @@ interface SnapshotFixture {
   exportReservationBytes: string;
   accountingVersion: number | null;
   accountingMeasuredAt: string | null;
+  plannedSizeBytes: string | null;
+  progressPhase: string | null;
+  progressBytes: string;
+  progressTotalBytes: string | null;
+  failureCode: string | null;
+  failureMessage: string | null;
+  capturedAt: string | null;
+  cancelRequestedAt: string | null;
+  canCancel: boolean;
 }
 
 const measuredSnapshot: SnapshotFixture = {
@@ -67,6 +76,15 @@ const measuredSnapshot: SnapshotFixture = {
   exportReservationBytes: "256",
   accountingVersion: 1,
   accountingMeasuredAt: "2026-07-17T10:00:00Z",
+  plannedSizeBytes: String(6 * 1024),
+  progressPhase: "complete",
+  progressBytes: String(6 * 1024),
+  progressTotalBytes: String(6 * 1024),
+  failureCode: null,
+  failureMessage: null,
+  capturedAt: "2026-07-17T09:59:00Z",
+  cancelRequestedAt: null,
+  canCancel: false,
 };
 
 function mountSnapshots(
@@ -77,6 +95,7 @@ function mountSnapshots(
     props: {
       snapshots: [snapshot],
       storageUsage: workspaceStorage,
+      snapshotLimit: { used: 2, limit: 10 },
     },
   });
 
@@ -129,8 +148,11 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(wrapper.find('[aria-label="Snapshot integrity: Verified"]').exists()).toBe(true);
     expect(wrapper.find('[aria-label="Snapshot storage: 6 KB"]').exists()).toBe(true);
 
-    expect(wrapper.find("form").exists()).toBe(false);
-    expect(wrapper.find("button").exists()).toBe(false);
+    expect(wrapper.get("form").element).toBeTruthy();
+    expect(wrapper.get('[data-testid="snapshot-slot-usage"]').text()).toContain(
+      "Snapshot slots: 2 of 10 used",
+    );
+    expect(wrapper.get('button[type="submit"]').text()).toContain("Create snapshot");
     expect(wrapper.find('a[href*="/snapshots/"]').exists()).toBe(false);
   });
 
@@ -148,28 +170,35 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
   it("renders a pending canonical row before accounting measurements are available", () => {
     const wrapper = mountSnapshots({
       ...measuredSnapshot,
-      mode: null,
-      lifecycleStatus: null,
-      integrityStatus: null,
+      mode: "full",
+      lifecycleStatus: "pending",
+      integrityStatus: "unknown",
       accountedSizeBytes: null,
-      projectDataSizeBytes: null,
-      metadataSizeBytes: null,
+      projectDataSizeBytes: "1024",
+      metadataSizeBytes: "2048",
       assetBlobSizeBytes: null,
-      assetCount: null,
-      blobCount: null,
-      activeReservationBytes: "0",
+      assetCount: 2,
+      blobCount: 1,
+      activeReservationBytes: String(6 * 1024),
       exportReservationBytes: "0",
       accountingVersion: null,
       accountingMeasuredAt: null,
+      progressPhase: "pending",
+      progressBytes: "0",
+      progressTotalBytes: String(6 * 1024),
+      canCancel: true,
     });
 
     const text = wrapper.text();
-    expect(text).toContain("Mode unknown");
-    expect(text).toContain("State unknown");
+    expect(text).toContain("Full");
+    expect(text).toContain("Pending");
     expect(text).toContain("Integrity unknown");
-    expect(text).toContain("—");
-    expect(wrapper.find("form").exists()).toBe(false);
-    expect(wrapper.find("button").exists()).toBe(false);
+    expect(text).toContain("Reserved storage: 6 KB");
+    expect(text).toContain("Planned snapshot: 6 KB");
+    expect(wrapper.get("form").element).toBeTruthy();
+    expect(wrapper.findAll("button").some((button) => button.text().includes("Cancel build"))).toBe(
+      true,
+    );
     expect(wrapper.find('a[href*="/snapshots/"]').exists()).toBe(false);
   });
 
@@ -210,5 +239,20 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     });
 
     expect(wrapper.text()).toContain("<0.01%");
+  });
+
+  it("disables creation when the visible snapshot slot limit is reached", () => {
+    const wrapper = mount(ProjectSettingsSnapshots, {
+      props: {
+        snapshots: [measuredSnapshot],
+        storageUsage,
+        snapshotLimit: { used: 10, limit: 10 },
+      },
+    });
+
+    expect(wrapper.get('[data-testid="snapshot-slot-usage"]').text()).toContain(
+      "Snapshot slots: 10 of 10 used",
+    );
+    expect(wrapper.get('button[type="submit"]').attributes("disabled")).toBeDefined();
   });
 });

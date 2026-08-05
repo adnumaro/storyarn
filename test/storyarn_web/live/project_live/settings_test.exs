@@ -9,6 +9,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
+  import Storyarn.VersioningFixtures
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Billing
@@ -17,7 +18,6 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo
-  alias Storyarn.Versioning.ProjectSnapshot
 
   defp settings_path(project, section \\ nil) do
     base = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings"
@@ -371,10 +371,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
 
       snapshot =
-        %ProjectSnapshot{}
-        |> ProjectSnapshot.object_set_changeset(%{
-          project_id: project.id,
-          version_number: 1,
+        full_project_snapshot_fixture(project, %{
           title: "Measured checkpoint",
           project_storage_key: prefix <> "/project.json",
           project_size_bytes: 100,
@@ -387,9 +384,9 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
           total_size_bytes: 175,
           object_count: 3,
           asset_count: 2,
-          blob_count: 1
+          blob_count: 1,
+          asset_blob_size_bytes: 50
         })
-        |> Repo.insert!()
 
       assert {:ok, _reservation} =
                Billing.reserve_storage(%{
@@ -404,7 +401,8 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
       vue = get_snapshots_vue(view)
 
-      assert vue.props |> Map.keys() |> Enum.sort() == ["snapshots", "storage-usage"]
+      assert vue.props |> Map.keys() |> Enum.sort() == ["snapshot-limit", "snapshots", "storage-usage"]
+      assert vue.props["snapshot-limit"] == %{"used" => 1, "limit" => 10}
 
       assert [serialized] = vue.props["snapshots"]
 
@@ -460,10 +458,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       asset_blob_bytes = 9_007_199_254_740_993
       total_bytes = asset_blob_bytes + 125
 
-      %ProjectSnapshot{}
-      |> ProjectSnapshot.object_set_changeset(%{
-        project_id: project.id,
-        version_number: 1,
+      full_project_snapshot_fixture(project, %{
         title: "Large measured checkpoint",
         project_storage_key: prefix <> "/project.json",
         project_size_bytes: 100,
@@ -479,7 +474,6 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
         asset_count: 1,
         blob_count: 1
       })
-      |> Repo.insert!()
 
       {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
       vue = get_snapshots_vue(view)
@@ -488,6 +482,38 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert serialized["assetBlobSizeBytes"] == "9007199254740993"
       assert serialized["accountedSizeBytes"] == "9007199254741118"
       assert vue.props["storage-usage"]["totalAccountedBytes"] == "9007199254741118"
+    end
+
+    test "requests and cancels a durable full snapshot from the settings surface", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+
+      render_click(view, "create_snapshot", %{
+        "mode" => "full",
+        "idempotency_key" => Ecto.UUID.generate(),
+        "title" => "Before refactor",
+        "description" => "Exact boundary"
+      })
+
+      vue = get_snapshots_vue(view)
+      assert [pending] = vue.props["snapshots"]
+      assert pending["mode"] == "full"
+      assert pending["lifecycleStatus"] == "pending"
+      assert pending["progressPhase"] == "pending"
+      assert pending["progressBytes"] == "0"
+      assert pending["plannedSizeBytes"] == pending["progressTotalBytes"]
+      assert pending["canCancel"] == true
+
+      render_click(view, "cancel_snapshot", %{"id" => pending["id"]})
+
+      vue = get_snapshots_vue(view)
+      assert [cancelled] = vue.props["snapshots"]
+      assert cancelled["lifecycleStatus"] == "cancelled"
+      assert cancelled["canCancel"] == false
+      assert is_binary(cancelled["cancelRequestedAt"])
     end
   end
 

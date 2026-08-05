@@ -5,6 +5,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.VersioningFixtures
 
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupPersistenceError
@@ -17,7 +18,6 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
 
   test "retries cleanup job persistence before returning an error" do
@@ -727,14 +727,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/PENDING123456789"
     storage_key = prefix <> "/project.json"
 
-    %ProjectSnapshot{}
-    |> ProjectSnapshot.pending_object_set_changeset(%{
-      project_id: project.id,
-      version_number: 1,
-      object_prefix: prefix,
-      mode: "full"
-    })
-    |> Repo.insert!()
+    pending_project_snapshot_fixture(project, %{version_number: 1, object_prefix: prefix})
 
     assert {:ok, _url} = Storage.upload(storage_key, "partial", "application/json")
     assert :ok = StorageCompensation.delete_storage_keys([storage_key])
@@ -749,24 +742,18 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     checksum = String.duplicate("a", 64)
 
     snapshot =
-      %ProjectSnapshot{}
-      |> ProjectSnapshot.object_set_changeset(%{
-        project_id: project.id,
+      full_project_snapshot_fixture(project, %{
         version_number: 1,
+        object_prefix: prefix,
         project_storage_key: storage_key,
         project_size_bytes: 1,
         project_checksum: checksum,
-        format_version: 1,
-        object_prefix: prefix,
-        manifest_storage_key: prefix <> "/manifest.json",
         manifest_size_bytes: 1,
         manifest_checksum: checksum,
-        total_size_bytes: 2,
-        object_count: 2,
+        asset_blob_size_bytes: 0,
         asset_count: 0,
         blob_count: 0
       })
-      |> Repo.insert!()
 
     assert {:ok, _url} = Storage.upload(storage_key, "p", "application/json")
     on_exit(fn -> Storage.adapter().delete(storage_key) end)
@@ -793,24 +780,16 @@ defmodule Storyarn.Assets.StorageCompensationTest do
       "projects/#{project.id}/snapshots/object-sets/v1/ready/POISONEDCLAIM001"
 
     published_snapshot =
-      %ProjectSnapshot{}
-      |> ProjectSnapshot.pending_object_set_changeset(%{
-        project_id: project.id,
+      pending_project_snapshot_fixture(project, %{
         version_number: 1,
-        object_prefix: published_prefix,
-        mode: "full"
+        object_prefix: published_prefix
       })
-      |> Repo.insert!()
 
     poisoned_snapshot =
-      %ProjectSnapshot{}
-      |> ProjectSnapshot.pending_object_set_changeset(%{
-        project_id: project.id,
+      pending_project_snapshot_fixture(project, %{
         version_number: 2,
-        object_prefix: poisoned_prefix,
-        mode: "full"
+        object_prefix: poisoned_prefix
       })
-      |> Repo.insert!()
 
     insert_snapshot_publication_claim!(project, published_snapshot, "published")
     insert_snapshot_publication_claim!(project, poisoned_snapshot, "poisoned")
