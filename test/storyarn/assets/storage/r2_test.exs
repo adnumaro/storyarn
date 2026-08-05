@@ -84,7 +84,11 @@ defmodule Storyarn.Assets.Storage.R2Test do
           """
           <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
             <IsTruncated>true</IsTruncated>
-            <Contents><Key>#{prefix}manifest.json</Key><Size>12</Size></Contents>
+            <Contents>
+              <Key>#{prefix}manifest.json</Key>
+              <ETag>"manifest-etag"</ETag>
+              <Size>12</Size>
+            </Contents>
             <NextContinuationToken>next-page</NextContinuationToken>
           </ListBucketResult>
           """
@@ -92,12 +96,13 @@ defmodule Storyarn.Assets.Storage.R2Test do
       end)
 
       assert {:ok, %{objects: [object], cursor: "next-page"}} = R2.list_prefix(prefix, limit: 2)
-      assert object == %{key: prefix <> "manifest.json", size: 12}
+      assert object == %{key: prefix <> "manifest.json", size: 12, identity: ~s("manifest-etag")}
     end
 
     test "rejects unsafe options before contacting the provider" do
       prefix = "projects/1/snapshots/"
       assert {:error, :invalid_prefix} = R2.list_prefix("projects/1/snapshots", [])
+      assert {:error, :invalid_prefix} = R2.list_prefix(prefix <> "/", [])
       assert {:error, :invalid_limit} = R2.list_prefix(prefix, limit: 0)
       assert {:error, :invalid_cursor} = R2.list_prefix(prefix, cursor: "")
     end
@@ -119,6 +124,85 @@ defmodule Storyarn.Assets.Storage.R2Test do
       end)
 
       assert {:error, :invalid_list_response} = R2.list_prefix(prefix, limit: 2)
+    end
+
+    test "rejects incoherent truncation metadata and missing object identities" do
+      prefix = "projects/1/snapshots/"
+
+      invalid_pages = [
+        """
+        <IsTruncated>true</IsTruncated>
+        <Contents><Key>#{prefix}one</Key><ETag>"one"</ETag><Size>1</Size></Contents>
+        """,
+        """
+        <IsTruncated>false</IsTruncated>
+        <NextContinuationToken>unexpected</NextContinuationToken>
+        <Contents><Key>#{prefix}one</Key><ETag>"one"</ETag><Size>1</Size></Contents>
+        """,
+        """
+        <Contents><Key>#{prefix}one</Key><ETag>"one"</ETag><Size>1</Size></Contents>
+        """,
+        """
+        <IsTruncated>false</IsTruncated>
+        <Contents><Key>#{prefix}one</Key><Size>1</Size></Contents>
+        """
+      ]
+
+      for page <- invalid_pages do
+        Req.Test.expect(__MODULE__, fn conn ->
+          Plug.Conn.send_resp(
+            conn,
+            200,
+            "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\">#{page}</ListBucketResult>"
+          )
+        end)
+
+        assert {:error, :invalid_list_response} = R2.list_prefix(prefix, limit: 2)
+      end
+    end
+  end
+
+  describe "delete_if_matches/2" do
+    test "verifies the ETag immediately before deleting" do
+      key = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/manifest.json"
+
+      Req.Test.expect(__MODULE__, 2, fn conn ->
+        assert_signed_header_request(conn)
+
+        case conn.method do
+          "HEAD" ->
+            assert Plug.Conn.get_req_header(conn, "if-match") == [~s("manifest-etag")]
+            Plug.Conn.send_resp(conn, 200, "")
+
+          "DELETE" ->
+            Plug.Conn.send_resp(conn, 204, "")
+        end
+      end)
+
+      assert :ok = R2.delete_if_matches(key, ~s("manifest-etag"))
+    end
+
+    test "preserves an object whose ETag changed" do
+      key = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/manifest.json"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert conn.method == "HEAD"
+        assert Plug.Conn.get_req_header(conn, "if-match") == [~s("old-etag")]
+        Plug.Conn.send_resp(conn, 412, "")
+      end)
+
+      assert {:error, :object_changed} = R2.delete_if_matches(key, ~s("old-etag"))
+    end
+
+    test "treats an already absent object as deleted" do
+      key = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/manifest.json"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert conn.method == "HEAD"
+        Plug.Conn.send_resp(conn, 404, "")
+      end)
+
+      assert :ok = R2.delete_if_matches(key, ~s("manifest-etag"))
     end
   end
 

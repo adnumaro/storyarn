@@ -25,6 +25,9 @@ defmodule Storyarn.FailingStreamStorage do
   def delete(_key), do: {:error, :unsupported}
 
   @impl true
+  def delete_if_matches(_key, _identity), do: {:error, :unsupported}
+
+  @impl true
   def get_url(_key), do: ""
 
   @impl true

@@ -519,6 +519,19 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert is_binary(cancelled["cancelRequestedAt"])
     end
 
+    test "rejects malformed snapshot identifiers without crashing the LiveView", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+
+      render_click(view, "cancel_snapshot", %{"id" => %{"malformed" => true}})
+      render_click(view, "delete_snapshot", %{"id" => ["malformed"]})
+
+      assert get_snapshots_vue(view).props["snapshots"] == []
+    end
+
     test "deletes a ready snapshot through the durable cleanup protocol", %{
       conn: conn,
       user: user

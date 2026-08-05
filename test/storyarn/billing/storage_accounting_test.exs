@@ -503,6 +503,50 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       assert Repo.get!(ProjectSnapshot, target.id).lifecycle_state == "pending"
     end
 
+    test "a build commit rolls back when lifecycle generation advances before finalization", context do
+      target =
+        context.project
+        |> insert_pending_snapshot!(1, %{project: 60, metadata: 20, assets: 20})
+        |> transition_pending_snapshot_to_verifying!()
+
+      final_attrs =
+        full_snapshot_object_set_attrs(target, %{project: 60, metadata: 20, assets: 20})
+
+      assert {:ok, reservation} =
+               reserve(context, "stale-lifecycle-generation", "snapshot_build", 100, target)
+
+      prepare_build_publication!(reservation, final_attrs)
+
+      advanced =
+        target
+        |> ProjectSnapshot.cancel_request_changeset(TimeHelpers.now())
+        |> Repo.update!()
+
+      assert advanced.lifecycle_generation == target.lifecycle_generation + 1
+
+      assert {:error, :stale_snapshot_accounting_measurement} =
+               Billing.commit_storage_reservation(
+                 reservation.id,
+                 reservation.lease_token,
+                 reservation.generation,
+                 100,
+                 fn _reservation ->
+                   Versioning.finalize_project_snapshot_object_set(
+                     target.id,
+                     0,
+                     final_attrs
+                   )
+                 end
+               )
+
+      assert Repo.get!(StorageReservation, reservation.id).status == "active"
+
+      persisted = Repo.get!(ProjectSnapshot, target.id)
+      assert persisted.lifecycle_generation == advanced.lifecycle_generation
+      assert persisted.lifecycle_state == "verifying"
+      assert is_nil(persisted.accounted_size_bytes)
+    end
+
     test "a linked-to-full conversion reserves and commits only its added blob bytes", context do
       linked_snapshot =
         insert_linked_snapshot!(context.project, 1, %{project: 80, metadata: 20})

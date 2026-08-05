@@ -11,6 +11,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
@@ -31,8 +32,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   @retention_batch_size 50
   @deletable_user_states ~w(ready failed cancelled)
   @retention_states ~w(ready failed cancelled)
-  @expirable_build_states ~w(pending building verifying)
+  @expirable_build_states ~w(pending building verifying failed)
   @terminal_job_states ~w(completed discarded cancelled)
+  @active_job_states ~w(available scheduled executing retryable)
+  @cleanup_worker inspect(CleanupProjectSnapshotWorker)
   @hard_delete_reasons ~w(project_hard_delete workspace_hard_delete)a
 
   @type retention_candidate :: %{
@@ -71,7 +74,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
             delete_user_snapshot_locked(authorized_project, snapshot_id, user_id)
           end)
 
-        broadcast_deleted(result, authorized_project.id, snapshot_id)
+        publish_deleted_snapshot(result, authorized_project.id, snapshot_id)
 
       {:error, reason} when reason in [:not_found, :unauthorized] ->
         {:error, :unauthorized}
@@ -84,13 +87,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   def delete(_scope, _project, _snapshot_id), do: {:error, :invalid_snapshot_delete_request}
 
   @doc false
-  @spec prepare_project_hard_delete(Project.t()) :: :ok | {:error, term()}
+  @spec prepare_project_hard_delete(Project.t()) ::
+          {:ok, [SnapshotCleanupIntent.t()]} | {:error, term()}
   def prepare_project_hard_delete(%Project{} = project) do
     prepare_project_hard_delete(project, :project_hard_delete)
   end
 
   @doc false
-  @spec prepare_workspace_hard_delete(Workspace.t()) :: :ok | {:error, term()}
+  @spec prepare_workspace_hard_delete(Workspace.t()) ::
+          {:ok, [SnapshotCleanupIntent.t()]} | {:error, term()}
   def prepare_workspace_hard_delete(%Workspace{id: workspace_id}) when is_integer(workspace_id) do
     if Billing.workspace_lock_held?(workspace_id) do
       prepare_workspace_hard_delete_locked(workspace_id)
@@ -103,17 +108,32 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
 
   defp prepare_workspace_hard_delete_locked(workspace_id) do
     with {:ok, project_ids} <- bounded_workspace_snapshot_project_ids(workspace_id) do
-      Enum.reduce_while(project_ids, :ok, &prepare_workspace_project(workspace_id, &1, &2))
+      Enum.reduce_while(project_ids, {:ok, []}, &prepare_workspace_project(workspace_id, &1, &2))
     end
   end
 
-  defp prepare_workspace_project(workspace_id, project_id, :ok) do
+  defp prepare_workspace_project(workspace_id, project_id, {:ok, intents}) do
     project = lock_workspace_project(workspace_id, project_id)
 
     case prepare_project_hard_delete(project, :workspace_hard_delete) do
-      :ok -> {:cont, :ok}
+      {:ok, project_intents} -> {:cont, {:ok, project_intents ++ intents}}
       {:error, reason} -> {:halt, {:error, reason}}
     end
+  end
+
+  @doc false
+  @spec publish_committed_cleanup_intents([SnapshotCleanupIntent.t()]) :: :ok
+  def publish_committed_cleanup_intents(intents) when is_list(intents) do
+    Enum.each(intents, fn
+      %SnapshotCleanupIntent{} = intent ->
+        emit_cleanup_intent(intent)
+        broadcast_snapshot_updated(intent.project_id_snapshot, intent.project_snapshot_id_snapshot)
+
+      _invalid ->
+        :ok
+    end)
+
+    :ok
   end
 
   @doc "Lists one bounded, stable page of expired snapshot candidates."
@@ -121,6 +141,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   def list_retention_candidates(%DateTime{} = now, opts \\ []) do
     limit = opts |> Keyword.get(:limit, @retention_batch_size) |> min(@retention_batch_size) |> max(1)
     after_id = Keyword.get(opts, :after_id, 0)
+    through_id = Keyword.get_lazy(opts, :through_id, &lifecycle_high_watermark/0)
 
     Repo.all(
       from(snapshot in ProjectSnapshot,
@@ -129,7 +150,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
         join: workspace in Workspace,
         on: workspace.id == project.workspace_id,
         where:
-          snapshot.id > ^after_id and snapshot.lifecycle_state in ^@retention_states and
+          snapshot.id > ^after_id and snapshot.id <= ^through_id and
+            snapshot.lifecycle_state in ^@retention_states and
             not is_nil(snapshot.expires_at) and snapshot.expires_at <= ^now and
             is_nil(project.deleted_at),
         order_by: [asc: snapshot.id],
@@ -154,9 +176,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   def delete_retention_candidate(%{} = candidate, %DateTime{} = now) do
     case Map.get(candidate, :workspace_id) do
       workspace_id when is_integer(workspace_id) ->
-        Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
-          delete_retention_candidate_locked(candidate, now)
-        end)
+        result =
+          Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
+            delete_retention_candidate_locked(candidate, now)
+          end)
+
+        publish_deleted_snapshot(result, Map.get(candidate, :project_id), Map.get(candidate, :snapshot_id))
 
       _invalid ->
         {:error, :retention_candidate_changed}
@@ -170,6 +195,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   def list_expired_build_candidates(%DateTime{} = now, opts \\ []) do
     limit = opts |> Keyword.get(:limit, @retention_batch_size) |> min(@retention_batch_size) |> max(1)
     after_id = Keyword.get(opts, :after_id, 0)
+    through_id = Keyword.get_lazy(opts, :through_id, &lifecycle_high_watermark/0)
 
     Repo.all(
       from(snapshot in ProjectSnapshot,
@@ -182,7 +208,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
         left_join: job in Oban.Job,
         on: job.id == snapshot.build_job_id,
         where:
-          snapshot.id > ^after_id and snapshot.lifecycle_state in ^@expirable_build_states and
+          snapshot.id > ^after_id and snapshot.id <= ^through_id and
+            snapshot.lifecycle_state in ^@expirable_build_states and
             reservation.expires_at <= ^now and is_nil(project.deleted_at) and
             (is_nil(job.id) or job.state in ^@terminal_job_states),
         order_by: [asc: snapshot.id],
@@ -209,9 +236,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   def delete_expired_build_candidate(%{} = candidate, %DateTime{} = now) do
     case Map.get(candidate, :workspace_id) do
       workspace_id when is_integer(workspace_id) ->
-        Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
-          delete_expired_build_candidate_locked(candidate, now)
-        end)
+        result =
+          Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
+            delete_expired_build_candidate_locked(candidate, now)
+          end)
+
+        publish_deleted_snapshot(result, Map.get(candidate, :project_id), Map.get(candidate, :snapshot_id))
 
       _invalid ->
         {:error, :expired_build_candidate_changed}
@@ -219,6 +249,91 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   end
 
   def delete_expired_build_candidate(_candidate, _now), do: {:error, :expired_build_candidate_changed}
+
+  @doc false
+  @spec lifecycle_high_watermark() :: non_neg_integer()
+  def lifecycle_high_watermark do
+    Repo.one(from(snapshot in ProjectSnapshot, select: coalesce(max(snapshot.id), 0)))
+  end
+
+  @doc false
+  @spec cleanup_recovery_high_watermark() :: non_neg_integer()
+  def cleanup_recovery_high_watermark do
+    Repo.one(
+      from(intent in SnapshotCleanupIntent,
+        where: intent.status in ["pending", "processing", "retrying"],
+        select: coalesce(max(intent.id), 0)
+      )
+    )
+  end
+
+  @doc false
+  @spec list_cleanup_recovery_candidates(keyword()) :: [pos_integer()]
+  def list_cleanup_recovery_candidates(opts \\ []) do
+    limit = opts |> Keyword.get(:limit, @retention_batch_size) |> min(@retention_batch_size) |> max(1)
+    after_id = Keyword.get(opts, :after_id, 0)
+    through_id = Keyword.get_lazy(opts, :through_id, &cleanup_recovery_high_watermark/0)
+
+    Repo.all(
+      from(intent in SnapshotCleanupIntent,
+        where:
+          intent.id > ^after_id and intent.id <= ^through_id and
+            intent.status in ["pending", "processing", "retrying"] and
+            fragment(
+              "NOT EXISTS (SELECT 1 FROM oban_jobs AS cleanup_job WHERE cleanup_job.worker = ? AND cleanup_job.state IN ('available', 'scheduled', 'executing', 'retryable') AND (cleanup_job.args->>'intent_id') = (?::text))",
+              ^@cleanup_worker,
+              intent.id
+            ),
+        order_by: [asc: intent.id],
+        limit: ^limit,
+        select: intent.id
+      )
+    )
+  end
+
+  @doc false
+  @spec recover_cleanup_intent(pos_integer()) ::
+          {:ok, :recovered | :already_active | :already_completed | :terminal} | {:error, term()}
+  def recover_cleanup_intent(intent_id) when is_integer(intent_id) and intent_id > 0 do
+    Repo.transact(fn -> intent_id |> lock_cleanup_intent() |> recover_locked_cleanup_intent() end)
+  end
+
+  def recover_cleanup_intent(_intent_id), do: {:error, :invalid_snapshot_cleanup_intent}
+
+  @doc "Replays a terminal cleanup intent after an operator has remediated its provider failure."
+  @spec replay_terminal_cleanup_intent(pos_integer()) ::
+          {:ok, SnapshotCleanupIntent.t() | :already_completed | :already_active} | {:error, term()}
+  def replay_terminal_cleanup_intent(intent_id) when is_integer(intent_id) and intent_id > 0 do
+    result =
+      Repo.transact(fn -> intent_id |> lock_cleanup_intent() |> replay_locked_cleanup_intent() end)
+
+    emit_cleanup_replay(result)
+  end
+
+  def replay_terminal_cleanup_intent(_intent_id), do: {:error, :invalid_snapshot_cleanup_intent}
+
+  defp recover_locked_cleanup_intent(nil), do: {:error, :snapshot_cleanup_intent_not_found}
+  defp recover_locked_cleanup_intent(%SnapshotCleanupIntent{status: "completed"}), do: {:ok, :already_completed}
+  defp recover_locked_cleanup_intent(%SnapshotCleanupIntent{status: "terminal"}), do: {:ok, :terminal}
+
+  defp recover_locked_cleanup_intent(%SnapshotCleanupIntent{} = intent) do
+    ensure_cleanup_job(intent)
+  end
+
+  defp replay_locked_cleanup_intent(nil), do: {:error, :snapshot_cleanup_intent_not_found}
+  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: "completed"}), do: {:ok, :already_completed}
+
+  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: status})
+       when status in ["pending", "processing", "retrying"], do: {:ok, :already_active}
+
+  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: "terminal"} = intent) do
+    with :ok <- SnapshotCleanupIntent.validate_persisted_inventory(intent),
+         :ok <- validate_cleanup_intent_ownership(intent),
+         {:ok, replaying} <- reopen_terminal_cleanup_intent(intent),
+         {:ok, _job} <- enqueue_cleanup_replay(replaying.id) do
+      {:ok, replaying}
+    end
+  end
 
   @doc false
   @spec process_cleanup_intent(pos_integer(), keyword()) ::
@@ -230,8 +345,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     final_attempt? = Keyword.get(opts, :final_attempt?, false) == true
     delete_fun = Keyword.get(opts, :delete_fun, &StorageCompensation.delete_storage_keys/1)
 
-    with {:ok, claimed} <- claim_cleanup_intent(intent_id) do
-      process_claimed_cleanup(claimed, delete_fun, final_attempt?)
+    case claim_cleanup_intent(intent_id) do
+      {:ok, claimed} ->
+        process_claimed_cleanup(claimed, delete_fun, final_attempt?)
+
+      {:error, reason} ->
+        handle_predelete_failure(intent_id, reason, final_attempt?)
     end
   end
 
@@ -255,7 +374,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
                 ),
                 :integer
               ),
-            retry_count: type(coalesce(sum(intent.retry_count), 0), :integer),
+            retry_count:
+              type(
+                coalesce(filter(sum(intent.retry_count), intent.status in ["pending", "processing", "retrying"]), 0),
+                :integer
+              ),
             terminal_failures: filter(count(intent.id), intent.status == "terminal"),
             oldest_requested_at: filter(min(intent.requested_at), intent.status in ["pending", "processing", "retrying"])
           }
@@ -273,10 +396,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     with %Project{} <- lock_active_project(project.id, project.workspace_id),
          %ProjectSnapshot{} = snapshot <- lock_snapshot(project.id, snapshot_id),
          true <- snapshot.lifecycle_state in @deletable_user_states,
-         :ok <- ensure_no_active_snapshot_operations(snapshot.id) do
-      create_cleanup_and_delete(snapshot, project.workspace_id, :user_delete, {:user, user_id})
+         :ok <- ensure_no_active_snapshot_operations(snapshot.id),
+         {:ok, intent} <- create_cleanup_and_delete(snapshot, project.workspace_id, :user_delete, {:user, user_id}) do
+      {:ok, {:created, intent}}
     else
-      nil -> existing_intent_or_error(project.id, snapshot_id)
+      nil -> tag_existing_intent(existing_intent_or_error(project.id, snapshot_id))
       false -> {:error, :snapshot_not_deletable}
       {:error, reason} -> {:error, reason}
     end
@@ -295,14 +419,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
 
   defp prepare_project_hard_delete_locked(project_id, workspace_id, reason) do
     with {:ok, snapshots} <- bounded_project_snapshots(project_id) do
-      Enum.reduce_while(snapshots, :ok, &prepare_hard_delete_snapshot(&1, &2, workspace_id, reason))
+      Enum.reduce_while(snapshots, {:ok, []}, &prepare_hard_delete_snapshot(&1, &2, workspace_id, reason))
     end
   end
 
-  defp prepare_hard_delete_snapshot(snapshot, :ok, workspace_id, reason) do
+  defp prepare_hard_delete_snapshot(snapshot, {:ok, intents}, workspace_id, reason) do
     with :ok <- ensure_hard_delete_operations_supported(snapshot),
-         {:ok, _intent} <- create_cleanup_and_delete(snapshot, workspace_id, reason, :system) do
-      {:cont, :ok}
+         {:ok, intent} <- create_cleanup_and_delete(snapshot, workspace_id, reason, :system) do
+      {:cont, {:ok, [intent | intents]}}
     else
       {:error, cleanup_reason} -> {:halt, {:error, cleanup_reason}}
     end
@@ -371,7 +495,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
          %ProjectSnapshot{} = snapshot <- lock_snapshot(project_id, snapshot_id),
          :ok <- revalidate_retention_candidate(snapshot, project, candidate, now),
          :ok <- ensure_no_active_snapshot_operations(snapshot.id) do
-      create_cleanup_and_delete(snapshot, project.workspace_id, :retention, :system)
+      snapshot
+      |> create_cleanup_and_delete(project.workspace_id, :retention, :system)
+      |> tag_created_intent()
     else
       nil -> {:error, :retention_candidate_changed}
       {:error, reason} -> {:error, reason}
@@ -387,7 +513,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
          %StorageReservation{} = reservation <- lock_build_reservation(snapshot_id, candidate),
          :ok <- revalidate_expired_build_candidate(snapshot, project, reservation, candidate, now),
          :ok <- ensure_hard_delete_operations_supported(snapshot) do
-      create_cleanup_and_delete(snapshot, project.workspace_id, :expired_build, :system)
+      snapshot
+      |> create_cleanup_and_delete(project.workspace_id, :expired_build, :system)
+      |> tag_created_intent()
     else
       nil -> {:error, :expired_build_candidate_changed}
       {:error, reason} -> {:error, reason}
@@ -720,14 +848,41 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   defp ensure_supported_mode(_mode), do: {:error, :unsupported_snapshot_mode}
 
   defp claim_cleanup_intent(intent_id) do
-    Repo.transact(fn ->
-      case lock_cleanup_intent(intent_id) do
-        nil -> {:error, :snapshot_cleanup_intent_not_found}
-        %SnapshotCleanupIntent{status: "completed"} -> {:ok, :already_completed}
-        %SnapshotCleanupIntent{status: "terminal"} -> {:ok, :terminal}
-        %SnapshotCleanupIntent{} = intent -> intent |> SnapshotCleanupIntent.processing_changeset() |> Repo.update()
-      end
-    end)
+    Repo.transact(fn -> intent_id |> lock_cleanup_intent() |> claim_locked_cleanup_intent() end)
+  end
+
+  defp claim_locked_cleanup_intent(nil), do: {:error, :snapshot_cleanup_intent_not_found}
+  defp claim_locked_cleanup_intent(%SnapshotCleanupIntent{status: "completed"}), do: {:ok, :already_completed}
+  defp claim_locked_cleanup_intent(%SnapshotCleanupIntent{status: "terminal"}), do: {:ok, :terminal}
+
+  defp claim_locked_cleanup_intent(%SnapshotCleanupIntent{} = intent) do
+    with :ok <- SnapshotCleanupIntent.validate_persisted_inventory(intent),
+         :ok <- validate_cleanup_intent_ownership(intent) do
+      intent |> SnapshotCleanupIntent.processing_changeset() |> Repo.update()
+    end
+  end
+
+  defp validate_cleanup_intent_ownership(intent) do
+    request =
+      Repo.one(
+        from(request in StorageCleanupRequest,
+          where: request.id == ^intent.cleanup_request_id,
+          lock: "FOR SHARE"
+        )
+      )
+
+    case request do
+      %StorageCleanupRequest{
+        owner_kind: "snapshot_lifecycle",
+        owner_token: owner_token,
+        storage_keys: storage_keys
+      }
+      when is_binary(owner_token) and storage_keys == intent.storage_keys ->
+        :ok
+
+      _invalid ->
+        {:error, :invalid_snapshot_cleanup_ownership}
+    end
   end
 
   defp process_claimed_cleanup(:already_completed, _delete_fun, _final_attempt?), do: {:ok, :already_completed}
@@ -736,10 +891,108 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   defp process_claimed_cleanup(%SnapshotCleanupIntent{} = intent, delete_fun, final_attempt?) do
     batch = Enum.take(intent.remaining_storage_keys, @batch_size)
 
-    case safe_delete(delete_fun, batch) do
-      :ok -> finish_successful_batch(intent, batch)
-      {:error, failed_keys} -> finish_failed_batch(intent, batch, failed_keys, final_attempt?)
+    case ensure_cleanup_namespace_unowned(intent) do
+      :ok ->
+        case safe_delete(delete_fun, batch) do
+          :ok -> finish_successful_batch(intent, batch)
+          {:error, failed_keys} -> finish_failed_batch(intent, batch, failed_keys, final_attempt?)
+        end
+
+      {:error, reason} ->
+        handle_predelete_failure(intent.id, reason, final_attempt?)
     end
+  end
+
+  defp handle_predelete_failure(intent_id, reason, true)
+       when reason in [
+              :invalid_snapshot_cleanup_inventory,
+              :invalid_snapshot_cleanup_ownership,
+              :snapshot_cleanup_namespace_still_owned
+            ] do
+    terminalize_predelete_failure(intent_id, reason)
+  end
+
+  defp handle_predelete_failure(_intent_id, reason, _final_attempt?), do: {:error, reason}
+
+  defp terminalize_predelete_failure(intent_id, reason) do
+    result =
+      Repo.transact(fn ->
+        intent_id
+        |> lock_cleanup_intent()
+        |> terminalize_locked_predelete_failure(reason)
+      end)
+
+    case result do
+      {:ok, %SnapshotCleanupIntent{} = intent} ->
+        emit_cleanup_stop(intent, :terminal, 0)
+        {:ok, :terminal}
+
+      {:ok, status} when status in [:already_completed, :terminal] ->
+        {:ok, status}
+
+      {:error, terminal_reason} ->
+        {:error, terminal_reason}
+    end
+  end
+
+  defp terminalize_locked_predelete_failure(nil, _reason), do: {:error, :snapshot_cleanup_intent_not_found}
+
+  defp terminalize_locked_predelete_failure(%SnapshotCleanupIntent{status: "completed"}, _reason),
+    do: {:ok, :already_completed}
+
+  defp terminalize_locked_predelete_failure(%SnapshotCleanupIntent{status: "terminal"}, _reason), do: {:ok, :terminal}
+
+  defp terminalize_locked_predelete_failure(%SnapshotCleanupIntent{} = intent, reason) do
+    with :ok <- revalidate_predelete_failure(intent, reason) do
+      intent
+      |> SnapshotCleanupIntent.terminal_predelete_changeset(predelete_error_code(reason))
+      |> Repo.update()
+    end
+  end
+
+  defp revalidate_predelete_failure(intent, :invalid_snapshot_cleanup_inventory) do
+    case SnapshotCleanupIntent.validate_persisted_inventory(intent) do
+      {:error, :invalid_snapshot_cleanup_inventory} -> :ok
+      :ok -> {:error, :snapshot_cleanup_failure_changed}
+    end
+  end
+
+  defp revalidate_predelete_failure(intent, :invalid_snapshot_cleanup_ownership) do
+    case validate_cleanup_intent_ownership(intent) do
+      {:error, :invalid_snapshot_cleanup_ownership} -> :ok
+      :ok -> {:error, :snapshot_cleanup_failure_changed}
+    end
+  end
+
+  defp revalidate_predelete_failure(intent, :snapshot_cleanup_namespace_still_owned) do
+    case ensure_cleanup_namespace_unowned(intent) do
+      {:error, :snapshot_cleanup_namespace_still_owned} -> :ok
+      :ok -> {:error, :snapshot_cleanup_failure_changed}
+    end
+  end
+
+  defp predelete_error_code(:invalid_snapshot_cleanup_inventory), do: "invalid_inventory"
+  defp predelete_error_code(:invalid_snapshot_cleanup_ownership), do: "invalid_ownership"
+  defp predelete_error_code(:snapshot_cleanup_namespace_still_owned), do: "namespace_still_owned"
+
+  defp ensure_cleanup_namespace_unowned(intent) do
+    snapshot_owner? =
+      Repo.exists?(
+        from(snapshot in ProjectSnapshot,
+          where: snapshot.object_prefix == ^intent.ready_prefix
+        )
+      )
+
+    publication_owner? =
+      Repo.exists?(
+        from(claim in SnapshotObjectPublicationClaim,
+          where: claim.object_prefix == ^intent.ready_prefix
+        )
+      )
+
+    if snapshot_owner? or publication_owner?,
+      do: {:error, :snapshot_cleanup_namespace_still_owned},
+      else: :ok
   end
 
   defp finish_successful_batch(intent, batch) do
@@ -868,6 +1121,51 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     |> Oban.insert()
   end
 
+  defp enqueue_cleanup_replay(intent_id) do
+    %{intent_id: intent_id, replay_token: Ecto.UUID.generate()}
+    |> CleanupProjectSnapshotWorker.new()
+    |> Oban.insert()
+    |> case do
+      {:ok, %Oban.Job{conflict?: false} = job} -> {:ok, job}
+      {:ok, %Oban.Job{conflict?: true}} -> {:error, :snapshot_cleanup_replay_conflict}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp ensure_cleanup_job(intent) do
+    if cleanup_job_active?(intent.id) do
+      {:ok, :already_active}
+    else
+      case enqueue_cleanup(intent.id) do
+        {:ok, _job} -> {:ok, :recovered}
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  defp cleanup_job_active?(intent_id) do
+    intent_id = Integer.to_string(intent_id)
+
+    Repo.exists?(
+      from(job in Oban.Job,
+        where:
+          job.worker == ^@cleanup_worker and job.state in ^@active_job_states and
+            fragment("(?->>'intent_id') = ?", job.args, ^intent_id)
+      )
+    )
+  end
+
+  defp reopen_terminal_cleanup_intent(intent) do
+    intent
+    |> Ecto.Changeset.change(
+      status: "retrying",
+      last_error_code: "operator_replay",
+      completed_at: nil,
+      terminal_at: nil
+    )
+    |> Repo.update()
+  end
+
   defp lock_active_project(project_id, workspace_id) do
     Repo.one(
       from(project in Project,
@@ -923,13 +1221,30 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     )
   end
 
-  defp broadcast_deleted({:ok, %SnapshotCleanupIntent{} = intent} = result, project_id, snapshot_id) do
-    Phoenix.PubSub.broadcast(Storyarn.PubSub, "project_snapshots:#{project_id}", {:project_snapshot_updated, snapshot_id})
+  defp tag_existing_intent({:ok, %SnapshotCleanupIntent{} = intent}), do: {:ok, {:existing, intent}}
+  defp tag_existing_intent(result), do: result
+
+  defp tag_created_intent({:ok, %SnapshotCleanupIntent{} = intent}), do: {:ok, {:created, intent}}
+  defp tag_created_intent(result), do: result
+
+  defp publish_deleted_snapshot({:ok, {:created, %SnapshotCleanupIntent{} = intent}}, project_id, snapshot_id) do
     emit_cleanup_intent(intent)
-    result
+    broadcast_snapshot_updated(project_id, snapshot_id)
+    {:ok, intent}
   end
 
-  defp broadcast_deleted(result, _project_id, _snapshot_id), do: result
+  defp publish_deleted_snapshot({:ok, {:existing, %SnapshotCleanupIntent{} = intent}}, _project_id, _snapshot_id),
+    do: {:ok, intent}
+
+  defp publish_deleted_snapshot(result, _project_id, _snapshot_id), do: result
+
+  defp broadcast_snapshot_updated(project_id, snapshot_id) do
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      "project_snapshots:#{project_id}",
+      {:project_snapshot_updated, snapshot_id}
+    )
+  end
 
   defp emit_cleanup_intent(intent) do
     :telemetry.execute(
@@ -940,19 +1255,26 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   end
 
   defp emit_cleanup_stop(intent, status, deleted_count) do
-    backlog = cleanup_backlog()
-
     :telemetry.execute(
       [:storyarn, :snapshot, :cleanup, :stop],
       %{
         deleted_count: deleted_count,
-        retry_count: intent.retry_count,
-        backlog_count: backlog.backlog_count,
-        backlog_bytes: backlog.backlog_bytes,
-        oldest_age_seconds: backlog.oldest_age_seconds,
-        terminal_failures: backlog.terminal_failures
+        retry_count: if(status == :retrying, do: 1, else: 0),
+        terminal_failure_count: if(status == :terminal, do: 1, else: 0)
       },
       %{status: status, reason: intent.reason, error_code: intent.last_error_code || "none"}
     )
   end
+
+  defp emit_cleanup_replay({:ok, %SnapshotCleanupIntent{} = intent} = result) do
+    :telemetry.execute(
+      [:storyarn, :snapshot, :cleanup, :replay],
+      %{count: 1},
+      %{status: :enqueued, reason: intent.reason}
+    )
+
+    result
+  end
+
+  defp emit_cleanup_replay(result), do: result
 end

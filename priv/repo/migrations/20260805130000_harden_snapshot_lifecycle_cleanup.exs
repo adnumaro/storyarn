@@ -2,6 +2,43 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
   use Ecto.Migration
 
   def up do
+    # The one-time reset owns provider deletion and must run before the
+    # steady-state lifecycle schema becomes available. Database emptiness does
+    # not replace the independently verified provider zero-state in its plan.
+    execute("""
+    DO $$
+    BEGIN
+      IF to_regclass('public.project_snapshot_reset_receipts') IS NULL THEN
+        RAISE EXCEPTION
+          'project snapshot reset receipt schema is missing; run the reset preflight migration';
+      END IF;
+
+      IF EXISTS (SELECT 1 FROM project_snapshots LIMIT 1) OR
+         EXISTS (SELECT 1 FROM entity_versions LIMIT 1) THEN
+        RAISE EXCEPTION
+          'pre-ENG-80 versioning rows remain; complete the audited snapshot reset before migration';
+      END IF;
+
+      IF EXISTS (
+        SELECT 1
+        FROM workspaces w
+        LEFT JOIN project_snapshot_reset_receipts r ON r.workspace_id = w.id
+        WHERE r.workspace_id IS NULL OR
+              r.project_ids <> ARRAY(
+                SELECT p.id
+                FROM projects p
+                WHERE p.workspace_id = w.id
+                ORDER BY p.id
+              )
+        LIMIT 1
+      ) THEN
+        RAISE EXCEPTION
+          'a workspace is missing an exact immutable project snapshot reset receipt';
+      END IF;
+    END;
+    $$
+    """)
+
     alter table(:project_snapshots) do
       add :origin, :string, null: false, default: "user"
       add :expires_at, :utc_datetime
@@ -262,7 +299,10 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
       IF NOT (
         NEW.status = OLD.status OR
         (OLD.status IN ('pending', 'retrying') AND NEW.status IN ('processing', 'terminal')) OR
-        (OLD.status = 'processing' AND NEW.status IN ('retrying', 'completed', 'terminal'))
+        (OLD.status = 'processing' AND NEW.status IN ('retrying', 'completed', 'terminal')) OR
+        (OLD.status = 'terminal' AND NEW.status = 'retrying' AND
+         NEW.retry_count = OLD.retry_count AND NEW.terminal_at IS NULL AND
+         NEW.completed_at IS NULL AND cardinality(NEW.remaining_storage_keys) > 0)
       ) THEN
         RAISE EXCEPTION 'snapshot cleanup intent state cannot regress'
           USING ERRCODE = 'integrity_constraint_violation';

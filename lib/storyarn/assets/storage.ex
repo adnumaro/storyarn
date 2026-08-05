@@ -16,7 +16,12 @@ defmodule Storyarn.Assets.Storage do
           etag: String.t() | nil,
           content_type: String.t() | nil
         }
-  @type listed_object :: %{key: key(), size: non_neg_integer()}
+  @type object_identity :: String.t()
+  @type listed_object :: %{
+          key: key(),
+          size: non_neg_integer(),
+          identity: object_identity()
+        }
   @type list_page :: %{objects: [listed_object()], cursor: String.t() | nil}
   @type conditional_copy_cleanup_error ::
           {:conditional_copy_cleanup_required, destination_created? :: boolean(), pending_cleanup_key :: key(),
@@ -29,6 +34,15 @@ defmodule Storyarn.Assets.Storage do
   @callback put_if_absent(key, binary_data, content_type) ::
               {:ok, url, created? :: boolean()} | {:error, term()}
   @callback delete(key) :: :ok | {:error, term()}
+
+  @doc """
+  Verifies the opaque identity returned by `list_prefix/2` immediately before
+  deleting the object.
+
+  Backends without an atomic conditional delete require the caller to hold an
+  external write fence for the complete verify/delete operation.
+  """
+  @callback delete_if_matches(key, object_identity()) :: :ok | {:error, term()}
   @callback get_url(key) :: url
   @callback download(key) :: {:ok, binary_data} | {:error, term()}
   @callback stat(key) :: {:ok, object_stat} | {:error, term()}
@@ -268,7 +282,8 @@ defmodule Storyarn.Assets.Storage do
   @doc false
   @spec canonical_prefix?(term()) :: boolean()
   def canonical_prefix?(prefix) when is_binary(prefix) do
-    String.ends_with?(prefix, "/") and canonical_key?(String.trim_trailing(prefix, "/"))
+    String.ends_with?(prefix, "/") and not String.ends_with?(prefix, "//") and
+      canonical_key?(String.trim_trailing(prefix, "/"))
   end
 
   def canonical_prefix?(_prefix), do: false

@@ -366,7 +366,9 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   `cleanup_status` must be `"not_required"` when no temporary object ever
   existed, or `"owned"` with a durable `cleanup_reference`. Expiry by itself is
-  never authority to release capacity; ENG-81 reconciliation proves liveness.
+  never authority to release capacity; expired snapshot builds are reclaimed
+  only after their owning job is terminal or absent and that fact is rechecked
+  under the workspace and snapshot locks.
   """
   @spec release(pos_integer(), Ecto.UUID.t(), pos_integer(), map()) ::
           {:ok, StorageReservation.t()} | {:error, term()}

@@ -196,6 +196,21 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   @impl true
+  def delete_if_matches(key, expected_identity)
+      when is_binary(expected_identity) and expected_identity != "" and byte_size(expected_identity) <= 1_024 do
+    request = ExAws.S3.head_object(bucket(), key, if_match: expected_identity)
+
+    case ExAws.request(request) do
+      {:ok, _response} -> delete(key)
+      {:error, {:http_error, 404, _response}} -> :ok
+      {:error, {:http_error, 412, _response}} -> {:error, :object_changed}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def delete_if_matches(_key, _expected_identity), do: {:error, :invalid_object_identity}
+
+  @impl true
   def get_url(key) do
     case config()[:public_url] do
       nil ->
@@ -436,11 +451,13 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   defp normalize_list_page(body, prefix) do
     contents = Map.get(body, :contents, Map.get(body, "Contents", [])) || []
+    is_truncated = Map.get(body, :is_truncated, Map.get(body, "IsTruncated"))
+    continuation_token = Map.get(body, :next_continuation_token, Map.get(body, "NextContinuationToken"))
 
     with true <- is_list(contents),
          {:ok, objects} <- normalize_list_objects(contents, prefix),
-         {:ok, cursor} <-
-           normalize_list_cursor(Map.get(body, :next_continuation_token, Map.get(body, "NextContinuationToken"))) do
+         {:ok, truncated?} <- normalize_is_truncated(is_truncated),
+         {:ok, cursor} <- normalize_list_cursor(continuation_token, truncated?) do
       {:ok, %{objects: objects, cursor: cursor}}
     else
       _invalid -> {:error, :invalid_list_response}
@@ -453,8 +470,9 @@ defmodule Storyarn.Assets.Storage.R2 do
       with true <- is_map(object),
            key when is_binary(key) <- Map.get(object, :key, Map.get(object, "Key")),
            true <- Storage.canonical_key?(key) and String.starts_with?(key, prefix),
-           {:ok, size} <- normalize_list_size(Map.get(object, :size, Map.get(object, "Size"))) do
-        {:cont, {:ok, [%{key: key, size: size} | objects]}}
+           {:ok, size} <- normalize_list_size(Map.get(object, :size, Map.get(object, "Size"))),
+           {:ok, identity} <- normalize_object_identity(object) do
+        {:cont, {:ok, [%{key: key, size: size, identity: identity} | objects]}}
       else
         _invalid -> {:halt, {:error, :invalid_list_response}}
       end
@@ -476,10 +494,28 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   defp normalize_list_size(_size), do: {:error, :invalid_list_response}
 
-  defp normalize_list_cursor(nil), do: {:ok, nil}
-  defp normalize_list_cursor(""), do: {:ok, nil}
-  defp normalize_list_cursor(cursor) when is_binary(cursor), do: {:ok, cursor}
-  defp normalize_list_cursor(_cursor), do: {:error, :invalid_list_response}
+  defp normalize_object_identity(object) do
+    identity =
+      Map.get(
+        object,
+        :e_tag,
+        Map.get(object, :etag, Map.get(object, "ETag"))
+      )
+
+    if is_binary(identity) and identity != "" and byte_size(identity) <= 1_024,
+      do: {:ok, identity},
+      else: {:error, :invalid_list_response}
+  end
+
+  defp normalize_is_truncated(value) when value in [true, "true"], do: {:ok, true}
+  defp normalize_is_truncated(value) when value in [false, "false"], do: {:ok, false}
+  defp normalize_is_truncated(_value), do: {:error, :invalid_list_response}
+
+  defp normalize_list_cursor(cursor, true) when is_binary(cursor) and cursor != "" and byte_size(cursor) <= 4_096,
+    do: {:ok, cursor}
+
+  defp normalize_list_cursor(cursor, false) when cursor in [nil, ""], do: {:ok, nil}
+  defp normalize_list_cursor(_cursor, _truncated?), do: {:error, :invalid_list_response}
 
   defp cloudflare_r2_endpoint? do
     case URI.parse(config()[:endpoint_url] || "").host do

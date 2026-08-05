@@ -162,6 +162,33 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     end
   end
 
+  describe "delete_if_matches/2" do
+    test "deletes only the listed object identity", %{test_dir: test_dir} do
+      prefix = "conditional-delete/"
+      key = prefix <> "object.bin"
+      assert {:ok, _url} = Local.upload(key, "first", "application/octet-stream")
+
+      assert {:ok, %{objects: [%{identity: identity}], cursor: nil}} =
+               Local.list_prefix(prefix, [])
+
+      assert :ok = Local.delete_if_matches(key, identity)
+      refute File.exists?(Path.join(test_dir, key))
+      assert :ok = Local.delete_if_matches(key, identity)
+    end
+
+    test "preserves a same-size replacement", %{test_dir: test_dir} do
+      prefix = "conditional-replacement/"
+      key = prefix <> "object.bin"
+      assert {:ok, _url} = Local.upload(key, "first", "application/octet-stream")
+
+      assert {:ok, %{objects: [%{identity: identity}]}} = Local.list_prefix(prefix, [])
+      assert {:ok, _url} = Local.upload(key, "other", "application/octet-stream")
+
+      assert {:error, :object_changed} = Local.delete_if_matches(key, identity)
+      assert File.read!(Path.join(test_dir, key)) == "other"
+    end
+  end
+
   describe "download/1" do
     test "rejects traversal keys" do
       assert {:error, :invalid_key} = Local.download("../escaped.txt")
@@ -204,6 +231,7 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       assert length(first_page) == 2
       assert is_binary(cursor)
       assert Enum.all?(first_page, &String.starts_with?(&1.key, prefix))
+      assert Enum.all?(first_page, &String.match?(&1.identity, ~r/\A[0-9a-f]{64}\z/))
 
       assert :ok = first_page |> List.first() |> Map.fetch!(:key) |> Local.delete()
 
@@ -213,8 +241,44 @@ defmodule Storyarn.Assets.Storage.LocalTest do
                Enum.sort([prefix <> "project.json", prefix <> "manifest.json", prefix <> "blobs/a.bin"])
 
       assert {:error, :invalid_prefix} = Local.list_prefix("", [])
+      assert {:error, :invalid_prefix} = Local.list_prefix(prefix <> "/", [])
       assert {:error, :invalid_limit} = Local.list_prefix(prefix, limit: "all")
       assert {:error, :invalid_cursor} = Local.list_prefix(prefix, cursor: "not-an-offset")
+    end
+
+    test "returns an empty page only when the prefix directory is absent" do
+      prefix = "projects/1/snapshots/object-sets/v1/ready/MissingToken1234/"
+
+      assert {:ok, %{objects: [], cursor: nil}} = Local.list_prefix(prefix, [])
+    end
+
+    test "fails closed when the prefix resolves to a regular file" do
+      root_key = "projects/1/snapshots/object-sets/v1/ready/NotADirectory123"
+      assert {:ok, _url} = Local.upload(root_key, "not-a-directory", "application/octet-stream")
+
+      assert {:error, :invalid_prefix_target} = Local.list_prefix(root_key <> "/", [])
+    end
+
+    test "propagates traversal errors instead of returning a partial inventory", %{test_dir: test_dir} do
+      prefix = "projects/1/snapshots/object-sets/v1/ready/UnreadableDir123/"
+      unreadable = Path.join([test_dir, prefix, "blocked"])
+      File.mkdir_p!(unreadable)
+      File.chmod!(unreadable, 0o000)
+
+      try do
+        assert {:error, :eacces} = Local.list_prefix(prefix, [])
+      after
+        File.chmod!(unreadable, 0o700)
+      end
+    end
+
+    test "rejects unsafe filesystem entries", %{test_dir: test_dir} do
+      prefix = "projects/1/snapshots/object-sets/v1/ready/UnsafeEntry1234/"
+      prefix_path = Path.join(test_dir, prefix)
+      File.mkdir_p!(prefix_path)
+      assert :ok = File.ln_s(Path.expand(test_dir), Path.join(prefix_path, "linked"))
+
+      assert {:error, :unsafe_storage_entry} = Local.list_prefix(prefix, [])
     end
 
     test "keeps cursor order stable across sibling files and directories" do

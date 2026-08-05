@@ -13,7 +13,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.SnapshotCleanupIntent
+  alias Storyarn.Versioning.SnapshotObjectFormat
+  alias Storyarn.Versioning.SnapshotObjectPublicationClaim
+  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker
   alias Storyarn.Workspaces
@@ -50,6 +54,39 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert {:error, _reason} = Storage.stat(ready.manifest_storage_key)
       assert {:error, _reason} = Storage.stat(ready.project_storage_key)
       assert {:ok, :already_completed} = Versioning.process_project_snapshot_cleanup_intent(intent.id)
+    end
+
+    test "keeps deletion available after runtime manifest limits are lowered" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+      original_limits = Application.get_env(:storyarn, SnapshotObjectFormat, [])
+
+      Application.put_env(
+        :storyarn,
+        SnapshotObjectFormat,
+        Keyword.put(original_limits, :max_manifest_bytes, 1)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, SnapshotObjectFormat, original_limits) end)
+
+      assert {:ok, intent} =
+               Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      assert intent.project_snapshot_id_snapshot == ready.id
+      refute Repo.get(ProjectSnapshot, ready.id)
+    end
+
+    test "rejects an oversized cleanup manifest before decoding it" do
+      max_manifest_bytes = SnapshotObjectFormat.hard_limits().max_manifest_bytes
+      oversized_manifest = :binary.copy(" ", max_manifest_bytes + 1)
+
+      assert {:error, {:snapshot_object_size_limit_exceeded, :manifest, ^max_manifest_bytes}} =
+               SnapshotObjectStorage.cleanup_scope_from_capture(
+                 1,
+                 "projects/1/snapshots/object-sets/v1/ready/OversizedTest001",
+                 oversized_manifest
+               )
     end
 
     test "rejects an actor without project management authority" do
@@ -108,7 +145,105 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert terminal.status == "terminal"
       assert terminal.remaining_storage_keys == intent.storage_keys
       assert terminal.terminal_at
-      assert Versioning.project_snapshot_cleanup_backlog().terminal_failures == 1
+
+      assert %{backlog_count: 0, retry_count: 0, terminal_failures: 1} =
+               Versioning.project_snapshot_cleanup_backlog()
+    end
+
+    test "operator replay safely reopens a terminal intent and emits one replay event" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+      assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      assert {:ok, :terminal} =
+               Versioning.process_project_snapshot_cleanup_intent(intent.id,
+                 delete_fun: fn keys -> {:error, keys} end,
+                 final_attempt?: true
+               )
+
+      handler_id = "snapshot-cleanup-replay-#{System.unique_integer([:positive])}"
+      parent = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :snapshot, :cleanup, :replay],
+          fn event, measurements, metadata, pid -> send(pid, {event, measurements, metadata}) end,
+          parent
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:ok, %SnapshotCleanupIntent{status: "retrying", terminal_at: nil}} =
+               Versioning.replay_terminal_project_snapshot_cleanup(intent.id)
+
+      replay_jobs =
+        Storyarn.Workers.CleanupProjectSnapshotWorker
+        |> then(&all_enqueued(worker: &1))
+        |> Enum.filter(&is_binary(&1.args["replay_token"]))
+
+      assert [%Oban.Job{args: replay_args, conflict?: false}] = replay_jobs
+
+      assert is_binary(replay_args["replay_token"])
+
+      assert_receive {
+        [:storyarn, :snapshot, :cleanup, :replay],
+        %{count: 1},
+        %{status: :enqueued, reason: "user_delete"}
+      }
+
+      assert {:ok, :already_active} =
+               Versioning.replay_terminal_project_snapshot_cleanup(intent.id)
+
+      refute_receive {[:storyarn, :snapshot, :cleanup, :replay], _, _}
+    end
+
+    test "emits an intent once even when a user deletion is redelivered" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+      handler_id = "snapshot-cleanup-intent-#{System.unique_integer([:positive])}"
+      parent = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :snapshot, :cleanup, :intent],
+          fn event, measurements, metadata, pid -> send(pid, {event, measurements, metadata}) end,
+          parent
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      scope = user_scope_fixture(user)
+      assert {:ok, intent} = Versioning.delete_project_snapshot(scope, project, ready.id)
+      assert {:ok, redelivered} = Versioning.delete_project_snapshot(scope, project, ready.id)
+      assert redelivered.id == intent.id
+
+      assert_receive {
+        [:storyarn, :snapshot, :cleanup, :intent],
+        %{count: 1, object_count: object_count},
+        %{reason: "user_delete", authority_kind: "user"}
+      }
+
+      assert object_count == intent.object_count
+      refute_receive {[:storyarn, :snapshot, :cleanup, :intent], _, _}
+    end
+  end
+
+  describe "database lifecycle fence" do
+    test "rejects a generation jump even when the lifecycle state is unchanged" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+
+      assert_raise Postgrex.Error, ~r/project snapshot lifecycle transition is stale or invalid/, fn ->
+        Repo.query!(
+          "UPDATE project_snapshots SET lifecycle_generation = lifecycle_generation + 2 WHERE id = $1",
+          [ready.id]
+        )
+      end
     end
   end
 
@@ -138,7 +273,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       refute Repo.exists?(SnapshotCleanupIntent)
     end
 
-    test "daily worker deletes through the lifecycle context and reports its batch" do
+    test "scheduled worker deletes through the lifecycle context and reports its batch" do
       user = user_fixture()
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
@@ -152,11 +287,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
 
       handler_id = "snapshot-retention-test-#{System.unique_integer([:positive])}"
       parent = self()
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{project.id}")
 
       :ok =
-        :telemetry.attach(
+        :telemetry.attach_many(
           handler_id,
-          [:storyarn, :snapshot, :retention, :stop],
+          [
+            [:storyarn, :snapshot, :retention, :stop],
+            [:storyarn, :snapshot, :cleanup, :intent]
+          ],
           fn event, measurements, metadata, pid -> send(pid, {event, measurements, metadata}) end,
           parent
         )
@@ -169,11 +308,68 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert %SnapshotCleanupIntent{reason: "retention"} =
                Repo.get_by!(SnapshotCleanupIntent, project_snapshot_id_snapshot: ready.id)
 
+      assert_receive {:project_snapshot_updated, snapshot_id}
+      assert snapshot_id == ready.id
+
+      assert_receive {
+        [:storyarn, :snapshot, :cleanup, :intent],
+        %{count: 1},
+        %{reason: "retention", authority_kind: "system"}
+      }
+
       assert_receive {
         [:storyarn, :snapshot, :retention, :stop],
         %{deleted_count: 1, failure_count: 0},
         %{status: :ok}
       }
+    end
+
+    test "candidate reads stop at the run high-watermark" do
+      user = user_fixture()
+      project = project_fixture(user)
+      first = create_ready_snapshot(user, project)
+      second = create_ready_snapshot(user, project)
+      expires_at = DateTime.add(TimeHelpers.now(), -60, :second)
+
+      Enum.each([first, second], fn snapshot ->
+        snapshot
+        |> Ecto.Changeset.change(origin: "daily", expires_at: expires_at)
+        |> Repo.update!()
+      end)
+
+      assert [candidate] =
+               Versioning.list_project_snapshot_retention_candidates(TimeHelpers.now(),
+                 through_id: first.id
+               )
+
+      assert candidate.snapshot_id == first.id
+    end
+
+    test "continuation preserves an exhausted stream cursor and the starting high-watermark" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+      expires_at = DateTime.add(TimeHelpers.now(), -60, :second)
+
+      ready =
+        ready
+        |> Ecto.Changeset.change(origin: "daily", expires_at: expires_at)
+        |> Repo.update!()
+
+      insert_retention_snapshot_clones!(ready, 50, expires_at)
+      through_id = Versioning.project_snapshot_lifecycle_high_watermark()
+
+      assert {:error, :snapshot_retention_incomplete} =
+               ProjectSnapshotRetentionWorker.perform(%Oban.Job{
+                 args: %{"expired_build_after_id" => 41}
+               })
+
+      assert [%Oban.Job{state: "available", args: continuation_args}] =
+               all_enqueued(worker: ProjectSnapshotRetentionWorker)
+
+      assert continuation_args["retention_after_id"] > 0
+      assert continuation_args["expired_build_after_id"] == 41
+      assert continuation_args["through_id"] == through_id
     end
   end
 
@@ -221,6 +417,95 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert Repo.get!(StorageReservation, reservation.id).status == "released"
     end
 
+    test "recovers an expired failed build whose active reservation never gained cleanup ownership" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert {:ok, snapshot} =
+               Versioning.request_full_project_snapshot(user_scope_fixture(user), project, %{
+                 idempotency_key: Ecto.UUID.generate()
+               })
+
+      reservation = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
+      capture = Repo.get!(ProjectSnapshotCapture, snapshot.id)
+
+      assert {:ok, cleanup_scope} =
+               SnapshotObjectStorage.cleanup_scope_from_capture(
+                 project.id,
+                 snapshot.object_prefix,
+                 capture.manifest_json
+               )
+
+      assert {:ok, started} =
+               Billing.mark_storage_reservation_started(
+                 reservation.id,
+                 reservation.lease_token,
+                 reservation.generation,
+                 cleanup_scope
+               )
+
+      claim =
+        snapshot.object_prefix
+        |> SnapshotObjectPublicationClaim.create_changeset(
+          String.duplicate("a", 64),
+          Ecto.UUID.generate(),
+          DateTime.add(TimeHelpers.now(), 3_600, :second),
+          started.id,
+          started.lease_token
+        )
+        |> Repo.insert!()
+
+      claim
+      |> SnapshotObjectPublicationClaim.status_changeset("poisoned")
+      |> Repo.update!()
+
+      now = TimeHelpers.now()
+
+      failed =
+        snapshot
+        |> ProjectSnapshot.build_state_changeset(%{
+          lifecycle_state: "building",
+          progress_phase: "copying",
+          building_started_at: now,
+          state_updated_at: now
+        })
+        |> Repo.update!()
+        |> ProjectSnapshot.build_state_changeset(%{
+          lifecycle_state: "failed",
+          integrity_state: "incomplete",
+          progress_phase: "failed",
+          failure_code: "cleanup_unowned",
+          failure_message: "Cleanup ownership was not persisted.",
+          failed_at: now,
+          state_updated_at: now
+        })
+        |> Repo.update!()
+
+      started
+      |> Ecto.Changeset.change(
+        accounting_measured_at: DateTime.add(now, -120, :second),
+        expires_at: DateTime.add(now, -60, :second)
+      )
+      |> Repo.update!()
+
+      failed.build_job_id
+      |> then(&Repo.get!(Oban.Job, &1))
+      |> Ecto.Changeset.change(state: "discarded")
+      |> Repo.update!()
+
+      assert [candidate] = Versioning.list_expired_project_snapshot_build_candidates(now)
+      assert candidate.lifecycle_state == "failed"
+
+      assert {:ok, intent} =
+               Versioning.delete_expired_project_snapshot_build_candidate(candidate, now)
+
+      assert intent.reason == "expired_build"
+      refute Repo.get(ProjectSnapshot, failed.id)
+
+      assert %StorageReservation{status: "released", cleanup_status: "owned"} =
+               Repo.get!(StorageReservation, started.id)
+    end
+
     test "revalidates owning job state under lock" do
       user = user_fixture()
       project = project_fixture(user)
@@ -264,6 +549,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
       assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      parent = self()
+      handler_id = "snapshot-hard-delete-intent-#{System.unique_integer([:positive])}"
+
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{project.id}")
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :snapshot, :cleanup, :intent],
+          fn event, measurements, metadata, pid -> send(pid, {event, measurements, metadata}) end,
+          parent
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
 
       assert {:ok, _project} = Projects.permanently_delete_project(deleted)
 
@@ -274,6 +573,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert intent.reason == "project_hard_delete"
       assert intent.authority_kind == "system"
       assert ready.manifest_storage_key in intent.storage_keys
+
+      assert_receive {:project_snapshot_updated, snapshot_id}
+      assert snapshot_id == ready.id
+
+      assert_receive {
+        [:storyarn, :snapshot, :cleanup, :intent],
+        %{count: 1},
+        %{reason: "project_hard_delete", authority_kind: "system"}
+      }
     end
 
     test "workspace deletion records cleanup before deleting every project" do
@@ -309,6 +617,40 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert Repo.get!(ProjectSnapshot, snapshot.id)
       assert Repo.get_by!(StorageReservation, project_snapshot_id_snapshot: snapshot.id).status == "active"
       refute Repo.exists?(SnapshotCleanupIntent)
+    end
+
+    test "rolled-back parent cleanup does not publish intents from earlier snapshots" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+
+      assert {:ok, active} =
+               Versioning.request_full_project_snapshot(user_scope_fixture(user), project, %{
+                 idempotency_key: Ecto.UUID.generate()
+               })
+
+      assert ready.id < active.id
+      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      parent = self()
+      handler_id = "snapshot-rollback-intent-#{System.unique_integer([:positive])}"
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :snapshot, :cleanup, :intent],
+          fn event, measurements, metadata, pid -> send(pid, {event, measurements, metadata}) end,
+          parent
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:error, :snapshot_active_operation_blocks_deletion} =
+               Projects.permanently_delete_project(deleted)
+
+      refute_receive {[:storyarn, :snapshot, :cleanup, :intent], _, _}
+      refute Repo.exists?(SnapshotCleanupIntent)
+      assert Repo.get!(ProjectSnapshot, ready.id)
+      assert Repo.get!(ProjectSnapshot, active.id)
     end
 
     test "project deletion fails closed before loading an oversized snapshot inventory" do
@@ -368,5 +710,29 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
     )
 
     on_exit(fn -> Application.put_env(:storyarn, :snapshot_lifecycle, original) end)
+  end
+
+  defp insert_retention_snapshot_clones!(snapshot, count, expires_at) do
+    fields = ProjectSnapshot.__schema__(:fields) -- [:id]
+    base = snapshot |> Map.from_struct() |> Map.take(fields)
+
+    rows =
+      Enum.map(1..count, fn index ->
+        token = index |> Integer.to_string() |> String.pad_leading(16, "0")
+        prefix = "projects/#{snapshot.project_id}/snapshots/object-sets/v1/ready/#{token}"
+
+        Map.merge(base, %{
+          version_number: snapshot.version_number + index,
+          object_prefix: prefix,
+          project_storage_key: "#{prefix}/project.json",
+          manifest_storage_key: "#{prefix}/manifest.json",
+          idempotency_key: Ecto.UUID.generate(),
+          capture_boundary: Ecto.UUID.generate(),
+          origin: "daily",
+          expires_at: expires_at
+        })
+      end)
+
+    {^count, nil} = Repo.insert_all(ProjectSnapshot, rows)
   end
 end

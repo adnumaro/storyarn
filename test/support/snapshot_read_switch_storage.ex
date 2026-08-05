@@ -55,6 +55,9 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   defdelegate delete(key), to: Local
 
   @impl true
+  defdelegate delete_if_matches(key, identity), to: Local
+
+  @impl true
   defdelegate get_url(key), to: Local
 
   @impl true

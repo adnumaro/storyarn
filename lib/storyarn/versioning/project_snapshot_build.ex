@@ -11,6 +11,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Assets
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Projects
@@ -22,6 +23,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.ProjectSnapshotCrud
   alias Storyarn.Versioning.ProjectSnapshotPolicy
+  alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
@@ -794,15 +796,157 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   end
 
   defp settle_cancelled(snapshot, reason \\ :snapshot_build_cancelled) do
-    cleanup_scope = cleanup_scope(reason)
-
-    case settle_active_reservation(snapshot, :snapshot_build_cancelled, cleanup_scope) do
+    case settle_cancelled_reservation(snapshot, reason) do
       {:ok, :released} -> mark_cancelled(snapshot.id, snapshot.lifecycle_generation)
       {:ok, :committed} -> {:retry, :snapshot_build_cancelled_after_publish}
       {:ok, :active_unowned} -> fail_snapshot(snapshot, :cleanup_unowned)
       {:error, settlement_reason} -> fail_snapshot(snapshot, settlement_reason)
     end
   end
+
+  defp settle_cancelled_reservation(snapshot, reason) do
+    case Repo.get(StorageReservation, snapshot.storage_reservation_id) do
+      %StorageReservation{status: "released"} ->
+        {:ok, :released}
+
+      %StorageReservation{status: "committed"} ->
+        {:ok, :committed}
+
+      %StorageReservation{status: "active", storage_started_at: nil} = reservation ->
+        release_reservation(reservation, :snapshot_build_cancelled, :storage_not_started)
+
+      %StorageReservation{status: "active"} = reservation ->
+        with {:ok, canonical_scope} <- cancelled_cleanup_scope(snapshot, reservation),
+             :ok <- poison_cancelled_publication_claim(reservation),
+             {:ok, owned_scope} <- ensure_cancelled_cleanup_handoff(canonical_scope, reason) do
+          release_reservation(
+            reservation,
+            :snapshot_build_cancelled,
+            {:owned, owned_scope}
+          )
+        end
+
+      nil ->
+        {:error, :storage_reservation_not_found}
+    end
+  end
+
+  defp cancelled_cleanup_scope(
+         %ProjectSnapshot{
+           id: snapshot_id,
+           project_id: project_id,
+           object_prefix: object_prefix,
+           storage_reservation_id: reservation_id,
+           capture_boundary: capture_boundary,
+           capture_digest: capture_digest
+         },
+         %StorageReservation{
+           id: reservation_id,
+           kind: "snapshot_build",
+           cleanup_object_prefix: object_prefix,
+           cleanup_inventory_digest: inventory_digest,
+           cleanup_inventory_count: inventory_count
+         }
+       ) do
+    with %ProjectSnapshotCapture{
+           capture_boundary: ^capture_boundary,
+           capture_digest: ^capture_digest,
+           manifest_json: manifest_json
+         } <- Repo.get(ProjectSnapshotCapture, snapshot_id),
+         {:ok, scope} <-
+           SnapshotObjectStorage.cleanup_scope_from_capture(
+             project_id,
+             object_prefix,
+             manifest_json
+           ),
+         true <- inventory_count == length(scope.storage_keys),
+         true <- inventory_digest == scope.inventory_digest do
+      {:ok, scope}
+    else
+      _invalid -> {:error, :snapshot_cancel_cleanup_inventory_mismatch}
+    end
+  end
+
+  defp cancelled_cleanup_scope(_snapshot, _reservation), do: {:error, :snapshot_cancel_cleanup_reservation_mismatch}
+
+  defp poison_cancelled_publication_claim(%StorageReservation{} = reservation) do
+    result =
+      Repo.transact(fn ->
+        reservation
+        |> lock_cancelled_publication_claim()
+        |> poison_cancelled_publication_claim_locked(reservation)
+      end)
+
+    case result do
+      {:ok, :poisoned} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp lock_cancelled_publication_claim(%StorageReservation{id: reservation_id}) do
+    Repo.one(
+      from(claim in SnapshotObjectPublicationClaim,
+        where: claim.storage_reservation_id_snapshot == ^reservation_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp poison_cancelled_publication_claim_locked(
+         %SnapshotObjectPublicationClaim{
+           object_prefix: object_prefix,
+           storage_reservation_lease_token: lease_token,
+           status: status
+         } = claim,
+         %StorageReservation{cleanup_object_prefix: object_prefix, lease_token: lease_token}
+       )
+       when status in ["staging", "staged", "publishing", "poisoned"] do
+    claim
+    |> SnapshotObjectPublicationClaim.status_changeset("poisoned")
+    |> Repo.update()
+    |> normalize_cancelled_claim_update()
+  end
+
+  defp poison_cancelled_publication_claim_locked(%SnapshotObjectPublicationClaim{status: "published"}, _reservation),
+    do: {:error, :snapshot_build_cancelled_after_publish}
+
+  defp poison_cancelled_publication_claim_locked(_claim, _reservation),
+    do: {:error, :snapshot_object_publication_claim_not_poisoned}
+
+  defp normalize_cancelled_claim_update({:ok, _claim}), do: {:ok, :poisoned}
+  defp normalize_cancelled_claim_update({:error, changeset}), do: {:error, changeset}
+
+  defp ensure_cancelled_cleanup_handoff(canonical_scope, reason) do
+    reason_scope = cleanup_scope(reason)
+
+    if matching_cleanup_handoff?(canonical_scope, reason_scope) do
+      {:ok,
+       Map.put(
+         canonical_scope,
+         :cleanup_request_id,
+         value(reason_scope, :cleanup_request_id)
+       )}
+    else
+      case StorageCompensation.persist_planned_cleanup_request(canonical_scope.storage_keys) do
+        {:ok, cleanup_request} ->
+          {:ok, Map.put(canonical_scope, :cleanup_request_id, cleanup_request.id)}
+
+        {:error, handoff_reason} ->
+          {:error, {:snapshot_cancel_cleanup_handoff_failed, handoff_reason}}
+      end
+    end
+  end
+
+  defp matching_cleanup_handoff?(canonical_scope, reason_scope) when is_map(reason_scope) do
+    cleanup_request_id = value(reason_scope, :cleanup_request_id)
+    storage_keys = value(reason_scope, :storage_keys)
+
+    is_integer(cleanup_request_id) and cleanup_request_id > 0 and is_list(storage_keys) and
+      length(storage_keys) == length(canonical_scope.storage_keys) and
+      MapSet.equal?(MapSet.new(storage_keys), MapSet.new(canonical_scope.storage_keys))
+  end
+
+  defp matching_cleanup_handoff?(_canonical_scope, _reason_scope), do: false
 
   defp mark_cancelled(snapshot_id, expected_generation) do
     now = TimeHelpers.now()
@@ -837,11 +981,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       when state in ["ready", "failed", "cancelled", "deleting"] ->
         {:ok, snapshot}
 
-      %ProjectSnapshot{progress_phase: "finalizing"} ->
-        {:error, :snapshot_finalization_in_progress}
-
       %ProjectSnapshot{cancel_requested_at: %DateTime{}} = snapshot ->
         {:ok, snapshot}
+
+      %ProjectSnapshot{progress_phase: "finalizing"} ->
+        {:error, :snapshot_finalization_in_progress}
 
       %ProjectSnapshot{lifecycle_state: "pending"} = snapshot ->
         cancel_pending_snapshot(snapshot)

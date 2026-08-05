@@ -6,6 +6,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   accepts only the exact inventory recorded by a dry run, rejects new or
   replaced objects, checkpoints the shrinking inventory, and deletes database
   rows only after every scoped storage prefix re-lists empty.
+
+  This one-time maintenance boundary intentionally invokes its injected storage
+  adapter directly: the normal storage facade protects recoverable versioning
+  objects from deletion. Safety instead comes from the pre-rollout guard, exact
+  snapshot-root inventory, immutable provider identities, and a global write
+  fence documented in the deployment runbook.
   """
 
   alias Storyarn.Assets.Storage
@@ -14,17 +20,23 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   alias Storyarn.Versioning.SnapshotStorage
 
   @format "storyarn.project_snapshot_reset"
-  @format_version 1
+  @format_version 2
+  @reset_receipts_migration 20_260_805_125_000
+  @canonical_snapshot_rollout_migration 20_260_805_130_000
   @page_size 1_000
-  @delete_batch_size 100
+  @minimum_delete_checkpoint_size 100
+  @max_delete_checkpoints 32
   @default_max_objects 250_000
+  @max_plan_file_bytes 1_073_741_824
+  @temporary_plan_write_attempts 5
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
   @token_regex ~r/\A[A-Za-z0-9_-]{16}\z/
   @blob_filename_regex ~r/\A[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z/
   @plan_keys Enum.sort(~w(
                  attempt_count authorization_digest completed_at environment format format_version
-                 entity_version_row_ids inventory_digest last_error_code objects prefixes prepared_at
-                 project_ids remaining_storage_keys snapshot_row_ids status workspace_id
+                 database_inventory_digest entity_version_row_ids inventory_digest last_error_code
+                 objects prefixes prepared_at project_ids remaining_storage_keys snapshot_row_ids
+                 status workspace_id
                ))
 
   @type plan :: map()
@@ -39,30 +51,36 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     adapter = Keyword.get(opts, :storage_adapter, Storage.adapter())
     max_objects = Keyword.get(opts, :max_objects, @default_max_objects)
 
-    with {:ok, environment} <- verify_environment(expected_environment, opts),
-         :ok <- validate_max_objects(max_objects),
-         :ok <- ensure_workspace_exists(repo, workspace_id),
-         {:ok, project_ids, snapshot_rows, entity_version_rows} <- load_scope(repo, workspace_id, max_objects),
-         :ok <- validate_snapshot_row_identities(snapshot_rows),
-         :ok <- validate_entity_version_row_identities(entity_version_rows),
-         prefixes = reset_prefixes(project_ids),
-         {:ok, objects} <- list_exact_inventory(adapter, prefixes, max_objects),
-         :ok <- validate_objects(objects, project_ids),
-         now = TimeHelpers.now(),
-         plan =
-           build_plan(
-             environment,
-             workspace_id,
-             project_ids,
-             snapshot_rows,
-             entity_version_rows,
-             prefixes,
-             objects,
-             now
-           ),
-         :ok <- validate_plan(plan) do
-      {:ok, plan}
-    end
+    result =
+      with {:ok, environment} <- verify_environment(expected_environment, opts),
+           :ok <- validate_max_objects(max_objects),
+           :ok <- ensure_pre_rollout_reset_window(repo, opts),
+           :ok <- ensure_reset_receipt_schema(repo),
+           :ok <- ensure_workspace_exists(repo, workspace_id),
+           {:ok, project_ids, snapshot_rows, entity_version_rows} <- load_scope(repo, workspace_id, max_objects),
+           :ok <- validate_snapshot_row_identities(snapshot_rows),
+           :ok <- validate_entity_version_row_identities(entity_version_rows),
+           prefixes = reset_prefixes(project_ids),
+           {:ok, objects} <- list_exact_inventory(adapter, prefixes, max_objects),
+           :ok <- validate_objects(objects, project_ids),
+           now = TimeHelpers.now(),
+           plan =
+             build_plan(
+               environment,
+               workspace_id,
+               project_ids,
+               snapshot_rows,
+               entity_version_rows,
+               prefixes,
+               objects,
+               now
+             ),
+           :ok <- validate_plan(plan) do
+        {:ok, plan}
+      end
+
+    emit_prepare_failure(result, workspace_id, expected_environment)
+    result
   end
 
   def prepare(_workspace_id, _expected_environment, _opts), do: {:error, :invalid_snapshot_reset_scope}
@@ -76,17 +94,249 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     adapter = Keyword.get(opts, :storage_adapter, Storage.adapter())
     checkpoint = Keyword.get(opts, :checkpoint, fn _plan -> :ok end)
 
-    with :ok <- validate_plan(plan),
-         :ok <- verify_confirmation(plan, confirmation_digest),
-         {:ok, environment} <- verify_environment(plan["environment"], opts),
-         {:ok, authorization_digest} <- authorize_execution(opts) do
-      execute_authorized_plan(plan, environment, authorization_digest, repo, adapter, checkpoint)
-    else
-      {:error, reason} -> {:error, reason, plan}
+    result =
+      with :ok <- validate_plan(plan),
+           :ok <- verify_confirmation(plan, confirmation_digest),
+           {:ok, environment} <- verify_environment(plan["environment"], opts),
+           :ok <- ensure_pre_rollout_reset_window(repo, opts),
+           :ok <- ensure_reset_receipt_schema(repo),
+           {:ok, authorization_digest} <- authorize_execution(opts) do
+        execute_authorized_plan(plan, environment, authorization_digest, repo, adapter, checkpoint)
+      else
+        {:error, reason} -> {:error, reason, plan}
+      end
+
+    emit_reset_result(result, plan, opts)
+    result
+  end
+
+  def execute(plan, _confirmation_digest, opts) do
+    result = {:error, :invalid_snapshot_reset_plan, plan}
+    emit_reset_result(result, plan, opts)
+    result
+  end
+
+  @doc "Reads and validates one persisted reset plan."
+  @spec read_plan_file(Path.t()) :: {:ok, plan()} | {:error, term()}
+  def read_plan_file(path) when is_binary(path) do
+    with {:ok, bytes} <- read_owner_only_plan_file(path),
+         {:ok, plan} <- Jason.decode(bytes),
+         :ok <- validate_plan(plan) do
+      {:ok, plan}
     end
   end
 
-  def execute(plan, _confirmation_digest, _opts), do: {:error, :invalid_snapshot_reset_plan, plan}
+  def read_plan_file(_path), do: {:error, :invalid_snapshot_reset_plan_path}
+
+  defp read_owner_only_plan_file(path) do
+    expanded = Path.expand(path)
+
+    case File.lstat(expanded) do
+      {:ok, %File.Stat{type: :regular, mode: mode, size: size}}
+      when size > 0 and size <= @max_plan_file_bytes ->
+        if Bitwise.band(mode, 0o077) == 0,
+          do: File.read(expanded),
+          else: {:error, :unsafe_snapshot_reset_plan_file}
+
+      {:ok, _unsafe} ->
+        {:error, :unsafe_snapshot_reset_plan_file}
+
+      {:error, reason} ->
+        {:error, {:snapshot_reset_plan_read_failed, reason}}
+    end
+  end
+
+  @doc "Persists a new owner-readable reset plan without overwriting evidence."
+  @spec write_new_plan_file(Path.t(), plan()) :: :ok | {:error, term()}
+  def write_new_plan_file(path, plan) when is_binary(path) do
+    with :ok <- validate_plan(plan),
+         {:ok, temporary} <- write_temporary_plan(path, plan) do
+      case :file.make_link(String.to_charlist(temporary), String.to_charlist(Path.expand(path))) do
+        :ok ->
+          remove_temporary_plan_and_sync(temporary)
+
+        {:error, :eexist} ->
+          merge_persist_and_cleanup_errors(
+            {:error, :snapshot_reset_plan_exists},
+            remove_temporary_plan_and_sync(temporary)
+          )
+
+        {:error, reason} ->
+          merge_persist_and_cleanup_errors(
+            {:error, {:snapshot_reset_plan_persist_failed, reason}},
+            remove_temporary_plan_and_sync(temporary)
+          )
+      end
+    end
+  end
+
+  def write_new_plan_file(_path, _plan), do: {:error, :invalid_snapshot_reset_plan_path}
+
+  @doc "Atomically checkpoints an existing reset plan."
+  @spec write_plan_file(Path.t(), plan()) :: :ok | {:error, term()}
+  def write_plan_file(path, plan) when is_binary(path) do
+    with :ok <- validate_plan(plan),
+         {:ok, temporary} <- write_temporary_plan(path, plan) do
+      case File.rename(temporary, Path.expand(path)) do
+        :ok ->
+          sync_parent_directory(path)
+
+        {:error, reason} ->
+          merge_persist_and_cleanup_errors(
+            {:error, {:snapshot_reset_plan_persist_failed, reason}},
+            remove_temporary_plan_and_sync(temporary)
+          )
+      end
+    end
+  end
+
+  def write_plan_file(_path, _plan), do: {:error, :invalid_snapshot_reset_plan_path}
+
+  defp write_temporary_plan(path, plan) do
+    expanded = Path.expand(path)
+    directory = Path.dirname(expanded)
+    contents = Jason.encode_to_iodata!(plan, pretty: true)
+
+    with :ok <- ensure_owner_only_plan_directory(directory) do
+      write_temporary_plan_file(
+        directory,
+        Path.basename(expanded),
+        contents,
+        @temporary_plan_write_attempts
+      )
+    end
+  rescue
+    exception -> {:error, {:snapshot_reset_plan_persist_failed, exception}}
+  end
+
+  defp write_temporary_plan_file(_directory, _basename, _contents, 0) do
+    {:error, {:snapshot_reset_plan_persist_failed, :temporary_name_collision}}
+  end
+
+  defp write_temporary_plan_file(directory, basename, contents, attempts) do
+    temporary = Path.join(directory, ".#{basename}.#{temporary_plan_token()}.tmp")
+
+    case write_owner_only_temporary_plan(temporary, contents) do
+      :ok ->
+        {:ok, temporary}
+
+      {:error, :eexist, :not_created} ->
+        write_temporary_plan_file(directory, basename, contents, attempts - 1)
+
+      {:error, reason, :not_created} ->
+        {:error, {:snapshot_reset_plan_persist_failed, reason}}
+
+      {:error, reason, :created} ->
+        merge_persist_and_cleanup_errors(
+          {:error, {:snapshot_reset_plan_persist_failed, reason}},
+          remove_temporary_plan_and_sync(temporary)
+        )
+    end
+  end
+
+  defp write_owner_only_temporary_plan(path, contents) do
+    case :file.open(String.to_charlist(path), [:write, :exclusive, :binary]) do
+      {:ok, io_device} ->
+        result =
+          with :ok <- File.chmod(path, 0o600),
+               :ok <- :file.write(io_device, contents) do
+            :file.sync(io_device)
+          end
+
+        close_result = :file.close(io_device)
+
+        case {result, close_result} do
+          {:ok, :ok} ->
+            :ok
+
+          {{:error, reason}, :ok} ->
+            {:error, reason, :created}
+
+          {:ok, {:error, reason}} ->
+            {:error, reason, :created}
+
+          {{:error, reason}, {:error, close_reason}} ->
+            {:error, {:file_operation_and_close_failed, reason, close_reason}, :created}
+        end
+
+      {:error, reason} ->
+        {:error, reason, :not_created}
+    end
+  end
+
+  defp temporary_plan_token do
+    16
+    |> :crypto.strong_rand_bytes()
+    |> Base.url_encode64(padding: false)
+  end
+
+  defp ensure_owner_only_plan_directory(directory) do
+    case File.lstat(directory) do
+      {:ok, %File.Stat{type: :directory, mode: mode}} ->
+        if Bitwise.band(mode, 0o077) == 0,
+          do: :ok,
+          else: {:error, {:snapshot_reset_plan_persist_failed, :unsafe_snapshot_reset_plan_directory}}
+
+      {:ok, _unsafe} ->
+        {:error, {:snapshot_reset_plan_persist_failed, :unsafe_snapshot_reset_plan_directory}}
+
+      {:error, reason} ->
+        {:error, {:snapshot_reset_plan_persist_failed, {:snapshot_reset_plan_directory_unavailable, reason}}}
+    end
+  end
+
+  defp remove_temporary_plan_and_sync(path) do
+    remove_result = File.rm(path)
+    sync_result = sync_parent_directory(path)
+
+    case {remove_result, sync_result} do
+      {:ok, :ok} ->
+        :ok
+
+      {{:error, reason}, :ok} ->
+        {:error, {:snapshot_reset_plan_temporary_cleanup_failed, reason}}
+
+      {:ok, {:error, reason}} ->
+        {:error, reason}
+
+      {{:error, remove_reason}, {:error, sync_reason}} ->
+        {:error, {:snapshot_reset_plan_temporary_cleanup_failed, remove_reason, sync_reason}}
+    end
+  end
+
+  defp merge_persist_and_cleanup_errors({:error, persist_reason}, :ok), do: {:error, persist_reason}
+
+  defp merge_persist_and_cleanup_errors({:error, persist_reason}, {:error, cleanup_reason}) do
+    {:error, {:snapshot_reset_plan_persist_and_cleanup_failed, persist_reason, cleanup_reason}}
+  end
+
+  defp sync_parent_directory(path) do
+    directory = path |> Path.expand() |> Path.dirname() |> String.to_charlist()
+
+    case :file.open(directory, [:read, :directory]) do
+      {:ok, io_device} ->
+        result = :file.sync(io_device)
+        close_result = :file.close(io_device)
+
+        case {result, close_result} do
+          {:ok, :ok} ->
+            :ok
+
+          {{:error, reason}, :ok} ->
+            {:error, {:snapshot_reset_plan_directory_sync_failed, reason}}
+
+          {:ok, {:error, reason}} ->
+            {:error, {:snapshot_reset_plan_directory_sync_failed, reason}}
+
+          {{:error, reason}, {:error, close_reason}} ->
+            {:error,
+             {:snapshot_reset_plan_directory_sync_failed, {:file_operation_and_close_failed, reason, close_reason}}}
+        end
+
+      {:error, reason} ->
+        {:error, {:snapshot_reset_plan_directory_sync_failed, reason}}
+    end
+  end
 
   defp execute_authorized_plan(
          %{"status" => "completed"} = plan,
@@ -97,7 +347,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
          _checkpoint
        ) do
     case final_zero_state(repo, adapter, plan) do
-      :complete -> {:ok, plan}
+      :complete -> validate_completed_reset_receipt(repo, plan)
       :incomplete -> {:error, :snapshot_reset_completed_state_changed, plan}
       {:error, reason} -> {:error, reason, plan}
     end
@@ -105,17 +355,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
 
   defp execute_authorized_plan(plan, environment, authorization_digest, repo, adapter, checkpoint) do
     case final_zero_state(repo, adapter, plan) do
-      :complete -> recover_completed_plan(plan, environment, authorization_digest, checkpoint)
+      :complete -> recover_completed_plan(plan, environment, authorization_digest, repo, checkpoint)
       :incomplete -> execute_pending_plan(plan, environment, authorization_digest, repo, adapter, checkpoint)
       {:error, reason} -> {:error, reason, plan}
     end
   end
 
-  defp recover_completed_plan(plan, environment, authorization_digest, checkpoint) do
+  defp recover_completed_plan(plan, environment, authorization_digest, repo, checkpoint) do
     running = mark_running(plan, authorization_digest)
 
     case checkpoint_plan(checkpoint, running) do
-      :ok -> complete_execution(running, environment, checkpoint)
+      :ok -> complete_execution(running, environment, repo, checkpoint)
       {:error, reason} -> fail_execution(running, {:snapshot_reset_checkpoint_failed, reason}, checkpoint)
     end
   end
@@ -143,26 +393,31 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
          {:ok, storage_complete} <- delete_inventory(adapter, running, checkpoint),
          :ok <- verify_prefixes_empty(adapter, storage_complete["prefixes"]),
          :ok <- delete_snapshot_rows(repo, storage_complete) do
-      complete_execution(storage_complete, environment, checkpoint)
+      complete_execution(storage_complete, environment, repo, checkpoint)
     else
       {:error, reason, failed_plan} -> {:error, reason, failed_plan}
       {:error, reason} -> fail_execution(running, reason, checkpoint)
     end
   end
 
-  defp complete_execution(storage_complete, environment, checkpoint) do
-    completed =
-      storage_complete
-      |> Map.put("status", "completed")
-      |> Map.put("completed_at", DateTime.to_iso8601(TimeHelpers.now()))
+  defp complete_execution(storage_complete, environment, repo, checkpoint) do
+    case persist_or_validate_reset_receipt(repo, storage_complete, environment) do
+      {:ok, completed_at} ->
+        completed =
+          storage_complete
+          |> Map.put("status", "completed")
+          |> Map.put("completed_at", DateTime.to_iso8601(completed_at))
 
-    case checkpoint_plan(checkpoint, completed) do
-      :ok ->
-        emit_reset_stop(completed, environment)
-        {:ok, completed}
+        case checkpoint_plan(checkpoint, completed) do
+          :ok ->
+            {:ok, completed}
+
+          {:error, reason} ->
+            {:error, {:snapshot_reset_checkpoint_failed, reason}, completed}
+        end
 
       {:error, reason} ->
-        {:error, {:snapshot_reset_checkpoint_failed, reason}, completed}
+        fail_execution(storage_complete, reason, checkpoint)
     end
   end
 
@@ -176,6 +431,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
           "project_ids" => project_ids,
           "snapshot_row_ids" => row_ids,
           "entity_version_row_ids" => entity_version_row_ids,
+          "database_inventory_digest" => database_inventory_digest,
           "prefixes" => prefixes,
           "objects" => objects,
           "remaining_storage_keys" => remaining,
@@ -191,6 +447,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
            true <- positive_unique_integers?(project_ids),
            true <- positive_unique_integers?(row_ids),
            true <- positive_unique_integers?(entity_version_row_ids),
+           true <- valid_digest?(database_inventory_digest),
            true <- is_list(prefixes) and prefixes == reset_prefixes(project_ids),
            true <- is_list(objects) and Enum.all?(objects, &valid_plan_object?/1),
            true <- objects == Enum.sort_by(objects, & &1["key"]),
@@ -270,14 +527,58 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   end
 
   defp authorize_execution(opts) do
-    expected = Keyword.get(opts, :expected_authorization) || System.get_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION")
-    supplied = Keyword.get(opts, :authorization) || expected
+    expected_digest =
+      Keyword.get(opts, :expected_authorization_digest) ||
+        System.get_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256")
 
-    if is_binary(expected) and byte_size(expected) >= 32 and is_binary(supplied) and byte_size(supplied) >= 32 and
-         Plug.Crypto.secure_compare(expected, supplied) do
-      {:ok, sha256(expected)}
+    supplied = Keyword.get(opts, :authorization) || System.get_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION")
+    supplied_digest = if is_binary(supplied), do: sha256(supplied)
+
+    if valid_digest?(expected_digest) and is_binary(supplied) and byte_size(supplied) >= 32 and
+         Plug.Crypto.secure_compare(expected_digest, supplied_digest) do
+      {:ok, supplied_digest}
     else
       {:error, :snapshot_reset_not_authorized}
+    end
+  end
+
+  defp ensure_pre_rollout_reset_window(repo, opts) do
+    case Keyword.get(opts, :rollout_guard) do
+      guard when is_function(guard, 1) ->
+        normalize_rollout_guard(guard.(repo))
+
+      nil ->
+        case repo.query("SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version >= $1)", [
+               @canonical_snapshot_rollout_migration
+             ]) do
+          {:ok, %{rows: [[false]]}} -> :ok
+          {:ok, %{rows: [[true]]}} -> {:error, :snapshot_reset_rollout_already_applied}
+          {:error, reason} -> {:error, {:snapshot_reset_database_failed, reason}}
+          _invalid -> {:error, {:snapshot_reset_database_failed, :invalid_database_response}}
+        end
+    end
+  rescue
+    _exception -> {:error, :snapshot_reset_rollout_guard_failed}
+  catch
+    _kind, _reason -> {:error, :snapshot_reset_rollout_guard_failed}
+  end
+
+  defp normalize_rollout_guard(:ok), do: :ok
+  defp normalize_rollout_guard({:error, _reason} = error), do: error
+  defp normalize_rollout_guard(_invalid), do: {:error, :snapshot_reset_rollout_guard_failed}
+
+  defp ensure_reset_receipt_schema(repo) do
+    case repo.query(
+           """
+           SELECT
+             to_regclass('public.project_snapshot_reset_receipts') IS NOT NULL AND
+             EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)
+           """,
+           [@reset_receipts_migration]
+         ) do
+      {:ok, %{rows: [[true]]}} -> :ok
+      {:ok, _result} -> {:error, :snapshot_reset_receipt_schema_unavailable}
+      {:error, reason} -> {:error, {:snapshot_reset_database_failed, reason}}
     end
   end
 
@@ -313,7 +614,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
 
     entity_versions_query = """
     SELECT ev.id, ev.project_id, ev.entity_type, ev.entity_id, ev.version_number,
-           ev.storage_key, ev.snapshot_size_bytes
+           ev.storage_key, ev.snapshot_size_bytes, to_jsonb(ev)
     FROM entity_versions ev
     JOIN projects p ON p.id = ev.project_id
     WHERE p.workspace_id = $1
@@ -333,7 +634,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
         Enum.map(snapshot_rows, fn [id, project_id, data] -> %{"id" => id, "project_id" => project_id, "data" => data} end)
 
       entity_version_rows =
-        Enum.map(entity_version_rows, fn [id, project_id, entity_type, entity_id, version_number, storage_key, size] ->
+        Enum.map(entity_version_rows, fn [
+                                           id,
+                                           project_id,
+                                           entity_type,
+                                           entity_id,
+                                           version_number,
+                                           storage_key,
+                                           size,
+                                           data
+                                         ] ->
           %{
             "id" => id,
             "project_id" => project_id,
@@ -341,7 +651,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
             "entity_id" => entity_id,
             "version_number" => version_number,
             "storage_key" => storage_key,
-            "size" => size
+            "size" => size,
+            "data" => data
           }
         end)
 
@@ -383,28 +694,29 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
          "entity_id" => entity_id,
          "version_number" => version_number,
          "storage_key" => storage_key,
-         "size" => size
+         "size" => size,
+         "data" => data
        })
-       when is_integer(id) and id > 0 and is_integer(size) and size >= 0 do
-    SnapshotStorage.entity_key?(storage_key, project_id, entity_type, entity_id, version_number)
+       when is_integer(id) and id > 0 and is_integer(size) and size >= 0 and is_map(data) do
+    expected_data = %{
+      "entity_id" => entity_id,
+      "entity_type" => entity_type,
+      "id" => id,
+      "project_id" => project_id,
+      "snapshot_size_bytes" => size,
+      "storage_key" => storage_key,
+      "version_number" => version_number
+    }
+
+    Map.take(data, Map.keys(expected_data)) == expected_data and
+      SnapshotStorage.entity_key?(storage_key, project_id, entity_type, entity_id, version_number)
   end
 
   defp valid_entity_version_row_identity?(_row), do: false
 
   defp reset_prefixes(project_ids) do
     project_ids
-    |> Enum.flat_map(fn project_id ->
-      root = "projects/#{project_id}/snapshots"
-
-      [
-        "#{root}/project/",
-        "#{root}/flow/",
-        "#{root}/object-sets/v1/ready/",
-        "#{root}/object-sets/v1/staging/",
-        "#{root}/scene/",
-        "#{root}/sheet/"
-      ]
-    end)
+    |> Enum.map(&"projects/#{&1}/snapshots/")
     |> Enum.sort()
   end
 
@@ -480,14 +792,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   defp normalize_page(page, prefix) do
     normalized =
       Enum.map(page, fn
-        %{key: key, size: size} -> %{"key" => key, "size" => size}
-        %{"key" => key, "size" => size} -> %{"key" => key, "size" => size}
-        _invalid -> nil
+        %{key: key, size: size, identity: identity} ->
+          %{"identity" => identity, "key" => key, "size" => size}
+
+        %{"key" => key, "size" => size, "identity" => identity} ->
+          %{"identity" => identity, "key" => key, "size" => size}
+
+        _invalid ->
+          nil
       end)
 
     if Enum.all?(normalized, fn
-         %{"key" => key, "size" => size} ->
-           is_binary(key) and String.starts_with?(key, prefix) and is_integer(size) and size >= 0
+         %{"identity" => identity, "key" => key, "size" => size} ->
+           is_binary(key) and String.starts_with?(key, prefix) and is_integer(size) and size >= 0 and
+             valid_object_identity?(identity)
 
          _invalid ->
            false
@@ -562,6 +880,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
       "project_ids" => project_ids,
       "snapshot_row_ids" => Enum.map(snapshot_rows, & &1["id"]),
       "entity_version_row_ids" => Enum.map(entity_version_rows, & &1["id"]),
+      "database_inventory_digest" => database_inventory_digest(snapshot_rows, entity_version_rows),
       "prefixes" => prefixes,
       "objects" => objects,
       "remaining_storage_keys" => Enum.map(objects, & &1["key"]),
@@ -586,8 +905,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
       ["project_ids", plan["project_ids"]],
       ["snapshot_row_ids", plan["snapshot_row_ids"]],
       ["entity_version_row_ids", plan["entity_version_row_ids"]],
+      ["database_inventory_digest", plan["database_inventory_digest"]],
       ["prefixes", plan["prefixes"]],
-      ["objects", Enum.map(plan["objects"], &[&1["key"], &1["size"]])]
+      ["objects", Enum.map(plan["objects"], &[&1["key"], &1["size"], &1["identity"]])]
     ]
     |> Jason.encode_to_iodata!()
     |> sha256()
@@ -601,18 +921,43 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
 
   defp positive_unique_integers?(_values), do: false
 
-  defp valid_plan_object?(%{"key" => key, "size" => size} = object) do
-    Enum.sort(Map.keys(object)) == ["key", "size"] and is_binary(key) and is_integer(size) and size >= 0
+  defp valid_plan_object?(%{"identity" => identity, "key" => key, "size" => size} = object) do
+    Enum.sort(Map.keys(object)) == ["identity", "key", "size"] and is_binary(key) and is_integer(size) and size >= 0 and
+      valid_object_identity?(identity)
   end
 
   defp valid_plan_object?(_object), do: false
+
+  defp valid_object_identity?(identity) when is_binary(identity) do
+    byte_size(identity) in 1..512 and String.valid?(identity) and String.trim(identity) == identity and
+      not String.match?(identity, ~r/[\x00-\x1F\x7F]/u)
+  end
+
+  defp valid_object_identity?(_identity), do: false
+
+  defp database_inventory_digest(snapshot_rows, entity_version_rows) do
+    [canonical_term(snapshot_rows), canonical_term(entity_version_rows)]
+    |> Jason.encode_to_iodata!()
+    |> sha256()
+  end
+
+  defp canonical_term(value) when is_map(value) do
+    value
+    |> Enum.map(fn {key, nested} -> [to_string(key), canonical_term(nested)] end)
+    |> Enum.sort_by(&hd/1)
+  end
+
+  defp canonical_term(value) when is_list(value), do: Enum.map(value, &canonical_term/1)
+  defp canonical_term(value), do: value
 
   defp revalidate_database_scope(repo, plan) do
     with {:ok, project_ids, snapshot_rows, entity_version_rows} <-
            load_scope(repo, plan["workspace_id"], scope_validation_limit(plan)),
          true <- project_ids == plan["project_ids"],
          true <- Enum.map(snapshot_rows, & &1["id"]) == plan["snapshot_row_ids"],
-         true <- Enum.map(entity_version_rows, & &1["id"]) == plan["entity_version_row_ids"] do
+         true <- Enum.map(entity_version_rows, & &1["id"]) == plan["entity_version_row_ids"],
+         true <-
+           database_inventory_digest(snapshot_rows, entity_version_rows) == plan["database_inventory_digest"] do
       :ok
     else
       false -> {:error, :snapshot_reset_database_scope_changed}
@@ -627,26 +972,59 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   end
 
   defp ensure_current_inventory_subset(current, original) do
-    original_by_key = Map.new(original, &{&1["key"], &1["size"]})
+    original_by_key = Map.new(original, &{&1["key"], {&1["size"], &1["identity"]}})
 
-    if Enum.all?(current, fn object -> original_by_key[object["key"]] == object["size"] end),
-      do: :ok,
-      else: {:error, :snapshot_reset_storage_scope_changed}
+    if Enum.all?(current, fn object ->
+         original_by_key[object["key"]] == {object["size"], object["identity"]}
+       end),
+       do: :ok,
+       else: {:error, :snapshot_reset_storage_scope_changed}
   end
 
   defp delete_inventory(adapter, plan, checkpoint) do
+    batch_size = delete_checkpoint_size(length(plan["remaining_storage_keys"]))
+    objects_by_key = Map.new(plan["objects"], &{&1["key"], &1})
+
     plan["remaining_storage_keys"]
-    |> Enum.chunk_every(@delete_batch_size)
-    |> Enum.reduce_while({:ok, plan}, &delete_inventory_batch(&1, &2, adapter, checkpoint))
+    |> Enum.chunk_every(batch_size)
+    |> Enum.reduce_while(
+      {:ok, plan},
+      &delete_inventory_batch(&1, &2, objects_by_key, adapter, checkpoint)
+    )
   end
 
-  defp delete_inventory_batch(batch, {:ok, current_plan}, adapter, checkpoint) do
-    {deleted, failed} = Enum.split_with(batch, &(safe_delete(adapter, &1) == :ok))
-    updated = Map.put(current_plan, "remaining_storage_keys", current_plan["remaining_storage_keys"] -- deleted)
-    continue_after_delete_batch(failed, updated, checkpoint)
+  defp delete_checkpoint_size(remaining_count) do
+    linear_checkpoint_size = div(remaining_count + @max_delete_checkpoints - 1, @max_delete_checkpoints)
+    max(@minimum_delete_checkpoint_size, linear_checkpoint_size)
   end
 
-  defp continue_after_delete_batch([], updated, checkpoint) do
+  defp delete_inventory_batch(batch, {:ok, current_plan}, objects_by_key, adapter, checkpoint) do
+    {deleted_count, failure} =
+      Enum.reduce_while(batch, {0, nil}, fn key, state ->
+        delete_inventory_object(key, state, objects_by_key, adapter)
+      end)
+
+    updated =
+      Map.put(
+        current_plan,
+        "remaining_storage_keys",
+        Enum.drop(current_plan["remaining_storage_keys"], deleted_count)
+      )
+
+    continue_after_delete_batch(failure, updated, checkpoint)
+  end
+
+  defp delete_inventory_object(key, {count, _failure}, objects_by_key, adapter) do
+    with {:ok, object} <- Map.fetch(objects_by_key, key),
+         :ok <- safe_conditional_delete(adapter, object) do
+      {:cont, {count + 1, nil}}
+    else
+      :error -> {:halt, {count, :invalid_snapshot_reset_plan}}
+      {:error, reason} -> {:halt, {count, reason}}
+    end
+  end
+
+  defp continue_after_delete_batch(nil, updated, checkpoint) do
     case checkpoint_plan(checkpoint, updated) do
       :ok ->
         {:cont, {:ok, updated}}
@@ -656,17 +1034,23 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     end
   end
 
-  defp continue_after_delete_batch([_failed_key | _rest], updated, checkpoint) do
-    failed_plan = mark_failed(updated, "storage_delete_failed")
+  defp continue_after_delete_batch(failure, updated, checkpoint) do
+    failed_plan = mark_failed(updated, reset_delete_error_code(failure))
 
     case checkpoint_plan(checkpoint, failed_plan) do
       :ok ->
-        {:halt, {:error, :snapshot_reset_storage_delete_failed, failed_plan}}
+        {:halt, {:error, reset_delete_error(failure), failed_plan}}
 
       {:error, _reason} ->
         {:halt, {:error, :snapshot_reset_checkpoint_failed, mark_failed(updated, "checkpoint_failed")}}
     end
   end
+
+  defp reset_delete_error(:object_changed), do: :snapshot_reset_storage_scope_changed
+  defp reset_delete_error(_reason), do: :snapshot_reset_storage_delete_failed
+
+  defp reset_delete_error_code(:object_changed), do: "storage_scope_changed"
+  defp reset_delete_error_code(_reason), do: "storage_delete_failed"
 
   defp verify_prefixes_empty(adapter, prefixes) do
     case list_exact_inventory(adapter, prefixes, 1) do
@@ -791,8 +1175,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
 
   defp verify_database_scope_empty(repo, plan) do
     case load_scope(repo, plan["workspace_id"], scope_validation_limit(plan)) do
-      {:ok, _project_ids, [], []} ->
-        :ok
+      {:ok, project_ids, [], []} ->
+        if project_ids == plan["project_ids"],
+          do: :ok,
+          else: {:error, :snapshot_reset_database_scope_changed}
 
       {:ok, _project_ids, _snapshot_rows, _entity_version_rows} ->
         {:error, :snapshot_reset_final_database_not_empty}
@@ -809,8 +1195,97 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     |> Kernel.+(1)
   end
 
+  defp persist_or_validate_reset_receipt(repo, plan, environment) do
+    completed_at = TimeHelpers.now()
+    identity = reset_receipt_identity(plan, environment)
+    params = [plan["workspace_id"] | identity] ++ [plan["attempt_count"], completed_at]
+
+    case repo.query(
+           """
+           INSERT INTO project_snapshot_reset_receipts (
+             workspace_id, project_ids, environment, inventory_digest,
+             database_inventory_digest, authorization_digest, object_count,
+             object_bytes, snapshot_row_count, entity_version_row_count,
+             attempt_count, completed_at
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           ON CONFLICT (workspace_id) DO NOTHING
+           RETURNING completed_at
+           """,
+           params
+         ) do
+      {:ok, %{rows: [[persisted_at]]}} -> normalize_receipt_completed_at(persisted_at)
+      {:ok, %{rows: []}} -> fetch_matching_reset_receipt(repo, plan, environment)
+      {:error, reason} -> {:error, {:snapshot_reset_receipt_failed, reason}}
+      _invalid -> {:error, :snapshot_reset_receipt_failed}
+    end
+  end
+
+  defp validate_completed_reset_receipt(repo, plan) do
+    case fetch_matching_reset_receipt(repo, plan, plan["environment"]) do
+      {:ok, completed_at} ->
+        if DateTime.to_iso8601(completed_at) == plan["completed_at"],
+          do: {:ok, plan},
+          else: {:error, :snapshot_reset_receipt_mismatch, plan}
+
+      {:error, reason} ->
+        {:error, reason, plan}
+    end
+  end
+
+  defp fetch_matching_reset_receipt(repo, plan, environment) do
+    case repo.query(
+           """
+           SELECT project_ids, environment, inventory_digest,
+                  database_inventory_digest, authorization_digest, object_count,
+                  object_bytes, snapshot_row_count, entity_version_row_count,
+                  attempt_count, completed_at
+           FROM project_snapshot_reset_receipts
+           WHERE workspace_id = $1
+           """,
+           [plan["workspace_id"]]
+         ) do
+      {:ok, %{rows: [row]}} -> validate_reset_receipt_row(row, plan, environment)
+      {:ok, %{rows: []}} -> {:error, :snapshot_reset_receipt_missing}
+      {:error, reason} -> {:error, {:snapshot_reset_receipt_failed, reason}}
+      _invalid -> {:error, :snapshot_reset_receipt_failed}
+    end
+  end
+
+  defp validate_reset_receipt_row(row, plan, environment) do
+    {identity, [receipt_attempt_count, completed_at]} = Enum.split(row, -2)
+
+    if identity == reset_receipt_identity(plan, environment) and receipt_attempt_count > 0 do
+      normalize_receipt_completed_at(completed_at)
+    else
+      {:error, :snapshot_reset_receipt_mismatch}
+    end
+  end
+
+  defp normalize_receipt_completed_at(%DateTime{} = completed_at), do: {:ok, completed_at}
+
+  defp normalize_receipt_completed_at(%NaiveDateTime{} = completed_at) do
+    {:ok, DateTime.from_naive!(completed_at, "Etc/UTC")}
+  end
+
+  defp normalize_receipt_completed_at(_invalid), do: {:error, :snapshot_reset_receipt_mismatch}
+
+  defp reset_receipt_identity(plan, environment) do
+    [
+      plan["project_ids"],
+      environment,
+      plan["inventory_digest"],
+      plan["database_inventory_digest"],
+      plan["authorization_digest"],
+      length(plan["objects"]),
+      Enum.reduce(plan["objects"], 0, &(&1["size"] + &2)),
+      length(plan["snapshot_row_ids"]),
+      length(plan["entity_version_row_ids"])
+    ]
+  end
+
   defp fail_execution(plan, reason, checkpoint) do
-    failed = mark_failed(plan, inspect(reason))
+    failed = mark_failed(plan, reset_error_code(reason))
     _checkpoint_result = checkpoint_plan(checkpoint, failed)
     {:error, reason, failed}
   end
@@ -827,9 +1302,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     _kind, _reason -> {:error, :checkpoint_failed}
   end
 
-  defp safe_delete(adapter, key) do
-    case adapter.delete(key) do
+  defp safe_conditional_delete(adapter, %{"key" => key, "identity" => identity}) do
+    case adapter.delete_if_matches(key, identity) do
       :ok -> :ok
+      {:error, :object_changed} -> {:error, :object_changed}
       _error -> {:error, :storage_delete_failed}
     end
   rescue
@@ -844,21 +1320,67 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     |> Map.put("last_error_code", code |> to_string() |> String.slice(0, 160))
   end
 
-  defp emit_reset_stop(plan, environment) do
+  defp emit_reset_result({:ok, completed}, _original, _opts) do
+    emit_reset_stop(completed, :completed, completed["environment"], nil)
+  end
+
+  defp emit_reset_result({:error, reason, failed}, original, opts) do
+    plan = if is_map(failed), do: failed, else: original
+    fallback_environment = if is_list(opts), do: Keyword.get(opts, :current_environment, "unknown"), else: "unknown"
+    environment = plan_value(plan, "environment", fallback_environment)
+    emit_reset_stop(plan, :error, environment, reset_error_code(reason))
+  end
+
+  defp emit_reset_result(_result, _plan, _opts), do: :ok
+
+  defp emit_prepare_failure({:error, reason}, workspace_id, environment) do
+    emit_reset_stop(%{"workspace_id" => workspace_id}, :error, environment, reset_error_code({:prepare, reason}))
+  end
+
+  defp emit_prepare_failure(_result, _workspace_id, _environment), do: :ok
+
+  defp emit_reset_stop(plan, status, environment, error_code) do
     :telemetry.execute(
       [:storyarn, :snapshot, :reset, :stop],
       %{
-        object_count: length(plan["objects"]),
-        snapshot_row_count: length(plan["snapshot_row_ids"]),
-        entity_version_row_count: length(plan["entity_version_row_ids"]),
-        attempt_count: plan["attempt_count"]
+        object_count: safe_length(plan_value(plan, "objects", [])),
+        snapshot_row_count: safe_length(plan_value(plan, "snapshot_row_ids", [])),
+        entity_version_row_count: safe_length(plan_value(plan, "entity_version_row_ids", [])),
+        attempt_count: safe_non_negative_integer(plan_value(plan, "attempt_count", 0))
       },
       %{
-        status: :completed,
+        status: status,
         environment: environment,
-        workspace_id: plan["workspace_id"],
-        inventory_digest: plan["inventory_digest"]
+        workspace_id: plan_value(plan, "workspace_id", nil),
+        inventory_digest: plan_value(plan, "inventory_digest", nil),
+        error_code: error_code
       }
     )
+  end
+
+  defp plan_value(plan, key, default) when is_map(plan), do: Map.get(plan, key, default)
+  defp plan_value(_plan, _key, default), do: default
+
+  defp safe_length(value) when is_list(value), do: length(value)
+  defp safe_length(_value), do: 0
+
+  defp safe_non_negative_integer(value) when is_integer(value) and value >= 0, do: value
+  defp safe_non_negative_integer(_value), do: 0
+
+  defp reset_error_code({:prepare, reason}), do: "prepare_#{stable_error_code(reason)}"
+  defp reset_error_code(reason), do: stable_error_code(reason)
+
+  defp stable_error_code(reason) when is_atom(reason), do: Atom.to_string(reason)
+  defp stable_error_code(reason) when is_tuple(reason), do: tuple_error_code(reason)
+  defp stable_error_code(_reason), do: "unexpected_error"
+
+  defp tuple_error_code(reason) do
+    reason
+    |> Tuple.to_list()
+    |> Enum.find(&is_atom/1)
+    |> case do
+      nil -> "unexpected_error"
+      atom -> Atom.to_string(atom)
+    end
   end
 end

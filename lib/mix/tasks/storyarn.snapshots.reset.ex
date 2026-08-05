@@ -8,17 +8,22 @@ defmodule Mix.Tasks.Storyarn.Snapshots.Reset do
         --plan /secure/audit/snapshots-workspace-42.json
 
       STORYARN_SNAPSHOT_RESET_AUTHORIZATION=... \\
+      STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256=... \\
         mix storyarn.snapshots.reset --environment production --workspace-id 42 \\
         --plan /secure/audit/snapshots-workspace-42.json --execute \\
         --confirm-inventory 64_HEX_DIGEST
 
-  Pause snapshot/versioning queues and block writes for the workspace before
-  preparing the plan. Never execute a plan after its scope has changed.
+  Before preparing or executing a plan, establish the global write fence from
+  the versioning-containment runbook: stop every application node and queue
+  worker, revoke every other storage write credential, wait for IAM propagation,
+  and verify those credentials can no longer write. Never execute a plan after
+  its scope has changed.
   """
 
   use Mix.Task
 
   alias Storyarn.Versioning
+  alias Storyarn.Versioning.ProjectSnapshotReset
 
   @requirements ["app.start"]
 
@@ -51,7 +56,7 @@ defmodule Mix.Tasks.Storyarn.Snapshots.Reset do
   defp prepare!(plan_path, environment, workspace_id) do
     case Versioning.prepare_project_snapshot_reset(workspace_id, environment) do
       {:ok, plan} ->
-        write_new_plan!(plan_path, plan)
+        persist_new_plan!(plan_path, plan)
         print_plan(plan_path, plan, "DRY RUN")
 
       {:error, reason} ->
@@ -66,66 +71,46 @@ defmodule Mix.Tasks.Storyarn.Snapshots.Reset do
       Mix.raise("The plan does not match the explicit environment and workspace scope.")
     end
 
-    checkpoint = fn updated ->
-      try do
-        write_plan!(plan_path, updated)
-        :ok
-      rescue
-        _exception -> {:error, :plan_write_failed}
-      end
-    end
+    checkpoint = &ProjectSnapshotReset.write_plan_file(plan_path, &1)
 
-    case Versioning.execute_project_snapshot_reset(plan, confirmation_digest, checkpoint: checkpoint) do
+    case Versioning.execute_project_snapshot_reset(plan, confirmation_digest,
+           authorization: System.get_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION"),
+           checkpoint: checkpoint
+         ) do
       {:ok, completed} ->
         print_plan(plan_path, completed, "COMPLETED")
 
       {:error, reason, failed} ->
-        write_plan!(plan_path, failed)
+        persist_plan!(plan_path, failed)
         Mix.raise("Snapshot reset stopped safely: #{inspect(reason)}. Retry with the same plan.")
     end
   end
 
   defp read_plan!(path) do
-    with {:ok, bytes} <- File.read(path),
-         {:ok, plan} <- Jason.decode(bytes),
-         :ok <- Versioning.validate_project_snapshot_reset_plan(plan) do
-      plan
-    else
+    case ProjectSnapshotReset.read_plan_file(path) do
+      {:ok, plan} -> plan
       {:error, reason} -> Mix.raise("Could not read a valid reset plan: #{inspect(reason)}")
     end
   end
 
-  defp write_plan!(path, plan) do
-    temporary = write_temporary_plan!(path, plan)
-
-    try do
-      File.rename!(temporary, path)
-    after
-      File.rm(temporary)
+  defp persist_plan!(path, plan) do
+    case ProjectSnapshotReset.write_plan_file(path, plan) do
+      :ok -> :ok
+      {:error, reason} -> Mix.raise("Could not checkpoint the snapshot reset plan: #{inspect(reason)}")
     end
   end
 
-  defp write_new_plan!(path, plan) do
-    temporary = write_temporary_plan!(path, plan)
+  defp persist_new_plan!(path, plan) do
+    case ProjectSnapshotReset.write_new_plan_file(path, plan) do
+      :ok ->
+        :ok
 
-    try do
-      case :file.make_link(String.to_charlist(temporary), String.to_charlist(Path.expand(path))) do
-        :ok -> :ok
-        {:error, :eexist} -> Mix.raise("Refusing to overwrite an existing snapshot reset plan: #{Path.expand(path)}")
-        {:error, reason} -> Mix.raise("Could not persist the snapshot reset plan: #{inspect(reason)}")
-      end
-    after
-      File.rm(temporary)
+      {:error, :snapshot_reset_plan_exists} ->
+        Mix.raise("Refusing to overwrite an existing snapshot reset plan: #{Path.expand(path)}")
+
+      {:error, reason} ->
+        Mix.raise("Could not persist the snapshot reset plan: #{inspect(reason)}")
     end
-  end
-
-  defp write_temporary_plan!(path, plan) do
-    directory = Path.dirname(Path.expand(path))
-    temporary = Path.join(directory, ".#{Path.basename(path)}.#{System.unique_integer([:positive])}.tmp")
-    File.mkdir_p!(directory)
-    File.write!(temporary, Jason.encode_to_iodata!(plan, pretty: true), [:binary, :sync])
-    File.chmod!(temporary, 0o600)
-    temporary
   end
 
   defp print_plan(path, plan, label) do
@@ -135,6 +120,7 @@ defmodule Mix.Tasks.Storyarn.Snapshots.Reset do
     Mix.shell().info("Snapshot rows: #{length(plan["snapshot_row_ids"])}")
     Mix.shell().info("Entity-version rows: #{length(plan["entity_version_row_ids"])}")
     Mix.shell().info("Storage objects: #{length(plan["objects"])}")
+    Mix.shell().info("Storage bytes: #{Enum.sum(Enum.map(plan["objects"], & &1["size"]))}")
     Mix.shell().info("Remaining objects: #{length(plan["remaining_storage_keys"])}")
     Mix.shell().info("Inventory digest: #{plan["inventory_digest"]}")
     Mix.shell().info("Audit plan: #{Path.expand(path)}")

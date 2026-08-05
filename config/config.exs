@@ -145,8 +145,12 @@ config :storyarn, Oban,
         # Safety net for cleanup requests whose direct enqueue failed — already a
         # rare path. Its own uniqueness window made it run every 2-3 min anyway.
         {"*/15 * * * *", Storyarn.Workers.RetryStorageCleanupRequestsWorker},
-        # Snapshot TTLs are measured in days; one daily, bounded sweep is ample.
-        {"17 3 * * *", Storyarn.Workers.ProjectSnapshotRetentionWorker}
+        # Snapshot cleanup ownership survives job pruning and terminal Oban
+        # states. Reconcile the durable intent to an immediately available job.
+        {"*/15 * * * *", Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker},
+        # Snapshot TTL deletion is coarse, but this worker also reclaims expired
+        # build reservations. Run at the ENG-37 floor to bound that quota leak.
+        {"*/15 * * * *", Storyarn.Workers.ProjectSnapshotRetentionWorker}
       ]
     }
   ]

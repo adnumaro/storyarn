@@ -9,12 +9,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.Storage.Local
+  alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotCapture
+  alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
 
@@ -378,6 +381,90 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert Repo.get!(ProjectSnapshot, cancelled.id).lifecycle_state == "cancelled"
     end
 
+    test "cancellation after storage starts reconstructs and owns the exact cleanup inventory" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, requested} = request_snapshot(user, project)
+
+      reservation = Repo.get!(StorageReservation, requested.storage_reservation_id)
+      capture = Repo.get!(ProjectSnapshotCapture, requested.id)
+
+      assert {:ok, cleanup_scope} =
+               SnapshotObjectStorage.cleanup_scope_from_capture(
+                 project.id,
+                 requested.object_prefix,
+                 capture.manifest_json
+               )
+
+      manifest = Jason.decode!(capture.manifest_json)
+
+      assert cleanup_scope.estimated_cleanup_bytes ==
+               manifest["payload_size_bytes"] + byte_size(capture.manifest_json)
+
+      assert {:ok, started} =
+               Billing.mark_storage_reservation_started(
+                 reservation.id,
+                 reservation.lease_token,
+                 reservation.generation,
+                 cleanup_scope
+               )
+
+      assert %SnapshotObjectPublicationClaim{} =
+               requested.object_prefix
+               |> SnapshotObjectPublicationClaim.create_changeset(
+                 String.duplicate("a", 64),
+                 Ecto.UUID.generate(),
+                 DateTime.add(TimeHelpers.now(), 3_600, :second),
+                 started.id,
+                 started.lease_token
+               )
+               |> Repo.insert!()
+
+      assert {:ok, cancellation_requested} =
+               Versioning.cancel_project_snapshot(
+                 user_scope_fixture(user),
+                 project,
+                 requested.id
+               )
+
+      assert cancellation_requested.lifecycle_state == "pending"
+      assert cancellation_requested.cancel_requested_at
+
+      handler_id = "snapshot-cancel-cleanup-#{System.unique_integer([:positive])}"
+      parent = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :assets, :storage_compensation, :fallback_persisted],
+          fn event, measurements, metadata, pid -> send(pid, {event, measurements, metadata}) end,
+          parent
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert :ok = perform_requested_job(cancellation_requested)
+      refute_receive {[:storyarn, :assets, :storage_compensation, :fallback_persisted], _, _}
+
+      cancelled = Repo.get!(ProjectSnapshot, requested.id)
+      released = Repo.get!(StorageReservation, reservation.id)
+      claim = Repo.get!(SnapshotObjectPublicationClaim, requested.object_prefix)
+
+      assert cancelled.lifecycle_state == "cancelled"
+      assert cancelled.cancelled_at
+      assert released.status == "released"
+      assert released.cleanup_status == "owned"
+      assert claim.status == "poisoned"
+
+      assert "storage_cleanup_request:" <> cleanup_request_id = released.cleanup_reference
+      cleanup_request = Repo.get!(StorageCleanupRequest, String.to_integer(cleanup_request_id))
+
+      assert MapSet.equal?(
+               MapSet.new(cleanup_request.storage_keys),
+               MapSet.new(cleanup_scope.storage_keys)
+             )
+    end
+
     test "rejects callers without project management permission" do
       owner = user_fixture()
       unauthorized_user = user_fixture()
@@ -430,6 +517,45 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert unchanged.progress_phase == "finalizing"
       assert is_nil(unchanged.cancel_requested_at)
       assert Repo.get!(StorageReservation, unchanged.storage_reservation_id).status == "active"
+    end
+
+    test "redelivering an accepted cancellation remains idempotent during finalizing" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, requested} = request_snapshot(user, project)
+      now = TimeHelpers.now()
+
+      building =
+        requested
+        |> ProjectSnapshot.build_state_changeset(%{
+          lifecycle_state: "building",
+          progress_phase: "copying",
+          building_started_at: now,
+          state_updated_at: now
+        })
+        |> Repo.update!()
+
+      cancellation_requested =
+        building
+        |> ProjectSnapshot.cancel_request_changeset(now)
+        |> Repo.update!()
+
+      finalizing =
+        cancellation_requested
+        |> ProjectSnapshot.build_state_changeset(%{
+          lifecycle_state: "verifying",
+          progress_phase: "finalizing",
+          verifying_started_at: now,
+          state_updated_at: now
+        })
+        |> Repo.update!()
+
+      assert {:ok, idempotent} =
+               Versioning.cancel_project_snapshot(user_scope_fixture(user), project, finalizing.id)
+
+      assert idempotent.id == finalizing.id
+      assert idempotent.cancel_requested_at == finalizing.cancel_requested_at
+      assert idempotent.lifecycle_generation == finalizing.lifecycle_generation
     end
   end
 

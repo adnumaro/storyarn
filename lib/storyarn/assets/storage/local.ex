@@ -9,6 +9,7 @@ defmodule Storyarn.Assets.Storage.Local do
 
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.Storage.Local.ConditionalCopyRegistry
+  alias Storyarn.Assets.StorageHash
 
   @stream_chunk_size 1_048_576
   @conditional_copy_directory ".storyarn-copy"
@@ -82,15 +83,8 @@ defmodule Storyarn.Assets.Storage.Local do
     with true <- Storage.canonical_prefix?(prefix) and Keyword.keyword?(opts),
          {:ok, limit} <- list_limit(opts),
          {:ok, probe_path} <- file_path(prefix <> "__storyarn_inventory_probe__", allow_conditional_copy: true),
-         {:ok, cursor} <- decode_list_cursor(prefix, Keyword.get(opts, :cursor)) do
-      root = Path.dirname(probe_path)
-
-      objects =
-        case File.lstat(root) do
-          {:ok, %{type: :directory}} -> list_regular_files(root, prefix, cursor, limit + 1)
-          _missing_or_unsafe -> []
-        end
-
+         {:ok, cursor} <- decode_list_cursor(prefix, Keyword.get(opts, :cursor)),
+         {:ok, objects} <- list_prefix_objects(Path.dirname(probe_path), prefix, cursor, limit) do
       page = Enum.take(objects, limit)
       next_cursor = if length(objects) > limit, do: List.last(page).key
 
@@ -103,17 +97,28 @@ defmodule Storyarn.Assets.Storage.Local do
 
   def list_prefix(_prefix, _opts), do: {:error, :invalid_prefix}
 
-  defp list_regular_files(root, prefix, cursor, limit) do
-    frontier = root |> storage_entries() |> :gb_sets.from_list()
-    {objects, _remaining} = walk_regular_files(frontier, prefix, cursor, limit, [])
-    Enum.reverse(objects)
+  defp list_prefix_objects(root, prefix, cursor, limit) do
+    case File.lstat(root) do
+      {:ok, %{type: :directory}} -> list_regular_files(root, prefix, cursor, limit + 1)
+      {:ok, _unsafe_type} -> {:error, :invalid_prefix_target}
+      {:error, :enoent} -> {:ok, []}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
-  defp walk_regular_files(_frontier, _prefix, _cursor, 0, objects), do: {objects, 0}
+  defp list_regular_files(root, prefix, cursor, limit) do
+    with {:ok, entries} <- storage_entries(root),
+         frontier = :gb_sets.from_list(entries),
+         {:ok, {objects, _remaining}} <- walk_regular_files(frontier, prefix, cursor, limit, []) do
+      {:ok, Enum.reverse(objects)}
+    end
+  end
+
+  defp walk_regular_files(_frontier, _prefix, _cursor, 0, objects), do: {:ok, {objects, 0}}
 
   defp walk_regular_files(frontier, prefix, cursor, remaining, objects) do
     if :gb_sets.is_empty(frontier) do
-      {objects, remaining}
+      {:ok, {objects, remaining}}
     else
       {entry, frontier} = :gb_sets.take_smallest(frontier)
       walk_storage_entry(entry, frontier, prefix, cursor, remaining, objects)
@@ -121,13 +126,18 @@ defmodule Storyarn.Assets.Storage.Local do
   end
 
   defp walk_storage_entry({_sort_key, :directory, path, _size}, frontier, prefix, cursor, remaining, objects) do
-    frontier = Enum.reduce(storage_entries(path), frontier, &:gb_sets.add/2)
-    walk_regular_files(frontier, prefix, cursor, remaining, objects)
+    with {:ok, entries} <- storage_entries(path) do
+      frontier = Enum.reduce(entries, frontier, &:gb_sets.add/2)
+      walk_regular_files(frontier, prefix, cursor, remaining, objects)
+    end
   end
 
-  defp walk_storage_entry({key, :regular, _path, size}, frontier, prefix, cursor, remaining, objects) do
+  defp walk_storage_entry({key, :regular, path, size}, frontier, prefix, cursor, remaining, objects) do
     if String.starts_with?(key, prefix) and after_list_cursor?(key, cursor) do
-      walk_regular_files(frontier, prefix, cursor, remaining - 1, [%{key: key, size: size} | objects])
+      with {:ok, identity} <- regular_file_identity(path, size) do
+        object = %{key: key, size: size, identity: identity}
+        walk_regular_files(frontier, prefix, cursor, remaining - 1, [object | objects])
+      end
     else
       walk_regular_files(frontier, prefix, cursor, remaining, objects)
     end
@@ -135,9 +145,19 @@ defmodule Storyarn.Assets.Storage.Local do
 
   defp storage_entries(directory) do
     case File.ls(directory) do
-      {:ok, names} -> Enum.flat_map(names, &storage_entry(directory, &1))
-      {:error, _reason} -> []
+      {:ok, names} -> collect_storage_entries(directory, names)
+      {:error, :enoent} -> {:ok, []}
+      {:error, reason} -> {:error, reason}
     end
+  end
+
+  defp collect_storage_entries(directory, names) do
+    Enum.reduce_while(names, {:ok, []}, fn name, {:ok, entries} ->
+      case storage_entry(directory, name) do
+        {:ok, entry_entries} -> {:cont, {:ok, entry_entries ++ entries}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
   end
 
   defp storage_entry(directory, name) do
@@ -145,9 +165,22 @@ defmodule Storyarn.Assets.Storage.Local do
     key = Path.relative_to(path, upload_dir())
 
     case File.lstat(path) do
-      {:ok, %{type: :directory}} -> [{key <> "/", :directory, path, 0}]
-      {:ok, %{type: :regular, size: size}} -> [{key, :regular, path, size}]
-      _missing_or_unsafe -> []
+      {:ok, %{type: :directory}} -> {:ok, [{key <> "/", :directory, path, 0}]}
+      {:ok, %{type: :regular, size: size}} -> {:ok, [{key, :regular, path, size}]}
+      {:ok, _unsafe_type} -> {:error, :unsafe_storage_entry}
+      {:error, :enoent} -> {:ok, []}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp regular_file_identity(path, size) do
+    with {:ok, sha256} <- StorageHash.sha256_chunks(file_stream(path, 0, size)),
+         {:ok, %{type: :regular, size: ^size}} <- File.lstat(path) do
+      {:ok, sha256}
+    else
+      {:ok, %{type: :regular}} -> {:error, :object_changed}
+      {:ok, _unsafe_type} -> {:error, :unsafe_storage_entry}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -164,6 +197,59 @@ defmodule Storyarn.Assets.Storage.Local do
         error -> error
       end
     end
+  end
+
+  @impl true
+  # sobelow_skip ["Traversal.FileModule"]
+  def delete_if_matches(key, expected_identity) when is_binary(expected_identity) do
+    with true <- valid_local_identity?(expected_identity),
+         {:ok, path} <- file_path(key, allow_conditional_copy: true) do
+      delete_matching_file(path, expected_identity)
+    else
+      false -> {:error, :invalid_object_identity}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def delete_if_matches(_key, _expected_identity), do: {:error, :invalid_object_identity}
+
+  defp delete_matching_file(path, expected_identity) do
+    case File.lstat(path) do
+      {:ok, %{type: :regular, size: size}} ->
+        delete_verified_regular_file(path, size, expected_identity)
+
+      {:ok, _unsafe_type} ->
+        {:error, :unsafe_storage_entry}
+
+      {:error, :enoent} ->
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp delete_verified_regular_file(path, size, expected_identity) do
+    with {:ok, actual_identity} <- regular_file_identity(path, size),
+         true <- Plug.Crypto.secure_compare(actual_identity, expected_identity) do
+      remove_matching_file(path)
+    else
+      false -> {:error, :object_changed}
+      {:error, :enoent} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp remove_matching_file(path) do
+    case File.rm(path) do
+      :ok -> :ok
+      {:error, :enoent} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp valid_local_identity?(identity) do
+    byte_size(identity) == 64 and String.match?(identity, ~r/\A[0-9a-f]{64}\z/)
   end
 
   @impl true

@@ -417,9 +417,17 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   def cleanup_scope_from_capture(project_id, ready_prefix, manifest_json, opts)
       when is_integer(project_id) and project_id > 0 and is_binary(ready_prefix) and is_binary(manifest_json) and
              is_list(opts) do
-    with {:ok, token} <- token_from_ready_prefix(project_id, ready_prefix),
+    with true <- Keyword.keyword?(opts),
+         {:ok, token} <- token_from_ready_prefix(project_id, ready_prefix),
+         cleanup_opts = cleanup_manifest_options(opts),
+         :ok <-
+           validate_size_limit(
+             byte_size(manifest_json),
+             Keyword.fetch!(cleanup_opts, :max_manifest_bytes),
+             :manifest
+           ),
          {:ok, manifest} <- decode_json(manifest_json, SnapshotObjectFormat.manifest_path()),
-         :ok <- SnapshotObjectFormat.validate_manifest(manifest, opts),
+         :ok <- SnapshotObjectFormat.validate_manifest(manifest, cleanup_opts),
          relative_paths when is_list(relative_paths) <-
            Enum.map(manifest["objects"], & &1["path"]) ++ [SnapshotObjectFormat.manifest_path()],
          true <- Enum.all?(relative_paths, &valid_cleanup_relative_path?/1) do
@@ -451,7 +459,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
         {:ok,
          Map.merge(validated, %{
            inventory_digest: cleanup_inventory_digest(storage_keys),
-           estimated_cleanup_bytes: 2 * (manifest["payload_size_bytes"] + byte_size(manifest_json))
+           estimated_cleanup_bytes: manifest["payload_size_bytes"] + byte_size(manifest_json)
          })}
       end
     else
@@ -463,6 +471,14 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
 
   def cleanup_scope_from_capture(_project_id, _ready_prefix, _manifest_json, _opts),
     do: {:error, :invalid_snapshot_cleanup_scope}
+
+  # Cleanup ownership must outlive operator-configurable reader limits. Every
+  # capture was accepted beneath these immutable format-v1 bounds when it was
+  # created, so reconstructing its exact deletion inventory uses the same hard
+  # ceiling instead of today's potentially lower runtime policy.
+  defp cleanup_manifest_options(opts) do
+    Keyword.merge(opts, Map.to_list(SnapshotObjectFormat.hard_limits()))
+  end
 
   defp fetch_before_stage(opts) when is_list(opts) do
     case Keyword.fetch(opts, :before_stage) do

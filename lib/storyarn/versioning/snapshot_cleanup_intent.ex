@@ -11,6 +11,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
 
   import Ecto.Changeset
 
+  alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshot
@@ -212,6 +213,37 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
     |> state_constraints()
   end
 
+  @doc false
+  def terminal_predelete_changeset(%__MODULE__{} = intent, error_code, now \\ TimeHelpers.now()) do
+    intent
+    |> change(
+      status: "terminal",
+      retry_count: intent.retry_count + 1,
+      last_error_code: error_code,
+      started_at: intent.started_at || now,
+      completed_at: nil,
+      terminal_at: now
+    )
+    |> state_constraints()
+  end
+
+  @doc false
+  @spec validate_persisted_inventory(t()) :: :ok | {:error, :invalid_snapshot_cleanup_inventory}
+  def validate_persisted_inventory(%__MODULE__{} = intent) do
+    valid? =
+      valid_original_inventory?(
+        intent.storage_keys,
+        intent.object_count,
+        intent.ready_prefix,
+        intent.staging_prefix,
+        intent.inventory_digest
+      ) and
+        valid_remaining_inventory?(intent.remaining_storage_keys, intent.storage_keys) and
+        valid_remaining_state?(intent.status, intent.remaining_storage_keys)
+
+    if valid?, do: :ok, else: {:error, :invalid_snapshot_cleanup_inventory}
+  end
+
   defp put_remaining_inventory(attrs) do
     if Map.has_key?(attrs, :remaining_storage_keys) or Map.has_key?(attrs, "remaining_storage_keys") do
       attrs
@@ -238,26 +270,47 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
     digest = get_field(changeset, :inventory_digest)
 
     valid? =
-      is_list(keys) and keys != [] and keys == Enum.uniq(keys) and remaining == keys and
-        count == length(keys) and digest == inventory_digest(keys) and
-        valid_prefix_pair?(ready_prefix, staging_prefix) and
-        valid_storage_keys?(keys, ready_prefix, staging_prefix)
+      valid_original_inventory?(keys, count, ready_prefix, staging_prefix, digest) and
+        remaining == keys
 
     if valid?, do: changeset, else: add_error(changeset, :storage_keys, "is not an exact canonical inventory")
   end
 
   defp validate_remaining_inventory(changeset, intent) do
     remaining = get_field(changeset, :remaining_storage_keys)
-    original = MapSet.new(intent.storage_keys)
 
-    if is_list(remaining) and remaining == Enum.uniq(remaining) and
-         Enum.all?(remaining, &MapSet.member?(original, &1)),
-       do: changeset,
-       else: add_error(changeset, :remaining_storage_keys, "can only shrink within the original inventory")
+    if valid_remaining_inventory?(remaining, intent.storage_keys),
+      do: changeset,
+      else: add_error(changeset, :remaining_storage_keys, "can only shrink within the original inventory")
   end
+
+  defp valid_original_inventory?(keys, count, ready_prefix, staging_prefix, digest) do
+    is_list(keys) and keys != [] and Enum.all?(keys, &(is_binary(&1) and String.valid?(&1))) and
+      keys == Enum.uniq(keys) and count == length(keys) and
+      valid_prefix_pair?(ready_prefix, staging_prefix) and
+      valid_storage_keys?(keys, ready_prefix, staging_prefix) and
+      digest == inventory_digest(keys)
+  end
+
+  defp valid_remaining_inventory?(remaining, original_keys) do
+    if is_list(remaining) and is_list(original_keys) do
+      original = MapSet.new(original_keys)
+
+      remaining == Enum.uniq(remaining) and
+        Enum.all?(remaining, &(is_binary(&1) and String.valid?(&1) and MapSet.member?(original, &1)))
+    else
+      false
+    end
+  end
+
+  defp valid_remaining_state?("completed", remaining), do: remaining == []
+  defp valid_remaining_state?(status, remaining) when status in @statuses, do: remaining != []
+  defp valid_remaining_state?(_status, _remaining), do: false
 
   defp valid_prefix_pair?(ready_prefix, staging_prefix) do
     is_binary(ready_prefix) and is_binary(staging_prefix) and
+      Storage.canonical_key?(ready_prefix) and Storage.canonical_key?(staging_prefix) and
+      ready_prefix != staging_prefix and
       String.replace(ready_prefix, "/ready/", "/staging/", global: false) == staging_prefix
   end
 
@@ -266,13 +319,18 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
     ready_paths = relative_paths(grouped[:ready] || [], ready_prefix)
     staging_paths = relative_paths(grouped[:staging] || [], staging_prefix)
 
-    ready_paths != [] and MapSet.new(ready_paths) == MapSet.new(staging_paths) and
+    (grouped[:invalid] || []) == [] and ready_paths != [] and
+      MapSet.new(ready_paths) == MapSet.new(staging_paths) and
       "manifest.json" in ready_paths and "project.json" in ready_paths and
       Enum.all?(ready_paths, &valid_relative_path?/1)
   end
 
-  defp key_prefix(key, ready_prefix, _staging_prefix) when is_binary(key) do
-    if String.starts_with?(key, ready_prefix <> "/"), do: :ready, else: :staging
+  defp key_prefix(key, ready_prefix, staging_prefix) when is_binary(key) do
+    cond do
+      String.starts_with?(key, ready_prefix <> "/") -> :ready
+      String.starts_with?(key, staging_prefix <> "/") -> :staging
+      true -> :invalid
+    end
   end
 
   defp key_prefix(_key, _ready_prefix, _staging_prefix), do: :invalid

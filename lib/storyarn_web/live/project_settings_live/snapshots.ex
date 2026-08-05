@@ -213,8 +213,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   @impl true
   def handle_event("cancel_snapshot", params, socket) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      with snapshot_id when not is_nil(snapshot_id) <- params["id"],
-           {snapshot_id, ""} <- Integer.parse(to_string(snapshot_id)),
+      with {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
            {:ok, snapshot} <-
              Versioning.cancel_project_snapshot(
                socket.assigns.current_scope,
@@ -229,7 +228,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         _invalid ->
           {:noreply,
            push_event(socket, "snapshot_cancel_failed", %{
-             snapshotId: params["id"],
+             snapshotId: event_snapshot_id(params["id"]),
              message: dgettext("projects", "The snapshot could not be cancelled.")
            })}
       end
@@ -239,8 +238,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   @impl true
   def handle_event("delete_snapshot", params, socket) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      with snapshot_id when not is_nil(snapshot_id) <- params["id"],
-           {snapshot_id, ""} <- Integer.parse(to_string(snapshot_id)),
+      with {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
            {:ok, _intent} <-
              Versioning.delete_project_snapshot(
                socket.assigns.current_scope,
@@ -256,7 +254,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         _invalid ->
           {:noreply,
            push_event(socket, "snapshot_delete_failed", %{
-             snapshotId: params["id"],
+             snapshotId: event_snapshot_id(params["id"]),
              message: dgettext("projects", "The snapshot could not be deleted.")
            })}
       end
@@ -288,5 +286,23 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       used: details[:used],
       limit: details[:limit]
     })
+  end
+
+  defp parse_snapshot_id(snapshot_id) when is_integer(snapshot_id) and snapshot_id > 0, do: {:ok, snapshot_id}
+
+  defp parse_snapshot_id(snapshot_id) when is_binary(snapshot_id) do
+    case Integer.parse(snapshot_id) do
+      {parsed, ""} when parsed > 0 -> {:ok, parsed}
+      _invalid -> :error
+    end
+  end
+
+  defp parse_snapshot_id(_snapshot_id), do: :error
+
+  defp event_snapshot_id(snapshot_id) do
+    case parse_snapshot_id(snapshot_id) do
+      {:ok, parsed} -> parsed
+      :error -> nil
+    end
   end
 end
