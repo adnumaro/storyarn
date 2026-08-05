@@ -3,6 +3,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
 
   use StoryarnWeb, :live_view
 
+  import StoryarnWeb.ProjectLive.Components.SettingsComponents,
+    only: [serialize_byte_count: 1, serialize_storage_bucket: 1, serialize_storage_usage: 2]
+
   alias Storyarn.Billing
   alias Storyarn.Projects
 
@@ -78,46 +81,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
     }
   end
 
-  defp serialize_storage_usage(storage, limit) do
-    %{
-      currentAssetsBytes: serialize_byte_count(storage.current_assets.bytes),
-      fullSnapshotsBytes: serialize_byte_count(storage.full_snapshots.bytes),
-      linkedSnapshotsBytes: serialize_byte_count(storage.linked_snapshots.bytes),
-      activeReservationsBytes: serialize_byte_count(storage.active_reservations.bytes),
-      totalAccountedBytes: serialize_byte_count(storage.accounted_bytes),
-      limitBytes: serialized_storage_limit(limit),
-      remainingBytes: remaining_bytes(storage.accounted_bytes, limit),
-      limitKind: limit_kind(limit)
-    }
-  end
-
-  defp remaining_bytes(used, limit) when is_integer(limit) and limit >= 0, do: serialize_byte_count(max(limit - used, 0))
-
-  defp remaining_bytes(_used, _limit), do: nil
-
-  defp limit_kind(limit) when is_integer(limit) and limit >= 0, do: "limited"
-  defp limit_kind(limit) when limit in [:unlimited, :infinity], do: "unlimited"
-  defp limit_kind(_limit), do: "unknown"
-
-  defp serialized_storage_limit(limit) when is_integer(limit) and limit >= 0, do: serialize_byte_count(limit)
-
-  defp serialized_storage_limit(_limit), do: nil
-
-  defp serialize_storage_bucket(bucket) do
-    %{
-      used: serialize_byte_count(bucket.used),
-      limit: serialized_storage_limit(bucket.limit)
-    }
-  end
-
   defp serialize_bucket(bucket) do
     %{
       used: bucket.used,
       limit: bucket.limit
     }
   end
-
-  defp serialize_byte_count(value) when is_integer(value) and value >= 0, do: Integer.to_string(value)
 
   # ===========================================================================
   # Mount & handle_params

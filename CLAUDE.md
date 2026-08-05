@@ -188,11 +188,11 @@ Canvas-side node metadata mirrors this list in `assets/app/modules/flows/editor/
 
 **NEVER use Unicode emojis or custom SVGs. Always use [Lucide](https://lucide.dev) icons.**
 
-- Vue: import the component from `lucide-vue-next` — `import { Box } from "lucide-vue-next"` then `<Box class="size-3" />`
+- Vue: import the component from `@lucide/vue` — `import { Box } from "@lucide/vue"` then `<Box class="size-3" />`
 - HEEx: `<.icon name="box" class="size-3" />` from `StoryarnWeb.Components.IconComponents` (auto-imported)
 - Dynamic icon by string: declare a module-level `Record<string, Component>` map and render `<component :is="map[key]" />`. Never build the name at runtime.
 
-`<.icon>` renders from a hardcoded `@icons` path map in `icon_components.ex` and uses `Map.fetch!/2` — **an unlisted name raises at render time.** Add the Lucide paths to that map before using a new icon in HEEx. It currently carries 12 icons, all for public/auth/docs surfaces; app surfaces are Vue and use `lucide-vue-next`.
+`<.icon>` renders from a hardcoded `@icons` path map in `icon_components.ex` and uses `Map.fetch!/2` — **an unlisted name raises at render time.** Add the Lucide paths to that map before using a new icon in HEEx. It currently carries 12 icons, all for public/auth/docs surfaces; app surfaces are Vue and use `@lucide/vue`.
 
 ## Dialog & Confirmation Policy
 

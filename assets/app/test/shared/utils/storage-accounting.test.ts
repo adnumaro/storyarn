@@ -12,6 +12,7 @@ describe("storage accounting formatting", () => {
     expect(formatBytes("1024", "en-US")).toBe("1 KB");
     expect(formatBytes("1536", "en-US")).toBe("1.5 KB");
     expect(formatBytes("1536", "es-ES")).toBe("1,5 KB");
+    expect(formatBytes(String(1024 ** 2 - 1), "en-US")).toBe("1 MB");
     expect(formatBytes(String(1024 ** 4), "en-US")).toBe("1 TB");
     expect(formatBytes("9223372036854775807", "en-US")).toBe("8 EB");
   });
@@ -46,6 +47,13 @@ describe("storagePercentage", () => {
 
     expect(storagePercentage("2", "3", "limited").basisPoints).toBe(6_667n);
     expect(storagePercentage("1", "32", "limited").basisPoints).toBe(313n);
+
+    expect(storagePercentage("262143999", "262144000", "limited")).toEqual({
+      state: "limited",
+      basisPoints: 9_999n,
+      progressPercent: 99.99,
+      lessThanOneBasisPoint: false,
+    });
 
     expect(storagePercentage("9223372036854775807", "9223372036854775807", "limited")).toEqual({
       state: "limited",

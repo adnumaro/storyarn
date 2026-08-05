@@ -254,4 +254,35 @@ describe("ProjectSettingsUsageLimits storage accounting", () => {
     expect(wrapper.text()).toContain("8 PB");
     expect(wrapper.find('[aria-label="Storage status: Available"]').exists()).toBe(true);
   });
+
+  it("never labels just-under-limit usage as 100% or limit reached", () => {
+    const base = usageLimits();
+    const limit = 250 * 1024 * 1024;
+    const used = limit - 1;
+    const wrapper = mount(ProjectSettingsUsageLimits, {
+      props: {
+        usageLimits: {
+          ...base,
+          workspace: {
+            ...base.workspace,
+            storageBytes: { used: String(used), limit: String(limit) },
+          },
+          storage: {
+            ...base.storage,
+            workspace: {
+              ...base.storage.workspace,
+              currentAssetsBytes: String(used),
+              totalAccountedBytes: String(used),
+              limitBytes: String(limit),
+              remainingBytes: "1",
+            },
+          },
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("99.99%");
+    expect(wrapper.find('[aria-label="Storage status: Near limit"]').exists()).toBe(true);
+    expect(wrapper.text()).not.toContain("Limit reached");
+  });
 });

@@ -136,7 +136,7 @@
       },
       "accessibility": {
         "workspace_percentage": "Workspace storage used: {percent}",
-        "snapshot_percentage": "{percent} of workspace allowance",
+        "snapshot_percentage": "Workspace allowance share: {percent}",
         "mode": "Snapshot mode: {status}",
         "lifecycle": "Snapshot state: {status}",
         "integrity": "Snapshot integrity: {status}",

@@ -61,6 +61,47 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   def format_number(n), do: to_string(n)
 
+  @doc false
+  def serialize_storage_usage(storage, limit) do
+    %{
+      currentAssetsBytes: serialize_byte_count(storage.current_assets.bytes),
+      fullSnapshotsBytes: serialize_byte_count(storage.full_snapshots.bytes),
+      linkedSnapshotsBytes: serialize_byte_count(storage.linked_snapshots.bytes),
+      activeReservationsBytes: serialize_byte_count(storage.active_reservations.bytes),
+      totalAccountedBytes: serialize_byte_count(storage.accounted_bytes),
+      limitBytes: serialized_storage_limit(limit),
+      remainingBytes: remaining_storage_bytes(storage.accounted_bytes, limit),
+      limitKind: storage_limit_kind(limit)
+    }
+  end
+
+  @doc false
+  def serialize_storage_bucket(bucket) do
+    %{
+      used: serialize_byte_count(bucket.used),
+      limit: serialized_storage_limit(bucket.limit)
+    }
+  end
+
+  @doc false
+  def serialize_byte_count(value) when is_integer(value) and value >= 0, do: Integer.to_string(value)
+
+  defp remaining_storage_bytes(used, limit) when is_integer(limit) and limit >= 0 do
+    serialize_byte_count(max(limit - used, 0))
+  end
+
+  defp remaining_storage_bytes(_used, _limit), do: nil
+
+  defp serialized_storage_limit(limit) when is_integer(limit) and limit >= 0 do
+    serialize_byte_count(limit)
+  end
+
+  defp serialized_storage_limit(_limit), do: nil
+
+  defp storage_limit_kind(limit) when is_integer(limit) and limit >= 0, do: "limited"
+  defp storage_limit_kind(limit) when limit in [:unlimited, :infinity], do: "unlimited"
+  defp storage_limit_kind(_limit), do: "unknown"
+
   def repair_message(0), do: dgettext("projects", "All variable references are up to date.")
 
   def repair_message(count) do
@@ -196,7 +237,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   @doc false
   def snapshot_storage_accounting(project) do
     result =
-      Repo.transaction(
+      Repo.repeatable_read(
         fn ->
           snapshots = Versioning.list_project_snapshots(project.id)
           plan = Billing.plan_for(project.workspace)
@@ -208,7 +249,6 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
             storage_limit: Billing.plan_limit(plan, :storage_bytes_per_workspace)
           }
         end,
-        isolation: :repeatable_read,
         timeout: :infinity
       )
 

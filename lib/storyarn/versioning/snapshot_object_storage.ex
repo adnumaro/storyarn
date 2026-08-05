@@ -654,9 +654,13 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
 
     fn ->
       with %StorageReservation{} = reservation <- lock_storage_reservation(reservation_id),
-           :ok <- validate_reported_stage_reservation(reported_reservation, reservation),
-           :ok <- validate_preflight_stage_reservation(reservation, staged, reservation_lease_token) do
-        create_or_classify_stage_claim(reservation, claim_attrs)
+           :ok <- validate_reported_stage_reservation(reported_reservation, reservation) do
+        create_or_classify_stage_claim(
+          reservation,
+          staged,
+          reservation_lease_token,
+          claim_attrs
+        )
       else
         nil -> {:error, :snapshot_object_stage_reservation_missing}
         {:error, _reason} = error -> error
@@ -668,7 +672,39 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
 
   defp acquire_stage_claim(_staged, _reservation), do: {:error, :invalid_snapshot_stage_claim}
 
-  defp create_or_classify_stage_claim(reservation, claim_attrs) do
+  defp create_or_classify_stage_claim(
+         %StorageReservation{status: "active"} = reservation,
+         staged,
+         reservation_lease_token,
+         claim_attrs
+       ) do
+    with :ok <- validate_preflight_stage_reservation(reservation, staged, reservation_lease_token) do
+      create_or_classify_active_stage_claim(reservation, claim_attrs)
+    end
+  end
+
+  defp create_or_classify_stage_claim(
+         %StorageReservation{status: "committed"} = reservation,
+         staged,
+         reservation_lease_token,
+         claim_attrs
+       ) do
+    claim = lock_publication_claim(claim_attrs.object_prefix)
+
+    with :ok <- validate_stage_reservation(reservation, staged, reservation_lease_token),
+         :ok <- validate_claim_reservation_binding(claim, reservation) do
+      case classify_stage_claim(claim, claim_attrs.inventory_digest) do
+        {:ok, claim, :published} -> {:ok, claim, :published}
+        {:ok, _claim, _state} -> {:error, :snapshot_object_committed_reservation_claim_state_conflict}
+        {:error, _reason} = error -> error
+      end
+    end
+  end
+
+  defp create_or_classify_stage_claim(_reservation, _staged, _reservation_lease_token, _claim_attrs),
+    do: {:error, :snapshot_object_stage_reservation_binding_invalid}
+
+  defp create_or_classify_active_stage_claim(reservation, claim_attrs) do
     inserted_count = insert_stage_claim(reservation, claim_attrs)
     claim = lock_publication_claim(claim_attrs.object_prefix)
 

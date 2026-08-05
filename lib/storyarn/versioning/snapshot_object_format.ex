@@ -30,6 +30,9 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   @unsafe_metadata_acronym_key ~r/[a-z0-9](?:ID|IDs|URL|URLs)\z/
   @unsafe_project_storage_snake_key ~r/(?:\A|_)(?:blob|storage|thumbnail|presigned|signed|web|object|current_object)_(?:key|keys|path|paths|url|urls)\z/i
   @unsafe_project_storage_compound_key ~r/(?:blob|storage|thumbnail|presigned|signed|web|object|currentobject)(?:key|keys|path|paths|url|urls)\z/i
+  @unsafe_project_url_snake_key ~r/(?:\A|_)(?:url|urls)\z/i
+  @unsafe_project_url_camel_key ~r/(?:Url|Urls)\z/
+  @unsafe_project_url_acronym_key ~r/[a-z0-9](?:URL|URLs)\z/
   @unsafe_project_ownership_key ~r/\Aproject_?(?:id|ids)\z/i
   @unsafe_project_generic_storage_key ~r/\A(?:key|keys|url|urls)\z/i
 
@@ -739,6 +742,9 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
       (String.valid?(key) and
          (Regex.match?(@unsafe_project_storage_snake_key, key) or
             Regex.match?(@unsafe_project_storage_compound_key, key) or
+            Regex.match?(@unsafe_project_url_snake_key, key) or
+            Regex.match?(@unsafe_project_url_camel_key, key) or
+            Regex.match?(@unsafe_project_url_acronym_key, key) or
             Regex.match?(@unsafe_project_ownership_key, key) or
             Regex.match?(@unsafe_project_generic_storage_key, key)))
   end

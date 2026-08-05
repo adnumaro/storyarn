@@ -55,9 +55,18 @@ export function formatBytes(bytes: ByteCount | null | undefined, locale?: string
     return `${new Intl.NumberFormat(locale).format(parsed)} ${BYTE_UNITS[unitIndex]}`;
   }
 
-  const atLeastTenUnits = parsed >= divisor * 10n;
-  const scale = atLeastTenUnits ? 1n : 10n;
-  const rounded = (parsed * scale + divisor / 2n) / divisor;
+  let atLeastTenUnits = parsed >= divisor * 10n;
+  let scale = atLeastTenUnits ? 1n : 10n;
+  let rounded = (parsed * scale + divisor / 2n) / divisor;
+
+  if (rounded >= BYTES_PER_UNIT * scale && unitIndex < BYTE_UNITS.length - 1) {
+    divisor *= BYTES_PER_UNIT;
+    unitIndex += 1;
+    atLeastTenUnits = parsed >= divisor * 10n;
+    scale = atLeastTenUnits ? 1n : 10n;
+    rounded = (parsed * scale + divisor / 2n) / divisor;
+  }
+
   const boundedValue = Number(rounded) / Number(scale);
   const formatted = new Intl.NumberFormat(locale, {
     maximumFractionDigits: atLeastTenUnits ? 0 : 1,
@@ -70,8 +79,9 @@ export function formatBytes(bytes: ByteCount | null | undefined, locale?: string
  * Calculates storage usage with exact integer basis-point semantics.
  *
  * Limited percentages are rounded half-up to the nearest basis point (0.01%)
- * with BigInt arithmetic. Basis points are intentionally not capped: an
- * over-limit percentage remains readable while only the progress bar is
+ * with BigInt arithmetic. Usage below the limit is capped at 99.99% so
+ * rounding never claims capacity is exhausted while a final byte still fits.
+ * Over-limit basis points remain uncapped while only the progress bar is
  * clamped to 100%.
  */
 export function storagePercentage(
@@ -95,7 +105,11 @@ export function storagePercentage(
     return used === 0n ? percentage("zero", 0n, 0) : percentage("over_limit", null, 100);
   }
 
-  const exactBasisPoints = (used * BASIS_POINTS_PER_WHOLE + limit / 2n) / limit;
+  const roundedBasisPoints = (used * BASIS_POINTS_PER_WHOLE + limit / 2n) / limit;
+  const exactBasisPoints =
+    used < limit && roundedBasisPoints >= BASIS_POINTS_PER_WHOLE
+      ? BASIS_POINTS_PER_WHOLE - 1n
+      : roundedBasisPoints;
   const lessThanOneBasisPoint = used > 0n && used * BASIS_POINTS_PER_WHOLE < limit;
   const progressPercent =
     exactBasisPoints >= BASIS_POINTS_PER_WHOLE

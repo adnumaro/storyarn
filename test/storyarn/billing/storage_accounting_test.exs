@@ -137,6 +137,33 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       assert workspace_id == context.workspace.id
       assert Billing.workspace_storage_usage(context.workspace.id).accounted_bytes == before.accounted_bytes
     end
+
+    test "successful accounting mutations emit the product-accounted projection", context do
+      handler_id = "storage-accounting-updated-#{Ecto.UUID.generate()}"
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :storage, :accounting, :updated],
+          fn event, measurements, metadata, receiver ->
+            send(receiver, {event, measurements, metadata})
+          end,
+          self()
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 10})
+      assert {:ok, _reservation} = reserve(context, "telemetry", "snapshot_export", 100, snapshot)
+
+      assert_receive {
+        [:storyarn, :storage, :accounting, :updated],
+        %{accounted_bytes: 30, reservation_bytes: 100, total_bytes: 130},
+        %{workspace_id: workspace_id, action: :reserved, accounting_version: 1}
+      }
+
+      assert workspace_id == context.workspace.id
+    end
   end
 
   describe "reservations" do
@@ -162,7 +189,12 @@ defmodule Storyarn.Billing.StorageAccountingTest do
                |> Map.put(:reserved_bytes, 2_048)
                |> Billing.reserve_storage()
 
-      assert Repo.aggregate(StorageReservation, :count) == 1
+      assert Repo.aggregate(
+               from(reservation in StorageReservation,
+                 where: reservation.workspace_id_snapshot == ^context.workspace.id
+               ),
+               :count
+             ) == 1
     end
 
     test "preserves immutable snapshot attribution when the live target is deleted", context do
@@ -200,6 +232,10 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       |> Repo.update!()
 
       assert {:error, :storage_reservation_lease_expired} = Billing.reserve_storage(attrs)
+
+      usage = Billing.workspace_storage_usage(context.workspace.id)
+      assert usage.active_reservations.bytes == 100
+      assert usage.accounted_bytes == 130
     end
 
     test "extends atomically and fails closed when final bytes are underestimated", context do
@@ -348,7 +384,12 @@ defmodule Storyarn.Billing.StorageAccountingTest do
                |> Map.put(:project_id, other_project.id)
                |> Billing.reserve_storage()
 
-      assert Repo.aggregate(StorageReservation, :count) == 0
+      assert Repo.aggregate(
+               from(reservation in StorageReservation,
+                 where: reservation.workspace_id_snapshot == ^context.workspace.id
+               ),
+               :count
+             ) == 0
     end
 
     test "allows restore staging for a recoverable project but blocks other operations", context do

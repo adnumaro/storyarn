@@ -141,11 +141,23 @@ defmodule Storyarn.Imports.Materializer do
     items
     |> Enum.with_index()
     |> Enum.flat_map(fn
-      {%{"size" => size}, _index} when is_integer(size) and size > 0 -> []
-      {item, index} when is_map(item) -> ["assets.items[#{index}].size"]
+      {item, index} when is_map(item) -> invalid_asset_item_fields(item, index)
       {_item, index} -> ["assets.items[#{index}]"]
     end)
   end
+
+  defp invalid_asset_item_fields(item, index) do
+    []
+    |> maybe_invalid_asset_filename(item["filename"], index)
+    |> maybe_invalid_asset_size(item["size"], index)
+  end
+
+  defp maybe_invalid_asset_filename(fields, filename, _index) when is_binary(filename) and filename != "", do: fields
+
+  defp maybe_invalid_asset_filename(fields, _filename, index), do: ["assets.items[#{index}].filename" | fields]
+
+  defp maybe_invalid_asset_size(fields, size, _index) when is_integer(size) and size > 0, do: fields
+  defp maybe_invalid_asset_size(fields, _size, index), do: ["assets.items[#{index}].size" | fields]
 
   defp invalid_entity_entries(data) do
     Enum.flat_map(@array_keys, fn key ->

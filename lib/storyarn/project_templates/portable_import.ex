@@ -786,7 +786,7 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   defp resolve_existing_template(nil, _slug, _opts), do: {:ok, nil}
 
   defp resolve_existing_template(%ProjectTemplate{} = template, slug, opts) do
-    if option(opts, :update_existing) == true,
+    if enabled_option?(option(opts, :update_existing)),
       do: {:ok, template},
       else: {:error, {:template_slug_exists, slug}}
   end
@@ -1232,7 +1232,9 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   end
 
   defp import_audit_report(bundle, imported) do
-    Map.put(bundle.manifest["audit_report"], "import_materialization", imported.materialization_report)
+    bundle.manifest["audit_report"]
+    |> Map.delete("legacy_snapshot_repair")
+    |> Map.put("import_materialization", imported.materialization_report)
   end
 
   defp rewrite_snapshot_assets(%_struct{} = value, _imported_blobs), do: value
@@ -1330,6 +1332,9 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   defp matching_option({option_key, value}, key) do
     if to_string(option_key) == to_string(key), do: value
   end
+
+  defp enabled_option?(value) when value in [true, "true", "1", 1, "yes"], do: true
+  defp enabled_option?(_value), do: false
 
   defp sha256(data), do: :sha256 |> :crypto.hash(data) |> Base.encode16(case: :lower)
 

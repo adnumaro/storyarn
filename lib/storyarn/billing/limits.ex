@@ -247,7 +247,7 @@ defmodule Storyarn.Billing.Limits do
     if Repo.in_transaction?() do
       fun.()
     else
-      case Repo.transaction(fun, isolation: :repeatable_read, timeout: :infinity) do
+      case Repo.repeatable_read(fun, timeout: :infinity) do
         {:ok, usage} -> usage
         {:error, reason} -> raise "project limits usage read failed: #{inspect(reason)}"
       end

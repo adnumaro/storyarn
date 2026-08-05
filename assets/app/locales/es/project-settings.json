@@ -136,7 +136,7 @@
       },
       "accessibility": {
         "workspace_percentage": "Almacenamiento usado del workspace: {percent}",
-        "snapshot_percentage": "{percent} del límite del workspace",
+        "snapshot_percentage": "Proporción del límite del workspace: {percent}",
         "mode": "Modo de la snapshot: {status}",
         "lifecycle": "Estado de la snapshot: {status}",
         "integrity": "Integridad de la snapshot: {status}",

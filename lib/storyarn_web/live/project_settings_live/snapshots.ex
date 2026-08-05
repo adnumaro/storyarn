@@ -84,35 +84,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     max(active_bytes - export_bytes, 0)
   end
 
-  defp serialize_storage_usage(storage, limit) do
-    %{
-      currentAssetsBytes: serialize_byte_count(storage.current_assets.bytes),
-      fullSnapshotsBytes: serialize_byte_count(storage.full_snapshots.bytes),
-      linkedSnapshotsBytes: serialize_byte_count(storage.linked_snapshots.bytes),
-      activeReservationsBytes: serialize_byte_count(storage.active_reservations.bytes),
-      totalAccountedBytes: serialize_byte_count(storage.accounted_bytes),
-      limitBytes: serialized_storage_limit(limit),
-      remainingBytes:
-        if(is_integer(limit) and limit >= 0,
-          do: serialize_byte_count(max(limit - storage.accounted_bytes, 0))
-        ),
-      limitKind: storage_limit_kind(limit)
-    }
-  end
-
-  defp serialized_storage_limit(limit) when is_integer(limit) and limit >= 0, do: serialize_byte_count(limit)
-
-  defp serialized_storage_limit(_limit), do: nil
-
   defp serialize_optional_byte_count(value) when is_integer(value) and value >= 0, do: serialize_byte_count(value)
 
   defp serialize_optional_byte_count(_value), do: nil
-
-  defp serialize_byte_count(value) when is_integer(value) and value >= 0, do: Integer.to_string(value)
-
-  defp storage_limit_kind(limit) when is_integer(limit) and limit >= 0, do: "limited"
-  defp storage_limit_kind(limit) when limit in [:unlimited, :infinity], do: "unlimited"
-  defp storage_limit_kind(_limit), do: "unknown"
 
   # ===========================================================================
   # Mount & handle_params

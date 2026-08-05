@@ -1207,9 +1207,9 @@ msgstr ""
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:28
 #, elixir-autogen, elixir-format
 msgid "Configure automatic entity versioning"
-msgstr "Configure automatic entity versioning"
+msgstr ""
 
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:27
 #, elixir-autogen, elixir-format
 msgid "Review snapshot storage, reservations, and integrity"
-msgstr "Review snapshot storage, reservations, and integrity"
+msgstr ""

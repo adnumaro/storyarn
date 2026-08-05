@@ -213,6 +213,16 @@ defmodule Storyarn.Imports.MaterializerTest do
       assert {:error, {:invalid_field_types, fields}} = Materializer.validate_plan_data(data)
       assert "assets.items[1].size" in fields
     end
+
+    test "rejects an asset without a filename before generating its storage key" do
+      data =
+        Map.put(minimal_import_data(), "assets", %{
+          "items" => [asset_import_entry(%{"filename" => nil})]
+        })
+
+      assert {:error, {:invalid_field_types, fields}} = Materializer.validate_plan_data(data)
+      assert "assets.items[0].filename" in fields
+    end
   end
 
   # =============================================================================

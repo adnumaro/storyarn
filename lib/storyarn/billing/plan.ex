@@ -18,7 +18,6 @@ defmodule Storyarn.Billing.Plan do
         project_template_versions_per_template: 20,
         named_versions_per_project: 10,
         project_snapshots_per_project: 10,
-        snapshot_retention_days: 30,
         # Trash retention for soft-deleted entities (sequences, flows).
         # After this window the retention worker hard-deletes the entity
         # (FK CASCADE drops its trash refs automatically). Free tier = 24h

@@ -90,15 +90,15 @@ function formatCountLimit(limit: number | null) {
         </p>
         <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
           <label class="flex items-center gap-3 cursor-pointer">
-            <Switch :checked="autoFlows" @update:checked="(v: boolean) => (autoFlows = v)" />
+            <Switch v-model="autoFlows" />
             <span>{{ $t("project_settings.version_control.flows") }}</span>
           </label>
           <label class="flex items-center gap-3 cursor-pointer">
-            <Switch :checked="autoScenes" @update:checked="(v: boolean) => (autoScenes = v)" />
+            <Switch v-model="autoScenes" />
             <span>{{ $t("project_settings.version_control.scenes") }}</span>
           </label>
           <label class="flex items-center gap-3 cursor-pointer">
-            <Switch :checked="autoSheets" @update:checked="(v: boolean) => (autoSheets = v)" />
+            <Switch v-model="autoSheets" />
             <span>{{ $t("project_settings.version_control.sheets") }}</span>
           </label>
         </div>

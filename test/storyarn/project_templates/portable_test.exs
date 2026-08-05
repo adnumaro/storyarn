@@ -71,6 +71,29 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
                  slug: "veilbreak-demo"
                )
 
+      assert {:ok, exported_bundle} = PortableBundle.read(output_path)
+
+      manifest_with_untrusted_legacy_report =
+        put_in(
+          exported_bundle.manifest,
+          ["audit_report", "legacy_snapshot_repair"],
+          %{"status" => "claimed"}
+        )
+
+      asset_files =
+        Enum.map(exported_bundle.manifest["asset_blobs"], fn blob ->
+          {blob["path"], exported_bundle.files[blob["path"]]}
+        end)
+
+      assert {:ok, ^output_path} =
+               PortableBundle.write(
+                 output_path,
+                 manifest_with_untrusted_legacy_report,
+                 exported_bundle.snapshot,
+                 exported_bundle.asset_manifest,
+                 asset_files
+               )
+
       # The imported template must be independent from storage in the source
       # deployment. Materialization and later installation can only use the
       # checksummed blob uploaded by PortableImport.
@@ -101,6 +124,7 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       register_template_artifact_cleanup(version)
       assert version.source_project_id == source_project_id
       assert version.audit_report["import_materialization"]["status"] == "passed"
+      refute Map.has_key?(version.audit_report, "legacy_snapshot_repair")
 
       assert {:ok, imported_snapshot} = SnapshotStorage.load_snapshot(version.snapshot_storage_key)
       assert {:ok, imported_asset_manifest} = SnapshotStorage.load_snapshot(version.asset_manifest_storage_key)
@@ -1206,7 +1230,7 @@ defmodule Storyarn.ProjectTemplates.PortableTest do
       assert {:ok, template} =
                ProjectTemplates.import_portable_template(output_path,
                  visibility: "public",
-                 update_existing: true,
+                 update_existing: "true",
                  verify_user_id: verify_user.id,
                  verify_workspace_id: verify_workspace.id
                )

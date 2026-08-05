@@ -251,6 +251,29 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
     end
   end
 
+  describe "portable_project/1" do
+    test "removes every URL-shaped field from the canonical project object" do
+      project = %{
+        "format_version" => 2,
+        "project" => %{"name" => "Portable"},
+        "sheets" => [
+          %{
+            "avatar_url" => "https://storage.invalid/avatar.png",
+            "bannerUrl" => "/media/assets/42",
+            "externalURL" => "https://example.invalid/profile",
+            "label" => "Hero"
+          }
+        ]
+      }
+
+      assert {:ok, portable} = SnapshotObjectFormat.portable_project(project)
+      assert [%{"label" => "Hero"}] = portable["sheets"]
+
+      assert {:error, {:unsafe_project_metadata_key, "avatar_url"}} =
+               SnapshotObjectFormat.validate_project(project)
+    end
+  end
+
   defp asset(id, filename, hash, metadata \\ %{}) do
     %Asset{
       id: id,

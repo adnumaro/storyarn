@@ -1920,7 +1920,7 @@ defmodule Storyarn.Billing.StorageAccounting do
     if Repo.in_transaction?() do
       fun.()
     else
-      case Repo.transaction(fun, isolation: :repeatable_read, timeout: :infinity) do
+      case Repo.repeatable_read(fun, timeout: :infinity) do
         {:ok, result} -> result
         {:error, reason} -> raise "storage accounting read failed: #{inspect(reason)}"
       end

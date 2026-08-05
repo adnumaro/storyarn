@@ -402,7 +402,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
                  before_stage: fn _plan -> :ok end
                )
 
-      assert Repo.aggregate(StorageCleanupRequest, :count) == 0
+      refute_cleanup_request_for_prefix(project_id, token)
 
       assert %StorageReservation{storage_started_at: nil, status: "active"} =
                Repo.get!(StorageReservation, reservation.id)
@@ -574,7 +574,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
                  end
                )
 
-      assert Repo.aggregate(StorageCleanupRequest, :count) == 0
+      refute_cleanup_request_for_prefix(project_id, token)
 
       assert %SnapshotObjectPublicationClaim{status: "staging"} =
                Repo.get!(SnapshotObjectPublicationClaim, staged.object_prefix)
@@ -619,6 +619,55 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
                  stored.manifest_storage_key,
                  stored.manifest_checksum,
                  stored.manifest_size_bytes
+               )
+
+      cleanup_object_set(project_id, token, loaded.manifest, [source])
+    end
+
+    test "persist retry adopts an already published set after its reservation commits" do
+      project_id = unique_project_id()
+      token = SnapshotStorage.unique_key_suffix()
+      content = "committed publication retry"
+      source = source_key(project_id, "committed-retry.png")
+      assert {:ok, _url} = Storage.upload(source, content, "image/png")
+      asset = asset(165, project_id, "committed-retry.png", source, content, sha256(content))
+
+      assert {:ok, stored} =
+               persist_authorized(project_id, project_object(asset), [asset], token: token)
+
+      reservation =
+        Repo.get_by!(StorageReservation,
+          cleanup_object_prefix: SnapshotObjectStorage.ready_prefix(project_id, token)
+        )
+
+      now = TimeHelpers.now()
+
+      committed =
+        reservation
+        |> StorageReservation.commit_changeset(stored.accounted_size_bytes, %{
+          generation: reservation.generation + 1,
+          settled_at: now,
+          accounting_version: 1,
+          accounting_measured_at: now
+        })
+        |> Repo.update!()
+
+      assert {:ok, retried} =
+               SnapshotObjectStorage.persist(project_id, project_object(asset), [asset],
+                 token: token,
+                 storage_reservation: committed,
+                 before_stage: fn _exact -> flunk("published retry must not restage") end,
+                 before_publish: fn _exact -> flunk("published retry must not reauthorize") end
+               )
+
+      assert retried.manifest_storage_key == stored.manifest_storage_key
+      assert retried.accounted_size_bytes == stored.accounted_size_bytes
+
+      assert {:ok, loaded} =
+               SnapshotObjectStorage.load_verified(
+                 retried.manifest_storage_key,
+                 retried.manifest_checksum,
+                 retried.manifest_size_bytes
                )
 
       cleanup_object_set(project_id, token, loaded.manifest, [source])
@@ -687,7 +736,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
                  flunk("an expired lease must not authorize a second writer")
                end)
 
-      assert Repo.aggregate(StorageCleanupRequest, :count) == 0
+      refute_cleanup_request_for_prefix(project_id, token)
 
       assert %SnapshotObjectPublicationClaim{status: "publishing"} =
                Repo.get!(SnapshotObjectPublicationClaim, staged.object_prefix)
@@ -1086,7 +1135,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
                }}} =
                persist_authorized(project_id, project_object(asset), [asset], token: token)
 
-      assert Repo.aggregate(StorageCleanupRequest, :count) == 0
+      refute_cleanup_request_for_prefix(project_id, token)
 
       reservation =
         Repo.get_by!(StorageReservation,
@@ -1339,6 +1388,19 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
       ],
       fn prefix -> Enum.map(paths, &(prefix <> "/" <> &1)) end
     )
+  end
+
+  defp refute_cleanup_request_for_prefix(project_id, token) do
+    prefixes = [
+      SnapshotObjectStorage.staging_prefix(project_id, token) <> "/",
+      SnapshotObjectStorage.ready_prefix(project_id, token) <> "/"
+    ]
+
+    refute Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
+             Enum.any?(request.storage_keys, fn storage_key ->
+               Enum.any?(prefixes, &String.starts_with?(storage_key, &1))
+             end)
+           end)
   end
 
   defp assert_persisted_cleanup(cleanup, expected_keys) do

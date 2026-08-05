@@ -49,7 +49,7 @@ defineProps<{
       </p>
     </div>
 
-    <ul v-else class="grid gap-3" aria-label="Deleted projects">
+    <ul v-else class="grid gap-3" :aria-label="$t('settings.workspace.deleted_projects.title')">
       <li
         v-for="project in deletedProjects"
         :key="project.id"

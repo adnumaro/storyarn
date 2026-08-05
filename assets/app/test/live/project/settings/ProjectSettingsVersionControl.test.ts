@@ -8,12 +8,18 @@ describe("ProjectSettingsVersionControl entity auto-versioning", () => {
     const live = createMockLive();
     const wrapper = mount(ProjectSettingsVersionControl, {
       props: {
+        autoVersionFlows: true,
         versionUsage: null,
       },
       global: { provide: { _live_vue: live } },
     });
 
-    expect(wrapper.findAll('[role="switch"]')).toHaveLength(3);
+    const switches = wrapper.findAll('[role="switch"]');
+    expect(switches).toHaveLength(3);
+    expect(switches[0].attributes("aria-checked")).toBe("true");
+
+    await switches[0].trigger("click");
+    await switches[1].trigger("click");
 
     await wrapper.get("form").trigger("submit");
 
@@ -22,7 +28,7 @@ describe("ProjectSettingsVersionControl entity auto-versioning", () => {
       {
         version_control: {
           auto_version_flows: "false",
-          auto_version_scenes: "false",
+          auto_version_scenes: "true",
           auto_version_sheets: "false",
         },
       },
