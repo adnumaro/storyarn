@@ -157,6 +157,18 @@ defmodule StoryarnWeb.Telemetry do
       last_value("storyarn.storage.provider_footprint.drift_bytes",
         tags: [:accounting_version]
       ),
+      sum("storyarn.snapshot.reset.stop.object_count",
+        tags: [:status, :environment, :error_code]
+      ),
+      sum("storyarn.snapshot.reset.stop.snapshot_row_count",
+        tags: [:status, :environment, :error_code]
+      ),
+      sum("storyarn.snapshot.reset.stop.entity_version_row_count",
+        tags: [:status, :environment, :error_code]
+      ),
+      sum("storyarn.snapshot.reset.stop.attempt_count",
+        tags: [:status, :environment, :error_code]
+      ),
 
       # Snapshot deletion first emits an immutable cleanup intent, then reports
       # bounded progress independently from product-accounted quota release.

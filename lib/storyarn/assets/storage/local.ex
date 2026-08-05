@@ -83,6 +83,7 @@ defmodule Storyarn.Assets.Storage.Local do
     with true <- Storage.canonical_prefix?(prefix) and Keyword.keyword?(opts),
          {:ok, limit} <- list_limit(opts),
          {:ok, probe_path} <- file_path(prefix <> "__storyarn_inventory_probe__", allow_conditional_copy: true),
+         :ok <- ensure_no_symlink_components(Path.dirname(probe_path)),
          {:ok, cursor} <- decode_list_cursor(prefix, Keyword.get(opts, :cursor)),
          {:ok, objects} <- list_prefix_objects(Path.dirname(probe_path), prefix, cursor, limit) do
       page = Enum.take(objects, limit)
@@ -203,7 +204,8 @@ defmodule Storyarn.Assets.Storage.Local do
   # sobelow_skip ["Traversal.FileModule"]
   def delete_if_matches(key, expected_identity) when is_binary(expected_identity) do
     with true <- valid_local_identity?(expected_identity),
-         {:ok, path} <- file_path(key, allow_conditional_copy: true) do
+         {:ok, path} <- file_path(key, allow_conditional_copy: true),
+         :ok <- ensure_no_symlink_components(path) do
       delete_matching_file(path, expected_identity)
     else
       false -> {:error, :invalid_object_identity}
@@ -212,6 +214,21 @@ defmodule Storyarn.Assets.Storage.Local do
   end
 
   def delete_if_matches(_key, _expected_identity), do: {:error, :invalid_object_identity}
+
+  @impl true
+  def namespace_fingerprint do
+    root = upload_dir()
+
+    with {:ok, root_identity} <- safe_upload_root_identity(root) do
+      fingerprint =
+        [Atom.to_string(__MODULE__), root, root_identity]
+        |> Jason.encode_to_iodata!()
+        |> then(&:crypto.hash(:sha256, &1))
+        |> Base.encode16(case: :lower)
+
+      {:ok, fingerprint}
+    end
+  end
 
   defp delete_matching_file(path, expected_identity) do
     case File.lstat(path) do
@@ -338,6 +355,75 @@ defmodule Storyarn.Assets.Storage.Local do
       path = Path.expand(Path.join(upload_dir, key))
 
       if path_inside?(path, upload_dir), do: {:ok, path}, else: {:error, :invalid_key}
+    end
+  end
+
+  defp ensure_no_symlink_components(path) do
+    root = upload_dir()
+
+    with {:ok, _root_identity} <- safe_upload_root_identity(root) do
+      path
+      |> Path.relative_to(root)
+      |> Path.split()
+      |> check_path_components(root)
+    end
+  end
+
+  defp safe_upload_root_identity("/"), do: {:error, :unsafe_storage_entry}
+
+  defp safe_upload_root_identity(root) do
+    with ["/" | components] <- Path.split(root),
+         {:ok, root_stat} <- File.lstat("/"),
+         {:ok, root_identity} <- storage_directory_identity("/", root_stat) do
+      check_absolute_root_components(components, "/", [root_identity])
+    else
+      _invalid -> {:error, :unsafe_storage_entry}
+    end
+  end
+
+  defp check_absolute_root_components([], _parent, identities), do: {:ok, Enum.reverse(identities)}
+
+  defp check_absolute_root_components([component | rest], parent, identities) do
+    path = Path.join(parent, component)
+
+    case File.lstat(path) do
+      {:ok, stat} ->
+        with {:ok, identity} <- storage_directory_identity(path, stat) do
+          check_absolute_root_components(rest, path, [identity | identities])
+        end
+
+      {:error, :enoent} ->
+        {:ok, Enum.reverse([["missing", path] | identities])}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp storage_directory_identity(path, %{
+         type: :directory,
+         major_device: major_device,
+         minor_device: minor_device,
+         inode: inode
+       })
+       when is_integer(major_device) and is_integer(minor_device) and is_integer(inode) do
+    {:ok, ["directory", path, major_device, minor_device, inode]}
+  end
+
+  defp storage_directory_identity(_path, _unsafe_stat) do
+    {:error, :unsafe_storage_entry}
+  end
+
+  defp check_path_components([], _parent), do: :ok
+
+  defp check_path_components([component | rest], parent) do
+    path = Path.join(parent, component)
+
+    case File.lstat(path) do
+      {:ok, %{type: :symlink}} -> {:error, :unsafe_storage_entry}
+      {:ok, _stat} -> check_path_components(rest, path)
+      {:error, :enoent} -> :ok
+      {:error, reason} -> {:error, reason}
     end
   end
 

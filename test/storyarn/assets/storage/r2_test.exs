@@ -163,20 +163,15 @@ defmodule Storyarn.Assets.Storage.R2Test do
   end
 
   describe "delete_if_matches/2" do
-    test "verifies the ETag immediately before deleting" do
+    test "deletes atomically only when the ETag still matches" do
       key = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/manifest.json"
 
-      Req.Test.expect(__MODULE__, 2, fn conn ->
+      Req.Test.expect(__MODULE__, fn conn ->
         assert_signed_header_request(conn)
-
-        case conn.method do
-          "HEAD" ->
-            assert Plug.Conn.get_req_header(conn, "if-match") == [~s("manifest-etag")]
-            Plug.Conn.send_resp(conn, 200, "")
-
-          "DELETE" ->
-            Plug.Conn.send_resp(conn, 204, "")
-        end
+        assert_signed_header(conn, "if-match")
+        assert conn.method == "DELETE"
+        assert Plug.Conn.get_req_header(conn, "if-match") == [~s("manifest-etag")]
+        Plug.Conn.send_resp(conn, 204, "")
       end)
 
       assert :ok = R2.delete_if_matches(key, ~s("manifest-etag"))
@@ -186,7 +181,8 @@ defmodule Storyarn.Assets.Storage.R2Test do
       key = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/manifest.json"
 
       Req.Test.expect(__MODULE__, fn conn ->
-        assert conn.method == "HEAD"
+        assert_signed_header(conn, "if-match")
+        assert conn.method == "DELETE"
         assert Plug.Conn.get_req_header(conn, "if-match") == [~s("old-etag")]
         Plug.Conn.send_resp(conn, 412, "")
       end)
@@ -198,11 +194,30 @@ defmodule Storyarn.Assets.Storage.R2Test do
       key = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/manifest.json"
 
       Req.Test.expect(__MODULE__, fn conn ->
-        assert conn.method == "HEAD"
+        assert_signed_header(conn, "if-match")
+        assert conn.method == "DELETE"
+        assert Plug.Conn.get_req_header(conn, "if-match") == [~s("manifest-etag")]
         Plug.Conn.send_resp(conn, 404, "")
       end)
 
       assert :ok = R2.delete_if_matches(key, ~s("manifest-etag"))
+    end
+  end
+
+  describe "namespace_fingerprint/0" do
+    test "binds the endpoint and bucket without exposing credentials" do
+      assert {:ok, original} = R2.namespace_fingerprint()
+      assert original =~ ~r/\A[0-9a-f]{64}\z/
+
+      Application.put_env(:storyarn, :r2,
+        bucket: "another-private-bucket",
+        endpoint_url: "https://t3.storage.dev",
+        public_url: nil
+      )
+
+      assert {:ok, changed} = R2.namespace_fingerprint()
+      refute changed == original
+      refute changed =~ "test-secret-key"
     end
   end
 
@@ -465,6 +480,13 @@ defmodule Storyarn.Assets.Storage.R2Test do
 
     assert Plug.Conn.get_req_header(conn, "x-amz-date") != []
     refute authorization =~ "X-Amz-Signature"
+  end
+
+  defp assert_signed_header(conn, expected_header) do
+    [authorization] = Plug.Conn.get_req_header(conn, "authorization")
+    [signed_headers] = Regex.run(~r/SignedHeaders=([^,\s]+)/, authorization, capture: :all_but_first)
+
+    assert expected_header in String.split(signed_headers, ";")
   end
 
   defp restore_env(app, key, nil), do: Application.delete_env(app, key)

@@ -6,7 +6,6 @@ defmodule Storyarn.Release do
   alias Storyarn.Versioning.ProjectSnapshotReset
 
   @app :storyarn
-  @max_snapshot_reset_authorization_bytes 512
   @snapshot_reset_receipts_migration 20_260_805_125_000
   @snapshot_lifecycle_migration 20_260_805_130_000
 
@@ -112,7 +111,7 @@ defmodule Storyarn.Release do
       when is_binary(environment) and is_integer(workspace_id) and is_binary(plan_path) and is_binary(digest) and
              is_binary(authorization_path) do
     load_snapshot_reset_runtime!()
-    authorization = read_owner_only_secret!(authorization_path)
+    authorization = read_snapshot_reset_authorization!(authorization_path)
 
     with_repo(fn repo ->
       execute_snapshot_reset!(
@@ -126,10 +125,72 @@ defmodule Storyarn.Release do
     end)
   end
 
+  @doc """
+  Persists the environment-global provider snapshot reset plan.
+
+  Every workspace reset receipt must already be current and both versioning
+  tables must be globally empty. The plan contains only strict snapshot-root
+  objects discovered by a bounded scan of `projects/`.
+  """
+  def prepare_project_snapshot_provider_reset(environment, plan_path, max_scanned_objects)
+      when is_binary(environment) and is_binary(plan_path) and is_integer(max_scanned_objects) do
+    load_snapshot_reset_runtime!()
+
+    with_repo(fn repo ->
+      plan = prepare_snapshot_provider_reset!(repo, environment, max_scanned_objects)
+      persist_new_snapshot_reset_plan!(plan_path, plan)
+      print_snapshot_provider_reset_plan(plan_path, plan, "DRY RUN")
+      plan
+    end)
+  end
+
+  @doc "Executes or resumes the environment-global provider snapshot reset plan."
+  def execute_project_snapshot_provider_reset(environment, plan_path, digest, authorization_path)
+      when is_binary(environment) and is_binary(plan_path) and is_binary(digest) and is_binary(authorization_path) do
+    load_snapshot_reset_runtime!()
+    authorization = read_snapshot_reset_authorization!(authorization_path)
+
+    with_repo(fn repo ->
+      plan = read_snapshot_reset_plan!(plan_path)
+      validate_snapshot_provider_reset_scope!(plan, environment)
+      checkpoint = &ProjectSnapshotReset.write_plan_file(plan_path, &1)
+
+      plan
+      |> ProjectSnapshotReset.execute(digest,
+        repo: repo,
+        authorization: authorization,
+        checkpoint: checkpoint
+      )
+      |> handle_snapshot_provider_reset_result!(plan_path)
+    end)
+  end
+
+  @doc "Verifies the database and immutable receipt boundary for lifecycle rollout."
+  def verify_project_snapshot_reset_rollout(environment) when is_binary(environment) do
+    load_app()
+
+    with_repo(fn repo ->
+      case ProjectSnapshotReset.verify_rollout_readiness(environment, repo: repo) do
+        :ok -> :ok
+        {:error, reason} -> raise "Snapshot reset rollout is not ready: #{inspect(reason)}"
+      end
+    end)
+  end
+
   defp prepare_snapshot_reset!(repo, workspace_id, environment) do
     case ProjectSnapshotReset.prepare(workspace_id, environment, repo: repo) do
       {:ok, plan} -> plan
       {:error, reason} -> raise "Could not prepare snapshot reset: #{inspect(reason)}"
+    end
+  end
+
+  defp prepare_snapshot_provider_reset!(repo, environment, max_scanned_objects) do
+    case ProjectSnapshotReset.prepare_provider(environment,
+           repo: repo,
+           max_scanned_objects: max_scanned_objects
+         ) do
+      {:ok, plan} -> plan
+      {:error, reason} -> raise "Could not prepare provider snapshot reset: #{inspect(reason)}"
     end
   end
 
@@ -164,12 +225,28 @@ defmodule Storyarn.Release do
     raise "The snapshot reset plan does not match the explicit environment and workspace scope"
   end
 
+  defp validate_snapshot_provider_reset_scope!(%{"scope" => "provider", "environment" => environment}, environment),
+    do: :ok
+
+  defp validate_snapshot_provider_reset_scope!(_plan, _environment) do
+    raise "The provider snapshot reset plan does not match the explicit environment scope"
+  end
+
   defp handle_snapshot_reset_result!({:ok, completed}, plan_path) do
     print_snapshot_reset_plan(plan_path, completed, "COMPLETED")
     completed
   end
 
   defp handle_snapshot_reset_result!({:error, reason, failed}, plan_path) do
+    persist_failed_snapshot_reset_plan!(plan_path, failed, reason)
+  end
+
+  defp handle_snapshot_provider_reset_result!({:ok, completed}, plan_path) do
+    print_snapshot_provider_reset_plan(plan_path, completed, "COMPLETED")
+    completed
+  end
+
+  defp handle_snapshot_provider_reset_result!({:error, reason, failed}, plan_path) do
     persist_failed_snapshot_reset_plan!(plan_path, failed, reason)
   end
 
@@ -220,6 +297,7 @@ defmodule Storyarn.Release do
            """
            SELECT
              to_regclass('public.project_snapshot_reset_receipts') IS NOT NULL AND
+             to_regclass('public.project_snapshot_provider_reset_receipts') IS NOT NULL AND
              EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)
            """,
            [@snapshot_reset_receipts_migration]
@@ -237,18 +315,12 @@ defmodule Storyarn.Release do
     end
   end
 
-  defp read_owner_only_secret!(path) do
-    expanded = Path.expand(path)
+  defp read_snapshot_reset_authorization!(path) do
+    case ProjectSnapshotReset.read_authorization_file(path) do
+      {:ok, authorization} ->
+        authorization
 
-    with {:ok, %File.Stat{type: :regular, mode: mode, size: size}} <- File.lstat(expanded),
-         true <- Bitwise.band(mode, 0o077) == 0,
-         true <- size > 0 and size <= @max_snapshot_reset_authorization_bytes + 1,
-         {:ok, contents} <- File.read(expanded),
-         secret = String.trim(contents),
-         true <- String.match?(secret, ~r/\A[A-Za-z0-9_-]{32,512}\z/) do
-      secret
-    else
-      _invalid ->
+      {:error, :unsafe_snapshot_reset_authorization_file} ->
         raise "Snapshot reset authorization must be an owner-only regular file containing a 32-512 character token"
     end
   end
@@ -256,10 +328,24 @@ defmodule Storyarn.Release do
   defp print_snapshot_reset_plan(path, plan, label) do
     IO.puts("Snapshot reset #{label}")
     IO.puts("Environment: #{plan["environment"]}")
+    IO.puts("Storage namespace: #{plan["storage_namespace_fingerprint"]}")
     IO.puts("Workspace: #{plan["workspace_id"]}")
     IO.puts("Snapshot rows: #{length(plan["snapshot_row_ids"])}")
     IO.puts("Entity-version rows: #{length(plan["entity_version_row_ids"])}")
     IO.puts("Storage objects: #{length(plan["objects"])}")
+    IO.puts("Storage bytes: #{Enum.sum(Enum.map(plan["objects"], & &1["size"]))}")
+    IO.puts("Remaining objects: #{length(plan["remaining_storage_keys"])}")
+    IO.puts("Inventory digest: #{plan["inventory_digest"]}")
+    IO.puts("Audit plan: #{Path.expand(path)}")
+  end
+
+  defp print_snapshot_provider_reset_plan(path, plan, label) do
+    IO.puts("Provider snapshot reset #{label}")
+    IO.puts("Environment: #{plan["environment"]}")
+    IO.puts("Storage namespace: #{plan["storage_namespace_fingerprint"]}")
+    IO.puts("Workspace receipt revisions: #{length(plan["workspace_receipt_ids"])}")
+    IO.puts("Storage objects: #{length(plan["objects"])}")
+    IO.puts("Provider objects scanned: #{plan["scanned_object_count"]}/#{plan["max_scanned_objects"]}")
     IO.puts("Storage bytes: #{Enum.sum(Enum.map(plan["objects"], & &1["size"]))}")
     IO.puts("Remaining objects: #{length(plan["remaining_storage_keys"])}")
     IO.puts("Inventory digest: #{plan["inventory_digest"]}")

@@ -28,6 +28,9 @@ defmodule Storyarn.FailingStreamStorage do
   def delete_if_matches(_key, _identity), do: {:error, :unsupported}
 
   @impl true
+  def namespace_fingerprint, do: {:ok, String.duplicate("a", 64)}
+
+  @impl true
   def get_url(_key), do: ""
 
   @impl true

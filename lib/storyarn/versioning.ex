@@ -283,9 +283,18 @@ defmodule Storyarn.Versioning do
     as: :execute
 
   @doc false
+  defdelegate prepare_project_snapshot_provider_reset(environment, opts \\ []),
+    to: ProjectSnapshotReset,
+    as: :prepare_provider
+
+  @doc false
   defdelegate validate_project_snapshot_reset_plan(plan),
     to: ProjectSnapshotReset,
     as: :validate_plan
+
+  defdelegate verify_project_snapshot_reset_rollout_readiness(environment, opts \\ []),
+    to: ProjectSnapshotReset,
+    as: :verify_rollout_readiness
 
   @doc "Subscribes the current process to lifecycle changes for one project's snapshots."
   defdelegate subscribe_project_snapshots(project_id),

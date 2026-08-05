@@ -36,13 +36,15 @@ defmodule Storyarn.Assets.Storage do
   @callback delete(key) :: :ok | {:error, term()}
 
   @doc """
-  Verifies the opaque identity returned by `list_prefix/2` immediately before
-  deleting the object.
+  Deletes an object only when its opaque identity still matches the value
+  returned by `list_prefix/2`.
 
-  Backends without an atomic conditional delete require the caller to hold an
-  external write fence for the complete verify/delete operation.
+  Backends without an atomic conditional delete must fail closed unless the
+  caller holds an external write fence for the complete verify/delete operation.
   """
   @callback delete_if_matches(key, object_identity()) :: :ok | {:error, term()}
+  @doc "Returns an opaque stable identity for the configured provider namespace."
+  @callback namespace_fingerprint() :: {:ok, String.t()} | {:error, term()}
   @callback get_url(key) :: url
   @callback download(key) :: {:ok, binary_data} | {:error, term()}
   @callback stat(key) :: {:ok, object_stat} | {:error, term()}

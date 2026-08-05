@@ -4,6 +4,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Assets.Storage.Local
   alias Storyarn.Release
   alias Storyarn.SnapshotResetStorage
   alias Storyarn.Versioning
@@ -14,6 +15,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
 
   @environment "reset-test"
   @authorization String.duplicate("a", 32)
+  @retry_authorization String.duplicate("b", 32)
 
   test "dry run and execution remain exact to one environment and workspace" do
     user = user_fixture()
@@ -43,6 +45,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
              )
 
     assert plan["status"] == "prepared"
+    plan_id = plan["plan_id"]
+    assert {:ok, ^plan_id} = Ecto.UUID.cast(plan_id)
     assert plan["workspace_id"] == project.workspace_id
     assert plan["project_ids"] == [project.id]
     assert plan["snapshot_row_ids"] == [snapshot.id]
@@ -130,7 +134,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
              )
   end
 
-  test "refuses preparation and execution after the ENG-80 lifecycle rollout migration" do
+  test "refuses preparation and execution when the lifecycle rollout guard is closed" do
     user = user_fixture()
     project = project_fixture(user)
     :ok = SnapshotResetStorage.put_objects(%{})
@@ -138,6 +142,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     assert {:error, :snapshot_reset_rollout_already_applied} =
              Versioning.prepare_project_snapshot_reset(project.workspace_id, @environment,
                current_environment: @environment,
+               rollout_guard: &deny_post_rollout/1,
                storage_adapter: SnapshotResetStorage
              )
 
@@ -148,6 +153,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
                current_environment: @environment,
                expected_authorization_digest: authorization_digest(),
                authorization: @authorization,
+               rollout_guard: &deny_post_rollout/1,
                storage_adapter: SnapshotResetStorage
              )
   end
@@ -173,6 +179,49 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     end
   end
 
+  test "release APIs prepare, execute, and verify an environment-global provider reset" do
+    directory = Path.join(System.tmp_dir!(), "storyarn-provider-reset-#{System.unique_integer([:positive])}")
+    plan_path = Path.join(directory, "plan.json")
+    authorization_path = Path.join(directory, "authorization")
+    original_storage = Application.get_env(:storyarn, :storage)
+    original_environment = System.get_env("STORYARN_DEPLOYMENT_ENVIRONMENT")
+    original_authorization_digest = System.get_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256")
+
+    File.mkdir_p!(directory)
+    File.chmod!(directory, 0o700)
+    File.write!(authorization_path, @authorization)
+    File.chmod!(authorization_path, 0o600)
+    Application.put_env(:storyarn, :storage, adapter: SnapshotResetStorage)
+    System.put_env("STORYARN_DEPLOYMENT_ENVIRONMENT", @environment)
+    System.put_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256", authorization_digest())
+
+    on_exit(fn ->
+      File.rm_rf(directory)
+      restore_application_env(:storyarn, :storage, original_storage)
+      restore_system_env("STORYARN_DEPLOYMENT_ENVIRONMENT", original_environment)
+      restore_system_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256", original_authorization_digest)
+    end)
+
+    orphan = "projects/900000004/snapshots/project/release-orphan.json.gz"
+    :ok = SnapshotResetStorage.put_objects(%{orphan => 10})
+
+    plan = Release.prepare_project_snapshot_provider_reset(@environment, plan_path, 10)
+    assert plan["workspace_receipt_ids"] == []
+    assert Enum.map(plan["objects"], & &1["key"]) == [orphan]
+
+    completed =
+      Release.execute_project_snapshot_provider_reset(
+        @environment,
+        plan_path,
+        plan["inventory_digest"],
+        authorization_path
+      )
+
+    assert completed["status"] == "completed"
+    assert SnapshotResetStorage.objects() == %{}
+    assert :ok = Release.verify_project_snapshot_reset_rollout(@environment)
+  end
+
   test "requires an independently configured authorization digest" do
     user = user_fixture()
     project = project_fixture(user)
@@ -194,6 +243,30 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
                plan,
                plan["inventory_digest"],
                Keyword.put(common, :authorization, String.duplicate("b", 32))
+             )
+  end
+
+  test "does not accept the authorization token from process environment" do
+    user = user_fixture()
+    project = project_fixture(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, plan} = prepare(project.workspace_id)
+
+    previous = System.get_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION")
+    System.put_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION", @authorization)
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION", previous),
+        else: System.delete_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION")
+    end)
+
+    assert {:error, :snapshot_reset_not_authorized, ^plan} =
+             Versioning.execute_project_snapshot_reset(plan, plan["inventory_digest"],
+               current_environment: @environment,
+               expected_authorization_digest: authorization_digest(),
+               rollout_guard: &allow_pre_rollout/1,
+               storage_adapter: SnapshotResetStorage
              )
   end
 
@@ -441,7 +514,244 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     refute Repo.get(ProjectSnapshot, snapshot.id)
   end
 
-  test "persists a database receipt that rejects mutation" do
+  test "the global provider plan deletes orphan snapshot roots without touching current assets" do
+    user = user_fixture()
+    project = project_fixture(user)
+    current_snapshot = full_project_snapshot_fixture(project, %{asset_blob_size_bytes: 0})
+    current_key = current_snapshot.manifest_storage_key
+    asset_key = "projects/#{project.id}/assets/current/original.png"
+    orphan_key = "projects/999999999/snapshots/project/orphan.json.gz"
+
+    :ok =
+      SnapshotResetStorage.put_objects(%{
+        current_key => current_snapshot.manifest_size_bytes,
+        asset_key => 12,
+        orphan_key => 24
+      })
+
+    assert {:ok, workspace_plan} = prepare(project.workspace_id)
+    assert {:ok, _workspace_completed} = execute(workspace_plan)
+
+    assert {:ok, provider_plan} = prepare_provider()
+    assert provider_plan["scope"] == "provider"
+    refute Map.has_key?(provider_plan, "workspace_id")
+
+    assert [[workspace_receipt_id]] =
+             Repo.query!(
+               "SELECT id FROM project_snapshot_reset_receipts WHERE workspace_id = $1",
+               [project.workspace_id]
+             ).rows
+
+    assert provider_plan["workspace_receipt_ids"] == [workspace_receipt_id]
+    assert provider_plan["scanned_object_count"] == 2
+    assert Enum.map(provider_plan["objects"], & &1["key"]) == [orphan_key]
+
+    assert {:ok, provider_completed} = execute_provider(provider_plan)
+    assert provider_completed["status"] == "completed"
+    assert Map.has_key?(SnapshotResetStorage.objects(), asset_key)
+    refute Map.has_key?(SnapshotResetStorage.objects(), orphan_key)
+    assert :ok = readiness()
+  end
+
+  test "the global provider scan rejects malformed snapshot-looking keys" do
+    user = user_fixture()
+    project = project_fixture(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, workspace_plan} = prepare(project.workspace_id)
+    assert {:ok, _workspace_completed} = execute(workspace_plan)
+
+    malformed = "projects/not-a-project-id/snapshots/project/orphan.json.gz"
+    :ok = SnapshotResetStorage.put_objects(%{malformed => 12})
+
+    assert {:error, :unsafe_snapshot_reset_object} = prepare_provider()
+    assert Map.has_key?(SnapshotResetStorage.objects(), malformed)
+  end
+
+  test "the global provider scan bounds all inspected objects, including ignored assets" do
+    user = user_fixture()
+    project = project_fixture(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, workspace_plan} = prepare(project.workspace_id)
+    assert {:ok, _workspace_completed} = execute(workspace_plan)
+
+    assets =
+      Map.new(1..3, fn index ->
+        {"projects/#{project.id}/assets/#{index}/original.bin", index}
+      end)
+
+    :ok = SnapshotResetStorage.put_objects(assets)
+
+    assert {:error, :snapshot_reset_scanned_object_limit_exceeded} =
+             prepare_provider(@environment, max_scanned_objects: 2)
+  end
+
+  test "the global provider plan checkpoints a failure and resumes with rotated authorization" do
+    user = user_fixture()
+    project = project_fixture(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, workspace_plan} = prepare(project.workspace_id)
+    assert {:ok, _workspace_completed} = execute(workspace_plan)
+
+    first = "projects/900000001/snapshots/project/first.json.gz"
+    second = "projects/900000002/snapshots/project/second.json.gz"
+    :ok = SnapshotResetStorage.put_objects(%{first => 10, second => 20})
+    assert {:ok, provider_plan} = prepare_provider()
+    :ok = SnapshotResetStorage.fail_once([second])
+
+    assert {:error, :snapshot_reset_storage_delete_failed, failed} = execute_provider(provider_plan)
+    assert failed["status"] == "failed"
+
+    assert {:ok, completed} =
+             execute_provider(failed,
+               authorization: @retry_authorization,
+               expected_authorization_digest: authorization_digest(@retry_authorization)
+             )
+
+    assert completed["status"] == "completed"
+    assert SnapshotResetStorage.objects() == %{}
+  end
+
+  test "a provider plan rejects workspace receipt drift before deleting" do
+    user = user_fixture()
+    project = project_fixture(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, workspace_plan} = prepare(project.workspace_id)
+    assert {:ok, _workspace_completed} = execute(workspace_plan)
+
+    orphan = "projects/900000003/snapshots/project/orphan.json.gz"
+    :ok = SnapshotResetStorage.put_objects(%{orphan => 10})
+    assert {:ok, provider_plan} = prepare_provider()
+
+    other_user = user_fixture()
+    other_workspace = Storyarn.Workspaces.get_default_workspace(other_user)
+    assert {:ok, other_workspace_plan} = prepare(other_workspace.id)
+    assert {:ok, _other_workspace_completed} = execute(other_workspace_plan)
+
+    assert {:error, :snapshot_reset_workspace_receipts_changed, ^provider_plan} =
+             execute_provider(provider_plan)
+
+    assert Map.has_key?(SnapshotResetStorage.objects(), orphan)
+  end
+
+  test "a provider plan rejects storage namespace drift before deleting" do
+    orphan = "projects/900000005/snapshots/project/orphan.json.gz"
+    :ok = SnapshotResetStorage.put_objects(%{orphan => 10})
+    assert {:ok, provider_plan} = prepare_provider()
+    :ok = SnapshotResetStorage.change_namespace_fingerprint()
+
+    assert {:error, :snapshot_reset_storage_namespace_changed, ^provider_plan} =
+             execute_provider(provider_plan)
+
+    assert Map.has_key?(SnapshotResetStorage.objects(), orphan)
+  end
+
+  test "a local provider plan rejects an upload root retargeted through a symlink before deleting" do
+    unique = System.unique_integer([:positive])
+    root = Path.expand("test/tmp/snapshot-reset-local-root-#{unique}")
+    preserved_root = root <> "-preserved"
+    replacement_root = root <> "-replacement"
+    original_storage = Application.get_env(:storyarn, :storage)
+    orphan = "projects/900000006/snapshots/project/orphan.json.gz"
+
+    Application.put_env(:storyarn, :storage,
+      adapter: Local,
+      upload_dir: root,
+      public_path: "/test-uploads"
+    )
+
+    on_exit(fn ->
+      restore_application_env(:storyarn, :storage, original_storage)
+      File.rm(root)
+      File.rm_rf(preserved_root)
+      File.rm_rf(replacement_root)
+    end)
+
+    assert {:ok, _url} = Local.upload(orphan, "original", "application/octet-stream")
+
+    assert {:ok, provider_plan} =
+             prepare_provider(@environment, storage_adapter: Local)
+
+    File.rename!(root, preserved_root)
+    replacement_path = Path.join(replacement_root, orphan)
+    File.mkdir_p!(Path.dirname(replacement_path))
+    File.write!(replacement_path, "replacement")
+    assert :ok = File.ln_s(replacement_root, root)
+
+    assert {:error, :snapshot_reset_storage_namespace_unavailable, ^provider_plan} =
+             execute_provider(provider_plan, storage_adapter: Local)
+
+    assert File.read!(Path.join(preserved_root, orphan)) == "original"
+    assert File.read!(replacement_path) == "replacement"
+  end
+
+  test "a local provider plan rejects a different directory at the same upload root before deleting" do
+    unique = System.unique_integer([:positive])
+    root = Path.expand("test/tmp/snapshot-reset-local-replaced-root-#{unique}")
+    preserved_root = root <> "-preserved"
+    original_storage = Application.get_env(:storyarn, :storage)
+    orphan = "projects/900000007/snapshots/project/orphan.json.gz"
+
+    Application.put_env(:storyarn, :storage,
+      adapter: Local,
+      upload_dir: root,
+      public_path: "/test-uploads"
+    )
+
+    on_exit(fn ->
+      restore_application_env(:storyarn, :storage, original_storage)
+      File.rm_rf(root)
+      File.rm_rf(preserved_root)
+    end)
+
+    assert {:ok, _url} = Local.upload(orphan, "original", "application/octet-stream")
+
+    assert {:ok, provider_plan} =
+             prepare_provider(@environment, storage_adapter: Local)
+
+    File.rename!(root, preserved_root)
+    replacement_path = Path.join(root, orphan)
+    File.mkdir_p!(Path.dirname(replacement_path))
+    File.write!(replacement_path, "replacement")
+
+    assert {:error, :snapshot_reset_storage_namespace_changed, ^provider_plan} =
+             execute_provider(provider_plan, storage_adapter: Local)
+
+    assert File.read!(Path.join(preserved_root, orphan)) == "original"
+    assert File.read!(replacement_path) == "replacement"
+  end
+
+  test "provider preparation rejects workspace receipts from another storage namespace" do
+    user = user_fixture()
+    project = project_fixture(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, workspace_plan} = prepare(project.workspace_id)
+    assert {:ok, _workspace_completed} = execute(workspace_plan)
+    :ok = SnapshotResetStorage.change_namespace_fingerprint()
+
+    assert {:error, :snapshot_reset_rollout_receipts_incomplete} = prepare_provider()
+  end
+
+  test "rejects an out-of-range attempt count before any delete" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = full_project_snapshot_fixture(project, %{asset_blob_size_bytes: 0})
+    :ok = SnapshotResetStorage.put_objects(%{snapshot.manifest_storage_key => snapshot.manifest_size_bytes})
+    assert {:ok, plan} = prepare(project.workspace_id)
+
+    tampered =
+      plan
+      |> Map.put("status", "failed")
+      |> Map.put("attempt_count", 9_223_372_036_854_775_807)
+      |> Map.put("authorization_digest", authorization_digest())
+      |> Map.put("last_error_code", "tampered_attempt")
+
+    assert {:error, :invalid_snapshot_reset_plan} = ProjectSnapshotReset.validate_plan(tampered)
+    assert {:error, :invalid_snapshot_reset_plan, ^tampered} = execute(tampered)
+    assert Repo.get!(ProjectSnapshot, snapshot.id)
+    assert Map.has_key?(SnapshotResetStorage.objects(), snapshot.manifest_storage_key)
+  end
+
+  test "persists a workspace receipt that rejects mutation" do
     user = user_fixture()
     project = project_fixture(user)
     :ok = SnapshotResetStorage.put_objects(%{})
@@ -456,34 +766,264 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     end
   end
 
-  test "receipt project inventory makes a post-reset project fail the rollout gate" do
+  test "persists a provider receipt that rejects mutation" do
+    user = user_fixture()
+    project = project_fixture(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, plan} = prepare(project.workspace_id)
+    assert {:ok, _completed} = execute(plan)
+    assert {:ok, _provider_completed} = complete_provider_reset()
+
+    assert_raise Postgrex.Error, fn ->
+      Repo.query!("UPDATE project_snapshot_provider_reset_receipts SET object_count = object_count + 1")
+    end
+  end
+
+  test "workspace receipt history rejects truncation" do
+    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation}}} =
+             Repo.query("TRUNCATE project_snapshot_reset_receipts")
+  end
+
+  test "provider receipt history rejects truncation" do
+    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation}}} =
+             Repo.query("TRUNCATE project_snapshot_provider_reset_receipts")
+  end
+
+  test "receipt ID vectors reject NULL and duplicate ids" do
+    assert [[false, false, false, false, true, true]] =
+             Repo.query!("""
+             SELECT
+               storyarn_valid_sorted_positive_bigints(ARRAY[1, NULL]::bigint[]),
+               storyarn_valid_sorted_positive_bigints(ARRAY[1, 1]::bigint[]),
+               storyarn_valid_sorted_positive_bigints(ARRAY[2, 1]::bigint[]),
+               storyarn_valid_sorted_positive_bigints(ARRAY[0]::bigint[]),
+               storyarn_valid_sorted_positive_bigints(ARRAY[]::bigint[]),
+               storyarn_valid_sorted_positive_bigints(ARRAY[1, 2]::bigint[])
+             """).rows
+  end
+
+  test "rollout readiness requires the environment-global provider receipt" do
+    assert {:error, :snapshot_reset_rollout_provider_receipt_missing} = readiness()
+    assert {:ok, _completed} = complete_provider_reset()
+    assert :ok = readiness()
+  end
+
+  test "rollout readiness rejects malformed expected and current environments" do
+    assert {:error, :snapshot_reset_environment_required} = readiness("invalid environment")
+
+    assert {:error, :snapshot_reset_current_environment_unconfigured} =
+             ProjectSnapshotReset.verify_rollout_readiness(@environment,
+               current_environment: "invalid environment",
+               repo: Repo
+             )
+  end
+
+  test "rollout readiness rejects a workspace without a receipt" do
+    user = user_fixture()
+    _project = project_fixture(user)
+
+    assert {:error, :snapshot_reset_rollout_receipts_incomplete} = readiness()
+  end
+
+  test "rollout readiness rejects a latest wrong-environment receipt over an older valid one" do
+    user = user_fixture()
+    project = project_fixture(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, plan} = prepare(project.workspace_id)
+    assert {:ok, _completed} = execute(plan)
+    assert {:ok, _provider_completed} = complete_provider_reset()
+    assert :ok = readiness()
+
+    assert {:ok, production_plan} =
+             Versioning.prepare_project_snapshot_reset(project.workspace_id, "production",
+               current_environment: "production",
+               rollout_guard: &allow_pre_rollout/1,
+               storage_adapter: SnapshotResetStorage
+             )
+
+    assert {:ok, _production_completed} =
+             Versioning.execute_project_snapshot_reset(
+               production_plan,
+               production_plan["inventory_digest"],
+               current_environment: "production",
+               expected_authorization_digest: authorization_digest(),
+               authorization: @authorization,
+               rollout_guard: &allow_pre_rollout/1,
+               storage_adapter: SnapshotResetStorage
+             )
+
+    assert {:ok, _provider_completed} = complete_provider_reset("production")
+    assert :ok = readiness("production")
+    assert {:error, :snapshot_reset_rollout_receipts_incomplete} = readiness()
+  end
+
+  test "rollout readiness rejects current project drift after the latest receipt" do
     user = user_fixture()
     workspace = Storyarn.Workspaces.get_default_workspace(user)
     project = project_fixture(user, %{workspace: workspace})
     :ok = SnapshotResetStorage.put_objects(%{})
     assert {:ok, plan} = prepare(project.workspace_id)
     assert {:ok, _completed} = execute(plan)
+    assert {:ok, _provider_completed} = complete_provider_reset()
+    assert :ok = readiness()
+
     _new_project = project_fixture(user, %{workspace: workspace})
 
-    assert [[true]] =
+    assert {:error, :snapshot_reset_rollout_receipts_incomplete} = readiness()
+  end
+
+  test "rollout readiness rejects non-empty versioning tables globally" do
+    user = user_fixture()
+    project = project_fixture(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, plan} = prepare(project.workspace_id)
+    assert {:ok, _completed} = execute(plan)
+    assert {:ok, _provider_completed} = complete_provider_reset()
+    _entity_version = entity_version_fixture(project)
+
+    assert {:error, :snapshot_reset_rollout_database_not_empty} = readiness()
+  end
+
+  test "rollout readiness rejects non-empty project snapshot rows globally" do
+    user = user_fixture()
+    project = project_fixture(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, plan} = prepare(project.workspace_id)
+    assert {:ok, _completed} = execute(plan)
+    assert {:ok, _provider_completed} = complete_provider_reset()
+    _snapshot = full_project_snapshot_fixture(project, %{asset_blob_size_bytes: 0})
+
+    assert {:error, :snapshot_reset_rollout_database_not_empty} = readiness()
+  end
+
+  test "rollout readiness fails closed on an invalid repository response" do
+    assert {:error, :snapshot_reset_rollout_readiness_invalid_response} =
+             readiness(@environment, repo: Storyarn.InvalidSnapshotResetRepo)
+  end
+
+  test "a project scope A-B-A appends a revision for every newly prepared plan" do
+    user = user_fixture()
+    workspace = Storyarn.Workspaces.get_default_workspace(user)
+    project = project_fixture(user, %{workspace: workspace})
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, plan} = prepare(project.workspace_id)
+    assert {:ok, first_completed} = execute(plan)
+    assert {:ok, _provider_completed} = complete_provider_reset()
+    new_project = project_fixture(user, %{workspace: workspace})
+    assert {:ok, changed_scope_plan} = prepare(project.workspace_id)
+
+    assert {:ok, second_completed} =
+             execute(changed_scope_plan,
+               authorization: @retry_authorization,
+               expected_authorization_digest: authorization_digest(@retry_authorization)
+             )
+
+    assert {:error, :snapshot_reset_rollout_provider_receipt_missing} = readiness()
+    assert {:ok, _provider_completed} = complete_provider_reset()
+    assert :ok = readiness()
+    assert {:ok, deleted_project} = Storyarn.Projects.delete_project(new_project, user.id)
+    assert {:ok, _deleted_project} = Storyarn.Projects.permanently_delete_project(deleted_project)
+    assert {:error, :snapshot_reset_rollout_receipts_incomplete} = readiness()
+    assert {:ok, returned_scope_plan} = prepare(project.workspace_id)
+    assert {:ok, third_completed} = execute(returned_scope_plan)
+    assert {:error, :snapshot_reset_rollout_provider_receipt_missing} = readiness()
+    assert {:ok, _provider_completed} = complete_provider_reset()
+
+    assert first_completed["inventory_digest"] != second_completed["inventory_digest"]
+    assert first_completed["inventory_digest"] != third_completed["inventory_digest"]
+    assert first_completed["plan_id"] != third_completed["plan_id"]
+    assert :ok = readiness()
+
+    assert [[first_projects], [second_projects], [third_projects]] =
              Repo.query!(
                """
-               SELECT EXISTS (
-                 SELECT 1
-                 FROM workspaces w
-                 LEFT JOIN project_snapshot_reset_receipts r ON r.workspace_id = w.id
-                 WHERE w.id = $1 AND
-                       (r.workspace_id IS NULL OR
-                        r.project_ids <> ARRAY(
-                          SELECT p.id
-                          FROM projects p
-                          WHERE p.workspace_id = w.id
-                          ORDER BY p.id
-                        ))
-               )
+               SELECT project_ids
+               FROM project_snapshot_reset_receipts
+               WHERE workspace_id = $1
+               ORDER BY id
                """,
                [workspace.id]
              ).rows
+
+    assert first_projects == [project.id]
+    assert second_projects == Enum.sort([project.id, new_project.id])
+    assert third_projects == [project.id]
+  end
+
+  test "a workspace added after the global sweep invalidates its receipt frontier" do
+    assert {:ok, _provider_completed} = complete_provider_reset()
+    assert :ok = readiness()
+
+    user = user_fixture()
+    workspace = Storyarn.Workspaces.get_default_workspace(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, workspace_plan} = prepare(workspace.id)
+    assert {:ok, _workspace_completed} = execute(workspace_plan)
+
+    assert {:error, :snapshot_reset_rollout_provider_receipt_missing} = readiness()
+    assert {:ok, _provider_completed} = complete_provider_reset()
+    assert :ok = readiness()
+  end
+
+  test "a workspace removed after the global sweep invalidates its receipt frontier" do
+    user = user_fixture()
+    workspace = Storyarn.Workspaces.get_default_workspace(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, workspace_plan} = prepare(workspace.id)
+    assert {:ok, _workspace_completed} = execute(workspace_plan)
+    assert {:ok, _provider_completed} = complete_provider_reset()
+    assert :ok = readiness()
+
+    assert {:ok, _deleted_workspace} = Storyarn.Workspaces.delete_workspace(workspace)
+
+    assert {:error, :snapshot_reset_rollout_provider_receipt_missing} = readiness()
+    assert {:ok, _provider_completed} = complete_provider_reset()
+    assert :ok = readiness()
+  end
+
+  test "a conflicting receipt fails before provider or database deletion" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = full_project_snapshot_fixture(project, %{asset_blob_size_bytes: 0})
+
+    :ok =
+      SnapshotResetStorage.put_objects(%{
+        snapshot.project_storage_key => snapshot.project_size_bytes,
+        snapshot.manifest_storage_key => snapshot.manifest_size_bytes
+      })
+
+    assert {:ok, plan} = prepare(project.workspace_id)
+
+    Repo.query!(
+      """
+      INSERT INTO project_snapshot_reset_receipts (
+        workspace_id, plan_id, project_ids, environment, inventory_digest,
+        database_inventory_digest, storage_namespace_fingerprint,
+        authorization_digest, object_count,
+        object_bytes, snapshot_row_count, entity_version_row_count,
+        attempt_count, completed_at
+      )
+      VALUES ($1, $2::text::uuid, $3, 'conflicting-environment', $4, $5, $6, $7, $8, $9, $10, $11, 1, $12)
+      """,
+      [
+        project.workspace_id,
+        plan["plan_id"],
+        plan["project_ids"],
+        plan["inventory_digest"],
+        plan["database_inventory_digest"],
+        plan["storage_namespace_fingerprint"],
+        authorization_digest(),
+        length(plan["objects"]),
+        Enum.sum(Enum.map(plan["objects"], & &1["size"])),
+        length(plan["snapshot_row_ids"]),
+        length(plan["entity_version_row_ids"]),
+        Storyarn.Shared.TimeHelpers.now()
+      ]
+    )
+
+    assert {:error, :snapshot_reset_receipt_mismatch, ^plan} = execute(plan)
+    assert Repo.get!(ProjectSnapshot, snapshot.id)
+    assert map_size(SnapshotResetStorage.objects()) == 2
   end
 
   test "recovers a completed reset when only the final audit checkpoint failed" do
@@ -514,17 +1054,30 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     assert stale_plan["remaining_storage_keys"] == []
     refute Repo.get(ProjectSnapshot, snapshot.id)
 
-    assert {:ok, recovered} = execute(stale_plan)
-    assert recovered["status"] == "completed"
-    assert recovered["attempt_count"] == stale_plan["attempt_count"] + 1
+    assert {:ok, recovered} =
+             execute(stale_plan,
+               authorization: @retry_authorization,
+               expected_authorization_digest: authorization_digest(@retry_authorization)
+             )
 
-    assert [[receipt_attempt_count]] =
+    assert recovered["status"] == "completed"
+    assert recovered["authorization_digest"] == completed["authorization_digest"]
+    assert recovered["attempt_count"] == completed["attempt_count"]
+    assert recovered["completed_at"] == completed["completed_at"]
+
+    assert [[receipt_authorization_digest, receipt_attempt_count, receipt_completed_at]] =
              Repo.query!(
-               "SELECT attempt_count FROM project_snapshot_reset_receipts WHERE workspace_id = $1",
+               """
+               SELECT authorization_digest, attempt_count, completed_at
+               FROM project_snapshot_reset_receipts
+               WHERE workspace_id = $1
+               """,
                [project.workspace_id]
              ).rows
 
-    assert receipt_attempt_count == stale_plan["attempt_count"]
+    assert receipt_authorization_digest == completed["authorization_digest"]
+    assert receipt_attempt_count == completed["attempt_count"]
+    assert DateTime.to_iso8601(DateTime.from_naive!(receipt_completed_at, "Etc/UTC")) == completed["completed_at"]
 
     _new_version = entity_version_fixture(project)
 
@@ -591,6 +1144,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
              plan
              |> Map.put("snapshot_row_ids", [System.unique_integer([:positive])])
              |> Versioning.validate_project_snapshot_reset_plan()
+
+    assert {:error, :invalid_snapshot_reset_plan} =
+             plan
+             |> Map.put("environment", <<0xFF>>)
+             |> Versioning.validate_project_snapshot_reset_plan()
   end
 
   defp prepare(workspace_id) do
@@ -617,11 +1175,61 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     )
   end
 
+  defp prepare_provider(environment \\ @environment, opts \\ []) do
+    defaults = [
+      current_environment: environment,
+      rollout_guard: &allow_pre_rollout/1,
+      storage_adapter: SnapshotResetStorage
+    ]
+
+    ProjectSnapshotReset.prepare_provider(environment, Keyword.merge(defaults, opts))
+  end
+
+  defp execute_provider(plan, opts \\ []) do
+    defaults = [
+      current_environment: plan["environment"],
+      expected_authorization_digest: authorization_digest(),
+      authorization: @authorization,
+      rollout_guard: &allow_pre_rollout/1,
+      storage_adapter: SnapshotResetStorage
+    ]
+
+    ProjectSnapshotReset.execute(
+      plan,
+      plan["inventory_digest"],
+      Keyword.merge(defaults, opts)
+    )
+  end
+
+  defp complete_provider_reset(environment \\ @environment) do
+    with {:ok, plan} <- prepare_provider(environment) do
+      execute_provider(plan)
+    end
+  end
+
+  defp readiness(environment \\ @environment, opts \\ []) do
+    ProjectSnapshotReset.verify_rollout_readiness(
+      environment,
+      Keyword.merge(
+        [current_environment: environment, repo: Repo, storage_adapter: SnapshotResetStorage],
+        opts
+      )
+    )
+  end
+
   defp allow_pre_rollout(_repo), do: :ok
 
-  defp authorization_digest do
-    :sha256 |> :crypto.hash(@authorization) |> Base.encode16(case: :lower)
+  defp deny_post_rollout(_repo), do: {:error, :snapshot_reset_rollout_already_applied}
+
+  defp authorization_digest(authorization \\ @authorization) do
+    :sha256 |> :crypto.hash(authorization) |> Base.encode16(case: :lower)
   end
+
+  defp restore_application_env(app, key, nil), do: Application.delete_env(app, key)
+  defp restore_application_env(app, key, value), do: Application.put_env(app, key, value)
+
+  defp restore_system_env(key, nil), do: System.delete_env(key)
+  defp restore_system_env(key, value), do: System.put_env(key, value)
 
   defp collect_checkpoints(checkpoints) do
     receive do

@@ -3,6 +3,7 @@ defmodule Storyarn.SnapshotResetStorage do
 
   @objects_key {__MODULE__, :objects}
   @failures_key {__MODULE__, :failures}
+  @namespace_fingerprint_key {__MODULE__, :namespace_fingerprint}
   @replace_before_delete_key {__MODULE__, :replace_before_delete}
 
   def put_objects(objects) when is_map(objects) do
@@ -14,6 +15,7 @@ defmodule Storyarn.SnapshotResetStorage do
 
     Process.put(@objects_key, normalized)
     Process.put(@failures_key, MapSet.new())
+    Process.put(@namespace_fingerprint_key, String.duplicate("c", 64))
     Process.put(@replace_before_delete_key, MapSet.new())
     :ok
   end
@@ -85,6 +87,13 @@ defmodule Storyarn.SnapshotResetStorage do
       %{identity: _different} ->
         {:error, :object_changed}
     end
+  end
+
+  def namespace_fingerprint, do: {:ok, Process.get(@namespace_fingerprint_key, String.duplicate("c", 64))}
+
+  def change_namespace_fingerprint do
+    Process.put(@namespace_fingerprint_key, String.duplicate("d", 64))
+    :ok
   end
 
   defp maybe_replace_before_delete(key) do

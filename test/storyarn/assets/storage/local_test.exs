@@ -187,6 +187,106 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       assert {:error, :object_changed} = Local.delete_if_matches(key, identity)
       assert File.read!(Path.join(test_dir, key)) == "other"
     end
+
+    test "never follows an ancestor symlink outside the storage root", %{test_dir: test_dir} do
+      contents = "external"
+      external_dir = external_storage_dir()
+      external_path = Path.join(external_dir, "object.bin")
+      linked_directory = Path.join(test_dir, "projects/1")
+      key = "projects/1/object.bin"
+      identity = :sha256 |> :crypto.hash(contents) |> Base.encode16(case: :lower)
+
+      File.mkdir_p!(external_dir)
+      File.write!(external_path, contents)
+      File.mkdir_p!(Path.dirname(linked_directory))
+      assert :ok = File.ln_s(Path.expand(external_dir), linked_directory)
+      on_exit(fn -> File.rm_rf(external_dir) end)
+
+      assert {:error, :unsafe_storage_entry} = Local.delete_if_matches(key, identity)
+      assert File.read!(external_path) == contents
+    end
+  end
+
+  describe "namespace_fingerprint/0" do
+    test "binds the absolute storage root", %{test_dir: test_dir} do
+      assert {:ok, original} = Local.namespace_fingerprint()
+      assert original =~ ~r/\A[0-9a-f]{64}\z/
+
+      Application.put_env(:storyarn, :storage,
+        upload_dir: test_dir <> "_other",
+        public_path: "/test-uploads"
+      )
+
+      assert {:ok, changed} = Local.namespace_fingerprint()
+      refute changed == original
+    end
+
+    test "accepts a missing root without resolving through an unsafe entry", %{test_dir: test_dir} do
+      missing_root = Path.join(test_dir, "missing/nested")
+
+      Application.put_env(:storyarn, :storage,
+        upload_dir: missing_root,
+        public_path: "/test-uploads"
+      )
+
+      assert {:ok, fingerprint} = Local.namespace_fingerprint()
+      assert fingerprint =~ ~r/\A[0-9a-f]{64}\z/
+    end
+
+    test "rejects a symlinked root and a symlinked ancestor", %{test_dir: test_dir} do
+      target = test_dir <> "_target"
+      root_link = Path.join(test_dir, "root-link")
+      ancestor_link = Path.join(test_dir, "ancestor-link")
+      File.mkdir_p!(target)
+      File.mkdir_p!(test_dir)
+      assert :ok = File.ln_s(Path.expand(target), root_link)
+      assert :ok = File.ln_s(Path.expand(target), ancestor_link)
+      on_exit(fn -> File.rm_rf(target) end)
+
+      Application.put_env(:storyarn, :storage,
+        upload_dir: root_link,
+        public_path: "/test-uploads"
+      )
+
+      assert {:error, :unsafe_storage_entry} = Local.namespace_fingerprint()
+
+      Application.put_env(:storyarn, :storage,
+        upload_dir: Path.join(ancestor_link, "nested-root"),
+        public_path: "/test-uploads"
+      )
+
+      assert {:error, :unsafe_storage_entry} = Local.namespace_fingerprint()
+    end
+
+    test "changes when the directory at the same configured root is replaced", %{test_dir: test_dir} do
+      preserved_root = test_dir <> "_preserved"
+      File.mkdir_p!(test_dir)
+      on_exit(fn -> File.rm_rf(preserved_root) end)
+
+      assert {:ok, original} = Local.namespace_fingerprint()
+
+      File.rename!(test_dir, preserved_root)
+      File.mkdir_p!(test_dir)
+
+      assert {:ok, replacement} = Local.namespace_fingerprint()
+      refute replacement == original
+    end
+
+    test "stays stable when an unrelated sibling changes under an ancestor", %{test_dir: test_dir} do
+      sibling = test_dir <> "_unrelated-sibling"
+      File.mkdir_p!(test_dir)
+      on_exit(fn -> File.rm_rf(sibling) end)
+
+      assert {:ok, original} = Local.namespace_fingerprint()
+
+      File.mkdir_p!(sibling)
+      assert {:ok, with_sibling} = Local.namespace_fingerprint()
+      assert with_sibling == original
+
+      File.rm_rf!(sibling)
+      assert {:ok, after_sibling} = Local.namespace_fingerprint()
+      assert after_sibling == original
+    end
   end
 
   describe "download/1" do
@@ -277,6 +377,23 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       prefix_path = Path.join(test_dir, prefix)
       File.mkdir_p!(prefix_path)
       assert :ok = File.ln_s(Path.expand(test_dir), Path.join(prefix_path, "linked"))
+
+      assert {:error, :unsafe_storage_entry} = Local.list_prefix(prefix, [])
+    end
+
+    test "never inventories through an ancestor symlink outside the storage root", %{
+      test_dir: test_dir
+    } do
+      prefix = "projects/1/snapshots/object-sets/v1/ready/LinkedPrefix1234/"
+      external_dir = external_storage_dir()
+      external_prefix_path = Path.join(external_dir, "snapshots/object-sets/v1/ready/LinkedPrefix1234")
+      linked_directory = Path.join(test_dir, "projects/1")
+
+      File.mkdir_p!(external_prefix_path)
+      File.write!(Path.join(external_prefix_path, "manifest.json"), "external")
+      File.mkdir_p!(Path.dirname(linked_directory))
+      assert :ok = File.ln_s(Path.expand(external_dir), linked_directory)
+      on_exit(fn -> File.rm_rf(external_dir) end)
 
       assert {:error, :unsafe_storage_entry} = Local.list_prefix(prefix, [])
     end
@@ -654,6 +771,13 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       |> Keyword.put(:conditional_copy_stale_after_seconds, seconds)
 
     Application.put_env(:storyarn, :storage, config)
+  end
+
+  defp external_storage_dir do
+    Path.join(
+      System.tmp_dir!(),
+      "storyarn-local-storage-external-#{System.unique_integer([:positive])}"
+    )
   end
 
   defp conditional_copy_paths(test_dir, destination_key) do

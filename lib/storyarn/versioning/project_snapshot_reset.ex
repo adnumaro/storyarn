@@ -1,11 +1,13 @@
 defmodule Storyarn.Versioning.ProjectSnapshotReset do
   @moduledoc """
-  Environment- and workspace-scoped reset for pre-canonical project snapshots.
+  Two-stage environment reset for pre-canonical project snapshots.
 
-  The generated JSON plan is the durable audit and retry receipt. Execution
-  accepts only the exact inventory recorded by a dry run, rejects new or
-  replaced objects, checkpoints the shrinking inventory, and deletes database
-  rows only after every scoped storage prefix re-lists empty.
+  Workspace plans remove attributable rows and objects first. One final provider
+  plan binds the exact latest workspace-receipt revisions and inventories every
+  remaining strict snapshot key, including orphan roots. Each generated JSON
+  plan is the durable audit and retry record. Execution accepts only its exact
+  inventory, rejects new or replaced objects, and checkpoints the shrinking
+  inventory before an immutable receipt is appended.
 
   This one-time maintenance boundary intentionally invokes its injected storage
   adapter directly: the normal storage facade protects recoverable versioning
@@ -20,24 +22,37 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   alias Storyarn.Versioning.SnapshotStorage
 
   @format "storyarn.project_snapshot_reset"
-  @format_version 2
+  @format_version 3
   @reset_receipts_migration 20_260_805_125_000
   @canonical_snapshot_rollout_migration 20_260_805_130_000
   @page_size 1_000
   @minimum_delete_checkpoint_size 100
   @max_delete_checkpoints 32
   @default_max_objects 250_000
+  @default_max_scanned_objects 1_000_000
+  @maximum_max_scanned_objects 10_000_000
+  @max_bigint 9_223_372_036_854_775_807
   @max_plan_file_bytes 1_073_741_824
+  @max_authorization_bytes 512
   @temporary_plan_write_attempts 5
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
   @token_regex ~r/\A[A-Za-z0-9_-]{16}\z/
   @blob_filename_regex ~r/\A[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z/
-  @plan_keys Enum.sort(~w(
-                 attempt_count authorization_digest completed_at environment format format_version
-                 database_inventory_digest entity_version_row_ids inventory_digest last_error_code
-                 objects prefixes prepared_at project_ids remaining_storage_keys snapshot_row_ids
-                 status workspace_id
-               ))
+  @workspace_plan_keys Enum.sort(~w(
+                           attempt_count authorization_digest completed_at environment format format_version
+                           database_inventory_digest entity_version_row_ids inventory_digest last_error_code
+                           objects plan_id prefixes prepared_at project_ids remaining_storage_keys scope
+                           snapshot_row_ids status storage_namespace_fingerprint workspace_id
+                         ))
+  @provider_plan_keys Enum.sort(~w(
+                          attempt_count authorization_digest completed_at environment format format_version
+                          inventory_digest last_error_code max_scanned_objects objects plan_id prepared_at
+                          remaining_storage_keys scanned_object_count scope status storage_namespace_fingerprint
+                          workspace_receipt_ids
+                        ))
+  @provider_scan_prefix "projects/"
+
+  defguardp valid_readiness_count(value) when is_integer(value) and value >= 0
 
   @type plan :: map()
 
@@ -57,15 +72,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
            :ok <- ensure_pre_rollout_reset_window(repo, opts),
            :ok <- ensure_reset_receipt_schema(repo),
            :ok <- ensure_workspace_exists(repo, workspace_id),
+           {:ok, namespace_fingerprint} <- storage_namespace_fingerprint(adapter),
            {:ok, project_ids, snapshot_rows, entity_version_rows} <- load_scope(repo, workspace_id, max_objects),
            :ok <- validate_snapshot_row_identities(snapshot_rows),
            :ok <- validate_entity_version_row_identities(entity_version_rows),
            prefixes = reset_prefixes(project_ids),
            {:ok, objects} <- list_exact_inventory(adapter, prefixes, max_objects),
            :ok <- validate_objects(objects, project_ids),
-           now = TimeHelpers.now(),
            plan =
-             build_plan(
+             build_workspace_plan(
                environment,
                workspace_id,
                project_ids,
@@ -73,7 +88,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
                entity_version_rows,
                prefixes,
                objects,
-               now
+               namespace_fingerprint
              ),
            :ok <- validate_plan(plan) do
         {:ok, plan}
@@ -84,6 +99,48 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   end
 
   def prepare(_workspace_id, _expected_environment, _opts), do: {:error, :invalid_snapshot_reset_scope}
+
+  @doc "Builds a read-only exact reset plan for every residual provider snapshot object."
+  @spec prepare_provider(String.t(), keyword()) :: {:ok, plan()} | {:error, term()}
+  def prepare_provider(expected_environment, opts \\ [])
+
+  def prepare_provider(expected_environment, opts) when is_binary(expected_environment) and is_list(opts) do
+    repo = Keyword.get(opts, :repo, Repo)
+    adapter = Keyword.get(opts, :storage_adapter, Storage.adapter())
+    max_objects = Keyword.get(opts, :max_objects, @default_max_objects)
+    max_scanned_objects = Keyword.get(opts, :max_scanned_objects, @default_max_scanned_objects)
+
+    result =
+      with {:ok, environment} <- verify_environment(expected_environment, opts),
+           :ok <- validate_max_objects(max_objects),
+           :ok <- validate_max_scanned_objects(max_scanned_objects),
+           :ok <- ensure_pre_rollout_reset_window(repo, opts),
+           :ok <- ensure_reset_receipt_schema(repo),
+           {:ok, namespace_fingerprint} <- storage_namespace_fingerprint(adapter),
+           {:ok, workspace_receipt_ids} <-
+             current_workspace_receipt_ids(repo, environment, namespace_fingerprint),
+           {:ok, objects, scanned_object_count} <-
+             list_global_snapshot_inventory(adapter, max_objects, max_scanned_objects),
+           now = TimeHelpers.now(),
+           plan =
+             build_provider_plan(
+               environment,
+               workspace_receipt_ids,
+               objects,
+               scanned_object_count,
+               max_scanned_objects,
+               namespace_fingerprint,
+               now
+             ),
+           :ok <- validate_plan(plan) do
+        {:ok, plan}
+      end
+
+    emit_prepare_failure(result, nil, expected_environment)
+    result
+  end
+
+  def prepare_provider(_expected_environment, _opts), do: {:error, :invalid_snapshot_reset_scope}
 
   @doc "Executes or resumes one previously prepared exact reset plan."
   @spec execute(plan(), String.t(), keyword()) :: {:ok, plan()} | {:error, term(), plan()}
@@ -98,8 +155,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
       with :ok <- validate_plan(plan),
            :ok <- verify_confirmation(plan, confirmation_digest),
            {:ok, environment} <- verify_environment(plan["environment"], opts),
+           :ok <- verify_storage_namespace(adapter, plan["storage_namespace_fingerprint"]),
            :ok <- ensure_pre_rollout_reset_window(repo, opts),
            :ok <- ensure_reset_receipt_schema(repo),
+           :ok <- ensure_execution_scope_ready(repo, plan, environment),
            {:ok, authorization_digest} <- authorize_execution(opts) do
         execute_authorized_plan(plan, environment, authorization_digest, repo, adapter, checkpoint)
       else
@@ -127,6 +186,46 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   end
 
   def read_plan_file(_path), do: {:error, :invalid_snapshot_reset_plan_path}
+
+  @doc false
+  @spec read_authorization_file(Path.t()) :: {:ok, String.t()} | {:error, :unsafe_snapshot_reset_authorization_file}
+  def read_authorization_file(path) when is_binary(path) do
+    expanded = Path.expand(path)
+
+    with {:ok, %File.Stat{type: :regular, mode: mode, size: size}} <- File.lstat(expanded),
+         true <- Bitwise.band(mode, 0o077) == 0,
+         true <- size > 0 and size <= @max_authorization_bytes + 1,
+         {:ok, contents} <- File.read(expanded),
+         authorization = String.trim(contents),
+         true <- String.match?(authorization, ~r/\A[A-Za-z0-9_-]{32,512}\z/) do
+      {:ok, authorization}
+    else
+      _invalid -> {:error, :unsafe_snapshot_reset_authorization_file}
+    end
+  end
+
+  def read_authorization_file(_path), do: {:error, :unsafe_snapshot_reset_authorization_file}
+
+  @doc "Verifies the global database receipt boundary required before lifecycle rollout."
+  @spec verify_rollout_readiness(String.t(), keyword()) :: :ok | {:error, term()}
+  def verify_rollout_readiness(expected_environment, opts \\ [])
+
+  def verify_rollout_readiness(expected_environment, opts) when is_binary(expected_environment) and is_list(opts) do
+    repo = Keyword.get(opts, :repo, Repo)
+    adapter = Keyword.get(opts, :storage_adapter, Storage.adapter())
+
+    with {:ok, environment} <- verify_environment(expected_environment, opts),
+         {:ok, namespace_fingerprint} <- storage_namespace_fingerprint(adapter),
+         {:ok, result} <- query_rollout_readiness(repo, environment, namespace_fingerprint) do
+      validate_rollout_readiness_result(result)
+    end
+  rescue
+    _exception -> {:error, :snapshot_reset_rollout_readiness_failed}
+  catch
+    _kind, _reason -> {:error, :snapshot_reset_rollout_readiness_failed}
+  end
+
+  def verify_rollout_readiness(_expected_environment, _opts), do: {:error, :snapshot_reset_environment_required}
 
   defp read_owner_only_plan_file(path) do
     expanded = Path.expand(path)
@@ -338,22 +437,103 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     end
   end
 
+  defp ensure_execution_scope_ready(_repo, %{"scope" => "workspace"}, _environment), do: :ok
+
+  defp ensure_execution_scope_ready(repo, %{"scope" => "provider"} = plan, environment) do
+    verify_workspace_rollout_readiness(
+      repo,
+      environment,
+      plan["workspace_receipt_ids"],
+      plan["storage_namespace_fingerprint"]
+    )
+  end
+
   defp execute_authorized_plan(
-         %{"status" => "completed"} = plan,
-         _environment,
+         %{"scope" => "workspace", "status" => "completed"} = plan,
+         environment,
          _authorization,
          repo,
          adapter,
          _checkpoint
        ) do
+    case fetch_matching_reset_receipt(repo, plan, environment) do
+      {:ok, receipt} ->
+        case final_zero_state(repo, adapter, plan) do
+          :complete -> validate_completed_plan_receipt(plan, receipt)
+          :incomplete -> {:error, :snapshot_reset_completed_state_changed, plan}
+          {:error, reason} -> {:error, reason, plan}
+        end
+
+      {:error, reason} ->
+        {:error, reason, plan}
+    end
+  end
+
+  defp execute_authorized_plan(
+         %{"scope" => "workspace"} = plan,
+         environment,
+         authorization_digest,
+         repo,
+         adapter,
+         checkpoint
+       ) do
+    case fetch_optional_reset_receipt(repo, plan, environment) do
+      {:ok, receipt} -> recover_existing_receipt(plan, receipt, repo, adapter, checkpoint)
+      :missing -> execute_plan_without_receipt(plan, environment, authorization_digest, repo, adapter, checkpoint)
+      {:error, reason} -> {:error, reason, plan}
+    end
+  end
+
+  defp execute_authorized_plan(
+         %{"scope" => "provider", "status" => "completed"} = plan,
+         environment,
+         _authorization,
+         repo,
+         adapter,
+         _checkpoint
+       ) do
+    case fetch_matching_provider_reset_receipt(repo, plan, environment) do
+      {:ok, receipt} ->
+        case final_provider_zero_state(adapter, plan) do
+          :complete -> validate_completed_plan_receipt(plan, receipt)
+          :incomplete -> {:error, :snapshot_reset_completed_state_changed, plan}
+          {:error, reason} -> {:error, reason, plan}
+        end
+
+      {:error, reason} ->
+        {:error, reason, plan}
+    end
+  end
+
+  defp execute_authorized_plan(
+         %{"scope" => "provider"} = plan,
+         environment,
+         authorization_digest,
+         repo,
+         adapter,
+         checkpoint
+       ) do
+    case fetch_optional_provider_reset_receipt(repo, plan, environment) do
+      {:ok, receipt} ->
+        recover_existing_provider_receipt(plan, receipt, adapter, checkpoint)
+
+      :missing ->
+        execute_provider_plan_without_receipt(plan, environment, authorization_digest, repo, adapter, checkpoint)
+
+      {:error, reason} ->
+        {:error, reason, plan}
+    end
+  end
+
+  defp recover_existing_receipt(plan, receipt, repo, adapter, checkpoint) do
     case final_zero_state(repo, adapter, plan) do
-      :complete -> validate_completed_reset_receipt(repo, plan)
+      :complete -> checkpoint_completed_receipt(plan, receipt, checkpoint)
       :incomplete -> {:error, :snapshot_reset_completed_state_changed, plan}
       {:error, reason} -> {:error, reason, plan}
     end
   end
 
-  defp execute_authorized_plan(plan, environment, authorization_digest, repo, adapter, checkpoint) do
+  defp execute_plan_without_receipt(plan, environment, authorization_digest, repo, adapter, checkpoint) do
     case final_zero_state(repo, adapter, plan) do
       :complete -> recover_completed_plan(plan, environment, authorization_digest, repo, checkpoint)
       :incomplete -> execute_pending_plan(plan, environment, authorization_digest, repo, adapter, checkpoint)
@@ -364,9 +544,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   defp recover_completed_plan(plan, environment, authorization_digest, repo, checkpoint) do
     running = mark_running(plan, authorization_digest)
 
-    case checkpoint_plan(checkpoint, running) do
-      :ok -> complete_execution(running, environment, repo, checkpoint)
-      {:error, reason} -> fail_execution(running, {:snapshot_reset_checkpoint_failed, reason}, checkpoint)
+    case validate_workspace_receipt_params(running, environment) do
+      :ok ->
+        case checkpoint_plan(checkpoint, running) do
+          :ok -> complete_execution(running, environment, repo, checkpoint)
+          {:error, reason} -> fail_execution(running, {:snapshot_reset_checkpoint_failed, reason}, checkpoint)
+        end
+
+      {:error, reason} ->
+        {:error, reason, plan}
     end
   end
 
@@ -374,9 +560,84 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     with :ok <- revalidate_database_scope(repo, plan),
          :ok <- revalidate_storage_scope(adapter, plan) do
       running = mark_running(plan, authorization_digest)
-      execute_running_plan(running, environment, repo, adapter, checkpoint)
+
+      case validate_workspace_receipt_params(running, environment) do
+        :ok -> execute_running_plan(running, environment, repo, adapter, checkpoint)
+        {:error, reason} -> {:error, reason, plan}
+      end
     else
       {:error, reason} -> {:error, reason, plan}
+    end
+  end
+
+  defp recover_existing_provider_receipt(plan, receipt, adapter, checkpoint) do
+    case final_provider_zero_state(adapter, plan) do
+      :complete -> checkpoint_completed_receipt(plan, receipt, checkpoint)
+      :incomplete -> {:error, :snapshot_reset_completed_state_changed, plan}
+      {:error, reason} -> {:error, reason, plan}
+    end
+  end
+
+  defp execute_provider_plan_without_receipt(plan, environment, authorization_digest, repo, adapter, checkpoint) do
+    case final_provider_zero_state(adapter, plan) do
+      :complete -> recover_completed_provider_plan(plan, environment, authorization_digest, repo, checkpoint)
+      :incomplete -> execute_pending_provider_plan(plan, environment, authorization_digest, repo, adapter, checkpoint)
+      {:error, reason} -> {:error, reason, plan}
+    end
+  end
+
+  defp recover_completed_provider_plan(plan, environment, authorization_digest, repo, checkpoint) do
+    running = mark_running(plan, authorization_digest)
+
+    case validate_provider_receipt_params(running, environment) do
+      :ok ->
+        case checkpoint_plan(checkpoint, running) do
+          :ok -> complete_provider_execution(running, environment, repo, checkpoint)
+          {:error, reason} -> fail_execution(running, {:snapshot_reset_checkpoint_failed, reason}, checkpoint)
+        end
+
+      {:error, reason} ->
+        {:error, reason, plan}
+    end
+  end
+
+  defp execute_pending_provider_plan(plan, environment, authorization_digest, repo, adapter, checkpoint) do
+    case revalidate_provider_storage_scope(adapter, plan) do
+      :ok ->
+        running = mark_running(plan, authorization_digest)
+
+        case validate_provider_receipt_params(running, environment) do
+          :ok -> execute_running_provider_plan(running, environment, repo, adapter, checkpoint)
+          {:error, reason} -> {:error, reason, plan}
+        end
+
+      {:error, reason} ->
+        {:error, reason, plan}
+    end
+  end
+
+  defp execute_running_provider_plan(running, environment, repo, adapter, checkpoint) do
+    with :ok <- checkpoint_plan(checkpoint, running),
+         {:ok, storage_complete} <- delete_inventory(adapter, running, checkpoint),
+         :ok <- verify_global_provider_empty(adapter, running["max_scanned_objects"]),
+         :ok <-
+           verify_workspace_rollout_readiness(
+             repo,
+             environment,
+             running["workspace_receipt_ids"],
+             running["storage_namespace_fingerprint"]
+           ) do
+      complete_provider_execution(storage_complete, environment, repo, checkpoint)
+    else
+      {:error, reason, failed_plan} -> {:error, reason, failed_plan}
+      {:error, reason} -> fail_execution(running, reason, checkpoint)
+    end
+  end
+
+  defp complete_provider_execution(storage_complete, environment, repo, checkpoint) do
+    case persist_or_validate_provider_reset_receipt(repo, storage_complete, environment) do
+      {:ok, receipt} -> checkpoint_completed_receipt(storage_complete, receipt, checkpoint)
+      {:error, reason} -> fail_execution(storage_complete, reason, checkpoint)
     end
   end
 
@@ -402,23 +663,31 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
 
   defp complete_execution(storage_complete, environment, repo, checkpoint) do
     case persist_or_validate_reset_receipt(repo, storage_complete, environment) do
-      {:ok, completed_at} ->
-        completed =
-          storage_complete
-          |> Map.put("status", "completed")
-          |> Map.put("completed_at", DateTime.to_iso8601(completed_at))
-
-        case checkpoint_plan(checkpoint, completed) do
-          :ok ->
-            {:ok, completed}
-
-          {:error, reason} ->
-            {:error, {:snapshot_reset_checkpoint_failed, reason}, completed}
-        end
+      {:ok, receipt} ->
+        checkpoint_completed_receipt(storage_complete, receipt, checkpoint)
 
       {:error, reason} ->
         fail_execution(storage_complete, reason, checkpoint)
     end
+  end
+
+  defp checkpoint_completed_receipt(plan, receipt, checkpoint) do
+    completed = completed_plan_from_receipt(plan, receipt)
+
+    case checkpoint_plan(checkpoint, completed) do
+      :ok -> {:ok, completed}
+      {:error, reason} -> {:error, {:snapshot_reset_checkpoint_failed, reason}, completed}
+    end
+  end
+
+  defp completed_plan_from_receipt(plan, receipt) do
+    plan
+    |> Map.put("status", "completed")
+    |> Map.put("remaining_storage_keys", [])
+    |> Map.put("authorization_digest", receipt.authorization_digest)
+    |> Map.put("attempt_count", receipt.attempt_count)
+    |> Map.put("completed_at", DateTime.to_iso8601(receipt.completed_at))
+    |> Map.put("last_error_code", nil)
   end
 
   @doc false
@@ -426,7 +695,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
         %{
           "format" => @format,
           "format_version" => @format_version,
+          "scope" => "workspace",
+          "plan_id" => plan_id,
           "environment" => environment,
+          "storage_namespace_fingerprint" => storage_namespace_fingerprint,
           "workspace_id" => workspace_id,
           "project_ids" => project_ids,
           "snapshot_row_ids" => row_ids,
@@ -441,17 +713,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
         } = plan
       ) do
     valid? =
-      with true <- Enum.sort(Map.keys(plan)) == @plan_keys,
+      with true <- Enum.sort(Map.keys(plan)) == @workspace_plan_keys,
+           true <- valid_plan_id?(plan_id),
            true <- valid_environment?(environment),
-           true <- is_integer(workspace_id) and workspace_id > 0,
-           true <- positive_unique_integers?(project_ids),
-           true <- positive_unique_integers?(row_ids),
-           true <- positive_unique_integers?(entity_version_row_ids),
+           true <- valid_digest?(storage_namespace_fingerprint),
+           true <- positive_bigint?(workspace_id),
+           true <- positive_unique_bigints?(project_ids),
+           true <- positive_unique_bigints?(row_ids),
+           true <- positive_unique_bigints?(entity_version_row_ids),
            true <- valid_digest?(database_inventory_digest),
            true <- is_list(prefixes) and prefixes == reset_prefixes(project_ids),
-           true <- is_list(objects) and Enum.all?(objects, &valid_plan_object?/1),
-           true <- objects == Enum.sort_by(objects, & &1["key"]),
-           true <- objects == Enum.uniq_by(objects, & &1["key"]),
+           true <- valid_plan_objects?(objects),
            :ok <- validate_objects(objects, project_ids),
            true <- is_list(remaining) and Enum.all?(remaining, &is_binary/1),
            true <- remaining == Enum.uniq(remaining),
@@ -460,7 +732,54 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
            true <- is_binary(digest) and Regex.match?(@sha256_regex, digest),
            true <- Plug.Crypto.secure_compare(digest, inventory_digest(plan)),
            true <- status in ["prepared", "running", "failed", "completed"],
-           true <- is_integer(attempt_count) and attempt_count >= 0,
+           true <- valid_attempt_count?(attempt_count),
+           true <- status != "completed" or remaining == [],
+           true <- valid_plan_state_metadata?(plan) do
+        true
+      else
+        _invalid -> false
+      end
+
+    if valid?, do: :ok, else: {:error, :invalid_snapshot_reset_plan}
+  end
+
+  def validate_plan(
+        %{
+          "format" => @format,
+          "format_version" => @format_version,
+          "scope" => "provider",
+          "plan_id" => plan_id,
+          "environment" => environment,
+          "storage_namespace_fingerprint" => storage_namespace_fingerprint,
+          "workspace_receipt_ids" => workspace_receipt_ids,
+          "scanned_object_count" => scanned_object_count,
+          "max_scanned_objects" => max_scanned_objects,
+          "objects" => objects,
+          "remaining_storage_keys" => remaining,
+          "inventory_digest" => digest,
+          "status" => status,
+          "attempt_count" => attempt_count
+        } = plan
+      ) do
+    valid? =
+      with true <- Enum.sort(Map.keys(plan)) == @provider_plan_keys,
+           true <- valid_plan_id?(plan_id),
+           true <- valid_environment?(environment),
+           true <- valid_digest?(storage_namespace_fingerprint),
+           true <- valid_workspace_receipt_ids?(workspace_receipt_ids),
+           true <- valid_scanned_object_count?(scanned_object_count, max_scanned_objects),
+           true <- valid_plan_objects?(objects),
+           true <- scanned_object_count >= length(objects),
+           :ok <- validate_provider_objects(objects),
+           true <- is_list(remaining) and Enum.all?(remaining, &is_binary/1),
+           true <- remaining == Enum.uniq(remaining),
+           object_keys = MapSet.new(objects, & &1["key"]),
+           true <- Enum.all?(remaining, &MapSet.member?(object_keys, &1)),
+           true <- is_binary(digest) and Regex.match?(@sha256_regex, digest),
+           true <- Plug.Crypto.secure_compare(digest, inventory_digest(plan)),
+           true <- status in ["prepared", "running", "failed", "completed"],
+           true <- valid_attempt_count?(attempt_count),
+           true <- status != "completed" or remaining == [],
            true <- valid_plan_state_metadata?(plan) do
         true
       else
@@ -473,11 +792,25 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   def validate_plan(_plan), do: {:error, :invalid_snapshot_reset_plan}
 
   defp valid_environment?(environment) when is_binary(environment) do
-    byte_size(environment) in 1..128 and String.trim(environment) == environment and
+    byte_size(environment) in 1..128 and String.valid?(environment) and
+      String.trim(environment) == environment and
       String.match?(environment, ~r/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/)
   end
 
   defp valid_environment?(_environment), do: false
+
+  defp valid_plan_id?(plan_id) when is_binary(plan_id), do: Ecto.UUID.cast(plan_id) == {:ok, plan_id}
+
+  defp valid_plan_id?(_plan_id), do: false
+
+  defp positive_bigint?(value), do: is_integer(value) and value > 0 and value <= @max_bigint
+
+  defp valid_attempt_count?(value), do: is_integer(value) and value >= 0 and value < @max_bigint
+
+  defp valid_scanned_object_count?(count, maximum) do
+    is_integer(count) and count >= 0 and is_integer(maximum) and maximum > 0 and
+      maximum <= @maximum_max_scanned_objects and count <= maximum
+  end
 
   defp valid_plan_state_metadata?(plan) do
     valid_timestamp?(plan["prepared_at"]) and valid_error_code?(plan["last_error_code"]) and
@@ -508,14 +841,40 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
 
   defp valid_digest?(value), do: is_binary(value) and Regex.match?(@sha256_regex, value)
 
+  defp storage_namespace_fingerprint(adapter) do
+    case adapter.namespace_fingerprint() do
+      {:ok, fingerprint} when is_binary(fingerprint) ->
+        if valid_digest?(fingerprint),
+          do: {:ok, fingerprint},
+          else: {:error, :snapshot_reset_storage_namespace_unavailable}
+
+      _invalid ->
+        {:error, :snapshot_reset_storage_namespace_unavailable}
+    end
+  rescue
+    _exception -> {:error, :snapshot_reset_storage_namespace_unavailable}
+  catch
+    _kind, _reason -> {:error, :snapshot_reset_storage_namespace_unavailable}
+  end
+
+  defp verify_storage_namespace(adapter, expected_fingerprint) do
+    with {:ok, current_fingerprint} <- storage_namespace_fingerprint(adapter),
+         true <- Plug.Crypto.secure_compare(current_fingerprint, expected_fingerprint) do
+      :ok
+    else
+      false -> {:error, :snapshot_reset_storage_namespace_changed}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp verify_environment(expected_environment, opts) do
     current = Keyword.get(opts, :current_environment) || System.get_env("STORYARN_DEPLOYMENT_ENVIRONMENT")
 
     cond do
-      not is_binary(expected_environment) or String.trim(expected_environment) == "" ->
+      not valid_environment?(expected_environment) ->
         {:error, :snapshot_reset_environment_required}
 
-      not is_binary(current) or String.trim(current) == "" ->
+      not valid_environment?(current) ->
         {:error, :snapshot_reset_current_environment_unconfigured}
 
       current != expected_environment ->
@@ -531,7 +890,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
       Keyword.get(opts, :expected_authorization_digest) ||
         System.get_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256")
 
-    supplied = Keyword.get(opts, :authorization) || System.get_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION")
+    supplied = Keyword.get(opts, :authorization)
     supplied_digest = if is_binary(supplied), do: sha256(supplied)
 
     if valid_digest?(expected_digest) and is_binary(supplied) and byte_size(supplied) >= 32 and
@@ -572,6 +931,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
            """
            SELECT
              to_regclass('public.project_snapshot_reset_receipts') IS NOT NULL AND
+             to_regclass('public.project_snapshot_provider_reset_receipts') IS NOT NULL AND
              EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)
            """,
            [@reset_receipts_migration]
@@ -582,6 +942,225 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     end
   end
 
+  defp query_rollout_readiness(repo, environment, namespace_fingerprint) do
+    case repo.query(
+           """
+           WITH workspace_scopes AS (
+             SELECT
+               w.id AS workspace_id,
+               COALESCE(
+                 array_agg(p.id ORDER BY p.id) FILTER (WHERE p.id IS NOT NULL),
+                 ARRAY[]::bigint[]
+               ) AS project_ids
+             FROM workspaces w
+             LEFT JOIN projects p ON p.workspace_id = w.id
+             GROUP BY w.id
+           ),
+           latest_receipts AS (
+             SELECT DISTINCT ON (workspace_id)
+               id,
+               workspace_id,
+               environment,
+               project_ids,
+               storage_namespace_fingerprint
+             FROM project_snapshot_reset_receipts
+             ORDER BY workspace_id, id DESC
+           ),
+           latest_provider_receipt AS (
+             SELECT environment, workspace_receipt_ids, storage_namespace_fingerprint
+             FROM project_snapshot_provider_reset_receipts
+             ORDER BY id DESC
+             LIMIT 1
+           ),
+           receipt_counts AS (
+             SELECT
+               count(*)::bigint AS workspace_count,
+               count(*) FILTER (
+                 WHERE
+                   r.environment = $1 AND
+                   r.project_ids = s.project_ids AND
+                   r.storage_namespace_fingerprint = $3
+               )::bigint AS matching_receipt_count,
+               COALESCE(
+                 array_agg(r.id ORDER BY r.id) FILTER (WHERE r.id IS NOT NULL),
+                 ARRAY[]::bigint[]
+               ) AS current_receipt_ids
+             FROM workspace_scopes s
+             LEFT JOIN latest_receipts r ON r.workspace_id = s.workspace_id
+           )
+           SELECT
+             to_regclass('public.project_snapshot_reset_receipts') IS NOT NULL AND
+               to_regclass('public.project_snapshot_provider_reset_receipts') IS NOT NULL AND
+               EXISTS (SELECT 1 FROM schema_migrations WHERE version = $2),
+             NOT EXISTS (SELECT 1 FROM project_snapshots),
+             NOT EXISTS (SELECT 1 FROM entity_versions),
+             workspace_count,
+             matching_receipt_count,
+             COALESCE(
+               (
+                 SELECT
+                   environment = $1 AND
+                   workspace_receipt_ids = current_receipt_ids AND
+                   storage_namespace_fingerprint = $3
+                 FROM latest_provider_receipt
+               ),
+               FALSE
+             ),
+             current_receipt_ids
+           FROM receipt_counts
+           """,
+           [environment, @reset_receipts_migration, namespace_fingerprint]
+         ) do
+      {:ok, result} ->
+        {:ok, result}
+
+      {:error, %Postgrex.Error{postgres: %{code: :undefined_table}}} ->
+        {:error, :snapshot_reset_receipt_schema_unavailable}
+
+      {:error, reason} ->
+        {:error, {:snapshot_reset_database_failed, reason}}
+
+      _invalid ->
+        {:error, :snapshot_reset_rollout_readiness_invalid_response}
+    end
+  end
+
+  defp validate_rollout_readiness_result(%{
+         rows: [
+           [
+             schema_ready,
+             snapshots_empty,
+             entity_versions_empty,
+             workspace_count,
+             matching_count,
+             provider_receipt_matches,
+             current_receipt_ids
+           ]
+         ]
+       })
+       when is_boolean(schema_ready) and is_boolean(snapshots_empty) and is_boolean(entity_versions_empty) and
+              valid_readiness_count(workspace_count) and valid_readiness_count(matching_count) and
+              is_boolean(provider_receipt_matches) and is_list(current_receipt_ids) do
+    if valid_workspace_receipt_ids?(current_receipt_ids) do
+      rollout_readiness_result(
+        schema_ready,
+        snapshots_empty,
+        entity_versions_empty,
+        workspace_count,
+        matching_count,
+        provider_receipt_matches
+      )
+    else
+      {:error, :snapshot_reset_rollout_readiness_invalid_response}
+    end
+  end
+
+  defp validate_rollout_readiness_result(_invalid), do: {:error, :snapshot_reset_rollout_readiness_invalid_response}
+
+  defp current_workspace_receipt_ids(repo, environment, namespace_fingerprint) do
+    with {:ok, result} <- query_rollout_readiness(repo, environment, namespace_fingerprint) do
+      validate_workspace_rollout_readiness_result(result)
+    end
+  rescue
+    _exception -> {:error, :snapshot_reset_rollout_readiness_failed}
+  catch
+    _kind, _reason -> {:error, :snapshot_reset_rollout_readiness_failed}
+  end
+
+  defp verify_workspace_rollout_readiness(repo, environment, expected_receipt_ids, namespace_fingerprint) do
+    with {:ok, current_receipt_ids} <-
+           current_workspace_receipt_ids(repo, environment, namespace_fingerprint),
+         true <- current_receipt_ids == expected_receipt_ids do
+      :ok
+    else
+      false -> {:error, :snapshot_reset_workspace_receipts_changed}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp validate_workspace_rollout_readiness_result(%{
+         rows: [
+           [
+             schema_ready,
+             snapshots_empty,
+             entity_versions_empty,
+             workspace_count,
+             matching_count,
+             _provider_receipt_matches,
+             current_receipt_ids
+           ]
+         ]
+       })
+       when is_boolean(schema_ready) and is_boolean(snapshots_empty) and is_boolean(entity_versions_empty) and
+              valid_readiness_count(workspace_count) and valid_readiness_count(matching_count) and
+              is_list(current_receipt_ids) do
+    if valid_workspace_receipt_ids?(current_receipt_ids) do
+      workspace_rollout_readiness_result(
+        schema_ready,
+        snapshots_empty,
+        entity_versions_empty,
+        workspace_count,
+        matching_count,
+        current_receipt_ids
+      )
+    else
+      {:error, :snapshot_reset_rollout_readiness_invalid_response}
+    end
+  end
+
+  defp validate_workspace_rollout_readiness_result(_invalid),
+    do: {:error, :snapshot_reset_rollout_readiness_invalid_response}
+
+  defp workspace_rollout_readiness_result(
+         false,
+         _snapshots_empty,
+         _entity_versions_empty,
+         _count,
+         _matching,
+         _receipt_ids
+       ), do: {:error, :snapshot_reset_receipt_schema_unavailable}
+
+  defp workspace_rollout_readiness_result(true, false, _entity_versions_empty, _count, _matching, _receipt_ids),
+    do: {:error, :snapshot_reset_rollout_database_not_empty}
+
+  defp workspace_rollout_readiness_result(true, true, false, _count, _matching, _receipt_ids),
+    do: {:error, :snapshot_reset_rollout_database_not_empty}
+
+  defp workspace_rollout_readiness_result(true, true, true, count, count, receipt_ids) when is_list(receipt_ids),
+    do: {:ok, receipt_ids}
+
+  defp workspace_rollout_readiness_result(true, true, true, _count, _matching, _receipt_ids),
+    do: {:error, :snapshot_reset_rollout_receipts_incomplete}
+
+  defp rollout_readiness_result(
+         false,
+         _snapshots_empty,
+         _entity_versions_empty,
+         _workspace_count,
+         _matching_count,
+         _provider_receipt_matches
+       ), do: {:error, :snapshot_reset_receipt_schema_unavailable}
+
+  defp rollout_readiness_result(
+         true,
+         false,
+         _entity_versions_empty,
+         _workspace_count,
+         _matching_count,
+         _provider_receipt_matches
+       ), do: {:error, :snapshot_reset_rollout_database_not_empty}
+
+  defp rollout_readiness_result(true, true, false, _workspace_count, _matching_count, _provider_receipt_matches),
+    do: {:error, :snapshot_reset_rollout_database_not_empty}
+
+  defp rollout_readiness_result(true, true, true, count, count, true), do: :ok
+
+  defp rollout_readiness_result(true, true, true, count, count, false),
+    do: {:error, :snapshot_reset_rollout_provider_receipt_missing}
+
+  defp rollout_readiness_result(true, true, true, _workspace_count, _matching_count, _provider_receipt_matches),
+    do: {:error, :snapshot_reset_rollout_receipts_incomplete}
+
   defp verify_confirmation(plan, confirmation_digest) do
     if Regex.match?(@sha256_regex, confirmation_digest) and
          Plug.Crypto.secure_compare(plan["inventory_digest"], confirmation_digest),
@@ -589,8 +1168,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
        else: {:error, :snapshot_reset_inventory_confirmation_mismatch}
   end
 
-  defp validate_max_objects(max_objects) when is_integer(max_objects) and max_objects > 0, do: :ok
+  defp validate_max_objects(max_objects)
+       when is_integer(max_objects) and max_objects > 0 and max_objects <= @default_max_objects, do: :ok
+
   defp validate_max_objects(_max_objects), do: {:error, :invalid_snapshot_reset_limit}
+
+  defp validate_max_scanned_objects(maximum)
+       when is_integer(maximum) and maximum > 0 and maximum <= @maximum_max_scanned_objects, do: :ok
+
+  defp validate_max_scanned_objects(_maximum), do: {:error, :invalid_snapshot_reset_scanned_object_limit}
 
   defp ensure_workspace_exists(repo, workspace_id) do
     case repo.query("SELECT 1 FROM workspaces WHERE id = $1 LIMIT 1", [workspace_id]) do
@@ -742,6 +1328,120 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     end
   end
 
+  defp list_global_snapshot_inventory(adapter, max_objects, max_scanned_objects) do
+    case scan_global_snapshot_pages(adapter, nil, [], 0, 0, max_objects, max_scanned_objects, MapSet.new()) do
+      {:ok, reversed_objects, _snapshot_count, scanned_count} ->
+        objects = reversed_objects |> Enum.reverse() |> Enum.sort_by(& &1["key"])
+
+        if objects == Enum.uniq_by(objects, & &1["key"]),
+          do: {:ok, objects, scanned_count},
+          else: {:error, :duplicate_snapshot_reset_object}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp scan_global_snapshot_pages(
+         adapter,
+         cursor,
+         objects,
+         object_count,
+         scanned_count,
+         max_objects,
+         max_scanned_objects,
+         seen_cursors
+       ) do
+    with {:ok, %{objects: page, cursor: next_cursor}} <- safe_list_prefix(adapter, @provider_scan_prefix, cursor),
+         true <- is_list(page) and length(page) <= @page_size,
+         {:ok, normalized} <- normalize_page(page, @provider_scan_prefix),
+         {:ok, snapshot_objects} <- filter_global_snapshot_page(normalized),
+         combined_count = object_count + length(snapshot_objects),
+         combined_scanned_count = scanned_count + length(normalized),
+         :ok <- ensure_inventory_count(combined_count, max_objects),
+         :ok <- ensure_scanned_count(combined_scanned_count, max_scanned_objects) do
+      combined = Enum.reduce(snapshot_objects, objects, &[&1 | &2])
+
+      cond do
+        is_nil(next_cursor) ->
+          {:ok, combined, combined_count, combined_scanned_count}
+
+        not is_binary(next_cursor) or next_cursor == "" ->
+          {:error, :invalid_snapshot_reset_cursor}
+
+        page == [] ->
+          {:error, :empty_snapshot_reset_page_with_cursor}
+
+        MapSet.member?(seen_cursors, next_cursor) ->
+          {:error, :repeated_snapshot_reset_cursor}
+
+        true ->
+          scan_global_snapshot_pages(
+            adapter,
+            next_cursor,
+            combined,
+            combined_count,
+            combined_scanned_count,
+            max_objects,
+            max_scanned_objects,
+            MapSet.put(seen_cursors, next_cursor)
+          )
+      end
+    else
+      false -> {:error, :snapshot_reset_inventory_limit_exceeded}
+      {:error, :snapshot_reset_scanned_object_limit_exceeded} = error -> error
+      {:error, :snapshot_reset_inventory_limit_exceeded} = error -> error
+      {:error, :unsafe_snapshot_reset_object} = error -> error
+      {:error, reason} -> {:error, {:snapshot_reset_storage_list_failed, reason}}
+      _invalid -> {:error, :invalid_snapshot_reset_storage_page}
+    end
+  end
+
+  defp ensure_inventory_count(count, maximum) when count <= maximum, do: :ok
+  defp ensure_inventory_count(_count, _maximum), do: {:error, :snapshot_reset_inventory_limit_exceeded}
+
+  defp ensure_scanned_count(count, maximum) when count <= maximum, do: :ok
+  defp ensure_scanned_count(_count, _maximum), do: {:error, :snapshot_reset_scanned_object_limit_exceeded}
+
+  defp filter_global_snapshot_page(objects) do
+    objects
+    |> Enum.reduce_while({:ok, []}, fn object, {:ok, snapshots} ->
+      case classify_global_provider_object(object) do
+        :ignore -> {:cont, {:ok, snapshots}}
+        {:snapshot, snapshot} -> {:cont, {:ok, [snapshot | snapshots]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, snapshots} -> {:ok, Enum.reverse(snapshots)}
+      error -> error
+    end
+  end
+
+  defp classify_global_provider_object(%{"key" => key} = object) do
+    case String.split(key, "/", trim: false) do
+      ["projects", project_id, "snapshots" | _tail] ->
+        with {parsed_project_id, ""} when parsed_project_id > 0 <- Integer.parse(project_id),
+             true <- valid_reset_key_for_project?(key, parsed_project_id) do
+          {:snapshot, object}
+        else
+          _invalid -> {:error, :unsafe_snapshot_reset_object}
+        end
+
+      ["projects" | _non_snapshot] ->
+        :ignore
+
+      _invalid ->
+        {:error, :invalid_snapshot_reset_storage_page}
+    end
+  end
+
+  defp validate_provider_objects(objects) do
+    if Enum.all?(objects, fn object -> match?({:snapshot, ^object}, classify_global_provider_object(object)) end),
+      do: :ok,
+      else: {:error, :unsafe_snapshot_reset_object}
+  end
+
   defp list_prefix_pages(adapter, prefix, cursor, objects, object_count, max_objects, seen_cursors) do
     with {:ok, %{objects: page, cursor: next_cursor}} <- safe_list_prefix(adapter, prefix, cursor),
          true <- is_list(page) and length(page) <= @page_size,
@@ -871,11 +1571,25 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     Regex.match?(~r/\A(?:sheet|flow|scene)\/[1-9][0-9]*\/[1-9][0-9]*-[0-9a-f]{16}\.json\.gz\z/, relative)
   end
 
-  defp build_plan(environment, workspace_id, project_ids, snapshot_rows, entity_version_rows, prefixes, objects, now) do
+  defp build_workspace_plan(
+         environment,
+         workspace_id,
+         project_ids,
+         snapshot_rows,
+         entity_version_rows,
+         prefixes,
+         objects,
+         storage_namespace_fingerprint
+       ) do
+    now = TimeHelpers.now()
+
     plan = %{
       "format" => @format,
       "format_version" => @format_version,
+      "scope" => "workspace",
+      "plan_id" => Ecto.UUID.generate(),
       "environment" => environment,
+      "storage_namespace_fingerprint" => storage_namespace_fingerprint,
       "workspace_id" => workspace_id,
       "project_ids" => project_ids,
       "snapshot_row_ids" => Enum.map(snapshot_rows, & &1["id"]),
@@ -896,11 +1610,47 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     Map.put(plan, "inventory_digest", inventory_digest(plan))
   end
 
-  defp inventory_digest(plan) do
+  defp build_provider_plan(
+         environment,
+         workspace_receipt_ids,
+         objects,
+         scanned_object_count,
+         max_scanned_objects,
+         storage_namespace_fingerprint,
+         now
+       ) do
+    plan = %{
+      "format" => @format,
+      "format_version" => @format_version,
+      "scope" => "provider",
+      "plan_id" => Ecto.UUID.generate(),
+      "environment" => environment,
+      "storage_namespace_fingerprint" => storage_namespace_fingerprint,
+      "workspace_receipt_ids" => workspace_receipt_ids,
+      "scanned_object_count" => scanned_object_count,
+      "max_scanned_objects" => max_scanned_objects,
+      "objects" => objects,
+      "remaining_storage_keys" => Enum.map(objects, & &1["key"]),
+      "inventory_digest" => nil,
+      "status" => "prepared",
+      "attempt_count" => 0,
+      "authorization_digest" => nil,
+      "last_error_code" => nil,
+      "prepared_at" => DateTime.to_iso8601(now),
+      "completed_at" => nil
+    }
+
+    Map.put(plan, "inventory_digest", inventory_digest(plan))
+  end
+
+  defp inventory_digest(%{"scope" => "workspace"} = plan) do
     [
       ["format", plan["format"]],
       ["format_version", plan["format_version"]],
+      ["scope", plan["scope"]],
+      ["plan_id", plan["plan_id"]],
       ["environment", plan["environment"]],
+      ["storage_namespace_fingerprint", plan["storage_namespace_fingerprint"]],
       ["workspace_id", plan["workspace_id"]],
       ["project_ids", plan["project_ids"]],
       ["snapshot_row_ids", plan["snapshot_row_ids"]],
@@ -913,17 +1663,49 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     |> sha256()
   end
 
-  defp sha256(value), do: :sha256 |> :crypto.hash(value) |> Base.encode16(case: :lower)
-
-  defp positive_unique_integers?(values) when is_list(values) do
-    values == Enum.uniq(values) and Enum.all?(values, &(is_integer(&1) and &1 > 0))
+  defp inventory_digest(%{"scope" => "provider"} = plan) do
+    [
+      ["format", plan["format"]],
+      ["format_version", plan["format_version"]],
+      ["scope", plan["scope"]],
+      ["plan_id", plan["plan_id"]],
+      ["environment", plan["environment"]],
+      ["storage_namespace_fingerprint", plan["storage_namespace_fingerprint"]],
+      ["workspace_receipt_ids", plan["workspace_receipt_ids"]],
+      ["scanned_object_count", plan["scanned_object_count"]],
+      ["max_scanned_objects", plan["max_scanned_objects"]],
+      ["objects", Enum.map(plan["objects"], &[&1["key"], &1["size"], &1["identity"]])]
+    ]
+    |> Jason.encode_to_iodata!()
+    |> sha256()
   end
 
-  defp positive_unique_integers?(_values), do: false
+  defp sha256(value), do: :sha256 |> :crypto.hash(value) |> Base.encode16(case: :lower)
+
+  defp positive_unique_bigints?(values) when is_list(values) do
+    values == Enum.uniq(values) and Enum.all?(values, &positive_bigint?/1)
+  end
+
+  defp positive_unique_bigints?(_values), do: false
+
+  defp valid_workspace_receipt_ids?(values) when is_list(values) do
+    values == Enum.sort(values) and positive_unique_bigints?(values)
+  end
+
+  defp valid_workspace_receipt_ids?(_values), do: false
+
+  defp valid_plan_objects?(objects) when is_list(objects) and length(objects) <= @default_max_objects do
+    Enum.all?(objects, &valid_plan_object?/1) and
+      objects == Enum.sort_by(objects, & &1["key"]) and
+      objects == Enum.uniq_by(objects, & &1["key"]) and
+      object_bytes(objects) <= @max_bigint
+  end
+
+  defp valid_plan_objects?(_objects), do: false
 
   defp valid_plan_object?(%{"identity" => identity, "key" => key, "size" => size} = object) do
-    Enum.sort(Map.keys(object)) == ["identity", "key", "size"] and is_binary(key) and is_integer(size) and size >= 0 and
-      valid_object_identity?(identity)
+    Enum.sort(Map.keys(object)) == ["identity", "key", "size"] and is_binary(key) and is_integer(size) and
+      size >= 0 and size <= @max_bigint and valid_object_identity?(identity)
   end
 
   defp valid_plan_object?(_object), do: false
@@ -934,6 +1716,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   end
 
   defp valid_object_identity?(_identity), do: false
+
+  defp object_bytes(objects), do: Enum.reduce(objects, 0, &(&1["size"] + &2))
 
   defp database_inventory_digest(snapshot_rows, entity_version_rows) do
     [canonical_term(snapshot_rows), canonical_term(entity_version_rows)]
@@ -967,6 +1751,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
 
   defp revalidate_storage_scope(adapter, plan) do
     with {:ok, current} <- list_exact_inventory(adapter, plan["prefixes"], length(plan["objects"]) + 1) do
+      ensure_current_inventory_subset(current, plan["objects"])
+    end
+  end
+
+  defp revalidate_provider_storage_scope(adapter, plan) do
+    with {:ok, current, _scanned_count} <-
+           list_global_snapshot_inventory(
+             adapter,
+             length(plan["objects"]) + 1,
+             plan["max_scanned_objects"]
+           ) do
       ensure_current_inventory_subset(current, plan["objects"])
     end
   end
@@ -1054,8 +1849,33 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
 
   defp verify_prefixes_empty(adapter, prefixes) do
     case list_exact_inventory(adapter, prefixes, 1) do
-      {:ok, []} -> :ok
-      {:ok, _objects} -> {:error, :snapshot_reset_final_inventory_not_empty}
+      {:ok, []} ->
+        :ok
+
+      {:ok, _objects} ->
+        {:error, :snapshot_reset_final_inventory_not_empty}
+
+      {:error, :snapshot_reset_inventory_limit_exceeded} ->
+        {:error, :snapshot_reset_final_inventory_not_empty}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp verify_global_provider_empty(adapter, max_scanned_objects) do
+    case list_global_snapshot_inventory(adapter, 1, max_scanned_objects) do
+      {:ok, [], _scanned_count} -> :ok
+      {:ok, _objects, _scanned_count} -> {:error, :snapshot_reset_final_inventory_not_empty}
+      {:error, :snapshot_reset_inventory_limit_exceeded} -> {:error, :snapshot_reset_final_inventory_not_empty}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp final_provider_zero_state(adapter, plan) do
+    case verify_global_provider_empty(adapter, plan["max_scanned_objects"]) do
+      :ok -> :complete
+      {:error, :snapshot_reset_final_inventory_not_empty} -> :incomplete
       {:error, reason} -> {:error, reason}
     end
   end
@@ -1139,7 +1959,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
            """
            SELECT EXISTS (
              SELECT 1 FROM information_schema.columns
-             WHERE table_name = 'projects' AND column_name = 'restoration_snapshot_id'
+             WHERE table_schema = 'public' AND table_name = 'projects' AND
+                   column_name = 'restoration_snapshot_id'
            )
            """,
            []
@@ -1197,53 +2018,166 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
 
   defp persist_or_validate_reset_receipt(repo, plan, environment) do
     completed_at = TimeHelpers.now()
-    identity = reset_receipt_identity(plan, environment)
-    params = [plan["workspace_id"] | identity] ++ [plan["attempt_count"], completed_at]
+    params = reset_receipt_insert_params(plan, environment, completed_at)
 
-    case repo.query(
-           """
-           INSERT INTO project_snapshot_reset_receipts (
-             workspace_id, project_ids, environment, inventory_digest,
-             database_inventory_digest, authorization_digest, object_count,
-             object_bytes, snapshot_row_count, entity_version_row_count,
-             attempt_count, completed_at
-           )
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-           ON CONFLICT (workspace_id) DO NOTHING
-           RETURNING completed_at
-           """,
-           params
-         ) do
-      {:ok, %{rows: [[persisted_at]]}} -> normalize_receipt_completed_at(persisted_at)
-      {:ok, %{rows: []}} -> fetch_matching_reset_receipt(repo, plan, environment)
-      {:error, reason} -> {:error, {:snapshot_reset_receipt_failed, reason}}
-      _invalid -> {:error, :snapshot_reset_receipt_failed}
+    with :ok <- validate_workspace_receipt_params(plan, environment) do
+      case repo.query(
+             """
+             INSERT INTO project_snapshot_reset_receipts (
+               workspace_id, plan_id, project_ids, environment, inventory_digest,
+               database_inventory_digest, storage_namespace_fingerprint,
+               authorization_digest, object_count,
+               object_bytes, snapshot_row_count, entity_version_row_count,
+               attempt_count, completed_at
+             )
+             VALUES ($1, $2::text::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+             ON CONFLICT (workspace_id, plan_id) DO NOTHING
+             RETURNING authorization_digest, attempt_count, completed_at
+             """,
+             params
+           ) do
+        {:ok, %{rows: [[authorization_digest, attempt_count, persisted_at]]}} ->
+          normalize_reset_receipt(authorization_digest, attempt_count, persisted_at)
+
+        {:ok, %{rows: []}} ->
+          fetch_matching_reset_receipt(repo, plan, environment)
+
+        {:error, reason} ->
+          {:error, {:snapshot_reset_receipt_failed, reason}}
+
+        _invalid ->
+          {:error, :snapshot_reset_receipt_failed}
+      end
     end
   end
 
-  defp validate_completed_reset_receipt(repo, plan) do
-    case fetch_matching_reset_receipt(repo, plan, plan["environment"]) do
-      {:ok, completed_at} ->
-        if DateTime.to_iso8601(completed_at) == plan["completed_at"],
-          do: {:ok, plan},
-          else: {:error, :snapshot_reset_receipt_mismatch, plan}
+  defp reset_receipt_insert_params(plan, environment, completed_at) do
+    [
+      plan["workspace_id"],
+      plan["plan_id"],
+      plan["project_ids"],
+      environment,
+      plan["inventory_digest"],
+      plan["database_inventory_digest"],
+      plan["storage_namespace_fingerprint"],
+      plan["authorization_digest"],
+      length(plan["objects"]),
+      object_bytes(plan["objects"]),
+      length(plan["snapshot_row_ids"]),
+      length(plan["entity_version_row_ids"]),
+      plan["attempt_count"],
+      completed_at
+    ]
+  end
 
-      {:error, reason} ->
-        {:error, reason, plan}
+  defp validate_workspace_receipt_params(%{"scope" => "workspace"} = plan, environment) do
+    with :ok <- validate_plan(plan),
+         true <- plan["environment"] == environment,
+         true <- plan["attempt_count"] > 0 do
+      :ok
+    else
+      _invalid -> {:error, :invalid_snapshot_reset_receipt_params}
+    end
+  end
+
+  defp validate_workspace_receipt_params(_plan, _environment), do: {:error, :invalid_snapshot_reset_receipt_params}
+
+  defp validate_provider_receipt_params(%{"scope" => "provider"} = plan, environment) do
+    with :ok <- validate_plan(plan),
+         true <- plan["environment"] == environment,
+         true <- plan["attempt_count"] > 0 do
+      :ok
+    else
+      _invalid -> {:error, :invalid_snapshot_reset_receipt_params}
+    end
+  end
+
+  defp validate_provider_receipt_params(_plan, _environment), do: {:error, :invalid_snapshot_reset_receipt_params}
+
+  defp persist_or_validate_provider_reset_receipt(repo, plan, environment) do
+    completed_at = TimeHelpers.now()
+
+    with :ok <- validate_provider_receipt_params(plan, environment) do
+      case repo.query(
+             """
+             INSERT INTO project_snapshot_provider_reset_receipts (
+               plan_id, environment, inventory_digest, storage_namespace_fingerprint,
+               authorization_digest, workspace_receipt_ids, object_count, object_bytes,
+               scanned_object_count, max_scanned_objects, attempt_count, completed_at
+             )
+             VALUES ($1::text::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+             ON CONFLICT (plan_id) DO NOTHING
+             RETURNING authorization_digest, attempt_count, completed_at
+             """,
+             [
+               plan["plan_id"],
+               environment,
+               plan["inventory_digest"],
+               plan["storage_namespace_fingerprint"],
+               plan["authorization_digest"],
+               plan["workspace_receipt_ids"],
+               length(plan["objects"]),
+               object_bytes(plan["objects"]),
+               plan["scanned_object_count"],
+               plan["max_scanned_objects"],
+               plan["attempt_count"],
+               completed_at
+             ]
+           ) do
+        {:ok, %{rows: [[authorization_digest, attempt_count, persisted_at]]}} ->
+          normalize_reset_receipt(authorization_digest, attempt_count, persisted_at)
+
+        {:ok, %{rows: []}} ->
+          fetch_matching_provider_reset_receipt(repo, plan, environment)
+
+        {:error, reason} ->
+          {:error, {:snapshot_reset_receipt_failed, reason}}
+
+        _invalid ->
+          {:error, :snapshot_reset_receipt_failed}
+      end
+    end
+  end
+
+  defp validate_completed_plan_receipt(plan, receipt) do
+    valid? =
+      plan["authorization_digest"] == receipt.authorization_digest and
+        plan["attempt_count"] == receipt.attempt_count and
+        plan["completed_at"] == DateTime.to_iso8601(receipt.completed_at)
+
+    if valid?,
+      do: {:ok, plan},
+      else: {:error, :snapshot_reset_receipt_mismatch, plan}
+  end
+
+  defp fetch_optional_reset_receipt(repo, plan, environment) do
+    case fetch_matching_reset_receipt(repo, plan, environment) do
+      {:ok, receipt} -> {:ok, receipt}
+      {:error, :snapshot_reset_receipt_missing} -> :missing
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp fetch_optional_provider_reset_receipt(repo, plan, environment) do
+    case fetch_matching_provider_reset_receipt(repo, plan, environment) do
+      {:ok, receipt} -> {:ok, receipt}
+      {:error, :snapshot_reset_receipt_missing} -> :missing
+      {:error, reason} -> {:error, reason}
     end
   end
 
   defp fetch_matching_reset_receipt(repo, plan, environment) do
     case repo.query(
            """
-           SELECT project_ids, environment, inventory_digest,
-                  database_inventory_digest, authorization_digest, object_count,
-                  object_bytes, snapshot_row_count, entity_version_row_count,
-                  attempt_count, completed_at
+           SELECT plan_id::text, project_ids, environment, inventory_digest,
+                  database_inventory_digest, storage_namespace_fingerprint,
+                  object_count, object_bytes,
+                  snapshot_row_count, entity_version_row_count,
+                  authorization_digest, attempt_count, completed_at
            FROM project_snapshot_reset_receipts
-           WHERE workspace_id = $1
+           WHERE workspace_id = $1 AND plan_id = $2::text::uuid
            """,
-           [plan["workspace_id"]]
+           [plan["workspace_id"], plan["plan_id"]]
          ) do
       {:ok, %{rows: [row]}} -> validate_reset_receipt_row(row, plan, environment)
       {:ok, %{rows: []}} -> {:error, :snapshot_reset_receipt_missing}
@@ -1252,15 +2186,62 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     end
   end
 
-  defp validate_reset_receipt_row(row, plan, environment) do
-    {identity, [receipt_attempt_count, completed_at]} = Enum.split(row, -2)
+  defp fetch_matching_provider_reset_receipt(repo, plan, environment) do
+    case repo.query(
+           """
+           SELECT plan_id::text, environment, inventory_digest, object_count,
+                  object_bytes, scanned_object_count, max_scanned_objects,
+                  workspace_receipt_ids, storage_namespace_fingerprint,
+                  authorization_digest, attempt_count, completed_at
+           FROM project_snapshot_provider_reset_receipts
+           WHERE plan_id = $1::text::uuid
+           """,
+           [plan["plan_id"]]
+         ) do
+      {:ok, %{rows: [row]}} -> validate_provider_reset_receipt_row(row, plan, environment)
+      {:ok, %{rows: []}} -> {:error, :snapshot_reset_receipt_missing}
+      {:error, reason} -> {:error, {:snapshot_reset_receipt_failed, reason}}
+      _invalid -> {:error, :snapshot_reset_receipt_failed}
+    end
+  end
 
-    if identity == reset_receipt_identity(plan, environment) and receipt_attempt_count > 0 do
-      normalize_receipt_completed_at(completed_at)
+  defp validate_reset_receipt_row(row, plan, environment) do
+    {identity, [authorization_digest, receipt_attempt_count, completed_at]} = Enum.split(row, -3)
+
+    if identity == reset_receipt_identity(plan, environment) do
+      normalize_reset_receipt(authorization_digest, receipt_attempt_count, completed_at)
     else
       {:error, :snapshot_reset_receipt_mismatch}
     end
   end
+
+  defp validate_provider_reset_receipt_row(row, plan, environment) do
+    {identity, [authorization_digest, receipt_attempt_count, completed_at]} = Enum.split(row, -3)
+
+    if identity == provider_reset_receipt_identity(plan, environment) do
+      normalize_reset_receipt(authorization_digest, receipt_attempt_count, completed_at)
+    else
+      {:error, :snapshot_reset_receipt_mismatch}
+    end
+  end
+
+  defp normalize_reset_receipt(authorization_digest, attempt_count, completed_at)
+       when is_integer(attempt_count) and attempt_count > 0 do
+    with true <- valid_digest?(authorization_digest),
+         {:ok, normalized_at} <- normalize_receipt_completed_at(completed_at) do
+      {:ok,
+       %{
+         authorization_digest: authorization_digest,
+         attempt_count: attempt_count,
+         completed_at: normalized_at
+       }}
+    else
+      _invalid -> {:error, :snapshot_reset_receipt_mismatch}
+    end
+  end
+
+  defp normalize_reset_receipt(_authorization_digest, _attempt_count, _completed_at),
+    do: {:error, :snapshot_reset_receipt_mismatch}
 
   defp normalize_receipt_completed_at(%DateTime{} = completed_at), do: {:ok, completed_at}
 
@@ -1272,15 +2253,30 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
 
   defp reset_receipt_identity(plan, environment) do
     [
+      plan["plan_id"],
       plan["project_ids"],
       environment,
       plan["inventory_digest"],
       plan["database_inventory_digest"],
-      plan["authorization_digest"],
+      plan["storage_namespace_fingerprint"],
       length(plan["objects"]),
-      Enum.reduce(plan["objects"], 0, &(&1["size"] + &2)),
+      object_bytes(plan["objects"]),
       length(plan["snapshot_row_ids"]),
       length(plan["entity_version_row_ids"])
+    ]
+  end
+
+  defp provider_reset_receipt_identity(plan, environment) do
+    [
+      plan["plan_id"],
+      environment,
+      plan["inventory_digest"],
+      length(plan["objects"]),
+      object_bytes(plan["objects"]),
+      plan["scanned_object_count"],
+      plan["max_scanned_objects"],
+      plan["workspace_receipt_ids"],
+      plan["storage_namespace_fingerprint"]
     ]
   end
 
