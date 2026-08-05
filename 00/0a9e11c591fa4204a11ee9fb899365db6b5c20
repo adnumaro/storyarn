@@ -1,0 +1,19 @@
+package.json
+  s_ddb49aa441e6c2::t_c53b1efa763fd3 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "000a9e11c591fa4204a11ee9fb899365db6b5c20",
+  "prompts": {},
+  "sessions": {
+    "s_ddb49aa441e6c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0120085-7bf7-4bfd-9063-821a2f24f334",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
