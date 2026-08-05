@@ -306,7 +306,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   defp perform_claim({:terminal, snapshot}, _attempt, _max_attempts), do: {:ok, snapshot}
 
   defp perform_claim({:claimed, snapshot}, attempt, max_attempts) do
-    case load_build_inputs(snapshot.id) do
+    case load_build_inputs(snapshot.id, snapshot.lifecycle_generation) do
       {:ok, build} ->
         if build.snapshot.cancel_requested_at do
           settle_cancelled(build.snapshot)
@@ -315,39 +315,50 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         end
 
       {:error, reason} ->
-        finish_failure(snapshot.id, reason, attempt, max_attempts)
+        finish_failure(snapshot.id, snapshot.lifecycle_generation, reason, attempt, max_attempts)
     end
   end
 
   defp execute_build(build, attempt, max_attempts) do
     token = object_token(build.snapshot)
+    generation = build.snapshot.lifecycle_generation
 
     opts = [
       token: token,
       storage_reservation: build.reservation,
-      before_stage: &authorize_stage(build.snapshot.id, &1),
-      before_publish: &authorize_publication(build.snapshot.id, &1),
-      on_progress: copy_progress_callback(build.snapshot.id, build.snapshot.total_size_bytes)
+      before_stage: &authorize_stage(build.snapshot.id, generation, &1),
+      before_publish: &authorize_publication(build.snapshot.id, generation, &1),
+      on_progress: copy_progress_callback(build.snapshot.id, generation, build.snapshot.total_size_bytes)
     ]
 
     with token when is_binary(token) <- token,
          {:ok, staged} <- SnapshotObjectStorage.stage_prepared(build.snapshot.project_id, build.prepared, opts),
-         {:ok, _snapshot} <- mark_verifying(build.snapshot.id, staged.total_size_bytes),
-         {:ok, stored} <- SnapshotObjectStorage.publish(staged, &authorize_publication(build.snapshot.id, &1)),
-         {:ok, snapshot} <- commit_ready(build.snapshot.id, stored) do
+         {:ok, _snapshot} <- mark_verifying(build.snapshot.id, generation, staged.total_size_bytes),
+         {:ok, stored} <-
+           SnapshotObjectStorage.publish(staged, &authorize_publication(build.snapshot.id, generation, &1)),
+         {:ok, snapshot} <- commit_ready(build.snapshot.id, generation, stored) do
       broadcast(snapshot)
       {:ok, snapshot}
     else
-      nil -> finish_failure(build.snapshot.id, :invalid_snapshot_object_prefix, attempt, max_attempts)
-      {:error, reason} -> finish_failure(build.snapshot.id, reason, attempt, max_attempts)
+      nil ->
+        finish_failure(
+          build.snapshot.id,
+          generation,
+          :invalid_snapshot_object_prefix,
+          attempt,
+          max_attempts
+        )
+
+      {:error, reason} ->
+        finish_failure(build.snapshot.id, generation, reason, attempt, max_attempts)
     end
   end
 
-  defp authorize_stage(snapshot_id, staged) do
+  defp authorize_stage(snapshot_id, expected_generation, staged) do
     with workspace_id when is_integer(workspace_id) <- snapshot_workspace_id(snapshot_id),
          {:ok, reservation} <-
            Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
-             authorize_stage_locked(snapshot_id, staged)
+             authorize_stage_locked(snapshot_id, expected_generation, staged)
            end) do
       {:ok, reservation}
     else
@@ -356,11 +367,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp authorize_stage_locked(snapshot_id, staged) do
+  defp authorize_stage_locked(snapshot_id, expected_generation, staged) do
     snapshot = lock_snapshot(snapshot_id)
     reservation = lock_reservation(staged.storage_reservation_id)
 
-    with %ProjectSnapshot{cancel_requested_at: nil, storage_reservation_id: reservation_id} <- snapshot,
+    with %ProjectSnapshot{
+           lifecycle_generation: ^expected_generation,
+           cancel_requested_at: nil,
+           storage_reservation_id: reservation_id
+         } <- snapshot,
          %StorageReservation{id: ^reservation_id, status: "active"} <- reservation,
          {:ok, _snapshot} <-
            snapshot
@@ -385,8 +400,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp mark_verifying(snapshot_id, progress_bytes) do
-    update_build_state(snapshot_id, fn snapshot ->
+  defp mark_verifying(snapshot_id, expected_generation, progress_bytes) do
+    update_build_state(snapshot_id, expected_generation, fn snapshot ->
       now = TimeHelpers.now()
       progress_phase = if snapshot.progress_phase == "finalizing", do: "finalizing", else: "verifying"
 
@@ -400,7 +415,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end)
   end
 
-  defp copy_progress_callback(snapshot_id, total_bytes) do
+  defp copy_progress_callback(snapshot_id, expected_generation, total_bytes) do
     checkpoint = :atomics.new(2, signed: true)
     :atomics.put(checkpoint, 1, 0)
     :atomics.put(checkpoint, 2, System.monotonic_time(:millisecond))
@@ -411,7 +426,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       now = System.monotonic_time(:millisecond)
 
       if progress_checkpoint_due?(completed_bytes, total_bytes, last_bytes, last_at, now) do
-        persist_progress_checkpoint(snapshot_id, completed_bytes, checkpoint, now)
+        persist_progress_checkpoint(snapshot_id, expected_generation, completed_bytes, checkpoint, now)
       else
         :ok
       end
@@ -423,18 +438,21 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       now - last_at >= @progress_checkpoint_ms
   end
 
-  defp persist_progress_checkpoint(snapshot_id, completed_bytes, checkpoint, now) do
-    with :ok <- persist_copy_progress(snapshot_id, completed_bytes) do
+  defp persist_progress_checkpoint(snapshot_id, expected_generation, completed_bytes, checkpoint, now) do
+    with :ok <- persist_copy_progress(snapshot_id, expected_generation, completed_bytes) do
       :atomics.put(checkpoint, 1, completed_bytes)
       :atomics.put(checkpoint, 2, now)
       :ok
     end
   end
 
-  defp persist_copy_progress(snapshot_id, completed_bytes) do
+  defp persist_copy_progress(snapshot_id, expected_generation, completed_bytes) do
     result =
       Repo.transact(fn ->
         case lock_snapshot(snapshot_id) do
+          %ProjectSnapshot{lifecycle_generation: generation} when generation != expected_generation ->
+            {:error, :stale_snapshot_build_generation}
+
           %ProjectSnapshot{cancel_requested_at: %DateTime{}} ->
             {:error, :snapshot_build_cancelled}
 
@@ -465,11 +483,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp authorize_publication(snapshot_id, staged) do
+  defp authorize_publication(snapshot_id, expected_generation, staged) do
     with workspace_id when is_integer(workspace_id) <- snapshot_workspace_id(snapshot_id),
          {:ok, reservation} <-
            Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
-             authorize_publication_locked(snapshot_id, staged)
+             authorize_publication_locked(snapshot_id, expected_generation, staged)
            end) do
       {:ok, reservation}
     else
@@ -478,11 +496,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp authorize_publication_locked(snapshot_id, staged) do
+  defp authorize_publication_locked(snapshot_id, expected_generation, staged) do
     snapshot = lock_snapshot(snapshot_id)
     reservation = snapshot && lock_reservation(snapshot.storage_reservation_id)
 
-    with %ProjectSnapshot{cancel_requested_at: nil} <- snapshot,
+    with %ProjectSnapshot{lifecycle_generation: ^expected_generation, cancel_requested_at: nil} <- snapshot,
          %StorageReservation{status: "active"} <- reservation,
          {:ok, extended} <-
            Billing.extend_storage_reservation(
@@ -510,8 +528,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp commit_ready(snapshot_id, stored) do
-    snapshot = Repo.get(ProjectSnapshot, snapshot_id)
+  defp commit_ready(snapshot_id, expected_generation, stored) do
+    snapshot = Repo.get_by(ProjectSnapshot, id: snapshot_id, lifecycle_generation: expected_generation)
     reservation = snapshot && Repo.get(StorageReservation, snapshot.storage_reservation_id)
     now = TimeHelpers.now()
 
@@ -528,6 +546,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
                  snapshot.id,
                  0,
                  Map.merge(stored, %{
+                   expected_lifecycle_generation: expected_generation,
                    progress_phase: "complete",
                    progress_bytes: stored.total_size_bytes,
                    progress_total_bytes: stored.total_size_bytes,
@@ -545,12 +564,18 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp finish_failure(snapshot_id, reason, attempt, max_attempts) do
+  defp finish_failure(snapshot_id, expected_generation, reason, attempt, max_attempts) do
     snapshot = Repo.get(ProjectSnapshot, snapshot_id)
 
     cond do
       is_nil(snapshot) ->
         settle_orphaned_build(snapshot_id, reason)
+
+      snapshot.lifecycle_generation != expected_generation and not is_nil(snapshot.cancel_requested_at) ->
+        settle_cancelled(snapshot, reason)
+
+      snapshot.lifecycle_generation != expected_generation ->
+        {:discard, :stale_snapshot_build_generation}
 
       snapshot.lifecycle_state == "ready" ->
         {:ok, snapshot}
@@ -574,20 +599,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   defp handle_failed_settlement({:ok, :released}, snapshot, reason, attempt, max_attempts) do
     if attempt < max_attempts and retryable?(reason),
       do: retry_failed_snapshot(snapshot, reason, attempt + 1),
-      else: fail_snapshot(snapshot.id, reason)
+      else: fail_snapshot(snapshot, reason)
   end
 
   defp handle_failed_settlement({:ok, :committed}, _snapshot, reason, attempt, max_attempts) when attempt < max_attempts,
     do: {:retry, safe_error_code(reason)}
 
   defp handle_failed_settlement({:ok, :active_unowned}, snapshot, _reason, _attempt, _max_attempts),
-    do: fail_snapshot(snapshot.id, :cleanup_unowned)
+    do: fail_snapshot(snapshot, :cleanup_unowned)
 
   defp handle_failed_settlement({:ok, :committed}, snapshot, _reason, _attempt, _max_attempts),
-    do: fail_snapshot(snapshot.id, :cleanup_unowned)
+    do: fail_snapshot(snapshot, :cleanup_unowned)
 
   defp handle_failed_settlement({:error, settlement_reason}, snapshot, _reason, _attempt, _max_attempts),
-    do: fail_snapshot(snapshot.id, settlement_reason)
+    do: fail_snapshot(snapshot, settlement_reason)
 
   defp retry_failed_snapshot(snapshot, reason, operation_attempt) do
     case allocate_retry(snapshot, operation_attempt) do
@@ -596,7 +621,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         {:retry, safe_error_code(reason)}
 
       {:error, retry_reason} ->
-        fail_snapshot(snapshot.id, retry_reason)
+        fail_snapshot(snapshot, retry_reason)
     end
   end
 
@@ -706,7 +731,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   defp reset_snapshot_for_retry(snapshot, object_prefix, now) do
     snapshot
-    |> ProjectSnapshot.build_state_changeset(%{
+    |> ProjectSnapshot.retry_state_changeset(%{
       object_prefix: object_prefix,
       project_storage_key: object_prefix <> "/project.json",
       manifest_storage_key: object_prefix <> "/manifest.json",
@@ -744,11 +769,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     |> Repo.update()
   end
 
-  defp fail_snapshot(snapshot_id, reason) do
+  defp fail_snapshot(%ProjectSnapshot{} = snapshot, reason) do
     code = safe_error_code(reason)
     now = TimeHelpers.now()
 
-    case update_build_state(snapshot_id, fn snapshot ->
+    case update_build_state(snapshot.id, snapshot.lifecycle_generation, fn snapshot ->
            ProjectSnapshot.build_state_changeset(snapshot, %{
              lifecycle_state: "failed",
              integrity_state: failure_integrity(reason),
@@ -772,17 +797,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     cleanup_scope = cleanup_scope(reason)
 
     case settle_active_reservation(snapshot, :snapshot_build_cancelled, cleanup_scope) do
-      {:ok, :released} -> mark_cancelled(snapshot.id)
+      {:ok, :released} -> mark_cancelled(snapshot.id, snapshot.lifecycle_generation)
       {:ok, :committed} -> {:retry, :snapshot_build_cancelled_after_publish}
-      {:ok, :active_unowned} -> fail_snapshot(snapshot.id, :cleanup_unowned)
-      {:error, settlement_reason} -> fail_snapshot(snapshot.id, settlement_reason)
+      {:ok, :active_unowned} -> fail_snapshot(snapshot, :cleanup_unowned)
+      {:error, settlement_reason} -> fail_snapshot(snapshot, settlement_reason)
     end
   end
 
-  defp mark_cancelled(snapshot_id) do
+  defp mark_cancelled(snapshot_id, expected_generation) do
     now = TimeHelpers.now()
 
-    case update_build_state(snapshot_id, fn snapshot ->
+    case update_build_state(snapshot_id, expected_generation, fn snapshot ->
            ProjectSnapshot.build_state_changeset(snapshot, %{
              lifecycle_state: "cancelled",
              integrity_state: "unknown",
@@ -814,6 +839,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
       %ProjectSnapshot{progress_phase: "finalizing"} ->
         {:error, :snapshot_finalization_in_progress}
+
+      %ProjectSnapshot{cancel_requested_at: %DateTime{}} = snapshot ->
+        {:ok, snapshot}
 
       %ProjectSnapshot{lifecycle_state: "pending"} = snapshot ->
         cancel_pending_snapshot(snapshot)
@@ -872,10 +900,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     now = TimeHelpers.now()
 
     snapshot
-    |> ProjectSnapshot.build_state_changeset(%{
-      cancel_requested_at: snapshot.cancel_requested_at || now,
-      state_updated_at: now
-    })
+    |> ProjectSnapshot.cancel_request_changeset(now)
     |> Repo.update!()
   end
 
@@ -893,9 +918,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     |> Repo.update()
   end
 
-  defp load_build_inputs(snapshot_id) do
+  defp load_build_inputs(snapshot_id, expected_generation) do
     snapshot =
-      case Repo.get(ProjectSnapshot, snapshot_id) do
+      case Repo.get_by(ProjectSnapshot, id: snapshot_id, lifecycle_generation: expected_generation) do
         %ProjectSnapshot{} = snapshot -> Repo.preload(snapshot, [:capture, :storage_reservation, :project])
         nil -> nil
       end
@@ -931,11 +956,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp update_build_state(snapshot_id, changeset_fun) do
+  defp update_build_state(snapshot_id, expected_generation, changeset_fun) do
     Repo.transact(fn ->
       case lock_snapshot(snapshot_id) do
-        %ProjectSnapshot{} = snapshot -> snapshot |> changeset_fun.() |> Repo.update()
-        nil -> {:error, :project_snapshot_not_found}
+        %ProjectSnapshot{lifecycle_generation: ^expected_generation} = snapshot ->
+          snapshot |> changeset_fun.() |> Repo.update()
+
+        %ProjectSnapshot{} ->
+          {:error, :stale_snapshot_build_generation}
+
+        nil ->
+          {:error, :project_snapshot_not_found}
       end
     end)
   end
@@ -1056,8 +1087,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   defp contains_reason?(reason, target) when reason == target, do: true
 
+  defp contains_reason?(%_{} = struct, target) do
+    struct
+    |> Map.from_struct()
+    |> contains_reason?(target)
+  end
+
   defp contains_reason?(map, target) when is_map(map) do
-    Enum.any?(map, fn {key, value} -> contains_reason?(key, target) or contains_reason?(value, target) end)
+    map
+    |> Map.to_list()
+    |> Enum.any?(fn {key, value} -> contains_reason?(key, target) or contains_reason?(value, target) end)
   end
 
   defp contains_reason?(tuple, target) when is_tuple(tuple) do

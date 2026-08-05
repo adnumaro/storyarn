@@ -76,6 +76,17 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     :accounting_version
   ]
 
+  @origins ~w(user daily pre_restore post_restore)
+  @same_generation_transitions %{
+    "pending" => ~w(pending building cancelled),
+    "building" => ~w(building verifying failed cancelled),
+    "verifying" => ~w(verifying ready failed cancelled),
+    "ready" => ~w(ready),
+    "failed" => ~w(failed),
+    "cancelled" => ~w(cancelled),
+    "deleting" => ~w(deleting)
+  }
+
   @type t :: %__MODULE__{
           id: integer() | nil,
           project_id: integer(),
@@ -102,6 +113,10 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
           accounting_version: integer() | nil,
           accounting_generation: integer() | nil,
           accounting_measured_at: DateTime.t() | nil,
+          origin: String.t(),
+          expires_at: DateTime.t() | nil,
+          lifecycle_generation: pos_integer(),
+          deletion_requested_at: DateTime.t() | nil,
           idempotency_key: String.t(),
           capture_boundary: Ecto.UUID.t(),
           capture_digest: String.t(),
@@ -154,6 +169,10 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     field :accounting_version, :integer
     field :accounting_generation, :integer
     field :accounting_measured_at, :utc_datetime
+    field :origin, :string, default: "user"
+    field :expires_at, :utc_datetime
+    field :lifecycle_generation, :integer, default: 1
+    field :deletion_requested_at, :utc_datetime
     field :idempotency_key, :string
     field :capture_boundary, Ecto.UUID
     field :capture_digest, :string
@@ -241,6 +260,9 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :asset_blob_size_bytes,
       :accounting_version,
       :accounting_measured_at,
+      :origin,
+      :expires_at,
+      :lifecycle_generation,
       :idempotency_key,
       :capture_boundary,
       :capture_digest,
@@ -278,6 +300,8 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :accounting_version,
       :accounting_generation,
       :accounting_measured_at,
+      :origin,
+      :lifecycle_generation,
       :idempotency_key,
       :capture_boundary,
       :capture_digest,
@@ -295,8 +319,10 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_inclusion(:lifecycle_state, ["ready"])
     |> validate_inclusion(:integrity_state, ["verified"])
     |> validate_inclusion(:accounting_version, [1])
+    |> validate_inclusion(:origin, @origins)
     |> validate_inclusion(:progress_phase, ["complete"])
     |> validate_number(:accounting_generation, greater_than: 0)
+    |> validate_number(:lifecycle_generation, greater_than: 0)
     |> validate_length(:title, max: 255)
     |> validate_length(:description, max: 500)
     |> validate_length(:object_prefix, max: 500)
@@ -341,6 +367,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
+    |> lifecycle_constraints()
     |> unique_constraint(:object_prefix)
     |> unique_constraint(:manifest_storage_key)
     |> unique_constraint([:project_id, :version_number],
@@ -366,6 +393,8 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       |> put_default(:build_attempt, 0)
       |> put_default(:captured_at, TimeHelpers.now())
       |> put_default(:state_updated_at, TimeHelpers.now())
+      |> put_default(:origin, "user")
+      |> put_default(:lifecycle_generation, 1)
       |> put_pending_object_keys()
 
     snapshot
@@ -400,7 +429,10 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :progress_bytes,
       :progress_total_bytes,
       :build_attempt,
-      :state_updated_at
+      :state_updated_at,
+      :origin,
+      :expires_at,
+      :lifecycle_generation
     ])
     |> validate_required([
       :project_id,
@@ -428,13 +460,16 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :progress_bytes,
       :progress_total_bytes,
       :build_attempt,
-      :state_updated_at
+      :state_updated_at,
+      :origin,
+      :lifecycle_generation
     ])
     |> validate_inclusion(:format_version, [1])
     |> validate_inclusion(:mode, ["full"])
     |> validate_inclusion(:lifecycle_state, ["pending"])
     |> validate_inclusion(:integrity_state, ["unknown"])
     |> validate_inclusion(:progress_phase, ["pending"])
+    |> validate_inclusion(:origin, @origins)
     |> validate_length(:title, max: 255)
     |> validate_length(:description, max: 500)
     |> validate_length(:object_prefix, max: 500)
@@ -448,6 +483,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_number(:progress_bytes, equal_to: 0)
     |> validate_number(:progress_total_bytes, greater_than: 0)
     |> validate_number(:build_attempt, equal_to: 0)
+    |> validate_number(:lifecycle_generation, equal_to: 1)
     |> validate_format(:project_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:manifest_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:capture_digest, ~r/\A[0-9a-f]{64}\z/)
@@ -468,6 +504,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
+    |> lifecycle_constraints()
     |> unique_constraint(:object_prefix)
     |> unique_constraint(:manifest_storage_key)
     |> unique_constraint([:project_id, :idempotency_key],
@@ -491,6 +528,13 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
 
   @doc false
   def build_state_changeset(snapshot, attrs) do
+    snapshot
+    |> build_state_changeset_base(attrs)
+    |> validate_same_generation_transition(snapshot)
+    |> validate_monotonic_state_time(snapshot)
+  end
+
+  defp build_state_changeset_base(snapshot, attrs) do
     snapshot
     |> cast(attrs, [
       :object_prefix,
@@ -565,6 +609,42 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
     |> unique_constraint(:object_prefix)
     |> unique_constraint(:manifest_storage_key)
+    |> lifecycle_constraints()
+  end
+
+  @doc false
+  def retry_state_changeset(%__MODULE__{} = snapshot, attrs) do
+    snapshot
+    |> build_state_changeset_base(attrs)
+    |> advance_lifecycle_generation(snapshot)
+    |> validate_generation_transition(snapshot, "pending")
+    |> validate_monotonic_state_time(snapshot)
+  end
+
+  @doc false
+  def cancel_request_changeset(%__MODULE__{} = snapshot, requested_at) do
+    snapshot
+    |> change()
+    |> put_change(:cancel_requested_at, requested_at)
+    |> put_change(:state_updated_at, requested_at)
+    |> advance_lifecycle_generation(snapshot)
+    |> validate_generation_transition(snapshot, snapshot.lifecycle_state)
+    |> lifecycle_constraints()
+  end
+
+  @doc false
+  def deletion_changeset(%__MODULE__{} = snapshot, requested_at) do
+    snapshot
+    |> change()
+    |> put_change(:lifecycle_state, "deleting")
+    |> put_change(:failure_code, nil)
+    |> put_change(:failure_message, nil)
+    |> put_change(:failed_at, nil)
+    |> put_change(:deletion_requested_at, requested_at)
+    |> put_change(:state_updated_at, requested_at)
+    |> advance_lifecycle_generation(snapshot)
+    |> validate_generation_transition(snapshot, "deleting")
+    |> lifecycle_constraints()
   end
 
   defp normalize_object_set_accounting_attrs(attrs) do
@@ -584,6 +664,52 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   end
 
   defp advance_accounting_generation(changeset, %__MODULE__{}), do: put_change(changeset, :accounting_generation, 1)
+
+  defp advance_lifecycle_generation(changeset, %__MODULE__{lifecycle_generation: generation})
+       when is_integer(generation) and generation > 0 do
+    changeset
+    |> optimistic_lock(:lifecycle_generation, &(&1 + 1))
+    |> force_change(:lifecycle_generation, generation + 1)
+  end
+
+  defp advance_lifecycle_generation(changeset, _snapshot) do
+    add_error(changeset, :lifecycle_generation, "is invalid")
+  end
+
+  defp validate_same_generation_transition(changeset, %__MODULE__{lifecycle_state: current}) do
+    next = get_field(changeset, :lifecycle_state)
+
+    if next in Map.get(@same_generation_transitions, current, []),
+      do: changeset,
+      else: add_error(changeset, :lifecycle_state, "cannot regress or skip lifecycle states")
+  end
+
+  defp validate_generation_transition(changeset, %__MODULE__{lifecycle_generation: generation}, next_state) do
+    if get_field(changeset, :lifecycle_generation) == generation + 1 and
+         get_field(changeset, :lifecycle_state) == next_state,
+       do: changeset,
+       else: add_error(changeset, :lifecycle_generation, "did not advance exactly once")
+  end
+
+  defp validate_monotonic_state_time(changeset, %__MODULE__{state_updated_at: %DateTime{} = current}) do
+    case get_field(changeset, :state_updated_at) do
+      %DateTime{} = next ->
+        if DateTime.compare(next, current) in [:eq, :gt],
+          do: changeset,
+          else: add_error(changeset, :state_updated_at, "cannot move backwards")
+
+      _invalid ->
+        changeset
+    end
+  end
+
+  defp validate_monotonic_state_time(changeset, _snapshot), do: changeset
+
+  defp lifecycle_constraints(changeset) do
+    changeset
+    |> check_constraint(:origin, name: :project_snapshots_origin_retention)
+    |> check_constraint(:lifecycle_generation, name: :project_snapshots_lifecycle_generation)
+  end
 
   defp put_default(attrs, field, value) do
     if has_attr?(attrs, field), do: attrs, else: Map.put(attrs, field, value)

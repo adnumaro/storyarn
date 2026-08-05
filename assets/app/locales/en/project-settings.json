@@ -198,6 +198,14 @@
         "cancelling": "Cancellation requested",
         "accessibility": "Snapshot build progress: {percent}"
       },
+      "delete": {
+        "action": "Delete snapshot",
+        "title": "Delete snapshot?",
+        "description": "Snapshot v{version}, “{name}”, will be removed permanently. Its storage is handed to durable cleanup and this action cannot be undone.",
+        "confirm": "Delete snapshot",
+        "cancel": "Keep snapshot",
+        "failed": "The snapshot could not be deleted."
+      },
       "measurements": {
         "accounted_size": "Snapshot storage",
         "project_data": "Project data",

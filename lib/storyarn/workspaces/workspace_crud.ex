@@ -10,6 +10,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
+  alias Storyarn.Versioning
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceMembership
 
@@ -177,7 +178,11 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   Deletes a workspace.
   """
   def delete_workspace(%Workspace{} = workspace) do
-    Repo.delete(workspace)
+    Billing.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
+      with :ok <- Versioning.prepare_workspace_snapshot_hard_delete(locked_workspace) do
+        Repo.delete(locked_workspace)
+      end
+    end)
   end
 
   # Private helpers

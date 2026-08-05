@@ -13,6 +13,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Versioning
   alias Storyarn.Workspaces
   alias Storyarn.Workspaces.Workspace
 
@@ -229,7 +230,11 @@ defmodule Storyarn.Projects.ProjectCrud do
   Permanently deletes a project (for retention cleanup).
   """
   def permanently_delete_project(%Project{} = project) do
-    with_project_deletion_lock(project.id, &Repo.delete/1)
+    with_project_deletion_lock(project.id, fn locked_project ->
+      with :ok <- Versioning.prepare_project_snapshot_hard_delete(locked_project) do
+        Repo.delete(locked_project)
+      end
+    end)
   end
 
   defp with_project_deletion_lock(project_id, fun) do

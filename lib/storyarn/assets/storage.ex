@@ -16,6 +16,8 @@ defmodule Storyarn.Assets.Storage do
           etag: String.t() | nil,
           content_type: String.t() | nil
         }
+  @type listed_object :: %{key: key(), size: non_neg_integer()}
+  @type list_page :: %{objects: [listed_object()], cursor: String.t() | nil}
   @type conditional_copy_cleanup_error ::
           {:conditional_copy_cleanup_required, destination_created? :: boolean(), pending_cleanup_key :: key(),
            cleanup_reason :: term()}
@@ -38,6 +40,7 @@ defmodule Storyarn.Assets.Storage do
   @callback copy_if_absent(source_key :: key, dest_key :: key) ::
               {:ok, created? :: boolean()} | {:error, term()}
   @callback key_from_url(url) :: {:ok, key} | {:error, :invalid_url}
+  @callback list_prefix(String.t(), keyword()) :: {:ok, list_page()} | {:error, term()}
 
   @doc """
   Returns the configured storage adapter.
@@ -100,6 +103,13 @@ defmodule Storyarn.Assets.Storage do
   """
   def stream(key, offset, length, opts \\ []) do
     adapter().stream(key, offset, length, opts)
+  end
+
+  @doc "Lists one bounded page of object metadata beneath an exact prefix."
+  def list_prefix(prefix, opts \\ []) when is_binary(prefix) and is_list(opts) do
+    if canonical_prefix?(prefix) and Keyword.keyword?(opts),
+      do: adapter().list_prefix(prefix, opts),
+      else: {:error, :invalid_prefix}
   end
 
   @doc """
@@ -254,6 +264,14 @@ defmodule Storyarn.Assets.Storage do
   end
 
   def canonical_key?(_key), do: false
+
+  @doc false
+  @spec canonical_prefix?(term()) :: boolean()
+  def canonical_prefix?(prefix) when is_binary(prefix) do
+    String.ends_with?(prefix, "/") and canonical_key?(String.trim_trailing(prefix, "/"))
+  end
+
+  def canonical_prefix?(_prefix), do: false
 
   defp canonical_segments?(segments) do
     segments != [] and

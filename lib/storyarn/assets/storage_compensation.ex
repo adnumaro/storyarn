@@ -439,6 +439,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   def retry_persisted_cleanup_requests(limit \\ @persisted_cleanup_batch_size) when is_integer(limit) and limit > 0 do
     cleanup_requests =
       StorageCleanupRequest
+      |> where([request], request.owner_kind == "storage_compensation")
       |> order_by([request], asc: request.inserted_at, asc: request.id)
       |> limit(^limit)
       |> Repo.all()
@@ -669,12 +670,35 @@ defmodule Storyarn.Assets.StorageCompensation do
 
     case cleanup_targets do
       [] -> {:error, :no_valid_storage_keys}
-      cleanup_targets -> insert_cleanup_request(cleanup_targets)
+      cleanup_targets -> insert_cleanup_request(cleanup_targets, %{})
     end
   end
 
-  defp insert_cleanup_request(storage_keys) do
-    case Repo.insert(%StorageCleanupRequest{storage_keys: storage_keys}) do
+  @doc false
+  @spec persist_snapshot_lifecycle_cleanup([String.t()], Ecto.UUID.t()) ::
+          {:ok, StorageCleanupRequest.t()} | {:error, term()}
+  def persist_snapshot_lifecycle_cleanup(cleanup_targets, owner_token)
+      when is_list(cleanup_targets) and is_binary(owner_token) do
+    cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
+
+    case cleanup_targets do
+      [] ->
+        {:error, :no_valid_storage_keys}
+
+      cleanup_targets ->
+        insert_cleanup_request(cleanup_targets, %{
+          owner_kind: "snapshot_lifecycle",
+          owner_token: owner_token
+        })
+    end
+  end
+
+  def persist_snapshot_lifecycle_cleanup(_cleanup_targets, _owner_token), do: {:error, :invalid_snapshot_cleanup_owner}
+
+  defp insert_cleanup_request(storage_keys, attrs) do
+    attrs = Map.put(attrs, :storage_keys, storage_keys)
+
+    case %StorageCleanupRequest{} |> StorageCleanupRequest.changeset(attrs) |> Repo.insert() do
       {:ok, cleanup_request} = success ->
         Logger.warning(
           "Persisted copied asset cleanup fallback request_id=#{cleanup_request.id} storage_key_count=#{length(storage_keys)}"
@@ -718,7 +742,9 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp rotate_persisted_cleanup_request(cleanup_request, failed_keys) do
     Repo.transact(fn ->
       with {:ok, replacement} <-
-             Repo.insert(%StorageCleanupRequest{storage_keys: failed_keys}),
+             %StorageCleanupRequest{}
+             |> StorageCleanupRequest.changeset(%{storage_keys: failed_keys})
+             |> Repo.insert(),
            {:ok, _deleted_request} <- Repo.delete(cleanup_request) do
         {:ok, replacement}
       end

@@ -47,44 +47,60 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   # ===========================================================================
 
   defp serialize_snapshots(snapshots, reservations) do
-    Enum.map(snapshots, fn s ->
-      reservation = Map.get(reservations, s.id, %{active_bytes: 0, export_bytes: 0})
-
-      %{
-        id: s.id,
-        title: s.title,
-        description: s.description,
-        versionNumber: s.version_number,
-        insertedAt: s.inserted_at && DateTime.to_iso8601(s.inserted_at),
-        mode: s.mode,
-        lifecycleStatus: s.lifecycle_state,
-        integrityStatus: s.integrity_state,
-        accountedSizeBytes: serialize_optional_byte_count(s.accounted_size_bytes),
-        projectDataSizeBytes: s |> measured_project_data_bytes() |> serialize_optional_byte_count(),
-        metadataSizeBytes: s |> measured_metadata_bytes() |> serialize_optional_byte_count(),
-        assetBlobSizeBytes: serialize_optional_byte_count(s.asset_blob_size_bytes),
-        assetCount: s.asset_count,
-        blobCount: s.blob_count,
-        activeReservationBytes: reservation |> non_export_reservation_bytes() |> serialize_byte_count(),
-        exportReservationBytes: serialize_byte_count(reservation.export_bytes),
-        accountingVersion: s.accounting_version,
-        accountingMeasuredAt: s.accounting_measured_at && DateTime.to_iso8601(s.accounting_measured_at),
-        plannedSizeBytes: serialize_optional_byte_count(s.total_size_bytes),
-        progressPhase: s.progress_phase,
-        progressBytes: serialize_byte_count(s.progress_bytes || 0),
-        progressTotalBytes: serialize_optional_byte_count(s.progress_total_bytes),
-        failureCode: s.failure_code,
-        failureMessage: s.failure_message,
-        capturedAt: s.captured_at && DateTime.to_iso8601(s.captured_at),
-        cancelRequestedAt: s.cancel_requested_at && DateTime.to_iso8601(s.cancel_requested_at),
-        canCancel:
-          s.lifecycle_state in ["pending", "building", "verifying"] &&
-            s.progress_phase != "finalizing" && is_nil(s.cancel_requested_at),
-        entityCounts: s.entity_counts,
-        createdByEmail: s.created_by && s.created_by.email
-      }
-    end)
+    Enum.map(snapshots, &serialize_snapshot(&1, reservations))
   end
+
+  defp serialize_snapshot(snapshot, reservations) do
+    reservation = Map.get(reservations, snapshot.id, %{active_bytes: 0, export_bytes: 0, active_count: 0})
+
+    %{
+      id: snapshot.id,
+      title: snapshot.title,
+      description: snapshot.description,
+      versionNumber: snapshot.version_number,
+      insertedAt: serialize_datetime(snapshot.inserted_at),
+      mode: snapshot.mode,
+      lifecycleStatus: snapshot.lifecycle_state,
+      integrityStatus: snapshot.integrity_state,
+      accountedSizeBytes: serialize_optional_byte_count(snapshot.accounted_size_bytes),
+      projectDataSizeBytes: snapshot |> measured_project_data_bytes() |> serialize_optional_byte_count(),
+      metadataSizeBytes: snapshot |> measured_metadata_bytes() |> serialize_optional_byte_count(),
+      assetBlobSizeBytes: serialize_optional_byte_count(snapshot.asset_blob_size_bytes),
+      assetCount: snapshot.asset_count,
+      blobCount: snapshot.blob_count,
+      activeReservationBytes: reservation |> non_export_reservation_bytes() |> serialize_byte_count(),
+      exportReservationBytes: serialize_byte_count(reservation.export_bytes),
+      accountingVersion: snapshot.accounting_version,
+      accountingMeasuredAt: serialize_datetime(snapshot.accounting_measured_at),
+      plannedSizeBytes: serialize_optional_byte_count(snapshot.total_size_bytes),
+      progressPhase: snapshot.progress_phase,
+      progressBytes: serialize_byte_count(snapshot.progress_bytes || 0),
+      progressTotalBytes: serialize_optional_byte_count(snapshot.progress_total_bytes),
+      failureCode: snapshot.failure_code,
+      failureMessage: snapshot.failure_message,
+      capturedAt: serialize_datetime(snapshot.captured_at),
+      cancelRequestedAt: serialize_datetime(snapshot.cancel_requested_at),
+      canCancel: snapshot_cancellable?(snapshot),
+      canDelete: snapshot_deletable?(snapshot, reservation),
+      entityCounts: snapshot.entity_counts,
+      createdByEmail: snapshot_creator_email(snapshot)
+    }
+  end
+
+  defp serialize_datetime(%DateTime{} = value), do: DateTime.to_iso8601(value)
+  defp serialize_datetime(_value), do: nil
+
+  defp snapshot_cancellable?(snapshot) do
+    snapshot.lifecycle_state in ["pending", "building", "verifying"] and
+      snapshot.progress_phase != "finalizing" and is_nil(snapshot.cancel_requested_at)
+  end
+
+  defp snapshot_deletable?(snapshot, reservation) do
+    snapshot.lifecycle_state in ["ready", "failed", "cancelled"] and reservation.active_count == 0
+  end
+
+  defp snapshot_creator_email(%{created_by: %{email: email}}), do: email
+  defp snapshot_creator_email(_snapshot), do: nil
 
   defp measured_project_data_bytes(%{format_version: 1, project_size_bytes: bytes}), do: bytes
 
@@ -215,6 +231,33 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
            push_event(socket, "snapshot_cancel_failed", %{
              snapshotId: params["id"],
              message: dgettext("projects", "The snapshot could not be cancelled.")
+           })}
+      end
+    end)
+  end
+
+  @impl true
+  def handle_event("delete_snapshot", params, socket) do
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
+      with snapshot_id when not is_nil(snapshot_id) <- params["id"],
+           {snapshot_id, ""} <- Integer.parse(to_string(snapshot_id)),
+           {:ok, _intent} <-
+             Versioning.delete_project_snapshot(
+               socket.assigns.current_scope,
+               socket.assigns.project,
+               snapshot_id
+             ) do
+        {:noreply,
+         socket
+         |> refresh_snapshot_accounting()
+         |> push_event("snapshot_delete_accepted", %{snapshotId: snapshot_id})
+         |> put_flash(:info, dgettext("projects", "Snapshot deletion started."))}
+      else
+        _invalid ->
+          {:noreply,
+           push_event(socket, "snapshot_delete_failed", %{
+             snapshotId: params["id"],
+             message: dgettext("projects", "The snapshot could not be deleted.")
            })}
       end
     end)

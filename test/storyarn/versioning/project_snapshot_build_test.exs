@@ -403,12 +403,21 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert {:ok, requested} = request_snapshot(user, project)
       now = TimeHelpers.now()
 
-      finalizing =
+      building =
         requested
+        |> ProjectSnapshot.build_state_changeset(%{
+          lifecycle_state: "building",
+          progress_phase: "copying",
+          building_started_at: now,
+          state_updated_at: now
+        })
+        |> Repo.update!()
+
+      finalizing =
+        building
         |> ProjectSnapshot.build_state_changeset(%{
           lifecycle_state: "verifying",
           progress_phase: "finalizing",
-          building_started_at: now,
           verifying_started_at: now,
           state_updated_at: now
         })

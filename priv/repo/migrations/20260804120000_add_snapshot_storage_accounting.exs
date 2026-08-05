@@ -2,32 +2,23 @@ defmodule Storyarn.Repo.Migrations.AddSnapshotStorageAccounting do
   use Ecto.Migration
 
   def change do
-    # Reset policy: the canonical accounting contract intentionally has no
-    # compatibility path for project snapshots created before this rollout.
-    # Clear any restoration lock that references those rows before deleting
-    # them, otherwise the restrict FK on projects blocks the reset. This runs
-    # before the new constraints and is deliberately repeatable after a
-    # rollback/reapply cycle.
+    # Reset policy: canonical snapshot accounting has no compatibility path.
+    # ENG-80 supplies the environment/workspace-scoped, audited storage-first
+    # reset. Never turn this migration back into an unaudited global delete.
     execute(
       """
-      UPDATE projects
-      SET restoration_in_progress = FALSE,
-          restoration_started_by_id = NULL,
-          restoration_started_at = NULL,
-          restoration_token = NULL,
-          restoration_claimed_by_job_id = NULL,
-          restoration_snapshot_id = NULL
-      WHERE restoration_snapshot_id IS NOT NULL
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM project_snapshots LIMIT 1) OR
+           EXISTS (SELECT 1 FROM entity_versions LIMIT 1) THEN
+          RAISE EXCEPTION
+            'pre-canonical versioning data remains; run the audited snapshot reset before migration';
+        END IF;
+      END;
+      $$
       """,
       "SELECT 1"
     )
-
-    execute("DELETE FROM project_snapshots", "SELECT 1")
-
-    # The rollout contract resets persisted version-control data as well as
-    # project-level snapshots. Current-version foreign keys use ON DELETE SET
-    # NULL, so no entity can continue pointing at a pre-rollout archive.
-    execute("DELETE FROM entity_versions", "SELECT 1")
 
     # The reset also removes every persisted job for the retired synchronous
     # snapshot implementation. Otherwise Oban could execute a module that no

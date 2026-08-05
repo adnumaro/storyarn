@@ -1,0 +1,299 @@
+defmodule Storyarn.Versioning.SnapshotCleanupIntent do
+  @moduledoc """
+  Durable ownership handoff for deleting one snapshot object namespace.
+
+  Identity and the original exact inventory are immutable. Only the remaining
+  inventory and forward-only processing state may change, so project/workspace
+  cascades cannot erase what storage cleanup still owns.
+  """
+
+  use Ecto.Schema
+
+  import Ecto.Changeset
+
+  alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Versioning.ProjectSnapshot
+
+  @statuses ~w(pending processing retrying completed terminal)
+  @reasons ~w(user_delete retention expired_build project_hard_delete workspace_hard_delete)
+  @origins ~w(user daily pre_restore post_restore)
+  @blob_path ~r|\Ablobs/[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z|
+
+  @type t :: %__MODULE__{
+          id: integer() | nil,
+          project_snapshot_id: integer() | nil,
+          cleanup_request_id: integer(),
+          workspace_id_snapshot: integer(),
+          project_id_snapshot: integer(),
+          project_snapshot_id_snapshot: integer(),
+          deletion_generation: pos_integer(),
+          mode: String.t(),
+          origin: String.t(),
+          reason: String.t(),
+          authority_kind: String.t(),
+          authority_actor_id: integer() | nil,
+          ready_prefix: String.t(),
+          staging_prefix: String.t(),
+          storage_keys: [String.t()],
+          remaining_storage_keys: [String.t()],
+          inventory_digest: String.t(),
+          object_count: pos_integer(),
+          estimated_cleanup_bytes: non_neg_integer(),
+          status: String.t(),
+          retry_count: non_neg_integer(),
+          last_error_code: String.t() | nil,
+          requested_at: DateTime.t(),
+          started_at: DateTime.t() | nil,
+          completed_at: DateTime.t() | nil,
+          terminal_at: DateTime.t() | nil
+        }
+
+  schema "snapshot_cleanup_intents" do
+    field :workspace_id_snapshot, :integer
+    field :project_id_snapshot, :integer
+    field :project_snapshot_id_snapshot, :integer
+    field :deletion_generation, :integer
+    field :mode, :string
+    field :origin, :string
+    field :reason, :string
+    field :authority_kind, :string
+    field :authority_actor_id, :integer
+    field :ready_prefix, :string
+    field :staging_prefix, :string
+    field :storage_keys, {:array, :string}, default: []
+    field :remaining_storage_keys, {:array, :string}, default: []
+    field :inventory_digest, :string
+    field :object_count, :integer
+    field :estimated_cleanup_bytes, :integer
+    field :status, :string
+    field :retry_count, :integer, default: 0
+    field :last_error_code, :string
+    field :requested_at, :utc_datetime
+    field :started_at, :utc_datetime
+    field :completed_at, :utc_datetime
+    field :terminal_at, :utc_datetime
+
+    belongs_to :project_snapshot, ProjectSnapshot
+    belongs_to :cleanup_request, StorageCleanupRequest
+
+    timestamps(type: :utc_datetime)
+  end
+
+  @doc false
+  def create_changeset(intent, attrs) do
+    attrs =
+      attrs
+      |> Map.put_new(:status, "pending")
+      |> Map.put_new(:retry_count, 0)
+      |> Map.put_new(:requested_at, TimeHelpers.now())
+      |> put_remaining_inventory()
+
+    intent
+    |> cast(attrs, [
+      :project_snapshot_id,
+      :cleanup_request_id,
+      :workspace_id_snapshot,
+      :project_id_snapshot,
+      :project_snapshot_id_snapshot,
+      :deletion_generation,
+      :mode,
+      :origin,
+      :reason,
+      :authority_kind,
+      :authority_actor_id,
+      :ready_prefix,
+      :staging_prefix,
+      :storage_keys,
+      :remaining_storage_keys,
+      :inventory_digest,
+      :object_count,
+      :estimated_cleanup_bytes,
+      :status,
+      :retry_count,
+      :requested_at
+    ])
+    |> validate_required([
+      :project_snapshot_id,
+      :cleanup_request_id,
+      :workspace_id_snapshot,
+      :project_id_snapshot,
+      :project_snapshot_id_snapshot,
+      :deletion_generation,
+      :mode,
+      :origin,
+      :reason,
+      :authority_kind,
+      :ready_prefix,
+      :staging_prefix,
+      :storage_keys,
+      :remaining_storage_keys,
+      :inventory_digest,
+      :object_count,
+      :estimated_cleanup_bytes,
+      :status,
+      :retry_count,
+      :requested_at
+    ])
+    |> validate_inclusion(:mode, ["full", "linked"])
+    |> validate_inclusion(:origin, @origins)
+    |> validate_inclusion(:reason, @reasons)
+    |> validate_inclusion(:authority_kind, ["user", "system"])
+    |> validate_inclusion(:status, ["pending"])
+    |> validate_number(:workspace_id_snapshot, greater_than: 0)
+    |> validate_number(:project_id_snapshot, greater_than: 0)
+    |> validate_number(:project_snapshot_id_snapshot, greater_than: 0)
+    |> validate_number(:deletion_generation, greater_than: 0)
+    |> validate_number(:object_count, greater_than: 0)
+    |> validate_number(:estimated_cleanup_bytes, greater_than_or_equal_to: 0)
+    |> validate_number(:retry_count, equal_to: 0)
+    |> validate_authority()
+    |> validate_inventory()
+    |> foreign_key_constraint(:project_snapshot_id)
+    |> foreign_key_constraint(:cleanup_request_id)
+    |> unique_constraint(:project_snapshot_id_snapshot)
+    |> unique_constraint(:cleanup_request_id)
+    |> check_constraint(:status, name: :snapshot_cleanup_intents_identity)
+  end
+
+  @doc false
+  def processing_changeset(%__MODULE__{} = intent, now \\ TimeHelpers.now()) do
+    intent
+    |> change(status: "processing", started_at: intent.started_at || now, last_error_code: nil)
+    |> state_constraints()
+  end
+
+  @doc false
+  def retry_changeset(%__MODULE__{} = intent, remaining_keys, error_code, now \\ TimeHelpers.now()) do
+    intent
+    |> change(
+      status: "retrying",
+      remaining_storage_keys: remaining_keys,
+      retry_count: intent.retry_count + 1,
+      last_error_code: error_code,
+      started_at: intent.started_at || now
+    )
+    |> validate_remaining_inventory(intent)
+    |> state_constraints()
+  end
+
+  @doc false
+  def progress_changeset(%__MODULE__{} = intent, remaining_keys) do
+    intent
+    |> change(remaining_storage_keys: remaining_keys)
+    |> validate_remaining_inventory(intent)
+    |> state_constraints()
+  end
+
+  @doc false
+  def completed_changeset(%__MODULE__{} = intent, now \\ TimeHelpers.now()) do
+    intent
+    |> change(
+      status: "completed",
+      remaining_storage_keys: [],
+      last_error_code: nil,
+      completed_at: now,
+      terminal_at: nil
+    )
+    |> state_constraints()
+  end
+
+  @doc false
+  def terminal_changeset(%__MODULE__{} = intent, remaining_keys, error_code, now \\ TimeHelpers.now()) do
+    intent
+    |> change(
+      status: "terminal",
+      remaining_storage_keys: remaining_keys,
+      retry_count: intent.retry_count + 1,
+      last_error_code: error_code,
+      terminal_at: now
+    )
+    |> validate_remaining_inventory(intent)
+    |> state_constraints()
+  end
+
+  defp put_remaining_inventory(attrs) do
+    if Map.has_key?(attrs, :remaining_storage_keys) or Map.has_key?(attrs, "remaining_storage_keys") do
+      attrs
+    else
+      storage_keys = Map.get(attrs, :storage_keys, Map.get(attrs, "storage_keys", []))
+      Map.put(attrs, :remaining_storage_keys, storage_keys)
+    end
+  end
+
+  defp validate_authority(changeset) do
+    case {get_field(changeset, :authority_kind), get_field(changeset, :authority_actor_id)} do
+      {"user", actor_id} when is_integer(actor_id) and actor_id > 0 -> changeset
+      {"system", nil} -> changeset
+      _invalid -> add_error(changeset, :authority_kind, "does not prove a scoped actor")
+    end
+  end
+
+  defp validate_inventory(changeset) do
+    keys = get_field(changeset, :storage_keys)
+    remaining = get_field(changeset, :remaining_storage_keys)
+    count = get_field(changeset, :object_count)
+    ready_prefix = get_field(changeset, :ready_prefix)
+    staging_prefix = get_field(changeset, :staging_prefix)
+    digest = get_field(changeset, :inventory_digest)
+
+    valid? =
+      is_list(keys) and keys != [] and keys == Enum.uniq(keys) and remaining == keys and
+        count == length(keys) and digest == inventory_digest(keys) and
+        valid_prefix_pair?(ready_prefix, staging_prefix) and
+        valid_storage_keys?(keys, ready_prefix, staging_prefix)
+
+    if valid?, do: changeset, else: add_error(changeset, :storage_keys, "is not an exact canonical inventory")
+  end
+
+  defp validate_remaining_inventory(changeset, intent) do
+    remaining = get_field(changeset, :remaining_storage_keys)
+    original = MapSet.new(intent.storage_keys)
+
+    if is_list(remaining) and remaining == Enum.uniq(remaining) and
+         Enum.all?(remaining, &MapSet.member?(original, &1)),
+       do: changeset,
+       else: add_error(changeset, :remaining_storage_keys, "can only shrink within the original inventory")
+  end
+
+  defp valid_prefix_pair?(ready_prefix, staging_prefix) do
+    is_binary(ready_prefix) and is_binary(staging_prefix) and
+      String.replace(ready_prefix, "/ready/", "/staging/", global: false) == staging_prefix
+  end
+
+  defp valid_storage_keys?(keys, ready_prefix, staging_prefix) do
+    grouped = Enum.group_by(keys, &key_prefix(&1, ready_prefix, staging_prefix))
+    ready_paths = relative_paths(grouped[:ready] || [], ready_prefix)
+    staging_paths = relative_paths(grouped[:staging] || [], staging_prefix)
+
+    ready_paths != [] and MapSet.new(ready_paths) == MapSet.new(staging_paths) and
+      "manifest.json" in ready_paths and "project.json" in ready_paths and
+      Enum.all?(ready_paths, &valid_relative_path?/1)
+  end
+
+  defp key_prefix(key, ready_prefix, _staging_prefix) when is_binary(key) do
+    if String.starts_with?(key, ready_prefix <> "/"), do: :ready, else: :staging
+  end
+
+  defp key_prefix(_key, _ready_prefix, _staging_prefix), do: :invalid
+
+  defp relative_paths(keys, prefix), do: Enum.map(keys, &String.replace_prefix(&1, prefix <> "/", ""))
+
+  defp valid_relative_path?(path) when path in ["manifest.json", "project.json"], do: true
+  defp valid_relative_path?(path), do: Regex.match?(@blob_path, path)
+
+  defp inventory_digest(keys) do
+    keys
+    |> Enum.sort()
+    |> Enum.map_join(fn key -> "#{byte_size(key)}:#{key}" end)
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
+  defp state_constraints(changeset) do
+    changeset
+    |> validate_inclusion(:status, @statuses)
+    |> validate_number(:retry_count, greater_than_or_equal_to: 0)
+    |> check_constraint(:status, name: :snapshot_cleanup_intents_identity)
+  end
+end

@@ -7,6 +7,7 @@ defmodule Storyarn.Assets.Storage.Local do
 
   @behaviour Storyarn.Assets.Storage
 
+  alias Storyarn.Assets.Storage
   alias Storyarn.Assets.Storage.Local.ConditionalCopyRegistry
 
   @stream_chunk_size 1_048_576
@@ -75,6 +76,83 @@ defmodule Storyarn.Assets.Storage.Local do
   end
 
   def stream(_key, _offset, _length, _opts), do: {:error, :invalid_range}
+
+  @impl true
+  def list_prefix(prefix, opts) when is_binary(prefix) and is_list(opts) do
+    with true <- Storage.canonical_prefix?(prefix) and Keyword.keyword?(opts),
+         {:ok, limit} <- list_limit(opts),
+         {:ok, probe_path} <- file_path(prefix <> "__storyarn_inventory_probe__", allow_conditional_copy: true),
+         {:ok, cursor} <- decode_list_cursor(prefix, Keyword.get(opts, :cursor)) do
+      root = Path.dirname(probe_path)
+
+      objects =
+        case File.lstat(root) do
+          {:ok, %{type: :directory}} -> list_regular_files(root, prefix, cursor, limit + 1)
+          _missing_or_unsafe -> []
+        end
+
+      page = Enum.take(objects, limit)
+      next_cursor = if length(objects) > limit, do: List.last(page).key
+
+      {:ok, %{objects: page, cursor: next_cursor}}
+    else
+      false -> {:error, :invalid_prefix}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def list_prefix(_prefix, _opts), do: {:error, :invalid_prefix}
+
+  defp list_regular_files(root, prefix, cursor, limit) do
+    frontier = root |> storage_entries() |> :gb_sets.from_list()
+    {objects, _remaining} = walk_regular_files(frontier, prefix, cursor, limit, [])
+    Enum.reverse(objects)
+  end
+
+  defp walk_regular_files(_frontier, _prefix, _cursor, 0, objects), do: {objects, 0}
+
+  defp walk_regular_files(frontier, prefix, cursor, remaining, objects) do
+    if :gb_sets.is_empty(frontier) do
+      {objects, remaining}
+    else
+      {entry, frontier} = :gb_sets.take_smallest(frontier)
+      walk_storage_entry(entry, frontier, prefix, cursor, remaining, objects)
+    end
+  end
+
+  defp walk_storage_entry({_sort_key, :directory, path, _size}, frontier, prefix, cursor, remaining, objects) do
+    frontier = Enum.reduce(storage_entries(path), frontier, &:gb_sets.add/2)
+    walk_regular_files(frontier, prefix, cursor, remaining, objects)
+  end
+
+  defp walk_storage_entry({key, :regular, _path, size}, frontier, prefix, cursor, remaining, objects) do
+    if String.starts_with?(key, prefix) and after_list_cursor?(key, cursor) do
+      walk_regular_files(frontier, prefix, cursor, remaining - 1, [%{key: key, size: size} | objects])
+    else
+      walk_regular_files(frontier, prefix, cursor, remaining, objects)
+    end
+  end
+
+  defp storage_entries(directory) do
+    case File.ls(directory) do
+      {:ok, names} -> Enum.flat_map(names, &storage_entry(directory, &1))
+      {:error, _reason} -> []
+    end
+  end
+
+  defp storage_entry(directory, name) do
+    path = Path.join(directory, name)
+    key = Path.relative_to(path, upload_dir())
+
+    case File.lstat(path) do
+      {:ok, %{type: :directory}} -> [{key <> "/", :directory, path, 0}]
+      {:ok, %{type: :regular, size: size}} -> [{key, :regular, path, size}]
+      _missing_or_unsafe -> []
+    end
+  end
+
+  defp after_list_cursor?(_key, nil), do: true
+  defp after_list_cursor?(key, cursor), do: key > cursor
 
   @impl true
   # sobelow_skip ["Traversal.FileModule"]
@@ -500,6 +578,23 @@ defmodule Storyarn.Assets.Storage.Local do
       &read_stream_chunk/1,
       &close_stream_file/1
     )
+  end
+
+  defp decode_list_cursor(_prefix, nil), do: {:ok, nil}
+
+  defp decode_list_cursor(prefix, cursor) when is_binary(cursor) do
+    if Storage.canonical_key?(cursor) and String.starts_with?(cursor, prefix),
+      do: {:ok, cursor},
+      else: {:error, :invalid_cursor}
+  end
+
+  defp decode_list_cursor(_prefix, _cursor), do: {:error, :invalid_cursor}
+
+  defp list_limit(opts) do
+    case Keyword.get(opts, :limit, 1_000) do
+      limit when is_integer(limit) and limit > 0 -> {:ok, min(limit, 1_000)}
+      _invalid -> {:error, :invalid_limit}
+    end
   end
 
   defp open_stream_file(path, offset, length) do

@@ -185,6 +185,58 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     end
   end
 
+  describe "list_prefix/2" do
+    test "returns stable bounded pages from only the exact canonical prefix" do
+      prefix = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/"
+
+      for {filename, contents} <- [{"project.json", "one"}, {"manifest.json", "two"}, {"blobs/a.bin", "three"}] do
+        assert {:ok, _url} = Local.upload(prefix <> filename, contents, "application/octet-stream")
+      end
+
+      assert {:ok, _url} =
+               Local.upload(
+                 "projects/1/snapshots/object-sets/v1/ready/OtherToken123456/sibling.json",
+                 "outside",
+                 "application/json"
+               )
+
+      assert {:ok, %{objects: first_page, cursor: cursor}} = Local.list_prefix(prefix, limit: 2)
+      assert length(first_page) == 2
+      assert is_binary(cursor)
+      assert Enum.all?(first_page, &String.starts_with?(&1.key, prefix))
+
+      assert :ok = first_page |> List.first() |> Map.fetch!(:key) |> Local.delete()
+
+      assert {:ok, %{objects: second_page, cursor: nil}} = Local.list_prefix(prefix, limit: 2, cursor: cursor)
+
+      assert (first_page ++ second_page) |> Enum.map(& &1.key) |> Enum.sort() ==
+               Enum.sort([prefix <> "project.json", prefix <> "manifest.json", prefix <> "blobs/a.bin"])
+
+      assert {:error, :invalid_prefix} = Local.list_prefix("", [])
+      assert {:error, :invalid_limit} = Local.list_prefix(prefix, limit: "all")
+      assert {:error, :invalid_cursor} = Local.list_prefix(prefix, cursor: "not-an-offset")
+    end
+
+    test "keeps cursor order stable across sibling files and directories" do
+      prefix = "projects/1/snapshots/object-sets/v1/ready/LexicalOrder1234/"
+
+      for filename <- ["a.txt", "a/z.bin", "b.txt"] do
+        assert {:ok, _url} = Local.upload(prefix <> filename, filename, "application/octet-stream")
+      end
+
+      assert {:ok, %{objects: [first], cursor: first_cursor}} = Local.list_prefix(prefix, limit: 1)
+
+      assert {:ok, %{objects: [second], cursor: second_cursor}} =
+               Local.list_prefix(prefix, limit: 1, cursor: first_cursor)
+
+      assert {:ok, %{objects: [third], cursor: nil}} =
+               Local.list_prefix(prefix, limit: 1, cursor: second_cursor)
+
+      assert Enum.map([first, second, third], & &1.key) ==
+               Enum.map(["a.txt", "a/z.bin", "b.txt"], &(prefix <> &1))
+    end
+  end
+
   # =============================================================================
   # get_url/1
   # =============================================================================

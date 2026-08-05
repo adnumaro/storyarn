@@ -25,6 +25,9 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   end
 
   @impl true
+  defdelegate list_prefix(prefix, opts), to: Local
+
+  @impl true
   def stream(key, offset, length, opts) do
     read_number =
       Agent.get_and_update(__MODULE__, fn state ->

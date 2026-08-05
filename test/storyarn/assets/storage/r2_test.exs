@@ -65,6 +65,63 @@ defmodule Storyarn.Assets.Storage.R2Test do
     end
   end
 
+  describe "list_prefix/2" do
+    test "uses a bounded provider page and returns its continuation token" do
+      prefix = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "GET"
+        assert conn.request_path == "/private-bucket/"
+        assert conn.query_params["list-type"] == "2"
+        assert conn.query_params["prefix"] == prefix
+        assert conn.query_params["max-keys"] == "2"
+        assert_signed_header_request(conn)
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          """
+          <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <IsTruncated>true</IsTruncated>
+            <Contents><Key>#{prefix}manifest.json</Key><Size>12</Size></Contents>
+            <NextContinuationToken>next-page</NextContinuationToken>
+          </ListBucketResult>
+          """
+        )
+      end)
+
+      assert {:ok, %{objects: [object], cursor: "next-page"}} = R2.list_prefix(prefix, limit: 2)
+      assert object == %{key: prefix <> "manifest.json", size: 12}
+    end
+
+    test "rejects unsafe options before contacting the provider" do
+      prefix = "projects/1/snapshots/"
+      assert {:error, :invalid_prefix} = R2.list_prefix("projects/1/snapshots", [])
+      assert {:error, :invalid_limit} = R2.list_prefix(prefix, limit: 0)
+      assert {:error, :invalid_cursor} = R2.list_prefix(prefix, cursor: "")
+    end
+
+    test "rejects an out-of-scope object returned by the provider" do
+      prefix = "projects/1/snapshots/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          """
+          <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <IsTruncated>false</IsTruncated>
+            <Contents><Key>projects/2/assets/private.bin</Key><Size>12</Size></Contents>
+          </ListBucketResult>
+          """
+        )
+      end)
+
+      assert {:error, :invalid_list_response} = R2.list_prefix(prefix, limit: 2)
+    end
+  end
+
   describe "put_if_absent/3" do
     test "uses a conditional PUT and reports creation ownership" do
       Req.Test.expect(__MODULE__, fn conn ->

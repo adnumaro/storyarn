@@ -357,6 +357,15 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
     "projects/#{project_id}/snapshots/object-sets/v#{SnapshotObjectFormat.format_version()}/ready/#{token}"
   end
 
+  defp token_from_ready_prefix(project_id, prefix) do
+    base = "projects/#{project_id}/snapshots/object-sets/v#{SnapshotObjectFormat.format_version()}/ready/"
+
+    case String.replace_prefix(prefix, base, "") do
+      ^prefix -> {:error, :invalid_snapshot_cleanup_scope}
+      token -> if(validate_token(token) == :ok, do: {:ok, token}, else: {:error, :invalid_snapshot_cleanup_scope})
+    end
+  end
+
   @doc false
   def ready_manifest_key?(key) when is_binary(key) do
     match?({:ok, _prefix}, ready_prefix_from_manifest_key(key))
@@ -399,6 +408,61 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   end
 
   def ready_prefix_for_project?(_project_id, _prefix), do: false
+
+  @doc false
+  @spec cleanup_scope_from_capture(pos_integer(), String.t(), binary(), keyword()) ::
+          {:ok, map()} | {:error, term()}
+  def cleanup_scope_from_capture(project_id, ready_prefix, manifest_json, opts \\ [])
+
+  def cleanup_scope_from_capture(project_id, ready_prefix, manifest_json, opts)
+      when is_integer(project_id) and project_id > 0 and is_binary(ready_prefix) and is_binary(manifest_json) and
+             is_list(opts) do
+    with {:ok, token} <- token_from_ready_prefix(project_id, ready_prefix),
+         {:ok, manifest} <- decode_json(manifest_json, SnapshotObjectFormat.manifest_path()),
+         :ok <- SnapshotObjectFormat.validate_manifest(manifest, opts),
+         relative_paths when is_list(relative_paths) <-
+           Enum.map(manifest["objects"], & &1["path"]) ++ [SnapshotObjectFormat.manifest_path()],
+         true <- Enum.all?(relative_paths, &valid_cleanup_relative_path?/1) do
+      staging_prefix = staging_prefix(project_id, token)
+
+      storage_keys =
+        Enum.flat_map([staging_prefix, ready_prefix], fn prefix ->
+          Enum.map(relative_paths, &object_key(prefix, &1))
+        end)
+
+      cleanup = %{
+        project_id: project_id,
+        token: token,
+        staging_prefix: staging_prefix,
+        ready_prefix: ready_prefix,
+        storage_keys: storage_keys
+      }
+
+      staged = %{
+        project_id: project_id,
+        token: token,
+        staging_prefix: staging_prefix,
+        object_prefix: ready_prefix,
+        object_count: length(relative_paths),
+        cleanup: cleanup
+      }
+
+      with {:ok, validated} <- validate_cleanup_scope(staged) do
+        {:ok,
+         Map.merge(validated, %{
+           inventory_digest: cleanup_inventory_digest(storage_keys),
+           estimated_cleanup_bytes: 2 * (manifest["payload_size_bytes"] + byte_size(manifest_json))
+         })}
+      end
+    else
+      false -> {:error, :invalid_snapshot_cleanup_scope}
+      {:error, _reason} = error -> error
+      _invalid -> {:error, :invalid_snapshot_cleanup_scope}
+    end
+  end
+
+  def cleanup_scope_from_capture(_project_id, _ready_prefix, _manifest_json, _opts),
+    do: {:error, :invalid_snapshot_cleanup_scope}
 
   defp fetch_before_stage(opts) when is_list(opts) do
     case Keyword.fetch(opts, :before_stage) do

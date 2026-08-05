@@ -119,7 +119,13 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   @doc "Returns active and export reservation bytes keyed by snapshot id."
   @spec active_reservations_by_snapshot([pos_integer()]) ::
-          %{optional(pos_integer()) => %{active_bytes: non_neg_integer(), export_bytes: non_neg_integer()}}
+          %{
+            optional(pos_integer()) => %{
+              active_bytes: non_neg_integer(),
+              export_bytes: non_neg_integer(),
+              active_count: non_neg_integer()
+            }
+          }
   def active_reservations_by_snapshot(snapshot_ids) when is_list(snapshot_ids) do
     ids = snapshot_ids |> Enum.filter(&(is_integer(&1) and &1 > 0)) |> Enum.uniq()
 
@@ -133,15 +139,17 @@ defmodule Storyarn.Billing.StorageAccounting do
       |> select([reservation], {
         reservation.project_snapshot_id_snapshot,
         reservation.kind,
-        type(sum(reservation.reserved_bytes), :integer)
+        type(sum(reservation.reserved_bytes), :integer),
+        count(reservation.id)
       })
       |> Repo.all()
-      |> Enum.reduce(%{}, fn {snapshot_id, kind, bytes}, acc ->
-        totals = Map.get(acc, snapshot_id, %{active_bytes: 0, export_bytes: 0})
+      |> Enum.reduce(%{}, fn {snapshot_id, kind, bytes, count}, acc ->
+        totals = Map.get(acc, snapshot_id, %{active_bytes: 0, export_bytes: 0, active_count: 0})
 
         totals = %{
           active_bytes: totals.active_bytes + bytes,
-          export_bytes: totals.export_bytes + if(kind == "snapshot_export", do: bytes, else: 0)
+          export_bytes: totals.export_bytes + if(kind == "snapshot_export", do: bytes, else: 0),
+          active_count: totals.active_count + count
         }
 
         Map.put(acc, snapshot_id, totals)
@@ -1544,12 +1552,36 @@ defmodule Storyarn.Billing.StorageAccounting do
       } ->
         :ok
 
+      %SnapshotObjectPublicationClaim{
+        object_prefix: ^object_prefix,
+        storage_reservation_lease_token: ^reservation_lease_token,
+        status: "published"
+      } ->
+        published_claim_deletion_owned?(reservation_id, object_prefix)
+
       _claim ->
         {:error, :snapshot_object_publication_claim_not_poisoned}
     end
   end
 
   defp validate_cleanup_publication_claim(_reservation), do: :ok
+
+  defp published_claim_deletion_owned?(reservation_id, object_prefix) do
+    deleting_snapshot? =
+      Repo.exists?(
+        from(snapshot in ProjectSnapshot,
+          join: reservation in StorageReservation,
+          on: reservation.project_snapshot_id_snapshot == snapshot.id,
+          where:
+            reservation.id == ^reservation_id and snapshot.lifecycle_state == "deleting" and
+              snapshot.object_prefix == ^object_prefix
+        )
+      )
+
+    if deleting_snapshot? and StorageCleanupOwnershipReceipt.handed_off_for_prefix?(object_prefix),
+      do: :ok,
+      else: {:error, :snapshot_object_publication_claim_not_poisoned}
+  end
 
   defp cleanup_inventory_digest(storage_keys) do
     storage_keys

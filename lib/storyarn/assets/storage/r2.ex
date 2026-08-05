@@ -8,6 +8,8 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   @behaviour Storyarn.Assets.Storage
 
+  alias Storyarn.Assets.Storage
+
   @conditional_copy_attempts 3
   @stream_chunk_size 1_048_576
   @multipart_chunk_size 5 * 1024 * 1024
@@ -164,6 +166,24 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   def stream(_key, _offset, _length, _opts), do: {:error, :invalid_range}
+
+  @impl true
+  def list_prefix(prefix, opts) when is_binary(prefix) and is_list(opts) do
+    with true <- Storage.canonical_prefix?(prefix) and Keyword.keyword?(opts),
+         {:ok, limit} <- list_limit(opts),
+         {:ok, request_opts} <- put_continuation_token([prefix: prefix, max_keys: limit], Keyword.get(opts, :cursor)) do
+      case bucket() |> ExAws.S3.list_objects_v2(request_opts) |> ExAws.request() do
+        {:ok, %{body: body}} when is_map(body) -> normalize_list_page(body, prefix)
+        {:error, reason} -> {:error, reason}
+        _invalid -> {:error, :invalid_list_response}
+      end
+    else
+      false -> {:error, :invalid_prefix}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def list_prefix(_prefix, _opts), do: {:error, :invalid_prefix}
 
   @impl true
   def delete(key) do
@@ -399,6 +419,67 @@ defmodule Storyarn.Assets.Storage.R2 do
       request
     end
   end
+
+  defp put_continuation_token(opts, nil), do: {:ok, opts}
+
+  defp put_continuation_token(opts, token) when is_binary(token) and token != "",
+    do: {:ok, Keyword.put(opts, :continuation_token, token)}
+
+  defp put_continuation_token(_opts, _invalid), do: {:error, :invalid_cursor}
+
+  defp list_limit(opts) do
+    case Keyword.get(opts, :limit, 1_000) do
+      limit when is_integer(limit) and limit > 0 -> {:ok, min(limit, 1_000)}
+      _invalid -> {:error, :invalid_limit}
+    end
+  end
+
+  defp normalize_list_page(body, prefix) do
+    contents = Map.get(body, :contents, Map.get(body, "Contents", [])) || []
+
+    with true <- is_list(contents),
+         {:ok, objects} <- normalize_list_objects(contents, prefix),
+         {:ok, cursor} <-
+           normalize_list_cursor(Map.get(body, :next_continuation_token, Map.get(body, "NextContinuationToken"))) do
+      {:ok, %{objects: objects, cursor: cursor}}
+    else
+      _invalid -> {:error, :invalid_list_response}
+    end
+  end
+
+  defp normalize_list_objects(contents, prefix) do
+    contents
+    |> Enum.reduce_while({:ok, []}, fn object, {:ok, objects} ->
+      with true <- is_map(object),
+           key when is_binary(key) <- Map.get(object, :key, Map.get(object, "Key")),
+           true <- Storage.canonical_key?(key) and String.starts_with?(key, prefix),
+           {:ok, size} <- normalize_list_size(Map.get(object, :size, Map.get(object, "Size"))) do
+        {:cont, {:ok, [%{key: key, size: size} | objects]}}
+      else
+        _invalid -> {:halt, {:error, :invalid_list_response}}
+      end
+    end)
+    |> case do
+      {:ok, objects} -> {:ok, Enum.reverse(objects)}
+      error -> error
+    end
+  end
+
+  defp normalize_list_size(size) when is_integer(size) and size >= 0, do: {:ok, size}
+
+  defp normalize_list_size(size) when is_binary(size) do
+    case Integer.parse(size) do
+      {parsed, ""} when parsed >= 0 -> {:ok, parsed}
+      _invalid -> {:error, :invalid_list_response}
+    end
+  end
+
+  defp normalize_list_size(_size), do: {:error, :invalid_list_response}
+
+  defp normalize_list_cursor(nil), do: {:ok, nil}
+  defp normalize_list_cursor(""), do: {:ok, nil}
+  defp normalize_list_cursor(cursor) when is_binary(cursor), do: {:ok, cursor}
+  defp normalize_list_cursor(_cursor), do: {:error, :invalid_list_response}
 
   defp cloudflare_r2_endpoint? do
     case URI.parse(config()[:endpoint_url] || "").host do

@@ -18,6 +18,8 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCrud
+  alias Storyarn.Versioning.ProjectSnapshotLifecycle
+  alias Storyarn.Versioning.ProjectSnapshotReset
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
   alias Storyarn.Versioning.SnapshotObjectStorage
@@ -157,6 +159,66 @@ defmodule Storyarn.Versioning do
   defdelegate cancel_project_snapshot(current_scope, project, snapshot_id),
     to: ProjectSnapshotBuild,
     as: :cancel
+
+  @doc "Authorizes deletion and durably hands every owned object to cleanup."
+  defdelegate delete_project_snapshot(current_scope, project, snapshot_id),
+    to: ProjectSnapshotLifecycle,
+    as: :delete
+
+  @doc false
+  defdelegate prepare_project_snapshot_hard_delete(project),
+    to: ProjectSnapshotLifecycle,
+    as: :prepare_project_hard_delete
+
+  @doc false
+  defdelegate prepare_workspace_snapshot_hard_delete(workspace),
+    to: ProjectSnapshotLifecycle,
+    as: :prepare_workspace_hard_delete
+
+  @doc false
+  defdelegate list_project_snapshot_retention_candidates(now, opts \\ []),
+    to: ProjectSnapshotLifecycle,
+    as: :list_retention_candidates
+
+  @doc false
+  defdelegate delete_project_snapshot_retention_candidate(candidate, now),
+    to: ProjectSnapshotLifecycle,
+    as: :delete_retention_candidate
+
+  @doc false
+  defdelegate list_expired_project_snapshot_build_candidates(now, opts \\ []),
+    to: ProjectSnapshotLifecycle,
+    as: :list_expired_build_candidates
+
+  @doc false
+  defdelegate delete_expired_project_snapshot_build_candidate(candidate, now),
+    to: ProjectSnapshotLifecycle,
+    as: :delete_expired_build_candidate
+
+  @doc false
+  defdelegate process_project_snapshot_cleanup_intent(intent_id, opts \\ []),
+    to: ProjectSnapshotLifecycle,
+    as: :process_cleanup_intent
+
+  @doc "Returns observable snapshot cleanup backlog gauges."
+  defdelegate project_snapshot_cleanup_backlog(),
+    to: ProjectSnapshotLifecycle,
+    as: :cleanup_backlog
+
+  @doc false
+  defdelegate prepare_project_snapshot_reset(workspace_id, environment, opts \\ []),
+    to: ProjectSnapshotReset,
+    as: :prepare
+
+  @doc false
+  defdelegate execute_project_snapshot_reset(plan, confirmation_digest, opts \\ []),
+    to: ProjectSnapshotReset,
+    as: :execute
+
+  @doc false
+  defdelegate validate_project_snapshot_reset_plan(plan),
+    to: ProjectSnapshotReset,
+    as: :validate_plan
 
   @doc "Subscribes the current process to lifecycle changes for one project's snapshots."
   defdelegate subscribe_project_snapshots(project_id),
