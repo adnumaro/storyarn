@@ -1,0 +1,22 @@
+assets/app/shared/utils/storage-accounting.ts
+  s_c2ae682cd97119::t_2b6e307f9e6f50 46,48-49,52-53,55,58,91-94,154-190
+  s_c2ae682cd97119::t_9d7af0ad527c7c 191
+docs/reference/domain-patterns.md
+  s_c2ae682cd97119::t_70f65c862b42ad 35-48,50-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "30efb485dd1ff4816add48088cc0ba61db870024",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
