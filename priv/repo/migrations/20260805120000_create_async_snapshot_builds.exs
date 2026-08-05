@@ -27,9 +27,12 @@ defmodule Storyarn.Repo.Migrations.CreateAsyncSnapshotBuilds do
 
     execute("DELETE FROM project_snapshots", "SELECT 1")
 
+    # Keep the widened column on rollback. Postgrex still decodes bigint into
+    # Elixir integers, while narrowing could overflow after a valid large
+    # snapshot has been captured.
     execute(
       "ALTER TABLE project_snapshots ALTER COLUMN project_size_bytes TYPE bigint USING project_size_bytes::bigint",
-      "ALTER TABLE project_snapshots ALTER COLUMN project_size_bytes TYPE integer USING project_size_bytes::integer"
+      "SELECT 1"
     )
 
     alter table(:project_snapshots) do

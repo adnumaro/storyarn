@@ -15,6 +15,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotCapture
+  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
 
   describe "request_full_project_snapshot/3" do
@@ -281,6 +282,54 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert Repo.get!(StorageReservation, ready.storage_reservation_id).status == "committed"
     end
 
+    test "fails immediately and retains accounting when cleanup ownership cannot be proven" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _asset = upload_asset!(project, user, "ambiguous cleanup source")
+      assert {:ok, requested} = request_snapshot(user, project)
+      job = requested_job(requested)
+      original_storage_config = Application.get_env(:storyarn, :storage, [])
+      original_snapshot_config = Application.get_env(:storyarn, SnapshotObjectStorage, [])
+
+      Application.put_env(
+        :storyarn,
+        :storage,
+        Keyword.put(original_storage_config, :put_if_absent_file_write, fn _path, _data ->
+          {:error, :eio}
+        end)
+      )
+
+      Application.put_env(
+        :storyarn,
+        SnapshotObjectStorage,
+        Keyword.put(original_snapshot_config, :persist_fun, fn _keys ->
+          {:error, :database_unavailable}
+        end)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, :storage, original_storage_config)
+        Application.put_env(:storyarn, SnapshotObjectStorage, original_snapshot_config)
+      end)
+
+      assert {:discard, :cleanup_unowned} =
+               Versioning.perform_project_snapshot_build(requested.id,
+                 job_id: job.id,
+                 attempt: 1,
+                 max_attempts: 5
+               )
+
+      failed = Repo.get!(ProjectSnapshot, requested.id)
+      reservation = Repo.get!(StorageReservation, requested.storage_reservation_id)
+
+      assert failed.lifecycle_state == "failed"
+      assert failed.failure_code == "cleanup_unowned"
+      assert failed.build_attempt == 1
+      assert failed.storage_reservation_id == requested.storage_reservation_id
+      assert reservation.status == "active"
+      assert reservation.storage_started_at
+    end
+
     test "releases an unstarted orphan reservation when its project is deleted before claim" do
       user = user_fixture()
       project = project_fixture(user)
@@ -312,9 +361,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       user = user_fixture()
       project = project_fixture(user)
       assert {:ok, requested} = request_snapshot(user, project)
+      assert :ok = Versioning.subscribe_project_snapshots(project.id)
 
       assert {:ok, cancelled} =
                Versioning.cancel_project_snapshot(user_scope_fixture(user), project, requested.id)
+
+      assert_receive {:project_snapshot_updated, snapshot_id}
+      assert snapshot_id == requested.id
 
       assert cancelled.lifecycle_state == "cancelled"
       assert cancelled.cancel_requested_at

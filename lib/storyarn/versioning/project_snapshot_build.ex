@@ -577,11 +577,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       else: fail_snapshot(snapshot.id, reason)
   end
 
-  defp handle_failed_settlement({:ok, state}, _snapshot, reason, attempt, max_attempts)
-       when state in [:committed, :active_unowned] and attempt < max_attempts, do: {:retry, safe_error_code(reason)}
+  defp handle_failed_settlement({:ok, :committed}, _snapshot, reason, attempt, max_attempts) when attempt < max_attempts,
+    do: {:retry, safe_error_code(reason)}
 
-  defp handle_failed_settlement({:ok, state}, snapshot, _reason, _attempt, _max_attempts)
-       when state in [:committed, :active_unowned], do: fail_snapshot(snapshot.id, :cleanup_unowned)
+  defp handle_failed_settlement({:ok, :active_unowned}, snapshot, _reason, _attempt, _max_attempts),
+    do: fail_snapshot(snapshot.id, :cleanup_unowned)
+
+  defp handle_failed_settlement({:ok, :committed}, snapshot, _reason, _attempt, _max_attempts),
+    do: fail_snapshot(snapshot.id, :cleanup_unowned)
 
   defp handle_failed_settlement({:error, settlement_reason}, snapshot, _reason, _attempt, _max_attempts),
     do: fail_snapshot(snapshot.id, settlement_reason)
@@ -844,14 +847,24 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   end
 
   defp cancel_authorized(project, snapshot_id) do
-    case snapshot_workspace_id(project.id, snapshot_id) do
-      workspace_id when is_integer(workspace_id) ->
-        Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
-          cancel_locked(project.id, snapshot_id)
-        end)
+    result =
+      case snapshot_workspace_id(project.id, snapshot_id) do
+        workspace_id when is_integer(workspace_id) ->
+          Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
+            cancel_locked(project.id, snapshot_id)
+          end)
 
-      nil ->
-        {:error, :project_snapshot_not_found}
+        nil ->
+          {:error, :project_snapshot_not_found}
+      end
+
+    case result do
+      {:ok, %ProjectSnapshot{} = snapshot} = success ->
+        broadcast(snapshot)
+        success
+
+      other ->
+        other
     end
   end
 
