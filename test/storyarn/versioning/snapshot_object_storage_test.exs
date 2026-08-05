@@ -3,6 +3,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.VersioningFixtures
 
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
@@ -102,9 +103,23 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
       source = source_key(project_id, "authorize.png")
       assert {:ok, _url} = Storage.upload(source, content, "image/png")
       asset = asset(151, project_id, "authorize.png", source, content, sha256(content))
+      test_process = self()
 
       assert {:ok, staged} =
-               stage_authorized(project_id, project_object(asset), [asset], token: token)
+               stage_authorized(project_id, project_object(asset), [asset],
+                 token: token,
+                 on_progress: fn completed_bytes ->
+                   send(test_process, {:stage_progress, completed_bytes})
+                   :ok
+                 end
+               )
+
+      assert_received {:stage_progress, project_bytes}
+      assert project_bytes == staged.project_size_bytes
+      assert_received {:stage_progress, payload_bytes}
+      assert payload_bytes == staged.project_size_bytes + byte_size(content)
+      assert_received {:stage_progress, total_bytes}
+      assert total_bytes == staged.total_size_bytes
 
       assert staged.lifecycle_state == "staged"
       assert staged.integrity_state == "verified"
@@ -1183,12 +1198,11 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
       assert {:ok, stored} =
                persist_authorized(project_id, project_object(asset), [asset], token: token)
 
-      attrs = Map.merge(stored, %{project_id: project_id, version_number: 1})
-
-      assert {:ok, _snapshot} =
-               %ProjectSnapshot{}
-               |> ProjectSnapshot.object_set_changeset(attrs)
-               |> Repo.insert()
+      assert %ProjectSnapshot{} =
+               full_project_snapshot_fixture(
+                 project_record,
+                 Map.put(stored, :version_number, 1)
+               )
 
       tracker = StorageCompensation.new()
       :ok = StorageCompensation.track_force_delete(tracker, stored.project_storage_key)

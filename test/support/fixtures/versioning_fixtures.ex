@@ -16,9 +16,21 @@ defmodule Storyarn.VersioningFixtures do
       version_number: version_number,
       title: "Snapshot #{version_number}",
       object_prefix: object_prefix,
+      project_size_bytes: 100,
+      project_checksum: String.duplicate("a", 64),
+      manifest_size_bytes: 50,
+      manifest_checksum: String.duplicate("b", 64),
+      total_size_bytes: 150,
+      object_count: 2,
+      asset_count: 0,
+      blob_count: 0,
       mode: "full",
       lifecycle_state: "pending",
       integrity_state: "unknown",
+      idempotency_key: Ecto.UUID.generate(),
+      capture_boundary: Ecto.UUID.generate(),
+      capture_digest: String.duplicate("c", 64),
+      progress_total_bytes: 150,
       is_auto: false
     }
 
@@ -36,6 +48,10 @@ defmodule Storyarn.VersioningFixtures do
     asset_blob_size = Map.get(attrs, :asset_blob_size_bytes, 25)
     asset_count = Map.get(attrs, :asset_count, if(asset_blob_size > 0, do: 1, else: 0))
     blob_count = Map.get(attrs, :blob_count, if(asset_blob_size > 0, do: 1, else: 0))
+
+    now = Storyarn.Shared.TimeHelpers.now()
+    inserted_at = Map.get(attrs, :inserted_at, now)
+    attrs = Map.delete(attrs, :inserted_at)
 
     defaults = %{
       project_id: project.id,
@@ -60,10 +76,24 @@ defmodule Storyarn.VersioningFixtures do
       accounted_size_bytes: project_size + manifest_size + asset_blob_size,
       asset_blob_size_bytes: asset_blob_size,
       accounting_version: 1,
+      progress_phase: "complete",
+      progress_bytes: project_size + manifest_size + asset_blob_size,
+      progress_total_bytes: project_size + manifest_size + asset_blob_size,
+      verifying_started_at: now,
+      ready_at: now,
+      state_updated_at: now,
       is_auto: false
     }
 
-    %ProjectSnapshot{}
+    %ProjectSnapshot{
+      idempotency_key: Ecto.UUID.generate(),
+      capture_boundary: Ecto.UUID.generate(),
+      capture_digest: String.duplicate("c", 64),
+      captured_at: inserted_at,
+      build_attempt: 1,
+      building_started_at: now,
+      inserted_at: inserted_at
+    }
     |> ProjectSnapshot.object_set_changeset(Map.merge(defaults, attrs))
     |> Repo.insert!()
   end

@@ -16,6 +16,7 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.ConflictDetector
   alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCrud
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
@@ -142,6 +143,26 @@ defmodule Storyarn.Versioning do
 
   # ========== Project Snapshots ==========
 
+  @doc "Persists one immutable full-snapshot request and enqueues its worker atomically."
+  defdelegate request_full_project_snapshot(current_scope, project, attrs),
+    to: ProjectSnapshotBuild,
+    as: :request
+
+  @doc false
+  defdelegate perform_project_snapshot_build(snapshot_id, opts),
+    to: ProjectSnapshotBuild,
+    as: :perform
+
+  @doc "Requests cooperative cancellation for an in-progress project snapshot."
+  defdelegate cancel_project_snapshot(current_scope, project, snapshot_id),
+    to: ProjectSnapshotBuild,
+    as: :cancel
+
+  @doc "Subscribes the current process to lifecycle changes for one project's snapshots."
+  defdelegate subscribe_project_snapshots(project_id),
+    to: ProjectSnapshotBuild,
+    as: :subscribe
+
   @doc """
   Lists project snapshots, ordered by version number descending.
   """
@@ -190,12 +211,22 @@ defmodule Storyarn.Versioning do
     to: SnapshotObjectStorage,
     as: :persist
 
+  @doc "Materializes exact project and manifest bytes without writing storage objects."
+  defdelegate prepare_snapshot_object_set(project_id, project_snapshot, assets, opts \\ []),
+    to: SnapshotObjectStorage,
+    as: :prepare
+
   @doc """
   Stages and verifies a canonical snapshot object set without publishing it.
   """
   defdelegate stage_snapshot_object_set(project_id, project_snapshot, assets, opts \\ []),
     to: SnapshotObjectStorage,
     as: :stage
+
+  @doc "Stages a previously materialized immutable snapshot capture."
+  defdelegate stage_prepared_snapshot_object_set(project_id, prepared, opts \\ []),
+    to: SnapshotObjectStorage,
+    as: :stage_prepared
 
   @doc """
   Publishes a staged object set after the supplied exact-size authorization.

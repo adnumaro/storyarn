@@ -165,6 +165,39 @@
         "corrupt": "Dañada",
         "incomplete": "Incompleta"
       },
+      "create": {
+        "heading": "Crear una snapshot completa",
+        "description": "Captura el proyecto y todos sus recursos actuales en una snapshot autocontenida y verificable de forma independiente.",
+        "title": "Nombre de la snapshot",
+        "title_placeholder": "Nombre opcional del hito",
+        "notes": "Notas",
+        "notes_placeholder": "Contexto opcional para tu equipo",
+        "full_mode": "Snapshot completa · sin dependencias de recursos externos",
+        "reservation_note": "Storyarn mide la captura exacta y reserva ese almacenamiento antes de iniciar el trabajo en segundo plano. Si no hay capacidad suficiente, no se encola nada.",
+        "slot_usage": "Espacios para snapshots: {used} de {limit} usados",
+        "slot_usage_unknown": "Espacios para snapshots usados: {used} · límite no disponible",
+        "submit": "Crear snapshot",
+        "submitting": "Capturando…",
+        "storage_limit_reached": "Esta snapshot necesita {required}, pero solo hay {available} disponibles. No se ha encolado nada.",
+        "snapshot_limit_reached": "Este proyecto usa {used} de {limit} espacios para snapshots. No se ha encolado nada.",
+        "request_failed": "No se ha podido solicitar la snapshot. No se ha encolado nada.",
+        "connection_failed": "La conexión se ha interrumpido. Puedes reintentar con seguridad la misma solicitud.",
+        "cancel_failed": "No se ha podido cancelar la snapshot."
+      },
+      "progress": {
+        "pending": "En cola",
+        "copying": "Copiando recursos protegidos",
+        "verifying": "Verificando la integridad de los objetos",
+        "finalizing": "Publicando el manifest verificado",
+        "retrying": "Preparando un reintento seguro",
+        "complete": "Completada",
+        "failed": "Fallida",
+        "cancelled": "Cancelada",
+        "reserved": "Almacenamiento reservado: {storage}",
+        "cancel": "Cancelar creación",
+        "cancelling": "Cancelación solicitada",
+        "accessibility": "Progreso de creación de la snapshot: {percent}"
+      },
       "measurements": {
         "accounted_size": "Almacenamiento de la snapshot",
         "project_data": "Datos del proyecto",
@@ -173,7 +206,8 @@
         "inventory": "Recursos lógicos: {assets} · Blobs únicos: {blobs}",
         "measured": "Contabilidad v{version} medida el {date}",
         "active_reservation": "Reserva de trabajo activa: {storage}",
-        "export_reservation": "Reserva de exportación ZIP: {storage}"
+        "export_reservation": "Reserva de exportación ZIP: {storage}",
+        "planned_size": "Snapshot prevista: {storage}"
       },
       "entity_types": {
         "sheets": "{count} ficha | {count} fichas",

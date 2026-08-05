@@ -118,6 +118,9 @@ config :storyarn, Oban,
     # rescue, and so an expiry backlog cannot starve execution.
     ai: 2,
     ai_maintenance: 1,
+    # Full snapshots are user-facing but deliberately serialized per machine:
+    # each job may stream many large objects and owns durable retry state.
+    snapshots: 1,
     storage_cleanup: 1
   ],
   plugins: [

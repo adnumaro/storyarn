@@ -64,18 +64,13 @@ defmodule Storyarn.Versioning.ChangeDetectorTest do
     inserted_at = Keyword.get(opts, :inserted_at)
     version = System.unique_integer([:positive])
 
-    snapshot =
-      project_id
-      |> then(&Repo.get!(Project, &1))
-      |> full_project_snapshot_fixture(%{version_number: version, is_auto: is_auto})
+    attrs =
+      then(%{version_number: version, is_auto: is_auto}, fn attrs ->
+        if inserted_at, do: Map.put(attrs, :inserted_at, inserted_at), else: attrs
+      end)
 
-    if inserted_at do
-      Repo.query!("UPDATE project_snapshots SET inserted_at = $1 WHERE id = $2", [
-        inserted_at,
-        snapshot.id
-      ])
-    end
-
-    snapshot
+    project_id
+    |> then(&Repo.get!(Project, &1))
+    |> full_project_snapshot_fixture(attrs)
   end
 end

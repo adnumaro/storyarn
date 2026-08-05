@@ -4,6 +4,7 @@ defmodule Storyarn.Billing.StorageAccountingConcurrencyTest do
   import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.VersioningFixtures
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.User
@@ -12,10 +13,8 @@ defmodule Storyarn.Billing.StorageAccountingConcurrencyTest do
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Workspaces.Workspace
 
-  @checksum String.duplicate("a", 64)
   @timeout 10_000
 
   test "concurrent reservations cannot both consume the same workspace capacity" do
@@ -178,41 +177,18 @@ defmodule Storyarn.Billing.StorageAccountingConcurrencyTest do
   end
 
   defp insert_full_snapshot!(project) do
-    token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
-    prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
-
-    %ProjectSnapshot{}
-    |> ProjectSnapshot.object_set_changeset(%{
-      project_id: project.id,
+    full_project_snapshot_fixture(project, %{
       version_number: 1,
-      project_storage_key: prefix <> "/project.json",
       project_size_bytes: 10,
-      project_checksum: @checksum,
-      format_version: 1,
-      object_prefix: prefix,
-      manifest_storage_key: prefix <> "/manifest.json",
       manifest_size_bytes: 10,
-      manifest_checksum: String.duplicate("b", 64),
-      total_size_bytes: 30,
-      object_count: 3,
+      asset_blob_size_bytes: 10,
       asset_count: 1,
       blob_count: 1
     })
-    |> Repo.insert!()
   end
 
   defp insert_pending_snapshot!(project) do
-    token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
-    prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
-
-    %ProjectSnapshot{}
-    |> ProjectSnapshot.pending_object_set_changeset(%{
-      project_id: project.id,
-      version_number: 1,
-      object_prefix: prefix,
-      mode: "full"
-    })
-    |> Repo.insert!()
+    pending_project_snapshot_fixture(project, %{version_number: 1})
   end
 
   defp cleanup_fixture(user, project, workspace) do

@@ -245,6 +245,8 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
           %{
             snapshots: snapshots,
             snapshot_reservations: Billing.active_storage_reservations_by_snapshot(Enum.map(snapshots, & &1.id)),
+            snapshot_slots_used: Billing.project_snapshot_slot_usage(project.id),
+            snapshot_slots_limit: Billing.plan_limit(plan, :project_snapshots_per_project),
             storage_usage: Billing.workspace_storage_usage(project.workspace_id),
             storage_limit: Billing.plan_limit(plan, :storage_bytes_per_workspace)
           }

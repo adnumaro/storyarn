@@ -21,6 +21,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Assets.StorageCompensation
@@ -57,6 +58,22 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
           asset_count: non_neg_integer(),
           blob_count: non_neg_integer(),
           staging_cleanup_request_id: pos_integer() | nil
+        }
+
+  @type prepared_capture :: %{
+          capture_digest: String.t(),
+          project_json: binary(),
+          manifest_json: binary(),
+          source_keys: %{String.t() => String.t()},
+          project_size_bytes: pos_integer(),
+          project_checksum: String.t(),
+          manifest_size_bytes: pos_integer(),
+          manifest_checksum: String.t(),
+          total_size_bytes: pos_integer(),
+          asset_blob_size_bytes: non_neg_integer(),
+          object_count: pos_integer(),
+          asset_count: non_neg_integer(),
+          blob_count: non_neg_integer()
         }
 
   @type cleanup_scope :: %{
@@ -107,6 +124,40 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
           staging_cleanup_request_id: nil,
           cleanup: cleanup_scope()
         }
+
+  @doc """
+  Materializes the exact immutable JSON objects and protected source map for a
+  later asynchronous build.
+
+  No storage object is written. Asset bytes remain outside application memory;
+  the returned source keys point at content-addressed project blobs which the
+  asset deletion path is forbidden to remove.
+  """
+  @spec prepare(pos_integer(), map(), [Asset.t()], keyword()) ::
+          {:ok, prepared_capture()} | {:error, term()}
+  def prepare(project_id, project_snapshot, assets, opts \\ [])
+
+  def prepare(project_id, project_snapshot, assets, opts)
+      when is_integer(project_id) and project_id > 0 and is_list(assets) and is_list(opts) do
+    opts = Keyword.put_new(opts, :source_key_mode, :protected_blob)
+
+    with {:ok, normalized_project} <- normalize_project_snapshot(project_snapshot),
+         {:ok, project} <- SnapshotObjectFormat.portable_project(normalized_project),
+         {:ok, catalog} <- SnapshotObjectFormat.build_catalog(assets, Keyword.put(opts, :project_id, project_id)),
+         {:ok, project_descriptor, project_json} <- project_descriptor(project, opts),
+         {:ok, manifest} <-
+           SnapshotObjectFormat.build_manifest(
+             project,
+             catalog.assets,
+             catalog.blobs,
+             Keyword.put(opts, :project_descriptor, project_descriptor)
+           ),
+         {:ok, manifest_json, manifest_descriptor} <- manifest_descriptor(manifest, opts) do
+      {:ok, prepared_capture(project_json, manifest_json, manifest, manifest_descriptor, catalog.source_keys)}
+    end
+  end
+
+  def prepare(_project_id, _project_snapshot, _assets, _opts), do: {:error, :invalid_snapshot_object_source}
 
   @doc """
   Stages, verifies, authorizes, and publishes a complete snapshot object set.
@@ -160,24 +211,37 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
 
   def stage(project_id, project_snapshot, assets, opts)
       when is_integer(project_id) and project_id > 0 and is_list(assets) do
+    opts = Keyword.put_new(opts, :source_key_mode, :asset)
+
+    with {:ok, prepared} <- prepare(project_id, project_snapshot, assets, opts) do
+      stage_prepared(project_id, prepared, opts)
+    end
+  end
+
+  def stage(_project_id, _project_snapshot, _assets, _opts), do: {:error, :invalid_snapshot_object_source}
+
+  @doc """
+  Stages an exact capture previously returned by `prepare/4`.
+
+  The JSON digests, manifest inventory, and protected source-key inventory are
+  revalidated before any claim or storage write. This is the asynchronous
+  boundary used by snapshot workers; it never re-reads current project rows.
+  """
+  @spec stage_prepared(pos_integer(), prepared_capture(), keyword()) ::
+          {:ok, staged_object_set()} | {:error, term()}
+  def stage_prepared(project_id, prepared, opts \\ [])
+
+  def stage_prepared(project_id, prepared, opts)
+      when is_integer(project_id) and project_id > 0 and is_map(prepared) and is_list(opts) do
     token = Keyword.get(opts, :token, SnapshotStorage.unique_key_suffix())
 
     with {:ok, before_stage} <- fetch_before_stage(opts),
+         {:ok, on_progress} <- fetch_on_progress(opts),
          {:ok, stage_reservation} <- fetch_stage_reservation(opts),
          :ok <- validate_token(token),
          :ok <- validate_canonical_stage_limits(opts),
          :ok <- ensure_namespace_not_handed_off(project_id, token),
-         {:ok, project} <- SnapshotObjectFormat.portable_project(project_snapshot),
-         {:ok, catalog} <- SnapshotObjectFormat.build_catalog(assets, Keyword.put(opts, :project_id, project_id)),
-         {:ok, project_descriptor, project_json} <- project_descriptor(project, opts),
-         {:ok, manifest} <-
-           SnapshotObjectFormat.build_manifest(
-             project,
-             catalog.assets,
-             catalog.blobs,
-             Keyword.put(opts, :project_descriptor, project_descriptor)
-           ),
-         {:ok, manifest_json, manifest_descriptor} <- manifest_descriptor(manifest, opts) do
+         {:ok, source} <- validate_prepared_capture(project_id, prepared, opts) do
       staging_prefix = staging_prefix(project_id, token)
       ready_prefix = ready_prefix(project_id, token)
       limits = SnapshotObjectFormat.limits(opts)
@@ -188,50 +252,38 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
           token,
           staging_prefix,
           ready_prefix,
-          manifest,
-          manifest_descriptor,
+          source.manifest,
+          source.manifest_descriptor,
           limits
         )
 
       with {:ok, claimed_staged, action} <- acquire_stage_claim(staged, stage_reservation) do
+        payload = %{
+          project_descriptor: source.project_descriptor,
+          project_json: prepared.project_json,
+          blobs: source.blobs,
+          source_keys: prepared.source_keys,
+          manifest_descriptor: source.manifest_descriptor,
+          manifest_json: prepared.manifest_json
+        }
+
         authorize_and_stage_claimed_object_set(
           before_stage,
           claimed_staged,
           action,
-          project_descriptor,
-          project_json,
-          catalog,
-          manifest_descriptor,
-          manifest_json
+          payload,
+          on_progress
         )
       end
     end
   end
 
-  def stage(_project_id, _project_snapshot, _assets, _opts), do: {:error, :invalid_snapshot_object_source}
+  def stage_prepared(_project_id, _prepared, _opts), do: {:error, :invalid_prepared_snapshot_capture}
 
-  defp authorize_and_stage_claimed_object_set(
-         before_stage,
-         claimed_staged,
-         action,
-         project_descriptor,
-         project_json,
-         catalog,
-         manifest_descriptor,
-         manifest_json
-       ) do
+  defp authorize_and_stage_claimed_object_set(before_stage, claimed_staged, action, payload, on_progress) do
     case authorize_claimed_stage(before_stage, claimed_staged, action) do
       :ok ->
-        stage_claimed_object_set(
-          claimed_staged,
-          action,
-          project_descriptor,
-          project_json,
-          catalog.blobs,
-          catalog.source_keys,
-          manifest_descriptor,
-          manifest_json
-        )
+        stage_claimed_object_set(claimed_staged, action, payload, on_progress)
 
       {:error, reason} ->
         handle_stage_authorization_failure(claimed_staged, reason)
@@ -357,6 +409,15 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   end
 
   defp fetch_before_stage(_opts), do: {:error, :invalid_snapshot_stage_authorizer}
+
+  defp fetch_on_progress(opts) when is_list(opts) do
+    case Keyword.get(opts, :on_progress, fn _completed_bytes -> :ok end) do
+      on_progress when is_function(on_progress, 1) -> {:ok, on_progress}
+      _invalid -> {:error, :invalid_snapshot_progress_callback}
+    end
+  end
+
+  defp fetch_on_progress(_opts), do: {:error, :invalid_snapshot_progress_callback}
 
   defp fetch_stage_reservation(opts) when is_list(opts) do
     case Keyword.fetch(opts, :storage_reservation) do
@@ -792,16 +853,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
 
   defp classify_stage_claim(nil, _inventory_digest), do: {:error, :snapshot_object_stage_claim_missing}
 
-  defp stage_claimed_object_set(
-         staged,
-         action,
-         _project_descriptor,
-         _project_json,
-         _blobs,
-         _source_keys,
-         _manifest_descriptor,
-         _manifest_json
-       )
+  defp stage_claimed_object_set(staged, action, _payload, _on_progress)
        when action in [:staged, :publishing, :published] do
     case verify_publishable_object_set(staged) do
       {:ok, _manifest, _manifest_descriptor, _stored, publication_state}
@@ -813,26 +865,8 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
     end
   end
 
-  defp stage_claimed_object_set(
-         staged,
-         :write,
-         project_descriptor,
-         project_json,
-         blobs,
-         source_keys,
-         manifest_descriptor,
-         manifest_json
-       ) do
-    result =
-      stage_object_set(
-        staged,
-        project_descriptor,
-        project_json,
-        blobs,
-        source_keys,
-        manifest_descriptor,
-        manifest_json
-      )
+  defp stage_claimed_object_set(staged, :write, payload, on_progress) do
+    result = stage_object_set(staged, payload, on_progress)
 
     case result do
       {:ok, staged} ->
@@ -1109,16 +1143,17 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
     |> Base.encode16(case: :lower)
   end
 
-  defp stage_object_set(staged, project_descriptor, project_json, blobs, source_keys, manifest_descriptor, manifest_json) do
+  defp stage_object_set(staged, payload, on_progress) do
     result =
       write_staged_object_set(
         staged.staging_prefix,
-        project_descriptor,
-        project_json,
-        blobs,
-        source_keys,
-        manifest_descriptor,
-        manifest_json
+        payload.project_descriptor,
+        payload.project_json,
+        payload.blobs,
+        payload.source_keys,
+        payload.manifest_descriptor,
+        payload.manifest_json,
+        on_progress
       )
 
     case result do
@@ -1140,11 +1175,15 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
          blobs,
          source_keys,
          manifest_descriptor,
-         manifest_json
+         manifest_json,
+         on_progress
        ) do
     with :ok <- stage_project(staging_prefix, project_descriptor, project_json),
-         :ok <- stage_blobs(staging_prefix, blobs, source_keys) do
-      stage_manifest(staging_prefix, manifest_descriptor, manifest_json)
+         :ok <- invoke_progress(on_progress, project_descriptor["size_bytes"]),
+         {:ok, completed_bytes} <-
+           stage_blobs(staging_prefix, blobs, source_keys, on_progress, project_descriptor["size_bytes"]),
+         :ok <- stage_manifest(staging_prefix, manifest_descriptor, manifest_json) do
+      invoke_progress(on_progress, completed_bytes + manifest_descriptor["size_bytes"])
     end
   rescue
     exception ->
@@ -1723,6 +1762,165 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   defp missing_storage_object?({:http_error, 404, _response}), do: true
   defp missing_storage_object?(_reason), do: false
 
+  defp normalize_project_snapshot(project_snapshot) when is_map(project_snapshot) do
+    with {:ok, json} <- Jason.encode(project_snapshot),
+         {:ok, normalized} <- Jason.decode(json) do
+      {:ok, normalized}
+    else
+      {:error, _reason} -> {:error, :invalid_project_object}
+    end
+  end
+
+  defp normalize_project_snapshot(_project_snapshot), do: {:error, :invalid_project_object}
+
+  defp prepared_capture(project_json, manifest_json, manifest, manifest_descriptor, source_keys) do
+    project_descriptor = manifest["project"]
+    counts = manifest["counts"]
+    manifest_size = manifest_descriptor["size_bytes"]
+    total_size = manifest["payload_size_bytes"] + manifest_size
+    asset_blob_size = total_size - project_descriptor["size_bytes"] - manifest_size
+
+    prepared = %{
+      project_json: project_json,
+      manifest_json: manifest_json,
+      source_keys: source_keys,
+      project_size_bytes: project_descriptor["size_bytes"],
+      project_checksum: project_descriptor["sha256"],
+      manifest_size_bytes: manifest_size,
+      manifest_checksum: manifest_descriptor["sha256"],
+      total_size_bytes: total_size,
+      asset_blob_size_bytes: asset_blob_size,
+      object_count: counts["payload_objects"] + 1,
+      asset_count: counts["assets"],
+      blob_count: counts["blobs"]
+    }
+
+    Map.put(prepared, :capture_digest, capture_digest(prepared))
+  end
+
+  defp validate_prepared_capture(
+         project_id,
+         %{project_json: project_json, manifest_json: manifest_json, source_keys: source_keys} = prepared,
+         opts
+       )
+       when is_binary(project_json) and is_binary(manifest_json) and is_map(source_keys) do
+    with {:ok, project} <- decode_json(project_json, SnapshotObjectFormat.project_path()),
+         :ok <- SnapshotObjectFormat.validate_project(project),
+         {:ok, manifest} <- decode_json(manifest_json, SnapshotObjectFormat.manifest_path()),
+         :ok <- SnapshotObjectFormat.validate_manifest(manifest, opts),
+         project_descriptor = manifest["project"],
+         :ok <- validate_prepared_descriptor(project_descriptor, project_json, "project"),
+         manifest_descriptor = prepared_manifest_descriptor(manifest_json),
+         :ok <-
+           validate_prepared_sources(
+             project_id,
+             manifest["objects"],
+             source_keys,
+             Keyword.get(opts, :source_key_mode, :protected_blob)
+           ),
+         expected = prepared_capture(project_json, manifest_json, manifest, manifest_descriptor, source_keys),
+         true <- Map.take(prepared, Map.keys(expected)) == expected do
+      {:ok,
+       %{
+         project: project,
+         manifest: manifest,
+         project_descriptor: project_descriptor,
+         manifest_descriptor: manifest_descriptor,
+         blobs: Enum.filter(manifest["objects"], &(&1["kind"] == "asset_blob"))
+       }}
+    else
+      false -> {:error, :prepared_snapshot_capture_mismatch}
+      {:error, _reason} = error -> error
+      _invalid -> {:error, :invalid_prepared_snapshot_capture}
+    end
+  end
+
+  defp validate_prepared_capture(_project_id, _prepared, _opts), do: {:error, :invalid_prepared_snapshot_capture}
+
+  defp validate_prepared_descriptor(
+         %{
+           "kind" => "project",
+           "path" => "project.json",
+           "sha256" => checksum,
+           "size_bytes" => size_bytes,
+           "content_type" => "application/json"
+         },
+         bytes,
+         _label
+       ) do
+    if size_bytes == byte_size(bytes) and checksum == sha256(bytes),
+      do: :ok,
+      else: {:error, :prepared_snapshot_project_mismatch}
+  end
+
+  defp validate_prepared_descriptor(_descriptor, _bytes, _label), do: {:error, :prepared_snapshot_project_mismatch}
+
+  defp prepared_manifest_descriptor(manifest_json) do
+    %{
+      "kind" => "manifest",
+      "path" => SnapshotObjectFormat.manifest_path(),
+      "sha256" => sha256(manifest_json),
+      "size_bytes" => byte_size(manifest_json),
+      "content_type" => "application/json"
+    }
+  end
+
+  defp validate_prepared_sources(project_id, objects, source_keys, source_key_mode)
+       when is_list(objects) and source_key_mode in [:asset, :protected_blob] do
+    blobs = Enum.filter(objects, &(&1["kind"] == "asset_blob"))
+    hashes = MapSet.new(blobs, & &1["sha256"])
+
+    with true <- MapSet.new(Map.keys(source_keys)) == hashes,
+         true <-
+           Enum.all?(blobs, &valid_prepared_source?(project_id, &1, source_keys, source_key_mode)) do
+      :ok
+    else
+      false -> {:error, :prepared_snapshot_source_inventory_mismatch}
+    end
+  end
+
+  defp validate_prepared_sources(_project_id, _objects, _source_keys, _source_key_mode),
+    do: {:error, :prepared_snapshot_source_inventory_mismatch}
+
+  defp valid_prepared_source?(project_id, blob, source_keys, :protected_blob) do
+    hash = blob["sha256"]
+    content_type = blob["content_type"]
+    expected = BlobStore.blob_key(project_id, hash, BlobStore.ext_from_content_type(content_type))
+    Map.get(source_keys, hash) == expected and Storage.canonical_key?(expected)
+  end
+
+  defp valid_prepared_source?(project_id, blob, source_keys, :asset) do
+    source_key = Map.get(source_keys, blob["sha256"])
+    expected_project_id = Integer.to_string(project_id)
+
+    case is_binary(source_key) && String.split(source_key, "/", trim: false) do
+      ["projects", ^expected_project_id, "assets", asset_uuid, filename] ->
+        Storage.canonical_key?(source_key) and match?({:ok, _uuid}, Ecto.UUID.cast(asset_uuid)) and
+          filename not in ["", ".", "..", ".storyarn-copy"]
+
+      _invalid ->
+        false
+    end
+  end
+
+  defp capture_digest(prepared) do
+    source_inventory =
+      prepared.source_keys
+      |> Enum.sort()
+      |> Enum.map(fn {hash, key} -> [encode_digest_part(hash), encode_digest_part(key)] end)
+
+    [
+      "storyarn.project_snapshot.capture.v1",
+      encode_digest_part(prepared.project_json),
+      encode_digest_part(prepared.manifest_json),
+      source_inventory
+    ]
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
+  defp encode_digest_part(value) when is_binary(value), do: [Integer.to_string(byte_size(value)), ":", value]
+
   defp project_descriptor(project, opts) do
     json = project |> Jason.encode_to_iodata!() |> IO.iodata_to_binary()
     limits = SnapshotObjectFormat.limits(opts)
@@ -1771,16 +1969,35 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
     end
   end
 
-  defp stage_blobs(prefix, blobs, source_keys) do
-    Enum.reduce_while(blobs, :ok, fn blob, :ok ->
+  defp stage_blobs(prefix, blobs, source_keys, on_progress, initial_bytes) do
+    Enum.reduce_while(blobs, {:ok, initial_bytes}, fn blob, {:ok, completed_bytes} ->
       source_key = source_keys[blob["sha256"]]
       destination_key = object_key(prefix, blob["path"])
 
       case copy_and_verify(source_key, destination_key, blob) do
-        :ok -> {:cont, :ok}
-        {:error, _reason} = error -> {:halt, error}
+        :ok ->
+          completed_bytes = completed_bytes + blob["size_bytes"]
+          continue_after_progress(on_progress, completed_bytes)
+
+        {:error, _reason} = error ->
+          {:halt, error}
       end
     end)
+  end
+
+  defp continue_after_progress(on_progress, completed_bytes) do
+    case invoke_progress(on_progress, completed_bytes) do
+      :ok -> {:cont, {:ok, completed_bytes}}
+      {:error, _reason} = error -> {:halt, error}
+    end
+  end
+
+  defp invoke_progress(on_progress, completed_bytes) do
+    case on_progress.(completed_bytes) do
+      :ok -> :ok
+      {:error, _reason} = error -> error
+      _invalid -> {:error, :invalid_snapshot_progress_result}
+    end
   end
 
   defp copy_and_verify(source_key, destination_key, descriptor) when is_binary(source_key) do

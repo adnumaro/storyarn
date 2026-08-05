@@ -14,19 +14,47 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
   end
 
   describe "canonical rollout boundary" do
-    test "database rejects a project snapshot without canonical identity", %{project: project} do
+    test "database rejects a project snapshot with a noncanonical object target", %{project: project} do
+      now = Storyarn.Shared.TimeHelpers.now()
+
       noncanonical_changeset =
-        Ecto.Changeset.change(%ProjectSnapshot{}, %{
+        %ProjectSnapshot{}
+        |> Ecto.Changeset.change(%{
           project_id: project.id,
           version_number: 1,
-          project_storage_key: "snapshots/invalid-monolith.json.gz",
+          project_storage_key: "snapshots/invalid-monolith/project.json",
           project_size_bytes: 100,
-          project_checksum: String.duplicate("a", 64)
+          project_checksum: String.duplicate("a", 64),
+          format_version: 1,
+          object_prefix: "snapshots/invalid-monolith",
+          manifest_storage_key: "snapshots/invalid-monolith/manifest.json",
+          manifest_size_bytes: 50,
+          manifest_checksum: String.duplicate("b", 64),
+          total_size_bytes: 150,
+          object_count: 2,
+          asset_count: 0,
+          blob_count: 0,
+          mode: "full",
+          lifecycle_state: "pending",
+          integrity_state: "unknown",
+          idempotency_key: Ecto.UUID.generate(),
+          capture_boundary: Ecto.UUID.generate(),
+          capture_digest: String.duplicate("c", 64),
+          captured_at: now,
+          progress_phase: "pending",
+          progress_bytes: 0,
+          progress_total_bytes: 150,
+          build_attempt: 0,
+          state_updated_at: now
         })
+        |> Ecto.Changeset.check_constraint(:object_prefix,
+          name: :project_snapshots_object_target
+        )
 
-      assert_raise Ecto.ConstraintError, ~r/project_snapshots_accounting_identity/, fn ->
-        Repo.insert!(noncanonical_changeset)
-      end
+      assert {:error, changeset} = Repo.insert(noncanonical_changeset)
+
+      assert {"is invalid", constraint: :check, constraint_name: "project_snapshots_object_target"} =
+               changeset.errors[:object_prefix]
     end
   end
 

@@ -12,8 +12,10 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
 
   alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
+  alias Storyarn.Billing.StorageReservation
   alias Storyarn.Projects.Project
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.SnapshotObjectStorage
 
   @allocated_object_set_fields [
@@ -22,7 +24,15 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     :format_version,
     :object_prefix,
     :project_storage_key,
-    :manifest_storage_key
+    :project_size_bytes,
+    :project_checksum,
+    :manifest_storage_key,
+    :manifest_size_bytes,
+    :manifest_checksum,
+    :total_size_bytes,
+    :object_count,
+    :asset_count,
+    :blob_count
   ]
   @ready_object_set_fields [
     :project_id,
@@ -92,6 +102,26 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
           accounting_version: integer() | nil,
           accounting_generation: integer() | nil,
           accounting_measured_at: DateTime.t() | nil,
+          idempotency_key: String.t(),
+          capture_boundary: Ecto.UUID.t(),
+          capture_digest: String.t(),
+          captured_at: DateTime.t(),
+          progress_phase: String.t(),
+          progress_bytes: integer(),
+          progress_total_bytes: integer(),
+          failure_code: String.t() | nil,
+          failure_message: String.t() | nil,
+          storage_reservation_id: integer() | nil,
+          build_job_id: integer() | nil,
+          build_attempt: non_neg_integer(),
+          publication_claim_token: Ecto.UUID.t() | nil,
+          building_started_at: DateTime.t() | nil,
+          verifying_started_at: DateTime.t() | nil,
+          ready_at: DateTime.t() | nil,
+          failed_at: DateTime.t() | nil,
+          cancel_requested_at: DateTime.t() | nil,
+          cancelled_at: DateTime.t() | nil,
+          state_updated_at: DateTime.t(),
           entity_counts: map(),
           created_by_id: integer() | nil,
           created_by: User.t() | NotLoaded.t() | nil,
@@ -124,11 +154,32 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     field :accounting_version, :integer
     field :accounting_generation, :integer
     field :accounting_measured_at, :utc_datetime
+    field :idempotency_key, :string
+    field :capture_boundary, Ecto.UUID
+    field :capture_digest, :string
+    field :captured_at, :utc_datetime
+    field :progress_phase, :string
+    field :progress_bytes, :integer
+    field :progress_total_bytes, :integer
+    field :failure_code, :string
+    field :failure_message, :string
+    field :build_job_id, :integer
+    field :build_attempt, :integer, default: 0
+    field :publication_claim_token, Ecto.UUID
+    field :building_started_at, :utc_datetime
+    field :verifying_started_at, :utc_datetime
+    field :ready_at, :utc_datetime
+    field :failed_at, :utc_datetime
+    field :cancel_requested_at, :utc_datetime
+    field :cancelled_at, :utc_datetime
+    field :state_updated_at, :utc_datetime
     field :entity_counts, :map, default: %{}
     field :is_auto, :boolean, default: false
 
     belongs_to :project, Project
     belongs_to :created_by, User
+    belongs_to :storage_reservation, StorageReservation
+    has_one :capture, ProjectSnapshotCapture
 
     timestamps(updated_at: false, type: :utc_datetime)
   end
@@ -189,7 +240,18 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :accounted_size_bytes,
       :asset_blob_size_bytes,
       :accounting_version,
-      :accounting_measured_at
+      :accounting_measured_at,
+      :idempotency_key,
+      :capture_boundary,
+      :capture_digest,
+      :captured_at,
+      :progress_phase,
+      :progress_bytes,
+      :progress_total_bytes,
+      :building_started_at,
+      :verifying_started_at,
+      :ready_at,
+      :state_updated_at
     ])
     |> advance_accounting_generation(snapshot)
     |> derive_accounting_sizes(derive_accounted_size?, derive_asset_blob_size?)
@@ -215,13 +277,25 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :asset_blob_size_bytes,
       :accounting_version,
       :accounting_generation,
-      :accounting_measured_at
+      :accounting_measured_at,
+      :idempotency_key,
+      :capture_boundary,
+      :capture_digest,
+      :captured_at,
+      :progress_phase,
+      :progress_bytes,
+      :progress_total_bytes,
+      :building_started_at,
+      :verifying_started_at,
+      :ready_at,
+      :state_updated_at
     ])
     |> validate_inclusion(:format_version, [1])
     |> validate_inclusion(:mode, ["full"])
     |> validate_inclusion(:lifecycle_state, ["ready"])
     |> validate_inclusion(:integrity_state, ["verified"])
     |> validate_inclusion(:accounting_version, [1])
+    |> validate_inclusion(:progress_phase, ["complete"])
     |> validate_number(:accounting_generation, greater_than: 0)
     |> validate_length(:title, max: 255)
     |> validate_length(:description, max: 500)
@@ -237,6 +311,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_number(:asset_blob_size_bytes, greater_than_or_equal_to: 0)
     |> validate_format(:project_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:manifest_checksum, ~r/\A[0-9a-f]{64}\z/)
+    |> validate_format(:capture_digest, ~r/\A[0-9a-f]{64}\z/)
     |> validate_ready_object_keys()
     |> validate_object_set_transition(snapshot, transition)
     |> validate_object_counts()
@@ -262,6 +337,10 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:accounted_size_bytes, name: :project_snapshots_full_ready_accounting)
     |> check_constraint(:asset_blob_size_bytes, name: :project_snapshots_linked_asset_bytes)
     |> check_constraint(:accounted_size_bytes, name: :project_snapshots_linked_ready_accounting)
+    |> check_constraint(:capture_digest, name: :project_snapshots_capture_digest_format)
+    |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
+    |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
+    |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
     |> unique_constraint(:object_prefix)
     |> unique_constraint(:manifest_storage_key)
     |> unique_constraint([:project_id, :version_number],
@@ -282,6 +361,11 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       |> put_default(:format_version, 1)
       |> put_default(:lifecycle_state, "pending")
       |> put_default(:integrity_state, "unknown")
+      |> put_default(:progress_phase, "pending")
+      |> put_default(:progress_bytes, 0)
+      |> put_default(:build_attempt, 0)
+      |> put_default(:captured_at, TimeHelpers.now())
+      |> put_default(:state_updated_at, TimeHelpers.now())
       |> put_pending_object_keys()
 
     snapshot
@@ -292,38 +376,84 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :description,
       :project_storage_key,
       :project_size_bytes,
+      :project_checksum,
       :entity_counts,
       :created_by_id,
       :is_auto,
       :format_version,
       :object_prefix,
       :manifest_storage_key,
+      :manifest_size_bytes,
+      :manifest_checksum,
+      :total_size_bytes,
+      :object_count,
+      :asset_count,
+      :blob_count,
       :mode,
       :lifecycle_state,
-      :integrity_state
+      :integrity_state,
+      :idempotency_key,
+      :capture_boundary,
+      :capture_digest,
+      :captured_at,
+      :progress_phase,
+      :progress_bytes,
+      :progress_total_bytes,
+      :build_attempt,
+      :state_updated_at
     ])
     |> validate_required([
       :project_id,
       :version_number,
       :project_storage_key,
       :project_size_bytes,
+      :project_checksum,
       :format_version,
       :object_prefix,
       :manifest_storage_key,
+      :manifest_size_bytes,
+      :manifest_checksum,
+      :total_size_bytes,
+      :object_count,
+      :asset_count,
+      :blob_count,
       :mode,
       :lifecycle_state,
-      :integrity_state
+      :integrity_state,
+      :idempotency_key,
+      :capture_boundary,
+      :capture_digest,
+      :captured_at,
+      :progress_phase,
+      :progress_bytes,
+      :progress_total_bytes,
+      :build_attempt,
+      :state_updated_at
     ])
     |> validate_inclusion(:format_version, [1])
     |> validate_inclusion(:mode, ["full"])
     |> validate_inclusion(:lifecycle_state, ["pending"])
     |> validate_inclusion(:integrity_state, ["unknown"])
+    |> validate_inclusion(:progress_phase, ["pending"])
     |> validate_length(:title, max: 255)
     |> validate_length(:description, max: 500)
     |> validate_length(:object_prefix, max: 500)
     |> validate_length(:manifest_storage_key, max: 520)
-    |> validate_number(:project_size_bytes, equal_to: 0)
+    |> validate_number(:project_size_bytes, greater_than: 0)
+    |> validate_number(:manifest_size_bytes, greater_than: 0)
+    |> validate_number(:total_size_bytes, greater_than: 0)
+    |> validate_number(:object_count, greater_than_or_equal_to: 2)
+    |> validate_number(:asset_count, greater_than_or_equal_to: 0)
+    |> validate_number(:blob_count, greater_than_or_equal_to: 0)
+    |> validate_number(:progress_bytes, equal_to: 0)
+    |> validate_number(:progress_total_bytes, greater_than: 0)
+    |> validate_number(:build_attempt, equal_to: 0)
+    |> validate_format(:project_checksum, ~r/\A[0-9a-f]{64}\z/)
+    |> validate_format(:manifest_checksum, ~r/\A[0-9a-f]{64}\z/)
+    |> validate_format(:capture_digest, ~r/\A[0-9a-f]{64}\z/)
     |> validate_ready_object_keys()
+    |> validate_object_counts()
+    |> validate_total_size()
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:created_by_id)
     |> check_constraint(:format_version, name: :project_snapshots_object_format_version)
@@ -334,8 +464,16 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:mode, name: :project_snapshots_accounting_identity)
     |> check_constraint(:object_prefix, name: :project_snapshots_object_target)
     |> check_constraint(:accounting_version, name: :project_snapshots_accounting_measurement)
+    |> check_constraint(:capture_digest, name: :project_snapshots_capture_digest_format)
+    |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
+    |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
+    |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
     |> unique_constraint(:object_prefix)
     |> unique_constraint(:manifest_storage_key)
+    |> unique_constraint([:project_id, :idempotency_key],
+      name: :project_snapshots_project_id_idempotency_idx
+    )
+    |> unique_constraint(:capture_boundary)
     |> unique_constraint([:project_id, :version_number],
       name: :project_snapshots_project_id_version_number_index
     )
@@ -349,6 +487,84 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> cast(attrs, [:title, :description])
     |> validate_length(:title, max: 255)
     |> validate_length(:description, max: 500)
+  end
+
+  @doc false
+  def build_state_changeset(snapshot, attrs) do
+    snapshot
+    |> cast(attrs, [
+      :object_prefix,
+      :project_storage_key,
+      :manifest_storage_key,
+      :lifecycle_state,
+      :integrity_state,
+      :progress_phase,
+      :progress_bytes,
+      :progress_total_bytes,
+      :failure_code,
+      :failure_message,
+      :storage_reservation_id,
+      :build_job_id,
+      :build_attempt,
+      :publication_claim_token,
+      :building_started_at,
+      :verifying_started_at,
+      :ready_at,
+      :failed_at,
+      :cancel_requested_at,
+      :cancelled_at,
+      :state_updated_at
+    ])
+    |> validate_required([
+      :object_prefix,
+      :project_storage_key,
+      :manifest_storage_key,
+      :lifecycle_state,
+      :integrity_state,
+      :progress_phase,
+      :progress_bytes,
+      :progress_total_bytes,
+      :build_attempt,
+      :state_updated_at
+    ])
+    |> validate_inclusion(:lifecycle_state, [
+      "pending",
+      "building",
+      "verifying",
+      "ready",
+      "failed",
+      "cancelled",
+      "deleting"
+    ])
+    |> validate_inclusion(:integrity_state, [
+      "unknown",
+      "verified",
+      "missing",
+      "corrupt",
+      "at_risk",
+      "incomplete"
+    ])
+    |> validate_inclusion(:progress_phase, [
+      "pending",
+      "copying",
+      "verifying",
+      "finalizing",
+      "retrying",
+      "complete",
+      "failed",
+      "cancelled"
+    ])
+    |> validate_number(:progress_bytes, greater_than_or_equal_to: 0)
+    |> validate_number(:progress_total_bytes, greater_than: 0)
+    |> validate_number(:build_attempt, greater_than_or_equal_to: 0)
+    |> validate_progress_bounds()
+    |> validate_ready_object_keys()
+    |> foreign_key_constraint(:storage_reservation_id)
+    |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
+    |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
+    |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
+    |> unique_constraint(:object_prefix)
+    |> unique_constraint(:manifest_storage_key)
   end
 
   defp normalize_object_set_accounting_attrs(attrs) do
@@ -455,6 +671,16 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     if is_integer(manifest_size) and is_integer(total_size) and total_size < manifest_size,
       do: add_error(changeset, :total_size_bytes, "must be at least the manifest size"),
       else: changeset
+  end
+
+  defp validate_progress_bounds(changeset) do
+    progress_bytes = get_field(changeset, :progress_bytes)
+    progress_total_bytes = get_field(changeset, :progress_total_bytes)
+
+    if is_integer(progress_bytes) and is_integer(progress_total_bytes) and
+         progress_bytes > progress_total_bytes,
+       do: add_error(changeset, :progress_bytes, "cannot exceed total progress bytes"),
+       else: changeset
   end
 
   defp validate_accounting_breakdown(changeset) do

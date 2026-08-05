@@ -4,6 +4,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.VersioningFixtures
 
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
@@ -239,7 +240,8 @@ defmodule Storyarn.Billing.StorageAccountingTest do
     end
 
     test "extends atomically and fails closed when final bytes are underestimated", context do
-      pending_snapshot = insert_pending_snapshot!(context.project, 1)
+      pending_snapshot =
+        insert_pending_snapshot!(context.project, 1, %{project: 70, metadata: 20, assets: 30})
 
       assert {:ok, reservation} =
                reserve(context, "build", "snapshot_build", 100, pending_snapshot)
@@ -472,9 +474,15 @@ defmodule Storyarn.Billing.StorageAccountingTest do
     end
 
     test "a build cannot commit snapshot metadata that differs from its published inventory", context do
-      target = insert_pending_snapshot!(context.project, 1)
+      target =
+        insert_pending_snapshot!(context.project, 1, %{project: 60, metadata: 20, assets: 20})
+
       assert {:ok, reservation} = reserve(context, "inventory-mismatch", "snapshot_build", 100, target)
-      prepare_build_publication!(reservation)
+
+      prepare_build_publication!(
+        reservation,
+        full_snapshot_object_set_attrs(target, %{project: 70, metadata: 20, assets: 10})
+      )
 
       assert {:error, :storage_reservation_owner_mismatch} =
                Billing.commit_storage_reservation(
@@ -637,8 +645,17 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       usage = Billing.project_limits_usage(context.project)
       assert usage.project.project_snapshots.used == 1
 
+      now = TimeHelpers.now()
+
       target
-      |> Ecto.Changeset.change(lifecycle_state: "failed")
+      |> ProjectSnapshot.build_state_changeset(%{
+        lifecycle_state: "failed",
+        progress_phase: "failed",
+        failure_code: "build_failed",
+        failure_message: "Snapshot build failed.",
+        failed_at: now,
+        state_updated_at: now
+      })
       |> Repo.update!()
 
       usage_with_active_reservation = Billing.project_limits_usage(context.project)
@@ -659,9 +676,16 @@ defmodule Storyarn.Billing.StorageAccountingTest do
 
       assert Billing.project_limits_usage(context.project).project.project_snapshots.used == 0
 
+      cancelled_at = TimeHelpers.now()
+
       context.project
       |> insert_pending_snapshot!(2)
-      |> Ecto.Changeset.change(lifecycle_state: "cancelled")
+      |> ProjectSnapshot.build_state_changeset(%{
+        lifecycle_state: "cancelled",
+        progress_phase: "cancelled",
+        cancelled_at: cancelled_at,
+        state_updated_at: cancelled_at
+      })
       |> Repo.update!()
 
       assert Billing.project_limits_usage(context.project).project.project_snapshots.used == 0
@@ -1149,18 +1173,20 @@ defmodule Storyarn.Billing.StorageAccountingTest do
     |> Repo.insert!()
   end
 
-  defp insert_pending_snapshot!(project, version) do
-    token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
-    prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
+  defp insert_pending_snapshot!(project, version, sizes \\ %{project: 100, metadata: 50, assets: 0}) do
+    blob_count = if sizes.assets > 0, do: 1, else: 0
+    total = sizes.project + sizes.metadata + sizes.assets
 
-    %ProjectSnapshot{}
-    |> ProjectSnapshot.pending_object_set_changeset(%{
-      project_id: project.id,
+    pending_project_snapshot_fixture(project, %{
       version_number: version,
-      object_prefix: prefix,
-      mode: "full"
+      project_size_bytes: sizes.project,
+      manifest_size_bytes: sizes.metadata,
+      total_size_bytes: total,
+      object_count: blob_count + 2,
+      asset_count: blob_count,
+      blob_count: blob_count,
+      progress_total_bytes: total
     })
-    |> Repo.insert!()
   end
 
   defp finalize_pending_full_snapshot!(snapshot, sizes) do
@@ -1176,6 +1202,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
 
   defp full_snapshot_object_set_attrs(snapshot, sizes) do
     total = sizes.project + sizes.metadata + sizes.assets
+    now = TimeHelpers.now()
 
     %{
       project_id: snapshot.project_id,
@@ -1195,7 +1222,16 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       object_count: 3,
       asset_count: 1,
       blob_count: 1,
-      mode: "full"
+      mode: "full",
+      lifecycle_state: "ready",
+      integrity_state: "verified",
+      progress_phase: "complete",
+      progress_bytes: total,
+      progress_total_bytes: total,
+      building_started_at: now,
+      verifying_started_at: now,
+      ready_at: now,
+      state_updated_at: now
     }
   end
 
@@ -1229,36 +1265,21 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   end
 
   defp insert_full_snapshot!(project, version, sizes, asset_count \\ 1, blob_count \\ 1) do
-    total = sizes.project + sizes.metadata + sizes.assets
-    token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
-    prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
-
-    attrs = %{
-      project_id: project.id,
+    full_project_snapshot_fixture(project, %{
       version_number: version,
-      project_storage_key: prefix <> "/project.json",
       project_size_bytes: sizes.project,
-      project_checksum: @checksum,
-      format_version: 1,
-      object_prefix: prefix,
-      manifest_storage_key: prefix <> "/manifest.json",
       manifest_size_bytes: sizes.metadata,
-      manifest_checksum: String.duplicate("b", 64),
-      total_size_bytes: total,
-      object_count: blob_count + 2,
+      asset_blob_size_bytes: sizes.assets,
       asset_count: asset_count,
       blob_count: blob_count
-    }
-
-    %ProjectSnapshot{}
-    |> ProjectSnapshot.object_set_changeset(attrs)
-    |> Repo.insert!()
+    })
   end
 
   defp insert_linked_snapshot!(project, version, sizes) do
     total = sizes.project + sizes.metadata
     token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
     prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
+    now = TimeHelpers.now()
 
     %ProjectSnapshot{}
     |> Ecto.Changeset.change(%{
@@ -1283,7 +1304,19 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       asset_blob_size_bytes: 0,
       accounting_version: 1,
       accounting_generation: 1,
-      accounting_measured_at: TimeHelpers.now()
+      accounting_measured_at: now,
+      idempotency_key: Ecto.UUID.generate(),
+      capture_boundary: Ecto.UUID.generate(),
+      capture_digest: String.duplicate("d", 64),
+      captured_at: now,
+      progress_phase: "complete",
+      progress_bytes: total,
+      progress_total_bytes: total,
+      build_attempt: 1,
+      building_started_at: now,
+      verifying_started_at: now,
+      ready_at: now,
+      state_updated_at: now
     })
     |> Repo.insert!()
   end

@@ -104,14 +104,19 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
 
   def build_catalog(assets, opts) when is_list(assets) do
     limits = limits(opts)
+    source_key_mode = Keyword.get(opts, :source_key_mode, :asset)
 
     with :ok <- validate_limits(limits),
+         true <- source_key_mode in [:asset, :protected_blob],
          {:ok, project_id} <- validate_asset_collection(assets, opts),
          :ok <- validate_collection_limit(length(assets), limits.max_assets, :assets) do
       assets
       |> Enum.sort_by(&{&1.inserted_at, &1.id})
       |> logical_assets()
-      |> build_catalog_entries(limits, project_id)
+      |> build_catalog_entries(limits, project_id, source_key_mode)
+    else
+      false -> {:error, :invalid_snapshot_source_key_mode}
+      {:error, _reason} = error -> error
     end
   end
 
@@ -225,13 +230,13 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     end)
   end
 
-  defp build_catalog_entries(logical_assets, limits, project_id) do
+  defp build_catalog_entries(logical_assets, limits, project_id, source_key_mode) do
     logical_ids = Map.new(logical_assets, fn {%Asset{id: id}, logical_id} -> {to_string(id), logical_id} end)
 
     logical_assets
     |> Enum.reduce_while({:ok, [], %{}, %{}}, fn {asset, logical_id}, {:ok, entries, blobs, sources} ->
       with {:ok, entry, blob, source_key} <-
-             catalog_entry(asset, logical_id, logical_ids, limits, project_id),
+             catalog_entry(asset, logical_id, logical_ids, limits, project_id, source_key_mode),
            {:ok, blobs} <- put_blob(blobs, blob),
            {:ok, sources} <- put_source(sources, blob["sha256"], source_key) do
         {:cont, {:ok, [entry | entries], blobs, sources}}
@@ -253,14 +258,15 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     end
   end
 
-  defp catalog_entry(%Asset{} = asset, logical_id, logical_ids, limits, project_id) do
+  defp catalog_entry(%Asset{} = asset, logical_id, logical_ids, limits, project_id, source_key_mode) do
     metadata = asset.metadata || %{}
 
     with :ok <- validate_sha256(asset.blob_hash),
          :ok <- validate_filename(asset.filename),
          :ok <- validate_content_type(asset.content_type),
          :ok <- validate_size(asset.size, limits.max_asset_bytes, :asset),
-         :ok <- validate_source_key(asset.key, project_id),
+         source_key = source_key(asset, project_id, source_key_mode),
+         :ok <- validate_source_key(source_key, project_id, asset.blob_hash, asset.content_type, source_key_mode),
          {:ok, relationships} <- relationships(metadata, logical_ids),
          {:ok, intrinsic_metadata} <- intrinsic_metadata(metadata, limits) do
       path = blob_path(asset.blob_hash, asset.content_type)
@@ -284,7 +290,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
         "relationships" => relationships
       }
 
-      {:ok, entry, blob, asset.key}
+      {:ok, entry, blob, source_key}
     end
   end
 
@@ -600,7 +606,15 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     end
   end
 
-  defp validate_source_key(key, project_id) when is_binary(key) and is_integer(project_id) do
+  defp protected_source_key(%Asset{blob_hash: hash, content_type: content_type}, project_id) do
+    BlobStore.blob_key(project_id, hash, BlobStore.ext_from_content_type(content_type))
+  end
+
+  defp source_key(%Asset{} = asset, _project_id, :asset), do: asset.key
+  defp source_key(%Asset{} = asset, project_id, :protected_blob), do: protected_source_key(asset, project_id)
+
+  defp validate_source_key(key, project_id, _hash, _content_type, :asset)
+       when is_binary(key) and is_integer(project_id) do
     expected_project_id = Integer.to_string(project_id)
 
     case String.split(key, "/", trim: false) do
@@ -615,7 +629,23 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     end
   end
 
-  defp validate_source_key(key, _project_id), do: {:error, {:invalid_asset_source_key, key}}
+  defp validate_source_key(key, project_id, hash, content_type, :protected_blob)
+       when is_binary(key) and is_integer(project_id) and is_binary(hash) and is_binary(content_type) do
+    expected_project_id = Integer.to_string(project_id)
+    expected_filename = "#{hash}.#{BlobStore.ext_from_content_type(content_type)}"
+
+    case String.split(key, "/", trim: false) do
+      ["projects", ^expected_project_id, "blobs", ^expected_filename] ->
+        if Storage.canonical_key?(key),
+          do: :ok,
+          else: {:error, {:invalid_asset_source_key, key}}
+
+      _other ->
+        {:error, {:asset_source_project_mismatch, project_id, key}}
+    end
+  end
+
+  defp validate_source_key(key, _project_id, _hash, _content_type, _mode), do: {:error, {:invalid_asset_source_key, key}}
 
   defp validate_size(size, max_size, label) when is_integer(size) and size >= 0 do
     cond do

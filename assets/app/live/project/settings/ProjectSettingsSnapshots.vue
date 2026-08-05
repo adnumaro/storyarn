@@ -8,12 +8,20 @@ import {
   HardDrive,
   Image,
   Link2,
+  LoaderCircle,
+  Plus,
+  ShieldCheck,
+  X,
 } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
 import { Progress } from "@components/ui/progress";
 import { Separator } from "@components/ui/separator";
+import { Textarea } from "@components/ui/textarea";
+import { useLive } from "@shared/composables/useLive";
 import {
   formatBasisPoints,
   formatBytes,
@@ -56,14 +64,165 @@ interface Snapshot {
   exportReservationBytes: ByteCount;
   accountingVersion: number | null;
   accountingMeasuredAt: string | null;
+  plannedSizeBytes: ByteCount | null;
+  progressPhase: string | null;
+  progressBytes: ByteCount;
+  progressTotalBytes: ByteCount | null;
+  failureCode: string | null;
+  failureMessage: string | null;
+  capturedAt: string | null;
+  cancelRequestedAt: string | null;
+  canCancel: boolean;
 }
 
-const { snapshots = [], storageUsage } = defineProps<{
+interface SnapshotLimit {
+  used: number;
+  limit: number | null;
+}
+
+const {
+  snapshots = [],
+  storageUsage,
+  snapshotLimit,
+} = defineProps<{
   snapshots?: Snapshot[];
   storageUsage: WorkspaceStorageUsage;
+  snapshotLimit: SnapshotLimit;
 }>();
 
 const { locale, t } = useI18n();
+const live = useLive();
+const title = ref("");
+const description = ref("");
+const requestIdempotencyKey = ref(newIdempotencyKey());
+const isSubmitting = ref(false);
+const requestError = ref<string | null>(null);
+const cancellingSnapshotIds = ref(new Set<number>());
+const snapshotLimitReached = computed(
+  () => snapshotLimit.limit !== null && snapshotLimit.used >= snapshotLimit.limit,
+);
+
+const snapshotLimitLabel = computed(() => {
+  if (snapshotLimit.limit === null) {
+    return t("project_settings.snapshots.create.slot_usage_unknown", {
+      used: formatCount(snapshotLimit.used),
+    });
+  }
+
+  return t("project_settings.snapshots.create.slot_usage", {
+    used: formatCount(snapshotLimit.used),
+    limit: formatCount(snapshotLimit.limit),
+  });
+});
+
+const serverEventRefs = [
+  live.handleEvent("snapshot_request_accepted", () => {
+    title.value = "";
+    description.value = "";
+    requestIdempotencyKey.value = newIdempotencyKey();
+    requestError.value = null;
+    isSubmitting.value = false;
+  }),
+  live.handleEvent("snapshot_request_failed", (payload) => {
+    requestError.value = snapshotRequestError(payload);
+    isSubmitting.value = false;
+  }),
+  live.handleEvent("snapshot_cancel_accepted", (payload) => {
+    clearCancellingSnapshot(payload.snapshotId);
+  }),
+  live.handleEvent("snapshot_cancel_failed", (payload) => {
+    clearCancellingSnapshot(payload.snapshotId);
+    requestError.value =
+      typeof payload.message === "string"
+        ? payload.message
+        : t("project_settings.snapshots.create.cancel_failed");
+  }),
+];
+
+onUnmounted(() => {
+  for (const eventRef of serverEventRefs) {
+    if (eventRef !== undefined) live.removeHandleEvent(eventRef);
+  }
+});
+
+function newIdempotencyKey() {
+  return (
+    globalThis.crypto?.randomUUID?.() ??
+    "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
+      const random = Math.floor(Math.random() * 16);
+      const value = character === "x" ? random : (random & 0x3) | 0x8;
+      return value.toString(16);
+    })
+  );
+}
+
+function createSnapshot() {
+  if (isSubmitting.value || snapshotLimitReached.value) return;
+
+  requestError.value = null;
+  isSubmitting.value = true;
+
+  live.pushEvent(
+    "create_snapshot",
+    {
+      mode: "full",
+      idempotency_key: requestIdempotencyKey.value,
+      title: title.value,
+      description: description.value,
+    },
+    undefined,
+    () => {
+      requestError.value = t("project_settings.snapshots.create.connection_failed");
+      isSubmitting.value = false;
+    },
+  );
+}
+
+function cancelSnapshot(snapshot: Snapshot) {
+  if (!snapshot.canCancel || cancellingSnapshotIds.value.has(snapshot.id)) return;
+
+  cancellingSnapshotIds.value = new Set(cancellingSnapshotIds.value).add(snapshot.id);
+  live.pushEvent("cancel_snapshot", { id: snapshot.id }, undefined, () => {
+    clearCancellingSnapshot(snapshot.id);
+    requestError.value = t("project_settings.snapshots.create.connection_failed");
+  });
+}
+
+function clearCancellingSnapshot(snapshotId: unknown) {
+  let normalizedId = Number.NaN;
+  if (typeof snapshotId === "number") normalizedId = snapshotId;
+  if (typeof snapshotId === "string") normalizedId = Number(snapshotId);
+  if (!Number.isInteger(normalizedId)) return;
+  const next = new Set(cancellingSnapshotIds.value);
+  next.delete(normalizedId);
+  cancellingSnapshotIds.value = next;
+}
+
+function snapshotRequestError(payload: Record<string, unknown>) {
+  if (payload.reason === "storage_limit_reached") {
+    return t("project_settings.snapshots.create.storage_limit_reached", {
+      required: formatReplyBytes(payload.requiredBytes),
+      available: formatReplyBytes(payload.availableBytes),
+    });
+  }
+
+  if (payload.reason === "snapshot_limit_reached") {
+    return t("project_settings.snapshots.create.snapshot_limit_reached", {
+      used: formatReplyCount(payload.used),
+      limit: formatReplyCount(payload.limit),
+    });
+  }
+
+  return t("project_settings.snapshots.create.request_failed");
+}
+
+function formatReplyBytes(value: unknown) {
+  return formatBytes(typeof value === "string" ? value : null, locale.value);
+}
+
+function formatReplyCount(value: unknown) {
+  return typeof value === "number" ? new Intl.NumberFormat(locale.value).format(value) : "—";
+}
 
 function formatSnapshotDate(dateStr: string | undefined) {
   if (!dateStr) return "";
@@ -157,6 +316,24 @@ function lifecycleLabel(status: SnapshotLifecycle | null) {
 
 function integrityLabel(status: SnapshotIntegrity | null) {
   return t(`project_settings.snapshots.integrity.${status ?? "unknown"}`);
+}
+
+function progressPhaseLabel(phase: string | null) {
+  return t(`project_settings.snapshots.progress.${phase ?? "pending"}`);
+}
+
+function snapshotIsActive(snapshot: Snapshot) {
+  return ["pending", "building", "verifying"].includes(snapshot.lifecycleStatus ?? "");
+}
+
+function snapshotProgress(snapshot: Snapshot) {
+  if (snapshot.progressTotalBytes === null) return 0;
+
+  const total = BigInt(snapshot.progressTotalBytes);
+  if (total <= 0n) return 0;
+
+  const current = BigInt(snapshot.progressBytes);
+  return Number((current * 10_000n) / total) / 100;
 }
 
 function lifecycleVariant(status: SnapshotLifecycle | null): BadgeVariant {
@@ -330,6 +507,93 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
 
     <Separator />
 
+    <section aria-labelledby="create-snapshot-heading">
+      <div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div class="border-b border-border bg-muted/30 px-4 py-4 sm:px-5">
+          <div class="flex items-start gap-3">
+            <div class="rounded-lg bg-primary/10 p-2 text-primary">
+              <ShieldCheck class="size-4" aria-hidden="true" />
+            </div>
+            <div>
+              <h3 id="create-snapshot-heading" class="font-semibold">
+                {{ $t("project_settings.snapshots.create.heading") }}
+              </h3>
+              <p class="mt-1 text-sm text-muted-foreground">
+                {{ $t("project_settings.snapshots.create.description") }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <form class="space-y-4 p-4 sm:p-5" @submit.prevent="createSnapshot">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="space-y-1.5">
+              <label for="snapshot-title" class="text-sm font-medium">
+                {{ $t("project_settings.snapshots.create.title") }}
+              </label>
+              <Input
+                id="snapshot-title"
+                v-model="title"
+                :maxlength="255"
+                :placeholder="$t('project_settings.snapshots.create.title_placeholder')"
+                :disabled="isSubmitting"
+              />
+            </div>
+            <div class="space-y-1.5">
+              <label for="snapshot-description" class="text-sm font-medium">
+                {{ $t("project_settings.snapshots.create.notes") }}
+              </label>
+              <Textarea
+                id="snapshot-description"
+                v-model="description"
+                :maxlength="500"
+                :placeholder="$t('project_settings.snapshots.create.notes_placeholder')"
+                :disabled="isSubmitting"
+                class="min-h-20 resize-none"
+              />
+            </div>
+          </div>
+
+          <div
+            class="flex flex-col gap-3 rounded-lg border border-border/70 bg-muted/25 p-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div class="text-sm">
+              <p class="font-medium">{{ $t("project_settings.snapshots.create.full_mode") }}</p>
+              <p class="mt-0.5 text-xs text-muted-foreground">
+                {{ $t("project_settings.snapshots.create.reservation_note") }}
+              </p>
+              <p
+                class="mt-1 text-xs font-medium"
+                :class="snapshotLimitReached ? 'text-destructive' : 'text-muted-foreground'"
+                data-testid="snapshot-slot-usage"
+              >
+                {{ snapshotLimitLabel }}
+              </p>
+            </div>
+            <Button type="submit" :disabled="isSubmitting || snapshotLimitReached" class="shrink-0">
+              <LoaderCircle v-if="isSubmitting" class="size-4 animate-spin" aria-hidden="true" />
+              <Plus v-else class="size-4" aria-hidden="true" />
+              {{
+                isSubmitting
+                  ? $t("project_settings.snapshots.create.submitting")
+                  : $t("project_settings.snapshots.create.submit")
+              }}
+            </Button>
+          </div>
+
+          <p
+            v-if="requestError"
+            role="alert"
+            class="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {{ requestError }}
+          </p>
+        </form>
+      </div>
+    </section>
+
+    <Separator />
+
     <!-- Snapshot List -->
     <section>
       <h3 class="text-lg font-semibold mb-4">
@@ -399,6 +663,69 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
               <p v-if="snapshot.description" class="text-sm text-muted-foreground mt-1">
                 {{ snapshot.description }}
               </p>
+              <div
+                v-if="snapshotIsActive(snapshot)"
+                class="mt-3 rounded-lg border border-primary/20 bg-primary/5 p-3"
+              >
+                <div class="flex items-center justify-between gap-3 text-xs">
+                  <span class="inline-flex items-center gap-1.5 font-medium text-primary">
+                    <LoaderCircle class="size-3.5 animate-spin" aria-hidden="true" />
+                    {{ progressPhaseLabel(snapshot.progressPhase) }}
+                  </span>
+                  <span class="tabular-nums text-muted-foreground">
+                    {{ formatBytes(snapshot.progressBytes, locale) }} /
+                    {{ formatBytes(snapshot.progressTotalBytes, locale) }}
+                  </span>
+                </div>
+                <Progress
+                  :model-value="snapshotProgress(snapshot)"
+                  class="mt-2 h-1.5"
+                  :aria-label="
+                    $t('project_settings.snapshots.progress.accessibility', {
+                      percent: `${snapshotProgress(snapshot)}%`,
+                    })
+                  "
+                />
+                <div class="mt-2 flex items-center justify-between gap-3">
+                  <span class="text-xs text-muted-foreground">
+                    {{
+                      $t("project_settings.snapshots.progress.reserved", {
+                        storage: formatBytes(snapshot.plannedSizeBytes, locale),
+                      })
+                    }}
+                  </span>
+                  <Button
+                    v-if="snapshot.canCancel"
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="h-7 text-xs text-muted-foreground hover:text-destructive"
+                    :disabled="cancellingSnapshotIds.has(snapshot.id)"
+                    @click="cancelSnapshot(snapshot)"
+                  >
+                    <LoaderCircle
+                      v-if="cancellingSnapshotIds.has(snapshot.id)"
+                      class="size-3.5 animate-spin"
+                      aria-hidden="true"
+                    />
+                    <X v-else class="size-3.5" aria-hidden="true" />
+                    {{ $t("project_settings.snapshots.progress.cancel") }}
+                  </Button>
+                  <span
+                    v-else-if="snapshot.cancelRequestedAt"
+                    class="text-xs text-muted-foreground"
+                  >
+                    {{ $t("project_settings.snapshots.progress.cancelling") }}
+                  </span>
+                </div>
+              </div>
+              <p
+                v-if="snapshot.lifecycleStatus === 'failed' && snapshot.failureMessage"
+                role="status"
+                class="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {{ snapshot.failureMessage }}
+              </p>
               <div class="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground/60">
                 <span v-if="snapshot.createdByEmail">
                   {{ snapshot.createdByEmail }}
@@ -414,6 +741,13 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                   "
                 >
                   {{ formatBytes(snapshot.accountedSizeBytes, locale) }}
+                </span>
+                <span v-if="snapshot.accountedSizeBytes === null" class="tabular-nums">
+                  {{
+                    $t("project_settings.snapshots.measurements.planned_size", {
+                      storage: formatBytes(snapshot.plannedSizeBytes, locale),
+                    })
+                  }}
                 </span>
                 <span
                   :aria-label="

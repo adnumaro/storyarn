@@ -28,12 +28,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   """
   @spec build_snapshot(integer()) :: map()
   def build_snapshot(project_id) do
-    case Repo.transaction(
-           fn ->
-             project = lock_active_project_for_snapshot!(project_id)
-             build_consistent_snapshot(project)
-           end,
-           isolation: :repeatable_read,
+    case Repo.repeatable_read(
+           fn -> build_snapshot_in_transaction(project_id) end,
            timeout: to_timeout(minute: 5)
          ) do
       {:ok, snapshot} ->
@@ -41,6 +37,18 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
       {:error, reason} ->
         raise "project snapshot transaction failed: #{inspect(reason)}"
+    end
+  end
+
+  @doc false
+  @spec build_snapshot_in_transaction(integer()) :: map()
+  def build_snapshot_in_transaction(project_id) do
+    if Repo.in_transaction?() do
+      project_id
+      |> lock_active_project_for_snapshot!()
+      |> build_consistent_snapshot()
+    else
+      raise ArgumentError, "project snapshot capture requires a database transaction"
     end
   end
 

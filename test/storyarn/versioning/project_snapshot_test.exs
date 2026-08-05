@@ -48,7 +48,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
         blob_count: 2
       }
 
-      changeset = ProjectSnapshot.object_set_changeset(%ProjectSnapshot{}, attrs)
+      changeset = object_set_changeset(attrs)
 
       assert changeset.valid?
       assert Ecto.Changeset.get_field(changeset, :project_storage_key) == attrs.project_storage_key
@@ -85,7 +85,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
         accounting_measured_at: measured_at
       }
 
-      changeset = ProjectSnapshot.object_set_changeset(%ProjectSnapshot{}, attrs)
+      changeset = object_set_changeset(attrs)
 
       assert changeset.valid?
       assert Ecto.Changeset.get_field(changeset, :accounting_measured_at) == measured_at
@@ -115,11 +115,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
             integrity_state: "unverified",
             accounting_version: 2
           ] do
-        changeset =
-          ProjectSnapshot.object_set_changeset(
-            %ProjectSnapshot{},
-            Map.put(attrs, field, conflicting_value)
-          )
+        changeset = object_set_changeset(Map.put(attrs, field, conflicting_value))
 
         refute changeset.valid?
         assert Map.has_key?(errors_on(changeset), field)
@@ -144,17 +140,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
         blob_count: 0
       }
 
-      accounted_changeset =
-        ProjectSnapshot.object_set_changeset(
-          %ProjectSnapshot{},
-          Map.put(attrs, :accounted_size_bytes, 29)
-        )
+      accounted_changeset = object_set_changeset(Map.put(attrs, :accounted_size_bytes, 29))
 
-      asset_blob_changeset =
-        ProjectSnapshot.object_set_changeset(
-          %ProjectSnapshot{},
-          Map.put(attrs, :asset_blob_size_bytes, 9)
-        )
+      asset_blob_changeset = object_set_changeset(Map.put(attrs, :asset_blob_size_bytes, 9))
 
       refute accounted_changeset.valid?
       assert %{accounted_size_bytes: ["must equal the total snapshot size"]} = errors_on(accounted_changeset)
@@ -182,7 +170,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
         blob_count: 2
       }
 
-      changeset = ProjectSnapshot.object_set_changeset(%ProjectSnapshot{}, attrs)
+      changeset = object_set_changeset(attrs)
 
       refute changeset.valid?
       assert %{object_count: [_]} = errors_on(changeset)
@@ -194,7 +182,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
         |> object_set_attrs(@ready_prefix)
         |> Map.put(:asset_count, 1)
 
-      changeset = ProjectSnapshot.object_set_changeset(%ProjectSnapshot{}, attrs)
+      changeset = object_set_changeset(attrs)
 
       refute changeset.valid?
 
@@ -220,7 +208,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
         blob_count: 0
       }
 
-      changeset = ProjectSnapshot.object_set_changeset(%ProjectSnapshot{}, attrs)
+      changeset = object_set_changeset(attrs)
 
       refute changeset.valid?
       assert %{total_size_bytes: ["must be at least the manifest size"]} = errors_on(changeset)
@@ -232,7 +220,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
         |> object_set_attrs(@ready_prefix)
         |> Map.merge(%{project_size_bytes: 0, total_size_bytes: 1})
 
-      changeset = ProjectSnapshot.object_set_changeset(%ProjectSnapshot{}, attrs)
+      changeset = object_set_changeset(attrs)
 
       refute changeset.valid?
       assert %{project_size_bytes: ["must be greater than 0"]} = errors_on(changeset)
@@ -243,18 +231,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
     test "allocates a non-ready unaccounted object-set target" do
       prefix = @ready_prefix
 
-      changeset =
-        ProjectSnapshot.pending_object_set_changeset(%ProjectSnapshot{}, %{
-          project_id: 1,
-          version_number: 1,
-          object_prefix: prefix,
-          mode: "full"
-        })
+      changeset = pending_object_set_changeset(1, prefix)
 
       assert changeset.valid?
       assert Ecto.Changeset.get_field(changeset, :project_storage_key) == prefix <> "/project.json"
       assert Ecto.Changeset.get_field(changeset, :manifest_storage_key) == prefix <> "/manifest.json"
-      assert Ecto.Changeset.get_field(changeset, :project_size_bytes) == 0
+      assert Ecto.Changeset.get_field(changeset, :project_size_bytes) == 1
+      assert Ecto.Changeset.get_field(changeset, :progress_total_bytes) == 2
       assert Ecto.Changeset.get_field(changeset, :lifecycle_state) == "pending"
       assert Ecto.Changeset.get_field(changeset, :integrity_state) == "unknown"
       assert is_nil(Ecto.Changeset.get_field(changeset, :accounted_size_bytes))
@@ -268,16 +251,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       for attrs <- [
             %{lifecycle_state: "ready"},
             %{integrity_state: "verified"},
-            %{project_size_bytes: 1}
+            %{project_size_bytes: 0}
           ] do
-        changeset =
-          ProjectSnapshot.pending_object_set_changeset(
-            %ProjectSnapshot{},
-            Map.merge(
-              %{project_id: 1, version_number: 1, object_prefix: prefix, mode: "full"},
-              attrs
-            )
-          )
+        changeset = pending_object_set_changeset(1, prefix, attrs)
 
         refute changeset.valid?
       end
@@ -289,7 +265,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/INCOMPLETE123456"
 
       changeset =
-        Ecto.Changeset.change(%ProjectSnapshot{}, %{
+        Ecto.Changeset.change(ready_snapshot(), %{
           project_id: project.id,
           version_number: 1,
           project_storage_key: prefix <> "/project.json",
@@ -310,7 +286,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
           asset_blob_size_bytes: 0,
           accounting_version: 1,
           accounting_generation: 1,
-          accounting_measured_at: TimeHelpers.now()
+          accounting_measured_at: TimeHelpers.now(),
+          progress_phase: "complete",
+          progress_bytes: 10,
+          progress_total_bytes: 10,
+          verifying_started_at: TimeHelpers.now(),
+          ready_at: TimeHelpers.now(),
+          state_updated_at: TimeHelpers.now()
         })
 
       assert_raise Ecto.ConstraintError, ~r/project_snapshots_ready_object_set/, fn ->
@@ -324,13 +306,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/NULLVERSION12345"
 
       snapshot =
-        %ProjectSnapshot{}
-        |> ProjectSnapshot.pending_object_set_changeset(%{
-          project_id: project.id,
-          version_number: 1,
-          object_prefix: prefix,
-          mode: "full"
-        })
+        project.id
+        |> pending_object_set_changeset(prefix)
         |> Repo.insert!()
 
       changeset =
@@ -350,8 +327,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/NULLMANIFEST1234"
 
       snapshot =
-        %ProjectSnapshot{}
-        |> ProjectSnapshot.object_set_changeset(object_set_attrs(project.id, prefix))
+        project.id
+        |> object_set_attrs(prefix)
+        |> object_set_changeset()
         |> Repo.insert!()
 
       changeset =
@@ -371,8 +349,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/ZEROPROJECT12345"
 
       snapshot =
-        %ProjectSnapshot{}
-        |> ProjectSnapshot.object_set_changeset(object_set_attrs(project.id, prefix))
+        project.id
+        |> object_set_attrs(prefix)
+        |> object_set_changeset()
         |> Repo.insert!()
 
       changeset =
@@ -396,8 +375,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/NOBLOBASSETS1234"
 
       snapshot =
-        %ProjectSnapshot{}
-        |> ProjectSnapshot.object_set_changeset(object_set_attrs(project.id, prefix))
+        project.id
+        |> object_set_attrs(prefix)
+        |> object_set_changeset()
         |> Repo.insert!()
 
       changeset =
@@ -417,13 +397,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/NULLTARGET123456"
 
       snapshot =
-        %ProjectSnapshot{}
-        |> ProjectSnapshot.pending_object_set_changeset(%{
-          project_id: project.id,
-          version_number: 1,
-          object_prefix: prefix,
-          mode: "full"
-        })
+        project.id
+        |> pending_object_set_changeset(prefix)
         |> Repo.insert!()
 
       changeset =
@@ -444,7 +419,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       prefix = "projects/#{project.id}/snapshots/linked/v1/ready/#{token}"
 
       changeset =
-        Ecto.Changeset.change(%ProjectSnapshot{}, %{
+        Ecto.Changeset.change(ready_snapshot(), %{
           project_id: project.id,
           version_number: 1,
           project_storage_key: prefix <> "/project.json",
@@ -466,7 +441,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
           asset_blob_size_bytes: 0,
           accounting_version: 1,
           accounting_generation: 1,
-          accounting_measured_at: TimeHelpers.now()
+          accounting_measured_at: TimeHelpers.now(),
+          progress_phase: "complete",
+          progress_bytes: 20,
+          progress_total_bytes: 20,
+          verifying_started_at: TimeHelpers.now(),
+          ready_at: TimeHelpers.now(),
+          state_updated_at: TimeHelpers.now()
         })
 
       assert_raise Ecto.ConstraintError, ~r/project_snapshots_object_target/, fn ->
@@ -482,8 +463,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/STALELOCK1234567"
 
       snapshot =
-        %ProjectSnapshot{}
-        |> ProjectSnapshot.object_set_changeset(object_set_attrs(project.id, prefix))
+        project.id
+        |> object_set_attrs(prefix)
+        |> object_set_changeset()
         |> Repo.insert!()
 
       first_measurement = Repo.get!(ProjectSnapshot, snapshot.id)
@@ -509,13 +491,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/FINALIZE12345678"
 
       pending =
-        %ProjectSnapshot{}
-        |> ProjectSnapshot.pending_object_set_changeset(%{
-          project_id: project.id,
-          version_number: 1,
-          object_prefix: prefix,
-          mode: "full"
-        })
+        project.id
+        |> pending_object_set_changeset(prefix)
         |> Repo.insert!()
 
       assert {:error, :snapshot_storage_commit_context_required} =
@@ -536,8 +513,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/REMEASURE1234567"
 
       snapshot =
-        %ProjectSnapshot{}
-        |> ProjectSnapshot.object_set_changeset(object_set_attrs(project.id, prefix))
+        project.id
+        |> object_set_attrs(prefix)
+        |> object_set_changeset()
         |> Repo.insert!()
 
       assert {:ok, remeasured} =
@@ -564,8 +542,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       attrs = object_set_attrs(project.id, prefix)
 
       snapshot =
-        %ProjectSnapshot{}
-        |> ProjectSnapshot.object_set_changeset(attrs)
+        attrs
+        |> object_set_changeset()
         |> Repo.insert!()
 
       changed_attrs =
@@ -601,6 +579,64 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
       object_count: 2,
       asset_count: 0,
       blob_count: 0
+    }
+  end
+
+  defp object_set_changeset(attrs) do
+    total_size = Map.fetch!(attrs, :total_size_bytes)
+    now = TimeHelpers.now()
+
+    attrs =
+      Map.merge(
+        %{
+          progress_phase: "complete",
+          progress_bytes: total_size,
+          progress_total_bytes: total_size,
+          verifying_started_at: now,
+          ready_at: now,
+          state_updated_at: now
+        },
+        attrs
+      )
+
+    ProjectSnapshot.object_set_changeset(ready_snapshot(now), attrs)
+  end
+
+  defp pending_object_set_changeset(project_id, prefix, overrides \\ %{}) do
+    attrs =
+      Map.merge(
+        %{
+          project_id: project_id,
+          version_number: 1,
+          object_prefix: prefix,
+          project_size_bytes: 1,
+          project_checksum: @checksum,
+          manifest_size_bytes: 1,
+          manifest_checksum: String.duplicate("b", 64),
+          total_size_bytes: 2,
+          object_count: 2,
+          asset_count: 0,
+          blob_count: 0,
+          mode: "full",
+          idempotency_key: Ecto.UUID.generate(),
+          capture_boundary: Ecto.UUID.generate(),
+          capture_digest: String.duplicate("c", 64),
+          progress_total_bytes: 2
+        },
+        overrides
+      )
+
+    ProjectSnapshot.pending_object_set_changeset(%ProjectSnapshot{}, attrs)
+  end
+
+  defp ready_snapshot(now \\ TimeHelpers.now()) do
+    %ProjectSnapshot{
+      idempotency_key: Ecto.UUID.generate(),
+      capture_boundary: Ecto.UUID.generate(),
+      capture_digest: String.duplicate("c", 64),
+      captured_at: now,
+      build_attempt: 1,
+      building_started_at: now
     }
   end
 end
