@@ -10,16 +10,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.Storage.Local
   alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Workers.RetryStorageCleanupRequestsWorker
 
   describe "request_full_project_snapshot/3" do
     test "atomically persists an exact capture, capacity reservation, and unique job" do
@@ -144,6 +147,45 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
         |> Repo.update!()
       end
     end
+
+    test "heartbeat advances only an executing build with the exact worker and queue" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, requested} = request_snapshot(user, project)
+      now = TimeHelpers.now()
+
+      building =
+        requested
+        |> ProjectSnapshot.build_state_changeset(%{
+          lifecycle_state: "building",
+          progress_phase: "copying",
+          building_started_at: now,
+          state_updated_at: now
+        })
+        |> Repo.update!()
+
+      job =
+        building.build_job_id
+        |> then(&Repo.get!(Oban.Job, &1))
+        |> Ecto.Changeset.change(
+          state: "executing",
+          attempted_at: %{now | microsecond: {0, 6}}
+        )
+        |> Repo.update!()
+
+      database_before = database_clock_now()
+      assert :ok = Versioning.heartbeat_project_snapshot_build(building.id, job.id)
+      database_after = database_clock_now()
+      heartbeat_at = Repo.get!(ProjectSnapshot, building.id).state_updated_at
+      assert DateTime.compare(heartbeat_at, building.state_updated_at) in [:eq, :gt]
+      assert DateTime.compare(heartbeat_at, database_before) in [:eq, :gt]
+      assert DateTime.compare(heartbeat_at, database_after) in [:eq, :lt]
+
+      job |> Ecto.Changeset.change(queue: "foreign") |> Repo.update!()
+
+      assert {:error, :snapshot_build_not_active} =
+               Versioning.heartbeat_project_snapshot_build(building.id, job.id)
+    end
   end
 
   describe "perform_project_snapshot_build/2" do
@@ -183,6 +225,80 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
 
       assert :ok = perform_requested_job(ready)
       assert Repo.get!(ProjectSnapshot, ready.id).accounting_generation == 1
+    end
+
+    test "a discarded old writer cannot resume past its current object or publish a ready snapshot" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, requested} = request_snapshot(user, project)
+      job = requested_job(requested)
+      parent = self()
+      release_ref = make_ref()
+      original_storage_config = Application.get_env(:storyarn, :storage, [])
+
+      Application.put_env(
+        :storyarn,
+        :storage,
+        Keyword.put(original_storage_config, :put_if_absent_file_write, fn path, data ->
+          send(parent, {:snapshot_stage_write_paused, self(), path})
+
+          receive do
+            {:resume_snapshot_stage_write, ^release_ref} -> File.write(path, data, [:binary, :exclusive])
+          after
+            5_000 -> {:error, :paused_snapshot_stage_write_timeout}
+          end
+        end)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, :storage, original_storage_config) end)
+
+      build_task = Task.async(fn -> BuildProjectSnapshotWorker.perform(job) end)
+      assert_receive {:snapshot_stage_write_paused, writer, _path}, 2_000
+
+      active_reservation = Repo.get!(StorageReservation, requested.storage_reservation_id)
+      active_claim = Repo.get!(SnapshotObjectPublicationClaim, requested.object_prefix)
+      expired_at = DateTime.add(database_clock_now(), -1, :second)
+
+      active_reservation
+      |> Ecto.Changeset.change(
+        expires_at: expired_at,
+        accounting_measured_at: DateTime.add(expired_at, -1, :second)
+      )
+      |> Repo.update!()
+
+      active_claim
+      |> SnapshotObjectPublicationClaim.status_changeset("staging", expired_at)
+      |> Repo.update!()
+
+      set_stale_build_heartbeat_seconds(0)
+
+      assert %{failure_count: 0, orphaned_count: 1, settled_count: 0} =
+               Versioning.reconcile_stale_project_snapshot_builds()
+
+      assert {:error, :snapshot_build_job_not_executing} =
+               Versioning.validate_project_snapshot_build_fence(
+                 requested.id,
+                 requested.lifecycle_generation
+               )
+
+      send(writer, {:resume_snapshot_stage_write, release_ref})
+      assert {:snooze, 300} = Task.await(build_task, 5_000)
+
+      refute Repo.get!(ProjectSnapshot, requested.id).lifecycle_state == "ready"
+      assert Repo.get!(Oban.Job, job.id).state == "discarded"
+      assert {:error, _reason} = Storage.stat(requested.manifest_storage_key)
+
+      staging_project_key = String.replace(requested.project_storage_key, "/ready/", "/staging/", global: false)
+      assert {:ok, _stat} = Storage.stat(staging_project_key)
+
+      released = Repo.get!(StorageReservation, requested.storage_reservation_id)
+      assert released.status == "released"
+      assert released.cleanup_status == "owned"
+      assert "storage_cleanup_request:" <> cleanup_request_id = released.cleanup_reference
+
+      cleanup_request = Repo.get!(StorageCleanupRequest, String.to_integer(cleanup_request_id))
+      assert staging_project_key in cleanup_request.storage_keys
+      assert requested.manifest_storage_key in cleanup_request.storage_keys
     end
 
     test "fails closed when a protected source blob is missing" do
@@ -285,7 +401,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert Repo.get!(StorageReservation, ready.storage_reservation_id).status == "committed"
     end
 
-    test "fails immediately and retains accounting when cleanup ownership cannot be proven" do
+    test "snoozes and retains accounting when cleanup ownership cannot be proven" do
       user = user_fixture()
       project = project_fixture(user)
       _asset = upload_asset!(project, user, "ambiguous cleanup source")
@@ -315,22 +431,78 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
         Application.put_env(:storyarn, SnapshotObjectStorage, original_snapshot_config)
       end)
 
-      assert {:discard, :cleanup_unowned} =
+      assert {:snooze, 300} =
                Versioning.perform_project_snapshot_build(requested.id,
                  job_id: job.id,
                  attempt: 1,
                  max_attempts: 5
                )
 
-      failed = Repo.get!(ProjectSnapshot, requested.id)
+      still_building = Repo.get!(ProjectSnapshot, requested.id)
       reservation = Repo.get!(StorageReservation, requested.storage_reservation_id)
 
-      assert failed.lifecycle_state == "failed"
-      assert failed.failure_code == "cleanup_unowned"
-      assert failed.build_attempt == 1
-      assert failed.storage_reservation_id == requested.storage_reservation_id
+      assert still_building.lifecycle_state == "building"
+      assert is_nil(still_building.failure_code)
+      assert still_building.build_attempt == 1
+      assert still_building.storage_reservation_id == requested.storage_reservation_id
       assert reservation.status == "active"
       assert reservation.storage_started_at
+    end
+
+    test "duplicate delivery snoozes while the same namespace has an active writer" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, requested} = request_snapshot(user, project)
+      reservation = Repo.get!(StorageReservation, requested.storage_reservation_id)
+      job = requested_job(requested)
+
+      inventory_digest =
+        SnapshotObjectPublicationClaim.inventory_digest(%{
+          format_version: requested.format_version,
+          mode: requested.mode,
+          object_prefix: requested.object_prefix,
+          manifest_storage_key: requested.manifest_storage_key,
+          manifest_size_bytes: requested.manifest_size_bytes,
+          manifest_checksum: requested.manifest_checksum,
+          project_storage_key: requested.project_storage_key,
+          project_size_bytes: requested.project_size_bytes,
+          project_checksum: requested.project_checksum,
+          total_size_bytes: requested.total_size_bytes,
+          accounted_size_bytes: requested.total_size_bytes,
+          asset_blob_size_bytes:
+            requested.total_size_bytes - requested.project_size_bytes - requested.manifest_size_bytes,
+          accounting_version: 1,
+          object_count: requested.object_count,
+          asset_count: requested.asset_count,
+          blob_count: requested.blob_count
+        })
+
+      claim =
+        requested.object_prefix
+        |> SnapshotObjectPublicationClaim.create_changeset(
+          inventory_digest,
+          Ecto.UUID.generate(),
+          DateTime.add(TimeHelpers.now(), 3_600, :second),
+          reservation.id,
+          reservation.lease_token
+        )
+        |> Repo.insert!()
+
+      assert {:snooze, 30} =
+               Versioning.perform_project_snapshot_build(requested.id,
+                 job_id: job.id,
+                 attempt: 1,
+                 max_attempts: 5
+               )
+
+      building = Repo.get!(ProjectSnapshot, requested.id)
+      unchanged_reservation = Repo.get!(StorageReservation, reservation.id)
+
+      assert building.lifecycle_state == "building"
+      assert is_nil(building.failure_code)
+      assert unchanged_reservation.status == "active"
+      assert is_nil(unchanged_reservation.storage_started_at)
+      assert Repo.get!(SnapshotObjectPublicationClaim, claim.object_prefix).status == "staging"
     end
 
     test "releases an unstarted orphan reservation when its project is deleted before claim" do
@@ -381,6 +553,79 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert Repo.get!(ProjectSnapshot, cancelled.id).lifecycle_state == "cancelled"
     end
 
+    test "redelivered cancellation never takes cleanup ownership from an active writer" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, requested} = request_snapshot(user, project)
+
+      reservation = Repo.get!(StorageReservation, requested.storage_reservation_id)
+      capture = Repo.get!(ProjectSnapshotCapture, requested.id)
+
+      assert {:ok, cleanup_scope} =
+               SnapshotObjectStorage.cleanup_scope_from_capture(
+                 project.id,
+                 requested.object_prefix,
+                 capture.manifest_json
+               )
+
+      assert {:ok, started} =
+               Billing.mark_storage_reservation_started(
+                 reservation.id,
+                 reservation.lease_token,
+                 reservation.generation,
+                 cleanup_scope
+               )
+
+      claim =
+        requested.object_prefix
+        |> SnapshotObjectPublicationClaim.create_changeset(
+          String.duplicate("a", 64),
+          Ecto.UUID.generate(),
+          DateTime.add(TimeHelpers.now(), 3_600, :second),
+          started.id,
+          started.lease_token
+        )
+        |> Repo.insert!()
+
+      assert {:ok, cancellation_requested} =
+               Versioning.cancel_project_snapshot(
+                 user_scope_fixture(user),
+                 project,
+                 requested.id
+               )
+
+      assert {:snooze, 300} = perform_requested_job(cancellation_requested)
+      assert Repo.get!(SnapshotObjectPublicationClaim, claim.object_prefix).status == "staging"
+      assert_active_cancellation_fence(requested.id, reservation.id)
+
+      publishing_claim =
+        claim
+        |> SnapshotObjectPublicationClaim.status_changeset("staged")
+        |> Repo.update!()
+        |> SnapshotObjectPublicationClaim.status_changeset(
+          "publishing",
+          DateTime.add(TimeHelpers.now(), 3_600, :second)
+        )
+        |> Repo.update!()
+
+      assert {:snooze, 300} = perform_requested_job(cancellation_requested)
+      assert Repo.get!(SnapshotObjectPublicationClaim, claim.object_prefix).status == "publishing"
+      assert_active_cancellation_fence(requested.id, reservation.id)
+
+      publishing_claim
+      |> SnapshotObjectPublicationClaim.status_changeset("poisoned")
+      |> Repo.update!()
+
+      assert :ok = perform_requested_job(cancellation_requested)
+
+      cancelled = Repo.get!(ProjectSnapshot, requested.id)
+      released = Repo.get!(StorageReservation, reservation.id)
+      assert cancelled.lifecycle_state == "cancelled"
+      assert cancelled.cancelled_at
+      assert released.status == "released"
+      assert released.cleanup_status == "owned"
+    end
+
     test "cancellation after storage starts reconstructs and owns the exact cleanup inventory" do
       user = user_fixture()
       project = project_fixture(user)
@@ -399,7 +644,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       manifest = Jason.decode!(capture.manifest_json)
 
       assert cleanup_scope.estimated_cleanup_bytes ==
-               manifest["payload_size_bytes"] + byte_size(capture.manifest_json)
+               2 * (manifest["payload_size_bytes"] + byte_size(capture.manifest_json))
 
       assert {:ok, started} =
                Billing.mark_storage_reservation_started(
@@ -409,16 +654,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
                  cleanup_scope
                )
 
-      assert %SnapshotObjectPublicationClaim{} =
-               requested.object_prefix
-               |> SnapshotObjectPublicationClaim.create_changeset(
-                 String.duplicate("a", 64),
-                 Ecto.UUID.generate(),
-                 DateTime.add(TimeHelpers.now(), 3_600, :second),
-                 started.id,
-                 started.lease_token
-               )
-               |> Repo.insert!()
+      claim =
+        requested.object_prefix
+        |> SnapshotObjectPublicationClaim.create_changeset(
+          String.duplicate("a", 64),
+          Ecto.UUID.generate(),
+          DateTime.add(TimeHelpers.now(), 3_600, :second),
+          started.id,
+          started.lease_token
+        )
+        |> Repo.insert!()
+
+      claim
+      |> SnapshotObjectPublicationClaim.status_changeset("poisoned")
+      |> Repo.update!()
 
       assert {:ok, cancellation_requested} =
                Versioning.cancel_project_snapshot(
@@ -463,6 +712,234 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
                MapSet.new(cleanup_request.storage_keys),
                MapSet.new(cleanup_scope.storage_keys)
              )
+    end
+
+    test "cancellation keeps its reservation active until cleanup ownership can be persisted" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, requested} = request_snapshot(user, project)
+
+      reservation = Repo.get!(StorageReservation, requested.storage_reservation_id)
+      capture = Repo.get!(ProjectSnapshotCapture, requested.id)
+
+      assert {:ok, cleanup_scope} =
+               SnapshotObjectStorage.cleanup_scope_from_capture(
+                 project.id,
+                 requested.object_prefix,
+                 capture.manifest_json
+               )
+
+      assert {:ok, started} =
+               Billing.mark_storage_reservation_started(
+                 reservation.id,
+                 reservation.lease_token,
+                 reservation.generation,
+                 cleanup_scope
+               )
+
+      claim =
+        requested.object_prefix
+        |> SnapshotObjectPublicationClaim.create_changeset(
+          String.duplicate("a", 64),
+          Ecto.UUID.generate(),
+          DateTime.add(TimeHelpers.now(), 3_600, :second),
+          started.id,
+          started.lease_token
+        )
+        |> Repo.insert!()
+
+      claim
+      |> SnapshotObjectPublicationClaim.status_changeset("poisoned")
+      |> Repo.update!()
+
+      assert {:ok, cancellation_requested} =
+               Versioning.cancel_project_snapshot(
+                 user_scope_fixture(user),
+                 project,
+                 requested.id
+               )
+
+      original_config = Application.get_env(:storyarn, ProjectSnapshotBuild, [])
+
+      Application.put_env(
+        :storyarn,
+        ProjectSnapshotBuild,
+        Keyword.put(original_config, :cancel_cleanup_persist_fun, fn _keys ->
+          {:error, :database_unavailable}
+        end)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, ProjectSnapshotBuild, original_config) end)
+
+      assert {:snooze, 300} = perform_requested_job(cancellation_requested)
+
+      still_cancelling = Repo.get!(ProjectSnapshot, requested.id)
+      active_reservation = Repo.get!(StorageReservation, reservation.id)
+      poisoned_claim = Repo.get!(SnapshotObjectPublicationClaim, requested.object_prefix)
+
+      assert still_cancelling.lifecycle_state == "building"
+      assert still_cancelling.cancel_requested_at
+      assert is_nil(still_cancelling.cancelled_at)
+      assert active_reservation.status == "active"
+      assert poisoned_claim.status == "poisoned"
+
+      Application.put_env(:storyarn, ProjectSnapshotBuild, original_config)
+
+      assert :ok = perform_requested_job(still_cancelling)
+
+      cancelled = Repo.get!(ProjectSnapshot, requested.id)
+      released = Repo.get!(StorageReservation, reservation.id)
+
+      assert cancelled.lifecycle_state == "cancelled"
+      assert cancelled.cancelled_at
+      assert released.status == "released"
+      assert released.cleanup_status == "owned"
+    end
+
+    test "cancellation reuses an immutable cleanup receipt after release fails and the cleanup remains consumable" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, requested} = request_snapshot(user, project)
+      {reservation, cleanup_scope} = start_snapshot_storage!(project, requested)
+
+      assert {:ok, cancellation_requested} =
+               Versioning.cancel_project_snapshot(
+                 user_scope_fixture(user),
+                 project,
+                 requested.id
+               )
+
+      original_config = Application.get_env(:storyarn, ProjectSnapshotBuild, [])
+      parent = self()
+
+      persist_once = fn storage_keys ->
+        assert {:ok, cleanup_request} =
+                 StorageCompensation.persist_planned_cleanup_request(storage_keys)
+
+        send(parent, {:cleanup_persisted, cleanup_request.id})
+        {:ok, %{id: cleanup_request.id + 1_000_000}}
+      end
+
+      Application.put_env(
+        :storyarn,
+        ProjectSnapshotBuild,
+        Keyword.put(original_config, :cancel_cleanup_persist_fun, persist_once)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, ProjectSnapshotBuild, original_config) end)
+
+      assert {:snooze, 300} = perform_requested_job(cancellation_requested)
+      assert_receive {:cleanup_persisted, cleanup_request_id}
+      assert Repo.get!(StorageReservation, reservation.id).status == "active"
+
+      Application.put_env(
+        :storyarn,
+        ProjectSnapshotBuild,
+        Keyword.put(original_config, :cancel_cleanup_persist_fun, fn _keys ->
+          flunk("an immutable ownership receipt must prevent a duplicate cleanup request")
+        end)
+      )
+
+      assert :ok = perform_requested_job(Repo.get!(ProjectSnapshot, requested.id))
+
+      released = Repo.get!(StorageReservation, reservation.id)
+      assert released.status == "released"
+      assert released.cleanup_reference == "storage_cleanup_request:#{cleanup_request_id}"
+
+      assert Repo.aggregate(
+               from(request in StorageCleanupRequest,
+                 where: request.storage_keys == ^Enum.sort(cleanup_scope.storage_keys)
+               ),
+               :count,
+               :id
+             ) == 1
+
+      assert :ok =
+               RetryStorageCleanupRequestsWorker.perform(%Oban.Job{
+                 args: %{},
+                 attempt: 1,
+                 max_attempts: 5
+               })
+
+      refute Repo.get(StorageCleanupRequest, cleanup_request_id)
+    end
+
+    test "terminal persistence failure leaves a reconcilable release and emits accounting only once" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, requested} = request_snapshot(user, project)
+      {reservation, _cleanup_scope} = start_snapshot_storage!(project, requested)
+
+      assert {:ok, cancellation_requested} =
+               Versioning.cancel_project_snapshot(
+                 user_scope_fixture(user),
+                 project,
+                 requested.id
+               )
+
+      original_config = Application.get_env(:storyarn, ProjectSnapshotBuild, [])
+      handler_id = "snapshot-terminal-persist-#{System.unique_integer([:positive])}"
+      parent = self()
+
+      :ok = Versioning.subscribe_project_snapshots(project.id)
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :storage, :accounting, :updated],
+          fn event, measurements, metadata, pid -> send(pid, {event, measurements, metadata}) end,
+          parent
+        )
+
+      Application.put_env(
+        :storyarn,
+        ProjectSnapshotBuild,
+        Keyword.put(original_config, :terminal_state_persist_fun, fn _changeset ->
+          {:error, :database_unavailable}
+        end)
+      )
+
+      on_exit(fn ->
+        :telemetry.detach(handler_id)
+        Application.put_env(:storyarn, ProjectSnapshotBuild, original_config)
+      end)
+
+      assert {:snooze, 300} = perform_requested_job(cancellation_requested)
+
+      assert %ProjectSnapshot{lifecycle_state: "building", cancelled_at: nil} =
+               Repo.get!(ProjectSnapshot, requested.id)
+
+      assert %StorageReservation{status: "released", cleanup_status: "owned"} =
+               Repo.get!(StorageReservation, reservation.id)
+
+      assert_receive {
+        [:storyarn, :storage, :accounting, :updated],
+        _measurements,
+        %{workspace_id: workspace_id, action: :released}
+      }
+
+      assert workspace_id == project.workspace_id
+      refute_receive {:project_snapshot_updated, _snapshot_id}
+
+      Application.put_env(:storyarn, ProjectSnapshotBuild, original_config)
+
+      requested.build_job_id
+      |> then(&Repo.get!(Oban.Job, &1))
+      |> Ecto.Changeset.change(
+        state: "scheduled",
+        scheduled_at: %{TimeHelpers.now() | microsecond: {0, 6}}
+      )
+      |> Repo.update!()
+
+      assert %{failure_count: 0, orphaned_count: 0, settled_count: 1} =
+               Versioning.reconcile_stale_project_snapshot_builds()
+
+      assert %ProjectSnapshot{lifecycle_state: "cancelled", cancelled_at: %DateTime{}} =
+               Repo.get!(ProjectSnapshot, requested.id)
+
+      assert_receive {:project_snapshot_updated, snapshot_id}
+      assert snapshot_id == requested.id
+      refute_receive {[:storyarn, :storage, :accounting, :updated], _, _}
     end
 
     test "rejects callers without project management permission" do
@@ -559,6 +1036,55 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
     end
   end
 
+  defp assert_active_cancellation_fence(snapshot_id, reservation_id) do
+    snapshot = Repo.get!(ProjectSnapshot, snapshot_id)
+    reservation = Repo.get!(StorageReservation, reservation_id)
+
+    assert snapshot.lifecycle_state == "building"
+    assert snapshot.cancel_requested_at
+    assert is_nil(snapshot.cancelled_at)
+    assert reservation.status == "active"
+    assert is_nil(reservation.cleanup_status)
+    assert is_nil(reservation.cleanup_reference)
+  end
+
+  defp start_snapshot_storage!(project, snapshot) do
+    reservation = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
+    capture = Repo.get!(ProjectSnapshotCapture, snapshot.id)
+
+    assert {:ok, cleanup_scope} =
+             SnapshotObjectStorage.cleanup_scope_from_capture(
+               project.id,
+               snapshot.object_prefix,
+               capture.manifest_json
+             )
+
+    assert {:ok, started} =
+             Billing.mark_storage_reservation_started(
+               reservation.id,
+               reservation.lease_token,
+               reservation.generation,
+               cleanup_scope
+             )
+
+    claim =
+      snapshot.object_prefix
+      |> SnapshotObjectPublicationClaim.create_changeset(
+        String.duplicate("a", 64),
+        Ecto.UUID.generate(),
+        DateTime.add(TimeHelpers.now(), 3_600, :second),
+        started.id,
+        started.lease_token
+      )
+      |> Repo.insert!()
+
+    claim
+    |> SnapshotObjectPublicationClaim.status_changeset("poisoned")
+    |> Repo.update!()
+
+    {started, cleanup_scope}
+  end
+
   defp request_snapshot(user, project) do
     Versioning.request_full_project_snapshot(user_scope_fixture(user), project, %{
       idempotency_key: Ecto.UUID.generate()
@@ -572,7 +1098,40 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
     |> BuildProjectSnapshotWorker.perform()
   end
 
-  defp requested_job(snapshot), do: Repo.get!(Oban.Job, snapshot.build_job_id)
+  defp requested_job(snapshot) do
+    snapshot.build_job_id
+    |> then(&Repo.get!(Oban.Job, &1))
+    |> case do
+      %Oban.Job{state: "executing"} = job ->
+        job
+
+      %Oban.Job{} = job ->
+        job
+        |> Ecto.Changeset.change(
+          state: "executing",
+          attempt: max(job.attempt, 1),
+          attempted_at: %{TimeHelpers.now() | microsecond: {0, 6}}
+        )
+        |> Repo.update!()
+    end
+  end
+
+  defp database_clock_now do
+    %Postgrex.Result{rows: [[now]]} = Repo.query!("SELECT clock_timestamp()")
+    DateTime.truncate(now, :second)
+  end
+
+  defp set_stale_build_heartbeat_seconds(seconds) do
+    original = Application.fetch_env!(:storyarn, :snapshot_lifecycle)
+
+    Application.put_env(
+      :storyarn,
+      :snapshot_lifecycle,
+      Keyword.put(original, :stale_build_heartbeat_seconds, seconds)
+    )
+
+    on_exit(fn -> Application.put_env(:storyarn, :snapshot_lifecycle, original) end)
+  end
 
   defp upload_asset!(project, user, contents) do
     assert {:ok, asset} =

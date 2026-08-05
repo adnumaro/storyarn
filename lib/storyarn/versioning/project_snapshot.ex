@@ -616,6 +616,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   def retry_state_changeset(%__MODULE__{} = snapshot, attrs) do
     snapshot
     |> build_state_changeset_base(attrs)
+    |> validate_retry_origin(snapshot)
     |> advance_lifecycle_generation(snapshot)
     |> validate_generation_transition(snapshot, "pending")
     |> validate_monotonic_state_time(snapshot)
@@ -682,6 +683,13 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     if next in Map.get(@same_generation_transitions, current, []),
       do: changeset,
       else: add_error(changeset, :lifecycle_state, "cannot regress or skip lifecycle states")
+  end
+
+  defp validate_retry_origin(changeset, %__MODULE__{lifecycle_state: state})
+       when state in ["building", "verifying", "failed"], do: changeset
+
+  defp validate_retry_origin(changeset, %__MODULE__{}) do
+    add_error(changeset, :lifecycle_state, "cannot retry from the current lifecycle state")
   end
 
   defp validate_generation_transition(changeset, %__MODULE__{lifecycle_generation: generation}, next_state) do

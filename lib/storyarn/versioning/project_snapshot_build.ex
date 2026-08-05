@@ -11,6 +11,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Assets
+  alias Storyarn.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
@@ -31,6 +32,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   require Logger
 
   @capture_timeout to_timeout(minute: 5)
+  @active_build_states ~w(pending building verifying)
+  @terminal_job_states ~w(completed discarded cancelled)
+  @releasable_waiting_job_states ~w(available scheduled retryable)
+  @build_worker inspect(BuildProjectSnapshotWorker)
+  @stale_build_batch_size 50
   @progress_checkpoint_bytes 8 * 1024 * 1024
   @progress_checkpoint_ms 2_000
   @safe_failure_messages %{
@@ -94,6 +100,483 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   end
 
   def perform(_snapshot_id, _opts), do: {:discard, :invalid_snapshot_build_job}
+
+  @doc false
+  @spec heartbeat(pos_integer(), pos_integer()) :: :ok | {:error, :snapshot_build_not_active}
+  def heartbeat(snapshot_id, job_id)
+      when is_integer(snapshot_id) and snapshot_id > 0 and is_integer(job_id) and job_id > 0 do
+    now = database_clock_now()
+
+    {updated_count, _rows} =
+      ProjectSnapshot
+      |> join(:inner, [snapshot], job in Oban.Job, on: job.id == snapshot.build_job_id)
+      |> where([snapshot, _job], snapshot.id == ^snapshot_id)
+      |> where([snapshot, _job], snapshot.build_job_id == ^job_id)
+      |> where([snapshot, _job], snapshot.lifecycle_state in ^@active_build_states)
+      |> where([_snapshot, job], job.worker == ^@build_worker)
+      |> where([_snapshot, job], job.queue == "snapshots")
+      |> where([_snapshot, job], job.state == "executing")
+      |> Repo.update_all(set: [state_updated_at: now])
+
+    if updated_count == 1, do: :ok, else: {:error, :snapshot_build_not_active}
+  end
+
+  def heartbeat(_snapshot_id, _job_id), do: {:error, :snapshot_build_not_active}
+
+  @doc false
+  @spec reconcile_stale_builds() :: %{
+          failure_count: non_neg_integer(),
+          orphaned_count: non_neg_integer(),
+          settled_count: non_neg_integer()
+        }
+  def reconcile_stale_builds do
+    stale_build_heartbeat_seconds = stale_build_heartbeat_seconds()
+    advisory_now = database_clock_now()
+    stale_before = DateTime.add(advisory_now, -stale_build_heartbeat_seconds, :second)
+
+    advisory_now
+    |> stale_build_candidates(stale_before)
+    |> Enum.reduce(
+      %{failure_count: 0, orphaned_count: 0, settled_count: 0},
+      &reconcile_stale_build_candidate(&1, &2, stale_build_heartbeat_seconds)
+    )
+  end
+
+  defp stale_build_candidates(now, stale_before) do
+    active_orphan = active_orphan_dynamic(now, stale_before)
+    released_gap = released_gap_dynamic(stale_before)
+    recovery_candidate = dynamic([_snapshot, _project, _reservation, _job], ^active_orphan or ^released_gap)
+
+    Repo.all(
+      from(snapshot in ProjectSnapshot,
+        join: project in Project,
+        on: project.id == snapshot.project_id,
+        join: reservation in StorageReservation,
+        on: reservation.id == snapshot.storage_reservation_id,
+        left_join: job in Oban.Job,
+        on: job.id == snapshot.build_job_id,
+        where:
+          snapshot.lifecycle_state in ^@active_build_states and is_nil(project.deleted_at) and
+            reservation.kind == "snapshot_build" and reservation.status in ["active", "released"],
+        where: ^recovery_candidate,
+        order_by: [asc: snapshot.id],
+        limit: ^@stale_build_batch_size,
+        select: %{
+          snapshot_id: snapshot.id,
+          workspace_id: project.workspace_id,
+          reservation_id: reservation.id,
+          job_id: job.id
+        }
+      )
+    )
+  end
+
+  defp active_orphan_dynamic(now, stale_before) do
+    active_orphan =
+      dynamic(
+        [snapshot, _project, reservation, job],
+        reservation.status == "active" and reservation.expires_at <= ^now and
+          job.worker == ^@build_worker and job.queue == "snapshots" and
+          job.state == "executing" and job.attempted_at <= ^stale_before and
+          snapshot.state_updated_at <= ^stale_before
+      )
+
+    active_orphan
+  end
+
+  defp released_gap_dynamic(stale_before) do
+    released_job = released_job_dynamic(stale_before)
+
+    dynamic(
+      [_snapshot, _project, reservation, _job],
+      reservation.status == "released" and ^released_job
+    )
+  end
+
+  defp released_job_dynamic(stale_before) do
+    waiting_or_terminal = released_waiting_or_terminal_dynamic()
+    stale_executing = released_stale_executing_dynamic(stale_before)
+
+    dynamic(
+      [_snapshot, _project, _reservation, job],
+      is_nil(job.id) or ^waiting_or_terminal or ^stale_executing
+    )
+  end
+
+  defp released_waiting_or_terminal_dynamic do
+    dynamic(
+      [_snapshot, _project, _reservation, job],
+      job.worker == ^@build_worker and job.queue == "snapshots" and
+        job.state in ^(@terminal_job_states ++ @releasable_waiting_job_states)
+    )
+  end
+
+  defp released_stale_executing_dynamic(stale_before) do
+    dynamic(
+      [snapshot, _project, _reservation, job],
+      job.worker == ^@build_worker and job.queue == "snapshots" and
+        job.state == "executing" and job.attempted_at <= ^stale_before and
+        snapshot.state_updated_at <= ^stale_before
+    )
+  end
+
+  defp reconcile_stale_build_candidate(candidate, counts, stale_build_heartbeat_seconds) do
+    result =
+      Billing.transact_with_workspace_lock(candidate.workspace_id, fn _workspace ->
+        now = database_clock_now()
+        stale_before = DateTime.add(now, -stale_build_heartbeat_seconds, :second)
+        reconcile_stale_build_candidate_locked(candidate, now, stale_before)
+      end)
+
+    case result do
+      {:ok, {:orphaned, _snapshot_id}} ->
+        Map.update!(counts, :orphaned_count, &(&1 + 1))
+
+      {:ok, {:settled, %ProjectSnapshot{} = snapshot}} ->
+        broadcast(snapshot)
+        Map.update!(counts, :settled_count, &(&1 + 1))
+
+      {:error, :snapshot_build_recovery_candidate_changed} ->
+        counts
+
+      {:error, _reason} ->
+        Map.update!(counts, :failure_count, &(&1 + 1))
+    end
+  end
+
+  defp reconcile_stale_build_candidate_locked(candidate, now, stale_before) do
+    snapshot = lock_snapshot(candidate.snapshot_id)
+    reservation = lock_reservation(candidate.reservation_id)
+    job = lock_build_job(candidate.job_id)
+
+    with :ok <- validate_stale_build_identity(candidate, snapshot, reservation, job) do
+      reconcile_stale_build_status(snapshot, reservation, job, now, stale_before)
+    end
+  end
+
+  defp validate_stale_build_identity(
+         candidate,
+         %ProjectSnapshot{
+           id: snapshot_id,
+           project_id: project_id,
+           object_prefix: object_prefix,
+           storage_reservation_id: reservation_id,
+           build_job_id: job_id,
+           lifecycle_state: lifecycle_state
+         },
+         %StorageReservation{
+           id: reservation_id,
+           workspace_id_snapshot: workspace_id,
+           project_id_snapshot: project_id,
+           project_snapshot_id_snapshot: snapshot_id,
+           cleanup_object_prefix: object_prefix,
+           kind: "snapshot_build"
+         },
+         job
+       ) do
+    valid_job? =
+      case {candidate.job_id, job} do
+        {nil, nil} -> true
+        {^job_id, %Oban.Job{id: ^job_id}} -> true
+        _job -> false
+      end
+
+    if snapshot_id == candidate.snapshot_id and reservation_id == candidate.reservation_id and
+         workspace_id == candidate.workspace_id and lifecycle_state in @active_build_states and valid_job?,
+       do: :ok,
+       else: {:error, :snapshot_build_recovery_candidate_changed}
+  end
+
+  defp validate_stale_build_identity(_candidate, _snapshot, _reservation, _job),
+    do: {:error, :snapshot_build_recovery_candidate_changed}
+
+  defp reconcile_stale_build_status(
+         %ProjectSnapshot{} = snapshot,
+         %StorageReservation{status: "active"} = reservation,
+         %Oban.Job{} = job,
+         now,
+         stale_before
+       ) do
+    claim = lock_publication_claim_for_reservation(reservation.id)
+
+    with true <- DateTime.compare(reservation.expires_at, now) in [:lt, :eq],
+         :ok <- validate_stale_executing_job(snapshot, job, stale_before),
+         :ok <- validate_inactive_publication_claim(reservation, claim, now, stale_before),
+         {:ok, _job} <- discard_orphaned_build_job(job, now) do
+      {:ok, {:orphaned, snapshot.id}}
+    else
+      false -> {:error, :snapshot_build_recovery_candidate_changed}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp reconcile_stale_build_status(
+         %ProjectSnapshot{} = snapshot,
+         %StorageReservation{status: "released"} = reservation,
+         job,
+         now,
+         stale_before
+       ) do
+    with :ok <- validate_released_cleanup_proof(snapshot, reservation),
+         :ok <- settle_released_build_job(snapshot, job, now, stale_before),
+         {:ok, terminal} <- terminalize_released_build(snapshot, reservation, now) do
+      {:ok, {:settled, terminal}}
+    end
+  end
+
+  defp reconcile_stale_build_status(_snapshot, _reservation, _job, _now, _stale_before),
+    do: {:error, :snapshot_build_recovery_candidate_changed}
+
+  defp validate_stale_executing_job(snapshot, %Oban.Job{} = job, stale_before) do
+    stale? =
+      job.id == snapshot.build_job_id and job.worker == @build_worker and job.queue == "snapshots" and
+        job.state == "executing" and old_enough?(job.attempted_at, stale_before) and
+        old_enough?(snapshot.state_updated_at, stale_before)
+
+    if stale?, do: :ok, else: {:error, :snapshot_build_recovery_candidate_changed}
+  end
+
+  defp validate_inactive_publication_claim(%StorageReservation{storage_started_at: nil}, nil, _now, _stale_before),
+    do: :ok
+
+  defp validate_inactive_publication_claim(
+         %StorageReservation{storage_started_at: nil} = reservation,
+         %SnapshotObjectPublicationClaim{status: "staging"} = claim,
+         now,
+         stale_before
+       ) do
+    validate_expired_claim_binding(reservation, claim, now, stale_before)
+  end
+
+  defp validate_inactive_publication_claim(
+         %StorageReservation{storage_started_at: %DateTime{}} = reservation,
+         %SnapshotObjectPublicationClaim{status: status} = claim,
+         now,
+         stale_before
+       )
+       when status in ["staging", "publishing"] do
+    validate_expired_claim_binding(reservation, claim, now, stale_before)
+  end
+
+  defp validate_inactive_publication_claim(
+         %StorageReservation{storage_started_at: %DateTime{}} = reservation,
+         %SnapshotObjectPublicationClaim{status: status} = claim,
+         _now,
+         stale_before
+       )
+       when status in ["staged", "published"] do
+    with :ok <- validate_claim_binding(reservation, claim),
+         true <- old_enough?(claim.updated_at, stale_before) do
+      :ok
+    else
+      _invalid -> {:error, :snapshot_build_recovery_candidate_changed}
+    end
+  end
+
+  defp validate_inactive_publication_claim(
+         %StorageReservation{} = reservation,
+         %SnapshotObjectPublicationClaim{status: "poisoned"} = claim,
+         _now,
+         stale_before
+       ) do
+    with :ok <- validate_claim_binding(reservation, claim),
+         true <- old_enough?(claim.updated_at, stale_before) do
+      :ok
+    else
+      _invalid -> {:error, :snapshot_build_recovery_candidate_changed}
+    end
+  end
+
+  defp validate_inactive_publication_claim(_reservation, _claim, _now, _stale_before),
+    do: {:error, :snapshot_build_recovery_candidate_changed}
+
+  defp validate_expired_claim_binding(reservation, claim, now, stale_before) do
+    with :ok <- validate_claim_binding(reservation, claim),
+         %DateTime{} = lease_expires_at <- claim.lease_expires_at,
+         true <- DateTime.compare(lease_expires_at, now) in [:lt, :eq],
+         true <- old_enough?(claim.updated_at, stale_before) do
+      :ok
+    else
+      _invalid -> {:error, :snapshot_build_recovery_candidate_changed}
+    end
+  end
+
+  defp validate_claim_binding(
+         %StorageReservation{id: reservation_id, lease_token: lease_token, cleanup_object_prefix: object_prefix},
+         %SnapshotObjectPublicationClaim{
+           object_prefix: object_prefix,
+           storage_reservation_id_snapshot: reservation_id,
+           storage_reservation_lease_token: lease_token
+         }
+       ), do: :ok
+
+  defp validate_claim_binding(_reservation, _claim), do: {:error, :snapshot_build_recovery_candidate_changed}
+
+  defp validate_released_cleanup_proof(_snapshot, %StorageReservation{
+         cleanup_status: "not_required",
+         storage_started_at: nil,
+         storage_namespace: storage_namespace,
+         cleanup_reference: "storage_not_started:" <> storage_namespace
+       }), do: :ok
+
+  defp validate_released_cleanup_proof(
+         %ProjectSnapshot{} = snapshot,
+         %StorageReservation{cleanup_status: "owned", cleanup_reference: cleanup_reference} = reservation
+       ) do
+    with {:ok, cleanup_request_id} <- cleanup_request_id(cleanup_reference),
+         {:ok, receipt_keys} <- StorageCleanupOwnershipReceipt.storage_keys(cleanup_request_id),
+         %ProjectSnapshotCapture{} = capture <- Repo.get(ProjectSnapshotCapture, snapshot.id),
+         {:ok, scope} <-
+           SnapshotObjectStorage.cleanup_scope_from_capture(
+             snapshot.project_id,
+             snapshot.object_prefix,
+             capture.manifest_json
+           ),
+         true <- reservation.cleanup_inventory_count == length(scope.storage_keys),
+         true <- reservation.cleanup_inventory_digest == scope.inventory_digest,
+         true <- same_cleanup_inventory?(receipt_keys, scope.storage_keys) do
+      :ok
+    else
+      _invalid -> {:error, :snapshot_build_recovery_candidate_changed}
+    end
+  end
+
+  defp validate_released_cleanup_proof(_snapshot, _reservation), do: {:error, :snapshot_build_recovery_candidate_changed}
+
+  defp cleanup_request_id("storage_cleanup_request:" <> encoded_id) do
+    case Integer.parse(encoded_id) do
+      {cleanup_request_id, ""} when cleanup_request_id > 0 -> {:ok, cleanup_request_id}
+      _invalid -> {:error, :invalid_cleanup_reference}
+    end
+  end
+
+  defp cleanup_request_id(_cleanup_reference), do: {:error, :invalid_cleanup_reference}
+
+  defp same_cleanup_inventory?(left, right) when is_list(left) and is_list(right) do
+    length(left) == length(right) and MapSet.equal?(MapSet.new(left), MapSet.new(right))
+  end
+
+  defp same_cleanup_inventory?(_left, _right), do: false
+
+  defp settle_released_build_job(_snapshot, nil, _now, _stale_before), do: :ok
+
+  defp settle_released_build_job(
+         snapshot,
+         %Oban.Job{worker: @build_worker, queue: "snapshots", state: state},
+         _now,
+         _stale_before
+       )
+       when state in @terminal_job_states do
+    if snapshot.build_job_id, do: :ok, else: {:error, :snapshot_build_recovery_candidate_changed}
+  end
+
+  defp settle_released_build_job(
+         %ProjectSnapshot{build_job_id: job_id},
+         %Oban.Job{id: job_id, worker: @build_worker, queue: "snapshots", state: state} = job,
+         now,
+         _stale_before
+       )
+       when state in @releasable_waiting_job_states do
+    job
+    |> discard_orphaned_build_job(now)
+    |> normalize_released_build_job_discard()
+  end
+
+  defp settle_released_build_job(snapshot, %Oban.Job{} = job, now, stale_before) do
+    with :ok <- validate_stale_executing_job(snapshot, job, stale_before),
+         {:ok, _job} <- discard_orphaned_build_job(job, now) do
+      :ok
+    end
+  end
+
+  defp normalize_released_build_job_discard({:ok, %Oban.Job{}}), do: :ok
+  defp normalize_released_build_job_discard({:error, reason}), do: {:error, reason}
+
+  defp terminalize_released_build(%ProjectSnapshot{cancel_requested_at: %DateTime{}} = snapshot, _reservation, now) do
+    snapshot
+    |> ProjectSnapshot.build_state_changeset(%{
+      lifecycle_state: "cancelled",
+      integrity_state: "unknown",
+      progress_phase: "cancelled",
+      failure_code: nil,
+      failure_message: nil,
+      failed_at: nil,
+      cancelled_at: now,
+      state_updated_at: now
+    })
+    |> persist_terminal_snapshot()
+  end
+
+  defp terminalize_released_build(%ProjectSnapshot{lifecycle_state: state} = snapshot, reservation, now)
+       when state in ["building", "verifying"] do
+    code = released_failure_code(reservation.release_reason)
+
+    snapshot
+    |> ProjectSnapshot.build_state_changeset(%{
+      lifecycle_state: "failed",
+      integrity_state: released_failure_integrity(code),
+      progress_phase: "failed",
+      failure_code: code,
+      failure_message: Map.fetch!(@safe_failure_messages, code),
+      failed_at: now,
+      state_updated_at: now
+    })
+    |> persist_terminal_snapshot()
+  end
+
+  defp terminalize_released_build(_snapshot, _reservation, _now), do: {:error, :snapshot_build_recovery_candidate_changed}
+
+  defp released_failure_code(code) when is_binary(code) do
+    if Map.has_key?(@safe_failure_messages, code), do: code, else: "build_failed"
+  end
+
+  defp released_failure_code(_code), do: "build_failed"
+
+  defp released_failure_integrity("source_missing"), do: "missing"
+  defp released_failure_integrity("source_corrupt"), do: "corrupt"
+  defp released_failure_integrity(_code), do: "incomplete"
+
+  defp discard_orphaned_build_job(job, now) do
+    job
+    |> Ecto.Changeset.change(state: "discarded", discarded_at: %{now | microsecond: {0, 6}})
+    |> Repo.update()
+  end
+
+  defp old_enough?(%DateTime{} = value, %DateTime{} = cutoff), do: DateTime.compare(value, cutoff) in [:lt, :eq]
+
+  defp old_enough?(_value, _cutoff), do: false
+
+  defp database_clock_now do
+    %Postgrex.Result{rows: [[now]]} = Repo.query!("SELECT clock_timestamp()")
+    DateTime.truncate(now, :second)
+  end
+
+  defp stale_build_heartbeat_seconds do
+    :storyarn
+    |> Application.fetch_env!(:snapshot_lifecycle)
+    |> Keyword.fetch!(:stale_build_heartbeat_seconds)
+    |> case do
+      seconds when is_integer(seconds) and seconds >= 0 -> seconds
+      invalid -> raise ArgumentError, "invalid stale build heartbeat seconds: #{inspect(invalid)}"
+    end
+  end
+
+  defp lock_build_job(nil), do: nil
+
+  defp lock_build_job(job_id) when is_integer(job_id) do
+    Repo.one(from(job in Oban.Job, where: job.id == ^job_id, lock: "FOR UPDATE"))
+  end
+
+  defp lock_build_job(_job_id), do: nil
+
+  defp lock_publication_claim_for_reservation(reservation_id) do
+    Repo.one(
+      from(claim in SnapshotObjectPublicationClaim,
+        where: claim.storage_reservation_id_snapshot == ^reservation_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
 
   @doc "Authorizes and requests cooperative cancellation without killing an active storage writer."
   @spec cancel(Scope.t(), Project.t(), pos_integer()) ::
@@ -337,7 +820,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
          {:ok, staged} <- SnapshotObjectStorage.stage_prepared(build.snapshot.project_id, build.prepared, opts),
          {:ok, _snapshot} <- mark_verifying(build.snapshot.id, generation, staged.total_size_bytes),
          {:ok, stored} <-
-           SnapshotObjectStorage.publish(staged, &authorize_publication(build.snapshot.id, generation, &1)),
+           SnapshotObjectStorage.publish(
+             staged,
+             &authorize_publication(build.snapshot.id, generation, &1),
+             on_progress: build_fence_callback(build.snapshot.id, generation)
+           ),
          {:ok, snapshot} <- commit_ready(build.snapshot.id, generation, stored) do
       broadcast(snapshot)
       {:ok, snapshot}
@@ -379,6 +866,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
            storage_reservation_id: reservation_id
          } <- snapshot,
          %StorageReservation{id: ^reservation_id, status: "active"} <- reservation,
+         :ok <- validate_executing_build_job(snapshot),
          {:ok, _snapshot} <-
            snapshot
            |> ProjectSnapshot.build_state_changeset(%{
@@ -423,21 +911,37 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     :atomics.put(checkpoint, 2, System.monotonic_time(:millisecond))
 
     fn completed_bytes ->
-      last_bytes = :atomics.get(checkpoint, 1)
-      last_at = :atomics.get(checkpoint, 2)
-      now = System.monotonic_time(:millisecond)
-
-      if progress_checkpoint_due?(completed_bytes, total_bytes, last_bytes, last_at, now) do
-        persist_progress_checkpoint(snapshot_id, expected_generation, completed_bytes, checkpoint, now)
-      else
-        :ok
-      end
+      with :ok <- validate_build_fence(snapshot_id, expected_generation),
+           do:
+             maybe_persist_progress_checkpoint(
+               snapshot_id,
+               expected_generation,
+               completed_bytes,
+               total_bytes,
+               checkpoint
+             )
     end
+  end
+
+  defp build_fence_callback(snapshot_id, expected_generation) do
+    fn _completed_bytes -> validate_build_fence(snapshot_id, expected_generation) end
   end
 
   defp progress_checkpoint_due?(completed_bytes, total_bytes, last_bytes, last_at, now) do
     completed_bytes >= total_bytes or completed_bytes - last_bytes >= @progress_checkpoint_bytes or
       now - last_at >= @progress_checkpoint_ms
+  end
+
+  defp maybe_persist_progress_checkpoint(snapshot_id, expected_generation, completed_bytes, total_bytes, checkpoint) do
+    last_bytes = :atomics.get(checkpoint, 1)
+    last_at = :atomics.get(checkpoint, 2)
+    now = System.monotonic_time(:millisecond)
+
+    if progress_checkpoint_due?(completed_bytes, total_bytes, last_bytes, last_at, now) do
+      persist_progress_checkpoint(snapshot_id, expected_generation, completed_bytes, checkpoint, now)
+    else
+      :ok
+    end
   end
 
   defp persist_progress_checkpoint(snapshot_id, expected_generation, completed_bytes, checkpoint, now) do
@@ -451,28 +955,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   defp persist_copy_progress(snapshot_id, expected_generation, completed_bytes) do
     result =
       Repo.transact(fn ->
-        case lock_snapshot(snapshot_id) do
-          %ProjectSnapshot{lifecycle_generation: generation} when generation != expected_generation ->
-            {:error, :stale_snapshot_build_generation}
-
-          %ProjectSnapshot{cancel_requested_at: %DateTime{}} ->
-            {:error, :snapshot_build_cancelled}
-
-          %ProjectSnapshot{lifecycle_state: "building"} = snapshot ->
-            snapshot
-            |> ProjectSnapshot.build_state_changeset(%{
-              progress_phase: "copying",
-              progress_bytes: max(snapshot.progress_bytes, completed_bytes),
-              state_updated_at: TimeHelpers.now()
-            })
-            |> Repo.update()
-
-          %ProjectSnapshot{} ->
-            {:error, :snapshot_build_state_conflict}
-
-          nil ->
-            {:error, :project_snapshot_not_found}
-        end
+        snapshot_id
+        |> lock_snapshot()
+        |> persist_copy_progress_locked(expected_generation, completed_bytes)
       end)
 
     case result do
@@ -484,6 +969,75 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         {:error, reason}
     end
   end
+
+  defp persist_copy_progress_locked(
+         %ProjectSnapshot{lifecycle_generation: generation},
+         expected_generation,
+         _completed_bytes
+       )
+       when generation != expected_generation, do: {:error, :stale_snapshot_build_generation}
+
+  defp persist_copy_progress_locked(
+         %ProjectSnapshot{cancel_requested_at: %DateTime{}},
+         _expected_generation,
+         _completed_bytes
+       ), do: {:error, :snapshot_build_cancelled}
+
+  defp persist_copy_progress_locked(
+         %ProjectSnapshot{lifecycle_state: "building"} = snapshot,
+         _expected_generation,
+         completed_bytes
+       ) do
+    with :ok <- validate_executing_build_job(snapshot) do
+      snapshot
+      |> ProjectSnapshot.build_state_changeset(%{
+        progress_phase: "copying",
+        progress_bytes: max(snapshot.progress_bytes, completed_bytes),
+        state_updated_at: TimeHelpers.now()
+      })
+      |> Repo.update()
+    end
+  end
+
+  defp persist_copy_progress_locked(%ProjectSnapshot{}, _expected_generation, _completed_bytes),
+    do: {:error, :snapshot_build_state_conflict}
+
+  defp persist_copy_progress_locked(nil, _expected_generation, _completed_bytes),
+    do: {:error, :project_snapshot_not_found}
+
+  @doc false
+  def validate_build_fence(snapshot_id, expected_generation) do
+    result =
+      Repo.transact(fn ->
+        snapshot_id
+        |> lock_snapshot()
+        |> validate_build_fence_locked(expected_generation)
+      end)
+
+    case result do
+      {:ok, :authorized} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp validate_build_fence_locked(
+         %ProjectSnapshot{lifecycle_generation: expected_generation, lifecycle_state: state, cancel_requested_at: nil} =
+           snapshot,
+         expected_generation
+       )
+       when state in ["building", "verifying"] do
+    with :ok <- validate_executing_build_job(snapshot), do: {:ok, :authorized}
+  end
+
+  defp validate_build_fence_locked(%ProjectSnapshot{lifecycle_generation: generation}, expected_generation)
+       when generation != expected_generation, do: {:error, :stale_snapshot_build_generation}
+
+  defp validate_build_fence_locked(%ProjectSnapshot{cancel_requested_at: %DateTime{}}, _expected_generation),
+    do: {:error, :snapshot_build_cancelled}
+
+  defp validate_build_fence_locked(%ProjectSnapshot{}, _expected_generation), do: {:error, :snapshot_build_state_conflict}
+
+  defp validate_build_fence_locked(nil, _expected_generation), do: {:error, :project_snapshot_not_found}
 
   defp authorize_publication(snapshot_id, expected_generation, staged) do
     with workspace_id when is_integer(workspace_id) <- snapshot_workspace_id(snapshot_id),
@@ -504,6 +1058,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
     with %ProjectSnapshot{lifecycle_generation: ^expected_generation, cancel_requested_at: nil} <- snapshot,
          %StorageReservation{status: "active"} <- reservation,
+         :ok <- validate_executing_build_job(snapshot),
          {:ok, extended} <-
            Billing.extend_storage_reservation(
              reservation.id,
@@ -543,26 +1098,30 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
              reservation.lease_token,
              reservation.generation,
              stored.total_size_bytes,
-             fn _reservation ->
-               ProjectSnapshotCrud.finalize_object_set(
-                 snapshot.id,
-                 0,
-                 Map.merge(stored, %{
-                   expected_lifecycle_generation: expected_generation,
-                   progress_phase: "complete",
-                   progress_bytes: stored.total_size_bytes,
-                   progress_total_bytes: stored.total_size_bytes,
-                   verifying_started_at: snapshot.verifying_started_at || now,
-                   ready_at: now,
-                   state_updated_at: now
-                 })
-               )
-             end
+             fn _reservation -> finalize_ready_snapshot(snapshot, expected_generation, stored, now) end
            ) do
       {:ok, ready_snapshot}
     else
       nil -> {:error, :snapshot_build_state_missing}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp finalize_ready_snapshot(snapshot, expected_generation, stored, now) do
+    with :ok <- validate_executing_build_job(snapshot) do
+      ProjectSnapshotCrud.finalize_object_set(
+        snapshot.id,
+        0,
+        Map.merge(stored, %{
+          expected_lifecycle_generation: expected_generation,
+          progress_phase: "complete",
+          progress_bytes: stored.total_size_bytes,
+          progress_total_bytes: stored.total_size_bytes,
+          verifying_started_at: snapshot.verifying_started_at || now,
+          ready_at: now,
+          state_updated_at: now
+        })
+      )
     end
   end
 
@@ -586,8 +1145,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         settle_cancelled(snapshot, reason)
 
       true ->
-        settle_failed_build(snapshot, reason, attempt, max_attempts)
+        settle_or_snooze_failed_build(snapshot, reason, attempt, max_attempts)
     end
+  end
+
+  defp settle_or_snooze_failed_build(snapshot, reason, attempt, max_attempts) do
+    if build_already_in_progress?(reason),
+      do: {:snooze, 30},
+      else: settle_failed_build(snapshot, reason, attempt, max_attempts)
   end
 
   defp settle_failed_build(snapshot, reason, attempt, max_attempts) do
@@ -599,22 +1164,33 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   end
 
   defp handle_failed_settlement({:ok, :released}, snapshot, reason, attempt, max_attempts) do
-    if attempt < max_attempts and retryable?(reason),
-      do: retry_failed_snapshot(snapshot, reason, attempt + 1),
-      else: fail_snapshot(snapshot, reason)
+    cond do
+      build_fence_lost?(reason) -> {:snooze, 300}
+      attempt < max_attempts and retryable?(reason) -> retry_failed_snapshot(snapshot, reason, attempt + 1)
+      true -> fail_snapshot(snapshot, reason)
+    end
   end
 
   defp handle_failed_settlement({:ok, :committed}, _snapshot, reason, attempt, max_attempts) when attempt < max_attempts,
     do: {:retry, safe_error_code(reason)}
 
-  defp handle_failed_settlement({:ok, :active_unowned}, snapshot, _reason, _attempt, _max_attempts),
-    do: fail_snapshot(snapshot, :cleanup_unowned)
+  defp handle_failed_settlement({:ok, :active_unowned}, _snapshot, _reason, _attempt, _max_attempts), do: {:snooze, 300}
 
-  defp handle_failed_settlement({:ok, :committed}, snapshot, _reason, _attempt, _max_attempts),
-    do: fail_snapshot(snapshot, :cleanup_unowned)
+  defp handle_failed_settlement({:ok, :committed}, _snapshot, _reason, _attempt, _max_attempts), do: {:snooze, 30}
 
-  defp handle_failed_settlement({:error, settlement_reason}, snapshot, _reason, _attempt, _max_attempts),
-    do: fail_snapshot(snapshot, settlement_reason)
+  defp handle_failed_settlement({:error, _settlement_reason}, _snapshot, _reason, _attempt, _max_attempts),
+    do: {:snooze, 300}
+
+  defp build_fence_lost?(:snapshot_build_job_not_executing), do: true
+
+  defp build_fence_lost?(reason) when is_tuple(reason) do
+    reason
+    |> Tuple.to_list()
+    |> Enum.any?(&build_fence_lost?/1)
+  end
+
+  defp build_fence_lost?(reason) when is_list(reason), do: Enum.any?(reason, &build_fence_lost?/1)
+  defp build_fence_lost?(_reason), do: false
 
   defp retry_failed_snapshot(snapshot, reason, operation_attempt) do
     case allocate_retry(snapshot, operation_attempt) do
@@ -775,7 +1351,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     code = safe_error_code(reason)
     now = TimeHelpers.now()
 
-    case update_build_state(snapshot.id, snapshot.lifecycle_generation, fn snapshot ->
+    case update_terminal_build_state(snapshot.id, snapshot.lifecycle_generation, fn snapshot ->
            ProjectSnapshot.build_state_changeset(snapshot, %{
              lifecycle_state: "failed",
              integrity_state: failure_integrity(reason),
@@ -791,7 +1367,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         {:discard, code}
 
       {:error, _reason} ->
-        {:discard, :snapshot_failure_state_not_persisted}
+        {:snooze, 300}
     end
   end
 
@@ -799,8 +1375,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     case settle_cancelled_reservation(snapshot, reason) do
       {:ok, :released} -> mark_cancelled(snapshot.id, snapshot.lifecycle_generation)
       {:ok, :committed} -> {:retry, :snapshot_build_cancelled_after_publish}
-      {:ok, :active_unowned} -> fail_snapshot(snapshot, :cleanup_unowned)
-      {:error, settlement_reason} -> fail_snapshot(snapshot, settlement_reason)
+      {:ok, :active_unowned} -> {:snooze, 300}
+      {:error, _settlement_reason} -> {:snooze, 300}
     end
   end
 
@@ -892,6 +1468,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     )
   end
 
+  defp poison_cancelled_publication_claim_locked(%SnapshotObjectPublicationClaim{status: status}, _reservation)
+       when status in ["staging", "publishing"], do: {:error, :snapshot_build_writer_may_still_be_active}
+
   defp poison_cancelled_publication_claim_locked(
          %SnapshotObjectPublicationClaim{
            object_prefix: object_prefix,
@@ -927,13 +1506,76 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
          value(reason_scope, :cleanup_request_id)
        )}
     else
-      case StorageCompensation.persist_planned_cleanup_request(canonical_scope.storage_keys) do
+      case persist_cancelled_cleanup_request(canonical_scope.storage_keys) do
         {:ok, cleanup_request} ->
           {:ok, Map.put(canonical_scope, :cleanup_request_id, cleanup_request.id)}
 
         {:error, handoff_reason} ->
           {:error, {:snapshot_cancel_cleanup_handoff_failed, handoff_reason}}
       end
+    end
+  end
+
+  defp persist_cancelled_cleanup_request(storage_keys) do
+    storage_keys = Enum.sort(storage_keys)
+
+    persist_fun =
+      case Application.get_env(:storyarn, __MODULE__, []) do
+        opts when is_list(opts) ->
+          case Keyword.get(opts, :cancel_cleanup_persist_fun) do
+            callback when is_function(callback, 1) -> callback
+            _invalid -> &StorageCompensation.persist_planned_cleanup_request/1
+          end
+
+        _invalid ->
+          &StorageCompensation.persist_planned_cleanup_request/1
+      end
+
+    case existing_cancelled_cleanup_receipt(storage_keys) do
+      {:ok, cleanup_request_id} ->
+        {:ok, %{id: cleanup_request_id}}
+
+      :missing ->
+        persist_cancelled_cleanup_request(persist_fun, storage_keys)
+    end
+  end
+
+  defp persist_cancelled_cleanup_request(persist_fun, storage_keys) do
+    case persist_fun.(storage_keys) do
+      {:ok, %{id: id} = cleanup_request} when is_integer(id) and id > 0 ->
+        {:ok, cleanup_request}
+
+      {:error, reason} ->
+        case existing_cancelled_cleanup_receipt(storage_keys) do
+          {:ok, cleanup_request_id} -> {:ok, %{id: cleanup_request_id}}
+          :missing -> {:error, reason}
+        end
+
+      invalid ->
+        {:error, {:invalid_snapshot_cancel_cleanup_handoff_result, invalid}}
+    end
+  rescue
+    exception ->
+      {:error, {:snapshot_cancel_cleanup_handoff_raised, exception.__struct__, Exception.message(exception)}}
+  catch
+    kind, reason ->
+      {:error, {:snapshot_cancel_cleanup_handoff_caught, kind, reason}}
+  end
+
+  defp existing_cancelled_cleanup_receipt(storage_keys) do
+    case Repo.one(
+           from(receipt in StorageCleanupOwnershipReceipt,
+             where: receipt.storage_keys == ^storage_keys,
+             order_by: [desc: receipt.cleanup_request_id],
+             limit: 1,
+             select: receipt.cleanup_request_id
+           )
+         ) do
+      cleanup_request_id when is_integer(cleanup_request_id) and cleanup_request_id > 0 ->
+        {:ok, cleanup_request_id}
+
+      _missing ->
+        :missing
     end
   end
 
@@ -951,7 +1593,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   defp mark_cancelled(snapshot_id, expected_generation) do
     now = TimeHelpers.now()
 
-    case update_build_state(snapshot_id, expected_generation, fn snapshot ->
+    case update_terminal_build_state(snapshot_id, expected_generation, fn snapshot ->
            ProjectSnapshot.build_state_changeset(snapshot, %{
              lifecycle_state: "cancelled",
              integrity_state: "unknown",
@@ -967,8 +1609,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         broadcast(cancelled)
         {:ok, cancelled}
 
-      {:error, reason} ->
-        {:discard, safe_error_code(reason)}
+      {:error, _reason} ->
+        {:snooze, 300}
     end
   end
 
@@ -1102,9 +1744,49 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   defp update_build_state(snapshot_id, expected_generation, changeset_fun) do
     Repo.transact(fn ->
+      snapshot_id
+      |> lock_snapshot()
+      |> update_build_state_locked(expected_generation, changeset_fun)
+    end)
+  end
+
+  defp update_build_state_locked(
+         %ProjectSnapshot{lifecycle_generation: expected_generation} = snapshot,
+         expected_generation,
+         changeset_fun
+       ) do
+    with :ok <- validate_executing_build_job(snapshot) do
+      snapshot |> changeset_fun.() |> Repo.update()
+    end
+  end
+
+  defp update_build_state_locked(%ProjectSnapshot{}, _expected_generation, _changeset_fun),
+    do: {:error, :stale_snapshot_build_generation}
+
+  defp update_build_state_locked(nil, _expected_generation, _changeset_fun), do: {:error, :project_snapshot_not_found}
+
+  defp validate_executing_build_job(%ProjectSnapshot{build_job_id: job_id}) when is_integer(job_id) and job_id > 0 do
+    case lock_build_job(job_id) do
+      %Oban.Job{
+        id: ^job_id,
+        worker: @build_worker,
+        queue: "snapshots",
+        state: "executing"
+      } ->
+        :ok
+
+      _job ->
+        {:error, :snapshot_build_job_not_executing}
+    end
+  end
+
+  defp validate_executing_build_job(_snapshot), do: {:error, :snapshot_build_job_not_executing}
+
+  defp update_terminal_build_state(snapshot_id, expected_generation, changeset_fun) do
+    Repo.transact(fn ->
       case lock_snapshot(snapshot_id) do
         %ProjectSnapshot{lifecycle_generation: ^expected_generation} = snapshot ->
-          snapshot |> changeset_fun.() |> Repo.update()
+          snapshot |> changeset_fun.() |> persist_terminal_snapshot()
 
         %ProjectSnapshot{} ->
           {:error, :stale_snapshot_build_generation}
@@ -1113,6 +1795,31 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
           {:error, :project_snapshot_not_found}
       end
     end)
+  end
+
+  defp persist_terminal_snapshot(changeset) do
+    persist_fun =
+      case Application.get_env(:storyarn, __MODULE__, []) do
+        opts when is_list(opts) ->
+          case Keyword.get(opts, :terminal_state_persist_fun) do
+            callback when is_function(callback, 1) -> callback
+            _invalid -> &Repo.update/1
+          end
+
+        _invalid ->
+          &Repo.update/1
+      end
+
+    case persist_fun.(changeset) do
+      {:ok, %ProjectSnapshot{}} = success -> success
+      {:error, reason} -> {:error, reason}
+      invalid -> {:error, {:invalid_snapshot_terminal_state_result, invalid}}
+    end
+  rescue
+    exception ->
+      {:error, {:snapshot_terminal_state_raised, exception.__struct__, Exception.message(exception)}}
+  catch
+    kind, reason -> {:error, {:snapshot_terminal_state_caught, kind, reason}}
   end
 
   defp lock_active_project(project_id, workspace_id) do
@@ -1211,6 +1918,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   defp cleanup_scope(_reason, _depth), do: nil
 
   defp cancelled_reason?(reason), do: contains_reason?(reason, :snapshot_build_cancelled)
+
+  defp build_already_in_progress?(reason) do
+    contains_reason?(reason, :snapshot_object_namespace_in_progress) or
+      contains_reason?(reason, :snapshot_object_publication_in_progress)
+  end
 
   defp retryable?(reason) do
     not Enum.any?(

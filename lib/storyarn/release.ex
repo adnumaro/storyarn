@@ -14,13 +14,55 @@ defmodule Storyarn.Release do
     load_app()
 
     for repo <- repos() do
-      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+      migrate_repo(repo)
+    end
+  end
+
+  @doc false
+  def ensure_project_snapshot_lifecycle_rollout_ready!(repo) when is_atom(repo) do
+    case repo.query(
+           "SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)",
+           [@snapshot_lifecycle_migration]
+         ) do
+      {:ok, %{rows: [[true]]}} ->
+        :ok
+
+      {:ok, %{rows: [[false]]}} ->
+        environment = System.fetch_env!("STORYARN_DEPLOYMENT_ENVIRONMENT")
+
+        case ProjectSnapshotReset.verify_rollout_readiness(environment, repo: repo) do
+          :ok -> :ok
+          {:error, reason} -> raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
+          _invalid -> raise "Snapshot lifecycle rollout readiness returned an invalid response"
+        end
+
+      {:error, reason} ->
+        raise "Could not verify snapshot lifecycle migration state: #{inspect(reason)}"
+
+      _invalid ->
+        raise "Could not verify snapshot lifecycle migration state"
     end
   end
 
   def rollback(repo, version) do
     load_app()
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
+  end
+
+  defp migrate_repo(Storyarn.Repo = repo) do
+    {:ok, _, _} =
+      Ecto.Migrator.with_repo(repo, fn started_repo ->
+        _applied = Ecto.Migrator.run(started_repo, :up, to: @snapshot_reset_receipts_migration)
+        :ok = ensure_project_snapshot_lifecycle_rollout_ready!(started_repo)
+        Ecto.Migrator.run(started_repo, :up, all: true)
+      end)
+
+    :ok
+  end
+
+  defp migrate_repo(repo) do
+    {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+    :ok
   end
 
   @doc """

@@ -2,43 +2,6 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
   use Ecto.Migration
 
   def up do
-    # The one-time reset owns provider deletion and must run before the
-    # steady-state lifecycle schema becomes available. Database emptiness does
-    # not replace the independently verified provider zero-state in its plan.
-    execute("""
-    DO $$
-    BEGIN
-      IF to_regclass('public.project_snapshot_reset_receipts') IS NULL THEN
-        RAISE EXCEPTION
-          'project snapshot reset receipt schema is missing; run the reset preflight migration';
-      END IF;
-
-      IF EXISTS (SELECT 1 FROM project_snapshots LIMIT 1) OR
-         EXISTS (SELECT 1 FROM entity_versions LIMIT 1) THEN
-        RAISE EXCEPTION
-          'pre-ENG-80 versioning rows remain; complete the audited snapshot reset before migration';
-      END IF;
-
-      IF EXISTS (
-        SELECT 1
-        FROM workspaces w
-        LEFT JOIN project_snapshot_reset_receipts r ON r.workspace_id = w.id
-        WHERE r.workspace_id IS NULL OR
-              r.project_ids <> ARRAY(
-                SELECT p.id
-                FROM projects p
-                WHERE p.workspace_id = w.id
-                ORDER BY p.id
-              )
-        LIMIT 1
-      ) THEN
-        RAISE EXCEPTION
-          'a workspace is missing an exact immutable project snapshot reset receipt';
-      END IF;
-    END;
-    $$
-    """)
-
     alter table(:project_snapshots) do
       add :origin, :string, null: false, default: "user"
       add :expires_at, :utc_datetime
@@ -228,6 +191,10 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
       add :estimated_cleanup_bytes, :bigint, null: false
       add :status, :string, null: false
       add :retry_count, :integer, null: false, default: 0
+      add :required_delete_passes, :smallint, null: false
+      add :completed_delete_passes, :smallint, null: false, default: 0
+      add :processing_generation, :bigint, null: false, default: 0
+      add :next_delete_pass_at, :utc_datetime
       add :last_error_code, :string
       add :requested_at, :utc_datetime, null: false
       add :started_at, :utc_datetime
@@ -259,13 +226,22 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
                '/snapshots/object-sets/v1/staging/[A-Za-z0-9_-]{16}$') AND
              inventory_digest ~ '^[0-9a-f]{64}$' AND object_count > 0 AND
              estimated_cleanup_bytes >= 0 AND cardinality(storage_keys) = object_count AND
-             remaining_storage_keys <@ storage_keys AND
              status IN ('pending', 'processing', 'retrying', 'completed', 'terminal') AND
-             retry_count >= 0 AND
+             retry_count >= 0 AND processing_generation >= 0 AND
+             required_delete_passes =
+               (CASE WHEN reason = 'expired_build' THEN 2 ELSE 1 END) AND
+             completed_delete_passes >= 0 AND
+             completed_delete_passes <= required_delete_passes AND
+             ((required_delete_passes = 1 AND next_delete_pass_at IS NULL) OR
+              (required_delete_passes = 2 AND
+               ((completed_delete_passes = 0 AND next_delete_pass_at IS NULL) OR
+                (completed_delete_passes > 0 AND next_delete_pass_at IS NOT NULL)))) AND
              ((status = 'completed' AND cardinality(remaining_storage_keys) = 0 AND completed_at IS NOT NULL) OR
               (status = 'terminal' AND cardinality(remaining_storage_keys) > 0 AND terminal_at IS NOT NULL) OR
               (status IN ('pending', 'processing', 'retrying') AND
-               cardinality(remaining_storage_keys) > 0 AND completed_at IS NULL AND terminal_at IS NULL))
+               cardinality(remaining_storage_keys) > 0 AND completed_at IS NULL AND terminal_at IS NULL)) AND
+             ((status = 'completed' AND completed_delete_passes = required_delete_passes) OR
+              (status <> 'completed' AND completed_delete_passes < required_delete_passes))
              """
            )
 
@@ -274,7 +250,62 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
     RETURNS trigger
     LANGUAGE plpgsql
     AS $$
+    DECLARE
+      pass_boundary boolean;
+      final_completion boolean;
+      processing_claim boolean;
     BEGIN
+      IF TG_OP = 'INSERT' THEN
+        IF NEW.remaining_storage_keys IS DISTINCT FROM NEW.storage_keys OR
+           NEW.status <> 'pending' OR NEW.retry_count <> 0 OR
+           NEW.completed_delete_passes <> 0 OR NEW.next_delete_pass_at IS NOT NULL OR
+           NEW.processing_generation <> 0 OR
+           array_position(NEW.storage_keys, NULL) IS NOT NULL OR
+           cardinality(NEW.storage_keys) <> (
+             SELECT count(DISTINCT storage_key)
+             FROM unnest(NEW.storage_keys) AS keys(storage_key)
+           ) THEN
+          RAISE EXCEPTION 'snapshot cleanup initial inventory must be exact, non-null, and unique'
+            USING ERRCODE = 'integrity_constraint_violation';
+        END IF;
+
+        RETURN NEW;
+      END IF;
+
+      pass_boundary :=
+        OLD.reason = 'expired_build' AND
+        OLD.status = 'processing' AND NEW.status = 'retrying' AND
+        OLD.completed_delete_passes = 0 AND NEW.completed_delete_passes = 1 AND
+        NEW.required_delete_passes = 2 AND
+        NEW.remaining_storage_keys = NEW.storage_keys;
+
+      IF pass_boundary THEN
+        NEW.next_delete_pass_at :=
+          date_trunc('second', clock_timestamp()) + interval '15 minutes 1 second';
+      END IF;
+
+      processing_claim :=
+        NEW.status = 'processing' AND OLD.status IN ('pending', 'retrying', 'processing') AND
+        NEW.processing_generation = OLD.processing_generation + 1 AND
+        NEW.remaining_storage_keys IS NOT DISTINCT FROM OLD.remaining_storage_keys AND
+        NEW.retry_count = OLD.retry_count AND
+        NEW.completed_delete_passes = OLD.completed_delete_passes AND
+        NEW.next_delete_pass_at IS NOT DISTINCT FROM OLD.next_delete_pass_at AND
+        NEW.completed_at IS NOT DISTINCT FROM OLD.completed_at AND
+        NEW.terminal_at IS NOT DISTINCT FROM OLD.terminal_at;
+
+      IF processing_claim AND OLD.completed_delete_passes > 0 AND
+         (OLD.next_delete_pass_at IS NULL OR OLD.next_delete_pass_at > clock_timestamp()) THEN
+        RAISE EXCEPTION 'snapshot cleanup next delete pass is not eligible yet'
+          USING ERRCODE = 'integrity_constraint_violation';
+      END IF;
+
+      final_completion :=
+        OLD.status = 'processing' AND NEW.status = 'completed' AND
+        NEW.completed_delete_passes = OLD.completed_delete_passes + 1 AND
+        NEW.completed_delete_passes = NEW.required_delete_passes AND
+        cardinality(NEW.remaining_storage_keys) = 0;
+
       IF NEW.cleanup_request_id IS DISTINCT FROM OLD.cleanup_request_id OR
          NEW.workspace_id_snapshot IS DISTINCT FROM OLD.workspace_id_snapshot OR
          NEW.project_id_snapshot IS DISTINCT FROM OLD.project_id_snapshot OR
@@ -290,9 +321,29 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
          NEW.inventory_digest IS DISTINCT FROM OLD.inventory_digest OR
          NEW.object_count IS DISTINCT FROM OLD.object_count OR
          NEW.estimated_cleanup_bytes IS DISTINCT FROM OLD.estimated_cleanup_bytes OR
+         NEW.required_delete_passes IS DISTINCT FROM OLD.required_delete_passes OR
          NEW.requested_at IS DISTINCT FROM OLD.requested_at OR
          NEW.inserted_at IS DISTINCT FROM OLD.inserted_at THEN
         RAISE EXCEPTION 'snapshot cleanup intent identity is immutable'
+          USING ERRCODE = 'integrity_constraint_violation';
+      END IF;
+
+      IF NEW.completed_delete_passes IS DISTINCT FROM OLD.completed_delete_passes AND
+         NOT (pass_boundary OR final_completion) THEN
+        RAISE EXCEPTION 'snapshot cleanup delete passes can only advance at an exact boundary'
+          USING ERRCODE = 'integrity_constraint_violation';
+      END IF;
+
+      IF (NEW.status = 'processing' AND NOT processing_claim) OR
+         (NEW.processing_generation IS DISTINCT FROM OLD.processing_generation AND
+          NOT processing_claim) THEN
+        RAISE EXCEPTION 'snapshot cleanup processing generation must advance on an exact claim'
+          USING ERRCODE = 'integrity_constraint_violation';
+      END IF;
+
+      IF NEW.next_delete_pass_at IS DISTINCT FROM OLD.next_delete_pass_at AND
+         NOT pass_boundary THEN
+        RAISE EXCEPTION 'snapshot cleanup next pass timestamp can only be assigned at the pass boundary'
           USING ERRCODE = 'integrity_constraint_violation';
       END IF;
 
@@ -308,7 +359,18 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
           USING ERRCODE = 'integrity_constraint_violation';
       END IF;
 
-      IF NOT NEW.remaining_storage_keys <@ OLD.remaining_storage_keys THEN
+      IF array_position(NEW.remaining_storage_keys, NULL) IS NOT NULL OR
+         cardinality(NEW.remaining_storage_keys) <> (
+           SELECT count(DISTINCT storage_key)
+           FROM unnest(NEW.remaining_storage_keys) AS keys(storage_key)
+         ) OR
+         EXISTS (
+           SELECT storage_key
+           FROM unnest(NEW.remaining_storage_keys) AS new_keys(storage_key)
+           EXCEPT
+           SELECT storage_key
+           FROM unnest(OLD.remaining_storage_keys) AS old_keys(storage_key)
+         ) AND NOT pass_boundary THEN
         RAISE EXCEPTION 'snapshot cleanup remaining inventory can only shrink'
           USING ERRCODE = 'integrity_constraint_violation';
       END IF;
@@ -320,7 +382,7 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
 
     execute("""
     CREATE TRIGGER snapshot_cleanup_intents_guard
-    BEFORE UPDATE ON snapshot_cleanup_intents
+    BEFORE INSERT OR UPDATE ON snapshot_cleanup_intents
     FOR EACH ROW
     EXECUTE FUNCTION storyarn_guard_snapshot_cleanup_intent()
     """)

@@ -258,7 +258,9 @@ config :storyarn, :scopes,
     test_setup_helper: :register_and_log_in_user
   ]
 
-config :storyarn, :snapshot_lifecycle, hard_delete_snapshot_limit: 1_000
+config :storyarn, :snapshot_lifecycle,
+  hard_delete_snapshot_limit: 1_000,
+  stale_build_heartbeat_seconds: 15 * 60
 
 config :storyarn,
   ecto_repos: [Storyarn.Repo],

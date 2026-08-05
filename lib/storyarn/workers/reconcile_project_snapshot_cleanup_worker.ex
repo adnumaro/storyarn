@@ -17,9 +17,13 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker do
   require Logger
 
   @batch_size 50
+  @timeout_ms 10 * 60 * 1_000
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: args, attempt: attempt, max_attempts: max_attempts}) do
+    Versioning.discard_stale_project_snapshot_maintenance_jobs()
+    Versioning.rescue_stale_project_snapshot_cleanup_jobs()
+
     after_id = Map.get(args, "after_id", 0)
     through_id = Map.get(args, "through_id") || Versioning.project_snapshot_cleanup_recovery_high_watermark()
 
@@ -48,6 +52,9 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker do
     end
   end
 
+  @impl Oban.Worker
+  def timeout(_job), do: @timeout_ms
+
   defp recover_intents(intent_ids) do
     Enum.reduce(intent_ids, {0, 0, 0}, fn intent_id, {recovered, skipped, failed} ->
       case Versioning.recover_project_snapshot_cleanup_intent(intent_id) do
@@ -66,7 +73,7 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker do
   defp maybe_enqueue_continuation(intent_ids, after_id, through_id) do
     next_after_id = next_after_id(intent_ids, after_id)
 
-    if length(intent_ids) == @batch_size and next_after_id < through_id do
+    if intent_ids != [] and next_after_id < through_id do
       %{after_id: next_after_id, through_id: through_id}
       |> new()
       |> Oban.insert()

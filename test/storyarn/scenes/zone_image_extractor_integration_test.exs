@@ -309,7 +309,9 @@ defmodule Storyarn.Scenes.ZoneImageExtractorIntegrationTest do
                ZoneImageExtractor.extract(ctx.parent_map, zone, ctx.project)
 
       assert Repo.aggregate(Asset, :count) == asset_count_before
-      assert Billing.workspace_storage_usage(ctx.project.workspace_id) == usage_before
+
+      usage_after = Billing.workspace_storage_usage(ctx.project.workspace_id)
+      assert Map.delete(usage_after, :measured_at) == Map.delete(usage_before, :measured_at)
     end
 
     test "nil background_asset_id", _ctx do

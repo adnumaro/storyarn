@@ -124,7 +124,7 @@ defmodule Storyarn.Workspaces do
   @doc """
   Deletes a workspace.
   """
-  @spec delete_workspace(workspace()) :: {:ok, workspace()} | {:error, changeset()}
+  @spec delete_workspace(workspace()) :: {:ok, workspace()} | {:error, term()}
   defdelegate delete_workspace(workspace), to: WorkspaceCrud
 
   # =============================================================================

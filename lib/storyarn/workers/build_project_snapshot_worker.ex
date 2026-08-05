@@ -14,8 +14,25 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
 
   alias Storyarn.Versioning
 
+  @heartbeat_interval_ms 60_000
+
   @impl Oban.Worker
-  def perform(%Oban.Job{id: job_id, args: %{"snapshot_id" => snapshot_id}, attempt: attempt, max_attempts: max_attempts}) do
+  def perform(%Oban.Job{id: job_id, args: %{"snapshot_id" => snapshot_id}} = job) do
+    heartbeat = Task.async(fn -> heartbeat_loop(snapshot_id, job_id) end)
+
+    try do
+      perform_build(job)
+    after
+      Task.shutdown(heartbeat, :brutal_kill)
+    end
+  end
+
+  defp perform_build(%Oban.Job{
+         id: job_id,
+         args: %{"snapshot_id" => snapshot_id},
+         attempt: attempt,
+         max_attempts: max_attempts
+       }) do
     case Versioning.perform_project_snapshot_build(snapshot_id,
            job_id: job_id,
            attempt: attempt,
@@ -25,6 +42,19 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
       {:retry, reason} -> {:error, reason}
       {:snooze, seconds} -> {:snooze, seconds}
       {:discard, reason} -> {:discard, reason}
+    end
+  end
+
+  defp heartbeat_loop(snapshot_id, job_id) do
+    receive do
+      :stop ->
+        :ok
+    after
+      @heartbeat_interval_ms ->
+        case Versioning.heartbeat_project_snapshot_build(snapshot_id, job_id) do
+          :ok -> heartbeat_loop(snapshot_id, job_id)
+          {:error, reason} -> exit({:snapshot_build_heartbeat_failed, reason})
+        end
     end
   end
 end

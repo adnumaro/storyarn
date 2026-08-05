@@ -155,6 +155,21 @@ defmodule Storyarn.Versioning do
     to: ProjectSnapshotBuild,
     as: :perform
 
+  @doc false
+  defdelegate heartbeat_project_snapshot_build(snapshot_id, job_id),
+    to: ProjectSnapshotBuild,
+    as: :heartbeat
+
+  @doc false
+  defdelegate validate_project_snapshot_build_fence(snapshot_id, expected_generation),
+    to: ProjectSnapshotBuild,
+    as: :validate_build_fence
+
+  @doc false
+  defdelegate reconcile_stale_project_snapshot_builds(),
+    to: ProjectSnapshotBuild,
+    as: :reconcile_stale_builds
+
   @doc "Requests cooperative cancellation for an in-progress project snapshot."
   defdelegate cancel_project_snapshot(current_scope, project, snapshot_id),
     to: ProjectSnapshotBuild,
@@ -186,7 +201,7 @@ defmodule Storyarn.Versioning do
     as: :list_retention_candidates
 
   @doc false
-  defdelegate delete_project_snapshot_retention_candidate(candidate, now),
+  defdelegate delete_project_snapshot_retention_candidate(candidate),
     to: ProjectSnapshotLifecycle,
     as: :delete_retention_candidate
 
@@ -196,9 +211,14 @@ defmodule Storyarn.Versioning do
     as: :list_expired_build_candidates
 
   @doc false
-  defdelegate delete_expired_project_snapshot_build_candidate(candidate, now),
+  defdelegate delete_expired_project_snapshot_build_candidate(candidate),
     to: ProjectSnapshotLifecycle,
     as: :delete_expired_build_candidate
+
+  @doc false
+  defdelegate project_snapshot_build_recovery_quarantine_seconds(),
+    to: ProjectSnapshotLifecycle,
+    as: :build_recovery_quarantine_seconds
 
   @doc false
   defdelegate project_snapshot_lifecycle_high_watermark(),
@@ -206,6 +226,8 @@ defmodule Storyarn.Versioning do
     as: :lifecycle_high_watermark
 
   @doc false
+  @spec process_project_snapshot_cleanup_intent(pos_integer(), keyword()) ::
+          ProjectSnapshotLifecycle.cleanup_process_result()
   defdelegate process_project_snapshot_cleanup_intent(intent_id, opts \\ []),
     to: ProjectSnapshotLifecycle,
     as: :process_cleanup_intent
@@ -214,6 +236,16 @@ defmodule Storyarn.Versioning do
   defdelegate project_snapshot_cleanup_recovery_high_watermark(),
     to: ProjectSnapshotLifecycle,
     as: :cleanup_recovery_high_watermark
+
+  @doc false
+  defdelegate discard_stale_project_snapshot_maintenance_jobs(),
+    to: ProjectSnapshotLifecycle,
+    as: :discard_stale_maintenance_jobs
+
+  @doc false
+  defdelegate rescue_stale_project_snapshot_cleanup_jobs(),
+    to: ProjectSnapshotLifecycle,
+    as: :rescue_stale_cleanup_jobs
 
   @doc false
   defdelegate list_project_snapshot_cleanup_recovery_candidates(opts \\ []),
@@ -229,6 +261,11 @@ defmodule Storyarn.Versioning do
   defdelegate replay_terminal_project_snapshot_cleanup(intent_id),
     to: ProjectSnapshotLifecycle,
     as: :replay_terminal_cleanup_intent
+
+  @doc false
+  defdelegate project_snapshot_cleanup_operator_action(intent_id),
+    to: ProjectSnapshotLifecycle,
+    as: :cleanup_operator_action
 
   @doc "Returns observable snapshot cleanup backlog gauges."
   defdelegate project_snapshot_cleanup_backlog(),

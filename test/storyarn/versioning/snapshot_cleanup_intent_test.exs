@@ -65,7 +65,13 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntentTest do
                |> Map.put(:inventory_digest, inventory_digest(invalid_utf8_keys))
                |> SnapshotCleanupIntent.validate_persisted_inventory()
 
-      completed = %{intent | status: "completed", remaining_storage_keys: []}
+      completed = %{
+        intent
+        | status: "completed",
+          remaining_storage_keys: [],
+          completed_delete_passes: intent.required_delete_passes
+      }
+
       assert :ok = SnapshotCleanupIntent.validate_persisted_inventory(completed)
     end
   end
@@ -118,7 +124,13 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntentTest do
   end
 
   defp persisted_intent(attrs) do
-    struct!(SnapshotCleanupIntent, Map.put(attrs, :remaining_storage_keys, attrs.storage_keys))
+    attrs =
+      attrs
+      |> Map.put(:remaining_storage_keys, attrs.storage_keys)
+      |> Map.put(:required_delete_passes, 1)
+      |> Map.put(:completed_delete_passes, 0)
+
+    struct!(SnapshotCleanupIntent, attrs)
   end
 
   defp inventory_digest(keys) do

@@ -18,10 +18,14 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
   alias Storyarn.Versioning
 
   @batch_size 50
+  @timeout_ms 10 * 60 * 1_000
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}) do
+    Versioning.discard_stale_project_snapshot_maintenance_jobs()
+
     now = TimeHelpers.now()
+    build_recovery = Versioning.reconcile_stale_project_snapshot_builds()
     retention_after_id = Map.get(args, "retention_after_id", 0)
     expired_build_after_id = Map.get(args, "expired_build_after_id", 0)
     through_id = Map.get(args, "through_id") || Versioning.project_snapshot_lifecycle_high_watermark()
@@ -43,20 +47,18 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     {expired_build_count, expired_build_failure_count} =
       process_candidates(
         expired_builds,
-        &Versioning.delete_expired_project_snapshot_build_candidate/2,
-        :expired_build_candidate_changed,
-        now
+        &Versioning.delete_expired_project_snapshot_build_candidate/1,
+        :expired_build_candidate_changed
       )
 
     {deleted_count, failure_count} =
       process_candidates(
         candidates,
-        &Versioning.delete_project_snapshot_retention_candidate/2,
-        :retention_candidate_changed,
-        now
+        &Versioning.delete_project_snapshot_retention_candidate/1,
+        :retention_candidate_changed
       )
 
-    failure_count = failure_count + expired_build_failure_count
+    failure_count = failure_count + expired_build_failure_count + build_recovery.failure_count
 
     {continuation_count, failure_count} =
       continuation_result(
@@ -68,11 +70,18 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
         failure_count
       )
 
+    {recovery_followup_count, failure_count} =
+      build_recovery_followup_result(build_recovery.orphaned_count, now, failure_count)
+
+    continuation_count = continuation_count + recovery_followup_count
+
     :telemetry.execute(
       [:storyarn, :snapshot, :retention, :stop],
       %{
         deleted_count: deleted_count,
         expired_build_count: expired_build_count,
+        orphaned_build_count: build_recovery.orphaned_count,
+        settled_build_count: build_recovery.settled_count,
         failure_count: failure_count,
         continuation_count: continuation_count
       },
@@ -82,9 +91,12 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     retention_result(failure_count)
   end
 
-  defp process_candidates(candidates, delete, changed_reason, now) do
+  @impl Oban.Worker
+  def timeout(_job), do: @timeout_ms
+
+  defp process_candidates(candidates, delete, changed_reason) do
     Enum.reduce(candidates, {0, 0}, fn candidate, {deleted, failed} ->
-      case delete.(candidate, now) do
+      case delete.(candidate) do
         {:ok, _intent} -> {deleted + 1, failed}
         {:error, ^changed_reason} -> {deleted, failed}
         {:error, _reason} -> {deleted, failed + 1}
@@ -115,13 +127,29 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
   defp retention_result(0), do: :ok
   defp retention_result(_failure_count), do: {:error, :snapshot_retention_incomplete}
 
+  defp build_recovery_followup_result(0, _now, failure_count), do: {0, failure_count}
+
+  defp build_recovery_followup_result(_orphaned_count, now, failure_count) do
+    scheduled_at =
+      DateTime.add(now, Versioning.project_snapshot_build_recovery_quarantine_seconds(), :second)
+
+    %{build_recovery_followup: true}
+    |> new(scheduled_at: scheduled_at)
+    |> Oban.insert()
+    |> case do
+      {:ok, %Oban.Job{conflict?: true}} -> {0, failure_count}
+      {:ok, %Oban.Job{}} -> {1, failure_count}
+      {:error, _reason} -> {0, failure_count + 1}
+    end
+  end
+
   defp maybe_schedule_followup(candidates, expired_builds, retention_after_id, expired_build_after_id, through_id) do
     next_retention_id = next_after_id(candidates, retention_after_id)
     next_expired_build_id = next_after_id(expired_builds, expired_build_after_id)
 
     continue? =
-      (length(candidates) == @batch_size and next_retention_id < through_id) or
-        (length(expired_builds) == @batch_size and next_expired_build_id < through_id)
+      (candidates != [] and next_retention_id < through_id) or
+        (expired_builds != [] and next_expired_build_id < through_id)
 
     if continue? do
       %{

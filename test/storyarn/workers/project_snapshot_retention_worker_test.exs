@@ -27,7 +27,9 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorkerTest do
 
     assert interval_seconds >= @eng_37_floor_seconds
     assert interval_seconds <= @expired_build_reclamation_sla_seconds
-    assert Keyword.fetch!(unique, :period) < interval_seconds
+    assert Keyword.fetch!(unique, :period) == 600
+    refute :completed in Keyword.fetch!(unique, :states)
+    assert ProjectSnapshotRetentionWorker.timeout(%Oban.Job{}) == 10 * 60 * 1_000
   end
 
   defp cron_interval_seconds("*/" <> expression) do
