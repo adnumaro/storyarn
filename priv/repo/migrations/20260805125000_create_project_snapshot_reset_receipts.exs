@@ -159,9 +159,33 @@ defmodule Storyarn.Repo.Migrations.CreateProjectSnapshotResetReceipts do
     FOR EACH ROW
     EXECUTE FUNCTION storyarn_reject_snapshot_reset_receipt_mutation();
     """)
+
+    execute("""
+    CREATE TRIGGER storyarn_guard_project_snapshot_reset_receipt_truncate
+    BEFORE TRUNCATE ON project_snapshot_reset_receipts
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION storyarn_reject_snapshot_reset_receipt_mutation();
+    """)
+
+    execute("""
+    CREATE TRIGGER storyarn_guard_project_snapshot_provider_reset_receipt_truncate
+    BEFORE TRUNCATE ON project_snapshot_provider_reset_receipts
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION storyarn_reject_snapshot_reset_receipt_mutation();
+    """)
   end
 
   def down do
+    execute("""
+    DROP TRIGGER IF EXISTS storyarn_guard_project_snapshot_provider_reset_receipt_truncate
+      ON project_snapshot_provider_reset_receipts;
+    """)
+
+    execute("""
+    DROP TRIGGER IF EXISTS storyarn_guard_project_snapshot_reset_receipt_truncate
+      ON project_snapshot_reset_receipts;
+    """)
+
     execute("""
     DROP TRIGGER IF EXISTS storyarn_guard_project_snapshot_provider_reset_receipt
       ON project_snapshot_provider_reset_receipts;

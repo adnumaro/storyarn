@@ -751,7 +751,22 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     assert Map.has_key?(SnapshotResetStorage.objects(), snapshot.manifest_storage_key)
   end
 
-  test "persists a database receipt that rejects mutation" do
+  test "persists a workspace receipt that rejects mutation" do
+    user = user_fixture()
+    project = project_fixture(user)
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, plan} = prepare(project.workspace_id)
+    assert {:ok, _completed} = execute(plan)
+
+    assert_raise Postgrex.Error, fn ->
+      Repo.query!(
+        "UPDATE project_snapshot_reset_receipts SET object_count = object_count + 1 WHERE workspace_id = $1",
+        [project.workspace_id]
+      )
+    end
+  end
+
+  test "persists a provider receipt that rejects mutation" do
     user = user_fixture()
     project = project_fixture(user)
     :ok = SnapshotResetStorage.put_objects(%{})
@@ -760,15 +775,18 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     assert {:ok, _provider_completed} = complete_provider_reset()
 
     assert_raise Postgrex.Error, fn ->
-      Repo.query!(
-        "UPDATE project_snapshot_reset_receipts SET object_count = object_count + 1 WHERE workspace_id = $1",
-        [project.workspace_id]
-      )
-    end
-
-    assert_raise Postgrex.Error, fn ->
       Repo.query!("UPDATE project_snapshot_provider_reset_receipts SET object_count = object_count + 1")
     end
+  end
+
+  test "workspace receipt history rejects truncation" do
+    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation}}} =
+             Repo.query("TRUNCATE project_snapshot_reset_receipts")
+  end
+
+  test "provider receipt history rejects truncation" do
+    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation}}} =
+             Repo.query("TRUNCATE project_snapshot_provider_reset_receipts")
   end
 
   test "receipt ID vectors reject NULL and duplicate ids" do
@@ -1125,6 +1143,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     assert {:error, :invalid_snapshot_reset_plan} =
              plan
              |> Map.put("snapshot_row_ids", [System.unique_integer([:positive])])
+             |> Versioning.validate_project_snapshot_reset_plan()
+
+    assert {:error, :invalid_snapshot_reset_plan} =
+             plan
+             |> Map.put("environment", <<0xFF>>)
              |> Versioning.validate_project_snapshot_reset_plan()
   end
 

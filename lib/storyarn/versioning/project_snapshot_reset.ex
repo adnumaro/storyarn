@@ -792,7 +792,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   def validate_plan(_plan), do: {:error, :invalid_snapshot_reset_plan}
 
   defp valid_environment?(environment) when is_binary(environment) do
-    byte_size(environment) in 1..128 and String.trim(environment) == environment and
+    byte_size(environment) in 1..128 and String.valid?(environment) and
+      String.trim(environment) == environment and
       String.match?(environment, ~r/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/)
   end
 
