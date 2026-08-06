@@ -8,18 +8,77 @@ defmodule Storyarn.Release do
   @app :storyarn
   @snapshot_reset_receipts_migration 20_260_805_125_000
   @snapshot_lifecycle_migration 20_260_805_130_000
+  @snapshot_lifecycle_migration_authorization_key {__MODULE__, :snapshot_lifecycle_migration_authorized}
 
   def migrate do
     load_app()
 
     for repo <- repos() do
-      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+      migrate_repo(repo)
     end
+  end
+
+  @doc false
+  def ensure_project_snapshot_lifecycle_rollout_ready!(repo, opts \\ []) when is_atom(repo) and is_list(opts) do
+    case repo.query(
+           "SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)",
+           [@snapshot_lifecycle_migration]
+         ) do
+      {:ok, %{rows: [[true]]}} ->
+        :ok
+
+      {:ok, %{rows: [[false]]}} ->
+        environment = System.fetch_env!("STORYARN_DEPLOYMENT_ENVIRONMENT")
+        verification_opts = Keyword.put(opts, :repo, repo)
+
+        ensure_snapshot_reset_runtime_started!()
+        ensure_snapshot_rollout_readiness!(environment, verification_opts)
+
+      {:error, reason} ->
+        raise "Could not verify snapshot lifecycle migration state: #{inspect(reason)}"
+
+      _invalid ->
+        raise "Could not verify snapshot lifecycle migration state"
+    end
+  end
+
+  @doc false
+  def assert_snapshot_lifecycle_migration_authorized! do
+    enforced? = Application.get_env(@app, :enforce_snapshot_lifecycle_release_gate, false)
+    authorized? = snapshot_lifecycle_migration_authorized?()
+
+    if enforced? and not authorized? do
+      raise "Snapshot lifecycle migration must run through Storyarn.Release.migrate/0 after rollout verification"
+    end
+
+    :ok
   end
 
   def rollback(repo, version) do
     load_app()
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
+  end
+
+  defp migrate_repo(Storyarn.Repo = repo) do
+    {:ok, _, _} =
+      Ecto.Migrator.with_repo(repo, fn started_repo ->
+        _applied = Ecto.Migrator.run(started_repo, :up, to: @snapshot_reset_receipts_migration)
+        :ok = ensure_project_snapshot_lifecycle_rollout_ready!(started_repo)
+
+        _lifecycle =
+          with_snapshot_lifecycle_migration_authorization(fn ->
+            Ecto.Migrator.run(started_repo, :up, to: @snapshot_lifecycle_migration)
+          end)
+
+        Ecto.Migrator.run(started_repo, :up, all: true)
+      end)
+
+    :ok
+  end
+
+  defp migrate_repo(repo) do
+    {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+    :ok
   end
 
   @doc """
@@ -225,9 +284,76 @@ defmodule Storyarn.Release do
 
   defp load_snapshot_reset_runtime! do
     load_app()
+    ensure_snapshot_reset_runtime_started!()
+  end
 
+  defp ensure_snapshot_reset_runtime_started! do
     Enum.each([:req, :ex_aws], &ensure_snapshot_reset_application_started!/1)
   end
+
+  defp ensure_snapshot_rollout_readiness!(environment, opts) do
+    case ProjectSnapshotReset.verify_rollout_readiness(environment, opts) do
+      :ok ->
+        :ok
+
+      {:error, :snapshot_reset_rollout_provider_receipt_missing} ->
+        case ProjectSnapshotReset.bootstrap_pristine_provider_receipt(environment, opts) do
+          :ok -> :ok
+          {:error, reason} -> raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
+          _invalid -> raise "Snapshot lifecycle rollout bootstrap returned an invalid response"
+        end
+
+      {:error, reason} ->
+        raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
+
+      _invalid ->
+        raise "Snapshot lifecycle rollout readiness returned an invalid response"
+    end
+  end
+
+  defp with_snapshot_lifecycle_migration_authorization(fun) when is_function(fun, 0) do
+    previous = Process.get(@snapshot_lifecycle_migration_authorization_key, :missing)
+    Process.put(@snapshot_lifecycle_migration_authorization_key, true)
+
+    try do
+      fun.()
+    after
+      restore_snapshot_lifecycle_migration_authorization(previous)
+    end
+  end
+
+  defp restore_snapshot_lifecycle_migration_authorization(:missing) do
+    Process.delete(@snapshot_lifecycle_migration_authorization_key)
+  end
+
+  defp restore_snapshot_lifecycle_migration_authorization(previous) do
+    Process.put(@snapshot_lifecycle_migration_authorization_key, previous)
+  end
+
+  # Ecto.Migrator executes each migration in a linked Task rather than in the
+  # process that called `run/3`. Tasks carry their documented `$callers` chain,
+  # so the migration can inherit this narrowly scoped authorization without a
+  # VM-global flag that could survive a killed release process.
+  defp snapshot_lifecycle_migration_authorized? do
+    Process.get(@snapshot_lifecycle_migration_authorization_key, false) == true or
+      Enum.any?(
+        List.wrap(Process.get(:"$callers")),
+        &snapshot_lifecycle_migration_authorized_caller?/1
+      )
+  end
+
+  defp snapshot_lifecycle_migration_authorized_caller?(pid) when is_pid(pid) and node(pid) == node() do
+    case Process.info(pid, :dictionary) do
+      {:dictionary, dictionary} ->
+        List.keyfind(dictionary, @snapshot_lifecycle_migration_authorization_key, 0) ==
+          {@snapshot_lifecycle_migration_authorization_key, true}
+
+      nil ->
+        false
+    end
+  end
+
+  defp snapshot_lifecycle_migration_authorized_caller?(_pid), do: false
 
   defp ensure_snapshot_reset_application_started!(application) do
     case Application.ensure_all_started(application) do

@@ -78,7 +78,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
         insert_full_snapshot!(context.project, 1, %{project: 100, metadata: 20, assets: 50})
 
       snapshot
-      |> Ecto.Changeset.change(lifecycle_state: "deleting")
+      |> ProjectSnapshot.deletion_changeset(TimeHelpers.now())
       |> Repo.update!()
 
       usage = Billing.workspace_storage_usage(context.workspace.id)
@@ -212,7 +212,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       assert retained.project_snapshot_id_snapshot == snapshot.id
 
       assert Billing.active_storage_reservations_by_snapshot([snapshot.id]) == %{
-               snapshot.id => %{active_bytes: 100, export_bytes: 100}
+               snapshot.id => %{active_bytes: 100, export_bytes: 100, active_count: 1}
              }
     end
 
@@ -503,6 +503,50 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       assert Repo.get!(ProjectSnapshot, target.id).lifecycle_state == "pending"
     end
 
+    test "a build commit rolls back when lifecycle generation advances before finalization", context do
+      target =
+        context.project
+        |> insert_pending_snapshot!(1, %{project: 60, metadata: 20, assets: 20})
+        |> transition_pending_snapshot_to_verifying!()
+
+      final_attrs =
+        full_snapshot_object_set_attrs(target, %{project: 60, metadata: 20, assets: 20})
+
+      assert {:ok, reservation} =
+               reserve(context, "stale-lifecycle-generation", "snapshot_build", 100, target)
+
+      prepare_build_publication!(reservation, final_attrs)
+
+      advanced =
+        target
+        |> ProjectSnapshot.cancel_request_changeset(TimeHelpers.now())
+        |> Repo.update!()
+
+      assert advanced.lifecycle_generation == target.lifecycle_generation + 1
+
+      assert {:error, :stale_snapshot_accounting_measurement} =
+               Billing.commit_storage_reservation(
+                 reservation.id,
+                 reservation.lease_token,
+                 reservation.generation,
+                 100,
+                 fn _reservation ->
+                   Versioning.finalize_project_snapshot_object_set(
+                     target.id,
+                     0,
+                     final_attrs
+                   )
+                 end
+               )
+
+      assert Repo.get!(StorageReservation, reservation.id).status == "active"
+
+      persisted = Repo.get!(ProjectSnapshot, target.id)
+      assert persisted.lifecycle_generation == advanced.lifecycle_generation
+      assert persisted.lifecycle_state == "verifying"
+      assert is_nil(persisted.accounted_size_bytes)
+    end
+
     test "a linked-to-full conversion reserves and commits only its added blob bytes", context do
       linked_snapshot =
         insert_linked_snapshot!(context.project, 1, %{project: 80, metadata: 20})
@@ -648,6 +692,13 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       now = TimeHelpers.now()
 
       target
+      |> ProjectSnapshot.build_state_changeset(%{
+        lifecycle_state: "building",
+        progress_phase: "copying",
+        building_started_at: now,
+        state_updated_at: now
+      })
+      |> Repo.update!()
       |> ProjectSnapshot.build_state_changeset(%{
         lifecycle_state: "failed",
         progress_phase: "failed",
@@ -1190,6 +1241,8 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   end
 
   defp finalize_pending_full_snapshot!(snapshot, sizes) do
+    snapshot = transition_pending_snapshot_to_verifying!(snapshot)
+
     {:ok, finalized} =
       Versioning.finalize_project_snapshot_object_set(
         snapshot.id,
@@ -1200,11 +1253,32 @@ defmodule Storyarn.Billing.StorageAccountingTest do
     finalized
   end
 
+  defp transition_pending_snapshot_to_verifying!(snapshot) do
+    now = TimeHelpers.now()
+
+    snapshot
+    |> ProjectSnapshot.build_state_changeset(%{
+      lifecycle_state: "building",
+      progress_phase: "copying",
+      building_started_at: now,
+      state_updated_at: now
+    })
+    |> Repo.update!()
+    |> ProjectSnapshot.build_state_changeset(%{
+      lifecycle_state: "verifying",
+      progress_phase: "verifying",
+      verifying_started_at: now,
+      state_updated_at: now
+    })
+    |> Repo.update!()
+  end
+
   defp full_snapshot_object_set_attrs(snapshot, sizes) do
     total = sizes.project + sizes.metadata + sizes.assets
     now = TimeHelpers.now()
 
     %{
+      expected_lifecycle_generation: snapshot.lifecycle_generation,
       project_id: snapshot.project_id,
       version_number: snapshot.version_number,
       project_storage_key: snapshot.object_prefix <> "/project.json",

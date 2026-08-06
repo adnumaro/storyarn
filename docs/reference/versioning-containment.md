@@ -1,15 +1,44 @@
-# Pre-canonical snapshot reset runbook
+# Snapshot lifecycle and reset runbook
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-05
+> Last reviewed: 2026-08-06
 >
-> Source of truth: `lib/storyarn/versioning/project_snapshot_reset.ex`,
-> `lib/storyarn/release.ex`, and `lib/storyarn/assets/storage/`
+> Source of truth: `lib/storyarn/versioning/project_snapshot_lifecycle.ex`,
+> `lib/storyarn/versioning/project_snapshot_reset.ex`,
+> `lib/storyarn/assets/storage/`, `lib/storyarn/release.ex`, and
+> `lib/storyarn/workers/`
 
-This runbook covers only the one-time reset of pre-canonical versioning data.
-Canonical lifecycle cleanup is delivered separately. There is no runtime reader,
-restore path, or compatibility branch for data removed by the reset.
+This runbook covers the one-time reset of pre-canonical versioning data and the
+steady-state lifecycle of canonical full project snapshots. There is no runtime
+reader, restore path, or compatibility branch for data removed by the reset.
+
+## Steady-state guarantees
+
+- Every full snapshot owns immutable ready and staging namespaces. Before any
+  snapshot or parent deletion, Storyarn durably records its exact manifest
+  inventory in a cleanup receipt and `snapshot_cleanup_intents` row.
+- Lifecycle transitions are forward-only and generation-fenced in both Ecto and
+  PostgreSQL. A stale build, cancellation, retry, finalizer, or cleanup delivery
+  cannot publish, regress, or apply an I/O result to a newer generation.
+- Quota release requires durable cleanup ownership, except for a reservation
+  proven never to have started storage.
+- Cleanup uses bounded batches of at most 1,000 keys, durable checkpoints, exact
+  worker-and-queue recovery, and duplicate-safe claim generations. Provider or
+  namespace failures retain their remaining inventory for an explicit replay;
+  invalid inventory or ownership fails closed for manual repair. All terminal
+  failures remain visible in cleanup backlog metrics. Parent deletion also
+  fails closed above the configured 1,000-snapshot inventory.
+- Retention candidates are selected in bounded keyset pages. Every destructive
+  decision is revalidated under the workspace, project, and snapshot locks with
+  PostgreSQL time as the expiry authority. User-created snapshots require
+  explicit deletion.
+- Reservation expiry is never deletion authority by itself. Maintenance removes
+  an expired incomplete build only after its exact Oban job is terminal or
+  absent and quiescent. Cleanup then performs two delete-and-verify passes,
+  separated by a PostgreSQL-enforced minimum of 15 minutes, so a delayed writer
+  cannot make a namespace ready or escape the second pass.
+- Linked snapshots fail closed until their reachability contract is implemented.
 
 ## One-time pre-canonical reset
 
@@ -96,10 +125,22 @@ and [R2 consistency](https://developers.cloudflare.com/r2/reference/consistency/
 
 ### Dry run and execution
 
-Deploy this prerequisite release normally, or explicitly apply migrations only
-through the receipt schema. This release contains no lifecycle migration, so a
-normal `Storyarn.Release.migrate()` and ordinary development migrations are not
-blocked by missing receipts. The targeted command is:
+Deploy the prerequisite reset release before any image containing migration
+`20260805130000`; it has only the receipt schema, so normal release migration is
+unblocked. The lifecycle release applies that schema, verifies the rollout, and
+then permits `20260805130000`. Development/test `mix ecto.migrate` remains
+schema-only. The targeted preparation command is:
+
+`Storyarn.Release.migrate/0` has one bootstrap path for a genuinely new
+environment: when there are no workspaces, projects, versioning rows, or reset
+receipt history, it scans at most one object under `projects/` and requires the
+entire namespace to be empty. It then executes the normal zero-inventory
+provider plan and persists its immutable provider receipt before authorizing the
+lifecycle migration. Any workspace, project, versioning row, reset receipt,
+provider object, list error, or unexpected response fails closed and requires
+the reset ceremony above. In production, migration `20260805130000` also
+rejects direct migration entrypoints; run it through
+`Storyarn.Release.migrate/0` so the receipt check cannot be silently bypassed.
 
 ```text
 /app/bin/storyarn eval 'Storyarn.Release.prepare_project_snapshot_reset_schema()'
@@ -253,8 +294,10 @@ After the environment-global provider plan has completed:
      'Storyarn.Release.verify_project_snapshot_reset_rollout("production")'
    ```
 
-2. Keep the write fence in place. Deploy the later lifecycle release only after
-   its production release gate accepts these latest receipts.
+2. Keep the write fence in place. Set
+   `STORYARN_DEPLOYMENT_ENVIRONMENT=production` and run
+   `Storyarn.Release.migrate()`. It requires current receipts before first
+   applying `20260805130000`; subsequent deploys skip the one-time gate.
 3. Resume queues only after every node runs the same release.
 4. Confirm no legacy versioning jobs remain and no reset authorization secret is
    present in the normal application environment.

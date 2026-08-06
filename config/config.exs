@@ -121,6 +121,7 @@ config :storyarn, Oban,
     # Full snapshots are user-facing but deliberately serialized per machine:
     # each job may stream many large objects and owns durable retry state.
     snapshots: 1,
+    snapshots_maintenance: 1,
     storage_cleanup: 1
   ],
   plugins: [
@@ -143,7 +144,13 @@ config :storyarn, Oban,
         {"*/15 * * * *", Storyarn.Workers.ReconcileAIReservationsWorker},
         # Safety net for cleanup requests whose direct enqueue failed — already a
         # rare path. Its own uniqueness window made it run every 2-3 min anyway.
-        {"*/15 * * * *", Storyarn.Workers.RetryStorageCleanupRequestsWorker}
+        {"*/15 * * * *", Storyarn.Workers.RetryStorageCleanupRequestsWorker},
+        # Snapshot cleanup ownership survives job pruning and terminal Oban
+        # states. Reconcile the durable intent to an immediately available job.
+        {"*/15 * * * *", Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker},
+        # Snapshot TTL deletion is coarse, but this worker also reclaims expired
+        # build reservations. Run at the ENG-37 floor to bound that quota leak.
+        {"*/15 * * * *", Storyarn.Workers.ProjectSnapshotRetentionWorker}
       ]
     }
   ]
@@ -250,6 +257,10 @@ config :storyarn, :scopes,
     test_data_fixture: Storyarn.AccountsFixtures,
     test_setup_helper: :register_and_log_in_user
   ]
+
+config :storyarn, :snapshot_lifecycle,
+  hard_delete_snapshot_limit: 1_000,
+  stale_build_heartbeat_seconds: 15 * 60
 
 config :storyarn,
   ecto_repos: [Storyarn.Repo],

@@ -146,6 +146,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   end
 
   defp finalize_object_set_locked(snapshot_id, expected_generation, attrs) do
+    {expected_lifecycle_generation, attrs} = Map.pop(attrs, :expected_lifecycle_generation)
     snapshot = lock_snapshot(snapshot_id)
 
     case snapshot do
@@ -159,7 +160,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
         integrity_state: "unknown"
       } = snapshot
       when lifecycle_state in ["pending", "building", "verifying"] ->
-        if expected_generation == 0 do
+        if expected_generation == 0 and
+             lifecycle_generation_matches?(snapshot, expected_lifecycle_generation) do
           snapshot
           |> ProjectSnapshot.object_set_changeset(attrs)
           |> Repo.update(stale_error_field: :accounting_generation)
@@ -171,6 +173,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
         {:error, :invalid_snapshot_accounting_transition}
     end
   end
+
+  defp lifecycle_generation_matches?(%ProjectSnapshot{lifecycle_generation: generation}, generation)
+       when is_integer(generation), do: true
+
+  defp lifecycle_generation_matches?(_snapshot, _expected), do: false
 
   defp convert_linked_object_set_locked(snapshot_id, expected_generation, attrs) do
     case lock_snapshot(snapshot_id) do

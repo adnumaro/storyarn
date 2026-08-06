@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-07-29
+> Last reviewed: 2026-08-05
 >
 > Source of truth: `lib/storyarn/`, `lib/storyarn_web/`, and `lib/mix/tasks/convention_check.ex`
 
@@ -58,6 +58,10 @@ and only under `lib/storyarn_web/`. The rule above is broader than the linter.
 | Analytics        | `Storyarn.Analytics`        | `PostHogAdapter`, `NoopAdapter`                                                                                                                                                                                                        |
 | RateLimiter      | `Storyarn.RateLimiter`      | `ETSBackend`, `RedisBackend`                                                                                                                                                                                                           |
 | Shortcuts        | `Storyarn.Shortcuts`        | Centralized shortcut generation for all entity types (single module, no submodules)                                                                                                                                                    |
+
+Snapshot lifecycle submodules under `Storyarn.Versioning` are
+`ProjectSnapshotBuild`, `ProjectSnapshotLifecycle`, `ProjectSnapshotPolicy`,
+`ProjectSnapshotReset`, and `SnapshotCleanupIntent`.
 
 Facade-less directories — call the module directly, do not invent a facade:
 `lib/storyarn/dashboards/` (`Cache`), `lib/storyarn/emails/` (`Layout`, `Templates`),

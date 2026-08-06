@@ -439,6 +439,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   def retry_persisted_cleanup_requests(limit \\ @persisted_cleanup_batch_size) when is_integer(limit) and limit > 0 do
     cleanup_requests =
       StorageCleanupRequest
+      |> where([request], request.owner_kind == "storage_compensation")
       |> order_by([request], asc: request.inserted_at, asc: request.id)
       |> limit(^limit)
       |> Repo.all()
@@ -669,22 +670,53 @@ defmodule Storyarn.Assets.StorageCompensation do
 
     case cleanup_targets do
       [] -> {:error, :no_valid_storage_keys}
-      cleanup_targets -> insert_cleanup_request(cleanup_targets)
+      cleanup_targets -> insert_cleanup_request(cleanup_targets, %{}, :fallback)
     end
   end
 
-  defp insert_cleanup_request(storage_keys) do
-    case Repo.insert(%StorageCleanupRequest{storage_keys: storage_keys}) do
-      {:ok, cleanup_request} = success ->
-        Logger.warning(
-          "Persisted copied asset cleanup fallback request_id=#{cleanup_request.id} storage_key_count=#{length(storage_keys)}"
-        )
+  @doc "Persists a planned storage cleanup handoff without reporting a fallback."
+  @spec persist_planned_cleanup_request([String.t()]) ::
+          {:ok, StorageCleanupRequest.t()} | {:error, term()}
+  def persist_planned_cleanup_request(cleanup_targets) when is_list(cleanup_targets) do
+    cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
 
-        :telemetry.execute(
-          [:storyarn, :assets, :storage_compensation, :fallback_persisted],
-          %{count: 1, storage_key_count: length(storage_keys)},
-          %{request_id: cleanup_request.id}
+    case cleanup_targets do
+      [] -> {:error, :no_valid_storage_keys}
+      cleanup_targets -> insert_cleanup_request(cleanup_targets, %{}, :planned_handoff)
+    end
+  end
+
+  @doc false
+  @spec persist_snapshot_lifecycle_cleanup([String.t()], Ecto.UUID.t()) ::
+          {:ok, StorageCleanupRequest.t()} | {:error, term()}
+  def persist_snapshot_lifecycle_cleanup(cleanup_targets, owner_token)
+      when is_list(cleanup_targets) and is_binary(owner_token) do
+    cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
+
+    case cleanup_targets do
+      [] ->
+        {:error, :no_valid_storage_keys}
+
+      cleanup_targets ->
+        insert_cleanup_request(
+          cleanup_targets,
+          %{
+            owner_kind: "snapshot_lifecycle",
+            owner_token: owner_token
+          },
+          :snapshot_lifecycle
         )
+    end
+  end
+
+  def persist_snapshot_lifecycle_cleanup(_cleanup_targets, _owner_token), do: {:error, :invalid_snapshot_cleanup_owner}
+
+  defp insert_cleanup_request(storage_keys, attrs, persistence_kind) do
+    attrs = Map.put(attrs, :storage_keys, storage_keys)
+
+    case %StorageCleanupRequest{} |> StorageCleanupRequest.changeset(attrs) |> Repo.insert() do
+      {:ok, cleanup_request} = success ->
+        report_cleanup_request_persisted(cleanup_request, storage_keys, persistence_kind)
 
         success
 
@@ -693,13 +725,37 @@ defmodule Storyarn.Assets.StorageCompensation do
     end
   rescue
     error ->
-      Logger.error("Could not persist copied asset cleanup fallback error=#{safe_error(error)}")
+      Logger.error("Could not persist #{cleanup_persistence_label(persistence_kind)} error=#{safe_error(error)}")
+
       {:error, {:exception, error.__struct__}}
   catch
     kind, reason ->
-      Logger.error("Could not persist copied asset cleanup fallback error=#{safe_error({kind, reason})}")
+      Logger.error("Could not persist #{cleanup_persistence_label(persistence_kind)} error=#{safe_error({kind, reason})}")
+
       {:error, {kind, safe_error(reason)}}
   end
+
+  # Planned handoffs are often inserted inside a wider transaction. Reporting
+  # here could claim durability for a row that the outer transaction later
+  # rolls back; their owners emit post-commit lifecycle events instead.
+  defp report_cleanup_request_persisted(_cleanup_request, _storage_keys, :planned_handoff), do: :ok
+  defp report_cleanup_request_persisted(_cleanup_request, _storage_keys, :snapshot_lifecycle), do: :ok
+
+  defp report_cleanup_request_persisted(cleanup_request, storage_keys, :fallback) do
+    Logger.warning(
+      "Persisted copied asset cleanup fallback request_id=#{cleanup_request.id} storage_key_count=#{length(storage_keys)}"
+    )
+
+    :telemetry.execute(
+      [:storyarn, :assets, :storage_compensation, :fallback_persisted],
+      %{count: 1, storage_key_count: length(storage_keys)},
+      %{request_id: cleanup_request.id}
+    )
+  end
+
+  defp cleanup_persistence_label(:planned_handoff), do: "planned storage cleanup request"
+  defp cleanup_persistence_label(:snapshot_lifecycle), do: "snapshot lifecycle cleanup request"
+  defp cleanup_persistence_label(:fallback), do: "copied asset cleanup fallback"
 
   defp retry_persisted_cleanup_request(cleanup_request) do
     case delete_storage_keys(cleanup_request.storage_keys) do
@@ -718,7 +774,9 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp rotate_persisted_cleanup_request(cleanup_request, failed_keys) do
     Repo.transact(fn ->
       with {:ok, replacement} <-
-             Repo.insert(%StorageCleanupRequest{storage_keys: failed_keys}),
+             %StorageCleanupRequest{}
+             |> StorageCleanupRequest.changeset(%{storage_keys: failed_keys})
+             |> Repo.insert(),
            {:ok, _deleted_request} <- Repo.delete(cleanup_request) do
         {:ok, replacement}
       end

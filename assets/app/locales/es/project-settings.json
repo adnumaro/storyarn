@@ -198,6 +198,14 @@
         "cancelling": "Cancelación solicitada",
         "accessibility": "Progreso de creación de la snapshot: {percent}"
       },
+      "delete": {
+        "action": "Eliminar snapshot",
+        "title": "¿Eliminar la snapshot?",
+        "description": "La snapshot v{version}, «{name}», se eliminará permanentemente. Su almacenamiento se entrega a una limpieza duradera y esta acción no se puede deshacer.",
+        "confirm": "Eliminar snapshot",
+        "cancel": "Conservar snapshot",
+        "failed": "No se ha podido eliminar la snapshot."
+      },
       "measurements": {
         "accounted_size": "Almacenamiento de la snapshot",
         "project_data": "Datos del proyecto",

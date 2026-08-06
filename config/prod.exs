@@ -12,6 +12,8 @@ config :storyarn, StoryarnWeb.Endpoint,
   cache_static_manifest: "priv/static/cache_manifest.json",
   force_ssl: [hsts: true, rewrite_on: [:x_forwarded_proto]]
 
+config :storyarn, :enforce_snapshot_lifecycle_release_gate, true
+
 # Configures Swoosh API Client
 config :swoosh, api_client: Swoosh.ApiClient.Req
 

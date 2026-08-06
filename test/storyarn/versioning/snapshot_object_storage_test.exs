@@ -118,6 +118,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
       assert project_bytes == staged.project_size_bytes
       assert_received {:stage_progress, payload_bytes}
       assert payload_bytes == staged.project_size_bytes + byte_size(content)
+      assert_received {:stage_progress, ^payload_bytes}
       assert_received {:stage_progress, total_bytes}
       assert total_bytes == staged.total_size_bytes
 

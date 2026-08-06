@@ -30,7 +30,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     end
 
     log =
-      capture_log(fn ->
+      capture_log([level: :info], fn ->
         assert :ok =
                  StorageCompensation.enqueue_cleanup(
                    [storage_key],
@@ -1123,6 +1123,47 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     end
 
     refute File.exists?(conditional_copy_path)
+  end
+
+  test "does not report planned snapshot lifecycle cleanup as a fallback" do
+    parent = self()
+    handler_id = "snapshot-lifecycle-cleanup-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :assets, :storage_compensation, :fallback_persisted],
+        fn event, measurements, metadata, _config ->
+          send(parent, {:fallback_persisted, event, measurements, metadata})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    owner_token = Ecto.UUID.generate()
+    token = "plannedCleanup01"
+
+    storage_keys = [
+      "projects/1/snapshots/object-sets/v1/ready/#{token}/manifest.json",
+      "projects/1/snapshots/object-sets/v1/staging/#{token}/manifest.json"
+    ]
+
+    log =
+      capture_log(fn ->
+        assert {:ok,
+                %StorageCleanupRequest{
+                  owner_kind: "snapshot_lifecycle",
+                  owner_token: ^owner_token,
+                  storage_keys: persisted_keys
+                }} =
+                 StorageCompensation.persist_snapshot_lifecycle_cleanup(storage_keys, owner_token)
+
+        assert MapSet.new(persisted_keys) == MapSet.new(storage_keys)
+      end)
+
+    refute log =~ "fallback"
+    refute_receive {:fallback_persisted, _, _, _}
   end
 
   test "delete_or_enqueue! raises when no durable cleanup path is available" do

@@ -179,47 +179,26 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     end
   end
 
-  test "release APIs prepare, execute, and verify an environment-global provider reset" do
+  test "release provider reset fails closed once the lifecycle rollout is applied" do
     directory = Path.join(System.tmp_dir!(), "storyarn-provider-reset-#{System.unique_integer([:positive])}")
     plan_path = Path.join(directory, "plan.json")
-    authorization_path = Path.join(directory, "authorization")
     original_storage = Application.get_env(:storyarn, :storage)
     original_environment = System.get_env("STORYARN_DEPLOYMENT_ENVIRONMENT")
-    original_authorization_digest = System.get_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256")
 
     File.mkdir_p!(directory)
     File.chmod!(directory, 0o700)
-    File.write!(authorization_path, @authorization)
-    File.chmod!(authorization_path, 0o600)
     Application.put_env(:storyarn, :storage, adapter: SnapshotResetStorage)
     System.put_env("STORYARN_DEPLOYMENT_ENVIRONMENT", @environment)
-    System.put_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256", authorization_digest())
 
     on_exit(fn ->
       File.rm_rf(directory)
       restore_application_env(:storyarn, :storage, original_storage)
       restore_system_env("STORYARN_DEPLOYMENT_ENVIRONMENT", original_environment)
-      restore_system_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256", original_authorization_digest)
     end)
 
-    orphan = "projects/900000004/snapshots/project/release-orphan.json.gz"
-    :ok = SnapshotResetStorage.put_objects(%{orphan => 10})
-
-    plan = Release.prepare_project_snapshot_provider_reset(@environment, plan_path, 10)
-    assert plan["workspace_receipt_ids"] == []
-    assert Enum.map(plan["objects"], & &1["key"]) == [orphan]
-
-    completed =
-      Release.execute_project_snapshot_provider_reset(
-        @environment,
-        plan_path,
-        plan["inventory_digest"],
-        authorization_path
-      )
-
-    assert completed["status"] == "completed"
-    assert SnapshotResetStorage.objects() == %{}
-    assert :ok = Release.verify_project_snapshot_reset_rollout(@environment)
+    assert_raise RuntimeError, ~r/snapshot_reset_rollout_already_applied/, fn ->
+      Release.prepare_project_snapshot_provider_reset(@environment, plan_path, 10)
+    end
   end
 
   test "requires an independently configured authorization digest" do
@@ -808,6 +787,81 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     assert :ok = readiness()
   end
 
+  test "pristine bootstrap persists one real zero-inventory provider receipt" do
+    :ok = SnapshotResetStorage.put_objects(%{})
+    opts = pristine_bootstrap_opts()
+
+    assert {:error, :snapshot_reset_rollout_provider_receipt_missing} = readiness()
+    assert :ok = ProjectSnapshotReset.bootstrap_pristine_provider_receipt(@environment, opts)
+    assert :ok = readiness()
+
+    assert [[[], 0, 0, 0]] =
+             Repo.query!("""
+             SELECT workspace_receipt_ids, object_count, scanned_object_count, object_bytes
+             FROM project_snapshot_provider_reset_receipts
+             """).rows
+
+    assert :ok = ProjectSnapshotReset.bootstrap_pristine_provider_receipt(@environment, opts)
+    assert [[1]] = Repo.query!("SELECT count(*) FROM project_snapshot_provider_reset_receipts").rows
+  end
+
+  test "pristine bootstrap rechecks the complete provider root immediately before its receipt" do
+    asset_key = "projects/41/assets/appeared-during-bootstrap.bin"
+    :ok = SnapshotResetStorage.put_objects(%{})
+    :ok = SnapshotResetStorage.insert_before_list(3, %{asset_key => 17})
+
+    assert {:error, :snapshot_reset_bootstrap_not_pristine} =
+             ProjectSnapshotReset.bootstrap_pristine_provider_receipt(
+               @environment,
+               pristine_bootstrap_opts()
+             )
+
+    assert Map.has_key?(SnapshotResetStorage.objects(), asset_key)
+    assert [[0]] = Repo.query!("SELECT count(*) FROM project_snapshot_provider_reset_receipts").rows
+  end
+
+  test "pristine bootstrap refuses every object beneath the provider project root" do
+    opts = pristine_bootstrap_opts()
+
+    for key <- [
+          "projects/41/snapshots/project/orphan.json.gz",
+          "projects/41/assets/orphan.bin"
+        ] do
+      :ok = SnapshotResetStorage.put_objects(%{key => 17})
+
+      assert {:error, :snapshot_reset_bootstrap_not_pristine} =
+               ProjectSnapshotReset.bootstrap_pristine_provider_receipt(@environment, opts)
+
+      assert Map.has_key?(SnapshotResetStorage.objects(), key)
+      assert [[0]] = Repo.query!("SELECT count(*) FROM project_snapshot_provider_reset_receipts").rows
+    end
+  end
+
+  test "pristine bootstrap refuses a database with a workspace" do
+    :ok = SnapshotResetStorage.put_objects(%{})
+    _user = user_fixture()
+
+    assert {:error, :snapshot_reset_rollout_receipts_incomplete} =
+             ProjectSnapshotReset.bootstrap_pristine_provider_receipt(
+               @environment,
+               pristine_bootstrap_opts()
+             )
+  end
+
+  test "pristine bootstrap refuses historical receipts from another environment" do
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, _completed} = complete_provider_reset("production")
+
+    assert {:error, :snapshot_reset_bootstrap_not_pristine} =
+             ProjectSnapshotReset.bootstrap_pristine_provider_receipt(
+               @environment,
+               pristine_bootstrap_opts()
+             )
+
+    assert [["production"]] =
+             Repo.query!("SELECT environment FROM project_snapshot_provider_reset_receipts").rows
+  end
+
   test "rollout readiness rejects malformed expected and current environments" do
     assert {:error, :snapshot_reset_environment_required} = readiness("invalid environment")
 
@@ -1215,6 +1269,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
         opts
       )
     )
+  end
+
+  defp pristine_bootstrap_opts do
+    [
+      current_environment: @environment,
+      repo: Repo,
+      rollout_guard: &allow_pre_rollout/1,
+      storage_adapter: SnapshotResetStorage
+    ]
   end
 
   defp allow_pre_rollout(_repo), do: :ok

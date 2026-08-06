@@ -308,17 +308,21 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   """
   @spec publish(
           staged_object_set(),
-          (staged_object_set() -> {:ok, StorageReservation.t()} | {:error, term()})
+          (staged_object_set() -> {:ok, StorageReservation.t()} | {:error, term()}),
+          keyword()
         ) ::
           {:ok, stored_object_set()} | {:error, term()}
-  def publish(staged, before_publish) when is_map(staged) and is_function(before_publish, 1) do
-    with :ok <- ensure_staged_namespace_not_handed_off(staged),
+  def publish(staged, before_publish, opts \\ [])
+
+  def publish(staged, before_publish, opts) when is_map(staged) and is_function(before_publish, 1) and is_list(opts) do
+    with {:ok, on_progress} <- fetch_on_progress(opts),
+         :ok <- ensure_staged_namespace_not_handed_off(staged),
          {:ok, claim_action} <- acquire_publication_claim(staged) do
-      publish_claimed_object_set(staged, before_publish, claim_action)
+      publish_claimed_object_set(staged, before_publish, claim_action, on_progress)
     end
   end
 
-  def publish(_staged, _before_publish), do: {:error, :invalid_snapshot_publish_request}
+  def publish(_staged, _before_publish, _opts), do: {:error, :invalid_snapshot_publish_request}
 
   @doc """
   Loads a ready manifest and verifies every declared object before returning the
@@ -355,6 +359,15 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   @doc false
   def ready_prefix(project_id, token) do
     "projects/#{project_id}/snapshots/object-sets/v#{SnapshotObjectFormat.format_version()}/ready/#{token}"
+  end
+
+  defp token_from_ready_prefix(project_id, prefix) do
+    base = "projects/#{project_id}/snapshots/object-sets/v#{SnapshotObjectFormat.format_version()}/ready/"
+
+    case String.replace_prefix(prefix, base, "") do
+      ^prefix -> {:error, :invalid_snapshot_cleanup_scope}
+      token -> if(validate_token(token) == :ok, do: {:ok, token}, else: {:error, :invalid_snapshot_cleanup_scope})
+    end
   end
 
   @doc false
@@ -399,6 +412,77 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   end
 
   def ready_prefix_for_project?(_project_id, _prefix), do: false
+
+  @doc false
+  @spec cleanup_scope_from_capture(pos_integer(), String.t(), binary(), keyword()) ::
+          {:ok, map()} | {:error, term()}
+  def cleanup_scope_from_capture(project_id, ready_prefix, manifest_json, opts \\ [])
+
+  def cleanup_scope_from_capture(project_id, ready_prefix, manifest_json, opts)
+      when is_integer(project_id) and project_id > 0 and is_binary(ready_prefix) and is_binary(manifest_json) and
+             is_list(opts) do
+    with true <- Keyword.keyword?(opts),
+         {:ok, token} <- token_from_ready_prefix(project_id, ready_prefix),
+         cleanup_opts = cleanup_manifest_options(opts),
+         :ok <-
+           validate_size_limit(
+             byte_size(manifest_json),
+             Keyword.fetch!(cleanup_opts, :max_manifest_bytes),
+             :manifest
+           ),
+         {:ok, manifest} <- decode_json(manifest_json, SnapshotObjectFormat.manifest_path()),
+         :ok <- SnapshotObjectFormat.validate_manifest(manifest, cleanup_opts),
+         relative_paths when is_list(relative_paths) <-
+           Enum.map(manifest["objects"], & &1["path"]) ++ [SnapshotObjectFormat.manifest_path()],
+         true <- Enum.all?(relative_paths, &valid_cleanup_relative_path?/1) do
+      staging_prefix = staging_prefix(project_id, token)
+
+      storage_keys =
+        Enum.flat_map([staging_prefix, ready_prefix], fn prefix ->
+          Enum.map(relative_paths, &object_key(prefix, &1))
+        end)
+
+      cleanup = %{
+        project_id: project_id,
+        token: token,
+        staging_prefix: staging_prefix,
+        ready_prefix: ready_prefix,
+        storage_keys: storage_keys
+      }
+
+      staged = %{
+        project_id: project_id,
+        token: token,
+        staging_prefix: staging_prefix,
+        object_prefix: ready_prefix,
+        object_count: length(relative_paths),
+        cleanup: cleanup
+      }
+
+      with {:ok, validated} <- validate_cleanup_scope(staged) do
+        {:ok,
+         Map.merge(validated, %{
+           inventory_digest: cleanup_inventory_digest(storage_keys),
+           estimated_cleanup_bytes: 2 * (manifest["payload_size_bytes"] + byte_size(manifest_json))
+         })}
+      end
+    else
+      false -> {:error, :invalid_snapshot_cleanup_scope}
+      {:error, _reason} = error -> error
+      _invalid -> {:error, :invalid_snapshot_cleanup_scope}
+    end
+  end
+
+  def cleanup_scope_from_capture(_project_id, _ready_prefix, _manifest_json, _opts),
+    do: {:error, :invalid_snapshot_cleanup_scope}
+
+  # Cleanup ownership must outlive operator-configurable reader limits. Every
+  # capture was accepted beneath these immutable format-v1 bounds when it was
+  # created, so reconstructing its exact deletion inventory uses the same hard
+  # ceiling instead of today's potentially lower runtime policy.
+  defp cleanup_manifest_options(opts) do
+    Keyword.merge(opts, Map.to_list(SnapshotObjectFormat.hard_limits()))
+  end
 
   defp fetch_before_stage(opts) when is_list(opts) do
     case Keyword.fetch(opts, :before_stage) do
@@ -1004,15 +1088,15 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   defp publication_recovery_state(%SnapshotObjectPublicationClaim{}),
     do: {:error, :snapshot_object_publication_claim_state_conflict}
 
-  defp publish_claimed_object_set(staged, before_publish, :published) do
-    case publish_object_set(staged, before_publish) do
+  defp publish_claimed_object_set(staged, before_publish, :published, on_progress) do
+    case publish_object_set(staged, before_publish, on_progress) do
       {:ok, stored} -> cleanup_published_staging(staged, stored)
       {:error, reason} -> {:error, {:published_snapshot_object_set_invalid, reason}}
     end
   end
 
-  defp publish_claimed_object_set(staged, before_publish, :claimed) do
-    case publish_object_set(staged, before_publish) do
+  defp publish_claimed_object_set(staged, before_publish, :claimed, on_progress) do
+    case publish_object_set(staged, before_publish, on_progress) do
       {:ok, stored} ->
         case transition_publication_claim(staged, "publishing", "published") do
           :ok -> cleanup_published_staging(staged, stored)
@@ -1182,6 +1266,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
          :ok <- invoke_progress(on_progress, project_descriptor["size_bytes"]),
          {:ok, completed_bytes} <-
            stage_blobs(staging_prefix, blobs, source_keys, on_progress, project_descriptor["size_bytes"]),
+         :ok <- invoke_progress(on_progress, completed_bytes),
          :ok <- stage_manifest(staging_prefix, manifest_descriptor, manifest_json) do
       invoke_progress(on_progress, completed_bytes + manifest_descriptor["size_bytes"])
     end
@@ -1223,12 +1308,12 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
     })
   end
 
-  defp publish_object_set(staged, before_publish) do
+  defp publish_object_set(staged, before_publish, on_progress) do
     with {:ok, manifest, manifest_descriptor, stored, publication_state} <-
            verify_publishable_object_set(staged) do
       case publication_state do
         :published -> {:ok, stored}
-        :staged -> publish_authorized(staged, manifest, manifest_descriptor, stored, before_publish)
+        :staged -> publish_authorized(staged, manifest, manifest_descriptor, stored, before_publish, on_progress)
       end
     end
   rescue
@@ -1443,12 +1528,15 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
     }
   end
 
-  defp publish_authorized(staged, manifest, manifest_descriptor, stored, before_publish) do
+  defp publish_authorized(staged, manifest, manifest_descriptor, stored, before_publish, on_progress) do
     case invoke_before_publish(before_publish, staged) do
       {:ok, reservation} ->
         with :ok <- validate_claimed_publication_reservation(staged, reservation),
-             :ok <- finalize_payload(staged.staging_prefix, staged.object_prefix, manifest["objects"]),
-             :ok <- finalize_manifest(staged.staging_prefix, staged.object_prefix, manifest_descriptor) do
+             {:ok, completed_bytes} <-
+               finalize_payload(staged.staging_prefix, staged.object_prefix, manifest["objects"], on_progress),
+             :ok <- invoke_progress(on_progress, completed_bytes),
+             :ok <- finalize_manifest(staged.staging_prefix, staged.object_prefix, manifest_descriptor),
+             :ok <- invoke_progress(on_progress, completed_bytes + manifest_descriptor["size_bytes"]) do
           {:ok, stored}
         end
 
@@ -2016,13 +2104,20 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   defp copy_and_verify(_source_key, _destination_key, descriptor),
     do: {:error, {:missing_snapshot_blob_source, descriptor["sha256"]}}
 
-  defp finalize_payload(staging_prefix, ready_prefix, objects) do
-    Enum.reduce_while(objects, :ok, fn descriptor, :ok ->
-      case finalize_object(staging_prefix, ready_prefix, descriptor) do
-        :ok -> {:cont, :ok}
-        {:error, _reason} = error -> {:halt, error}
-      end
+  defp finalize_payload(staging_prefix, ready_prefix, objects, on_progress) do
+    Enum.reduce_while(objects, {:ok, 0}, fn descriptor, {:ok, completed_bytes} ->
+      finalize_payload_object(staging_prefix, ready_prefix, descriptor, on_progress, completed_bytes)
     end)
+  end
+
+  defp finalize_payload_object(staging_prefix, ready_prefix, descriptor, on_progress, completed_bytes) do
+    with :ok <- finalize_object(staging_prefix, ready_prefix, descriptor),
+         completed_bytes = completed_bytes + descriptor["size_bytes"],
+         :ok <- invoke_progress(on_progress, completed_bytes) do
+      {:cont, {:ok, completed_bytes}}
+    else
+      {:error, _reason} = error -> {:halt, error}
+    end
   end
 
   defp finalize_manifest(staging_prefix, ready_prefix, descriptor) do

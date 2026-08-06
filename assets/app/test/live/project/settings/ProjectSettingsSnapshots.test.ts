@@ -1,8 +1,10 @@
 import { mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it } from "vitest";
 import ProjectSettingsSnapshots from "../../../../live/project/settings/ProjectSettingsSnapshots.vue";
+import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
+import type { LiveInterface } from "../../../../shared/composables/useLive";
 import type { WorkspaceStorageUsage } from "../../../../shared/utils/storage-accounting";
-import { setTestLocale } from "../../../setup";
+import { createMockLive, setTestLocale } from "../../../setup";
 
 const storageUsage = {
   currentAssetsBytes: String(640 * 1024),
@@ -53,6 +55,7 @@ interface SnapshotFixture {
   capturedAt: string | null;
   cancelRequestedAt: string | null;
   canCancel: boolean;
+  canDelete: boolean;
 }
 
 const measuredSnapshot: SnapshotFixture = {
@@ -85,17 +88,22 @@ const measuredSnapshot: SnapshotFixture = {
   capturedAt: "2026-07-17T09:59:00Z",
   cancelRequestedAt: null,
   canCancel: false,
+  canDelete: false,
 };
 
 function mountSnapshots(
   snapshot: SnapshotFixture = measuredSnapshot,
   workspaceStorage: WorkspaceStorageUsage = storageUsage,
+  live: LiveInterface = createMockLive(),
 ) {
   const wrapper = mount(ProjectSettingsSnapshots, {
     props: {
       snapshots: [snapshot],
       storageUsage: workspaceStorage,
       snapshotLimit: { used: 2, limit: 10 },
+    },
+    global: {
+      provide: { _live_vue: live },
     },
   });
 
@@ -254,5 +262,20 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       "Snapshot slots: 10 of 10 used",
     );
     expect(wrapper.get('button[type="submit"]').attributes("disabled")).toBeDefined();
+  });
+
+  it("requires confirmation before requesting durable snapshot deletion", async () => {
+    const live = createMockLive();
+    const wrapper = mountSnapshots({ ...measuredSnapshot, canDelete: true }, storageUsage, live);
+
+    await wrapper.get('[data-testid="delete-snapshot-21"]').trigger("click");
+
+    const confirmation = wrapper.findComponent(ConfirmDialog);
+    expect(confirmation.props("open")).toBe(true);
+    expect(live.pushEvent).not.toHaveBeenCalled();
+
+    confirmation.vm.$emit("confirm");
+
+    expect(live.pushEvent).toHaveBeenCalledWith("delete_snapshot", { id: 21 }, undefined);
   });
 });
