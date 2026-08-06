@@ -1,0 +1,63 @@
+docs/reference/versioning-containment.md
+  s_c2ae682cd97119::t_0b255504d0a6c8 139-143
+  s_c2ae682cd97119::t_695c913f4e3f9c 5,134-138
+  s_c2ae682cd97119::t_b2f5a6dbdc9215 144
+lib/storyarn/versioning/project_snapshot_reset.ex
+  s_c2ae682cd97119::t_f9a690873389af 263-264,266,294-317
+  s_c2ae682cd97119::t_c6cfc9fff9af90 682,706-707,711,726,760-768
+  s_c2ae682cd97119::t_0ff203856998a1 163,261
+  s_c2ae682cd97119::t_91eb6ef57cd544 684-705,717,732,741,752,759
+  s_c2ae682cd97119::t_0ede730a3c502b 2003-2014
+  s_c2ae682cd97119::t_8d6050492ddfaf 230-260,262,265,268-293,318
+  s_c2ae682cd97119::t_519b2fd639f7e0 546-547,568-569,584-585,606-607,614-622
+  s_c2ae682cd97119::t_ee6c6051053ee7 267
+test/support/snapshot_reset_storage.ex
+  s_c2ae682cd97119::t_c6cfc9fff9af90 39
+  s_c2ae682cd97119::t_ffb01e1f23f2d0 6-7,12,14-15,40-43,45-46,114-133
+  s_c2ae682cd97119::t_4dbd06f42e126a 134
+priv/repo/migrations/20260805130000_harden_snapshot_lifecycle_cleanup.exs
+  s_c2ae682cd97119::t_8d6050492ddfaf 5-6
+lib/storyarn/release.ex
+  s_c2ae682cd97119::t_8d6050492ddfaf 11,22,32,34-35,45-56,67,287-288,290,294-310,322-331
+  s_c2ae682cd97119::t_0b255504d0a6c8 68-72,311-321
+  s_c2ae682cd97119::t_6cb9c652acc8d4 332
+config/prod.exs
+  s_c2ae682cd97119::t_ee6c6051053ee7 15
+  s_c2ae682cd97119::t_c20e0d6f865200 16
+test/storyarn/release_snapshot_migration_test.exs
+  s_c2ae682cd97119::t_d7564fcdcdb357 2,5,7,10,62-80,90-99,102-104
+  s_c2ae682cd97119::t_0b255504d0a6c8 54,57,89
+test/storyarn/versioning/project_snapshot_build_test.exs
+  s_c2ae682cd97119::t_33c143eedc5f3c 1094
+  s_c2ae682cd97119::t_f0b072a04473b4 571-578
+  s_c2ae682cd97119::t_717e15a20f17ca 319,438,468,484-500,557-563,565-570,579-586,591-600,650-654,656-657,659,662-663,665,667-670,672-676,1047,1065-1084,1087,1091-1093,1099-1115
+  s_c2ae682cd97119::t_56c29afb98d35a 564,587-590,661,750,802,873,1095-1098
+  s_c2ae682cd97119::t_42cf33a83d61a3 1116
+test/storyarn/versioning/project_snapshot_reset_test.exs
+  s_c2ae682cd97119::t_fc3374050034c4 808-822
+  s_c2ae682cd97119::t_8cfc9b1e0d9d02 840
+  s_c2ae682cd97119::t_81b58cc6f91bac 851-864,1281
+  s_c2ae682cd97119::t_d7564fcdcdb357 790-807,823-839,841-850,1274-1280
+  s_c2ae682cd97119::t_c65d962041825c 1282
+lib/storyarn/versioning/project_snapshot_build.ex
+  s_c2ae682cd97119::t_3abaefcf00a054 96,798,1137,1146,1183-1184,1186-1187,1189-1190,1222,1229,1377,1397,1401,1403-1406,1620,1640
+  s_c2ae682cd97119::t_b98f8e47eabb97 1213-1215
+  s_c2ae682cd97119::t_bc4729bbd8d9bb 1203-1212,1216-1221
+  s_c2ae682cd97119::t_ee6c6051053ee7 1169-1176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ce96e7040c14c55b2d0cfe7c3dc1eb8900e2e204",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
