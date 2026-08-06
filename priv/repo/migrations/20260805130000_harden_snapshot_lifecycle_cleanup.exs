@@ -2,6 +2,8 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
   use Ecto.Migration
 
   def up do
+    Storyarn.Release.assert_snapshot_lifecycle_migration_authorized!()
+
     alter table(:project_snapshots) do
       add :origin, :string, null: false, default: "user"
       add :expires_at, :utc_datetime

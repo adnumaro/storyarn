@@ -8,6 +8,7 @@ defmodule Storyarn.Release do
   @app :storyarn
   @snapshot_reset_receipts_migration 20_260_805_125_000
   @snapshot_lifecycle_migration 20_260_805_130_000
+  @snapshot_lifecycle_migration_authorization_key {__MODULE__, :snapshot_lifecycle_migration_authorized}
 
   def migrate do
     load_app()
@@ -18,7 +19,7 @@ defmodule Storyarn.Release do
   end
 
   @doc false
-  def ensure_project_snapshot_lifecycle_rollout_ready!(repo) when is_atom(repo) do
+  def ensure_project_snapshot_lifecycle_rollout_ready!(repo, opts \\ []) when is_atom(repo) and is_list(opts) do
     case repo.query(
            "SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)",
            [@snapshot_lifecycle_migration]
@@ -28,12 +29,10 @@ defmodule Storyarn.Release do
 
       {:ok, %{rows: [[false]]}} ->
         environment = System.fetch_env!("STORYARN_DEPLOYMENT_ENVIRONMENT")
+        verification_opts = Keyword.put(opts, :repo, repo)
 
-        case ProjectSnapshotReset.verify_rollout_readiness(environment, repo: repo) do
-          :ok -> :ok
-          {:error, reason} -> raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
-          _invalid -> raise "Snapshot lifecycle rollout readiness returned an invalid response"
-        end
+        ensure_snapshot_reset_runtime_started!()
+        ensure_snapshot_rollout_readiness!(environment, verification_opts)
 
       {:error, reason} ->
         raise "Could not verify snapshot lifecycle migration state: #{inspect(reason)}"
@@ -41,6 +40,18 @@ defmodule Storyarn.Release do
       _invalid ->
         raise "Could not verify snapshot lifecycle migration state"
     end
+  end
+
+  @doc false
+  def assert_snapshot_lifecycle_migration_authorized! do
+    enforced? = Application.get_env(@app, :enforce_snapshot_lifecycle_release_gate, false)
+    authorized? = :persistent_term.get(@snapshot_lifecycle_migration_authorization_key, false)
+
+    if enforced? and not authorized? do
+      raise "Snapshot lifecycle migration must run through Storyarn.Release.migrate/0 after rollout verification"
+    end
+
+    :ok
   end
 
   def rollback(repo, version) do
@@ -53,6 +64,12 @@ defmodule Storyarn.Release do
       Ecto.Migrator.with_repo(repo, fn started_repo ->
         _applied = Ecto.Migrator.run(started_repo, :up, to: @snapshot_reset_receipts_migration)
         :ok = ensure_project_snapshot_lifecycle_rollout_ready!(started_repo)
+
+        _lifecycle =
+          with_snapshot_lifecycle_migration_authorization(fn ->
+            Ecto.Migrator.run(started_repo, :up, to: @snapshot_lifecycle_migration)
+          end)
+
         Ecto.Migrator.run(started_repo, :up, all: true)
       end)
 
@@ -267,8 +284,50 @@ defmodule Storyarn.Release do
 
   defp load_snapshot_reset_runtime! do
     load_app()
+    ensure_snapshot_reset_runtime_started!()
+  end
 
+  defp ensure_snapshot_reset_runtime_started! do
     Enum.each([:req, :ex_aws], &ensure_snapshot_reset_application_started!/1)
+  end
+
+  defp ensure_snapshot_rollout_readiness!(environment, opts) do
+    case ProjectSnapshotReset.verify_rollout_readiness(environment, opts) do
+      :ok ->
+        :ok
+
+      {:error, :snapshot_reset_rollout_provider_receipt_missing} ->
+        case ProjectSnapshotReset.bootstrap_pristine_provider_receipt(environment, opts) do
+          :ok -> :ok
+          {:error, reason} -> raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
+          _invalid -> raise "Snapshot lifecycle rollout bootstrap returned an invalid response"
+        end
+
+      {:error, reason} ->
+        raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
+
+      _invalid ->
+        raise "Snapshot lifecycle rollout readiness returned an invalid response"
+    end
+  end
+
+  defp with_snapshot_lifecycle_migration_authorization(fun) when is_function(fun, 0) do
+    previous = :persistent_term.get(@snapshot_lifecycle_migration_authorization_key, :missing)
+    :persistent_term.put(@snapshot_lifecycle_migration_authorization_key, true)
+
+    try do
+      fun.()
+    after
+      restore_snapshot_lifecycle_migration_authorization(previous)
+    end
+  end
+
+  defp restore_snapshot_lifecycle_migration_authorization(:missing) do
+    :persistent_term.erase(@snapshot_lifecycle_migration_authorization_key)
+  end
+
+  defp restore_snapshot_lifecycle_migration_authorization(previous) do
+    :persistent_term.put(@snapshot_lifecycle_migration_authorization_key, previous)
   end
 
   defp ensure_snapshot_reset_application_started!(application) do

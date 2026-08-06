@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-05
+> Last reviewed: 2026-08-06
 >
 > Source of truth: `lib/storyarn/versioning/project_snapshot_lifecycle.ex`,
 > `lib/storyarn/versioning/project_snapshot_reset.ex`,
@@ -130,6 +130,17 @@ Deploy the prerequisite reset release before any image containing migration
 unblocked. The lifecycle release applies that schema, verifies the rollout, and
 then permits `20260805130000`. Development/test `mix ecto.migrate` remains
 schema-only. The targeted preparation command is:
+
+`Storyarn.Release.migrate/0` has one bootstrap path for a genuinely new
+environment: when there are no workspaces, projects, versioning rows, or reset
+receipt history, it scans at most one object under `projects/` and requires the
+entire namespace to be empty. It then executes the normal zero-inventory
+provider plan and persists its immutable provider receipt before authorizing the
+lifecycle migration. Any workspace, project, versioning row, reset receipt,
+provider object, list error, or unexpected response fails closed and requires
+the reset ceremony above. In production, migration `20260805130000` also
+rejects direct migration entrypoints; run it through
+`Storyarn.Release.migrate/0` so the receipt check cannot be silently bypassed.
 
 ```text
 /app/bin/storyarn eval 'Storyarn.Release.prepare_project_snapshot_reset_schema()'

@@ -160,7 +160,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
            :ok <- ensure_reset_receipt_schema(repo),
            :ok <- ensure_execution_scope_ready(repo, plan, environment),
            {:ok, authorization_digest} <- authorize_execution(opts) do
-        execute_authorized_plan(plan, environment, authorization_digest, repo, adapter, checkpoint)
+        execute_authorized_plan(plan, environment, authorization_digest, repo, adapter, checkpoint, opts)
       else
         {:error, reason} -> {:error, reason, plan}
       end
@@ -226,6 +226,95 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
   end
 
   def verify_rollout_readiness(_expected_environment, _opts), do: {:error, :snapshot_reset_environment_required}
+
+  @doc false
+  @spec bootstrap_pristine_provider_receipt(String.t(), keyword()) :: :ok | {:error, term()}
+  def bootstrap_pristine_provider_receipt(expected_environment, opts \\ [])
+
+  def bootstrap_pristine_provider_receipt(expected_environment, opts)
+      when is_binary(expected_environment) and is_list(opts) do
+    case verify_rollout_readiness(expected_environment, opts) do
+      :ok ->
+        :ok
+
+      {:error, :snapshot_reset_rollout_provider_receipt_missing} ->
+        bootstrap_pristine_provider_receipt_without_existing_receipt(expected_environment, opts)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def bootstrap_pristine_provider_receipt(_expected_environment, _opts),
+    do: {:error, :snapshot_reset_environment_required}
+
+  defp bootstrap_pristine_provider_receipt_without_existing_receipt(expected_environment, opts) do
+    repo = Keyword.get(opts, :repo, Repo)
+    adapter = Keyword.get(opts, :storage_adapter, Storage.adapter())
+
+    bootstrap_opts =
+      opts
+      |> Keyword.put(:repo, repo)
+      |> Keyword.put(:storage_adapter, adapter)
+      |> Keyword.put(:max_objects, 1)
+      |> Keyword.put(:max_scanned_objects, 1)
+      |> Keyword.put(:require_empty_provider_root, true)
+
+    with :ok <- ensure_pristine_bootstrap_database(repo),
+         {:ok, plan} <- prepare_provider(expected_environment, bootstrap_opts),
+         :ok <- validate_pristine_bootstrap_plan(plan),
+         :ok <- ensure_pristine_bootstrap_database(repo),
+         authorization = 32 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false),
+         authorization_digest = sha256(authorization),
+         {:ok, _completed} <-
+           execute(
+             plan,
+             plan["inventory_digest"],
+             bootstrap_opts
+             |> Keyword.put(:authorization, authorization)
+             |> Keyword.put(:expected_authorization_digest, authorization_digest)
+           ) do
+      verify_rollout_readiness(expected_environment, bootstrap_opts)
+    else
+      {:error, reason, _plan} -> {:error, reason}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp validate_pristine_bootstrap_plan(%{
+         "scope" => "provider",
+         "status" => "prepared",
+         "workspace_receipt_ids" => [],
+         "objects" => [],
+         "remaining_storage_keys" => [],
+         "scanned_object_count" => 0
+       }), do: :ok
+
+  defp validate_pristine_bootstrap_plan(_plan), do: {:error, :snapshot_reset_bootstrap_not_pristine}
+
+  defp ensure_pristine_bootstrap_database(repo) do
+    case repo.query(
+           """
+           SELECT
+             NOT EXISTS (SELECT 1 FROM workspaces) AND
+             NOT EXISTS (SELECT 1 FROM projects) AND
+             NOT EXISTS (SELECT 1 FROM project_snapshots) AND
+             NOT EXISTS (SELECT 1 FROM entity_versions) AND
+             NOT EXISTS (SELECT 1 FROM project_snapshot_reset_receipts) AND
+             NOT EXISTS (SELECT 1 FROM project_snapshot_provider_reset_receipts)
+           """,
+           []
+         ) do
+      {:ok, %{rows: [[true]]}} -> :ok
+      {:ok, %{rows: [[false]]}} -> {:error, :snapshot_reset_bootstrap_not_pristine}
+      {:error, reason} -> {:error, {:snapshot_reset_database_failed, reason}}
+      _invalid -> {:error, :snapshot_reset_rollout_readiness_invalid_response}
+    end
+  rescue
+    _exception -> {:error, :snapshot_reset_rollout_readiness_failed}
+  catch
+    _kind, _reason -> {:error, :snapshot_reset_rollout_readiness_failed}
+  end
 
   defp read_owner_only_plan_file(path) do
     expanded = Path.expand(path)
@@ -454,7 +543,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
          _authorization,
          repo,
          adapter,
-         _checkpoint
+         _checkpoint,
+         _opts
        ) do
     case fetch_matching_reset_receipt(repo, plan, environment) do
       {:ok, receipt} ->
@@ -475,7 +565,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
          authorization_digest,
          repo,
          adapter,
-         checkpoint
+         checkpoint,
+         _opts
        ) do
     case fetch_optional_reset_receipt(repo, plan, environment) do
       {:ok, receipt} -> recover_existing_receipt(plan, receipt, repo, adapter, checkpoint)
@@ -490,7 +581,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
          _authorization,
          repo,
          adapter,
-         _checkpoint
+         _checkpoint,
+         _opts
        ) do
     case fetch_matching_provider_reset_receipt(repo, plan, environment) do
       {:ok, receipt} ->
@@ -511,14 +603,23 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
          authorization_digest,
          repo,
          adapter,
-         checkpoint
+         checkpoint,
+         opts
        ) do
     case fetch_optional_provider_reset_receipt(repo, plan, environment) do
       {:ok, receipt} ->
         recover_existing_provider_receipt(plan, receipt, adapter, checkpoint)
 
       :missing ->
-        execute_provider_plan_without_receipt(plan, environment, authorization_digest, repo, adapter, checkpoint)
+        execute_provider_plan_without_receipt(
+          plan,
+          environment,
+          authorization_digest,
+          repo,
+          adapter,
+          checkpoint,
+          opts
+        )
 
       {:error, reason} ->
         {:error, reason, plan}
@@ -578,21 +679,42 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     end
   end
 
-  defp execute_provider_plan_without_receipt(plan, environment, authorization_digest, repo, adapter, checkpoint) do
+  defp execute_provider_plan_without_receipt(plan, environment, authorization_digest, repo, adapter, checkpoint, opts) do
     case final_provider_zero_state(adapter, plan) do
-      :complete -> recover_completed_provider_plan(plan, environment, authorization_digest, repo, checkpoint)
-      :incomplete -> execute_pending_provider_plan(plan, environment, authorization_digest, repo, adapter, checkpoint)
-      {:error, reason} -> {:error, reason, plan}
+      :complete ->
+        recover_completed_provider_plan(
+          plan,
+          environment,
+          authorization_digest,
+          repo,
+          adapter,
+          checkpoint,
+          opts
+        )
+
+      :incomplete ->
+        execute_pending_provider_plan(
+          plan,
+          environment,
+          authorization_digest,
+          repo,
+          adapter,
+          checkpoint,
+          opts
+        )
+
+      {:error, reason} ->
+        {:error, reason, plan}
     end
   end
 
-  defp recover_completed_provider_plan(plan, environment, authorization_digest, repo, checkpoint) do
+  defp recover_completed_provider_plan(plan, environment, authorization_digest, repo, adapter, checkpoint, opts) do
     running = mark_running(plan, authorization_digest)
 
     case validate_provider_receipt_params(running, environment) do
       :ok ->
         case checkpoint_plan(checkpoint, running) do
-          :ok -> complete_provider_execution(running, environment, repo, checkpoint)
+          :ok -> complete_provider_execution(running, environment, repo, adapter, checkpoint, opts)
           {:error, reason} -> fail_execution(running, {:snapshot_reset_checkpoint_failed, reason}, checkpoint)
         end
 
@@ -601,13 +723,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     end
   end
 
-  defp execute_pending_provider_plan(plan, environment, authorization_digest, repo, adapter, checkpoint) do
+  defp execute_pending_provider_plan(plan, environment, authorization_digest, repo, adapter, checkpoint, opts) do
     case revalidate_provider_storage_scope(adapter, plan) do
       :ok ->
         running = mark_running(plan, authorization_digest)
 
         case validate_provider_receipt_params(running, environment) do
-          :ok -> execute_running_provider_plan(running, environment, repo, adapter, checkpoint)
+          :ok -> execute_running_provider_plan(running, environment, repo, adapter, checkpoint, opts)
           {:error, reason} -> {:error, reason, plan}
         end
 
@@ -616,7 +738,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
     end
   end
 
-  defp execute_running_provider_plan(running, environment, repo, adapter, checkpoint) do
+  defp execute_running_provider_plan(running, environment, repo, adapter, checkpoint, opts) do
     with :ok <- checkpoint_plan(checkpoint, running),
          {:ok, storage_complete} <- delete_inventory(adapter, running, checkpoint),
          :ok <- verify_global_provider_empty(adapter, running["max_scanned_objects"]),
@@ -627,17 +749,23 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
              running["workspace_receipt_ids"],
              running["storage_namespace_fingerprint"]
            ) do
-      complete_provider_execution(storage_complete, environment, repo, checkpoint)
+      complete_provider_execution(storage_complete, environment, repo, adapter, checkpoint, opts)
     else
       {:error, reason, failed_plan} -> {:error, reason, failed_plan}
       {:error, reason} -> fail_execution(running, reason, checkpoint)
     end
   end
 
-  defp complete_provider_execution(storage_complete, environment, repo, checkpoint) do
-    case persist_or_validate_provider_reset_receipt(repo, storage_complete, environment) do
-      {:ok, receipt} -> checkpoint_completed_receipt(storage_complete, receipt, checkpoint)
-      {:error, reason} -> fail_execution(storage_complete, reason, checkpoint)
+  defp complete_provider_execution(storage_complete, environment, repo, adapter, checkpoint, opts) do
+    case verify_provider_completion_scope(adapter, storage_complete, opts) do
+      :ok ->
+        case persist_or_validate_provider_reset_receipt(repo, storage_complete, environment) do
+          {:ok, receipt} -> checkpoint_completed_receipt(storage_complete, receipt, checkpoint)
+          {:error, reason} -> fail_execution(storage_complete, reason, checkpoint)
+        end
+
+      {:error, reason} ->
+        fail_execution(storage_complete, reason, checkpoint)
     end
   end
 
@@ -1869,6 +1997,18 @@ defmodule Storyarn.Versioning.ProjectSnapshotReset do
       {:ok, _objects, _scanned_count} -> {:error, :snapshot_reset_final_inventory_not_empty}
       {:error, :snapshot_reset_inventory_limit_exceeded} -> {:error, :snapshot_reset_final_inventory_not_empty}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp verify_provider_completion_scope(adapter, plan, opts) do
+    if Keyword.get(opts, :require_empty_provider_root, false) == true do
+      case list_global_snapshot_inventory(adapter, 1, plan["max_scanned_objects"]) do
+        {:ok, [], 0} -> :ok
+        {:ok, _objects, _scanned_count} -> {:error, :snapshot_reset_bootstrap_not_pristine}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      :ok
     end
   end
 

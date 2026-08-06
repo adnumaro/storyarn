@@ -93,7 +93,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       perform_claim(claim, attempt, max_attempts)
     else
       false -> {:discard, :invalid_snapshot_build_job}
-      {:error, :snapshot_build_owned_by_another_job} -> {:snooze, 30}
+      {:error, :snapshot_build_owned_by_another_job} -> {:discard, :snapshot_build_owned_by_another_job}
       {:error, :project_snapshot_not_found} -> settle_orphaned_build(snapshot_id, :project_snapshot_not_found)
       {:error, reason} -> {:discard, safe_error_code(reason)}
     end
@@ -795,7 +795,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     case load_build_inputs(snapshot.id, snapshot.lifecycle_generation) do
       {:ok, build} ->
         if build.snapshot.cancel_requested_at do
-          settle_cancelled(build.snapshot)
+          settle_cancelled(build.snapshot, :snapshot_build_cancelled, attempt, max_attempts)
         else
           execute_build(build, attempt, max_attempts)
         end
@@ -1134,7 +1134,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         settle_orphaned_build(snapshot_id, reason)
 
       snapshot.lifecycle_generation != expected_generation and not is_nil(snapshot.cancel_requested_at) ->
-        settle_cancelled(snapshot, reason)
+        settle_cancelled(snapshot, reason, attempt, max_attempts)
 
       snapshot.lifecycle_generation != expected_generation ->
         {:discard, :stale_snapshot_build_generation}
@@ -1143,7 +1143,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         {:ok, snapshot}
 
       cancelled_reason?(reason) or not is_nil(snapshot.cancel_requested_at) ->
-        settle_cancelled(snapshot, reason)
+        settle_cancelled(snapshot, reason, attempt, max_attempts)
 
       true ->
         settle_or_snooze_failed_build(snapshot, reason, attempt, max_attempts)
@@ -1166,21 +1166,28 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   defp handle_failed_settlement({:ok, :released}, snapshot, reason, attempt, max_attempts) do
     cond do
-      build_fence_lost?(reason) -> {:snooze, 300}
-      attempt < max_attempts and retryable?(reason) -> retry_failed_snapshot(snapshot, reason, attempt + 1)
-      true -> fail_snapshot(snapshot, reason)
+      build_fence_lost?(reason) ->
+        {:discard, :snapshot_build_job_not_executing}
+
+      attempt < max_attempts and retryable?(reason) ->
+        retry_failed_snapshot(snapshot, reason, attempt + 1, attempt, max_attempts)
+
+      true ->
+        fail_snapshot(snapshot, reason, attempt, max_attempts)
     end
   end
 
   defp handle_failed_settlement({:ok, :committed}, _snapshot, reason, attempt, max_attempts) when attempt < max_attempts,
     do: {:retry, safe_error_code(reason)}
 
-  defp handle_failed_settlement({:ok, :active_unowned}, _snapshot, _reason, _attempt, _max_attempts), do: {:snooze, 300}
+  defp handle_failed_settlement({:ok, :active_unowned}, snapshot, _reason, attempt, max_attempts),
+    do: retry_unsettled(snapshot, attempt, max_attempts)
 
-  defp handle_failed_settlement({:ok, :committed}, _snapshot, _reason, _attempt, _max_attempts), do: {:snooze, 30}
+  defp handle_failed_settlement({:ok, :committed}, _snapshot, _reason, attempt, max_attempts),
+    do: retry_or_discard(:snapshot_build_settlement_committed, attempt, max_attempts)
 
-  defp handle_failed_settlement({:error, _settlement_reason}, _snapshot, _reason, _attempt, _max_attempts),
-    do: {:snooze, 300}
+  defp handle_failed_settlement({:error, _settlement_reason}, snapshot, _reason, attempt, max_attempts),
+    do: retry_unsettled(snapshot, attempt, max_attempts)
 
   defp build_fence_lost?(:snapshot_build_job_not_executing), do: true
 
@@ -1193,14 +1200,33 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   defp build_fence_lost?(reason) when is_list(reason), do: Enum.any?(reason, &build_fence_lost?/1)
   defp build_fence_lost?(_reason), do: false
 
-  defp retry_failed_snapshot(snapshot, reason, operation_attempt) do
+  defp retry_unsettled(snapshot, attempt, max_attempts) do
+    if attempt < max_attempts,
+      do: {:retry, :cleanup_unowned},
+      else: fail_snapshot(snapshot, :cleanup_unowned, attempt, max_attempts)
+  end
+
+  defp retry_or_discard(code, attempt, max_attempts) when is_atom(code) do
+    if attempt < max_attempts do
+      {:retry, code}
+    else
+      Logger.error(
+        "Project snapshot build exhausted its settlement retry budget: " <>
+          "reason=#{code} attempt=#{attempt} max_attempts=#{max_attempts}"
+      )
+
+      {:discard, code}
+    end
+  end
+
+  defp retry_failed_snapshot(snapshot, reason, operation_attempt, attempt, max_attempts) do
     case allocate_retry(snapshot, operation_attempt) do
       {:ok, retried} ->
         broadcast(retried)
         {:retry, safe_error_code(reason)}
 
       {:error, retry_reason} ->
-        fail_snapshot(snapshot, retry_reason)
+        fail_snapshot(snapshot, retry_reason, attempt, max_attempts)
     end
   end
 
@@ -1348,7 +1374,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     |> Repo.update()
   end
 
-  defp fail_snapshot(%ProjectSnapshot{} = snapshot, reason) do
+  defp fail_snapshot(%ProjectSnapshot{} = snapshot, reason, attempt, max_attempts) do
     code = safe_error_code(reason)
     now = TimeHelpers.now()
 
@@ -1368,16 +1394,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         {:discard, code}
 
       {:error, _reason} ->
-        {:snooze, 300}
+        retry_or_discard(code, attempt, max_attempts)
     end
   end
 
-  defp settle_cancelled(snapshot, reason \\ :snapshot_build_cancelled) do
+  defp settle_cancelled(snapshot, reason, attempt, max_attempts) do
     case settle_cancelled_reservation(snapshot, reason) do
-      {:ok, :released} -> mark_cancelled(snapshot.id, snapshot.lifecycle_generation)
-      {:ok, :committed} -> {:retry, :snapshot_build_cancelled_after_publish}
-      {:ok, :active_unowned} -> {:snooze, 300}
-      {:error, _settlement_reason} -> {:snooze, 300}
+      {:ok, :released} -> mark_cancelled(snapshot.id, snapshot.lifecycle_generation, attempt, max_attempts)
+      {:ok, :committed} -> retry_or_discard(:snapshot_build_cancelled_after_publish, attempt, max_attempts)
+      {:ok, :active_unowned} -> retry_unsettled(snapshot, attempt, max_attempts)
+      {:error, _settlement_reason} -> retry_unsettled(snapshot, attempt, max_attempts)
     end
   end
 
@@ -1591,7 +1617,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   defp matching_cleanup_handoff?(_canonical_scope, _reason_scope), do: false
 
-  defp mark_cancelled(snapshot_id, expected_generation) do
+  defp mark_cancelled(snapshot_id, expected_generation, attempt, max_attempts) do
     now = TimeHelpers.now()
 
     case update_terminal_build_state(snapshot_id, expected_generation, fn snapshot ->
@@ -1611,7 +1637,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         {:ok, cancelled}
 
       {:error, _reason} ->
-        {:snooze, 300}
+        retry_or_discard(:build_failed, attempt, max_attempts)
     end
   end
 

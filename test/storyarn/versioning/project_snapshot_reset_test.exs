@@ -787,6 +787,81 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     assert :ok = readiness()
   end
 
+  test "pristine bootstrap persists one real zero-inventory provider receipt" do
+    :ok = SnapshotResetStorage.put_objects(%{})
+    opts = pristine_bootstrap_opts()
+
+    assert {:error, :snapshot_reset_rollout_provider_receipt_missing} = readiness()
+    assert :ok = ProjectSnapshotReset.bootstrap_pristine_provider_receipt(@environment, opts)
+    assert :ok = readiness()
+
+    assert [[[], 0, 0, 0]] =
+             Repo.query!("""
+             SELECT workspace_receipt_ids, object_count, scanned_object_count, object_bytes
+             FROM project_snapshot_provider_reset_receipts
+             """).rows
+
+    assert :ok = ProjectSnapshotReset.bootstrap_pristine_provider_receipt(@environment, opts)
+    assert [[1]] = Repo.query!("SELECT count(*) FROM project_snapshot_provider_reset_receipts").rows
+  end
+
+  test "pristine bootstrap rechecks the complete provider root immediately before its receipt" do
+    asset_key = "projects/41/assets/appeared-during-bootstrap.bin"
+    :ok = SnapshotResetStorage.put_objects(%{})
+    :ok = SnapshotResetStorage.insert_before_list(3, %{asset_key => 17})
+
+    assert {:error, :snapshot_reset_bootstrap_not_pristine} =
+             ProjectSnapshotReset.bootstrap_pristine_provider_receipt(
+               @environment,
+               pristine_bootstrap_opts()
+             )
+
+    assert Map.has_key?(SnapshotResetStorage.objects(), asset_key)
+    assert [[0]] = Repo.query!("SELECT count(*) FROM project_snapshot_provider_reset_receipts").rows
+  end
+
+  test "pristine bootstrap refuses every object beneath the provider project root" do
+    opts = pristine_bootstrap_opts()
+
+    for key <- [
+          "projects/41/snapshots/project/orphan.json.gz",
+          "projects/41/assets/orphan.bin"
+        ] do
+      :ok = SnapshotResetStorage.put_objects(%{key => 17})
+
+      assert {:error, :snapshot_reset_bootstrap_not_pristine} =
+               ProjectSnapshotReset.bootstrap_pristine_provider_receipt(@environment, opts)
+
+      assert Map.has_key?(SnapshotResetStorage.objects(), key)
+      assert [[0]] = Repo.query!("SELECT count(*) FROM project_snapshot_provider_reset_receipts").rows
+    end
+  end
+
+  test "pristine bootstrap refuses a database with a workspace" do
+    :ok = SnapshotResetStorage.put_objects(%{})
+    _user = user_fixture()
+
+    assert {:error, :snapshot_reset_rollout_receipts_incomplete} =
+             ProjectSnapshotReset.bootstrap_pristine_provider_receipt(
+               @environment,
+               pristine_bootstrap_opts()
+             )
+  end
+
+  test "pristine bootstrap refuses historical receipts from another environment" do
+    :ok = SnapshotResetStorage.put_objects(%{})
+    assert {:ok, _completed} = complete_provider_reset("production")
+
+    assert {:error, :snapshot_reset_bootstrap_not_pristine} =
+             ProjectSnapshotReset.bootstrap_pristine_provider_receipt(
+               @environment,
+               pristine_bootstrap_opts()
+             )
+
+    assert [["production"]] =
+             Repo.query!("SELECT environment FROM project_snapshot_provider_reset_receipts").rows
+  end
+
   test "rollout readiness rejects malformed expected and current environments" do
     assert {:error, :snapshot_reset_environment_required} = readiness("invalid environment")
 
@@ -1194,6 +1269,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
         opts
       )
     )
+  end
+
+  defp pristine_bootstrap_opts do
+    [
+      current_environment: @environment,
+      repo: Repo,
+      rollout_guard: &allow_pre_rollout/1,
+      storage_adapter: SnapshotResetStorage
+    ]
   end
 
   defp allow_pre_rollout(_repo), do: :ok

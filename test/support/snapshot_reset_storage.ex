@@ -3,18 +3,16 @@ defmodule Storyarn.SnapshotResetStorage do
 
   @objects_key {__MODULE__, :objects}
   @failures_key {__MODULE__, :failures}
+  @insert_before_list_key {__MODULE__, :insert_before_list}
+  @list_call_count_key {__MODULE__, :list_call_count}
   @namespace_fingerprint_key {__MODULE__, :namespace_fingerprint}
   @replace_before_delete_key {__MODULE__, :replace_before_delete}
 
   def put_objects(objects) when is_map(objects) do
-    normalized =
-      Map.new(objects, fn
-        {key, size} when is_integer(size) -> {key, %{identity: identity(key, size), size: size}}
-        {key, %{identity: identity, size: size}} -> {key, %{identity: identity, size: size}}
-      end)
-
-    Process.put(@objects_key, normalized)
+    Process.put(@objects_key, normalize_objects(objects))
     Process.put(@failures_key, MapSet.new())
+    Process.delete(@insert_before_list_key)
+    Process.put(@list_call_count_key, 0)
     Process.put(@namespace_fingerprint_key, String.duplicate("c", 64))
     Process.put(@replace_before_delete_key, MapSet.new())
     :ok
@@ -38,7 +36,14 @@ defmodule Storyarn.SnapshotResetStorage do
     :ok
   end
 
+  def insert_before_list(call_number, objects) when is_integer(call_number) and call_number > 0 and is_map(objects) do
+    Process.put(@insert_before_list_key, {call_number, normalize_objects(objects)})
+    :ok
+  end
+
   def list_prefix(prefix, opts) do
+    maybe_insert_before_list()
+
     limit = Keyword.fetch!(opts, :limit)
     cursor = Keyword.get(opts, :cursor)
 
@@ -104,6 +109,27 @@ defmodule Storyarn.SnapshotResetStorage do
       %{size: size} = Map.fetch!(objects(), key)
       replace_object(key, size)
     end
+  end
+
+  defp maybe_insert_before_list do
+    call_number = Process.get(@list_call_count_key, 0) + 1
+    Process.put(@list_call_count_key, call_number)
+
+    case Process.get(@insert_before_list_key) do
+      {^call_number, inserted} ->
+        Process.delete(@insert_before_list_key)
+        Process.put(@objects_key, Map.merge(objects(), inserted))
+
+      _none ->
+        :ok
+    end
+  end
+
+  defp normalize_objects(objects) do
+    Map.new(objects, fn
+      {key, size} when is_integer(size) -> {key, %{identity: identity(key, size), size: size}}
+      {key, %{identity: identity, size: size}} -> {key, %{identity: identity, size: size}}
+    end)
   end
 
   defp identity(key, size) do
