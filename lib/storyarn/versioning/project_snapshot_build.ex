@@ -1180,14 +1180,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   defp handle_failed_settlement({:ok, :committed}, _snapshot, reason, attempt, max_attempts) when attempt < max_attempts,
     do: {:retry, safe_error_code(reason)}
 
-  defp handle_failed_settlement({:ok, :active_unowned}, snapshot, _reason, attempt, max_attempts),
-    do: retry_unsettled(snapshot, attempt, max_attempts)
+  defp handle_failed_settlement({:ok, :active_unowned}, snapshot, reason, attempt, max_attempts),
+    do: retry_unsettled(snapshot, reason, attempt, max_attempts)
 
   defp handle_failed_settlement({:ok, :committed}, _snapshot, _reason, attempt, max_attempts),
     do: retry_or_discard(:snapshot_build_settlement_committed, attempt, max_attempts)
 
-  defp handle_failed_settlement({:error, _settlement_reason}, snapshot, _reason, attempt, max_attempts),
-    do: retry_unsettled(snapshot, attempt, max_attempts)
+  defp handle_failed_settlement({:error, _settlement_reason}, snapshot, reason, attempt, max_attempts),
+    do: retry_unsettled(snapshot, reason, attempt, max_attempts)
 
   defp build_fence_lost?(:snapshot_build_job_not_executing), do: true
 
@@ -1200,10 +1200,50 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   defp build_fence_lost?(reason) when is_list(reason), do: Enum.any?(reason, &build_fence_lost?/1)
   defp build_fence_lost?(_reason), do: false
 
-  defp retry_unsettled(snapshot, attempt, max_attempts) do
+  defp retry_unsettled(snapshot, reason, attempt, max_attempts) do
+    snapshot = remember_unsettled_failure(snapshot, reason)
+
     if attempt < max_attempts,
       do: {:retry, :cleanup_unowned},
-      else: fail_snapshot(snapshot, :cleanup_unowned, attempt, max_attempts)
+      else: fail_snapshot(snapshot, unsettled_terminal_reason(snapshot, reason), attempt, max_attempts)
+  end
+
+  defp remember_unsettled_failure(%ProjectSnapshot{} = snapshot, reason) do
+    integrity_state = failure_integrity(reason)
+
+    if integrity_state in ["missing", "corrupt"] and snapshot.integrity_state not in ["missing", "corrupt"] do
+      snapshot
+      |> persist_unsettled_integrity(integrity_state)
+      |> remembered_snapshot_or(snapshot)
+    else
+      snapshot
+    end
+  end
+
+  defp persist_unsettled_integrity(snapshot, integrity_state) do
+    update_build_state(snapshot.id, snapshot.lifecycle_generation, fn locked ->
+      ProjectSnapshot.build_state_changeset(locked, %{
+        integrity_state: integrity_state,
+        state_updated_at: TimeHelpers.now()
+      })
+    end)
+  end
+
+  defp remembered_snapshot_or({:ok, remembered}, _fallback), do: remembered
+  defp remembered_snapshot_or({:error, _reason}, fallback), do: fallback
+
+  defp unsettled_terminal_reason(snapshot, reason) do
+    case safe_error_code(reason) do
+      code when code in [:source_missing, :source_corrupt] ->
+        {:cleanup_unowned, reason}
+
+      _generic ->
+        case snapshot.integrity_state do
+          "missing" -> {:cleanup_unowned, :missing_snapshot_blob_source}
+          "corrupt" -> {:cleanup_unowned, :snapshot_object_checksum_mismatch}
+          _unknown -> :cleanup_unowned
+        end
+    end
   end
 
   defp retry_or_discard(code, attempt, max_attempts) when is_atom(code) do
@@ -1402,8 +1442,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     case settle_cancelled_reservation(snapshot, reason) do
       {:ok, :released} -> mark_cancelled(snapshot.id, snapshot.lifecycle_generation, attempt, max_attempts)
       {:ok, :committed} -> retry_or_discard(:snapshot_build_cancelled_after_publish, attempt, max_attempts)
-      {:ok, :active_unowned} -> retry_unsettled(snapshot, attempt, max_attempts)
-      {:error, _settlement_reason} -> retry_unsettled(snapshot, attempt, max_attempts)
+      {:ok, :active_unowned} -> retry_unsettled(snapshot, reason, attempt, max_attempts)
+      {:error, _settlement_reason} -> retry_unsettled(snapshot, reason, attempt, max_attempts)
     end
   end
 
@@ -1637,7 +1677,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         {:ok, cancelled}
 
       {:error, _reason} ->
-        retry_or_discard(:build_failed, attempt, max_attempts)
+        retry_or_discard(:snapshot_build_cancel_state_persist_failed, attempt, max_attempts)
     end
   end
 

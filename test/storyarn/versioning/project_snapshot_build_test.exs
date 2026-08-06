@@ -386,6 +386,54 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert Repo.get!(StorageReservation, failed.storage_reservation_id).status == "released"
     end
 
+    test "preserves source corruption when cleanup ownership retries exhaust" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = upload_asset!(project, user, "trusted source")
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      assert {:ok, _url} = Local.upload(protected_blob_key(project.id, asset), "tampered bytes", "image/png")
+
+      job = requested_job(requested)
+      original_snapshot_config = Application.get_env(:storyarn, SnapshotObjectStorage, [])
+
+      Application.put_env(
+        :storyarn,
+        SnapshotObjectStorage,
+        Keyword.put(original_snapshot_config, :persist_fun, fn _keys ->
+          {:error, :database_unavailable}
+        end)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, SnapshotObjectStorage, original_snapshot_config) end)
+
+      assert {:retry, :cleanup_unowned} =
+               Versioning.perform_project_snapshot_build(requested.id,
+                 job_id: job.id,
+                 attempt: 1,
+                 max_attempts: 2
+               )
+
+      unsettled = Repo.get!(ProjectSnapshot, requested.id)
+      assert unsettled.lifecycle_state == "building"
+      assert unsettled.integrity_state == "corrupt"
+      assert is_nil(unsettled.failure_code)
+      assert Repo.get!(StorageReservation, requested.storage_reservation_id).status == "active"
+
+      assert {:discard, :source_corrupt} =
+               Versioning.perform_project_snapshot_build(requested.id,
+                 job_id: job.id,
+                 attempt: 2,
+                 max_attempts: 2
+               )
+
+      failed = Repo.get!(ProjectSnapshot, requested.id)
+      assert failed.lifecycle_state == "failed"
+      assert failed.integrity_state == "corrupt"
+      assert failed.failure_code == "source_corrupt"
+      assert Repo.get!(StorageReservation, requested.storage_reservation_id).status == "active"
+    end
+
     test "allocates a fresh owned namespace and reservation before retrying" do
       user = user_fixture()
       project = project_fixture(user)
@@ -870,7 +918,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
         Application.put_env(:storyarn, ProjectSnapshotBuild, original_config)
       end)
 
-      assert {:error, :build_failed} = perform_requested_job(cancellation_requested)
+      assert {:error, :snapshot_build_cancel_state_persist_failed} =
+               perform_requested_job(cancellation_requested)
 
       assert %ProjectSnapshot{lifecycle_state: "building", cancelled_at: nil} =
                Repo.get!(ProjectSnapshot, requested.id)

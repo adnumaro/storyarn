@@ -45,7 +45,7 @@ defmodule Storyarn.Release do
   @doc false
   def assert_snapshot_lifecycle_migration_authorized! do
     enforced? = Application.get_env(@app, :enforce_snapshot_lifecycle_release_gate, false)
-    authorized? = :persistent_term.get(@snapshot_lifecycle_migration_authorization_key, false)
+    authorized? = snapshot_lifecycle_migration_authorized?()
 
     if enforced? and not authorized? do
       raise "Snapshot lifecycle migration must run through Storyarn.Release.migrate/0 after rollout verification"
@@ -312,8 +312,8 @@ defmodule Storyarn.Release do
   end
 
   defp with_snapshot_lifecycle_migration_authorization(fun) when is_function(fun, 0) do
-    previous = :persistent_term.get(@snapshot_lifecycle_migration_authorization_key, :missing)
-    :persistent_term.put(@snapshot_lifecycle_migration_authorization_key, true)
+    previous = Process.get(@snapshot_lifecycle_migration_authorization_key, :missing)
+    Process.put(@snapshot_lifecycle_migration_authorization_key, true)
 
     try do
       fun.()
@@ -323,12 +323,37 @@ defmodule Storyarn.Release do
   end
 
   defp restore_snapshot_lifecycle_migration_authorization(:missing) do
-    :persistent_term.erase(@snapshot_lifecycle_migration_authorization_key)
+    Process.delete(@snapshot_lifecycle_migration_authorization_key)
   end
 
   defp restore_snapshot_lifecycle_migration_authorization(previous) do
-    :persistent_term.put(@snapshot_lifecycle_migration_authorization_key, previous)
+    Process.put(@snapshot_lifecycle_migration_authorization_key, previous)
   end
+
+  # Ecto.Migrator executes each migration in a linked Task rather than in the
+  # process that called `run/3`. Tasks carry their documented `$callers` chain,
+  # so the migration can inherit this narrowly scoped authorization without a
+  # VM-global flag that could survive a killed release process.
+  defp snapshot_lifecycle_migration_authorized? do
+    Process.get(@snapshot_lifecycle_migration_authorization_key, false) == true or
+      Enum.any?(
+        List.wrap(Process.get(:"$callers")),
+        &snapshot_lifecycle_migration_authorized_caller?/1
+      )
+  end
+
+  defp snapshot_lifecycle_migration_authorized_caller?(pid) when is_pid(pid) and node(pid) == node() do
+    case Process.info(pid, :dictionary) do
+      {:dictionary, dictionary} ->
+        List.keyfind(dictionary, @snapshot_lifecycle_migration_authorization_key, 0) ==
+          {@snapshot_lifecycle_migration_authorization_key, true}
+
+      nil ->
+        false
+    end
+  end
+
+  defp snapshot_lifecycle_migration_authorized_caller?(_pid), do: false
 
   defp ensure_snapshot_reset_application_started!(application) do
     case Application.ensure_all_started(application) do
