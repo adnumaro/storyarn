@@ -1,0 +1,39 @@
+lib/storyarn/versioning/project_snapshot_reconciliation.ex
+  s_c2ae682cd97119::t_6edd3520002b38 730-731
+lib/storyarn/workers/inspect_project_snapshots_worker.ex
+  s_c2ae682cd97119::t_4d160c7832f626 30-32,34-40,44,46,48-51
+  s_c2ae682cd97119::t_f3d49320c4f717 41-43,54,56,59-76
+  s_c2ae682cd97119::t_f04034dfcf9003 55,57-58
+  s_c2ae682cd97119::t_d4354206531973 28,33
+lib/storyarn/versioning/project_snapshot_reconciliation_finding.ex
+  s_c2ae682cd97119::t_4d160c7832f626 118
+lib/storyarn/versioning/snapshot_object_storage.ex
+  s_c2ae682cd97119::t_4d160c7832f626 377-392,398
+test/storyarn/versioning/project_snapshot_reconciliation_test.exs
+  s_c2ae682cd97119::t_f3d49320c4f717 1093-1114
+  s_c2ae682cd97119::t_211cab27fa897a 1390-1393
+  s_c2ae682cd97119::t_adee4a76b2a7b8 589-608,1091,1352-1389,1395-1411
+  s_c2ae682cd97119::t_4d160c7832f626 1049,1070-1090
+  s_c2ae682cd97119::t_d4354206531973 1351
+  s_c2ae682cd97119::t_0b57ee9602f9c9 1092
+  s_c2ae682cd97119::t_8ec2f68aeabf50 1394
+  s_c2ae682cd97119::t_59449c9d6cf5b1 1412
+test/storyarn/versioning/snapshot_object_storage_test.exs
+  s_c2ae682cd97119::t_4d160c7832f626 24-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "81246bc9084bbab0a2bfccba5f8732a827315126",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
