@@ -179,52 +179,25 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
     end
   end
 
-  test "release APIs prepare, execute, and verify an environment-global provider reset" do
+  test "release provider reset fails closed once the lifecycle rollout is applied" do
     directory = Path.join(System.tmp_dir!(), "storyarn-provider-reset-#{System.unique_integer([:positive])}")
     plan_path = Path.join(directory, "plan.json")
-    authorization_path = Path.join(directory, "authorization")
     original_storage = Application.get_env(:storyarn, :storage)
     original_environment = System.get_env("STORYARN_DEPLOYMENT_ENVIRONMENT")
-    original_authorization_digest = System.get_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256")
 
     File.mkdir_p!(directory)
     File.chmod!(directory, 0o700)
-    File.write!(authorization_path, @authorization)
-    File.chmod!(authorization_path, 0o600)
     Application.put_env(:storyarn, :storage, adapter: SnapshotResetStorage)
     System.put_env("STORYARN_DEPLOYMENT_ENVIRONMENT", @environment)
-    System.put_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256", authorization_digest())
 
     on_exit(fn ->
       File.rm_rf(directory)
       restore_application_env(:storyarn, :storage, original_storage)
       restore_system_env("STORYARN_DEPLOYMENT_ENVIRONMENT", original_environment)
-      restore_system_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256", original_authorization_digest)
     end)
 
-    if snapshot_lifecycle_rollout_applied?() do
-      assert_raise RuntimeError, ~r/snapshot_reset_rollout_already_applied/, fn ->
-        Release.prepare_project_snapshot_provider_reset(@environment, plan_path, 10)
-      end
-    else
-      orphan = "projects/900000004/snapshots/project/release-orphan.json.gz"
-      :ok = SnapshotResetStorage.put_objects(%{orphan => 10})
-
-      plan = Release.prepare_project_snapshot_provider_reset(@environment, plan_path, 10)
-      assert plan["workspace_receipt_ids"] == []
-      assert Enum.map(plan["objects"], & &1["key"]) == [orphan]
-
-      completed =
-        Release.execute_project_snapshot_provider_reset(
-          @environment,
-          plan_path,
-          plan["inventory_digest"],
-          authorization_path
-        )
-
-      assert completed["status"] == "completed"
-      assert SnapshotResetStorage.objects() == %{}
-      assert :ok = Release.verify_project_snapshot_reset_rollout(@environment)
+    assert_raise RuntimeError, ~r/snapshot_reset_rollout_already_applied/, fn ->
+      Release.prepare_project_snapshot_provider_reset(@environment, plan_path, 10)
     end
   end
 
@@ -1226,13 +1199,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
   defp allow_pre_rollout(_repo), do: :ok
 
   defp deny_post_rollout(_repo), do: {:error, :snapshot_reset_rollout_already_applied}
-
-  defp snapshot_lifecycle_rollout_applied? do
-    %{rows: [[applied?]]} =
-      Repo.query!("SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version >= $1)", [20_260_805_130_000])
-
-    applied?
-  end
 
   defp authorization_digest(authorization \\ @authorization) do
     :sha256 |> :crypto.hash(authorization) |> Base.encode16(case: :lower)
