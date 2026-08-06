@@ -113,6 +113,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       |> where([snapshot, _job], snapshot.id == ^snapshot_id)
       |> where([snapshot, _job], snapshot.build_job_id == ^job_id)
       |> where([snapshot, _job], snapshot.lifecycle_state in ^@active_build_states)
+      |> where([snapshot, _job], is_nil(snapshot.cancel_requested_at))
       |> where([_snapshot, job], job.worker == ^@build_worker)
       |> where([_snapshot, job], job.queue == "snapshots")
       |> where([_snapshot, job], job.state == "executing")

@@ -449,8 +449,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert {:ok, {:deferred, defer_seconds}} =
                Versioning.process_project_snapshot_cleanup_intent(intent.id)
 
-      assert defer_seconds in Versioning.project_snapshot_build_recovery_quarantine_seconds()..(Versioning.project_snapshot_build_recovery_quarantine_seconds() +
-                                                                                                  1)
+      quarantine_seconds = Versioning.project_snapshot_build_recovery_quarantine_seconds()
+      assert defer_seconds in quarantine_seconds..(quarantine_seconds + 1)
 
       awaiting_verification = Repo.get!(SnapshotCleanupIntent, intent.id)
       assert awaiting_verification.status == "retrying"
@@ -475,40 +475,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       now = TimeHelpers.now()
       stale_at = DateTime.add(now, -16 * 60, :second)
       {building, job, reservation} = stale_executing_build!(snapshot, stale_at)
-      capture = Repo.get!(ProjectSnapshotCapture, snapshot.id)
-
-      reservation =
-        reservation
-        |> Ecto.Changeset.change(expires_at: DateTime.add(now, 60 * 60, :second))
-        |> Repo.update!()
-
-      assert {:ok, cleanup_scope} =
-               SnapshotObjectStorage.cleanup_scope_from_capture(
-                 project.id,
-                 snapshot.object_prefix,
-                 capture.manifest_json
-               )
-
-      assert {:ok, started} =
-               Billing.mark_storage_reservation_started(
-                 reservation.id,
-                 reservation.lease_token,
-                 reservation.generation,
-                 cleanup_scope
-               )
-
-      claim =
-        building.object_prefix
-        |> SnapshotObjectPublicationClaim.create_changeset(
-          String.duplicate("a", 64),
-          Ecto.UUID.generate(),
-          DateTime.add(now, 60 * 60, :second),
-          started.id,
-          started.lease_token
-        )
-        |> Repo.insert!()
-        |> SnapshotObjectPublicationClaim.status_changeset("poisoned")
-        |> Repo.update!()
+      {started, claim} = start_snapshot_storage!(project, building, reservation, now)
 
       started =
         started
@@ -552,37 +519,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       {active_build, active_job, active_reservation} =
         stale_executing_build!(active_snapshot, stale_at)
 
-      capture = Repo.get!(ProjectSnapshotCapture, active_snapshot.id)
-
-      active_reservation =
-        active_reservation
-        |> Ecto.Changeset.change(expires_at: DateTime.add(now, 60 * 60, :second))
-        |> Repo.update!()
-
-      assert {:ok, cleanup_scope} =
-               SnapshotObjectStorage.cleanup_scope_from_capture(
-                 project.id,
-                 active_snapshot.object_prefix,
-                 capture.manifest_json
-               )
-
-      assert {:ok, started} =
-               Billing.mark_storage_reservation_started(
-                 active_reservation.id,
-                 active_reservation.lease_token,
-                 active_reservation.generation,
-                 cleanup_scope
-               )
-
-      active_build.object_prefix
-      |> SnapshotObjectPublicationClaim.create_changeset(
-        String.duplicate("a", 64),
-        Ecto.UUID.generate(),
-        DateTime.add(now, 2 * 60 * 60, :second),
-        started.id,
-        started.lease_token
-      )
-      |> Repo.insert!()
+      {started, _claim} =
+        start_snapshot_storage!(project, active_build, active_reservation, now,
+          claim_status: "staging",
+          claim_expires_at: DateTime.add(now, 2 * 60 * 60, :second)
+        )
 
       started
       |> Ecto.Changeset.change(
@@ -718,45 +659,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       user = user_fixture()
       project = project_fixture(user)
 
-      assert {:ok, snapshot} =
-               Versioning.request_full_project_snapshot(user_scope_fixture(user), project, %{
-                 idempotency_key: Ecto.UUID.generate()
-               })
+      assert {:ok, snapshot} = request_snapshot(user, project)
 
       reservation = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
-      capture = Repo.get!(ProjectSnapshotCapture, snapshot.id)
-
-      assert {:ok, cleanup_scope} =
-               SnapshotObjectStorage.cleanup_scope_from_capture(
-                 project.id,
-                 snapshot.object_prefix,
-                 capture.manifest_json
-               )
-
-      assert {:ok, started} =
-               Billing.mark_storage_reservation_started(
-                 reservation.id,
-                 reservation.lease_token,
-                 reservation.generation,
-                 cleanup_scope
-               )
-
-      claim =
-        snapshot.object_prefix
-        |> SnapshotObjectPublicationClaim.create_changeset(
-          String.duplicate("a", 64),
-          Ecto.UUID.generate(),
-          DateTime.add(TimeHelpers.now(), 3_600, :second),
-          started.id,
-          started.lease_token
-        )
-        |> Repo.insert!()
-
-      claim
-      |> SnapshotObjectPublicationClaim.status_changeset("poisoned")
-      |> Repo.update!()
-
       now = TimeHelpers.now()
+      {started, _claim} = start_snapshot_storage!(project, snapshot, reservation, now)
 
       failed =
         snapshot
@@ -1102,7 +1009,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
   end
 
   defp stale_executing_build!(snapshot, now) do
-    state_now = database_clock_now()
+    database_now = database_clock_now()
+
+    state_now =
+      case DateTime.compare(snapshot.state_updated_at, database_now) do
+        :gt -> snapshot.state_updated_at
+        _not_ahead -> database_now
+      end
 
     building =
       snapshot
@@ -1134,6 +1047,49 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       |> Repo.update!()
 
     {building, job, reservation}
+  end
+
+  defp start_snapshot_storage!(project, snapshot, reservation, now, opts \\ []) do
+    reservation =
+      reservation
+      |> Ecto.Changeset.change(expires_at: DateTime.add(now, 60 * 60, :second))
+      |> Repo.update!()
+
+    capture = Repo.get!(ProjectSnapshotCapture, snapshot.id)
+
+    assert {:ok, cleanup_scope} =
+             SnapshotObjectStorage.cleanup_scope_from_capture(
+               project.id,
+               snapshot.object_prefix,
+               capture.manifest_json
+             )
+
+    assert {:ok, started} =
+             Billing.mark_storage_reservation_started(
+               reservation.id,
+               reservation.lease_token,
+               reservation.generation,
+               cleanup_scope
+             )
+
+    claim =
+      snapshot.object_prefix
+      |> SnapshotObjectPublicationClaim.create_changeset(
+        String.duplicate("a", 64),
+        Ecto.UUID.generate(),
+        Keyword.get(opts, :claim_expires_at, DateTime.add(now, 60 * 60, :second)),
+        started.id,
+        started.lease_token
+      )
+      |> Repo.insert!()
+
+    claim =
+      case Keyword.get(opts, :claim_status, "poisoned") do
+        "staging" -> claim
+        status -> claim |> SnapshotObjectPublicationClaim.status_changeset(status) |> Repo.update!()
+      end
+
+    {started, claim}
   end
 
   defp set_hard_delete_snapshot_limit(limit) do

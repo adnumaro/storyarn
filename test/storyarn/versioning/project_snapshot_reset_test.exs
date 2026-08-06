@@ -202,24 +202,30 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
       restore_system_env("STORYARN_SNAPSHOT_RESET_AUTHORIZATION_SHA256", original_authorization_digest)
     end)
 
-    orphan = "projects/900000004/snapshots/project/release-orphan.json.gz"
-    :ok = SnapshotResetStorage.put_objects(%{orphan => 10})
+    if snapshot_lifecycle_rollout_applied?() do
+      assert_raise RuntimeError, ~r/snapshot_reset_rollout_already_applied/, fn ->
+        Release.prepare_project_snapshot_provider_reset(@environment, plan_path, 10)
+      end
+    else
+      orphan = "projects/900000004/snapshots/project/release-orphan.json.gz"
+      :ok = SnapshotResetStorage.put_objects(%{orphan => 10})
 
-    plan = Release.prepare_project_snapshot_provider_reset(@environment, plan_path, 10)
-    assert plan["workspace_receipt_ids"] == []
-    assert Enum.map(plan["objects"], & &1["key"]) == [orphan]
+      plan = Release.prepare_project_snapshot_provider_reset(@environment, plan_path, 10)
+      assert plan["workspace_receipt_ids"] == []
+      assert Enum.map(plan["objects"], & &1["key"]) == [orphan]
 
-    completed =
-      Release.execute_project_snapshot_provider_reset(
-        @environment,
-        plan_path,
-        plan["inventory_digest"],
-        authorization_path
-      )
+      completed =
+        Release.execute_project_snapshot_provider_reset(
+          @environment,
+          plan_path,
+          plan["inventory_digest"],
+          authorization_path
+        )
 
-    assert completed["status"] == "completed"
-    assert SnapshotResetStorage.objects() == %{}
-    assert :ok = Release.verify_project_snapshot_reset_rollout(@environment)
+      assert completed["status"] == "completed"
+      assert SnapshotResetStorage.objects() == %{}
+      assert :ok = Release.verify_project_snapshot_reset_rollout(@environment)
+    end
   end
 
   test "requires an independently configured authorization digest" do
@@ -1220,6 +1226,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotResetTest do
   defp allow_pre_rollout(_repo), do: :ok
 
   defp deny_post_rollout(_repo), do: {:error, :snapshot_reset_rollout_already_applied}
+
+  defp snapshot_lifecycle_rollout_applied? do
+    %{rows: [[applied?]]} =
+      Repo.query!("SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version >= $1)", [20_260_805_130_000])
+
+    applied?
+  end
 
   defp authorization_digest(authorization \\ @authorization) do
     :sha256 |> :crypto.hash(authorization) |> Base.encode16(case: :lower)

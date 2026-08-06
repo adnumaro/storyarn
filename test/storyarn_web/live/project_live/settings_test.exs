@@ -18,6 +18,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Workers.BuildProjectSnapshotWorker
@@ -543,8 +544,17 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                  idempotency_key: Ecto.UUID.generate()
                })
 
-      job = Repo.get!(Oban.Job, requested.build_job_id)
-      assert :ok = BuildProjectSnapshotWorker.perform(%{job | attempt: 1})
+      job =
+        requested.build_job_id
+        |> then(&Repo.get!(Oban.Job, &1))
+        |> Ecto.Changeset.change(
+          state: "executing",
+          attempt: 1,
+          attempted_at: %{TimeHelpers.now() | microsecond: {0, 6}}
+        )
+        |> Repo.update!()
+
+      assert :ok = BuildProjectSnapshotWorker.perform(job)
 
       {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
       assert [ready] = get_snapshots_vue(view).props["snapshots"]

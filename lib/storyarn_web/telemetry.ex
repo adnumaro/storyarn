@@ -204,18 +204,6 @@ defmodule StoryarnWeb.Telemetry do
       sum("storyarn.snapshot.retention.stop.expired_build_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.failure_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.continuation_count", tags: [:status]),
-      sum("storyarn.snapshot.reset.stop.object_count",
-        tags: [:status, :environment, :error_code]
-      ),
-      sum("storyarn.snapshot.reset.stop.snapshot_row_count",
-        tags: [:status, :environment, :error_code]
-      ),
-      sum("storyarn.snapshot.reset.stop.entity_version_row_count",
-        tags: [:status, :environment, :error_code]
-      ),
-      sum("storyarn.snapshot.reset.stop.attempt_count",
-        tags: [:status, :environment, :error_code]
-      ),
 
       # AI result retention is content-free and bounded per worker batch.
       sum("storyarn.ai.expiration.stop.expired_count", tags: [:status]),

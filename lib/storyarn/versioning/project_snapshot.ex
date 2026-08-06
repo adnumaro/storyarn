@@ -191,7 +191,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     field :failed_at, :utc_datetime
     field :cancel_requested_at, :utc_datetime
     field :cancelled_at, :utc_datetime
-    field :state_updated_at, :utc_datetime
+    field :state_updated_at, :utc_datetime, read_after_writes: true
     field :entity_counts, :map, default: %{}
     field :is_auto, :boolean, default: false
 
@@ -531,7 +531,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     snapshot
     |> build_state_changeset_base(attrs)
     |> validate_same_generation_transition(snapshot)
-    |> validate_monotonic_state_time(snapshot)
+    |> ensure_monotonic_state_time(snapshot)
   end
 
   defp build_state_changeset_base(snapshot, attrs) do
@@ -619,7 +619,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_retry_origin(snapshot)
     |> advance_lifecycle_generation(snapshot)
     |> validate_generation_transition(snapshot, "pending")
-    |> validate_monotonic_state_time(snapshot)
+    |> ensure_monotonic_state_time(snapshot)
   end
 
   @doc false
@@ -699,19 +699,19 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
        else: add_error(changeset, :lifecycle_generation, "did not advance exactly once")
   end
 
-  defp validate_monotonic_state_time(changeset, %__MODULE__{state_updated_at: %DateTime{} = current}) do
+  defp ensure_monotonic_state_time(changeset, %__MODULE__{state_updated_at: %DateTime{} = current}) do
     case get_field(changeset, :state_updated_at) do
       %DateTime{} = next ->
         if DateTime.compare(next, current) in [:eq, :gt],
           do: changeset,
-          else: add_error(changeset, :state_updated_at, "cannot move backwards")
+          else: put_change(changeset, :state_updated_at, current)
 
       _invalid ->
         changeset
     end
   end
 
-  defp validate_monotonic_state_time(changeset, _snapshot), do: changeset
+  defp ensure_monotonic_state_time(changeset, _snapshot), do: changeset
 
   defp lifecycle_constraints(changeset) do
     changeset

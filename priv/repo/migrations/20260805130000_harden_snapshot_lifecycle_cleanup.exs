@@ -110,6 +110,11 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
       same_generation_transition boolean;
       next_generation_transition boolean;
     BEGIN
+      IF TG_OP = 'INSERT' THEN
+        NEW.state_updated_at := date_trunc('second', timezone('UTC', clock_timestamp()));
+        RETURN NEW;
+      END IF;
+
       same_generation_transition :=
         NEW.lifecycle_generation = OLD.lifecycle_generation AND (
           NEW.lifecycle_state = OLD.lifecycle_state OR
@@ -132,10 +137,10 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
           USING ERRCODE = 'integrity_constraint_violation';
       END IF;
 
-      IF NEW.state_updated_at < OLD.state_updated_at THEN
-        RAISE EXCEPTION 'project snapshot lifecycle timestamp cannot move backwards'
-          USING ERRCODE = 'integrity_constraint_violation';
-      END IF;
+      NEW.state_updated_at := GREATEST(
+        OLD.state_updated_at,
+        date_trunc('second', timezone('UTC', clock_timestamp()))
+      );
 
       RETURN NEW;
     END;
@@ -144,7 +149,7 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
 
     execute("""
     CREATE TRIGGER project_snapshots_lifecycle_guard
-    BEFORE UPDATE ON project_snapshots
+    BEFORE INSERT OR UPDATE ON project_snapshots
     FOR EACH ROW
     EXECUTE FUNCTION storyarn_guard_project_snapshot_lifecycle()
     """)
@@ -281,7 +286,7 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
 
       IF pass_boundary THEN
         NEW.next_delete_pass_at :=
-          date_trunc('second', clock_timestamp()) + interval '15 minutes 1 second';
+          date_trunc('second', timezone('UTC', clock_timestamp())) + interval '15 minutes 1 second';
       END IF;
 
       processing_claim :=
@@ -295,7 +300,8 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
         NEW.terminal_at IS NOT DISTINCT FROM OLD.terminal_at;
 
       IF processing_claim AND OLD.completed_delete_passes > 0 AND
-         (OLD.next_delete_pass_at IS NULL OR OLD.next_delete_pass_at > clock_timestamp()) THEN
+         (OLD.next_delete_pass_at IS NULL OR
+          OLD.next_delete_pass_at > timezone('UTC', clock_timestamp())) THEN
         RAISE EXCEPTION 'snapshot cleanup next delete pass is not eligible yet'
           USING ERRCODE = 'integrity_constraint_violation';
       END IF;
