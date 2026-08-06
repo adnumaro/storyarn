@@ -18,6 +18,10 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Versioning
+  alias Storyarn.Versioning.SnapshotCleanupIntent
+  alias Storyarn.Workers.BuildProjectSnapshotWorker
 
   defp settings_path(project, section \\ nil) do
     base = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings"
@@ -514,6 +518,56 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert cancelled["lifecycleStatus"] == "cancelled"
       assert cancelled["canCancel"] == false
       assert is_binary(cancelled["cancelRequestedAt"])
+    end
+
+    test "rejects malformed snapshot identifiers without crashing the LiveView", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+
+      render_click(view, "cancel_snapshot", %{"id" => %{"malformed" => true}})
+      render_click(view, "delete_snapshot", %{"id" => ["malformed"]})
+
+      assert get_snapshots_vue(view).props["snapshots"] == []
+    end
+
+    test "deletes a ready snapshot through the durable cleanup protocol", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      assert {:ok, requested} =
+               Versioning.request_full_project_snapshot(user_scope_fixture(user), project, %{
+                 idempotency_key: Ecto.UUID.generate()
+               })
+
+      job =
+        requested.build_job_id
+        |> then(&Repo.get!(Oban.Job, &1))
+        |> Ecto.Changeset.change(
+          state: "executing",
+          attempt: 1,
+          attempted_at: %{TimeHelpers.now() | microsecond: {0, 6}}
+        )
+        |> Repo.update!()
+
+      assert :ok = BuildProjectSnapshotWorker.perform(job)
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+      assert [ready] = get_snapshots_vue(view).props["snapshots"]
+      assert ready["canDelete"] == true
+
+      render_click(view, "delete_snapshot", %{"id" => ready["id"]})
+
+      assert get_snapshots_vue(view).props["snapshots"] == []
+
+      assert %SnapshotCleanupIntent{reason: "user_delete"} =
+               Repo.get_by(SnapshotCleanupIntent,
+                 project_snapshot_id_snapshot: ready["id"]
+               )
     end
   end
 

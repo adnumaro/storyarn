@@ -10,6 +10,7 @@ release_command = '/app/bin/migrate'
 [env]
 PHX_HOST = 'www.storyarn.com'
 PORT = '8080'
+STORYARN_DEPLOYMENT_ENVIRONMENT = 'production'
 TRUST_PROXY = 'true'
 
 [http_service]

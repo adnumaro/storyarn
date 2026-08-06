@@ -11,10 +11,12 @@ import {
   LoaderCircle,
   Plus,
   ShieldCheck,
+  Trash2,
   X,
 } from "@lucide/vue";
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -73,6 +75,7 @@ interface Snapshot {
   capturedAt: string | null;
   cancelRequestedAt: string | null;
   canCancel: boolean;
+  canDelete: boolean;
 }
 
 interface SnapshotLimit {
@@ -98,6 +101,15 @@ const requestIdempotencyKey = ref(newIdempotencyKey());
 const isSubmitting = ref(false);
 const requestError = ref<string | null>(null);
 const cancellingSnapshotIds = ref(new Set<number>());
+const deletingSnapshotIds = ref(new Set<number>());
+const snapshotToDelete = ref<Snapshot | null>(null);
+const deleteError = ref<string | null>(null);
+const deleteDialogOpen = computed({
+  get: () => snapshotToDelete.value !== null,
+  set: (open: boolean) => {
+    if (!open) snapshotToDelete.value = null;
+  },
+});
 const snapshotLimitReached = computed(
   () => snapshotLimit.limit !== null && snapshotLimit.used >= snapshotLimit.limit,
 );
@@ -136,6 +148,17 @@ const serverEventRefs = [
       typeof payload.message === "string"
         ? payload.message
         : t("project_settings.snapshots.create.cancel_failed");
+  }),
+  live.handleEvent("snapshot_delete_accepted", (payload) => {
+    clearDeletingSnapshot(payload.snapshotId);
+    deleteError.value = null;
+  }),
+  live.handleEvent("snapshot_delete_failed", (payload) => {
+    clearDeletingSnapshot(payload.snapshotId);
+    deleteError.value =
+      typeof payload.message === "string"
+        ? payload.message
+        : t("project_settings.snapshots.delete.failed");
   }),
 ];
 
@@ -196,6 +219,43 @@ function clearCancellingSnapshot(snapshotId: unknown) {
   const next = new Set(cancellingSnapshotIds.value);
   next.delete(normalizedId);
   cancellingSnapshotIds.value = next;
+}
+
+function openDeleteDialog(snapshot: Snapshot) {
+  if (!snapshot.canDelete || deletingSnapshotIds.value.has(snapshot.id)) return;
+  deleteError.value = null;
+  snapshotToDelete.value = snapshot;
+}
+
+function deleteSnapshot() {
+  const snapshot = snapshotToDelete.value;
+  if (!snapshot || !snapshot.canDelete || deletingSnapshotIds.value.has(snapshot.id)) return;
+
+  snapshotToDelete.value = null;
+  deletingSnapshotIds.value = new Set(deletingSnapshotIds.value).add(snapshot.id);
+
+  live.pushEvent("delete_snapshot", { id: snapshot.id }, undefined, () => {
+    clearDeletingSnapshot(snapshot.id);
+    deleteError.value = t("project_settings.snapshots.create.connection_failed");
+  });
+}
+
+function clearDeletingSnapshot(snapshotId: unknown) {
+  const normalizedId = typeof snapshotId === "number" ? snapshotId : Number(snapshotId);
+  if (!Number.isInteger(normalizedId)) return;
+
+  const next = new Set(deletingSnapshotIds.value);
+  next.delete(normalizedId);
+  deletingSnapshotIds.value = next;
+}
+
+function deleteDialogDescription(snapshot: Snapshot | null) {
+  if (!snapshot) return "";
+
+  return t("project_settings.snapshots.delete.description", {
+    name: snapshot.title || t("project_settings.snapshots.untitled"),
+    version: formatCount(snapshot.versionNumber),
+  });
 }
 
 function snapshotRequestError(payload: Record<string, unknown>) {
@@ -600,6 +660,14 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
         {{ $t("project_settings.snapshots.snapshots_heading") }}
       </h3>
 
+      <p
+        v-if="deleteError"
+        role="alert"
+        class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+      >
+        {{ deleteError }}
+      </p>
+
       <!-- Empty state -->
       <div v-if="snapshots.length === 0" class="text-center py-12">
         <Archive class="size-12 mx-auto mb-4 text-muted-foreground/30" />
@@ -843,9 +911,38 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                 </span>
               </div>
             </div>
+            <Button
+              v-if="snapshot.canDelete"
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              :disabled="deletingSnapshotIds.has(snapshot.id)"
+              :data-testid="`delete-snapshot-${snapshot.id}`"
+              @click="openDeleteDialog(snapshot)"
+            >
+              <LoaderCircle
+                v-if="deletingSnapshotIds.has(snapshot.id)"
+                class="size-4 animate-spin"
+                aria-hidden="true"
+              />
+              <Trash2 v-else class="size-4" aria-hidden="true" />
+              {{ $t("project_settings.snapshots.delete.action") }}
+            </Button>
           </div>
         </div>
       </div>
     </section>
+
+    <ConfirmDialog
+      v-model:open="deleteDialogOpen"
+      :title="$t('project_settings.snapshots.delete.title')"
+      :description="deleteDialogDescription(snapshotToDelete)"
+      :confirm-text="$t('project_settings.snapshots.delete.confirm')"
+      :cancel-text="$t('project_settings.snapshots.delete.cancel')"
+      variant="destructive"
+      :icon="Trash2"
+      @confirm="deleteSnapshot"
+    />
   </div>
 </template>

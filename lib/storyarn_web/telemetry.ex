@@ -157,6 +157,53 @@ defmodule StoryarnWeb.Telemetry do
       last_value("storyarn.storage.provider_footprint.drift_bytes",
         tags: [:accounting_version]
       ),
+      sum("storyarn.snapshot.reset.stop.object_count",
+        tags: [:status, :environment, :error_code]
+      ),
+      sum("storyarn.snapshot.reset.stop.snapshot_row_count",
+        tags: [:status, :environment, :error_code]
+      ),
+      sum("storyarn.snapshot.reset.stop.entity_version_row_count",
+        tags: [:status, :environment, :error_code]
+      ),
+      sum("storyarn.snapshot.reset.stop.attempt_count",
+        tags: [:status, :environment, :error_code]
+      ),
+
+      # Snapshot deletion first emits an immutable cleanup intent, then reports
+      # bounded progress independently from product-accounted quota release.
+      sum("storyarn.snapshot.cleanup.intent.count",
+        tags: [:reason, :mode, :authority_kind]
+      ),
+      sum("storyarn.snapshot.cleanup.intent.object_count",
+        tags: [:reason, :mode, :authority_kind]
+      ),
+      sum("storyarn.snapshot.cleanup.intent.estimated_cleanup_bytes",
+        tags: [:reason, :mode, :authority_kind]
+      ),
+      sum("storyarn.snapshot.cleanup.stop.deleted_count",
+        tags: [:status, :reason, :error_code]
+      ),
+      sum("storyarn.snapshot.cleanup.stop.retry_count",
+        tags: [:status, :reason, :error_code]
+      ),
+      sum("storyarn.snapshot.cleanup.stop.terminal_failure_count",
+        tags: [:status, :reason, :error_code]
+      ),
+      sum("storyarn.snapshot.cleanup.replay.count", tags: [:status, :reason]),
+      sum("storyarn.snapshot.cleanup.recovery.stop.recovered_count", tags: [:status]),
+      sum("storyarn.snapshot.cleanup.recovery.stop.skipped_count", tags: [:status]),
+      sum("storyarn.snapshot.cleanup.recovery.stop.failure_count", tags: [:status]),
+      sum("storyarn.snapshot.cleanup.recovery.stop.continuation_count", tags: [:status]),
+      last_value("storyarn.snapshot.cleanup.backlog.backlog_count"),
+      last_value("storyarn.snapshot.cleanup.backlog.backlog_bytes"),
+      last_value("storyarn.snapshot.cleanup.backlog.retry_count"),
+      last_value("storyarn.snapshot.cleanup.backlog.terminal_failures"),
+      last_value("storyarn.snapshot.cleanup.backlog.oldest_age_seconds"),
+      sum("storyarn.snapshot.retention.stop.deleted_count", tags: [:status]),
+      sum("storyarn.snapshot.retention.stop.expired_build_count", tags: [:status]),
+      sum("storyarn.snapshot.retention.stop.failure_count", tags: [:status]),
+      sum("storyarn.snapshot.retention.stop.continuation_count", tags: [:status]),
 
       # AI result retention is content-free and bounded per worker batch.
       sum("storyarn.ai.expiration.stop.expired_count", tags: [:status]),

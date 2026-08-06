@@ -7,7 +7,9 @@ defmodule Storyarn.Assets.Storage.Local do
 
   @behaviour Storyarn.Assets.Storage
 
+  alias Storyarn.Assets.Storage
   alias Storyarn.Assets.Storage.Local.ConditionalCopyRegistry
+  alias Storyarn.Assets.StorageHash
 
   @stream_chunk_size 1_048_576
   @conditional_copy_directory ".storyarn-copy"
@@ -77,6 +79,116 @@ defmodule Storyarn.Assets.Storage.Local do
   def stream(_key, _offset, _length, _opts), do: {:error, :invalid_range}
 
   @impl true
+  def list_prefix(prefix, opts) when is_binary(prefix) and is_list(opts) do
+    with true <- Storage.canonical_prefix?(prefix) and Keyword.keyword?(opts),
+         {:ok, limit} <- list_limit(opts),
+         {:ok, probe_path} <- file_path(prefix <> "__storyarn_inventory_probe__", allow_conditional_copy: true),
+         :ok <- ensure_no_symlink_components(Path.dirname(probe_path)),
+         {:ok, cursor} <- decode_list_cursor(prefix, Keyword.get(opts, :cursor)),
+         {:ok, objects} <- list_prefix_objects(Path.dirname(probe_path), prefix, cursor, limit) do
+      page = Enum.take(objects, limit)
+      next_cursor = if length(objects) > limit, do: List.last(page).key
+
+      {:ok, %{objects: page, cursor: next_cursor}}
+    else
+      false -> {:error, :invalid_prefix}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def list_prefix(_prefix, _opts), do: {:error, :invalid_prefix}
+
+  defp list_prefix_objects(root, prefix, cursor, limit) do
+    case File.lstat(root) do
+      {:ok, %{type: :directory}} -> list_regular_files(root, prefix, cursor, limit + 1)
+      {:ok, _unsafe_type} -> {:error, :invalid_prefix_target}
+      {:error, :enoent} -> {:ok, []}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp list_regular_files(root, prefix, cursor, limit) do
+    with {:ok, entries} <- storage_entries(root),
+         frontier = :gb_sets.from_list(entries),
+         {:ok, {objects, _remaining}} <- walk_regular_files(frontier, prefix, cursor, limit, []) do
+      {:ok, Enum.reverse(objects)}
+    end
+  end
+
+  defp walk_regular_files(_frontier, _prefix, _cursor, 0, objects), do: {:ok, {objects, 0}}
+
+  defp walk_regular_files(frontier, prefix, cursor, remaining, objects) do
+    if :gb_sets.is_empty(frontier) do
+      {:ok, {objects, remaining}}
+    else
+      {entry, frontier} = :gb_sets.take_smallest(frontier)
+      walk_storage_entry(entry, frontier, prefix, cursor, remaining, objects)
+    end
+  end
+
+  defp walk_storage_entry({_sort_key, :directory, path, _size}, frontier, prefix, cursor, remaining, objects) do
+    with {:ok, entries} <- storage_entries(path) do
+      frontier = Enum.reduce(entries, frontier, &:gb_sets.add/2)
+      walk_regular_files(frontier, prefix, cursor, remaining, objects)
+    end
+  end
+
+  defp walk_storage_entry({key, :regular, path, size}, frontier, prefix, cursor, remaining, objects) do
+    if String.starts_with?(key, prefix) and after_list_cursor?(key, cursor) do
+      with {:ok, identity} <- regular_file_identity(path, size) do
+        object = %{key: key, size: size, identity: identity}
+        walk_regular_files(frontier, prefix, cursor, remaining - 1, [object | objects])
+      end
+    else
+      walk_regular_files(frontier, prefix, cursor, remaining, objects)
+    end
+  end
+
+  defp storage_entries(directory) do
+    case File.ls(directory) do
+      {:ok, names} -> collect_storage_entries(directory, names)
+      {:error, :enoent} -> {:ok, []}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp collect_storage_entries(directory, names) do
+    Enum.reduce_while(names, {:ok, []}, fn name, {:ok, entries} ->
+      case storage_entry(directory, name) do
+        {:ok, entry_entries} -> {:cont, {:ok, entry_entries ++ entries}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp storage_entry(directory, name) do
+    path = Path.join(directory, name)
+    key = Path.relative_to(path, upload_dir())
+
+    case File.lstat(path) do
+      {:ok, %{type: :directory}} -> {:ok, [{key <> "/", :directory, path, 0}]}
+      {:ok, %{type: :regular, size: size}} -> {:ok, [{key, :regular, path, size}]}
+      {:ok, _unsafe_type} -> {:error, :unsafe_storage_entry}
+      {:error, :enoent} -> {:ok, []}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp regular_file_identity(path, size) do
+    with {:ok, sha256} <- StorageHash.sha256_chunks(file_stream(path, 0, size)),
+         {:ok, %{type: :regular, size: ^size}} <- File.lstat(path) do
+      {:ok, sha256}
+    else
+      {:ok, %{type: :regular}} -> {:error, :object_changed}
+      {:ok, _unsafe_type} -> {:error, :unsafe_storage_entry}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp after_list_cursor?(_key, nil), do: true
+  defp after_list_cursor?(key, cursor), do: key > cursor
+
+  @impl true
   # sobelow_skip ["Traversal.FileModule"]
   def delete(key) do
     with {:ok, path} <- file_path(key, allow_conditional_copy: true) do
@@ -86,6 +198,75 @@ defmodule Storyarn.Assets.Storage.Local do
         error -> error
       end
     end
+  end
+
+  @impl true
+  # sobelow_skip ["Traversal.FileModule"]
+  def delete_if_matches(key, expected_identity) when is_binary(expected_identity) do
+    with true <- valid_local_identity?(expected_identity),
+         {:ok, path} <- file_path(key, allow_conditional_copy: true),
+         :ok <- ensure_no_symlink_components(path) do
+      delete_matching_file(path, expected_identity)
+    else
+      false -> {:error, :invalid_object_identity}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def delete_if_matches(_key, _expected_identity), do: {:error, :invalid_object_identity}
+
+  @impl true
+  def namespace_fingerprint do
+    root = upload_dir()
+
+    with {:ok, root_identity} <- safe_upload_root_identity(root) do
+      fingerprint =
+        [Atom.to_string(__MODULE__), root, root_identity]
+        |> Jason.encode_to_iodata!()
+        |> then(&:crypto.hash(:sha256, &1))
+        |> Base.encode16(case: :lower)
+
+      {:ok, fingerprint}
+    end
+  end
+
+  defp delete_matching_file(path, expected_identity) do
+    case File.lstat(path) do
+      {:ok, %{type: :regular, size: size}} ->
+        delete_verified_regular_file(path, size, expected_identity)
+
+      {:ok, _unsafe_type} ->
+        {:error, :unsafe_storage_entry}
+
+      {:error, :enoent} ->
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp delete_verified_regular_file(path, size, expected_identity) do
+    with {:ok, actual_identity} <- regular_file_identity(path, size),
+         true <- Plug.Crypto.secure_compare(actual_identity, expected_identity) do
+      remove_matching_file(path)
+    else
+      false -> {:error, :object_changed}
+      {:error, :enoent} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp remove_matching_file(path) do
+    case File.rm(path) do
+      :ok -> :ok
+      {:error, :enoent} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp valid_local_identity?(identity) do
+    byte_size(identity) == 64 and String.match?(identity, ~r/\A[0-9a-f]{64}\z/)
   end
 
   @impl true
@@ -174,6 +355,75 @@ defmodule Storyarn.Assets.Storage.Local do
       path = Path.expand(Path.join(upload_dir, key))
 
       if path_inside?(path, upload_dir), do: {:ok, path}, else: {:error, :invalid_key}
+    end
+  end
+
+  defp ensure_no_symlink_components(path) do
+    root = upload_dir()
+
+    with {:ok, _root_identity} <- safe_upload_root_identity(root) do
+      path
+      |> Path.relative_to(root)
+      |> Path.split()
+      |> check_path_components(root)
+    end
+  end
+
+  defp safe_upload_root_identity("/"), do: {:error, :unsafe_storage_entry}
+
+  defp safe_upload_root_identity(root) do
+    with ["/" | components] <- Path.split(root),
+         {:ok, root_stat} <- File.lstat("/"),
+         {:ok, root_identity} <- storage_directory_identity("/", root_stat) do
+      check_absolute_root_components(components, "/", [root_identity])
+    else
+      _invalid -> {:error, :unsafe_storage_entry}
+    end
+  end
+
+  defp check_absolute_root_components([], _parent, identities), do: {:ok, Enum.reverse(identities)}
+
+  defp check_absolute_root_components([component | rest], parent, identities) do
+    path = Path.join(parent, component)
+
+    case File.lstat(path) do
+      {:ok, stat} ->
+        with {:ok, identity} <- storage_directory_identity(path, stat) do
+          check_absolute_root_components(rest, path, [identity | identities])
+        end
+
+      {:error, :enoent} ->
+        {:ok, Enum.reverse([["missing", path] | identities])}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp storage_directory_identity(path, %{
+         type: :directory,
+         major_device: major_device,
+         minor_device: minor_device,
+         inode: inode
+       })
+       when is_integer(major_device) and is_integer(minor_device) and is_integer(inode) do
+    {:ok, ["directory", path, major_device, minor_device, inode]}
+  end
+
+  defp storage_directory_identity(_path, _unsafe_stat) do
+    {:error, :unsafe_storage_entry}
+  end
+
+  defp check_path_components([], _parent), do: :ok
+
+  defp check_path_components([component | rest], parent) do
+    path = Path.join(parent, component)
+
+    case File.lstat(path) do
+      {:ok, %{type: :symlink}} -> {:error, :unsafe_storage_entry}
+      {:ok, _stat} -> check_path_components(rest, path)
+      {:error, :enoent} -> :ok
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -500,6 +750,23 @@ defmodule Storyarn.Assets.Storage.Local do
       &read_stream_chunk/1,
       &close_stream_file/1
     )
+  end
+
+  defp decode_list_cursor(_prefix, nil), do: {:ok, nil}
+
+  defp decode_list_cursor(prefix, cursor) when is_binary(cursor) do
+    if Storage.canonical_key?(cursor) and String.starts_with?(cursor, prefix),
+      do: {:ok, cursor},
+      else: {:error, :invalid_cursor}
+  end
+
+  defp decode_list_cursor(_prefix, _cursor), do: {:error, :invalid_cursor}
+
+  defp list_limit(opts) do
+    case Keyword.get(opts, :limit, 1_000) do
+      limit when is_integer(limit) and limit > 0 -> {:ok, min(limit, 1_000)}
+      _invalid -> {:error, :invalid_limit}
+    end
   end
 
   defp open_stream_file(path, offset, length) do

@@ -75,7 +75,7 @@ msgstr ""
 #: lib/storyarn_web/live/project_settings_live/general.ex:117
 #: lib/storyarn_web/live/project_settings_live/localization.ex:107
 #: lib/storyarn_web/live/project_settings_live/members.ex:104
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:153
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:169
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:123
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:109
 #, elixir-autogen, elixir-format
@@ -189,7 +189,7 @@ msgstr "Some items could not be deleted."
 #: lib/storyarn_web/live/project_settings_live/localization.ex:95
 #: lib/storyarn_web/live/project_settings_live/members.ex:92
 #: lib/storyarn_web/live/project_settings_live/members.ex:149
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:141
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:157
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:111
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:97
 #, elixir-autogen, elixir-format
@@ -1214,12 +1214,22 @@ msgstr ""
 msgid "Review snapshot storage, reservations, and integrity"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:183
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:199
 #, elixir-autogen, elixir-format
 msgid "Snapshot creation started."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:217
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:233
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be cancelled."
+msgstr ""
+
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:254
+#, elixir-autogen, elixir-format
+msgid "Snapshot deletion started."
+msgstr ""
+
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:260
+#, elixir-autogen, elixir-format
+msgid "The snapshot could not be deleted."
 msgstr ""
