@@ -21,6 +21,18 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
   alias Storyarn.Versioning.SnapshotStorage
 
   describe "persist/4 and load_verified/4" do
+    test "inspection rejects malformed option lists without raising" do
+      for opts <- [[:malformed], [{"start_index", 0}]] do
+        assert {:error, :invalid_snapshot_inspection_request} =
+                 SnapshotObjectStorage.inspect_ready_object_batch(
+                   "invalid-manifest-key",
+                   String.duplicate("a", 64),
+                   0,
+                   opts
+                 )
+      end
+    end
+
     test "publishes an independently verified, retryable object set with one blob per hash" do
       project_id = unique_project_id()
       token = SnapshotStorage.unique_key_suffix()

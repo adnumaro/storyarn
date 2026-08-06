@@ -727,6 +727,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       match?(%ProjectSnapshot{lifecycle_state: "ready"}, snapshot) and
         match?(%StorageReservation{status: "committed"}, reservation) and
         snapshot.storage_reservation_id == reservation.id and
+        snapshot.publication_claim_token == claim.claim_token and
+        claim.storage_reservation_lease_token == reservation.lease_token and
         SnapshotObjectPublicationClaim.inventory_digest(snapshot) == claim.inventory_digest
 
     if not valid? and not live_build_job?(job) and old_enough?(claim.updated_at, before),

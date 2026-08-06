@@ -115,7 +115,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationFinding do
   defp unsafe_detail_string?(value) do
     downcased = String.downcase(value)
 
-    String.starts_with?(downcased, ["http://", "https://"]) or
+    String.contains?(downcased, ["http://", "https://"]) or
       String.contains?(downcased, ["x-amz-", "x-goog-", "signature=", "credential=", "token="])
   end
 end

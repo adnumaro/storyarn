@@ -586,6 +586,26 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
              Versioning.list_project_snapshot_reconciliation_findings(run.id)
   end
 
+  test "a published claim with the wrong snapshot claim token is reported" do
+    {_user, _project, snapshot} = ready_snapshot!()
+    {claim, reservation} = replace_published_claim!(snapshot, :claim_token)
+
+    refute claim.claim_token == snapshot.publication_claim_token
+    assert claim.storage_reservation_lease_token == reservation.lease_token
+
+    assert_published_claim_ownership_mismatch!(snapshot)
+  end
+
+  test "a published claim with the wrong reservation lease token is reported" do
+    {_user, _project, snapshot} = ready_snapshot!()
+    {claim, reservation} = replace_published_claim!(snapshot, :reservation_lease_token)
+
+    assert claim.claim_token == snapshot.publication_claim_token
+    refute claim.storage_reservation_lease_token == reservation.lease_token
+
+    assert_published_claim_ownership_mismatch!(snapshot)
+  end
+
   test "a poisoned claim with fully resolved exact cleanup ownership is suppressed" do
     user = user_fixture()
     project = project_fixture(user)
@@ -1026,7 +1046,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
           fingerprint: String.duplicate("b", 64),
           category: "ambiguous_storage_object",
           severity: "critical",
-          details: %{"source" => "https://storage.example/presigned"}
+          details: %{"source" => "read failed at HTTPS://storage.example/presigned"}
         }
       )
 
@@ -1045,6 +1065,51 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
 
     completed = advance_until_terminal(run.id, running.cursor_generation)
     assert completed.status == "completed"
+  end
+
+  test "the worker terminalizes a raised page failure only on its final attempt" do
+    assert {:ok, run} = start_run()
+    job = reconciliation_job!(run.id, run.cursor_generation)
+    advance = fn _run_id, _cursor_generation -> raise "private database failure" end
+
+    assert_raise RuntimeError, "private database failure", fn ->
+      InspectProjectSnapshotsWorker.perform_page(%{job | attempt: 1}, advance)
+    end
+
+    assert Versioning.get_project_snapshot_reconciliation_run(run.id).status == "pending"
+
+    assert :ok =
+             InspectProjectSnapshotsWorker.perform_page(
+               %{job | attempt: job.max_attempts},
+               advance
+             )
+
+    failed = Versioning.get_project_snapshot_reconciliation_run(run.id)
+    assert failed.status == "failed"
+    assert failed.last_error_code == "snapshot_reconciliation_page_exception"
+    assert %DateTime{} = failed.finished_at
+  end
+
+  test "the worker terminalizes an unexpected page result only on its final attempt" do
+    assert {:ok, run} = start_run()
+    job = reconciliation_job!(run.id, run.cursor_generation)
+    advance = fn _run_id, _cursor_generation -> :unexpected_result end
+
+    assert {:error, :snapshot_reconciliation_page_failed} =
+             InspectProjectSnapshotsWorker.perform_page(%{job | attempt: 1}, advance)
+
+    assert Versioning.get_project_snapshot_reconciliation_run(run.id).status == "pending"
+
+    assert :ok =
+             InspectProjectSnapshotsWorker.perform_page(
+               %{job | attempt: job.max_attempts},
+               advance
+             )
+
+    failed = Versioning.get_project_snapshot_reconciliation_run(run.id)
+    assert failed.status == "failed"
+    assert failed.last_error_code == "snapshot_reconciliation_invalid_page_result"
+    assert %DateTime{} = failed.finished_at
   end
 
   test "starting an active run restores a missing current-generation delivery" do
@@ -1281,6 +1346,68 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     |> Repo.insert!()
     |> SnapshotObjectPublicationClaim.status_changeset("poisoned")
     |> Repo.update!()
+  end
+
+  defp replace_published_claim!(snapshot, mismatch) when mismatch in [:claim_token, :reservation_lease_token] do
+    existing_claim = Repo.get!(SnapshotObjectPublicationClaim, snapshot.object_prefix)
+    reservation = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
+    now = TimeHelpers.now()
+    old_enough = DateTime.add(now, -3_600, :second)
+
+    Repo.delete!(existing_claim)
+
+    claim_token =
+      if mismatch == :claim_token,
+        do: Ecto.UUID.generate(),
+        else: snapshot.publication_claim_token
+
+    reservation_lease_token =
+      if mismatch == :reservation_lease_token,
+        do: Ecto.UUID.generate(),
+        else: reservation.lease_token
+
+    claim =
+      snapshot.object_prefix
+      |> SnapshotObjectPublicationClaim.create_changeset(
+        SnapshotObjectPublicationClaim.inventory_digest(snapshot),
+        claim_token,
+        DateTime.add(now, 3_600, :second),
+        reservation.id,
+        reservation_lease_token
+      )
+      |> Repo.insert!()
+      |> SnapshotObjectPublicationClaim.status_changeset("staged")
+      |> Repo.update!()
+      |> SnapshotObjectPublicationClaim.status_changeset("publishing", DateTime.add(now, 3_600, :second))
+      |> Repo.update!()
+      |> SnapshotObjectPublicationClaim.status_changeset("published")
+      |> Repo.update!()
+      |> Ecto.Changeset.change(updated_at: old_enough)
+      |> Repo.update!()
+
+    snapshot.build_job_id
+    |> then(&Repo.get!(Oban.Job, &1))
+    |> Ecto.Changeset.change(
+      state: "discarded",
+      discarded_at: %{old_enough | microsecond: {0, 6}}
+    )
+    |> Repo.update!()
+
+    {claim, reservation}
+  end
+
+  defp assert_published_claim_ownership_mismatch!(snapshot) do
+    assert {:ok, run} = start_run()
+    completed = advance_until_terminal(run.id, run.cursor_generation)
+
+    assert completed.status == "completed"
+
+    assert Enum.any?(
+             Versioning.list_project_snapshot_reconciliation_findings(run.id, limit: 500),
+             &(&1.category == "failed_snapshot_finalization" and
+                 &1.error_code == "published_claim_ownership_mismatch" and
+                 &1.project_snapshot_id_snapshot == snapshot.id)
+           )
   end
 
   defp start_run(opts \\ []) do

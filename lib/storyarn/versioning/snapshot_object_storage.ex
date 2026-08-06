@@ -374,13 +374,28 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   def inspect_ready_object_batch(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts)
       when is_binary(manifest_storage_key) and is_binary(manifest_checksum) and is_integer(manifest_size_bytes) and
              manifest_size_bytes >= 0 and is_list(opts) do
+    if Keyword.keyword?(opts) do
+      inspect_ready_object_batch_with_opts(
+        manifest_storage_key,
+        manifest_checksum,
+        manifest_size_bytes,
+        opts
+      )
+    else
+      {:error, :invalid_snapshot_inspection_request}
+    end
+  end
+
+  def inspect_ready_object_batch(_manifest_storage_key, _manifest_checksum, _manifest_size_bytes, _opts),
+    do: {:error, :invalid_snapshot_inspection_request}
+
+  defp inspect_ready_object_batch_with_opts(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts) do
     start_index = Keyword.get(opts, :start_index, 0)
     max_objects = Keyword.get(opts, :max_inspection_objects, 100)
     max_bytes = Keyword.get(opts, :max_inspection_bytes, 256 * 1024 * 1024)
     format_opts = Keyword.drop(opts, [:start_index, :max_inspection_objects, :max_inspection_bytes])
 
-    with true <- Keyword.keyword?(opts),
-         :ok <- validate_inspection_limits(start_index, max_objects, max_bytes),
+    with :ok <- validate_inspection_limits(start_index, max_objects, max_bytes),
          {:ok, %{manifest: manifest, ready_prefix: ready_prefix}} <-
            load_verified_manifest(manifest_storage_key, manifest_checksum, manifest_size_bytes, format_opts),
          objects = manifest["objects"],
@@ -408,9 +423,6 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
         error
     end
   end
-
-  def inspect_ready_object_batch(_manifest_storage_key, _manifest_checksum, _manifest_size_bytes, _opts),
-    do: {:error, :invalid_snapshot_inspection_request}
 
   defp load_verified_manifest(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts) do
     with {:ok, ready_prefix} <- ready_prefix_from_manifest_key(manifest_storage_key),
