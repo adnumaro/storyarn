@@ -1,0 +1,38 @@
+lib/storyarn/release.ex
+  s_c2ae682cd97119::t_40d736e2338b9e 48,315-316,326,330,333-356
+  s_c2ae682cd97119::t_172e707b863c84 357
+test/storyarn/workers/build_project_snapshot_worker_test.exs
+  s_c2ae682cd97119::t_2b1dd45ca65830 1-32
+lib/storyarn/workers/build_project_snapshot_worker.ex
+  s_c2ae682cd97119::t_2b1dd45ca65830 6,9,20-29
+  s_c2ae682cd97119::t_d5bfb8d07b72f3 30
+lib/storyarn/versioning/project_snapshot_build.ex
+  s_c2ae682cd97119::t_7a5c780ff4a9b3 1215-1217,1221-1229,1231-1233
+  s_c2ae682cd97119::t_e010a7e2836ac8 1183-1184,1189-1190,1203-1205,1208-1214,1218-1220,1230,1234-1237,1239-1246,1445-1446,1680
+  s_c2ae682cd97119::t_861de2f2cfe159 1238
+test/storyarn/versioning/project_snapshot_build_test.exs
+  s_c2ae682cd97119::t_e010a7e2836ac8 389-436,921-922
+test/storyarn/release_snapshot_migration_test.exs
+  s_c2ae682cd97119::t_40d736e2338b9e 11,13-14,93,100-107,110-156,166-167,172-180
+  s_c2ae682cd97119::t_af2c68a2894d84 74
+  s_c2ae682cd97119::t_a2ba28e9c28db6 12,108-109
+  s_c2ae682cd97119::t_386e1f6437482b 157-165
+  s_c2ae682cd97119::t_8fd076ac8ac55e 168
+  s_c2ae682cd97119::t_e2439ba9846bde 181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d1bbb1aa13a9e4f2309f68261ed3f1d6895ad414",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
