@@ -76,6 +76,32 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
       refute get_in(loaded.project, ["asset_metadata", "101", "url"])
       refute get_in(loaded.project, ["asset_metadata", "101", "project_id"])
 
+      assert {:ok, first_inspection_page} =
+               SnapshotObjectStorage.inspect_ready_object_batch(
+                 stored.manifest_storage_key,
+                 stored.manifest_checksum,
+                 stored.manifest_size_bytes,
+                 start_index: 0,
+                 max_inspection_objects: 1,
+                 max_inspection_bytes: 128 * 1024 * 1024
+               )
+
+      assert first_inspection_page.verified_objects == 1
+      assert first_inspection_page.next_index == 1
+
+      assert {:ok, final_inspection_page} =
+               SnapshotObjectStorage.inspect_ready_object_batch(
+                 stored.manifest_storage_key,
+                 stored.manifest_checksum,
+                 stored.manifest_size_bytes,
+                 start_index: first_inspection_page.next_index,
+                 max_inspection_objects: 1,
+                 max_inspection_bytes: 128 * 1024 * 1024
+               )
+
+      assert final_inspection_page.verified_objects == 1
+      assert final_inspection_page.next_index == nil
+
       assert {:ok, retried} =
                persist_authorized(project_id, project, [first, second], token: token)
 

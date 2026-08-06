@@ -66,7 +66,7 @@ defmodule Storyarn.ReleaseSnapshotMigrationTest do
   test "a pending lifecycle migration bootstraps an exactly pristine deployment" do
     System.put_env(@environment_variable, "production")
     :ok = SnapshotResetStorage.put_objects(%{})
-    Repo.query!("DELETE FROM schema_migrations WHERE version = $1", [@snapshot_lifecycle_migration])
+    Repo.query!("DELETE FROM schema_migrations WHERE version >= $1", [@snapshot_lifecycle_migration])
 
     assert :ok =
              Release.ensure_project_snapshot_lifecycle_rollout_ready!(Repo,

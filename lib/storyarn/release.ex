@@ -3,6 +3,7 @@ defmodule Storyarn.Release do
   Used for executing DB release tasks when run in production without Mix
   installed.
   """
+  alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshotReset
 
   @app :storyarn
@@ -192,6 +193,68 @@ defmodule Storyarn.Release do
         {:error, reason} -> raise "Snapshot reset rollout is not ready: #{inspect(reason)}"
       end
     end)
+  end
+
+  @doc """
+  Starts the bounded, observation-only snapshot reconciliation inspection.
+
+  The inspection is a dry-run: it persists immutable findings but never changes
+  snapshots, quota records, ownership records, or provider objects. Starting it
+  again while the same provider namespace has an active run returns that run.
+  """
+  def start_project_snapshot_reconciliation do
+    load_app()
+
+    case Versioning.start_project_snapshot_reconciliation() do
+      {:ok, run} ->
+        IO.puts("Snapshot reconciliation dry-run ##{run.id}")
+        IO.puts("Status: #{run.status}; phase: #{run.phase}; cursor generation: #{run.cursor_generation}")
+
+        IO.puts(
+          "Multipart inventory: #{run.multipart_inventory_state}; physical inventory complete: #{run.physical_inventory_complete}"
+        )
+
+        run
+
+      {:error, reason} ->
+        raise "Could not start snapshot reconciliation dry-run: #{inspect(reason)}"
+    end
+  end
+
+  @doc """
+  Prints one reconciliation run and a bounded page of its immutable findings.
+
+  Pass the last finding ID as `after_id` to fetch the next page.
+  """
+  def inspect_project_snapshot_reconciliation(run_id, after_id \\ 0, limit \\ 100)
+      when is_integer(run_id) and run_id > 0 and is_integer(after_id) and after_id >= 0 and is_integer(limit) and
+             limit > 0 do
+    load_app()
+
+    case Versioning.get_project_snapshot_reconciliation_run(run_id) do
+      nil ->
+        raise "Snapshot reconciliation run ##{run_id} was not found"
+
+      run ->
+        findings =
+          Versioning.list_project_snapshot_reconciliation_findings(run_id,
+            after_id: after_id,
+            limit: min(limit, 500)
+          )
+
+        IO.puts("Snapshot reconciliation dry-run ##{run.id}")
+        IO.puts("Status: #{run.status}; phase: #{run.phase}; cursor generation: #{run.cursor_generation}")
+        IO.puts("Snapshots: #{run.inspected_snapshot_count}; objects: #{run.inspected_object_count}")
+        IO.puts("Provider objects: #{run.provider_object_count}; findings: #{run.finding_count}")
+
+        IO.puts(
+          "Multipart inventory: #{run.multipart_inventory_state}; physical inventory complete: #{run.physical_inventory_complete}"
+        )
+
+        IO.puts("Returned findings after ##{after_id}: #{length(findings)}")
+
+        %{run: run, findings: findings}
+    end
   end
 
   defp prepare_snapshot_reset!(repo, workspace_id, environment) do
