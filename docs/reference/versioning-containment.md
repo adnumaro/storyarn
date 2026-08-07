@@ -5,6 +5,7 @@
 > Last reviewed: 2026-08-06
 >
 > Source of truth: `lib/storyarn/versioning/project_snapshot_lifecycle.ex`,
+> `lib/storyarn/versioning/project_snapshot_reconciliation.ex`,
 > `lib/storyarn/versioning/project_snapshot_reset.ex`,
 > `lib/storyarn/assets/storage/`, `lib/storyarn/release.ex`, and
 > `lib/storyarn/workers/`
@@ -39,6 +40,58 @@ reader, restore path, or compatibility branch for data removed by the reset.
   separated by a PostgreSQL-enforced minimum of 15 minutes, so a delayed writer
   cannot make a namespace ready or escape the second pass.
 - Linked snapshots fail closed until their reachability contract is implemented.
+
+## Observation-only reconciliation
+
+Snapshot reconciliation is an operator-started dry-run. It verifies every
+`ready` snapshot that existed at the run's database high-watermark, compares
+its immutable row, manifest, publication claim, committed reservation, exact
+ready namespace, sizes, MIME metadata, and streamed SHA-256 digests, and then
+performs a resumable provider scan under `projects/`. It also records quiescent
+expired build reservations, terminal cleanup intents, malformed reserved-root
+keys, unowned canonical namespaces, and abandoned temporary namespaces. It
+does not update integrity state, settle reservations, retry cleanup, delete or
+copy objects, change quota, or authorize a later repair.
+
+Start the inspection on a running release node and inspect its bounded finding
+pages with:
+
+```text
+/app/bin/storyarn rpc 'Storyarn.Release.start_project_snapshot_reconciliation()'
+/app/bin/storyarn rpc 'Storyarn.Release.inspect_project_snapshot_reconciliation(123, 0, 100)'
+```
+
+Only one run may be active for a physical provider namespace. Work is delivered
+manually through the existing `snapshots_maintenance` queue at lower priority
+than retention and cleanup. Every continuation is generation-fenced; its
+cursor, monotonic counters, and immutable deduplicated findings commit together.
+If the current-generation job is discarded after exhausting retries or a node
+crash prevents terminal evidence from being committed, run the start command
+again: it returns the same active run and idempotently restores that exact
+generation's queue delivery.
+The configured per-step object/byte budgets, provider page size, total provider
+object/byte limits, finding limit, malformed pages, same-page cursors,
+non-monotonic keys, provider namespace changes, ready-snapshot generation
+changes, and provider failures all fail closed. An opaque cursor cycle that does
+not repeat on adjacent pages cannot evade the total object/byte caps. There is
+deliberately no cron schedule in this phase.
+
+`completed` means the bounded database and ListObjects inspection finished. It
+does not mean the physical inventory is exhaustive: the current storage
+contract cannot enumerate incomplete multipart uploads, so each run persists
+`multipart_inventory_state = unsupported` and
+`physical_inventory_complete = false`. Never interpret that state as zero
+multipart drift or as repair/deletion authority. Findings called ambiguous or
+abandoned are investigation candidates only; a later repair implementation
+must reacquire ownership locks and revalidate all evidence.
+
+The run emits low-cardinality `snapshot.reconciliation.start`, `.page`, and
+`.stop` telemetry and logs terminal failure codes. Storyarn currently has no
+production metrics exporter or alert routing in this repository, so operators
+must connect those events to the deployment's observability system before
+claiming automated alerts. Reconciliation intentionally does not call the
+workspace-wide provider-footprint metric with snapshot-only bytes, because that
+would compare different accounting scopes.
 
 ## One-time pre-canonical reset
 

@@ -331,6 +331,100 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   @spec load_verified(String.t(), String.t(), non_neg_integer(), keyword()) ::
           {:ok, %{manifest: map(), project: map()}} | {:error, term()}
   def load_verified(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts \\ []) do
+    with {:ok, %{manifest: manifest, ready_prefix: ready_prefix}} <-
+           load_verified_manifest(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts),
+         :ok <- verify_blob_inventory(ready_prefix, manifest["objects"]),
+         project_descriptor = manifest["project"],
+         {:ok, project_json} <- read_descriptor_bytes(ready_prefix, project_descriptor),
+         {:ok, project} <- decode_json(project_json, SnapshotObjectFormat.project_path()),
+         :ok <- SnapshotObjectFormat.validate_project(project) do
+      {:ok, %{manifest: manifest, project: project}}
+    end
+  end
+
+  @doc false
+  @spec inspect_ready_manifest(String.t(), String.t(), non_neg_integer(), keyword()) ::
+          {:ok, %{manifest: map(), ready_prefix: String.t()}} | {:error, term()}
+  def inspect_ready_manifest(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts \\ [])
+
+  def inspect_ready_manifest(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts)
+      when is_binary(manifest_storage_key) and is_binary(manifest_checksum) and is_integer(manifest_size_bytes) and
+             manifest_size_bytes >= 0 and is_list(opts) do
+    if Keyword.keyword?(opts),
+      do: load_verified_manifest(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts),
+      else: {:error, :invalid_snapshot_inspection_request}
+  end
+
+  def inspect_ready_manifest(_manifest_storage_key, _manifest_checksum, _manifest_size_bytes, _opts),
+    do: {:error, :invalid_snapshot_inspection_request}
+
+  @doc false
+  @spec inspect_ready_object_batch(String.t(), String.t(), non_neg_integer(), keyword()) ::
+          {:ok,
+           %{
+             manifest: map(),
+             next_index: non_neg_integer() | nil,
+             ready_prefix: String.t(),
+             verified_bytes: non_neg_integer(),
+             verified_objects: non_neg_integer()
+           }}
+          | {:error, term()}
+  def inspect_ready_object_batch(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts \\ [])
+
+  def inspect_ready_object_batch(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts)
+      when is_binary(manifest_storage_key) and is_binary(manifest_checksum) and is_integer(manifest_size_bytes) and
+             manifest_size_bytes >= 0 and is_list(opts) do
+    if Keyword.keyword?(opts) do
+      inspect_ready_object_batch_with_opts(
+        manifest_storage_key,
+        manifest_checksum,
+        manifest_size_bytes,
+        opts
+      )
+    else
+      {:error, :invalid_snapshot_inspection_request}
+    end
+  end
+
+  def inspect_ready_object_batch(_manifest_storage_key, _manifest_checksum, _manifest_size_bytes, _opts),
+    do: {:error, :invalid_snapshot_inspection_request}
+
+  defp inspect_ready_object_batch_with_opts(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts) do
+    start_index = Keyword.get(opts, :start_index, 0)
+    max_objects = Keyword.get(opts, :max_inspection_objects, 100)
+    max_bytes = Keyword.get(opts, :max_inspection_bytes, 256 * 1024 * 1024)
+    format_opts = Keyword.drop(opts, [:start_index, :max_inspection_objects, :max_inspection_bytes])
+
+    with :ok <- validate_inspection_limits(start_index, max_objects, max_bytes),
+         {:ok, %{manifest: manifest, ready_prefix: ready_prefix}} <-
+           load_verified_manifest(manifest_storage_key, manifest_checksum, manifest_size_bytes, format_opts),
+         objects = manifest["objects"],
+         true <- start_index <= length(objects),
+         {:ok, verified_objects, verified_bytes} <-
+           verify_inspection_batch(ready_prefix, objects, start_index, max_objects, max_bytes) do
+      next_index = start_index + verified_objects
+
+      {:ok,
+       %{
+         manifest: manifest,
+         next_index: if(next_index < length(objects), do: next_index),
+         ready_prefix: ready_prefix,
+         verified_bytes: verified_bytes,
+         verified_objects: verified_objects
+       }}
+    else
+      false ->
+        {:error, :invalid_snapshot_inspection_cursor}
+
+      {:error, {:inspection_object_failed, failure}} ->
+        {:error, {:snapshot_inspection_object_failed, failure}}
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp load_verified_manifest(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts) do
     with {:ok, ready_prefix} <- ready_prefix_from_manifest_key(manifest_storage_key),
          :ok <- validate_sha256(manifest_checksum),
          {:ok, manifest_json} <-
@@ -341,14 +435,74 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
              SnapshotObjectFormat.limits(opts).max_manifest_bytes
            ),
          {:ok, manifest} <- decode_json(manifest_json, SnapshotObjectFormat.manifest_path()),
-         :ok <- SnapshotObjectFormat.validate_manifest(manifest, opts),
-         :ok <- verify_blob_inventory(ready_prefix, manifest["objects"]),
-         project_descriptor = manifest["project"],
-         {:ok, project_json} <- read_descriptor_bytes(ready_prefix, project_descriptor),
-         {:ok, project} <- decode_json(project_json, SnapshotObjectFormat.project_path()),
-         :ok <- SnapshotObjectFormat.validate_project(project) do
-      {:ok, %{manifest: manifest, project: project}}
+         :ok <- validate_loaded_manifest(manifest, opts) do
+      {:ok, %{manifest: manifest, ready_prefix: ready_prefix}}
     end
+  end
+
+  defp validate_loaded_manifest(manifest, opts) do
+    case SnapshotObjectFormat.validate_manifest(manifest, opts) do
+      :ok -> :ok
+      {:error, reason} -> {:error, {:snapshot_manifest_validation_failed, reason}}
+    end
+  end
+
+  defp validate_inspection_limits(start_index, max_objects, max_bytes)
+       when is_integer(start_index) and start_index >= 0 and is_integer(max_objects) and max_objects > 0 and
+              max_objects <= 1_000 and is_integer(max_bytes) and max_bytes >= 128 * 1024 * 1024 and
+              max_bytes <= 1024 * 1024 * 1024, do: :ok
+
+  defp validate_inspection_limits(_start_index, _max_objects, _max_bytes),
+    do: {:error, :invalid_snapshot_inspection_limits}
+
+  defp verify_inspection_batch(ready_prefix, objects, start_index, max_objects, max_bytes) do
+    objects
+    |> Enum.drop(start_index)
+    |> Enum.with_index(start_index)
+    |> Enum.reduce_while({:ok, 0, 0}, fn {descriptor, index}, {:ok, count, bytes} ->
+      descriptor_bytes = descriptor["size_bytes"]
+
+      cond do
+        count >= max_objects ->
+          {:halt, {:ok, count, bytes}}
+
+        count > 0 and bytes + descriptor_bytes > max_bytes ->
+          {:halt, {:ok, count, bytes}}
+
+        true ->
+          verify_inspection_descriptor(ready_prefix, descriptor, index, length(objects), count, bytes)
+      end
+    end)
+  end
+
+  defp verify_inspection_descriptor(ready_prefix, descriptor, index, object_count, count, bytes) do
+    case verify_inspection_object(ready_prefix, descriptor) do
+      :ok ->
+        {:cont, {:ok, count + 1, bytes + descriptor["size_bytes"]}}
+
+      {:error, reason} ->
+        failure = %{
+          failed_index: index,
+          object_count: object_count,
+          path: descriptor["path"],
+          reason: reason,
+          verified_bytes: bytes,
+          verified_objects: count
+        }
+
+        {:halt, {:error, {:inspection_object_failed, failure}}}
+    end
+  end
+
+  defp verify_inspection_object(ready_prefix, %{"kind" => "project"} = descriptor) do
+    with {:ok, project_json} <- read_descriptor_bytes(ready_prefix, descriptor),
+         {:ok, project} <- decode_json(project_json, SnapshotObjectFormat.project_path()) do
+      SnapshotObjectFormat.validate_project(project)
+    end
+  end
+
+  defp verify_inspection_object(ready_prefix, descriptor) do
+    verify_object(object_key(ready_prefix, descriptor["path"]), descriptor)
   end
 
   @doc false

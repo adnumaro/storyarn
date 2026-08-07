@@ -86,3 +86,5 @@ node_modules
 
 # Portable template bundles (operator exports)
 *.storyarn-template.tar.gz
+
+.pnpm-store
