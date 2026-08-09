@@ -37,12 +37,10 @@ Rules:
   it and build the name yourself.
 - Legacy `codex/*` and `adnumaro/*` branches predate this rule. Do not copy them.
 
-To rename a pushed branch that already has an open PR, use GitHub's rename
-endpoint — it moves the PR with it, so nothing has to be closed and reopened:
-
-```bash
-gh api -X POST repos/adnumaro/storyarn/branches/<old>/rename -f new_name='<new>'
-```
+Rename a branch before opening its PR. Do not rely on GitHub's branch rename
+endpoint to preserve an open PR: in this repository it has deleted the old head
+reference and closed the PR. If a published branch must be corrected, push the
+conventional branch, open a replacement PR, and link the superseded PR explicitly.
 
 ## Debugging & Research Policy
 

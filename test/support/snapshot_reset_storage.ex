@@ -1,9 +1,12 @@
 defmodule Storyarn.SnapshotResetStorage do
   @moduledoc false
 
+  alias Storyarn.Assets.Storage.Local
+
   @objects_key {__MODULE__, :objects}
   @failures_key {__MODULE__, :failures}
   @insert_before_list_key {__MODULE__, :insert_before_list}
+  @list_prefix_metadata_response_key {__MODULE__, :list_prefix_metadata_response}
   @list_call_count_key {__MODULE__, :list_call_count}
   @namespace_fingerprint_key {__MODULE__, :namespace_fingerprint}
   @replace_before_delete_key {__MODULE__, :replace_before_delete}
@@ -12,6 +15,7 @@ defmodule Storyarn.SnapshotResetStorage do
     Process.put(@objects_key, normalize_objects(objects))
     Process.put(@failures_key, MapSet.new())
     Process.delete(@insert_before_list_key)
+    Process.delete(@list_prefix_metadata_response_key)
     Process.put(@list_call_count_key, 0)
     Process.put(@namespace_fingerprint_key, String.duplicate("c", 64))
     Process.put(@replace_before_delete_key, MapSet.new())
@@ -41,6 +45,11 @@ defmodule Storyarn.SnapshotResetStorage do
     :ok
   end
 
+  def put_list_prefix_metadata_response(response) do
+    Process.put(@list_prefix_metadata_response_key, response)
+    :ok
+  end
+
   def list_prefix(prefix, opts) do
     maybe_insert_before_list()
 
@@ -66,6 +75,21 @@ defmodule Storyarn.SnapshotResetStorage do
        }}
     end
   end
+
+  def list_prefix_metadata(prefix, opts) do
+    case Process.delete(@list_prefix_metadata_response_key) do
+      nil ->
+        with {:ok, %{objects: objects, cursor: cursor}} <- list_prefix(prefix, opts) do
+          {:ok, %{objects: Enum.map(objects, &Map.take(&1, [:key, :size])), cursor: cursor}}
+        end
+
+      response ->
+        response
+    end
+  end
+
+  defdelegate stat(key), to: Local
+  defdelegate stream(key, offset, length, opts), to: Local
 
   def delete(key) do
     failures = Process.get(@failures_key, MapSet.new())

@@ -24,6 +24,11 @@ defmodule Storyarn.Workers.InspectProjectSnapshotsWorker do
   @contract_version 1
   @timeout_ms 10 * 60 * 1_000
   @recovery_margin_ms 5 * 60 * 1_000
+  @non_retryable_page_errors [
+    :invalid_snapshot_reconciliation_inventory_digest,
+    :invalid_snapshot_reconciliation_provider_page,
+    :snapshot_reconciliation_inventory_limit_exceeded
+  ]
 
   @impl Oban.Worker
   def perform(%Oban.Job{} = job), do: perform_page(job, &Versioning.advance_project_snapshot_reconciliation/2)
@@ -48,8 +53,8 @@ defmodule Storyarn.Workers.InspectProjectSnapshotsWorker do
 
   defp advance_safely(advance, run_id, cursor_generation) do
     {:returned, advance.(run_id, cursor_generation)}
-  catch
-    kind, reason -> {:raised, kind, reason, __STACKTRACE__}
+  rescue
+    exception -> {:raised, :error, exception, __STACKTRACE__}
   end
 
   defp handle_advance_result({:returned, {:ok, status}}, _run_id, _cursor_generation, _final_attempt?)
@@ -57,6 +62,9 @@ defmodule Storyarn.Workers.InspectProjectSnapshotsWorker do
 
   defp handle_advance_result({:returned, {:ok, status, _next_generation}}, _run_id, _cursor_generation, _final_attempt?)
        when status in [:continue, :stale], do: :ok
+
+  defp handle_advance_result({:returned, {:error, reason}}, run_id, cursor_generation, _final_attempt?)
+       when reason in @non_retryable_page_errors, do: terminalize(run_id, cursor_generation, reason)
 
   defp handle_advance_result({:returned, {:error, reason}}, run_id, cursor_generation, true),
     do: terminalize(run_id, cursor_generation, reason)

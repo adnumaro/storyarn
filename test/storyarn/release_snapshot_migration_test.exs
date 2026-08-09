@@ -81,6 +81,20 @@ defmodule Storyarn.ReleaseSnapshotMigrationTest do
              """).rows
   end
 
+  test "a later migration does not satisfy the exact lifecycle migration gate" do
+    System.delete_env(@environment_variable)
+    Repo.query!("DELETE FROM schema_migrations WHERE version = $1", [@snapshot_lifecycle_migration])
+
+    assert [[true]] =
+             Repo.query!("SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version > $1)", [
+               @snapshot_lifecycle_migration
+             ]).rows
+
+    assert_raise System.EnvError, fn ->
+      Release.ensure_project_snapshot_lifecycle_rollout_ready!(Repo)
+    end
+  end
+
   test "a malformed migration-state response fails closed" do
     :ok = SnapshotMigrationGateRepo.configure({:ok, %{rows: [["invalid"]]}})
 

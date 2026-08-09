@@ -45,6 +45,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   @build_worker "Storyarn.Workers.BuildProjectSnapshotWorker"
   @inspection_worker "Storyarn.Workers.InspectProjectSnapshotsWorker"
   @active_build_job_states ~w(available scheduled executing retryable)
+  @finding_insert_fields ProjectSnapshotReconciliationFinding.__schema__(:fields) -- [:id]
   @snapshot_key_pattern ~r<\Aprojects/([1-9]\d*)/snapshots/object-sets/v1/(ready|staging)/([A-Za-z0-9_-]{16})/(.+)\z>
   @reservation_key_pattern ~r<\Aprojects/([1-9]\d*)/storage-reservations/v1/(snapshot-build|linked-to-full-conversion|restore-staging|snapshot-export)/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/(.+)\z>
 
@@ -393,8 +394,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     prefix = candidate.snapshot.object_prefix <> "/"
     page_size = min(run.provider_page_size, run.max_objects_per_step)
 
-    with {:ok, %{objects: page, cursor: next_cursor}} <-
-           Storage.list_prefix_metadata(prefix, limit: page_size, cursor: run.active_inventory_cursor),
+    with {:ok, page, next_cursor} <-
+           list_ready_inventory_page(prefix, page_size, run.active_inventory_cursor),
          :ok <- validate_provider_page(page, next_cursor, run.active_inventory_cursor, prefix, page_size),
          :ok <- validate_provider_key_order(page, run.active_inventory_last_key),
          {:ok, digest} <- extend_inventory_digest(run.active_inventory_digest, page) do
@@ -453,7 +454,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
           )
       end
     else
-      {:error, reason} -> {:error, {:snapshot_reconciliation_provider_list_failed, reason}}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp list_ready_inventory_page(prefix, page_size, cursor) do
+    case Storage.list_prefix_metadata(prefix, limit: page_size, cursor: cursor) do
+      {:ok, %{objects: page, cursor: next_cursor}} ->
+        {:ok, page, next_cursor}
+
+      {:error, reason} ->
+        {:error, {:snapshot_reconciliation_provider_list_failed, reason}}
+
+      _invalid ->
+        {:error, :invalid_snapshot_reconciliation_provider_page}
     end
   end
 
@@ -1107,6 +1121,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     end
   end
 
+  defp add_project_evidence(index, []), do: index
+
   defp add_project_evidence(index, subjects) do
     project_ids = subjects |> Enum.map(& &1.project_id) |> Enum.uniq()
 
@@ -1143,6 +1159,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       put_ready_evidence(acc, subjects, ready_prefix, {:snapshot, snapshot, workspace_id})
     end)
   end
+
+  defp add_reservation_evidence(index, [], [], _subjects), do: index
 
   defp add_reservation_evidence(index, ready_prefixes, prefixes, subjects) do
     rows =
@@ -1615,20 +1633,38 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     Enum.reject(findings, &MapSet.member?(existing, &1.fingerprint))
   end
 
-  defp insert_findings(run_id, findings) do
-    Enum.count(findings, fn attrs ->
-      attrs = Map.put(attrs, :run_id, run_id)
-      changeset = ProjectSnapshotReconciliationFinding.create_changeset(%ProjectSnapshotReconciliationFinding{}, attrs)
+  defp insert_findings(_run_id, []), do: 0
 
-      case Repo.insert(changeset,
-             on_conflict: :nothing,
-             conflict_target: [:run_id, :fingerprint]
-           ) do
-        {:ok, %{id: id}} when is_integer(id) -> true
-        {:ok, _conflict} -> false
-        {:error, changeset} -> Repo.rollback(changeset)
-      end
-    end)
+  defp insert_findings(run_id, findings) do
+    inserted_at = TimeHelpers.now()
+    entries = Enum.map(findings, &finding_insert_entry(&1, run_id, inserted_at))
+
+    {inserted_count, _returning} =
+      Repo.insert_all(ProjectSnapshotReconciliationFinding, entries,
+        on_conflict: :nothing,
+        conflict_target: [:run_id, :fingerprint]
+      )
+
+    inserted_count
+  end
+
+  defp finding_insert_entry(attrs, run_id, inserted_at) do
+    changeset =
+      ProjectSnapshotReconciliationFinding.create_changeset(
+        %ProjectSnapshotReconciliationFinding{},
+        Map.put(attrs, :run_id, run_id)
+      )
+
+    case Ecto.Changeset.apply_action(changeset, :insert) do
+      {:ok, finding} ->
+        finding
+        |> Map.from_struct()
+        |> Map.take(@finding_insert_fields)
+        |> Map.put(:inserted_at, inserted_at)
+
+      {:error, invalid_changeset} ->
+        Repo.rollback(invalid_changeset)
+    end
   end
 
   defp same_ready_snapshot?(snapshot) do

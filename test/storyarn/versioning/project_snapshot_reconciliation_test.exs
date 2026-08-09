@@ -353,6 +353,39 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
            )
   end
 
+  test "an expired mismatched reservation is stale even while the snapshot build job is live" do
+    user = user_fixture()
+    project = project_fixture(user)
+
+    assert {:ok, snapshot} =
+             Versioning.request_full_project_snapshot(user_scope_fixture(user), project, %{
+               idempotency_key: Ecto.UUID.generate()
+             })
+
+    now = TimeHelpers.now()
+    reservation = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
+
+    reservation
+    |> Ecto.Changeset.change(
+      expires_at: DateTime.add(now, -1, :second),
+      accounting_measured_at: DateTime.add(now, -2, :second)
+    )
+    |> Repo.update!()
+
+    snapshot
+    |> Ecto.Changeset.change(storage_reservation_id: nil)
+    |> Repo.update!()
+
+    assert Repo.get!(Oban.Job, snapshot.build_job_id).state == "available"
+    assert {:ok, run} = start_run()
+    completed = advance_until_terminal(run.id, run.cursor_generation)
+
+    assert completed.status == "completed"
+
+    assert [%{category: "stale_reservation", details: %{"reason" => "snapshot_reservation_mismatch"}}] =
+             Versioning.list_project_snapshot_reconciliation_findings(run.id)
+  end
+
   test "an expired reservation whose exact build job is quiescent and discarded is reported" do
     user = user_fixture()
     project = project_fixture(user)
@@ -877,6 +910,52 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     assert completed.status == "completed"
   end
 
+  test "ready inventory distinguishes provider failures from local page validation" do
+    {_user, _project, snapshot} = ready_snapshot!()
+    original_storage = Application.fetch_env!(:storyarn, :storage)
+
+    Application.put_env(
+      :storyarn,
+      :storage,
+      Keyword.put(original_storage, :adapter, Storyarn.SnapshotResetStorage)
+    )
+
+    :ok = Storyarn.SnapshotResetStorage.put_objects(%{})
+
+    assert {:ok, run} = start_run(max_objects_per_step: 2, provider_page_size: 2)
+
+    inventory_run =
+      advance_until(
+        run.id,
+        run.cursor_generation,
+        &(is_binary(&1.active_inventory_digest) and is_nil(&1.active_inventory_cursor))
+      )
+
+    prefix = snapshot.object_prefix <> "/"
+
+    :ok =
+      Storyarn.SnapshotResetStorage.put_list_prefix_metadata_response(
+        {:ok,
+         %{
+           objects: [%{key: prefix <> "z", size: 1}, %{key: prefix <> "a", size: 1}],
+           cursor: nil
+         }}
+      )
+
+    assert {:error, :invalid_snapshot_reconciliation_provider_page} =
+             Versioning.advance_project_snapshot_reconciliation(run.id, inventory_run.cursor_generation)
+
+    unchanged = Versioning.get_project_snapshot_reconciliation_run(run.id)
+    assert unchanged.status == "running"
+    assert unchanged.cursor_generation == inventory_run.cursor_generation
+
+    :ok =
+      Storyarn.SnapshotResetStorage.put_list_prefix_metadata_response({:error, :provider_timeout})
+
+    assert {:error, {:snapshot_reconciliation_provider_list_failed, :provider_timeout}} =
+             Versioning.advance_project_snapshot_reconciliation(run.id, inventory_run.cursor_generation)
+  end
+
   test "provider inventory limits fail closed instead of claiming completion" do
     {_user, _project, _snapshot} = ready_snapshot!()
 
@@ -917,6 +996,43 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     still_running = Versioning.get_project_snapshot_reconciliation_run(run.id)
     assert still_running.status == "running"
     assert still_running.cursor_generation == provider_run.cursor_generation
+  end
+
+  test "unsafe provider pages skip empty ownership reads and batch their findings" do
+    original_storage = Application.fetch_env!(:storyarn, :storage)
+    Application.put_env(:storyarn, :storage, Keyword.put(original_storage, :adapter, Storyarn.SnapshotResetStorage))
+
+    :ok =
+      Storyarn.SnapshotResetStorage.put_objects(%{
+        "projects/1/snapshots/object-sets/v1/ready//rogue-a" => 1,
+        "projects/1/snapshots/object-sets/v1/ready//rogue-b" => 1
+      })
+
+    assert {:ok, run} = start_run(max_objects_per_step: 10, provider_page_size: 10)
+
+    provider_run =
+      advance_until(
+        run.id,
+        run.cursor_generation,
+        &(&1.phase == "provider_objects")
+      )
+
+    {result, queries} =
+      capture_repo_queries(fn ->
+        Versioning.advance_project_snapshot_reconciliation(run.id, provider_run.cursor_generation)
+      end)
+
+    assert {:ok, :completed} = result
+    assert Versioning.get_project_snapshot_reconciliation_run(run.id).finding_count == 2
+
+    assert 1 ==
+             Enum.count(
+               queries,
+               &String.contains?(&1, ~s(INSERT INTO "project_snapshot_reconciliation_findings"))
+             )
+
+    refute Enum.any?(queries, &String.contains?(&1, ~s(FROM "projects")))
+    refute Enum.any?(queries, &String.contains?(&1, ~s(FROM "workspace_storage_reservations")))
   end
 
   test "provider scan records NUL-bearing reserved keys with binary checkpoints and safe evidence" do
@@ -1201,6 +1317,68 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     assert failed.status == "failed"
     assert failed.last_error_code == "snapshot_reconciliation_page_exception"
     assert %DateTime{} = failed.finished_at
+  end
+
+  test "the worker terminalizes deterministic page errors without exhausting retries" do
+    Enum.each(
+      [
+        :invalid_snapshot_reconciliation_inventory_digest,
+        :invalid_snapshot_reconciliation_provider_page,
+        :snapshot_reconciliation_inventory_limit_exceeded
+      ],
+      fn reason ->
+        assert {:ok, run} = start_run()
+        job = reconciliation_job!(run.id, run.cursor_generation)
+        advance = fn _run_id, _cursor_generation -> {:error, reason} end
+
+        assert :ok = InspectProjectSnapshotsWorker.perform_page(%{job | attempt: 1}, advance)
+
+        failed = Versioning.get_project_snapshot_reconciliation_run(run.id)
+        assert failed.status == "failed"
+        assert failed.last_error_code == Atom.to_string(reason)
+      end
+    )
+  end
+
+  test "the worker keeps provider availability failures retryable" do
+    assert {:ok, run} = start_run()
+    job = reconciliation_job!(run.id, run.cursor_generation)
+
+    advance = fn _run_id, _cursor_generation ->
+      {:error, {:snapshot_reconciliation_provider_list_failed, :provider_timeout}}
+    end
+
+    assert {:error, :snapshot_reconciliation_page_failed} =
+             InspectProjectSnapshotsWorker.perform_page(%{job | attempt: 1}, advance)
+
+    unchanged = Versioning.get_project_snapshot_reconciliation_run(run.id)
+    assert unchanged.status == "pending"
+    assert is_nil(unchanged.last_error_code)
+  end
+
+  test "the worker lets exits and throws reach Oban even on the final attempt" do
+    assert {:ok, run} = start_run()
+    job = reconciliation_job!(run.id, run.cursor_generation)
+    exit_advance = fn _run_id, _cursor_generation -> exit(:database_connection_timeout) end
+    throw_advance = fn _run_id, _cursor_generation -> throw(:provider_cancelled) end
+
+    assert catch_exit(
+             InspectProjectSnapshotsWorker.perform_page(
+               %{job | attempt: job.max_attempts},
+               exit_advance
+             )
+           ) == :database_connection_timeout
+
+    assert catch_throw(
+             InspectProjectSnapshotsWorker.perform_page(
+               %{job | attempt: job.max_attempts},
+               throw_advance
+             )
+           ) == :provider_cancelled
+
+    unchanged = Versioning.get_project_snapshot_reconciliation_run(run.id)
+    assert unchanged.status == "pending"
+    assert is_nil(unchanged.last_error_code)
   end
 
   test "the worker terminalizes an unexpected page result only on its final attempt" do
@@ -1648,6 +1826,36 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
 
       other ->
         flunk("unexpected snapshot reconciliation progress result: #{inspect(other)}")
+    end
+  end
+
+  defp capture_repo_queries(fun) when is_function(fun, 0) do
+    handler_id = "snapshot-reconciliation-query-capture-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid, do: send(pid, {ref, query})
+        end,
+        {test_pid, marker}
+      )
+
+    try do
+      {fun.(), drain_repo_queries(marker)}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp drain_repo_queries(marker, queries \\ []) do
+    receive do
+      {^marker, query} -> drain_repo_queries(marker, [query | queries])
+    after
+      0 -> Enum.reverse(queries)
     end
   end
 
