@@ -1658,7 +1658,8 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert failed.error_message == "The workspace storage limit has been reached."
       assert is_nil(failed.project_id)
       assert workspace_project_count(workspace.id) == project_count_before
-      assert Billing.workspace_storage_usage(workspace.id) == usage_before
+      usage_after = Billing.workspace_storage_usage(workspace.id)
+      assert Map.delete(usage_after, :measured_at) == Map.delete(usage_before, :measured_at)
     end
 
     test "lets a workspace member list and dismiss their own failed installation" do

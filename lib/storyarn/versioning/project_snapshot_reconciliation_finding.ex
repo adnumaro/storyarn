@@ -73,7 +73,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationFinding do
     |> validate_inclusion(:category, @categories)
     |> validate_inclusion(:severity, ~w(warning critical))
     |> validate_length(:object_prefix, max: 500)
-    |> validate_length(:storage_key, max: 4_096)
+    |> validate_length(:storage_key, count: :bytes, max: 4_096)
     |> validate_length(:error_code, max: 255)
     |> validate_safe_details()
     |> foreign_key_constraint(:run_id)

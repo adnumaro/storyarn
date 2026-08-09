@@ -1140,6 +1140,33 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     assert "contains unsafe reconciliation evidence" in errors_on(unsafe_url).details
   end
 
+  test "finding storage keys use the database byte limit" do
+    attrs = %{
+      run_id: 1,
+      fingerprint: String.duplicate("a", 64),
+      category: "ambiguous_storage_object",
+      severity: "critical",
+      details: %{}
+    }
+
+    at_limit =
+      ProjectSnapshotReconciliationFinding.create_changeset(
+        %ProjectSnapshotReconciliationFinding{},
+        Map.put(attrs, :storage_key, String.duplicate("é", 2_048))
+      )
+
+    assert at_limit.valid?
+
+    over_limit =
+      ProjectSnapshotReconciliationFinding.create_changeset(
+        %ProjectSnapshotReconciliationFinding{},
+        Map.put(attrs, :storage_key, String.duplicate("é", 2_049))
+      )
+
+    refute over_limit.valid?
+    assert "should be at most 4096 byte(s)" in errors_on(over_limit).storage_key
+  end
+
   test "the worker relies on transactionally persisted continuations" do
     assert {:ok, run} = start_run()
     first_job = reconciliation_job!(run.id, run.cursor_generation)
