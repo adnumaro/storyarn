@@ -80,12 +80,25 @@ defmodule Storyarn.Assets.Storage.Local do
 
   @impl true
   def list_prefix(prefix, opts) when is_binary(prefix) and is_list(opts) do
+    list_prefix_page(prefix, opts, true)
+  end
+
+  def list_prefix(_prefix, _opts), do: {:error, :invalid_prefix}
+
+  @impl true
+  def list_prefix_metadata(prefix, opts) when is_binary(prefix) and is_list(opts) do
+    list_prefix_page(prefix, opts, false)
+  end
+
+  def list_prefix_metadata(_prefix, _opts), do: {:error, :invalid_prefix}
+
+  defp list_prefix_page(prefix, opts, include_identity?) do
     with true <- Storage.canonical_prefix?(prefix) and Keyword.keyword?(opts),
          {:ok, limit} <- list_limit(opts),
          {:ok, probe_path} <- file_path(prefix <> "__storyarn_inventory_probe__", allow_conditional_copy: true),
          :ok <- ensure_no_symlink_components(Path.dirname(probe_path)),
-         {:ok, cursor} <- decode_list_cursor(prefix, Keyword.get(opts, :cursor)),
-         {:ok, objects} <- list_prefix_objects(Path.dirname(probe_path), prefix, cursor, limit) do
+         {:ok, cursor} <- decode_list_cursor(prefix, Keyword.get(opts, :cursor), include_identity?),
+         {:ok, objects} <- list_prefix_objects(Path.dirname(probe_path), prefix, cursor, limit, include_identity?) do
       page = Enum.take(objects, limit)
       next_cursor = if length(objects) > limit, do: List.last(page).key
 
@@ -96,51 +109,68 @@ defmodule Storyarn.Assets.Storage.Local do
     end
   end
 
-  def list_prefix(_prefix, _opts), do: {:error, :invalid_prefix}
-
-  defp list_prefix_objects(root, prefix, cursor, limit) do
+  defp list_prefix_objects(root, prefix, cursor, limit, include_identity?) do
     case File.lstat(root) do
-      {:ok, %{type: :directory}} -> list_regular_files(root, prefix, cursor, limit + 1)
+      {:ok, %{type: :directory}} -> list_regular_files(root, prefix, cursor, limit + 1, include_identity?)
       {:ok, _unsafe_type} -> {:error, :invalid_prefix_target}
       {:error, :enoent} -> {:ok, []}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp list_regular_files(root, prefix, cursor, limit) do
+  defp list_regular_files(root, prefix, cursor, limit, include_identity?) do
     with {:ok, entries} <- storage_entries(root),
          frontier = :gb_sets.from_list(entries),
-         {:ok, {objects, _remaining}} <- walk_regular_files(frontier, prefix, cursor, limit, []) do
+         {:ok, {objects, _remaining}} <- walk_regular_files(frontier, prefix, cursor, limit, [], include_identity?) do
       {:ok, Enum.reverse(objects)}
     end
   end
 
-  defp walk_regular_files(_frontier, _prefix, _cursor, 0, objects), do: {:ok, {objects, 0}}
+  defp walk_regular_files(_frontier, _prefix, _cursor, 0, objects, _include_identity?), do: {:ok, {objects, 0}}
 
-  defp walk_regular_files(frontier, prefix, cursor, remaining, objects) do
+  defp walk_regular_files(frontier, prefix, cursor, remaining, objects, include_identity?) do
     if :gb_sets.is_empty(frontier) do
       {:ok, {objects, remaining}}
     else
       {entry, frontier} = :gb_sets.take_smallest(frontier)
-      walk_storage_entry(entry, frontier, prefix, cursor, remaining, objects)
+      walk_storage_entry(entry, frontier, prefix, cursor, remaining, objects, include_identity?)
     end
   end
 
-  defp walk_storage_entry({_sort_key, :directory, path, _size}, frontier, prefix, cursor, remaining, objects) do
+  defp walk_storage_entry(
+         {_sort_key, :directory, path, _size},
+         frontier,
+         prefix,
+         cursor,
+         remaining,
+         objects,
+         include_identity?
+       ) do
     with {:ok, entries} <- storage_entries(path) do
       frontier = Enum.reduce(entries, frontier, &:gb_sets.add/2)
-      walk_regular_files(frontier, prefix, cursor, remaining, objects)
+      walk_regular_files(frontier, prefix, cursor, remaining, objects, include_identity?)
     end
   end
 
-  defp walk_storage_entry({key, :regular, path, size}, frontier, prefix, cursor, remaining, objects) do
+  defp walk_storage_entry({key, :regular, path, size}, frontier, prefix, cursor, remaining, objects, include_identity?) do
     if String.starts_with?(key, prefix) and after_list_cursor?(key, cursor) do
-      with {:ok, identity} <- regular_file_identity(path, size) do
-        object = %{key: key, size: size, identity: identity}
-        walk_regular_files(frontier, prefix, cursor, remaining - 1, [object | objects])
+      with {:ok, object} <- listed_object(key, path, size, include_identity?) do
+        walk_regular_files(frontier, prefix, cursor, remaining - 1, [object | objects], include_identity?)
       end
     else
-      walk_regular_files(frontier, prefix, cursor, remaining, objects)
+      walk_regular_files(frontier, prefix, cursor, remaining, objects, include_identity?)
+    end
+  end
+
+  defp listed_object(key, _path, size, false), do: {:ok, %{key: key, size: size}}
+
+  defp listed_object(key, path, size, true) do
+    with true <- Storage.canonical_key?(key),
+         {:ok, identity} <- regular_file_identity(path, size) do
+      {:ok, %{key: key, size: size, identity: identity}}
+    else
+      false -> {:error, :unsafe_storage_entry}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -752,15 +782,21 @@ defmodule Storyarn.Assets.Storage.Local do
     )
   end
 
-  defp decode_list_cursor(_prefix, nil), do: {:ok, nil}
+  defp decode_list_cursor(_prefix, nil, _include_identity?), do: {:ok, nil}
 
-  defp decode_list_cursor(prefix, cursor) when is_binary(cursor) do
+  defp decode_list_cursor(prefix, cursor, true) when is_binary(cursor) do
     if Storage.canonical_key?(cursor) and String.starts_with?(cursor, prefix),
       do: {:ok, cursor},
       else: {:error, :invalid_cursor}
   end
 
-  defp decode_list_cursor(_prefix, _cursor), do: {:error, :invalid_cursor}
+  defp decode_list_cursor(prefix, cursor, false) when is_binary(cursor) do
+    if String.starts_with?(cursor, prefix),
+      do: {:ok, cursor},
+      else: {:error, :invalid_cursor}
+  end
+
+  defp decode_list_cursor(_prefix, _cursor, _include_identity?), do: {:error, :invalid_cursor}
 
   defp list_limit(opts) do
     case Keyword.get(opts, :limit, 1_000) do

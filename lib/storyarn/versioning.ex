@@ -19,6 +19,7 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCrud
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
+  alias Storyarn.Versioning.ProjectSnapshotReconciliation
   alias Storyarn.Versioning.ProjectSnapshotReset
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
@@ -169,6 +170,31 @@ defmodule Storyarn.Versioning do
   defdelegate reconcile_stale_project_snapshot_builds(),
     to: ProjectSnapshotBuild,
     as: :reconcile_stale_builds
+
+  @doc "Starts an observation-only, resumable snapshot reconciliation run."
+  defdelegate start_project_snapshot_reconciliation(opts \\ []),
+    to: ProjectSnapshotReconciliation,
+    as: :start
+
+  @doc false
+  defdelegate advance_project_snapshot_reconciliation(run_id, expected_generation),
+    to: ProjectSnapshotReconciliation,
+    as: :advance
+
+  @doc false
+  defdelegate fail_project_snapshot_reconciliation(run_id, expected_generation, reason),
+    to: ProjectSnapshotReconciliation,
+    as: :fail
+
+  @doc "Returns one persisted snapshot reconciliation run."
+  defdelegate get_project_snapshot_reconciliation_run(run_id),
+    to: ProjectSnapshotReconciliation,
+    as: :get_run
+
+  @doc "Lists immutable findings from one snapshot reconciliation run."
+  defdelegate list_project_snapshot_reconciliation_findings(run_id, opts \\ []),
+    to: ProjectSnapshotReconciliation,
+    as: :list_findings
 
   @doc "Requests cooperative cancellation for an in-progress project snapshot."
   defdelegate cancel_project_snapshot(current_scope, project, snapshot_id),

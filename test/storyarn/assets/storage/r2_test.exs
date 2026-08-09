@@ -76,6 +76,7 @@ defmodule Storyarn.Assets.Storage.R2Test do
         assert conn.query_params["list-type"] == "2"
         assert conn.query_params["prefix"] == prefix
         assert conn.query_params["max-keys"] == "2"
+        assert conn.query_params["encoding-type"] == "url"
         assert_signed_header_request(conn)
 
         Plug.Conn.send_resp(
@@ -126,6 +127,25 @@ defmodule Storyarn.Assets.Storage.R2Test do
       assert {:error, :invalid_list_response} = R2.list_prefix(prefix, limit: 2)
     end
 
+    test "keeps identity pages restricted to canonical keys" do
+      prefix = "projects/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          """
+          <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <IsTruncated>false</IsTruncated>
+            <Contents><Key>projects/1/snapshots/object-sets/v1/ready//rogue</Key><ETag>"rogue"</ETag><Size>1</Size></Contents>
+          </ListBucketResult>
+          """
+        )
+      end)
+
+      assert {:error, :invalid_list_response} = R2.list_prefix(prefix, limit: 2)
+    end
+
     test "rejects incoherent truncation metadata and missing object identities" do
       prefix = "projects/1/snapshots/"
 
@@ -159,6 +179,118 @@ defmodule Storyarn.Assets.Storage.R2Test do
 
         assert {:error, :invalid_list_response} = R2.list_prefix(prefix, limit: 2)
       end
+    end
+  end
+
+  describe "list_prefix_metadata/2" do
+    test "returns non-canonical in-prefix keys without requiring object identities" do
+      prefix = "projects/"
+      key = "projects/1/snapshots/object-sets/v1/ready//rogue"
+      encoded_key = "projects%2F1%2Fsnapshots%2Fobject-sets%2Fv1%2Fready%2F%2Frogue"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "GET"
+        assert conn.request_path == "/private-bucket/"
+        assert conn.query_params["list-type"] == "2"
+        assert conn.query_params["prefix"] == prefix
+        assert conn.query_params["max-keys"] == "2"
+        assert conn.query_params["encoding-type"] == "url"
+        assert conn.query_params["continuation-token"] == "current-page"
+        assert_signed_header_request(conn)
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          """
+          <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <IsTruncated>true</IsTruncated>
+            <EncodingType>url</EncodingType>
+            <Contents><Key>#{encoded_key}</Key><Size>1</Size></Contents>
+            <NextContinuationToken>next-page</NextContinuationToken>
+          </ListBucketResult>
+          """
+        )
+      end)
+
+      assert {:ok, %{objects: [%{key: ^key, size: 1}], cursor: "next-page"}} =
+               R2.list_prefix_metadata(prefix, limit: 2, cursor: "current-page")
+    end
+
+    test "decodes URL-encoded control, percent, and Unicode key bytes" do
+      prefix = "projects/"
+      nul_key = prefix <> <<0>> <> "nul"
+      control_key = prefix <> <<1>> <> "rogue"
+      percent_key = prefix <> "literal%2F.txt"
+      unicode_key = prefix <> "café.txt"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.query_params["encoding-type"] == "url"
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          """
+          <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <EncodingType>url</EncodingType>
+            <IsTruncated>false</IsTruncated>
+            <Contents><Key>projects%2F%00nul</Key><Size>0</Size></Contents>
+            <Contents><Key>projects%2F%01rogue</Key><Size>1</Size></Contents>
+            <Contents><Key>projects%2Fliteral%252F.txt</Key><Size>2</Size></Contents>
+            <Contents><Key>projects%2Fcaf%C3%A9.txt</Key><Size>3</Size></Contents>
+          </ListBucketResult>
+          """
+        )
+      end)
+
+      assert {:ok, %{objects: objects, cursor: nil}} = R2.list_prefix_metadata(prefix, [])
+
+      assert objects == [
+               %{key: nul_key, size: 0},
+               %{key: control_key, size: 1},
+               %{key: percent_key, size: 2},
+               %{key: unicode_key, size: 3}
+             ]
+    end
+
+    test "rejects malformed URL encoding in provider keys" do
+      for encoded_key <- ["projects%2Fbad%ZZ", "projects%2Fbad%FF"] do
+        Req.Test.expect(__MODULE__, fn conn ->
+          Plug.Conn.send_resp(
+            conn,
+            200,
+            """
+            <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+              <EncodingType>url</EncodingType>
+              <IsTruncated>false</IsTruncated>
+              <Contents><Key>#{encoded_key}</Key><Size>1</Size></Contents>
+            </ListBucketResult>
+            """
+          )
+        end)
+
+        assert {:error, :invalid_list_response} = R2.list_prefix_metadata("projects/", [])
+      end
+    end
+
+    test "rejects objects outside the requested prefix" do
+      prefix = "projects/1/snapshots/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          """
+          <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <IsTruncated>false</IsTruncated>
+            <Contents><Key>projects/2/snapshots/object-sets/v1/ready//rogue</Key><Size>1</Size></Contents>
+          </ListBucketResult>
+          """
+        )
+      end)
+
+      assert {:error, :invalid_list_response} = R2.list_prefix_metadata(prefix, limit: 2)
     end
   end
 

@@ -39,6 +39,7 @@ defmodule Storyarn.Versioning.SnapshotObjectPublicationClaim do
 
   @primary_key {:object_prefix, :string, autogenerate: false}
   schema "snapshot_object_publication_claims" do
+    field :reconciliation_sequence, :integer, read_after_writes: true
     field :claim_token, Ecto.UUID
     field :inventory_digest, :string
     field :storage_reservation_id_snapshot, :integer

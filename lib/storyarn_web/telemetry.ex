@@ -202,8 +202,24 @@ defmodule StoryarnWeb.Telemetry do
       last_value("storyarn.snapshot.cleanup.backlog.oldest_age_seconds"),
       sum("storyarn.snapshot.retention.stop.deleted_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.expired_build_count", tags: [:status]),
+      sum("storyarn.snapshot.retention.stop.orphaned_build_count", tags: [:status]),
+      sum("storyarn.snapshot.retention.stop.settled_build_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.failure_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.continuation_count", tags: [:status]),
+
+      # Reconciliation is an operator-started, observation-only dry-run. IDs
+      # remain out of metric tags; persisted runs and findings retain detail.
+      sum("storyarn.snapshot.reconciliation.start.count", tags: [:contract_version, :mode]),
+      sum("storyarn.snapshot.reconciliation.page.finding_count", tags: [:phase, :status]),
+      last_value("storyarn.snapshot.reconciliation.page.inspected_snapshot_count", tags: [:phase, :status]),
+      last_value("storyarn.snapshot.reconciliation.page.inspected_object_count", tags: [:phase, :status]),
+      last_value("storyarn.snapshot.reconciliation.page.inspected_bytes", tags: [:phase, :status]),
+      last_value("storyarn.snapshot.reconciliation.page.provider_object_count", tags: [:phase, :status]),
+      last_value("storyarn.snapshot.reconciliation.page.provider_bytes", tags: [:phase, :status]),
+      sum("storyarn.snapshot.reconciliation.stop.count", tags: [:status, :multipart_inventory_state]),
+      last_value("storyarn.snapshot.reconciliation.stop.finding_count",
+        tags: [:status, :multipart_inventory_state]
+      ),
 
       # AI result retention is content-free and bounded per worker batch.
       sum("storyarn.ai.expiration.stop.expired_count", tags: [:status]),

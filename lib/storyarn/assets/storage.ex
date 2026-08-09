@@ -22,7 +22,9 @@ defmodule Storyarn.Assets.Storage do
           size: non_neg_integer(),
           identity: object_identity()
         }
+  @type listed_object_metadata :: %{key: key(), size: non_neg_integer()}
   @type list_page :: %{objects: [listed_object()], cursor: String.t() | nil}
+  @type metadata_list_page :: %{objects: [listed_object_metadata()], cursor: String.t() | nil}
   @type conditional_copy_cleanup_error ::
           {:conditional_copy_cleanup_required, destination_created? :: boolean(), pending_cleanup_key :: key(),
            cleanup_reason :: term()}
@@ -57,6 +59,8 @@ defmodule Storyarn.Assets.Storage do
               {:ok, created? :: boolean()} | {:error, term()}
   @callback key_from_url(url) :: {:ok, key} | {:error, :invalid_url}
   @callback list_prefix(String.t(), keyword()) :: {:ok, list_page()} | {:error, term()}
+  @callback list_prefix_metadata(String.t(), keyword()) :: {:ok, metadata_list_page()} | {:error, term()}
+  @optional_callbacks list_prefix_metadata: 2
 
   @doc """
   Returns the configured storage adapter.
@@ -126,6 +130,34 @@ defmodule Storyarn.Assets.Storage do
     if canonical_prefix?(prefix) and Keyword.keyword?(opts),
       do: adapter().list_prefix(prefix, opts),
       else: {:error, :invalid_prefix}
+  end
+
+  @doc "Lists key and size metadata without requiring content-derived object identities."
+  def list_prefix_metadata(prefix, opts \\ []) when is_binary(prefix) and is_list(opts) do
+    if canonical_prefix?(prefix) and Keyword.keyword?(opts) do
+      list_prefix_metadata_with_adapter(adapter(), prefix, opts)
+    else
+      {:error, :invalid_prefix}
+    end
+  end
+
+  defp list_prefix_metadata_with_adapter(adapter, prefix, opts) do
+    _loaded? = Code.ensure_loaded?(adapter)
+
+    if function_exported?(adapter, :list_prefix_metadata, 2),
+      do: adapter.list_prefix_metadata(prefix, opts),
+      else: metadata_from_identity_page(adapter, prefix, opts)
+  end
+
+  defp metadata_from_identity_page(adapter, prefix, opts) do
+    with {:ok, %{objects: objects, cursor: cursor}} <- adapter.list_prefix(prefix, opts) do
+      {:ok, %{objects: Enum.map(objects, &Map.take(&1, [:key, :size])), cursor: cursor}}
+    end
+  end
+
+  @doc "Returns the opaque identity of the configured provider namespace."
+  def namespace_fingerprint do
+    adapter().namespace_fingerprint()
   end
 
   @doc """
