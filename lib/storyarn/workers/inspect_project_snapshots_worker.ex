@@ -23,6 +23,7 @@ defmodule Storyarn.Workers.InspectProjectSnapshotsWorker do
 
   @contract_version 1
   @timeout_ms 10 * 60 * 1_000
+  @recovery_margin_ms 5 * 60 * 1_000
 
   @impl Oban.Worker
   def perform(%Oban.Job{} = job), do: perform_page(job, &Versioning.advance_project_snapshot_reconciliation/2)
@@ -77,6 +78,10 @@ defmodule Storyarn.Workers.InspectProjectSnapshotsWorker do
 
   @impl Oban.Worker
   def timeout(_job), do: @timeout_ms
+
+  @doc false
+  @spec recovery_after_seconds() :: pos_integer()
+  def recovery_after_seconds, do: div(@timeout_ms + @recovery_margin_ms, 1_000)
 
   defp terminalize(run_id, cursor_generation, reason) do
     case Versioning.fail_project_snapshot_reconciliation(run_id, cursor_generation, reason) do

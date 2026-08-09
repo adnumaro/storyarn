@@ -68,7 +68,11 @@ cursor, monotonic counters, and immutable deduplicated findings commit together.
 If the current-generation job is discarded after exhausting retries or a node
 crash prevents terminal evidence from being committed, run the start command
 again: it returns the same active run and idempotently restores that exact
-generation's queue delivery.
+generation's queue delivery once an `executing` job is older than the worker
+timeout plus its recovery margin. A new run captures all database
+high-watermarks behind a short `NOWAIT` source-table barrier; if a writer is
+active, start fails closed and the operator must retry rather than accept a
+partial identity view.
 The configured per-step object/byte budgets, provider page size, total provider
 object/byte limits, finding limit, malformed pages, same-page cursors,
 non-monotonic keys, provider namespace changes, ready-snapshot generation

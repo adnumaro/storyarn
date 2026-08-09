@@ -169,11 +169,24 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   @impl true
   def list_prefix(prefix, opts) when is_binary(prefix) and is_list(opts) do
+    list_prefix_page(prefix, opts, :identity)
+  end
+
+  def list_prefix(_prefix, _opts), do: {:error, :invalid_prefix}
+
+  @impl true
+  def list_prefix_metadata(prefix, opts) when is_binary(prefix) and is_list(opts) do
+    list_prefix_page(prefix, opts, :metadata)
+  end
+
+  def list_prefix_metadata(_prefix, _opts), do: {:error, :invalid_prefix}
+
+  defp list_prefix_page(prefix, opts, mode) do
     with true <- Storage.canonical_prefix?(prefix) and Keyword.keyword?(opts),
          {:ok, limit} <- list_limit(opts),
          {:ok, request_opts} <- put_continuation_token([prefix: prefix, max_keys: limit], Keyword.get(opts, :cursor)) do
       case bucket() |> ExAws.S3.list_objects_v2(request_opts) |> ExAws.request() do
-        {:ok, %{body: body}} when is_map(body) -> normalize_list_page(body, prefix)
+        {:ok, %{body: body}} when is_map(body) -> normalize_list_page(body, prefix, mode)
         {:error, reason} -> {:error, reason}
         _invalid -> {:error, :invalid_list_response}
       end
@@ -182,8 +195,6 @@ defmodule Storyarn.Assets.Storage.R2 do
       {:error, reason} -> {:error, reason}
     end
   end
-
-  def list_prefix(_prefix, _opts), do: {:error, :invalid_prefix}
 
   @impl true
   def delete(key) do
@@ -499,13 +510,13 @@ defmodule Storyarn.Assets.Storage.R2 do
     end
   end
 
-  defp normalize_list_page(body, prefix) do
+  defp normalize_list_page(body, prefix, mode) do
     contents = Map.get(body, :contents, Map.get(body, "Contents", [])) || []
     is_truncated = Map.get(body, :is_truncated, Map.get(body, "IsTruncated"))
     continuation_token = Map.get(body, :next_continuation_token, Map.get(body, "NextContinuationToken"))
 
     with true <- is_list(contents),
-         {:ok, objects} <- normalize_list_objects(contents, prefix),
+         {:ok, objects} <- normalize_list_objects(contents, prefix, mode),
          {:ok, truncated?} <- normalize_is_truncated(is_truncated),
          {:ok, cursor} <- normalize_list_cursor(continuation_token, truncated?) do
       {:ok, %{objects: objects, cursor: cursor}}
@@ -514,17 +525,12 @@ defmodule Storyarn.Assets.Storage.R2 do
     end
   end
 
-  defp normalize_list_objects(contents, prefix) do
+  defp normalize_list_objects(contents, prefix, mode) do
     contents
     |> Enum.reduce_while({:ok, []}, fn object, {:ok, objects} ->
-      with true <- is_map(object),
-           key when is_binary(key) <- Map.get(object, :key, Map.get(object, "Key")),
-           true <- Storage.canonical_key?(key) and String.starts_with?(key, prefix),
-           {:ok, size} <- normalize_list_size(Map.get(object, :size, Map.get(object, "Size"))),
-           {:ok, identity} <- normalize_object_identity(object) do
-        {:cont, {:ok, [%{key: key, size: size, identity: identity} | objects]}}
-      else
-        _invalid -> {:halt, {:error, :invalid_list_response}}
+      case normalize_list_object(object, prefix, mode) do
+        {:ok, normalized} -> {:cont, {:ok, [normalized | objects]}}
+        {:error, _reason} = error -> {:halt, error}
       end
     end)
     |> case do
@@ -532,6 +538,29 @@ defmodule Storyarn.Assets.Storage.R2 do
       error -> error
     end
   end
+
+  defp normalize_list_object(object, prefix, :identity) when is_map(object) do
+    with key when is_binary(key) <- Map.get(object, :key, Map.get(object, "Key")),
+         true <- Storage.canonical_key?(key) and String.starts_with?(key, prefix),
+         {:ok, size} <- normalize_list_size(Map.get(object, :size, Map.get(object, "Size"))),
+         {:ok, identity} <- normalize_object_identity(object) do
+      {:ok, %{key: key, size: size, identity: identity}}
+    else
+      _invalid -> {:error, :invalid_list_response}
+    end
+  end
+
+  defp normalize_list_object(object, prefix, :metadata) when is_map(object) do
+    with key when is_binary(key) <- Map.get(object, :key, Map.get(object, "Key")),
+         true <- String.starts_with?(key, prefix),
+         {:ok, size} <- normalize_list_size(Map.get(object, :size, Map.get(object, "Size"))) do
+      {:ok, %{key: key, size: size}}
+    else
+      _invalid -> {:error, :invalid_list_response}
+    end
+  end
+
+  defp normalize_list_object(_object, _prefix, _mode), do: {:error, :invalid_list_response}
 
   defp normalize_list_size(size) when is_integer(size) and size >= 0, do: {:ok, size}
 

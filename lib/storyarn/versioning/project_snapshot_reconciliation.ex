@@ -43,6 +43,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   @inventory_digest_seed String.duplicate("0", 64)
   @provider_prefix "projects/"
   @build_worker "Storyarn.Workers.BuildProjectSnapshotWorker"
+  @inspection_worker "Storyarn.Workers.InspectProjectSnapshotsWorker"
   @active_build_job_states ~w(available scheduled executing retryable)
   @snapshot_key_pattern ~r<\Aprojects/([1-9]\d*)/snapshots/object-sets/v1/(ready|staging)/([A-Za-z0-9_-]{16})/(.+)\z>
   @reservation_key_pattern ~r<\Aprojects/([1-9]\d*)/storage-reservations/v1/(snapshot-build|linked-to-full-conversion|restore-staging|snapshot-export)/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/(.+)\z>
@@ -59,11 +60,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   def start(opts) when is_list(opts) do
     with true <- Keyword.keyword?(opts),
          {:ok, namespace_fingerprint} <- Storage.namespace_fingerprint(),
-         {:ok, attrs} <- run_attrs(namespace_fingerprint, opts) do
-      changeset = ProjectSnapshotReconciliationRun.create_changeset(%ProjectSnapshotReconciliationRun{}, attrs)
-
+         :ok <- validate_run_options(opts) do
       Multi.new()
-      |> Multi.insert(:run, changeset)
+      |> Multi.run(:attrs, fn repo, _changes -> capture_run_attrs(repo, namespace_fingerprint, opts) end)
+      |> Multi.insert(:run, fn %{attrs: attrs} ->
+        ProjectSnapshotReconciliationRun.create_changeset(%ProjectSnapshotReconciliationRun{}, attrs)
+      end)
       |> Multi.run(:job, fn _repo, %{run: run} ->
         run.id
         |> inspection_job(run.cursor_generation)
@@ -77,6 +79,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
 
         {:error, :run, %Ecto.Changeset{} = failed_changeset, _changes} ->
           existing_active_run(namespace_fingerprint, failed_changeset)
+
+        {:error, :attrs, :snapshot_reconciliation_boundary_busy, _changes} ->
+          existing_active_run(namespace_fingerprint, :snapshot_reconciliation_boundary_busy)
 
         {:error, _operation, reason, _changes} ->
           {:error, reason}
@@ -834,7 +839,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     )
   end
 
-  defp database_page_limit(run), do: min(run.max_objects_per_step, max(run.max_findings - run.finding_count + 1, 1))
+  defp database_page_limit(run), do: run.max_objects_per_step
 
   defp live_build_job?(%Oban.Job{worker: @build_worker, queue: "snapshots", state: state}),
     do: state in @active_build_job_states
@@ -2003,7 +2008,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     end
   end
 
-  defp run_attrs(namespace_fingerprint, opts) do
+  defp validate_run_options(opts) do
     allowed_options = [
       :max_objects_per_step,
       :max_bytes_per_step,
@@ -2013,11 +2018,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       :max_provider_bytes
     ]
 
-    if Keyword.keys(opts) -- allowed_options == [] do
-      build_run_attrs(namespace_fingerprint, opts)
-    else
-      {:error, :invalid_snapshot_reconciliation_options}
-    end
+    if Keyword.keys(opts) -- allowed_options == [],
+      do: :ok,
+      else: {:error, :invalid_snapshot_reconciliation_options}
   end
 
   defp build_run_attrs(namespace_fingerprint, opts) do
@@ -2056,6 +2059,38 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     Repo.one(from(intent in SnapshotCleanupIntent, select: max(intent.id))) || 0
   end
 
+  defp capture_run_attrs(repo, namespace_fingerprint, opts) do
+    with :ok <- lock_reconciliation_boundary(repo) do
+      build_run_attrs(namespace_fingerprint, opts)
+    end
+  end
+
+  # SHARE conflicts with every source-table writer's ROW EXCLUSIVE lock. Taking
+  # all four locks before reading the high-watermarks ensures that an insert
+  # cannot allocate an earlier identity, remain invisible, and commit behind a
+  # cursor that has already advanced past it. NOWAIT keeps this operator-only
+  # inspection from joining application lock chains; a busy boundary fails
+  # closed and can be retried.
+  defp lock_reconciliation_boundary(repo) do
+    case repo.query("""
+         LOCK TABLE project_snapshots,
+                    workspace_storage_reservations,
+                    snapshot_object_publication_claims,
+                    snapshot_cleanup_intents
+         IN SHARE MODE NOWAIT
+         """) do
+      {:ok, _result} ->
+        :ok
+
+      {:error, %Postgrex.Error{postgres: %{code: code}}}
+      when code in [:lock_not_available, :deadlock_detected, "55P03", "40P01"] ->
+        {:error, :snapshot_reconciliation_boundary_busy}
+
+      {:error, reason} ->
+        {:error, {:snapshot_reconciliation_boundary_unavailable, reason}}
+    end
+  end
+
   defp existing_active_run(namespace_fingerprint, failed_changeset) do
     fn ->
       case Repo.one(
@@ -2068,6 +2103,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
              )
            ) do
         %ProjectSnapshotReconciliationRun{} = run ->
+          recover_stale_inspection_delivery(run)
           persist_continuation!(run)
           run
 
@@ -2089,6 +2125,40 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       cursor_generation: cursor_generation,
       contract_version: @contract_version
     })
+  end
+
+  defp recover_stale_inspection_delivery(run) do
+    now = %{database_clock_now() | microsecond: {0, 6}}
+    cutoff = DateTime.add(now, -InspectProjectSnapshotsWorker.recovery_after_seconds(), :second)
+
+    expected_args = %{
+      "contract_version" => run.contract_version,
+      "cursor_generation" => run.cursor_generation,
+      "run_id" => run.id
+    }
+
+    stale_jobs =
+      from(job in Oban.Job,
+        where:
+          job.worker == ^@inspection_worker and job.queue == "snapshots_maintenance" and
+            job.state == "executing" and job.attempted_at < ^cutoff and
+            job.args == ^expected_args
+      )
+
+    stale_jobs
+    |> where([job], job.attempt < job.max_attempts)
+    |> Repo.update_all(set: [state: "available"])
+
+    stale_jobs
+    |> where([job], job.attempt >= job.max_attempts)
+    |> Repo.update_all(set: [state: "discarded", discarded_at: now])
+
+    :ok
+  end
+
+  defp database_clock_now do
+    %Postgrex.Result{rows: [[now]]} = Repo.query!("SELECT clock_timestamp()")
+    now
   end
 
   defp lock_run(run_id) do

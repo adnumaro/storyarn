@@ -2,54 +2,6 @@ defmodule Storyarn.Repo.Migrations.CreateProjectSnapshotReconciliationInspection
   use Ecto.Migration
 
   def change do
-    execute(
-      """
-      ALTER TABLE snapshot_object_publication_claims
-      ADD COLUMN reconciliation_sequence bigint GENERATED ALWAYS AS IDENTITY
-      """,
-      "ALTER TABLE snapshot_object_publication_claims DROP COLUMN reconciliation_sequence"
-    )
-
-    create unique_index(:snapshot_object_publication_claims, [:reconciliation_sequence])
-
-    create constraint(
-             :snapshot_object_publication_claims,
-             :snapshot_object_publication_claims_reconciliation_sequence,
-             check: "reconciliation_sequence > 0"
-           )
-
-    execute(
-      """
-      CREATE FUNCTION storyarn_guard_snapshot_claim_reconciliation_sequence()
-      RETURNS trigger
-      LANGUAGE plpgsql
-      AS $$
-      BEGIN
-      IF NEW.reconciliation_sequence IS DISTINCT FROM OLD.reconciliation_sequence THEN
-        RAISE EXCEPTION 'snapshot publication claim reconciliation sequence is immutable'
-          USING ERRCODE = 'integrity_constraint_violation';
-      END IF;
-
-      RETURN NEW;
-      END;
-      $$
-      """,
-      "DROP FUNCTION storyarn_guard_snapshot_claim_reconciliation_sequence() CASCADE"
-    )
-
-    execute(
-      """
-      CREATE TRIGGER snapshot_object_publication_claims_reconciliation_sequence_guard
-      BEFORE UPDATE ON snapshot_object_publication_claims
-      FOR EACH ROW
-      EXECUTE FUNCTION storyarn_guard_snapshot_claim_reconciliation_sequence()
-      """,
-      """
-      DROP TRIGGER snapshot_object_publication_claims_reconciliation_sequence_guard
-      ON snapshot_object_publication_claims
-      """
-    )
-
     create table(:project_snapshot_reconciliation_runs) do
       add :contract_version, :integer, null: false, default: 1
       add :provider_namespace_fingerprint, :string, size: 64, null: false
@@ -310,9 +262,11 @@ defmodule Storyarn.Repo.Migrations.CreateProjectSnapshotReconciliationInspection
          (OLD.active_snapshot_id = NEW.active_snapshot_id AND
           OLD.active_inventory_last_key IS NOT NULL AND
           (NEW.active_inventory_last_key IS NULL OR
-           NEW.active_inventory_last_key < OLD.active_inventory_last_key)) OR
+           NEW.active_inventory_last_key COLLATE "C" <
+             OLD.active_inventory_last_key COLLATE "C")) OR
          (OLD.provider_last_key IS NOT NULL AND
-          (NEW.provider_last_key IS NULL OR NEW.provider_last_key < OLD.provider_last_key)) OR
+          (NEW.provider_last_key IS NULL OR
+           NEW.provider_last_key COLLATE "C" < OLD.provider_last_key COLLATE "C")) OR
          NEW.inspected_snapshot_count < OLD.inspected_snapshot_count OR
          NEW.inspected_object_count < OLD.inspected_object_count OR
          NEW.inspected_bytes < OLD.inspected_bytes OR

@@ -126,6 +126,25 @@ defmodule Storyarn.Assets.Storage.R2Test do
       assert {:error, :invalid_list_response} = R2.list_prefix(prefix, limit: 2)
     end
 
+    test "keeps identity pages restricted to canonical keys" do
+      prefix = "projects/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          """
+          <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <IsTruncated>false</IsTruncated>
+            <Contents><Key>projects/1/snapshots/object-sets/v1/ready//rogue</Key><ETag>"rogue"</ETag><Size>1</Size></Contents>
+          </ListBucketResult>
+          """
+        )
+      end)
+
+      assert {:error, :invalid_list_response} = R2.list_prefix(prefix, limit: 2)
+    end
+
     test "rejects incoherent truncation metadata and missing object identities" do
       prefix = "projects/1/snapshots/"
 
@@ -159,6 +178,58 @@ defmodule Storyarn.Assets.Storage.R2Test do
 
         assert {:error, :invalid_list_response} = R2.list_prefix(prefix, limit: 2)
       end
+    end
+  end
+
+  describe "list_prefix_metadata/2" do
+    test "returns non-canonical in-prefix keys without requiring object identities" do
+      prefix = "projects/"
+      key = "projects/1/snapshots/object-sets/v1/ready//rogue"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "GET"
+        assert conn.request_path == "/private-bucket/"
+        assert conn.query_params["list-type"] == "2"
+        assert conn.query_params["prefix"] == prefix
+        assert conn.query_params["max-keys"] == "2"
+        assert conn.query_params["continuation-token"] == "current-page"
+        assert_signed_header_request(conn)
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          """
+          <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <IsTruncated>true</IsTruncated>
+            <Contents><Key>#{key}</Key><Size>1</Size></Contents>
+            <NextContinuationToken>next-page</NextContinuationToken>
+          </ListBucketResult>
+          """
+        )
+      end)
+
+      assert {:ok, %{objects: [%{key: ^key, size: 1}], cursor: "next-page"}} =
+               R2.list_prefix_metadata(prefix, limit: 2, cursor: "current-page")
+    end
+
+    test "rejects objects outside the requested prefix" do
+      prefix = "projects/1/snapshots/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          """
+          <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <IsTruncated>false</IsTruncated>
+            <Contents><Key>projects/2/snapshots/object-sets/v1/ready//rogue</Key><Size>1</Size></Contents>
+          </ListBucketResult>
+          """
+        )
+      end)
+
+      assert {:error, :invalid_list_response} = R2.list_prefix_metadata(prefix, limit: 2)
     end
   end
 

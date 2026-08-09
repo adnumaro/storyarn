@@ -5,6 +5,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Assets
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
@@ -801,6 +802,67 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     refute Enum.any?(findings, &(&1.object_prefix == after_claim.object_prefix))
   end
 
+  test "a busy source-table boundary fails closed instead of capturing a partial identity view" do
+    {lock_holder, lock_holder_pid} = hold_claim_writer_lock()
+
+    try do
+      assert {:error, :snapshot_reconciliation_boundary_busy} = start_run()
+    after
+      send(lock_holder_pid, :release_claim_writer)
+      assert {:ok, _result} = Task.await(lock_holder, 2_000)
+    end
+
+    assert {:ok, _run} = start_run()
+  end
+
+  test "database phases retain their bounded page size after the finding budget is full" do
+    {_user, _project, damaged_snapshot} = ready_snapshot!()
+    assert :ok = Storage.delete(damaged_snapshot.manifest_storage_key)
+
+    for _index <- 1..3, do: ready_snapshot!()
+
+    assert {:ok, run} =
+             start_run(max_objects_per_step: 10, max_findings: 1)
+
+    publication_run =
+      advance_until(
+        run.id,
+        run.cursor_generation,
+        &(&1.phase == "publication_claims")
+      )
+
+    assert publication_run.finding_count == 1
+
+    assert {:ok, :continue, next_generation} =
+             Versioning.advance_project_snapshot_reconciliation(
+               publication_run.id,
+               publication_run.cursor_generation
+             )
+
+    after_claims = Versioning.get_project_snapshot_reconciliation_run(run.id)
+    assert after_claims.cursor_generation == next_generation
+    assert after_claims.phase == "cleanup_intents"
+    assert after_claims.claim_after_sequence == after_claims.claim_sequence_high_watermark
+  end
+
+  test "a finding beyond the configured budget fails without discarding prior evidence" do
+    {_user, _project, first_snapshot} = ready_snapshot!()
+    {_user, _project, second_snapshot} = ready_snapshot!()
+    assert :ok = Storage.delete(first_snapshot.manifest_storage_key)
+    assert :ok = Storage.delete(second_snapshot.manifest_storage_key)
+
+    assert {:ok, run} = start_run(max_objects_per_step: 10, max_findings: 1)
+    failed = advance_until_terminal(run.id, run.cursor_generation)
+
+    assert failed.status == "failed"
+    assert failed.last_error_code == "snapshot_reconciliation_finding_limit_exceeded"
+    assert failed.finding_count == 1
+
+    assert [finding] = Versioning.list_project_snapshot_reconciliation_findings(run.id)
+    assert finding.project_snapshot_id_snapshot == first_snapshot.id
+    assert finding.category == "ready_manifest_missing"
+  end
+
   test "the exact ready inventory cursor is durable between bounded pages" do
     {_user, _project, _snapshot} = ready_snapshot!()
     assert {:ok, run} = start_run()
@@ -1126,6 +1188,81 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     replacement = reconciliation_job!(run.id, run.cursor_generation)
     assert replacement.id > original.id
     assert replacement.state == "available"
+  end
+
+  test "starting an active run rescues only stale executing current-generation delivery" do
+    assert {:ok, run} = start_run()
+    original = reconciliation_job!(run.id, run.cursor_generation)
+    now = %{database_clock_now() | microsecond: {0, 6}}
+
+    original
+    |> Ecto.Changeset.change(state: "executing", attempt: 1, attempted_at: now)
+    |> Repo.update!()
+
+    assert {:ok, same_run} = start_run()
+    assert same_run.id == run.id
+    assert Repo.get!(Oban.Job, original.id).state == "executing"
+
+    original
+    |> Ecto.Changeset.change(
+      state: "executing",
+      attempt: 1,
+      attempted_at: DateTime.add(now, -16 * 60, :second)
+    )
+    |> Repo.update!()
+
+    assert {:ok, same_run} = start_run()
+    assert same_run.id == run.id
+
+    rescued = Repo.get!(Oban.Job, original.id)
+    assert rescued.state == "available"
+    assert rescued.attempt == 1
+  end
+
+  test "a stale executing final-attempt delivery is replaced for the active generation" do
+    assert {:ok, run} = start_run()
+    original = reconciliation_job!(run.id, run.cursor_generation)
+    attempted_at = DateTime.add(database_clock_now(), -16 * 60, :second)
+
+    original
+    |> Ecto.Changeset.change(
+      state: "executing",
+      attempt: original.max_attempts,
+      attempted_at: %{attempted_at | microsecond: {0, 6}}
+    )
+    |> Repo.update!()
+
+    assert {:ok, same_run} = start_run()
+    assert same_run.id == run.id
+    assert Repo.get!(Oban.Job, original.id).state == "discarded"
+
+    replacement = reconciliation_job!(run.id, run.cursor_generation)
+    assert replacement.id > original.id
+    assert replacement.state == "available"
+  end
+
+  test "active-run recovery does not requeue a stale delivery for another contract" do
+    assert {:ok, run} = start_run()
+    attempted_at = DateTime.add(database_clock_now(), -16 * 60, :second)
+
+    wrong_contract =
+      %{
+        run_id: run.id,
+        cursor_generation: run.cursor_generation,
+        contract_version: run.contract_version + 1
+      }
+      |> InspectProjectSnapshotsWorker.new()
+      |> Oban.insert!()
+      |> Ecto.Changeset.change(
+        state: "executing",
+        attempt: 1,
+        attempted_at: %{attempted_at | microsecond: {0, 6}}
+      )
+      |> Repo.update!()
+
+    assert {:ok, same_run} = start_run()
+    assert same_run.id == run.id
+    assert Repo.get!(Oban.Job, wrong_contract.id).state == "executing"
   end
 
   test "the worker's final attempt persists namespace failures as terminal evidence" do
@@ -1500,5 +1637,37 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   defp list_all_objects(prefix) do
     {:ok, %{objects: objects, cursor: nil}} = Storage.list_prefix(prefix, limit: 1_000)
     Enum.sort_by(objects, & &1.key)
+  end
+
+  defp database_clock_now do
+    %Postgrex.Result{rows: [[now]]} = Repo.query!("SELECT clock_timestamp()")
+    now
+  end
+
+  defp hold_claim_writer_lock do
+    parent = self()
+
+    lock_holder =
+      Task.async(fn ->
+        :ok = Sandbox.checkout(Repo, sandbox: false)
+
+        try do
+          Repo.transaction(fn ->
+            Repo.query!("LOCK TABLE snapshot_object_publication_claims IN ROW EXCLUSIVE MODE")
+            send(parent, {:claim_writer_locked, self()})
+
+            receive do
+              :release_claim_writer -> :ok
+            after
+              5_000 -> exit(:claim_writer_release_timeout)
+            end
+          end)
+        after
+          Sandbox.checkin(Repo)
+        end
+      end)
+
+    assert_receive {:claim_writer_locked, lock_holder_pid}, 2_000
+    {lock_holder, lock_holder_pid}
   end
 end
