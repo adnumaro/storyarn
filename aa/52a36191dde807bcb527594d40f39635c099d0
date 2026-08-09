@@ -1,0 +1,66 @@
+test/storyarn/repo/migrations/project_snapshot_reconciliation_sequence_test.exs
+  s_c2ae682cd97119::t_843cbaaeecd729 8-11,14-16,31,33,46-62
+  s_c2ae682cd97119::t_ced4e730bb031f 1-4,6-7,12,17-30,32,34-45,81-108,110-125,129-130,132-140
+  s_c2ae682cd97119::t_391f3028237807 5,13,63-80
+  s_c2ae682cd97119::t_9dd676e2357b67 109,126-128,131
+priv/repo/migrations/20260806110000_prepare_snapshot_claim_reconciliation_sequence.exs
+  s_c2ae682cd97119::t_24b9caf9f8ebed 1-46
+lib/storyarn/assets/storage/r2.ex
+  s_c2ae682cd97119::t_ede0a35584fb39 172-184,189,513,519,528,531-533,542-563
+  s_c2ae682cd97119::t_d955e215073436 564
+lib/storyarn/workers/inspect_project_snapshots_worker.ex
+  s_c2ae682cd97119::t_71007fb5e824c9 26,82-84
+  s_c2ae682cd97119::t_8c265054c279de 85
+priv/repo/migrations/20260806113000_finalize_snapshot_claim_reconciliation_sequence.exs
+  s_c2ae682cd97119::t_24b9caf9f8ebed 1-35
+priv/repo/migrations/20260806114000_promote_snapshot_claim_reconciliation_identity.exs
+  s_c2ae682cd97119::t_24b9caf9f8ebed 1-110
+lib/storyarn/versioning/project_snapshot_reconciliation.ex
+  s_c2ae682cd97119::t_80204f7d973b07 46,63,66-68,842,2011,2021-2023,2066-2093,2106,2130-2131,2139-2144,2146-2161
+  s_c2ae682cd97119::t_c90f83672c8548 2134-2138,2145
+  s_c2ae682cd97119::t_d99cfa6a303cd7 65,2062-2065
+  s_c2ae682cd97119::t_45a9cc81ec6975 83-85
+  s_c2ae682cd97119::t_71007fb5e824c9 2132
+  s_c2ae682cd97119::t_8a7331f0bf74aa 2133,2162-2163
+docs/reference/versioning-containment.md
+  s_c2ae682cd97119::t_816208089d1905 71-75
+priv/repo/migrations/20260806112000_index_snapshot_claim_reconciliation_sequence.exs
+  s_c2ae682cd97119::t_24b9caf9f8ebed 1-4,6-7,14-28
+  s_c2ae682cd97119::t_6f2e172f27165f 8-13
+  s_c2ae682cd97119::t_9a9274179965b4 5
+priv/repo/migrations/20260806120000_create_project_snapshot_reconciliation_inspections.exs
+  s_c2ae682cd97119::t_029eb2851b3564 265-266,268-269
+priv/repo/migrations/20260806111000_backfill_snapshot_claim_reconciliation_sequence.exs
+  s_c2ae682cd97119::t_24b9caf9f8ebed 1-16,52-53,55-56,59-60,74,81-82,86,96-98
+  s_c2ae682cd97119::t_391f3028237807 28-32,36-40,42-47,61-65,69-73,75-80,88-95
+  s_c2ae682cd97119::t_df5251c26495dc 17-27,33-35,41,48-51,54,57-58,66-68,83-85,87
+test/storyarn/versioning/project_snapshot_reconciliation_test.exs
+  s_c2ae682cd97119::t_1674e5e562e97c 1222-1243
+  s_c2ae682cd97119::t_94e0763f3609b6 806,808-813,815-816,1220,1645-1672
+  s_c2ae682cd97119::t_db0c5e4fda0184 1249,1253-1254
+  s_c2ae682cd97119::t_698576f7607a59 8,805,807,814,817-819,821-847,849-850,853-858,864-865,1193-1219,1641-1644
+  s_c2ae682cd97119::t_49438b568c7541 820,851-852,863
+  s_c2ae682cd97119::t_c90f83672c8548 1244-1248,1250-1252,1255-1267
+  s_c2ae682cd97119::t_20ff2d8d978f25 848,859-862
+  s_c2ae682cd97119::t_f541067acd3f82 1221
+test/storyarn/assets/storage/r2_test.exs
+  s_c2ae682cd97119::t_b39a091d545ea1 129-138,140-147,184-186,188-225,227-233
+  s_c2ae682cd97119::t_9cf0dd0449fd65 139,187,226
+  s_c2ae682cd97119::t_86197977c7772f 234-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "aa52a36191dde807bcb527594d40f39635c099d0",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
