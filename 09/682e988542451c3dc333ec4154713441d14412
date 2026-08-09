@@ -1,0 +1,57 @@
+test/storyarn/repo/migrations/project_snapshot_reconciliation_sequence_test.exs
+  s_c2ae682cd97119::t_c15d582492dae1 123,125,129-130,142,144
+  s_c2ae682cd97119::t_a286c266acad56 42-45
+  s_c2ae682cd97119::t_4f5dfdc76d3a66 122,124,126-128,131-132,143
+priv/repo/migrations/20260806120000_create_project_snapshot_reconciliation_inspections.exs
+  s_c2ae682cd97119::t_c15d582492dae1 25,265
+  s_c2ae682cd97119::t_4f5dfdc76d3a66 29,268,444
+priv/repo/migrations/20260806113000_finalize_snapshot_claim_reconciliation_sequence.exs
+  s_c2ae682cd97119::t_907dee564030fa 32-35
+  s_c2ae682cd97119::t_3b46aef19a2909 30-31
+lib/storyarn/versioning/project_snapshot_reconciliation_run.ex
+  s_c2ae682cd97119::t_4f5dfdc76d3a66 42
+  s_c2ae682cd97119::t_c15d582492dae1 38
+test/storyarn/versioning/project_snapshot_reconciliation_test.exs
+  s_c2ae682cd97119::t_02951a955272eb 927-928,930-931,936-943
+  s_c2ae682cd97119::t_4f5dfdc76d3a66 922-926,929,932-935,944-945
+test/storyarn/assets/storage/local_test.exs
+  s_c2ae682cd97119::t_8403fed3a775a5 421-441,443-445
+  s_c2ae682cd97119::t_6789141e9fd371 442
+lib/storyarn/assets/storage/r2.ex
+  s_c2ae682cd97119::t_0fa075715134c9 570-576
+  s_c2ae682cd97119::t_98216ef0ac4b9a 187-191,547,558,569,577-589
+  s_c2ae682cd97119::t_3aa901e2fe68cb 590
+lib/storyarn/versioning/project_snapshot_reconciliation_finding.ex
+  s_c2ae682cd97119::t_4f5dfdc76d3a66 76
+test/storyarn/assets/storage/r2_test.exs
+  s_c2ae682cd97119::t_6789141e9fd371 224,240
+  s_c2ae682cd97119::t_4f5dfdc76d3a66 222,238,250
+  s_c2ae682cd97119::t_aaa28c1a046172 247,273
+  s_c2ae682cd97119::t_4b97adc2cfd666 258-271,274
+  s_c2ae682cd97119::t_8403fed3a775a5 79,189,198,208-209,220-221,223,225-237,239,241-246,248-249,251-257,272,275
+  s_c2ae682cd97119::t_377269cc1877e4 276
+docs/reference/versioning-containment.md
+  s_c2ae682cd97119::t_4f5dfdc76d3a66 83-86
+lib/storyarn/assets/storage/local.ex
+  s_c2ae682cd97119::t_6789141e9fd371 172
+  s_c2ae682cd97119::t_98216ef0ac4b9a 100,168-169,171,173,785,787,793-799
+lib/storyarn/versioning/project_snapshot_reconciliation.ex
+  s_c2ae682cd97119::t_4f5dfdc76d3a66 1755-1757,1769,1772,1959,2257-2265
+  s_c2ae682cd97119::t_7cca13841f56d4 2266-2267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "09682e988542451c3dc333ec4154713441d14412",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
