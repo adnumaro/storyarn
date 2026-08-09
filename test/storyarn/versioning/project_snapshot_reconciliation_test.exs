@@ -919,6 +919,30 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     assert still_running.cursor_generation == provider_run.cursor_generation
   end
 
+  test "provider scan records NUL-bearing reserved keys with binary checkpoints and safe evidence" do
+    original_storage = Application.fetch_env!(:storyarn, :storage)
+    Application.put_env(:storyarn, :storage, Keyword.put(original_storage, :adapter, Storyarn.SnapshotResetStorage))
+    on_exit(fn -> Application.put_env(:storyarn, :storage, original_storage) end)
+
+    unsafe_keys =
+      Enum.map(["a", "b"], &("projects/1/snapshots/object-sets/v1/ready/" <> <<0>> <> &1))
+
+    Storyarn.SnapshotResetStorage.put_objects(Map.new(unsafe_keys, &{&1, 1}))
+
+    assert {:ok, run} = start_run(provider_page_size: 1)
+    completed = advance_until_terminal(run.id, run.cursor_generation)
+
+    assert completed.status == "completed"
+    assert completed.provider_last_key == List.last(unsafe_keys)
+
+    findings = Versioning.list_project_snapshot_reconciliation_findings(run.id)
+    assert Enum.map(findings, & &1.category) == ["unsafe_snapshot_storage_key", "unsafe_snapshot_storage_key"]
+    assert Enum.all?(findings, &(&1.details["storage_key_encoding"] == "base64url"))
+
+    assert Enum.sort(Enum.map(findings, & &1.storage_key)) ==
+             Enum.sort(Enum.map(unsafe_keys, &("base64url:" <> Base.url_encode64(&1, padding: false))))
+  end
+
   test "the ready-snapshot high-watermark excludes snapshots created after the run starts" do
     assert {:ok, run} = start_run()
     assert run.snapshot_high_watermark == 0

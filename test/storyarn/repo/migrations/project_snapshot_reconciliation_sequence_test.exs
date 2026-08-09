@@ -39,6 +39,10 @@ defmodule Storyarn.Repo.Migrations.ProjectSnapshotReconciliationSequenceTest do
 
     assert finalize =~ "VALIDATE CONSTRAINT"
     assert finalize =~ "ALTER COLUMN reconciliation_sequence SET NOT NULL"
+
+    [_up, finalize_down] = String.split(finalize, "def down do", parts: 2)
+    assert finalize_down =~ "CHECK (reconciliation_sequence IS NOT NULL) NOT VALID"
+
     assert promote =~ "ADD GENERATED ALWAYS AS IDENTITY"
     assert promote =~ "SELECT setval("
 
@@ -115,7 +119,17 @@ defmodule Storyarn.Repo.Migrations.ProjectSnapshotReconciliationSequenceTest do
              """).rows
   end
 
-  test "run progress key ordering is pinned to the C collation" do
+  test "run progress key ordering is bytewise and independent of database collation" do
+    assert [["active_inventory_last_key", "bytea"], ["provider_last_key", "bytea"]] =
+             Repo.query!("""
+             SELECT column_name, data_type
+             FROM information_schema.columns
+             WHERE table_schema = current_schema()
+               AND table_name = 'project_snapshot_reconciliation_runs'
+               AND column_name IN ('active_inventory_last_key', 'provider_last_key')
+             ORDER BY column_name
+             """).rows
+
     assert [[definition]] =
              Repo.query!("""
              SELECT pg_get_functiondef(
@@ -125,11 +139,9 @@ defmodule Storyarn.Repo.Migrations.ProjectSnapshotReconciliationSequenceTest do
 
     normalized = Regex.replace(~r/\s+/, definition, " ")
 
-    assert normalized =~
-             ~s(NEW.active_inventory_last_key COLLATE "C" < OLD.active_inventory_last_key COLLATE "C")
-
-    assert normalized =~
-             ~s(NEW.provider_last_key COLLATE "C" < OLD.provider_last_key COLLATE "C")
+    assert normalized =~ "NEW.active_inventory_last_key < OLD.active_inventory_last_key"
+    assert normalized =~ "NEW.provider_last_key < OLD.provider_last_key"
+    refute normalized =~ ~s(last_key COLLATE "C")
   end
 
   defp migration_source(filename) do

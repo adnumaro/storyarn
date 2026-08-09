@@ -418,6 +418,31 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     end
   end
 
+  describe "list_prefix_metadata/2" do
+    test "paginates after non-canonical keys while identity listing stays strict", %{test_dir: test_dir} do
+      prefix = "projects/"
+      unsafe_key = prefix <> "a\\rogue"
+      canonical_key = prefix <> "b"
+
+      for {key, contents} <- [{unsafe_key, "unsafe"}, {canonical_key, "canonical"}] do
+        path = Path.join(test_dir, key)
+        File.mkdir_p!(Path.dirname(path))
+        File.write!(path, contents)
+      end
+
+      assert {:ok, %{objects: [%{key: ^unsafe_key}], cursor: ^unsafe_key}} =
+               Local.list_prefix_metadata(prefix, limit: 1)
+
+      assert {:ok, %{objects: [%{key: ^canonical_key}], cursor: nil}} =
+               Local.list_prefix_metadata(prefix, limit: 1, cursor: unsafe_key)
+
+      assert {:error, :invalid_cursor} =
+               Local.list_prefix_metadata(prefix, cursor: "outside/prefix")
+
+      assert {:error, :unsafe_storage_entry} = Local.list_prefix(prefix, limit: 1)
+    end
+  end
+
   # =============================================================================
   # get_url/1
   # =============================================================================

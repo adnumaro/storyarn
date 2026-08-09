@@ -184,7 +184,11 @@ defmodule Storyarn.Assets.Storage.R2 do
   defp list_prefix_page(prefix, opts, mode) do
     with true <- Storage.canonical_prefix?(prefix) and Keyword.keyword?(opts),
          {:ok, limit} <- list_limit(opts),
-         {:ok, request_opts} <- put_continuation_token([prefix: prefix, max_keys: limit], Keyword.get(opts, :cursor)) do
+         {:ok, request_opts} <-
+           put_continuation_token(
+             [prefix: prefix, max_keys: limit, encoding_type: "url"],
+             Keyword.get(opts, :cursor)
+           ) do
       case bucket() |> ExAws.S3.list_objects_v2(request_opts) |> ExAws.request() do
         {:ok, %{body: body}} when is_map(body) -> normalize_list_page(body, prefix, mode)
         {:error, reason} -> {:error, reason}
@@ -540,7 +544,7 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   defp normalize_list_object(object, prefix, :identity) when is_map(object) do
-    with key when is_binary(key) <- Map.get(object, :key, Map.get(object, "Key")),
+    with {:ok, key} <- decoded_list_key(object),
          true <- Storage.canonical_key?(key) and String.starts_with?(key, prefix),
          {:ok, size} <- normalize_list_size(Map.get(object, :size, Map.get(object, "Size"))),
          {:ok, identity} <- normalize_object_identity(object) do
@@ -551,7 +555,7 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   defp normalize_list_object(object, prefix, :metadata) when is_map(object) do
-    with key when is_binary(key) <- Map.get(object, :key, Map.get(object, "Key")),
+    with {:ok, key} <- decoded_list_key(object),
          true <- String.starts_with?(key, prefix),
          {:ok, size} <- normalize_list_size(Map.get(object, :size, Map.get(object, "Size"))) do
       {:ok, %{key: key, size: size}}
@@ -561,6 +565,28 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   defp normalize_list_object(_object, _prefix, _mode), do: {:error, :invalid_list_response}
+
+  defp decoded_list_key(object) do
+    with key when is_binary(key) <- Map.get(object, :key, Map.get(object, "Key")),
+         true <- valid_url_encoding?(key),
+         decoded = URI.decode(key),
+         true <- String.valid?(decoded) do
+      {:ok, decoded}
+    else
+      _invalid -> {:error, :invalid_list_response}
+    end
+  end
+
+  defp valid_url_encoding?(<<>>), do: true
+
+  defp valid_url_encoding?(<<?%, high, low, rest::binary>>) do
+    hex_digit?(high) and hex_digit?(low) and valid_url_encoding?(rest)
+  end
+
+  defp valid_url_encoding?(<<?%, _rest::binary>>), do: false
+  defp valid_url_encoding?(<<_byte, rest::binary>>), do: valid_url_encoding?(rest)
+
+  defp hex_digit?(digit), do: digit in ?0..?9 or digit in ?A..?F or digit in ?a..?f
 
   defp normalize_list_size(size) when is_integer(size) and size >= 0, do: {:ok, size}
 

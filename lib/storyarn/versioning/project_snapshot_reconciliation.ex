@@ -1752,6 +1752,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     evidence = subject_evidence(subject, ownership)
     raw_storage_key = object.key
     raw_path = subject_path(subject)
+    {storage_key, storage_key_encoding} = provider_storage_key_evidence(raw_storage_key)
+
+    details = maybe_put_storage_key_encoding(%{"path" => safe_evidence_string(raw_path, 1_024)}, storage_key_encoding)
 
     attrs = %{
       category: category,
@@ -1763,10 +1766,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       lifecycle_generation: evidence.lifecycle_generation,
       reservation_generation: evidence.reservation_generation,
       object_prefix: subject_prefix(subject),
-      storage_key: safe_evidence_string(raw_storage_key, 2_048),
+      storage_key: storage_key,
       observed_size_bytes: object.size,
       error_code: Keyword.get(opts, :error_code),
-      details: %{"path" => safe_evidence_string(raw_path, 1_024)}
+      details: details
     }
 
     fingerprint_attrs = %{attrs | storage_key: raw_storage_key}
@@ -1953,8 +1956,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   defp valid_provider_object?(_object, _prefix), do: false
 
   defp valid_provider_key?(key, prefix) when is_binary(key) do
-    String.valid?(key) and byte_size(key) <= 2_048 and not String.contains?(key, <<0>>) and
-      String.starts_with?(key, prefix)
+    String.valid?(key) and byte_size(key) <= 2_048 and String.starts_with?(key, prefix)
   end
 
   defp valid_provider_key?(_key, _prefix), do: false
@@ -2251,6 +2253,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   end
 
   defp safe_evidence_string(_value, _maximum), do: nil
+
+  defp provider_storage_key_evidence(value) do
+    case safe_evidence_string(value, 2_048) do
+      nil -> {"base64url:" <> Base.url_encode64(value, padding: false), "base64url"}
+      safe -> {safe, nil}
+    end
+  end
+
+  defp maybe_put_storage_key_encoding(details, nil), do: details
+
+  defp maybe_put_storage_key_encoding(details, encoding), do: Map.put(details, "storage_key_encoding", encoding)
 
   defp emit_started(run) do
     :telemetry.execute(

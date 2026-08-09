@@ -22,11 +22,11 @@ defmodule Storyarn.Repo.Migrations.CreateProjectSnapshotReconciliationInspection
       add :active_object_index, :integer, null: false, default: 0
       add :active_inventory_cursor, :text
       add :active_inventory_digest, :string, size: 64
-      add :active_inventory_last_key, :text
+      add :active_inventory_last_key, :binary
       add :active_inventory_object_count, :bigint, null: false, default: 0
       add :active_inventory_bytes, :bigint, null: false, default: 0
       add :provider_cursor, :text
-      add :provider_last_key, :text
+      add :provider_last_key, :binary
       add :provider_scan_completed, :boolean, null: false, default: false
       add :cursor_generation, :bigint, null: false, default: 1
       add :max_objects_per_step, :integer, null: false
@@ -262,11 +262,10 @@ defmodule Storyarn.Repo.Migrations.CreateProjectSnapshotReconciliationInspection
          (OLD.active_snapshot_id = NEW.active_snapshot_id AND
           OLD.active_inventory_last_key IS NOT NULL AND
           (NEW.active_inventory_last_key IS NULL OR
-           NEW.active_inventory_last_key COLLATE "C" <
-             OLD.active_inventory_last_key COLLATE "C")) OR
+           NEW.active_inventory_last_key < OLD.active_inventory_last_key)) OR
          (OLD.provider_last_key IS NOT NULL AND
           (NEW.provider_last_key IS NULL OR
-           NEW.provider_last_key COLLATE "C" < OLD.provider_last_key COLLATE "C")) OR
+           NEW.provider_last_key < OLD.provider_last_key)) OR
          NEW.inspected_snapshot_count < OLD.inspected_snapshot_count OR
          NEW.inspected_object_count < OLD.inspected_object_count OR
          NEW.inspected_bytes < OLD.inspected_bytes OR
@@ -442,7 +441,7 @@ defmodule Storyarn.Repo.Migrations.CreateProjectSnapshotReconciliationInspection
              (expected_size_bytes IS NULL OR expected_size_bytes >= 0) AND
              (observed_size_bytes IS NULL OR observed_size_bytes >= 0) AND
              pg_column_size(details) <= 16384 AND
-             (storage_key IS NULL OR octet_length(storage_key) <= 2048)
+             (storage_key IS NULL OR octet_length(storage_key) <= 4096)
              """
            )
 

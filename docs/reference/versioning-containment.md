@@ -80,6 +80,10 @@ changes, and provider failures all fail closed. An opaque cursor cycle that does
 not repeat on adjacent pages cannot evade the total object/byte caps. There is
 deliberately no cron schedule in this phase.
 
+Provider key checkpoints use PostgreSQL binary values so legal object keys that
+contain NUL bytes cannot block the scan. When such a key cannot be stored safely
+as text evidence, the finding preserves it as a labeled base64url value.
+
 `completed` means the bounded database and ListObjects inspection finished. It
 does not mean the physical inventory is exhaustive: the current storage
 contract cannot enumerate incomplete multipart uploads, so each run persists

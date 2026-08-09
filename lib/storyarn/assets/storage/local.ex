@@ -97,7 +97,7 @@ defmodule Storyarn.Assets.Storage.Local do
          {:ok, limit} <- list_limit(opts),
          {:ok, probe_path} <- file_path(prefix <> "__storyarn_inventory_probe__", allow_conditional_copy: true),
          :ok <- ensure_no_symlink_components(Path.dirname(probe_path)),
-         {:ok, cursor} <- decode_list_cursor(prefix, Keyword.get(opts, :cursor)),
+         {:ok, cursor} <- decode_list_cursor(prefix, Keyword.get(opts, :cursor), include_identity?),
          {:ok, objects} <- list_prefix_objects(Path.dirname(probe_path), prefix, cursor, limit, include_identity?) do
       page = Enum.take(objects, limit)
       next_cursor = if length(objects) > limit, do: List.last(page).key
@@ -165,8 +165,12 @@ defmodule Storyarn.Assets.Storage.Local do
   defp listed_object(key, _path, size, false), do: {:ok, %{key: key, size: size}}
 
   defp listed_object(key, path, size, true) do
-    with {:ok, identity} <- regular_file_identity(path, size) do
+    with true <- Storage.canonical_key?(key),
+         {:ok, identity} <- regular_file_identity(path, size) do
       {:ok, %{key: key, size: size, identity: identity}}
+    else
+      false -> {:error, :unsafe_storage_entry}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -778,15 +782,21 @@ defmodule Storyarn.Assets.Storage.Local do
     )
   end
 
-  defp decode_list_cursor(_prefix, nil), do: {:ok, nil}
+  defp decode_list_cursor(_prefix, nil, _include_identity?), do: {:ok, nil}
 
-  defp decode_list_cursor(prefix, cursor) when is_binary(cursor) do
+  defp decode_list_cursor(prefix, cursor, true) when is_binary(cursor) do
     if Storage.canonical_key?(cursor) and String.starts_with?(cursor, prefix),
       do: {:ok, cursor},
       else: {:error, :invalid_cursor}
   end
 
-  defp decode_list_cursor(_prefix, _cursor), do: {:error, :invalid_cursor}
+  defp decode_list_cursor(prefix, cursor, false) when is_binary(cursor) do
+    if String.starts_with?(cursor, prefix),
+      do: {:ok, cursor},
+      else: {:error, :invalid_cursor}
+  end
+
+  defp decode_list_cursor(_prefix, _cursor, _include_identity?), do: {:error, :invalid_cursor}
 
   defp list_limit(opts) do
     case Keyword.get(opts, :limit, 1_000) do

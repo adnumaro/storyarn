@@ -29,6 +29,12 @@ defmodule Storyarn.Repo.Migrations.FinalizeSnapshotClaimReconciliationSequence d
   def down do
     execute("""
     ALTER TABLE snapshot_object_publication_claims
+    ADD CONSTRAINT #{@not_null_constraint}
+    CHECK (reconciliation_sequence IS NOT NULL) NOT VALID
+    """)
+
+    execute("""
+    ALTER TABLE snapshot_object_publication_claims
     ALTER COLUMN reconciliation_sequence DROP NOT NULL
     """)
   end

@@ -35,11 +35,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRun do
     field :active_object_index, :integer, default: 0
     field :active_inventory_cursor, :string
     field :active_inventory_digest, :string
-    field :active_inventory_last_key, :string
+    field :active_inventory_last_key, :binary
     field :active_inventory_object_count, :integer, default: 0
     field :active_inventory_bytes, :integer, default: 0
     field :provider_cursor, :string
-    field :provider_last_key, :string
+    field :provider_last_key, :binary
     field :provider_scan_completed, :boolean, default: false
     field :cursor_generation, :integer, default: 1
     field :max_objects_per_step, :integer
