@@ -1,0 +1,36 @@
+lib/storyarn/workers/inspect_project_snapshots_worker.ex
+  s_c2ae682cd97119::t_15d2d6aff64158 27-31,66-68
+  s_c2ae682cd97119::t_f6b66f8098e2fa 56-57
+lib/storyarn/versioning/project_snapshot_reconciliation.ex
+  s_c2ae682cd97119::t_f6b66f8098e2fa 48,397-398,457-470,1124-1125,1163-1164,1636-1637,1639-1640,1642-1667
+test/storyarn/versioning/project_snapshot_reconciliation_test.exs
+  s_c2ae682cd97119::t_d5f9158bcb46eb 913-952,954-958,1001-1036,1357-1358,1360-1361,1364-1367,1369-1370,1378-1383,1832-1860
+  s_c2ae682cd97119::t_15d2d6aff64158 953,1322,1333,1335,1341-1356,1359,1362-1363,1368,1371-1377
+  s_c2ae682cd97119::t_2a50fec946ab61 1323-1332,1334,1336-1340
+  s_c2ae682cd97119::t_68a66ad9f96112 356-388
+  s_c2ae682cd97119::t_260fab2af728bd 1037
+  s_c2ae682cd97119::t_00e716f01e28e1 1861
+test/storyarn/release_snapshot_migration_test.exs
+  s_c2ae682cd97119::t_d5f9158bcb46eb 84-97
+CLAUDE.md
+  s_c2ae682cd97119::t_8a489e54ba6ad8 40-43
+test/support/snapshot_reset_storage.ex
+  s_c2ae682cd97119::t_f6b66f8098e2fa 9,18,48-52,79-90
+  s_c2ae682cd97119::t_96e330deba5e88 4-5,91-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d725501c5a1ea02f0c05b432ef2e5623259af50c",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
