@@ -1787,8 +1787,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   defp provider_finding(object, subject, ownership, category, severity, opts) do
     evidence = subject_evidence(subject, ownership)
     raw_storage_key = object.key
-    raw_path = subject_path(subject)
     {storage_key, storage_key_encoding} = provider_storage_key_evidence(raw_storage_key)
+    raw_path = if is_nil(storage_key_encoding), do: subject_path(subject)
 
     details = maybe_put_storage_key_encoding(%{"path" => safe_evidence_string(raw_path, 1_024)}, storage_key_encoding)
 
@@ -2292,10 +2292,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
 
   defp provider_storage_key_evidence(value) do
     case safe_evidence_string(value, 2_048) do
-      nil -> {"base64url:" <> Base.url_encode64(value, padding: false), "base64url"}
-      safe -> {safe, nil}
+      safe when is_binary(safe) ->
+        if ProjectSnapshotReconciliationFinding.safe_storage_key_evidence?(safe),
+          do: {safe, nil},
+          else: encoded_provider_storage_key(value)
+
+      nil ->
+        encoded_provider_storage_key(value)
     end
   end
+
+  defp encoded_provider_storage_key(value), do: {"base64url:" <> Base.url_encode64(value, padding: false), "base64url"}
 
   defp maybe_put_storage_key_encoding(details, nil), do: details
 

@@ -1059,6 +1059,41 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
              Enum.sort(Enum.map(unsafe_keys, &("base64url:" <> Base.url_encode64(&1, padding: false))))
   end
 
+  test "provider scan encodes URL- and credential-like storage keys without losing inventory identity" do
+    original_storage = Application.fetch_env!(:storyarn, :storage)
+    Application.put_env(:storyarn, :storage, Keyword.put(original_storage, :adapter, Storyarn.SnapshotResetStorage))
+    on_exit(fn -> Application.put_env(:storyarn, :storage, original_storage) end)
+
+    raw_keys = [
+      "projects/1/snapshots/object-sets/v1/ready//HTTPS://storage.example/object",
+      "projects/1/snapshots/object-sets/v1/ready/abcdefghijklmnop/file?token=secret"
+    ]
+
+    Storyarn.SnapshotResetStorage.put_objects(Map.new(raw_keys, &{&1, 1}))
+
+    assert {:ok, run} = start_run()
+    completed = advance_until_terminal(run.id, run.cursor_generation)
+
+    assert completed.status == "completed"
+    assert completed.provider_last_key == Enum.max(raw_keys)
+
+    findings = Versioning.list_project_snapshot_reconciliation_findings(run.id)
+    assert length(findings) == 2
+
+    assert Enum.sort(Enum.map(findings, & &1.storage_key)) ==
+             Enum.sort(Enum.map(raw_keys, &("base64url:" <> Base.url_encode64(&1, padding: false))))
+
+    Enum.each(findings, fn finding ->
+      assert finding.details["storage_key_encoding"] == "base64url"
+      assert is_nil(finding.details["path"])
+      "base64url:" <> encoded = finding.storage_key
+      assert {:ok, decoded} = Base.url_decode64(encoded, padding: false)
+      assert decoded in raw_keys
+    end)
+
+    refute String.contains?(inspect(findings), ["HTTPS://", "token=secret"])
+  end
+
   test "the ready-snapshot high-watermark excludes snapshots created after the run starts" do
     assert {:ok, run} = start_run()
     assert run.snapshot_high_watermark == 0
@@ -1254,6 +1289,37 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
 
     refute unsafe_url.valid?
     assert "contains unsafe reconciliation evidence" in errors_on(unsafe_url).details
+
+    unsafe_storage_key =
+      ProjectSnapshotReconciliationFinding.create_changeset(
+        %ProjectSnapshotReconciliationFinding{},
+        %{
+          run_id: 1,
+          fingerprint: String.duplicate("c", 64),
+          category: "ambiguous_storage_object",
+          severity: "critical",
+          storage_key: "projects/1/HTTPS://storage.example/presigned",
+          details: %{}
+        }
+      )
+
+    refute unsafe_storage_key.valid?
+    assert "contains unsafe reconciliation evidence" in errors_on(unsafe_storage_key).storage_key
+
+    encoded_storage_key =
+      ProjectSnapshotReconciliationFinding.create_changeset(
+        %ProjectSnapshotReconciliationFinding{},
+        %{
+          run_id: 1,
+          fingerprint: String.duplicate("d", 64),
+          category: "ambiguous_storage_object",
+          severity: "critical",
+          storage_key: "base64url:abcx-amz-def",
+          details: %{"storage_key_encoding" => "base64url"}
+        }
+      )
+
+    assert encoded_storage_key.valid?
   end
 
   test "finding storage keys use the database byte limit" do

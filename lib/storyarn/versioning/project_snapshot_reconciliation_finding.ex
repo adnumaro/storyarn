@@ -74,6 +74,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationFinding do
     |> validate_inclusion(:severity, ~w(warning critical))
     |> validate_length(:object_prefix, max: 500)
     |> validate_length(:storage_key, count: :bytes, max: 4_096)
+    |> validate_safe_storage_key()
     |> validate_length(:error_code, max: 255)
     |> validate_safe_details()
     |> foreign_key_constraint(:run_id)
@@ -81,6 +82,32 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationFinding do
       name: :project_snapshot_reconciliation_findings_run_fingerprint_idx
     )
     |> check_constraint(:category, name: :project_snapshot_reconciliation_findings_evidence)
+  end
+
+  @doc false
+  def safe_storage_key_evidence?("base64url:" <> encoded) when encoded != "" do
+    case Base.url_decode64(encoded, padding: false) do
+      {:ok, decoded} -> Base.url_encode64(decoded, padding: false) == encoded
+      :error -> false
+    end
+  end
+
+  def safe_storage_key_evidence?(value) when is_binary(value) do
+    String.valid?(value) and not String.contains?(value, <<0>>) and not unsafe_evidence_string?(value)
+  end
+
+  def safe_storage_key_evidence?(_value), do: false
+
+  defp validate_safe_storage_key(changeset) do
+    case get_field(changeset, :storage_key) do
+      nil ->
+        changeset
+
+      storage_key ->
+        if safe_storage_key_evidence?(storage_key),
+          do: changeset,
+          else: add_error(changeset, :storage_key, "contains unsafe reconciliation evidence")
+    end
   end
 
   defp validate_safe_details(changeset) do
@@ -103,7 +130,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationFinding do
   defp safe_detail_value?(value) when is_boolean(value) or is_integer(value) or is_nil(value), do: true
 
   defp safe_detail_value?(value) when is_binary(value) do
-    byte_size(value) <= 1_024 and String.valid?(value) and not unsafe_detail_string?(value)
+    byte_size(value) <= 1_024 and String.valid?(value) and not unsafe_evidence_string?(value)
   end
 
   defp safe_detail_value?(_value), do: false
@@ -112,7 +139,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationFinding do
     key in ~w(url presigned_url source_key thumbnail_key credential secret token)
   end
 
-  defp unsafe_detail_string?(value) do
+  defp unsafe_evidence_string?(value) do
     downcased = String.downcase(value)
 
     String.contains?(downcased, ["http://", "https://"]) or
