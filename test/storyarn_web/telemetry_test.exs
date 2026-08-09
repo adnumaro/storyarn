@@ -186,19 +186,42 @@ defmodule StoryarnWeb.TelemetryTest do
       metrics =
         Enum.filter(Telemetry.metrics(), &(Enum.take(&1.name, 2) == [:storyarn, :snapshot]))
 
-      assert length(metrics) == 35
+      assert length(metrics) == 45
 
       names = Enum.map(metrics, & &1.name)
       assert [:storyarn, :snapshot, :cleanup, :intent, :count] in names
       assert [:storyarn, :snapshot, :cleanup, :stop, :terminal_failure_count] in names
       assert [:storyarn, :snapshot, :cleanup, :recovery, :stop, :recovered_count] in names
       assert [:storyarn, :snapshot, :cleanup, :backlog, :oldest_age_seconds] in names
+      assert [:storyarn, :snapshot, :cleanup, :backlog, :terminal_retry_count] in names
+      assert [:storyarn, :snapshot, :cleanup, :backlog, :repeated_terminal_failures] in names
       assert [:storyarn, :snapshot, :retention, :stop, :deleted_count] in names
       assert [:storyarn, :snapshot, :retention, :stop, :orphaned_build_count] in names
       assert [:storyarn, :snapshot, :reset, :stop, :object_count] in names
       assert [:storyarn, :snapshot, :reconciliation, :start, :count] in names
       assert [:storyarn, :snapshot, :reconciliation, :page, :finding_count] in names
       assert [:storyarn, :snapshot, :reconciliation, :stop, :count] in names
+      assert [:storyarn, :snapshot, :reconciliation, :repair, :stop, :count] in names
+      assert [:storyarn, :snapshot, :reconciliation, :repair, :stop, :bytes] in names
+      assert [:storyarn, :snapshot, :reconciliation, :summary, :stale_reservation_bytes] in names
+      assert [:storyarn, :snapshot, :reconciliation, :summary, :orphan_object_bytes] in names
+      assert [:storyarn, :snapshot, :reconciliation, :summary, :missing_ready_snapshot_count] in names
+      assert [:storyarn, :snapshot, :reconciliation, :summary, :corrupt_ready_snapshot_count] in names
+      assert [:storyarn, :snapshot, :reconciliation, :summary, :terminal_cleanup_failure_count] in names
+      assert [:storyarn, :snapshot, :reconciliation, :summary, :terminal_cleanup_retry_count] in names
+
+      repair_metrics =
+        Enum.filter(metrics, &(Enum.take(&1.name, 5) == [:storyarn, :snapshot, :reconciliation, :repair, :stop]))
+
+      assert Enum.all?(repair_metrics, &(&1.tags == [:action, :outcome]))
+
+      summary_metrics =
+        Enum.filter(metrics, &(Enum.take(&1.name, 4) == [:storyarn, :snapshot, :reconciliation, :summary]))
+
+      assert Enum.all?(
+               summary_metrics,
+               &(&1.tags == [:contract_version, :mode, :multipart_inventory_state])
+             )
 
       refute Enum.any?(metrics, fn metric ->
                Enum.any?([:workspace_id, :project_id, :snapshot_id, :inventory_digest], &(&1 in metric.tags))
@@ -211,8 +234,8 @@ defmodule StoryarnWeb.TelemetryTest do
       metrics = Telemetry.metrics()
 
       # 9 Phoenix + 5 DB + 3 template installation + 9 import + 11 storage +
-      # 35 snapshot lifecycle + 3 AI expiration + 4 VM = 79
-      assert length(metrics) == 79
+      # 45 snapshot lifecycle + 3 AI expiration + 4 VM = 89
+      assert length(metrics) == 89
     end
   end
 

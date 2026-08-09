@@ -148,6 +148,9 @@ config :storyarn, Oban,
         # Snapshot cleanup ownership survives job pruning and terminal Oban
         # states. Reconcile the durable intent to an immediately available job.
         {"*/15 * * * *", Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker},
+        # Repair actions are a durable operator ledger too. Restore only their
+        # exact delivery chain and terminalize exhausted chains fail-closed.
+        {"*/15 * * * *", Storyarn.Workers.ReconcileProjectSnapshotRepairWorker},
         # Snapshot TTL deletion is coarse, but this worker also reclaims expired
         # build reservations. Run at the ENG-37 floor to bound that quota leak.
         {"*/15 * * * *", Storyarn.Workers.ProjectSnapshotRetentionWorker}

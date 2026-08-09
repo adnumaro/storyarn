@@ -112,6 +112,8 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker do
         backlog_bytes: backlog.backlog_bytes,
         retry_count: backlog.retry_count,
         terminal_failures: backlog.terminal_failures,
+        terminal_retry_count: backlog.terminal_retry_count,
+        repeated_terminal_failures: backlog.repeated_terminal_failures,
         oldest_age_seconds: backlog.oldest_age_seconds
       },
       %{}

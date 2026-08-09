@@ -257,6 +257,64 @@ defmodule Storyarn.Release do
     end
   end
 
+  @doc """
+  Persists and enqueues one bounded page of fenced repairs from a completed
+  reconciliation run.
+
+  Pass the returned `next_after_id` to continue. Ambiguous or unsupported
+  findings are recorded as manual outcomes; they are never deleted or guessed.
+  """
+  def repair_project_snapshot_reconciliation(run_id, after_id \\ 0, limit \\ 50)
+      when is_integer(run_id) and run_id > 0 and is_integer(after_id) and after_id >= 0 and is_integer(limit) and
+             limit > 0 do
+    load_app()
+    limit = min(limit, Versioning.project_snapshot_reconciliation_repair_page_limit())
+
+    case Versioning.plan_project_snapshot_reconciliation_repairs(run_id,
+           after_id: after_id,
+           limit: limit
+         ) do
+      {:ok, plan} ->
+        IO.puts("Planned #{length(plan.actions)} snapshot reconciliation actions")
+        IO.puts("Next finding ID: #{plan.next_after_id}; complete: #{plan.complete?}")
+        plan
+
+      {:error, reason} ->
+        raise "Could not plan snapshot reconciliation repairs: #{inspect(reason)}"
+    end
+  end
+
+  @doc """
+  Prints one bounded page of durable reconciliation repair outcomes.
+
+  Pass the returned action ID as `after_id` to continue.
+  """
+  def inspect_project_snapshot_reconciliation_repairs(run_id, after_id \\ 0, limit \\ 100)
+      when is_integer(run_id) and run_id > 0 and is_integer(after_id) and after_id >= 0 and is_integer(limit) and
+             limit > 0 do
+    load_app()
+    limit = min(limit, Versioning.project_snapshot_reconciliation_repair_page_limit())
+
+    if is_nil(Versioning.get_project_snapshot_reconciliation_run(run_id)) do
+      raise "Snapshot reconciliation run ##{run_id} was not found"
+    end
+
+    actions =
+      Versioning.list_project_snapshot_reconciliation_repairs(run_id,
+        after_id: after_id,
+        limit: limit
+      )
+
+    next_after_id = if action = List.last(actions), do: action.id, else: after_id
+    complete? = length(actions) < limit
+
+    IO.puts("Snapshot reconciliation repair outcomes for run ##{run_id}")
+    IO.puts("Returned actions after ##{after_id}: #{length(actions)}")
+    IO.puts("Next action ID: #{next_after_id}; complete: #{complete?}")
+
+    %{actions: actions, complete?: complete?, next_after_id: next_after_id}
+  end
+
   defp prepare_snapshot_reset!(repo, workspace_id, environment) do
     case ProjectSnapshotReset.prepare(workspace_id, environment, repo: repo) do
       {:ok, plan} -> plan

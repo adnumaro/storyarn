@@ -49,7 +49,34 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   ]
   @maintenance_job_stale_after_seconds 30 * 60
   @hard_delete_reasons ~w(project_hard_delete workspace_hard_delete)a
-  @replayable_cleanup_errors ~w(storage_provider_failure namespace_still_owned)
+  @replayable_cleanup_errors ~w(
+    storage_provider_failure namespace_still_owned
+    provider_namespace_changed provider_namespace_unavailable
+  )
+  @provider_namespace_pattern ~r/\A[0-9a-f]{64}\z/
+  @replay_expectation_fields [
+    :cleanup_intent_id_snapshot,
+    :workspace_id_snapshot,
+    :project_id_snapshot,
+    :project_snapshot_id_snapshot,
+    :lifecycle_generation,
+    :object_prefix,
+    :expected_size_bytes,
+    :error_code,
+    :reason,
+    :retry_count,
+    :processing_generation
+  ]
+  @active_replay_identity_fields [
+    :cleanup_intent_id_snapshot,
+    :workspace_id_snapshot,
+    :project_id_snapshot,
+    :project_snapshot_id_snapshot,
+    :lifecycle_generation,
+    :object_prefix,
+    :expected_size_bytes,
+    :reason
+  ]
 
   @type retention_candidate :: %{
           snapshot_id: pos_integer(),
@@ -425,6 +452,51 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   def replay_terminal_cleanup_intent(_intent_id), do: {:error, :invalid_snapshot_cleanup_intent}
 
   @doc false
+  @spec replay_terminal_cleanup_intent(pos_integer(), map()) ::
+          {:ok, SnapshotCleanupIntent.t() | :already_completed | :already_active} | {:error, term()}
+  def replay_terminal_cleanup_intent(intent_id, expectations)
+      when is_integer(intent_id) and intent_id > 0 and is_map(expectations) do
+    if exact_replay_expectations?(expectations) do
+      result =
+        Repo.transact(fn ->
+          intent_id
+          |> lock_cleanup_intent()
+          |> replay_locked_cleanup_intent(expectations)
+        end)
+
+      emit_cleanup_replay(result)
+    else
+      {:error, :invalid_snapshot_cleanup_replay_expectations}
+    end
+  end
+
+  def replay_terminal_cleanup_intent(_intent_id, _expectations),
+    do: {:error, :invalid_snapshot_cleanup_replay_expectations}
+
+  defp exact_replay_expectations?(expectations) do
+    expectations
+    |> Map.keys()
+    |> MapSet.new()
+    |> MapSet.equal?(MapSet.new(@replay_expectation_fields))
+  end
+
+  defp replay_expectations(intent) do
+    %{
+      cleanup_intent_id_snapshot: intent.id,
+      workspace_id_snapshot: intent.workspace_id_snapshot,
+      project_id_snapshot: intent.project_id_snapshot,
+      project_snapshot_id_snapshot: intent.project_snapshot_id_snapshot,
+      lifecycle_generation: intent.deletion_generation,
+      object_prefix: intent.ready_prefix,
+      expected_size_bytes: intent.estimated_cleanup_bytes,
+      error_code: intent.last_error_code,
+      reason: intent.reason,
+      retry_count: intent.retry_count,
+      processing_generation: intent.processing_generation
+    }
+  end
+
+  @doc false
   def cleanup_operator_action(intent_id) when is_integer(intent_id) and intent_id > 0 do
     case Repo.get(SnapshotCleanupIntent, intent_id) do
       %SnapshotCleanupIntent{status: "terminal", last_error_code: code}
@@ -464,10 +536,47 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: "terminal"} = intent) do
     with :ok <- SnapshotCleanupIntent.validate_persisted_inventory(intent),
          :ok <- validate_cleanup_intent_ownership(intent),
+         :ok <- validate_current_provider_namespace(intent),
+         :ok <- ensure_cleanup_namespace_unowned(intent),
          {:ok, replaying} <- reopen_terminal_cleanup_intent(intent),
          {:ok, _job} <- enqueue_cleanup_replay(replaying.id) do
       {:ok, replaying}
     end
+  end
+
+  defp replay_locked_cleanup_intent(nil, _expectations), do: {:error, :snapshot_cleanup_intent_not_found}
+
+  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: "terminal"} = intent, expectations) do
+    if replay_expectations(intent) == expectations,
+      do: replay_locked_cleanup_intent(intent),
+      else: {:error, :snapshot_cleanup_intent_changed}
+  end
+
+  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: status} = intent, expectations)
+       when status in ["pending", "processing", "retrying"] do
+    with true <- active_replay_matches?(intent, expectations),
+         :ok <- SnapshotCleanupIntent.validate_persisted_inventory(intent),
+         :ok <- validate_cleanup_intent_ownership(intent),
+         :ok <- validate_current_provider_namespace(intent) do
+      {:ok, :already_active}
+    else
+      false -> {:error, :snapshot_cleanup_intent_changed}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{}, _expectations),
+    do: {:error, :snapshot_cleanup_intent_changed}
+
+  defp active_replay_matches?(intent, expectations) do
+    current_identity = intent |> replay_expectations() |> Map.take(@active_replay_identity_fields)
+    expected_identity = Map.take(expectations, @active_replay_identity_fields)
+
+    current_identity == expected_identity and expectations.error_code in @replayable_cleanup_errors and
+      is_integer(expectations.retry_count) and expectations.retry_count >= 0 and
+      intent.retry_count >= expectations.retry_count and is_integer(expectations.processing_generation) and
+      expectations.processing_generation >= 0 and
+      intent.processing_generation >= expectations.processing_generation
   end
 
   @doc false
@@ -525,6 +634,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
                 :integer
               ),
             terminal_failures: filter(count(intent.id), intent.status == "terminal"),
+            terminal_retry_count:
+              type(
+                coalesce(filter(sum(intent.retry_count), intent.status == "terminal"), 0),
+                :integer
+              ),
+            repeated_terminal_failures: filter(count(intent.id), intent.status == "terminal" and intent.retry_count > 1),
             oldest_requested_at: filter(min(intent.requested_at), intent.status in ["pending", "processing", "retrying"])
           }
         )
@@ -792,8 +907,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
          {:ok, deleting} <- snapshot |> ProjectSnapshot.deletion_changeset(now) |> Repo.update(),
          :ok <- release_no_write_build_reservations(deleting),
          owner_token = Ecto.UUID.generate(),
+         {:ok, provider_namespace_fingerprint} <- current_provider_namespace_fingerprint(),
          {:ok, cleanup_request} <-
-           StorageCompensation.persist_snapshot_lifecycle_cleanup(scope.storage_keys, owner_token),
+           StorageCompensation.persist_snapshot_lifecycle_cleanup(
+             scope.storage_keys,
+             owner_token,
+             provider_namespace_fingerprint
+           ),
          {:ok, intent} <-
            insert_cleanup_intent(
              deleting,
@@ -802,6 +922,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
              authority,
              scope,
              cleanup_request.id,
+             provider_namespace_fingerprint,
              now
            ),
          :ok <- settle_active_build_reservations(deleting, cleanup_request.id, scope),
@@ -815,7 +936,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     end
   end
 
-  defp insert_cleanup_intent(snapshot, workspace_id, reason, authority, scope, cleanup_request_id, now) do
+  defp insert_cleanup_intent(
+         snapshot,
+         workspace_id,
+         reason,
+         authority,
+         scope,
+         cleanup_request_id,
+         provider_namespace_fingerprint,
+         now
+       ) do
     {authority_kind, actor_id} = authority_fields(authority)
 
     attrs = %{
@@ -836,6 +966,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
       inventory_digest: scope.inventory_digest,
       object_count: length(scope.storage_keys),
       estimated_cleanup_bytes: scope.estimated_cleanup_bytes,
+      provider_namespace_fingerprint: provider_namespace_fingerprint,
       requested_at: now
     }
 
@@ -1081,9 +1212,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
       %StorageCleanupRequest{
         owner_kind: "snapshot_lifecycle",
         owner_token: owner_token,
-        storage_keys: storage_keys
+        storage_keys: storage_keys,
+        provider_namespace_fingerprint: provider_namespace_fingerprint
       }
-      when is_binary(owner_token) and storage_keys == intent.storage_keys ->
+      when is_binary(owner_token) and storage_keys == intent.storage_keys and
+             provider_namespace_fingerprint == intent.provider_namespace_fingerprint ->
         :ok
 
       _invalid ->
@@ -1102,13 +1235,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   defp process_claimed_cleanup(%SnapshotCleanupIntent{} = intent, delete_fun, verify_fun, final_attempt?) do
     batch = Enum.take(intent.remaining_storage_keys, @batch_size)
 
-    case ensure_cleanup_namespace_unowned(intent) do
-      :ok ->
-        case safe_delete(delete_fun, batch) do
-          :ok -> finish_verified_batch(intent, batch, verify_fun, final_attempt?)
-          {:error, failed_keys} -> finish_failed_batch(intent, batch, failed_keys, final_attempt?)
-        end
-
+    with :ok <- validate_cleanup_intent_ownership(intent),
+         :ok <- validate_current_provider_namespace(intent),
+         :ok <- ensure_cleanup_namespace_unowned(intent) do
+      case safe_delete(delete_fun, batch) do
+        :ok -> finish_verified_batch(intent, batch, verify_fun, final_attempt?)
+        {:error, failed_keys} -> finish_failed_batch(intent, batch, failed_keys, final_attempt?)
+      end
+    else
       {:error, reason} ->
         handle_predelete_failure(intent, reason, final_attempt?)
     end
@@ -1126,18 +1260,22 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   end
 
   defp verify_cleanup_namespace_empty(intent) do
-    with {:ok, remaining_keys} <- list_cleanup_namespace_keys(intent),
+    with :ok <- validate_current_provider_namespace(intent),
+         {:ok, remaining_keys} <- list_cleanup_namespace_keys(intent),
          :ok <- validate_listed_cleanup_keys(remaining_keys, intent.storage_keys) do
-      delete_listed_cleanup_keys(remaining_keys)
+      delete_listed_cleanup_keys(remaining_keys, intent)
     end
   end
 
-  defp delete_listed_cleanup_keys([]), do: :ok
+  defp delete_listed_cleanup_keys([], _intent), do: :ok
 
-  defp delete_listed_cleanup_keys(keys) do
-    case StorageCompensation.delete_storage_keys(keys) do
-      :ok -> {:error, :snapshot_cleanup_verification_recheck_required}
-      {:error, _failed_keys} -> {:error, :snapshot_cleanup_verification_delete_failed}
+  defp delete_listed_cleanup_keys(keys, intent) do
+    with :ok <- validate_cleanup_intent_ownership(intent),
+         :ok <- validate_current_provider_namespace(intent) do
+      case StorageCompensation.delete_storage_keys(keys) do
+        :ok -> {:error, :snapshot_cleanup_verification_recheck_required}
+        {:error, _failed_keys} -> {:error, :snapshot_cleanup_verification_delete_failed}
+      end
     end
   end
 
@@ -1198,7 +1336,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
        when reason in [
               :invalid_snapshot_cleanup_inventory,
               :invalid_snapshot_cleanup_ownership,
-              :snapshot_cleanup_namespace_still_owned
+              :snapshot_cleanup_namespace_still_owned,
+              :snapshot_cleanup_provider_namespace_changed,
+              :snapshot_cleanup_provider_namespace_unavailable
             ] do
     terminalize_predelete_failure(intent_or_id, reason)
   end
@@ -1274,9 +1414,56 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     end
   end
 
+  defp revalidate_predelete_failure(intent, :snapshot_cleanup_provider_namespace_changed) do
+    revalidate_provider_namespace_failure(intent, :snapshot_cleanup_provider_namespace_changed)
+  end
+
+  defp revalidate_predelete_failure(intent, :snapshot_cleanup_provider_namespace_unavailable) do
+    revalidate_provider_namespace_failure(intent, :snapshot_cleanup_provider_namespace_unavailable)
+  end
+
+  defp revalidate_provider_namespace_failure(intent, reason) do
+    case validate_current_provider_namespace(intent) do
+      {:error, ^reason} -> :ok
+      _changed -> {:error, :snapshot_cleanup_failure_changed}
+    end
+  end
+
   defp predelete_error_code(:invalid_snapshot_cleanup_inventory), do: "invalid_inventory"
   defp predelete_error_code(:invalid_snapshot_cleanup_ownership), do: "invalid_ownership"
   defp predelete_error_code(:snapshot_cleanup_namespace_still_owned), do: "namespace_still_owned"
+  defp predelete_error_code(:snapshot_cleanup_provider_namespace_changed), do: "provider_namespace_changed"
+
+  defp predelete_error_code(:snapshot_cleanup_provider_namespace_unavailable), do: "provider_namespace_unavailable"
+
+  defp validate_current_provider_namespace(intent) do
+    case current_provider_namespace_fingerprint() do
+      {:ok, fingerprint} when fingerprint == intent.provider_namespace_fingerprint ->
+        :ok
+
+      {:ok, _different_fingerprint} ->
+        {:error, :snapshot_cleanup_provider_namespace_changed}
+
+      {:error, :snapshot_cleanup_provider_namespace_unavailable} = error ->
+        error
+    end
+  end
+
+  defp current_provider_namespace_fingerprint do
+    case Storage.namespace_fingerprint() do
+      {:ok, fingerprint} when is_binary(fingerprint) ->
+        if Regex.match?(@provider_namespace_pattern, fingerprint),
+          do: {:ok, fingerprint},
+          else: {:error, :snapshot_cleanup_provider_namespace_unavailable}
+
+      _unavailable ->
+        {:error, :snapshot_cleanup_provider_namespace_unavailable}
+    end
+  rescue
+    _exception -> {:error, :snapshot_cleanup_provider_namespace_unavailable}
+  catch
+    _kind, _reason -> {:error, :snapshot_cleanup_provider_namespace_unavailable}
+  end
 
   defp ensure_cleanup_namespace_unowned(intent) do
     snapshot_owner? =

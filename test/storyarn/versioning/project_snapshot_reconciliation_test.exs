@@ -1145,7 +1145,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
       Repo.transaction(fn -> Repo.delete!(run) end)
     end
 
-    assert_raise Postgrex.Error, ~r/snapshot reconciliation evidence cannot be truncated/, fn ->
+    # The repair ledger's restrictive foreign key now rejects the truncation
+    # before the findings trigger can emit its own immutable-evidence message.
+    assert_raise Postgrex.Error, ~r/cannot truncate a table referenced in a foreign key constraint/, fn ->
       Repo.transaction(fn -> Repo.query!("TRUNCATE project_snapshot_reconciliation_findings") end)
     end
   end
@@ -1620,6 +1622,125 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
 
     assert_receive {:reconciliation_telemetry, [:storyarn, :snapshot, :reconciliation, :stop], %{count: 1},
                     %{status: :completed, multipart_inventory_state: :unsupported, error_code: "none"}}
+  end
+
+  test "completed-run summary reports bounded actionable drift without double counting snapshots" do
+    user = user_fixture()
+    project = project_fixture(user)
+
+    assert {:ok, _asset} =
+             Assets.upload_binary_and_create_asset(
+               "summary asset bytes",
+               %{filename: "summary.png", content_type: "image/png"},
+               project,
+               user
+             )
+
+    {_user, _project, damaged_snapshot} = ready_snapshot!(user, project)
+
+    assert {:ok, %{manifest: manifest}} =
+             SnapshotObjectStorage.inspect_ready_manifest(
+               damaged_snapshot.manifest_storage_key,
+               damaged_snapshot.manifest_checksum,
+               damaged_snapshot.manifest_size_bytes
+             )
+
+    project_descriptor = Enum.find(manifest["objects"], &(&1["kind"] == "project"))
+    blob_descriptor = Enum.find(manifest["objects"], &(&1["kind"] == "asset_blob"))
+    project_key = damaged_snapshot.object_prefix <> "/" <> project_descriptor["path"]
+    blob_key = damaged_snapshot.object_prefix <> "/" <> blob_descriptor["path"]
+
+    assert :ok = Storage.delete(blob_key)
+    assert {:ok, project_json} = Storage.download(project_key)
+    <<first, rest::binary>> = project_json
+
+    assert {:ok, _url} =
+             Storage.upload(
+               project_key,
+               <<Bitwise.bxor(first, 1), rest::binary>>,
+               project_descriptor["content_type"]
+             )
+
+    stale_project = project_fixture(user)
+
+    assert {:ok, stale_snapshot} =
+             Versioning.request_full_project_snapshot(user_scope_fixture(user), stale_project, %{
+               idempotency_key: Ecto.UUID.generate()
+             })
+
+    now = TimeHelpers.now()
+    old = %{DateTime.add(now, -86_400, :second) | microsecond: {0, 6}}
+
+    stale_reservation =
+      stale_snapshot.storage_reservation_id
+      |> then(&Repo.get!(StorageReservation, &1))
+      |> Ecto.Changeset.change(
+        expires_at: DateTime.add(now, -1, :second),
+        accounting_measured_at: DateTime.add(now, -2, :second)
+      )
+      |> Repo.update!()
+
+    stale_snapshot.build_job_id
+    |> then(&Repo.get!(Oban.Job, &1))
+    |> Ecto.Changeset.change(state: "discarded", discarded_at: old)
+    |> Repo.update!()
+
+    {_user, _project, abandoned_snapshot} = ready_snapshot!()
+    abandoned_key = String.replace(abandoned_snapshot.object_prefix, "/ready/", "/staging/") <> "/orphan.bin"
+    abandoned_bytes = "abandoned summary bytes"
+    assert {:ok, _url} = Storage.upload(abandoned_key, abandoned_bytes, "application/octet-stream")
+
+    cleanup_project = project_fixture(user)
+    {_user, _project, cleanup_snapshot} = ready_snapshot!(user, cleanup_project)
+
+    assert {:ok, cleanup_intent} =
+             Versioning.delete_project_snapshot(
+               user_scope_fixture(user),
+               cleanup_project,
+               cleanup_snapshot.id
+             )
+
+    assert {:ok, :terminal} =
+             Versioning.process_project_snapshot_cleanup_intent(cleanup_intent.id,
+               delete_fun: fn keys -> {:error, keys} end,
+               final_attempt?: true
+             )
+
+    test_pid = self()
+    handler_id = {__MODULE__, :summary, System.unique_integer([:positive])}
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :snapshot, :reconciliation, :summary],
+        fn event, measurements, metadata, _config ->
+          send(test_pid, {:reconciliation_summary, event, measurements, metadata})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:ok, run} = start_run()
+    completed = advance_until_terminal(run.id, run.cursor_generation)
+    assert completed.status == "completed"
+
+    assert_receive {:reconciliation_summary, [:storyarn, :snapshot, :reconciliation, :summary], measurements,
+                    %{contract_version: 1, mode: :dry_run, multipart_inventory_state: :unsupported}}
+
+    assert measurements == %{
+             stale_reservation_bytes: stale_reservation.reserved_bytes,
+             orphan_object_bytes: byte_size(abandoned_bytes),
+             missing_ready_snapshot_count: 1,
+             corrupt_ready_snapshot_count: 1,
+             terminal_cleanup_failure_count: 1,
+             terminal_cleanup_retry_count: 1
+           }
+
+    assert {:ok, :completed} =
+             Versioning.advance_project_snapshot_reconciliation(completed.id, completed.cursor_generation)
+
+    refute_receive {:reconciliation_summary, _, _, _}
   end
 
   defp ready_snapshot! do

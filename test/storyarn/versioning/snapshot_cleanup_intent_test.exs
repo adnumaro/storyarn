@@ -38,6 +38,20 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntentTest do
       refute SnapshotCleanupIntent.create_changeset(%SnapshotCleanupIntent{}, repeated_slash).valid?
       refute SnapshotCleanupIntent.create_changeset(%SnapshotCleanupIntent{}, same_prefix).valid?
     end
+
+    test "requires a lowercase provider namespace fingerprint" do
+      attrs = valid_attrs()
+
+      refute attrs
+             |> Map.delete(:provider_namespace_fingerprint)
+             |> then(&SnapshotCleanupIntent.create_changeset(%SnapshotCleanupIntent{}, &1))
+             |> Map.fetch!(:valid?)
+
+      refute attrs
+             |> Map.put(:provider_namespace_fingerprint, String.duplicate("F", 64))
+             |> then(&SnapshotCleanupIntent.create_changeset(%SnapshotCleanupIntent{}, &1))
+             |> Map.fetch!(:valid?)
+    end
   end
 
   describe "validate_persisted_inventory/1" do
@@ -53,6 +67,11 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntentTest do
       assert {:error, :invalid_snapshot_cleanup_inventory} =
                intent
                |> Map.put(:remaining_storage_keys, [])
+               |> SnapshotCleanupIntent.validate_persisted_inventory()
+
+      assert {:error, :invalid_snapshot_cleanup_inventory} =
+               intent
+               |> Map.put(:provider_namespace_fingerprint, String.duplicate("F", 64))
                |> SnapshotCleanupIntent.validate_persisted_inventory()
 
       invalid_utf8_keys = [<<255>>]
@@ -106,6 +125,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntentTest do
       estimated_cleanup_bytes: 1,
       status: "pending",
       retry_count: 0,
+      provider_namespace_fingerprint: String.duplicate("f", 64),
       requested_at: ~U[2026-08-05 00:00:00Z]
     }
   end

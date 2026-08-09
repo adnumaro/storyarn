@@ -6,6 +6,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Shared.TimeHelpers
@@ -112,8 +113,15 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
   test "reconciler restores a nonterminal intent whose cleanup job is dead" do
     intent = cleanup_intent_fixture(0)
+    terminal_intent = cleanup_intent_fixture(0)
     handler_id = "snapshot-cleanup-recovery-#{System.unique_integer([:positive])}"
     parent = self()
+
+    assert {:ok, :terminal} =
+             Versioning.process_project_snapshot_cleanup_intent(terminal_intent.id,
+               delete_fun: fn keys -> {:error, keys} end,
+               final_attempt?: true
+             )
 
     assert {:ok, dead_job} =
              %{intent_id: intent.id}
@@ -123,9 +131,12 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
     dead_job |> Ecto.Changeset.change(state: "discarded") |> Repo.update!()
 
     :ok =
-      :telemetry.attach(
+      :telemetry.attach_many(
         handler_id,
-        [:storyarn, :snapshot, :cleanup, :recovery, :stop],
+        [
+          [:storyarn, :snapshot, :cleanup, :recovery, :stop],
+          [:storyarn, :snapshot, :cleanup, :backlog]
+        ],
         fn event, measurements, metadata, pid -> send(pid, {event, measurements, metadata}) end,
         parent
       )
@@ -143,8 +154,21 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
     assert_receive {
       [:storyarn, :snapshot, :cleanup, :recovery, :stop],
-      %{recovered_count: 1, failure_count: 0, continuation_count: 0},
+      %{
+        recovered_count: 1,
+        failure_count: 0,
+        continuation_count: 0
+      },
       %{status: :ok}
+    }
+
+    assert_receive {
+      [:storyarn, :snapshot, :cleanup, :backlog],
+      %{
+        terminal_retry_count: 1,
+        repeated_terminal_failures: 0
+      },
+      %{}
     }
   end
 
@@ -252,7 +276,11 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
     intent.cleanup_request_id
     |> then(&Repo.get!(StorageCleanupRequest, &1))
-    |> Ecto.Changeset.change(owner_kind: "storage_compensation", owner_token: nil)
+    |> Ecto.Changeset.change(
+      owner_kind: "storage_compensation",
+      owner_token: nil,
+      provider_namespace_fingerprint: nil
+    )
     |> Repo.update!()
 
     assert :ok =
@@ -415,7 +443,11 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
     intent.cleanup_request_id
     |> then(&Repo.get!(StorageCleanupRequest, &1))
-    |> Ecto.Changeset.change(owner_kind: "storage_compensation", owner_token: nil)
+    |> Ecto.Changeset.change(
+      owner_kind: "storage_compensation",
+      owner_token: nil,
+      provider_namespace_fingerprint: nil
+    )
     |> Repo.update!()
 
     assert {:error, :invalid_snapshot_cleanup_ownership} =
@@ -594,8 +626,17 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
       Enum.map(paths, &"#{ready_prefix}/#{&1}") ++
         Enum.map(paths, &"#{staging_prefix}/#{&1}")
 
+    # Bind the cleanup ownership to an existing local namespace. Creating the
+    # configured root after the handoff is intentionally a namespace change.
+    File.mkdir_p!(Path.dirname(storage_path("namespace-probe")))
+    assert {:ok, provider_namespace_fingerprint} = Storage.namespace_fingerprint()
+
     assert {:ok, cleanup_request} =
-             StorageCompensation.persist_snapshot_lifecycle_cleanup(storage_keys, Ecto.UUID.generate())
+             StorageCompensation.persist_snapshot_lifecycle_cleanup(
+               storage_keys,
+               Ecto.UUID.generate(),
+               provider_namespace_fingerprint
+             )
 
     attrs = %{
       project_snapshot_id: snapshot.id,
@@ -615,6 +656,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
       inventory_digest: inventory_digest(storage_keys),
       object_count: length(storage_keys),
       estimated_cleanup_bytes: length(storage_keys),
+      provider_namespace_fingerprint: provider_namespace_fingerprint,
       requested_at: TimeHelpers.now()
     }
 

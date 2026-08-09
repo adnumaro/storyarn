@@ -603,7 +603,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       Enum.flat_map(rows, fn {reservation, snapshot, job} ->
         case stale_reservation_reason(reservation, snapshot, job, quiesced_before) do
           nil -> []
-          reason -> [stale_reservation_finding(reservation, reason)]
+          reason -> [stale_reservation_finding(reservation, snapshot, reason)]
         end
       end)
 
@@ -832,6 +832,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
             ready_prefix: intent.ready_prefix,
             estimated_cleanup_bytes: intent.estimated_cleanup_bytes,
             last_error_code: intent.last_error_code,
+            processing_generation: intent.processing_generation,
             reason: intent.reason,
             retry_count: intent.retry_count
           }
@@ -1773,6 +1774,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       project_id_snapshot: snapshot.project_id,
       project_snapshot_id_snapshot: snapshot.id,
       lifecycle_generation: snapshot.lifecycle_generation,
+      accounting_generation: snapshot.accounting_generation,
       object_prefix: snapshot.object_prefix,
       storage_key: storage_key,
       expected_size_bytes: Keyword.get(opts, :expected_size_bytes),
@@ -1800,6 +1802,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       project_snapshot_id_snapshot: evidence.snapshot_id,
       storage_reservation_id_snapshot: evidence.reservation_id,
       lifecycle_generation: evidence.lifecycle_generation,
+      accounting_generation: evidence.accounting_generation,
       reservation_generation: evidence.reservation_generation,
       object_prefix: subject_prefix(subject),
       storage_key: storage_key,
@@ -1813,72 +1816,53 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   end
 
   defp subject_evidence(subject, ownership) do
-    case Enum.find(ownership, &match?({:snapshot, _snapshot, _workspace_id}, &1)) ||
-           Enum.find(ownership, &match?({:reservation, _reservation}, &1)) ||
-           Enum.find(ownership, &match?({:project, _project_id, _workspace_id}, &1)) do
-      {:snapshot, snapshot, workspace_id} ->
-        %{
-          workspace_id: workspace_id,
-          project_id: snapshot.project_id,
-          snapshot_id: snapshot.id,
-          reservation_id: nil,
-          lifecycle_generation: snapshot.lifecycle_generation,
-          reservation_generation: nil
-        }
+    snapshot_evidence = Enum.find(ownership, &match?({:snapshot, _snapshot, _workspace_id}, &1))
+    reservation_evidence = Enum.find(ownership, &match?({:reservation, _reservation}, &1))
+    project_evidence = Enum.find(ownership, &match?({:project, _project_id, _workspace_id}, &1))
 
-      {:reservation, reservation} ->
-        %{
-          workspace_id: reservation.workspace_id_snapshot,
-          project_id: reservation.project_id_snapshot,
-          snapshot_id: reservation.project_snapshot_id_snapshot,
-          reservation_id: reservation.id,
-          lifecycle_generation: nil,
-          reservation_generation: reservation.generation
-        }
+    snapshot = optional_evidence(snapshot_evidence, 1)
+    snapshot_workspace_id = optional_evidence(snapshot_evidence, 2)
+    reservation = optional_evidence(reservation_evidence, 1)
+    project_id = optional_evidence(project_evidence, 1)
+    project_workspace_id = optional_evidence(project_evidence, 2)
 
-      {:project, project_id, workspace_id} ->
-        %{
-          workspace_id: workspace_id,
-          project_id: project_id,
-          snapshot_id: nil,
-          reservation_id: nil,
-          lifecycle_generation: nil,
-          reservation_generation: nil
-        }
-
-      nil ->
-        subject_evidence_from_project(subject)
-    end
-  end
-
-  defp subject_evidence_from_project(%{project_id: project_id}) do
     %{
-      workspace_id: nil,
-      project_id: project_id,
-      snapshot_id: nil,
-      reservation_id: nil,
-      lifecycle_generation: nil,
-      reservation_generation: nil
+      workspace_id:
+        first_present([
+          snapshot_workspace_id,
+          optional_field(reservation, :workspace_id_snapshot),
+          project_workspace_id
+        ]),
+      project_id:
+        first_present([
+          optional_field(snapshot, :project_id),
+          optional_field(reservation, :project_id_snapshot),
+          project_id,
+          subject_project_id(subject)
+        ]),
+      snapshot_id:
+        first_present([
+          optional_field(snapshot, :id),
+          optional_field(reservation, :project_snapshot_id_snapshot)
+        ]),
+      reservation_id: optional_field(reservation, :id),
+      lifecycle_generation: optional_field(snapshot, :lifecycle_generation),
+      accounting_generation: optional_field(snapshot, :accounting_generation),
+      reservation_generation: optional_field(reservation, :generation)
     }
   end
 
-  defp subject_evidence_from_project(_subject) do
-    %{
-      workspace_id: nil,
-      project_id: nil,
-      snapshot_id: nil,
-      reservation_id: nil,
-      lifecycle_generation: nil,
-      reservation_generation: nil
-    }
-  end
+  defp optional_evidence(tuple, index) when is_tuple(tuple), do: elem(tuple, index)
+  defp optional_evidence(_tuple, _index), do: nil
+  defp subject_project_id(%{project_id: project_id}), do: project_id
+  defp subject_project_id(_subject), do: nil
 
   defp subject_prefix(%{prefix: prefix}), do: prefix
   defp subject_prefix(_subject), do: nil
   defp subject_path(%{path: path}), do: path
   defp subject_path(_subject), do: nil
 
-  defp stale_reservation_finding(reservation, reason) do
+  defp stale_reservation_finding(reservation, snapshot, reason) do
     attrs = %{
       category: "stale_reservation",
       severity: "warning",
@@ -1886,6 +1870,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       project_id_snapshot: reservation.project_id_snapshot,
       project_snapshot_id_snapshot: reservation.project_snapshot_id_snapshot,
       storage_reservation_id_snapshot: reservation.id,
+      lifecycle_generation: optional_field(snapshot, :lifecycle_generation),
+      accounting_generation: optional_field(snapshot, :accounting_generation),
       reservation_generation: reservation.generation,
       object_prefix: reservation.cleanup_object_prefix,
       expected_size_bytes: reservation.reserved_bytes,
@@ -1920,6 +1906,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
         ]),
       storage_reservation_id_snapshot: claim.storage_reservation_id_snapshot,
       lifecycle_generation: optional_field(snapshot, :lifecycle_generation),
+      accounting_generation: optional_field(snapshot, :accounting_generation),
       reservation_generation: optional_field(reservation, :generation),
       object_prefix: claim.object_prefix,
       error_code: reason,
@@ -1945,11 +1932,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       workspace_id_snapshot: intent.workspace_id_snapshot,
       project_id_snapshot: intent.project_id_snapshot,
       project_snapshot_id_snapshot: intent.project_snapshot_id_snapshot,
+      cleanup_intent_id_snapshot: intent.id,
       lifecycle_generation: intent.deletion_generation,
       object_prefix: intent.ready_prefix,
       expected_size_bytes: intent.estimated_cleanup_bytes,
       error_code: safe_evidence_string(intent.last_error_code, 255) || "snapshot_cleanup_terminal",
-      details: %{"reason" => intent.reason, "retry_count" => intent.retry_count}
+      details: %{
+        "processing_generation" => intent.processing_generation,
+        "reason" => intent.reason,
+        "retry_count" => intent.retry_count
+      }
     }
 
     Map.put(attrs, :fingerprint, finding_fingerprint(attrs))
@@ -1962,9 +1954,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       attrs[:project_id_snapshot],
       attrs[:project_snapshot_id_snapshot],
       attrs[:storage_reservation_id_snapshot],
+      attrs[:cleanup_intent_id_snapshot],
+      attrs[:lifecycle_generation],
+      attrs[:accounting_generation],
+      attrs[:reservation_generation],
       attrs[:object_prefix],
       attrs[:storage_key],
-      attrs[:error_code]
+      attrs[:expected_size_bytes],
+      attrs[:observed_size_bytes],
+      attrs[:severity],
+      attrs[:error_code],
+      attrs[:details]
     ]
     |> :erlang.term_to_binary([:deterministic])
     |> then(&:crypto.hash(:sha256, &1))
@@ -2354,8 +2354,92 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       Logger.error("Snapshot reconciliation inspection failed error_code=#{run.last_error_code}")
     end
 
+    if status == :completed, do: emit_summary(run)
+
     run
   end
+
+  defp emit_summary(run) do
+    findings =
+      Repo.all(
+        from(finding in ProjectSnapshotReconciliationFinding,
+          where: finding.run_id == ^run.id,
+          select: %{
+            category: finding.category,
+            project_snapshot_id_snapshot: finding.project_snapshot_id_snapshot,
+            expected_size_bytes: finding.expected_size_bytes,
+            observed_size_bytes: finding.observed_size_bytes,
+            details: finding.details
+          }
+        )
+      )
+
+    :telemetry.execute(
+      [:storyarn, :snapshot, :reconciliation, :summary],
+      reconciliation_summary(findings),
+      %{
+        contract_version: run.contract_version,
+        mode: :dry_run,
+        multipart_inventory_state: multipart_inventory_tag(run.multipart_inventory_state)
+      }
+    )
+  end
+
+  defp reconciliation_summary(findings) do
+    missing_categories = MapSet.new(~w(ready_manifest_missing ready_object_missing))
+    corrupt_categories = MapSet.new(~w(ready_manifest_corrupt ready_object_corrupt))
+
+    findings
+    |> Enum.reduce(
+      %{
+        stale_reservation_bytes: 0,
+        orphan_object_bytes: 0,
+        missing_ready_snapshot_ids: MapSet.new(),
+        corrupt_ready_snapshot_ids: MapSet.new(),
+        terminal_cleanup_failure_count: 0,
+        terminal_cleanup_retry_count: 0
+      },
+      fn finding, summary ->
+        summary
+        |> add_summary_bytes(finding)
+        |> add_summary_snapshot(finding, missing_categories, :missing_ready_snapshot_ids)
+        |> add_summary_snapshot(finding, corrupt_categories, :corrupt_ready_snapshot_ids)
+        |> add_cleanup_summary(finding)
+      end
+    )
+    |> then(fn summary ->
+      summary
+      |> Map.put(:missing_ready_snapshot_count, MapSet.size(summary.missing_ready_snapshot_ids))
+      |> Map.put(:corrupt_ready_snapshot_count, MapSet.size(summary.corrupt_ready_snapshot_ids))
+      |> Map.drop([:missing_ready_snapshot_ids, :corrupt_ready_snapshot_ids])
+    end)
+  end
+
+  defp add_summary_bytes(summary, %{category: "stale_reservation", expected_size_bytes: bytes})
+       when is_integer(bytes) and bytes >= 0, do: Map.update!(summary, :stale_reservation_bytes, &(&1 + bytes))
+
+  defp add_summary_bytes(summary, %{category: "abandoned_temporary_object", observed_size_bytes: bytes})
+       when is_integer(bytes) and bytes >= 0, do: Map.update!(summary, :orphan_object_bytes, &(&1 + bytes))
+
+  defp add_summary_bytes(summary, _finding), do: summary
+
+  defp add_summary_snapshot(summary, finding, categories, accumulator) do
+    if MapSet.member?(categories, finding.category) and is_integer(finding.project_snapshot_id_snapshot) do
+      Map.update!(summary, accumulator, &MapSet.put(&1, finding.project_snapshot_id_snapshot))
+    else
+      summary
+    end
+  end
+
+  defp add_cleanup_summary(summary, %{category: "terminal_cleanup_failure", details: details}) do
+    retry_count = if is_map(details) and is_integer(details["retry_count"]), do: details["retry_count"], else: 0
+
+    summary
+    |> Map.update!(:terminal_cleanup_failure_count, &(&1 + 1))
+    |> Map.update!(:terminal_cleanup_retry_count, &(&1 + max(retry_count, 0)))
+  end
+
+  defp add_cleanup_summary(summary, _finding), do: summary
 
   defp phase_tag("ready_snapshots"), do: :ready_snapshots
   defp phase_tag("stale_reservations"), do: :stale_reservations
