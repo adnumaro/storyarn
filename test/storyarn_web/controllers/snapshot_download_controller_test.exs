@@ -7,11 +7,14 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
   import Storyarn.WorkspacesFixtures
   import StoryarnWeb.PrivateDownloadAssertions
 
+  alias Storyarn.Assets.Storage
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Workers.BuildProjectSnapshotWorker
 
   setup :register_and_log_in_user
@@ -213,6 +216,58 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
     assert_no_external_storage_response(conn)
   end
 
+  test "returns 422 when the snapshot object format is unsupported", %{
+    conn: conn,
+    project: project,
+    user: user
+  } do
+    snapshot = project |> build_ready_snapshot(user) |> install_unsupported_manifest()
+
+    conn = get(conn, download_url(project, snapshot.id))
+
+    assert conn.status == 422
+    assert conn.resp_body =~ "format"
+    assert_no_external_storage_response(conn)
+  end
+
+  test "returns 413 when the snapshot exceeds the configured export limits", %{
+    conn: conn,
+    project: project,
+    user: user
+  } do
+    snapshot = build_ready_snapshot(project, user)
+    original_limits = Application.get_env(:storyarn, SnapshotObjectFormat, [])
+
+    Application.put_env(
+      :storyarn,
+      SnapshotObjectFormat,
+      Keyword.put(original_limits, :max_objects, 0)
+    )
+
+    on_exit(fn -> Application.put_env(:storyarn, SnapshotObjectFormat, original_limits) end)
+
+    conn = get(conn, download_url(project, snapshot.id))
+
+    assert conn.status == 413
+    assert conn.resp_body =~ "limits"
+    assert_no_external_storage_response(conn)
+  end
+
+  test "returns 503 when snapshot preflight is unavailable", %{
+    conn: conn,
+    project: project,
+    user: user
+  } do
+    snapshot = build_ready_snapshot(project, user)
+    install_raising_storage()
+
+    conn = get(conn, download_url(project, snapshot.id))
+
+    assert conn.status == 503
+    assert conn.resp_body =~ "temporarily unavailable"
+    assert_no_external_storage_response(conn)
+  end
+
   test "rejects corrupt canonical storage before sending ZIP headers", %{
     conn: conn,
     project: project
@@ -289,5 +344,63 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
 
     assert :ok = BuildProjectSnapshotWorker.perform(job)
     Versioning.get_project_snapshot(project.id, requested.id)
+  end
+
+  defp install_unsupported_manifest(snapshot) do
+    assert {:ok, manifest_json} = Storage.download(snapshot.manifest_storage_key)
+
+    unsupported_manifest_json =
+      manifest_json
+      |> Jason.decode!()
+      |> Map.put("format_version", 2)
+      |> Jason.encode!()
+
+    checksum =
+      unsupported_manifest_json
+      |> then(&:crypto.hash(:sha256, &1))
+      |> Base.encode16(case: :lower)
+
+    manifest_size_bytes = byte_size(unsupported_manifest_json)
+    total_size_bytes = snapshot.total_size_bytes - snapshot.manifest_size_bytes + manifest_size_bytes
+
+    assert {:ok, _url} =
+             Storage.upload(
+               snapshot.manifest_storage_key,
+               unsupported_manifest_json,
+               "application/json"
+             )
+
+    snapshot
+    |> Ecto.Changeset.change(
+      manifest_checksum: checksum,
+      manifest_size_bytes: manifest_size_bytes,
+      total_size_bytes: total_size_bytes,
+      accounted_size_bytes: total_size_bytes
+    )
+    |> Repo.update!()
+  end
+
+  defp install_raising_storage do
+    original_storage = Application.fetch_env!(:storyarn, :storage)
+    {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+
+    SnapshotReadSwitchStorage.observe_io(fn
+      :stat, _key -> raise "provider preflight failed"
+      _operation, _key -> :ok
+    end)
+
+    Application.put_env(
+      :storyarn,
+      :storage,
+      Keyword.put(original_storage, :adapter, SnapshotReadSwitchStorage)
+    )
+
+    on_exit(fn ->
+      Application.put_env(:storyarn, :storage, original_storage)
+
+      if Process.whereis(SnapshotReadSwitchStorage) do
+        Agent.stop(SnapshotReadSwitchStorage)
+      end
+    end)
   end
 end
