@@ -1,0 +1,40 @@
+test/storyarn/versioning/project_snapshot_reconciliation_repair_action_test.exs
+  s_c2ae682cd97119::t_b5c2dac587461d 304-345,483
+test/storyarn/versioning/project_snapshot_lifecycle_test.exs
+  s_c2ae682cd97119::t_b5c2dac587461d 299,313,315-321,324-326
+lib/storyarn/versioning/project_snapshot_reconciliation_repair.ex
+  s_c2ae682cd97119::t_0f97bc0b21b4f5 618,625-626
+  s_c2ae682cd97119::t_afd996eda3f2a0 627
+test/support/snapshot_read_switch_storage.ex
+  s_c2ae682cd97119::t_52862bfe0006a6 16,40-43,96-97,144-147,150
+  s_c2ae682cd97119::t_0f97bc0b21b4f5 89-95,99-100
+  s_c2ae682cd97119::t_37d3e6f95301a1 148-149
+test/storyarn/workers/project_snapshot_cleanup_workers_test.exs
+  s_c2ae682cd97119::t_c37878243ac1ee 279,442
+priv/repo/migrations/20260809120000_create_project_snapshot_reconciliation_repairs.exs
+  s_c2ae682cd97119::t_0f97bc0b21b4f5 148-154,158-162
+test/storyarn/versioning/project_snapshot_reconciliation_repair_test.exs
+  s_c2ae682cd97119::t_b5c2dac587461d 422-432,435-436,438-453
+  s_c2ae682cd97119::t_52862bfe0006a6 433-434,437
+lib/storyarn/versioning/project_snapshot_lifecycle.ex
+  s_c2ae682cd97119::t_276f98008d6914 330,340,346
+  s_c2ae682cd97119::t_0f97bc0b21b4f5 331-339,341-345,351,782,792,912-915,924-925,958-964,966
+  s_c2ae682cd97119::t_feabdf786ad819 965
+  s_c2ae682cd97119::t_c491be1a4f822f 967
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "125d74383e8bf425a8f30f9b595fc47104e6bcb7",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
