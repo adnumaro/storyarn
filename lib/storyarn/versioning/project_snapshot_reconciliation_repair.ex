@@ -29,8 +29,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
   @contract_version 1
   @default_limit 50
   @max_limit 100
-  @minimum_inspection_bytes 128 * 1024 * 1024
-  @maximum_inspection_bytes 1024 * 1024 * 1024
   @repair_terminal_statuses ~w(repaired resolved manual failed)
   @repair_worker "Storyarn.Workers.RepairProjectSnapshotFindingWorker"
   @repair_queue "snapshots_maintenance"
@@ -265,8 +263,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
       remaining_attempts = max(max_attempts - action.attempt_count, 1)
 
       case action.id |> repair_job(max_attempts: remaining_attempts, unique: false) |> Oban.insert() do
-        {:ok, %Oban.Job{conflict?: false}} -> {:ok, {:reenqueued, nil}}
-        {:ok, %Oban.Job{conflict?: true}} -> {:ok, {:already_active, nil}}
+        {:ok, %Oban.Job{}} -> {:ok, {:reenqueued, nil}}
         {:error, reason} -> {:error, reason}
       end
     end
@@ -375,7 +372,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
       )
       |> resolve_action_conflict!(finding.id)
 
-    if inserted? and action.status == "pending" do
+    if inserted? do
       action.id
       |> repair_job()
       |> Oban.insert!()
@@ -458,8 +455,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
     end
   end
 
-  defp dispatch("mark_missing", finding, _provider_namespace_fingerprint), do: repair_integrity(finding)
-  defp dispatch("mark_corrupt", finding, _provider_namespace_fingerprint), do: repair_integrity(finding)
+  defp dispatch("mark_missing", finding, provider_namespace_fingerprint),
+    do: repair_integrity(finding, provider_namespace_fingerprint)
+
+  defp dispatch("mark_corrupt", finding, provider_namespace_fingerprint),
+    do: repair_integrity(finding, provider_namespace_fingerprint)
 
   defp dispatch("cleanup_expired_build", finding, provider_namespace_fingerprint),
     do: repair_expired_build(finding, provider_namespace_fingerprint)
@@ -469,34 +469,64 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
   defp dispatch("report_only", finding, _provider_namespace_fingerprint),
     do: {:ok, "manual", "manual_review_#{finding.category}", %{}}
 
-  defp repair_integrity(finding) do
-    with :ok <- validate_integrity_finding_identity(finding) do
+  defp repair_integrity(finding, provider_namespace_fingerprint) do
+    with :ok <- validate_integrity_finding_identity(finding),
+         %ProjectSnapshot{} = observed_snapshot <- get_ready_snapshot(finding),
+         {:ok, observed_integrity} <- current_integrity(observed_snapshot, finding) do
       finding.workspace_id_snapshot
-      |> Billing.transact_with_workspace_lock(fn _workspace -> repair_integrity_locked(finding) end)
+      |> Billing.transact_with_workspace_lock(fn _workspace ->
+        repair_integrity_locked(
+          finding,
+          observed_snapshot,
+          observed_integrity,
+          provider_namespace_fingerprint
+        )
+      end)
       |> flatten_repair_result()
+    else
+      nil -> resolve_missing_integrity_subject(finding)
+      {:error, _reason} = error -> error
     end
   end
 
-  defp repair_integrity_locked(finding) do
-    case lock_ready_snapshot(finding) do
-      nil -> {:ok, {"resolved", "integrity_finding_stale", %{}}}
-      snapshot -> apply_current_integrity(snapshot, finding)
-    end
+  defp resolve_missing_integrity_subject(finding) do
+    finding.workspace_id_snapshot
+    |> Billing.transact_with_workspace_lock(fn _workspace ->
+      {:ok, {"resolved", "integrity_finding_stale", %{}}}
+    end)
+    |> flatten_repair_result()
   end
 
-  defp apply_current_integrity(snapshot, finding) do
-    case current_integrity(snapshot, finding) do
-      {:ok, :healthy} ->
-        {:ok, {"resolved", "storage_object_now_verified", %{}}}
+  defp repair_integrity_locked(finding, observed_snapshot, observed_integrity, provider_namespace_fingerprint) do
+    case Storage.namespace_fingerprint() do
+      {:ok, ^provider_namespace_fingerprint} ->
+        apply_locked_integrity(finding, observed_snapshot, observed_integrity)
 
-      {:ok, target} when target in [:missing, :corrupt] ->
-        apply_integrity_target(snapshot, Atom.to_string(target))
-
-      {:ok, :finding_stale} ->
-        {:ok, {"resolved", "integrity_finding_stale", %{}}}
+      {:ok, _different} ->
+        {:ok, {"manual", "provider_namespace_changed", %{}}}
 
       {:error, reason} ->
-        {:error, reason}
+        {:error, {:snapshot_reconciliation_namespace_unavailable, reason}}
+    end
+  end
+
+  defp apply_locked_integrity(finding, observed_snapshot, observed_integrity) do
+    case lock_ready_snapshot(finding, observed_snapshot) do
+      nil -> {:ok, {"resolved", "integrity_finding_stale", %{}}}
+      snapshot -> apply_current_integrity(snapshot, observed_integrity)
+    end
+  end
+
+  defp apply_current_integrity(snapshot, current_integrity) do
+    case current_integrity do
+      :healthy ->
+        {:ok, {"resolved", "storage_object_now_verified", %{}}}
+
+      target when target in [:missing, :corrupt] ->
+        apply_integrity_target(snapshot, Atom.to_string(target))
+
+      :finding_stale ->
+        {:ok, {"resolved", "integrity_finding_stale", %{}}}
     end
   end
 
@@ -516,55 +546,37 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
   defp current_integrity(snapshot, %{category: category})
        when category in ["ready_manifest_missing", "ready_manifest_corrupt"] do
     snapshot.manifest_storage_key
-    |> inspect_manifest(snapshot)
+    |> SnapshotObjectStorage.inspect_ready_manifest(
+      snapshot.manifest_checksum,
+      snapshot.manifest_size_bytes
+    )
     |> classify_integrity_result()
   end
 
   defp current_integrity(snapshot, %{category: category} = finding)
        when category in ["ready_object_missing", "ready_object_corrupt"] do
-    with path when is_binary(path) <- finding.details["path"],
-         {:ok, inspected} <-
-           SnapshotObjectStorage.inspect_ready_manifest(
-             snapshot.manifest_storage_key,
-             snapshot.manifest_checksum,
-             snapshot.manifest_size_bytes
-           ),
-         {descriptor, index} when is_map(descriptor) <- descriptor_with_index(inspected.manifest, path) do
-      max_bytes = descriptor["size_bytes"] |> max(@minimum_inspection_bytes) |> min(@maximum_inspection_bytes)
+    case finding.details["path"] do
+      path when is_binary(path) ->
+        snapshot.manifest_storage_key
+        |> SnapshotObjectStorage.inspect_ready_object(
+          snapshot.manifest_checksum,
+          snapshot.manifest_size_bytes,
+          path
+        )
+        |> classify_integrity_result()
 
-      snapshot.manifest_storage_key
-      |> SnapshotObjectStorage.inspect_ready_object_batch(
-        snapshot.manifest_checksum,
-        snapshot.manifest_size_bytes,
-        start_index: index,
-        max_inspection_objects: 1,
-        max_inspection_bytes: max_bytes
-      )
-      |> classify_integrity_result()
-    else
-      nil -> {:ok, :finding_stale}
-      {:error, reason} -> classify_integrity_result({:error, reason})
+      nil ->
+        {:ok, :finding_stale}
+
+      _invalid ->
+        {:ok, :finding_stale}
     end
   end
 
-  defp inspect_manifest(_storage_key, snapshot) do
-    SnapshotObjectStorage.inspect_ready_manifest(
-      snapshot.manifest_storage_key,
-      snapshot.manifest_checksum,
-      snapshot.manifest_size_bytes
-    )
-  end
-
-  defp descriptor_with_index(%{"objects" => objects}, path) when is_list(objects) do
-    objects
-    |> Enum.with_index()
-    |> Enum.find(fn {descriptor, _index} -> descriptor["path"] == path end)
-  end
-
-  defp descriptor_with_index(_manifest, _path), do: nil
-
   @doc false
   def classify_integrity_result({:ok, _value}), do: {:ok, :healthy}
+
+  def classify_integrity_result({:error, :snapshot_inspection_object_not_found}), do: {:ok, :finding_stale}
 
   def classify_integrity_result({:error, reason}) do
     cond do
@@ -776,21 +788,33 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
     if valid?, do: :ok, else: {:error, :invalid_snapshot_integrity_finding}
   end
 
-  defp lock_ready_snapshot(finding) do
+  defp get_ready_snapshot(finding), do: Repo.one(ready_snapshot_query(finding))
+
+  defp lock_ready_snapshot(finding, observed_snapshot) do
     Repo.one(
-      from(snapshot in ProjectSnapshot,
-        join: project in Project,
-        on: project.id == snapshot.project_id,
+      from(snapshot in ready_snapshot_query(finding),
         where:
-          snapshot.id == ^finding.project_snapshot_id_snapshot and
-            snapshot.project_id == ^finding.project_id_snapshot and
-            project.workspace_id == ^finding.workspace_id_snapshot and snapshot.mode == "full" and
-            snapshot.lifecycle_state == "ready" and
-            snapshot.lifecycle_generation == ^finding.lifecycle_generation and
-            snapshot.accounting_generation == ^finding.accounting_generation and
-            snapshot.object_prefix == ^finding.object_prefix,
+          snapshot.integrity_state == ^observed_snapshot.integrity_state and
+            snapshot.manifest_storage_key == ^observed_snapshot.manifest_storage_key and
+            snapshot.manifest_checksum == ^observed_snapshot.manifest_checksum and
+            snapshot.manifest_size_bytes == ^observed_snapshot.manifest_size_bytes,
         lock: "FOR UPDATE"
       )
+    )
+  end
+
+  defp ready_snapshot_query(finding) do
+    from(snapshot in ProjectSnapshot,
+      join: project in Project,
+      on: project.id == snapshot.project_id,
+      where:
+        snapshot.id == ^finding.project_snapshot_id_snapshot and
+          snapshot.project_id == ^finding.project_id_snapshot and
+          project.workspace_id == ^finding.workspace_id_snapshot and snapshot.mode == "full" and
+          snapshot.lifecycle_state == "ready" and
+          snapshot.lifecycle_generation == ^finding.lifecycle_generation and
+          snapshot.accounting_generation == ^finding.accounting_generation and
+          snapshot.object_prefix == ^finding.object_prefix
     )
   end
 

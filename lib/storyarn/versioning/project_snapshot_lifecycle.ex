@@ -503,8 +503,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
       when code in @replayable_cleanup_errors ->
         {:ok, :replay}
 
-      %SnapshotCleanupIntent{status: "terminal", last_error_code: code} when is_binary(code) ->
-        {:ok, {:manual_repair_required, code}}
+      %SnapshotCleanupIntent{status: "terminal", last_error_code: code} ->
+        {:ok, {:manual_repair_required, code || "missing_error_code"}}
 
       %SnapshotCleanupIntent{} ->
         {:error, :snapshot_cleanup_intent_not_terminal}

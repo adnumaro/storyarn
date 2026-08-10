@@ -260,10 +260,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairRecoveryTest do
 
   test "the cron runner captures one high-watermark and schedules a bounded continuation" do
     parent = self()
+    attach_recovery_telemetry!()
 
     recover_page = fn opts ->
       send(parent, {:recover_page, opts})
-      {:ok, %{complete?: false, failure_count: 0, next_after_id: 50}}
+
+      {:ok,
+       recovery_page(%{
+         already_active_count: 2,
+         next_after_id: 50,
+         reenqueued_count: 3,
+         requeued_count: 4,
+         terminalized_count: 1
+       })}
     end
 
     enqueue = fn changeset ->
@@ -281,20 +290,86 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairRecoveryTest do
 
     assert_receive {:recover_page, [after_id: 0, through_id: 75, limit: 50]}
     assert_receive {:continuation_args, %{after_id: 50, through_id: 75}}
+
+    assert_receive {
+      [:storyarn, :snapshot, :reconciliation, :repair, :recovery, :stop],
+      %{
+        already_active_count: 2,
+        already_terminal_count: 0,
+        continuation_count: 1,
+        failure_count: 0,
+        reenqueued_count: 3,
+        requeued_count: 4,
+        terminalized_count: 1
+      },
+      %{status: :ok}
+    }
   end
 
-  test "the cron runner retries a failed page without advancing its cursor" do
+  test "the cron runner enqueues the next boundary before retrying a partial page" do
     parent = self()
+    attach_recovery_telemetry!()
+
+    assert {:error, :snapshot_reconciliation_repair_recovery_failed} =
+             ReconcileProjectSnapshotRepairWorker.perform_recovery(
+               %Oban.Job{args: %{}},
+               fn -> 20 end,
+               fn _opts ->
+                 {:ok,
+                  recovery_page(%{
+                    already_terminal_count: 2,
+                    failure_count: 1,
+                    next_after_id: 15,
+                    reenqueued_count: 1
+                  })}
+               end,
+               fn changeset ->
+                 send(parent, {:continuation_args, Ecto.Changeset.get_field(changeset, :args)})
+                 {:ok, %Oban.Job{}}
+               end
+             )
+
+    assert_receive {:continuation_args, %{after_id: 15, through_id: 20}}
+
+    assert_receive {
+      [:storyarn, :snapshot, :reconciliation, :repair, :recovery, :stop],
+      %{
+        already_active_count: 0,
+        already_terminal_count: 2,
+        continuation_count: 1,
+        failure_count: 1,
+        reenqueued_count: 1,
+        requeued_count: 0,
+        terminalized_count: 0
+      },
+      %{status: :partial}
+    }
+  end
+
+  test "a continuation enqueue failure is included in partial recovery telemetry" do
+    attach_recovery_telemetry!()
 
     assert {:error, :snapshot_reconciliation_repair_recovery_failed} =
              ReconcileProjectSnapshotRepairWorker.perform_recovery(
                %Oban.Job{args: %{"after_id" => 10, "through_id" => 20}},
-               fn -> flunk("continuation must retain its captured boundary") end,
-               fn _opts -> {:ok, %{complete?: false, failure_count: 1, next_after_id: 15}} end,
-               fn _changeset -> send(parent, :unexpected_continuation) end
+               fn -> flunk("the continuation must retain the captured boundary") end,
+               fn _opts -> {:ok, recovery_page(%{next_after_id: 15})} end,
+               fn _changeset -> {:error, :database_unavailable} end
              )
 
-    refute_receive :unexpected_continuation
+    assert_receive {
+      [:storyarn, :snapshot, :reconciliation, :repair, :recovery, :stop],
+      %{
+        already_active_count: 0,
+        already_terminal_count: 0,
+        continuation_count: 0,
+        failure_count: 1,
+        reenqueued_count: 0,
+        requeued_count: 0,
+        terminalized_count: 0
+      },
+      %{status: :partial}
+    }
   end
 
   test "repair timeout, recovery margin, and cron cadence remain coupled" do
@@ -332,6 +407,37 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairRecoveryTest do
       )
 
     on_exit(fn -> :telemetry.detach(handler_id) end)
+  end
+
+  defp attach_recovery_telemetry! do
+    handler_id = "snapshot-repair-delivery-recovery-stop-#{System.unique_integer([:positive])}"
+    parent = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :snapshot, :reconciliation, :repair, :recovery, :stop],
+        fn event, measurements, metadata, pid -> send(pid, {event, measurements, metadata}) end,
+        parent
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+  end
+
+  defp recovery_page(overrides) do
+    Map.merge(
+      %{
+        already_active_count: 0,
+        already_terminal_count: 0,
+        complete?: false,
+        failure_count: 0,
+        next_after_id: 0,
+        reenqueued_count: 0,
+        requeued_count: 0,
+        terminalized_count: 0
+      },
+      overrides
+    )
   end
 
   defp action_fixture! do

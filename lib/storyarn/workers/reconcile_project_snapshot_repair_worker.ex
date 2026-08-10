@@ -21,6 +21,14 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotRepairWorker do
 
   @batch_size 50
   @timeout_ms 10 * 60 * 1_000
+  @recovery_count_fields [
+    :already_active_count,
+    :already_terminal_count,
+    :failure_count,
+    :reenqueued_count,
+    :requeued_count,
+    :terminalized_count
+  ]
 
   @impl Oban.Worker
   def perform(%Oban.Job{} = job) do
@@ -48,10 +56,8 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotRepairWorker do
     with {:ok, after_id, through_id} <- normalize_args(args, high_watermark),
          {:ok, page} <-
            recover_page.(after_id: after_id, through_id: through_id, limit: @batch_size),
-         :ok <- validate_page(page, after_id, through_id),
-         :ok <- ensure_page_succeeded(page),
-         :ok <- maybe_enqueue_continuation(page, through_id, enqueue) do
-      :ok
+         :ok <- validate_page(page, after_id, through_id) do
+      finish_valid_page(page, through_id, enqueue)
     else
       {:discard, _reason} = discard -> discard
       {:error, _reason} -> {:error, :snapshot_reconciliation_repair_recovery_failed}
@@ -82,32 +88,66 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotRepairWorker do
     end
   end
 
-  defp validate_page(
-         %{complete?: complete?, failure_count: failure_count, next_after_id: next_after_id},
-         after_id,
-         through_id
-       )
-       when is_boolean(complete?) and is_integer(failure_count) and failure_count >= 0 and is_integer(next_after_id) and
-              next_after_id >= after_id and next_after_id <= through_id do
-    if complete? or next_after_id > after_id,
-      do: :ok,
-      else: {:error, :snapshot_reconciliation_repair_recovery_cursor_stalled}
+  defp validate_page(%{complete?: complete?, next_after_id: next_after_id} = page, after_id, through_id)
+       when is_boolean(complete?) and is_integer(next_after_id) and next_after_id >= after_id and
+              next_after_id <= through_id do
+    cond do
+      not valid_recovery_counts?(page) -> {:error, :invalid_snapshot_reconciliation_repair_recovery_page}
+      complete? or next_after_id > after_id -> :ok
+      true -> {:error, :snapshot_reconciliation_repair_recovery_cursor_stalled}
+    end
   end
 
   defp validate_page(_page, _after_id, _through_id), do: {:error, :invalid_snapshot_reconciliation_repair_recovery_page}
 
+  defp valid_recovery_counts?(page) do
+    Enum.all?(@recovery_count_fields, fn field ->
+      count = Map.get(page, field)
+      is_integer(count) and count >= 0
+    end)
+  end
+
   defp ensure_page_succeeded(%{failure_count: 0}), do: :ok
   defp ensure_page_succeeded(%{failure_count: _positive}), do: {:error, :snapshot_repair_recovery_incomplete}
 
-  defp maybe_enqueue_continuation(%{complete?: true}, _through_id, _enqueue), do: :ok
+  defp finish_valid_page(page, through_id, enqueue) do
+    {continuation_count, continuation_failure_count} =
+      maybe_enqueue_continuation(page, through_id, enqueue)
+
+    page = Map.update!(page, :failure_count, &(&1 + continuation_failure_count))
+    emit_stop(page, continuation_count)
+
+    case ensure_page_succeeded(page) do
+      :ok -> :ok
+      {:error, _reason} -> {:error, :snapshot_reconciliation_repair_recovery_failed}
+    end
+  end
+
+  defp maybe_enqueue_continuation(%{complete?: true}, _through_id, _enqueue), do: {0, 0}
 
   defp maybe_enqueue_continuation(%{next_after_id: next_after_id}, through_id, enqueue) do
     %{after_id: next_after_id, through_id: through_id}
     |> new()
     |> enqueue.()
     |> case do
-      {:ok, %Oban.Job{}} -> :ok
-      _error -> {:error, :snapshot_reconciliation_repair_recovery_continuation_failed}
+      {:ok, %Oban.Job{}} -> {1, 0}
+      _error -> {0, 1}
     end
+  end
+
+  defp emit_stop(page, continuation_count) do
+    :telemetry.execute(
+      [:storyarn, :snapshot, :reconciliation, :repair, :recovery, :stop],
+      %{
+        requeued_count: page.requeued_count,
+        reenqueued_count: page.reenqueued_count,
+        already_active_count: page.already_active_count,
+        terminalized_count: page.terminalized_count,
+        already_terminal_count: page.already_terminal_count,
+        failure_count: page.failure_count,
+        continuation_count: continuation_count
+      },
+      %{status: if(page.failure_count == 0, do: :ok, else: :partial)}
+    )
   end
 end

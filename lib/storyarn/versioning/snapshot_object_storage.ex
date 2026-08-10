@@ -359,6 +359,23 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
     do: {:error, :invalid_snapshot_inspection_request}
 
   @doc false
+  @spec inspect_ready_object(String.t(), String.t(), non_neg_integer(), String.t()) ::
+          {:ok, %{descriptor: map(), manifest: map(), ready_prefix: String.t()}} | {:error, term()}
+  def inspect_ready_object(manifest_storage_key, manifest_checksum, manifest_size_bytes, path)
+      when is_binary(manifest_storage_key) and is_binary(manifest_checksum) and is_integer(manifest_size_bytes) and
+             manifest_size_bytes >= 0 and is_binary(path) do
+    with {:ok, %{manifest: manifest, ready_prefix: ready_prefix}} <-
+           load_verified_manifest(manifest_storage_key, manifest_checksum, manifest_size_bytes, []),
+         {:ok, descriptor, index} <- find_inspection_descriptor(manifest["objects"], path),
+         :ok <- verify_single_inspection_object(ready_prefix, descriptor, index, length(manifest["objects"])) do
+      {:ok, %{descriptor: descriptor, manifest: manifest, ready_prefix: ready_prefix}}
+    end
+  end
+
+  def inspect_ready_object(_manifest_storage_key, _manifest_checksum, _manifest_size_bytes, _path),
+    do: {:error, :invalid_snapshot_inspection_request}
+
+  @doc false
   @spec inspect_ready_object_batch(String.t(), String.t(), non_neg_integer(), keyword()) ::
           {:ok,
            %{
@@ -481,17 +498,39 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
         {:cont, {:ok, count + 1, bytes + descriptor["size_bytes"]}}
 
       {:error, reason} ->
-        failure = %{
-          failed_index: index,
-          object_count: object_count,
-          path: descriptor["path"],
-          reason: reason,
-          verified_bytes: bytes,
-          verified_objects: count
-        }
+        failure = inspection_failure(descriptor, index, object_count, reason, count, bytes)
 
         {:halt, {:error, {:inspection_object_failed, failure}}}
     end
+  end
+
+  defp find_inspection_descriptor(objects, path) do
+    case objects |> Enum.with_index() |> Enum.find(fn {descriptor, _index} -> descriptor["path"] == path end) do
+      nil -> {:error, :snapshot_inspection_object_not_found}
+      {descriptor, index} -> {:ok, descriptor, index}
+    end
+  end
+
+  defp verify_single_inspection_object(ready_prefix, descriptor, index, object_count) do
+    case verify_inspection_object(ready_prefix, descriptor) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        failure = inspection_failure(descriptor, index, object_count, reason, 0, 0)
+        {:error, {:snapshot_inspection_object_failed, failure}}
+    end
+  end
+
+  defp inspection_failure(descriptor, index, object_count, reason, verified_objects, verified_bytes) do
+    %{
+      failed_index: index,
+      object_count: object_count,
+      path: descriptor["path"],
+      reason: reason,
+      verified_bytes: verified_bytes,
+      verified_objects: verified_objects
+    }
   end
 
   defp verify_inspection_object(ready_prefix, %{"kind" => "project"} = descriptor) do

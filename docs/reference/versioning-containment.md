@@ -104,9 +104,11 @@ different accounting scopes.
 ## Fenced reconciliation repair
 
 Repair consumes immutable findings from a completed inspection, but treats
-their recorded evidence as stale until proven otherwise. Integrity repair takes
-the workspace advisory lock and snapshot row lock before matching the recorded
-generations and repeating the provider read. Expired-build repair delegates to
+their recorded evidence as stale until proven otherwise. Integrity repair reads
+and hashes the exact provider object before opening a database transaction, then
+takes the workspace advisory lock and snapshot row lock and revalidates the
+recorded generations, manifest identity, and provider namespace before applying
+that precomputed result. Expired-build repair delegates to
 the existing lifecycle primitive and its workspace, project, snapshot,
 reservation, and job fences. Cleanup replay locks the intent and revalidates its
 exact evidence, immutable inventory, ownership receipt, and provider namespace.
@@ -277,10 +279,14 @@ environment: when there are no workspaces, projects, versioning rows, or reset
 receipt history, it scans at most one object under `projects/` and requires the
 entire namespace to be empty. It then executes the normal zero-inventory
 provider plan and persists its immutable provider receipt before authorizing the
-lifecycle migration. Any workspace, project, versioning row, reset receipt,
-provider object, list error, or unexpected response fails closed and requires
-the reset ceremony above. In production, migration `20260805130000` also
-rejects direct migration entrypoints; run it through
+lifecycle migration. For the one-time rollout of a legacy deployment whose
+`project_snapshots` and `entity_versions` tables are already globally empty,
+the release gate also accepts missing, stale, or partial reset receipts. This
+compatibility path preserves workspace and project rows, does not inventory or
+delete legacy provider objects, and prints an explicit release warning.
+Non-empty versioning tables, storage-namespace errors, and unexpected responses
+still fail closed. In production, migration `20260805130000` also rejects
+direct migration entrypoints; run it through
 `Storyarn.Release.migrate/0` so the receipt check cannot be silently bypassed.
 
 ```text
@@ -365,7 +371,30 @@ execution checkpoints an error without such a scope change.
 
 ### Deployment and verification
 
-After the environment-global provider plan has completed:
+The numbered verification below is the canonical receipt-backed route after the
+environment-global provider plan has completed. For the one-time
+empty-versioning compatibility route, keep the same write fence, require only
+the two versioning-table counts and the lifecycle-migration query in step 1,
+and skip the receipt queries and standalone rollout verifier. Then run step 2
+and retain its explicit compatibility warning as deployment evidence.
+
+Before applying reset-only repair migration `20260809120000`, keep every node
+and queue stopped. If lifecycle migration `20260805130000` is already applied,
+preflight both lifecycle tables:
+
+```sql
+SELECT count(*) AS snapshot_cleanup_intents FROM snapshot_cleanup_intents;
+SELECT count(*) AS snapshot_lifecycle_cleanup_requests
+FROM storage_cleanup_requests
+WHERE owner_kind = 'snapshot_lifecycle';
+```
+
+Both counts must be zero. If lifecycle migration `20260805130000` has not yet
+been applied, do not run these queries against tables that do not exist; keep
+the fence in place and let `Storyarn.Release.migrate/0` create them empty before
+applying the repair migration. If either existing table contains rows, stop the
+deployment and prepare a separately reviewed reset; do not delete or backfill
+lifecycle evidence ad hoc.
 
 1. Query the environment globally and require zero `project_snapshots` and zero
    `entity_versions`:
@@ -437,19 +466,22 @@ After the environment-global provider plan has completed:
 
 2. Keep the write fence in place. Set
    `STORYARN_DEPLOYMENT_ENVIRONMENT=production` and run
-   `Storyarn.Release.migrate()`. It requires current receipts before first
-   applying `20260805130000`; subsequent deploys skip the one-time gate.
+   `Storyarn.Release.migrate()`. It requires current receipts or the explicit
+   empty-versioning legacy baseline before first applying `20260805130000`;
+   subsequent deploys skip the one-time gate.
 3. Resume queues only after every node runs the same release.
 4. Confirm no legacy versioning jobs remain and no reset authorization secret is
    present in the normal application environment.
 5. Monitor reset completion and failures.
 
-Engineering on-call owns the rollout and stores the completed plan, SQL output,
-provider zero-inventory output, image digest, and timestamps together. Page
-immediately for any reset failure, identity mismatch, unexpected prefix, or
-provider-list error. Keep queues paused and escalate to the storage owner for any provider
-identity or recovery failure; involve Product/Support before making any user
-durability statement.
+Engineering on-call owns the rollout. For the receipt-backed route, store the
+completed plan, SQL output, provider zero-inventory output, image digest, and
+timestamps together. For the compatibility route, store the two zero row
+counts, lifecycle-migration query, release warning, image digest, and timestamps.
+Page immediately for any reset failure, identity mismatch, unexpected prefix,
+or provider-list error. Keep queues paused and escalate to the storage owner for
+any provider identity or recovery failure; involve Product/Support before making
+any user durability statement.
 
 Relevant telemetry prefixes are:
 

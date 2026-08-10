@@ -1936,7 +1936,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       lifecycle_generation: intent.deletion_generation,
       object_prefix: intent.ready_prefix,
       expected_size_bytes: intent.estimated_cleanup_bytes,
-      error_code: safe_evidence_string(intent.last_error_code, 255) || "snapshot_cleanup_terminal",
+      error_code: safe_evidence_string(intent.last_error_code, 255),
       details: %{
         "processing_generation" => intent.processing_generation,
         "reason" => intent.reason,

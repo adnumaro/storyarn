@@ -417,18 +417,54 @@ defmodule Storyarn.Release do
       :ok ->
         :ok
 
+      {:error, :snapshot_reset_rollout_receipts_incomplete} ->
+        accept_empty_versioning_compatibility_rollout()
+
       {:error, :snapshot_reset_rollout_provider_receipt_missing} ->
-        case ProjectSnapshotReset.bootstrap_pristine_provider_receipt(environment, opts) do
-          :ok -> :ok
-          {:error, reason} -> raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
-          _invalid -> raise "Snapshot lifecycle rollout bootstrap returned an invalid response"
-        end
+        ensure_snapshot_provider_receipt_or_compatibility!(environment, opts)
 
       {:error, reason} ->
         raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
 
       _invalid ->
         raise "Snapshot lifecycle rollout readiness returned an invalid response"
+    end
+  end
+
+  defp ensure_snapshot_provider_receipt_or_compatibility!(environment, opts) do
+    case ProjectSnapshotReset.bootstrap_pristine_provider_receipt(environment, opts) do
+      :ok -> :ok
+      {:error, :snapshot_reset_bootstrap_not_pristine} -> accept_legacy_provider_receipt_compatibility!(opts)
+      {:error, reason} -> raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
+      _invalid -> raise "Snapshot lifecycle rollout bootstrap returned an invalid response"
+    end
+  end
+
+  defp accept_empty_versioning_compatibility_rollout do
+    IO.puts(
+      :stderr,
+      "WARNING: applying the one-time empty-versioning rollout without complete reset receipts; " <>
+        "provider snapshot objects were not inventoried"
+    )
+
+    :ok
+  end
+
+  defp accept_legacy_provider_receipt_compatibility!(opts) do
+    repo = Keyword.get(opts, :repo, Storyarn.Repo)
+
+    case repo.query("SELECT EXISTS (SELECT 1 FROM workspaces) OR EXISTS (SELECT 1 FROM projects)", []) do
+      {:ok, %{rows: [[true]]}} ->
+        accept_empty_versioning_compatibility_rollout()
+
+      {:ok, %{rows: [[false]]}} ->
+        raise "Snapshot lifecycle rollout is not ready: :snapshot_reset_bootstrap_not_pristine"
+
+      {:error, reason} ->
+        raise "Could not verify legacy snapshot rollout scope: #{inspect(reason)}"
+
+      _invalid ->
+        raise "Could not verify legacy snapshot rollout scope"
     end
   end
 

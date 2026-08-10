@@ -1,6 +1,10 @@
 defmodule Storyarn.ReleaseSnapshotMigrationTest do
   use Storyarn.DataCase, async: false
 
+  import ExUnit.CaptureIO
+  import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
+
   alias Storyarn.Release
   alias Storyarn.Repo
   alias Storyarn.SnapshotMigrationGateRepo
@@ -37,7 +41,7 @@ defmodule Storyarn.ReleaseSnapshotMigrationTest do
     end
   end
 
-  test "a pending lifecycle migration accepts only complete reset readiness" do
+  test "a pending lifecycle migration accepts complete reset readiness" do
     System.put_env(@environment_variable, "production")
 
     :ok =
@@ -49,16 +53,120 @@ defmodule Storyarn.ReleaseSnapshotMigrationTest do
     assert :ok = Release.ensure_project_snapshot_lifecycle_rollout_ready!(SnapshotMigrationGateRepo)
   end
 
-  test "a pending lifecycle migration rejects incomplete reset readiness" do
+  test "a pending lifecycle migration accepts an empty-versioning legacy deployment without receipts" do
     System.put_env(@environment_variable, "production")
 
     :ok =
       SnapshotMigrationGateRepo.configure(
         {:ok, %{rows: [[false]]}},
-        {:ok, %{rows: [[true, true, true, 1, 0, false, []]]}}
+        {:ok, %{rows: [[true, true, true, 2, 0, false, []]]}}
       )
 
-    assert_raise RuntimeError, ~r/snapshot_reset_rollout_receipts_incomplete/, fn ->
+    warning =
+      capture_io(:stderr, fn ->
+        assert :ok = Release.ensure_project_snapshot_lifecycle_rollout_ready!(SnapshotMigrationGateRepo)
+      end)
+
+    assert warning =~ "empty-versioning rollout without complete reset receipts"
+    assert warning =~ "provider snapshot objects were not inventoried"
+  end
+
+  test "the empty-versioning legacy baseline preserves existing workspaces and projects" do
+    System.put_env(@environment_variable, "production")
+    first_project = project_fixture(user_fixture())
+    second_project = project_fixture(user_fixture())
+    project_ids = Enum.sort([first_project.id, second_project.id])
+    workspace_ids = Enum.sort([first_project.workspace_id, second_project.workspace_id])
+
+    legacy_objects = %{
+      "projects/#{first_project.id}/snapshots/project/orphan.json.gz" => 17,
+      "projects/#{second_project.id}/assets/current.bin" => 23
+    }
+
+    :ok = SnapshotResetStorage.put_objects(legacy_objects)
+    Repo.query!("DELETE FROM schema_migrations WHERE version = $1", [@snapshot_lifecycle_migration])
+
+    capture_io(:stderr, fn ->
+      assert :ok =
+               Release.ensure_project_snapshot_lifecycle_rollout_ready!(Repo,
+                 current_environment: "production",
+                 storage_adapter: SnapshotResetStorage
+               )
+    end)
+
+    assert Enum.map(Repo.query!("SELECT id FROM workspaces WHERE id = ANY($1) ORDER BY id", [workspace_ids]).rows, &hd/1) ==
+             workspace_ids
+
+    assert Enum.map(Repo.query!("SELECT id FROM projects WHERE id = ANY($1) ORDER BY id", [project_ids]).rows, &hd/1) ==
+             project_ids
+
+    assert Map.new(SnapshotResetStorage.objects(), fn {key, object} -> {key, object.size} end) == legacy_objects
+  end
+
+  test "the legacy baseline accepts complete workspace receipts without a provider receipt" do
+    System.put_env(@environment_variable, "production")
+    project = project_fixture(user_fixture())
+    {:ok, namespace_fingerprint} = SnapshotResetStorage.namespace_fingerprint()
+    digest = String.duplicate("0", 64)
+
+    Repo.query!(
+      """
+      INSERT INTO project_snapshot_reset_receipts (
+        workspace_id, plan_id, project_ids, environment, inventory_digest,
+        database_inventory_digest, storage_namespace_fingerprint,
+        authorization_digest, object_count, object_bytes, snapshot_row_count,
+        entity_version_row_count, attempt_count, completed_at
+      )
+      VALUES ($1, $2::text::uuid, $3, 'production', $4, $4, $5, $4, 0, 0, 0, 0, 1, $6)
+      """,
+      [
+        project.workspace_id,
+        Ecto.UUID.generate(),
+        [project.id],
+        digest,
+        namespace_fingerprint,
+        Storyarn.Shared.TimeHelpers.now()
+      ]
+    )
+
+    Repo.query!("DELETE FROM schema_migrations WHERE version = $1", [@snapshot_lifecycle_migration])
+
+    warning =
+      capture_io(:stderr, fn ->
+        assert :ok =
+                 Release.ensure_project_snapshot_lifecycle_rollout_ready!(Repo,
+                   current_environment: "production",
+                   storage_adapter: SnapshotResetStorage
+                 )
+      end)
+
+    assert warning =~ "empty-versioning rollout without complete reset receipts"
+  end
+
+  test "a pending lifecycle migration still rejects non-empty versioning tables" do
+    System.put_env(@environment_variable, "production")
+
+    :ok =
+      SnapshotMigrationGateRepo.configure(
+        {:ok, %{rows: [[false]]}},
+        {:ok, %{rows: [[true, false, true, 2, 0, false, []]]}}
+      )
+
+    assert_raise RuntimeError, ~r/snapshot_reset_rollout_database_not_empty/, fn ->
+      Release.ensure_project_snapshot_lifecycle_rollout_ready!(SnapshotMigrationGateRepo)
+    end
+  end
+
+  test "a pending lifecycle migration also rejects non-empty entity versions" do
+    System.put_env(@environment_variable, "production")
+
+    :ok =
+      SnapshotMigrationGateRepo.configure(
+        {:ok, %{rows: [[false]]}},
+        {:ok, %{rows: [[true, true, false, 2, 0, false, []]]}}
+      )
+
+    assert_raise RuntimeError, ~r/snapshot_reset_rollout_database_not_empty/, fn ->
       Release.ensure_project_snapshot_lifecycle_rollout_ready!(SnapshotMigrationGateRepo)
     end
   end
@@ -79,6 +187,24 @@ defmodule Storyarn.ReleaseSnapshotMigrationTest do
              SELECT environment, workspace_receipt_ids, object_count, scanned_object_count
              FROM project_snapshot_provider_reset_receipts
              """).rows
+  end
+
+  test "a pending lifecycle migration rejects a new database pointed at a dirty provider root" do
+    System.put_env(@environment_variable, "production")
+
+    :ok =
+      SnapshotResetStorage.put_objects(%{
+        "projects/41/snapshots/project/orphan.json.gz" => 17
+      })
+
+    Repo.query!("DELETE FROM schema_migrations WHERE version >= $1", [@snapshot_lifecycle_migration])
+
+    assert_raise RuntimeError, ~r/snapshot_reset_bootstrap_not_pristine/, fn ->
+      Release.ensure_project_snapshot_lifecycle_rollout_ready!(Repo,
+        current_environment: "production",
+        storage_adapter: SnapshotResetStorage
+      )
+    end
   end
 
   test "a later migration does not satisfy the exact lifecycle migration gate" do

@@ -186,7 +186,7 @@ defmodule StoryarnWeb.TelemetryTest do
       metrics =
         Enum.filter(Telemetry.metrics(), &(Enum.take(&1.name, 2) == [:storyarn, :snapshot]))
 
-      assert length(metrics) == 45
+      assert length(metrics) == 52
 
       names = Enum.map(metrics, & &1.name)
       assert [:storyarn, :snapshot, :cleanup, :intent, :count] in names
@@ -203,6 +203,9 @@ defmodule StoryarnWeb.TelemetryTest do
       assert [:storyarn, :snapshot, :reconciliation, :stop, :count] in names
       assert [:storyarn, :snapshot, :reconciliation, :repair, :stop, :count] in names
       assert [:storyarn, :snapshot, :reconciliation, :repair, :stop, :bytes] in names
+      assert [:storyarn, :snapshot, :reconciliation, :repair, :recovery, :stop, :requeued_count] in names
+      assert [:storyarn, :snapshot, :reconciliation, :repair, :recovery, :stop, :failure_count] in names
+      assert [:storyarn, :snapshot, :reconciliation, :repair, :recovery, :stop, :continuation_count] in names
       assert [:storyarn, :snapshot, :reconciliation, :summary, :stale_reservation_bytes] in names
       assert [:storyarn, :snapshot, :reconciliation, :summary, :orphan_object_bytes] in names
       assert [:storyarn, :snapshot, :reconciliation, :summary, :missing_ready_snapshot_count] in names
@@ -214,6 +217,15 @@ defmodule StoryarnWeb.TelemetryTest do
         Enum.filter(metrics, &(Enum.take(&1.name, 5) == [:storyarn, :snapshot, :reconciliation, :repair, :stop]))
 
       assert Enum.all?(repair_metrics, &(&1.tags == [:action, :outcome]))
+
+      repair_recovery_metrics =
+        Enum.filter(
+          metrics,
+          &(Enum.take(&1.name, 6) == [:storyarn, :snapshot, :reconciliation, :repair, :recovery, :stop])
+        )
+
+      assert length(repair_recovery_metrics) == 7
+      assert Enum.all?(repair_recovery_metrics, &(&1.tags == [:status]))
 
       summary_metrics =
         Enum.filter(metrics, &(Enum.take(&1.name, 4) == [:storyarn, :snapshot, :reconciliation, :summary]))
@@ -234,8 +246,8 @@ defmodule StoryarnWeb.TelemetryTest do
       metrics = Telemetry.metrics()
 
       # 9 Phoenix + 5 DB + 3 template installation + 9 import + 11 storage +
-      # 45 snapshot lifecycle + 3 AI expiration + 4 VM = 89
-      assert length(metrics) == 89
+      # 52 snapshot lifecycle + 3 AI expiration + 4 VM = 96
+      assert length(metrics) == 96
     end
   end
 

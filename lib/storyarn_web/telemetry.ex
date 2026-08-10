@@ -224,6 +224,13 @@ defmodule StoryarnWeb.Telemetry do
       ),
       sum("storyarn.snapshot.reconciliation.repair.stop.count", tags: [:action, :outcome]),
       sum("storyarn.snapshot.reconciliation.repair.stop.bytes", tags: [:action, :outcome]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.requeued_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.reenqueued_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.already_active_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.terminalized_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.already_terminal_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.failure_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.continuation_count", tags: [:status]),
       last_value("storyarn.snapshot.reconciliation.summary.stale_reservation_bytes",
         tags: [:contract_version, :mode, :multipart_inventory_state]
       ),

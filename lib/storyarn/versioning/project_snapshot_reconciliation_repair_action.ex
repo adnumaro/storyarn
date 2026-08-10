@@ -5,7 +5,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairAction do
   The source finding remains immutable evidence, while this row records one
   terminal outcome per finding and repair contract. A recurring observation in
   a later inspection run produces a new finding and therefore a new action.
-  Terminal rows cannot be replayed or rewritten.
+  `subject_fingerprint` snapshots the finding's complete evidence; it is not a
+  stable logical-subject identifier across runs. Terminal rows cannot be
+  replayed or rewritten.
   """
 
   use Ecto.Schema

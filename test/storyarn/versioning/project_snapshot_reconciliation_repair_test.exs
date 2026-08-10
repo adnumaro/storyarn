@@ -7,9 +7,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
 
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
@@ -184,6 +186,89 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
 
     assert Repo.get!(ProjectSnapshotReconciliationRepairAction, missing_action.id).attempt_count == 1
     refute_receive {[:storyarn, :snapshot, :reconciliation, :repair, :stop], _, _}
+  end
+
+  test "ready-object verification streams outside the workspace lock and reads the manifest once" do
+    {_user, project, snapshot} = ready_snapshot!()
+    assert {:ok, project_json} = Storage.download(snapshot.project_storage_key)
+    <<first, rest::binary>> = project_json
+    corrupt_json = <<Bitwise.bxor(first, 1), rest::binary>>
+    assert {:ok, _url} = Storage.upload(snapshot.project_storage_key, corrupt_json, "application/json")
+
+    run = completed_run!()
+    {_finding, action} = finding_action!(run, "ready_object_corrupt", snapshot.id)
+    install_snapshot_read_switch_storage()
+
+    parent = self()
+
+    SnapshotReadSwitchStorage.observe_io(fn operation, key ->
+      send(parent, {
+        :snapshot_repair_io,
+        operation,
+        key,
+        Billing.workspace_lock_held?(project.workspace_id)
+      })
+    end)
+
+    SnapshotReadSwitchStorage.reset_counts()
+    assert {:ok, :repaired} = Versioning.perform_project_snapshot_reconciliation_repair(action.id)
+
+    assert_receive {:snapshot_repair_io, :stat, manifest_key, false}
+    assert manifest_key == snapshot.manifest_storage_key
+    assert_receive {:snapshot_repair_io, :stream_chunk, ^manifest_key, false}
+    assert_receive {:snapshot_repair_io, :stat, project_key, false}
+    assert project_key == snapshot.project_storage_key
+    assert_receive {:snapshot_repair_io, :stream_chunk, ^project_key, false}
+    refute_receive {:snapshot_repair_io, _operation, _key, true}
+    assert SnapshotReadSwitchStorage.stream_count(snapshot.manifest_storage_key) == 1
+    assert SnapshotReadSwitchStorage.stream_count(snapshot.project_storage_key) == 1
+  end
+
+  test "integrity repair revalidates snapshot state after provider I/O" do
+    {_user, _project, snapshot} = ready_snapshot!()
+    assert :ok = Storage.delete(snapshot.project_storage_key)
+    run = completed_run!()
+    {_finding, action} = finding_action!(run, "ready_object_missing", snapshot.id)
+    install_snapshot_read_switch_storage()
+
+    SnapshotReadSwitchStorage.observe_io(fn operation, key ->
+      if operation == :stream_chunk and key == snapshot.manifest_storage_key do
+        snapshot.id
+        |> then(&Repo.get!(ProjectSnapshot, &1))
+        |> ProjectSnapshot.reconciliation_integrity_changeset("corrupt")
+        |> Repo.update!()
+      end
+    end)
+
+    assert {:ok, :resolved} = Versioning.perform_project_snapshot_reconciliation_repair(action.id)
+    assert Repo.get!(ProjectSnapshot, snapshot.id).integrity_state == "corrupt"
+
+    assert %ProjectSnapshotReconciliationRepairAction{
+             status: "resolved",
+             result_code: "integrity_finding_stale"
+           } = Repo.get!(ProjectSnapshotReconciliationRepairAction, action.id)
+  end
+
+  test "integrity repair fails closed when the provider namespace changes during inspection" do
+    {_user, _project, snapshot} = ready_snapshot!()
+    assert :ok = Storage.delete(snapshot.project_storage_key)
+    run = completed_run!()
+    {_finding, action} = finding_action!(run, "ready_object_missing", snapshot.id)
+    install_snapshot_read_switch_storage()
+
+    SnapshotReadSwitchStorage.observe_io(fn operation, key ->
+      if operation == :stream_chunk and key == snapshot.manifest_storage_key do
+        SnapshotReadSwitchStorage.override_namespace_fingerprint(String.duplicate("f", 64))
+      end
+    end)
+
+    assert {:ok, :manual} = Versioning.perform_project_snapshot_reconciliation_repair(action.id)
+    assert Repo.get!(ProjectSnapshot, snapshot.id).integrity_state == "verified"
+
+    assert %ProjectSnapshotReconciliationRepairAction{
+             status: "manual",
+             result_code: "provider_namespace_changed"
+           } = Repo.get!(ProjectSnapshotReconciliationRepairAction, action.id)
   end
 
   test "a recurring finding receives a new action without reopening the prior outcome" do
@@ -458,6 +543,40 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
     assert finished.result_code == "cleanup_intent_replayed"
   end
 
+  test "a terminal cleanup without an error code remains exact and requires manual review" do
+    {user, project, snapshot} = ready_snapshot!()
+
+    assert {:ok, intent} =
+             Versioning.delete_project_snapshot(user_scope_fixture(user), project, snapshot.id)
+
+    assert {:ok, :terminal} =
+             Versioning.process_project_snapshot_cleanup_intent(intent.id,
+               delete_fun: fn keys -> {:error, keys} end,
+               final_attempt?: true
+             )
+
+    intent.id
+    |> then(&Repo.get!(SnapshotCleanupIntent, &1))
+    |> Ecto.Changeset.change(last_error_code: nil)
+    |> Repo.update!()
+
+    run = completed_run!()
+    {finding, action} = finding_action!(run, "terminal_cleanup_failure", snapshot.id)
+
+    assert is_nil(finding.error_code)
+
+    assert {:ok, {:manual_repair_required, "missing_error_code"}} =
+             ProjectSnapshotLifecycle.cleanup_operator_action(intent.id)
+
+    assert {:ok, :manual} = Versioning.perform_project_snapshot_reconciliation_repair(action.id)
+    assert Repo.get!(SnapshotCleanupIntent, intent.id).status == "terminal"
+
+    assert %ProjectSnapshotReconciliationRepairAction{
+             status: "manual",
+             result_code: "cleanup_intent_manual_repair_required"
+           } = Repo.get!(ProjectSnapshotReconciliationRepairAction, action.id)
+  end
+
   test "an exact active cleanup replay completes a repair action after a partial commit" do
     {user, project, snapshot} = ready_snapshot!()
 
@@ -671,6 +790,25 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
       retry_count: finding.details["retry_count"],
       processing_generation: finding.details["processing_generation"]
     }
+  end
+
+  defp install_snapshot_read_switch_storage do
+    original_storage = Application.fetch_env!(:storyarn, :storage)
+    {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+
+    Application.put_env(
+      :storyarn,
+      :storage,
+      Keyword.put(original_storage, :adapter, SnapshotReadSwitchStorage)
+    )
+
+    on_exit(fn ->
+      Application.put_env(:storyarn, :storage, original_storage)
+
+      if Process.whereis(SnapshotReadSwitchStorage) do
+        Agent.stop(SnapshotReadSwitchStorage)
+      end
+    end)
   end
 
   defp cleanup_replay_job_ids(intent_id) do
