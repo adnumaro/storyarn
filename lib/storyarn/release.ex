@@ -257,6 +257,64 @@ defmodule Storyarn.Release do
     end
   end
 
+  @doc """
+  Persists and enqueues one bounded page of fenced repairs from a completed
+  reconciliation run.
+
+  Pass the returned `next_after_id` to continue. Ambiguous or unsupported
+  findings are recorded as manual outcomes; they are never deleted or guessed.
+  """
+  def repair_project_snapshot_reconciliation(run_id, after_id \\ 0, limit \\ 50)
+      when is_integer(run_id) and run_id > 0 and is_integer(after_id) and after_id >= 0 and is_integer(limit) and
+             limit > 0 do
+    load_app()
+    limit = min(limit, Versioning.project_snapshot_reconciliation_repair_page_limit())
+
+    case Versioning.plan_project_snapshot_reconciliation_repairs(run_id,
+           after_id: after_id,
+           limit: limit
+         ) do
+      {:ok, plan} ->
+        IO.puts("Planned #{length(plan.actions)} snapshot reconciliation actions")
+        IO.puts("Next finding ID: #{plan.next_after_id}; complete: #{plan.complete?}")
+        plan
+
+      {:error, reason} ->
+        raise "Could not plan snapshot reconciliation repairs: #{inspect(reason)}"
+    end
+  end
+
+  @doc """
+  Prints one bounded page of durable reconciliation repair outcomes.
+
+  Pass the returned action ID as `after_id` to continue.
+  """
+  def inspect_project_snapshot_reconciliation_repairs(run_id, after_id \\ 0, limit \\ 100)
+      when is_integer(run_id) and run_id > 0 and is_integer(after_id) and after_id >= 0 and is_integer(limit) and
+             limit > 0 do
+    load_app()
+    limit = min(limit, Versioning.project_snapshot_reconciliation_repair_page_limit())
+
+    if is_nil(Versioning.get_project_snapshot_reconciliation_run(run_id)) do
+      raise "Snapshot reconciliation run ##{run_id} was not found"
+    end
+
+    actions =
+      Versioning.list_project_snapshot_reconciliation_repairs(run_id,
+        after_id: after_id,
+        limit: limit
+      )
+
+    next_after_id = if action = List.last(actions), do: action.id, else: after_id
+    complete? = length(actions) < limit
+
+    IO.puts("Snapshot reconciliation repair outcomes for run ##{run_id}")
+    IO.puts("Returned actions after ##{after_id}: #{length(actions)}")
+    IO.puts("Next action ID: #{next_after_id}; complete: #{complete?}")
+
+    %{actions: actions, complete?: complete?, next_after_id: next_after_id}
+  end
+
   defp prepare_snapshot_reset!(repo, workspace_id, environment) do
     case ProjectSnapshotReset.prepare(workspace_id, environment, repo: repo) do
       {:ok, plan} -> plan
@@ -359,18 +417,54 @@ defmodule Storyarn.Release do
       :ok ->
         :ok
 
+      {:error, :snapshot_reset_rollout_receipts_incomplete} ->
+        accept_empty_versioning_compatibility_rollout()
+
       {:error, :snapshot_reset_rollout_provider_receipt_missing} ->
-        case ProjectSnapshotReset.bootstrap_pristine_provider_receipt(environment, opts) do
-          :ok -> :ok
-          {:error, reason} -> raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
-          _invalid -> raise "Snapshot lifecycle rollout bootstrap returned an invalid response"
-        end
+        ensure_snapshot_provider_receipt_or_compatibility!(environment, opts)
 
       {:error, reason} ->
         raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
 
       _invalid ->
         raise "Snapshot lifecycle rollout readiness returned an invalid response"
+    end
+  end
+
+  defp ensure_snapshot_provider_receipt_or_compatibility!(environment, opts) do
+    case ProjectSnapshotReset.bootstrap_pristine_provider_receipt(environment, opts) do
+      :ok -> :ok
+      {:error, :snapshot_reset_bootstrap_not_pristine} -> accept_legacy_provider_receipt_compatibility!(opts)
+      {:error, reason} -> raise "Snapshot lifecycle rollout is not ready: #{inspect(reason)}"
+      _invalid -> raise "Snapshot lifecycle rollout bootstrap returned an invalid response"
+    end
+  end
+
+  defp accept_empty_versioning_compatibility_rollout do
+    IO.puts(
+      :stderr,
+      "WARNING: applying the one-time empty-versioning rollout without complete reset receipts; " <>
+        "provider snapshot objects were not inventoried"
+    )
+
+    :ok
+  end
+
+  defp accept_legacy_provider_receipt_compatibility!(opts) do
+    repo = Keyword.get(opts, :repo, Storyarn.Repo)
+
+    case repo.query("SELECT EXISTS (SELECT 1 FROM workspaces) OR EXISTS (SELECT 1 FROM projects)", []) do
+      {:ok, %{rows: [[true]]}} ->
+        accept_empty_versioning_compatibility_rollout()
+
+      {:ok, %{rows: [[false]]}} ->
+        raise "Snapshot lifecycle rollout is not ready: :snapshot_reset_bootstrap_not_pristine"
+
+      {:error, reason} ->
+        raise "Could not verify legacy snapshot rollout scope: #{inspect(reason)}"
+
+      _invalid ->
+        raise "Could not verify legacy snapshot rollout scope"
     end
   end
 

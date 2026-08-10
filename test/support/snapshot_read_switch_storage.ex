@@ -7,7 +7,16 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
 
   def start_link(replacements) when is_map(replacements) do
     Agent.start_link(
-      fn -> %{counts: %{}, replacements: replacements, content_type_overrides: %{}} end,
+      fn ->
+        %{
+          counts: %{},
+          replacements: replacements,
+          content_type_overrides: %{},
+          io_observer: nil,
+          namespace_observer: nil,
+          namespace_fingerprint_override: nil
+        }
+      end,
       name: __MODULE__
     )
   end
@@ -24,6 +33,18 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
     Agent.update(__MODULE__, &put_in(&1, [:content_type_overrides, key], content_type))
   end
 
+  def observe_io(callback) when is_function(callback, 2) do
+    Agent.update(__MODULE__, &%{&1 | io_observer: callback})
+  end
+
+  def observe_namespace(callback) when is_function(callback, 1) do
+    Agent.update(__MODULE__, &%{&1 | namespace_observer: callback})
+  end
+
+  def override_namespace_fingerprint(fingerprint) when is_binary(fingerprint) do
+    Agent.update(__MODULE__, &%{&1 | namespace_fingerprint_override: fingerprint})
+  end
+
   @impl true
   defdelegate list_prefix(prefix, opts), to: Local
 
@@ -37,9 +58,15 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
 
     replacement = Agent.get(__MODULE__, &Map.get(&1.replacements, key))
 
-    if read_number > 1 and is_binary(replacement),
-      do: {:ok, [{:ok, replacement}]},
-      else: Local.stream(key, offset, length, opts)
+    result =
+      if read_number > 1 and is_binary(replacement),
+        do: {:ok, [{:ok, replacement}]},
+        else: Local.stream(key, offset, length, opts)
+
+    case result do
+      {:ok, chunks} -> {:ok, Stream.map(chunks, &observe_chunk(&1, key))}
+      {:error, _reason} = error -> error
+    end
   end
 
   @impl true
@@ -58,7 +85,20 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   defdelegate delete_if_matches(key, identity), to: Local
 
   @impl true
-  defdelegate namespace_fingerprint(), to: Local
+  def namespace_fingerprint do
+    result =
+      case Agent.get(__MODULE__, & &1.namespace_fingerprint_override) do
+        nil -> Local.namespace_fingerprint()
+        fingerprint -> {:ok, fingerprint}
+      end
+
+    case result do
+      {:ok, fingerprint} -> notify_namespace(fingerprint)
+      {:error, reason} -> notify_namespace(reason)
+    end
+
+    result
+  end
 
   @impl true
   defdelegate get_url(key), to: Local
@@ -68,6 +108,8 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
 
   @impl true
   def stat(key) do
+    observe_io(:stat, key)
+
     with {:ok, stat} <- Local.stat(key) do
       case Agent.get(__MODULE__, &Map.fetch(&1.content_type_overrides, key)) do
         {:ok, content_type} -> {:ok, %{stat | content_type: content_type}}
@@ -87,4 +129,23 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
 
   @impl true
   defdelegate key_from_url(url), to: Local
+
+  defp observe_chunk(chunk, key) do
+    observe_io(:stream_chunk, key)
+    chunk
+  end
+
+  defp observe_io(operation, key) do
+    case Agent.get(__MODULE__, & &1.io_observer) do
+      callback when is_function(callback, 2) -> callback.(operation, key)
+      nil -> :ok
+    end
+  end
+
+  defp notify_namespace(value) do
+    case Agent.get(__MODULE__, & &1.namespace_observer) do
+      callback when is_function(callback, 1) -> callback.(value)
+      nil -> :ok
+    end
+  end
 end

@@ -20,6 +20,7 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.ProjectSnapshotCrud
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
   alias Storyarn.Versioning.ProjectSnapshotReconciliation
+  alias Storyarn.Versioning.ProjectSnapshotReconciliationRepair
   alias Storyarn.Versioning.ProjectSnapshotReset
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
@@ -195,6 +196,41 @@ defmodule Storyarn.Versioning do
   defdelegate list_project_snapshot_reconciliation_findings(run_id, opts \\ []),
     to: ProjectSnapshotReconciliation,
     as: :list_findings
+
+  @doc "Persists and enqueues one bounded page of explicit, generation-fenced reconciliation repairs."
+  defdelegate plan_project_snapshot_reconciliation_repairs(run_id, opts \\ []),
+    to: ProjectSnapshotReconciliationRepair,
+    as: :plan
+
+  @doc "Lists durable reconciliation repair outcomes for one inspection run."
+  defdelegate list_project_snapshot_reconciliation_repairs(run_id, opts \\ []),
+    to: ProjectSnapshotReconciliationRepair,
+    as: :list_actions
+
+  @doc false
+  defdelegate project_snapshot_reconciliation_repair_page_limit(),
+    to: ProjectSnapshotReconciliationRepair,
+    as: :repair_page_limit
+
+  @doc false
+  defdelegate perform_project_snapshot_reconciliation_repair(action_id),
+    to: ProjectSnapshotReconciliationRepair,
+    as: :perform
+
+  @doc false
+  defdelegate fail_project_snapshot_reconciliation_repair(action_id, reason),
+    to: ProjectSnapshotReconciliationRepair,
+    as: :fail
+
+  @doc false
+  defdelegate project_snapshot_reconciliation_repair_recovery_high_watermark(),
+    to: ProjectSnapshotReconciliationRepair,
+    as: :repair_delivery_recovery_high_watermark
+
+  @doc false
+  defdelegate recover_project_snapshot_reconciliation_repair_delivery_page(opts \\ []),
+    to: ProjectSnapshotReconciliationRepair,
+    as: :recover_repair_delivery_page
 
   @doc "Requests cooperative cancellation for an in-progress project snapshot."
   defdelegate cancel_project_snapshot(current_scope, project, snapshot_id),

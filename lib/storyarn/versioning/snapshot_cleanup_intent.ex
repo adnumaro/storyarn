@@ -20,6 +20,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
   @reasons ~w(user_delete retention expired_build project_hard_delete workspace_hard_delete)
   @origins ~w(user daily pre_restore post_restore)
   @blob_path ~r|\Ablobs/[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z|
+  @provider_namespace_pattern ~r/\A[0-9a-f]{64}\z/
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -46,6 +47,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
           required_delete_passes: pos_integer(),
           completed_delete_passes: non_neg_integer(),
           processing_generation: non_neg_integer(),
+          provider_namespace_fingerprint: String.t(),
           next_delete_pass_at: DateTime.t() | nil,
           last_error_code: String.t() | nil,
           requested_at: DateTime.t(),
@@ -76,6 +78,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
     field :required_delete_passes, :integer, default: 1
     field :completed_delete_passes, :integer, default: 0
     field :processing_generation, :integer, default: 0
+    field :provider_namespace_fingerprint, :string
     field :next_delete_pass_at, :utc_datetime
     field :last_error_code, :string
     field :requested_at, :utc_datetime
@@ -125,6 +128,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
       :required_delete_passes,
       :completed_delete_passes,
       :processing_generation,
+      :provider_namespace_fingerprint,
       :next_delete_pass_at,
       :requested_at
     ])
@@ -151,6 +155,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
       :required_delete_passes,
       :completed_delete_passes,
       :processing_generation,
+      :provider_namespace_fingerprint,
       :requested_at
     ])
     |> validate_inclusion(:mode, ["full", "linked"])
@@ -167,6 +172,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
     |> validate_number(:retry_count, equal_to: 0)
     |> validate_number(:completed_delete_passes, equal_to: 0)
     |> validate_number(:processing_generation, equal_to: 0)
+    |> validate_format(:provider_namespace_fingerprint, @provider_namespace_pattern)
     |> validate_delete_pass_policy()
     |> validate_authority()
     |> validate_inventory()
@@ -175,6 +181,9 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
     |> unique_constraint(:project_snapshot_id_snapshot)
     |> unique_constraint(:cleanup_request_id)
     |> check_constraint(:status, name: :snapshot_cleanup_intents_identity)
+    |> check_constraint(:provider_namespace_fingerprint,
+      name: :snapshot_cleanup_intents_provider_namespace
+    )
   end
 
   @doc false
@@ -283,7 +292,9 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
         valid_remaining_inventory?(intent.remaining_storage_keys, intent.storage_keys) and
         valid_remaining_state?(intent.status, intent.remaining_storage_keys) and
         valid_delete_pass_state?(intent) and
-        is_integer(intent.processing_generation) and intent.processing_generation >= 0
+        is_integer(intent.processing_generation) and intent.processing_generation >= 0 and
+        is_binary(intent.provider_namespace_fingerprint) and
+        Regex.match?(@provider_namespace_pattern, intent.provider_namespace_fingerprint)
 
     if valid?, do: :ok, else: {:error, :invalid_snapshot_cleanup_inventory}
   end

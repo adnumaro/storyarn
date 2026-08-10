@@ -687,10 +687,10 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   @doc false
-  @spec persist_snapshot_lifecycle_cleanup([String.t()], Ecto.UUID.t()) ::
+  @spec persist_snapshot_lifecycle_cleanup([String.t()], Ecto.UUID.t(), String.t()) ::
           {:ok, StorageCleanupRequest.t()} | {:error, term()}
-  def persist_snapshot_lifecycle_cleanup(cleanup_targets, owner_token)
-      when is_list(cleanup_targets) and is_binary(owner_token) do
+  def persist_snapshot_lifecycle_cleanup(cleanup_targets, owner_token, provider_namespace_fingerprint)
+      when is_list(cleanup_targets) and is_binary(owner_token) and is_binary(provider_namespace_fingerprint) do
     cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
 
     case cleanup_targets do
@@ -702,14 +702,16 @@ defmodule Storyarn.Assets.StorageCompensation do
           cleanup_targets,
           %{
             owner_kind: "snapshot_lifecycle",
-            owner_token: owner_token
+            owner_token: owner_token,
+            provider_namespace_fingerprint: provider_namespace_fingerprint
           },
           :snapshot_lifecycle
         )
     end
   end
 
-  def persist_snapshot_lifecycle_cleanup(_cleanup_targets, _owner_token), do: {:error, :invalid_snapshot_cleanup_owner}
+  def persist_snapshot_lifecycle_cleanup(_cleanup_targets, _owner_token, _provider_namespace_fingerprint),
+    do: {:error, :invalid_snapshot_cleanup_owner}
 
   defp insert_cleanup_request(storage_keys, attrs, persistence_kind) do
     attrs = Map.put(attrs, :storage_keys, storage_keys)

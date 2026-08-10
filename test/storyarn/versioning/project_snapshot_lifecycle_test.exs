@@ -6,6 +6,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
@@ -14,6 +15,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotCapture
+  alias Storyarn.Versioning.ProjectSnapshotLifecycle
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
@@ -48,6 +50,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert ready.manifest_storage_key in intent.storage_keys
       assert ready.project_storage_key in intent.storage_keys
       assert Enum.any?(intent.storage_keys, &String.contains?(&1, "/staging/"))
+      assert {:ok, provider_namespace_fingerprint} = Storage.namespace_fingerprint()
+      assert intent.provider_namespace_fingerprint == provider_namespace_fingerprint
+
+      assert %StorageCleanupRequest{
+               owner_kind: "snapshot_lifecycle",
+               storage_keys: request_storage_keys,
+               provider_namespace_fingerprint: ^provider_namespace_fingerprint
+             } = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+
+      assert request_storage_keys == intent.storage_keys
       assert Billing.workspace_storage_usage(project.workspace_id).full_snapshots == %{bytes: 0, count: 0}
 
       assert {:ok, :completed} = Versioning.process_project_snapshot_cleanup_intent(intent.id)
@@ -146,7 +158,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert terminal.remaining_storage_keys == intent.storage_keys
       assert terminal.terminal_at
 
-      assert %{backlog_count: 0, retry_count: 0, terminal_failures: 1} =
+      assert %{
+               backlog_count: 0,
+               retry_count: 0,
+               terminal_failures: 1,
+               terminal_retry_count: 1,
+               repeated_terminal_failures: 0
+             } =
                Versioning.project_snapshot_cleanup_backlog()
     end
 
@@ -197,6 +215,146 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
                Versioning.replay_terminal_project_snapshot_cleanup(intent.id)
 
       refute_receive {[:storyarn, :snapshot, :cleanup, :replay], _, _}
+    end
+
+    test "finding replay requires every exact terminal intent expectation" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+      assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      assert {:ok, :terminal} =
+               Versioning.process_project_snapshot_cleanup_intent(intent.id,
+                 delete_fun: fn keys -> {:error, keys} end,
+                 final_attempt?: true
+               )
+
+      terminal = Repo.get!(SnapshotCleanupIntent, intent.id)
+      expectations = cleanup_replay_expectations(terminal)
+
+      Enum.each(Map.keys(expectations), fn field ->
+        changed = Map.update!(expectations, field, &different_expectation/1)
+
+        assert {:error, :snapshot_cleanup_intent_changed} =
+                 ProjectSnapshotLifecycle.replay_terminal_cleanup_intent(intent.id, changed)
+
+        assert Repo.get!(SnapshotCleanupIntent, intent.id).status == "terminal"
+      end)
+
+      assert {:error, :invalid_snapshot_cleanup_replay_expectations} =
+               ProjectSnapshotLifecycle.replay_terminal_cleanup_intent(
+                 intent.id,
+                 Map.delete(expectations, :processing_generation)
+               )
+
+      assert {:ok, %SnapshotCleanupIntent{status: "retrying"}} =
+               ProjectSnapshotLifecycle.replay_terminal_cleanup_intent(intent.id, expectations)
+
+      assert {:ok, :already_active} =
+               ProjectSnapshotLifecycle.replay_terminal_cleanup_intent(intent.id, expectations)
+
+      for counter <- [:retry_count, :processing_generation] do
+        regressed = Map.update!(expectations, counter, &(&1 + 1))
+
+        assert {:error, :snapshot_cleanup_intent_changed} =
+                 ProjectSnapshotLifecycle.replay_terminal_cleanup_intent(intent.id, regressed)
+      end
+    end
+
+    @tag :tmp_dir
+    test "provider namespace drift blocks cleanup and operator replay before deletion", %{tmp_dir: tmp_dir} do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+      assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      use_alternate_storage_namespace!(tmp_dir)
+      parent = self()
+
+      assert {:ok, :terminal} =
+               Versioning.process_project_snapshot_cleanup_intent(intent.id,
+                 delete_fun: fn keys ->
+                   send(parent, {:deleted, keys})
+                   :ok
+                 end,
+                 final_attempt?: true
+               )
+
+      refute_receive {:deleted, _keys}
+
+      assert %SnapshotCleanupIntent{
+               status: "terminal",
+               last_error_code: "provider_namespace_changed",
+               remaining_storage_keys: remaining_storage_keys
+             } = Repo.get!(SnapshotCleanupIntent, intent.id)
+
+      assert remaining_storage_keys == intent.storage_keys
+
+      assert {:error, :snapshot_cleanup_provider_namespace_changed} =
+               ProjectSnapshotLifecycle.replay_terminal_cleanup_intent(intent.id)
+
+      assert Repo.get!(SnapshotCleanupIntent, intent.id).status == "terminal"
+    end
+
+    test "cleanup request provider namespace cannot drift from its intent" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+      assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      assert {:ok, :terminal} =
+               Versioning.process_project_snapshot_cleanup_intent(intent.id,
+                 delete_fun: fn keys -> {:error, keys} end,
+                 final_attempt?: true
+               )
+
+      different_fingerprint = different_expectation(intent.provider_namespace_fingerprint)
+
+      request = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+
+      assert_raise Postgrex.Error, ~r/snapshot cleanup provider namespace is immutable/, fn ->
+        Repo.transaction(fn ->
+          request
+          |> Ecto.Changeset.change(provider_namespace_fingerprint: different_fingerprint)
+          |> Repo.update!()
+        end)
+      end
+
+      assert Repo.get!(SnapshotCleanupIntent, intent.id).status == "terminal"
+
+      assert Repo.get!(StorageCleanupRequest, request.id).provider_namespace_fingerprint ==
+               intent.provider_namespace_fingerprint
+    end
+
+    test "counts retries retained by repeatedly terminal cleanup intents" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+      assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      fail_all = fn keys -> {:error, keys} end
+
+      assert {:ok, :terminal} =
+               Versioning.process_project_snapshot_cleanup_intent(intent.id,
+                 delete_fun: fail_all,
+                 final_attempt?: true
+               )
+
+      assert {:ok, %SnapshotCleanupIntent{status: "retrying"}} =
+               Versioning.replay_terminal_project_snapshot_cleanup(intent.id)
+
+      assert {:ok, :terminal} =
+               Versioning.process_project_snapshot_cleanup_intent(intent.id,
+                 delete_fun: fail_all,
+                 final_attempt?: true
+               )
+
+      assert %{
+               backlog_count: 0,
+               terminal_failures: 1,
+               terminal_retry_count: 2,
+               repeated_terminal_failures: 1
+             } = Versioning.project_snapshot_cleanup_backlog()
     end
 
     test "emits an intent once even when a user deletion is redelivered" do
@@ -1138,5 +1296,34 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       end)
 
     {^count, nil} = Repo.insert_all(ProjectSnapshot, rows)
+  end
+
+  defp cleanup_replay_expectations(intent) do
+    %{
+      cleanup_intent_id_snapshot: intent.id,
+      workspace_id_snapshot: intent.workspace_id_snapshot,
+      project_id_snapshot: intent.project_id_snapshot,
+      project_snapshot_id_snapshot: intent.project_snapshot_id_snapshot,
+      lifecycle_generation: intent.deletion_generation,
+      object_prefix: intent.ready_prefix,
+      expected_size_bytes: intent.estimated_cleanup_bytes,
+      error_code: intent.last_error_code,
+      reason: intent.reason,
+      retry_count: intent.retry_count,
+      processing_generation: intent.processing_generation
+    }
+  end
+
+  defp different_expectation(value) when is_integer(value), do: value + 1
+
+  defp different_expectation(<<first, rest::binary>>) do
+    replacement = if first == ?0, do: "1", else: "0"
+    replacement <> rest
+  end
+
+  defp use_alternate_storage_namespace!(upload_dir) do
+    original = Application.fetch_env!(:storyarn, :storage)
+    Application.put_env(:storyarn, :storage, Keyword.put(original, :upload_dir, upload_dir))
+    on_exit(fn -> Application.put_env(:storyarn, :storage, original) end)
   end
 end

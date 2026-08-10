@@ -2,10 +2,11 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-06
+> Last reviewed: 2026-08-09
 >
 > Source of truth: `lib/storyarn/versioning/project_snapshot_lifecycle.ex`,
 > `lib/storyarn/versioning/project_snapshot_reconciliation.ex`,
+> `lib/storyarn/versioning/project_snapshot_reconciliation_repair.ex`,
 > `lib/storyarn/versioning/project_snapshot_reset.ex`,
 > `lib/storyarn/assets/storage/`, `lib/storyarn/release.ex`, and
 > `lib/storyarn/workers/`
@@ -51,7 +52,8 @@ performs a resumable provider scan under `projects/`. It also records quiescent
 expired build reservations, terminal cleanup intents, malformed reserved-root
 keys, unowned canonical namespaces, and abandoned temporary namespaces. It
 does not update integrity state, settle reservations, retry cleanup, delete or
-copy objects, change quota, or authorize a later repair.
+copy objects, or change quota. A persisted finding is a repair candidate, not
+mutation authority by itself.
 
 Start the inspection on a running release node and inspect its bounded finding
 pages with:
@@ -90,16 +92,96 @@ contract cannot enumerate incomplete multipart uploads, so each run persists
 `multipart_inventory_state = unsupported` and
 `physical_inventory_complete = false`. Never interpret that state as zero
 multipart drift or as repair/deletion authority. Findings called ambiguous or
-abandoned are investigation candidates only; a later repair implementation
-must reacquire ownership locks and revalidate all evidence.
+abandoned are investigation candidates only; the repair pass must reacquire
+ownership locks and revalidate all evidence.
 
-The run emits low-cardinality `snapshot.reconciliation.start`, `.page`, and
-`.stop` telemetry and logs terminal failure codes. Storyarn currently has no
-production metrics exporter or alert routing in this repository, so operators
-must connect those events to the deployment's observability system before
-claiming automated alerts. Reconciliation intentionally does not call the
-workspace-wide provider-footprint metric with snapshot-only bytes, because that
-would compare different accounting scopes.
+The run emits low-cardinality `snapshot.reconciliation.start`, `.page`,
+`.summary`, and `.stop` telemetry and logs terminal failure codes.
+Reconciliation intentionally does not call the workspace-wide
+provider-footprint metric with snapshot-only bytes, because that would compare
+different accounting scopes.
+
+## Fenced reconciliation repair
+
+Repair consumes immutable findings from a completed inspection, but treats
+their recorded evidence as stale until proven otherwise. Integrity repair reads
+and hashes the exact provider object before opening a database transaction, then
+takes the workspace advisory lock and snapshot row lock and revalidates the
+recorded generations, manifest identity, and provider namespace before applying
+that precomputed result. Expired-build repair delegates to
+the existing lifecycle primitive and its workspace, project, snapshot,
+reservation, and job fences. Cleanup replay locks the intent and revalidates its
+exact evidence, immutable inventory, ownership receipt, and provider namespace.
+Report-only actions do not acquire mutation locks because they cannot change
+state. A changed or already-resolved subject is a successful no-op; it must
+never be forced back to the old finding.
+
+Actions are durable and one-shot for one immutable finding and repair contract.
+A later inspection can produce a new action for recurring evidence without
+reopening or rewriting the earlier outcome. Terminal outcomes are immutable:
+`repaired` means that the
+generation-fenced mutation or durable cleanup handoff committed, `resolved`
+means the current state no longer needs that action, `manual` means the required
+safety proof could not be established, and `failed` means the bounded action
+ended in an operational error. Retrying a delivered action must converge on the
+same outcome without duplicating quota settlement, cleanup ownership, or
+provider deletion.
+
+| Finding category                                                                                                                 | Automated action when current evidence is exact                                                                  | Manual boundary                                                                                                                                                                    |
+| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ready_manifest_missing`, `ready_object_missing`                                                                                 | `mark_missing` after the ready snapshot and missing object are revalidated under the recorded generations        | Any identity, ownership, lifecycle, or provider result changed                                                                                                                     |
+| `ready_manifest_corrupt`, `ready_object_corrupt`                                                                                 | `mark_corrupt` after the exact bytes, size, and digest failure are reverified                                    | A replacement object appeared, the snapshot changed, or corruption cannot be reproduced                                                                                            |
+| `stale_reservation`                                                                                                              | `cleanup_expired_build` only for the same expired, quiescent build with no live owner or publication path        | Live or ambiguous job, claim, generation, namespace, or cleanup proof                                                                                                              |
+| `failed_snapshot_finalization`                                                                                                   | `cleanup_expired_build` only when it converges on that same independently revalidated expired-build contract     | Every other finalization shape is report-only                                                                                                                                      |
+| `terminal_cleanup_failure`                                                                                                       | `replay_cleanup` only for a still-terminal intent with a replayable provider failure and exact durable inventory | Invalid inventory, invalid ownership, namespace ownership, or another integrity failure                                                                                            |
+| `abandoned_temporary_object`                                                                                                     | `report_only`                                                                                                    | The current inspection records key and size but no durable conditional-delete identity. Automatic deletion would be unsafe if the object were replaced with the same key and size. |
+| `ready_database_manifest_mismatch`, `ready_inventory_mismatch`, `ready_accounting_mismatch`, `ready_verification_limit_exceeded` | `report_only`                                                                                                    | These divergences do not provide enough evidence for automatic data or accounting reconstruction                                                                                   |
+| `ambiguous_storage_object`, `unsafe_snapshot_storage_key`, or any unknown category                                               | `report_only`                                                                                                    | Require explicit investigation and a separately reviewed repair plan                                                                                                               |
+
+The repair pass does not improve physical-inventory completeness. Incomplete
+multipart uploads remain invisible to the current storage contract, so
+`multipart_inventory_state = unsupported` and
+`physical_inventory_complete = false` remain mandatory even after every known
+finding is repaired. Provider lifecycle configuration, multipart inventory and
+abort operations, and alerts for residual multipart bytes are separate
+provider-operations prerequisites; never substitute a zero application gauge
+for that evidence.
+
+After repairs and their durable cleanup jobs settle, always start a new dry-run
+and inspect its new findings. Do not reuse the repaired run as readiness proof.
+The post-repair run must independently converge, and any remaining critical,
+manual, terminal-cleanup, stale-reservation, or orphan-object signal remains an
+operator decision. `physical_inventory_complete = false` still prevents a claim
+of exhaustive physical reconciliation.
+
+Plan repair actions in bounded finding pages, then inspect their durable
+outcomes with:
+
+```text
+/app/bin/storyarn rpc 'Storyarn.Release.repair_project_snapshot_reconciliation(123, 0, 50)'
+/app/bin/storyarn rpc 'Storyarn.Release.inspect_project_snapshot_reconciliation_repairs(123, 0, 100)'
+```
+
+The first command is not another preview: it persists each action and
+immediately enqueues its asynchronous repair delivery. Use only a completed
+inspection whose findings have been reviewed against the matrix above.
+
+Continue with the returned cursor until `complete: true`. Wait for every action
+to reach a terminal outcome before starting the next dry-run. `manual` and
+`failed` outcomes require explicit operator review; planning a later completed
+inspection creates a separate action instead of rewriting prior evidence.
+
+The metrics catalog includes repair counts and bytes by low-cardinality
+`action`/`outcome`, summary gauges for stale reservation bytes, orphan object
+bytes, missing or corrupt ready snapshots, and terminal cleanup failures and
+retries, plus cleanup-backlog gauges for terminal retries and repeated terminal
+failures. `orphan_object_bytes` counts only
+`abandoned_temporary_object` evidence; ambiguous objects are deliberately
+excluded because their ownership is not proven. Storyarn still has no production reporter, dashboard, retention
+policy, or alert routing in this repository. Connecting these metrics to the
+deployment observability system and defining escalation for non-zero critical
+or repeated-terminal signals is a prerequisite to claiming automated alerts;
+the catalog alone is not an alert.
 
 ## One-time pre-canonical reset
 
@@ -197,10 +279,14 @@ environment: when there are no workspaces, projects, versioning rows, or reset
 receipt history, it scans at most one object under `projects/` and requires the
 entire namespace to be empty. It then executes the normal zero-inventory
 provider plan and persists its immutable provider receipt before authorizing the
-lifecycle migration. Any workspace, project, versioning row, reset receipt,
-provider object, list error, or unexpected response fails closed and requires
-the reset ceremony above. In production, migration `20260805130000` also
-rejects direct migration entrypoints; run it through
+lifecycle migration. For the one-time rollout of a legacy deployment whose
+`project_snapshots` and `entity_versions` tables are already globally empty,
+the release gate also accepts missing, stale, or partial reset receipts. This
+compatibility path preserves workspace and project rows, does not inventory or
+delete legacy provider objects, and prints an explicit release warning.
+Non-empty versioning tables, storage-namespace errors, and unexpected responses
+still fail closed. In production, migration `20260805130000` also rejects
+direct migration entrypoints; run it through
 `Storyarn.Release.migrate/0` so the receipt check cannot be silently bypassed.
 
 ```text
@@ -285,7 +371,30 @@ execution checkpoints an error without such a scope change.
 
 ### Deployment and verification
 
-After the environment-global provider plan has completed:
+The numbered verification below is the canonical receipt-backed route after the
+environment-global provider plan has completed. For the one-time
+empty-versioning compatibility route, keep the same write fence, require only
+the two versioning-table counts and the lifecycle-migration query in step 1,
+and skip the receipt queries and standalone rollout verifier. Then run step 2
+and retain its explicit compatibility warning as deployment evidence.
+
+Before applying reset-only repair migration `20260809120000`, keep every node
+and queue stopped. If lifecycle migration `20260805130000` is already applied,
+preflight both lifecycle tables:
+
+```sql
+SELECT count(*) AS snapshot_cleanup_intents FROM snapshot_cleanup_intents;
+SELECT count(*) AS snapshot_lifecycle_cleanup_requests
+FROM storage_cleanup_requests
+WHERE owner_kind = 'snapshot_lifecycle';
+```
+
+Both counts must be zero. If lifecycle migration `20260805130000` has not yet
+been applied, do not run these queries against tables that do not exist; keep
+the fence in place and let `Storyarn.Release.migrate/0` create them empty before
+applying the repair migration. If either existing table contains rows, stop the
+deployment and prepare a separately reviewed reset; do not delete or backfill
+lifecycle evidence ad hoc.
 
 1. Query the environment globally and require zero `project_snapshots` and zero
    `entity_versions`:
@@ -357,19 +466,22 @@ After the environment-global provider plan has completed:
 
 2. Keep the write fence in place. Set
    `STORYARN_DEPLOYMENT_ENVIRONMENT=production` and run
-   `Storyarn.Release.migrate()`. It requires current receipts before first
-   applying `20260805130000`; subsequent deploys skip the one-time gate.
+   `Storyarn.Release.migrate()`. It requires current receipts or the explicit
+   empty-versioning legacy baseline before first applying `20260805130000`;
+   subsequent deploys skip the one-time gate.
 3. Resume queues only after every node runs the same release.
 4. Confirm no legacy versioning jobs remain and no reset authorization secret is
    present in the normal application environment.
 5. Monitor reset completion and failures.
 
-Engineering on-call owns the rollout and stores the completed plan, SQL output,
-provider zero-inventory output, image digest, and timestamps together. Page
-immediately for any reset failure, identity mismatch, unexpected prefix, or
-provider-list error. Keep queues paused and escalate to the storage owner for any provider
-identity or recovery failure; involve Product/Support before making any user
-durability statement.
+Engineering on-call owns the rollout. For the receipt-backed route, store the
+completed plan, SQL output, provider zero-inventory output, image digest, and
+timestamps together. For the compatibility route, store the two zero row
+counts, lifecycle-migration query, release warning, image digest, and timestamps.
+Page immediately for any reset failure, identity mismatch, unexpected prefix,
+or provider-list error. Keep queues paused and escalate to the storage owner for
+any provider identity or recovery failure; involve Product/Support before making
+any user durability statement.
 
 Relevant telemetry prefixes are:
 

@@ -1142,6 +1142,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     on_exit(fn -> :telemetry.detach(handler_id) end)
 
     owner_token = Ecto.UUID.generate()
+    assert {:ok, provider_namespace_fingerprint} = Storage.namespace_fingerprint()
     token = "plannedCleanup01"
 
     storage_keys = [
@@ -1153,13 +1154,21 @@ defmodule Storyarn.Assets.StorageCompensationTest do
       capture_log(fn ->
         assert {:ok,
                 %StorageCleanupRequest{
+                  id: cleanup_request_id,
                   owner_kind: "snapshot_lifecycle",
                   owner_token: ^owner_token,
+                  provider_namespace_fingerprint: ^provider_namespace_fingerprint,
                   storage_keys: persisted_keys
                 }} =
-                 StorageCompensation.persist_snapshot_lifecycle_cleanup(storage_keys, owner_token)
+                 StorageCompensation.persist_snapshot_lifecycle_cleanup(
+                   storage_keys,
+                   owner_token,
+                   provider_namespace_fingerprint
+                 )
 
         assert MapSet.new(persisted_keys) == MapSet.new(storage_keys)
+        assert :ok = StorageCompensation.retry_persisted_cleanup_requests()
+        assert Repo.get(StorageCleanupRequest, cleanup_request_id)
       end)
 
     refute log =~ "fallback"

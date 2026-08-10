@@ -33,7 +33,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationFinding do
     field :project_id_snapshot, :integer
     field :project_snapshot_id_snapshot, :integer
     field :storage_reservation_id_snapshot, :integer
+    field :cleanup_intent_id_snapshot, :integer
     field :lifecycle_generation, :integer
+    field :accounting_generation, :integer
     field :reservation_generation, :integer
     field :object_prefix, :string
     field :storage_key, :string
@@ -59,7 +61,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationFinding do
       :project_id_snapshot,
       :project_snapshot_id_snapshot,
       :storage_reservation_id_snapshot,
+      :cleanup_intent_id_snapshot,
       :lifecycle_generation,
+      :accounting_generation,
       :reservation_generation,
       :object_prefix,
       :storage_key,
@@ -72,6 +76,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationFinding do
     |> validate_format(:fingerprint, ~r/\A[0-9a-f]{64}\z/)
     |> validate_inclusion(:category, @categories)
     |> validate_inclusion(:severity, ~w(warning critical))
+    |> validate_positive_evidence_ids()
+    |> validate_repair_evidence()
+    |> validate_non_negative_evidence_sizes()
     |> validate_length(:object_prefix, max: 500)
     |> validate_length(:storage_key, count: :bytes, max: 4_096)
     |> validate_safe_storage_key()
@@ -82,6 +89,53 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationFinding do
       name: :project_snapshot_reconciliation_findings_run_fingerprint_idx
     )
     |> check_constraint(:category, name: :project_snapshot_reconciliation_findings_evidence)
+    |> check_constraint(:accounting_generation,
+      name: :project_snapshot_reconciliation_findings_repair_evidence
+    )
+  end
+
+  defp validate_positive_evidence_ids(changeset) do
+    Enum.reduce(
+      [
+        :workspace_id_snapshot,
+        :project_id_snapshot,
+        :project_snapshot_id_snapshot,
+        :storage_reservation_id_snapshot,
+        :cleanup_intent_id_snapshot,
+        :lifecycle_generation,
+        :accounting_generation,
+        :reservation_generation
+      ],
+      changeset,
+      &validate_number(&2, &1, greater_than: 0)
+    )
+  end
+
+  defp validate_non_negative_evidence_sizes(changeset) do
+    Enum.reduce(
+      [:expected_size_bytes, :observed_size_bytes],
+      changeset,
+      &validate_number(&2, &1, greater_than_or_equal_to: 0)
+    )
+  end
+
+  defp validate_repair_evidence(changeset) do
+    case get_field(changeset, :category) do
+      category
+      when category in [
+             "ready_manifest_missing",
+             "ready_manifest_corrupt",
+             "ready_object_missing",
+             "ready_object_corrupt"
+           ] ->
+        validate_required(changeset, [:accounting_generation])
+
+      "terminal_cleanup_failure" ->
+        validate_required(changeset, [:cleanup_intent_id_snapshot])
+
+      _category ->
+        changeset
+    end
   end
 
   @doc false

@@ -86,6 +86,8 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     "cancelled" => ~w(cancelled),
     "deleting" => ~w(deleting)
   }
+  @reconciliation_integrity_sources ~w(verified missing corrupt)
+  @reconciliation_integrity_targets ~w(missing corrupt)
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -527,6 +529,18 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   end
 
   @doc false
+  def reconciliation_integrity_changeset(%__MODULE__{} = snapshot, target) do
+    snapshot
+    |> change()
+    |> validate_reconciliation_integrity_source(snapshot)
+    |> put_reconciliation_integrity_target(target)
+    |> check_constraint(:lifecycle_state, name: :project_snapshots_lifecycle_state)
+    |> check_constraint(:integrity_state, name: :project_snapshots_integrity_state)
+    |> check_constraint(:integrity_state, name: :project_snapshots_mode_integrity)
+    |> lifecycle_constraints()
+  end
+
+  @doc false
   def build_state_changeset(snapshot, attrs) do
     snapshot
     |> build_state_changeset_base(attrs)
@@ -717,6 +731,30 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     changeset
     |> check_constraint(:origin, name: :project_snapshots_origin_retention)
     |> check_constraint(:lifecycle_generation, name: :project_snapshots_lifecycle_generation)
+  end
+
+  defp validate_reconciliation_integrity_source(changeset, snapshot) do
+    changeset
+    |> validate_reconciliation_source_field(:mode, snapshot.mode == "full")
+    |> validate_reconciliation_source_field(:lifecycle_state, snapshot.lifecycle_state == "ready")
+    |> validate_reconciliation_source_field(
+      :integrity_state,
+      snapshot.integrity_state in @reconciliation_integrity_sources
+    )
+  end
+
+  defp validate_reconciliation_source_field(changeset, _field, true), do: changeset
+
+  defp validate_reconciliation_source_field(changeset, field, false) do
+    add_error(changeset, field, "is not eligible for reconciliation repair")
+  end
+
+  defp put_reconciliation_integrity_target(changeset, target) when target in @reconciliation_integrity_targets do
+    put_change(changeset, :integrity_state, target)
+  end
+
+  defp put_reconciliation_integrity_target(changeset, _target) do
+    add_error(changeset, :integrity_state, "is not a reconciliation repair target")
   end
 
   defp put_default(attrs, field, value) do

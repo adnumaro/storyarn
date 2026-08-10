@@ -199,6 +199,8 @@ defmodule StoryarnWeb.Telemetry do
       last_value("storyarn.snapshot.cleanup.backlog.backlog_bytes"),
       last_value("storyarn.snapshot.cleanup.backlog.retry_count"),
       last_value("storyarn.snapshot.cleanup.backlog.terminal_failures"),
+      last_value("storyarn.snapshot.cleanup.backlog.terminal_retry_count"),
+      last_value("storyarn.snapshot.cleanup.backlog.repeated_terminal_failures"),
       last_value("storyarn.snapshot.cleanup.backlog.oldest_age_seconds"),
       sum("storyarn.snapshot.retention.stop.deleted_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.expired_build_count", tags: [:status]),
@@ -219,6 +221,33 @@ defmodule StoryarnWeb.Telemetry do
       sum("storyarn.snapshot.reconciliation.stop.count", tags: [:status, :multipart_inventory_state]),
       last_value("storyarn.snapshot.reconciliation.stop.finding_count",
         tags: [:status, :multipart_inventory_state]
+      ),
+      sum("storyarn.snapshot.reconciliation.repair.stop.count", tags: [:action, :outcome]),
+      sum("storyarn.snapshot.reconciliation.repair.stop.bytes", tags: [:action, :outcome]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.requeued_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.reenqueued_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.already_active_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.terminalized_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.already_terminal_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.failure_count", tags: [:status]),
+      sum("storyarn.snapshot.reconciliation.repair.recovery.stop.continuation_count", tags: [:status]),
+      last_value("storyarn.snapshot.reconciliation.summary.stale_reservation_bytes",
+        tags: [:contract_version, :mode, :multipart_inventory_state]
+      ),
+      last_value("storyarn.snapshot.reconciliation.summary.orphan_object_bytes",
+        tags: [:contract_version, :mode, :multipart_inventory_state]
+      ),
+      last_value("storyarn.snapshot.reconciliation.summary.missing_ready_snapshot_count",
+        tags: [:contract_version, :mode, :multipart_inventory_state]
+      ),
+      last_value("storyarn.snapshot.reconciliation.summary.corrupt_ready_snapshot_count",
+        tags: [:contract_version, :mode, :multipart_inventory_state]
+      ),
+      last_value("storyarn.snapshot.reconciliation.summary.terminal_cleanup_failure_count",
+        tags: [:contract_version, :mode, :multipart_inventory_state]
+      ),
+      last_value("storyarn.snapshot.reconciliation.summary.terminal_cleanup_retry_count",
+        tags: [:contract_version, :mode, :multipart_inventory_state]
       ),
 
       # AI result retention is content-free and bounded per worker batch.

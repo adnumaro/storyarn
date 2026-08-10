@@ -1005,6 +1005,144 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
       cleanup_object_set(project_id, token, loaded.manifest, [source])
     end
 
+    test "inspects one exact manifest object with a single manifest read" do
+      project_id = unique_project_id()
+      token = SnapshotStorage.unique_key_suffix()
+      content = "exact object inspection"
+      hash = sha256(content)
+      source = source_key(project_id, "exact.png")
+      assert {:ok, _url} = Storage.upload(source, content, "image/png")
+      asset = asset(511, project_id, "exact.png", source, content, hash)
+
+      assert {:ok, stored} =
+               persist_authorized(project_id, project_object(asset), [asset], token: token)
+
+      assert {:ok, %{manifest: manifest}} =
+               SnapshotObjectStorage.inspect_ready_manifest(
+                 stored.manifest_storage_key,
+                 stored.manifest_checksum,
+                 stored.manifest_size_bytes
+               )
+
+      descriptor = Enum.find(manifest["objects"], &(&1["kind"] == "asset_blob"))
+      target_key = stored.object_prefix <> "/" <> descriptor["path"]
+      install_snapshot_read_switch_storage()
+      SnapshotReadSwitchStorage.reset_counts()
+
+      assert {:ok,
+              %{
+                descriptor: ^descriptor,
+                manifest: ^manifest,
+                ready_prefix: ready_prefix
+              }} =
+               SnapshotObjectStorage.inspect_ready_object(
+                 stored.manifest_storage_key,
+                 stored.manifest_checksum,
+                 stored.manifest_size_bytes,
+                 descriptor["path"]
+               )
+
+      assert ready_prefix == stored.object_prefix
+      assert SnapshotReadSwitchStorage.stream_count(stored.manifest_storage_key) == 1
+      assert SnapshotReadSwitchStorage.stream_count(target_key) == 1
+      assert SnapshotReadSwitchStorage.stream_count(stored.project_storage_key) == 0
+
+      cleanup_object_set(project_id, token, manifest, [source])
+    end
+
+    test "returns an explicit error when the exact path is absent from the manifest" do
+      project_id = unique_project_id()
+      token = SnapshotStorage.unique_key_suffix()
+      content = "missing descriptor inspection"
+      hash = sha256(content)
+      source = source_key(project_id, "missing-descriptor.png")
+      assert {:ok, _url} = Storage.upload(source, content, "image/png")
+      asset = asset(512, project_id, "missing-descriptor.png", source, content, hash)
+
+      assert {:ok, stored} =
+               persist_authorized(project_id, project_object(asset), [asset], token: token)
+
+      assert {:ok, %{manifest: manifest}} =
+               SnapshotObjectStorage.inspect_ready_manifest(
+                 stored.manifest_storage_key,
+                 stored.manifest_checksum,
+                 stored.manifest_size_bytes
+               )
+
+      install_snapshot_read_switch_storage()
+      SnapshotReadSwitchStorage.reset_counts()
+
+      assert {:error, :snapshot_inspection_object_not_found} =
+               SnapshotObjectStorage.inspect_ready_object(
+                 stored.manifest_storage_key,
+                 stored.manifest_checksum,
+                 stored.manifest_size_bytes,
+                 "blobs/#{String.duplicate("f", 64)}.png"
+               )
+
+      assert SnapshotReadSwitchStorage.stream_count(stored.manifest_storage_key) == 1
+
+      for descriptor <- manifest["objects"] do
+        object_key = stored.object_prefix <> "/" <> descriptor["path"]
+        assert SnapshotReadSwitchStorage.stream_count(object_key) == 0
+      end
+
+      cleanup_object_set(project_id, token, manifest, [source])
+    end
+
+    test "preserves the existing verification error for a corrupt exact object" do
+      project_id = unique_project_id()
+      token = SnapshotStorage.unique_key_suffix()
+      content = "corrupt exact object"
+      hash = sha256(content)
+      source = source_key(project_id, "corrupt-exact.png")
+      assert {:ok, _url} = Storage.upload(source, content, "image/png")
+      asset = asset(513, project_id, "corrupt-exact.png", source, content, hash)
+
+      assert {:ok, stored} =
+               persist_authorized(project_id, project_object(asset), [asset], token: token)
+
+      assert {:ok, %{manifest: manifest}} =
+               SnapshotObjectStorage.inspect_ready_manifest(
+                 stored.manifest_storage_key,
+                 stored.manifest_checksum,
+                 stored.manifest_size_bytes
+               )
+
+      descriptor = Enum.find(manifest["objects"], &(&1["kind"] == "asset_blob"))
+      expected_index = Enum.find_index(manifest["objects"], &(&1 == descriptor))
+      target_key = stored.object_prefix <> "/" <> descriptor["path"]
+      corrupt_content = String.duplicate("x", byte_size(content))
+      corrupt_hash = sha256(corrupt_content)
+      assert {:ok, _url} = Storage.upload(target_key, corrupt_content, descriptor["content_type"])
+      install_snapshot_read_switch_storage()
+      SnapshotReadSwitchStorage.reset_counts()
+
+      assert {:error,
+              {:snapshot_inspection_object_failed,
+               %{
+                 failed_index: ^expected_index,
+                 object_count: 2,
+                 path: descriptor_path,
+                 reason: {:snapshot_object_checksum_mismatch, ^hash, ^corrupt_hash},
+                 verified_bytes: 0,
+                 verified_objects: 0
+               }}} =
+               SnapshotObjectStorage.inspect_ready_object(
+                 stored.manifest_storage_key,
+                 stored.manifest_checksum,
+                 stored.manifest_size_bytes,
+                 descriptor["path"]
+               )
+
+      assert descriptor_path == descriptor["path"]
+      assert SnapshotReadSwitchStorage.stream_count(stored.manifest_storage_key) == 1
+      assert SnapshotReadSwitchStorage.stream_count(target_key) == 1
+      assert SnapshotReadSwitchStorage.stream_count(stored.project_storage_key) == 0
+
+      cleanup_object_set(project_id, token, manifest, [source])
+    end
+
     test "fails closed when stored MIME metadata is missing or generic" do
       project_id = unique_project_id()
       token = SnapshotStorage.unique_key_suffix()
@@ -1415,6 +1553,25 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
     Application.put_env(:storyarn, SnapshotObjectStorage, opts)
     on_exit(fn -> Application.put_env(:storyarn, SnapshotObjectStorage, original_config) end)
     original_config
+  end
+
+  defp install_snapshot_read_switch_storage do
+    original_config = Application.get_env(:storyarn, :storage, [])
+    {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+
+    Application.put_env(
+      :storyarn,
+      :storage,
+      Keyword.put(original_config, :adapter, SnapshotReadSwitchStorage)
+    )
+
+    on_exit(fn ->
+      Application.put_env(:storyarn, :storage, original_config)
+
+      if Process.whereis(SnapshotReadSwitchStorage) do
+        Agent.stop(SnapshotReadSwitchStorage)
+      end
+    end)
   end
 
   defp keys_under_prefix(storage_keys, prefix) do

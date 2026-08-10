@@ -29,6 +29,73 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
     end
   end
 
+  describe "reconciliation_integrity_changeset/2" do
+    test "degrades only integrity while preserving the ready snapshot fence and identity" do
+      user = user_fixture()
+      project = project_fixture(user)
+      snapshot = full_project_snapshot_fixture(project)
+
+      preserved =
+        Map.take(snapshot, [
+          :project_id,
+          :object_prefix,
+          :project_storage_key,
+          :manifest_storage_key,
+          :lifecycle_state,
+          :lifecycle_generation,
+          :accounting_generation
+        ])
+
+      missing_changeset = ProjectSnapshot.reconciliation_integrity_changeset(snapshot, "missing")
+
+      assert missing_changeset.valid?
+      assert missing_changeset.changes == %{integrity_state: "missing"}
+
+      missing = Repo.update!(missing_changeset)
+
+      assert Map.take(missing, Map.keys(preserved)) == preserved
+      assert missing.integrity_state == "missing"
+
+      replay = ProjectSnapshot.reconciliation_integrity_changeset(missing, "missing")
+      assert replay.valid?
+      assert replay.changes == %{}
+
+      corrupt =
+        missing
+        |> ProjectSnapshot.reconciliation_integrity_changeset("corrupt")
+        |> Repo.update!()
+
+      assert Map.take(corrupt, Map.keys(preserved)) == preserved
+      assert corrupt.integrity_state == "corrupt"
+    end
+
+    test "rejects non-ready, non-full, unverified sources and unsupported targets" do
+      eligible = %ProjectSnapshot{
+        mode: "full",
+        lifecycle_state: "ready",
+        integrity_state: "verified",
+        lifecycle_generation: 7
+      }
+
+      for {field, snapshot} <- [
+            mode: %{eligible | mode: "linked", integrity_state: "at_risk"},
+            lifecycle_state: %{eligible | lifecycle_state: "building", integrity_state: "unknown"},
+            integrity_state: %{eligible | integrity_state: "incomplete"}
+          ] do
+        changeset = ProjectSnapshot.reconciliation_integrity_changeset(snapshot, "missing")
+
+        refute changeset.valid?
+        assert Map.has_key?(errors_on(changeset), field)
+      end
+
+      changeset = ProjectSnapshot.reconciliation_integrity_changeset(eligible, "verified")
+
+      refute changeset.valid?
+      assert %{integrity_state: ["is not a reconciliation repair target"]} = errors_on(changeset)
+      assert Ecto.Changeset.get_field(changeset, :lifecycle_generation) == 7
+    end
+  end
+
   describe "object_set_changeset/2" do
     test "persists independently verified ready object-set metadata" do
       attrs = %{
