@@ -5,8 +5,7 @@ defmodule Storyarn.Projects.ProjectTrash do
 
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
-  alias Storyarn.Billing.Plan
-  alias Storyarn.Billing.SubscriptionCrud
+  alias Storyarn.Billing
   alias Storyarn.Flows.Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
@@ -456,21 +455,32 @@ defmodule Storyarn.Projects.ProjectTrash do
   defp attach_purge_at(items) do
     plan_by_workspace =
       items
+      |> Enum.reject(&trash_retention_override?/1)
       |> Enum.map(& &1.workspace_id)
       |> Enum.uniq()
-      |> Map.new(fn workspace_id ->
-        {workspace_id, SubscriptionCrud.plan_for_workspace_id(workspace_id)}
-      end)
+      |> Billing.plans_for_workspace_ids()
 
     Enum.map(items, fn item ->
       retention_hours =
         case Map.get(item.project_settings || %{}, "trash_retention_hours") do
-          hours when is_integer(hours) and hours > 0 -> hours
-          _ -> plan_by_workspace |> Map.fetch!(item.workspace_id) |> Plan.retention_hours()
+          hours when is_integer(hours) and hours > 0 ->
+            hours
+
+          _ ->
+            plan_by_workspace
+            |> Map.fetch!(item.workspace_id)
+            |> Billing.plan_retention_hours()
         end
 
       Map.put(item, :purge_at, DateTime.add(item.deleted_at, retention_hours * 60 * 60, :second))
     end)
+  end
+
+  defp trash_retention_override?(item) do
+    case Map.get(item.project_settings || %{}, "trash_retention_hours") do
+      hours when is_integer(hours) and hours > 0 -> true
+      _ -> false
+    end
   end
 
   defp normalize_type(type) when type in @item_types, do: type

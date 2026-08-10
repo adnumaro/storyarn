@@ -4,6 +4,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Assets
+  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
@@ -54,7 +55,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
         deletion_generation: Map.get(item, :deletion_generation),
         content_type: Map.get(item, :content_type),
         size: Map.get(item, :size),
-        deleted_by_id: Map.get(item, :deleted_by_id),
         deletion_reason: Map.get(item, :deletion_reason),
         purge_at: serialize_datetime(Map.get(item, :purge_at))
       }
@@ -140,6 +140,13 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
              expected_generation,
              socket.assigns.current_scope.user.id
            ) do
+      Collaboration.broadcast_change_from(
+        self(),
+        {:assets, socket.assigns.project.id},
+        :asset_restored,
+        %{}
+      )
+
       {:noreply,
        socket
        |> reload_trashed_items()
@@ -160,8 +167,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
              |> reload_trashed_items()
              |> put_flash(:info, dgettext("projects", "Item restored successfully."))}
 
-          {:error, _reason} ->
-            {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to restore item."))}
+          {:error, reason} ->
+            {:noreply, put_flash(socket, :error, restore_error_message(reason))}
         end
 
       :error ->
@@ -319,6 +326,27 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   defp restore_item(%{type: :sheet, entity: sheet}), do: Sheets.restore_sheet(sheet)
   defp restore_item(%{type: :flow, entity: flow}), do: Flows.restore_flow(flow)
   defp restore_item(%{type: :scene, entity: scene}), do: Scenes.restore_scene(scene)
+
+  defp restore_error_message({:invalid_project_reference, _context, _value}), do: unavailable_reference_message()
+
+  defp restore_error_message(%Ecto.Changeset{errors: errors}) do
+    if Enum.any?(errors, &unavailable_flow_reference_error?/1),
+      do: unavailable_reference_message(),
+      else: dgettext("projects", "Failed to restore item.")
+  end
+
+  defp restore_error_message(_reason), do: dgettext("projects", "Failed to restore item.")
+
+  defp unavailable_flow_reference_error?({:parent_id, {"parent flow not found in project", _metadata}}), do: true
+  defp unavailable_flow_reference_error?({:scene_id, {"map not found in project", _metadata}}), do: true
+  defp unavailable_flow_reference_error?(_error), do: false
+
+  defp unavailable_reference_message do
+    dgettext(
+      "projects",
+      "This item references unavailable content. If any referenced items are in Trash, restore them first and try again."
+    )
+  end
 
   defp permanently_delete_item(%{type: :sheet, entity: sheet}), do: Sheets.permanently_delete_sheet(sheet)
   defp permanently_delete_item(%{type: :flow, entity: flow}), do: Flows.hard_delete_flow(flow)

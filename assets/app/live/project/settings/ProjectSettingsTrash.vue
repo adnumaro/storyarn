@@ -33,7 +33,6 @@ interface TrashedItem {
   deletion_generation: number | null;
   content_type: string | null;
   size: number | null;
-  deleted_by_id: number | null;
   deletion_reason: "user" | "snapshot_restore" | "system" | null;
   purge_at: string | null;
 }
@@ -383,7 +382,7 @@ watch(
               <span aria-hidden="true"> · </span>
               <span>{{ deletionActorLabel(item) }}</span>
             </p>
-            <p v-if="item.type === 'asset' && item.purge_at" class="text-xs text-muted-foreground">
+            <p v-if="item.purge_at" class="text-xs text-muted-foreground">
               {{
                 t("project_settings.trash.recoverable_until", {
                   date: formatDateTime(item.purge_at),

@@ -122,11 +122,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
                  item["name"] == "Deleted Asset.png" and
                  item["content_type"] == "image/png" and
                  item["size"] == 2_048 and
-                 item["deleted_by_id"] == user.id and
                  item["deletion_reason"] == "user" and
                  item["deletion_generation"] == trashed_asset.deletion_generation and
                  is_binary(item["purge_at"])
              end)
+
+      refute Enum.any?(items, &Map.has_key?(&1, "deleted_by_id"))
 
       assert vue.props["pagination"]["totalCount"] == 4
       assert vue.props["type-counts"] == %{"asset" => 1, "flow" => 1, "scene" => 1, "sheet" => 1}
@@ -202,6 +203,80 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       refute Enum.any?(get_trash_vue(view).props["trashed-items"], &(&1["id"] == flow.id and &1["type"] == "flow"))
     end
 
+    test "suggests restoring a trashed dependency when a reference is unavailable", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      source = sheet_fixture(project, %{name: "Source"})
+      target = sheet_fixture(project, %{name: "Target"})
+
+      block_fixture(source, %{
+        type: "reference",
+        value: %{"target_type" => "sheet", "target_id" => target.id}
+      })
+
+      {:ok, _source} = Sheets.delete_sheet(source)
+      {:ok, _target} = Sheets.delete_sheet(target)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/trash"
+        )
+
+      html = render_hook(view, "restore_item", %{"type" => "sheet", "id" => source.id})
+
+      assert html =~ "If any referenced items are in Trash, restore them first and try again"
+      assert %Sheet{deleted_at: %DateTime{}} = Repo.get!(Sheet, source.id)
+    end
+
+    test "suggests restoring a trashed parent before restoring a flow", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      parent = flow_fixture(project, %{name: "Parent"})
+      child = flow_fixture(project, %{name: "Child", parent_id: parent.id})
+
+      {:ok, _child} = Flows.delete_flow(child)
+      {:ok, _parent} = Flows.delete_flow(parent)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/trash"
+        )
+
+      html = render_hook(view, "restore_item", %{"type" => "flow", "id" => child.id})
+
+      assert html =~ "If any referenced items are in Trash, restore them first and try again"
+      assert %DateTime{} = Flows.get_flow_including_deleted(project.id, child.id).deleted_at
+    end
+
+    test "suggests restoring a trashed scene before restoring its flow", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Map"})
+      flow = flow_fixture(project, %{name: "Scene flow", scene_id: scene.id})
+
+      {:ok, _flow} = Flows.delete_flow(flow)
+      {:ok, _scene} = Scenes.delete_scene(scene)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/trash"
+        )
+
+      html = render_hook(view, "restore_item", %{"type" => "flow", "id" => flow.id})
+
+      assert html =~ "If any referenced items are in Trash, restore them first and try again"
+      assert %DateTime{} = Flows.get_flow_including_deleted(project.id, flow.id).deleted_at
+    end
+
     test "permanently deletes trashed item by type", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Disposable Scene"})
@@ -253,6 +328,30 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       })
 
       assert Repo.get(Asset, disposable.id) == nil
+    end
+
+    test "restoring an asset notifies other open asset views", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      asset = image_asset_fixture(project, user, %{filename: "Shared Asset.png"})
+      {:ok, trashed} = Assets.move_asset_to_trash(project.id, asset.id, user.id)
+      :ok = Storyarn.Collaboration.subscribe_changes({:assets, project.id})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/trash"
+        )
+
+      render_hook(view, "restore_item", %{
+        "type" => "asset",
+        "id" => asset.id,
+        "generation" => trashed.deletion_generation
+      })
+
+      assert_receive {:remote_change, :asset_restored, %{}}, 1_000
     end
 
     test "rejects stale asset generations without mutating the trashed row", %{conn: conn, user: user} do

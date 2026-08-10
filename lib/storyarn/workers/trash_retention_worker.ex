@@ -23,7 +23,6 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
 
   alias Storyarn.Flows
   alias Storyarn.Projects
-  alias Storyarn.Projects.ProjectTrash
   alias Storyarn.Scenes
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
@@ -97,7 +96,7 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
   end
 
   defp permanently_delete_item(%{type: "asset"} = item) do
-    case ProjectTrash.purge_asset_trash_candidate(item, nil) do
+    case Projects.purge_asset_trash_candidate(item, nil) do
       {:error, :asset_not_found} -> {:ok, :already_purged}
       result -> result
     end

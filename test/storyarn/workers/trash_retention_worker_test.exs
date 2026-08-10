@@ -12,7 +12,7 @@ defmodule Storyarn.Workers.TrashRetentionWorkerTest do
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Billing
-  alias Storyarn.Projects.ProjectTrash
+  alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
@@ -104,7 +104,7 @@ defmodule Storyarn.Workers.TrashRetentionWorkerTest do
 
     family_candidates =
       Enum.filter(
-        Storyarn.Projects.list_deleted_items_for_retention(),
+        Projects.list_deleted_items_for_retention(),
         &(&1.type == "asset" and &1.project_id == project.id)
       )
 
@@ -124,12 +124,12 @@ defmodule Storyarn.Workers.TrashRetentionWorkerTest do
     refute log =~ "Trash retention failed for asset"
 
     assert {:error, :asset_not_found} =
-             ProjectTrash.purge_asset_trash_candidate(stale_variant_candidate, nil)
+             Projects.purge_asset_trash_candidate(stale_variant_candidate, nil)
   end
 
   test "a stale asset retention candidate cannot purge a later trash generation" do
     %{asset: asset, project: project, user: user} = expired_trashed_asset_context()
-    [candidate] = Storyarn.Projects.list_deleted_items_for_retention()
+    [candidate] = Projects.list_deleted_items_for_retention()
 
     assert candidate.type == "asset"
     assert candidate.deletion_generation == asset.deletion_generation
@@ -141,21 +141,21 @@ defmodule Storyarn.Workers.TrashRetentionWorkerTest do
     assert retrash.deletion_generation > candidate.deletion_generation
 
     assert {:error, :asset_trash_generation_changed} =
-             ProjectTrash.purge_asset_trash_candidate(candidate, nil)
+             Projects.purge_asset_trash_candidate(candidate, nil)
 
     assert %Asset{deleted_at: %DateTime{}} = Repo.get(Asset, asset.id)
   end
 
   test "an asset retention candidate cannot outlive a project policy change" do
     %{asset: asset, project: project} = expired_trashed_asset_context()
-    [candidate] = Storyarn.Projects.list_deleted_items_for_retention()
+    [candidate] = Projects.list_deleted_items_for_retention()
 
     project
     |> Ecto.Changeset.change(settings: %{"trash_retention_hours" => 72})
     |> Repo.update!()
 
     assert {:error, :asset_trash_retention_changed} =
-             ProjectTrash.purge_asset_trash_candidate(candidate, nil)
+             Projects.purge_asset_trash_candidate(candidate, nil)
 
     assert %Asset{deleted_at: %DateTime{}} = Repo.get(Asset, asset.id)
   end

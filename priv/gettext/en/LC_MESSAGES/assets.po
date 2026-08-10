@@ -11,7 +11,7 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/asset_live/index.ex:345
+#: lib/storyarn_web/live/asset_live/index.ex:346
 #, elixir-autogen, elixir-format
 msgid "Asset moved to trash."
 msgstr ""
@@ -21,7 +21,7 @@ msgstr ""
 msgid "Asset uploaded successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:348
+#: lib/storyarn_web/live/asset_live/index.ex:349
 #, elixir-autogen, elixir-format
 msgid "Could not move asset to trash."
 msgstr ""

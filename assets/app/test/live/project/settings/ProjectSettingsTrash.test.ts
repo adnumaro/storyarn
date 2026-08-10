@@ -13,7 +13,6 @@ const trashedAsset = {
   deletion_generation: 3,
   content_type: "image/png",
   size: 2048,
-  deleted_by_id: 7,
   deletion_reason: "user" as const,
   purge_at: "2026-08-11T10:00:00Z",
 };
@@ -117,5 +116,42 @@ describe("ProjectSettingsTrash assets", () => {
     expect(wrapper.find('[data-testid="restore-asset-42"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="delete-asset-42"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="empty-trash-trigger"]').exists()).toBe(false);
+  });
+
+  it("shows the recovery deadline for non-asset trash items", () => {
+    const wrapper = mount(ProjectSettingsTrash, {
+      props: {
+        trashedItems: [
+          {
+            ...trashedAsset,
+            id: 84,
+            type: "sheet",
+            name: "Chapter notes",
+            deletion_generation: null,
+            content_type: null,
+            size: null,
+            deletion_reason: null,
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, totalCount: 1, totalPages: 1 },
+        typeCounts: { sheet: 1, flow: 0, scene: 0, asset: 0 },
+        canManage: true,
+      },
+      global: {
+        provide: { _live_vue: createMockLive() },
+        stubs: {
+          Dialog: passthrough,
+          DialogContent: passthrough,
+          DialogDescription: passthrough,
+          DialogFooter: passthrough,
+          DialogHeader: passthrough,
+          DialogTitle: passthrough,
+        },
+      },
+    });
+
+    expect(wrapper.get('[data-testid="trash-item-sheet-84"]').text()).toContain(
+      "Recoverable until",
+    );
   });
 });
