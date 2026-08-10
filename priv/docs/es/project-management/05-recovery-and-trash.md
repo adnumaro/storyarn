@@ -20,7 +20,7 @@ Abre **Ajustes del proyecto > Capturas**. Introduce un título y una descripció
 
 Cada captura muestra su número de versión, título, creador cuando está disponible, fecha, tamaño almacenado y recuentos de entidades. Las acciones disponibles son:
 
-- **Descargar** el archivo almacenado.
+- **Descargar** una captura completa, lista y verificada como archivo ZIP privado. Las capturas enlazadas no se pueden descargar.
 - **Restaurar** el proyecto a esa captura.
 - **Eliminar** permanentemente la captura.
 

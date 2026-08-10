@@ -75,7 +75,7 @@ msgstr ""
 #: lib/storyarn_web/live/project_settings_live/general.ex:117
 #: lib/storyarn_web/live/project_settings_live/localization.ex:107
 #: lib/storyarn_web/live/project_settings_live/members.ex:104
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:169
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:182
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:123
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:109
 #, elixir-autogen, elixir-format
@@ -194,7 +194,7 @@ msgstr "Some items could not be deleted."
 #: lib/storyarn_web/live/project_settings_live/localization.ex:95
 #: lib/storyarn_web/live/project_settings_live/members.ex:92
 #: lib/storyarn_web/live/project_settings_live/members.ex:149
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:157
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:170
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:111
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:97
 #, elixir-autogen, elixir-format
@@ -1219,22 +1219,22 @@ msgstr ""
 msgid "Review snapshot storage, reservations, and integrity"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:199
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:212
 #, elixir-autogen, elixir-format
 msgid "Snapshot creation started."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:232
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:245
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be cancelled."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:252
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:265
 #, elixir-autogen, elixir-format
 msgid "Snapshot deletion started."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:258
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:271
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be deleted."
 msgstr ""
@@ -1248,3 +1248,43 @@ msgstr "This item references unavailable content. If any referenced items are in
 #, elixir-autogen, elixir-format
 msgid "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
 msgstr "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
+
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:133
+#, elixir-autogen, elixir-format
+msgid "Convert this linked snapshot to a full snapshot before downloading it."
+msgstr ""
+
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:179
+#, elixir-autogen, elixir-format
+msgid "Snapshot download is temporarily unavailable."
+msgstr ""
+
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:117
+#, elixir-autogen, elixir-format
+msgid "Snapshot not found."
+msgstr ""
+
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:152
+#, elixir-autogen, elixir-format
+msgid "This snapshot cannot be downloaded because its integrity could not be verified."
+msgstr ""
+
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:171
+#, elixir-autogen, elixir-format
+msgid "This snapshot exceeds the ZIP download limits."
+msgstr ""
+
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:163
+#, elixir-autogen, elixir-format
+msgid "This snapshot format cannot be downloaded."
+msgstr ""
+
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:144
+#, elixir-autogen, elixir-format
+msgid "This snapshot is not ready to download."
+msgstr ""
+
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:125
+#, elixir-autogen, elixir-format
+msgid "You do not have permission to download this snapshot."
+msgstr ""

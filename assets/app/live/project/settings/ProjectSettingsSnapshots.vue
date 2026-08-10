@@ -76,6 +76,7 @@ interface Snapshot {
   cancelRequestedAt: string | null;
   canCancel: boolean;
   canDelete: boolean;
+  downloadUrl: string | null;
 }
 
 interface SnapshotLimit {
@@ -920,24 +921,44 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                 </span>
               </div>
             </div>
-            <Button
-              v-if="snapshot.canDelete"
-              type="button"
-              variant="ghost"
-              size="sm"
-              class="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              :disabled="deletingSnapshotIds.has(snapshot.id)"
-              :data-testid="`delete-snapshot-${snapshot.id}`"
-              @click="openDeleteDialog(snapshot)"
-            >
-              <LoaderCircle
-                v-if="deletingSnapshotIds.has(snapshot.id)"
-                class="size-4 animate-spin"
-                aria-hidden="true"
-              />
-              <Trash2 v-else class="size-4" aria-hidden="true" />
-              {{ $t("project_settings.snapshots.delete.action") }}
-            </Button>
+            <div class="flex shrink-0 flex-col items-stretch gap-2 lg:items-end">
+              <Button v-if="snapshot.downloadUrl" variant="outline" size="sm" as-child>
+                <a
+                  :href="snapshot.downloadUrl"
+                  download
+                  data-live-link-exempt="download"
+                  :data-testid="`download-snapshot-${snapshot.id}`"
+                >
+                  <Download class="size-4" aria-hidden="true" />
+                  {{ $t("project_settings.snapshots.download.action") }}
+                </a>
+              </Button>
+              <p
+                v-else-if="snapshot.mode === 'linked'"
+                class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
+                :data-testid="`download-linked-snapshot-${snapshot.id}`"
+              >
+                {{ $t("project_settings.snapshots.download.linked_requires_full") }}
+              </p>
+              <Button
+                v-if="snapshot.canDelete"
+                type="button"
+                variant="ghost"
+                size="sm"
+                class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                :disabled="deletingSnapshotIds.has(snapshot.id)"
+                :data-testid="`delete-snapshot-${snapshot.id}`"
+                @click="openDeleteDialog(snapshot)"
+              >
+                <LoaderCircle
+                  v-if="deletingSnapshotIds.has(snapshot.id)"
+                  class="size-4 animate-spin"
+                  aria-hidden="true"
+                />
+                <Trash2 v-else class="size-4" aria-hidden="true" />
+                {{ $t("project_settings.snapshots.delete.action") }}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

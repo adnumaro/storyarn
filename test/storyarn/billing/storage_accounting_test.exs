@@ -18,6 +18,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
+  alias Storyarn.Workers.ProjectSnapshotRetentionWorker
 
   @checksum String.duplicate("a", 64)
 
@@ -1100,6 +1101,207 @@ defmodule Storyarn.Billing.StorageAccountingTest do
 
       assert released.status == "released"
       assert released.cleanup_reference == "storage_cleanup_request:#{cleanup_request.id}"
+    end
+  end
+
+  describe "zero-byte snapshot export leases" do
+    test "reserves, renews, and releases behind the lease generation fence", context do
+      snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 10})
+
+      assert {:ok, lease} =
+               reserve(context, "direct-export", "snapshot_export", 0, snapshot)
+
+      assert lease.kind == "snapshot_export"
+      assert lease.status == "active"
+      assert lease.reserved_bytes == 0
+      assert is_nil(lease.storage_started_at)
+
+      assert Billing.active_storage_reservations_by_snapshot([snapshot.id]) == %{
+               snapshot.id => %{active_bytes: 0, export_bytes: 0, active_count: 1}
+             }
+
+      assert {:error, :zero_byte_snapshot_export_lease_cannot_start_storage} =
+               Billing.mark_storage_reservation_started(
+                 lease.id,
+                 lease.lease_token,
+                 lease.generation,
+                 %{
+                   temporary_prefix: lease.storage_namespace,
+                   storage_keys: [lease.storage_namespace <> "/snapshot.zip"]
+                 }
+               )
+
+      assert {:ok, renewed} =
+               Billing.extend_storage_reservation(
+                 lease.id,
+                 lease.lease_token,
+                 lease.generation,
+                 0
+               )
+
+      assert renewed.generation == lease.generation + 1
+      assert DateTime.after?(renewed.expires_at, lease.expires_at)
+      assert renewed.reserved_bytes == 0
+      assert is_nil(renewed.storage_started_at)
+
+      release_attrs = %{
+        reason: "snapshot download finished",
+        cleanup_status: "not_required",
+        cleanup_proof: no_write_proof(renewed)
+      }
+
+      assert {:error, :storage_reservation_generation_mismatch} =
+               Billing.release_storage_reservation(
+                 renewed.id,
+                 renewed.lease_token,
+                 lease.generation,
+                 release_attrs
+               )
+
+      assert {:ok, released} =
+               Billing.release_storage_reservation(
+                 renewed.id,
+                 renewed.lease_token,
+                 renewed.generation,
+                 release_attrs
+               )
+
+      assert released.status == "released"
+      assert released.generation == renewed.generation + 1
+      assert released.cleanup_status == "not_required"
+      assert released.cleanup_reference == "storage_not_started:#{lease.storage_namespace}"
+    end
+
+    test "preserves linked conversion zero-byte accounting but rejects zero for storage writers", context do
+      pending = insert_pending_snapshot!(context.project, 1)
+      full = insert_full_snapshot!(context.project, 2, %{project: 10, metadata: 10, assets: 10})
+      linked = insert_linked_snapshot!(context.project, 3, %{project: 10, metadata: 10})
+
+      assert {:error, :invalid_storage_reservation_snapshot} =
+               reserve(context, "zero-build", "snapshot_build", 0, pending)
+
+      assert {:error, :invalid_storage_reservation_snapshot} =
+               reserve(context, "zero-restore", "restore_staging", 0, full)
+
+      assert {:ok, conversion} =
+               reserve(context, "zero-conversion", "linked_to_full_conversion", 0, linked)
+
+      assert conversion.reserved_bytes == 0
+    end
+
+    test "database rejects storage-start evidence on a zero-byte export lease", context do
+      snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 10})
+      assert {:ok, lease} = reserve(context, "db-zero-export", "snapshot_export", 0, snapshot)
+
+      changeset =
+        lease
+        |> Ecto.Changeset.change(
+          storage_started_at: TimeHelpers.now(),
+          cleanup_inventory_digest: String.duplicate("a", 64),
+          cleanup_inventory_count: 1
+        )
+        |> Ecto.Changeset.check_constraint(:storage_started_at,
+          name: :workspace_storage_reservations_zero_byte_snapshot_export_lease
+        )
+
+      assert {:error, rejected} = Repo.update(changeset)
+      assert %{storage_started_at: [_]} = errors_on(rejected)
+    end
+
+    test "recovery treats its clock as advisory and revalidates expiry under lock", context do
+      snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 10})
+      assert {:ok, lease} = reserve(context, "future-advisory", "snapshot_export", 0, snapshot)
+
+      assert %{candidate_count: 1, released_count: 0, failure_count: 0} =
+               Versioning.recover_expired_project_snapshot_export_leases(
+                 DateTime.add(TimeHelpers.now(), 2 * 24 * 60 * 60, :second)
+               )
+
+      assert Repo.get!(StorageReservation, lease.id).status == "active"
+
+      assert %{candidate_count: 0, released_count: 0, changed_count: 0, failure_count: 1} =
+               Billing.recover_expired_snapshot_export_leases(TimeHelpers.now(), [1])
+    end
+
+    test "retention recovery releases only expired zero-byte export leases", context do
+      expired_snapshot =
+        insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 10})
+
+      live_snapshot =
+        insert_full_snapshot!(context.project, 2, %{project: 10, metadata: 10, assets: 10})
+
+      positive_snapshot =
+        insert_full_snapshot!(context.project, 3, %{project: 10, metadata: 10, assets: 10})
+
+      assert {:ok, expired} =
+               reserve(context, "expired-export", "snapshot_export", 0, expired_snapshot)
+
+      assert {:ok, live} =
+               reserve(context, "live-export", "snapshot_export", 0, live_snapshot)
+
+      assert {:ok, positive} =
+               reserve(context, "positive-export", "snapshot_export", 100, positive_snapshot)
+
+      now = TimeHelpers.now()
+
+      for reservation <- [expired, positive] do
+        reservation
+        |> Ecto.Changeset.change(
+          accounting_measured_at: DateTime.add(now, -120, :second),
+          expires_at: DateTime.add(now, -60, :second)
+        )
+        |> Repo.update!()
+      end
+
+      handler_id = "snapshot-export-lease-recovery-#{System.unique_integer([:positive])}"
+      parent = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :snapshot, :retention, :stop],
+          fn event, measurements, metadata, pid -> send(pid, {event, measurements, metadata}) end,
+          parent
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:error, :snapshot_active_operation_blocks_deletion} =
+               Versioning.delete_project_snapshot(
+                 user_scope_fixture(context.user),
+                 context.project,
+                 expired_snapshot.id
+               )
+
+      assert :ok = ProjectSnapshotRetentionWorker.perform(%Oban.Job{args: %{}})
+
+      assert_receive {
+        [:storyarn, :snapshot, :retention, :stop],
+        %{
+          expired_export_lease_candidate_count: 1,
+          expired_export_lease_count: 1,
+          expired_export_lease_changed_count: 0,
+          failure_count: 0
+        },
+        %{status: :ok}
+      }
+
+      assert %StorageReservation{
+               status: "released",
+               release_reason: "expired_snapshot_export_lease",
+               cleanup_status: "not_required",
+               storage_started_at: nil
+             } = Repo.get!(StorageReservation, expired.id)
+
+      assert Repo.get!(StorageReservation, live.id).status == "active"
+      assert Repo.get!(StorageReservation, positive.id).status == "active"
+
+      assert {:error, :snapshot_capture_missing} =
+               Versioning.delete_project_snapshot(
+                 user_scope_fixture(context.user),
+                 context.project,
+                 expired_snapshot.id
+               )
     end
   end
 

@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-09
+> Last reviewed: 2026-08-10
 >
 > Source of truth: `lib/storyarn/`, `lib/storyarn_web/`, and `lib/mix/tasks/convention_check.ex`
 
@@ -46,7 +46,7 @@ and only under `lib/storyarn_web/`. The rule above is broader than the linter.
 | AI               | `Storyarn.AI`               | `Operations`, `Execution`, `Executor`, `Allowance`, `Context`, `Audit`, `IntegrationCrud`, `InferenceProviders`, `ModelCatalog`, `CredentialResolver`                                                                                                                                                          |
 | References       | `Storyarn.References`       | `Backlinks`, `EntityTracker`, `VariableTracker`, `VariableUsage`, `ProjectReferenceIntegrity`, `AvatarIntegrity`                                                                                                                                                                                               |
 | ProjectTemplates | `Storyarn.ProjectTemplates` | `Installation`, `PortableExport`, `PortableImport`, `PublicationRunner`, `TemplateQueries`, `Deletion`, `Authorization`, `Audit`                                                                                                                                                                               |
-| Versioning       | `Storyarn.Versioning`       | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`, `SnapshotObjectFormat`, `SnapshotObjectStorage`, `SnapshotObjectPublicationClaim`, `ProjectSnapshotCrud`, `ProjectSnapshotReconciliation`, `ProjectSnapshotReconciliationRepair`, `ConflictDetector`, `RestorePolicy`, `ProjectRecovery` |
+| Versioning       | `Storyarn.Versioning`       | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`, `SnapshotObjectFormat`, `SnapshotObjectStorage`, `SnapshotObjectPublicationClaim`, `ProjectSnapshotCrud`, `ProjectSnapshotDownload`, `ProjectSnapshotZip`, `ProjectSnapshotReconciliation`, `ProjectSnapshotReconciliationRepair`, `ConflictDetector`, `RestorePolicy`, `ProjectRecovery` |
 | Exports          | `Storyarn.Exports`          | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`, `SizeGuard`, `LocalizationCatalog`                                                                                                                                                                  |
 | Imports          | `Storyarn.Imports`          | `Parser`, `ParserRegistry`, `Parsers.*`, `ImportPlan`, `PlanStorage`, `ErrorDeduplicator`                                                                                                                                                                                                                      |
 | Billing          | `Storyarn.Billing`          | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`, `StorageAccounting`, `StorageReservation`                                                                                                                                                                                                                |
@@ -63,7 +63,8 @@ Snapshot lifecycle submodules under `Storyarn.Versioning` are
 `ProjectSnapshotBuild`, `ProjectSnapshotLifecycle`, `ProjectSnapshotPolicy`,
 `ProjectSnapshotReset`, `ProjectSnapshotReconciliation` (with immutable run and
 finding schemas), `ProjectSnapshotReconciliationRepair` (with immutable repair
-action outcomes), and `SnapshotCleanupIntent`.
+action outcomes), `ProjectSnapshotDownload`, `ProjectSnapshotZip`, and
+`SnapshotCleanupIntent`.
 
 Facade-less directories — call the module directly, do not invent a facade:
 `lib/storyarn/dashboards/` (`Cache`), `lib/storyarn/emails/` (`Layout`, `Templates`),

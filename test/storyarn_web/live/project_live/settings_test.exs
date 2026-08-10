@@ -20,6 +20,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
+  alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Workers.BuildProjectSnapshotWorker
 
@@ -440,6 +441,9 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       assert is_binary(serialized["accountingMeasuredAt"])
 
+      assert serialized["downloadUrl"] ==
+               "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/snapshots/#{snapshot.id}/download"
+
       assert vue.props["storage-usage"] == %{
                "currentAssetsBytes" => "2048",
                "assetTrashBytes" => "0",
@@ -489,6 +493,42 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert vue.props["storage-usage"]["totalAccountedBytes"] == "9007199254741118"
     end
 
+    test "omits download URLs for linked or unverified snapshots", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      missing =
+        project
+        |> full_project_snapshot_fixture(%{
+          title: "Missing snapshot",
+          asset_blob_size_bytes: 0
+        })
+        |> ProjectSnapshot.reconciliation_integrity_changeset("missing")
+        |> Repo.update!()
+
+      linked =
+        project
+        |> full_project_snapshot_fixture(%{
+          title: "Linked snapshot",
+          asset_blob_size_bytes: 0
+        })
+        |> Ecto.Changeset.change(mode: "linked")
+        |> Repo.update!()
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+
+      serialized_by_id =
+        view
+        |> get_snapshots_vue()
+        |> then(& &1.props["snapshots"])
+        |> Map.new(&{&1["id"], &1})
+
+      assert serialized_by_id[missing.id]["downloadUrl"] == nil
+      assert serialized_by_id[linked.id]["downloadUrl"] == nil
+    end
+
     test "requests and cancels a durable full snapshot from the settings surface", %{
       conn: conn,
       user: user
@@ -511,6 +551,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert pending["progressBytes"] == "0"
       assert pending["plannedSizeBytes"] == pending["progressTotalBytes"]
       assert pending["canCancel"] == true
+      assert pending["downloadUrl"] == nil
 
       render_click(view, "cancel_snapshot", %{"id" => pending["id"]})
 

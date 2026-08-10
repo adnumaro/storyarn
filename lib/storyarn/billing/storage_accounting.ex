@@ -31,6 +31,7 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   @accounting_version 1
   @default_reservation_ttl_seconds 24 * 60 * 60
+  @expired_export_lease_recovery_batch_size 50
   @reservation_kinds ~w(snapshot_build linked_to_full_conversion restore_staging snapshot_export)
   @exclusive_snapshot_operation_kinds ~w(snapshot_build linked_to_full_conversion)
   @snapshot_slot_lifecycle_states ~w(pending building verifying ready deleting)
@@ -276,7 +277,7 @@ defmodule Storyarn.Billing.StorageAccounting do
   Reservations never shrink in place. Callers must extend before publishing
   final objects; a capacity failure leaves the existing reservation untouched.
   """
-  @spec extend_to(pos_integer(), Ecto.UUID.t(), pos_integer(), pos_integer()) ::
+  @spec extend_to(pos_integer(), Ecto.UUID.t(), pos_integer(), non_neg_integer()) ::
           {:ok, StorageReservation.t()} | {:error, atom()} | {:error, :limit_reached, map()}
   def extend_to(reservation_id, lease_token, expected_generation, target_bytes)
       when valid_fence(reservation_id, lease_token, expected_generation) and is_non_negative_integer(target_bytes) do
@@ -389,6 +390,31 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   def release(_reservation_id, _lease_token, _expected_generation, _attrs),
     do: {:error, :invalid_storage_reservation_release}
+
+  @doc """
+  Releases expired zero-byte snapshot export read leases in one bounded batch.
+
+  Candidate selection is advisory. Every release rechecks the immutable lease
+  token and generation plus the exact zero-byte, never-started export shape
+  under the workspace and reservation locks. Positive export reservations are
+  deliberately outside this recovery path because they require durable cleanup
+  ownership before release.
+  """
+  @spec recover_expired_snapshot_export_leases(DateTime.t(), keyword()) :: %{
+          candidate_count: non_neg_integer(),
+          released_count: non_neg_integer(),
+          changed_count: non_neg_integer(),
+          failure_count: non_neg_integer()
+        }
+  def recover_expired_snapshot_export_leases(now, opts \\ [])
+
+  def recover_expired_snapshot_export_leases(%DateTime{} = now, opts) when is_list(opts) do
+    if Keyword.keyword?(opts),
+      do: recover_expired_snapshot_export_lease_candidates(now, opts),
+      else: invalid_expired_snapshot_export_lease_recovery()
+  end
+
+  def recover_expired_snapshot_export_leases(_now, _opts), do: invalid_expired_snapshot_export_lease_recovery()
 
   @doc """
   Emits provider-footprint telemetry without mutating or recalculating quota.
@@ -607,6 +633,7 @@ defmodule Storyarn.Billing.StorageAccounting do
              :ok <- active_reservation(reservation),
              :ok <- verify_generation(reservation, expected_generation),
              :ok <- verify_unexpired(reservation),
+             :ok <- verify_storage_start_allowed(reservation),
              :ok <- ensure_operation_namespace_available(reservation),
              {:ok, storage_keys} <- validate_planned_cleanup_scope(reservation, cleanup_plan) do
           persist_storage_started(reservation, storage_keys)
@@ -1087,6 +1114,103 @@ defmodule Storyarn.Billing.StorageAccounting do
     end)
   end
 
+  defp expired_snapshot_export_lease_candidates(now, limit) do
+    Repo.all(
+      from(reservation in StorageReservation,
+        where:
+          reservation.status == "active" and reservation.kind == "snapshot_export" and
+            reservation.reserved_bytes == 0 and is_nil(reservation.storage_started_at) and
+            reservation.expires_at <= ^now,
+        order_by: [asc: reservation.expires_at, asc: reservation.id],
+        limit: ^limit,
+        select: %{
+          id: reservation.id,
+          workspace_id_snapshot: reservation.workspace_id_snapshot,
+          lease_token: reservation.lease_token,
+          generation: reservation.generation,
+          expires_at: reservation.expires_at
+        }
+      )
+    )
+  end
+
+  defp recovery_batch_limit(opts) do
+    case Keyword.get(opts, :limit, @expired_export_lease_recovery_batch_size) do
+      limit when is_integer(limit) and limit > 0 -> min(limit, @expired_export_lease_recovery_batch_size)
+      _invalid -> @expired_export_lease_recovery_batch_size
+    end
+  end
+
+  defp invalid_expired_snapshot_export_lease_recovery do
+    %{candidate_count: 0, released_count: 0, changed_count: 0, failure_count: 1}
+  end
+
+  defp recover_expired_snapshot_export_lease_candidates(now, opts) do
+    candidates = expired_snapshot_export_lease_candidates(now, recovery_batch_limit(opts))
+
+    Enum.reduce(
+      candidates,
+      %{candidate_count: length(candidates), released_count: 0, changed_count: 0, failure_count: 0},
+      &count_expired_snapshot_export_lease_recovery/2
+    )
+  end
+
+  defp count_expired_snapshot_export_lease_recovery(candidate, counts) do
+    case recover_expired_snapshot_export_lease(candidate) do
+      {:ok, %StorageReservation{status: "released"}} ->
+        Map.update!(counts, :released_count, &(&1 + 1))
+
+      {:error, :expired_snapshot_export_lease_changed} ->
+        Map.update!(counts, :changed_count, &(&1 + 1))
+
+      {:error, _reason} ->
+        Map.update!(counts, :failure_count, &(&1 + 1))
+    end
+  end
+
+  defp recover_expired_snapshot_export_lease(candidate) do
+    settlement_locked_result(candidate.workspace_id_snapshot, fn _workspace ->
+      with %StorageReservation{} = reservation <- lock_reservation(candidate.id),
+           :ok <- verify_lease(reservation, candidate.lease_token),
+           :ok <- verify_generation(reservation, candidate.generation),
+           :ok <- verify_expired_snapshot_export_lease(reservation, candidate, database_clock_now()),
+           {:ok, release_attrs} <-
+             normalize_release_attrs(reservation, %{
+               reason: "expired_snapshot_export_lease",
+               cleanup_status: "not_required",
+               cleanup_proof: %{
+                 type: "storage_not_started",
+                 storage_namespace: reservation.storage_namespace
+               }
+             }) do
+        release_for_status(reservation, candidate.generation, release_attrs)
+      else
+        nil ->
+          {:error, :expired_snapshot_export_lease_changed}
+
+        {:error, reason}
+        when reason in [
+               :storage_reservation_lease_mismatch,
+               :storage_reservation_generation_mismatch,
+               :expired_snapshot_export_lease_changed
+             ] ->
+          {:error, :expired_snapshot_export_lease_changed}
+
+        {:error, _reason} = error ->
+          error
+      end
+    end)
+  end
+
+  defp verify_expired_snapshot_export_lease(reservation, candidate, now) do
+    if reservation.status == "active" and reservation.kind == "snapshot_export" and
+         reservation.reserved_bytes == 0 and is_nil(reservation.storage_started_at) and
+         reservation.expires_at == candidate.expires_at and
+         not DateTime.after?(reservation.expires_at, now),
+       do: :ok,
+       else: {:error, :expired_snapshot_export_lease_changed}
+  end
+
   defp lock_reservation(id) do
     Repo.one(from(reservation in StorageReservation, where: reservation.id == ^id, lock: "FOR UPDATE"))
   end
@@ -1219,8 +1343,11 @@ defmodule Storyarn.Billing.StorageAccounting do
   defp validate_target_allocation("linked_to_full_conversion", bytes, %ProjectSnapshot{})
        when is_non_negative_integer(bytes), do: :ok
 
+  defp validate_target_allocation("snapshot_export", bytes, %ProjectSnapshot{}) when is_non_negative_integer(bytes),
+    do: :ok
+
   defp validate_target_allocation(kind, bytes, %ProjectSnapshot{})
-       when kind in ["snapshot_build", "restore_staging", "snapshot_export"] and is_positive_integer(bytes), do: :ok
+       when kind in ["snapshot_build", "restore_staging"] and is_positive_integer(bytes), do: :ok
 
   defp validate_target_allocation(_kind, _bytes, _snapshot), do: {:error, :invalid_storage_reservation_allocation}
 
@@ -1921,8 +2048,11 @@ defmodule Storyarn.Billing.StorageAccounting do
        )
        when is_integer(source_asset_count) and source_asset_count >= 0 and is_non_negative_integer(bytes), do: :ok
 
+  defp validate_operation_bytes(%StorageReservation{kind: "snapshot_export"}, bytes) when is_non_negative_integer(bytes),
+    do: :ok
+
   defp validate_operation_bytes(%StorageReservation{kind: kind}, bytes)
-       when kind in ["snapshot_build", "restore_staging", "snapshot_export"] and is_positive_integer(bytes), do: :ok
+       when kind in ["snapshot_build", "restore_staging"] and is_positive_integer(bytes), do: :ok
 
   defp validate_operation_bytes(_reservation, _bytes), do: {:error, :invalid_storage_reservation_allocation}
 
@@ -1942,6 +2072,11 @@ defmodule Storyarn.Billing.StorageAccounting do
   defp verify_storage_started(%StorageReservation{storage_started_at: %DateTime{}}), do: :ok
   defp verify_storage_started(%StorageReservation{}), do: {:error, :storage_reservation_not_started}
 
+  defp verify_storage_start_allowed(%StorageReservation{kind: "snapshot_export", reserved_bytes: 0}),
+    do: {:error, :zero_byte_snapshot_export_lease_cannot_start_storage}
+
+  defp verify_storage_start_allowed(%StorageReservation{}), do: :ok
+
   defp active_reservation(%StorageReservation{status: "active"}), do: :ok
   defp active_reservation(%StorageReservation{status: "committed"}), do: {:error, :storage_reservation_already_committed}
   defp active_reservation(%StorageReservation{status: "released"}), do: {:error, :storage_reservation_already_released}
@@ -1951,6 +2086,11 @@ defmodule Storyarn.Billing.StorageAccounting do
     after_previous_expiry = DateTime.add(reservation.expires_at, 1, :second)
 
     if DateTime.after?(full_ttl, after_previous_expiry), do: full_ttl, else: after_previous_expiry
+  end
+
+  defp database_clock_now do
+    %Postgrex.Result{rows: [[now]]} = Repo.query!("SELECT clock_timestamp()")
+    DateTime.truncate(now, :second)
   end
 
   defp consistent_read(fun) do

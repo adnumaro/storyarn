@@ -190,8 +190,3 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "You do not have permission to export this project"
 msgstr ""
-
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:13
-#, elixir-autogen, elixir-format
-msgid "Snapshot download is not available"
-msgstr ""

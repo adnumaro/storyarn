@@ -20,7 +20,7 @@ Open **Project Settings > Snapshots**. Enter an optional title and description, 
 
 Each stored snapshot shows its version number, title, creator when available, creation time, stored size, and entity counts. Available actions are:
 
-- **Download** the stored snapshot archive.
+- **Download** a ready, verified full snapshot as a private ZIP archive. Linked snapshots are not downloadable.
 - **Restore** the project to that snapshot.
 - **Delete** the snapshot permanently.
 

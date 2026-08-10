@@ -213,7 +213,7 @@ defmodule StoryarnWeb.TelemetryTest do
       metrics =
         Enum.filter(Telemetry.metrics(), &(Enum.take(&1.name, 2) == [:storyarn, :snapshot]))
 
-      assert length(metrics) == 52
+      assert length(metrics) == 55
 
       names = Enum.map(metrics, & &1.name)
       assert [:storyarn, :snapshot, :cleanup, :intent, :count] in names
@@ -223,6 +223,9 @@ defmodule StoryarnWeb.TelemetryTest do
       assert [:storyarn, :snapshot, :cleanup, :backlog, :terminal_retry_count] in names
       assert [:storyarn, :snapshot, :cleanup, :backlog, :repeated_terminal_failures] in names
       assert [:storyarn, :snapshot, :retention, :stop, :deleted_count] in names
+      assert [:storyarn, :snapshot, :retention, :stop, :expired_export_lease_candidate_count] in names
+      assert [:storyarn, :snapshot, :retention, :stop, :expired_export_lease_count] in names
+      assert [:storyarn, :snapshot, :retention, :stop, :expired_export_lease_changed_count] in names
       assert [:storyarn, :snapshot, :retention, :stop, :orphaned_build_count] in names
       assert [:storyarn, :snapshot, :reset, :stop, :object_count] in names
       assert [:storyarn, :snapshot, :reconciliation, :start, :count] in names
@@ -273,9 +276,9 @@ defmodule StoryarnWeb.TelemetryTest do
       metrics = Telemetry.metrics()
 
       # 9 Phoenix + 5 DB + 3 template installation + 9 import + 11 storage +
-      # 1 asset trash + 2 storage cleanup retry + 52 snapshot lifecycle +
-      # 3 AI expiration + 4 VM = 99
-      assert length(metrics) == 99
+      # 1 asset trash + 2 storage cleanup retry + 55 snapshot lifecycle +
+      # 3 AI expiration + 4 VM = 102
+      assert length(metrics) == 102
     end
   end
 

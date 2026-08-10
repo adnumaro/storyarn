@@ -26,6 +26,10 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
 
     now = TimeHelpers.now()
     build_recovery = Versioning.reconcile_stale_project_snapshot_builds()
+
+    export_lease_recovery =
+      Versioning.recover_expired_project_snapshot_export_leases(now, limit: @batch_size)
+
     retention_after_id = Map.get(args, "retention_after_id", 0)
     expired_build_after_id = Map.get(args, "expired_build_after_id", 0)
     through_id = Map.get(args, "through_id") || Versioning.project_snapshot_lifecycle_high_watermark()
@@ -58,7 +62,9 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
         :retention_candidate_changed
       )
 
-    failure_count = failure_count + expired_build_failure_count + build_recovery.failure_count
+    failure_count =
+      failure_count + expired_build_failure_count + build_recovery.failure_count +
+        export_lease_recovery.failure_count
 
     {continuation_count, failure_count} =
       continuation_result(
@@ -80,6 +86,9 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
       %{
         deleted_count: deleted_count,
         expired_build_count: expired_build_count,
+        expired_export_lease_candidate_count: export_lease_recovery.candidate_count,
+        expired_export_lease_count: export_lease_recovery.released_count,
+        expired_export_lease_changed_count: export_lease_recovery.changed_count,
         orphaned_build_count: build_recovery.orphaned_count,
         settled_build_count: build_recovery.settled_count,
         failure_count: failure_count,

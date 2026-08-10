@@ -12,16 +12,19 @@ defmodule Storyarn.Versioning do
   - `Builders.*` - Entity-specific snapshot building and restoration
   """
 
+  alias Storyarn.Billing
   alias Storyarn.Versioning.ChangeDetector
   alias Storyarn.Versioning.ConflictDetector
   alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCrud
+  alias Storyarn.Versioning.ProjectSnapshotDownload
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
   alias Storyarn.Versioning.ProjectSnapshotReconciliation
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRepair
   alias Storyarn.Versioning.ProjectSnapshotReset
+  alias Storyarn.Versioning.ProjectSnapshotZip
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
   alias Storyarn.Versioning.SnapshotObjectStorage
@@ -278,6 +281,11 @@ defmodule Storyarn.Versioning do
     as: :delete_expired_build_candidate
 
   @doc false
+  defdelegate recover_expired_project_snapshot_export_leases(now, opts \\ []),
+    to: Billing,
+    as: :recover_expired_snapshot_export_leases
+
+  @doc false
   defdelegate project_snapshot_build_recovery_quarantine_seconds(),
     to: ProjectSnapshotLifecycle,
     as: :build_recovery_quarantine_seconds
@@ -372,6 +380,14 @@ defmodule Storyarn.Versioning do
   Gets a project snapshot by ID.
   """
   defdelegate get_project_snapshot(project_id, id), to: ProjectSnapshotCrud, as: :get_snapshot_by_id
+
+  @doc "Yields a fully preflighted direct ZIP while holding its durable read lease."
+  defdelegate with_project_snapshot_zip(project_id, snapshot_id, callback),
+    to: ProjectSnapshotDownload,
+    as: :with_zip
+
+  @doc false
+  defdelegate stream_project_snapshot_zip(plan), to: ProjectSnapshotZip, as: :stream
 
   @doc """
   Updates a project snapshot's title and description.

@@ -199,6 +199,10 @@
         "cancelling": "Cancellation requested",
         "accessibility": "Snapshot build progress: {percent}"
       },
+      "download": {
+        "action": "Download ZIP",
+        "linked_requires_full": "Convert this linked snapshot to a full snapshot before downloading it."
+      },
       "delete": {
         "action": "Delete snapshot",
         "title": "Delete snapshot?",

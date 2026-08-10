@@ -65,6 +65,9 @@ defmodule Storyarn.Billing do
     to: StorageAccounting,
     as: :release
 
+  defdelegate recover_expired_snapshot_export_leases(now, opts \\ []),
+    to: StorageAccounting
+
   defdelegate storage_reservation_object_prefixes(reservation),
     to: StorageAccounting,
     as: :operation_object_prefixes

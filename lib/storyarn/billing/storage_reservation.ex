@@ -191,6 +191,7 @@ defmodule Storyarn.Billing.StorageReservation do
     reservation
     |> change()
     |> require_active()
+    |> validate_storage_start_allowed()
     |> put_change(:storage_started_at, measured_at)
     |> put_change(:cleanup_inventory_digest, inventory_digest)
     |> put_change(:cleanup_inventory_count, inventory_count)
@@ -320,8 +321,21 @@ defmodule Storyarn.Billing.StorageReservation do
       {"linked_to_full_conversion", source_asset_count} when is_integer(source_asset_count) ->
         validate_number(changeset, field, greater_than_or_equal_to: 0)
 
+      {"snapshot_export", _source_asset_count} when field == :reserved_bytes ->
+        validate_number(changeset, field, greater_than_or_equal_to: 0)
+
       {_kind, _source_asset_count} ->
         validate_number(changeset, field, greater_than: 0)
+    end
+  end
+
+  defp validate_storage_start_allowed(changeset) do
+    case {get_field(changeset, :kind), get_field(changeset, :reserved_bytes)} do
+      {"snapshot_export", 0} ->
+        add_error(changeset, :storage_started_at, "cannot be set for a zero-byte export lease")
+
+      {_kind, _reserved_bytes} ->
+        changeset
     end
   end
 
@@ -457,6 +471,9 @@ defmodule Storyarn.Billing.StorageReservation do
     )
     |> check_constraint(:cleanup_inventory_digest,
       name: :workspace_storage_reservations_cleanup_inventory_commitment
+    )
+    |> check_constraint(:storage_started_at,
+      name: :workspace_storage_reservations_zero_byte_snapshot_export_lease
     )
     |> check_constraint(:storage_namespace,
       name: :workspace_storage_reservations_namespace

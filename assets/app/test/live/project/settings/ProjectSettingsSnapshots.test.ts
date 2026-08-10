@@ -57,6 +57,7 @@ interface SnapshotFixture {
   cancelRequestedAt: string | null;
   canCancel: boolean;
   canDelete: boolean;
+  downloadUrl: string | null;
 }
 
 const measuredSnapshot: SnapshotFixture = {
@@ -90,6 +91,7 @@ const measuredSnapshot: SnapshotFixture = {
   cancelRequestedAt: null,
   canCancel: false,
   canDelete: false,
+  downloadUrl: "/workspaces/alpha/projects/veilbreak/snapshots/21/download",
 };
 
 function mountSnapshots(
@@ -163,7 +165,13 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       "Snapshot slots: 2 of 10 used",
     );
     expect(wrapper.get('button[type="submit"]').text()).toContain("Create snapshot");
-    expect(wrapper.find('a[href*="/snapshots/"]').exists()).toBe(false);
+    const download = wrapper.get('[data-testid="download-snapshot-21"]');
+    expect(download.attributes("href")).toBe(
+      "/workspaces/alpha/projects/veilbreak/snapshots/21/download",
+    );
+    expect(download.attributes("download")).toBe("");
+    expect(download.attributes("data-live-link-exempt")).toBe("download");
+    expect(download.text()).toContain("Download ZIP");
   });
 
   it("renders export reservation bytes independently from other active work", () => {
@@ -197,6 +205,7 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       progressBytes: "0",
       progressTotalBytes: String(6 * 1024),
       canCancel: true,
+      downloadUrl: null,
     });
 
     const text = wrapper.text();
@@ -210,6 +219,19 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       true,
     );
     expect(wrapper.find('a[href*="/snapshots/"]').exists()).toBe(false);
+  });
+
+  it("explains that linked snapshots must be converted without rendering a false action", () => {
+    const wrapper = mountSnapshots({
+      ...measuredSnapshot,
+      mode: "linked",
+      downloadUrl: null,
+    });
+
+    expect(wrapper.find('[data-testid="download-snapshot-21"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="download-linked-snapshot-21"]').text()).toContain(
+      "Convert this linked snapshot to a full snapshot before downloading it.",
+    );
   });
 
   it.each([

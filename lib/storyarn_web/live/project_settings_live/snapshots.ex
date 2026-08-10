@@ -34,7 +34,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         v-socket={@socket}
         v-inject="settings-layout"
         id="project-settings-snapshots"
-        snapshots={serialize_snapshots(@snapshots, @snapshot_reservations)}
+        snapshots={serialize_snapshots(@project, @snapshots, @snapshot_reservations)}
         storage-usage={serialize_storage_usage(@storage_usage, @storage_limit)}
         snapshot-limit={serialize_snapshot_limit(@snapshot_slots_used, @snapshot_slots_limit)}
       />
@@ -46,11 +46,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   # Serialization helpers
   # ===========================================================================
 
-  defp serialize_snapshots(snapshots, reservations) do
-    Enum.map(snapshots, &serialize_snapshot(&1, reservations))
+  defp serialize_snapshots(project, snapshots, reservations) do
+    Enum.map(snapshots, &serialize_snapshot(project, &1, reservations))
   end
 
-  defp serialize_snapshot(snapshot, reservations) do
+  defp serialize_snapshot(project, snapshot, reservations) do
     reservation = Map.get(reservations, snapshot.id, %{active_bytes: 0, export_bytes: 0, active_count: 0})
 
     %{
@@ -82,6 +82,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       cancelRequestedAt: serialize_datetime(snapshot.cancel_requested_at),
       canCancel: snapshot_cancellable?(snapshot),
       canDelete: snapshot_deletable?(snapshot, reservation),
+      downloadUrl: snapshot_download_url(project, snapshot),
       entityCounts: snapshot.entity_counts,
       createdByEmail: snapshot_creator_email(snapshot)
     }
@@ -98,6 +99,18 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   defp snapshot_deletable?(snapshot, reservation) do
     snapshot.lifecycle_state in ["ready", "failed", "cancelled"] and reservation.active_count == 0
   end
+
+  defp snapshot_download_url(project, %{
+         id: snapshot_id,
+         format_version: 1,
+         mode: "full",
+         lifecycle_state: "ready",
+         integrity_state: "verified"
+       }) do
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/snapshots/#{snapshot_id}/download"
+  end
+
+  defp snapshot_download_url(_project, _snapshot), do: nil
 
   defp snapshot_creator_email(%{created_by: %{email: email}}), do: email
   defp snapshot_creator_email(_snapshot), do: nil
