@@ -313,6 +313,32 @@ defmodule Storyarn.Assets.AssetTrashTest do
              })
   end
 
+  test "metadata writers reject family IDs outside the PostgreSQL bigint range", %{
+    project: project,
+    user: user
+  } do
+    asset = image_asset_fixture(project, user)
+    oversized_id = 9_223_372_036_854_775_808
+
+    assert {:error, :asset_family_identity_invalid} =
+             Assets.update_asset(asset, %{
+               metadata: %{"web_asset_id" => oversized_id}
+             })
+
+    assert {:error, :asset_family_identity_invalid} =
+             Assets.create_asset(
+               project,
+               user,
+               valid_asset_attributes(%{
+                 key: Assets.generate_key(project, "oversized-family-id.png"),
+                 metadata: %{"original_asset_id" => Integer.to_string(oversized_id)}
+               })
+             )
+
+    assert Repo.reload!(asset).metadata == asset.metadata
+    assert Assets.list_asset_ids(project.id) == [asset.id]
+  end
+
   test "corrupt family metadata fails closed, including incoming links omitted from the graph", %{
     project: project,
     user: user

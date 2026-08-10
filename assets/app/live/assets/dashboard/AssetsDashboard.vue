@@ -268,7 +268,7 @@ const activeUsageCount = computed(
     assetUsages.sceneBackgrounds.filter((usage) => !usage.trashed).length +
     assetUsages.scenePinIcons.filter((usage) => !usage.trashed).length +
     assetUsages.sceneZoneIcons.filter((usage) => !usage.trashed).length +
-    assetUsages.localizedVoiceovers.filter((usage) => !usage.archived).length +
+    assetUsages.localizedVoiceovers.length +
     assetUsages.galleryImages.filter((usage) => !usage.trashed).length,
 );
 

@@ -42,6 +42,7 @@ defmodule Storyarn.Assets.Asset do
     application/pdf
   )
   @sanitized_svg_content_types ~w(image/svg+xml)
+  @max_asset_id 9_223_372_036_854_775_807
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -231,11 +232,11 @@ defmodule Storyarn.Assets.Asset do
     end)
   end
 
-  defp validate_asset_id(id) when is_integer(id) and id > 0, do: {:ok, id}
+  defp validate_asset_id(id) when is_integer(id) and id > 0 and id <= @max_asset_id, do: {:ok, id}
 
   defp validate_asset_id(id) when is_binary(id) do
     case Integer.parse(id) do
-      {integer, ""} when integer > 0 -> {:ok, integer}
+      {integer, ""} when integer > 0 and integer <= @max_asset_id -> {:ok, integer}
       _invalid -> :error
     end
   end

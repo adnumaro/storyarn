@@ -92,4 +92,40 @@ describe("AssetsDashboard recoverable trash", () => {
     await moveButton!.trigger("click");
     expect(live.pushEvent).not.toHaveBeenCalledWith("confirm_trash_asset", {}, undefined);
   });
+
+  it("blocks moving an asset referenced by an archived voiceover", async () => {
+    const { live, wrapper } = mountDashboard(true, {
+      assetUsages: {
+        assetMetadataLinks: [],
+        flowNodes: [],
+        sequenceVisualLayers: [],
+        sequenceTracks: [],
+        sheetAvatars: [],
+        sheetBanners: [],
+        sceneBackgrounds: [],
+        scenePinIcons: [],
+        sceneZoneIcons: [],
+        localizedVoiceovers: [
+          {
+            id: 9,
+            localeCode: "en",
+            sourceType: "sheet",
+            sourceId: 3,
+            sourceText: "Archived line",
+            archived: true,
+          },
+        ],
+        galleryImages: [],
+      },
+    });
+
+    expect(wrapper.text()).toContain("Remove this asset from its 1 active use");
+    const moveButton = wrapper
+      .findAll("button")
+      .find((button) => button.text() === "Move to trash");
+    expect(moveButton?.attributes("disabled")).toBeDefined();
+
+    await moveButton!.trigger("click");
+    expect(live.pushEvent).not.toHaveBeenCalledWith("confirm_trash_asset", {}, undefined);
+  });
 });

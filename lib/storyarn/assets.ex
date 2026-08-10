@@ -1023,6 +1023,71 @@ defmodule Storyarn.Assets do
     }
   end
 
+  @doc """
+  Returns usage references aggregated across an asset's active family.
+
+  Family membership uses the same undirected metadata graph as recoverable
+  trash. Lists are deduplicated so callers can use this map as a complete
+  preview of the references checked before moving the family to trash.
+  """
+  @spec get_asset_family_usages(integer(), integer()) :: %{
+          asset_metadata_links: [map()],
+          flow_nodes: [map()],
+          sequence_visual_layers: [map()],
+          sequence_tracks: [map()],
+          sheet_avatars: [map()],
+          sheet_banners: [map()],
+          scene_backgrounds: [map()],
+          scene_pin_icons: [map()],
+          scene_zone_icons: [map()],
+          localized_voiceovers: [map()],
+          gallery_images: [map()]
+        }
+  def get_asset_family_usages(project_id, asset_id) do
+    project_id
+    |> AssetTrash.active_family_ids(asset_id)
+    |> Enum.reduce(empty_asset_usages(), fn family_asset_id, usages ->
+      merge_asset_usages(usages, get_asset_usages(project_id, family_asset_id))
+    end)
+  end
+
+  defp empty_asset_usages do
+    %{
+      asset_metadata_links: [],
+      flow_nodes: [],
+      sequence_visual_layers: [],
+      sequence_tracks: [],
+      sheet_avatars: [],
+      sheet_banners: [],
+      scene_backgrounds: [],
+      scene_pin_icons: [],
+      scene_zone_icons: [],
+      localized_voiceovers: [],
+      gallery_images: []
+    }
+  end
+
+  defp merge_asset_usages(current, additional) do
+    Map.merge(current, additional, fn
+      :asset_metadata_links, left, right -> merge_asset_metadata_links(left ++ right)
+      _usage_type, left, right -> Enum.uniq(left ++ right)
+    end)
+  end
+
+  defp merge_asset_metadata_links(links) do
+    links
+    |> Enum.group_by(& &1.id)
+    |> Enum.map(fn {_asset_id, [first | rest]} ->
+      relations =
+        [first | rest]
+        |> Enum.flat_map(& &1.relations)
+        |> Enum.uniq()
+
+      %{first | relations: relations}
+    end)
+    |> Enum.sort_by(&{&1.filename, &1.id})
+  end
+
   defp lock_active_project_for_asset_write(project_id) do
     case Repo.one(
            from(project in Project,
@@ -2451,9 +2516,10 @@ defmodule Storyarn.Assets do
   def import_asset(%Project{} = project, attrs) do
     changeset = Asset.create_changeset(%Asset{project_id: project.id}, attrs)
 
-    with :ok <- authorize_import_asset(project, changeset),
+    with :ok <- validate_import_asset_authorization(project),
          {:ok, _locked_project} <- ProjectReferenceIntegrity.lock_active_project(project.id, :update),
-         :ok <- lock_asset_family_references(%Asset{project_id: project.id}, attrs) do
+         :ok <- lock_asset_family_references(%Asset{project_id: project.id}, attrs),
+         :ok <- authorize_import_asset(project, changeset) do
       with_asset_storage_key_lock(attrs, fn -> Repo.insert(changeset) end)
     end
   end
@@ -2479,9 +2545,24 @@ defmodule Storyarn.Assets do
   end
 
   defp authorize_import_asset(project, changeset) do
-    if Billing.workspace_lock_held?(project.workspace_id),
-      do: consume_import_capacity(project, changeset),
-      else: {:error, :storage_accounting_lock_required}
+    with :ok <- validate_import_asset_authorization(project) do
+      consume_import_capacity(project, changeset)
+    end
+  end
+
+  defp validate_import_asset_authorization(project) do
+    if Billing.workspace_lock_held?(project.workspace_id) do
+      case Process.get(@import_capacity_process_key) do
+        %{workspace_id: workspace_id, project_id: project_id}
+        when workspace_id == project.workspace_id and project_id == project.id ->
+          :ok
+
+        _capacity ->
+          {:error, :asset_import_capacity_required}
+      end
+    else
+      {:error, :storage_accounting_lock_required}
+    end
   end
 
   defp consume_import_capacity(project, changeset) do

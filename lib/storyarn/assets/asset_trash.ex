@@ -41,6 +41,33 @@ defmodule Storyarn.Assets.AssetTrash do
     end
   end
 
+  @doc false
+  @spec active_family_ids(pos_integer(), pos_integer()) :: [pos_integer()]
+  def active_family_ids(project_id, asset_id)
+      when is_integer(project_id) and project_id > 0 and is_integer(asset_id) and asset_id > 0 do
+    assets =
+      Repo.all(
+        from(asset in Asset,
+          where: asset.project_id == ^project_id,
+          order_by: [asc: asset.id]
+        )
+      )
+
+    case Enum.find(assets, &(&1.id == asset_id)) do
+      %Asset{deleted_at: nil} ->
+        family_ids = family_component_ids(assets, [asset_id])
+
+        for %Asset{id: id, deleted_at: nil} <- assets,
+            MapSet.member?(family_ids, id),
+            do: id
+
+      _missing_or_trashed ->
+        []
+    end
+  end
+
+  def active_family_ids(_project_id, _asset_id), do: []
+
   @spec move_locked(
           pos_integer(),
           pos_integer(),

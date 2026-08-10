@@ -2,9 +2,11 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
@@ -1035,6 +1037,34 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
 
   describe "restore_block restores inherited instances" do
     setup :setup_hierarchy
+
+    test "rejects restoring inherited galleries whose assets remain in trash", %{
+      project: project,
+      user: user,
+      parent: parent,
+      child: child,
+      grandchild: grandchild
+    } do
+      source = inheritable_block_fixture(parent, type: "gallery", label: "Inherited gallery")
+      child_instance = inherited_instance!(child.id, source.id)
+      grandchild_instance = inherited_instance!(grandchild.id, source.id)
+      asset = image_asset_fixture(project, user)
+
+      assert {:ok, gallery_image} = Sheets.add_gallery_image(grandchild_instance, asset.id)
+      assert {:ok, deleted_source} = Sheets.delete_block(source)
+      assert Repo.get!(Block, child_instance.id).deleted_at
+      assert Repo.get!(Block, grandchild_instance.id).deleted_at
+      assert {:ok, _trashed_asset} = Assets.move_asset_to_trash(project.id, asset.id, user.id)
+
+      assert {:error, {:invalid_project_reference, {:block_gallery_image, gallery_image_id, :asset_id}, asset_id}} =
+               Sheets.restore_block(deleted_source)
+
+      assert gallery_image_id == gallery_image.id
+      assert asset_id == asset.id
+      assert Repo.get!(Block, source.id).deleted_at
+      assert Repo.get!(Block, child_instance.id).deleted_at
+      assert Repo.get!(Block, grandchild_instance.id).deleted_at
+    end
 
     test "restoring a parent block with scope children restores instances", %{
       parent: parent,

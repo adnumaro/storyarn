@@ -223,7 +223,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         {:noreply, socket}
 
       asset ->
-        usages = Assets.get_asset_usages(project_id, asset.id)
+        usages = Assets.get_asset_family_usages(project_id, asset.id)
 
         {:noreply,
          socket
@@ -294,7 +294,7 @@ defmodule StoryarnWeb.AssetLive.Index do
          ) do
       {:ok, asset} ->
         type_counts = Assets.count_assets_by_type(project.id)
-        usages = Assets.get_asset_usages(project.id, asset.id)
+        usages = Assets.get_asset_family_usages(project.id, asset.id)
         broadcast_asset_change(project.id, :asset_created)
 
         {:noreply,
@@ -334,6 +334,7 @@ defmodule StoryarnWeb.AssetLive.Index do
 
         case Assets.move_asset_to_trash(project_id, asset.id, actor_id) do
           {:ok, _} ->
+            broadcast_asset_change(project_id, :asset_trashed)
             type_counts = Assets.count_assets_by_type(project_id)
 
             {:noreply,

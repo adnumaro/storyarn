@@ -627,6 +627,22 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       assert trashed.deletion_generation == 1
     end
 
+    test "moving an asset to trash notifies other open asset grids", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
+      asset = image_asset_fixture(project, user, %{filename: "shared.png"})
+      :ok = Storyarn.Collaboration.subscribe_changes({:assets, project.id})
+
+      {:ok, view, _html} = live(conn, assets_path(project))
+
+      render_click(view, "select_asset", %{"id" => to_string(asset.id)})
+      render_hook(view, "confirm_trash_asset", %{})
+
+      assert_receive {:remote_change, :asset_trashed, %{}}, 1_000
+    end
+
     test "moving to trash clears selected-asset", %{conn: conn, user: user, project: project} do
       asset = image_asset_fixture(project, user)
 
@@ -728,6 +744,45 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
           length(usages["galleryImages"] || [])
 
       assert total_usages >= 1
+    end
+
+    test "selecting an asset includes active usages from every member of its family", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
+      import Storyarn.SheetsFixtures
+
+      original = image_asset_fixture(project, user, %{filename: "hero.png"})
+      variant = image_asset_fixture(project, user, %{filename: "hero.webp"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => variant.id,
+                   "web_url" => variant.url
+                 }
+               })
+
+      assert {:ok, _variant} =
+               Assets.update_asset(variant, %{
+                 metadata: %{
+                   "is_variant" => true,
+                   "original_asset_id" => original.id
+                 }
+               })
+
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      {:ok, _avatar} = Storyarn.Sheets.add_avatar(sheet, variant.id, %{is_default: true})
+
+      {:ok, view, _html} = live(conn, assets_path(project))
+
+      render_click(view, "select_asset", %{"id" => to_string(original.id)})
+
+      assert [%{"id" => sheet_id, "name" => "Hero", "trashed" => false}] =
+               get_assets_vue(view).props["asset-usages"]["sheetAvatars"]
+
+      assert sheet_id == sheet.id
     end
   end
 end

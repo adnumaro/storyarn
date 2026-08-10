@@ -24,9 +24,6 @@ defmodule Storyarn.Projects.ProjectTrash do
   defguardp is_optional_actor(actor_id)
             when is_nil(actor_id) or (is_integer(actor_id) and actor_id > 0)
 
-  defguardp is_positive_actor(actor_id)
-            when is_integer(actor_id) and actor_id > 0
-
   @type item_type :: String.t()
 
   @type deleted_item :: %{
@@ -172,18 +169,6 @@ defmodule Storyarn.Projects.ProjectTrash do
       )
     )
   end
-
-  @doc false
-  @spec restore_asset_trash_candidate(map(), pos_integer()) :: {:ok, Asset.t()} | {:error, term()}
-  def restore_asset_trash_candidate(
-        %{type: "asset", project_id: project_id, id: asset_id, deletion_generation: deletion_generation},
-        actor_id
-      )
-      when is_asset_trash_identity(project_id, asset_id, deletion_generation) and is_positive_actor(actor_id) do
-    Assets.restore_trashed_asset(project_id, asset_id, deletion_generation, actor_id)
-  end
-
-  def restore_asset_trash_candidate(_candidate, _actor_id), do: {:error, :retention_candidate_changed}
 
   @doc false
   @spec purge_asset_trash_candidate(map(), pos_integer() | nil) :: {:ok, Asset.t()} | {:error, term()}

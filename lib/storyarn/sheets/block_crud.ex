@@ -438,9 +438,10 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   defp do_restore_block(block, sheet) do
     lock_active_inheritance_source!(block, sheet.project_id)
+    inherited_instance_ids = lock_restorable_inherited_instance_ids!(block, sheet.project_id)
 
     case Assets.lock_active_asset_references_for_restore(sheet.project_id,
-           block_ids: [block.id]
+           block_ids: [block.id | inherited_instance_ids]
          ) do
       :ok -> :ok
       {:error, reason} -> Repo.rollback(reason)
@@ -534,6 +535,73 @@ defmodule Storyarn.Sheets.BlockCrud do
   end
 
   defp lock_active_inheritance_source!(_block, _project_id), do: :ok
+
+  defp lock_restorable_inherited_instance_ids!(
+         %Block{scope: "children", deleted_at: %DateTime{} = deleted_at} = block,
+         project_id
+       ) do
+    lower_threshold = DateTime.add(deleted_at, -2, :second)
+    upper_threshold = DateTime.add(deleted_at, 2, :second)
+
+    instance_ids =
+      list_restorable_inherited_instance_ids(
+        block.id,
+        project_id,
+        lower_threshold,
+        upper_threshold
+      )
+
+    locked_ids =
+      lock_restorable_inherited_instance_ids(
+        block.id,
+        instance_ids,
+        lower_threshold,
+        upper_threshold
+      )
+
+    if locked_ids == instance_ids do
+      locked_ids
+    else
+      Repo.rollback(:inheritance_instances_changed)
+    end
+  end
+
+  defp lock_restorable_inherited_instance_ids!(_block, _project_id), do: []
+
+  defp list_restorable_inherited_instance_ids(block_id, project_id, lower_threshold, upper_threshold) do
+    Repo.all(
+      from(instance in Block,
+        join: owner_sheet in Sheet,
+        on: owner_sheet.id == instance.sheet_id,
+        where:
+          instance.inherited_from_block_id == ^block_id and
+            instance.detached == false and
+            not is_nil(instance.deleted_at) and
+            instance.deleted_at >= ^lower_threshold and
+            instance.deleted_at <= ^upper_threshold and
+            owner_sheet.project_id == ^project_id,
+        order_by: [asc: instance.id],
+        select: instance.id
+      )
+    )
+  end
+
+  defp lock_restorable_inherited_instance_ids(block_id, instance_ids, lower_threshold, upper_threshold) do
+    Repo.all(
+      from(instance in Block,
+        where:
+          instance.id in ^instance_ids and
+            instance.inherited_from_block_id == ^block_id and
+            instance.detached == false and
+            not is_nil(instance.deleted_at) and
+            instance.deleted_at >= ^lower_threshold and
+            instance.deleted_at <= ^upper_threshold,
+        order_by: [asc: instance.id],
+        lock: "FOR UPDATE",
+        select: instance.id
+      )
+    )
+  end
 
   defp maybe_restore_inherited_instances(%Block{scope: "children"} = deleted_block) do
     deleted_block

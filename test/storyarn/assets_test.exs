@@ -646,6 +646,42 @@ defmodule Storyarn.AssetsTest do
       assert variant_id == variant.id
     end
 
+    test "returns deduplicated usages for every active member of an asset family", %{
+      project: project,
+      user: user
+    } do
+      original = image_asset_fixture(project, user, %{filename: "family-original.png"})
+      variant = image_asset_fixture(project, user, %{filename: "family-variant.webp"})
+      unrelated = image_asset_fixture(project, user, %{filename: "unrelated.png"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => variant.id,
+                   "variant_asset_ids" => %{"avatar" => variant.id}
+                 }
+               })
+
+      assert {:ok, variant} =
+               Assets.update_asset(variant, %{
+                 metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+               })
+
+      original_sheet = sheet_fixture(project, %{name: "Original usage", banner_asset_id: original.id})
+      variant_sheet = sheet_fixture(project, %{name: "Variant usage", banner_asset_id: variant.id})
+      _unrelated_sheet = sheet_fixture(project, %{name: "Unrelated usage", banner_asset_id: unrelated.id})
+
+      usages = Assets.get_asset_family_usages(project.id, original.id)
+
+      assert MapSet.new(usages.sheet_banners, & &1.id) ==
+               MapSet.new([original_sheet.id, variant_sheet.id])
+
+      assert MapSet.new(usages.asset_metadata_links, & &1.id) ==
+               MapSet.new([original.id, variant.id])
+
+      assert usages == Assets.get_asset_family_usages(project.id, variant.id)
+    end
+
     test "returns sequence visual layers, including layers owned by trashed nodes", %{
       project: project,
       user: user
@@ -1122,6 +1158,38 @@ defmodule Storyarn.AssetsTest do
                end)
 
       assert Assets.count_assets(project.id) == 0
+    end
+
+    test "failed family validation does not consume import capacity" do
+      project = project_fixture()
+      foreign_project = project_fixture()
+      foreign_asset = asset_fixture(foreign_project)
+      capacity_bytes = 5000
+
+      invalid_attrs = %{
+        filename: "invalid-family.png",
+        content_type: "image/png",
+        size: capacity_bytes,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/invalid-family.png",
+        metadata: %{"original_asset_id" => foreign_asset.id}
+      }
+
+      valid_attrs = %{
+        filename: "valid-after-rejection.png",
+        content_type: "image/png",
+        size: capacity_bytes,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/valid-after-rejection.png"
+      }
+
+      assert {:ok, {{:error, :asset_family_identity_invalid}, {:ok, inserted}}} =
+               Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+                 Assets.with_import_capacity(project, capacity_bytes, fn ->
+                   {:ok, {Assets.import_asset(project, invalid_attrs), Assets.import_asset(project, valid_attrs)}}
+                 end)
+               end)
+
+      assert inserted.filename == "valid-after-rejection.png"
+      assert Assets.list_asset_ids(project.id) == [inserted.id]
     end
   end
 
