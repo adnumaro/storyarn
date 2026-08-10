@@ -1,0 +1,50 @@
+assets/app/test/live/assets/dashboard/AssetsDashboard.test.ts
+  s_c2ae682cd97119::t_84913639c356cd 95-130
+test/storyarn/assets_test.exs
+  s_c2ae682cd97119::t_f2e0ff9fbf296b 649-684
+  s_c2ae682cd97119::t_2d9ddacc08c922 1184,1187-1189
+  s_c2ae682cd97119::t_d9e80352fa51f4 1162-1183,1185-1186,1190-1193
+lib/storyarn/assets/asset_trash.ex
+  s_c2ae682cd97119::t_f2e0ff9fbf296b 44-70
+assets/app/live/assets/dashboard/AssetsDashboard.vue
+  s_c2ae682cd97119::t_84913639c356cd 271
+test/storyarn/assets/asset_trash_test.exs
+  s_c2ae682cd97119::t_975d9d244b459b 339
+  s_c2ae682cd97119::t_d9e80352fa51f4 316-338,340-341
+lib/storyarn/sheets/block_crud.ex
+  s_c2ae682cd97119::t_aed20d6dc02128 441,444,539-546,552-554,560-569
+  s_c2ae682cd97119::t_6e0e5ed901d5c2 547-551,555-559,570-604
+  s_c2ae682cd97119::t_e32b82d32bbc8e 605
+lib/storyarn/assets.ex
+  s_c2ae682cd97119::t_2d9ddacc08c922 2519,2548-2565
+  s_c2ae682cd97119::t_d9e80352fa51f4 2521-2522
+  s_c2ae682cd97119::t_f2e0ff9fbf296b 1026-1090
+test/storyarn_web/live/asset_live/index_test.exs
+  s_c2ae682cd97119::t_84913639c356cd 630-645
+  s_c2ae682cd97119::t_35bb3c4dc84d2c 748-786
+test/storyarn/sheets/property_inheritance_test.exs
+  s_c2ae682cd97119::t_f2bcb57b12750e 5,9,1041-1044,1047-1049,1051-1052,1054-1055,1057-1058,1060-1065,1067
+  s_c2ae682cd97119::t_9bf1679e45f6ae 1045-1046,1050,1053,1056,1059,1066
+  s_c2ae682cd97119::t_c949da868fe2a5 1068
+lib/storyarn/assets/asset.ex
+  s_c2ae682cd97119::t_d9e80352fa51f4 45,235,239
+lib/storyarn_web/live/asset_live/index.ex
+  s_c2ae682cd97119::t_35bb3c4dc84d2c 226,297
+  s_c2ae682cd97119::t_84913639c356cd 337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e05e560628f40b68b345456af9f864115ccd6a06",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
