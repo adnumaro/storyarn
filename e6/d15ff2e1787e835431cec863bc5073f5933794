@@ -1,0 +1,88 @@
+lib/storyarn/versioning/project_snapshot_reconciliation_repair_action.ex
+  s_c2ae682cd97119::t_17ebf7f89ea9f1 8-10
+lib/storyarn_web/telemetry.ex
+  s_c2ae682cd97119::t_c565f858d0575a 227-233
+test/support/snapshot_read_switch_storage.ex
+  s_c2ae682cd97119::t_17ebf7f89ea9f1 10-14,17-18,39-42,83-88
+  s_c2ae682cd97119::t_63c37dbb1b0205 37-38
+  s_c2ae682cd97119::t_e0ef14e32c9786 16
+  s_c2ae682cd97119::t_7125085c0439ea 15,35-36,56-64,98-99,119-130
+test/storyarn/versioning/project_snapshot_reconciliation_repair_recovery_test.exs
+  s_c2ae682cd97119::t_c565f858d0575a 263,268-275,293-306,311-341,368-372,412-441
+  s_c2ae682cd97119::t_e813475cedad36 267,309,342-350,355-357,360-367
+  s_c2ae682cd97119::t_04f4b05e67ef28 442
+test/storyarn/versioning/project_snapshot_reconciliation_repair_test.exs
+  s_c2ae682cd97119::t_ce8c24af7d579c 558-559
+  s_c2ae682cd97119::t_63c37dbb1b0205 10,14,191-199,201-203,211-215,217,220,223-224,250-251,546-557,560-566,571-577
+  s_c2ae682cd97119::t_17ebf7f89ea9f1 200,225-233,236-249,252-258,263-273,578,795-812
+  s_c2ae682cd97119::t_241d7028f3ddc1 567-570
+  s_c2ae682cd97119::t_7125085c0439ea 204-210,216,218-219,221-222,234-235,259-262
+  s_c2ae682cd97119::t_d963d083eaea90 579,813
+lib/storyarn/versioning/snapshot_object_storage.ex
+  s_c2ae682cd97119::t_63f87f597b3e13 520-521
+  s_c2ae682cd97119::t_cf48d6c90ed0b9 362-377,501,507-519,522-534
+  s_c2ae682cd97119::t_47b2d481202309 361
+  s_c2ae682cd97119::t_d4d149627cc4f5 535
+lib/storyarn/versioning/project_snapshot_reconciliation_repair.ex
+  s_c2ae682cd97119::t_17ebf7f89ea9f1 266,375,549,558-566,568-569,571-573,579
+  s_c2ae682cd97119::t_c81fc03873e62f 487,490-497
+  s_c2ae682cd97119::t_63c37dbb1b0205 458-462,472-475,477-484,486,488-489,498-509,513-514,516,520-522,525,528,550-552,580,791-793,795,797-800,806-819
+  s_c2ae682cd97119::t_9c5ce623e0bda4 820
+docs/reference/versioning-containment.md
+  s_c2ae682cd97119::t_63c37dbb1b0205 107-111,380-381,384-391
+  s_c2ae682cd97119::t_241d7028f3ddc1 382-383,392-397
+  s_c2ae682cd97119::t_29699e046ad3e9 284-289
+  s_c2ae682cd97119::t_5c6a23da90d5b7 282-283
+  s_c2ae682cd97119::t_e3301091a44422 469-471
+  s_c2ae682cd97119::t_4a5dd2da58ebc2 374-379
+  s_c2ae682cd97119::t_5ced9fff4ffae8 477-484
+lib/storyarn/versioning/project_snapshot_reconciliation.ex
+  s_c2ae682cd97119::t_63c37dbb1b0205 1939
+test/storyarn/release_snapshot_migration_test.exs
+  s_c2ae682cd97119::t_4fe578617d09d6 81-86,102,104-143,155-166
+  s_c2ae682cd97119::t_36bd654eea6e7c 74-80,87-101,144-145
+  s_c2ae682cd97119::t_29699e046ad3e9 5-6,70
+  s_c2ae682cd97119::t_5c6a23da90d5b7 4,7,56-69,71,146,152,169
+  s_c2ae682cd97119::t_e3301091a44422 44
+  s_c2ae682cd97119::t_f269644c7965a4 103
+  s_c2ae682cd97119::t_63c4018b446ec7 72,167,192-209
+  s_c2ae682cd97119::t_4f1d9402c2a6bb 73
+  s_c2ae682cd97119::t_77deaedf25066b 168
+test/storyarn/versioning/snapshot_object_storage_test.exs
+  s_c2ae682cd97119::t_cf48d6c90ed0b9 1008-1084,1086-1092,1558-1574
+  s_c2ae682cd97119::t_f959152f532f88 1093-1112,1114-1123,1125-1145
+  s_c2ae682cd97119::t_6ba804eeba25b3 1113
+  s_c2ae682cd97119::t_9633cb481931bf 1124
+  s_c2ae682cd97119::t_60387ab6346f07 1085
+  s_c2ae682cd97119::t_7925204b928aaf 1575-1576
+lib/storyarn/versioning/project_snapshot_lifecycle.ex
+  s_c2ae682cd97119::t_241d7028f3ddc1 506-507
+lib/storyarn/workers/reconcile_project_snapshot_repair_worker.ex
+  s_c2ae682cd97119::t_63f87f597b3e13 24-31,94-98,103-109,113-115
+  s_c2ae682cd97119::t_c565f858d0575a 59-60,91-93,120-126,133-134,137-152
+  s_c2ae682cd97119::t_ab855db188475c 116-119
+lib/storyarn/release.ex
+  s_c2ae682cd97119::t_5c6a23da90d5b7 420,422
+  s_c2ae682cd97119::t_63c4018b446ec7 440,451-469
+  s_c2ae682cd97119::t_3a1ebdd2308ea0 421,441-450
+  s_c2ae682cd97119::t_2fa5996debdd9b 424,434-439
+  s_c2ae682cd97119::t_a9503b3592eb4d 470
+test/storyarn_web/telemetry_test.exs
+  s_c2ae682cd97119::t_c565f858d0575a 189,206-208,221-229,249-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e6d15ff2e1787e835431cec863bc5073f5933794",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
