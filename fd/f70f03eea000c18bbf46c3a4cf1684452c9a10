@@ -1,0 +1,36 @@
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_c2ae682cd97119::t_c3b753ba6add3b 183,1246-1250
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_c2ae682cd97119::t_c3b753ba6add3b 183,1246-1250
+test/storyarn/assets_test.exs
+  s_c2ae682cd97119::t_96a49d755e5240 674,676,679-687,689-723
+  s_c2ae682cd97119::t_ac589e30058117 2196-2225
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_c2ae682cd97119::t_0cfa1654a8f286 194-195,351-360
+  s_c2ae682cd97119::t_ced1a5f3df30f2 361
+test/storyarn_web/live/project_settings_live/trash_test.exs
+  s_c2ae682cd97119::t_0cfa1654a8f286 357-385
+lib/storyarn/assets.ex
+  s_c2ae682cd97119::t_e772a3301bdaf3 999-1005,1008-1018,1043-1049
+  s_c2ae682cd97119::t_0301a890fd55e1 1299-1300,1308,1321,1330,1346,1355,1370,1375,1387,1390,1401,1406,1420,1429,1444,1447,1458,1463,1476,1481
+  s_c2ae682cd97119::t_604acabe98ff6e 1206-1207,1210,1215,1220,1225-1226,1238,1243,1250,1253,1257,1260,1264,1266,1270,1282-1284
+  s_c2ae682cd97119::t_eb93be172e9682 1285
+priv/gettext/projects.pot
+  s_c2ae682cd97119::t_194bf4493dd252 183,1246-1250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fdf70f03eea000c18bbf46c3a4cf1684452c9a10",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
