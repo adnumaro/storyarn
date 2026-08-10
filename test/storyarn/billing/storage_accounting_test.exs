@@ -6,6 +6,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.VersioningFixtures
 
+  alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Billing
@@ -31,6 +32,11 @@ defmodule Storyarn.Billing.StorageAccountingTest do
     test "sums mutually exclusive logical assets, snapshot modes, and active reservations", context do
       asset_fixture(context.project, context.user, %{size: 2_000})
 
+      context.project
+      |> asset_fixture(context.user, %{size: 500})
+      |> Asset.trash_changeset(context.user.id, "user", TimeHelpers.now())
+      |> Repo.update!()
+
       full_snapshot =
         insert_full_snapshot!(context.project, 1, %{project: 100, metadata: 20, assets: 50})
 
@@ -42,12 +48,17 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       usage = Billing.workspace_storage_usage(context.workspace.id)
 
       assert usage.current_assets == %{bytes: 2_000, count: 1}
-      assert usage.asset_trash == %{bytes: 0, count: 0}
+      assert usage.asset_trash == %{bytes: 500, count: 1}
       assert usage.full_snapshots == %{bytes: 170, count: 1}
       assert usage.linked_snapshots == %{bytes: 100, count: 1}
       assert usage.active_reservations.bytes == 30
       assert usage.active_reservations.by_kind == %{"restore_staging" => 30}
-      assert usage.accounted_bytes == 2_300
+      assert usage.accounted_bytes == 2_800
+
+      project_usage = Billing.project_storage_usage(context.project.id)
+      assert project_usage.current_assets == %{bytes: 2_000, count: 1}
+      assert project_usage.asset_trash == %{bytes: 500, count: 1}
+      assert project_usage.accounted_bytes == 2_800
 
       assert {:ok, _released} =
                Billing.release_storage_reservation(reservation.id, reservation.lease_token, reservation.generation, %{
@@ -56,7 +67,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
                  cleanup_proof: no_write_proof(reservation)
                })
 
-      assert Billing.workspace_storage_usage(context.workspace.id).accounted_bytes == 2_270
+      assert Billing.workspace_storage_usage(context.workspace.id).accounted_bytes == 2_770
     end
 
     test "charges one unique blob within a full snapshot and charges separate snapshots independently", context do
@@ -1212,7 +1223,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   end
 
   defp insert_asset_row!(context, size) do
-    %Storyarn.Assets.Asset{}
+    %Asset{}
     |> Ecto.Changeset.change(%{
       filename: "capacity.bin",
       content_type: "application/octet-stream",

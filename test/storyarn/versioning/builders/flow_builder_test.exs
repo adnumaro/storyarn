@@ -996,7 +996,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Historical line", "responses" => []}})
       [text] = Localization.get_texts_for_source("flow_node", node.id)
 
-      assert {:ok, _text} =
+      assert {:ok, recorded_text} =
                Localization.update_text(text, %{
                  translated_text: "Línea histórica",
                  status: "final",
@@ -1009,6 +1009,15 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert voice_id == voice.id
       assert snapshot["asset_blob_hashes"][to_string(voice.id)] == voice.blob_hash
       assert snapshot["asset_metadata"][to_string(voice.id)]["project_id"] == project.id
+
+      assert {:ok, _current_text} =
+               Localization.update_text(recorded_text, %{
+                 translated_text: "Current line",
+                 status: "final",
+                 vo_asset_id: nil,
+                 vo_status: "needed"
+               })
+
       assert {:ok, _deleted_voice} = Assets.delete_asset(voice)
 
       {:ok, current_flow} = Flows.update_flow(flow, %{name: "Current flow"})
@@ -1057,6 +1066,13 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
         })
 
       snapshot = FlowBuilder.build_snapshot(flow)
+
+      assert {:ok, updated_node, _meta} =
+               Flows.update_node_data(
+                 node,
+                 %{"text" => "Current line", "responses" => []}
+               )
+
       assert {:ok, _deleted_asset} = Assets.delete_asset(audio)
 
       delete_storage_blob(
@@ -1068,14 +1084,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       )
 
       assert {:ok, current_flow} = Flows.update_flow(flow, %{name: "Current flow"})
-
-      current_node = Repo.get!(FlowNode, node.id)
-
-      assert {:ok, updated_node, _meta} =
-               Flows.update_node_data(
-                 current_node,
-                 %{"text" => "Current line", "responses" => []}
-               )
 
       assert {:error, {:asset_materialization_failed, asset_id, {:asset_blob_unavailable, :enoent}}} =
                FlowBuilder.restore_snapshot(current_flow, snapshot, restore_action: {:entity_version_restore, "flow"})

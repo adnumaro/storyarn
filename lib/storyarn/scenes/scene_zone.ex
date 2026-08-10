@@ -84,7 +84,7 @@ defmodule Storyarn.Scenes.SceneZone do
     field :label_font_family, :string, default: "system"
     field :label_font_weight, :string, default: "600"
     field :label_font_style, :string, default: "normal"
-    belongs_to :label_icon_asset, Asset
+    belongs_to :label_icon_asset, Asset, where: [deleted_at: nil]
     field :condition, :map
     field :condition_effect, :string, default: "hide"
     field :is_walkable, :boolean, default: false

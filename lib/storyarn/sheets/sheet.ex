@@ -65,7 +65,7 @@ defmodule Storyarn.Sheets.Sheet do
 
     belongs_to :project, Project
     belongs_to :parent, __MODULE__
-    belongs_to :banner_asset, Asset
+    belongs_to :banner_asset, Asset, where: [deleted_at: nil]
     belongs_to :current_version, EntityVersion
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :blocks, Block

@@ -9,6 +9,10 @@ defmodule Storyarn.Projects.SoftDeleteTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Repo
@@ -114,6 +118,23 @@ defmodule Storyarn.Projects.SoftDeleteTest do
   end
 
   describe "list_deleted_items_for_retention/1" do
+    test "includes generation-fenced asset trash metadata and its purge deadline" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = asset_fixture(project, user, %{filename: "discarded.png", size: 2_048})
+
+      assert {:ok, trashed} = Assets.move_asset_to_trash(project.id, asset.id, user.id)
+      assert [item] = Projects.list_deleted_items_for_retention()
+
+      assert item.type == "asset"
+      assert item.name == "discarded.png"
+      assert item.deleted_by_id == user.id
+      assert item.deletion_generation == trashed.deletion_generation
+      assert item.size == 2_048
+      assert item.content_type == "image/jpeg"
+      assert item.purge_at == DateTime.add(item.deleted_at, 24 * 60 * 60, :second)
+    end
+
     test "uses a stable cursor to page through deleted items" do
       project = project_fixture()
       first_sheet = sheet_fixture(project)
@@ -250,6 +271,57 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       assert {:ok, _project} = Projects.permanently_delete_project(deleted)
 
       refute Repo.get(Projects.Project, project.id)
+    end
+
+    test "hands off active and trashed asset keys before cascading the project" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      active =
+        image_asset_fixture(project, user, %{
+          blob_hash: String.duplicate("a", 64),
+          metadata: %{"thumbnail_key" => Assets.thumbnail_key(Assets.generate_key(project, "active.png"))}
+        })
+
+      trashed = image_asset_fixture(project, user)
+      assert {:ok, _trashed} = Assets.move_asset_to_trash(project.id, trashed.id, user.id)
+      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+
+      assert {:ok, _project} = Projects.permanently_delete_project(deleted)
+
+      assert Repo.aggregate(from(asset in Asset, where: asset.project_id == ^project.id), :count) == 0
+      assert [request] = Repo.all(StorageCleanupRequest)
+
+      assert MapSet.new(request.storage_keys) ==
+               MapSet.new([
+                 active.key,
+                 Assets.thumbnail_key(active.key),
+                 BlobStore.blob_key(project.id, active.blob_hash, "png"),
+                 trashed.key
+               ])
+    end
+
+    test "rolls back project deletion when an asset key cannot be handed off exactly" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = image_asset_fixture(project, user)
+
+      Repo.update_all(
+        from(stored_asset in Asset, where: stored_asset.id == ^asset.id),
+        set: [
+          key: "projects/#{project.id}/assets/not-a-uuid/asset.png",
+          blob_hash: String.duplicate("c", 64)
+        ]
+      )
+
+      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+
+      assert {:error, :asset_cleanup_not_authorized} =
+               Projects.permanently_delete_project(deleted)
+
+      assert Repo.get!(Projects.Project, project.id)
+      assert Repo.get!(Asset, asset.id)
+      assert Repo.all(StorageCleanupRequest) == []
     end
   end
 end

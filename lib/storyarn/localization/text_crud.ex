@@ -460,6 +460,7 @@ defmodule Storyarn.Localization.TextCrud do
            from(asset in Asset,
              where:
                asset.id == ^asset_id and
+                 is_nil(asset.deleted_at) and
                  like(asset.content_type, "audio/%"),
              select: asset.id
            )

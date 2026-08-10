@@ -81,7 +81,7 @@ defmodule Storyarn.Scenes.ScenePin do
     belongs_to :scene, Scene
     belongs_to :layer, SceneLayer
     belongs_to :sheet, Sheet
-    belongs_to :icon_asset, Asset
+    belongs_to :icon_asset, Asset, where: [deleted_at: nil]
     belongs_to :flow, Flow
 
     has_many :outgoing_connections, SceneConnection, foreign_key: :from_pin_id

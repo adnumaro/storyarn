@@ -110,14 +110,7 @@ defmodule Storyarn.References.ProjectReferenceIntegrity do
       when is_integer(project_id) and project_id > 0 and is_integer(asset_id) and asset_id > 0 and is_binary(pattern) do
     ensure_transaction!()
 
-    case Repo.one(
-           from(asset in Asset,
-             where:
-               asset.id == ^asset_id and asset.project_id == ^project_id and
-                 like(asset.content_type, ^pattern),
-             select: asset.id
-           )
-         ) do
+    case Repo.one(active_asset_content_type_query(project_id, asset_id, pattern)) do
       ^asset_id -> :ok
       nil -> {:error, {:invalid_asset_content_type, context, asset_id}}
     end
@@ -125,6 +118,15 @@ defmodule Storyarn.References.ProjectReferenceIntegrity do
 
   def ensure_locked_asset_content_type(_project_id, asset_id, context, _pattern),
     do: {:error, {:invalid_asset_content_type, context, asset_id}}
+
+  defp active_asset_content_type_query(project_id, asset_id, pattern) do
+    from(asset in Asset,
+      where:
+        asset.id == ^asset_id and asset.project_id == ^project_id and
+          is_nil(asset.deleted_at) and like(asset.content_type, ^pattern),
+      select: asset.id
+    )
+  end
 
   @doc "Normalizes an optional positive database ID."
   @spec normalize_optional_id(term()) :: {:ok, integer() | nil} | :error
@@ -201,7 +203,9 @@ defmodule Storyarn.References.ProjectReferenceIntegrity do
   defp lock_reference_ids(:asset, project_id, ids) do
     Repo.all(
       from(asset in Asset,
-        where: asset.id in ^ids and asset.project_id == ^project_id,
+        where:
+          asset.id in ^ids and asset.project_id == ^project_id and
+            is_nil(asset.deleted_at),
         order_by: [asc: asset.id],
         lock: "FOR SHARE",
         select: asset.id

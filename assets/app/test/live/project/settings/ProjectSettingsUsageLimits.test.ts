@@ -23,7 +23,8 @@ function usageLimits(overrides = {}) {
       projectReservationBytes: String(32 * 1024),
       assetCount: 4,
       workspace: {
-        currentAssetsBytes: String(640 * 1024),
+        currentAssetsBytes: String(512 * 1024),
+        assetTrashBytes: String(128 * 1024),
         fullSnapshotsBytes: String(256 * 1024),
         linkedSnapshotsBytes: String(64 * 1024),
         activeReservationsBytes: String(64 * 1024),
@@ -50,9 +51,10 @@ describe("ProjectSettingsUsageLimits storage accounting", () => {
     expect(text).toContain("Remaining capacity");
     expect(text).toContain("3 MB");
     expect(text).toContain("Active reservations");
-    expect(text).toContain("Retained project assets");
-    expect(text).not.toContain("recoverable trash");
-    expect(text).not.toContain("Recoverable asset trash");
+    expect(text).toContain("Current project assets");
+    expect(text).toContain("512 KB");
+    expect(text).toContain("Recoverable asset trash");
+    expect(text).toContain("128 KB");
     expect(text).toContain("Full snapshots");
     expect(text).toContain("Linked snapshot payloads");
     expect(text).toContain("Provider replication");

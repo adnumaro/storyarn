@@ -319,7 +319,15 @@ defmodule Storyarn.Imports.MaterializerTest do
       assert {:ok, %{assets: [asset]}} = Imports.execute(target, import_plan(data))
       assert String.starts_with?(asset.key, "projects/#{target.id}/assets/")
 
-      assert {:ok, _deleted_asset} = Assets.delete_asset(asset)
+      assert {:ok, trashed_asset} = Assets.delete_asset(asset)
+
+      assert {:ok, _deleted_asset} =
+               Assets.purge_trashed_asset(
+                 target.id,
+                 asset.id,
+                 trashed_asset.deletion_generation,
+                 nil
+               )
 
       assert Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
                request.storage_keys == [asset.key]

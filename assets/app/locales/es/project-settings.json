@@ -117,13 +117,14 @@
     },
     "snapshots": {
       "storage_heading": "Almacenamiento contabilizado en tu plan",
-      "storage_description": "Los recursos, las snapshots conservadas y las reservas activas comparten la capacidad del workspace.",
+      "storage_description": "Los recursos actuales, los recursos recuperables en la papelera, las snapshots conservadas y las reservas activas comparten la capacidad del workspace.",
       "storage_progress_label": "Uso de almacenamiento del workspace: {percent}",
       "storage_remaining": "Capacidad restante",
       "storage_reservations": "Reservas activas",
-      "storage_counted_note": "Los recursos de proyectos conservados, incluidos los de proyectos eliminados que aún pueden recuperarse, se contabilizan junto con las snapshots conservadas y las reservas activas. La replicación del proveedor, los objetos huérfanos y los residuos de limpieza se excluyen de la cuota del plan.",
+      "storage_counted_note": "Los recursos actuales, incluidos los de proyectos eliminados que aún pueden recuperarse, y los recursos recuperables en la papelera se contabilizan junto con las snapshots conservadas y las reservas activas. La replicación del proveedor, los objetos huérfanos y los residuos de limpieza se excluyen de la cuota del plan.",
       "storage_breakdown": {
-        "current_assets": "Recursos de proyectos conservados",
+        "current_assets": "Recursos actuales de proyectos",
+        "asset_trash": "Recursos recuperables en la papelera",
         "full_snapshots": "Snapshots completas",
         "linked_snapshots": "Datos propios de snapshots enlazadas"
       },
@@ -237,10 +238,14 @@
       "search_placeholder": "Buscar elementos eliminados...",
       "empty_trash": "Vaciar papelera",
       "empty_title": "La papelera está vacía",
-      "empty_description": "Las fichas, flujos y escenas eliminados aparecerán aquí.",
+      "empty_description": "Las fichas, flujos, escenas y recursos eliminados aparecerán aquí.",
       "no_results_title": "No se encontraron elementos eliminados",
       "no_results_description": "Ajusta la búsqueda o el filtro de tipo para encontrar otro elemento.",
       "deleted_label": "Eliminado {time}",
+      "deleted_by_user": "Eliminado por un usuario",
+      "deleted_by_snapshot_restore": "Movido a la papelera por una restauración de snapshot",
+      "deleted_by_system": "Eliminado automáticamente",
+      "recoverable_until": "Recuperable hasta el {date}",
       "just_now": "ahora mismo",
       "untitled": "Sin título",
       "filters": {
@@ -249,7 +254,8 @@
       "types": {
         "sheet": "Ficha",
         "flow": "Flujo",
-        "scene": "Escena"
+        "scene": "Escena",
+        "asset": "Recurso"
       },
       "restore": "Restaurar",
       "page_of": "Página {page} de {total}",
@@ -282,14 +288,15 @@
       "workspace_limits_description": "Estas cuotas son compartidas por todos los proyectos del workspace.",
       "project_storage_note": "Este proyecto contabiliza {storage}: {assetStorage} en {assets} recursos, {snapshots} en snapshots y {reservations} en reservas activas.",
       "storage_progress_label": "Uso de almacenamiento del workspace: {percent}",
-      "storage_counted_note": "El almacenamiento mostrado cuenta para el plan. Los recursos de proyectos conservados incluyen los de proyectos eliminados que aún pueden recuperarse. La replicación del proveedor, los objetos huérfanos y los residuos de limpieza se excluyen de la cuota y no se muestran aquí.",
+      "storage_counted_note": "El almacenamiento mostrado cuenta para el plan. Los recursos actuales incluyen los de proyectos eliminados que aún pueden recuperarse; los recursos recuperables en la papelera se muestran por separado. La replicación del proveedor, los objetos huérfanos y los residuos de limpieza se excluyen de la cuota y no se muestran aquí.",
       "storage_summary": {
         "counted": "Almacenamiento contabilizado",
         "remaining": "Capacidad restante",
         "reservations": "Reservas activas"
       },
       "storage_breakdown": {
-        "current_assets": "Recursos de proyectos conservados",
+        "current_assets": "Recursos actuales de proyectos",
+        "asset_trash": "Recursos recuperables en la papelera",
         "full_snapshots": "Snapshots completas",
         "linked_snapshots": "Datos propios de snapshots enlazadas",
         "reservations": "Reservas"

@@ -9,6 +9,7 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Projects.Project
@@ -608,11 +609,21 @@ defmodule Storyarn.Scenes.SceneCrud do
                  lock: "FOR UPDATE"
                )
              ),
+           restore_children =
+             lock_scene_restore_children(
+               project_id,
+               locked_scene.id,
+               locked_scene.deleted_at
+             ),
+           :ok <-
+             Assets.lock_active_asset_references_for_restore(project_id,
+               scene_ids: [locked_scene.id | Enum.map(restore_children, & &1.id)]
+             ),
            {:ok, restored_scene} <-
              locked_scene
              |> Scene.restore_changeset()
              |> Repo.update() do
-        restore_children(project_id, locked_scene.id, locked_scene.deleted_at)
+        restore_locked_scene_children(restore_children)
         {restored_scene, project_id}
       else
         nil -> Repo.rollback(:scene_not_deleted)
@@ -696,7 +707,7 @@ defmodule Storyarn.Scenes.SceneCrud do
     )
   end
 
-  defp restore_children(project_id, parent_id, since) do
+  defp lock_scene_restore_children(project_id, parent_id, since) do
     # Only restore children that were deleted at the same time as the parent
     # (within 1 second), to avoid restoring children deleted independently.
     since_threshold = DateTime.add(since, -1, :second)
@@ -706,14 +717,24 @@ defmodule Storyarn.Scenes.SceneCrud do
         from(m in Scene,
           where:
             m.project_id == ^project_id and m.parent_id == ^parent_id and not is_nil(m.deleted_at) and
-              m.deleted_at >= ^since_threshold
+              m.deleted_at >= ^since_threshold,
+          order_by: [asc: m.id],
+          lock: "FOR UPDATE"
         )
       )
 
-    Enum.each(children, fn child ->
-      Repo.update_all(from(m in Scene, where: m.id == ^child.id), set: [deleted_at: nil])
-      restore_children(project_id, child.id, since)
-    end)
+    children ++
+      Enum.flat_map(children, fn child ->
+        lock_scene_restore_children(project_id, child.id, since)
+      end)
+  end
+
+  defp restore_locked_scene_children([]), do: :ok
+
+  defp restore_locked_scene_children(children) do
+    child_ids = Enum.map(children, & &1.id)
+    {_count, _rows} = Repo.update_all(from(scene in Scene, where: scene.id in ^child_ids), set: [deleted_at: nil])
+    :ok
   end
 
   defp maybe_generate_shortcut(attrs, project_id, exclude_scene_id) do

@@ -1,15 +1,20 @@
 defmodule Storyarn.Exports.DataCollectorTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Assets.Asset
   alias Storyarn.Exports.DataCollector
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Localization
+  alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
 
   # ===========================================================================
   # Setup
@@ -209,6 +214,34 @@ defmodule Storyarn.Exports.DataCollectorTest do
       refute Enum.any?(data.localization.languages, &(&1.locale_code == "es"))
       assert data.localization.strings == []
       assert DataCollector.count_entities(project.id, opts).localized_texts == 0
+    end
+  end
+
+  describe "estimate_source_bytes/3" do
+    setup [:setup_project]
+
+    test "excludes assets already in asset trash", %{project: project, user: user} do
+      asset_fixture(project, user)
+      opts = %ExportOptions{format: :ink}
+
+      assert {:ok, before_trash} = DataCollector.estimate_source_bytes(project.id, opts)
+      assert before_trash.assets > 0
+
+      trashed_asset = asset_fixture(project, user)
+
+      {1, _rows} =
+        Repo.update_all(
+          from(asset in Asset, where: asset.id == ^trashed_asset.id),
+          set: [
+            deleted_at: TimeHelpers.now(),
+            deleted_by_id: user.id,
+            deletion_reason: "user",
+            deletion_generation: 1
+          ]
+        )
+
+      assert {:ok, after_trash} = DataCollector.estimate_source_bytes(project.id, opts)
+      assert after_trash.assets == before_trash.assets
     end
   end
 

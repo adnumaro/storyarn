@@ -182,6 +182,33 @@ defmodule StoryarnWeb.TelemetryTest do
       assert Enum.all?(metrics, &(&1.tags == [:status]))
     end
 
+    test "registers recoverable asset-trash metrics without identifier tags" do
+      metrics =
+        Enum.filter(Telemetry.metrics(), &(Enum.take(&1.name, 4) == [:storyarn, :assets, :trash, :stop]))
+
+      assert Enum.map(metrics, & &1.name) == [[:storyarn, :assets, :trash, :stop, :count]]
+
+      assert Enum.all?(metrics, &(&1.__struct__ == @sum_mod))
+      assert Enum.all?(metrics, &(&1.tags == [:action, :outcome]))
+    end
+
+    test "registers durable storage-cleanup retry outcomes" do
+      metrics =
+        Enum.filter(
+          Telemetry.metrics(),
+          &(Enum.take(&1.name, 4) == [:storyarn, :assets, :storage_compensation, :persisted_retry])
+        )
+
+      assert metrics |> Enum.map(& &1.name) |> Enum.sort() ==
+               Enum.sort([
+                 [:storyarn, :assets, :storage_compensation, :persisted_retry, :count],
+                 [:storyarn, :assets, :storage_compensation, :persisted_retry, :failed_count]
+               ])
+
+      assert Enum.all?(metrics, &(&1.__struct__ == @sum_mod))
+      assert Enum.all?(metrics, &(&1.tags == []))
+    end
+
     test "registers snapshot lifecycle, recovery, retention, and reset metrics without identifier tags" do
       metrics =
         Enum.filter(Telemetry.metrics(), &(Enum.take(&1.name, 2) == [:storyarn, :snapshot]))
@@ -246,8 +273,9 @@ defmodule StoryarnWeb.TelemetryTest do
       metrics = Telemetry.metrics()
 
       # 9 Phoenix + 5 DB + 3 template installation + 9 import + 11 storage +
-      # 52 snapshot lifecycle + 3 AI expiration + 4 VM = 96
-      assert length(metrics) == 96
+      # 1 asset trash + 2 storage cleanup retry + 52 snapshot lifecycle +
+      # 3 AI expiration + 4 VM = 99
+      assert length(metrics) == 99
     end
   end
 

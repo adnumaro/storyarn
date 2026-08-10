@@ -550,6 +550,7 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
       from(asset in Asset,
         where:
           asset.id in ^audio_asset_ids and asset.project_id == ^project_id and
+            is_nil(asset.deleted_at) and
             like(asset.content_type, "audio/%"),
         select: asset.id
       )
@@ -798,6 +799,7 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
            from(asset in Asset,
              where:
                asset.id == ^asset_id and asset.project_id == ^project_id and
+                 is_nil(asset.deleted_at) and
                  like(asset.content_type, "audio/%"),
              select: asset.id
            )

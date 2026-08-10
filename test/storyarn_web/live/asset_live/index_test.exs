@@ -605,32 +605,41 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       %{project: project}
     end
 
-    test "deleting removes asset from grid", %{conn: conn, user: user, project: project} do
+    test "moving an asset to trash removes it from the grid and records the actor", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
       asset = image_asset_fixture(project, user, %{filename: "doomed.png"})
 
       {:ok, view, _html} = live(conn, assets_path(project))
 
       render_click(view, "select_asset", %{"id" => to_string(asset.id)})
-      render_hook(view, "confirm_delete_asset", %{})
+      render_hook(view, "confirm_trash_asset", %{})
 
       vue = get_assets_vue(view)
       filenames = Enum.map(vue.props["assets"], & &1["filename"])
       refute "doomed.png" in filenames
+
+      trashed = Repo.get!(Asset, asset.id)
+      assert %DateTime{} = trashed.deleted_at
+      assert trashed.deleted_by_id == user.id
+      assert trashed.deletion_generation == 1
     end
 
-    test "delete clears selected-asset", %{conn: conn, user: user, project: project} do
+    test "moving to trash clears selected-asset", %{conn: conn, user: user, project: project} do
       asset = image_asset_fixture(project, user)
 
       {:ok, view, _html} = live(conn, assets_path(project))
 
       render_click(view, "select_asset", %{"id" => to_string(asset.id)})
-      render_hook(view, "confirm_delete_asset", %{})
+      render_hook(view, "confirm_trash_asset", %{})
 
       vue = get_assets_vue(view)
       assert vue.props["selected-asset"] == nil
     end
 
-    test "deleting an asset used as a sheet avatar detaches the avatar and keeps the UI mounted", %{
+    test "moving a used asset is rejected and keeps its reference and UI mounted", %{
       conn: conn,
       user: user,
       project: project
@@ -644,12 +653,44 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       {:ok, view, _html} = live(conn, assets_path(project))
 
       render_click(view, "select_asset", %{"id" => to_string(asset.id)})
-      html = render_hook(view, "confirm_delete_asset", %{})
+      html = render_hook(view, "confirm_trash_asset", %{})
 
       assert is_binary(html)
-      assert Repo.get(Asset, asset.id) == nil
-      assert Repo.get(SheetAvatar, avatar.id) == nil
+      assert html =~ "Could not move asset to trash"
+      assert %Asset{deleted_at: nil} = Repo.get(Asset, asset.id)
+      assert Repo.get(SheetAvatar, avatar.id)
+      assert get_assets_vue(view).props["selected-asset"]["id"] == asset.id
+    end
+
+    test "viewer cannot forge the move-to-trash event", %{conn: conn, user: viewer} do
+      owner = user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      membership_fixture(project, viewer, "viewer")
+      asset = image_asset_fixture(project, owner)
+
+      {:ok, view, _html} = live(conn, assets_path(project))
+      render_click(view, "select_asset", %{"id" => to_string(asset.id)})
+
+      html = render_hook(view, "confirm_trash_asset", %{})
+
+      assert html =~ "permission"
+      assert is_nil(Repo.get!(Asset, asset.id).deleted_at)
+    end
+
+    test "an asset from another project cannot be selected or moved through the route", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
+      other_project = user |> project_fixture() |> Repo.preload(:workspace)
+      foreign_asset = image_asset_fixture(other_project, user)
+
+      {:ok, view, _html} = live(conn, assets_path(project))
+      render_click(view, "select_asset", %{"id" => to_string(foreign_asset.id)})
+      render_hook(view, "confirm_trash_asset", %{})
+
       assert get_assets_vue(view).props["selected-asset"] == nil
+      assert is_nil(Repo.get!(Asset, foreign_asset.id).deleted_at)
     end
 
     test "selecting asset in use passes usages to Vue", %{

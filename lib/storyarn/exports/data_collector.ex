@@ -531,7 +531,12 @@ defmodule Storyarn.Exports.DataCollector do
   end
 
   defp asset_query(_project_id, %{include_assets: false}), do: nil
-  defp asset_query(project_id, _opts), do: from(asset in Asset, where: asset.project_id == ^project_id)
+
+  defp asset_query(project_id, _opts) do
+    from(asset in Asset,
+      where: asset.project_id == ^project_id and is_nil(asset.deleted_at)
+    )
+  end
 
   defp language_query(_project_id, %{include_localization: false}), do: nil
   defp language_query(project_id, opts), do: project_languages_query(project_id, opts)

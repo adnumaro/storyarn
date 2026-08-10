@@ -55,7 +55,7 @@ defmodule Storyarn.Flows.SequenceTrack do
 
   schema "flow_node_sequence_tracks" do
     belongs_to :flow_node, FlowNode
-    belongs_to :asset, Asset
+    belongs_to :asset, Asset, where: [deleted_at: nil]
 
     field :kind, :string
     field :position, :integer, default: 0

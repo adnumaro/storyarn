@@ -153,7 +153,7 @@ const {
 
 const live = useLive();
 const { t } = useI18n();
-const showDeleteConfirm = ref(false);
+const showTrashConfirm = ref(false);
 
 const usageSummaries = computed<UsageSummary[]>(() => {
   return [
@@ -258,22 +258,23 @@ const usageSummaries = computed<UsageSummary[]>(() => {
 
 const totalUsages = computed(() => usageSummaries.value.length);
 
-const deleteConfirmMessage = computed(() =>
-  totalUsages.value > 0
-    ? t(
-        totalUsages.value === 1
-          ? "common.assets.delete_confirm_used_one"
-          : "common.assets.delete_confirm_used_many",
-        { count: totalUsages.value },
-      )
-    : t("common.assets.delete_confirm_unused"),
+const activeUsageCount = computed(
+  () =>
+    assetUsages.flowNodes.filter((usage) => !usage.trashed).length +
+    assetUsages.sequenceVisualLayers.filter((usage) => !usage.trashed).length +
+    assetUsages.sequenceTracks.filter((usage) => !usage.trashed).length +
+    assetUsages.sheetAvatars.filter((usage) => !usage.trashed).length +
+    assetUsages.sheetBanners.filter((usage) => !usage.trashed).length +
+    assetUsages.sceneBackgrounds.filter((usage) => !usage.trashed).length +
+    assetUsages.scenePinIcons.filter((usage) => !usage.trashed).length +
+    assetUsages.sceneZoneIcons.filter((usage) => !usage.trashed).length +
+    assetUsages.localizedVoiceovers.filter((usage) => !usage.archived).length +
+    assetUsages.galleryImages.filter((usage) => !usage.trashed).length,
 );
 
-const deleteConfirmConsequence = computed(() =>
-  totalUsages.value > 0
-    ? t("common.assets.delete_confirm_used_consequence")
-    : t("common.assets.delete_confirm_unused_consequence"),
-);
+const trashConfirmMessage = computed(() => t("common.assets.trash_confirm_message"));
+
+const trashConfirmConsequence = computed(() => t("common.assets.trash_confirm_consequence"));
 
 function selectAsset(id: number) {
   live.pushEvent("select_asset", { id: String(id) });
@@ -283,17 +284,18 @@ function deselectAsset() {
   live.pushEvent("deselect_asset", {});
 }
 
-function requestDelete() {
-  showDeleteConfirm.value = true;
+function requestTrash() {
+  if (activeUsageCount.value > 0) return;
+  showTrashConfirm.value = true;
 }
 
-function confirmDelete() {
-  showDeleteConfirm.value = false;
-  live.pushEvent("confirm_delete_asset", {});
+function confirmTrash() {
+  showTrashConfirm.value = false;
+  live.pushEvent("confirm_trash_asset", {});
 }
 
-function cancelDelete() {
-  showDeleteConfirm.value = false;
+function cancelTrash() {
+  showTrashConfirm.value = false;
 }
 
 function changePage(nextPage: number) {
@@ -497,9 +499,18 @@ function usageContext(context: string, trashed = false, archived = false) {
 
         <!-- Delete button -->
         <div v-if="canEdit" class="border-t border-border pt-4">
-          <Button variant="destructive" size="sm" class="w-full" @click="requestDelete">
+          <p v-if="activeUsageCount > 0" class="mb-2 text-xs text-muted-foreground">
+            {{ $t("common.assets.trash_blocked_active_usage", { count: activeUsageCount }) }}
+          </p>
+          <Button
+            variant="destructive"
+            size="sm"
+            class="w-full"
+            :disabled="activeUsageCount > 0"
+            @click="requestTrash"
+          >
             <Trash2 class="size-4" />
-            {{ $t("common.assets.delete_asset") }}
+            {{ $t("common.assets.move_to_trash") }}
           </Button>
         </div>
       </div>
@@ -539,8 +550,8 @@ function usageContext(context: string, trashed = false, archived = false) {
 
     <!-- Delete confirmation dialog -->
     <Teleport to="body">
-      <div v-if="showDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="fixed inset-0 bg-black/50" @click="cancelDelete" />
+      <div v-if="showTrashConfirm" class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="cancelTrash" />
         <div
           class="relative z-10 bg-surface border border-border rounded-lg shadow-lg p-6 max-w-sm w-full mx-4"
         >
@@ -549,9 +560,9 @@ function usageContext(context: string, trashed = false, archived = false) {
               <Trash2 class="size-5 text-destructive" />
             </div>
             <div>
-              <h3 class="font-semibold text-sm">{{ $t("common.assets.delete_confirm_title") }}</h3>
-              <p class="text-sm text-muted-foreground mt-1">{{ deleteConfirmMessage }}</p>
-              <p class="text-sm text-muted-foreground mt-2">{{ deleteConfirmConsequence }}</p>
+              <h3 class="font-semibold text-sm">{{ $t("common.assets.trash_confirm_title") }}</h3>
+              <p class="text-sm text-muted-foreground mt-1">{{ trashConfirmMessage }}</p>
+              <p class="text-sm text-muted-foreground mt-2">{{ trashConfirmConsequence }}</p>
             </div>
           </div>
           <ul
@@ -568,11 +579,11 @@ function usageContext(context: string, trashed = false, archived = false) {
             </li>
           </ul>
           <div class="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" @click="cancelDelete">{{
+            <Button variant="ghost" size="sm" @click="cancelTrash">{{
               $t("common.cancel")
             }}</Button>
-            <Button variant="destructive" size="sm" @click="confirmDelete">{{
-              $t("common.delete")
+            <Button variant="destructive" size="sm" @click="confirmTrash">{{
+              $t("common.assets.move_to_trash")
             }}</Button>
           </div>
         </div>

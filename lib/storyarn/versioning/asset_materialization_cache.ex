@@ -178,7 +178,8 @@ defmodule Storyarn.Versioning.AssetMaterializationCache do
       from(asset in Asset,
         where:
           asset.id == ^destination_asset_id and
-            asset.project_id == ^target_project_id,
+            asset.project_id == ^target_project_id and
+            is_nil(asset.deleted_at),
         select: asset
       )
 

@@ -3,6 +3,7 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Localization
@@ -437,6 +438,13 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   defp do_restore_block(block, sheet) do
     lock_active_inheritance_source!(block, sheet.project_id)
+
+    case Assets.lock_active_asset_references_for_restore(sheet.project_id,
+           block_ids: [block.id]
+         ) do
+      :ok -> :ok
+      {:error, reason} -> Repo.rollback(reason)
+    end
 
     normalized_value =
       case ReferenceTracker.lock_and_normalize_block_value(

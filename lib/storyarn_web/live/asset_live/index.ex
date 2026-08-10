@@ -194,9 +194,9 @@ defmodule StoryarnWeb.AssetLive.Index do
      |> load_assets()}
   end
 
-  def handle_event("confirm_delete_asset", _params, socket) do
+  def handle_event("confirm_trash_asset", _params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      delete_selected_asset(socket)
+      move_selected_asset_to_trash(socket)
     end)
   end
 
@@ -323,16 +323,18 @@ defmodule StoryarnWeb.AssetLive.Index do
   defp upload_error_message(%Ecto.Changeset{}), do: dgettext("assets", "Could not save asset.")
   defp upload_error_message(_), do: dgettext("assets", "Upload failed. Please try again.")
 
-  defp delete_selected_asset(socket) do
+  defp move_selected_asset_to_trash(socket) do
     case socket.assigns.selected_asset do
       nil ->
         {:noreply, socket}
 
       asset ->
-        case Assets.delete_asset(asset) do
+        project_id = socket.assigns.project.id
+        actor_id = socket.assigns.current_scope.user.id
+
+        case Assets.move_asset_to_trash(project_id, asset.id, actor_id) do
           {:ok, _} ->
-            type_counts = Assets.count_assets_by_type(socket.assigns.project.id)
-            broadcast_asset_change(socket.assigns.project.id, :asset_deleted)
+            type_counts = Assets.count_assets_by_type(project_id)
 
             {:noreply,
              socket
@@ -340,10 +342,10 @@ defmodule StoryarnWeb.AssetLive.Index do
              |> assign(:asset_usages, @empty_asset_usages)
              |> assign(:type_counts, type_counts)
              |> load_assets()
-             |> put_flash(:info, dgettext("assets", "Asset deleted."))}
+             |> put_flash(:info, dgettext("assets", "Asset moved to trash."))}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("assets", "Could not delete asset."))}
+            {:noreply, put_flash(socket, :error, dgettext("assets", "Could not move asset to trash."))}
         end
     end
   end

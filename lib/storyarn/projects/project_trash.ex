@@ -3,15 +3,29 @@ defmodule Storyarn.Projects.ProjectTrash do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Billing.Plan
+  alias Storyarn.Billing.SubscriptionCrud
   alias Storyarn.Flows.Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets.Sheet
 
-  @item_types ~w(sheet flow scene)
+  @item_types ~w(sheet flow scene asset)
   @default_per_page 25
   @max_per_page 100
+
+  defguardp is_asset_trash_identity(project_id, asset_id, deletion_generation)
+            when is_integer(project_id) and project_id > 0 and is_integer(asset_id) and asset_id > 0 and
+                   is_integer(deletion_generation) and deletion_generation > 0
+
+  defguardp is_optional_actor(actor_id)
+            when is_nil(actor_id) or (is_integer(actor_id) and actor_id > 0)
+
+  defguardp is_positive_actor(actor_id)
+            when is_integer(actor_id) and actor_id > 0
 
   @type item_type :: String.t()
 
@@ -20,7 +34,13 @@ defmodule Storyarn.Projects.ProjectTrash do
           type: item_type(),
           name: String.t() | nil,
           deleted_at: DateTime.t(),
-          project_id: integer()
+          project_id: integer(),
+          deleted_by_id: integer() | nil,
+          deletion_reason: String.t() | nil,
+          deletion_generation: pos_integer() | nil,
+          size: non_neg_integer() | nil,
+          content_type: String.t() | nil,
+          purge_at: DateTime.t() | nil
         }
 
   @type page :: %{
@@ -80,9 +100,18 @@ defmodule Storyarn.Projects.ProjectTrash do
       type: i.type,
       name: i.name,
       deleted_at: i.deleted_at,
-      project_id: i.project_id
+      project_id: i.project_id,
+      workspace_id: i.workspace_id,
+      project_settings: i.project_settings,
+      deleted_by_id: i.deleted_by_id,
+      deletion_reason: i.deletion_reason,
+      deletion_generation: i.deletion_generation,
+      size: i.size,
+      content_type: i.content_type
     })
     |> Repo.all()
+    |> attach_purge_at()
+    |> Enum.map(&Map.drop(&1, [:workspace_id, :project_settings]))
   end
 
   @doc """
@@ -103,23 +132,28 @@ defmodule Storyarn.Projects.ProjectTrash do
       |> max(1)
       |> min(@max_per_page)
 
-    Repo.all(
-      from(i in deleted_items_query(),
-        where: ^retention_cursor_filter(cursor),
-        where: ^retention_cutoff_filter(through),
-        order_by: [asc: i.deleted_at, asc: i.type, asc: i.id],
-        limit: ^limit,
-        select: %{
-          id: i.id,
-          type: i.type,
-          name: i.name,
-          deleted_at: i.deleted_at,
-          project_id: i.project_id,
-          project_settings: i.project_settings,
-          workspace_id: i.workspace_id
-        }
-      )
+    from(i in deleted_items_query(),
+      where: ^retention_cursor_filter(cursor),
+      where: ^retention_cutoff_filter(through),
+      order_by: [asc: i.deleted_at, asc: i.type, asc: i.id],
+      limit: ^limit,
+      select: %{
+        id: i.id,
+        type: i.type,
+        name: i.name,
+        deleted_at: i.deleted_at,
+        project_id: i.project_id,
+        project_settings: i.project_settings,
+        workspace_id: i.workspace_id,
+        deleted_by_id: i.deleted_by_id,
+        deletion_reason: i.deletion_reason,
+        deletion_generation: i.deletion_generation,
+        size: i.size,
+        content_type: i.content_type
+      }
     )
+    |> Repo.all()
+    |> attach_purge_at()
   end
 
   @doc """
@@ -138,6 +172,43 @@ defmodule Storyarn.Projects.ProjectTrash do
       )
     )
   end
+
+  @doc false
+  @spec restore_asset_trash_candidate(map(), pos_integer()) :: {:ok, Asset.t()} | {:error, term()}
+  def restore_asset_trash_candidate(
+        %{type: "asset", project_id: project_id, id: asset_id, deletion_generation: deletion_generation},
+        actor_id
+      )
+      when is_asset_trash_identity(project_id, asset_id, deletion_generation) and is_positive_actor(actor_id) do
+    Assets.restore_trashed_asset(project_id, asset_id, deletion_generation, actor_id)
+  end
+
+  def restore_asset_trash_candidate(_candidate, _actor_id), do: {:error, :retention_candidate_changed}
+
+  @doc false
+  @spec purge_asset_trash_candidate(map(), pos_integer() | nil) :: {:ok, Asset.t()} | {:error, term()}
+  def purge_asset_trash_candidate(
+        %{
+          type: "asset",
+          project_id: project_id,
+          id: asset_id,
+          deletion_generation: deletion_generation,
+          deleted_at: %DateTime{} = deleted_at,
+          project_settings: project_settings,
+          purge_at: %DateTime{} = purge_at
+        },
+        actor_id
+      )
+      when is_asset_trash_identity(project_id, asset_id, deletion_generation) and is_map(project_settings) and
+             is_optional_actor(actor_id) do
+    Assets.purge_trashed_asset(project_id, asset_id, deletion_generation, actor_id,
+      expected_deleted_at: deleted_at,
+      expected_project_settings: project_settings,
+      not_before: purge_at
+    )
+  end
+
+  def purge_asset_trash_candidate(_candidate, _actor_id), do: {:error, :retention_candidate_changed}
 
   @doc false
   @spec delete_retention_candidate(map(), (struct() -> {:ok, struct()} | {:error, term()})) ::
@@ -321,6 +392,7 @@ defmodule Storyarn.Projects.ProjectTrash do
       |> deleted_item_query("sheet")
       |> union_all(^deleted_item_query(Flow, "flow"))
       |> union_all(^deleted_item_query(Scene, "scene"))
+      |> union_all(^deleted_asset_query())
 
     from(i in subquery(union_query))
   end
@@ -337,7 +409,34 @@ defmodule Storyarn.Projects.ProjectTrash do
         deleted_at: item.deleted_at,
         project_id: item.project_id,
         workspace_id: p.workspace_id,
-        project_settings: p.settings
+        project_settings: p.settings,
+        deleted_by_id: type(^nil, :integer),
+        deletion_reason: type(^nil, :string),
+        deletion_generation: type(^nil, :integer),
+        size: type(^nil, :integer),
+        content_type: type(^nil, :string)
+      }
+    )
+  end
+
+  defp deleted_asset_query do
+    from(asset in Asset,
+      join: p in Project,
+      on: p.id == asset.project_id,
+      where: not is_nil(asset.deleted_at) and is_nil(p.deleted_at),
+      select: %{
+        id: asset.id,
+        type: type(^"asset", :string),
+        name: asset.filename,
+        deleted_at: asset.deleted_at,
+        project_id: asset.project_id,
+        workspace_id: p.workspace_id,
+        project_settings: p.settings,
+        deleted_by_id: asset.deleted_by_id,
+        deletion_reason: asset.deletion_reason,
+        deletion_generation: asset.deletion_generation,
+        size: asset.size,
+        content_type: asset.content_type
       }
     )
   end
@@ -365,6 +464,28 @@ defmodule Storyarn.Projects.ProjectTrash do
 
   defp maybe_offset(query, offset) do
     offset(query, ^max(normalize_positive_integer(offset, 0), 0))
+  end
+
+  defp attach_purge_at([]), do: []
+
+  defp attach_purge_at(items) do
+    plan_by_workspace =
+      items
+      |> Enum.map(& &1.workspace_id)
+      |> Enum.uniq()
+      |> Map.new(fn workspace_id ->
+        {workspace_id, SubscriptionCrud.plan_for_workspace_id(workspace_id)}
+      end)
+
+    Enum.map(items, fn item ->
+      retention_hours =
+        case Map.get(item.project_settings || %{}, "trash_retention_hours") do
+          hours when is_integer(hours) and hours > 0 -> hours
+          _ -> plan_by_workspace |> Map.fetch!(item.workspace_id) |> Plan.retention_hours()
+        end
+
+      Map.put(item, :purge_at, DateTime.add(item.deleted_at, retention_hours * 60 * 60, :second))
+    end)
   end
 
   defp normalize_type(type) when type in @item_types, do: type

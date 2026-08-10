@@ -3,6 +3,7 @@ defmodule Storyarn.Flows.NodeDelete do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCrud
@@ -82,6 +83,10 @@ defmodule Storyarn.Flows.NodeDelete do
              node.flow_id,
              type,
              data
+           ),
+         :ok <-
+           Assets.lock_active_asset_references_for_restore(project_id,
+             flow_node_ids: [node.id]
            ),
          :ok <- validate_restored_node_identity(node, type, data),
          {:ok, restored_node} <-

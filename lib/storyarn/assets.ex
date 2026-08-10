@@ -11,6 +11,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Accounts.User
   alias Storyarn.Analytics
   alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.AssetTrash
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.ImageProcessor
   alias Storyarn.Assets.Storage
@@ -19,6 +20,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
   alias Storyarn.Collaboration
+  alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.SequenceConfig
@@ -26,14 +28,13 @@ defmodule Storyarn.Assets do
   alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Projects.Project
-  alias Storyarn.References.AvatarIntegrity
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.SearchHelpers
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.Sheet
@@ -45,6 +46,7 @@ defmodule Storyarn.Assets do
   @upload_tracker_process_key {__MODULE__, :upload_storage_tracker}
   @post_commit_variant_jobs_process_key {__MODULE__, :post_commit_variant_jobs}
   @import_capacity_process_key {__MODULE__, :import_capacity}
+  @parent_cleanup_asset_batch_size 250
 
   # =============================================================================
   # Type Definitions
@@ -89,7 +91,7 @@ defmodule Storyarn.Assets do
   # `list_asset_ids/2` return an id set that is not the row set's ids, silently
   # breaking the reference-existence checks that trust exactly that.
   defp list_query(project_id, opts) do
-    from(a in Asset, where: a.project_id == ^project_id)
+    from(a in Asset, where: a.project_id == ^project_id and is_nil(a.deleted_at))
     |> apply_content_type_filter(opts)
     |> apply_images_only_filter(opts)
     |> apply_search_filter(opts)
@@ -167,7 +169,7 @@ defmodule Storyarn.Assets do
   """
   @spec get_asset(integer()) :: asset() | nil
   def get_asset(asset_id) do
-    Repo.get(Asset, asset_id)
+    Repo.one(from(asset in Asset, where: asset.id == ^asset_id and is_nil(asset.deleted_at)))
   end
 
   @doc """
@@ -178,7 +180,7 @@ defmodule Storyarn.Assets do
   @spec get_asset(integer(), integer()) :: asset() | nil
   def get_asset(project_id, asset_id) do
     Asset
-    |> where(project_id: ^project_id, id: ^asset_id)
+    |> where([asset], asset.project_id == ^project_id and asset.id == ^asset_id and is_nil(asset.deleted_at))
     |> Repo.one()
   end
 
@@ -190,7 +192,7 @@ defmodule Storyarn.Assets do
   @spec get_asset!(integer(), integer()) :: asset()
   def get_asset!(project_id, asset_id) do
     Asset
-    |> where(project_id: ^project_id, id: ^asset_id)
+    |> where([asset], asset.project_id == ^project_id and asset.id == ^asset_id and is_nil(asset.deleted_at))
     |> Repo.one!()
   end
 
@@ -200,8 +202,20 @@ defmodule Storyarn.Assets do
   @spec get_asset_by_key(integer(), String.t()) :: asset() | nil
   def get_asset_by_key(project_id, key) do
     Asset
-    |> where(project_id: ^project_id, key: ^key)
+    |> where([asset], asset.project_id == ^project_id and asset.key == ^key and is_nil(asset.deleted_at))
     |> Repo.one()
+  end
+
+  @doc "Gets a trashed asset by ID within one project."
+  @spec get_trashed_asset(integer(), integer()) :: asset() | nil
+  def get_trashed_asset(project_id, asset_id) do
+    Repo.one(
+      from(asset in Asset,
+        where:
+          asset.project_id == ^project_id and asset.id == ^asset_id and
+            not is_nil(asset.deleted_at)
+      )
+    )
   end
 
   @doc """
@@ -239,58 +253,548 @@ defmodule Storyarn.Assets do
     Repo.transaction(fn -> update_asset_in_transaction(asset, attrs) end)
   end
 
-  @doc """
-  Deletes an asset and detaches references that do not have database-level
-  `ON DELETE` behavior.
-
-  Note: This only deletes database records. The actual files should be deleted
-  from storage separately, after this returns `{:ok, asset}`.
-  """
+  @doc "Moves an asset and its intrinsic original/web/variant family to recoverable trash."
   @spec delete_asset(asset()) :: {:ok, asset()} | {:error, changeset() | term()}
   def delete_asset(%Asset{id: asset_id, project_id: project_id}) do
+    move_asset_to_trash(project_id, asset_id, nil)
+  end
+
+  @doc "Moves one asset family to recoverable trash under the workspace storage lock."
+  @spec move_asset_to_trash(pos_integer(), pos_integer(), pos_integer() | nil) ::
+          {:ok, asset()} | {:error, changeset() | term()}
+  def move_asset_to_trash(project_id, asset_id, actor_id)
+      when is_integer(project_id) and project_id > 0 and is_integer(asset_id) and asset_id > 0 and
+             (is_nil(actor_id) or (is_integer(actor_id) and actor_id > 0)) do
+    reason = if is_integer(actor_id), do: "user", else: "system"
+
     with_result =
       with {:ok, workspace_id} <- project_workspace_id(project_id) do
         Billing.transact_with_workspace_lock(workspace_id, fn workspace ->
-          delete_asset_with_lock(workspace, project_id, asset_id)
+          AssetTrash.move_locked(
+            project_id,
+            workspace.id,
+            [asset_id],
+            actor_id,
+            reason,
+            asset_reference_check(project_id),
+            expand_family: true
+          )
         end)
       end
 
-    Collaboration.broadcast_dashboard_result(with_result, project_id, :all)
+    with_result
+    |> report_asset_trash_result(:move)
+    |> Collaboration.broadcast_dashboard_result(project_id, :all)
   end
 
-  defp delete_asset_with_lock(workspace, project_id, asset_id) do
-    with {:ok, _project} <- lock_active_project_for_asset_write(project_id, workspace.id),
-         {:ok, asset} <- lock_asset_for_write(asset_id, project_id) do
-      {:ok, delete_asset_in_transaction(asset)}
+  def move_asset_to_trash(_project_id, _asset_id, _actor_id), do: {:error, :invalid_asset_trash_request}
+
+  @doc """
+  Moves an exact set of active assets to trash inside an existing restore transaction.
+
+  This is the ENG-76 integration seam. It requires the canonical workspace lock,
+  never expands the supplied set, and rejects active references or incomplete
+  original/web/variant families.
+  """
+  @spec move_assets_to_trash_locked(pos_integer(), pos_integer() | nil, [pos_integer()], keyword()) ::
+          {:ok, asset()} | {:error, term()}
+  def move_assets_to_trash_locked(project_id, actor_id, asset_ids, opts \\ [])
+      when is_integer(project_id) and project_id > 0 and is_list(asset_ids) and is_list(opts) do
+    with :ok <- validate_asset_trash_actor(actor_id),
+         {:ok, workspace_id} <- project_workspace_id(project_id) do
+      AssetTrash.move_locked(
+        project_id,
+        workspace_id,
+        asset_ids,
+        actor_id,
+        "snapshot_restore",
+        asset_reference_check(project_id),
+        expand_family: false
+      )
     end
   end
 
-  defp delete_asset_in_transaction(asset) do
-    detach_asset_metadata_links(asset)
+  @doc "Restores a generation-fenced asset family from recoverable trash."
+  @spec restore_trashed_asset(pos_integer(), pos_integer(), non_neg_integer(), pos_integer() | nil) ::
+          {:ok, asset()} | {:error, term()}
+  def restore_trashed_asset(project_id, asset_id, expected_generation, actor_id) do
+    with_result =
+      with :ok <- validate_asset_trash_identity(project_id, asset_id, expected_generation),
+           :ok <- validate_asset_trash_actor(actor_id),
+           {:ok, workspace_id} <- project_workspace_id(project_id) do
+        Billing.transact_with_workspace_lock(workspace_id, fn workspace ->
+          AssetTrash.restore_locked(
+            project_id,
+            workspace.id,
+            asset_id,
+            expected_generation
+          )
+        end)
+      end
 
-    case detach_sheet_avatar_references(asset) do
-      {:ok, sheet_ids} ->
-        _updated_flow_nodes = clear_flow_node_audio_references(asset)
-        _updated_localized_texts = clear_localized_voiceover_references(asset)
-        Enum.each(sheet_ids, &promote_default_avatar/1)
-        delete_asset_or_rollback(asset)
+    with_result
+    |> report_asset_trash_result(:restore)
+    |> Collaboration.broadcast_dashboard_result(project_id, :all)
+  end
 
-      {:error, reason} ->
-        Repo.rollback(reason)
+  @doc "Permanently removes a generation-fenced trashed asset family and hands off live-key cleanup."
+  @spec purge_trashed_asset(pos_integer(), pos_integer(), non_neg_integer(), pos_integer() | nil) ::
+          {:ok, asset()} | {:error, term()}
+  def purge_trashed_asset(project_id, asset_id, expected_generation, actor_id) do
+    purge_trashed_asset(project_id, asset_id, expected_generation, actor_id, [])
+  end
+
+  @doc false
+  @spec purge_trashed_asset(pos_integer(), pos_integer(), non_neg_integer(), pos_integer() | nil, keyword()) ::
+          {:ok, asset()} | {:error, term()}
+  def purge_trashed_asset(project_id, asset_id, expected_generation, actor_id, opts) when is_list(opts) do
+    with_result =
+      with :ok <- validate_asset_trash_identity(project_id, asset_id, expected_generation),
+           :ok <- validate_asset_trash_actor(actor_id),
+           {:ok, workspace_id} <- project_workspace_id(project_id) do
+        Billing.transact_with_workspace_lock(workspace_id, fn workspace ->
+          AssetTrash.purge_locked(
+            project_id,
+            workspace.id,
+            asset_id,
+            expected_generation,
+            asset_reference_check(project_id),
+            &asset_cleanup_targets/1,
+            opts
+          )
+        end)
+      end
+
+    with_result
+    |> report_asset_trash_result(:purge)
+    |> Collaboration.broadcast_dashboard_result(project_id, :all)
+  end
+
+  @doc "Permanently removes one exact batch of trashed asset families under a single workspace lock."
+  @spec purge_trashed_assets(
+          pos_integer(),
+          [{pos_integer(), non_neg_integer()}],
+          pos_integer() | nil
+        ) :: {:ok, [asset()]} | {:error, term()}
+  def purge_trashed_assets(project_id, candidates, actor_id)
+      when is_integer(project_id) and project_id > 0 and is_list(candidates) and candidates != [] and
+             (is_nil(actor_id) or (is_integer(actor_id) and actor_id > 0)) do
+    with_result =
+      with {:ok, workspace_id} <- project_workspace_id(project_id) do
+        Billing.transact_with_workspace_lock(workspace_id, fn workspace ->
+          AssetTrash.purge_many_locked(
+            project_id,
+            workspace.id,
+            candidates,
+            asset_reference_check(project_id),
+            &asset_cleanup_targets/1
+          )
+        end)
+      end
+
+    with_result
+    |> report_asset_trash_result(:purge)
+    |> Collaboration.broadcast_dashboard_result(project_id, :all)
+  end
+
+  def purge_trashed_assets(_project_id, _candidates, _actor_id), do: {:error, :invalid_asset_trash_request}
+
+  @doc false
+  @spec prepare_parent_hard_delete_locked(pos_integer(), :all | [pos_integer()]) ::
+          :ok | {:error, term()}
+  # This hands off only keys derivable from Asset rows locked in this
+  # transaction. ENG-85 owns durable retirement of rowless project blobs.
+  def prepare_parent_hard_delete_locked(workspace_id, project_scope)
+      when is_integer(workspace_id) and workspace_id > 0 and (project_scope == :all or is_list(project_scope)) do
+    with true <- Billing.workspace_lock_held?(workspace_id) || {:error, :storage_accounting_lock_required},
+         {:ok, project_ids} <- lock_parent_cleanup_projects(workspace_id, project_scope) do
+      assets = lock_parent_cleanup_assets(project_ids)
+      persist_parent_asset_cleanup(assets)
     end
   end
 
-  defp delete_asset_or_rollback(asset) do
-    with {:ok, deleted_asset} <- Repo.delete(asset),
-         {:ok, _cleanup_request} <-
-           asset
-           |> asset_cleanup_targets()
-           |> StorageCompensation.persist_cleanup_request() do
-      deleted_asset
+  def prepare_parent_hard_delete_locked(_workspace_id, _project_scope), do: {:error, :invalid_parent_asset_cleanup_scope}
+
+  @doc false
+  @spec lock_active_asset_references_for_restore(pos_integer(), keyword()) ::
+          :ok | {:error, term()}
+  def lock_active_asset_references_for_restore(project_id, owner_ids)
+      when is_integer(project_id) and project_id > 0 and is_list(owner_ids) do
+    with {:ok, normalized_owner_ids} <- normalize_asset_restore_owner_ids(owner_ids),
+         specs = asset_restore_reference_specs(normalized_owner_ids),
+         {:ok, _asset_ids} <- ProjectReferenceIntegrity.lock_active_references(project_id, specs) do
+      :ok
+    end
+  end
+
+  def lock_active_asset_references_for_restore(_project_id, _owner_ids), do: {:error, :invalid_asset_restore_owners}
+
+  defp normalize_asset_restore_owner_ids(owner_ids) do
+    allowed_keys = [:sheet_ids, :block_ids, :scene_ids, :flow_node_ids]
+
+    with :ok <- validate_asset_restore_owner_keys(owner_ids, allowed_keys),
+         normalized = normalize_asset_restore_owner_values(owner_ids, allowed_keys),
+         true <- valid_asset_restore_owner_values?(normalized) do
+      {:ok, normalized}
     else
-      {:error, reason} -> Repo.rollback(reason)
+      _invalid -> {:error, :invalid_asset_restore_owners}
     end
   end
+
+  defp validate_asset_restore_owner_keys(owner_ids, allowed_keys) do
+    if Keyword.keyword?(owner_ids) and Enum.all?(Keyword.keys(owner_ids), &(&1 in allowed_keys)),
+      do: :ok,
+      else: :error
+  end
+
+  defp normalize_asset_restore_owner_values(owner_ids, allowed_keys) do
+    Map.new(allowed_keys, fn key ->
+      ids = owner_ids |> Keyword.get(key, []) |> List.wrap()
+      {key, Enum.uniq(ids)}
+    end)
+  end
+
+  defp valid_asset_restore_owner_values?(owner_ids) do
+    Enum.all?(owner_ids, fn {_key, ids} ->
+      Enum.all?(ids, &(is_integer(&1) and &1 > 0))
+    end)
+  end
+
+  defp asset_restore_reference_specs(owner_ids) do
+    sheet_restore_reference_specs(owner_ids.sheet_ids) ++
+      block_restore_reference_specs(owner_ids.block_ids) ++
+      scene_restore_reference_specs(owner_ids.scene_ids) ++
+      flow_node_restore_reference_specs(owner_ids.flow_node_ids)
+  end
+
+  defp sheet_restore_reference_specs([]), do: []
+
+  defp sheet_restore_reference_specs(sheet_ids) do
+    banners =
+      Repo.all(
+        from(sheet in Sheet,
+          where: sheet.id in ^sheet_ids,
+          select: {sheet.id, sheet.banner_asset_id}
+        )
+      )
+
+    avatars =
+      Repo.all(
+        from(avatar in SheetAvatar,
+          where: avatar.sheet_id in ^sheet_ids,
+          select: {avatar.id, avatar.asset_id}
+        )
+      )
+
+    galleries =
+      Repo.all(
+        from(image in BlockGalleryImage,
+          join: block in Block,
+          on: block.id == image.block_id,
+          where: block.sheet_id in ^sheet_ids and is_nil(block.deleted_at),
+          select: {image.id, image.asset_id}
+        )
+      )
+
+    Enum.map(banners, fn {sheet_id, asset_id} ->
+      {:asset, {:sheet, sheet_id, :banner_asset_id}, asset_id}
+    end) ++
+      Enum.map(avatars, fn {avatar_id, asset_id} ->
+        {:asset, {:sheet_avatar, avatar_id, :asset_id}, asset_id}
+      end) ++
+      Enum.map(galleries, fn {image_id, asset_id} ->
+        {:asset, {:block_gallery_image, image_id, :asset_id}, asset_id}
+      end)
+  end
+
+  defp block_restore_reference_specs([]), do: []
+
+  defp block_restore_reference_specs(block_ids) do
+    from(image in BlockGalleryImage,
+      where: image.block_id in ^block_ids,
+      select: {image.id, image.asset_id}
+    )
+    |> Repo.all()
+    |> Enum.map(fn {image_id, asset_id} ->
+      {:asset, {:block_gallery_image, image_id, :asset_id}, asset_id}
+    end)
+  end
+
+  defp scene_restore_reference_specs([]), do: []
+
+  defp scene_restore_reference_specs(scene_ids) do
+    backgrounds =
+      Repo.all(
+        from(scene in Scene,
+          where: scene.id in ^scene_ids,
+          select: {scene.id, scene.background_asset_id}
+        )
+      )
+
+    pins =
+      Repo.all(
+        from(pin in ScenePin,
+          where: pin.scene_id in ^scene_ids,
+          select: {pin.id, pin.icon_asset_id}
+        )
+      )
+
+    zones =
+      Repo.all(
+        from(zone in SceneZone,
+          where: zone.scene_id in ^scene_ids,
+          select: {zone.id, zone.label_icon_asset_id}
+        )
+      )
+
+    Enum.map(backgrounds, fn {scene_id, asset_id} ->
+      {:asset, {:scene, scene_id, :background_asset_id}, asset_id}
+    end) ++
+      Enum.map(pins, fn {pin_id, asset_id} ->
+        {:asset, {:scene_pin, pin_id, :icon_asset_id}, asset_id}
+      end) ++
+      Enum.map(zones, fn {zone_id, asset_id} ->
+        {:asset, {:scene_zone, zone_id, :label_icon_asset_id}, asset_id}
+      end)
+  end
+
+  defp flow_node_restore_reference_specs([]), do: []
+
+  defp flow_node_restore_reference_specs(flow_node_ids) do
+    audio =
+      Repo.all(
+        from(node in FlowNode,
+          where: node.id in ^flow_node_ids,
+          select: {node.id, fragment("?->>'audio_asset_id'", node.data)}
+        )
+      )
+
+    tracks =
+      Repo.all(
+        from(track in SequenceTrack,
+          where: track.flow_node_id in ^flow_node_ids,
+          select: {track.id, track.asset_id}
+        )
+      )
+
+    layers =
+      Repo.all(
+        from(layer in SequenceVisualLayer,
+          where: layer.flow_node_id in ^flow_node_ids,
+          select: {layer.id, layer.asset_id}
+        )
+      )
+
+    Enum.map(audio, fn {node_id, asset_id} ->
+      {:asset, {:flow_node, node_id, :audio_asset_id}, asset_id}
+    end) ++
+      Enum.map(tracks, fn {track_id, asset_id} ->
+        {:asset, {:sequence_track, track_id, :asset_id}, asset_id}
+      end) ++
+      Enum.map(layers, fn {layer_id, asset_id} ->
+        {:asset, {:sequence_visual_layer, layer_id, :asset_id}, asset_id}
+      end)
+  end
+
+  defp validate_asset_trash_identity(project_id, asset_id, generation) do
+    if positive_id?(project_id) and positive_id?(asset_id) and non_negative_integer?(generation),
+      do: :ok,
+      else: {:error, :invalid_asset_trash_request}
+  end
+
+  defp positive_id?(value), do: is_integer(value) and value > 0
+  defp non_negative_integer?(value), do: is_integer(value) and value >= 0
+
+  defp validate_asset_trash_actor(nil), do: :ok
+  defp validate_asset_trash_actor(actor_id) when is_integer(actor_id) and actor_id > 0, do: :ok
+  defp validate_asset_trash_actor(_actor_id), do: {:error, :invalid_asset_trash_request}
+
+  defp report_asset_trash_result(result, action) do
+    outcome =
+      case result do
+        {:ok, _result} -> :ok
+        _result -> :error
+      end
+
+    :telemetry.execute(
+      [:storyarn, :assets, :trash, :stop],
+      %{count: 1},
+      %{action: action, outcome: outcome}
+    )
+
+    result
+  end
+
+  defp asset_reference_check(project_id) do
+    fn asset_ids, scope -> ensure_asset_references_clear(project_id, asset_ids, scope) end
+  end
+
+  defp ensure_asset_references_clear(project_id, asset_ids, scope) do
+    if asset_references_exist?(project_id, asset_ids, scope),
+      do: {:error, :asset_still_referenced},
+      else: :ok
+  end
+
+  defp asset_references_exist?(project_id, asset_ids, scope) do
+    flow_node_asset_reference?(project_id, asset_ids, scope) or
+      sequence_layer_asset_reference?(project_id, asset_ids, scope) or
+      sequence_track_asset_reference?(project_id, asset_ids, scope) or
+      sheet_avatar_asset_reference?(project_id, asset_ids, scope) or
+      sheet_banner_asset_reference?(project_id, asset_ids, scope) or
+      secondary_asset_references_exist?(project_id, asset_ids, scope)
+  end
+
+  defp secondary_asset_references_exist?(project_id, asset_ids, scope) do
+    scene_background_asset_reference?(project_id, asset_ids, scope) or
+      scene_pin_asset_reference?(project_id, asset_ids, scope) or
+      scene_zone_asset_reference?(project_id, asset_ids, scope) or
+      localized_voiceover_asset_reference?(project_id, asset_ids, scope) or
+      gallery_asset_reference?(project_id, asset_ids, scope) or
+      entity_trash_asset_reference?(project_id, asset_ids, scope)
+  end
+
+  defp flow_node_asset_reference?(_project_id, asset_ids, scope) do
+    asset_ids = Enum.map(asset_ids, &Integer.to_string/1)
+
+    query =
+      from(node in FlowNode,
+        join: flow in Flow,
+        on: flow.id == node.flow_id,
+        where: fragment("?->>'audio_asset_id' = ANY(?)", node.data, ^asset_ids)
+      )
+
+    query |> maybe_active_flow_reference(scope, :flow_node) |> Repo.exists?()
+  end
+
+  defp sequence_layer_asset_reference?(_project_id, asset_ids, scope) do
+    query =
+      from(layer in SequenceVisualLayer,
+        join: node in FlowNode,
+        on: node.id == layer.flow_node_id,
+        join: flow in Flow,
+        on: flow.id == node.flow_id,
+        where: layer.asset_id in ^asset_ids
+      )
+
+    query |> maybe_active_flow_reference(scope, :sequence) |> Repo.exists?()
+  end
+
+  defp sequence_track_asset_reference?(_project_id, asset_ids, scope) do
+    query =
+      from(track in SequenceTrack,
+        join: node in FlowNode,
+        on: node.id == track.flow_node_id,
+        join: flow in Flow,
+        on: flow.id == node.flow_id,
+        where: track.asset_id in ^asset_ids
+      )
+
+    query |> maybe_active_flow_reference(scope, :sequence) |> Repo.exists?()
+  end
+
+  defp maybe_active_flow_reference(query, :active, :flow_node) do
+    where(query, [node, flow], is_nil(node.deleted_at) and is_nil(flow.deleted_at))
+  end
+
+  defp maybe_active_flow_reference(query, :active, :sequence) do
+    where(query, [_subject, node, flow], is_nil(node.deleted_at) and is_nil(flow.deleted_at))
+  end
+
+  defp maybe_active_flow_reference(query, _scope, _kind), do: query
+
+  defp sheet_avatar_asset_reference?(_project_id, asset_ids, scope) do
+    query =
+      from(avatar in SheetAvatar,
+        join: sheet in Sheet,
+        on: sheet.id == avatar.sheet_id,
+        where: avatar.asset_id in ^asset_ids
+      )
+
+    query |> maybe_active_parent_reference(scope, :sheet) |> Repo.exists?()
+  end
+
+  defp sheet_banner_asset_reference?(_project_id, asset_ids, scope) do
+    query = from(sheet in Sheet, where: sheet.banner_asset_id in ^asset_ids)
+    query |> maybe_active_direct_reference(scope) |> Repo.exists?()
+  end
+
+  defp scene_background_asset_reference?(_project_id, asset_ids, scope) do
+    query = from(scene in Scene, where: scene.background_asset_id in ^asset_ids)
+    query |> maybe_active_direct_reference(scope) |> Repo.exists?()
+  end
+
+  defp scene_pin_asset_reference?(_project_id, asset_ids, scope) do
+    query =
+      from(pin in ScenePin,
+        join: scene in Scene,
+        on: scene.id == pin.scene_id,
+        where: pin.icon_asset_id in ^asset_ids
+      )
+
+    query |> maybe_active_parent_reference(scope, :scene) |> Repo.exists?()
+  end
+
+  defp scene_zone_asset_reference?(_project_id, asset_ids, scope) do
+    query =
+      from(zone in SceneZone,
+        join: scene in Scene,
+        on: scene.id == zone.scene_id,
+        where: zone.label_icon_asset_id in ^asset_ids
+      )
+
+    query |> maybe_active_parent_reference(scope, :scene) |> Repo.exists?()
+  end
+
+  defp localized_voiceover_asset_reference?(_project_id, asset_ids, _scope) do
+    query =
+      from(text in LocalizedText,
+        where: text.vo_asset_id in ^asset_ids
+      )
+
+    # Native backups retain archived localization rows. Their voice-over
+    # references therefore remain live until the row itself is removed.
+    Repo.exists?(query)
+  end
+
+  defp gallery_asset_reference?(_project_id, asset_ids, scope) do
+    query =
+      from(image in BlockGalleryImage,
+        join: block in Block,
+        on: block.id == image.block_id,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where: image.asset_id in ^asset_ids
+      )
+
+    query =
+      if scope == :active,
+        do: where(query, [_image, block, sheet], is_nil(block.deleted_at) and is_nil(sheet.deleted_at)),
+        else: query
+
+    Repo.exists?(query)
+  end
+
+  defp entity_trash_asset_reference?(_project_id, _asset_ids, :active), do: false
+
+  defp entity_trash_asset_reference?(_project_id, asset_ids, :any) do
+    Repo.exists?(
+      from(reference in EntityTrashRef,
+        where: reference.target_asset_id in ^asset_ids
+      )
+    )
+  end
+
+  defp maybe_active_parent_reference(query, :active, :sheet),
+    do: where(query, [_subject, sheet], is_nil(sheet.deleted_at))
+
+  defp maybe_active_parent_reference(query, :active, :scene),
+    do: where(query, [_subject, scene], is_nil(scene.deleted_at))
+
+  defp maybe_active_parent_reference(query, _scope, _parent), do: query
+
+  defp maybe_active_direct_reference(query, :active), do: where(query, [subject], is_nil(subject.deleted_at))
+
+  defp maybe_active_direct_reference(query, _scope), do: query
 
   defp asset_cleanup_targets(%Asset{} = asset) do
     if project_asset_key?(asset.key, asset.project_id) do
@@ -304,6 +808,77 @@ defmodule Storyarn.Assets do
     else
       []
     end
+  end
+
+  defp parent_asset_cleanup_targets(%Asset{} = asset) do
+    case asset_cleanup_targets(asset) do
+      [] -> []
+      logical_targets -> logical_targets ++ parent_blob_cleanup_targets(asset)
+    end
+  end
+
+  defp parent_blob_cleanup_targets(%Asset{blob_hash: blob_hash} = asset) when is_binary(blob_hash) do
+    [BlobStore.blob_key(asset.project_id, blob_hash, BlobStore.ext_from_content_type(asset.content_type))]
+  end
+
+  defp parent_blob_cleanup_targets(%Asset{blob_hash: nil}), do: []
+
+  defp lock_parent_cleanup_projects(workspace_id, :all) do
+    {:ok,
+     Repo.all(
+       from(project in Project,
+         where: project.workspace_id == ^workspace_id,
+         order_by: [asc: project.id],
+         lock: "FOR UPDATE",
+         select: project.id
+       )
+     )}
+  end
+
+  defp lock_parent_cleanup_projects(workspace_id, project_ids) when is_list(project_ids) do
+    valid_ids? = Enum.all?(project_ids, &(is_integer(&1) and &1 > 0))
+    expected_ids = project_ids |> Enum.uniq() |> Enum.sort()
+
+    locked_ids =
+      if valid_ids? and expected_ids != [] do
+        Repo.all(
+          from(project in Project,
+            where: project.workspace_id == ^workspace_id and project.id in ^expected_ids,
+            order_by: [asc: project.id],
+            lock: "FOR UPDATE",
+            select: project.id
+          )
+        )
+      else
+        []
+      end
+
+    if locked_ids == expected_ids and expected_ids != [],
+      do: {:ok, locked_ids},
+      else: {:error, :invalid_parent_asset_cleanup_scope}
+  end
+
+  defp lock_parent_cleanup_assets([]), do: []
+
+  defp lock_parent_cleanup_assets(project_ids) do
+    Repo.all(
+      from(asset in Asset,
+        where: asset.project_id in ^project_ids,
+        order_by: [asc: asset.project_id, asc: asset.id],
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp persist_parent_asset_cleanup(assets) do
+    assets
+    |> Enum.chunk_every(@parent_cleanup_asset_batch_size)
+    |> Enum.reduce_while(:ok, fn batch, :ok ->
+      case AssetTrash.prepare_cleanup_locked(batch, &parent_asset_cleanup_targets/1) do
+        {:ok, _request} -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
   end
 
   defp project_asset_key?(storage_key, project_id) when is_binary(storage_key) and is_integer(project_id) do
@@ -333,7 +908,7 @@ defmodule Storyarn.Assets do
   @spec count_assets_by_type(integer()) :: %{String.t() => non_neg_integer()}
   def count_assets_by_type(project_id) do
     from(a in Asset,
-      where: a.project_id == ^project_id,
+      where: a.project_id == ^project_id and is_nil(a.deleted_at),
       group_by: fragment("split_part(?, '/', 1)", a.content_type),
       select: {fragment("split_part(?, '/', 1)", a.content_type), count(a.id)}
     )
@@ -346,7 +921,12 @@ defmodule Storyarn.Assets do
   """
   @spec total_storage_size(integer()) :: non_neg_integer()
   def total_storage_size(project_id) do
-    Repo.one(from(a in Asset, where: a.project_id == ^project_id, select: sum(a.size))) || 0
+    Repo.one(
+      from(a in Asset,
+        where: a.project_id == ^project_id and is_nil(a.deleted_at),
+        select: sum(a.size)
+      )
+    ) || 0
   end
 
   @doc """
@@ -489,7 +1069,8 @@ defmodule Storyarn.Assets do
              lock: "FOR UPDATE"
            )
          ) do
-      %Asset{} = asset -> {:ok, asset}
+      %Asset{deleted_at: nil} = asset -> {:ok, asset}
+      %Asset{} -> {:error, :asset_not_active}
       nil -> {:error, :asset_not_found}
     end
   end
@@ -511,6 +1092,7 @@ defmodule Storyarn.Assets do
              attrs,
              upload_kind
            ),
+         :ok <- lock_asset_family_references(%Asset{project_id: locked_project.id}, attrs),
          :ok <- check_asset_record_capacity(locked_project, changeset),
          {:ok, asset} <- with_asset_storage_key_lock(attrs, fn -> Repo.insert(changeset) end) do
       {:ok, asset}
@@ -533,6 +1115,7 @@ defmodule Storyarn.Assets do
   defp update_asset_in_transaction(asset, attrs) do
     with {:ok, _project} <- lock_active_project_for_asset_write(asset.project_id),
          {:ok, locked_asset} <- lock_asset_for_write(asset.id, asset.project_id),
+         :ok <- lock_asset_family_references(locked_asset, attrs),
          {:ok, updated_asset} <-
            locked_asset
            |> Asset.update_changeset(attrs)
@@ -543,27 +1126,39 @@ defmodule Storyarn.Assets do
     end
   end
 
+  defp lock_asset_family_references(asset, attrs) do
+    case asset_metadata_attr(attrs) do
+      :absent ->
+        :ok
+
+      {:present, metadata} ->
+        with {:ok, asset_ids} <- Asset.family_reference_ids(metadata),
+             {:ok, _locked_ids} <-
+               ProjectReferenceIntegrity.lock_active_references(
+                 asset.project_id,
+                 Enum.map(asset_ids, &{:asset, {:asset_family, asset.id}, &1})
+               ) do
+          :ok
+        else
+          :error -> {:error, :asset_family_identity_invalid}
+          {:error, _reason} -> {:error, :asset_family_identity_invalid}
+        end
+    end
+  end
+
+  defp asset_metadata_attr(attrs) when is_map(attrs) do
+    cond do
+      Map.has_key?(attrs, :metadata) -> {:present, Map.get(attrs, :metadata)}
+      Map.has_key?(attrs, "metadata") -> {:present, Map.get(attrs, "metadata")}
+      true -> :absent
+    end
+  end
+
+  defp asset_metadata_attr(_attrs), do: :absent
+
   defp asset_create_changeset(asset, attrs, :generic), do: Asset.create_changeset(asset, attrs)
 
   defp asset_create_changeset(asset, attrs, :sanitized_svg), do: Asset.create_sanitized_svg_changeset(asset, attrs)
-
-  defp detach_asset_metadata_links(%Asset{id: asset_id, project_id: project_id}) do
-    asset_id_string = to_string(asset_id)
-
-    project_id
-    |> list_assets_with_metadata_link(asset_id_string, lock: "FOR UPDATE")
-    |> Enum.each(fn linked_asset ->
-      metadata = remove_asset_metadata_link(linked_asset.metadata || %{}, asset_id_string)
-
-      if metadata != (linked_asset.metadata || %{}) do
-        linked_asset
-        |> Asset.update_changeset(%{metadata: metadata})
-        |> Repo.update!()
-      end
-    end)
-
-    :ok
-  end
 
   defp list_asset_metadata_links(project_id, asset_id) do
     asset_id_string = to_string(asset_id)
@@ -579,8 +1174,8 @@ defmodule Storyarn.Assets do
     end)
   end
 
-  defp list_assets_with_metadata_link(project_id, asset_id_string, opts \\ []) do
-    query =
+  defp list_assets_with_metadata_link(project_id, asset_id_string) do
+    Repo.all(
       from(asset in Asset,
         where: asset.project_id == ^project_id,
         where:
@@ -606,53 +1201,7 @@ defmodule Storyarn.Assets do
             ),
         order_by: [asc: asset.filename, asc: asset.id]
       )
-
-    case Keyword.get(opts, :lock) do
-      nil -> Repo.all(query)
-      "FOR UPDATE" -> query |> lock("FOR UPDATE") |> Repo.all()
-    end
-  end
-
-  defp remove_asset_metadata_link(metadata, asset_id_string) do
-    metadata
-    |> maybe_remove_web_asset_link(asset_id_string)
-    |> maybe_remove_original_asset_link(asset_id_string)
-    |> remove_profile_variant_links(asset_id_string)
-  end
-
-  defp maybe_remove_web_asset_link(metadata, asset_id_string) do
-    if metadata_id_matches?(metadata["web_asset_id"], asset_id_string) do
-      Map.drop(metadata, ["web_asset_id", "web_url"])
-    else
-      metadata
-    end
-  end
-
-  defp maybe_remove_original_asset_link(metadata, asset_id_string) do
-    if metadata_id_matches?(metadata["original_asset_id"], asset_id_string) do
-      Map.delete(metadata, "original_asset_id")
-    else
-      metadata
-    end
-  end
-
-  defp remove_profile_variant_links(metadata, asset_id_string) do
-    case metadata["variant_asset_ids"] do
-      profiles when is_map(profiles) ->
-        profiles =
-          Map.reject(profiles, fn {_profile, asset_id} ->
-            metadata_id_matches?(asset_id, asset_id_string)
-          end)
-
-        if map_size(profiles) == 0 do
-          Map.delete(metadata, "variant_asset_ids")
-        else
-          Map.put(metadata, "variant_asset_ids", profiles)
-        end
-
-      _ ->
-        metadata
-    end
+    )
   end
 
   defp asset_metadata_link_relations(metadata, asset_id_string) do
@@ -698,131 +1247,6 @@ defmodule Storyarn.Assets do
     |> Map.values()
     |> Enum.map(&length/1)
     |> Enum.sum()
-  end
-
-  defp detach_sheet_avatar_references(%Asset{id: asset_id, project_id: project_id}) do
-    avatars =
-      Repo.all(
-        from(sa in SheetAvatar,
-          join: s in Sheet,
-          on: sa.sheet_id == s.id,
-          where: sa.asset_id == ^asset_id,
-          where: s.project_id == ^project_id,
-          order_by: [asc: sa.id],
-          lock: "FOR UPDATE",
-          select: sa
-        )
-      )
-
-    with :ok <- ensure_avatars_deletable(avatars) do
-      avatar_ids = Enum.map(avatars, & &1.id)
-      delete_avatar_rows(avatar_ids)
-      {:ok, default_avatar_sheet_ids(avatars)}
-    end
-  end
-
-  defp ensure_avatars_deletable(avatars) do
-    Enum.reduce_while(avatars, :ok, fn avatar, :ok ->
-      case AvatarIntegrity.ensure_deletable(avatar.id) do
-        :ok -> {:cont, :ok}
-        {:error, reason} -> {:halt, {:error, reason}}
-      end
-    end)
-  end
-
-  defp delete_avatar_rows([]), do: :ok
-
-  defp delete_avatar_rows(avatar_ids) do
-    Repo.delete_all(from(sa in SheetAvatar, where: sa.id in ^avatar_ids))
-    :ok
-  end
-
-  defp default_avatar_sheet_ids(avatars) do
-    avatars
-    |> Enum.filter(& &1.is_default)
-    |> Enum.map(& &1.sheet_id)
-    |> Enum.uniq()
-  end
-
-  defp promote_default_avatar(sheet_id) do
-    default_exists? =
-      Repo.exists?(from(sa in SheetAvatar, where: sa.sheet_id == ^sheet_id and sa.is_default == true))
-
-    if default_exists? do
-      :ok
-    else
-      case Repo.one(from(sa in SheetAvatar, where: sa.sheet_id == ^sheet_id, order_by: [asc: sa.position], limit: 1)) do
-        nil ->
-          :ok
-
-        avatar ->
-          avatar
-          |> Ecto.Changeset.change(is_default: true)
-          |> Repo.update!()
-
-          :ok
-      end
-    end
-  end
-
-  defp clear_flow_node_audio_references(%Asset{id: asset_id, project_id: project_id}) do
-    asset_id_str = to_string(asset_id)
-    now = TimeHelpers.now()
-
-    {count, _} =
-      Repo.update_all(
-        from(n in FlowNode,
-          join: f in Flow,
-          on: n.flow_id == f.id,
-          where: f.project_id == ^project_id,
-          where: fragment("?->>'audio_asset_id' = ?", n.data, ^asset_id_str),
-          update: [set: [data: fragment("? - 'audio_asset_id'", n.data), updated_at: ^now]]
-        ),
-        []
-      )
-
-    count
-  end
-
-  defp clear_localized_voiceover_references(%Asset{id: asset_id, project_id: project_id}) do
-    text_ids =
-      Repo.all(
-        from(text in LocalizedText,
-          where:
-            text.project_id == ^project_id and
-              text.vo_asset_id == ^asset_id,
-          order_by: [asc: text.id],
-          lock: "FOR UPDATE",
-          select: text.id
-        )
-      )
-
-    if text_ids == [] do
-      0
-    else
-      now = TimeHelpers.now()
-
-      query =
-        from(text in LocalizedText,
-          where: text.id in ^text_ids,
-          update: [
-            set: [
-              vo_asset_id: nil,
-              vo_status:
-                fragment(
-                  "CASE WHEN ? THEN 'needed' ELSE 'none' END",
-                  text.vo_eligible
-                ),
-              updated_at: ^now
-            ],
-            inc: [lock_version: 1]
-          ]
-        )
-
-      {count, _rows} = Repo.update_all(query, [])
-
-      count
-    end
   end
 
   defp list_flow_nodes_using_asset(project_id, asset_id) do
@@ -1586,14 +2010,12 @@ defmodule Storyarn.Assets do
       skip_variants: true
     }
 
-    case upload_binary_and_create_asset(webp_data, variant_attrs, project, user) do
-      {:ok, variant} ->
-        link_variant_to_original(original, variant, profile.profile)
+    with_workspace_upload_lock(project, fn _workspace ->
+      with {:ok, variant} <- upload_binary_and_create_asset(webp_data, variant_attrs, project, user),
+           {:ok, _updated_original} <- link_variant_to_original(original, variant, profile.profile) do
         {:ok, variant, %{reused: false, action: :created_variant}}
-
-      error ->
-        error
-    end
+      end
+    end)
   end
 
   defp image_metadata(%{width: width, height: height}) do
@@ -1636,6 +2058,7 @@ defmodule Storyarn.Assets do
   defp get_asset_by_blob_hash(project_id, blob_hash) when is_binary(blob_hash) do
     Asset
     |> where(project_id: ^project_id, blob_hash: ^blob_hash)
+    |> where([asset], is_nil(asset.deleted_at))
     |> where([a], fragment("coalesce(?->>'is_variant', 'false') != 'true'", a.metadata))
     |> order_by([a], asc: a.inserted_at, asc: a.id)
     |> limit(1)
@@ -1646,7 +2069,7 @@ defmodule Storyarn.Assets do
 
   defp get_asset_by_source_profile(project_id, source_hash, profile) do
     Asset
-    |> where([a], a.project_id == ^project_id)
+    |> where([a], a.project_id == ^project_id and is_nil(a.deleted_at))
     |> where([a], fragment("?->>'source_blob_hash' = ?", a.metadata, ^source_hash))
     |> where([a], fragment("?->>'variant_profile' = ?", a.metadata, ^profile))
     |> order_by([a], asc: a.inserted_at, asc: a.id)
@@ -1739,26 +2162,11 @@ defmodule Storyarn.Assets do
       skip_variants: true
     }
 
-    case upload_binary_and_create_asset(webp_data, variant_attrs, project, user) do
-      {:ok, variant} ->
+    with_workspace_upload_lock(project, fn _workspace ->
+      with {:ok, variant} <- upload_binary_and_create_asset(webp_data, variant_attrs, project, user) do
         link_variant_to_original(original_asset, variant)
-
-      {:error, reason} ->
-        Logger.warning(
-          "[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: " <>
-            inspect(reason)
-        )
-
-        {:ok, original_asset}
-
-      {:error, reason, details} ->
-        Logger.warning(
-          "[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: " <>
-            inspect({reason, details})
-        )
-
-        {:ok, original_asset}
-    end
+      end
+    end)
   end
 
   defp link_variant_to_original(original_asset, variant) do
@@ -1774,8 +2182,7 @@ defmodule Storyarn.Assets do
 
       {:error, reason} ->
         Logger.warning("[ImageOptimization] Failed to link variant to asset #{original_asset.id}: #{inspect(reason)}")
-
-        {:ok, original_asset}
+        {:error, {:variant_link_failed, reason}}
     end
   end
 
@@ -1792,8 +2199,7 @@ defmodule Storyarn.Assets do
 
       {:error, reason} ->
         Logger.warning("[ImageOptimization] Failed to link variant to asset #{original_asset.id}: #{inspect(reason)}")
-
-        {:ok, original_asset}
+        {:error, {:variant_link_failed, reason}}
     end
   end
 
@@ -1974,7 +2380,12 @@ defmodule Storyarn.Assets do
   """
   @spec list_assets_for_export(integer()) :: [asset()]
   def list_assets_for_export(project_id) do
-    Repo.all(from(a in Asset, where: a.project_id == ^project_id, order_by: [asc: a.inserted_at, asc: a.id]))
+    Repo.all(
+      from(a in Asset,
+        where: a.project_id == ^project_id and is_nil(a.deleted_at),
+        order_by: [asc: a.inserted_at, asc: a.id]
+      )
+    )
   end
 
   @doc """
@@ -1982,7 +2393,7 @@ defmodule Storyarn.Assets do
   """
   @spec count_assets(integer(), list_opts()) :: non_neg_integer()
   def count_assets(project_id, opts \\ []) do
-    from(a in Asset, where: a.project_id == ^project_id)
+    from(a in Asset, where: a.project_id == ^project_id and is_nil(a.deleted_at))
     |> apply_content_type_filter(opts)
     |> apply_images_only_filter(opts)
     |> apply_search_filter(opts)
@@ -2040,7 +2451,9 @@ defmodule Storyarn.Assets do
   def import_asset(%Project{} = project, attrs) do
     changeset = Asset.create_changeset(%Asset{project_id: project.id}, attrs)
 
-    with :ok <- authorize_import_asset(project, changeset) do
+    with :ok <- authorize_import_asset(project, changeset),
+         {:ok, _locked_project} <- ProjectReferenceIntegrity.lock_active_project(project.id, :update),
+         :ok <- lock_asset_family_references(%Asset{project_id: project.id}, attrs) do
       with_asset_storage_key_lock(attrs, fn -> Repo.insert(changeset) end)
     end
   end

@@ -11,22 +11,22 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:105
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:106
 #, elixir-autogen, elixir-format
 msgid "All variable references are up to date."
 msgstr "Todas las referencias de variables están actualizadas."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:374
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:375
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the project owner."
 msgstr "No se puede eliminar al propietario del proyecto."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:167
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:168
 #, elixir-autogen, elixir-format
 msgid "Connection failed. Check your API key and endpoint."
 msgstr "Conexión fallida. Comprueba tu clave API y el punto de acceso."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:157
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:158
 #: lib/storyarn_web/live/project_settings_live/localization.ex:172
 #, elixir-autogen, elixir-format
 msgid "Connection successful."
@@ -42,12 +42,12 @@ msgstr "Crear proyecto"
 msgid "Failed to delete project."
 msgstr "Error al eliminar el proyecto."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:232
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:233
 #, elixir-autogen, elixir-format
 msgid "Failed to repair variable references."
 msgstr "Error al reparar las referencias de variables."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:160
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:161
 #, elixir-autogen, elixir-format
 msgid "Invalid API key."
 msgstr "Clave API no válida."
@@ -57,17 +57,17 @@ msgstr "Clave API no válida."
 msgid "Localization"
 msgstr "Localización"
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:378
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:379
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr "Miembro no encontrado."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:365
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:366
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr "Miembro eliminado."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:171
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:172
 #, elixir-autogen, elixir-format
 msgid "No API key configured."
 msgstr "No hay ninguna clave API configurada."
@@ -92,34 +92,34 @@ msgstr "Proyecto eliminado."
 msgid "Project updated successfully."
 msgstr "Proyecto actualizado exitosamente."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:194
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:195
 #: lib/storyarn_web/live/project_settings_live/localization.ex:145
 #, elixir-autogen, elixir-format
 msgid "Provider settings saved."
 msgstr "Configuración del proveedor guardada."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:108
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:109
 #, elixir-autogen, elixir-format
 msgid "Repaired %{count} node."
 msgid_plural "Repaired %{count} nodes."
 msgstr[0] "%{count} nodo reparado."
 msgstr[1] "%{count} nodos reparados."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:119
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:120
 #, elixir-autogen, elixir-format
 msgid "%{count} node repaired"
 msgid_plural "%{count} nodes repaired"
 msgstr[0] "%{count} nodo reparado"
 msgstr[1] "%{count} nodos reparados"
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:128
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:129
 #, elixir-autogen, elixir-format
 msgid "%{count} node failed"
 msgid_plural "%{count} nodes failed"
 msgstr[0] "%{count} nodo fallido"
 msgstr[1] "%{count} nodos fallidos"
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:136
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:137
 #, elixir-autogen, elixir-format
 msgid "Repair partially completed: %{repaired}; %{failed}."
 msgstr "Reparación parcial: %{repaired}; %{failed}."
@@ -134,53 +134,57 @@ msgstr "Guardado"
 msgid "This invitation has already been accepted."
 msgstr "Esta invitación ya fue aceptada."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:180
+#: lib/storyarn_web/live/project_settings_live/trash.ex:237
 #, elixir-autogen, elixir-format
 msgid "Trash emptied successfully."
 msgstr "Papelera vaciada exitosamente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:25
+#: lib/storyarn_web/live/project_settings_live/trash.ex:26
 #, elixir-autogen, elixir-format
 msgid "Trash"
 msgstr "Papelera"
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:27
+#: lib/storyarn_web/live/project_settings_live/trash.ex:28
 #, elixir-autogen, elixir-format
 msgid "Restore deleted project items or remove them permanently."
 msgstr "Restaura elementos eliminados del proyecto o elimínalos permanentemente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:77
+#: lib/storyarn_web/live/project_settings_live/trash.ex:87
 #, elixir-autogen, elixir-format
 msgid "Project Trash"
 msgstr "Papelera del proyecto"
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:131
+#: lib/storyarn_web/live/project_settings_live/trash.ex:146
+#: lib/storyarn_web/live/project_settings_live/trash.ex:161
 #, elixir-autogen, elixir-format
 msgid "Item restored successfully."
 msgstr "Elemento restaurado correctamente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:134
+#: lib/storyarn_web/live/project_settings_live/trash.ex:149
+#: lib/storyarn_web/live/project_settings_live/trash.ex:164
 #, elixir-autogen, elixir-format
 msgid "Failed to restore item."
 msgstr "Error al restaurar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:138
-#: lib/storyarn_web/live/project_settings_live/trash.ex:157
+#: lib/storyarn_web/live/project_settings_live/trash.ex:168
+#: lib/storyarn_web/live/project_settings_live/trash.ex:207
 #, elixir-autogen, elixir-format
 msgid "Item not found."
 msgstr "Elemento no encontrado."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:150
+#: lib/storyarn_web/live/project_settings_live/trash.ex:185
+#: lib/storyarn_web/live/project_settings_live/trash.ex:200
 #, elixir-autogen, elixir-format
 msgid "Item permanently deleted."
 msgstr "Elemento eliminado permanentemente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:153
+#: lib/storyarn_web/live/project_settings_live/trash.ex:188
+#: lib/storyarn_web/live/project_settings_live/trash.ex:203
 #, elixir-autogen, elixir-format
 msgid "Failed to delete item."
 msgstr "Error al eliminar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:184
+#: lib/storyarn_web/live/project_settings_live/trash.ex:241
 #, elixir-autogen, elixir-format
 msgid "Some items could not be deleted."
 msgstr "Algunos elementos no se pudieron eliminar."
@@ -820,47 +824,47 @@ msgstr "No se pudo completar la importación. No se modificó el contenido del p
 msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr "Este proyecto de Yarn usa lógica narrativa que Storyarn no puede importar de forma segura. No se modificó el contenido del proyecto."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:311
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:312
 #, elixir-autogen, elixir-format
 msgid "An invitation has already been sent to this email."
 msgstr "Ya se ha enviado una invitación a este correo."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:329
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:330
 #, elixir-autogen, elixir-format
 msgid "Could not send invitation."
 msgstr "No se ha podido enviar la invitación."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:281
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:282
 #, elixir-autogen, elixir-format
 msgid "Enter a valid email address and role."
 msgstr "Introduce una dirección de correo y un rol válidos."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:294
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:295
 #, elixir-autogen, elixir-format
 msgid "Invitation queued for delivery."
 msgstr "Invitación en cola para su envío."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:343
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:344
 #, elixir-autogen, elixir-format
 msgid "Invitation revoked."
 msgstr "Invitación revocada."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:346
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:347
 #, elixir-autogen, elixir-format
 msgid "Invitation not found."
 msgstr "No se ha encontrado la invitación."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:325
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:326
 #, elixir-autogen, elixir-format
 msgid "Member limit reached for your plan."
 msgstr "Has alcanzado el límite de miembros de tu plan."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:302
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:303
 #, elixir-autogen, elixir-format
 msgid "This person is already a member of this project."
 msgstr "Esta persona ya es miembro de este proyecto."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:320
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:321
 #, elixir-autogen, elixir-format
 msgid "Too many invitations have been sent. Try again later."
 msgstr "Se han enviado demasiadas invitaciones. Inténtalo de nuevo más tarde."
@@ -1219,17 +1223,17 @@ msgstr "Revisa el almacenamiento, las reservas y la integridad de las snapshots"
 msgid "Snapshot creation started."
 msgstr "La creación de la snapshot ha comenzado."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:233
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:232
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be cancelled."
 msgstr "No se ha podido cancelar la snapshot."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:254
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:252
 #, elixir-autogen, elixir-format
 msgid "Snapshot deletion started."
 msgstr "La eliminación de la snapshot ha comenzado."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:260
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:258
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be deleted."
 msgstr "No se ha podido eliminar la snapshot."

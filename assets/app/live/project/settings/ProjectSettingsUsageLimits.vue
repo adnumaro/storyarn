@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Archive, Clock3, Image, Link2 } from "@lucide/vue";
+import { Archive, Clock3, Image, Link2, Trash2 } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";
@@ -477,7 +477,7 @@ function formattedRemainingStorage() {
               </div>
             </div>
 
-            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
               <div class="rounded-md border border-border/60 p-3">
                 <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Image class="size-3.5" aria-hidden="true" />
@@ -485,6 +485,15 @@ function formattedRemainingStorage() {
                 </div>
                 <div class="mt-1 font-medium tabular-nums">
                   {{ formatBytes(usageLimits.storage.workspace.currentAssetsBytes, locale) }}
+                </div>
+              </div>
+              <div class="rounded-md border border-border/60 p-3">
+                <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Trash2 class="size-3.5" aria-hidden="true" />
+                  {{ $t("project_settings.usage_limits.storage_breakdown.asset_trash") }}
+                </div>
+                <div class="mt-1 font-medium tabular-nums">
+                  {{ formatBytes(usageLimits.storage.workspace.assetTrashBytes, locale) }}
                 </div>
               </div>
               <div class="rounded-md border border-border/60 p-3">
