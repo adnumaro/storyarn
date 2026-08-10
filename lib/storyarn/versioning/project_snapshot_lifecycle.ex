@@ -327,11 +327,28 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   @spec delete_expired_build_candidate(expired_build_candidate()) ::
           {:ok, SnapshotCleanupIntent.t()} | {:error, term()}
   def delete_expired_build_candidate(%{} = candidate) do
+    do_delete_expired_build_candidate(candidate, :current)
+  end
+
+  def delete_expired_build_candidate(_candidate), do: {:error, :expired_build_candidate_changed}
+
+  @doc false
+  @spec delete_expired_build_candidate(expired_build_candidate(), String.t()) ::
+          {:ok, SnapshotCleanupIntent.t()} | {:error, term()}
+  def delete_expired_build_candidate(%{} = candidate, expected_provider_namespace_fingerprint)
+      when is_binary(expected_provider_namespace_fingerprint) do
+    do_delete_expired_build_candidate(candidate, {:expected, expected_provider_namespace_fingerprint})
+  end
+
+  def delete_expired_build_candidate(_candidate, _expected_provider_namespace_fingerprint),
+    do: {:error, :expired_build_candidate_changed}
+
+  defp do_delete_expired_build_candidate(%{} = candidate, namespace_expectation) do
     case Map.get(candidate, :workspace_id) do
       workspace_id when is_integer(workspace_id) ->
         result =
           Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
-            delete_expired_build_candidate_locked(candidate, database_clock_now())
+            delete_expired_build_candidate_locked(candidate, database_clock_now(), namespace_expectation)
           end)
 
         publish_deleted_snapshot(result, Map.get(candidate, :project_id), Map.get(candidate, :snapshot_id))
@@ -340,8 +357,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
         {:error, :expired_build_candidate_changed}
     end
   end
-
-  def delete_expired_build_candidate(_candidate), do: {:error, :expired_build_candidate_changed}
 
   @doc false
   @spec lifecycle_high_watermark() :: non_neg_integer()
@@ -764,7 +779,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     end
   end
 
-  defp delete_expired_build_candidate_locked(candidate, now) do
+  defp delete_expired_build_candidate_locked(candidate, now, namespace_expectation) do
     project_id = Map.get(candidate, :project_id)
     snapshot_id = Map.get(candidate, :snapshot_id)
 
@@ -774,7 +789,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
          :ok <- revalidate_expired_build_candidate(snapshot, project, reservation, candidate, now),
          :ok <- ensure_expired_build_operation_supported(snapshot, reservation) do
       snapshot
-      |> create_cleanup_and_delete(project.workspace_id, :expired_build, :system)
+      |> create_cleanup_and_delete(project.workspace_id, :expired_build, :system, namespace_expectation)
       |> tag_created_intent()
     else
       nil -> {:error, :expired_build_candidate_changed}
@@ -894,7 +909,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     end
   end
 
-  defp create_cleanup_and_delete(snapshot, workspace_id, reason, authority) do
+  defp create_cleanup_and_delete(snapshot, workspace_id, reason, authority),
+    do: create_cleanup_and_delete(snapshot, workspace_id, reason, authority, :current)
+
+  defp create_cleanup_and_delete(snapshot, workspace_id, reason, authority, namespace_expectation) do
     with :ok <- ensure_supported_mode(snapshot.mode),
          %ProjectSnapshotCapture{} = capture <- lock_capture(snapshot.id),
          {:ok, scope} <-
@@ -903,11 +921,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
              snapshot.object_prefix,
              capture.manifest_json
            ),
+         {:ok, provider_namespace_fingerprint} <-
+           cleanup_provider_namespace_fingerprint(namespace_expectation),
          now = TimeHelpers.now(),
          {:ok, deleting} <- snapshot |> ProjectSnapshot.deletion_changeset(now) |> Repo.update(),
          :ok <- release_no_write_build_reservations(deleting),
          owner_token = Ecto.UUID.generate(),
-         {:ok, provider_namespace_fingerprint} <- current_provider_namespace_fingerprint(),
          {:ok, cleanup_request} <-
            StorageCompensation.persist_snapshot_lifecycle_cleanup(
              scope.storage_keys,
@@ -933,6 +952,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     else
       nil -> {:error, :snapshot_capture_missing}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp cleanup_provider_namespace_fingerprint(:current), do: current_provider_namespace_fingerprint()
+
+  defp cleanup_provider_namespace_fingerprint({:expected, expected_fingerprint}) do
+    case current_provider_namespace_fingerprint() do
+      {:ok, ^expected_fingerprint} -> {:ok, expected_fingerprint}
+      {:ok, _different_fingerprint} -> {:error, :snapshot_cleanup_provider_namespace_changed}
+      {:error, _reason} = error -> error
     end
   end
 

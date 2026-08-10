@@ -276,11 +276,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
     intent.cleanup_request_id
     |> then(&Repo.get!(StorageCleanupRequest, &1))
-    |> Ecto.Changeset.change(
-      owner_kind: "storage_compensation",
-      owner_token: nil,
-      provider_namespace_fingerprint: nil
-    )
+    |> Ecto.Changeset.change(storage_keys: intent.storage_keys ++ ["projects/999/assets/foreign.bin"])
     |> Repo.update!()
 
     assert :ok =
@@ -443,11 +439,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
     intent.cleanup_request_id
     |> then(&Repo.get!(StorageCleanupRequest, &1))
-    |> Ecto.Changeset.change(
-      owner_kind: "storage_compensation",
-      owner_token: nil,
-      provider_namespace_fingerprint: nil
-    )
+    |> Ecto.Changeset.change(storage_keys: intent.storage_keys ++ ["projects/999/assets/foreign.bin"])
     |> Repo.update!()
 
     assert {:error, :invalid_snapshot_cleanup_ownership} =

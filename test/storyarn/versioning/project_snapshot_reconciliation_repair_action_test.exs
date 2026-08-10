@@ -301,6 +301,48 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairActionTest do
     assert_cleanup_namespace_rejected("storage_compensation", nil, @namespace)
     assert_cleanup_namespace_rejected("snapshot_lifecycle", test_uuid(), nil)
     assert_cleanup_namespace_rejected("snapshot_lifecycle", test_uuid(), "not-a-fingerprint")
+
+    trigger_names =
+      Repo.query!("""
+      SELECT trigger.tgname
+      FROM pg_trigger AS trigger
+      WHERE NOT trigger.tgisinternal
+        AND trigger.tgname IN (
+          'snapshot_cleanup_intents_provider_namespace_guard',
+          'storage_cleanup_requests_provider_namespace_guard'
+        )
+      ORDER BY trigger.tgname
+      """).rows
+
+    assert trigger_names == [
+             ["snapshot_cleanup_intents_provider_namespace_guard"],
+             ["storage_cleanup_requests_provider_namespace_guard"]
+           ]
+  end
+
+  test "snapshot cleanup request provider namespace is immutable" do
+    owner_token = test_uuid()
+    %{rows: [[request_id]]} = insert_cleanup_request!("snapshot_lifecycle", owner_token, @namespace)
+
+    assert_raise Postgrex.Error, ~r/snapshot cleanup provider namespace is immutable/, fn ->
+      Repo.transaction(fn ->
+        Repo.query!(
+          """
+          UPDATE storage_cleanup_requests
+          SET provider_namespace_fingerprint = $2, updated_at = updated_at + interval '1 second'
+          WHERE id = $1
+          """,
+          [request_id, @other_namespace]
+        )
+      end)
+    end
+
+    assert Repo.one(
+             from(request in "storage_cleanup_requests",
+               where: request.id == ^request_id,
+               select: request.provider_namespace_fingerprint
+             )
+           ) == @namespace
   end
 
   test "namespace rollout is reset-only and cannot invent historical ownership" do
@@ -438,6 +480,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairActionTest do
       INSERT INTO storage_cleanup_requests
         (storage_keys, owner_kind, owner_token, provider_namespace_fingerprint, inserted_at, updated_at)
       VALUES ($1, $2, $3::uuid, $4, $5, $5)
+      RETURNING id
       """,
       [["repair-schema-test/object"], owner_kind, encoded_owner_token, namespace, now]
     )

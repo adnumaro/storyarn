@@ -296,7 +296,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert Repo.get!(SnapshotCleanupIntent, intent.id).status == "terminal"
     end
 
-    test "cleanup replay rejects a receipt whose provider namespace no longer matches its intent" do
+    test "cleanup request provider namespace cannot drift from its intent" do
       user = user_fixture()
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
@@ -310,15 +310,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
 
       different_fingerprint = different_expectation(intent.provider_namespace_fingerprint)
 
-      intent.cleanup_request_id
-      |> then(&Repo.get!(StorageCleanupRequest, &1))
-      |> Ecto.Changeset.change(provider_namespace_fingerprint: different_fingerprint)
-      |> Repo.update!()
+      request = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
 
-      assert {:error, :invalid_snapshot_cleanup_ownership} =
-               ProjectSnapshotLifecycle.replay_terminal_cleanup_intent(intent.id)
+      assert_raise Postgrex.Error, ~r/snapshot cleanup provider namespace is immutable/, fn ->
+        Repo.transaction(fn ->
+          request
+          |> Ecto.Changeset.change(provider_namespace_fingerprint: different_fingerprint)
+          |> Repo.update!()
+        end)
+      end
 
       assert Repo.get!(SnapshotCleanupIntent, intent.id).status == "terminal"
+
+      assert Repo.get!(StorageCleanupRequest, request.id).provider_namespace_fingerprint ==
+               intent.provider_namespace_fingerprint
     end
 
     test "counts retries retained by repeatedly terminal cleanup intents" do

@@ -13,6 +13,7 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
           replacements: replacements,
           content_type_overrides: %{},
           io_observer: nil,
+          namespace_observer: nil,
           namespace_fingerprint_override: nil
         }
       end,
@@ -34,6 +35,10 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
 
   def observe_io(callback) when is_function(callback, 2) do
     Agent.update(__MODULE__, &%{&1 | io_observer: callback})
+  end
+
+  def observe_namespace(callback) when is_function(callback, 1) do
+    Agent.update(__MODULE__, &%{&1 | namespace_observer: callback})
   end
 
   def override_namespace_fingerprint(fingerprint) when is_binary(fingerprint) do
@@ -81,10 +86,18 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
 
   @impl true
   def namespace_fingerprint do
-    case Agent.get(__MODULE__, & &1.namespace_fingerprint_override) do
-      nil -> Local.namespace_fingerprint()
-      fingerprint -> {:ok, fingerprint}
+    result =
+      case Agent.get(__MODULE__, & &1.namespace_fingerprint_override) do
+        nil -> Local.namespace_fingerprint()
+        fingerprint -> {:ok, fingerprint}
+      end
+
+    case result do
+      {:ok, fingerprint} -> notify_namespace(fingerprint)
+      {:error, reason} -> notify_namespace(reason)
     end
+
+    result
   end
 
   @impl true
@@ -125,6 +138,13 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   defp observe_io(operation, key) do
     case Agent.get(__MODULE__, & &1.io_observer) do
       callback when is_function(callback, 2) -> callback.(operation, key)
+      nil -> :ok
+    end
+  end
+
+  defp notify_namespace(value) do
+    case Agent.get(__MODULE__, & &1.namespace_observer) do
+      callback when is_function(callback, 1) -> callback.(value)
       nil -> :ok
     end
   end

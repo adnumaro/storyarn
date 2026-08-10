@@ -615,12 +615,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
     do: classify_changed_reservation(finding, provider_namespace_fingerprint)
 
   defp repair_expired_build_candidate(candidate, finding, provider_namespace_fingerprint) do
-    case ProjectSnapshotLifecycle.delete_expired_build_candidate(candidate) do
+    case ProjectSnapshotLifecycle.delete_expired_build_candidate(candidate, provider_namespace_fingerprint) do
       {:ok, %SnapshotCleanupIntent{}} ->
         {:ok, "repaired", "expired_build_cleanup_scheduled", %{}}
 
       {:error, :expired_build_candidate_changed} ->
         classify_changed_reservation(finding, provider_namespace_fingerprint)
+
+      {:error, :snapshot_cleanup_provider_namespace_changed} ->
+        {:ok, "manual", "provider_namespace_changed", %{}}
 
       {:error, reason} ->
         {:error, reason}

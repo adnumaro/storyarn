@@ -145,9 +145,21 @@ defmodule Storyarn.Repo.Migrations.CreateProjectSnapshotReconciliationRepairs do
     FOR EACH ROW
     EXECUTE FUNCTION storyarn_guard_snapshot_cleanup_provider_namespace()
     """)
+
+    execute("""
+    CREATE TRIGGER storage_cleanup_requests_provider_namespace_guard
+    BEFORE UPDATE OF provider_namespace_fingerprint ON storage_cleanup_requests
+    FOR EACH ROW
+    EXECUTE FUNCTION storyarn_guard_snapshot_cleanup_provider_namespace()
+    """)
   end
 
   defp unbind_snapshot_cleanup_from_provider_namespace do
+    execute("""
+    DROP TRIGGER storage_cleanup_requests_provider_namespace_guard
+    ON storage_cleanup_requests
+    """)
+
     execute("""
     DROP TRIGGER snapshot_cleanup_intents_provider_namespace_guard
     ON snapshot_cleanup_intents

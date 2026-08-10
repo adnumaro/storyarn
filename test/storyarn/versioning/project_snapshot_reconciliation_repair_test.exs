@@ -419,6 +419,38 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
              "expired_build_cleanup_scheduled"
   end
 
+  test "expired-build repair rejects provider namespace drift before lifecycle mutation" do
+    {snapshot, _finding, action} = expired_build_action!()
+    install_snapshot_read_switch_storage()
+
+    assert {:ok, expected_namespace} = Storage.namespace_fingerprint()
+    different_namespace = String.duplicate("f", 64)
+    refute different_namespace == expected_namespace
+
+    reservation_before = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
+    cleanup_request_count = Repo.aggregate(StorageCleanupRequest, :count)
+
+    SnapshotReadSwitchStorage.observe_namespace(fn
+      ^expected_namespace ->
+        SnapshotReadSwitchStorage.override_namespace_fingerprint(different_namespace)
+
+      _value ->
+        :ok
+    end)
+
+    assert {:ok, :manual} = Versioning.perform_project_snapshot_reconciliation_repair(action.id)
+
+    assert %ProjectSnapshot{} = Repo.get(ProjectSnapshot, snapshot.id)
+    assert Repo.get!(StorageReservation, snapshot.storage_reservation_id) == reservation_before
+    assert Repo.aggregate(StorageCleanupRequest, :count) == cleanup_request_count
+    refute Repo.get_by(SnapshotCleanupIntent, project_snapshot_id_snapshot: snapshot.id)
+
+    assert %ProjectSnapshotReconciliationRepairAction{
+             status: "manual",
+             result_code: "provider_namespace_changed"
+           } = Repo.get!(ProjectSnapshotReconciliationRepairAction, action.id)
+  end
+
   test "an exact partial expired-build commit is recognized without settling unrelated state" do
     {snapshot, finding, action} = expired_build_action!()
 
