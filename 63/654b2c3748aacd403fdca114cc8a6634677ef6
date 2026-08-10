@@ -1,0 +1,121 @@
+test/storyarn/billing/storage_accounting_test.exs
+  s_c2ae682cd97119::t_baf6a3630b909f 21,1107-1179,1181-1220,1224-1255,1269-1276,1288-1298,1300-1305
+  s_c2ae682cd97119::t_5a60bfde8bfdf6 1256-1268,1277-1287
+  s_c2ae682cd97119::t_4fa8e1a5957370 1299
+  s_c2ae682cd97119::t_6b9469a72183d4 1180
+  s_c2ae682cd97119::t_924516f1b7accc 1221-1223
+  s_c2ae682cd97119::t_8b2858f999086f 1306-1307
+lib/storyarn/workers/project_snapshot_retention_worker.ex
+  s_c2ae682cd97119::t_22e6f102f7e97a 30-32,65-67,90
+  s_c2ae682cd97119::t_13028053f11b4d 29,89,91
+docs/reference/domain-patterns.md
+  s_c2ae682cd97119::t_5a60bfde8bfdf6 5,49,66-67
+assets/app/test/live/project/settings/ProjectSettingsSnapshots.test.ts
+  s_c2ae682cd97119::t_7ae05b11c67b44 60,94,168-174,208,224-234
+  s_c2ae682cd97119::t_80af2fefde524a 235-236
+lib/storyarn/billing.ex
+  s_c2ae682cd97119::t_4fe39acb501761 68-70
+priv/docs/en/project-management/05-recovery-and-trash.md
+  s_c2ae682cd97119::t_e41444c0abdfbb 23
+lib/storyarn_web/telemetry.ex
+  s_c2ae682cd97119::t_5a60bfde8bfdf6 213-215
+priv/docs/es/project-management/05-recovery-and-trash.md
+  s_c2ae682cd97119::t_e41444c0abdfbb 23
+lib/storyarn/versioning/project_snapshot_zip.ex
+  s_c2ae682cd97119::t_4ee0b79dd6d2ca 504
+  s_c2ae682cd97119::t_020a107b0c930d 1-16,18-86,88-137,139-148,151-204,206-250,253-295,298,300-310,312-314,316-331,333-334,336-341,343,345-349,351-360,378-380,382-383,385-389,391-395,397-425,427-436,438-452,455-457,460-466,468-478,503,505,507-511
+  s_c2ae682cd97119::t_174ba41ab50986 87,149-150,299,311,315,344,381,384,390,396,453-454,479-482,486-492,494-501,506
+  s_c2ae682cd97119::t_b25d6b3c7f79ff 17,138,205,251-252,296-297,332,335,342,426,437,458-459,467
+  s_c2ae682cd97119::t_c4bb710e48b6c3 350,361-377,493,502
+  s_c2ae682cd97119::t_6f087c59fc121b 483-485
+test/storyarn/versioning/project_snapshot_download_test.exs
+  s_c2ae682cd97119::t_5a28330f3d3e13 1-86
+mix.exs
+  s_c2ae682cd97119::t_0f2ba289a61391 75
+test/storyarn_web/live/project_live/settings_test.exs
+  s_c2ae682cd97119::t_28b59452c195ca 444-446,554
+  s_c2ae682cd97119::t_5f3653d492c531 23,496-529
+  s_c2ae682cd97119::t_f343295245c332 530-531
+lib/storyarn_web/controllers/snapshot_download_controller.ex
+  s_c2ae682cd97119::t_8588b86edcf2d4 13,58,60,62,64,66,92-96,99-103,108-112
+  s_c2ae682cd97119::t_8b026c53ee8f92 6-10,14-43,47-57,59,61,63,65,67-70,74-82,87-89,97-98,104-107,113-190,192-195
+  s_c2ae682cd97119::t_59600402d2d581 11-12,44-46,71-73,83-86,90-91
+test/storyarn_web/telemetry_test.exs
+  s_c2ae682cd97119::t_5a60bfde8bfdf6 216,226-228
+  s_c2ae682cd97119::t_dda4dc38c82ce5 279-281
+test/storyarn/repo/migrations/snapshot_export_lease_migration_test.exs
+  s_c2ae682cd97119::t_7e3c823125b746 1-19
+assets/app/locales/es/project-settings.json
+  s_c2ae682cd97119::t_eed3c35f9a5b7c 202-205
+test/storyarn_web/controllers/snapshot_download_controller_test.exs
+  s_c2ae682cd97119::t_d24303307cf599 2,4,6-7,12-15,28-55,68-70,80-81,87,94-95,126-213,240-241,245,247,253,264-265,273-292
+  s_c2ae682cd97119::t_1c12721d5f86cc 214-228,242-244,246,248-252,254-263
+  s_c2ae682cd97119::t_59600402d2d581 82-86,88-93,96-125
+  s_c2ae682cd97119::t_cf4958823029f4 10,56-67,229-239
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_c2ae682cd97119::t_587d7eb6f087ad 78,197,1222,1227,1232,1237,1251-1290
+assets/app/locales/en/project-settings.json
+  s_c2ae682cd97119::t_eed3c35f9a5b7c 202-205
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_c2ae682cd97119::t_d15e182c3cb734 79,924-961
+lib/storyarn/billing/storage_accounting.ex
+  s_c2ae682cd97119::t_7e3c823125b746 412-414,1146-1168
+  s_c2ae682cd97119::t_e876dad8e9bf5e 1117-1143,1171,1173-1187,1190-1213,2091-2094
+  s_c2ae682cd97119::t_1c578634e55125 1144-1145,1169-1170
+  s_c2ae682cd97119::t_6777bab34b714d 409-411
+  s_c2ae682cd97119::t_4a5702f294e1cd 280
+  s_c2ae682cd97119::t_cfb4feb7a481e8 406,417,1172,1188-1189,1346-1347,2051-2052
+  s_c2ae682cd97119::t_8869b896590991 34,395-405,407-408,415-416,418,636,1350,2053,2055,2075-2078
+  s_c2ae682cd97119::t_44a2894c2f463a 394
+  s_c2ae682cd97119::t_87094e8ead5c16 1348
+  s_c2ae682cd97119::t_d0165a266b5026 2079
+  s_c2ae682cd97119::t_5503f5df2436aa 2095
+test/storyarn/versioning/project_snapshot_zip_test.exs
+  s_c2ae682cd97119::t_20e03b1f5a5df6 185,197,286,403,405,426
+  s_c2ae682cd97119::t_1d23c87225532b 88-98,102-108,234-241,243-252,255-256,445-471
+  s_c2ae682cd97119::t_a476362aa92232 267-268,270,273-277,302-306,347,367
+  s_c2ae682cd97119::t_f15723d2adc116 1-12,19-87,99-101,109-184,186-196,198-233,253-254,257-266,269,271-272,278-285,287-301,307-346,348-366,368-402,404,406-425,427-444,472-473
+  s_c2ae682cd97119::t_6149ed157f17f7 13-18,242
+priv/repo/migrations/20260810130000_allow_zero_byte_snapshot_export_leases.exs
+  s_c2ae682cd97119::t_4a5702f294e1cd 2-9,55-70
+  s_c2ae682cd97119::t_b5c6014b69129f 1,10-24,27-54,71-102
+  s_c2ae682cd97119::t_fb1e8a658b600f 25-26
+lib/storyarn/versioning.ex
+  s_c2ae682cd97119::t_d9e89a4bcf46b7 22,384-387
+  s_c2ae682cd97119::t_5d322d78fb868f 388-390
+  s_c2ae682cd97119::t_4c98a3cc11d9a1 15,283-286
+  s_c2ae682cd97119::t_19600f29416308 27,287,391
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_c2ae682cd97119::t_066fe214c0cfb1 37,49-50,53,85,103-113
+  s_c2ae682cd97119::t_b9db1e76dfe202 114
+lib/storyarn/billing/storage_reservation.ex
+  s_c2ae682cd97119::t_fb1e8a658b600f 324
+  s_c2ae682cd97119::t_c6bd969660d90a 194,325-326,332-341,475-476
+  s_c2ae682cd97119::t_c445a997bd2790 477
+lib/storyarn/versioning/project_snapshot_download.ex
+  s_c2ae682cd97119::t_c4bb710e48b6c3 40,74-80
+  s_c2ae682cd97119::t_d9e89a4bcf46b7 1-39,41-51,53-73,81-82,98-164,166-169
+  s_c2ae682cd97119::t_174ba41ab50986 52,83-97,165
+mix.lock
+  s_c2ae682cd97119::t_f28b1b4e61d44f 108
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_c2ae682cd97119::t_7c3334d47aa9e4 78,197,1222,1227,1232,1237,1251-1290
+priv/gettext/projects.pot
+  s_c2ae682cd97119::t_bde3c24449af2f 78,197,1222,1227,1232,1237,1251-1290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "63654b2c3748aacd403fdca114cc8a6634677ef6",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
