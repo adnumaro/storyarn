@@ -354,6 +354,35 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       assert_receive {:remote_change, :asset_restored, %{}}, 1_000
     end
 
+    test "explains why a referenced asset cannot be permanently deleted", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      asset = image_asset_fixture(project, user, %{filename: "Referenced Asset.png"})
+      sheet = sheet_fixture(project, %{name: "Recoverable Sheet", banner_asset_id: asset.id})
+
+      {:ok, _trashed_sheet} = Sheets.delete_sheet(sheet)
+      {:ok, trashed_asset} = Assets.move_asset_to_trash(project.id, asset.id, user.id)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/trash"
+        )
+
+      html =
+        render_hook(view, "delete_item", %{
+          "type" => "asset",
+          "id" => asset.id,
+          "generation" => trashed_asset.deletion_generation
+        })
+
+      assert html =~ "Remove those references or permanently delete the referencing items from Trash"
+      assert %Asset{deleted_at: %DateTime{}} = Repo.get!(Asset, asset.id)
+      assert %Sheet{deleted_at: %DateTime{}} = Repo.get!(Sheet, sheet.id)
+    end
+
     test "rejects stale asset generations without mutating the trashed row", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       asset = image_asset_fixture(project, user)

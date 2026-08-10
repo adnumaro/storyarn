@@ -996,30 +996,26 @@ defmodule Storyarn.Assets do
           gallery_images: [map()]
         }
   def get_asset_usages(project_id, asset_id) do
-    asset_metadata_links = list_asset_metadata_links(project_id, asset_id)
-    flow_nodes = list_flow_nodes_using_asset(project_id, asset_id)
-    sequence_visual_layers = list_sequence_visual_layers_using_asset(project_id, asset_id)
-    sequence_tracks = list_sequence_tracks_using_asset(project_id, asset_id)
-    sheet_avatars = list_sheet_avatars_using_asset(project_id, asset_id)
-    sheet_banners = list_sheet_banners_using_asset(project_id, asset_id)
-    scene_backgrounds = list_scenes_using_asset_as_background(project_id, asset_id)
-    scene_pin_icons = list_scene_pins_using_asset_as_icon(project_id, asset_id)
-    scene_zone_icons = list_scene_zones_using_asset_as_icon(project_id, asset_id)
-    localized_voiceovers = list_localized_voiceovers_using_asset(project_id, asset_id)
-    gallery_images = list_gallery_images_using_asset(project_id, asset_id)
+    get_asset_usages_for_ids(project_id, [asset_id])
+  end
+
+  defp get_asset_usages_for_ids(_project_id, []), do: empty_asset_usages()
+
+  defp get_asset_usages_for_ids(project_id, asset_ids) do
+    asset_ids = Enum.uniq(asset_ids)
 
     %{
-      asset_metadata_links: asset_metadata_links,
-      flow_nodes: flow_nodes,
-      sequence_visual_layers: sequence_visual_layers,
-      sequence_tracks: sequence_tracks,
-      sheet_avatars: sheet_avatars,
-      sheet_banners: sheet_banners,
-      scene_backgrounds: scene_backgrounds,
-      scene_pin_icons: scene_pin_icons,
-      scene_zone_icons: scene_zone_icons,
-      localized_voiceovers: localized_voiceovers,
-      gallery_images: gallery_images
+      asset_metadata_links: list_asset_metadata_links(project_id, asset_ids),
+      flow_nodes: list_flow_nodes_using_assets(project_id, asset_ids),
+      sequence_visual_layers: list_sequence_visual_layers_using_assets(project_id, asset_ids),
+      sequence_tracks: list_sequence_tracks_using_assets(project_id, asset_ids),
+      sheet_avatars: list_sheet_avatars_using_assets(project_id, asset_ids),
+      sheet_banners: list_sheet_banners_using_assets(project_id, asset_ids),
+      scene_backgrounds: list_scenes_using_assets_as_background(project_id, asset_ids),
+      scene_pin_icons: list_scene_pins_using_assets_as_icon(project_id, asset_ids),
+      scene_zone_icons: list_scene_zones_using_assets_as_icon(project_id, asset_ids),
+      localized_voiceovers: list_localized_voiceovers_using_assets(project_id, asset_ids),
+      gallery_images: list_gallery_images_using_assets(project_id, asset_ids)
     }
   end
 
@@ -1044,10 +1040,13 @@ defmodule Storyarn.Assets do
           gallery_images: [map()]
         }
   def get_asset_family_usages(project_id, asset_id) do
-    project_id
-    |> AssetTrash.active_family_ids(asset_id)
-    |> Enum.reduce(empty_asset_usages(), fn family_asset_id, usages ->
-      merge_asset_usages(usages, get_asset_usages(project_id, family_asset_id))
+    usages =
+      project_id
+      |> AssetTrash.active_family_ids(asset_id)
+      |> then(&get_asset_usages_for_ids(project_id, &1))
+
+    Map.update!(usages, :asset_metadata_links, fn links ->
+      Enum.reject(links, &(&1.id == asset_id))
     end)
   end
 
@@ -1065,27 +1064,6 @@ defmodule Storyarn.Assets do
       localized_voiceovers: [],
       gallery_images: []
     }
-  end
-
-  defp merge_asset_usages(current, additional) do
-    Map.merge(current, additional, fn
-      :asset_metadata_links, left, right -> merge_asset_metadata_links(left ++ right)
-      _usage_type, left, right -> Enum.uniq(left ++ right)
-    end)
-  end
-
-  defp merge_asset_metadata_links(links) do
-    links
-    |> Enum.group_by(& &1.id)
-    |> Enum.map(fn {_asset_id, [first | rest]} ->
-      relations =
-        [first | rest]
-        |> Enum.flat_map(& &1.relations)
-        |> Enum.uniq()
-
-      %{first | relations: relations}
-    end)
-    |> Enum.sort_by(&{&1.filename, &1.id})
   end
 
   defp lock_active_project_for_asset_write(project_id) do
@@ -1225,27 +1203,27 @@ defmodule Storyarn.Assets do
 
   defp asset_create_changeset(asset, attrs, :sanitized_svg), do: Asset.create_sanitized_svg_changeset(asset, attrs)
 
-  defp list_asset_metadata_links(project_id, asset_id) do
-    asset_id_string = to_string(asset_id)
+  defp list_asset_metadata_links(project_id, asset_ids) do
+    asset_id_strings = Enum.map(asset_ids, &to_string/1)
 
     project_id
-    |> list_assets_with_metadata_link(asset_id_string)
+    |> list_assets_with_metadata_links(asset_id_strings)
     |> Enum.map(fn asset ->
       %{
         id: asset.id,
         filename: asset.filename,
-        relations: asset_metadata_link_relations(asset.metadata || %{}, asset_id_string)
+        relations: asset_metadata_link_relations(asset.metadata || %{}, asset_id_strings)
       }
     end)
   end
 
-  defp list_assets_with_metadata_link(project_id, asset_id_string) do
+  defp list_assets_with_metadata_links(project_id, asset_id_strings) do
     Repo.all(
       from(asset in Asset,
         where: asset.project_id == ^project_id,
         where:
-          fragment("?->>'web_asset_id' = ?", asset.metadata, ^asset_id_string) or
-            fragment("?->>'original_asset_id' = ?", asset.metadata, ^asset_id_string) or
+          fragment("?->>'web_asset_id' = ANY(?)", asset.metadata, ^asset_id_strings) or
+            fragment("?->>'original_asset_id' = ANY(?)", asset.metadata, ^asset_id_strings) or
             fragment(
               """
               EXISTS (
@@ -1257,39 +1235,39 @@ defmodule Storyarn.Assets do
                     ELSE '{}'::jsonb
                   END
                 ) AS variant_link
-                WHERE variant_link.value = ?
+                WHERE variant_link.value = ANY(?)
               )
               """,
               asset.metadata,
               asset.metadata,
-              ^asset_id_string
+              ^asset_id_strings
             ),
         order_by: [asc: asset.filename, asc: asset.id]
       )
     )
   end
 
-  defp asset_metadata_link_relations(metadata, asset_id_string) do
+  defp asset_metadata_link_relations(metadata, asset_id_strings) do
     []
     |> maybe_add_metadata_relation(
-      metadata_id_matches?(metadata["web_asset_id"], asset_id_string),
+      metadata_id_matches_any?(metadata["web_asset_id"], asset_id_strings),
       "web_variant"
     )
     |> maybe_add_metadata_relation(
-      metadata_id_matches?(metadata["original_asset_id"], asset_id_string),
+      metadata_id_matches_any?(metadata["original_asset_id"], asset_id_strings),
       "original"
     )
-    |> maybe_add_metadata_relation(profile_variant_link?(metadata, asset_id_string), "profile_variant")
+    |> maybe_add_metadata_relation(profile_variant_link?(metadata, asset_id_strings), "profile_variant")
     |> Enum.reverse()
   end
 
-  defp profile_variant_link?(%{"variant_asset_ids" => profiles}, asset_id_string) when is_map(profiles) do
+  defp profile_variant_link?(%{"variant_asset_ids" => profiles}, asset_id_strings) when is_map(profiles) do
     Enum.any?(profiles, fn {_profile, asset_id} ->
-      metadata_id_matches?(asset_id, asset_id_string)
+      metadata_id_matches_any?(asset_id, asset_id_strings)
     end)
   end
 
-  defp profile_variant_link?(_metadata, _asset_id_string), do: false
+  defp profile_variant_link?(_metadata, _asset_id_strings), do: false
 
   defp maybe_add_metadata_relation(relations, true, relation), do: [relation | relations]
   defp maybe_add_metadata_relation(relations, false, _relation), do: relations
@@ -1300,6 +1278,10 @@ defmodule Storyarn.Assets do
   defp metadata_id_matches?(value, asset_id_string) when is_binary(value), do: value == asset_id_string
 
   defp metadata_id_matches?(_value, _asset_id_string), do: false
+
+  defp metadata_id_matches_any?(value, asset_id_strings) do
+    Enum.any?(asset_id_strings, &metadata_id_matches?(value, &1))
+  end
 
   @doc """
   Returns the total number of usage references for an asset.
@@ -1314,8 +1296,8 @@ defmodule Storyarn.Assets do
     |> Enum.sum()
   end
 
-  defp list_flow_nodes_using_asset(project_id, asset_id) do
-    asset_id = to_string(asset_id)
+  defp list_flow_nodes_using_assets(project_id, asset_ids) do
+    asset_ids = Enum.map(asset_ids, &to_string/1)
 
     Repo.all(
       from(node in FlowNode,
@@ -1323,7 +1305,7 @@ defmodule Storyarn.Assets do
         on: node.flow_id == flow.id,
         where:
           flow.project_id == ^project_id and
-            fragment("?->>'audio_asset_id' = ?", node.data, ^asset_id),
+            fragment("?->>'audio_asset_id' = ANY(?)", node.data, ^asset_ids),
         order_by: [asc: flow.name, asc: node.id],
         select: %{
           node_id: node.id,
@@ -1336,7 +1318,7 @@ defmodule Storyarn.Assets do
     )
   end
 
-  defp list_sequence_visual_layers_using_asset(project_id, asset_id) do
+  defp list_sequence_visual_layers_using_assets(project_id, asset_ids) do
     Repo.all(
       from(layer in SequenceVisualLayer,
         join: node in FlowNode,
@@ -1345,7 +1327,7 @@ defmodule Storyarn.Assets do
         on: node.flow_id == flow.id,
         left_join: config in SequenceConfig,
         on: config.flow_node_id == node.id,
-        where: flow.project_id == ^project_id and layer.asset_id == ^asset_id,
+        where: flow.project_id == ^project_id and layer.asset_id in ^asset_ids,
         order_by: [asc: flow.name, asc: config.name, asc: layer.z_index, asc: layer.id],
         select: %{
           id: layer.id,
@@ -1361,7 +1343,7 @@ defmodule Storyarn.Assets do
     )
   end
 
-  defp list_sequence_tracks_using_asset(project_id, asset_id) do
+  defp list_sequence_tracks_using_assets(project_id, asset_ids) do
     Repo.all(
       from(track in SequenceTrack,
         join: node in FlowNode,
@@ -1370,7 +1352,7 @@ defmodule Storyarn.Assets do
         on: node.flow_id == flow.id,
         left_join: config in SequenceConfig,
         on: config.flow_node_id == node.id,
-        where: flow.project_id == ^project_id and track.asset_id == ^asset_id,
+        where: flow.project_id == ^project_id and track.asset_id in ^asset_ids,
         order_by: [asc: flow.name, asc: config.name, asc: track.kind, asc: track.id],
         select: %{
           id: track.id,
@@ -1385,12 +1367,12 @@ defmodule Storyarn.Assets do
     )
   end
 
-  defp list_sheet_avatars_using_asset(project_id, asset_id) do
+  defp list_sheet_avatars_using_assets(project_id, asset_ids) do
     Repo.all(
       from(sheet in Sheet,
         join: avatar in SheetAvatar,
         on: avatar.sheet_id == sheet.id,
-        where: sheet.project_id == ^project_id and avatar.asset_id == ^asset_id,
+        where: sheet.project_id == ^project_id and avatar.asset_id in ^asset_ids,
         distinct: true,
         order_by: [asc: sheet.name, asc: sheet.id],
         select: %{
@@ -1402,10 +1384,10 @@ defmodule Storyarn.Assets do
     )
   end
 
-  defp list_sheet_banners_using_asset(project_id, asset_id) do
+  defp list_sheet_banners_using_assets(project_id, asset_ids) do
     Repo.all(
       from(sheet in Sheet,
-        where: sheet.project_id == ^project_id and sheet.banner_asset_id == ^asset_id,
+        where: sheet.project_id == ^project_id and sheet.banner_asset_id in ^asset_ids,
         order_by: [asc: sheet.name, asc: sheet.id],
         select: %{
           id: sheet.id,
@@ -1416,12 +1398,12 @@ defmodule Storyarn.Assets do
     )
   end
 
-  defp list_localized_voiceovers_using_asset(project_id, asset_id) do
+  defp list_localized_voiceovers_using_assets(project_id, asset_ids) do
     Repo.all(
       from(text in LocalizedText,
         where:
           text.project_id == ^project_id and
-            text.vo_asset_id == ^asset_id,
+            text.vo_asset_id in ^asset_ids,
         order_by: [asc: text.locale_code, asc: text.id],
         select: %{
           id: text.id,
@@ -1435,7 +1417,7 @@ defmodule Storyarn.Assets do
     )
   end
 
-  defp list_gallery_images_using_asset(project_id, asset_id) do
+  defp list_gallery_images_using_assets(project_id, asset_ids) do
     Repo.all(
       from(gallery_image in BlockGalleryImage,
         join: block in Block,
@@ -1444,7 +1426,7 @@ defmodule Storyarn.Assets do
         on: sheet.id == block.sheet_id,
         where:
           sheet.project_id == ^project_id and
-            gallery_image.asset_id == ^asset_id,
+            gallery_image.asset_id in ^asset_ids,
         order_by: [asc: sheet.name, asc: block.position, asc: gallery_image.position],
         select: %{
           id: gallery_image.id,
@@ -1459,10 +1441,10 @@ defmodule Storyarn.Assets do
     )
   end
 
-  defp list_scenes_using_asset_as_background(project_id, asset_id) do
+  defp list_scenes_using_assets_as_background(project_id, asset_ids) do
     Repo.all(
       from(scene in Scene,
-        where: scene.project_id == ^project_id and scene.background_asset_id == ^asset_id,
+        where: scene.project_id == ^project_id and scene.background_asset_id in ^asset_ids,
         order_by: [asc: scene.name, asc: scene.id],
         select: %{
           id: scene.id,
@@ -1473,12 +1455,12 @@ defmodule Storyarn.Assets do
     )
   end
 
-  defp list_scene_pins_using_asset_as_icon(project_id, asset_id) do
+  defp list_scene_pins_using_assets_as_icon(project_id, asset_ids) do
     Repo.all(
       from(pin in ScenePin,
         join: scene in Scene,
         on: pin.scene_id == scene.id,
-        where: scene.project_id == ^project_id and pin.icon_asset_id == ^asset_id,
+        where: scene.project_id == ^project_id and pin.icon_asset_id in ^asset_ids,
         order_by: [asc: scene.name, asc: pin.label, asc: pin.id],
         select: %{
           pin_id: pin.id,
@@ -1491,12 +1473,12 @@ defmodule Storyarn.Assets do
     )
   end
 
-  defp list_scene_zones_using_asset_as_icon(project_id, asset_id) do
+  defp list_scene_zones_using_assets_as_icon(project_id, asset_ids) do
     Repo.all(
       from(zone in SceneZone,
         join: scene in Scene,
         on: zone.scene_id == scene.id,
-        where: scene.project_id == ^project_id and zone.label_icon_asset_id == ^asset_id,
+        where: scene.project_id == ^project_id and zone.label_icon_asset_id in ^asset_ids,
         order_by: [asc: scene.name, asc: zone.name, asc: zone.id],
         select: %{
           zone_id: zone.id,

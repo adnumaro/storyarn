@@ -179,8 +179,8 @@ msgstr "Item not found."
 msgid "Item permanently deleted."
 msgstr "Item permanently deleted."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:195
 #: lib/storyarn_web/live/project_settings_live/trash.ex:210
+#: lib/storyarn_web/live/project_settings_live/trash.ex:360
 #, elixir-autogen, elixir-format
 msgid "Failed to delete item."
 msgstr "Failed to delete item."
@@ -1243,3 +1243,8 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "This item references unavailable content. If any referenced items are in Trash, restore them first and try again."
 msgstr "This item references unavailable content. If any referenced items are in Trash, restore them first and try again."
+
+#: lib/storyarn_web/live/project_settings_live/trash.ex:354
+#, elixir-autogen, elixir-format
+msgid "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
+msgstr "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."

@@ -179,8 +179,8 @@ msgstr "Elemento no encontrado."
 msgid "Item permanently deleted."
 msgstr "Elemento eliminado permanentemente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:195
 #: lib/storyarn_web/live/project_settings_live/trash.ex:210
+#: lib/storyarn_web/live/project_settings_live/trash.ex:360
 #, elixir-autogen, elixir-format
 msgid "Failed to delete item."
 msgstr "Error al eliminar el elemento."
@@ -1243,3 +1243,8 @@ msgstr "No se ha podido eliminar la snapshot."
 #, elixir-autogen, elixir-format
 msgid "This item references unavailable content. If any referenced items are in Trash, restore them first and try again."
 msgstr "Este elemento hace referencia a contenido no disponible. Si hay elementos referenciados en la Papelera, restáuralos primero y vuelve a intentarlo."
+
+#: lib/storyarn_web/live/project_settings_live/trash.ex:354
+#, elixir-autogen, elixir-format
+msgid "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
+msgstr "Este recurso todavía está referenciado por otro contenido. Elimina esas referencias o borra permanentemente de la Papelera los elementos que lo referencian y vuelve a intentarlo."

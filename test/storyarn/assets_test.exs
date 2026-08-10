@@ -671,15 +671,56 @@ defmodule Storyarn.AssetsTest do
       variant_sheet = sheet_fixture(project, %{name: "Variant usage", banner_asset_id: variant.id})
       _unrelated_sheet = sheet_fixture(project, %{name: "Unrelated usage", banner_asset_id: unrelated.id})
 
-      usages = Assets.get_asset_family_usages(project.id, original.id)
+      original_usages = Assets.get_asset_family_usages(project.id, original.id)
 
-      assert MapSet.new(usages.sheet_banners, & &1.id) ==
+      assert MapSet.new(original_usages.sheet_banners, & &1.id) ==
                MapSet.new([original_sheet.id, variant_sheet.id])
 
-      assert MapSet.new(usages.asset_metadata_links, & &1.id) ==
-               MapSet.new([original.id, variant.id])
+      assert [%{id: variant_id}] = original_usages.asset_metadata_links
+      assert variant_id == variant.id
+      refute Enum.any?(original_usages.asset_metadata_links, &(&1.id == original.id))
 
-      assert usages == Assets.get_asset_family_usages(project.id, variant.id)
+      variant_usages = Assets.get_asset_family_usages(project.id, variant.id)
+
+      assert [%{id: original_id}] = variant_usages.asset_metadata_links
+      assert original_id == original.id
+      refute Enum.any?(variant_usages.asset_metadata_links, &(&1.id == variant.id))
+
+      assert Map.delete(original_usages, :asset_metadata_links) ==
+               Map.delete(variant_usages, :asset_metadata_links)
+    end
+
+    test "loads a three-member asset family's usages with a fixed query budget", %{
+      project: project,
+      user: user
+    } do
+      original = image_asset_fixture(project, user, %{filename: "family-budget-original.png"})
+      web_variant = image_asset_fixture(project, user, %{filename: "family-budget-web.webp"})
+      profile_variant = image_asset_fixture(project, user, %{filename: "family-budget-profile.webp"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => web_variant.id,
+                   "variant_asset_ids" => %{"avatar" => profile_variant.id}
+                 }
+               })
+
+      for variant <- [web_variant, profile_variant] do
+        assert {:ok, _variant} =
+                 Assets.update_asset(variant, %{
+                   metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+                 })
+      end
+
+      {usages, queries} =
+        capture_repo_queries(fn -> Assets.get_asset_family_usages(project.id, original.id) end)
+
+      assert length(queries) == 12
+      refute Enum.any?(usages.asset_metadata_links, &(&1.id == original.id))
+
+      assert MapSet.new(usages.asset_metadata_links, & &1.id) ==
+               MapSet.new([web_variant.id, profile_variant.id])
     end
 
     test "returns sequence visual layers, including layers owned by trashed nodes", %{
@@ -2149,6 +2190,36 @@ defmodule Storyarn.AssetsTest do
         File.rm(tmp_path_x)
         File.rm(tmp_path_y)
       end
+    end
+  end
+
+  defp capture_repo_queries(fun) when is_function(fun, 0) do
+    handler_id = "asset-family-query-budget-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid, do: send(pid, {ref, query})
+        end,
+        {test_pid, marker}
+      )
+
+    try do
+      {fun.(), drain_repo_queries(marker)}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp drain_repo_queries(marker, queries \\ []) do
+    receive do
+      {^marker, query} -> drain_repo_queries(marker, [query | queries])
+    after
+      0 -> Enum.reverse(queries)
     end
   end
 

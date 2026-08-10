@@ -191,8 +191,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
        |> reload_trashed_items()
        |> put_flash(:info, dgettext("projects", "Item permanently deleted."))}
     else
-      _reason ->
-        {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to delete item."))}
+      reason ->
+        {:noreply, put_flash(socket, :error, asset_purge_error_message(reason))}
     end
   end
 
@@ -347,6 +347,17 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
       "This item references unavailable content. If any referenced items are in Trash, restore them first and try again."
     )
   end
+
+  defp asset_purge_error_message({:error, reason}), do: asset_purge_error_message(reason)
+
+  defp asset_purge_error_message(:asset_still_referenced) do
+    dgettext(
+      "projects",
+      "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
+    )
+  end
+
+  defp asset_purge_error_message(_reason), do: dgettext("projects", "Failed to delete item.")
 
   defp permanently_delete_item(%{type: :sheet, entity: sheet}), do: Sheets.permanently_delete_sheet(sheet)
   defp permanently_delete_item(%{type: :flow, entity: flow}), do: Flows.hard_delete_flow(flow)
