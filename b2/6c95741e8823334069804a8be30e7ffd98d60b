@@ -1,0 +1,67 @@
+assets/app/test/live/project/settings/ProjectSettingsTrash.test.ts
+  s_c2ae682cd97119::t_9804beceea1eb1 120-156
+lib/storyarn/projects/project_trash.ex
+  s_c2ae682cd97119::t_3fb9fe5847908a 8,458,461,466-472,479-481
+  s_c2ae682cd97119::t_9fe49bddce4301 482-485
+lib/storyarn/projects.ex
+  s_c2ae682cd97119::t_6ddeab316555a8 180-184
+  s_c2ae682cd97119::t_2c39a406d05251 16
+test/storyarn/projects/soft_delete_test.exs
+  s_c2ae682cd97119::t_61c0ac66e06f8a 16,139-183,373-406
+lib/storyarn/billing/subscription_crud.ex
+  s_c2ae682cd97119::t_3fb9fe5847908a 49-73
+test/storyarn/billing/subscription_crud_test.exs
+  s_c2ae682cd97119::t_61c0ac66e06f8a 4,9,12,90-101,107-116,118-131,147-180
+  s_c2ae682cd97119::t_5e09a452cf0bb7 35,37,71,73,102-106,117
+lib/storyarn/workers/trash_retention_worker.ex
+  s_c2ae682cd97119::t_6ddeab316555a8 99
+lib/storyarn/billing.ex
+  s_c2ae682cd97119::t_3fb9fe5847908a 18,91
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_c2ae682cd97119::t_2e2dcf8e2ae133 330-345,348
+  s_c2ae682cd97119::t_b54b019b21fa81 7,143-149,170-171,346-347,349-350
+assets/app/live/project/settings/ProjectSettingsTrash.vue
+  s_c2ae682cd97119::t_9804beceea1eb1 385
+lib/storyarn/live_vue_encoders.ex
+  s_c2ae682cd97119::t_9804beceea1eb1 23-25
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_c2ae682cd97119::t_76f8e83f92d0d4 164-165,1242,1244-1245
+  s_c2ae682cd97119::t_6738f3f8a3fd6a 137,142,147,157-158,163,170-171,176-177,182-183,188,1241,1243
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_c2ae682cd97119::t_76f8e83f92d0d4 164-165,1242,1244-1245
+  s_c2ae682cd97119::t_6738f3f8a3fd6a 137,142,147,157-158,163,170-171,176-177,182-183,188,1241,1243
+test/storyarn/live_vue_encoders_test.exs
+  s_c2ae682cd97119::t_9804beceea1eb1 1-27
+test/storyarn_web/live/project_settings_live/trash_test.exs
+  s_c2ae682cd97119::t_b54b019b21fa81 130-131,207-229,231,333-354
+  s_c2ae682cd97119::t_2e2dcf8e2ae133 206,230,232-278,355
+  s_c2ae682cd97119::t_c334e8522c8df5 279
+  s_c2ae682cd97119::t_4d7a7e44af3e18 356
+test/storyarn/workers/trash_retention_worker_test.exs
+  s_c2ae682cd97119::t_79f2fcbf41e15c 107,132,151
+  s_c2ae682cd97119::t_6ddeab316555a8 15,127,144,158
+priv/gettext/assets.pot
+  s_c2ae682cd97119::t_d3e38a115bce5b 14,24
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_c2ae682cd97119::t_475ef169c70aeb 14,24
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_c2ae682cd97119::t_b326a905a33f16 14,24
+priv/gettext/projects.pot
+  s_c2ae682cd97119::t_a8214f00a1c5e2 137,142,147,157-158,163-165,170-171,176-177,182-183,188,1241-1245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b26c95741e8823334069804a8be30e7ffd98d60b",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
