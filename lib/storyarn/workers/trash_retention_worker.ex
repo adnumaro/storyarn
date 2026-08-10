@@ -21,8 +21,6 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
 
   use Oban.Worker, queue: :default, max_attempts: 3
 
-  alias Storyarn.Billing.Plan
-  alias Storyarn.Billing.SubscriptionCrud
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
@@ -66,6 +64,9 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
   defp process_item(item, now) do
     if expired?(item.deleted_at, item, now) do
       case permanently_delete_item(item) do
+        {:ok, :already_purged} ->
+          :ok
+
         {:ok, _} ->
           Logger.info("Permanently deleted #{item.type} #{item.id}")
 
@@ -78,19 +79,9 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
       Logger.error("Trash retention failed for #{item.type} #{item.id}: #{Exception.message(e)}")
   end
 
-  defp expired?(deleted_at, item, now) do
-    DateTime.diff(now, deleted_at, :hour) >= retention_hours_for(item)
-  end
+  defp expired?(_deleted_at, %{purge_at: %DateTime{} = purge_at}, now), do: DateTime.compare(now, purge_at) in [:eq, :gt]
 
-  defp retention_hours_for(%{project_settings: settings, workspace_id: workspace_id}) do
-    case Map.get(settings || %{}, "trash_retention_hours") do
-      hours when is_integer(hours) and hours > 0 ->
-        hours
-
-      _ ->
-        workspace_id |> SubscriptionCrud.plan_for_workspace_id() |> Plan.retention_hours()
-    end
-  end
+  defp expired?(_deleted_at, _item, _now), do: false
 
   defp permanently_delete_item(%{type: "sheet"} = item) do
     Projects.delete_retention_candidate(item, &Sheets.permanently_delete_sheet/1)
@@ -102,6 +93,13 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
 
   defp permanently_delete_item(%{type: "scene"} = item) do
     Projects.delete_retention_candidate(item, &Scenes.hard_delete_scene/1)
+  end
+
+  defp permanently_delete_item(%{type: "asset"} = item) do
+    case Projects.purge_asset_trash_candidate(item, nil) do
+      {:error, :asset_not_found} -> {:ok, :already_purged}
+      result -> result
+    end
   end
 
   defp enabled? do

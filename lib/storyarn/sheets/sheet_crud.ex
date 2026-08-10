@@ -3,6 +3,7 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Localization
@@ -185,6 +186,13 @@ defmodule Storyarn.Sheets.SheetCrud do
 
         _normalized_references =
           lock_and_normalize_sheet_references!(project_id, locked_sheet, %{})
+
+        case Assets.lock_active_asset_references_for_restore(project_id,
+               sheet_ids: [locked_sheet.id]
+             ) do
+          :ok -> :ok
+          {:error, reason} -> Repo.rollback(reason)
+        end
 
         restored_sheet =
           case locked_sheet |> Sheet.restore_changeset() |> Repo.update() do

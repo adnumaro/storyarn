@@ -13,6 +13,7 @@ defmodule Storyarn.Projects do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
+  alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Dashboard
   alias Storyarn.Projects.Invitations
   alias Storyarn.Projects.Memberships
@@ -175,6 +176,11 @@ defmodule Storyarn.Projects do
 
   @doc false
   defdelegate delete_retention_candidate(item, delete_fun), to: ProjectTrash
+
+  @doc false
+  @spec purge_asset_trash_candidate(map(), pos_integer() | nil) ::
+          {:ok, Asset.t()} | {:error, term()}
+  defdelegate purge_asset_trash_candidate(item, actor_id), to: ProjectTrash
 
   # =============================================================================
   # Memberships

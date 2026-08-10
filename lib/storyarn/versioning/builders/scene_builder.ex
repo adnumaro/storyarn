@@ -863,7 +863,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
       asset_owners =
         from(asset in Asset,
-          where: asset.id in ^Enum.sort(references.asset_ids),
+          where:
+            asset.id in ^Enum.sort(references.asset_ids) and
+              is_nil(asset.deleted_at),
           order_by: [asc: asset.id],
           lock: "FOR UPDATE",
           select: {asset.id, asset.project_id}
@@ -1921,7 +1923,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp validate_scene_asset_references(repo, asset_ids, project_id, snapshot) do
     owners =
       Asset
-      |> where([asset], asset.id in ^asset_ids)
+      |> where([asset], asset.id in ^asset_ids and is_nil(asset.deleted_at))
       |> select([asset], {asset.id, asset.project_id})
       |> repo.all()
       |> Map.new()

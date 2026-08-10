@@ -22,7 +22,7 @@ defmodule Storyarn.Sheets.SheetAvatar do
     field :is_default, :boolean, default: false
 
     belongs_to :sheet, Sheet
-    belongs_to :asset, Asset
+    belongs_to :asset, Asset, where: [deleted_at: nil]
 
     timestamps(type: :utc_datetime)
   end

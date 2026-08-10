@@ -20,7 +20,9 @@ defmodule Storyarn.LiveVueEncoders do
   Protocol.derive(LiveVue.Encoder, Storyarn.Accounts.UserToken)
 
   # Assets
-  Protocol.derive(LiveVue.Encoder, Storyarn.Assets.Asset)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Assets.Asset,
+    except: [:deleted_at, :deleted_by_id, :deleted_by, :deletion_reason, :deletion_generation]
+  )
 
   # Billing
   Protocol.derive(LiveVue.Encoder, Storyarn.Billing.Subscription)

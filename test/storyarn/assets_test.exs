@@ -262,7 +262,10 @@ defmodule Storyarn.AssetsTest do
       assert Repo.reload!(asset).metadata == asset.metadata
     end
 
-    test "delete_asset/1 deletes an asset", %{project: project, user: user} do
+    test "delete_asset/1 keeps its compatibility surface but moves the asset to trash", %{
+      project: project,
+      user: user
+    } do
       asset = asset_fixture(project, user)
       thumbnail_key = Assets.thumbnail_key(asset.key)
       {:ok, asset} = Assets.update_asset(asset, %{metadata: %{"thumbnail_key" => thumbnail_key}})
@@ -270,16 +273,16 @@ defmodule Storyarn.AssetsTest do
 
       assert {:ok, _} = Assets.delete_asset(asset)
       assert Assets.get_asset(project.id, asset.id) == nil
-
-      assert Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
-               Enum.sort(request.storage_keys) == Enum.sort([asset.key, thumbnail_key])
-             end)
+      assert trashed_asset = Repo.get!(Asset, asset.id)
+      assert trashed_asset.deleted_at
+      assert trashed_asset.metadata["thumbnail_key"] == thumbnail_key
+      assert Repo.all(StorageCleanupRequest) == []
 
       assert_receive {:dashboard_invalidate, :all}
       refute_receive {:dashboard_invalidate, :all}, 10
     end
 
-    test "delete_asset/1 derives thumbnail cleanup from the owned asset key", %{
+    test "purge derives thumbnail cleanup from the owned asset key", %{
       project: project,
       user: user
     } do
@@ -293,7 +296,15 @@ defmodule Storyarn.AssetsTest do
           metadata: %{"thumbnail_key" => hostile_thumbnail_key}
         })
 
-      assert {:ok, _deleted_asset} = Assets.delete_asset(asset)
+      assert {:ok, trashed_asset} = Assets.delete_asset(asset)
+
+      assert {:ok, _deleted_asset} =
+               Assets.purge_trashed_asset(
+                 project.id,
+                 asset.id,
+                 trashed_asset.deletion_generation,
+                 user.id
+               )
 
       expected_keys = Enum.sort([asset.key, Assets.thumbnail_key(asset.key)])
 
@@ -322,14 +333,17 @@ defmodule Storyarn.AssetsTest do
       refute_receive {:dashboard_invalidate, :all}, 10
     end
 
-    test "delete_asset/1 removes sheet avatar references before deleting", %{project: project, user: user} do
+    test "delete_asset/1 refuses to hide a sheet avatar still used by active content", %{
+      project: project,
+      user: user
+    } do
       asset = image_asset_fixture(project, user)
       sheet = sheet_fixture(project, %{name: "Hero"})
       {:ok, avatar} = Storyarn.Sheets.add_avatar(sheet, asset.id, %{is_default: true})
 
-      assert {:ok, _} = Assets.delete_asset(asset)
-      assert Assets.get_asset(project.id, asset.id) == nil
-      assert Repo.get(SheetAvatar, avatar.id) == nil
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
+      assert Assets.get_asset(project.id, asset.id)
+      assert Repo.get(SheetAvatar, avatar.id)
     end
 
     test "delete_asset/1 rolls back every avatar deletion when one is referenced", %{
@@ -352,17 +366,17 @@ defmodule Storyarn.AssetsTest do
           }
         })
 
-      assert {:error, {:avatar_in_use, avatar_id, {:referenced_by_flow_nodes, 1}}} =
-               Assets.delete_asset(asset)
-
-      assert avatar_id == referenced_avatar.id
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
       assert Assets.get_asset(project.id, asset.id)
       assert Repo.get(SheetAvatar, referenced_avatar.id)
       assert Repo.get(SheetAvatar, other_avatar.id)
       assert Repo.get!(FlowNode, node.id).data["avatar_id"] == referenced_avatar.id
     end
 
-    test "delete_asset/1 clears flow node audio references", %{project: project, user: user} do
+    test "delete_asset/1 preserves and rejects active flow audio references", %{
+      project: project,
+      user: user
+    } do
       asset = audio_asset_fixture(project, user)
       flow = flow_fixture(project)
 
@@ -372,13 +386,13 @@ defmodule Storyarn.AssetsTest do
           data: %{"audio_asset_id" => asset.id, "text" => "Hello"}
         })
 
-      assert {:ok, _} = Assets.delete_asset(asset)
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
 
       refreshed = Repo.get!(FlowNode, node.id)
-      refute Map.has_key?(refreshed.data, "audio_asset_id")
+      assert refreshed.data["audio_asset_id"] == asset.id
     end
 
-    test "delete_asset/1 cascades visual layers and gallery entries but nilifies zone icons", %{
+    test "delete_asset/1 preserves and rejects active structured references", %{
       project: project,
       user: user
     } do
@@ -405,14 +419,14 @@ defmodule Storyarn.AssetsTest do
           "label_icon_asset_id" => asset.id
         })
 
-      assert {:ok, _asset} = Assets.delete_asset(asset)
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
 
-      refute Repo.get(Storyarn.Flows.SequenceVisualLayer, layer.id)
-      refute Repo.get(Storyarn.Sheets.BlockGalleryImage, gallery_image.id)
-      assert Repo.reload!(zone).label_icon_asset_id == nil
+      assert Repo.get(Storyarn.Flows.SequenceVisualLayer, layer.id)
+      assert Repo.get(Storyarn.Sheets.BlockGalleryImage, gallery_image.id)
+      assert Repo.reload!(zone).label_icon_asset_id == asset.id
     end
 
-    test "delete_asset/1 keeps sequence track slots and nilifies their asset", %{
+    test "delete_asset/1 preserves and rejects active sequence tracks", %{
       project: project,
       user: user
     } do
@@ -423,12 +437,12 @@ defmodule Storyarn.AssetsTest do
       {:ok, track} =
         Storyarn.Flows.upsert_sequence_track(sequence.id, "music", %{"asset_id" => asset.id})
 
-      assert {:ok, _asset} = Assets.delete_asset(asset)
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
 
-      assert Repo.reload!(track).asset_id == nil
+      assert Repo.reload!(track).asset_id == asset.id
     end
 
-    test "delete_asset/1 clears localized voice-over references and downgrades their status", %{
+    test "delete_asset/1 preserves and rejects active localized voice-over references", %{
       project: project,
       user: user
     } do
@@ -441,15 +455,15 @@ defmodule Storyarn.AssetsTest do
                  vo_status: "recorded"
                })
 
-      assert {:ok, _asset} = Assets.delete_asset(asset)
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
 
       refreshed = Repo.reload!(voiced_text)
-      assert refreshed.vo_asset_id == nil
-      assert refreshed.vo_status == "needed"
-      assert refreshed.lock_version == voiced_text.lock_version + 1
+      assert refreshed.vo_asset_id == asset.id
+      assert refreshed.vo_status == "recorded"
+      assert refreshed.lock_version == voiced_text.lock_version
     end
 
-    test "delete_asset/1 clears optimized-image links and preserves unrelated variants", %{
+    test "delete_asset/1 trashes a complete optimized-image family without rewriting metadata", %{
       project: project,
       user: user
     } do
@@ -477,18 +491,17 @@ defmodule Storyarn.AssetsTest do
       assert {:ok, _deleted} = Assets.delete_asset(variant)
 
       refreshed_original = Repo.reload!(original)
+      refreshed_variant = Repo.reload!(variant)
+      refreshed_other_variant = Repo.reload!(other_variant)
 
-      refute Map.has_key?(refreshed_original.metadata, "web_asset_id")
-      refute Map.has_key?(refreshed_original.metadata, "web_url")
-
-      assert refreshed_original.metadata["variant_asset_ids"] == %{
-               "banner" => other_variant.id
-             }
-
-      assert Assets.display_url(refreshed_original) == refreshed_original.url
+      assert refreshed_original.deleted_at
+      assert refreshed_variant.deleted_at
+      assert refreshed_other_variant.deleted_at
+      assert refreshed_original.metadata == original.metadata
+      assert refreshed_variant.metadata["original_asset_id"] == original.id
     end
 
-    test "delete_asset/1 clears a variant's inverse original link", %{
+    test "delete_asset/1 preserves inverse links while trashing the family", %{
       project: project,
       user: user
     } do
@@ -502,7 +515,9 @@ defmodule Storyarn.AssetsTest do
 
       assert {:ok, _deleted} = Assets.delete_asset(original)
 
-      refute Map.has_key?(Repo.reload!(variant).metadata, "original_asset_id")
+      assert Repo.reload!(original).deleted_at
+      assert Repo.reload!(variant).deleted_at
+      assert Repo.reload!(variant).metadata["original_asset_id"] == original.id
     end
 
     test "change_asset/2 returns a changeset", %{project: project, user: user} do
@@ -629,6 +644,83 @@ defmodule Storyarn.AssetsTest do
              ] = Assets.get_asset_usages(project.id, original.id).asset_metadata_links
 
       assert variant_id == variant.id
+    end
+
+    test "returns deduplicated usages for every active member of an asset family", %{
+      project: project,
+      user: user
+    } do
+      original = image_asset_fixture(project, user, %{filename: "family-original.png"})
+      variant = image_asset_fixture(project, user, %{filename: "family-variant.webp"})
+      unrelated = image_asset_fixture(project, user, %{filename: "unrelated.png"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => variant.id,
+                   "variant_asset_ids" => %{"avatar" => variant.id}
+                 }
+               })
+
+      assert {:ok, variant} =
+               Assets.update_asset(variant, %{
+                 metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+               })
+
+      original_sheet = sheet_fixture(project, %{name: "Original usage", banner_asset_id: original.id})
+      variant_sheet = sheet_fixture(project, %{name: "Variant usage", banner_asset_id: variant.id})
+      _unrelated_sheet = sheet_fixture(project, %{name: "Unrelated usage", banner_asset_id: unrelated.id})
+
+      original_usages = Assets.get_asset_family_usages(project.id, original.id)
+
+      assert MapSet.new(original_usages.sheet_banners, & &1.id) ==
+               MapSet.new([original_sheet.id, variant_sheet.id])
+
+      assert [%{id: variant_id}] = original_usages.asset_metadata_links
+      assert variant_id == variant.id
+      refute Enum.any?(original_usages.asset_metadata_links, &(&1.id == original.id))
+
+      variant_usages = Assets.get_asset_family_usages(project.id, variant.id)
+
+      assert [%{id: original_id}] = variant_usages.asset_metadata_links
+      assert original_id == original.id
+      refute Enum.any?(variant_usages.asset_metadata_links, &(&1.id == variant.id))
+
+      assert Map.delete(original_usages, :asset_metadata_links) ==
+               Map.delete(variant_usages, :asset_metadata_links)
+    end
+
+    test "loads a three-member asset family's usages with a fixed query budget", %{
+      project: project,
+      user: user
+    } do
+      original = image_asset_fixture(project, user, %{filename: "family-budget-original.png"})
+      web_variant = image_asset_fixture(project, user, %{filename: "family-budget-web.webp"})
+      profile_variant = image_asset_fixture(project, user, %{filename: "family-budget-profile.webp"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => web_variant.id,
+                   "variant_asset_ids" => %{"avatar" => profile_variant.id}
+                 }
+               })
+
+      for variant <- [web_variant, profile_variant] do
+        assert {:ok, _variant} =
+                 Assets.update_asset(variant, %{
+                   metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+                 })
+      end
+
+      {usages, queries} =
+        capture_repo_queries(fn -> Assets.get_asset_family_usages(project.id, original.id) end)
+
+      assert length(queries) == 12
+      refute Enum.any?(usages.asset_metadata_links, &(&1.id == original.id))
+
+      assert MapSet.new(usages.asset_metadata_links, & &1.id) ==
+               MapSet.new([web_variant.id, profile_variant.id])
     end
 
     test "returns sequence visual layers, including layers owned by trashed nodes", %{
@@ -1107,6 +1199,38 @@ defmodule Storyarn.AssetsTest do
                end)
 
       assert Assets.count_assets(project.id) == 0
+    end
+
+    test "failed family validation does not consume import capacity" do
+      project = project_fixture()
+      foreign_project = project_fixture()
+      foreign_asset = asset_fixture(foreign_project)
+      capacity_bytes = 5000
+
+      invalid_attrs = %{
+        filename: "invalid-family.png",
+        content_type: "image/png",
+        size: capacity_bytes,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/invalid-family.png",
+        metadata: %{"original_asset_id" => foreign_asset.id}
+      }
+
+      valid_attrs = %{
+        filename: "valid-after-rejection.png",
+        content_type: "image/png",
+        size: capacity_bytes,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/valid-after-rejection.png"
+      }
+
+      assert {:ok, {{:error, :asset_family_identity_invalid}, {:ok, inserted}}} =
+               Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+                 Assets.with_import_capacity(project, capacity_bytes, fn ->
+                   {:ok, {Assets.import_asset(project, invalid_attrs), Assets.import_asset(project, valid_attrs)}}
+                 end)
+               end)
+
+      assert inserted.filename == "valid-after-rejection.png"
+      assert Assets.list_asset_ids(project.id) == [inserted.id]
     end
   end
 
@@ -2066,6 +2190,36 @@ defmodule Storyarn.AssetsTest do
         File.rm(tmp_path_x)
         File.rm(tmp_path_y)
       end
+    end
+  end
+
+  defp capture_repo_queries(fun) when is_function(fun, 0) do
+    handler_id = "asset-family-query-budget-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid, do: send(pid, {ref, query})
+        end,
+        {test_pid, marker}
+      )
+
+    try do
+      {fun.(), drain_repo_queries(marker)}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp drain_repo_queries(marker, queries \\ []) do
+    receive do
+      {^marker, query} -> drain_repo_queries(marker, [query | queries])
+    after
+      0 -> Enum.reverse(queries)
     end
   end
 

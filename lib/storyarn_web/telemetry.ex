@@ -121,6 +121,12 @@ defmodule StoryarnWeb.Telemetry do
         unit: {:native, :millisecond}
       ),
 
+      # Recoverable asset-trash lifecycle. IDs and filenames intentionally
+      # remain outside metric tags.
+      sum("storyarn.assets.trash.stop.count", tags: [:action, :outcome]),
+      sum("storyarn.assets.storage_compensation.persisted_retry.count"),
+      sum("storyarn.assets.storage_compensation.persisted_retry.failed_count"),
+
       # Product-accounted storage and provider footprint are separate signals.
       # Workspace IDs remain event metadata rather than metric tags to avoid
       # unbounded cardinality in reporters.

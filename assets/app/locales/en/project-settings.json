@@ -117,13 +117,14 @@
     },
     "snapshots": {
       "storage_heading": "Storage counted toward your plan",
-      "storage_description": "Assets, retained snapshots, and active reservations share the workspace allowance.",
+      "storage_description": "Current assets, recoverable asset trash, retained snapshots, and active reservations share the workspace allowance.",
       "storage_progress_label": "Workspace storage usage: {percent}",
       "storage_remaining": "Remaining capacity",
       "storage_reservations": "Active reservations",
-      "storage_counted_note": "Retained project assets, including assets held by recoverable deleted projects, are counted with retained snapshots and active reservations. Provider replication, orphaned objects, and cleanup residue are excluded from plan quota.",
+      "storage_counted_note": "Current project assets, including assets held by recoverable deleted projects, and recoverable asset trash are counted with retained snapshots and active reservations. Provider replication, orphaned objects, and cleanup residue are excluded from plan quota.",
       "storage_breakdown": {
-        "current_assets": "Retained project assets",
+        "current_assets": "Current project assets",
+        "asset_trash": "Recoverable asset trash",
         "full_snapshots": "Full snapshots",
         "linked_snapshots": "Linked snapshot payloads"
       },
@@ -237,10 +238,14 @@
       "search_placeholder": "Search deleted items...",
       "empty_trash": "Empty trash",
       "empty_title": "Trash is empty",
-      "empty_description": "Deleted sheets, flows, and scenes will appear here.",
+      "empty_description": "Deleted sheets, flows, scenes, and assets will appear here.",
       "no_results_title": "No deleted items found",
       "no_results_description": "Adjust the search or type filter to find another item.",
       "deleted_label": "Deleted {time}",
+      "deleted_by_user": "Deleted by a user",
+      "deleted_by_snapshot_restore": "Moved to trash by snapshot restore",
+      "deleted_by_system": "Deleted automatically",
+      "recoverable_until": "Recoverable until {date}",
       "just_now": "just now",
       "untitled": "Untitled",
       "filters": {
@@ -249,7 +254,8 @@
       "types": {
         "sheet": "Sheet",
         "flow": "Flow",
-        "scene": "Scene"
+        "scene": "Scene",
+        "asset": "Asset"
       },
       "restore": "Restore",
       "page_of": "Page {page} of {total}",
@@ -282,14 +288,15 @@
       "workspace_limits_description": "These quotas are shared by every project in the workspace.",
       "project_storage_note": "This project accounts for {storage}: {assetStorage} across {assets} assets, {snapshots} in snapshots, and {reservations} in active reservations.",
       "storage_progress_label": "Workspace storage usage: {percent}",
-      "storage_counted_note": "Storage shown here is counted toward the plan. Retained project assets include assets held by recoverable deleted projects. Provider replication, orphaned objects, and cleanup residue are excluded from plan quota and are not shown here.",
+      "storage_counted_note": "Storage shown here is counted toward the plan. Current project assets include assets held by recoverable deleted projects; recoverable asset trash is shown separately. Provider replication, orphaned objects, and cleanup residue are excluded from plan quota and are not shown here.",
       "storage_summary": {
         "counted": "Counted storage",
         "remaining": "Remaining capacity",
         "reservations": "Active reservations"
       },
       "storage_breakdown": {
-        "current_assets": "Retained project assets",
+        "current_assets": "Current project assets",
+        "asset_trash": "Recoverable asset trash",
         "full_snapshots": "Full snapshots",
         "linked_snapshots": "Linked snapshot payloads",
         "reservations": "Reservations"

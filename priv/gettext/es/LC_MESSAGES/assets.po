@@ -11,20 +11,20 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/asset_live/index.ex:343
+#: lib/storyarn_web/live/asset_live/index.ex:346
 #, elixir-autogen, elixir-format
-msgid "Asset deleted."
-msgstr "Recurso eliminado."
+msgid "Asset moved to trash."
+msgstr "Recurso movido a la papelera."
 
 #: lib/storyarn_web/live/asset_live/index.ex:307
 #, elixir-autogen, elixir-format
 msgid "Asset uploaded successfully."
 msgstr "Perfil actualizado exitosamente."
 
-#: lib/storyarn_web/live/asset_live/index.ex:346
+#: lib/storyarn_web/live/asset_live/index.ex:349
 #, elixir-autogen, elixir-format
-msgid "Could not delete asset."
-msgstr "No se pudo eliminar el recurso."
+msgid "Could not move asset to trash."
+msgstr "No se pudo mover el recurso a la papelera."
 
 #: lib/storyarn_web/live/asset_live/index.ex:323
 #, elixir-autogen, elixir-format

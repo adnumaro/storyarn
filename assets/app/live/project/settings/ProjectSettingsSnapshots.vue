@@ -512,7 +512,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
           "
         />
 
-        <div class="mt-4 grid gap-2 sm:grid-cols-3">
+        <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <div class="rounded-md border border-border/60 bg-background/70 p-3">
             <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Image class="size-3.5" aria-hidden="true" />
@@ -520,6 +520,15 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
             </div>
             <div class="mt-1 font-medium tabular-nums">
               {{ formatBytes(storageUsage.currentAssetsBytes, locale) }}
+            </div>
+          </div>
+          <div class="rounded-md border border-border/60 bg-background/70 p-3">
+            <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Trash2 class="size-3.5" aria-hidden="true" />
+              {{ $t("project_settings.snapshots.storage_breakdown.asset_trash") }}
+            </div>
+            <div class="mt-1 font-medium tabular-nums">
+              {{ formatBytes(storageUsage.assetTrashBytes, locale) }}
             </div>
           </div>
           <div class="rounded-md border border-border/60 bg-background/70 p-3">

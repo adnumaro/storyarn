@@ -1,9 +1,17 @@
 defmodule Storyarn.WorkspacesTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query, warn: false
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
+  import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Repo
   alias Storyarn.Workspaces
   alias Storyarn.Workspaces.WorkspaceMembership
 
@@ -118,6 +126,34 @@ defmodule Storyarn.WorkspacesTest do
 
       assert {:ok, _} = Workspaces.delete_workspace(workspace)
       assert_raise Ecto.NoResultsError, fn -> Workspaces.get_workspace!(workspace.id) end
+    end
+
+    test "delete_workspace/1 hands off asset keys before cascading projects" do
+      user = user_fixture()
+      workspace = workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+
+      active =
+        image_asset_fixture(project, user, %{
+          blob_hash: String.duplicate("b", 64),
+          metadata: %{"thumbnail_key" => Assets.thumbnail_key(Assets.generate_key(project, "active.png"))}
+        })
+
+      trashed = image_asset_fixture(project, user)
+      assert {:ok, _trashed} = Assets.move_asset_to_trash(project.id, trashed.id, user.id)
+
+      assert {:ok, _workspace} = Workspaces.delete_workspace(workspace)
+
+      assert Repo.aggregate(from(asset in Asset, where: asset.project_id == ^project.id), :count) == 0
+      assert [request] = Repo.all(StorageCleanupRequest)
+
+      assert MapSet.new(request.storage_keys) ==
+               MapSet.new([
+                 active.key,
+                 Assets.thumbnail_key(active.key),
+                 BlobStore.blob_key(project.id, active.blob_hash, "png"),
+                 trashed.key
+               ])
     end
 
     test "generate_slug/1 creates URL-safe slug" do

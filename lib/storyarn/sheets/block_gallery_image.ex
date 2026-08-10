@@ -19,7 +19,7 @@ defmodule Storyarn.Sheets.BlockGalleryImage do
     field :position, :integer, default: 0
 
     belongs_to :block, Block
-    belongs_to :asset, Asset
+    belongs_to :asset, Asset, where: [deleted_at: nil]
 
     timestamps(type: :utc_datetime)
   end

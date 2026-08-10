@@ -7,7 +7,8 @@ import type { WorkspaceStorageUsage } from "../../../../shared/utils/storage-acc
 import { createMockLive, setTestLocale } from "../../../setup";
 
 const storageUsage = {
-  currentAssetsBytes: String(640 * 1024),
+  currentAssetsBytes: String(512 * 1024),
+  assetTrashBytes: String(128 * 1024),
   fullSnapshotsBytes: String(256 * 1024),
   linkedSnapshotsBytes: String(64 * 1024),
   activeReservationsBytes: String(64 * 1024),
@@ -120,8 +121,9 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(text).toContain("Storage counted toward your plan");
     expect(text).toContain("1 MB");
     expect(text).toContain("25%");
-    expect(text).toContain("640 KB");
-    expect(text).not.toContain("Recoverable asset trash");
+    expect(text).toContain("512 KB");
+    expect(text).toContain("Recoverable asset trash");
+    expect(text).toContain("128 KB");
     expect(text).toContain("256 KB");
     expect(text).toContain("64 KB");
     expect(text).toContain("3 MB");

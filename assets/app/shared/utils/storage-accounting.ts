@@ -9,6 +9,7 @@ export type ByteCount = string;
 
 export interface WorkspaceStorageUsage {
   currentAssetsBytes: ByteCount;
+  assetTrashBytes: ByteCount;
   fullSnapshotsBytes: ByteCount;
   linkedSnapshotsBytes: ByteCount;
   activeReservationsBytes: ByteCount;

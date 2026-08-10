@@ -3,6 +3,7 @@ defmodule Storyarn.Flows.FlowCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows.EntityTrashRef
@@ -667,6 +668,10 @@ defmodule Storyarn.Flows.FlowCrud do
 
     with :ok <- validate_no_pending_node_trash_refs(restored_nodes),
          :ok <- validate_flow_trash_refs(trash_refs),
+         :ok <-
+           Assets.lock_active_asset_references_for_restore(project_id,
+             flow_node_ids: Enum.map(restored_nodes, & &1.id)
+           ),
          {:ok, source_nodes} <-
            lock_flow_trash_source_rows(trash_refs, project_id, flow_id),
          :ok <- emit_restore_sources_locked(flow_id, trash_refs, source_nodes),

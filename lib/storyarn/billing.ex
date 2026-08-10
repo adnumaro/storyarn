@@ -15,6 +15,7 @@ defmodule Storyarn.Billing do
   defdelegate list_plans(), to: Plan, as: :all
   defdelegate default_plan(), to: Plan
   defdelegate plan_limit(plan_key, resource), to: Plan, as: :limit
+  defdelegate plan_retention_hours(plan_key), to: Plan, as: :retention_hours
 
   # Usage counting (internal, exposed for testing)
   defdelegate count_project_items(project_id), to: Limits
@@ -87,6 +88,7 @@ defmodule Storyarn.Billing do
 
   # Subscription operations
   defdelegate plan_for(workspace), to: SubscriptionCrud
+  defdelegate plans_for_workspace_ids(workspace_ids), to: SubscriptionCrud
   defdelegate create_subscription(workspace), to: SubscriptionCrud
   defdelegate create_subscription(workspace, plan), to: SubscriptionCrud
   defdelegate get_subscription(workspace_id), to: SubscriptionCrud

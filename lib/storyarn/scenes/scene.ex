@@ -86,7 +86,7 @@ defmodule Storyarn.Scenes.Scene do
 
     belongs_to :project, Project
     belongs_to :parent, __MODULE__
-    belongs_to :background_asset, Asset
+    belongs_to :background_asset, Asset, where: [deleted_at: nil]
     belongs_to :current_version, EntityVersion
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :layers, SceneLayer, preload_order: [asc: :position, asc: :id]

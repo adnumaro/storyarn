@@ -36,7 +36,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
     if asset_ids == [] do
       {%{}, %{}}
     else
-      assets = Repo.all(from(a in Asset, where: a.id in ^asset_ids))
+      assets = Repo.all(from(a in Asset, where: a.id in ^asset_ids and is_nil(a.deleted_at)))
       resolved_asset_maps(assets)
     end
   end
@@ -65,7 +65,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   end
 
   defp resolve_project_asset_maps!(asset_ids, project_id) do
-    assets = Repo.all(from(a in Asset, where: a.id in ^asset_ids))
+    assets = Repo.all(from(a in Asset, where: a.id in ^asset_ids and is_nil(a.deleted_at)))
     assets_by_id = Map.new(assets, &{&1.id, &1})
 
     with :ok <- validate_assets_present(asset_ids, assets_by_id, project_id),
@@ -277,7 +277,9 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   defp owned_reusable_asset(asset_id, project_id) do
     query =
       from(a in Asset,
-        where: a.id == ^asset_id and a.project_id == ^project_id,
+        where:
+          a.id == ^asset_id and a.project_id == ^project_id and
+            is_nil(a.deleted_at),
         select: a
       )
 

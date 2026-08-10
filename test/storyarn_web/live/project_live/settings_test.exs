@@ -442,6 +442,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       assert vue.props["storage-usage"] == %{
                "currentAssetsBytes" => "2048",
+               "assetTrashBytes" => "0",
                "fullSnapshotsBytes" => "175",
                "linkedSnapshotsBytes" => "0",
                "activeReservationsBytes" => "60",
@@ -646,6 +647,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                "assetCount" => 1,
                "workspace" => %{
                  "currentAssetsBytes" => "2048",
+                 "assetTrashBytes" => "0",
                  "fullSnapshotsBytes" => "0",
                  "linkedSnapshotsBytes" => "0",
                  "activeReservationsBytes" => "0",

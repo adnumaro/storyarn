@@ -299,6 +299,11 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert {:ok, published} =
                ProjectTemplates.perform_template_publication(publication.id,
                  after_source_capture: fn _payload ->
+                   assert {:ok, _scene} =
+                            Storyarn.Scenes.update_scene(scene, %{
+                              "background_asset_id" => nil
+                            })
+
                    assert {:ok, _deleted_asset} = Assets.delete_asset(asset)
                    :ok
                  end

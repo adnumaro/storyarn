@@ -109,7 +109,7 @@ defmodule Storyarn.Localization.WriterReferenceIntegrityTest do
            ]
   end
 
-  test "deleting a voice asset atomically clears the FK and downgrades status" do
+  test "moving a voice asset to trash is blocked while active localization owns it" do
     user = user_fixture()
     project = project_fixture(user)
     text = localized_text_fixture(project.id)
@@ -121,14 +121,12 @@ defmodule Storyarn.Localization.WriterReferenceIntegrityTest do
                vo_status: "approved"
              })
 
-    previous_lock_version = recorded.lock_version
+    assert {:error, :asset_still_referenced} = Assets.delete_asset(audio)
 
-    assert {:ok, _deleted_asset} = Assets.delete_asset(audio)
-
-    repaired = Repo.reload!(recorded)
-    assert repaired.vo_asset_id == nil
-    assert repaired.vo_status == "needed"
-    assert repaired.lock_version == previous_lock_version + 1
+    unchanged = Repo.reload!(recorded)
+    assert unchanged.vo_asset_id == audio.id
+    assert unchanged.vo_status == "approved"
+    assert unchanged.lock_version == recorded.lock_version
   end
 
   test "the localized text changeset enforces the voice-over invariant" do

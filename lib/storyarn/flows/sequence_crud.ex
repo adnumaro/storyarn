@@ -14,6 +14,7 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   import Ecto.Query
 
+  alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Collaboration
   alias Storyarn.Flows.Flow
@@ -219,6 +220,10 @@ defmodule Storyarn.Flows.SequenceCrud do
                      node.type == "sequence" and not is_nil(node.deleted_at),
                  lock: "FOR UPDATE"
                )
+             ),
+           :ok <-
+             Assets.lock_active_asset_references_for_restore(project_id,
+               flow_node_ids: [locked_node.id]
              ),
            {:ok, restored_node} <-
              locked_node
@@ -785,6 +790,7 @@ defmodule Storyarn.Flows.SequenceCrud do
          from(asset in Asset,
            where:
              asset.id == ^asset_id and asset.project_id == ^project_id and
+               is_nil(asset.deleted_at) and
                like(asset.content_type, ^content_type_pattern)
          )
        ) do

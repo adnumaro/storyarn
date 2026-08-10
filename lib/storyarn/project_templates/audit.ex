@@ -936,7 +936,7 @@ defmodule Storyarn.ProjectTemplates.Audit do
     asset_ids = Enum.uniq(asset_ids)
 
     Asset
-    |> where([asset], asset.id in ^asset_ids)
+    |> where([asset], asset.id in ^asset_ids and is_nil(asset.deleted_at))
     |> Repo.all()
     |> Map.new(&{&1.id, &1})
   end

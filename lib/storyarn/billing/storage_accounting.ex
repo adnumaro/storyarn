@@ -74,11 +74,11 @@ defmodule Storyarn.Billing.StorageAccounting do
   @spec workspace_usage(pos_integer()) :: storage_usage()
   def workspace_usage(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
     consistent_read(fn ->
-      current_assets = workspace_asset_usage(workspace_id)
+      assets = workspace_asset_usage(workspace_id)
       snapshots = workspace_snapshot_usage(workspace_id)
       reservations = workspace_reservation_usage(workspace_id)
 
-      build_usage(current_assets, snapshots, reservations)
+      build_usage(assets, snapshots, reservations)
     end)
   end
 
@@ -86,11 +86,11 @@ defmodule Storyarn.Billing.StorageAccounting do
   @spec project_usage(pos_integer()) :: storage_usage()
   def project_usage(project_id) when is_integer(project_id) and project_id > 0 do
     consistent_read(fn ->
-      current_assets = project_asset_usage(project_id)
+      assets = project_asset_usage(project_id)
       snapshots = project_snapshot_usage(project_id)
       reservations = project_reservation_usage(project_id)
 
-      build_usage(current_assets, snapshots, reservations)
+      build_usage(assets, snapshots, reservations)
     end)
   end
 
@@ -965,21 +965,20 @@ defmodule Storyarn.Billing.StorageAccounting do
     stored_slots + unrepresented_build_reservations
   end
 
-  defp build_usage(current_assets, snapshots, reservations) do
+  defp build_usage(assets, snapshots, reservations) do
+    current_assets = assets.current_assets
+    asset_trash = assets.asset_trash
     full_snapshots = Map.get(snapshots, "full", empty_bucket())
     linked_snapshots = Map.get(snapshots, "linked", empty_bucket())
 
     accounted_bytes =
-      current_assets.bytes + full_snapshots.bytes + linked_snapshots.bytes + reservations.bytes
+      current_assets.bytes + asset_trash.bytes + full_snapshots.bytes + linked_snapshots.bytes + reservations.bytes
 
     %{
       accounting_version: @accounting_version,
       measured_at: TimeHelpers.now(),
       current_assets: current_assets,
-      # ENG-82 will split soft-deleted Asset rows into this category. Until
-      # then every retained logical asset remains in current_assets, including
-      # assets belonging to a recoverable project-trash row.
-      asset_trash: empty_bucket(),
+      asset_trash: asset_trash,
       full_snapshots: full_snapshots,
       linked_snapshots: linked_snapshots,
       active_reservations: reservations,
@@ -988,29 +987,33 @@ defmodule Storyarn.Billing.StorageAccounting do
   end
 
   defp workspace_asset_usage(workspace_id) do
-    Repo.one!(
-      from(asset in Asset,
-        join: project in Project,
-        on: asset.project_id == project.id,
-        where: project.workspace_id == ^workspace_id,
-        select: %{
-          bytes: type(coalesce(sum(asset.size), 0), :integer),
-          count: count(asset.id)
-        }
-      )
-    )
+    Asset
+    |> join(:inner, [asset], project in Project, on: asset.project_id == project.id)
+    |> where([_asset, project], project.workspace_id == ^workspace_id)
+    |> aggregate_asset_usage()
   end
 
   defp project_asset_usage(project_id) do
-    Repo.one!(
-      from(asset in Asset,
-        where: asset.project_id == ^project_id,
-        select: %{
-          bytes: type(coalesce(sum(asset.size), 0), :integer),
-          count: count(asset.id)
-        }
+    Asset
+    |> where([asset], asset.project_id == ^project_id)
+    |> aggregate_asset_usage()
+  end
+
+  defp aggregate_asset_usage(query) do
+    {current_bytes, current_count, trash_bytes, trash_count} =
+      Repo.one!(
+        select(query, [asset, ...], {
+          type(coalesce(filter(sum(asset.size), is_nil(asset.deleted_at)), 0), :integer),
+          filter(count(asset.id), is_nil(asset.deleted_at)),
+          type(coalesce(filter(sum(asset.size), not is_nil(asset.deleted_at)), 0), :integer),
+          filter(count(asset.id), not is_nil(asset.deleted_at))
+        })
       )
-    )
+
+    %{
+      current_assets: %{bytes: current_bytes, count: current_count},
+      asset_trash: %{bytes: trash_bytes, count: trash_count}
+    }
   end
 
   defp workspace_snapshot_usage(workspace_id) do

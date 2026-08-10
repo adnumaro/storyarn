@@ -5,6 +5,7 @@ defmodule Storyarn.Projects.ProjectCrud do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Analytics
+  alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
@@ -233,6 +234,8 @@ defmodule Storyarn.Projects.ProjectCrud do
     result =
       with_project_deletion_lock(project.id, fn locked_project ->
         with {:ok, cleanup_intents} <- Versioning.prepare_project_snapshot_hard_delete(locked_project),
+             :ok <-
+               Assets.prepare_parent_hard_delete_locked(locked_project.workspace_id, [locked_project.id]),
              {:ok, deleted_project} <- Repo.delete(locked_project) do
           {:ok, {deleted_project, cleanup_intents}}
         end

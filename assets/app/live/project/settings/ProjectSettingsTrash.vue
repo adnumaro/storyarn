@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   AlertTriangle,
+  File,
   FileText,
   GitBranch,
   Map as MapIcon,
@@ -21,7 +22,7 @@ import {
 } from "@components/ui/dialog";
 import { useLive } from "@shared/composables/useLive";
 
-type TrashItemType = "sheet" | "flow" | "scene";
+type TrashItemType = "sheet" | "flow" | "scene" | "asset";
 type TrashFilter = "all" | TrashItemType;
 
 interface TrashedItem {
@@ -29,6 +30,11 @@ interface TrashedItem {
   type: TrashItemType;
   name: string;
   deleted_at: string | null;
+  deletion_generation: number | null;
+  content_type: string | null;
+  size: number | null;
+  deletion_reason: "user" | "snapshot_restore" | "system" | null;
+  purge_at: string | null;
 }
 
 interface TrashPagination {
@@ -43,7 +49,7 @@ type TypeCounts = Record<TrashItemType, number>;
 const {
   trashedItems = [],
   pagination = { page: 1, pageSize: 25, totalCount: 0, totalPages: 1 },
-  typeCounts = { sheet: 0, flow: 0, scene: 0 },
+  typeCounts = { sheet: 0, flow: 0, scene: 0, asset: 0 },
   activeFilter = "all",
   searchQuery = "",
   canManage = false,
@@ -65,7 +71,7 @@ const showEmptyConfirm = ref(false);
 const itemToDelete = ref<TrashedItem | null>(null);
 let searchDebounce: ReturnType<typeof setTimeout> | undefined;
 
-const filters: TrashFilter[] = ["all", "sheet", "flow", "scene"];
+const filters: TrashFilter[] = ["all", "sheet", "flow", "scene", "asset"];
 
 const typeConfig = {
   sheet: {
@@ -80,6 +86,10 @@ const typeConfig = {
     icon: MapIcon,
     class: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
   },
+  asset: {
+    icon: File,
+    class: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+  },
 } satisfies Record<TrashItemType, { icon: Component; class: string }>;
 
 const itemCounts = computed<Record<TrashFilter, number>>(() => {
@@ -87,10 +97,11 @@ const itemCounts = computed<Record<TrashFilter, number>>(() => {
     sheet: typeCounts.sheet ?? 0,
     flow: typeCounts.flow ?? 0,
     scene: typeCounts.scene ?? 0,
+    asset: typeCounts.asset ?? 0,
   };
 
   return {
-    all: counts.sheet + counts.flow + counts.scene,
+    all: counts.sheet + counts.flow + counts.scene + counts.asset,
     ...counts,
   };
 });
@@ -157,8 +168,49 @@ function deletedLabel(item: TrashedItem) {
   });
 }
 
+function formatSize(bytes: number | null) {
+  if (bytes == null) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDateTime(datetime: string | null) {
+  if (!datetime) return "";
+
+  return new Intl.DateTimeFormat(locale.value, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(datetime));
+}
+
+function deletionActorLabel(item: TrashedItem) {
+  if (item.deletion_reason === "snapshot_restore") {
+    return t("project_settings.trash.deleted_by_snapshot_restore");
+  }
+
+  if (item.deletion_reason === "user") {
+    return t("project_settings.trash.deleted_by_user");
+  }
+
+  return t("project_settings.trash.deleted_by_system");
+}
+
+function mutationPayload(item: TrashedItem) {
+  const payload: { type: TrashItemType; id: number; generation?: number } = {
+    type: item.type,
+    id: item.id,
+  };
+
+  if (item.type === "asset" && item.deletion_generation != null) {
+    payload.generation = item.deletion_generation;
+  }
+
+  return payload;
+}
+
 function restoreItem(item: TrashedItem) {
-  live.pushEvent("restore_item", { type: item.type, id: item.id });
+  live.pushEvent("restore_item", mutationPayload(item));
 }
 
 function setFilter(filter: TrashFilter) {
@@ -206,10 +258,7 @@ function closeDeleteConfirm() {
 function confirmDelete() {
   if (!itemToDelete.value) return;
 
-  live.pushEvent("delete_item", {
-    type: itemToDelete.value.type,
-    id: itemToDelete.value.id,
-  });
+  live.pushEvent("delete_item", mutationPayload(itemToDelete.value));
 
   closeDeleteConfirm();
 }
@@ -238,6 +287,7 @@ watch(
         <Button
           v-if="canManage && itemCounts.all > 0"
           variant="destructive"
+          data-testid="empty-trash-trigger"
           @click="showEmptyConfirm = true"
         >
           <Trash2 class="mr-2 size-4" />
@@ -263,6 +313,7 @@ watch(
           <button
             v-for="filter in visibleFilters"
             :key="filter"
+            :data-testid="`trash-filter-${filter}`"
             type="button"
             :class="[
               'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors',
@@ -296,6 +347,7 @@ watch(
       <article
         v-for="item in trashedItems"
         :key="`${item.type}-${item.id}`"
+        :data-testid="`trash-item-${item.type}-${item.id}`"
         class="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/35 p-3 transition-colors hover:bg-muted/55"
       >
         <div class="flex min-w-0 items-center gap-3">
@@ -323,11 +375,30 @@ watch(
             <p class="text-sm text-muted-foreground">
               <time :datetime="item.deleted_at || undefined">{{ deletedLabel(item) }}</time>
             </p>
+            <p v-if="item.type === 'asset'" class="text-xs text-muted-foreground">
+              <span v-if="item.content_type">{{ item.content_type }}</span>
+              <span v-if="item.content_type && item.size != null" aria-hidden="true"> · </span>
+              <span v-if="item.size != null">{{ formatSize(item.size) }}</span>
+              <span aria-hidden="true"> · </span>
+              <span>{{ deletionActorLabel(item) }}</span>
+            </p>
+            <p v-if="item.purge_at" class="text-xs text-muted-foreground">
+              {{
+                t("project_settings.trash.recoverable_until", {
+                  date: formatDateTime(item.purge_at),
+                })
+              }}
+            </p>
           </div>
         </div>
 
         <div v-if="canManage" class="flex shrink-0 items-center gap-2">
-          <Button variant="ghost" size="sm" @click="restoreItem(item)">
+          <Button
+            variant="ghost"
+            size="sm"
+            :data-testid="`restore-${item.type}-${item.id}`"
+            @click="restoreItem(item)"
+          >
             <Undo2 class="mr-1 size-4" />
             {{ t("project_settings.trash.restore") }}
           </Button>
@@ -335,6 +406,7 @@ watch(
             variant="ghost"
             size="sm"
             class="text-destructive hover:bg-destructive/10"
+            :data-testid="`delete-${item.type}-${item.id}`"
             @click="openDeleteConfirm(item)"
           >
             <Trash2 class="mr-1 size-4" />

@@ -48,6 +48,13 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       assert metadata_map[id_str]["sanitized_svg"] == true
       refute Map.has_key?(metadata_map[id_str], "web_url")
     end
+
+    test "does not resolve assets in trash", %{project: project, user: user} do
+      asset = asset_fixture(project, user, %{blob_hash: String.duplicate("a", 64)})
+      trash_asset_row!(asset, user.id)
+
+      assert {%{}, %{}} = AssetHashResolver.resolve_hashes([asset.id])
+    end
   end
 
   describe "resolve_hashes_for_project!/2" do
@@ -82,6 +89,15 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
 
       assert_raise ArgumentError, ~r/owned by another project/, fn ->
         AssetHashResolver.resolve_hashes_for_project!([foreign_asset.id], project.id)
+      end
+    end
+
+    test "rejects assets already in trash", %{project: project, user: user} do
+      asset = asset_fixture(project, user)
+      trash_asset_row!(asset, user.id)
+
+      assert_raise ArgumentError, ~r/cannot snapshot missing assets/, fn ->
+        AssetHashResolver.resolve_hashes_for_project!([asset.id], project.id)
       end
     end
 
@@ -479,6 +495,55 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       Asset
       |> Repo.get!(destination_id)
       |> Repo.delete!()
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            source_asset.id,
+            snapshot,
+            destination_project.id,
+            user.id,
+            opts
+          )
+        end
+
+      assert {:stale_asset_materialization, %{destination_asset_id: ^destination_id}} = error.reason
+    end
+
+    test "rejects a cached destination that moved to asset trash", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+
+      {source_asset, _hash} =
+        materializable_asset(
+          source_project,
+          user,
+          "trashed destination audio",
+          filename: "trashed.mp3",
+          content_type: "audio/mpeg"
+        )
+
+      snapshot = strict_snapshot(source_asset, source_project.id)
+      cache = AssetMaterializationCache.new()
+
+      opts = [
+        asset_mode: :copy,
+        asset_materialization_cache: cache
+      ]
+
+      destination_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id,
+          opts
+        )
+
+      destination_asset = Repo.get!(Asset, destination_id)
+      trash_asset_row!(destination_asset, user.id)
 
       error =
         assert_raise AssetCopyError, fn ->
@@ -965,5 +1030,20 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       "asset_blob_hashes" => hashes,
       "asset_metadata" => metadata
     }
+  end
+
+  defp trash_asset_row!(asset, user_id) do
+    {1, _rows} =
+      Repo.update_all(
+        from(candidate in Asset, where: candidate.id == ^asset.id),
+        set: [
+          deleted_at: Storyarn.Shared.TimeHelpers.now(),
+          deleted_by_id: user_id,
+          deletion_reason: "user",
+          deletion_generation: 1
+        ]
+      )
+
+    :ok
   end
 end

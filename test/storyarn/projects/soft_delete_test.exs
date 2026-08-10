@@ -9,6 +9,11 @@ defmodule Storyarn.Projects.SoftDeleteTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.BlobStore
+  alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Billing.Subscription
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Repo
@@ -114,6 +119,68 @@ defmodule Storyarn.Projects.SoftDeleteTest do
   end
 
   describe "list_deleted_items_for_retention/1" do
+    test "includes generation-fenced asset trash metadata and its purge deadline" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = asset_fixture(project, user, %{filename: "discarded.png", size: 2_048})
+
+      assert {:ok, trashed} = Assets.move_asset_to_trash(project.id, asset.id, user.id)
+      assert [item] = Projects.list_deleted_items_for_retention()
+
+      assert item.type == "asset"
+      assert item.name == "discarded.png"
+      assert item.deleted_by_id == user.id
+      assert item.deletion_generation == trashed.deletion_generation
+      assert item.size == 2_048
+      assert item.content_type == "image/jpeg"
+      assert item.purge_at == DateTime.add(item.deleted_at, 24 * 60 * 60, :second)
+    end
+
+    test "loads retention plans once across workspaces and defaults missing subscriptions" do
+      first_user = user_fixture()
+      first_project = project_fixture(first_user)
+      first_sheet = sheet_fixture(first_project)
+
+      second_user = user_fixture()
+      second_project = project_fixture(second_user)
+      second_sheet = sheet_fixture(second_project)
+
+      Repo.delete_all(
+        from(subscription in Subscription,
+          where: subscription.workspace_id == ^second_project.workspace_id
+        )
+      )
+
+      assert {:ok, _deleted} = Sheets.delete_sheet(first_sheet)
+      assert {:ok, _deleted} = Sheets.delete_sheet(second_sheet)
+
+      {items, queries} = capture_queries(&Projects.list_deleted_items_for_retention/0)
+
+      assert MapSet.new(Enum.map(items, & &1.project_id)) ==
+               MapSet.new([first_project.id, second_project.id])
+
+      assert Enum.all?(items, fn item ->
+               item.purge_at == DateTime.add(item.deleted_at, 24 * 60 * 60, :second)
+             end)
+
+      assert length(subscription_queries(queries)) == 1
+    end
+
+    test "skips plan lookup when every project has a valid retention override" do
+      project =
+        project_fixture(nil, %{
+          settings: %{"trash_retention_hours" => 720}
+        })
+
+      sheet = sheet_fixture(project)
+      assert {:ok, _deleted} = Sheets.delete_sheet(sheet)
+
+      {[item], queries} = capture_queries(&Projects.list_deleted_items_for_retention/0)
+
+      assert item.purge_at == DateTime.add(item.deleted_at, 720 * 60 * 60, :second)
+      assert subscription_queries(queries) == []
+    end
+
     test "uses a stable cursor to page through deleted items" do
       project = project_fixture()
       first_sheet = sheet_fixture(project)
@@ -251,5 +318,90 @@ defmodule Storyarn.Projects.SoftDeleteTest do
 
       refute Repo.get(Projects.Project, project.id)
     end
+
+    test "hands off active and trashed asset keys before cascading the project" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      active =
+        image_asset_fixture(project, user, %{
+          blob_hash: String.duplicate("a", 64),
+          metadata: %{"thumbnail_key" => Assets.thumbnail_key(Assets.generate_key(project, "active.png"))}
+        })
+
+      trashed = image_asset_fixture(project, user)
+      assert {:ok, _trashed} = Assets.move_asset_to_trash(project.id, trashed.id, user.id)
+      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+
+      assert {:ok, _project} = Projects.permanently_delete_project(deleted)
+
+      assert Repo.aggregate(from(asset in Asset, where: asset.project_id == ^project.id), :count) == 0
+      assert [request] = Repo.all(StorageCleanupRequest)
+
+      assert MapSet.new(request.storage_keys) ==
+               MapSet.new([
+                 active.key,
+                 Assets.thumbnail_key(active.key),
+                 BlobStore.blob_key(project.id, active.blob_hash, "png"),
+                 trashed.key
+               ])
+    end
+
+    test "rolls back project deletion when an asset key cannot be handed off exactly" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = image_asset_fixture(project, user)
+
+      Repo.update_all(
+        from(stored_asset in Asset, where: stored_asset.id == ^asset.id),
+        set: [
+          key: "projects/#{project.id}/assets/not-a-uuid/asset.png",
+          blob_hash: String.duplicate("c", 64)
+        ]
+      )
+
+      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+
+      assert {:error, :asset_cleanup_not_authorized} =
+               Projects.permanently_delete_project(deleted)
+
+      assert Repo.get!(Projects.Project, project.id)
+      assert Repo.get!(Asset, asset.id)
+      assert Repo.all(StorageCleanupRequest) == []
+    end
+  end
+
+  defp capture_queries(fun) when is_function(fun, 0) do
+    handler_id = "project-trash-plan-query-budget-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid, do: send(pid, {ref, query})
+        end,
+        {test_pid, marker}
+      )
+
+    try do
+      {fun.(), drain_queries(marker)}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp drain_queries(marker, queries \\ []) do
+    receive do
+      {^marker, query} -> drain_queries(marker, [query | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
+  end
+
+  defp subscription_queries(queries) do
+    Enum.filter(queries, &String.contains?(&1, ~s(FROM "subscriptions")))
   end
 end

@@ -97,7 +97,7 @@ defmodule Storyarn.Localization.LocalizedText do
     field :localization_key, :string, virtual: true
 
     belongs_to :project, Project
-    belongs_to :vo_asset, Asset
+    belongs_to :vo_asset, Asset, where: [deleted_at: nil]
     belongs_to :speaker_sheet, Sheet
     belongs_to :translated_by, User
     belongs_to :reviewed_by, User
