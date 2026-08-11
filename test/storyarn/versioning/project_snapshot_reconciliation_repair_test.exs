@@ -52,7 +52,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
 
   test "repair planning is bounded, immutable, and idempotent" do
     {_user, _project, snapshot} = ready_snapshot!()
-    assert :ok = Storage.delete(snapshot.project_storage_key)
+    assert :ok = Storage.delete(snapshot_payload_key(snapshot))
 
     assert {:ok, pending_run} = start_run()
 
@@ -135,16 +135,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
   test "missing and corrupt ready objects are reverified and degrade only integrity" do
     {_user, _project, missing_snapshot} = ready_snapshot!()
     missing_identity = snapshot_identity(missing_snapshot)
-    assert :ok = Storage.delete(missing_snapshot.project_storage_key)
+    assert :ok = Storage.delete(snapshot_payload_key(missing_snapshot))
 
     {_user, _project, corrupt_snapshot} = ready_snapshot!()
     corrupt_identity = snapshot_identity(corrupt_snapshot)
-    assert {:ok, project_json} = Storage.download(corrupt_snapshot.project_storage_key)
-    <<first, rest::binary>> = project_json
-    corrupt_json = <<Bitwise.bxor(first, 1), rest::binary>>
+    corrupt_key = snapshot_payload_key(corrupt_snapshot)
+    assert {:ok, payload} = Storage.download(corrupt_key)
+    <<first, rest::binary>> = payload
+    corrupt_payload = <<Bitwise.bxor(first, 1), rest::binary>>
 
     assert {:ok, _url} =
-             Storage.upload(corrupt_snapshot.project_storage_key, corrupt_json, "application/json")
+             Storage.upload(corrupt_key, corrupt_payload, snapshot_payload_content_type(corrupt_snapshot))
 
     run = completed_run!()
     {missing_finding, missing_action} = finding_action!(run, "ready_object_missing", missing_snapshot.id)
@@ -190,13 +191,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
 
   test "ready-object verification streams outside the workspace lock and reads the manifest once" do
     {_user, project, snapshot} = ready_snapshot!()
-    assert {:ok, project_json} = Storage.download(snapshot.project_storage_key)
-    <<first, rest::binary>> = project_json
-    corrupt_json = <<Bitwise.bxor(first, 1), rest::binary>>
-    assert {:ok, _url} = Storage.upload(snapshot.project_storage_key, corrupt_json, "application/json")
+    payload_key = snapshot_payload_key(snapshot)
+    assert {:ok, manifest_json} = Storage.download(snapshot.manifest_storage_key)
+    <<first, rest::binary>> = manifest_json
+    corrupt_manifest = <<Bitwise.bxor(first, 1), rest::binary>>
+
+    assert {:ok, _url} =
+             Storage.upload(snapshot.manifest_storage_key, corrupt_manifest, "application/json")
 
     run = completed_run!()
-    {_finding, action} = finding_action!(run, "ready_object_corrupt", snapshot.id)
+    {_finding, action} = finding_action!(run, "ready_manifest_corrupt", snapshot.id)
     install_snapshot_read_switch_storage()
 
     parent = self()
@@ -213,26 +217,25 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
     SnapshotReadSwitchStorage.reset_counts()
     assert {:ok, :repaired} = Versioning.perform_project_snapshot_reconciliation_repair(action.id)
 
-    assert_receive {:snapshot_repair_io, :stat, manifest_key, false}
-    assert manifest_key == snapshot.manifest_storage_key
+    manifest_key = snapshot.manifest_storage_key
+    assert_receive {:snapshot_repair_io, :stat, ^manifest_key, false}
     assert_receive {:snapshot_repair_io, :stream_chunk, ^manifest_key, false}
-    assert_receive {:snapshot_repair_io, :stat, project_key, false}
-    assert project_key == snapshot.project_storage_key
-    assert_receive {:snapshot_repair_io, :stream_chunk, ^project_key, false}
+    assert_receive {:snapshot_repair_io, :stat, ^payload_key, false}
+    assert_receive {:snapshot_repair_io, :stream_chunk, ^payload_key, false}
     refute_receive {:snapshot_repair_io, _operation, _key, true}
     assert SnapshotReadSwitchStorage.stream_count(snapshot.manifest_storage_key) == 1
-    assert SnapshotReadSwitchStorage.stream_count(snapshot.project_storage_key) == 1
+    assert SnapshotReadSwitchStorage.stream_count(payload_key) == 1
   end
 
   test "integrity repair revalidates snapshot state after provider I/O" do
     {_user, _project, snapshot} = ready_snapshot!()
-    assert :ok = Storage.delete(snapshot.project_storage_key)
+    assert :ok = Storage.delete(snapshot_payload_key(snapshot))
     run = completed_run!()
     {_finding, action} = finding_action!(run, "ready_object_missing", snapshot.id)
     install_snapshot_read_switch_storage()
 
     SnapshotReadSwitchStorage.observe_io(fn operation, key ->
-      if operation == :stream_chunk and key == snapshot.manifest_storage_key do
+      if operation == :stat and key == snapshot_payload_key(snapshot) do
         snapshot.id
         |> then(&Repo.get!(ProjectSnapshot, &1))
         |> ProjectSnapshot.reconciliation_integrity_changeset("corrupt")
@@ -249,15 +252,44 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
            } = Repo.get!(ProjectSnapshotReconciliationRepairAction, action.id)
   end
 
+  test "v2 integrity repair revalidates archive identity after provider I/O" do
+    {_user, _project, snapshot} = ready_snapshot!()
+    assert snapshot.format_version == 2
+    assert :ok = Storage.delete(snapshot.archive_storage_key)
+    run = completed_run!()
+    {_finding, action} = finding_action!(run, "ready_object_missing", snapshot.id)
+    install_snapshot_read_switch_storage()
+    changed_checksum = String.duplicate("f", 64)
+
+    SnapshotReadSwitchStorage.observe_io(fn operation, key ->
+      if operation == :stat and key == snapshot.archive_storage_key do
+        snapshot.id
+        |> then(&Repo.get!(ProjectSnapshot, &1))
+        |> Ecto.Changeset.change(archive_checksum: changed_checksum)
+        |> Repo.update!()
+      end
+    end)
+
+    assert {:ok, :resolved} = Versioning.perform_project_snapshot_reconciliation_repair(action.id)
+
+    assert %ProjectSnapshot{integrity_state: "verified", archive_checksum: ^changed_checksum} =
+             Repo.get!(ProjectSnapshot, snapshot.id)
+
+    assert %ProjectSnapshotReconciliationRepairAction{
+             status: "resolved",
+             result_code: "integrity_finding_stale"
+           } = Repo.get!(ProjectSnapshotReconciliationRepairAction, action.id)
+  end
+
   test "integrity repair fails closed when the provider namespace changes during inspection" do
     {_user, _project, snapshot} = ready_snapshot!()
-    assert :ok = Storage.delete(snapshot.project_storage_key)
+    assert :ok = Storage.delete(snapshot_payload_key(snapshot))
     run = completed_run!()
     {_finding, action} = finding_action!(run, "ready_object_missing", snapshot.id)
     install_snapshot_read_switch_storage()
 
     SnapshotReadSwitchStorage.observe_io(fn operation, key ->
-      if operation == :stream_chunk and key == snapshot.manifest_storage_key do
+      if operation == :stat and key == snapshot_payload_key(snapshot) do
         SnapshotReadSwitchStorage.override_namespace_fingerprint(String.duplicate("f", 64))
       end
     end)
@@ -273,7 +305,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
 
   test "a recurring finding receives a new action without reopening the prior outcome" do
     {_user, _project, snapshot} = ready_snapshot!()
-    assert :ok = Storage.delete(snapshot.project_storage_key)
+    assert :ok = Storage.delete(snapshot_payload_key(snapshot))
 
     run_one = completed_run!()
     {finding_one, action_one} = finding_action!(run_one, "ready_object_missing", snapshot.id)
@@ -292,7 +324,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
 
   test "a failed action does not suppress the same finding in a later run" do
     {_user, _project, snapshot} = ready_snapshot!()
-    assert :ok = Storage.delete(snapshot.project_storage_key)
+    assert :ok = Storage.delete(snapshot_payload_key(snapshot))
 
     run_one = completed_run!()
     {finding_one, action_one} = finding_action!(run_one, "ready_object_missing", snapshot.id)
@@ -318,13 +350,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
 
   test "an object restored after inspection resolves the finding without degrading the snapshot" do
     {_user, _project, snapshot} = ready_snapshot!()
-    assert {:ok, project_json} = Storage.download(snapshot.project_storage_key)
-    assert :ok = Storage.delete(snapshot.project_storage_key)
+    payload_key = snapshot_payload_key(snapshot)
+    assert {:ok, payload} = Storage.download(payload_key)
+    assert :ok = Storage.delete(payload_key)
 
     run = completed_run!()
     {_finding, action} = finding_action!(run, "ready_object_missing", snapshot.id)
 
-    assert {:ok, _url} = Storage.upload(snapshot.project_storage_key, project_json, "application/json")
+    assert {:ok, _url} = Storage.upload(payload_key, payload, snapshot_payload_content_type(snapshot))
     attach_repair_telemetry!()
     assert {:ok, :resolved} = Versioning.perform_project_snapshot_reconciliation_repair(action.id)
 
@@ -692,7 +725,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
     namespace_owner
     |> Ecto.Changeset.change(
       object_prefix: intent.ready_prefix,
-      project_storage_key: "#{intent.ready_prefix}/project.json",
+      project_storage_key: nil,
+      archive_storage_key: "#{intent.ready_prefix}/snapshot.zip",
       manifest_storage_key: "#{intent.ready_prefix}/manifest.json"
     )
     |> Repo.update!()
@@ -715,7 +749,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
 
   test "workspace deletion resolves stale integrity and expired-build actions" do
     {_user, project, snapshot} = ready_snapshot!()
-    assert :ok = Storage.delete(snapshot.project_storage_key)
+    assert :ok = Storage.delete(snapshot_payload_key(snapshot))
     integrity_run = completed_run!()
     {_finding, integrity_action} = finding_action!(integrity_run, "ready_object_missing", snapshot.id)
 
@@ -951,12 +985,22 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
       :lifecycle_state,
       :lifecycle_generation,
       :accounting_generation,
+      :project_storage_key,
+      :archive_storage_key,
+      :archive_size_bytes,
+      :archive_checksum,
       :manifest_checksum,
       :manifest_storage_key,
       :object_prefix,
       :accounted_size_bytes
     ])
   end
+
+  defp snapshot_payload_key(%ProjectSnapshot{format_version: 1, project_storage_key: key}), do: key
+  defp snapshot_payload_key(%ProjectSnapshot{format_version: 2, archive_storage_key: key}), do: key
+
+  defp snapshot_payload_content_type(%ProjectSnapshot{format_version: 1}), do: "application/json"
+  defp snapshot_payload_content_type(%ProjectSnapshot{format_version: 2}), do: "application/zip"
 
   defp assert_snapshot_integrity(snapshot_id, integrity_state, identity) do
     snapshot = Repo.get!(ProjectSnapshot, snapshot_id)

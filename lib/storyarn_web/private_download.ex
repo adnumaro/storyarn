@@ -14,27 +14,55 @@ defmodule StoryarnWeb.PrivateDownload do
 
   require Logger
 
+  @type delivery_outcome ::
+          :delivered | :range_not_satisfiable | :client_closed | :stream_failed
+  @type delivery_metadata :: %{
+          outcome: delivery_outcome(),
+          bytes_sent: non_neg_integer()
+        }
+
   @spec send(Plug.Conn.t(), Storage.key(), keyword()) ::
           {:ok, Plug.Conn.t()} | {:error, term()}
   def send(conn, key, opts) do
-    with {:ok, stat} <- Storage.stat(key) do
-      selection = select_bytes(conn, stat.size, stat.etag)
-      send_selected(conn, key, selection, stat, opts)
+    case send_tracked(conn, key, opts) do
+      {:ok, conn, _metadata} -> {:ok, conn}
+      {:error, {:storage_stat_failed, reason}} -> {:error, reason}
+      {:error, {:storage_stream_start_failed, reason}} -> {:error, reason}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  @spec send_tracked(Plug.Conn.t(), Storage.key(), keyword()) ::
+          {:ok, Plug.Conn.t(), delivery_metadata()} | {:error, term()}
+  def send_tracked(conn, key, opts) do
+    case Storage.stat(key) do
+      {:ok, stat} ->
+        selection = select_bytes(conn, stat.size, stat.etag)
+        send_selected(conn, key, selection, stat, opts)
+
+      {:error, reason} ->
+        {:error, {:storage_stat_failed, reason}}
     end
   end
 
   defp send_selected(conn, _key, %{status: :range_not_satisfiable} = selection, _stat, _opts) do
-    {:ok,
-     conn
-     |> put_common_headers(selection)
-     |> put_resp_header("content-range", "bytes */#{selection.size}")
-     |> send_resp(:requested_range_not_satisfiable, "")}
+    conn =
+      conn
+      |> put_common_headers(selection)
+      |> put_resp_header("content-range", "bytes */#{selection.size}")
+      |> send_resp(:requested_range_not_satisfiable, "")
+
+    {:ok, conn, %{outcome: :range_not_satisfiable, bytes_sent: 0}}
   end
 
   defp send_selected(conn, key, selection, stat, opts) do
-    with {:ok, stream} <-
-           Storage.stream(key, selection.offset, selection.length, etag: stat.etag) do
-      {:ok, send_selection(conn, key, stream, selection, stat, opts)}
+    case Storage.stream(key, selection.offset, selection.length, etag: stat.etag) do
+      {:ok, stream} ->
+        {conn, metadata} = send_selection(conn, key, stream, selection, stat, opts)
+        {:ok, conn, metadata}
+
+      {:error, reason} ->
+        {:error, {:storage_stream_start_failed, reason}}
     end
   end
 
@@ -60,7 +88,7 @@ defmodule StoryarnWeb.PrivateDownload do
       |> maybe_put_content_disposition(Keyword.get(opts, :filename))
       |> send_chunked(selection.status)
 
-    send_stream(conn, key, stream)
+    send_stream(conn, key, stream, selection.length)
   end
 
   defp put_common_headers(conn, selection) do
@@ -93,25 +121,37 @@ defmodule StoryarnWeb.PrivateDownload do
   defp maybe_put_etag(conn, nil), do: conn
   defp maybe_put_etag(conn, etag), do: put_resp_header(conn, "etag", etag)
 
-  defp send_stream(conn, key, stream) do
-    Enum.reduce_while(stream, conn, fn
-      {:ok, data}, conn ->
-        case chunk(conn, data) do
-          {:ok, conn} ->
-            {:cont, conn}
+  defp send_stream(conn, key, stream, expected_bytes) do
+    {conn, bytes_sent, outcome} =
+      Enum.reduce_while(stream, {conn, 0, :streaming}, fn
+        {:ok, data}, {conn, bytes_sent, :streaming} ->
+          case chunk(conn, data) do
+            {:ok, conn} ->
+              {:cont, {conn, bytes_sent + byte_size(data), :streaming}}
 
-          {:error, :closed} ->
-            {:halt, conn}
+            {:error, :closed} ->
+              {:halt, {conn, bytes_sent, :client_closed}}
 
-          {:error, reason} ->
-            Logger.warning("Private download client stream failed: #{inspect(reason)}")
-            {:halt, halt(conn)}
-        end
+            {:error, reason} ->
+              Logger.warning("Private download client stream failed: #{inspect(reason)}")
+              {:halt, {halt(conn), bytes_sent, :stream_failed}}
+          end
 
-      {:error, reason}, conn ->
-        Logger.error("Private storage stream failed for #{safe_key_label(key)}: #{inspect(reason)}")
-        {:halt, halt(conn)}
-    end)
+        {:error, reason}, {conn, bytes_sent, :streaming} ->
+          Logger.error("Private storage stream failed for #{safe_key_label(key)}: #{inspect(reason)}")
+          {:halt, {halt(conn), bytes_sent, :stream_failed}}
+      end)
+
+    case outcome do
+      :streaming when bytes_sent == expected_bytes ->
+        {conn, %{outcome: :delivered, bytes_sent: bytes_sent}}
+
+      :streaming ->
+        {halt(conn), %{outcome: :stream_failed, bytes_sent: bytes_sent}}
+
+      terminal_outcome ->
+        {conn, %{outcome: terminal_outcome, bytes_sent: bytes_sent}}
+    end
   end
 
   defp safe_key_label(key), do: key |> Path.basename() |> String.slice(0, 120)

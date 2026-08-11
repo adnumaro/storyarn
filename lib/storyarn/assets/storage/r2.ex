@@ -8,11 +8,15 @@ defmodule Storyarn.Assets.Storage.R2 do
 
   @behaviour Storyarn.Assets.Storage
 
+  import SweetXml, only: [sigil_x: 2]
+
   alias Storyarn.Assets.Storage
 
   @conditional_copy_attempts 3
   @stream_chunk_size 1_048_576
   @multipart_chunk_size 5 * 1024 * 1024
+  @multipart_cleanup_page_size 100
+  @multipart_cleanup_max_uploads 10_000
 
   @impl true
   def upload(key, data, content_type) do
@@ -55,12 +59,8 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   defp perform_multipart_upload(key, upload_id, chunks) do
-    with {:ok, parts} <- upload_multipart_parts(key, upload_id, chunks),
-         {:ok, _response} <-
-           bucket()
-           |> ExAws.S3.complete_multipart_upload(key, upload_id, parts)
-           |> ExAws.request() do
-      :ok
+    with {:ok, parts} <- upload_multipart_parts(key, upload_id, chunks) do
+      complete_multipart_upload(key, upload_id, parts)
     end
   rescue
     error -> {:error, {:multipart_upload_failed, :error, error}}
@@ -68,6 +68,21 @@ defmodule Storyarn.Assets.Storage.R2 do
     {:snapshot_stream_error, reason} -> {:error, reason}
     kind, reason -> {:error, {:multipart_upload_failed, kind, reason}}
   end
+
+  defp complete_multipart_upload(key, upload_id, parts) do
+    case bucket()
+         |> ExAws.S3.complete_multipart_upload(key, upload_id, parts)
+         |> ExAws.request() do
+      {:ok, response} -> validate_multipart_completion(response, key)
+      {:error, reason} -> {:error, reason}
+    end
+  rescue
+    Protocol.UndefinedError -> {:error, :invalid_multipart_upload_completion_response}
+  end
+
+  defp validate_multipart_completion(%{body: %{key: key, etag: etag}}, key) when is_binary(etag) and etag != "", do: :ok
+
+  defp validate_multipart_completion(_response, _key), do: {:error, :invalid_multipart_upload_completion_response}
 
   defp upload_multipart_parts(key, upload_id, chunks) do
     result =
@@ -96,9 +111,9 @@ defmodule Storyarn.Assets.Storage.R2 do
   end
 
   defp upload_multipart_part(key, upload_id, part_number, chunk) do
-    case bucket()
-         |> ExAws.S3.upload_part(key, upload_id, part_number, chunk)
-         |> ExAws.request() do
+    request = ExAws.S3.upload_part(bucket(), key, upload_id, part_number, chunk)
+
+    case request_upload_part(request) do
       {:ok, %{headers: headers}} ->
         case header(headers, "etag") do
           nil -> {:error, {:missing_multipart_etag, part_number}}
@@ -110,6 +125,42 @@ defmodule Storyarn.Assets.Storage.R2 do
     end
   end
 
+  defp request_upload_part(request) do
+    task = Task.async(fn -> run_upload_part_request(request) end)
+
+    task
+    |> Task.yield(Storage.multipart_upload_part_deadline_ms())
+    |> resolve_upload_part_yield(task)
+  end
+
+  defp run_upload_part_request(request) do
+    {:request_result, ExAws.request(request)}
+  rescue
+    _exception -> {:request_failed, :exception}
+  catch
+    kind, _reason -> {:request_failed, kind}
+  end
+
+  defp resolve_upload_part_yield({:ok, result}, _task), do: normalize_upload_part_result(result)
+
+  defp resolve_upload_part_yield({:exit, _reason}, _task), do: {:error, :multipart_upload_part_task_exit}
+
+  defp resolve_upload_part_yield(nil, task) do
+    task
+    |> Task.shutdown(:brutal_kill)
+    |> normalize_upload_part_shutdown()
+  end
+
+  defp normalize_upload_part_result({:request_result, result}), do: result
+
+  defp normalize_upload_part_result({:request_failed, _kind}), do: {:error, :multipart_upload_part_task_exit}
+
+  defp normalize_upload_part_shutdown({:ok, result}), do: normalize_upload_part_result(result)
+
+  defp normalize_upload_part_shutdown({:exit, _reason}), do: {:error, :multipart_upload_part_task_exit}
+
+  defp normalize_upload_part_shutdown(nil), do: {:error, :multipart_upload_part_timeout}
+
   defp abort_failed_multipart_upload(key, upload_id, upload_reason) do
     case bucket()
          |> ExAws.S3.abort_multipart_upload(key, upload_id)
@@ -119,6 +170,224 @@ defmodule Storyarn.Assets.Storage.R2 do
 
       {:error, abort_reason} ->
         {:error, {:multipart_upload_abort_failed, upload_reason, abort_reason}}
+    end
+  end
+
+  @impl true
+  def abort_incomplete_multipart_uploads(key, opts) do
+    if Storage.multipart_cleanup_key?(key) do
+      with {:ok, max_uploads} <- multipart_cleanup_limit(opts),
+           {:ok, max_passes} <- multipart_cleanup_pass_limit(opts) do
+        abort_until_multipart_inventory_empty(key, max_uploads, max_passes, 0)
+      end
+    else
+      {:ok, 0}
+    end
+  end
+
+  @impl true
+  def incomplete_multipart_upload_count(key, opts) do
+    if Storage.multipart_cleanup_key?(key) do
+      with {:ok, max_uploads} <- multipart_cleanup_limit(opts),
+           {:ok, uploads} <- list_exact_multipart_uploads(key, max_uploads) do
+        {:ok, length(uploads)}
+      end
+    else
+      {:error, :invalid_multipart_inventory_key}
+    end
+  end
+
+  defp multipart_cleanup_limit(opts) do
+    case Keyword.get(opts, :max_uploads, @multipart_cleanup_max_uploads) do
+      limit when is_integer(limit) and limit > 0 ->
+        {:ok, min(limit, @multipart_cleanup_max_uploads)}
+
+      _invalid ->
+        {:error, :invalid_multipart_cleanup_limit}
+    end
+  end
+
+  defp multipart_cleanup_pass_limit(opts) do
+    case Keyword.get(opts, :max_passes, 3) do
+      passes when is_integer(passes) and passes > 0 and passes <= 10 -> {:ok, passes}
+      _invalid -> {:error, :invalid_multipart_cleanup_pass_limit}
+    end
+  end
+
+  defp abort_until_multipart_inventory_empty(key, max_uploads, remaining_passes, aborted_count) do
+    with {:ok, uploads} <- list_exact_multipart_uploads(key, max_uploads) do
+      abort_multipart_inventory(key, uploads, max_uploads, remaining_passes, aborted_count)
+    end
+  end
+
+  defp abort_multipart_inventory(_key, [], _max_uploads, _remaining_passes, aborted_count), do: {:ok, aborted_count}
+
+  defp abort_multipart_inventory(key, uploads, max_uploads, remaining_passes, aborted_count) when remaining_passes > 0 do
+    with :ok <- abort_multipart_uploads(uploads, remaining_passes) do
+      abort_until_multipart_inventory_empty(
+        key,
+        max_uploads,
+        remaining_passes - 1,
+        aborted_count + length(uploads)
+      )
+    end
+  end
+
+  defp abort_multipart_inventory(_key, _uploads, _max_uploads, 0, _aborted_count),
+    do: {:error, :multipart_cleanup_not_quiescent}
+
+  defp list_exact_multipart_uploads(key, max_uploads) do
+    do_list_exact_multipart_uploads(key, nil, max_uploads, [], MapSet.new())
+  end
+
+  defp do_list_exact_multipart_uploads(key, cursor, remaining, uploads, seen_cursors) do
+    page_limit = min(remaining, @multipart_cleanup_page_size)
+
+    with {:ok, page} <- list_multipart_upload_page(key, cursor, page_limit),
+         :ok <- validate_multipart_page(page, page_limit),
+         {:ok, exact_uploads} <- exact_multipart_uploads(page.uploads, key),
+         {:ok, next} <- multipart_page_continuation(page, cursor, seen_cursors) do
+      collected = uploads ++ exact_uploads
+      consumed = length(page.uploads)
+
+      case next do
+        nil ->
+          {:ok, collected}
+
+        next_cursor when consumed < remaining ->
+          do_list_exact_multipart_uploads(
+            key,
+            next_cursor,
+            remaining - consumed,
+            collected,
+            MapSet.put(seen_cursors, next_cursor)
+          )
+
+        _next_cursor ->
+          {:error, :multipart_cleanup_inventory_limit_exceeded}
+      end
+    end
+  end
+
+  defp list_multipart_upload_page(key, cursor, limit) do
+    opts = maybe_put_multipart_cursor([prefix: key, max_uploads: limit], cursor)
+
+    request =
+      bucket()
+      |> ExAws.S3.list_multipart_uploads(opts)
+      |> Map.put(:parser, &parse_multipart_upload_page/1)
+
+    case ExAws.request(request) do
+      {:ok, %{body: page}} when is_map(page) -> {:ok, page}
+      {:ok, _invalid} -> {:error, :invalid_multipart_cleanup_response}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp maybe_put_multipart_cursor(opts, nil), do: opts
+
+  defp maybe_put_multipart_cursor(opts, {key_marker, upload_id_marker}) do
+    opts
+    |> Keyword.put(:key_marker, key_marker)
+    |> Keyword.put(:upload_id_marker, upload_id_marker)
+  end
+
+  defp parse_multipart_upload_page({:ok, %{body: xml} = response}) when is_binary(xml) do
+    page =
+      SweetXml.xpath(xml, ~x"//ListMultipartUploadsResult",
+        is_truncated: ~x"./IsTruncated/text()"s,
+        next_key_marker: ~x"./NextKeyMarker/text()"s,
+        next_upload_id_marker: ~x"./NextUploadIdMarker/text()"s,
+        uploads: [~x"./Upload"l, key: ~x"./Key/text()"s, upload_id: ~x"./UploadId/text()"s]
+      )
+
+    {:ok, %{response | body: page}}
+  end
+
+  defp parse_multipart_upload_page(result), do: result
+
+  defp validate_multipart_page(%{uploads: uploads, is_truncated: truncated}, page_limit)
+       when is_list(uploads) and length(uploads) <= page_limit and truncated in ["true", "false"] do
+    if truncated == "false" or uploads != [],
+      do: :ok,
+      else: {:error, :invalid_multipart_cleanup_response}
+  end
+
+  defp validate_multipart_page(_page, _page_limit), do: {:error, :invalid_multipart_cleanup_response}
+
+  defp exact_multipart_uploads(uploads, key) do
+    uploads
+    |> Enum.reduce_while({:ok, []}, fn
+      %{key: upload_key, upload_id: upload_id}, {:ok, exact}
+      when is_binary(upload_key) and is_binary(upload_id) and upload_id != "" ->
+        if upload_key == key,
+          do: {:cont, {:ok, [{upload_key, upload_id} | exact]}},
+          else: {:cont, {:ok, exact}}
+
+      _invalid, _acc ->
+        {:halt, {:error, :invalid_multipart_cleanup_response}}
+    end)
+    |> case do
+      {:ok, exact} -> {:ok, Enum.reverse(exact)}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp multipart_page_continuation(%{is_truncated: "false"}, _cursor, _seen), do: {:ok, nil}
+
+  defp multipart_page_continuation(
+         %{is_truncated: "true", next_key_marker: key_marker, next_upload_id_marker: upload_id_marker},
+         cursor,
+         seen
+       )
+       when is_binary(key_marker) and key_marker != "" and is_binary(upload_id_marker) and upload_id_marker != "" do
+    next = {key_marker, upload_id_marker}
+
+    if next != cursor and not MapSet.member?(seen, next),
+      do: {:ok, next},
+      else: {:error, :invalid_multipart_cleanup_cursor}
+  end
+
+  defp multipart_page_continuation(_page, _cursor, _seen), do: {:error, :invalid_multipart_cleanup_cursor}
+
+  defp abort_multipart_uploads(uploads, max_passes) do
+    Enum.reduce_while(uploads, :ok, fn {key, upload_id}, :ok ->
+      case abort_multipart_upload_until_empty(key, upload_id, max_passes) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp abort_multipart_upload_until_empty(_key, _upload_id, 0), do: {:error, :multipart_cleanup_not_quiescent}
+
+  defp abort_multipart_upload_until_empty(key, upload_id, remaining_passes) do
+    with :ok <- abort_multipart_upload(key, upload_id),
+         {:ok, parts_state} <- multipart_upload_parts_state(key, upload_id) do
+      case parts_state do
+        :empty -> :ok
+        :present -> abort_multipart_upload_until_empty(key, upload_id, remaining_passes - 1)
+      end
+    end
+  end
+
+  defp abort_multipart_upload(key, upload_id) do
+    case bucket() |> ExAws.S3.abort_multipart_upload(key, upload_id) |> ExAws.request() do
+      {:ok, _response} -> :ok
+      {:error, {:http_error, 404, _response}} -> :ok
+      {:error, reason} -> {:error, {:multipart_cleanup_abort_failed, reason}}
+    end
+  end
+
+  defp multipart_upload_parts_state(key, upload_id) do
+    case bucket()
+         |> ExAws.S3.list_parts(key, upload_id, max_parts: 1)
+         |> ExAws.request() do
+      {:ok, %{body: %{parts: []}}} -> {:ok, :empty}
+      {:ok, %{body: %{parts: [_part | _rest]}}} -> {:ok, :present}
+      {:error, {:http_error, 404, _response}} -> {:ok, :empty}
+      {:ok, _invalid} -> {:error, :invalid_multipart_parts_response}
+      {:error, reason} -> {:error, {:multipart_parts_inventory_failed, reason}}
     end
   end
 
@@ -354,6 +623,26 @@ defmodule Storyarn.Assets.Storage.R2 do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  @impl true
+  def presigned_download_url(key, content_type, opts) do
+    expires_in = Keyword.fetch!(opts, :expires_in)
+    filename = Keyword.fetch!(opts, :filename)
+
+    presign_opts = [
+      expires_in: expires_in,
+      virtual_host: false,
+      query_params: [
+        {"response-cache-control", "private, no-store, no-transform"},
+        {"response-content-disposition", ~s(attachment; filename="#{filename}")},
+        {"response-content-type", content_type}
+      ]
+    ]
+
+    :s3
+    |> ExAws.Config.new([])
+    |> ExAws.S3.presigned_url(:get, bucket(), key, presign_opts)
   end
 
   @impl true

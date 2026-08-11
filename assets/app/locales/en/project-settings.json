@@ -181,6 +181,7 @@
         "submitting": "Capturing…",
         "storage_limit_reached": "This snapshot requires {required}, but only {available} is available. Nothing was queued.",
         "snapshot_limit_reached": "This project uses {used} of {limit} snapshot slots. Nothing was queued.",
+        "rollout_not_enabled": "Snapshot creation is temporarily unavailable while canonical archive storage is being enabled. Nothing was queued.",
         "request_failed": "The snapshot could not be requested. Nothing was queued.",
         "connection_failed": "The connection was interrupted. Retry safely to resume the same request.",
         "cancel_failed": "The snapshot could not be cancelled."
@@ -201,6 +202,7 @@
       },
       "download": {
         "action": "Download ZIP",
+        "archive_required": "This snapshot predates downloadable archives. Create a new snapshot to download it.",
         "linked_requires_full": "Convert this linked snapshot to a full snapshot before downloading it."
       },
       "delete": {
@@ -209,10 +211,14 @@
         "description": "Snapshot v{version}, “{name}”, will be removed permanently. Its storage is handed to durable cleanup and this action cannot be undone.",
         "confirm": "Delete snapshot",
         "cancel": "Keep snapshot",
+        "download_lease": "Download protection is active. Deletion will be available when its protection window expires.",
+        "active_operation": "Another snapshot operation is active. Deletion will be available when it finishes.",
         "failed": "The snapshot could not be deleted."
       },
       "measurements": {
         "accounted_size": "Snapshot storage",
+        "zip_archive": "ZIP archive",
+        "manifest_sidecar": "Manifest sidecar",
         "project_data": "Project data",
         "metadata": "Manifest and catalog",
         "unique_blobs": "Unique asset blobs",

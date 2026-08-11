@@ -11,6 +11,7 @@ defmodule Storyarn.Assets.BlobStoreTest do
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
   alias Storyarn.Projects.Project
+  alias Storyarn.SnapshotReadSwitchStorage
 
   setup do
     user = user_fixture()
@@ -42,6 +43,17 @@ defmodule Storyarn.Assets.BlobStoreTest do
       assert BlobStore.ext_from_content_type("image/png") == "png"
       assert BlobStore.ext_from_content_type("audio/mpeg") == "mp3"
       assert BlobStore.ext_from_content_type("application/pdf") == "pdf"
+    end
+  end
+
+  describe "compatible_content_type?/2" do
+    test "accepts exact metadata and the two historical v1 audio mappings" do
+      assert BlobStore.compatible_content_type?("image/png", "image/png")
+      assert BlobStore.compatible_content_type?("application/octet-stream", "audio/ogg")
+      assert BlobStore.compatible_content_type?("video/webm", "audio/webm")
+
+      refute BlobStore.compatible_content_type?("application/octet-stream", "application/json")
+      refute BlobStore.compatible_content_type?(nil, nil)
     end
   end
 
@@ -81,6 +93,49 @@ defmodule Storyarn.Assets.BlobStoreTest do
 
       assert {:error, :enoent} =
                Storage.download(BlobStore.blob_key(project.id, expected_hash, "png"))
+    end
+
+    test "persists canonical audio metadata instead of the generic extension MIME", %{
+      project: project,
+      user: user
+    } do
+      original_config = Application.get_env(:storyarn, :storage, [])
+      {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+
+      Application.put_env(
+        :storyarn,
+        :storage,
+        Keyword.put(original_config, :adapter, SnapshotReadSwitchStorage)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, :storage, original_config)
+
+        if Process.whereis(SnapshotReadSwitchStorage) do
+          Agent.stop(SnapshotReadSwitchStorage)
+        end
+      end)
+
+      content = "ogg upload bytes"
+
+      assert {:ok, asset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "voice.ogg", content_type: "audio/ogg"},
+                 project,
+                 user
+               )
+
+      blob_key = BlobStore.blob_key(project.id, asset.blob_hash, "ogg")
+      assert SnapshotReadSwitchStorage.put_content_type(blob_key) == "audio/ogg"
+
+      webm = "webm upload bytes"
+      webm_hash = BlobStore.compute_hash(webm)
+
+      assert {:ok, webm_key, true} =
+               BlobStore.ensure_blob_with_status(project.id, webm_hash, "webm", webm)
+
+      assert SnapshotReadSwitchStorage.put_content_type(webm_key) == "audio/webm"
     end
   end
 

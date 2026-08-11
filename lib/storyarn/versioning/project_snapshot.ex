@@ -2,9 +2,9 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   @moduledoc """
   Schema for project-level snapshots.
 
-  Every project snapshot row belongs to the canonical versioned object-set
-  format. An object set is ready only through its independently checksummed
-  manifest; its project JSON and asset blobs live in the same owned namespace.
+  Every project snapshot row belongs to a canonical, versioned storage format.
+  Legacy v1 rows own a manifest, project JSON, and copied asset blobs. V2 rows
+  own one canonical ZIP archive plus its independently checksummed manifest.
   """
   use Ecto.Schema
 
@@ -16,6 +16,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   alias Storyarn.Projects.Project
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshotCapture
+  alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotObjectStorage
 
   @allocated_object_set_fields [
@@ -24,6 +25,8 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     :format_version,
     :object_prefix,
     :project_storage_key,
+    :archive_storage_key,
+    :archive_size_bytes,
     :project_size_bytes,
     :project_checksum,
     :manifest_storage_key,
@@ -40,6 +43,9 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     :title,
     :description,
     :project_storage_key,
+    :archive_storage_key,
+    :archive_size_bytes,
+    :archive_checksum,
     :project_size_bytes,
     :project_checksum,
     :entity_counts,
@@ -78,7 +84,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
 
   @origins ~w(user daily pre_restore post_restore)
   @same_generation_transitions %{
-    "pending" => ~w(pending building cancelled),
+    "pending" => ~w(pending building failed cancelled),
     "building" => ~w(building verifying failed cancelled),
     "verifying" => ~w(verifying ready failed cancelled),
     "ready" => ~w(ready),
@@ -95,7 +101,10 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
           version_number: integer(),
           title: String.t() | nil,
           description: String.t() | nil,
-          project_storage_key: String.t(),
+          project_storage_key: String.t() | nil,
+          archive_storage_key: String.t() | nil,
+          archive_size_bytes: integer() | nil,
+          archive_checksum: String.t() | nil,
           project_size_bytes: integer(),
           project_checksum: String.t() | nil,
           format_version: integer() | nil,
@@ -152,6 +161,9 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     field :title, :string
     field :description, :string
     field :project_storage_key, :string
+    field :archive_storage_key, :string
+    field :archive_size_bytes, :integer
+    field :archive_checksum, :string
     field :project_size_bytes, :integer
     field :project_checksum, :string
     field :format_version, :integer
@@ -206,12 +218,12 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   end
 
   @doc """
-  Changeset for persisting a canonical snapshot object set.
+  Changeset for persisting canonical snapshot storage.
 
-  The canonical project fields identify `project.json` so the database keeps
-  its independently verified digest alongside the manifest digest. Object-set
-  readers still require the ready manifest key and never infer readiness from
-  the project object alone.
+  V1 keeps independently verified project and manifest digests. V2 keeps the
+  independently verified archive and manifest digests. Readers require every
+  physical object of the selected format and never infer readiness from one
+  object alone.
   """
   def object_set_changeset(snapshot, attrs) do
     object_set_changeset(snapshot, attrs, :finalize_or_remeasure)
@@ -241,6 +253,9 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :title,
       :description,
       :project_storage_key,
+      :archive_storage_key,
+      :archive_size_bytes,
+      :archive_checksum,
       :project_size_bytes,
       :project_checksum,
       :entity_counts,
@@ -282,7 +297,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_required([
       :project_id,
       :version_number,
-      :project_storage_key,
       :project_size_bytes,
       :project_checksum,
       :format_version,
@@ -316,7 +330,8 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :ready_at,
       :state_updated_at
     ])
-    |> validate_inclusion(:format_version, [1])
+    |> validate_format_required_fields(:ready)
+    |> validate_inclusion(:format_version, [1, 2])
     |> validate_inclusion(:mode, ["full"])
     |> validate_inclusion(:lifecycle_state, ["ready"])
     |> validate_inclusion(:integrity_state, ["verified"])
@@ -328,7 +343,9 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_length(:title, max: 255)
     |> validate_length(:description, max: 500)
     |> validate_length(:object_prefix, max: 500)
+    |> validate_length(:archive_storage_key, max: 520)
     |> validate_length(:manifest_storage_key, max: 520)
+    |> validate_number(:archive_size_bytes, greater_than: 0)
     |> validate_number(:project_size_bytes, greater_than: 0)
     |> validate_number(:manifest_size_bytes, greater_than: 0)
     |> validate_number(:total_size_bytes, greater_than: 0)
@@ -338,6 +355,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_number(:accounted_size_bytes, greater_than: 0)
     |> validate_number(:asset_blob_size_bytes, greater_than_or_equal_to: 0)
     |> validate_format(:project_checksum, ~r/\A[0-9a-f]{64}\z/)
+    |> validate_format(:archive_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:manifest_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:capture_digest, ~r/\A[0-9a-f]{64}\z/)
     |> validate_ready_object_keys()
@@ -348,6 +366,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:created_by_id)
     |> check_constraint(:format_version, name: :project_snapshots_object_format_version)
+    |> check_constraint(:format_version, name: :project_snapshots_archive_format)
     |> check_constraint(:object_count, name: :project_snapshots_object_counts)
     |> check_constraint(:blob_count, name: :project_snapshots_full_asset_blobs)
     |> check_constraint(:total_size_bytes, name: :project_snapshots_object_sizes)
@@ -371,7 +390,120 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
     |> lifecycle_constraints()
     |> unique_constraint(:object_prefix)
+    |> unique_constraint(:archive_storage_key)
     |> unique_constraint(:manifest_storage_key)
+    |> unique_constraint([:project_id, :version_number],
+      name: :project_snapshots_project_id_version_number_index
+    )
+  end
+
+  @doc """
+  Creates the lightweight lifecycle row owned by an archive build job.
+
+  Capture bytes and exact accounting are intentionally absent here. The worker
+  materializes them from one repeatable-read project snapshot before it may
+  claim the row for provider I/O.
+  """
+  def queued_archive_changeset(snapshot, attrs) do
+    attrs =
+      attrs
+      |> put_default(:format_version, 2)
+      |> put_default(:lifecycle_state, "pending")
+      |> put_default(:integrity_state, "unknown")
+      |> put_default(:progress_phase, "pending")
+      |> put_default(:progress_bytes, 0)
+      |> put_default(:progress_total_bytes, 0)
+      |> put_default(:build_attempt, 0)
+      |> put_default(:state_updated_at, TimeHelpers.now())
+      |> put_default(:origin, "user")
+      |> put_default(:lifecycle_generation, 1)
+      |> put_pending_object_keys()
+
+    snapshot
+    |> cast(attrs, [
+      :project_id,
+      :version_number,
+      :title,
+      :description,
+      :created_by_id,
+      :is_auto,
+      :format_version,
+      :mode,
+      :object_prefix,
+      :archive_storage_key,
+      :manifest_storage_key,
+      :idempotency_key,
+      :capture_boundary,
+      :lifecycle_state,
+      :integrity_state,
+      :progress_phase,
+      :progress_bytes,
+      :progress_total_bytes,
+      :build_attempt,
+      :state_updated_at,
+      :origin,
+      :expires_at,
+      :lifecycle_generation
+    ])
+    |> validate_required([
+      :project_id,
+      :version_number,
+      :created_by_id,
+      :format_version,
+      :mode,
+      :object_prefix,
+      :archive_storage_key,
+      :manifest_storage_key,
+      :idempotency_key,
+      :capture_boundary,
+      :lifecycle_state,
+      :integrity_state,
+      :progress_phase,
+      :progress_bytes,
+      :progress_total_bytes,
+      :build_attempt,
+      :state_updated_at,
+      :origin,
+      :lifecycle_generation
+    ])
+    |> validate_inclusion(:format_version, [2])
+    |> validate_inclusion(:mode, ["full"])
+    |> validate_inclusion(:lifecycle_state, ["pending"])
+    |> validate_inclusion(:integrity_state, ["unknown"])
+    |> validate_inclusion(:progress_phase, ["pending"])
+    |> validate_inclusion(:origin, @origins)
+    |> validate_length(:title, max: 255)
+    |> validate_length(:description, max: 500)
+    |> validate_length(:object_prefix, max: 500)
+    |> validate_length(:archive_storage_key, max: 520)
+    |> validate_length(:manifest_storage_key, max: 520)
+    |> validate_number(:progress_bytes, equal_to: 0)
+    |> validate_number(:progress_total_bytes, equal_to: 0)
+    |> validate_number(:build_attempt, equal_to: 0)
+    |> validate_number(:lifecycle_generation, equal_to: 1)
+    |> validate_ready_object_keys()
+    |> foreign_key_constraint(:project_id)
+    |> foreign_key_constraint(:created_by_id)
+    |> check_constraint(:format_version, name: :project_snapshots_object_format_version)
+    |> check_constraint(:format_version, name: :project_snapshots_archive_format)
+    |> check_constraint(:mode, name: :project_snapshots_mode)
+    |> check_constraint(:lifecycle_state, name: :project_snapshots_lifecycle_state)
+    |> check_constraint(:integrity_state, name: :project_snapshots_integrity_state)
+    |> check_constraint(:integrity_state, name: :project_snapshots_mode_integrity)
+    |> check_constraint(:mode, name: :project_snapshots_accounting_identity)
+    |> check_constraint(:object_prefix, name: :project_snapshots_object_target)
+    |> check_constraint(:capture_digest, name: :project_snapshots_capture_digest_format)
+    |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
+    |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
+    |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
+    |> lifecycle_constraints()
+    |> unique_constraint(:object_prefix)
+    |> unique_constraint(:archive_storage_key)
+    |> unique_constraint(:manifest_storage_key)
+    |> unique_constraint([:project_id, :idempotency_key],
+      name: :project_snapshots_project_id_idempotency_idx
+    )
+    |> unique_constraint(:capture_boundary)
     |> unique_constraint([:project_id, :version_number],
       name: :project_snapshots_project_id_version_number_index
     )
@@ -406,6 +538,9 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :title,
       :description,
       :project_storage_key,
+      :archive_storage_key,
+      :archive_size_bytes,
+      :archive_checksum,
       :project_size_bytes,
       :project_checksum,
       :entity_counts,
@@ -439,7 +574,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_required([
       :project_id,
       :version_number,
-      :project_storage_key,
       :project_size_bytes,
       :project_checksum,
       :format_version,
@@ -466,7 +600,8 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :origin,
       :lifecycle_generation
     ])
-    |> validate_inclusion(:format_version, [1])
+    |> validate_format_required_fields(:pending)
+    |> validate_inclusion(:format_version, [1, 2])
     |> validate_inclusion(:mode, ["full"])
     |> validate_inclusion(:lifecycle_state, ["pending"])
     |> validate_inclusion(:integrity_state, ["unknown"])
@@ -475,7 +610,9 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_length(:title, max: 255)
     |> validate_length(:description, max: 500)
     |> validate_length(:object_prefix, max: 500)
+    |> validate_length(:archive_storage_key, max: 520)
     |> validate_length(:manifest_storage_key, max: 520)
+    |> validate_number(:archive_size_bytes, greater_than: 0)
     |> validate_number(:project_size_bytes, greater_than: 0)
     |> validate_number(:manifest_size_bytes, greater_than: 0)
     |> validate_number(:total_size_bytes, greater_than: 0)
@@ -483,10 +620,11 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_number(:asset_count, greater_than_or_equal_to: 0)
     |> validate_number(:blob_count, greater_than_or_equal_to: 0)
     |> validate_number(:progress_bytes, equal_to: 0)
-    |> validate_number(:progress_total_bytes, greater_than: 0)
+    |> validate_progress_total()
     |> validate_number(:build_attempt, equal_to: 0)
     |> validate_number(:lifecycle_generation, equal_to: 1)
     |> validate_format(:project_checksum, ~r/\A[0-9a-f]{64}\z/)
+    |> validate_format(:archive_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:manifest_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:capture_digest, ~r/\A[0-9a-f]{64}\z/)
     |> validate_ready_object_keys()
@@ -495,6 +633,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:created_by_id)
     |> check_constraint(:format_version, name: :project_snapshots_object_format_version)
+    |> check_constraint(:format_version, name: :project_snapshots_archive_format)
     |> check_constraint(:mode, name: :project_snapshots_mode)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_lifecycle_state)
     |> check_constraint(:integrity_state, name: :project_snapshots_integrity_state)
@@ -508,6 +647,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
     |> lifecycle_constraints()
     |> unique_constraint(:object_prefix)
+    |> unique_constraint(:archive_storage_key)
     |> unique_constraint(:manifest_storage_key)
     |> unique_constraint([:project_id, :idempotency_key],
       name: :project_snapshots_project_id_idempotency_idx
@@ -553,6 +693,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> cast(attrs, [
       :object_prefix,
       :project_storage_key,
+      :archive_storage_key,
       :manifest_storage_key,
       :lifecycle_state,
       :integrity_state,
@@ -575,7 +716,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     ])
     |> validate_required([
       :object_prefix,
-      :project_storage_key,
       :manifest_storage_key,
       :lifecycle_state,
       :integrity_state,
@@ -585,6 +725,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :build_attempt,
       :state_updated_at
     ])
+    |> validate_format_required_fields(:state)
     |> validate_inclusion(:lifecycle_state, [
       "pending",
       "building",
@@ -613,7 +754,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       "cancelled"
     ])
     |> validate_number(:progress_bytes, greater_than_or_equal_to: 0)
-    |> validate_number(:progress_total_bytes, greater_than: 0)
+    |> validate_progress_total()
     |> validate_number(:build_attempt, greater_than_or_equal_to: 0)
     |> validate_progress_bounds()
     |> validate_ready_object_keys()
@@ -622,6 +763,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
     |> unique_constraint(:object_prefix)
+    |> unique_constraint(:archive_storage_key)
     |> unique_constraint(:manifest_storage_key)
     |> lifecycle_constraints()
   end
@@ -768,8 +910,14 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   end
 
   defp put_pending_object_keys(attrs) do
-    case Map.get(attrs, :object_prefix, Map.get(attrs, "object_prefix")) do
-      prefix when is_binary(prefix) ->
+    case {attr_value(attrs, :format_version), attr_value(attrs, :object_prefix)} do
+      {2, prefix} when is_binary(prefix) ->
+        attrs
+        |> put_default(:project_storage_key, nil)
+        |> put_default(:archive_storage_key, SnapshotArchiveStorage.archive_key(prefix))
+        |> put_default(:manifest_storage_key, SnapshotArchiveStorage.manifest_key(prefix))
+
+      {_format_version, prefix} when is_binary(prefix) ->
         attrs
         |> put_default(:project_storage_key, prefix <> "/project.json")
         |> put_default(:project_size_bytes, 0)
@@ -782,6 +930,55 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
 
   defp has_attr?(attrs, field) do
     Map.has_key?(attrs, field) or Map.has_key?(attrs, to_string(field))
+  end
+
+  defp attr_value(attrs, field), do: Map.get(attrs, field, Map.get(attrs, to_string(field)))
+
+  defp validate_format_required_fields(changeset, state) do
+    case get_field(changeset, :format_version) do
+      1 ->
+        changeset
+        |> validate_required([:project_storage_key])
+        |> reject_present_fields([:archive_storage_key, :archive_size_bytes, :archive_checksum])
+
+      2 ->
+        required =
+          cond do
+            state == :ready -> [:archive_storage_key, :archive_size_bytes, :archive_checksum]
+            is_nil(get_field(changeset, :capture_digest)) -> [:archive_storage_key]
+            true -> [:archive_storage_key, :archive_size_bytes]
+          end
+
+        changeset
+        |> validate_required(required)
+        |> reject_present_fields([:project_storage_key])
+        |> validate_nil_archive_checksum(state)
+
+      _format_version ->
+        changeset
+    end
+  end
+
+  defp reject_present_fields(changeset, fields) do
+    Enum.reduce(fields, changeset, fn field, changeset ->
+      if is_nil(get_field(changeset, field)),
+        do: changeset,
+        else: add_error(changeset, field, "is not valid for this snapshot format")
+    end)
+  end
+
+  defp validate_nil_archive_checksum(changeset, :pending) do
+    if is_nil(get_field(changeset, :archive_checksum)),
+      do: changeset,
+      else: add_error(changeset, :archive_checksum, "must be assigned only after archive verification")
+  end
+
+  defp validate_nil_archive_checksum(changeset, _state), do: changeset
+
+  defp validate_progress_total(changeset) do
+    if is_nil(get_field(changeset, :capture_digest)),
+      do: validate_number(changeset, :progress_total_bytes, equal_to: 0),
+      else: validate_number(changeset, :progress_total_bytes, greater_than: 0)
   end
 
   defp derive_accounting_sizes(changeset, derive_accounted_size?, derive_asset_blob_size?) do
@@ -800,41 +997,79 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   defp maybe_derive_accounted_size(changeset, false), do: changeset
 
   defp maybe_derive_asset_blob_size(changeset, true) do
-    total_size = get_field(changeset, :total_size_bytes)
-    project_size = get_field(changeset, :project_size_bytes)
-    manifest_size = get_field(changeset, :manifest_size_bytes)
+    case get_field(changeset, :format_version) do
+      1 ->
+        total_size = get_field(changeset, :total_size_bytes)
+        project_size = get_field(changeset, :project_size_bytes)
+        manifest_size = get_field(changeset, :manifest_size_bytes)
 
-    if Enum.all?([total_size, project_size, manifest_size], &is_integer/1) do
-      put_change(changeset, :asset_blob_size_bytes, total_size - project_size - manifest_size)
-    else
-      changeset
+        if Enum.all?([total_size, project_size, manifest_size], &is_integer/1) do
+          put_change(changeset, :asset_blob_size_bytes, total_size - project_size - manifest_size)
+        else
+          changeset
+        end
+
+      _format_version ->
+        changeset
     end
   end
 
   defp maybe_derive_asset_blob_size(changeset, false), do: changeset
 
   defp validate_object_counts(changeset) do
+    format_version = get_field(changeset, :format_version)
     object_count = get_field(changeset, :object_count)
     asset_count = get_field(changeset, :asset_count)
     blob_count = get_field(changeset, :blob_count)
 
-    cond do
-      not Enum.all?([object_count, asset_count, blob_count], &is_integer/1) ->
-        changeset
-
-      object_count != blob_count + 2 ->
-        add_error(changeset, :object_count, "must equal blob count plus manifest and project objects")
-
-      blob_count > asset_count ->
-        add_error(changeset, :blob_count, "cannot exceed asset count")
-
-      get_field(changeset, :mode) == "full" and asset_count > 0 and blob_count == 0 ->
-        add_error(changeset, :blob_count, "must include at least one owned blob when assets are cataloged")
-
-      true ->
-        changeset
+    if Enum.all?([object_count, asset_count, blob_count], &is_integer/1) do
+      validate_complete_object_counts(
+        changeset,
+        format_version,
+        get_field(changeset, :mode),
+        object_count,
+        asset_count,
+        blob_count
+      )
+    else
+      changeset
     end
   end
+
+  defp validate_complete_object_counts(changeset, format_version, mode, object_count, asset_count, blob_count) do
+    error =
+      physical_object_count_error(format_version, object_count, blob_count) ||
+        blob_asset_count_error(asset_count, blob_count) ||
+        cataloged_blob_count_error(format_version, mode, asset_count, blob_count)
+
+    case error do
+      {field, message} -> add_error(changeset, field, message)
+      nil -> changeset
+    end
+  end
+
+  defp physical_object_count_error(1, object_count, blob_count) when object_count != blob_count + 2,
+    do: {:object_count, "must equal blob count plus manifest and project objects"}
+
+  defp physical_object_count_error(2, object_count, _blob_count) when object_count != 2,
+    do: {:object_count, "must equal the archive and manifest objects"}
+
+  defp physical_object_count_error(_format_version, _object_count, _blob_count), do: nil
+
+  defp blob_asset_count_error(asset_count, blob_count) when blob_count > asset_count,
+    do: {:blob_count, "cannot exceed asset count"}
+
+  defp blob_asset_count_error(_asset_count, _blob_count), do: nil
+
+  defp cataloged_blob_count_error(format_version, "full", asset_count, 0) when asset_count > 0,
+    do: {:blob_count, cataloged_blob_count_message(format_version)}
+
+  defp cataloged_blob_count_error(_format_version, _mode, _asset_count, _blob_count), do: nil
+
+  defp cataloged_blob_count_message(1), do: "must include at least one owned blob when assets are cataloged"
+
+  defp cataloged_blob_count_message(_format_version),
+    do: "must include at least one logical blob when assets are cataloged"
 
   defp validate_total_size(changeset) do
     manifest_size = get_field(changeset, :manifest_size_bytes)
@@ -856,19 +1091,40 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   end
 
   defp validate_accounting_breakdown(changeset) do
+    format_version = get_field(changeset, :format_version)
     total_size = get_field(changeset, :total_size_bytes)
     project_size = get_field(changeset, :project_size_bytes)
     manifest_size = get_field(changeset, :manifest_size_bytes)
     accounted_size = get_field(changeset, :accounted_size_bytes)
     asset_blob_size = get_field(changeset, :asset_blob_size_bytes)
 
-    changeset =
-      if is_integer(total_size) and is_integer(accounted_size) and accounted_size != total_size do
-        add_error(changeset, :accounted_size_bytes, "must equal the total snapshot size")
-      else
-        changeset
-      end
+    changeset
+    |> validate_accounted_total_size(total_size, accounted_size)
+    |> validate_format_accounting_breakdown(
+      format_version,
+      total_size,
+      project_size,
+      manifest_size,
+      asset_blob_size,
+      get_field(changeset, :archive_size_bytes)
+    )
+  end
 
+  defp validate_accounted_total_size(changeset, total_size, accounted_size)
+       when is_integer(total_size) and is_integer(accounted_size) and accounted_size != total_size,
+       do: add_error(changeset, :accounted_size_bytes, "must equal the total snapshot size")
+
+  defp validate_accounted_total_size(changeset, _total_size, _accounted_size), do: changeset
+
+  defp validate_format_accounting_breakdown(
+         changeset,
+         1,
+         total_size,
+         project_size,
+         manifest_size,
+         asset_blob_size,
+         _archive_size
+       ) do
     if Enum.all?([total_size, project_size, manifest_size, asset_blob_size], &is_integer/1) and
          total_size != project_size + manifest_size + asset_blob_size do
       add_error(
@@ -881,25 +1137,93 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     end
   end
 
+  defp validate_format_accounting_breakdown(
+         changeset,
+         2,
+         total_size,
+         _project_size,
+         manifest_size,
+         _asset_blob_size,
+         archive_size
+       ) do
+    if Enum.all?([total_size, archive_size, manifest_size], &is_integer/1) and
+         total_size != archive_size + manifest_size do
+      add_error(changeset, :total_size_bytes, "must equal archive and manifest physical bytes")
+    else
+      changeset
+    end
+  end
+
+  defp validate_format_accounting_breakdown(
+         changeset,
+         _format_version,
+         _total_size,
+         _project_size,
+         _manifest_size,
+         _asset_blob_size,
+         _archive_size
+       ), do: changeset
+
   defp validate_ready_object_keys(changeset) do
+    format_version = get_field(changeset, :format_version)
     project_id = get_field(changeset, :project_id)
     prefix = get_field(changeset, :object_prefix)
     project_storage_key = get_field(changeset, :project_storage_key)
+    archive_storage_key = get_field(changeset, :archive_storage_key)
     manifest_storage_key = get_field(changeset, :manifest_storage_key)
 
-    changeset =
-      if SnapshotObjectStorage.ready_prefix_for_project?(project_id, prefix),
-        do: changeset,
-        else: add_error(changeset, :object_prefix, "must be a canonical ready namespace for the project")
+    case format_version do
+      1 ->
+        changeset
+        |> validate_canonical_prefix(SnapshotObjectStorage.ready_prefix_for_project?(project_id, prefix))
+        |> validate_storage_key(
+          :project_storage_key,
+          project_storage_key,
+          prefix,
+          "project.json",
+          "must identify project.json in the object namespace"
+        )
+        |> validate_storage_key(
+          :manifest_storage_key,
+          manifest_storage_key,
+          prefix,
+          "manifest.json",
+          "must identify manifest.json in the object namespace"
+        )
 
-    changeset =
-      if is_binary(prefix) and project_storage_key == prefix <> "/project.json",
-        do: changeset,
-        else: add_error(changeset, :project_storage_key, "must identify project.json in the object namespace")
+      2 ->
+        changeset
+        |> validate_canonical_prefix(SnapshotArchiveStorage.ready_prefix_for_project?(project_id, prefix))
+        |> validate_storage_key(
+          :archive_storage_key,
+          archive_storage_key,
+          prefix,
+          "snapshot.zip",
+          "must identify snapshot.zip in the archive namespace"
+        )
+        |> validate_storage_key(
+          :manifest_storage_key,
+          manifest_storage_key,
+          prefix,
+          "manifest.json",
+          "must identify manifest.json in the archive namespace"
+        )
 
-    if is_binary(prefix) and manifest_storage_key == prefix <> "/manifest.json",
+      _format_version ->
+        changeset
+    end
+  end
+
+  defp validate_canonical_prefix(changeset, true), do: changeset
+
+  defp validate_canonical_prefix(changeset, false) do
+    add_error(changeset, :object_prefix, "must be a canonical ready namespace for the project")
+  end
+
+  defp validate_storage_key(changeset, field, key, prefix, filename, message) do
+    if is_binary(prefix) and key == prefix <> "/" <> filename,
       do: changeset,
-      else: add_error(changeset, :manifest_storage_key, "must identify manifest.json in the object namespace")
+      else: add_error(changeset, field, message)
   end
 
   defp validate_object_set_transition(changeset, snapshot, :finalize_or_remeasure) do

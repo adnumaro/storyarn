@@ -11,7 +11,6 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
-  alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.CleanupProjectSnapshotWorker
@@ -365,16 +364,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
   end
 
   test "cleanup cannot report progress while a snapshot row still owns its namespace" do
-    intent = cleanup_intent_fixture(0)
-
-    intent.project_snapshot_id
-    |> then(&Repo.get!(ProjectSnapshot, &1))
-    |> Ecto.Changeset.change(
-      object_prefix: intent.ready_prefix,
-      project_storage_key: "#{intent.ready_prefix}/project.json",
-      manifest_storage_key: "#{intent.ready_prefix}/manifest.json"
-    )
-    |> Repo.update!()
+    intent = cleanup_intent_fixture(0, archive?: true)
 
     assert {:error, :snapshot_cleanup_namespace_still_owned} =
              Versioning.process_project_snapshot_cleanup_intent(intent.id)
@@ -598,9 +588,21 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
                idempotency_key: Ecto.UUID.generate()
              })
 
+    archive? = Keyword.get(opts, :archive?, false)
     token = "cleanupTest00001"
-    ready_prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
-    staging_prefix = "projects/#{project.id}/snapshots/object-sets/v1/staging/#{token}"
+
+    {ready_prefix, staging_prefix} =
+      if archive? do
+        {
+          snapshot.object_prefix,
+          String.replace(snapshot.object_prefix, "/ready/", "/staging/", global: false)
+        }
+      else
+        {
+          "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}",
+          "projects/#{project.id}/snapshots/object-sets/v1/staging/#{token}"
+        }
+      end
 
     blob_paths =
       if blob_count > 0 do
@@ -612,7 +614,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
         []
       end
 
-    paths = ["manifest.json", "project.json" | blob_paths]
+    paths = if archive?, do: ["manifest.json", "snapshot.zip"], else: ["manifest.json", "project.json" | blob_paths]
 
     storage_keys =
       Enum.map(paths, &"#{ready_prefix}/#{&1}") ++

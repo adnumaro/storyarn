@@ -2,9 +2,12 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-09
+> Last reviewed: 2026-08-11
 >
 > Source of truth: `lib/storyarn/versioning/project_snapshot_lifecycle.ex`,
+> `lib/storyarn/versioning/snapshot_archive_storage.ex`,
+> `lib/storyarn/versioning/snapshot_archive_smoke.ex`,
+> `lib/mix/tasks/storyarn.snapshot_archive_smoke.ex`,
 > `lib/storyarn/versioning/project_snapshot_reconciliation.ex`,
 > `lib/storyarn/versioning/project_snapshot_reconciliation_repair.ex`,
 > `lib/storyarn/versioning/project_snapshot_reset.ex`,
@@ -17,9 +20,60 @@ reader, restore path, or compatibility branch for data removed by the reset.
 
 ## Steady-state guarantees
 
-- Every full snapshot owns immutable ready and staging namespaces. Before any
-  snapshot or parent deletion, Storyarn durably records its exact manifest
-  inventory in a cleanup receipt and `snapshot_cleanup_intents` row.
+- Every new full snapshot is built asynchronously as one canonical
+  `snapshot.zip` plus a byte-identical `manifest.json` sidecar in immutable v2
+  staging and ready namespaces. The archive contains `manifest.json`,
+  `project.json`, and the deduplicated `blobs/` inventory; the manifest is
+  published last. Source project blobs are protected build inputs, not a second
+  snapshot-owned object set. Before any snapshot or parent deletion, Storyarn
+  durably records the exact archive and sidecar cleanup inventory in a cleanup
+  receipt and `snapshot_cleanup_intents` row.
+- The request transaction does not serialize project content or assemble ZIP
+  bytes. It persists only the queued snapshot identity, a minimal one-byte
+  capacity lease, and the exact `snapshot_archives` job. The executing worker
+  captures a repeatable-read project view, persists that immutable build input,
+  and extends the reservation to the exact archive-plus-sidecar size before
+  starting provider I/O. Cancellation, project deletion, quota rejection, or a
+  lost job fence rolls back or terminalizes that handoff without retaining the
+  transient v2 capture.
+- Ready v2 storage accounting contains the archive bytes plus the sidecar bytes
+  only. The immutable database capture is a build input and is removed when the
+  ready transition commits. Existing v1 object-set rows remain readable by
+  lifecycle tooling but are never converted synchronously by a download.
+- A download request reauthorizes the current user and exact project snapshot,
+  then issues a short-lived private provider grant for the persisted archive.
+  Application nodes do not rebuild or proxy production ZIP bytes. The durable
+  zero-byte download lease remains active until its bounded expiry so deletion
+  cannot race an issued grant; local development uses the same authorized
+  endpoint with private ranged delivery. The lease covers the configured
+  signed-URL start TTL plus the configured maximum transfer duration and a
+  handoff margin. Repeated grants for one snapshot coalesce onto the latest
+  generation-fenced lease, so request volume cannot append an unbounded active
+  lease set and one request can never release another request's protection.
+  At most one application lease is active per snapshot, and the existing
+  snapshot-count product limit therefore also bounds the active download-lease
+  set for a project or workspace.
+- Snapshot build capacity uses a short renewable lease. The worker records an
+  immediate generation-fenced heartbeat after claiming its exact Oban job and
+  renews every minute while it is alive; the five-minute default lease covers
+  at least three heartbeat intervals. A crashed writer therefore abandons at
+  most the short lease window instead of the generic 24-hour reservation TTL.
+  Terminal zero-byte export lease history is retained for seven days by
+  default, then purged in bounded batches only when the row is released,
+  never-started, carries the exact no-write proof, and owns no publication
+  claim. The newest zero-byte export lease remains as durable feature-use
+  evidence, so retention cannot accidentally make the guarded zero-byte lease
+  migration appear safe to roll back.
+
+Production may override the five-minute grant start window with
+`PROJECT_SNAPSHOT_DOWNLOAD_SIGNED_URL_TTL_SECONDS` (1–300 seconds) and the
+one-hour supported transfer window with
+`PROJECT_SNAPSHOT_DOWNLOAD_MAX_TRANSFER_SECONDS`. Boot rejects non-positive
+values and the signed-grant value cannot exceed the private storage facade's
+five-minute limit. The export lease is derived from both values plus a
+one-minute margin; it is not independently configurable, so the deletion fence
+cannot be shorter than the grant contract.
+
 - Lifecycle transitions are forward-only and generation-fenced in both Ecto and
   PostgreSQL. A stale build, cancellation, retry, finalizer, or cleanup delivery
   cannot publish, regress, or apply an I/O result to a newer generation.
@@ -45,9 +99,10 @@ reader, restore path, or compatibility branch for data removed by the reset.
 ## Observation-only reconciliation
 
 Snapshot reconciliation is an operator-started dry-run. It verifies every
-`ready` snapshot that existed at the run's database high-watermark, compares
-its immutable row, manifest, publication claim, committed reservation, exact
-ready namespace, sizes, MIME metadata, and streamed SHA-256 digests, and then
+`ready` snapshot that existed at the run's database high-watermark. For v2 it
+compares the immutable row, archive and sidecar digests, publication claim,
+committed reservation, and the exact two-object ready namespace. Existing v1
+rows retain their manifest and payload-object verification path. The run then
 performs a resumable provider scan under `projects/`. It also records quiescent
 expired build reservations, terminal cleanup intents, malformed reserved-root
 keys, unowned canonical namespaces, and abandoned temporary namespaces. It
@@ -95,6 +150,31 @@ multipart drift or as repair/deletion authority. Findings called ambiguous or
 abandoned are investigation candidates only; the repair pass must reacquire
 ownership locks and revalidate all evidence.
 
+Canonical v2 cleanup has one narrower guarantee that does not make the global
+inventory complete. For each durably owned v2 object key (`snapshot.zip` or
+`manifest.json`, in either staging or ready), storage compensation repeatedly
+lists and aborts exact-key incomplete multipart uploads until a bounded
+verification pass proves the inventory empty. Every `UploadPart` call also has
+a five-minute hard local wall-clock deadline. Cleanup uses that same policy plus
+a one-second database timestamp-precision margin as its minimum quiescence
+window: the first successful abort/delete pass records database-clock timestamps
+on the cleanup receipt and preserves it; no provider I/O occurs before the
+deadline. A later exact inventory that finds an upload
+aborts it and starts a new window. Only a second empty pass after a complete
+window can checkpoint a lifecycle cleanup or atomically consume a compensation
+receipt. A list, pagination, abort, delete, or quiescence failure leaves the
+existing timestamps unchanged and keeps the durable cleanup pending. This
+recovers hard crashes and locally timed-out parts during archive staging or
+publish fallback without treating a bucket-wide multipart scan as deletion
+authority.
+
+The local wall-clock deadline bounds Storyarn's uploader process; it cannot
+prove that a remote provider has stopped processing bytes after the client is
+terminated. The durable second pass closes the known abort/ListParts visibility
+race, while the provider lifecycle rule that expires incomplete multipart
+uploads remains independent defence against provider-side processing that
+outlives the local deadline.
+
 The run emits low-cardinality `snapshot.reconciliation.start`, `.page`,
 `.summary`, and `.stop` telemetry and logs terminal failure codes.
 Reconciliation intentionally does not call the workspace-wide
@@ -139,13 +219,14 @@ provider deletion.
 | `ambiguous_storage_object`, `unsafe_snapshot_storage_key`, or any unknown category                                               | `report_only`                                                                                                    | Require explicit investigation and a separately reviewed repair plan                                                                                                               |
 
 The repair pass does not improve physical-inventory completeness. Incomplete
-multipart uploads remain invisible to the current storage contract, so
+multipart uploads outside the four exact durably owned v2 archive keys remain
+invisible to the reconciliation contract, so
 `multipart_inventory_state = unsupported` and
 `physical_inventory_complete = false` remain mandatory even after every known
-finding is repaired. Provider lifecycle configuration, multipart inventory and
-abort operations, and alerts for residual multipart bytes are separate
-provider-operations prerequisites; never substitute a zero application gauge
-for that evidence.
+finding is repaired. The exact-key abort path is recovery for known archive
+ownership, not evidence of exhaustive bucket inventory. Provider lifecycle
+configuration and alerts for residual multipart bytes remain independent
+defence in depth; never substitute a zero application gauge for that evidence.
 
 After repairs and their durable cleanup jobs settle, always start a new dry-run
 and inspect its new findings. Do not reuse the repaired run as readiness proof.
@@ -488,6 +569,79 @@ Relevant telemetry prefixes are:
 ```text
 storyarn.snapshot.reset.stop
 ```
+
+## Canonical archive write fence
+
+Project snapshot archive writes cross a rolling-deploy protocol boundary. A
+previous release can neither consume the `snapshot_archives` build queue nor
+interpret the v2 cleanup inventory (`snapshot.zip` plus `manifest.json`). Its
+maintenance jobs also scan lifecycle tables globally, so a build-only queue
+split is not sufficient protection.
+
+Deploy the archive-aware release with
+`PROJECT_SNAPSHOT_ARCHIVE_WRITES_ENABLED` unset or `false`. The write fence is
+fail-closed: a new full-snapshot request returns
+`snapshot_archive_rollout_not_enabled` before creating a lifecycle row,
+capture, reservation, or job. Retrying an already persisted idempotency key
+still returns its existing snapshot. There is deliberately no v1 creation
+fallback.
+
+Enable canonical archives only after every application and Oban node is
+confirmed on the archive-aware image:
+
+1. Confirm no node from the previous release remains.
+2. Set `PROJECT_SNAPSHOT_ARCHIVE_WRITES_ENABLED=true`.
+3. Restart every node so runtime configuration is uniform.
+4. Verify new build jobs use `snapshot_archives`; legacy v1 jobs remain on
+   `snapshots` and may drain under the new binary.
+
+Once the fence has been enabled and any v2 row exists, do not roll back to the
+previous binary. Close the fence and pause snapshot plus storage-cleanup queues,
+then forward-fix with the archive-aware protocol. The previous release can
+terminalize a v2 cleanup intent as an invalid v1 inventory even though it does
+not own the v2 namespace.
+
+### Real provider read smoke
+
+Before enabling archive writes in production, run the read path against a
+verified v2 canary in staging using the real private Tigris configuration.
+Separately verify in the provider IAM policy that the application principal
+has the equivalents of `s3:ListBucketMultipartUploads` (sometimes exposed as
+`ListMultipartUploads`), `s3:ListMultipartUploadParts`, and
+`s3:AbortMultipartUpload` for the private archive prefix. Cleanup lists the
+parts of each discovered upload before aborting it. The read-only smoke proves
+multipart-upload inventory access, but deliberately cannot prove part listing
+or abort access without a real incomplete upload; manufacturing that failure
+mode could itself leave chargeable parts when either permission is absent.
+Keep the provider rule that expires incomplete multipart uploads as defence in
+depth: the application deadline terminates the local `UploadPart` task but does
+not prove that remote processing stopped at the same instant.
+For production, first place snapshot creation behind an operator-controlled
+maintenance/access gate, enable archive writes on every archive-aware node,
+create exactly one canary, wait for it to become ready, and run the same check.
+Only reopen snapshot creation after the production canary passes. If the
+deployment cannot restrict creation to that operator-controlled window, do not
+enable the production write fence. The task is
+strictly read-only and fails closed if the row, canonical key, signed grant,
+response contract, or payload does not match:
+
+```bash
+bin/storyarn rpc 'Storyarn.Versioning.SnapshotArchiveSmoke.run!(SNAPSHOT_ID)'
+```
+
+The selected row must be a ready, verified v2 full snapshot and its archive
+must be at most 300 MiB. The task first proves that the provider credentials can
+list incomplete multipart uploads for one random exact canonical archive key,
+without aborting or mutating anything. It then streams the full signed GET
+through an incremental SHA-256 check, compares its exact byte count with the
+immutable row, and verifies a signed Range GET against the first archive bytes.
+Both responses must preserve the signed `Content-Type`, `Content-Disposition`,
+and private `Cache-Control`; the range response must also return exact
+`Accept-Ranges`, `Content-Length`, and `Content-Range` headers. It never prints
+the bearer URL and performs no upload, overwrite, abort, or delete. A passing
+unit test or a syntactically valid signed URL is not a substitute for this real
+provider check. If the production canary fails, close the write fence and pause
+the `snapshot_archives` queue before accepting another snapshot request.
 
 ## Containment switches
 

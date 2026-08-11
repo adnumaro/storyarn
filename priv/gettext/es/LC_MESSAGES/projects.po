@@ -75,7 +75,7 @@ msgstr "No hay ninguna clave API configurada."
 #: lib/storyarn_web/live/project_settings_live/general.ex:117
 #: lib/storyarn_web/live/project_settings_live/localization.ex:107
 #: lib/storyarn_web/live/project_settings_live/members.ex:104
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:182
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:231
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:123
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:109
 #, elixir-autogen, elixir-format
@@ -194,7 +194,7 @@ msgstr "Algunos elementos no se pudieron eliminar."
 #: lib/storyarn_web/live/project_settings_live/localization.ex:95
 #: lib/storyarn_web/live/project_settings_live/members.ex:92
 #: lib/storyarn_web/live/project_settings_live/members.ex:149
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:170
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:219
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:111
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:97
 #, elixir-autogen, elixir-format
@@ -266,7 +266,7 @@ msgstr "Error al guardar la configuración."
 msgid "Invalid color format. Use #RRGGBB."
 msgstr "Formato de color no válido. Usa #RRGGBB."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:27
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:28
 #, elixir-autogen, elixir-format
 msgid "Snapshots"
 msgstr "Snapshots"
@@ -1214,27 +1214,27 @@ msgstr "No se pudo descartar la importación. Inténtalo de nuevo."
 msgid "Configure automatic entity versioning"
 msgstr "Configura el versionado automático de entidades"
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:29
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:30
 #, elixir-autogen, elixir-format
 msgid "Review snapshot storage, reservations, and integrity"
 msgstr "Revisa el almacenamiento, las reservas y la integridad de las snapshots"
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:212
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:261
 #, elixir-autogen, elixir-format
 msgid "Snapshot creation started."
 msgstr "La creación de la snapshot ha comenzado."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:245
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:297
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be cancelled."
 msgstr "No se ha podido cancelar la snapshot."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:265
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:317
 #, elixir-autogen, elixir-format
 msgid "Snapshot deletion started."
 msgstr "La eliminación de la snapshot ha comenzado."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:271
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:323
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be deleted."
 msgstr "No se ha podido eliminar la snapshot."
@@ -1249,42 +1249,37 @@ msgstr "Este elemento hace referencia a contenido no disponible. Si hay elemento
 msgid "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
 msgstr "Este recurso todavía está referenciado por otro contenido. Elimina esas referencias o borra permanentemente de la Papelera los elementos que lo referencian y vuelve a intentarlo."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:133
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:232
 #, elixir-autogen, elixir-format
 msgid "Convert this linked snapshot to a full snapshot before downloading it."
 msgstr "Convierte esta snapshot enlazada en una snapshot completa antes de descargarla."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:179
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:270
 #, elixir-autogen, elixir-format
 msgid "Snapshot download is temporarily unavailable."
 msgstr "La descarga de snapshots no está disponible temporalmente."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:117
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:216
 #, elixir-autogen, elixir-format
 msgid "Snapshot not found."
 msgstr "No se encontró la snapshot."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:152
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:251
 #, elixir-autogen, elixir-format
 msgid "This snapshot cannot be downloaded because its integrity could not be verified."
 msgstr "No se puede descargar esta snapshot porque no se pudo verificar su integridad."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:171
-#, elixir-autogen, elixir-format
-msgid "This snapshot exceeds the ZIP download limits."
-msgstr "Esta snapshot supera los límites de descarga ZIP."
-
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:163
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:262
 #, elixir-autogen, elixir-format
 msgid "This snapshot format cannot be downloaded."
 msgstr "No se puede descargar este formato de snapshot."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:144
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:243
 #, elixir-autogen, elixir-format
 msgid "This snapshot is not ready to download."
 msgstr "Esta snapshot todavía no está lista para descargar."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:125
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:224
 #, elixir-autogen, elixir-format
 msgid "You do not have permission to download this snapshot."
 msgstr "No tienes permiso para descargar esta snapshot."

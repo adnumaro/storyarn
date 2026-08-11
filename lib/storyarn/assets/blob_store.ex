@@ -61,6 +61,21 @@ defmodule Storyarn.Assets.BlobStore do
   end
 
   @doc """
+  Returns whether provider metadata is compatible with the canonical asset
+  content type.
+
+  The non-identical pairs preserve historical blobs whose content type was
+  inferred from their v1 path extension instead of the original upload
+  metadata. Bytes are still verified independently by SHA-256.
+  """
+  @spec compatible_content_type?(term(), term()) :: boolean()
+  def compatible_content_type?(actual, expected) when is_binary(actual) and actual != "" and actual == expected, do: true
+
+  def compatible_content_type?("application/octet-stream", "audio/ogg"), do: true
+  def compatible_content_type?("video/webm", "audio/webm"), do: true
+  def compatible_content_type?(_actual, _expected), do: false
+
+  @doc """
   Uploads a blob if not already present. Idempotent.
 
   Returns `{:ok, blob_key}` on success.
@@ -78,23 +93,38 @@ defmodule Storyarn.Assets.BlobStore do
   @spec ensure_blob_with_status(integer(), String.t(), String.t(), binary()) ::
           {:ok, String.t(), boolean()} | {:error, term()}
   def ensure_blob_with_status(project_id, hash, ext, binary_data) do
+    ensure_blob_with_status(project_id, hash, ext, binary_data, default_blob_content_type(ext))
+  end
+
+  @doc "Uploads a blob with explicit provider metadata and reports ownership."
+  @spec ensure_blob_with_status(integer(), String.t(), String.t(), binary(), String.t()) ::
+          {:ok, String.t(), boolean()} | {:error, term()}
+  def ensure_blob_with_status(project_id, hash, ext, binary_data, content_type)
+      when is_binary(content_type) and content_type != "" do
     key = blob_key(project_id, hash, ext)
 
     StorageKeyLock.with_project_blob_lock(key, fn ->
-      do_ensure_blob_with_status(key, hash, ext, binary_data)
+      do_ensure_blob_with_status(key, hash, binary_data, content_type)
     end)
   end
 
-  defp do_ensure_blob_with_status(key, hash, ext, binary_data) do
+  def ensure_blob_with_status(_project_id, _hash, _ext, _binary_data, _content_type),
+    do: {:error, :invalid_blob_content_type}
+
+  defp default_blob_content_type("ogg"), do: "audio/ogg"
+  defp default_blob_content_type("webm"), do: "audio/webm"
+  defp default_blob_content_type(ext), do: MIME.type(ext)
+
+  defp do_ensure_blob_with_status(key, hash, binary_data, content_type) do
     if compute_hash(binary_data) == hash do
-      put_blob_if_absent(key, hash, ext, binary_data)
+      put_blob_if_absent(key, hash, binary_data, content_type)
     else
       {:error, :blob_hash_mismatch}
     end
   end
 
-  defp put_blob_if_absent(key, hash, ext, binary_data) do
-    case Storage.put_if_absent(key, binary_data, MIME.type(ext)) do
+  defp put_blob_if_absent(key, hash, binary_data, content_type) do
+    case Storage.put_if_absent(key, binary_data, content_type) do
       {:ok, _url, true} -> {:ok, key, true}
       {:ok, _url, false} -> verify_existing_blob(key, hash)
       {:error, reason} -> {:error, reason}

@@ -294,6 +294,66 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
     end
   end
 
+  describe "queued_archive_changeset/2" do
+    test "allocates only durable identity before the worker captures bytes" do
+      prefix = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp"
+
+      changeset =
+        ProjectSnapshot.queued_archive_changeset(%ProjectSnapshot{}, %{
+          project_id: 1,
+          version_number: 1,
+          created_by_id: 1,
+          mode: "full",
+          object_prefix: prefix,
+          idempotency_key: Ecto.UUID.generate(),
+          capture_boundary: Ecto.UUID.generate()
+        })
+
+      assert changeset.valid?
+      assert Ecto.Changeset.get_field(changeset, :archive_storage_key) == prefix <> "/snapshot.zip"
+      assert Ecto.Changeset.get_field(changeset, :manifest_storage_key) == prefix <> "/manifest.json"
+      assert Ecto.Changeset.get_field(changeset, :progress_total_bytes) == 0
+      assert is_nil(Ecto.Changeset.get_field(changeset, :capture_digest))
+      assert is_nil(Ecto.Changeset.get_field(changeset, :captured_at))
+      assert is_nil(Ecto.Changeset.get_field(changeset, :archive_size_bytes))
+      assert is_nil(Ecto.Changeset.get_field(changeset, :project_size_bytes))
+    end
+
+    test "permits a queued request to fail before capture without inventing byte counts" do
+      now = TimeHelpers.now()
+      prefix = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp"
+
+      queued =
+        %ProjectSnapshot{}
+        |> ProjectSnapshot.queued_archive_changeset(%{
+          project_id: 1,
+          version_number: 1,
+          created_by_id: 1,
+          mode: "full",
+          object_prefix: prefix,
+          idempotency_key: Ecto.UUID.generate(),
+          capture_boundary: Ecto.UUID.generate(),
+          state_updated_at: now
+        })
+        |> Ecto.Changeset.apply_changes()
+
+      changeset =
+        ProjectSnapshot.build_state_changeset(queued, %{
+          lifecycle_state: "failed",
+          integrity_state: "incomplete",
+          progress_phase: "failed",
+          failure_code: "build_failed",
+          failure_message: "The snapshot could not be created.",
+          failed_at: now,
+          state_updated_at: now
+        })
+
+      assert changeset.valid?
+      assert Ecto.Changeset.get_field(changeset, :progress_total_bytes) == 0
+      assert is_nil(Ecto.Changeset.get_field(changeset, :capture_digest))
+    end
+  end
+
   describe "pending_object_set_changeset/2" do
     test "allocates a non-ready unaccounted object-set target" do
       prefix = @ready_prefix
@@ -428,6 +488,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
           total_size_bytes: 1,
           accounted_size_bytes: 1
         })
+        |> Ecto.Changeset.check_constraint(:project_size_bytes,
+          name: :project_snapshots_archive_format
+        )
         |> Ecto.Changeset.check_constraint(:project_size_bytes,
           name: :project_snapshots_ready_object_set
         )

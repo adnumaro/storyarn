@@ -23,6 +23,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.ProjectSnapshotPolicy
+  alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Versioning.SnapshotObjectStorage
@@ -41,6 +42,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   @active_job_states ~w(available scheduled executing retryable)
   @cleanup_worker inspect(CleanupProjectSnapshotWorker)
   @build_worker "Storyarn.Workers.BuildProjectSnapshotWorker"
+  @legacy_build_queue "snapshots"
+  @archive_build_queue "snapshot_archives"
   @build_recovery_quarantine_seconds 15 * 60
   @cleanup_job_rescue_after_seconds 3 * 60 * 60
   @maintenance_workers [
@@ -305,9 +308,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   defp quiescent_terminal_build_job_dynamic(quiesced_before) do
     terminal_timestamp = quiescent_terminal_timestamp_dynamic(quiesced_before)
 
+    matching_queue =
+      dynamic(
+        [snapshot, _project, _reservation, job],
+        (snapshot.format_version == 1 and job.queue == ^@legacy_build_queue) or
+          (snapshot.format_version == 2 and job.queue == ^@archive_build_queue)
+      )
+
     dynamic(
       [_snapshot, _project, _reservation, job],
-      job.worker == ^@build_worker and job.queue == "snapshots" and ^terminal_timestamp
+      job.worker == ^@build_worker and ^matching_queue and ^terminal_timestamp
     )
   end
 
@@ -600,7 +610,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
 
   def process_cleanup_intent(intent_id, opts) when is_integer(intent_id) and intent_id > 0 and is_list(opts) do
     final_attempt? = Keyword.get(opts, :final_attempt?, false) == true
-    delete_fun = Keyword.get(opts, :delete_fun, &StorageCompensation.delete_storage_keys/1)
+    delete_fun = Keyword.get(opts, :delete_fun, &StorageCompensation.delete_storage_keys_with_evidence/1)
     verify_fun = Keyword.get(opts, :verify_fun, &verify_cleanup_namespace_empty/1)
 
     if valid_cleanup_process_options?(opts, delete_fun, verify_fun) do
@@ -850,18 +860,21 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     old_enough?(snapshot.state_updated_at, quiesced_before)
   end
 
-  defp quiescent_build_job?(
-         _snapshot,
-         %Oban.Job{worker: @build_worker, queue: "snapshots", state: state} = job,
-         quiesced_before
-       )
+  defp quiescent_build_job?(snapshot, %Oban.Job{worker: @build_worker, state: state} = job, quiesced_before)
        when state in @terminal_job_states do
-    state
-    |> terminal_job_timestamp(job)
-    |> old_enough?(quiesced_before)
+    build_job_queue_matches?(snapshot, job) and
+      state
+      |> terminal_job_timestamp(job)
+      |> old_enough?(quiesced_before)
   end
 
   defp quiescent_build_job?(_snapshot, _job, _quiesced_before), do: false
+
+  defp build_job_queue_matches?(%ProjectSnapshot{format_version: 1}, %Oban.Job{queue: @legacy_build_queue}), do: true
+
+  defp build_job_queue_matches?(%ProjectSnapshot{format_version: 2}, %Oban.Job{queue: @archive_build_queue}), do: true
+
+  defp build_job_queue_matches?(_snapshot, _job), do: false
 
   defp terminal_job_timestamp("completed", job), do: job.completed_at
   defp terminal_job_timestamp("discarded", job), do: job.discarded_at
@@ -914,13 +927,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
 
   defp create_cleanup_and_delete(snapshot, workspace_id, reason, authority, namespace_expectation) do
     with :ok <- ensure_supported_mode(snapshot.mode),
-         %ProjectSnapshotCapture{} = capture <- lock_capture(snapshot.id),
-         {:ok, scope} <-
-           SnapshotObjectStorage.cleanup_scope_from_capture(
-             snapshot.project_id,
-             snapshot.object_prefix,
-             capture.manifest_json
-           ),
+         {:ok, scope} <- snapshot_cleanup_scope(snapshot),
          {:ok, provider_namespace_fingerprint} <-
            cleanup_provider_namespace_fingerprint(namespace_expectation),
          now = TimeHelpers.now(),
@@ -949,11 +956,28 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
          {:ok, _deleted_snapshot} <- Repo.delete(deleting),
          {:ok, _job} <- enqueue_cleanup(intent.id) do
       {:ok, intent}
-    else
-      nil -> {:error, :snapshot_capture_missing}
-      {:error, reason} -> {:error, reason}
     end
   end
+
+  defp snapshot_cleanup_scope(%ProjectSnapshot{format_version: 1} = snapshot) do
+    case lock_capture(snapshot.id) do
+      %ProjectSnapshotCapture{} = capture ->
+        SnapshotObjectStorage.cleanup_scope_from_capture(
+          snapshot.project_id,
+          snapshot.object_prefix,
+          capture.manifest_json
+        )
+
+      nil ->
+        {:error, :snapshot_capture_missing}
+    end
+  end
+
+  defp snapshot_cleanup_scope(%ProjectSnapshot{format_version: 2} = snapshot) do
+    SnapshotArchiveStorage.cleanup_scope_from_snapshot(snapshot)
+  end
+
+  defp snapshot_cleanup_scope(%ProjectSnapshot{}), do: {:error, :unsupported_snapshot_cleanup_format}
 
   defp cleanup_provider_namespace_fingerprint(:current), do: current_provider_namespace_fingerprint()
 
@@ -1267,9 +1291,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     with :ok <- validate_cleanup_intent_ownership(intent),
          :ok <- validate_current_provider_namespace(intent),
          :ok <- ensure_cleanup_namespace_unowned(intent) do
-      case safe_delete(delete_fun, batch) do
-        :ok -> finish_verified_batch(intent, batch, verify_fun, final_attempt?)
-        {:error, failed_keys} -> finish_failed_batch(intent, batch, failed_keys, final_attempt?)
+      case StorageCompensation.delete_cleanup_request_keys(intent.cleanup_request_id, batch, delete_fun: delete_fun) do
+        :ok ->
+          finish_verified_batch(intent, batch, verify_fun, final_attempt?)
+
+        {:deferred, seconds} ->
+          emit_cleanup_stop(intent, :deferred, 0)
+          {:ok, {:deferred, seconds}}
+
+        {:error, failed_keys} ->
+          finish_failed_batch(intent, batch, failed_keys, final_attempt?)
       end
     else
       {:error, reason} ->
@@ -1632,27 +1663,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   end
 
   defp handle_failed_batch_result({:error, reason}, _final_attempt?, _deleted_count), do: {:error, reason}
-
-  defp safe_delete(delete_fun, storage_keys) do
-    case delete_fun.(storage_keys) do
-      :ok -> :ok
-      {:error, failed_keys} when is_list(failed_keys) -> {:error, normalize_failed_keys(failed_keys, storage_keys)}
-      _invalid -> {:error, storage_keys}
-    end
-  rescue
-    _exception -> {:error, storage_keys}
-  catch
-    _kind, _reason -> {:error, storage_keys}
-  end
-
-  defp normalize_failed_keys(failed_keys, storage_keys) do
-    failed_keys = Enum.uniq(failed_keys)
-    allowed = MapSet.new(storage_keys)
-
-    if failed_keys != [] and Enum.all?(failed_keys, &MapSet.member?(allowed, &1)),
-      do: failed_keys,
-      else: storage_keys
-  end
 
   defp existing_intent_or_error(project_id, snapshot_id) do
     case Repo.one(

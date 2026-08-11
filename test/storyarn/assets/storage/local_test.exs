@@ -840,4 +840,14 @@ defmodule Storyarn.Assets.Storage.LocalTest do
                Local.presigned_upload_url("key", "text/plain", [])
     end
   end
+
+  describe "presigned_download_url/3" do
+    test "keeps local private downloads on the authorized application route" do
+      assert {:error, :not_supported} =
+               Local.presigned_download_url("projects/1/archive.zip", "application/zip",
+                 expires_in: 300,
+                 filename: "snapshot.zip"
+               )
+    end
+  end
 end

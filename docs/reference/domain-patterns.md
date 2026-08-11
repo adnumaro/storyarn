@@ -417,10 +417,11 @@ key = Assets.generate_key(project, filename)
 ```
 
 Full behaviour: `upload/3`, `put_if_absent/3`, `delete/1`, `get_url/1`, `download/1`,
-`stat/1`, `stream/4`, `presigned_upload_url/3`, `copy/2`, `copy_if_absent/2`,
-`key_from_url/1`.
+`stat/1`, `stream/4`, `presigned_upload_url/3`, `presigned_download_url/3`,
+`copy/2`, `copy_if_absent/2`, `key_from_url/1`.
 
-Adapters: `Storage.Local` (dev) and `Storage.R2` (prod, Cloudflare R2/S3-compatible).
+Adapters: `Storage.Local` (dev) and the legacy-named `Storage.R2` adapter
+(S3-compatible storage; Fly Tigris in production).
 Application code always goes through the `Storage` facade so deletion safety
 checks cannot be bypassed. Direct adapter deletion is reserved for explicit
 test-only helpers that simulate provider-side loss or clean up fixtures.

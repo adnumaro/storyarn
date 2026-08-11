@@ -19,7 +19,9 @@ defmodule StoryarnWeb.PrivateDownloadTest do
 
     conn = Plug.Test.conn(:get, "/private-download")
 
-    assert {:ok, streamed_conn} = PrivateDownload.send(conn, "projects/1/private.bin", [])
+    assert {:ok, streamed_conn, %{outcome: :stream_failed, bytes_sent: 7}} =
+             PrivateDownload.send_tracked(conn, "projects/1/private.bin", [])
+
     assert streamed_conn.halted
     assert streamed_conn.state == :chunked
     assert get_resp_header(streamed_conn, "content-length") == ["8"]

@@ -1,6 +1,7 @@
 defmodule Storyarn.Assets.Storage.R2Test do
   use ExUnit.Case, async: false
 
+  alias Storyarn.Assets.Storage
   alias Storyarn.Assets.Storage.R2
 
   @copy_result """
@@ -387,6 +388,59 @@ defmodule Storyarn.Assets.Storage.R2Test do
   end
 
   describe "upload_stream/3" do
+    test "accepts an exact successful multipart completion response" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      expected_url = "https://t3.storage.dev/private-bucket/#{key}"
+
+      Req.Test.expect(__MODULE__, 3, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        cond do
+          conn.method == "POST" and conn.query_params == %{"uploads" => "1"} ->
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              """
+              <InitiateMultipartUploadResult>
+                <Bucket>private-bucket</Bucket>
+                <Key>#{key}</Key>
+                <UploadId>upload-success</UploadId>
+              </InitiateMultipartUploadResult>
+              """
+            )
+
+          conn.method == "PUT" ->
+            assert conn.query_params == %{
+                     "partNumber" => "1",
+                     "uploadId" => "upload-success"
+                   }
+
+            conn
+            |> Plug.Conn.put_resp_header("etag", ~s("part-etag"))
+            |> Plug.Conn.send_resp(200, "")
+
+          conn.method == "POST" ->
+            assert conn.query_params == %{"uploadId" => "upload-success"}
+
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              """
+              <CompleteMultipartUploadResult>
+                <Location>https://t3.storage.dev/private-bucket/#{key}</Location>
+                <Bucket>private-bucket</Bucket>
+                <Key>#{key}</Key>
+                <ETag>"archive-etag"</ETag>
+              </CompleteMultipartUploadResult>
+              """
+            )
+        end
+      end)
+
+      assert {:ok, ^expected_url} =
+               R2.upload_stream(key, [{:ok, "bounded archive chunk"}], "application/zip")
+    end
+
     test "aborts an initialized multipart upload when a part fails" do
       key = "projects/1/snapshots/object-sets/v1/staging/AbCdEfGhIjKlMnOp/blobs/hash.png"
 
@@ -422,6 +476,406 @@ defmodule Storyarn.Assets.Storage.R2Test do
 
       assert {:error, {:http_error, 400, _response}} =
                R2.upload_stream(key, [{:ok, "bounded chunk"}], "image/png")
+    end
+
+    test "hard-stops a hung UploadPart at the configured wall-clock deadline and aborts its upload id" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      original_policy = Application.get_env(:storyarn, Storage)
+      Application.put_env(:storyarn, Storage, multipart_upload_part_deadline_ms: 50)
+      on_exit(fn -> restore_env(:storyarn, Storage, original_policy) end)
+
+      Req.Test.expect(__MODULE__, 3, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        cond do
+          conn.method == "POST" ->
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              """
+              <InitiateMultipartUploadResult>
+                <Bucket>private-bucket</Bucket>
+                <Key>#{key}</Key>
+                <UploadId>upload-timeout</UploadId>
+              </InitiateMultipartUploadResult>
+              """
+            )
+
+          conn.method == "PUT" ->
+            assert conn.query_params == %{"partNumber" => "1", "uploadId" => "upload-timeout"}
+            Process.sleep(1_000)
+            Plug.Conn.send_resp(conn, 200, "")
+
+          conn.method == "DELETE" ->
+            assert conn.query_params == %{"uploadId" => "upload-timeout"}
+            Plug.Conn.send_resp(conn, 204, "")
+        end
+      end)
+
+      started_at = System.monotonic_time(:millisecond)
+
+      assert {:error, :multipart_upload_part_timeout} =
+               R2.upload_stream(key, [{:ok, "bounded chunk"}], "application/zip")
+
+      assert System.monotonic_time(:millisecond) - started_at < 800
+    end
+
+    test "turns UploadPart task raises and exits into normal failures before aborting" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      for failure <- [:raise, :exit] do
+        upload_id = "upload-#{failure}"
+
+        Req.Test.expect(__MODULE__, 3, fn conn ->
+          conn = Plug.Conn.fetch_query_params(conn)
+
+          cond do
+            conn.method == "POST" ->
+              Plug.Conn.send_resp(
+                conn,
+                200,
+                """
+                <InitiateMultipartUploadResult>
+                  <Bucket>private-bucket</Bucket>
+                  <Key>#{key}</Key>
+                  <UploadId>#{upload_id}</UploadId>
+                </InitiateMultipartUploadResult>
+                """
+              )
+
+            conn.method == "PUT" and failure == :raise ->
+              raise "simulated UploadPart failure"
+
+            conn.method == "PUT" ->
+              exit(:simulated_upload_part_exit)
+
+            conn.method == "DELETE" ->
+              assert conn.query_params == %{"uploadId" => upload_id}
+              Plug.Conn.send_resp(conn, 204, "")
+          end
+        end)
+
+        assert {:error, :multipart_upload_part_task_exit} =
+                 R2.upload_stream(key, [{:ok, "bounded chunk"}], "application/zip")
+      end
+    end
+
+    test "kills the linked UploadPart task when its upload owner dies" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      test_process = self()
+
+      Req.Test.stub(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        cond do
+          conn.method == "POST" ->
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              """
+              <InitiateMultipartUploadResult>
+                <Bucket>private-bucket</Bucket>
+                <Key>#{key}</Key>
+                <UploadId>upload-owner-died</UploadId>
+              </InitiateMultipartUploadResult>
+              """
+            )
+
+          conn.method == "PUT" ->
+            send(test_process, {:upload_part_child, self()})
+            receive do: (:never -> Plug.Conn.send_resp(conn, 200, ""))
+
+          true ->
+            send(test_process, {:unexpected_provider_request, conn.method})
+            Plug.Conn.send_resp(conn, 500, "")
+        end
+      end)
+
+      owner =
+        spawn(fn ->
+          receive do
+            :start ->
+              result = R2.upload_stream(key, [{:ok, "bounded chunk"}], "application/zip")
+              send(test_process, {:unexpected_upload_result, result})
+          end
+        end)
+
+      Req.Test.allow(__MODULE__, self(), owner)
+      send(owner, :start)
+
+      assert_receive {:upload_part_child, child}, 1_000
+      child_monitor = Process.monitor(child)
+      Process.exit(owner, :kill)
+
+      assert_receive {:DOWN, ^child_monitor, :process, ^child, _reason}, 1_000
+      refute_receive {:unexpected_upload_result, _result}
+      refute_receive {:unexpected_provider_request, _method}
+    end
+
+    test "aborts when multipart completion returns an embedded error with HTTP 200" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      Req.Test.expect(__MODULE__, 4, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        cond do
+          conn.method == "POST" and conn.query_params == %{"uploads" => "1"} ->
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              """
+              <InitiateMultipartUploadResult>
+                <Bucket>private-bucket</Bucket>
+                <Key>#{key}</Key>
+                <UploadId>upload-embedded-error</UploadId>
+              </InitiateMultipartUploadResult>
+              """
+            )
+
+          conn.method == "PUT" ->
+            assert conn.query_params == %{
+                     "partNumber" => "1",
+                     "uploadId" => "upload-embedded-error"
+                   }
+
+            conn
+            |> Plug.Conn.put_resp_header("etag", ~s("part-etag"))
+            |> Plug.Conn.send_resp(200, "")
+
+          conn.method == "POST" ->
+            assert conn.query_params == %{"uploadId" => "upload-embedded-error"}
+
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              "<Error><Code>InternalError</Code><Message>completion failed</Message></Error>"
+            )
+
+          conn.method == "DELETE" ->
+            assert conn.query_params == %{"uploadId" => "upload-embedded-error"}
+            Plug.Conn.send_resp(conn, 204, "")
+        end
+      end)
+
+      assert {:error, :invalid_multipart_upload_completion_response} =
+               R2.upload_stream(key, [{:ok, "bounded archive chunk"}], "application/zip")
+    end
+  end
+
+  describe "abort_incomplete_multipart_uploads/2" do
+    test "skips keys that the adapter never writes with multipart upload" do
+      assert {:ok, 0} =
+               R2.abort_incomplete_multipart_uploads(
+                 "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/.storyarn-copy/copy-token",
+                 []
+               )
+    end
+
+    test "inventories every exact v2 archive key that stream fallback may write" do
+      keys =
+        for state <- ["staging", "ready"], filename <- ["snapshot.zip", "manifest.json"] do
+          "projects/1/snapshots/archives/v2/#{state}/AbCdEfGhIjKlMnOp/#{filename}"
+        end
+
+      Req.Test.expect(__MODULE__, length(keys), fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "GET"
+        assert conn.query_params["prefix"] in keys
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          """
+          <ListMultipartUploadsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <IsTruncated>false</IsTruncated>
+          </ListMultipartUploadsResult>
+          """
+        )
+      end)
+
+      for key <- keys do
+        assert {:ok, 0} = R2.abort_incomplete_multipart_uploads(key, [])
+      end
+    end
+
+    test "paginates exact-key uploads and aborts every durable cleanup target" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      {:ok, request_count} = Agent.start_link(fn -> 0 end)
+
+      Req.Test.expect(__MODULE__, 7, fn conn ->
+        request_number = Agent.get_and_update(request_count, &{&1 + 1, &1 + 1})
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        cond do
+          request_number == 1 and conn.method == "GET" ->
+            assert conn.query_params["uploads"] == "1"
+            assert conn.query_params["prefix"] == key
+            assert conn.query_params["max-uploads"] == "100"
+
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              multipart_upload_page(key, "upload-1", true, key, "upload-1")
+            )
+
+          request_number == 2 and conn.method == "GET" ->
+            assert conn.query_params["key-marker"] == key
+            assert conn.query_params["upload-id-marker"] == "upload-1"
+
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              multipart_upload_page(key, "upload-2", false, nil, nil)
+            )
+
+          request_number in [4, 6] and conn.method == "GET" ->
+            assert conn.query_params["uploadId"] in ["upload-1", "upload-2"]
+            assert conn.query_params["max_parts"] == "1"
+            Plug.Conn.send_resp(conn, 200, multipart_parts_page([]))
+
+          request_number == 7 and conn.method == "GET" ->
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              """
+              <ListMultipartUploadsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+                <IsTruncated>false</IsTruncated>
+              </ListMultipartUploadsResult>
+              """
+            )
+
+          request_number in [3, 5] and conn.method == "DELETE" ->
+            assert conn.query_params["uploadId"] in ["upload-1", "upload-2"]
+            Plug.Conn.send_resp(conn, 204, "")
+        end
+      end)
+
+      assert {:ok, 2} = R2.abort_incomplete_multipart_uploads(key, [])
+    end
+
+    test "repeats abort and inventory until an in-flight part no longer recreates the upload" do
+      key = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/snapshot.zip"
+      {:ok, request_count} = Agent.start_link(fn -> 0 end)
+
+      Req.Test.expect(__MODULE__, 6, fn conn ->
+        request_number = Agent.get_and_update(request_count, &{&1 + 1, &1 + 1})
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        case {request_number, conn.method} do
+          {1, "GET"} ->
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              multipart_upload_page(key, "upload-in-flight", false, nil, nil)
+            )
+
+          {number, "DELETE"} when number in [2, 4] ->
+            assert conn.query_params["uploadId"] == "upload-in-flight"
+            Plug.Conn.send_resp(conn, 204, "")
+
+          {3, "GET"} ->
+            assert conn.query_params["uploadId"] == "upload-in-flight"
+            Plug.Conn.send_resp(conn, 200, multipart_parts_page([1]))
+
+          {5, "GET"} ->
+            assert conn.query_params["uploadId"] == "upload-in-flight"
+            Plug.Conn.send_resp(conn, 200, multipart_parts_page([]))
+
+          {6, "GET"} ->
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              """
+              <ListMultipartUploadsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+                <IsTruncated>false</IsTruncated>
+              </ListMultipartUploadsResult>
+              """
+            )
+        end
+      end)
+
+      assert {:ok, 1} = R2.abort_incomplete_multipart_uploads(key, [])
+    end
+
+    test "fails closed while an aborted upload remains visible after the bounded passes" do
+      key = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/manifest.json"
+
+      Req.Test.expect(__MODULE__, 3, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        cond do
+          conn.method == "GET" and conn.query_params["uploads"] == "1" ->
+            Plug.Conn.send_resp(conn, 200, multipart_upload_page(key, "upload-still-visible", false, nil, nil))
+
+          conn.method == "GET" ->
+            assert conn.query_params["uploadId"] == "upload-still-visible"
+            Plug.Conn.send_resp(conn, 200, multipart_parts_page([1]))
+
+          conn.method == "DELETE" ->
+            Plug.Conn.send_resp(conn, 204, "")
+        end
+      end)
+
+      assert {:error, :multipart_cleanup_not_quiescent} =
+               R2.abort_incomplete_multipart_uploads(key, max_passes: 1)
+    end
+
+    test "fails closed when the bounded inventory cannot be exhausted" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "GET"
+        assert conn.query_params["max-uploads"] == "1"
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          multipart_upload_page(key, "upload-1", true, key, "upload-1")
+        )
+      end)
+
+      assert {:error, :multipart_cleanup_inventory_limit_exceeded} =
+               R2.abort_incomplete_multipart_uploads(key, max_uploads: 1)
+    end
+
+    test "keeps cleanup pending when an abort fails" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      Req.Test.expect(__MODULE__, 2, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        case conn.method do
+          "GET" ->
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              multipart_upload_page(key, "upload-1", false, nil, nil)
+            )
+
+          "DELETE" ->
+            assert conn.query_params["uploadId"] == "upload-1"
+            Plug.Conn.send_resp(conn, 400, "abort rejected")
+        end
+      end)
+
+      assert {:error, {:multipart_cleanup_abort_failed, {:http_error, 400, _response}}} =
+               R2.abort_incomplete_multipart_uploads(key, [])
+    end
+  end
+
+  describe "incomplete_multipart_upload_count/2" do
+    test "returns exact read-only provider inventory without aborting uploads" do
+      key = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "GET"
+        assert conn.query_params["prefix"] == key
+        Plug.Conn.send_resp(conn, 200, multipart_upload_page(key, "upload-1", false, nil, nil))
+      end)
+
+      assert {:ok, 1} = R2.incomplete_multipart_upload_count(key, [])
     end
   end
 
@@ -571,6 +1025,33 @@ defmodule Storyarn.Assets.Storage.R2Test do
     end
   end
 
+  describe "presigned_download_url/3" do
+    test "signs a bounded GET with private attachment response metadata" do
+      key = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      assert {:ok, url} =
+               R2.presigned_download_url(key, "application/zip",
+                 expires_in: 300,
+                 filename: "veilbreak-snapshot-v3.zip"
+               )
+
+      uri = URI.parse(url)
+      query = URI.decode_query(uri.query)
+
+      assert uri.scheme == "https"
+      assert uri.host == "t3.storage.dev"
+      assert uri.path == "/private-bucket/#{key}"
+      assert query["X-Amz-Expires"] == "300"
+      assert query["X-Amz-Algorithm"] == "AWS4-HMAC-SHA256"
+      assert is_binary(query["X-Amz-Signature"])
+      assert query["response-cache-control"] == "private, no-store, no-transform"
+      assert query["response-content-type"] == "application/zip"
+
+      assert query["response-content-disposition"] ==
+               ~s(attachment; filename="veilbreak-snapshot-v3.zip")
+    end
+  end
+
   describe "key_from_url/1" do
     test "extracts a key from the S3 endpoint URL" do
       url = "https://t3.storage.dev/private-bucket/projects/1/assets/image%20one.png"
@@ -612,6 +1093,48 @@ defmodule Storyarn.Assets.Storage.R2Test do
 
     assert Plug.Conn.get_req_header(conn, "x-amz-date") != []
     refute authorization =~ "X-Amz-Signature"
+  end
+
+  defp multipart_upload_page(key, upload_id, truncated?, next_key_marker, next_upload_id_marker) do
+    next_markers =
+      if truncated? do
+        """
+        <NextKeyMarker>#{next_key_marker}</NextKeyMarker>
+        <NextUploadIdMarker>#{next_upload_id_marker}</NextUploadIdMarker>
+        """
+      else
+        ""
+      end
+
+    """
+    <ListMultipartUploadsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+      <IsTruncated>#{truncated?}</IsTruncated>
+      #{next_markers}
+      <Upload>
+        <Key>#{key}</Key>
+        <UploadId>#{upload_id}</UploadId>
+      </Upload>
+    </ListMultipartUploadsResult>
+    """
+  end
+
+  defp multipart_parts_page(part_numbers) do
+    parts =
+      Enum.map_join(part_numbers, "\n", fn part_number ->
+        """
+        <Part>
+          <PartNumber>#{part_number}</PartNumber>
+          <ETag>"part-#{part_number}"</ETag>
+          <Size>1</Size>
+        </Part>
+        """
+      end)
+
+    """
+    <ListPartsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+      #{parts}
+    </ListPartsResult>
+    """
   end
 
   defp assert_signed_header(conn, expected_header) do

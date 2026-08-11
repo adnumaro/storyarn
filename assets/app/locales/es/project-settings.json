@@ -181,6 +181,7 @@
         "submitting": "Capturando…",
         "storage_limit_reached": "Esta snapshot necesita {required}, pero solo hay {available} disponibles. No se ha encolado nada.",
         "snapshot_limit_reached": "Este proyecto usa {used} de {limit} espacios para snapshots. No se ha encolado nada.",
+        "rollout_not_enabled": "La creación de snapshots no está disponible temporalmente mientras se activa el almacenamiento de archivos canónicos. No se ha encolado nada.",
         "request_failed": "No se ha podido solicitar la snapshot. No se ha encolado nada.",
         "connection_failed": "La conexión se ha interrumpido. Puedes reintentar con seguridad la misma solicitud.",
         "cancel_failed": "No se ha podido cancelar la snapshot."
@@ -201,6 +202,7 @@
       },
       "download": {
         "action": "Descargar ZIP",
+        "archive_required": "Esta snapshot es anterior a los archivos descargables. Crea una snapshot nueva para descargarla.",
         "linked_requires_full": "Convierte esta snapshot enlazada en una snapshot completa antes de descargarla."
       },
       "delete": {
@@ -209,10 +211,14 @@
         "description": "La snapshot v{version}, «{name}», se eliminará permanentemente. Su almacenamiento se entrega a una limpieza duradera y esta acción no se puede deshacer.",
         "confirm": "Eliminar snapshot",
         "cancel": "Conservar snapshot",
+        "download_lease": "La protección de descarga está activa. Podrás eliminar la snapshot cuando termine su periodo de protección.",
+        "active_operation": "Hay otra operación activa sobre la snapshot. Podrás eliminarla cuando termine.",
         "failed": "No se ha podido eliminar la snapshot."
       },
       "measurements": {
         "accounted_size": "Almacenamiento de la snapshot",
+        "zip_archive": "Archivo ZIP",
+        "manifest_sidecar": "Manifest auxiliar",
         "project_data": "Datos del proyecto",
         "metadata": "Manifest y catálogo",
         "unique_blobs": "Blobs de recursos únicos",

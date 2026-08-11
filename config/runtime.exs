@@ -38,6 +38,29 @@ end
 # switch that turns on by accident is not a switch.
 bool_env = fn key -> String.downcase(env.(key) || "") in ~w(true 1) end
 
+positive_integer_env = fn key, default ->
+  case env.(key) do
+    nil ->
+      default
+
+    value ->
+      case Integer.parse(value) do
+        {parsed, ""} when parsed > 0 -> parsed
+        _invalid -> raise "environment variable #{key} must be a positive integer"
+      end
+  end
+end
+
+bounded_positive_integer_env = fn key, default, maximum ->
+  value = positive_integer_env.(key, default)
+
+  if value <= maximum do
+    value
+  else
+    raise "environment variable #{key} must be at most #{maximum}"
+  end
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
@@ -371,6 +394,14 @@ end
 # Rate limiting with Redis for production (multi-node support)
 # Development and test use ETS backend (started in application.ex)
 if config_env() == :prod do
+  config :storyarn, Storyarn.Versioning.ProjectSnapshotBuild,
+    archive_writes_enabled: bool_env.("PROJECT_SNAPSHOT_ARCHIVE_WRITES_ENABLED")
+
+  config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
+    download_signed_url_ttl_seconds:
+      bounded_positive_integer_env.("PROJECT_SNAPSHOT_DOWNLOAD_SIGNED_URL_TTL_SECONDS", 5 * 60, 5 * 60),
+    download_max_transfer_seconds: positive_integer_env.("PROJECT_SNAPSHOT_DOWNLOAD_MAX_TRANSFER_SECONDS", 60 * 60)
+
   # ONE key: a configured URL is what selects the Redis backend, so "Redis
   # without a URL" is not a representable state. `env.()` trims and maps "" to
   # nil, and nothing downstream re-reads the raw variable, so the value that

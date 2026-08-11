@@ -22,6 +22,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
   alias Storyarn.Versioning.ProjectSnapshotReconciliationFinding
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRepairAction
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRun
+  alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workers.RepairProjectSnapshotFindingWorker
@@ -544,6 +545,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
   end
 
   defp current_integrity(snapshot, %{category: category})
+       when snapshot.format_version == 2 and
+              category in [
+                "ready_manifest_missing",
+                "ready_manifest_corrupt",
+                "ready_object_missing",
+                "ready_object_corrupt"
+              ] do
+    snapshot
+    |> SnapshotArchiveStorage.inspect_ready_archive()
+    |> classify_integrity_result()
+  end
+
+  defp current_integrity(%ProjectSnapshot{format_version: 1} = snapshot, %{category: category})
        when category in ["ready_manifest_missing", "ready_manifest_corrupt"] do
     snapshot.manifest_storage_key
     |> SnapshotObjectStorage.inspect_ready_manifest(
@@ -553,7 +567,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
     |> classify_integrity_result()
   end
 
-  defp current_integrity(snapshot, %{category: category} = finding)
+  defp current_integrity(%ProjectSnapshot{format_version: 1} = snapshot, %{category: category} = finding)
        when category in ["ready_object_missing", "ready_object_corrupt"] do
     case finding.details["path"] do
       path when is_binary(path) ->
@@ -572,6 +586,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
         {:ok, :finding_stale}
     end
   end
+
+  defp current_integrity(%ProjectSnapshot{}, _finding), do: {:error, :unsupported_snapshot_reconciliation_format}
 
   @doc false
   def classify_integrity_result({:ok, _value}), do: {:ok, :healthy}
@@ -794,6 +810,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
   defp get_ready_snapshot(finding), do: Repo.one(ready_snapshot_query(finding))
 
   defp lock_ready_snapshot(finding, observed_snapshot) do
+    format_fence = integrity_storage_fence(observed_snapshot)
+
     Repo.one(
       from(snapshot in ready_snapshot_query(finding),
         where:
@@ -801,10 +819,25 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
             snapshot.manifest_storage_key == ^observed_snapshot.manifest_storage_key and
             snapshot.manifest_checksum == ^observed_snapshot.manifest_checksum and
             snapshot.manifest_size_bytes == ^observed_snapshot.manifest_size_bytes,
+        where: ^format_fence,
         lock: "FOR UPDATE"
       )
     )
   end
+
+  defp integrity_storage_fence(%ProjectSnapshot{format_version: 1}), do: dynamic([snapshot], snapshot.format_version == 1)
+
+  defp integrity_storage_fence(%ProjectSnapshot{format_version: 2} = observed) do
+    dynamic(
+      [snapshot],
+      snapshot.format_version == 2 and
+        snapshot.archive_storage_key == ^observed.archive_storage_key and
+        snapshot.archive_size_bytes == ^observed.archive_size_bytes and
+        snapshot.archive_checksum == ^observed.archive_checksum
+    )
+  end
+
+  defp integrity_storage_fence(%ProjectSnapshot{}), do: dynamic([_snapshot], false)
 
   defp ready_snapshot_query(finding) do
     from(snapshot in ProjectSnapshot,
@@ -1041,6 +1074,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
 
   defp corrupt_storage_reason?({:snapshot_object_content_type_mismatch, _path, _expected, _actual}), do: true
 
+  defp corrupt_storage_reason?({:snapshot_object_checksum_mismatch, _storage_key}), do: true
   defp corrupt_storage_reason?({:snapshot_object_checksum_mismatch, _expected, _actual}), do: true
   defp corrupt_storage_reason?({:invalid_snapshot_object_stat, _path, _stat}), do: true
   defp corrupt_storage_reason?({:invalid_snapshot_object_json, _path, _reason}), do: true

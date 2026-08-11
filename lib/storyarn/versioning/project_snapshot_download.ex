@@ -1,158 +1,114 @@
 defmodule Storyarn.Versioning.ProjectSnapshotDownload do
   @moduledoc """
-  Owns the short-lived lifecycle fence for one direct snapshot ZIP download.
+  Authorizes one persisted snapshot archive and owns its durable download fence.
 
-  The ZIP itself is never persisted. A zero-byte `snapshot_export` reservation
-  acts only as a durable read lease, so snapshot deletion cannot hand the
-  canonical object set to cleanup while the request is verifying or streaming
-  it. The lease is renewed before expiry and released with an exact no-write
-  proof on every normal, error, and client-disconnect path.
+  A zero-byte `snapshot_export` reservation prevents lifecycle cleanup from
+  deleting the immutable archive while a grant is usable. Grants for the same
+  snapshot coalesce onto one generation-fenced lease. Every acquisition keeps
+  that shared lease for the expiry reaper: releasing it from one request could
+  invalidate a concurrent provider grant or local transfer.
   """
 
+  alias Storyarn.Assets.Storage
   alias Storyarn.Billing
   alias Storyarn.Projects.Project
-  alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotCrud
-  alias Storyarn.Versioning.ProjectSnapshotZip
+  alias Storyarn.Versioning.SnapshotArchiveStorage
 
-  require Logger
+  @archive_format_version 2
+  @sha256_regex ~r/\A[0-9a-f]{64}\z/
 
-  @renewal_safety_seconds 3 * 60 * 60
+  @type delivery :: %{
+          snapshot: ProjectSnapshot.t(),
+          storage_key: Storage.key(),
+          size_bytes: pos_integer(),
+          checksum: String.t()
+        }
+  @type lease_action(result) :: {:retain_lease, result} | {:release_lease, result}
 
   @doc """
-  Revalidates and leases one scoped snapshot, then yields its preflighted ZIP.
+  Revalidates and leases one scoped persisted ZIP, then yields its delivery data.
 
-  The callback result is returned unchanged. No response bytes should be sent
-  until this function invokes the callback, because ZIP preparation performs
-  the complete physical integrity preflight first.
+  The callback keeps the existing tagged result contract for the HTTP delivery
+  boundary. Both tags retain the shared lease until bounded expiry; the tag is
+  not cleanup authority because another request may already depend on the same
+  lease generation.
   """
-  @spec with_zip(pos_integer(), pos_integer(), (map() -> result)) :: result | {:error, term()}
+  @spec with_archive(Project.t(), pos_integer(), (delivery() -> lease_action(result))) ::
+          result | {:error, term()}
         when result: term()
-  def with_zip(project_id, snapshot_id, callback)
+  def with_archive(%Project{id: project_id, deleted_at: nil} = project, snapshot_id, callback)
       when is_integer(project_id) and project_id > 0 and is_integer(snapshot_id) and snapshot_id > 0 and
              is_function(callback, 1) do
-    with %ProjectSnapshot{} = snapshot <- ProjectSnapshotCrud.get_snapshot_by_id(project_id, snapshot_id),
-         :ok <- validate_downloadable(snapshot),
-         %Project{} = project <- Repo.get(Project, project_id),
+    with %ProjectSnapshot{} = snapshot <- ProjectSnapshotCrud.get_snapshot_by_id(project.id, snapshot_id),
+         :ok <- validate_eligibility(snapshot),
+         {:ok, delivery} <- delivery(snapshot),
          {:ok, lease} <- reserve_read_lease(project, snapshot) do
-      with_lease(lease, &prepare_and_deliver(snapshot, &1, callback))
+      invoke_delivery(callback, delivery, lease)
     else
       nil -> {:error, :snapshot_not_found}
       {:error, _reason} = error -> normalize_error(error)
     end
   end
 
-  def with_zip(_project_id, _snapshot_id, _callback), do: {:error, :snapshot_not_found}
+  def with_archive(_project, _snapshot_id, _callback), do: {:error, :snapshot_not_found}
 
-  defp validate_downloadable(%ProjectSnapshot{format_version: version}) when version != 1,
-    do: {:error, :snapshot_export_unsupported_format}
+  defp validate_eligibility(%ProjectSnapshot{mode: "linked"}), do: {:error, :snapshot_export_linked}
 
-  defp validate_downloadable(%ProjectSnapshot{mode: "linked"}), do: {:error, :snapshot_export_linked}
+  defp validate_eligibility(%ProjectSnapshot{mode: mode}) when mode != "full",
+    do: {:error, {:snapshot_export_corrupt, :invalid_snapshot_mode}}
 
-  defp validate_downloadable(%ProjectSnapshot{mode: mode}) when mode != "full",
-    do: {:error, :snapshot_export_unsupported_format}
-
-  defp validate_downloadable(%ProjectSnapshot{lifecycle_state: state}) when state != "ready",
+  defp validate_eligibility(%ProjectSnapshot{lifecycle_state: state}) when state != "ready",
     do: {:error, :snapshot_export_not_ready}
 
-  defp validate_downloadable(%ProjectSnapshot{integrity_state: state}) when state != "verified",
+  defp validate_eligibility(%ProjectSnapshot{integrity_state: state}) when state != "verified",
     do: {:error, :snapshot_export_integrity_unavailable}
 
-  defp validate_downloadable(%ProjectSnapshot{}), do: :ok
+  defp validate_eligibility(%ProjectSnapshot{format_version: version}) when version != @archive_format_version,
+    do: {:error, :snapshot_export_unsupported_format}
+
+  defp validate_eligibility(%ProjectSnapshot{}), do: :ok
+
+  defp delivery(%ProjectSnapshot{} = snapshot) do
+    with key when is_binary(key) <- snapshot.archive_storage_key,
+         true <- archive_key_for_snapshot?(snapshot, key),
+         size when is_integer(size) and size > 0 <- snapshot.archive_size_bytes,
+         checksum when is_binary(checksum) <- snapshot.archive_checksum,
+         true <- Regex.match?(@sha256_regex, checksum) do
+      {:ok,
+       %{
+         snapshot: snapshot,
+         storage_key: key,
+         size_bytes: size,
+         checksum: checksum
+       }}
+    else
+      _invalid -> {:error, {:snapshot_export_corrupt, :invalid_archive_metadata}}
+    end
+  end
+
+  defp archive_key_for_snapshot?(%ProjectSnapshot{} = snapshot, key) do
+    SnapshotArchiveStorage.ready_archive_key?(snapshot.project_id, snapshot.object_prefix, key)
+  end
 
   defp reserve_read_lease(project, snapshot) do
-    Billing.reserve_storage(%{
+    Billing.acquire_snapshot_export_lease(%{
       workspace_id: project.workspace_id,
       project_id: project.id,
-      project_snapshot_id: snapshot.id,
-      idempotency_key: "snapshot-download:#{Ecto.UUID.generate()}",
-      kind: "snapshot_export",
-      reserved_bytes: 0
+      project_snapshot_id: snapshot.id
     })
   end
 
-  defp prepare_and_deliver(snapshot, heartbeat, callback) do
-    case prepare_zip(snapshot, heartbeat) do
-      {:ok, plan} -> callback.(plan)
-      {:error, _reason} = error -> error
-    end
+  defp invoke_delivery(callback, delivery, lease) do
+    delivery
+    |> callback.()
+    |> finish_delivery(lease)
   end
 
-  # Keep the rescue boundary narrower than the caller callback: preflight
-  # failures still become a private 503, while delivery exceptions retain their
-  # original semantics and are handled by the response-stream boundary.
-  defp prepare_zip(snapshot, heartbeat) do
-    case ProjectSnapshotZip.prepare(snapshot, heartbeat: heartbeat) do
-      {:ok, %ProjectSnapshotZip{} = plan} -> {:ok, plan}
-      {:error, _reason} = error -> error
-      _unexpected -> {:error, :snapshot_export_unavailable}
-    end
-  rescue
-    _exception ->
-      Logger.warning("Snapshot ZIP preflight failed unexpectedly")
-      {:error, :snapshot_export_unavailable}
-  end
-
-  defp with_lease(lease, callback) do
-    lease_key = {__MODULE__, make_ref()}
-    Process.put(lease_key, lease)
-
-    try do
-      callback.(fn -> renew_if_needed(lease_key) end)
-    after
-      release_lease(lease_key)
-    end
-  end
-
-  defp renew_if_needed(lease_key) do
-    case Process.get(lease_key) do
-      %{expires_at: expires_at} = lease ->
-        if DateTime.diff(expires_at, TimeHelpers.now(), :second) <= @renewal_safety_seconds do
-          renew_lease(lease_key, lease)
-        else
-          :ok
-        end
-
-      _missing ->
-        {:error, :snapshot_export_lease_lost}
-    end
-  end
-
-  defp renew_lease(lease_key, lease) do
-    case Billing.extend_storage_reservation(lease.id, lease.lease_token, lease.generation, 0) do
-      {:ok, renewed} ->
-        Process.put(lease_key, renewed)
-        :ok
-
-      {:error, reason} ->
-        {:error, {:snapshot_export_lease_renewal_failed, reason}}
-    end
-  end
-
-  defp release_lease(lease_key) do
-    lease = Process.delete(lease_key)
-
-    if lease do
-      attrs = %{
-        reason: "snapshot download finished",
-        cleanup_status: "not_required",
-        cleanup_proof: %{
-          type: "storage_not_started",
-          storage_namespace: lease.storage_namespace
-        }
-      }
-
-      case Billing.release_storage_reservation(lease.id, lease.lease_token, lease.generation, attrs) do
-        {:ok, _released} ->
-          :ok
-
-        {:error, reason} ->
-          Logger.warning("Snapshot download lease release deferred reason=#{inspect(reason)}")
-      end
-    end
-  end
+  defp finish_delivery({:retain_lease, result}, _lease), do: result
+  defp finish_delivery({:release_lease, result}, _lease), do: result
+  defp finish_delivery(_invalid, _lease), do: {:error, :snapshot_export_unavailable}
 
   defp normalize_error({:error, reason})
        when reason in [
@@ -160,8 +116,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownload do
               :snapshot_export_linked,
               :snapshot_export_not_ready,
               :snapshot_export_integrity_unavailable,
-              :snapshot_export_unsupported_format,
-              :snapshot_export_limit_exceeded
+              :snapshot_export_unsupported_format
             ], do: {:error, reason}
 
   defp normalize_error({:error, {:snapshot_export_corrupt, _reason}} = error), do: error

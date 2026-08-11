@@ -20,11 +20,11 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCrud
   alias Storyarn.Versioning.ProjectSnapshotDownload
+  alias Storyarn.Versioning.ProjectSnapshotLeasePolicy
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
   alias Storyarn.Versioning.ProjectSnapshotReconciliation
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRepair
   alias Storyarn.Versioning.ProjectSnapshotReset
-  alias Storyarn.Versioning.ProjectSnapshotZip
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
   alias Storyarn.Versioning.SnapshotObjectStorage
@@ -286,6 +286,36 @@ defmodule Storyarn.Versioning do
     as: :recover_expired_snapshot_export_leases
 
   @doc false
+  defdelegate purge_released_project_snapshot_export_leases(cutoff, opts \\ []),
+    to: Billing,
+    as: :purge_released_snapshot_export_leases
+
+  @doc false
+  defdelegate project_snapshot_download_signed_url_ttl_seconds(),
+    to: ProjectSnapshotLeasePolicy,
+    as: :download_signed_url_ttl_seconds
+
+  @doc false
+  defdelegate project_snapshot_download_export_lease_ttl_seconds(),
+    to: ProjectSnapshotLeasePolicy,
+    as: :download_export_lease_ttl_seconds
+
+  @doc false
+  defdelegate project_snapshot_export_lease_retention_seconds(),
+    to: ProjectSnapshotLeasePolicy,
+    as: :export_lease_retention_seconds
+
+  @doc false
+  defdelegate project_snapshot_build_heartbeat_interval_ms(),
+    to: ProjectSnapshotLeasePolicy,
+    as: :build_heartbeat_interval_ms
+
+  @doc false
+  defdelegate project_snapshot_build_lease_ttl_seconds(),
+    to: ProjectSnapshotLeasePolicy,
+    as: :build_lease_ttl_seconds
+
+  @doc false
   defdelegate project_snapshot_build_recovery_quarantine_seconds(),
     to: ProjectSnapshotLifecycle,
     as: :build_recovery_quarantine_seconds
@@ -381,13 +411,10 @@ defmodule Storyarn.Versioning do
   """
   defdelegate get_project_snapshot(project_id, id), to: ProjectSnapshotCrud, as: :get_snapshot_by_id
 
-  @doc "Yields a fully preflighted direct ZIP while holding its durable read lease."
-  defdelegate with_project_snapshot_zip(project_id, snapshot_id, callback),
+  @doc "Yields one authorized persisted snapshot archive behind its durable download lease."
+  defdelegate with_project_snapshot_archive(project, snapshot_id, callback),
     to: ProjectSnapshotDownload,
-    as: :with_zip
-
-  @doc false
-  defdelegate stream_project_snapshot_zip(plan), to: ProjectSnapshotZip, as: :stream
+    as: :with_archive
 
   @doc """
   Updates a project snapshot's title and description.

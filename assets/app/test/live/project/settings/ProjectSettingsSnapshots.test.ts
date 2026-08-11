@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import ProjectSettingsSnapshots from "../../../../live/project/settings/ProjectSettingsSnapshots.vue";
 import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
 import type { LiveInterface } from "../../../../shared/composables/useLive";
@@ -38,6 +38,9 @@ interface SnapshotFixture {
     | null;
   integrityStatus: "unknown" | "verified" | "at_risk" | "missing" | "corrupt" | "incomplete" | null;
   accountedSizeBytes: string | null;
+  storageBreakdownMode: "archive" | "object_set" | null;
+  archiveSizeBytes: string | null;
+  sidecarSizeBytes: string | null;
   projectDataSizeBytes: string | null;
   metadataSizeBytes: string | null;
   assetBlobSizeBytes: string | null;
@@ -57,7 +60,9 @@ interface SnapshotFixture {
   cancelRequestedAt: string | null;
   canCancel: boolean;
   canDelete: boolean;
+  deleteStatus: "ready" | "download_lease" | "active_operation" | null;
   downloadUrl: string | null;
+  downloadStatus: "ready" | "linked" | "archive_required" | null;
 }
 
 const measuredSnapshot: SnapshotFixture = {
@@ -72,6 +77,9 @@ const measuredSnapshot: SnapshotFixture = {
   lifecycleStatus: "ready",
   integrityStatus: "verified",
   accountedSizeBytes: String(6 * 1024),
+  storageBreakdownMode: "object_set",
+  archiveSizeBytes: null,
+  sidecarSizeBytes: null,
   projectDataSizeBytes: "1024",
   metadataSizeBytes: String(2 * 1024),
   assetBlobSizeBytes: String(3 * 1024),
@@ -91,7 +99,9 @@ const measuredSnapshot: SnapshotFixture = {
   cancelRequestedAt: null,
   canCancel: false,
   canDelete: false,
+  deleteStatus: "active_operation",
   downloadUrl: "/workspaces/alpha/projects/veilbreak/snapshots/21/download",
+  downloadStatus: "ready",
 };
 
 function mountSnapshots(
@@ -169,7 +179,10 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(download.attributes("href")).toBe(
       "/workspaces/alpha/projects/veilbreak/snapshots/21/download",
     );
-    expect(download.attributes("download")).toBe("");
+    expect(download.attributes("download")).toBeUndefined();
+    expect(download.attributes("target")).toBeUndefined();
+    expect(download.attributes("rel")).toBeUndefined();
+    expect(download.attributes("referrerpolicy")).toBe("no-referrer");
     expect(download.attributes("data-live-link-exempt")).toBe("download");
     expect(download.text()).toContain("Download ZIP");
   });
@@ -183,6 +196,40 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
 
     expect(wrapper.text()).toContain("ZIP export reservation: 256 B");
     expect(wrapper.text()).not.toContain("Active work reservation");
+  });
+
+  it("renders v2 physical archive storage as ZIP plus sidecar without a logical byte sum", () => {
+    const wrapper = mountSnapshots({
+      ...measuredSnapshot,
+      storageBreakdownMode: "archive",
+      archiveSizeBytes: String(4 * 1024),
+      sidecarSizeBytes: String(2 * 1024),
+    });
+
+    const breakdown = wrapper.get('[data-testid="archive-breakdown-21"]');
+    expect(breakdown.text()).toContain("ZIP archive");
+    expect(breakdown.text()).toContain("4 KB");
+    expect(breakdown.text()).toContain("Manifest sidecar");
+    expect(breakdown.text()).toContain("2 KB");
+    expect(breakdown.text()).not.toContain("Project data");
+    expect(wrapper.find('[data-testid="object-set-breakdown-21"]').exists()).toBe(false);
+  });
+
+  it("keeps deletion visible and explains a protected zero-byte download lease", () => {
+    const wrapper = mountSnapshots({
+      ...measuredSnapshot,
+      activeReservationBytes: "0",
+      exportReservationBytes: "0",
+      canDelete: false,
+      deleteStatus: "download_lease",
+    });
+
+    expect(wrapper.get('[data-testid="delete-download-lease-21"]').text()).toContain(
+      "Download protection is active.",
+    );
+    const deleteButton = wrapper.get('[data-testid="delete-snapshot-21"]');
+    expect(deleteButton.attributes("disabled")).toBeDefined();
+    expect(deleteButton.attributes("aria-describedby")).toBe("delete-snapshot-reason-21");
   });
 
   it("renders a pending canonical row before accounting measurements are available", () => {
@@ -205,7 +252,9 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       progressBytes: "0",
       progressTotalBytes: String(6 * 1024),
       canCancel: true,
+      deleteStatus: null,
       downloadUrl: null,
+      downloadStatus: null,
     });
 
     const text = wrapper.text();
@@ -226,11 +275,25 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       ...measuredSnapshot,
       mode: "linked",
       downloadUrl: null,
+      downloadStatus: "linked",
     });
 
     expect(wrapper.find('[data-testid="download-snapshot-21"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="download-linked-snapshot-21"]').text()).toContain(
       "Convert this linked snapshot to a full snapshot before downloading it.",
+    );
+  });
+
+  it("explains when a ready legacy snapshot still needs a persisted archive", () => {
+    const wrapper = mountSnapshots({
+      ...measuredSnapshot,
+      downloadUrl: null,
+      downloadStatus: "archive_required",
+    });
+
+    expect(wrapper.find('[data-testid="download-snapshot-21"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="download-archive-required-21"]').text()).toContain(
+      "This snapshot predates downloadable archives. Create a new snapshot to download it.",
     );
   });
 
@@ -288,9 +351,30 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(wrapper.get('button[type="submit"]').attributes("disabled")).toBeDefined();
   });
 
+  it("explains when canonical archive writes are still fenced", async () => {
+    const live = createMockLive();
+    const wrapper = mountSnapshots(measuredSnapshot, storageUsage, live);
+    const handleEvent = live.handleEvent as ReturnType<typeof vi.fn>;
+    const requestFailure = handleEvent.mock.calls.find(
+      ([eventName]) => eventName === "snapshot_request_failed",
+    );
+
+    expect(requestFailure).toBeDefined();
+    requestFailure?.[1]({ reason: "rollout_not_enabled" });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain(
+      "Snapshot creation is temporarily unavailable while canonical archive storage is being enabled.",
+    );
+  });
+
   it("requires confirmation before requesting durable snapshot deletion", async () => {
     const live = createMockLive();
-    const wrapper = mountSnapshots({ ...measuredSnapshot, canDelete: true }, storageUsage, live);
+    const wrapper = mountSnapshots(
+      { ...measuredSnapshot, canDelete: true, deleteStatus: "ready" },
+      storageUsage,
+      live,
+    );
 
     await wrapper.get('[data-testid="delete-snapshot-21"]').trigger("click");
 

@@ -2419,7 +2419,7 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
       size != descriptor["size_bytes"] ->
         {:error, {:snapshot_object_size_mismatch, descriptor["path"], descriptor["size_bytes"], size}}
 
-      not compatible_content_type?(content_type, descriptor["content_type"]) ->
+      not BlobStore.compatible_content_type?(content_type, descriptor["content_type"]) ->
         {:error, {:snapshot_object_content_type_mismatch, descriptor["path"], descriptor["content_type"], content_type}}
 
       true ->
@@ -2428,8 +2428,6 @@ defmodule Storyarn.Versioning.SnapshotObjectStorage do
   end
 
   defp verify_stat(stat, descriptor), do: {:error, {:invalid_snapshot_object_stat, descriptor["path"], stat}}
-
-  defp compatible_content_type?(actual, expected), do: actual == expected
 
   defp conditional_opts(%{etag: etag}) when is_binary(etag) and etag != "", do: [etag: etag]
   defp conditional_opts(_stat), do: []

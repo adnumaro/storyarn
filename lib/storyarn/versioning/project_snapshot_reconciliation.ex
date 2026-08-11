@@ -23,6 +23,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
   alias Storyarn.Versioning.ProjectSnapshotReconciliationFinding
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRun
+  alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Versioning.SnapshotObjectStorage
@@ -43,10 +44,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   @inventory_digest_seed String.duplicate("0", 64)
   @provider_prefix "projects/"
   @build_worker "Storyarn.Workers.BuildProjectSnapshotWorker"
+  @legacy_build_queue "snapshots"
+  @archive_build_queue "snapshot_archives"
   @inspection_worker "Storyarn.Workers.InspectProjectSnapshotsWorker"
   @active_build_job_states ~w(available scheduled executing retryable)
   @finding_insert_fields ProjectSnapshotReconciliationFinding.__schema__(:fields) -- [:id]
-  @snapshot_key_pattern ~r<\Aprojects/([1-9]\d*)/snapshots/object-sets/v1/(ready|staging)/([A-Za-z0-9_-]{16})/(.+)\z>
+  @snapshot_key_pattern ~r<\Aprojects/([1-9]\d*)/snapshots/(object-sets/v1|archives/v2)/(ready|staging)/([A-Za-z0-9_-]{16})/(.+)\z>
   @reservation_key_pattern ~r<\Aprojects/([1-9]\d*)/storage-reservations/v1/(snapshot-build|linked-to-full-conversion|restore-staging|snapshot-export)/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/(.+)\z>
 
   @type advance_result ::
@@ -278,14 +281,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       max_inspection_bytes: run.max_bytes_per_step
     ]
 
-    case SnapshotObjectStorage.inspect_ready_object_batch(
-           snapshot.manifest_storage_key,
-           snapshot.manifest_checksum,
-           snapshot.manifest_size_bytes,
-           opts
-         ) do
+    case inspect_ready_snapshot(snapshot, opts) do
       {:ok, batch} ->
         inspect_verified_batch(run, candidate, batch)
+
+      {:limit, manifest, max_bytes, archive_size_bytes} ->
+        handle_ready_verification_limit(run, candidate, manifest, max_bytes, archive_size_bytes)
 
       {:error, {:snapshot_inspection_object_failed, failure}} ->
         handle_object_integrity_failure(run, candidate, failure)
@@ -293,6 +294,93 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       {:error, reason} ->
         handle_manifest_failure(run, candidate, reason)
     end
+  end
+
+  defp inspect_ready_snapshot(%ProjectSnapshot{format_version: 1} = snapshot, opts) do
+    SnapshotObjectStorage.inspect_ready_object_batch(
+      snapshot.manifest_storage_key,
+      snapshot.manifest_checksum,
+      snapshot.manifest_size_bytes,
+      opts
+    )
+  end
+
+  defp inspect_ready_snapshot(%ProjectSnapshot{format_version: 2} = snapshot, opts) do
+    with {:ok, inspection} <- validate_archive_inspection_options(opts) do
+      case inspection.start_index do
+        0 -> inspect_ready_archive_payload(snapshot, inspection.max_bytes)
+        1 -> inspect_ready_archive_manifest(snapshot)
+      end
+    end
+  end
+
+  defp inspect_ready_snapshot(%ProjectSnapshot{}, _opts), do: {:error, :unsupported_snapshot_reconciliation_format}
+
+  defp validate_archive_inspection_options(opts) when is_list(opts) do
+    start_index = Keyword.get(opts, :start_index, 0)
+    max_objects = Keyword.get(opts, :max_inspection_objects, 100)
+    max_bytes = Keyword.get(opts, :max_inspection_bytes, 256 * 1024 * 1024)
+
+    if Keyword.keyword?(opts) and start_index in [0, 1] and is_integer(max_objects) and max_objects > 0 and
+         max_objects <= 1_000 and is_integer(max_bytes) and max_bytes >= 128 * 1024 * 1024 and
+         max_bytes <= 1024 * 1024 * 1024,
+       do: {:ok, %{start_index: start_index, max_bytes: max_bytes}},
+       else: {:error, :invalid_snapshot_inspection_limits}
+  end
+
+  defp validate_archive_inspection_options(_opts), do: {:error, :invalid_snapshot_inspection_limits}
+
+  defp inspect_ready_archive_payload(snapshot, max_bytes) when snapshot.archive_size_bytes > max_bytes do
+    case SnapshotArchiveStorage.inspect_ready_manifest(snapshot) do
+      {:ok, manifest} -> {:limit, manifest, max_bytes, snapshot.archive_size_bytes}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp inspect_ready_archive_payload(snapshot, _max_bytes) do
+    case SnapshotArchiveStorage.inspect_ready_archive(snapshot) do
+      {:ok, %{manifest: manifest}} ->
+        {:ok,
+         %{
+           manifest: manifest,
+           next_index: nil,
+           verified_objects: 1,
+           verified_bytes: snapshot.archive_size_bytes
+         }}
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp inspect_ready_archive_manifest(snapshot) do
+    case SnapshotArchiveStorage.inspect_ready_manifest(snapshot) do
+      {:ok, manifest} ->
+        {:ok, %{manifest: manifest, next_index: nil, verified_objects: 0, verified_bytes: 0}}
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp handle_ready_verification_limit(run, candidate, manifest, max_bytes, archive_size_bytes) do
+    finding =
+      finding(candidate, "ready_verification_limit_exceeded", "warning",
+        storage_key: candidate.snapshot.archive_storage_key,
+        expected_size_bytes: max_bytes,
+        observed_size_bytes: archive_size_bytes,
+        error_code: "ready_verification_limit_exceeded",
+        details: %{
+          "archive_size_bytes" => archive_size_bytes,
+          "max_inspection_bytes" => max_bytes
+        }
+      )
+
+    begin_ready_inventory(run, candidate, manifest,
+      findings: [finding],
+      inspected_objects: 0,
+      inspected_bytes: 0
+    )
   end
 
   defp inspect_verified_batch(run, candidate, batch) do
@@ -318,29 +406,65 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   end
 
   defp handle_object_integrity_failure(run, candidate, failure) do
-    %{failed_index: failed_index, object_count: object_count, path: path, reason: reason} = failure
-    category = if missing_object_reason?(reason), do: "ready_object_missing", else: "ready_object_corrupt"
-
-    if integrity_reason?(reason) or missing_object_reason?(reason) do
-      finding =
-        finding(candidate, category, "critical",
-          storage_key: candidate.snapshot.object_prefix <> "/" <> path,
-          error_code: error_code(reason),
-          details: %{"path" => path}
-        )
-
-      inspected_objects = failure.verified_objects + 1
-
-      commit_snapshot_result(run, candidate,
-        findings: [finding],
-        complete?: false,
-        next_index: min(failed_index + 1, object_count),
-        inspected_objects: inspected_objects,
-        inspected_bytes: failure.verified_bytes
-      )
+    if reportable_integrity_reason?(failure.reason) do
+      commit_object_integrity_failure(run, candidate, failure)
     else
-      {:error, reason}
+      {:error, failure.reason}
     end
+  end
+
+  defp reportable_integrity_reason?(reason), do: integrity_reason?(reason) or missing_object_reason?(reason)
+
+  defp commit_object_integrity_failure(run, candidate, failure) do
+    finding =
+      finding(candidate, integrity_failure_category(failure.path, failure.reason), "critical",
+        storage_key: candidate.snapshot.object_prefix <> "/" <> failure.path,
+        error_code: error_code(failure.reason),
+        details: %{"path" => failure.path}
+      )
+
+    opts = [
+      findings: [finding],
+      inspected_objects: integrity_failure_inspected_objects(candidate.snapshot, failure),
+      inspected_bytes: failure.verified_bytes
+    ]
+
+    commit_object_integrity_failure_result(run, candidate, failure, opts)
+  end
+
+  defp integrity_failure_category("manifest.json", reason) do
+    if missing_object_reason?(reason), do: "ready_manifest_missing", else: "ready_manifest_corrupt"
+  end
+
+  defp integrity_failure_category(_path, reason) do
+    if missing_object_reason?(reason), do: "ready_object_missing", else: "ready_object_corrupt"
+  end
+
+  defp integrity_failure_inspected_objects(%ProjectSnapshot{format_version: 2}, %{
+         path: "manifest.json",
+         verified_objects: verified_objects
+       }), do: verified_objects
+
+  defp integrity_failure_inspected_objects(%ProjectSnapshot{}, %{verified_objects: verified_objects}),
+    do: verified_objects + 1
+
+  defp commit_object_integrity_failure_result(
+         run,
+         %{snapshot: %ProjectSnapshot{format_version: 2}} = candidate,
+         _failure,
+         opts
+       ) do
+    commit_snapshot_result(run, candidate, Keyword.put(opts, :complete?, true))
+  end
+
+  defp commit_object_integrity_failure_result(run, candidate, failure, opts) do
+    commit_snapshot_result(
+      run,
+      candidate,
+      opts
+      |> Keyword.put(:complete?, false)
+      |> Keyword.put(:next_index, min(failure.failed_index + 1, failure.object_count))
+    )
   end
 
   defp handle_manifest_failure(run, candidate, reason) do
@@ -377,7 +501,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
         active_snapshot_id: candidate.snapshot.id,
         active_snapshot_generation: candidate.snapshot.lifecycle_generation,
         active_snapshot_accounting_generation: candidate.snapshot.accounting_generation,
-        active_object_index: length(manifest["objects"]),
+        active_object_index: inspected_object_index(candidate.snapshot, manifest),
         active_inventory_cursor: nil,
         active_inventory_digest: @inventory_digest_seed,
         active_inventory_last_key: nil,
@@ -390,6 +514,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     )
   end
 
+  defp inspected_object_index(%ProjectSnapshot{format_version: 1}, manifest), do: length(manifest["objects"])
+  defp inspected_object_index(%ProjectSnapshot{format_version: 2}, _manifest), do: 1
+
   defp inspect_ready_inventory_page(run, candidate, manifest) do
     prefix = candidate.snapshot.object_prefix <> "/"
     page_size = min(run.provider_page_size, run.max_objects_per_step)
@@ -401,7 +528,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
          {:ok, digest} <- extend_inventory_digest(run.active_inventory_digest, page) do
       object_count = run.active_inventory_object_count + length(page)
       bytes = run.active_inventory_bytes + Enum.reduce(page, 0, &(&1.size + &2))
-      expected_count = length(manifest["objects"]) + 1
+      expected_count = expected_physical_object_count(candidate.snapshot, manifest)
 
       cond do
         bytes > @max_bigint ->
@@ -458,6 +585,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     end
   end
 
+  defp expected_physical_object_count(%ProjectSnapshot{format_version: 1}, manifest), do: length(manifest["objects"]) + 1
+
+  defp expected_physical_object_count(%ProjectSnapshot{format_version: 2}, _manifest), do: 2
+
   defp list_ready_inventory_page(prefix, page_size, cursor) do
     case Storage.list_prefix_metadata(prefix, limit: page_size, cursor: cursor) do
       {:ok, %{objects: page, cursor: next_cursor}} ->
@@ -471,7 +602,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     end
   end
 
-  defp expected_inventory(snapshot, manifest) do
+  defp expected_inventory(%ProjectSnapshot{format_version: 1} = snapshot, manifest) do
     objects =
       Enum.sort_by(
         [
@@ -486,6 +617,23 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     %{
       bytes: Enum.reduce(objects, 0, &(&1.size + &2)),
       count: length(objects),
+      digest: inventory_digest(objects)
+    }
+  end
+
+  defp expected_inventory(%ProjectSnapshot{format_version: 2} = snapshot, _manifest) do
+    objects =
+      Enum.sort_by(
+        [
+          %{key: snapshot.archive_storage_key, size: snapshot.archive_size_bytes},
+          %{key: snapshot.manifest_storage_key, size: snapshot.manifest_size_bytes}
+        ],
+        & &1.key
+      )
+
+    %{
+      bytes: Enum.reduce(objects, 0, &(&1.size + &2)),
+      count: 2,
       digest: inventory_digest(objects)
     }
   end
@@ -631,17 +779,24 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     if old_enough?(snapshot.state_updated_at, quiesced_before), do: "owning_job_missing"
   end
 
-  defp stale_reservation_reason(
-         _reservation,
-         _snapshot,
-         %Oban.Job{worker: @build_worker, queue: "snapshots"} = job,
-         quiesced_before
-       ) do
-    terminal_build_job_reason(job, quiesced_before)
+  defp stale_reservation_reason(_reservation, snapshot, %Oban.Job{worker: @build_worker} = job, quiesced_before) do
+    if build_job_queue_matches?(snapshot, job),
+      do: terminal_build_job_reason(job, quiesced_before),
+      else: mismatched_build_job_reason(snapshot, job, quiesced_before)
   end
 
   defp stale_reservation_reason(_reservation, snapshot, %Oban.Job{}, quiesced_before),
-    do: if(old_enough?(snapshot.state_updated_at, quiesced_before), do: "owning_job_invalid")
+    do: invalid_build_job_reason(snapshot, quiesced_before)
+
+  defp invalid_build_job_reason(snapshot, quiesced_before) do
+    if old_enough?(snapshot.state_updated_at, quiesced_before), do: "owning_job_invalid"
+  end
+
+  defp mismatched_build_job_reason(snapshot, job, quiesced_before) do
+    if terminal_build_job_reason(job, quiesced_before),
+      do: "owning_job_invalid",
+      else: invalid_build_job_reason(snapshot, quiesced_before)
+  end
 
   defp terminal_build_job_reason(%Oban.Job{state: "completed", completed_at: completed_at}, before),
     do: if(old_enough?(completed_at, before), do: "owning_job_completed")
@@ -750,15 +905,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
         claim.storage_reservation_lease_token == reservation.lease_token and
         SnapshotObjectPublicationClaim.inventory_digest(snapshot) == claim.inventory_digest
 
-    if not valid? and not live_build_job?(job) and old_enough?(claim.updated_at, before),
+    if not valid? and not live_build_job?(snapshot, job) and old_enough?(claim.updated_at, before),
       do: "published_claim_ownership_mismatch"
   end
 
-  defp failed_finalization_reason(claim, _reservation, _snapshot, job, now, before)
+  defp failed_finalization_reason(claim, _reservation, snapshot, job, now, before)
        when claim.status in ["staging", "staged", "publishing"] do
     expired? = is_nil(claim.lease_expires_at) or DateTime.compare(claim.lease_expires_at, now) != :gt
 
-    if expired? and not live_build_job?(job) and old_enough?(claim.updated_at, before),
+    if expired? and not live_build_job?(snapshot, job) and old_enough?(claim.updated_at, before),
       do: "publication_claim_lease_expired"
   end
 
@@ -778,15 +933,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
          true <- snapshot.object_prefix == claim.object_prefix,
          {:ok, cleanup_request_id} <- cleanup_request_id(cleanup_reference),
          {:ok, receipt_keys} <- StorageCleanupOwnershipReceipt.storage_keys(cleanup_request_id),
-         %ProjectSnapshotCapture{} = capture <- Repo.get(ProjectSnapshotCapture, snapshot.id),
-         true <- capture.capture_boundary == snapshot.capture_boundary,
-         true <- capture.capture_digest == snapshot.capture_digest,
-         {:ok, scope} <-
-           SnapshotObjectStorage.cleanup_scope_from_capture(
-             snapshot.project_id,
-             snapshot.object_prefix,
-             capture.manifest_json
-           ) do
+         {:ok, scope} <- reconciliation_cleanup_scope(snapshot) do
       reservation.cleanup_inventory_count == length(scope.storage_keys) and
         reservation.cleanup_inventory_digest == scope.inventory_digest and
         same_string_inventory?(receipt_keys, scope.storage_keys)
@@ -796,6 +943,31 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   end
 
   defp resolved_poisoned_claim?(_claim, _reservation, _snapshot), do: false
+
+  defp reconciliation_cleanup_scope(%ProjectSnapshot{format_version: 1} = snapshot) do
+    case Repo.get(ProjectSnapshotCapture, snapshot.id) do
+      %ProjectSnapshotCapture{} = capture ->
+        with true <- capture.capture_boundary == snapshot.capture_boundary,
+             true <- capture.capture_digest == snapshot.capture_digest do
+          SnapshotObjectStorage.cleanup_scope_from_capture(
+            snapshot.project_id,
+            snapshot.object_prefix,
+            capture.manifest_json
+          )
+        else
+          false -> {:error, :snapshot_capture_identity_mismatch}
+        end
+
+      nil ->
+        {:error, :snapshot_capture_missing}
+    end
+  end
+
+  defp reconciliation_cleanup_scope(%ProjectSnapshot{format_version: 2} = snapshot) do
+    SnapshotArchiveStorage.cleanup_scope_from_snapshot(snapshot)
+  end
+
+  defp reconciliation_cleanup_scope(%ProjectSnapshot{}), do: {:error, :unsupported_snapshot_reconciliation_format}
 
   defp cleanup_request_id("storage_cleanup_request:" <> encoded_id) do
     case Integer.parse(encoded_id) do
@@ -856,10 +1028,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
 
   defp database_page_limit(run), do: run.max_objects_per_step
 
-  defp live_build_job?(%Oban.Job{worker: @build_worker, queue: "snapshots", state: state}),
-    do: state in @active_build_job_states
+  defp live_build_job?(snapshot, %Oban.Job{worker: @build_worker, state: state} = job),
+    do: state in @active_build_job_states and build_job_queue_matches?(snapshot, job)
 
-  defp live_build_job?(_job), do: false
+  defp live_build_job?(_snapshot, _job), do: false
+
+  defp build_job_queue_matches?(%ProjectSnapshot{format_version: 1}, %Oban.Job{queue: @legacy_build_queue}), do: true
+
+  defp build_job_queue_matches?(%ProjectSnapshot{format_version: 2}, %Oban.Job{queue: @archive_build_queue}), do: true
+
+  defp build_job_queue_matches?(_snapshot, _job), do: false
 
   defp old_enough?(%DateTime{} = value, %DateTime{} = before), do: DateTime.compare(value, before) != :gt
   defp old_enough?(_value, _before), do: false
@@ -1085,14 +1263,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
 
   defp provider_subject(%{key: key}) do
     with true <- Storage.canonical_key?(key),
-         [_, project_id_string, namespace, token, path] <- Regex.run(@snapshot_key_pattern, key),
+         [_, project_id_string, format, namespace, token, path] <- Regex.run(@snapshot_key_pattern, key),
          {:ok, project_id} <- parse_project_id(project_id_string) do
       %{
         kind: snapshot_namespace_atom(namespace),
         path: path,
-        prefix: "projects/#{project_id}/snapshots/object-sets/v1/#{namespace}/#{token}",
+        prefix: "projects/#{project_id}/snapshots/#{format}/#{namespace}/#{token}",
         project_id: project_id,
-        ready_prefix: "projects/#{project_id}/snapshots/object-sets/v1/ready/#{token}",
+        ready_prefix: "projects/#{project_id}/snapshots/#{format}/ready/#{token}",
         storage_key: key
       }
     else
@@ -1116,7 +1294,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       }
     else
       _invalid ->
-        if String.contains?(key, ["/snapshots/object-sets/", "/storage-reservations/"]),
+        if String.contains?(key, ["/snapshots/object-sets/", "/snapshots/archives/", "/storage-reservations/"]),
           do: %{kind: :unsafe, prefix: nil, project_id: nil, ready_prefix: nil, storage_key: key},
           else: %{kind: :unrelated, prefix: nil, project_id: nil, ready_prefix: nil, storage_key: key}
     end
@@ -1668,26 +1846,49 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     end
   end
 
-  defp same_ready_snapshot?(snapshot) do
-    not is_nil(
-      Repo.one(
-        from(current in ProjectSnapshot,
-          where:
-            current.id == ^snapshot.id and current.lifecycle_state == "ready" and
-              current.lifecycle_generation == ^snapshot.lifecycle_generation and
-              current.accounting_generation == ^snapshot.accounting_generation and
-              current.manifest_checksum == ^snapshot.manifest_checksum and
-              current.manifest_storage_key == ^snapshot.manifest_storage_key and
-              current.manifest_size_bytes == ^snapshot.manifest_size_bytes and
-              current.object_prefix == ^snapshot.object_prefix,
-          select: current.id,
-          lock: "FOR SHARE"
-        )
-      )
-    )
+  defp same_ready_snapshot?(%ProjectSnapshot{format_version: format_version} = snapshot) when format_version in [1, 2] do
+    snapshot
+    |> same_ready_snapshot_query()
+    |> Repo.one()
+    |> is_nil()
+    |> Kernel.not()
   end
 
-  defp manifest_mismatches(snapshot, manifest) do
+  defp same_ready_snapshot?(%ProjectSnapshot{}), do: false
+
+  defp same_ready_snapshot_query(snapshot) do
+    ProjectSnapshot
+    |> where([current], current.id == ^snapshot.id)
+    |> where([current], current.lifecycle_state == "ready")
+    |> where([current], current.lifecycle_generation == ^snapshot.lifecycle_generation)
+    |> where([current], current.accounting_generation == ^snapshot.accounting_generation)
+    |> where([current], current.manifest_checksum == ^snapshot.manifest_checksum)
+    |> where([current], current.manifest_storage_key == ^snapshot.manifest_storage_key)
+    |> where([current], current.manifest_size_bytes == ^snapshot.manifest_size_bytes)
+    |> where([current], current.object_prefix == ^snapshot.object_prefix)
+    |> same_ready_storage_query(snapshot)
+    |> select([current], current.id)
+    |> lock("FOR SHARE")
+  end
+
+  defp same_ready_storage_query(query, %ProjectSnapshot{format_version: 1} = snapshot) do
+    query
+    |> where([current], current.format_version == 1)
+    |> where([current], current.project_storage_key == ^snapshot.project_storage_key)
+    |> where([current], current.project_size_bytes == ^snapshot.project_size_bytes)
+    |> where([current], current.project_checksum == ^snapshot.project_checksum)
+  end
+
+  defp same_ready_storage_query(query, %ProjectSnapshot{format_version: 2} = snapshot) do
+    query
+    |> where([current], current.format_version == 2)
+    |> where([current], is_nil(current.project_storage_key))
+    |> where([current], current.archive_storage_key == ^snapshot.archive_storage_key)
+    |> where([current], current.archive_size_bytes == ^snapshot.archive_size_bytes)
+    |> where([current], current.archive_checksum == ^snapshot.archive_checksum)
+  end
+
+  defp manifest_mismatches(%ProjectSnapshot{format_version: 1} = snapshot, manifest) do
     project = manifest["project"]
     counts = manifest["counts"]
     total_size = manifest["payload_size_bytes"] + snapshot.manifest_size_bytes
@@ -1704,6 +1905,39 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
           {:accounted_size_bytes, snapshot.accounted_size_bytes, total_size},
           {:asset_blob_size_bytes, snapshot.asset_blob_size_bytes, asset_blob_size},
           {:object_count, snapshot.object_count, counts["payload_objects"] + 1},
+          {:asset_count, snapshot.asset_count, counts["assets"]},
+          {:blob_count, snapshot.blob_count, counts["blobs"]},
+          {:accounting_version, snapshot.accounting_version, 1}
+        ],
+        fn {field, actual, expected} ->
+          if actual == expected, do: [], else: [Atom.to_string(field)]
+        end
+      )
+
+    row_mismatches ++ ownership_mismatches(snapshot)
+  end
+
+  defp manifest_mismatches(%ProjectSnapshot{format_version: 2} = snapshot, manifest) do
+    project = manifest["project"]
+    counts = manifest["counts"]
+    asset_blob_size = manifest["payload_size_bytes"] - project["size_bytes"]
+    total_size = snapshot.archive_size_bytes + snapshot.manifest_size_bytes
+
+    row_mismatches =
+      Enum.flat_map(
+        [
+          {:format_version, snapshot.format_version, 2},
+          {:project_storage_key, snapshot.project_storage_key, nil},
+          {:archive_storage_key, snapshot.archive_storage_key,
+           SnapshotArchiveStorage.archive_key(snapshot.object_prefix)},
+          {:manifest_storage_key, snapshot.manifest_storage_key,
+           SnapshotArchiveStorage.manifest_key(snapshot.object_prefix)},
+          {:project_size_bytes, snapshot.project_size_bytes, project["size_bytes"]},
+          {:project_checksum, snapshot.project_checksum, project["sha256"]},
+          {:total_size_bytes, snapshot.total_size_bytes, total_size},
+          {:accounted_size_bytes, snapshot.accounted_size_bytes, total_size},
+          {:asset_blob_size_bytes, snapshot.asset_blob_size_bytes, asset_blob_size},
+          {:object_count, snapshot.object_count, 2},
           {:asset_count, snapshot.asset_count, counts["assets"]},
           {:blob_count, snapshot.blob_count, counts["blobs"]},
           {:accounting_version, snapshot.accounting_version, 1}

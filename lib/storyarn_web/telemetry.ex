@@ -213,10 +213,28 @@ defmodule StoryarnWeb.Telemetry do
       sum("storyarn.snapshot.retention.stop.expired_export_lease_candidate_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.expired_export_lease_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.expired_export_lease_changed_count", tags: [:status]),
+      sum("storyarn.snapshot.retention.stop.purged_export_lease_candidate_count", tags: [:status]),
+      sum("storyarn.snapshot.retention.stop.purged_export_lease_count", tags: [:status]),
+      sum("storyarn.snapshot.retention.stop.purged_export_lease_changed_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.orphaned_build_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.settled_build_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.failure_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.continuation_count", tags: [:status]),
+
+      # Snapshot/job IDs remain event metadata; only the bounded renewal result
+      # is a metric tag.
+      sum("storyarn.snapshot.build.heartbeat.count", tags: [:outcome]),
+
+      # Snapshot download identifiers remain event metadata. Metric tags are
+      # deliberately bounded to operational outcome classifications.
+      sum("storyarn.snapshot.download.lease.count", tags: [:outcome]),
+      sum("storyarn.snapshot.download.stop.count", tags: [:outcome, :phase, :error_code]),
+      sum("storyarn.snapshot.download.stop.bytes", tags: [:outcome, :phase, :error_code]),
+      sum("storyarn.snapshot.download.stop.artifact_bytes", tags: [:outcome, :phase, :error_code]),
+      summary("storyarn.snapshot.download.stop.duration",
+        tags: [:outcome, :phase, :error_code],
+        unit: {:native, :millisecond}
+      ),
 
       # Reconciliation is an operator-started, observation-only dry-run. IDs
       # remain out of metric tags; persisted runs and findings retain detail.

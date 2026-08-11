@@ -1,5 +1,6 @@
 defmodule Storyarn.Billing.StorageAccountingTest do
   use Storyarn.DataCase, async: false
+  use Oban.Testing, repo: Storyarn.Repo
 
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
@@ -1116,6 +1117,9 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       assert lease.reserved_bytes == 0
       assert is_nil(lease.storage_started_at)
 
+      assert DateTime.diff(lease.expires_at, lease.accounting_measured_at, :second) ==
+               Versioning.project_snapshot_download_export_lease_ttl_seconds()
+
       assert Billing.active_storage_reservations_by_snapshot([snapshot.id]) == %{
                snapshot.id => %{active_bytes: 0, export_bytes: 0, active_count: 1}
              }
@@ -1141,6 +1145,9 @@ defmodule Storyarn.Billing.StorageAccountingTest do
 
       assert renewed.generation == lease.generation + 1
       assert DateTime.after?(renewed.expires_at, lease.expires_at)
+      lease_ttl = Versioning.project_snapshot_download_export_lease_ttl_seconds()
+
+      assert DateTime.diff(renewed.expires_at, renewed.accounting_measured_at, :second) in lease_ttl..(lease_ttl + 1)
       assert renewed.reserved_bytes == 0
       assert is_nil(renewed.storage_started_at)
 
@@ -1170,6 +1177,49 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       assert released.generation == renewed.generation + 1
       assert released.cleanup_status == "not_required"
       assert released.cleanup_reference == "storage_not_started:#{lease.storage_namespace}"
+    end
+
+    test "coalesced acquisition owns its database-clock expiry contract", context do
+      snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 10})
+      database_before = database_clock_now()
+
+      attrs =
+        context
+        |> reservation_attrs("coalesced-export", "snapshot_export", 0, snapshot)
+        |> Map.put(:expires_at, DateTime.add(database_before, 30 * 24 * 60 * 60, :second))
+
+      assert {:ok, first} = Billing.acquire_snapshot_export_lease(attrs)
+      database_after = database_clock_now()
+
+      assert DateTime.compare(first.accounting_measured_at, database_before) in [:eq, :gt]
+      assert DateTime.compare(first.accounting_measured_at, database_after) in [:eq, :lt]
+
+      assert DateTime.diff(first.expires_at, first.accounting_measured_at, :second) ==
+               Versioning.project_snapshot_download_export_lease_ttl_seconds()
+
+      assert DateTime.before?(first.expires_at, DateTime.add(database_before, 30 * 24 * 60 * 60, :second))
+
+      assert {:ok, second} =
+               context
+               |> reservation_attrs("second-coalesced-export", "snapshot_export", 0, snapshot)
+               |> Map.put(:expires_at, DateTime.add(database_before, 60 * 24 * 60 * 60, :second))
+               |> Billing.acquire_snapshot_export_lease()
+
+      assert second.id == first.id
+      assert second.generation == first.generation + 1
+
+      lease_ttl = Versioning.project_snapshot_download_export_lease_ttl_seconds()
+
+      assert DateTime.diff(second.expires_at, second.accounting_measured_at, :second) in lease_ttl..(lease_ttl + 1)
+    end
+
+    test "keeps the standard TTL for positive snapshot export reservations", context do
+      snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 10})
+
+      assert {:ok, reservation} =
+               reserve(context, "persisted-export", "snapshot_export", 100, snapshot)
+
+      assert DateTime.diff(reservation.expires_at, reservation.accounting_measured_at, :second) == 24 * 60 * 60
     end
 
     test "preserves linked conversion zero-byte accounting but rejects zero for storage writers", context do
@@ -1273,7 +1323,11 @@ defmodule Storyarn.Billing.StorageAccountingTest do
                  expired_snapshot.id
                )
 
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{context.project.id}")
       assert :ok = ProjectSnapshotRetentionWorker.perform(%Oban.Job{args: %{}})
+
+      assert_receive {:project_snapshot_updated, snapshot_id}
+      assert snapshot_id == expired_snapshot.id
 
       assert_receive {
         [:storyarn, :snapshot, :retention, :stop],
@@ -1302,6 +1356,211 @@ defmodule Storyarn.Billing.StorageAccountingTest do
                  context.project,
                  expired_snapshot.id
                )
+    end
+
+    test "retention recovery drains more than one export lease batch with a stable keyset continuation", context do
+      snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 10})
+
+      expired =
+        for index <- 1..51 do
+          assert {:ok, lease} =
+                   reserve(context, "expired-export-batch-#{index}", "snapshot_export", 0, snapshot)
+
+          lease
+        end
+
+      assert {:ok, live} = reserve(context, "live-export-after-batch", "snapshot_export", 0, snapshot)
+      assert {:ok, positive} = reserve(context, "positive-export-after-batch", "snapshot_export", 100, snapshot)
+
+      now = TimeHelpers.now()
+      accounting_measured_at = DateTime.add(now, -120, :second)
+      expires_at = DateTime.add(now, -60, :second)
+      expired_ids = Enum.map(expired, & &1.id)
+
+      {51, _rows} =
+        Repo.update_all(
+          from(reservation in StorageReservation, where: reservation.id in ^expired_ids),
+          set: [accounting_measured_at: accounting_measured_at, expires_at: expires_at]
+        )
+
+      positive
+      |> Ecto.Changeset.change(accounting_measured_at: accounting_measured_at, expires_at: expires_at)
+      |> Repo.update!()
+
+      assert :ok = ProjectSnapshotRetentionWorker.perform(%Oban.Job{args: %{}})
+
+      first_batch_last_id = expired |> Enum.at(49) |> Map.fetch!(:id)
+
+      assert 50 ==
+               Repo.aggregate(
+                 from(reservation in StorageReservation,
+                   where: reservation.id in ^expired_ids and reservation.status == "released"
+                 ),
+                 :count
+               )
+
+      assert [%Oban.Job{args: continuation_args} = continuation] =
+               all_enqueued(worker: ProjectSnapshotRetentionWorker)
+
+      assert continuation_args["export_lease_after_id"] == first_batch_last_id
+      assert is_binary(continuation_args["export_lease_cutoff"])
+
+      assert :ok = ProjectSnapshotRetentionWorker.perform(continuation)
+
+      assert 51 ==
+               Repo.aggregate(
+                 from(reservation in StorageReservation,
+                   where: reservation.id in ^expired_ids and reservation.status == "released"
+                 ),
+                 :count
+               )
+
+      assert Repo.get!(StorageReservation, live.id).status == "active"
+      assert Repo.get!(StorageReservation, positive.id).status == "active"
+    end
+
+    test "purges only retained terminal no-write export lease rows", context do
+      old_snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 10})
+      recent_snapshot = insert_full_snapshot!(context.project, 2, %{project: 10, metadata: 10, assets: 10})
+      active_snapshot = insert_full_snapshot!(context.project, 3, %{project: 10, metadata: 10, assets: 10})
+      positive_snapshot = insert_full_snapshot!(context.project, 4, %{project: 10, metadata: 10, assets: 10})
+
+      assert {:ok, old} = reserve(context, "old-export-history", "snapshot_export", 0, old_snapshot)
+      assert {:ok, recent} = reserve(context, "recent-export-history", "snapshot_export", 0, recent_snapshot)
+      assert {:ok, active} = reserve(context, "active-export-history", "snapshot_export", 0, active_snapshot)
+
+      assert {:ok, positive} =
+               reserve(context, "positive-export-history", "snapshot_export", 100, positive_snapshot)
+
+      released =
+        for lease <- [old, recent, positive] do
+          assert {:ok, released} =
+                   Billing.release_storage_reservation(
+                     lease.id,
+                     lease.lease_token,
+                     lease.generation,
+                     %{
+                       reason: "snapshot export finished",
+                       cleanup_status: "not_required",
+                       cleanup_proof: no_write_proof(lease)
+                     }
+                   )
+
+          released
+        end
+
+      [old_released, recent_released, positive_released] = released
+      now = TimeHelpers.now()
+
+      old_released
+      |> Ecto.Changeset.change(settled_at: DateTime.add(now, -8 * 24 * 60 * 60, :second))
+      |> Repo.update!()
+
+      cutoff = DateTime.add(now, -7 * 24 * 60 * 60, :second)
+
+      assert %{
+               candidate_count: 1,
+               purged_count: 1,
+               changed_count: 0,
+               failure_count: 0,
+               last_candidate_id: last_candidate_id
+             } = Billing.purge_released_snapshot_export_leases(cutoff)
+
+      assert last_candidate_id == old_released.id
+      refute Repo.get(StorageReservation, old_released.id)
+      assert Repo.get!(StorageReservation, recent_released.id).status == "released"
+      assert Repo.get!(StorageReservation, positive_released.id).status == "released"
+      assert Repo.get!(StorageReservation, active.id).status == "active"
+    end
+
+    test "retains the newest zero-byte export lease as rollback evidence", context do
+      first_snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 10})
+      second_snapshot = insert_full_snapshot!(context.project, 2, %{project: 10, metadata: 10, assets: 10})
+
+      assert {:ok, first} = reserve(context, "first-export-evidence", "snapshot_export", 0, first_snapshot)
+      assert {:ok, second} = reserve(context, "second-export-evidence", "snapshot_export", 0, second_snapshot)
+
+      released =
+        for lease <- [first, second] do
+          assert {:ok, released} =
+                   Billing.release_storage_reservation(
+                     lease.id,
+                     lease.lease_token,
+                     lease.generation,
+                     %{
+                       reason: "snapshot export finished",
+                       cleanup_status: "not_required",
+                       cleanup_proof: no_write_proof(lease)
+                     }
+                   )
+
+          released
+        end
+
+      [first_released, second_released] = released
+      now = TimeHelpers.now()
+      settled_at = DateTime.add(now, -8 * 24 * 60 * 60, :second)
+
+      {2, _rows} =
+        Repo.update_all(
+          from(reservation in StorageReservation,
+            where: reservation.id in ^Enum.map(released, & &1.id)
+          ),
+          set: [settled_at: settled_at]
+        )
+
+      assert %{candidate_count: 1, purged_count: 1, changed_count: 0, failure_count: 0} =
+               Billing.purge_released_snapshot_export_leases(DateTime.add(now, -7 * 24 * 60 * 60, :second))
+
+      refute Repo.get(StorageReservation, first_released.id)
+      assert Repo.get!(StorageReservation, second_released.id).status == "released"
+    end
+
+    test "a publication claim prevents terminal export-lease retention from deleting its owner", context do
+      claimed_snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 10})
+      later_snapshot = insert_full_snapshot!(context.project, 2, %{project: 10, metadata: 10, assets: 10})
+
+      assert {:ok, claimed} = reserve(context, "claimed-export-history", "snapshot_export", 0, claimed_snapshot)
+
+      assert {:ok, claimed} =
+               Billing.release_storage_reservation(
+                 claimed.id,
+                 claimed.lease_token,
+                 claimed.generation,
+                 %{
+                   reason: "snapshot export finished",
+                   cleanup_status: "not_required",
+                   cleanup_proof: no_write_proof(claimed)
+                 }
+               )
+
+      now = TimeHelpers.now()
+
+      claimed
+      |> Ecto.Changeset.change(settled_at: DateTime.add(now, -8 * 24 * 60 * 60, :second))
+      |> Repo.update!()
+
+      Repo.insert!(%SnapshotObjectPublicationClaim{
+        object_prefix: claimed_snapshot.object_prefix,
+        claim_token: Ecto.UUID.generate(),
+        inventory_digest: SnapshotObjectPublicationClaim.inventory_digest(claimed_snapshot),
+        storage_reservation_id_snapshot: claimed.id,
+        storage_reservation_lease_token: claimed.lease_token,
+        status: "poisoned",
+        lease_expires_at: nil,
+        inserted_at: now,
+        updated_at: now
+      })
+
+      # A later zero-byte row makes the claimed lease independently eligible
+      # from the newest-evidence guard, so this exercises the claim fence.
+      assert {:ok, _later} =
+               reserve(context, "later-export-evidence", "snapshot_export", 0, later_snapshot)
+
+      assert %{candidate_count: 1, purged_count: 0, changed_count: 1, failure_count: 0} =
+               Billing.purge_released_snapshot_export_leases(DateTime.add(now, -7 * 24 * 60 * 60, :second))
+
+      assert Repo.get!(StorageReservation, claimed.id).status == "released"
     end
   end
 
@@ -1404,6 +1663,11 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       type: "storage_not_started",
       storage_namespace: reservation.storage_namespace
     }
+  end
+
+  defp database_clock_now do
+    %Postgrex.Result{rows: [[now]]} = Repo.query!("SELECT clock_timestamp()")
+    DateTime.truncate(now, :second)
   end
 
   defp reservation_attrs(context, key, kind, bytes, snapshot) do

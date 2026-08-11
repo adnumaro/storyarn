@@ -1,43 +1,214 @@
 defmodule Storyarn.Versioning.ProjectSnapshotDownloadTest do
   use Storyarn.DataCase, async: false
 
-  import ExUnit.CaptureLog
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.VersioningFixtures
 
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Versioning
   alias Storyarn.Workers.BuildProjectSnapshotWorker
 
-  test "normalizes an unexpected preflight exception without invoking the delivery callback" do
+  test "coalesces overlapping grants onto one renewed zero-byte lease" do
     user = user_fixture()
     project = project_fixture(user)
     snapshot = build_ready_snapshot(project, user)
-    install_raising_storage()
+    Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{project.id}")
+    attach_lease_telemetry()
 
-    log =
-      capture_log(fn ->
-        assert {:error, :snapshot_export_unavailable} =
-                 Versioning.with_project_snapshot_zip(project.id, snapshot.id, fn _plan ->
-                   flunk("delivery must not start after a failed preflight")
-                 end)
-      end)
-
-    assert log =~ "Snapshot ZIP preflight failed unexpectedly"
-    refute log =~ "provider-secret"
+    assert :grant_issued =
+             Versioning.with_project_snapshot_archive(project, snapshot.id, fn delivery ->
+               assert delivery.snapshot.id == snapshot.id
+               assert delivery.storage_key == snapshot.archive_storage_key
+               assert delivery.size_bytes == snapshot.archive_size_bytes
+               assert delivery.checksum == snapshot.archive_checksum
+               {:retain_lease, :grant_issued}
+             end)
 
     assert %StorageReservation{
-             status: "released",
+             kind: "snapshot_export",
+             status: "active",
              reserved_bytes: 0,
              storage_started_at: nil,
-             cleanup_status: "not_required"
-           } =
-             Repo.get_by!(StorageReservation,
-               project_snapshot_id_snapshot: snapshot.id,
-               kind: "snapshot_export"
+             cleanup_status: nil
+           } = first_lease = lease_for(snapshot)
+
+    assert DateTime.diff(first_lease.expires_at, first_lease.accounting_measured_at, :second) ==
+             Versioning.project_snapshot_download_export_lease_ttl_seconds()
+
+    assert_receive {:project_snapshot_updated, snapshot_id}
+    assert snapshot_id == snapshot.id
+
+    assert_receive {:snapshot_download_lease, %{count: 1},
+                    %{outcome: :created, project_id: project_id, snapshot_id: snapshot_id}}
+
+    assert project_id == project.id
+    assert snapshot_id == snapshot.id
+
+    assert :second_grant_issued =
+             Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
+               {:retain_lease, :second_grant_issued}
+             end)
+
+    second_lease = lease_for(snapshot)
+    assert second_lease.id == first_lease.id
+    assert second_lease.generation == first_lease.generation + 1
+    assert DateTime.after?(second_lease.expires_at, first_lease.expires_at)
+
+    assert 1 ==
+             Repo.aggregate(
+               from(reservation in StorageReservation,
+                 where:
+                   reservation.project_snapshot_id_snapshot == ^snapshot.id and
+                     reservation.kind == "snapshot_export" and reservation.status == "active"
+               ),
+               :count
              )
+
+    assert_receive {:project_snapshot_updated, snapshot_id}
+    assert snapshot_id == snapshot.id
+
+    assert_receive {:snapshot_download_lease, %{count: 1},
+                    %{outcome: :coalesced, project_id: project_id, snapshot_id: snapshot_id}}
+
+    assert project_id == project.id
+    assert snapshot_id == snapshot.id
+  end
+
+  test "retains the shared lease after local delivery" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = build_ready_snapshot(project, user)
+    Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{project.id}")
+
+    assert :delivered =
+             Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
+               {:release_lease, :delivered}
+             end)
+
+    assert %StorageReservation{
+             status: "active",
+             reserved_bytes: 0,
+             storage_started_at: nil,
+             cleanup_status: nil
+           } = lease_for(snapshot)
+
+    assert_receive {:project_snapshot_updated, snapshot_id}
+    assert snapshot_id == snapshot.id
+    refute_receive {:project_snapshot_updated, _snapshot_id}
+  end
+
+  test "retains the shared lease when delivery raises" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = build_ready_snapshot(project, user)
+
+    assert_raise RuntimeError, "simulated delivery failure", fn ->
+      Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
+        raise "simulated delivery failure"
+      end)
+    end
+
+    assert %StorageReservation{status: "active", cleanup_status: nil} =
+             lease_for(snapshot)
+  end
+
+  test "fails closed and retains when the callback omits its lease decision" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = build_ready_snapshot(project, user)
+
+    assert {:error, :snapshot_export_unavailable} =
+             Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
+               :ambiguous_result
+             end)
+
+    assert %StorageReservation{status: "active"} = lease_for(snapshot)
+  end
+
+  test "revalidates an authorized project under the storage lock before granting" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = build_ready_snapshot(project, user)
+
+    project
+    |> Ecto.Changeset.change(deleted_at: TimeHelpers.now())
+    |> Repo.update!()
+
+    assert {:error, :snapshot_export_unavailable} =
+             Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
+               flunk("delivery must not start for a concurrently deleted project")
+             end)
+
+    refute Repo.get_by(StorageReservation,
+             project_snapshot_id_snapshot: snapshot.id,
+             kind: "snapshot_export"
+           )
+  end
+
+  test "does not synchronously rebuild a legacy format snapshot" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = full_project_snapshot_fixture(project, %{asset_blob_size_bytes: 0})
+
+    assert {:error, :snapshot_export_unsupported_format} =
+             Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
+               flunk("legacy snapshots require archive preparation")
+             end)
+
+    refute Repo.get_by(StorageReservation,
+             project_snapshot_id_snapshot: snapshot.id,
+             kind: "snapshot_export"
+           )
+  end
+
+  test "a failed coalesced request cannot release a previous grant" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = build_ready_snapshot(project, user)
+
+    assert :grant_issued =
+             Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
+               {:retain_lease, :grant_issued}
+             end)
+
+    first_lease = lease_for(snapshot)
+
+    assert {:error, :provider_unavailable} =
+             Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
+               {:release_lease, {:error, :provider_unavailable}}
+             end)
+
+    assert %StorageReservation{id: lease_id, status: "active", generation: generation} =
+             lease_for(snapshot)
+
+    assert lease_id == first_lease.id
+    assert generation == first_lease.generation + 1
+  end
+
+  defp lease_for(snapshot) do
+    Repo.get_by!(StorageReservation,
+      project_snapshot_id_snapshot: snapshot.id,
+      kind: "snapshot_export"
+    )
+  end
+
+  defp attach_lease_telemetry do
+    handler_id = "snapshot-download-lease-#{System.unique_integer([:positive])}"
+    parent = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :snapshot, :download, :lease],
+        fn _event, measurements, metadata, pid ->
+          send(pid, {:snapshot_download_lease, measurements, metadata})
+        end,
+        parent
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
   end
 
   defp build_ready_snapshot(project, user) do
@@ -58,29 +229,5 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownloadTest do
 
     assert :ok = BuildProjectSnapshotWorker.perform(job)
     Versioning.get_project_snapshot(project.id, requested.id)
-  end
-
-  defp install_raising_storage do
-    original_storage = Application.fetch_env!(:storyarn, :storage)
-    {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
-
-    SnapshotReadSwitchStorage.observe_io(fn
-      :stat, _key -> raise "provider-secret"
-      _operation, _key -> :ok
-    end)
-
-    Application.put_env(
-      :storyarn,
-      :storage,
-      Keyword.put(original_storage, :adapter, SnapshotReadSwitchStorage)
-    )
-
-    on_exit(fn ->
-      Application.put_env(:storyarn, :storage, original_storage)
-
-      if Process.whereis(SnapshotReadSwitchStorage) do
-        Agent.stop(SnapshotReadSwitchStorage)
-      end
-    end)
   end
 end

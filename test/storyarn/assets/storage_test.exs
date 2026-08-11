@@ -4,6 +4,10 @@ defmodule Storyarn.Assets.StorageTest do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.Storage.Local
 
+  defmodule NoMultipartInventoryAdapter do
+    @moduledoc false
+  end
+
   @test_dir "test/tmp/storage_dispatch"
 
   setup do
@@ -45,6 +49,15 @@ defmodule Storyarn.Assets.StorageTest do
     test "defaults to Local adapter when no adapter configured" do
       Application.put_env(:storyarn, :storage, [])
       assert Storage.adapter() == Local
+    end
+  end
+
+  describe "multipart cleanup policy" do
+    test "covers the UploadPart deadline after second-precision clock truncation" do
+      deadline_ms = Storage.multipart_upload_part_deadline_ms()
+      quiescence_ms = Storage.multipart_cleanup_quiescence_seconds() * 1_000
+
+      assert quiescence_ms >= deadline_ms + 1_000
     end
   end
 
@@ -96,6 +109,49 @@ defmodule Storyarn.Assets.StorageTest do
       assert {:ok, _url} = Storage.upload(source_key, "second", "text/plain")
       assert {:ok, false} = Storage.copy_if_absent(source_key, destination_key)
       assert {:ok, "first"} = Storage.download(destination_key)
+    end
+  end
+
+  describe "abort_incomplete_multipart_uploads/2" do
+    test "treats a non-multipart adapter as an empty exact inventory" do
+      assert {:ok, 0} =
+               Storage.abort_incomplete_multipart_uploads(
+                 "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+               )
+    end
+
+    test "rejects unsafe keys and options before dispatch" do
+      assert {:error, :invalid_multipart_cleanup_request} =
+               Storage.abort_incomplete_multipart_uploads("projects/1/../snapshot.zip")
+
+      assert {:error, :invalid_multipart_cleanup_request} =
+               Storage.abort_incomplete_multipart_uploads("projects/1/snapshot.zip", %{limit: 1})
+    end
+  end
+
+  describe "incomplete_multipart_upload_count/2" do
+    test "fails closed when the configured adapter has no multipart inventory" do
+      Application.put_env(:storyarn, :storage, adapter: NoMultipartInventoryAdapter)
+
+      assert {:error, :multipart_inventory_not_supported} =
+               Storage.incomplete_multipart_upload_count(
+                 "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+               )
+    end
+
+    test "treats the local non-multipart backend as an exact empty inventory" do
+      assert {:ok, 0} =
+               Storage.incomplete_multipart_upload_count(
+                 "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+               )
+    end
+
+    test "rejects unsafe keys and options before dispatch" do
+      assert {:error, :invalid_multipart_inventory_request} =
+               Storage.incomplete_multipart_upload_count("projects/1/../snapshot.zip")
+
+      assert {:error, :invalid_multipart_inventory_request} =
+               Storage.incomplete_multipart_upload_count("projects/1/snapshot.zip", %{limit: 1})
     end
   end
 
@@ -177,6 +233,33 @@ defmodule Storyarn.Assets.StorageTest do
     test "accepts optional opts parameter" do
       assert {:error, :not_supported} =
                Storage.presigned_upload_url("key", "text/plain", max_size: 1024)
+    end
+  end
+
+  describe "presigned_download_url/3" do
+    test "uses the adapter only for a bounded canonical attachment request" do
+      assert {:error, :not_supported} =
+               Storage.presigned_download_url(
+                 "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/snapshot.zip",
+                 "application/zip",
+                 expires_in: 300,
+                 filename: "snapshot.zip"
+               )
+    end
+
+    test "rejects unsafe keys, metadata, filenames, and expiry before delegation" do
+      invalid_requests = [
+        ["projects/1/../secret", "application/zip", [filename: "snapshot.zip"]],
+        ["projects/1/archive.zip", "application/zip\r\ntext/html", [filename: "snapshot.zip"]],
+        ["projects/1/archive.zip", "application/zip", [filename: "bad\r\nname.zip"]],
+        ["projects/1/archive.zip", "application/zip", [filename: "snapshot.zip", expires_in: 0]],
+        ["projects/1/archive.zip", "application/zip", [filename: "snapshot.zip", expires_in: 301]]
+      ]
+
+      for [key, content_type, opts] <- invalid_requests do
+        assert {:error, :invalid_presigned_download_request} =
+                 Storage.presigned_download_url(key, content_type, opts)
+      end
     end
   end
 end

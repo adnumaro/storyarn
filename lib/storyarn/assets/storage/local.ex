@@ -41,6 +41,13 @@ defmodule Storyarn.Assets.Storage.Local do
   end
 
   @impl true
+  def incomplete_multipart_upload_count(key, opts) do
+    if Storage.multipart_cleanup_key?(key) and Keyword.keyword?(opts),
+      do: {:ok, 0},
+      else: {:error, :invalid_multipart_inventory_request}
+  end
+
+  @impl true
   # sobelow_skip ["Traversal.FileModule"]
   def put_if_absent(key, data, _content_type) do
     with {:ok, path} <- file_path(key),
@@ -360,6 +367,9 @@ defmodule Storyarn.Assets.Storage.Local do
     # Files should be uploaded through the server
     {:error, :not_supported}
   end
+
+  @impl true
+  def presigned_download_url(_key, _content_type, _opts), do: {:error, :not_supported}
 
   @impl true
   def key_from_url(url) when is_binary(url) do

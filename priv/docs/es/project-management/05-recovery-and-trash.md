@@ -2,7 +2,7 @@
 title: "Capturas y papelera",
 category_label: "Gestión de proyectos",
 order: 5,
-description: "Crea copias del proyecto, restaura un estado conocido y recupera o elimina contenido."
+description: "Crea copias del proyecto y recupera o elimina contenido compatible."
 }
 
 ---
@@ -18,21 +18,20 @@ Usa una captura antes de una migración amplia o un cambio estructural. Usa la P
 
 Abre **Ajustes del proyecto > Capturas**. Introduce un título y una descripción opcionales y selecciona **Crear captura**. La creación está sujeta al límite del plan que se muestra en Control de versiones y Límites de uso.
 
+La creación de la captura continúa en segundo plano. Storyarn genera un único archivo ZIP privado y solo marca la captura como lista después de verificar el archivo y su manifiesto. El tamaño almacenado corresponde al ZIP más ese pequeño manifiesto; Storyarn no conserva junto al ZIP una segunda copia de cada archivo de la captura.
+
 Cada captura muestra su número de versión, título, creador cuando está disponible, fecha, tamaño almacenado y recuentos de entidades. Las acciones disponibles son:
 
-- **Descargar** una captura completa, lista y verificada como archivo ZIP privado. Las capturas enlazadas no se pueden descargar.
-- **Restaurar** el proyecto a esa captura.
+- **Descargar** una captura completa, lista y verificada como archivo ZIP privado. Storyarn comprueba tus permisos en cada solicitud y el navegador descarga después el archivo persistido directamente desde el almacenamiento privado. Las capturas enlazadas y las capturas antiguas que no se hayan preparado como archivo no se pueden descargar.
 - **Eliminar** permanentemente la captura.
 
-La restauración afecta a todo el proyecto y se ejecuta bajo un bloqueo. Las demás acciones de restauración quedan deshabilitadas mientras está en curso. Borra un bloqueo obsoleto solo después de confirmar que no sigue ejecutándose ningún trabajo de restauración.
-
-Restaurar puede sustituir los datos actuales por el estado de la captura. Crea primero una captura nueva si existe la posibilidad de que necesites volver al estado actual.
+La restauración de capturas de proyecto no está disponible actualmente en la interfaz. Conserva los archivos descargados como copias de seguridad del proyecto; las versiones de entidad y la Papelera ofrecen las rutas de restauración dentro del producto que se describen a continuación.
 
 ## Capturas automáticas y versiones de entidades
 
 En **Ajustes del proyecto > Control de versiones** puedes activar las capturas diarias del proyecto de forma independiente al versionado automático de Fichas, Flujos y Escenas.
 
-Las versiones de entidad sirven para revisar o recuperar un único elemento. Las capturas del proyecto son puntos de recuperación más amplios. Sus límites de uso se contabilizan por separado.
+Las versiones de entidad sirven para revisar o recuperar un único elemento. Las capturas del proyecto son copias descargables más amplias. Sus límites de uso se contabilizan por separado.
 
 ## Papelera
 
@@ -51,5 +50,5 @@ Restaurar devuelve el elemento al contenido activo del proyecto. La eliminación
 
 1. Revisa la Papelera cuando falte un único elemento.
 2. Consulta el historial de versiones cuando el elemento exista, pero su contenido sea incorrecto.
-3. Usa una captura del proyecto cuando varias entidades relacionadas deban volver a un estado anterior coherente.
+3. Usa una captura descargada como copia de seguridad del proyecto cuando haya varias entidades relacionadas.
 4. Descarga las capturas importantes antes de eliminarlas o realizar una migración de riesgo.

@@ -2,7 +2,7 @@
 title: "Snapshots and Trash",
 category_label: "Project Management",
 order: 5,
-description: "Create project backups, restore a known state, and recover or permanently delete content."
+description: "Create project backups and recover or permanently delete supported content."
 }
 
 ---
@@ -18,21 +18,20 @@ Use a snapshot before a broad migration or structural change. Use Trash when you
 
 Open **Project Settings > Snapshots**. Enter an optional title and description, then choose **Create Snapshot**. Creation is subject to the current plan limit shown under Version Control and Usage Limits.
 
+Snapshot creation continues in the background. Storyarn builds one private ZIP archive and only marks the snapshot ready after the archive and its manifest have been verified. The stored size is the ZIP plus that small manifest; Storyarn does not keep a second snapshot copy of every file beside the ZIP.
+
 Each stored snapshot shows its version number, title, creator when available, creation time, stored size, and entity counts. Available actions are:
 
-- **Download** a ready, verified full snapshot as a private ZIP archive. Linked snapshots are not downloadable.
-- **Restore** the project to that snapshot.
+- **Download** a ready, verified full snapshot as a private ZIP archive. Storyarn checks your permission for every request, then the browser downloads the persisted archive directly from private storage. Linked snapshots and older snapshots that have not been prepared as archives are not downloadable.
 - **Delete** the snapshot permanently.
 
-Restoration is a project-wide operation and runs under a restoration lock. Other restoration actions are disabled while it is in progress. Only clear a stale lock when you have confirmed that no restoration job is still running.
-
-Restoring can replace current project data with the snapshot state. Create a fresh snapshot first when you may need to return to the current state.
+Project snapshot restoration is not currently available in the interface. Keep downloaded archives as project-wide backups; entity versions and Trash provide the in-product restore paths described below.
 
 ## Automatic snapshots and entity versions
 
 In **Project Settings > Version Control**, you can enable daily project snapshots separately from automatic Sheet, Flow, and Scene versions.
 
-Entity versions are useful for reviewing or restoring one content item. Project snapshots are broader recovery points. Their usage limits are tracked separately.
+Entity versions are useful for reviewing or restoring one content item. Project snapshots are broader downloadable backups. Their usage limits are tracked separately.
 
 ## Trash
 
@@ -51,5 +50,5 @@ Restore returns the item to active project content. Permanent deletion and **Emp
 
 1. Check Trash when a single item is missing.
 2. Inspect entity version history when the item exists but its content is wrong.
-3. Use a project snapshot when several related entities must return to a consistent earlier state.
+3. Use a downloaded project snapshot as a project-wide backup when several related entities are involved.
 4. Download important snapshots before deleting them or performing a high-risk migration.

@@ -57,6 +57,9 @@ interface Snapshot {
   lifecycleStatus: SnapshotLifecycle | null;
   integrityStatus: SnapshotIntegrity | null;
   accountedSizeBytes: ByteCount | null;
+  storageBreakdownMode: "archive" | "object_set" | null;
+  archiveSizeBytes: ByteCount | null;
+  sidecarSizeBytes: ByteCount | null;
   projectDataSizeBytes: ByteCount | null;
   metadataSizeBytes: ByteCount | null;
   assetBlobSizeBytes: ByteCount | null;
@@ -76,7 +79,9 @@ interface Snapshot {
   cancelRequestedAt: string | null;
   canCancel: boolean;
   canDelete: boolean;
+  deleteStatus: "ready" | "download_lease" | "active_operation" | null;
   downloadUrl: string | null;
+  downloadStatus: "ready" | "linked" | "archive_required" | null;
 }
 
 interface SnapshotLimit {
@@ -272,6 +277,10 @@ function snapshotRequestError(payload: Record<string, unknown>) {
       used: formatReplyCount(payload.used),
       limit: formatReplyCount(payload.limit),
     });
+  }
+
+  if (payload.reason === "rollout_not_enabled") {
+    return t("project_settings.snapshots.create.rollout_not_enabled");
   }
 
   return t("project_settings.snapshots.create.request_failed");
@@ -846,7 +855,33 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
               </div>
 
               <div
+                v-if="snapshot.storageBreakdownMode === 'archive'"
+                class="mt-3 grid gap-2 rounded-lg border border-border/60 bg-background/60 p-3 sm:grid-cols-2"
+                :data-testid="`archive-breakdown-${snapshot.id}`"
+              >
+                <div>
+                  <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Archive class="size-3.5" aria-hidden="true" />
+                    {{ $t("project_settings.snapshots.measurements.zip_archive") }}
+                  </div>
+                  <div class="mt-1 text-sm font-medium tabular-nums">
+                    {{ formatBytes(snapshot.archiveSizeBytes, locale) }}
+                  </div>
+                </div>
+                <div>
+                  <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <FileJson2 class="size-3.5" aria-hidden="true" />
+                    {{ $t("project_settings.snapshots.measurements.manifest_sidecar") }}
+                  </div>
+                  <div class="mt-1 text-sm font-medium tabular-nums">
+                    {{ formatBytes(snapshot.sidecarSizeBytes, locale) }}
+                  </div>
+                </div>
+              </div>
+              <div
+                v-else-if="snapshot.storageBreakdownMode === 'object_set'"
                 class="mt-3 grid gap-2 rounded-lg border border-border/60 bg-background/60 p-3 sm:grid-cols-3"
+                :data-testid="`object-set-breakdown-${snapshot.id}`"
               >
                 <div>
                   <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -925,7 +960,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
               <Button v-if="snapshot.downloadUrl" variant="outline" size="sm" as-child>
                 <a
                   :href="snapshot.downloadUrl"
-                  download
+                  referrerpolicy="no-referrer"
                   data-live-link-exempt="download"
                   :data-testid="`download-snapshot-${snapshot.id}`"
                 >
@@ -934,19 +969,45 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                 </a>
               </Button>
               <p
-                v-else-if="snapshot.mode === 'linked'"
+                v-else-if="snapshot.downloadStatus === 'linked'"
                 class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
                 :data-testid="`download-linked-snapshot-${snapshot.id}`"
               >
                 {{ $t("project_settings.snapshots.download.linked_requires_full") }}
               </p>
+              <p
+                v-else-if="snapshot.downloadStatus === 'archive_required'"
+                class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
+                :data-testid="`download-archive-required-${snapshot.id}`"
+              >
+                {{ $t("project_settings.snapshots.download.archive_required") }}
+              </p>
+              <p
+                v-if="snapshot.deleteStatus === 'download_lease'"
+                :id="`delete-snapshot-reason-${snapshot.id}`"
+                class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
+                :data-testid="`delete-download-lease-${snapshot.id}`"
+              >
+                {{ $t("project_settings.snapshots.delete.download_lease") }}
+              </p>
+              <p
+                v-else-if="snapshot.deleteStatus === 'active_operation'"
+                :id="`delete-snapshot-reason-${snapshot.id}`"
+                class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
+                :data-testid="`delete-active-operation-${snapshot.id}`"
+              >
+                {{ $t("project_settings.snapshots.delete.active_operation") }}
+              </p>
               <Button
-                v-if="snapshot.canDelete"
+                v-if="snapshot.deleteStatus"
                 type="button"
                 variant="ghost"
                 size="sm"
                 class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                :disabled="deletingSnapshotIds.has(snapshot.id)"
+                :disabled="!snapshot.canDelete || deletingSnapshotIds.has(snapshot.id)"
+                :aria-describedby="
+                  snapshot.canDelete ? undefined : `delete-snapshot-reason-${snapshot.id}`
+                "
                 :data-testid="`delete-snapshot-${snapshot.id}`"
                 @click="openDeleteDialog(snapshot)"
               >

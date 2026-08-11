@@ -118,9 +118,13 @@ config :storyarn, Oban,
     # rescue, and so an expiry backlog cannot starve execution.
     ai: 2,
     ai_maintenance: 1,
-    # Full snapshots are user-facing but deliberately serialized per machine:
-    # each job may stream many large objects and owns durable retry state.
+    # Legacy v1 snapshot builds remain on `:snapshots` so a rolling deployment
+    # can drain jobs created by the previous release. New canonical archive
+    # builds use a versioned queue that previous nodes do not poll. Each queue
+    # stays serialized because one job may stream many large objects and owns
+    # durable retry state.
     snapshots: 1,
+    snapshot_archives: 1,
     snapshots_maintenance: 1,
     storage_cleanup: 1
   ],
@@ -169,6 +173,11 @@ config :storyarn, Storyarn.AI.Settlement, Storyarn.AI.Settlement.Unavailable
 # dev/test override it explicitly.
 config :storyarn, Storyarn.AI.TaskRegistry, tasks: []
 
+# UploadPart has a hard wall-clock deadline in addition to the socket-phase
+# limits above. Durable multipart cleanup uses this same value as its minimum
+# quiescence window, so one policy bounds both sides of the handoff.
+config :storyarn, Storyarn.Assets.Storage, multipart_upload_part_deadline_ms: 5 * 60 * 1_000
+
 # Configure Gettext locales
 config :storyarn, Storyarn.Gettext,
   default_locale: "en",
@@ -201,6 +210,18 @@ config :storyarn, Storyarn.Vault,
       tag: "AES.GCM.V1", key: Base.decode64!("dGhpc2lzYWRldmVsb3BtZW50a2V5b25seTMyYnl0ZXM="), iv_length: 12
     }
   ]
+
+# Canonical archive creation is a rolling-deploy write fence. Production keeps
+# it closed until every node runs the archive-aware maintenance protocol.
+config :storyarn, Storyarn.Versioning.ProjectSnapshotBuild, archive_writes_enabled: false
+
+config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
+  download_signed_url_ttl_seconds: 5 * 60,
+  download_max_transfer_seconds: 60 * 60,
+  download_lease_safety_seconds: 60,
+  build_heartbeat_interval_seconds: 60,
+  build_lease_ttl_seconds: 5 * 60,
+  export_lease_retention_seconds: 7 * 24 * 60 * 60
 
 # Entity-version restores remain disabled by default while their
 # referential-integrity guarantees are being hardened. Project snapshot

@@ -7,6 +7,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
 
   alias Storyarn.Projects
   alias Storyarn.Versioning
+  alias Storyarn.Versioning.SnapshotArchiveStorage
   alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
@@ -63,6 +64,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       lifecycleStatus: snapshot.lifecycle_state,
       integrityStatus: snapshot.integrity_state,
       accountedSizeBytes: serialize_optional_byte_count(snapshot.accounted_size_bytes),
+      storageBreakdownMode: snapshot_storage_breakdown_mode(snapshot),
+      archiveSizeBytes: snapshot |> measured_archive_bytes() |> serialize_optional_byte_count(),
+      sidecarSizeBytes: snapshot |> measured_sidecar_bytes() |> serialize_optional_byte_count(),
       projectDataSizeBytes: snapshot |> measured_project_data_bytes() |> serialize_optional_byte_count(),
       metadataSizeBytes: snapshot |> measured_metadata_bytes() |> serialize_optional_byte_count(),
       assetBlobSizeBytes: serialize_optional_byte_count(snapshot.asset_blob_size_bytes),
@@ -75,14 +79,16 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       plannedSizeBytes: serialize_optional_byte_count(snapshot.total_size_bytes),
       progressPhase: snapshot.progress_phase,
       progressBytes: serialize_byte_count(snapshot.progress_bytes || 0),
-      progressTotalBytes: serialize_optional_byte_count(snapshot.progress_total_bytes),
+      progressTotalBytes: snapshot |> measured_progress_total_bytes() |> serialize_optional_byte_count(),
       failureCode: snapshot.failure_code,
       failureMessage: snapshot.failure_message,
       capturedAt: serialize_datetime(snapshot.captured_at),
       cancelRequestedAt: serialize_datetime(snapshot.cancel_requested_at),
       canCancel: snapshot_cancellable?(snapshot),
       canDelete: snapshot_deletable?(snapshot, reservation),
+      deleteStatus: snapshot_delete_status(snapshot, reservation),
       downloadUrl: snapshot_download_url(project, snapshot),
+      downloadStatus: snapshot_download_status(snapshot),
       entityCounts: snapshot.entity_counts,
       createdByEmail: snapshot_creator_email(snapshot)
     }
@@ -97,29 +103,72 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   end
 
   defp snapshot_deletable?(snapshot, reservation) do
-    snapshot.lifecycle_state in ["ready", "failed", "cancelled"] and reservation.active_count == 0
+    snapshot_delete_status(snapshot, reservation) == "ready"
   end
 
-  defp snapshot_download_url(project, %{
-         id: snapshot_id,
-         format_version: 1,
+  defp snapshot_delete_status(%{lifecycle_state: state}, _reservation) when state not in ["ready", "failed", "cancelled"],
+    do: nil
+
+  defp snapshot_delete_status(_snapshot, %{active_count: 0}), do: "ready"
+
+  defp snapshot_delete_status(_snapshot, %{active_count: count, active_bytes: 0}) when count > 0, do: "download_lease"
+
+  defp snapshot_delete_status(_snapshot, _reservation), do: "active_operation"
+
+  defp snapshot_download_url(project, snapshot) do
+    if snapshot_download_status(snapshot) == "ready" do
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/snapshots/#{snapshot.id}/download"
+    end
+  end
+
+  defp snapshot_download_status(%{mode: "linked"}), do: "linked"
+
+  defp snapshot_download_status(%{
+         format_version: 2,
          mode: "full",
          lifecycle_state: "ready",
-         integrity_state: "verified"
-       }) do
-    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/snapshots/#{snapshot_id}/download"
+         integrity_state: "verified",
+         project_id: project_id,
+         object_prefix: prefix,
+         archive_storage_key: archive_key,
+         archive_size_bytes: archive_size,
+         archive_checksum: archive_checksum
+       })
+       when is_binary(prefix) and is_binary(archive_key) and is_integer(archive_size) and archive_size > 0 and
+              is_binary(archive_checksum) do
+    if SnapshotArchiveStorage.ready_archive_key?(project_id, prefix, archive_key) and
+         Regex.match?(~r/\A[0-9a-f]{64}\z/, archive_checksum),
+       do: "ready",
+       else: "archive_required"
   end
 
-  defp snapshot_download_url(_project, _snapshot), do: nil
+  defp snapshot_download_status(%{mode: "full", lifecycle_state: "ready", integrity_state: "verified"}),
+    do: "archive_required"
+
+  defp snapshot_download_status(_snapshot), do: nil
 
   defp snapshot_creator_email(%{created_by: %{email: email}}), do: email
   defp snapshot_creator_email(_snapshot), do: nil
 
-  defp measured_project_data_bytes(%{format_version: 1, project_size_bytes: bytes}), do: bytes
+  defp snapshot_storage_breakdown_mode(%{format_version: 2}), do: "archive"
+  defp snapshot_storage_breakdown_mode(%{format_version: 1}), do: "object_set"
+  defp snapshot_storage_breakdown_mode(_snapshot), do: nil
+
+  defp measured_archive_bytes(%{format_version: 2, archive_size_bytes: bytes}), do: bytes
+  defp measured_archive_bytes(_snapshot), do: nil
+
+  defp measured_sidecar_bytes(%{format_version: 2, manifest_size_bytes: bytes}), do: bytes
+  defp measured_sidecar_bytes(_snapshot), do: nil
+
+  defp measured_progress_total_bytes(%{capture_digest: nil}), do: nil
+  defp measured_progress_total_bytes(snapshot), do: snapshot.progress_total_bytes
+
+  defp measured_project_data_bytes(%{format_version: version, project_size_bytes: bytes}) when version in [1, 2],
+    do: bytes
 
   defp measured_project_data_bytes(_snapshot), do: nil
 
-  defp measured_metadata_bytes(%{format_version: 1, manifest_size_bytes: bytes}), do: bytes
+  defp measured_metadata_bytes(%{format_version: version, manifest_size_bytes: bytes}) when version in [1, 2], do: bytes
 
   defp measured_metadata_bytes(_snapshot), do: nil
 
@@ -216,6 +265,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
 
         {:error, :snapshot_limit_reached, details} ->
           {:noreply, push_snapshot_request_error(socket, "snapshot_limit_reached", details)}
+
+        {:error, :snapshot_archive_rollout_not_enabled} ->
+          {:noreply, push_snapshot_request_error(socket, "rollout_not_enabled", %{})}
 
         {:error, _reason} ->
           {:noreply, push_snapshot_request_error(socket, "request_failed", %{})}

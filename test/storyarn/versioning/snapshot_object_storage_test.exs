@@ -1208,6 +1208,36 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
       cleanup_object_set(project_id, token, loaded.manifest, [source])
     end
 
+    test "accepts historical v1 provider MIME metadata for supported audio assets" do
+      for {id, content_type, filename} <- [
+            {503, "audio/ogg", "voice.ogg"},
+            {504, "audio/webm", "voice.webm"}
+          ] do
+        project_id = unique_project_id()
+        token = SnapshotStorage.unique_key_suffix()
+        content = "historical #{content_type} bytes"
+        source = source_key(project_id, filename)
+        assert {:ok, _url} = Storage.upload(source, content, content_type)
+
+        asset =
+          id
+          |> asset(project_id, filename, source, content, sha256(content))
+          |> Map.put(:content_type, content_type)
+
+        assert {:ok, stored} =
+                 persist_authorized(project_id, project_object(asset), [asset], token: token)
+
+        assert {:ok, loaded} =
+                 SnapshotObjectStorage.load_verified(
+                   stored.manifest_storage_key,
+                   stored.manifest_checksum,
+                   stored.manifest_size_bytes
+                 )
+
+        cleanup_object_set(project_id, token, loaded.manifest, [source])
+      end
+    end
+
     test "durably compensates a failed local staging write before returning" do
       project_id = unique_project_id()
       token = SnapshotStorage.unique_key_suffix()

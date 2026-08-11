@@ -213,7 +213,7 @@ defmodule StoryarnWeb.TelemetryTest do
       metrics =
         Enum.filter(Telemetry.metrics(), &(Enum.take(&1.name, 2) == [:storyarn, :snapshot]))
 
-      assert length(metrics) == 55
+      assert length(metrics) == 64
 
       names = Enum.map(metrics, & &1.name)
       assert [:storyarn, :snapshot, :cleanup, :intent, :count] in names
@@ -226,7 +226,16 @@ defmodule StoryarnWeb.TelemetryTest do
       assert [:storyarn, :snapshot, :retention, :stop, :expired_export_lease_candidate_count] in names
       assert [:storyarn, :snapshot, :retention, :stop, :expired_export_lease_count] in names
       assert [:storyarn, :snapshot, :retention, :stop, :expired_export_lease_changed_count] in names
+      assert [:storyarn, :snapshot, :retention, :stop, :purged_export_lease_candidate_count] in names
+      assert [:storyarn, :snapshot, :retention, :stop, :purged_export_lease_count] in names
+      assert [:storyarn, :snapshot, :retention, :stop, :purged_export_lease_changed_count] in names
       assert [:storyarn, :snapshot, :retention, :stop, :orphaned_build_count] in names
+      assert [:storyarn, :snapshot, :build, :heartbeat, :count] in names
+      assert [:storyarn, :snapshot, :download, :lease, :count] in names
+      assert [:storyarn, :snapshot, :download, :stop, :count] in names
+      assert [:storyarn, :snapshot, :download, :stop, :bytes] in names
+      assert [:storyarn, :snapshot, :download, :stop, :artifact_bytes] in names
+      assert [:storyarn, :snapshot, :download, :stop, :duration] in names
       assert [:storyarn, :snapshot, :reset, :stop, :object_count] in names
       assert [:storyarn, :snapshot, :reconciliation, :start, :count] in names
       assert [:storyarn, :snapshot, :reconciliation, :page, :finding_count] in names
@@ -257,6 +266,12 @@ defmodule StoryarnWeb.TelemetryTest do
       assert length(repair_recovery_metrics) == 7
       assert Enum.all?(repair_recovery_metrics, &(&1.tags == [:status]))
 
+      download_metrics =
+        Enum.filter(metrics, &(Enum.take(&1.name, 4) == [:storyarn, :snapshot, :download, :stop]))
+
+      assert length(download_metrics) == 4
+      assert Enum.all?(download_metrics, &(&1.tags == [:outcome, :phase, :error_code]))
+
       summary_metrics =
         Enum.filter(metrics, &(Enum.take(&1.name, 4) == [:storyarn, :snapshot, :reconciliation, :summary]))
 
@@ -276,9 +291,9 @@ defmodule StoryarnWeb.TelemetryTest do
       metrics = Telemetry.metrics()
 
       # 9 Phoenix + 5 DB + 3 template installation + 9 import + 11 storage +
-      # 1 asset trash + 2 storage cleanup retry + 55 snapshot lifecycle +
-      # 3 AI expiration + 4 VM = 102
-      assert length(metrics) == 102
+      # 1 asset trash + 2 storage cleanup retry + 64 snapshot lifecycle +
+      # 3 AI expiration + 4 VM = 111
+      assert length(metrics) == 111
     end
   end
 

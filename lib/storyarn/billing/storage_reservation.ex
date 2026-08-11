@@ -157,6 +157,38 @@ defmodule Storyarn.Billing.StorageReservation do
     |> storage_constraints()
   end
 
+  @doc """
+  Renews the exact live snapshot-build owner and rebases its expiry window.
+
+  Unlike a general reservation renewal, the new expiry may be earlier than a
+  legacy 24-hour lease. The caller must hold the workspace lock and prove the
+  exact executing Oban owner before using this generation-fenced changeset.
+  """
+  def live_owner_renew_changeset(reservation, attrs) do
+    previous_generation = reservation.generation
+
+    reservation
+    |> change()
+    |> require_active()
+    |> validate_inclusion(:kind, ["snapshot_build"])
+    |> cast(attrs, [
+      :generation,
+      :expires_at,
+      :accounting_version,
+      :accounting_measured_at
+    ])
+    |> validate_required([
+      :reserved_bytes,
+      :generation,
+      :expires_at,
+      :accounting_version,
+      :accounting_measured_at
+    ])
+    |> validate_common_fields()
+    |> validate_strict_increase(:generation, previous_generation)
+    |> storage_constraints()
+  end
+
   @doc "Commits verified actual bytes for the reservation's immutable snapshot target."
   def commit_changeset(reservation, actual_bytes, attrs) do
     previous_generation = reservation.generation
@@ -358,7 +390,14 @@ defmodule Storyarn.Billing.StorageReservation do
 
   defp validate_cleanup_object_prefix(changeset) do
     case {get_field(changeset, :kind), get_field(changeset, :cleanup_object_prefix)} do
-      {kind, prefix} when kind in ["snapshot_build", "linked_to_full_conversion"] and is_binary(prefix) ->
+      {"snapshot_build", prefix} when is_binary(prefix) ->
+        validate_format(
+          changeset,
+          :cleanup_object_prefix,
+          ~r<\Aprojects/[1-9]\d*/snapshots/(?:object-sets/v1|archives/v2)/ready/[A-Za-z0-9_-]{16}\z>
+        )
+
+      {"linked_to_full_conversion", prefix} when is_binary(prefix) ->
         validate_format(
           changeset,
           :cleanup_object_prefix,
