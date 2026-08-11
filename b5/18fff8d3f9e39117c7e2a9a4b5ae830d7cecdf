@@ -1,0 +1,21 @@
+docs/reference/domain-patterns.md
+  s_c2ae682cd97119::t_17d5bb6ed0a657 35-48,50-60
+docs/reference/versioning-containment.md
+  s_c2ae682cd97119::t_19a4cce206e868 149-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b518fff8d3f9e39117c7e2a9a4b5ae830d7cecdf",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
