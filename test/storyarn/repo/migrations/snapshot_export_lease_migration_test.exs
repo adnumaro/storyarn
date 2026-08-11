@@ -4,17 +4,18 @@ defmodule Storyarn.Repo.Migrations.SnapshotExportLeaseMigrationTest do
   alias Storyarn.Repo
   alias Storyarn.Repo.Migrations.AllowZeroByteSnapshotExportLeases
 
-  @migration_path Path.expand(
-                    "../../../../priv/repo/migrations/20260810130000_allow_zero_byte_snapshot_export_leases.exs",
-                    __DIR__
-                  )
   @migration_version 20_260_810_130_000
   @positive_values_constraint "workspace_storage_reservations_positive_values"
   @zero_lease_constraint "workspace_storage_reservations_zero_byte_snapshot_export_lease"
   @expired_lease_index "workspace_storage_reservations_expired_export_lease_idx"
 
   if !Code.ensure_loaded?(AllowZeroByteSnapshotExportLeases) do
-    Code.require_file(@migration_path)
+    Code.require_file(
+      Path.expand(
+        "../../../../priv/repo/migrations/20260810130000_allow_zero_byte_snapshot_export_leases.exs",
+        __DIR__
+      )
+    )
   end
 
   setup do

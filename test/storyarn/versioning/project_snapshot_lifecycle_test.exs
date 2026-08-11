@@ -1155,21 +1155,47 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       refute Repo.exists?(SnapshotCleanupIntent)
     end
 
-    test "project deletion remains blocked after recovery discards a job until its reservation is reconciled" do
+    test "stale build recovery lets a soft-deleted project converge to hard deletion" do
+      set_stale_build_heartbeat_seconds(0)
       user = user_fixture()
       project = project_fixture(user)
       assert {:ok, snapshot} = request_snapshot(user, project)
+      now = database_clock_now()
+      stale_at = DateTime.add(now, -16 * 60, :second)
+      {_building, job, reservation} = stale_executing_build!(snapshot, stale_at)
 
-      discard_job!(snapshot.build_job_id, TimeHelpers.now())
       assert {:ok, deleted} = Projects.delete_project(project, user.id)
 
       assert {:error, :snapshot_active_operation_blocks_deletion} =
                Projects.permanently_delete_project(deleted)
 
-      assert Repo.get!(Projects.Project, project.id)
-      assert Repo.get!(ProjectSnapshot, snapshot.id)
-      assert Repo.get!(StorageReservation, snapshot.storage_reservation_id).status == "active"
-      refute Repo.exists?(SnapshotCleanupIntent)
+      assert %{failure_count: 0, orphaned_count: 1, settled_count: 0} =
+               Versioning.reconcile_stale_project_snapshot_builds()
+
+      assert Repo.get!(Oban.Job, job.id).state == "discarded"
+      assert Repo.get!(StorageReservation, reservation.id).status == "active"
+
+      discard_job!(job.id, stale_at)
+
+      candidate =
+        stale_at
+        |> build_cleanup_quiesced_at()
+        |> Versioning.list_expired_project_snapshot_build_candidates()
+        |> Enum.find(&(&1.snapshot_id == snapshot.id))
+
+      assert candidate
+
+      assert {:ok, intent} =
+               Versioning.delete_expired_project_snapshot_build_candidate(candidate)
+
+      assert intent.reason == "expired_build"
+      refute Repo.get(ProjectSnapshot, snapshot.id)
+      assert Repo.get!(StorageReservation, reservation.id).status == "released"
+
+      assert {:ok, _project} = Projects.permanently_delete_project(deleted)
+
+      refute Repo.get(Projects.Project, project.id)
+      assert Repo.get!(SnapshotCleanupIntent, intent.id)
     end
 
     test "rolled-back parent cleanup does not publish intents from earlier snapshots" do

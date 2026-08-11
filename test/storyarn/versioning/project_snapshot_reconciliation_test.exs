@@ -28,6 +28,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.InspectProjectSnapshotsWorker
 
+  @start_run_attempts 50
+  @start_run_retry_delay_ms 20
+
   setup do
     original_storage = Application.fetch_env!(:storyarn, :storage)
 
@@ -977,7 +980,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     {lock_holder, lock_holder_pid} = hold_claim_writer_lock()
 
     try do
-      assert {:error, :snapshot_reconciliation_boundary_busy} = start_run()
+      assert {:error, :snapshot_reconciliation_boundary_busy} = start_run_once([])
     after
       send(lock_holder_pid, :release_claim_writer)
       assert {:ok, _result} = Task.await(lock_holder, 2_000)
@@ -2173,6 +2176,21 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   end
 
   defp start_run(opts \\ []) do
+    retry_start_run(opts, @start_run_attempts)
+  end
+
+  defp retry_start_run(opts, attempts_remaining) do
+    case start_run_once(opts) do
+      {:error, :snapshot_reconciliation_boundary_busy} when attempts_remaining > 1 ->
+        Process.sleep(@start_run_retry_delay_ms)
+        retry_start_run(opts, attempts_remaining - 1)
+
+      result ->
+        result
+    end
+  end
+
+  defp start_run_once(opts) do
     defaults = [
       max_objects_per_step: 1,
       provider_page_size: 1,

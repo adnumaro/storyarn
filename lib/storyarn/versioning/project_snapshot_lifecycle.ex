@@ -269,7 +269,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
         where:
           snapshot.id > ^after_id and snapshot.id <= ^through_id and
             snapshot.lifecycle_state in ^@expirable_build_states and
-            reservation.expires_at <= ^now and is_nil(project.deleted_at),
+            reservation.expires_at <= ^now,
         where: ^quiescent_job,
         order_by: [asc: snapshot.id],
         limit: ^limit,
@@ -793,7 +793,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     project_id = Map.get(candidate, :project_id)
     snapshot_id = Map.get(candidate, :snapshot_id)
 
-    with %Project{} = project <- lock_active_project(project_id, Map.get(candidate, :workspace_id)),
+    with %Project{} = project <- lock_existing_project(project_id, Map.get(candidate, :workspace_id)),
          %ProjectSnapshot{} = snapshot <- lock_snapshot(project_id, snapshot_id),
          %StorageReservation{} = reservation <- lock_build_reservation(snapshot_id, candidate),
          :ok <- revalidate_expired_build_candidate(snapshot, project, reservation, candidate, now),
@@ -1735,6 +1735,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
         where:
           project.id == ^project_id and project.workspace_id == ^workspace_id and
             is_nil(project.deleted_at),
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp lock_existing_project(project_id, workspace_id) do
+    Repo.one(
+      from(project in Project,
+        where: project.id == ^project_id and project.workspace_id == ^workspace_id,
         lock: "FOR UPDATE"
       )
     )

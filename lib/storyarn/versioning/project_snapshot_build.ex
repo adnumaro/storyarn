@@ -433,8 +433,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         left_join: job in Oban.Job,
         on: job.id == snapshot.build_job_id,
         where:
-          snapshot.lifecycle_state in ^@active_build_states and is_nil(project.deleted_at) and
-            reservation.kind == "snapshot_build" and reservation.status in ["active", "released"],
+          snapshot.lifecycle_state in ^@active_build_states and reservation.kind == "snapshot_build" and
+            reservation.status in ["active", "released"],
         where: ^recovery_candidate,
         order_by: [asc: snapshot.id],
         limit: ^@stale_build_batch_size,

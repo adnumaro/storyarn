@@ -4,15 +4,16 @@ defmodule Storyarn.Repo.Migrations.MultipartCleanupQuiescenceMigrationTest do
   alias Storyarn.Repo
   alias Storyarn.Repo.Migrations.AddMultipartCleanupQuiescence
 
-  @migration_path Path.expand(
-                    "../../../../priv/repo/migrations/20260811170000_add_multipart_cleanup_quiescence.exs",
-                    __DIR__
-                  )
   @migration_version 20_260_811_170_000
   @constraint "storage_cleanup_requests_multipart_quiescence"
 
   if !Code.ensure_loaded?(AddMultipartCleanupQuiescence) do
-    Code.require_file(@migration_path)
+    Code.require_file(
+      Path.expand(
+        "../../../../priv/repo/migrations/20260811170000_add_multipart_cleanup_quiescence.exs",
+        __DIR__
+      )
+    )
   end
 
   setup do

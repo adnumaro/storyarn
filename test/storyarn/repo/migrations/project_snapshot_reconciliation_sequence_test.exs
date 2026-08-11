@@ -5,13 +5,9 @@ defmodule Storyarn.Repo.Migrations.ProjectSnapshotReconciliationSequenceTest do
   alias Storyarn.Repo.Migrations.BackfillSnapshotClaimReconciliationSequence
 
   @migration_dir Path.expand("../../../../priv/repo/migrations", __DIR__)
-  @backfill_migration Path.join(
-                        @migration_dir,
-                        "20260806111000_backfill_snapshot_claim_reconciliation_sequence.exs"
-                      )
 
   if !Code.ensure_loaded?(BackfillSnapshotClaimReconciliationSequence) do
-    Code.require_file(@backfill_migration)
+    Code.require_file(Path.join(@migration_dir, "20260806111000_backfill_snapshot_claim_reconciliation_sequence.exs"))
   end
 
   test "claim sequence rollout keeps the historical backfill out of table-rewriting DDL" do
