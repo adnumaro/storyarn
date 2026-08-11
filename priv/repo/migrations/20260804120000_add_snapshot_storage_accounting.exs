@@ -2,6 +2,15 @@ defmodule Storyarn.Repo.Migrations.AddSnapshotStorageAccounting do
   use Ecto.Migration
 
   def change do
+    # This is the first historical migration that destructively resets snapshot
+    # state. Production releases authorize it only after the v2-only cutover
+    # preflight has passed, so a direct migrator cannot delete legacy evidence.
+    if direction() == :up do
+      Storyarn.Release.ensure_project_snapshot_v2_cutover_barriers!(repo(), prefix())
+    else
+      Storyarn.Release.remove_project_snapshot_v2_cutover_barriers!(repo(), prefix())
+    end
+
     # Reset policy: the canonical accounting contract intentionally has no
     # compatibility path for project snapshots created before this rollout.
     # Clear any restoration lock that references those rows before deleting

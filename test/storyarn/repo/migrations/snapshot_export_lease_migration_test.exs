@@ -28,6 +28,19 @@ defmodule Storyarn.Repo.Migrations.SnapshotExportLeaseMigrationTest do
     (LIKE public.workspace_storage_reservations INCLUDING ALL)
     """)
 
+    # The production migration also installs the v2 cutover fence. Keep the
+    # isolated fixture structurally representative of the two tables that the
+    # fence locks and constrains.
+    Repo.query!("CREATE TABLE #{prefix}.project_snapshots (id bigint PRIMARY KEY)")
+
+    Repo.query!("""
+    CREATE TABLE #{prefix}.oban_jobs (
+      id bigint PRIMARY KEY,
+      worker text NOT NULL,
+      state text NOT NULL
+    )
+    """)
+
     # Derive the isolated fixture from the deployed table so new columns,
     # constraints, and indexes cannot silently drift from this migration smoke.
     Repo.query!("SELECT set_config('search_path', $1, true)", ["#{prefix}, public"])

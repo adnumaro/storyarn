@@ -138,6 +138,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
       |> Enum.filter(&(&1.project_snapshot_id_snapshot == snapshot.id))
 
     assert completed.status == "completed"
+    assert completed.inspected_object_count == 1
 
     assert Enum.map(findings, &{&1.category, &1.storage_key}) == [
              {"ready_object_corrupt", snapshot.archive_storage_key},

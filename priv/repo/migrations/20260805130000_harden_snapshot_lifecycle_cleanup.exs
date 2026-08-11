@@ -2,7 +2,9 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
   use Ecto.Migration
 
   def up do
-    Storyarn.Release.assert_snapshot_lifecycle_migration_authorized!()
+    # Production releases authorize this only after the v2-only ownership
+    # preflight has passed, before any pending migration is applied.
+    Storyarn.Release.ensure_project_snapshot_v2_cutover_barriers!(repo(), prefix())
 
     alter table(:project_snapshots) do
       add :origin, :string, null: false, default: "user"
@@ -397,6 +399,8 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
   end
 
   def down do
+    Storyarn.Release.assert_snapshot_lifecycle_migration_authorized!()
+
     execute("DROP TRIGGER IF EXISTS snapshot_cleanup_intents_guard ON snapshot_cleanup_intents")
     execute("DROP FUNCTION IF EXISTS storyarn_guard_snapshot_cleanup_intent()")
     drop table(:snapshot_cleanup_intents)

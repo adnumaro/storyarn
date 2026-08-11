@@ -321,7 +321,9 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
   end
 
   defp prepare_capture(project_id, project_snapshot, assets, opts) do
-    with {:ok, normalized_project} <- normalize_project_snapshot(project_snapshot),
+    limits = SnapshotObjectFormat.limits(opts)
+
+    with {:ok, normalized_project} <- normalize_project_snapshot(project_snapshot, limits),
          {:ok, project} <- SnapshotObjectFormat.portable_project(normalized_project),
          {:ok, catalog} <-
            SnapshotObjectFormat.build_catalog(assets, Keyword.put(opts, :project_id, project_id)),
@@ -345,16 +347,25 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
     end
   end
 
-  defp normalize_project_snapshot(project_snapshot) when is_map(project_snapshot) do
-    with {:ok, json} <- Jason.encode(project_snapshot),
+  defp normalize_project_snapshot(project_snapshot, limits) when is_map(project_snapshot) do
+    with {:ok, json} <- Jason.encode_to_iodata(project_snapshot),
+         :ok <- validate_encoded_project_size(json, limits),
          {:ok, normalized} <- Jason.decode(json) do
       {:ok, normalized}
     else
+      {:error, {:snapshot_object_size_limit_exceeded, :project, _max_size}} = error -> error
       {:error, _reason} -> {:error, :invalid_project_object}
     end
   end
 
-  defp normalize_project_snapshot(_project_snapshot), do: {:error, :invalid_project_object}
+  defp normalize_project_snapshot(_project_snapshot, _limits), do: {:error, :invalid_project_object}
+
+  defp validate_encoded_project_size(json, limits) do
+    case SnapshotObjectFormat.validate_limits(limits) do
+      :ok -> validate_capture_size(IO.iodata_length(json), limits.max_project_bytes, :project)
+      {:error, _reason} -> :ok
+    end
+  end
 
   defp project_descriptor(project, opts) do
     json = project |> Jason.encode_to_iodata!() |> IO.iodata_to_binary()

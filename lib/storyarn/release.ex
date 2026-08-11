@@ -6,6 +6,14 @@ defmodule Storyarn.Release do
   alias Storyarn.Versioning
 
   @app :storyarn
+  @snapshot_storage_accounting_migration 20_260_804_120_000
+  @snapshot_lifecycle_migration 20_260_805_130_000
+  @snapshot_v2_cutover_barrier_migration 20_260_810_130_000
+  @snapshot_v2_only_migration 20_260_811_180_000
+  @snapshot_lifecycle_migration_authorization_key {
+    __MODULE__,
+    :snapshot_lifecycle_migration_authorized
+  }
 
   def migrate do
     load_app()
@@ -15,20 +23,506 @@ defmodule Storyarn.Release do
     end
   end
 
-  # Kept only because the historical lifecycle migration invokes it. New
-  # installations have no pre-canonical snapshot data to gate.
   @doc false
-  def assert_snapshot_lifecycle_migration_authorized!, do: :ok
+  def assert_snapshot_lifecycle_migration_authorized! do
+    enforced? = Application.get_env(@app, :enforce_snapshot_lifecycle_release_gate, false)
+    authorized? = snapshot_lifecycle_migration_authorized?()
+
+    if enforced? and not authorized? do
+      raise "Snapshot lifecycle migration must run through Storyarn.Release.migrate/0 after the v2-only cutover preflight"
+    end
+
+    :ok
+  end
+
+  @doc false
+  def ensure_project_snapshot_v2_cutover_barriers!(repo, prefix) when is_atom(repo) do
+    assert_snapshot_lifecycle_migration_authorized!()
+    prefix = assert_project_snapshot_cutover_prefix!(repo, prefix)
+
+    with_snapshot_cutover_transaction(repo, fn ->
+      install_project_snapshot_v2_cutover_barriers!(repo, prefix)
+    end)
+  end
+
+  defp install_project_snapshot_v2_cutover_barriers!(repo, prefix) do
+    snapshots = qualified_snapshot_cutover_table(prefix, "project_snapshots")
+    jobs = qualified_snapshot_cutover_table(prefix, "oban_jobs")
+    repo.query!("LOCK TABLE #{snapshots}, #{jobs} IN ACCESS EXCLUSIVE MODE", [])
+
+    case repo.query!(
+           """
+           SELECT
+             EXISTS (SELECT 1 FROM #{snapshots}) OR
+             EXISTS (
+               SELECT 1
+               FROM #{jobs}
+               WHERE worker IN (
+                 'Storyarn.Workers.BuildProjectSnapshotWorker',
+                 'Storyarn.Workers.DailySnapshotWorker',
+                 'Storyarn.Workers.SnapshotRetentionWorker',
+                 'Storyarn.Workers.RestoreProjectWorker',
+                 'Storyarn.Workers.RecoverProjectWorker'
+               )
+               AND state IN ('available', 'scheduled', 'executing', 'retryable')
+             )
+           """,
+           []
+         ).rows do
+      [[false]] -> :ok
+      [[true]] -> raise_snapshot_cutover_not_quiescent!()
+      invalid -> raise "Invalid snapshot cutover barrier precondition: #{inspect(invalid)}"
+    end
+
+    ensure_snapshot_cutover_constraint!(
+      repo,
+      prefix,
+      "project_snapshots",
+      "project_snapshots_cutover_quiescent",
+      "CHECK (FALSE)"
+    )
+
+    ensure_snapshot_cutover_constraint!(
+      repo,
+      prefix,
+      "oban_jobs",
+      "oban_jobs_snapshot_cutover_quiescent",
+      """
+      CHECK (
+        state NOT IN ('available', 'scheduled', 'executing', 'retryable') OR
+        worker NOT IN (
+          'Storyarn.Workers.BuildProjectSnapshotWorker',
+          'Storyarn.Workers.DailySnapshotWorker',
+          'Storyarn.Workers.SnapshotRetentionWorker',
+          'Storyarn.Workers.RestoreProjectWorker',
+          'Storyarn.Workers.RecoverProjectWorker'
+        )
+      )
+      """
+    )
+
+    :ok
+  end
+
+  @doc false
+  def remove_project_snapshot_v2_cutover_barriers!(repo, prefix) when is_atom(repo) do
+    assert_snapshot_lifecycle_migration_authorized!()
+    prefix = assert_project_snapshot_cutover_prefix!(repo, prefix)
+
+    with_snapshot_cutover_transaction(repo, fn ->
+      remove_project_snapshot_v2_cutover_barriers_in_transaction!(repo, prefix)
+    end)
+  end
+
+  defp remove_project_snapshot_v2_cutover_barriers_in_transaction!(repo, prefix) do
+    snapshots = qualified_snapshot_cutover_table(prefix, "project_snapshots")
+    jobs = qualified_snapshot_cutover_table(prefix, "oban_jobs")
+    repo.query!("LOCK TABLE #{snapshots}, #{jobs} IN ACCESS EXCLUSIVE MODE", [])
+
+    repo.query!(
+      "ALTER TABLE #{snapshots} DROP CONSTRAINT IF EXISTS project_snapshots_cutover_quiescent",
+      []
+    )
+
+    repo.query!(
+      "ALTER TABLE #{jobs} DROP CONSTRAINT IF EXISTS oban_jobs_snapshot_cutover_quiescent",
+      []
+    )
+
+    :ok
+  end
 
   def rollback(repo, version) do
     load_app()
-    {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
+    rollback_repo(repo, version)
+  end
+
+  defp migrate_repo(Storyarn.Repo = repo) do
+    {:ok, _, _} =
+      Ecto.Migrator.with_repo(repo, fn started_repo ->
+        run_project_snapshot_migrations(started_repo, fn ->
+          Ecto.Migrator.run(started_repo, :up, all: true)
+        end)
+      end)
+
+    :ok
   end
 
   defp migrate_repo(repo) do
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
     :ok
   end
+
+  defp rollback_repo(Storyarn.Repo = repo, version) do
+    {:ok, _, _} =
+      Ecto.Migrator.with_repo(repo, fn started_repo ->
+        with_snapshot_lifecycle_migration_authorization(fn ->
+          Ecto.Migrator.run(started_repo, :down, to: version)
+        end)
+      end)
+
+    :ok
+  end
+
+  defp rollback_repo(repo, version) do
+    {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
+    :ok
+  end
+
+  @doc false
+  def run_project_snapshot_migrations(repo, migrate) when is_atom(repo) and is_function(migrate, 0) do
+    ensure_project_snapshot_v2_cutover_ready!(repo)
+
+    with_snapshot_lifecycle_migration_authorization(fn ->
+      maybe_install_project_snapshot_v2_cutover_barriers!(repo)
+      migrate.()
+    end)
+  end
+
+  @doc false
+  def ensure_project_snapshot_v2_cutover_ready!(repo) when is_atom(repo) do
+    with {:ok, state} <- snapshot_cutover_schema_state(repo),
+         {:ok, applied?} <- snapshot_v2_only_migration_applied?(repo, state.schema_migrations?) do
+      if applied? do
+        :ok
+      else
+        assert_no_live_legacy_snapshot_ownership!(repo, state)
+      end
+    else
+      {:error, reason} ->
+        raise "Could not verify the project snapshot v2-only cutover preflight: #{inspect(reason)}"
+    end
+  end
+
+  defp snapshot_cutover_schema_state(repo) do
+    case repo.query(
+           """
+           SELECT
+             to_regclass('schema_migrations') IS NOT NULL,
+             to_regclass('project_snapshots') IS NOT NULL,
+             to_regclass('snapshot_object_publication_claims') IS NOT NULL,
+             to_regclass('workspace_storage_reservations') IS NOT NULL,
+             to_regclass('snapshot_cleanup_intents') IS NOT NULL,
+             to_regclass('storage_cleanup_requests') IS NOT NULL,
+             to_regclass('oban_jobs') IS NOT NULL
+           """,
+           []
+         ) do
+      {:ok, %{rows: [row]}} ->
+        parse_snapshot_cutover_schema_state(row)
+
+      {:ok, invalid} ->
+        {:error, {:invalid_snapshot_cutover_schema_state, invalid}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp parse_snapshot_cutover_schema_state(
+         [
+           schema_migrations?,
+           project_snapshots?,
+           publication_claims?,
+           storage_reservations?,
+           cleanup_intents?,
+           cleanup_requests?,
+           oban_jobs?
+         ] = row
+       ) do
+    if Enum.all?(row, &is_boolean/1) do
+      {:ok,
+       %{
+         schema_migrations?: schema_migrations?,
+         project_snapshots?: project_snapshots?,
+         publication_claims?: publication_claims?,
+         storage_reservations?: storage_reservations?,
+         cleanup_intents?: cleanup_intents?,
+         cleanup_requests?: cleanup_requests?,
+         oban_jobs?: oban_jobs?
+       }}
+    else
+      {:error, {:invalid_snapshot_cutover_schema_state, row}}
+    end
+  end
+
+  defp parse_snapshot_cutover_schema_state(invalid) do
+    {:error, {:invalid_snapshot_cutover_schema_state, invalid}}
+  end
+
+  defp snapshot_v2_only_migration_applied?(_repo, false), do: {:ok, false}
+
+  defp snapshot_v2_only_migration_applied?(repo, true) do
+    case repo.query(
+           """
+           SELECT
+             EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1),
+             EXISTS (SELECT 1 FROM schema_migrations WHERE version = $2),
+             EXISTS (SELECT 1 FROM schema_migrations WHERE version = $3),
+             EXISTS (SELECT 1 FROM schema_migrations WHERE version = $4)
+           """,
+           [
+             @snapshot_v2_only_migration,
+             @snapshot_storage_accounting_migration,
+             @snapshot_lifecycle_migration,
+             @snapshot_v2_cutover_barrier_migration
+           ]
+         ) do
+      {:ok, %{rows: [history]}} ->
+        parse_snapshot_cutover_migration_history(history)
+
+      {:ok, invalid} ->
+        {:error, {:invalid_snapshot_cutover_migration_state, invalid}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp parse_snapshot_cutover_migration_history([true, true, true, true]), do: {:ok, true}
+
+  defp parse_snapshot_cutover_migration_history([true, storage_accounting?, lifecycle?, barrier?] = history) do
+    if Enum.all?(history, &is_boolean/1) do
+      {:error,
+       {:inconsistent_snapshot_v2_migration_history,
+        storage_accounting: storage_accounting?, lifecycle: lifecycle?, barrier: barrier?}}
+    else
+      {:error, {:invalid_snapshot_cutover_migration_state, history}}
+    end
+  end
+
+  defp parse_snapshot_cutover_migration_history([false, _, _, _] = history) do
+    if Enum.all?(history, &is_boolean/1),
+      do: {:ok, false},
+      else: {:error, {:invalid_snapshot_cutover_migration_state, history}}
+  end
+
+  defp parse_snapshot_cutover_migration_history(invalid) do
+    {:error, {:invalid_snapshot_cutover_migration_state, invalid}}
+  end
+
+  defp assert_no_live_legacy_snapshot_ownership!(repo, state) do
+    checks = legacy_snapshot_ownership_checks(state)
+
+    if checks == [] do
+      :ok
+    else
+      case repo.query("SELECT NOT (#{Enum.join(checks, " OR ")})", []) do
+        {:ok, %{rows: [[true]]}} ->
+          :ok
+
+        {:ok, %{rows: [[false]]}} ->
+          raise "Project snapshot v2-only cutover requires an empty snapshot table, retired v1/linked ownership, and no active snapshot jobs before running any pending migration"
+
+        {:ok, invalid} ->
+          raise "Project snapshot v2-only cutover preflight returned an invalid response: #{inspect(invalid)}"
+
+        {:error, reason} ->
+          raise "Could not inspect project snapshot v2-only cutover ownership: #{inspect(reason)}"
+      end
+    end
+  end
+
+  defp legacy_snapshot_ownership_checks(state) do
+    []
+    |> maybe_add_check(
+      state.project_snapshots?,
+      "EXISTS (SELECT 1 FROM project_snapshots)"
+    )
+    |> maybe_add_check(
+      state.publication_claims?,
+      "EXISTS (SELECT 1 FROM snapshot_object_publication_claims WHERE object_prefix ~ '/snapshots/object-sets/v1/')"
+    )
+    |> maybe_add_check(
+      state.storage_reservations?,
+      "EXISTS (SELECT 1 FROM workspace_storage_reservations WHERE kind = 'linked_to_full_conversion' OR cleanup_object_prefix ~ '/snapshots/object-sets/v1/')"
+    )
+    |> maybe_add_check(
+      state.cleanup_intents?,
+      "EXISTS (SELECT 1 FROM snapshot_cleanup_intents WHERE mode IS DISTINCT FROM 'full' OR ready_prefix ~ '/snapshots/object-sets/v1/' OR staging_prefix ~ '/snapshots/object-sets/v1/')"
+    )
+    |> maybe_add_check(
+      state.cleanup_requests?,
+      "EXISTS (SELECT 1 FROM storage_cleanup_requests AS request, unnest(request.storage_keys) AS storage_key WHERE storage_key ~ '/snapshots/object-sets/v1/' OR storage_key ~ '/storage-reservations/v1/linked-to-full-conversion/')"
+    )
+    |> maybe_add_check(
+      state.oban_jobs?,
+      "EXISTS (SELECT 1 FROM oban_jobs WHERE worker = 'Storyarn.Workers.BuildProjectSnapshotWorker' AND state IN ('available', 'scheduled', 'executing', 'retryable'))"
+    )
+    |> maybe_add_check(
+      state.oban_jobs?,
+      "EXISTS (SELECT 1 FROM oban_jobs AS job CROSS JOIN LATERAL jsonb_array_elements_text(CASE WHEN jsonb_typeof(job.args -> 'storage_keys') = 'array' THEN job.args -> 'storage_keys' ELSE '[]'::jsonb END) AS cleanup_key(storage_key) WHERE job.state IN ('available', 'scheduled', 'executing', 'retryable') AND (cleanup_key.storage_key ~ '/snapshots/object-sets/v1/' OR cleanup_key.storage_key ~ '/storage-reservations/v1/linked-to-full-conversion/'))"
+    )
+  end
+
+  defp maybe_add_check(checks, true, check), do: [check | checks]
+  defp maybe_add_check(checks, false, _check), do: checks
+
+  defp ensure_snapshot_cutover_constraint!(repo, prefix, table, constraint, definition) do
+    case repo.query!(
+           """
+           SELECT EXISTS (
+             SELECT 1
+             FROM pg_constraint AS constraint_row
+             JOIN pg_class AS table_row ON table_row.oid = constraint_row.conrelid
+             JOIN pg_namespace AS namespace_row ON namespace_row.oid = table_row.relnamespace
+             WHERE namespace_row.nspname = $1
+               AND table_row.relname = $2
+               AND constraint_row.conname = $3
+           )
+           """,
+           [prefix, table, constraint]
+         ).rows do
+      [[true]] ->
+        :ok
+
+      [[false]] ->
+        qualified_table = qualified_snapshot_cutover_table(prefix, table)
+        repo.query!("ALTER TABLE #{qualified_table} ADD CONSTRAINT #{constraint} #{definition}", [])
+        :ok
+
+      invalid ->
+        raise "Invalid snapshot cutover constraint state: #{inspect(invalid)}"
+    end
+  end
+
+  defp raise_snapshot_cutover_not_quiescent! do
+    raise "Project snapshot v2-only cutover requires an empty snapshot table and no active pre-cutover snapshot worker"
+  end
+
+  defp maybe_install_project_snapshot_v2_cutover_barriers!(repo) do
+    prefix = assert_project_snapshot_cutover_prefix!(repo, nil)
+
+    if snapshot_cutover_tables_exist?(repo, prefix) and
+         not snapshot_v2_only_migration_applied_in_prefix?(repo, prefix) do
+      ensure_project_snapshot_v2_cutover_barriers!(repo, prefix)
+    else
+      :ok
+    end
+  end
+
+  defp snapshot_cutover_tables_exist?(repo, prefix) do
+    case repo.query!(
+           "SELECT to_regclass($1) IS NOT NULL AND to_regclass($2) IS NOT NULL",
+           ["#{prefix}.project_snapshots", "#{prefix}.oban_jobs"]
+         ).rows do
+      [[exists?]] when is_boolean(exists?) -> exists?
+      invalid -> raise "Invalid snapshot cutover table state: #{inspect(invalid)}"
+    end
+  end
+
+  defp snapshot_v2_only_migration_applied_in_prefix?(repo, prefix) do
+    migrations = qualified_snapshot_cutover_table(prefix, "schema_migrations")
+
+    case repo.query!(
+           "SELECT to_regclass($1) IS NOT NULL",
+           ["#{prefix}.schema_migrations"]
+         ).rows do
+      [[false]] ->
+        false
+
+      [[true]] ->
+        repo.query!(
+          "SELECT EXISTS (SELECT 1 FROM #{migrations} WHERE version = $1)",
+          [@snapshot_v2_only_migration]
+        ).rows == [[true]]
+
+      invalid ->
+        raise "Invalid snapshot cutover migration table state: #{inspect(invalid)}"
+    end
+  end
+
+  defp with_snapshot_cutover_transaction(repo, fun) when is_function(fun, 0) do
+    if repo.in_transaction?() do
+      fun.()
+    else
+      transact_snapshot_cutover(repo, fun)
+    end
+  end
+
+  defp transact_snapshot_cutover(repo, fun) do
+    case repo.transact(fn -> {:ok, fun.()} end) do
+      {:ok, result} -> result
+      {:error, reason} -> raise "Could not install snapshot cutover barriers: #{inspect(reason)}"
+    end
+  end
+
+  @doc false
+  def assert_project_snapshot_cutover_prefix!(repo, requested_prefix) when is_atom(repo) do
+    current_prefix = current_snapshot_cutover_prefix!(repo)
+    requested_prefix = requested_prefix || current_prefix
+    requested_prefix = validate_snapshot_cutover_prefix!(requested_prefix)
+
+    if requested_prefix == current_prefix do
+      requested_prefix
+    else
+      raise "Project snapshot migrations require their explicit prefix to match current_schema(); requested #{inspect(requested_prefix)}, current #{inspect(current_prefix)}"
+    end
+  end
+
+  defp current_snapshot_cutover_prefix!(repo) do
+    case repo.query!("SELECT current_schema()", []).rows do
+      [[prefix]] -> validate_snapshot_cutover_prefix!(prefix)
+      invalid -> raise "Invalid current snapshot migration prefix: #{inspect(invalid)}"
+    end
+  end
+
+  defp validate_snapshot_cutover_prefix!(prefix) when is_binary(prefix) and byte_size(prefix) > 0 do
+    if Regex.match?(~r/\A[A-Za-z_][A-Za-z0-9_$]*\z/, prefix) do
+      prefix
+    else
+      raise "Unsafe project snapshot migration prefix: #{inspect(prefix)}"
+    end
+  end
+
+  defp validate_snapshot_cutover_prefix!(invalid) do
+    raise "Invalid project snapshot migration prefix: #{inspect(invalid)}"
+  end
+
+  defp qualified_snapshot_cutover_table(prefix, table), do: ~s("#{prefix}"."#{table}")
+
+  defp with_snapshot_lifecycle_migration_authorization(fun) when is_function(fun, 0) do
+    previous = Process.get(@snapshot_lifecycle_migration_authorization_key, :missing)
+    Process.put(@snapshot_lifecycle_migration_authorization_key, true)
+
+    try do
+      fun.()
+    after
+      restore_snapshot_lifecycle_migration_authorization(previous)
+    end
+  end
+
+  defp restore_snapshot_lifecycle_migration_authorization(:missing) do
+    Process.delete(@snapshot_lifecycle_migration_authorization_key)
+  end
+
+  defp restore_snapshot_lifecycle_migration_authorization(previous) do
+    Process.put(@snapshot_lifecycle_migration_authorization_key, previous)
+  end
+
+  # Ecto executes each migration in a linked task. The documented `$callers`
+  # chain carries this narrowly scoped authorization into that task without a
+  # VM-global switch that could survive a killed release process.
+  defp snapshot_lifecycle_migration_authorized? do
+    Process.get(@snapshot_lifecycle_migration_authorization_key, false) == true or
+      Enum.any?(
+        List.wrap(Process.get(:"$callers")),
+        &snapshot_lifecycle_migration_authorized_caller?/1
+      )
+  end
+
+  defp snapshot_lifecycle_migration_authorized_caller?(pid) when is_pid(pid) and node(pid) == node() do
+    case Process.info(pid, :dictionary) do
+      {:dictionary, dictionary} ->
+        List.keyfind(dictionary, @snapshot_lifecycle_migration_authorization_key, 0) ==
+          {@snapshot_lifecycle_migration_authorization_key, true}
+
+      nil ->
+        false
+    end
+  end
+
+  defp snapshot_lifecycle_migration_authorized_caller?(_pid), do: false
 
   @doc """
   Starts the bounded, observation-only snapshot reconciliation inspection.

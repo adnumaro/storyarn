@@ -192,8 +192,9 @@ remain preserved for audit, but the replacement database trigger can never
 create new retired-format evidence.
 
 The runtime no longer maps, reads, or writes `project_storage_key` or
-`source_asset_count`. Their nullable physical columns remain for this one
-rolling-deploy boundary because the pre-cutover Ecto schemas still select them.
+`source_asset_count`. Their physical columns remain nullable for this one
+rolling-deploy boundary because the pre-cutover Ecto schemas still select them,
+but database constraints require both values to remain `NULL`.
 The immediately following release must drop both columns, after every
 application machine is confirmed to be running the v2-only schema. Do not defer
 that cleanup beyond the next release. These columns do not authorize v1 storage

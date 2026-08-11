@@ -39,6 +39,7 @@ defmodule Storyarn.Repo.Migrations.ProjectSnapshotsV2OnlyMigrationTest do
     assert query_rows!("SELECT count(*) FROM #{prefix}.oban_jobs") == [[1]]
     assert column_exists?(prefix, "project_snapshots", "project_storage_key")
     assert column_exists?(prefix, "workspace_storage_reservations", "source_asset_count")
+    refute column_not_null?(prefix, "workspace_storage_reservations", "source_asset_count")
     assert column_not_null?(prefix, "project_snapshots", "format_version")
     assert column_not_null?(prefix, "project_snapshots", "mode")
     assert column_default(prefix, "project_snapshots", "format_version") == "2"
@@ -46,6 +47,9 @@ defmodule Storyarn.Repo.Migrations.ProjectSnapshotsV2OnlyMigrationTest do
 
     assert constraint_definition(prefix, "project_snapshots_object_format_version") =~
              "format_version = 2"
+
+    assert constraint_definition(prefix, "project_snapshots_retired_project_storage") =~
+             "project_storage_key IS NULL"
 
     refute constraint_definition(prefix, "project_snapshots_object_target") =~ "object-sets"
     refute constraint_definition(prefix, "project_snapshots_mode") =~ "linked"
@@ -55,6 +59,26 @@ defmodule Storyarn.Repo.Migrations.ProjectSnapshotsV2OnlyMigrationTest do
 
     refute constraint_definition(prefix, "workspace_storage_reservations_kind") =~
              "linked_to_full_conversion"
+
+    assert constraint_definition(
+             prefix,
+             "workspace_storage_reservations_source_inventory"
+           ) =~ "source_asset_count IS NULL"
+
+    assert {:ok, _result} =
+             insert_snapshot_export_reservation(
+               prefix,
+               "00000000-0000-0000-0000-000000000001",
+               nil
+             )
+
+    assert_check_violation(fn ->
+      insert_snapshot_export_reservation(
+        prefix,
+        "00000000-0000-0000-0000-000000000002",
+        1
+      )
+    end)
 
     assert query_rows!("SELECT count(*) FROM #{prefix}.storage_cleanup_ownership_receipts") == [[1]]
     assert query_rows!("SELECT count(*) FROM #{prefix}.storage_cleanup_ownership_namespaces") == [[1]]
@@ -67,6 +91,12 @@ defmodule Storyarn.Repo.Migrations.ProjectSnapshotsV2OnlyMigrationTest do
 
     assert_check_violation(fn ->
       insert_queued_v2(prefix, "ARCHIVEV2TOKEN04", mode: "linked")
+    end)
+
+    assert_check_violation(fn ->
+      insert_queued_v2(prefix, "ARCHIVEV2TOKEN08",
+        project_storage_key: "projects/1/snapshots/object-sets/v1/ready/LEGACYTOKEN00001/project.json"
+      )
     end)
   end
 
@@ -259,6 +289,77 @@ defmodule Storyarn.Repo.Migrations.ProjectSnapshotsV2OnlyMigrationTest do
     assert column_exists?(prefix, "project_snapshots", "project_storage_key")
   end
 
+  test "drops temporary barriers and installs the canonical worker routing fence", %{
+    prefix: prefix
+  } do
+    Repo.query!("""
+    ALTER TABLE #{prefix}.project_snapshots
+    ADD CONSTRAINT project_snapshots_cutover_quiescent CHECK (FALSE)
+    """)
+
+    Repo.query!("""
+    ALTER TABLE #{prefix}.oban_jobs
+    ADD CONSTRAINT oban_jobs_snapshot_cutover_quiescent
+    CHECK (
+      state NOT IN ('available', 'scheduled', 'executing', 'retryable') OR
+      worker NOT IN (
+        'Storyarn.Workers.BuildProjectSnapshotWorker',
+        'Storyarn.Workers.DailySnapshotWorker',
+        'Storyarn.Workers.SnapshotRetentionWorker',
+        'Storyarn.Workers.RestoreProjectWorker',
+        'Storyarn.Workers.RecoverProjectWorker'
+      )
+    )
+    """)
+
+    Repo.query!("""
+    INSERT INTO #{prefix}.oban_jobs (worker, queue, state)
+    VALUES ('Storyarn.Workers.RestoreProjectWorker', 'snapshots', 'completed')
+    """)
+
+    assert constraint_definition(prefix, "project_snapshots_cutover_quiescent") =~ "false"
+
+    assert_check_violation(fn ->
+      insert_queued_v2(prefix, "ARCHIVEV2TOKEN06")
+    end)
+
+    assert_check_violation(fn ->
+      Repo.query(
+        "INSERT INTO #{prefix}.oban_jobs (worker, queue, state) VALUES ($1, 'snapshots', 'available')",
+        ["Storyarn.Workers.DailySnapshotWorker"],
+        mode: :savepoint
+      )
+    end)
+
+    assert :ok = run_migration(:up, prefix)
+
+    refute constraint_exists?(prefix, "project_snapshots_cutover_quiescent")
+    refute constraint_exists?(prefix, "oban_jobs_snapshot_cutover_quiescent")
+    assert constraint_exists?(prefix, "oban_jobs_snapshot_worker_routing")
+    assert {:ok, _result} = insert_queued_v2(prefix, "ARCHIVEV2TOKEN07")
+
+    assert {:ok, _result} =
+             Repo.query(
+               "INSERT INTO #{prefix}.oban_jobs (worker, queue, state) VALUES ($1, 'snapshot_archives', 'available')",
+               ["Storyarn.Workers.BuildProjectSnapshotWorker"],
+               mode: :savepoint
+             )
+
+    assert_check_violation(fn ->
+      Repo.query(
+        "INSERT INTO #{prefix}.oban_jobs (worker, queue, state) VALUES ($1, 'snapshots', 'available')",
+        ["Storyarn.Workers.BuildProjectSnapshotWorker"],
+        mode: :savepoint
+      )
+    end)
+
+    assert query_rows!("""
+           SELECT count(*)
+           FROM #{prefix}.oban_jobs
+           WHERE worker = 'Storyarn.Workers.RestoreProjectWorker' AND state = 'completed'
+           """) == [[1]]
+  end
+
   defp create_schema!(prefix) do
     Repo.query!("""
     CREATE TABLE #{prefix}.project_snapshots (
@@ -439,25 +540,49 @@ defmodule Storyarn.Repo.Migrations.ProjectSnapshotsV2OnlyMigrationTest do
     defaults? = Keyword.get(opts, :defaults?, false)
     format_version = Keyword.get(opts, :format_version, 2)
     mode = Keyword.get(opts, :mode, "full")
+    project_storage_key = Keyword.get(opts, :project_storage_key)
 
     {identity_columns, identity_values, identity_params} =
       if defaults? do
         {"", "", []}
       else
-        {", format_version, mode", ", $4, $5", [format_version, mode]}
+        {", format_version, mode", ", $5, $6", [format_version, mode]}
       end
 
     Repo.query(
       """
       INSERT INTO #{prefix}.project_snapshots (
         project_id, lifecycle_state, integrity_state,
-        object_prefix, archive_storage_key, manifest_storage_key
+        object_prefix, archive_storage_key, manifest_storage_key, project_storage_key
         #{identity_columns}
       )
-      VALUES (1, 'pending', 'unknown', $1, $2, $3 #{identity_values})
+      VALUES (1, 'pending', 'unknown', $1, $2, $3, $4 #{identity_values})
       """,
-      [object_prefix, object_prefix <> "/snapshot.zip", object_prefix <> "/manifest.json"] ++
+      [
+        object_prefix,
+        object_prefix <> "/snapshot.zip",
+        object_prefix <> "/manifest.json",
+        project_storage_key
+      ] ++
         identity_params,
+      mode: :savepoint
+    )
+  end
+
+  defp insert_snapshot_export_reservation(prefix, lease_token, source_asset_count) do
+    storage_namespace =
+      "projects/1/storage-reservations/v1/snapshot-export/#{lease_token}"
+
+    Repo.query(
+      """
+      INSERT INTO #{prefix}.workspace_storage_reservations (
+        kind, status, cleanup_object_prefix, reserved_bytes, generation,
+        accounting_version, storage_namespace, project_id_snapshot, lease_token,
+        source_asset_count
+      )
+      VALUES ('snapshot_export', 'committed', $1, 0, 1, 1, $1, 1, $2, $3)
+      """,
+      [storage_namespace, Ecto.UUID.dump!(lease_token), source_asset_count],
       mode: :savepoint
     )
   end
@@ -544,5 +669,16 @@ defmodule Storyarn.Repo.Migrations.ProjectSnapshotsV2OnlyMigrationTest do
       """)
 
     definition
+  end
+
+  defp constraint_exists?(prefix, constraint_name) do
+    query_rows!("""
+    SELECT EXISTS (
+      SELECT 1
+      FROM pg_constraint AS constraint_row
+      JOIN pg_namespace AS namespace_row ON namespace_row.oid = constraint_row.connamespace
+      WHERE namespace_row.nspname = '#{prefix}' AND constraint_row.conname = '#{constraint_name}'
+    )
+    """) == [[true]]
   end
 end

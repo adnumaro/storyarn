@@ -8,9 +8,9 @@ defmodule Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only do
   purge retired ownership with the old binary before retrying. Terminal
   immutable cleanup receipts and namespaces are preserved as audit evidence;
   the replacement trigger function never creates new v1 evidence. The two
-  retired physical columns remain nullable and unused for one rolling-deploy
-  boundary so the pre-cutover binary can still read the tables while this
-  migration runs.
+  retired physical columns remain nullable for one rolling-deploy boundary so
+  the pre-cutover binary can still read the tables while this migration runs;
+  database constraints require both values to remain `NULL`.
   """
 
   use Ecto.Migration
@@ -38,8 +38,12 @@ defmodule Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only do
   ]
 
   def up do
+    Storyarn.Release.assert_project_snapshot_cutover_prefix!(repo(), prefix())
     lock_snapshot_contract_tables()
     assert_no_live_legacy_ownership!()
+    drop_if_exists constraint(:project_snapshots, :project_snapshots_cutover_quiescent)
+    drop_if_exists constraint(:oban_jobs, :oban_jobs_snapshot_cutover_quiescent)
+    install_snapshot_worker_routing_contract()
 
     replace_project_snapshot_contract()
     replace_publication_claim_contract()
@@ -124,6 +128,26 @@ defmodule Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only do
     END;
     $$
     """)
+  end
+
+  defp install_snapshot_worker_routing_contract do
+    create constraint(:oban_jobs, :oban_jobs_snapshot_worker_routing,
+             check: """
+             state NOT IN ('available', 'scheduled', 'executing', 'retryable') OR
+             (
+               worker NOT IN (
+                 'Storyarn.Workers.DailySnapshotWorker',
+                 'Storyarn.Workers.SnapshotRetentionWorker',
+                 'Storyarn.Workers.RestoreProjectWorker',
+                 'Storyarn.Workers.RecoverProjectWorker'
+               ) AND
+               (
+                 worker <> 'Storyarn.Workers.BuildProjectSnapshotWorker' OR
+                 queue = 'snapshot_archives'
+               )
+             )
+             """
+           )
   end
 
   defp replace_project_snapshot_contract do
@@ -225,11 +249,17 @@ defmodule Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only do
              """
            )
 
+    create constraint(:project_snapshots, :project_snapshots_retired_project_storage,
+             check: "project_storage_key IS NULL"
+           )
+
     alter table(:project_snapshots) do
       modify :format_version, :integer, null: false, default: 2
       modify :mode, :string, null: false, default: "full"
     end
 
+    # Keep the retired column readable for one rolling boundary, but reject
+    # every new value just as the retired linked-inventory column does.
     execute("ALTER TABLE project_snapshots ALTER COLUMN project_storage_key DROP NOT NULL")
   end
 
@@ -291,6 +321,12 @@ defmodule Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only do
              """
            )
 
+    create constraint(
+             :workspace_storage_reservations,
+             :workspace_storage_reservations_source_inventory,
+             check: "source_asset_count IS NULL"
+           )
+
     create constraint(:workspace_storage_reservations, :workspace_storage_reservations_namespace,
              check: """
              storage_namespace ~
@@ -314,8 +350,9 @@ defmodule Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only do
              """
            )
 
-    # `source_asset_count` remains nullable and unused for the rolling-read
-    # compatibility boundary described in the module documentation.
+    # `source_asset_count` remains nullable for the rolling-read compatibility
+    # boundary described in the module documentation, but the database rejects
+    # any new value now that the linked inventory contract is retired.
     execute(
       "ALTER TABLE workspace_storage_reservations ALTER COLUMN source_asset_count DROP NOT NULL"
     )

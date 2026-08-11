@@ -307,15 +307,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert DateTime.compare(caught_up.state_updated_at, normalized.state_updated_at) in [:eq, :gt]
       assert caught_up.progress_bytes == 1
 
-      job |> Ecto.Changeset.change(queue: "default") |> Repo.update!()
+      assert_raise Ecto.ConstraintError, ~r/oban_jobs_snapshot_worker_routing/, fn ->
+        job |> Ecto.Changeset.change(queue: "default") |> Repo.update!()
+      end
 
-      assert {:error, :snapshot_build_not_active} =
-               Versioning.heartbeat_project_snapshot_build(building.id, job.id)
-
-      assert_receive {:snapshot_build_heartbeat, %{count: 1}, %{outcome: :rejected, snapshot_id: snapshot_id}}
-      assert snapshot_id == building.id
-
-      job |> Ecto.Changeset.change(queue: "snapshot_archives") |> Repo.update!()
       caught_up |> ProjectSnapshot.cancel_request_changeset(TimeHelpers.now()) |> Repo.update!()
 
       assert {:error, :snapshot_build_not_active} =

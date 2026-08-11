@@ -434,7 +434,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
        }), do: verified_objects
 
   defp integrity_failure_inspected_objects(%ProjectSnapshot{}, %{verified_objects: verified_objects}),
-    do: verified_objects
+    do: verified_objects + 1
 
   defp commit_object_integrity_failure_result(
          run,

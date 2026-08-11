@@ -10,6 +10,8 @@ defmodule Storyarn.Repo.Migrations.AllowZeroByteSnapshotExportLeases do
   use Ecto.Migration
 
   def up do
+    Storyarn.Release.ensure_project_snapshot_v2_cutover_barriers!(repo(), prefix())
+
     drop constraint(
            :workspace_storage_reservations,
            :workspace_storage_reservations_positive_values

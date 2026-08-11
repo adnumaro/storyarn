@@ -57,6 +57,25 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
              SnapshotArchiveStorage.stage_prepared(42, %{}, malformed_opts)
   end
 
+  test "applies the caller project limit to the first JSON representation before decoding" do
+    max_project_bytes = 128
+
+    project_snapshot = %{
+      "format_version" => 2,
+      "project" => %{"storage_key" => String.duplicate("x", max_project_bytes)}
+    }
+
+    assert IO.iodata_length(Jason.encode_to_iodata!(project_snapshot)) > max_project_bytes
+
+    assert {:error, {:snapshot_object_size_limit_exceeded, :project, ^max_project_bytes}} =
+             SnapshotArchiveStorage.prepare(
+               42,
+               project_snapshot,
+               [],
+               max_project_bytes: max_project_bytes
+             )
+  end
+
   test "derives an empty canonical cleanup scope only for a wholly uncaptured v2 snapshot" do
     project_id = 42
     object_prefix = SnapshotArchiveStorage.ready_prefix(project_id, "BBBBBBBBBBBBBBBB")
