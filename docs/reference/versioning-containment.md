@@ -174,6 +174,9 @@ and fails closed before changing the schema if any live retired ownership still
 exists. Its preflight locks the relevant lifecycle tables and requires all of
 the following to be absent:
 
+- legacy `entity_versions` while the storage-accounting reset migration
+  `20260804120000` is still pending; versions created after that migration are
+  preserved;
 - non-v2 or non-full project snapshot rows;
 - v1 publication claims;
 - linked-conversion or v1-owned storage reservations;
@@ -182,14 +185,18 @@ the following to be absent:
 - active `BuildProjectSnapshotWorker` jobs in any queue; or
 - active generic cleanup jobs carrying retired snapshot keys.
 
-The current production assumption is that these sets are already empty because
-no project snapshots have been created. If the migration reports an active
-build, let the pre-cutover deployment finish or settle it before retrying. If it
-reports retired ownership, use that binary's durable cleanup protocol to purge
-the owned provider bytes; do not delete database rows directly and leave R2
-ownership orphaned. Terminal immutable cleanup receipts and namespace evidence
-remain preserved for audit, but the replacement database trigger can never
-create new retired-format evidence.
+The current production assumption is that the project-snapshot ownership sets
+are empty because no project snapshots have been created. The conditional
+`entity_versions` precondition is independent: it applies only when migration
+`20260804120000` is still pending. If it fails, inspect and back up the legacy
+versions, then retire their rows and referenced provider objects together under
+the pre-cutover procedure before retrying. Never delete only the database rows
+and leave their storage keys orphaned. If the migration reports an active
+snapshot build, let the pre-cutover deployment finish or settle it before
+retrying. For other retired snapshot ownership, use that binary's durable
+cleanup protocol to purge the owned provider bytes. Terminal immutable cleanup
+receipts and namespace evidence remain preserved for audit, but the replacement
+database trigger can never create new retired-format evidence.
 
 The runtime no longer maps, reads, or writes `project_storage_key` or
 `source_asset_count`. Their physical columns remain nullable for this one

@@ -38,6 +38,15 @@ defmodule Storyarn.Repo.Migrations.AddSnapshotStorageAccounting do
     # NULL, so no entity can continue pointing at a pre-rollout archive.
     execute("DELETE FROM entity_versions", "SELECT 1")
 
+    # The release preflight fences new legacy versions until the destructive
+    # reset above commits. Queue the DROP after the DELETE so both operations
+    # remain ordered in this migration transaction; PostgreSQL retains the
+    # ACCESS EXCLUSIVE lock until the migration marker commits.
+    execute(
+      "ALTER TABLE entity_versions DROP CONSTRAINT IF EXISTS entity_versions_cutover_quiescent",
+      "SELECT 1"
+    )
+
     # The reset also removes every persisted job for the retired synchronous
     # snapshot implementation. Otherwise Oban could execute a module that no
     # longer exists after deployment, including a job already in a terminal

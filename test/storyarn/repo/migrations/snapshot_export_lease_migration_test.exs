@@ -29,9 +29,10 @@ defmodule Storyarn.Repo.Migrations.SnapshotExportLeaseMigrationTest do
     """)
 
     # The production migration also installs the v2 cutover fence. Keep the
-    # isolated fixture structurally representative of the two tables that the
+    # isolated fixture structurally representative of the tables that the
     # fence locks and constrains.
     Repo.query!("CREATE TABLE #{prefix}.project_snapshots (id bigint PRIMARY KEY)")
+    Repo.query!("CREATE TABLE #{prefix}.entity_versions (id bigint PRIMARY KEY)")
 
     Repo.query!("""
     CREATE TABLE #{prefix}.oban_jobs (

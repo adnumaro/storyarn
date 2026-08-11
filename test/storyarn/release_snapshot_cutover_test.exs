@@ -74,6 +74,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     prefix = use_isolated_schema!()
     create_schema_migrations!()
     Repo.query!("CREATE TABLE project_snapshots (id bigint PRIMARY KEY)")
+    Repo.query!("CREATE TABLE entity_versions (id bigint PRIMARY KEY)")
 
     Repo.query!("""
     CREATE TABLE oban_jobs (
@@ -93,6 +94,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
 
     assert constraint_exists?("project_snapshots_cutover_quiescent")
     assert constraint_exists?("oban_jobs_snapshot_cutover_quiescent")
+    assert constraint_exists?("entity_versions_cutover_quiescent")
 
     assert {:error, %Postgrex.Error{postgres: %{code: :check_violation}}} =
              Repo.query("INSERT INTO project_snapshots (id) VALUES (1)", [], mode: :savepoint)
@@ -103,6 +105,9 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
                ["Storyarn.Workers.BuildProjectSnapshotWorker"],
                mode: :savepoint
              )
+
+    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation}}} =
+             Repo.query("INSERT INTO entity_versions (id) VALUES (1)", [], mode: :savepoint)
 
     assert {:ok, _result} =
              Repo.query(
@@ -174,6 +179,50 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     assert_raise RuntimeError, ~r/requires an empty snapshot table/, fn ->
       Release.run_project_snapshot_migrations(Repo, fn -> :unreachable end)
     end
+  end
+
+  test "legacy entity-version history blocks a pre-accounting cutover before the runner" do
+    use_isolated_schema!()
+    create_schema_migrations!()
+    Repo.query!("CREATE TABLE project_snapshots (id bigint PRIMARY KEY)")
+    Repo.query!("CREATE TABLE entity_versions (id bigint PRIMARY KEY, evidence text)")
+    Repo.query!("INSERT INTO entity_versions VALUES (1, 'legacy-version')")
+
+    assert_raise RuntimeError, ~r/legacy entity-version history/, fn ->
+      Release.run_project_snapshot_migrations(Repo, fn ->
+        send(self(), :migration_runner_called)
+      end)
+    end
+
+    refute_received :migration_runner_called
+    assert [[1, "legacy-version"]] = Repo.query!("SELECT * FROM entity_versions").rows
+  end
+
+  test "post-accounting entity versions remain writable and are not fenced" do
+    use_isolated_schema!()
+    create_schema_migrations!(@storage_accounting_migration)
+    Repo.query!("CREATE TABLE project_snapshots (id bigint PRIMARY KEY)")
+    Repo.query!("CREATE TABLE entity_versions (id bigint PRIMARY KEY)")
+
+    Repo.query!("""
+    CREATE TABLE oban_jobs (
+      id bigserial PRIMARY KEY,
+      worker text NOT NULL,
+      state text NOT NULL,
+      args jsonb NOT NULL DEFAULT '{}'::jsonb
+    )
+    """)
+
+    Repo.query!("INSERT INTO entity_versions VALUES (1)")
+
+    assert :migrated =
+             Release.run_project_snapshot_migrations(Repo, fn ->
+               refute constraint_exists?("entity_versions_cutover_quiescent")
+               Repo.query!("INSERT INTO entity_versions VALUES (2)")
+               :migrated
+             end)
+
+    assert [[1], [2]] = Repo.query!("SELECT id FROM entity_versions ORDER BY id").rows
   end
 
   test "an already-applied v2-only migration bypasses the one-time preflight" do
@@ -339,6 +388,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     create_schema_migrations!()
 
     Repo.query!("CREATE TABLE project_snapshots (id bigint PRIMARY KEY)")
+    Repo.query!("CREATE TABLE entity_versions (id bigint PRIMARY KEY)")
 
     Repo.query!("""
     CREATE TABLE oban_jobs (
@@ -371,6 +421,33 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     assert error.postgres.code == :check_violation
     assert [] = Repo.query!("SELECT id FROM project_snapshots").rows
     refute column_exists?("project_snapshots", "mode")
+  end
+
+  test "the persistent barrier closes the legacy entity-version write gap" do
+    use_isolated_schema!()
+    create_schema_migrations!()
+    Repo.query!("CREATE TABLE project_snapshots (id bigint PRIMARY KEY)")
+    Repo.query!("CREATE TABLE entity_versions (id bigint PRIMARY KEY)")
+
+    Repo.query!("""
+    CREATE TABLE oban_jobs (
+      id bigint PRIMARY KEY,
+      worker text,
+      state text,
+      args jsonb NOT NULL DEFAULT '{}'::jsonb
+    )
+    """)
+
+    error =
+      assert_raise Postgrex.Error, fn ->
+        Release.run_project_snapshot_migrations(Repo, fn ->
+          Repo.query!("INSERT INTO entity_versions (id) VALUES (1)")
+        end)
+      end
+
+    assert error.postgres.code == :check_violation
+    assert [] = Repo.query!("SELECT id FROM entity_versions").rows
+    assert constraint_exists?("entity_versions_cutover_quiescent")
   end
 
   defp use_isolated_schema! do
@@ -429,10 +506,11 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
         SELECT count(*)
         FROM pg_constraint AS constraint_row
         JOIN pg_namespace AS namespace_row ON namespace_row.oid = constraint_row.connamespace
-        WHERE namespace_row.nspname = $1
+          WHERE namespace_row.nspname = $1
           AND constraint_row.conname IN (
             'project_snapshots_cutover_quiescent',
-            'oban_jobs_snapshot_cutover_quiescent'
+            'oban_jobs_snapshot_cutover_quiescent',
+            'entity_versions_cutover_quiescent'
           )
         """,
         [prefix]

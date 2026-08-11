@@ -48,7 +48,21 @@ defmodule Storyarn.Release do
   defp install_project_snapshot_v2_cutover_barriers!(repo, prefix) do
     snapshots = qualified_snapshot_cutover_table(prefix, "project_snapshots")
     jobs = qualified_snapshot_cutover_table(prefix, "oban_jobs")
-    repo.query!("LOCK TABLE #{snapshots}, #{jobs} IN ACCESS EXCLUSIVE MODE", [])
+    entity_versions = qualified_snapshot_cutover_table(prefix, "entity_versions")
+
+    storage_accounting_pending? =
+      not snapshot_migration_applied_in_prefix?(
+        repo,
+        prefix,
+        @snapshot_storage_accounting_migration
+      )
+
+    lock_tables =
+      if storage_accounting_pending?,
+        do: [snapshots, jobs, entity_versions],
+        else: [snapshots, jobs]
+
+    repo.query!("LOCK TABLE #{Enum.join(lock_tables, ", ")} IN ACCESS EXCLUSIVE MODE", [])
 
     case repo.query!(
            """
@@ -72,6 +86,25 @@ defmodule Storyarn.Release do
       [[false]] -> :ok
       [[true]] -> raise_snapshot_cutover_not_quiescent!()
       invalid -> raise "Invalid snapshot cutover barrier precondition: #{inspect(invalid)}"
+    end
+
+    storage_accounting_pending? =
+      not snapshot_migration_applied_in_prefix?(
+        repo,
+        prefix,
+        @snapshot_storage_accounting_migration
+      )
+
+    if storage_accounting_pending? do
+      assert_entity_versions_empty!(repo, entity_versions)
+
+      ensure_snapshot_cutover_constraint!(
+        repo,
+        prefix,
+        "entity_versions",
+        "entity_versions_cutover_quiescent",
+        "CHECK (FALSE)"
+      )
     end
 
     ensure_snapshot_cutover_constraint!(
@@ -117,7 +150,12 @@ defmodule Storyarn.Release do
   defp remove_project_snapshot_v2_cutover_barriers_in_transaction!(repo, prefix) do
     snapshots = qualified_snapshot_cutover_table(prefix, "project_snapshots")
     jobs = qualified_snapshot_cutover_table(prefix, "oban_jobs")
-    repo.query!("LOCK TABLE #{snapshots}, #{jobs} IN ACCESS EXCLUSIVE MODE", [])
+    entity_versions = qualified_snapshot_cutover_table(prefix, "entity_versions")
+
+    repo.query!(
+      "LOCK TABLE #{snapshots}, #{jobs}, #{entity_versions} IN ACCESS EXCLUSIVE MODE",
+      []
+    )
 
     repo.query!(
       "ALTER TABLE #{snapshots} DROP CONSTRAINT IF EXISTS project_snapshots_cutover_quiescent",
@@ -126,6 +164,11 @@ defmodule Storyarn.Release do
 
     repo.query!(
       "ALTER TABLE #{jobs} DROP CONSTRAINT IF EXISTS oban_jobs_snapshot_cutover_quiescent",
+      []
+    )
+
+    repo.query!(
+      "ALTER TABLE #{entity_versions} DROP CONSTRAINT IF EXISTS entity_versions_cutover_quiescent",
       []
     )
 
@@ -182,11 +225,13 @@ defmodule Storyarn.Release do
   @doc false
   def ensure_project_snapshot_v2_cutover_ready!(repo) when is_atom(repo) do
     with {:ok, state} <- snapshot_cutover_schema_state(repo),
-         {:ok, applied?} <- snapshot_v2_only_migration_applied?(repo, state.schema_migrations?) do
+         {:ok, applied?} <- snapshot_v2_only_migration_applied?(repo, state.schema_migrations?),
+         {:ok, storage_accounting_applied?} <-
+           snapshot_storage_accounting_migration_applied?(repo, state.schema_migrations?) do
       if applied? do
         :ok
       else
-        assert_no_live_legacy_snapshot_ownership!(repo, state)
+        assert_no_live_legacy_snapshot_ownership!(repo, state, storage_accounting_applied?)
       end
     else
       {:error, reason} ->
@@ -204,7 +249,8 @@ defmodule Storyarn.Release do
              to_regclass('workspace_storage_reservations') IS NOT NULL,
              to_regclass('snapshot_cleanup_intents') IS NOT NULL,
              to_regclass('storage_cleanup_requests') IS NOT NULL,
-             to_regclass('oban_jobs') IS NOT NULL
+             to_regclass('oban_jobs') IS NOT NULL,
+             to_regclass('entity_versions') IS NOT NULL
            """,
            []
          ) do
@@ -227,7 +273,8 @@ defmodule Storyarn.Release do
            storage_reservations?,
            cleanup_intents?,
            cleanup_requests?,
-           oban_jobs?
+           oban_jobs?,
+           entity_versions?
          ] = row
        ) do
     if Enum.all?(row, &is_boolean/1) do
@@ -239,7 +286,8 @@ defmodule Storyarn.Release do
          storage_reservations?: storage_reservations?,
          cleanup_intents?: cleanup_intents?,
          cleanup_requests?: cleanup_requests?,
-         oban_jobs?: oban_jobs?
+         oban_jobs?: oban_jobs?,
+         entity_versions?: entity_versions?
        }}
     else
       {:error, {:invalid_snapshot_cutover_schema_state, row}}
@@ -248,6 +296,24 @@ defmodule Storyarn.Release do
 
   defp parse_snapshot_cutover_schema_state(invalid) do
     {:error, {:invalid_snapshot_cutover_schema_state, invalid}}
+  end
+
+  defp snapshot_storage_accounting_migration_applied?(_repo, false), do: {:ok, false}
+
+  defp snapshot_storage_accounting_migration_applied?(repo, true) do
+    case repo.query(
+           "SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)",
+           [@snapshot_storage_accounting_migration]
+         ) do
+      {:ok, %{rows: [[applied?]]}} when is_boolean(applied?) ->
+        {:ok, applied?}
+
+      {:ok, invalid} ->
+        {:error, {:invalid_snapshot_storage_accounting_migration_state, invalid}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   defp snapshot_v2_only_migration_applied?(_repo, false), do: {:ok, false}
@@ -301,8 +367,8 @@ defmodule Storyarn.Release do
     {:error, {:invalid_snapshot_cutover_migration_state, invalid}}
   end
 
-  defp assert_no_live_legacy_snapshot_ownership!(repo, state) do
-    checks = legacy_snapshot_ownership_checks(state)
+  defp assert_no_live_legacy_snapshot_ownership!(repo, state, storage_accounting_applied?) do
+    checks = legacy_snapshot_ownership_checks(state, storage_accounting_applied?)
 
     if checks == [] do
       :ok
@@ -312,7 +378,7 @@ defmodule Storyarn.Release do
           :ok
 
         {:ok, %{rows: [[false]]}} ->
-          raise "Project snapshot v2-only cutover requires an empty snapshot table, retired v1/linked ownership, and no active snapshot jobs before running any pending migration"
+          raise "Project snapshot v2-only cutover requires an empty snapshot table, no legacy entity-version history before the storage-accounting reset, retired v1/linked ownership, and no active snapshot jobs before running any pending migration"
 
         {:ok, invalid} ->
           raise "Project snapshot v2-only cutover preflight returned an invalid response: #{inspect(invalid)}"
@@ -323,8 +389,12 @@ defmodule Storyarn.Release do
     end
   end
 
-  defp legacy_snapshot_ownership_checks(state) do
+  defp legacy_snapshot_ownership_checks(state, storage_accounting_applied?) do
     []
+    |> maybe_add_check(
+      state.entity_versions? and not storage_accounting_applied?,
+      "EXISTS (SELECT 1 FROM entity_versions)"
+    )
     |> maybe_add_check(
       state.project_snapshots?,
       "EXISTS (SELECT 1 FROM project_snapshots)"
@@ -390,11 +460,24 @@ defmodule Storyarn.Release do
     raise "Project snapshot v2-only cutover requires an empty snapshot table and no active pre-cutover snapshot worker"
   end
 
+  defp assert_entity_versions_empty!(repo, entity_versions) do
+    case repo.query!("SELECT NOT EXISTS (SELECT 1 FROM #{entity_versions})", []).rows do
+      [[true]] ->
+        :ok
+
+      [[false]] ->
+        raise "Project snapshot v2-only cutover requires legacy entity-version history to be empty before the storage-accounting reset"
+
+      invalid ->
+        raise "Invalid entity-version cutover precondition: #{inspect(invalid)}"
+    end
+  end
+
   defp maybe_install_project_snapshot_v2_cutover_barriers!(repo) do
     prefix = assert_project_snapshot_cutover_prefix!(repo, nil)
 
     if snapshot_cutover_tables_exist?(repo, prefix) and
-         not snapshot_v2_only_migration_applied_in_prefix?(repo, prefix) do
+         not snapshot_migration_applied_in_prefix?(repo, prefix, @snapshot_v2_only_migration) do
       ensure_project_snapshot_v2_cutover_barriers!(repo, prefix)
     else
       :ok
@@ -411,7 +494,7 @@ defmodule Storyarn.Release do
     end
   end
 
-  defp snapshot_v2_only_migration_applied_in_prefix?(repo, prefix) do
+  defp snapshot_migration_applied_in_prefix?(repo, prefix, version) do
     migrations = qualified_snapshot_cutover_table(prefix, "schema_migrations")
 
     case repo.query!(
@@ -424,7 +507,7 @@ defmodule Storyarn.Release do
       [[true]] ->
         repo.query!(
           "SELECT EXISTS (SELECT 1 FROM #{migrations} WHERE version = $1)",
-          [@snapshot_v2_only_migration]
+          [version]
         ).rows == [[true]]
 
       invalid ->
