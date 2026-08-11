@@ -146,14 +146,14 @@ provider object before taking workspace and snapshot locks. Cleanup actions lock
 the intent and revalidate the exact inventory, ownership receipt, and provider
 namespace. A changed or already-resolved subject is a successful no-op.
 
-| Finding | Automated action | Manual boundary |
-| --- | --- | --- |
-| Missing ready archive or sidecar | Mark missing after exact generation and absence are revalidated | Identity, ownership, lifecycle, or provider result changed |
-| Corrupt ready archive or sidecar | Mark corrupt after exact size and digest failure are reproduced | Replacement appeared or corruption cannot be reproduced |
-| Stale build reservation | Cleanup only the same expired, quiescent build without a live owner | Job, claim, generation, namespace, or cleanup proof is ambiguous |
-| Terminal cleanup failure | Replay only an exact, still-terminal, provider-replayable intent | Inventory, ownership, namespace, or integrity evidence is invalid |
-| Abandoned or ambiguous provider object | Report only | Automatic deletion lacks a durable conditional-delete identity |
-| Database, inventory, accounting, or verification-limit mismatch | Report only | Automatic reconstruction is not proven safe |
+| Finding                                                         | Automated action                                                    | Manual boundary                                                   |
+| --------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Missing ready archive or sidecar                                | Mark missing after exact generation and absence are revalidated     | Identity, ownership, lifecycle, or provider result changed        |
+| Corrupt ready archive or sidecar                                | Mark corrupt after exact size and digest failure are reproduced     | Replacement appeared or corruption cannot be reproduced           |
+| Stale build reservation                                         | Cleanup only the same expired, quiescent build without a live owner | Job, claim, generation, namespace, or cleanup proof is ambiguous  |
+| Terminal cleanup failure                                        | Replay only an exact, still-terminal, provider-replayable intent    | Inventory, ownership, namespace, or integrity evidence is invalid |
+| Abandoned or ambiguous provider object                          | Report only                                                         | Automatic deletion lacks a durable conditional-delete identity    |
+| Database, inventory, accounting, or verification-limit mismatch | Report only                                                         | Automatic reconstruction is not proven safe                       |
 
 Plan and inspect repairs in bounded pages:
 
