@@ -24,27 +24,14 @@ defmodule Storyarn.Repo.Migrations.SnapshotExportLeaseMigrationTest do
     Repo.query!("CREATE SCHEMA #{prefix}")
 
     Repo.query!("""
-    CREATE TABLE #{prefix}.workspace_storage_reservations (
-      id bigserial PRIMARY KEY,
-      kind text NOT NULL,
-      status text NOT NULL,
-      reserved_bytes bigint NOT NULL,
-      actual_bytes bigint,
-      generation bigint NOT NULL,
-      accounting_version integer NOT NULL,
-      expires_at timestamp(0) with time zone NOT NULL,
-      accounting_measured_at timestamp(0) with time zone NOT NULL,
-      storage_started_at timestamp(0) with time zone,
-      cleanup_inventory_digest text,
-      cleanup_inventory_count integer,
-      CONSTRAINT #{@positive_values_constraint} CHECK (reserved_bytes > 0)
-    )
+    CREATE TABLE #{prefix}.workspace_storage_reservations
+    (LIKE public.workspace_storage_reservations INCLUDING ALL)
     """)
 
-    # The migration's rollback guard is intentionally raw SQL. Match production's
-    # unqualified public-table lookup while keeping this destructive smoke test in
-    # its own transactional schema.
+    # Derive the isolated fixture from the deployed table so new columns,
+    # constraints, and indexes cannot silently drift from this migration smoke.
     Repo.query!("SELECT set_config('search_path', $1, true)", ["#{prefix}, public"])
+    assert :ok = run_migration(:down, prefix)
 
     %{prefix: prefix}
   end
@@ -100,30 +87,50 @@ defmodule Storyarn.Repo.Migrations.SnapshotExportLeaseMigrationTest do
     Repo.query(
       """
       INSERT INTO #{prefix}.workspace_storage_reservations (
+        id,
+        workspace_id_snapshot,
+        project_id_snapshot,
+        project_snapshot_id_snapshot,
+        idempotency_key,
         kind,
         status,
+        storage_namespace,
+        cleanup_object_prefix,
         reserved_bytes,
         actual_bytes,
+        lease_token,
         generation,
         accounting_version,
         expires_at,
         accounting_measured_at,
         storage_started_at,
         cleanup_inventory_digest,
-        cleanup_inventory_count
+        cleanup_inventory_count,
+        inserted_at,
+        updated_at
       )
       VALUES (
+        1,
+        1,
+        2,
+        3,
+        'snapshot-export-migration-test',
         'snapshot_export',
         'active',
+        'projects/2/storage-reservations/v1/snapshot-export/00000000-0000-4000-8000-000000000001',
+        'projects/2/storage-reservations/v1/snapshot-export/00000000-0000-4000-8000-000000000001',
         0,
         NULL,
+        '00000000-0000-4000-8000-000000000001',
         1,
         1,
         clock_timestamp() + interval '15 minutes',
         clock_timestamp(),
         NULL,
         NULL,
-        NULL
+        NULL,
+        clock_timestamp(),
+        clock_timestamp()
       )
       """,
       [],

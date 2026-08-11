@@ -21,7 +21,7 @@ reader, restore path, or compatibility branch for data removed by the reset.
 ## Steady-state guarantees
 
 - Every new full snapshot is built asynchronously as one canonical
-  `snapshot.zip` plus a byte-identical `manifest.json` sidecar in immutable v2
+  `snapshot.zip` plus a byte-identical `manifest.json` sidecar in generation-fenced v2
   staging and ready namespaces. The archive contains `manifest.json`,
   `project.json`, and the deduplicated `blobs/` inventory; the manifest is
   published last. Source project blobs are protected build inputs, not a second
@@ -95,6 +95,29 @@ cannot be shorter than the grant contract.
   separated by a PostgreSQL-enforced minimum of 15 minutes, so a delayed writer
   cannot make a namespace ready or escape the second pass.
 - Linked snapshots fail closed until their reachability contract is implemented.
+
+## Ready archive trust boundary
+
+A v2 archive is byte-counted and SHA-256 verified before its row can become
+`ready`. Publication uses a random generation namespace and create-if-absent
+provider operations; no production snapshot path rewrites a published ready
+archive. Within Storyarn's protocol, the ready key is therefore write-once.
+
+A normal production download deliberately does not read or re-hash the complete
+archive in the web request. After authorization and acquisition of the deletion
+fence, Storyarn signs a GET for the persisted key. Consequently, `verified`
+means that the bytes were verified at publication time; it is not a fresh
+end-to-end digest assertion for every download. A provider-side mutation or a
+same-key overwrite performed outside Storyarn's protocol can remain
+downloadable until an operator reconciliation run detects it and an explicit
+repair changes the snapshot state.
+
+The production rollout must therefore treat preservation of ready-key bytes as
+part of the private object-store trust boundary. The canary proves the bytes at
+one point in time, not WORM semantics. If the threat model must include
+ready-key replacement without proxying every download through Storyarn, the
+storage protocol must persist provider object-version identities and sign GETs
+for those exact versions; that capability is not part of this rollout.
 
 ## Observation-only reconciliation
 

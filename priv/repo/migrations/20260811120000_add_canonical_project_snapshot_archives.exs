@@ -175,6 +175,7 @@ defmodule Storyarn.Repo.Migrations.AddCanonicalProjectSnapshotArchives do
      object_prefix ~ ('^projects/' || project_id ||
        '/snapshots/archives/v2/ready/[A-Za-z0-9_-]{16}$') AND
      project_storage_key IS NULL AND archive_storage_key = object_prefix || '/snapshot.zip' AND
+     manifest_storage_key IS NOT NULL AND
      manifest_storage_key = object_prefix || '/manifest.json')
     """
   end
@@ -219,6 +220,7 @@ defmodule Storyarn.Repo.Migrations.AddCanonicalProjectSnapshotArchives do
      archive_checksum IS NOT NULL AND archive_checksum ~ '^[0-9a-f]{64}$' AND
      project_size_bytes IS NOT NULL AND project_size_bytes > 0 AND
      project_checksum IS NOT NULL AND project_checksum ~ '^[0-9a-f]{64}$' AND
+     manifest_storage_key IS NOT NULL AND
      manifest_storage_key = object_prefix || '/manifest.json' AND
      manifest_size_bytes IS NOT NULL AND manifest_size_bytes > 0 AND
      manifest_checksum IS NOT NULL AND manifest_checksum ~ '^[0-9a-f]{64}$' AND

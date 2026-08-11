@@ -451,11 +451,24 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   defp commit_object_integrity_failure_result(
          run,
          %{snapshot: %ProjectSnapshot{format_version: 2}} = candidate,
-         _failure,
+         %{failed_index: 0},
          opts
        ) do
-    commit_snapshot_result(run, candidate, Keyword.put(opts, :complete?, true))
+    commit_snapshot_result(
+      run,
+      candidate,
+      opts
+      |> Keyword.put(:complete?, false)
+      |> Keyword.put(:next_index, 1)
+    )
   end
+
+  defp commit_object_integrity_failure_result(
+         run,
+         %{snapshot: %ProjectSnapshot{format_version: 2}} = candidate,
+         _failure,
+         opts
+       ), do: commit_snapshot_result(run, candidate, Keyword.put(opts, :complete?, true))
 
   defp commit_object_integrity_failure_result(run, candidate, failure, opts) do
     commit_snapshot_result(

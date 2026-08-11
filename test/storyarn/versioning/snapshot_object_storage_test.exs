@@ -1209,9 +1209,9 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
     end
 
     test "accepts historical v1 provider MIME metadata for supported audio assets" do
-      for {id, content_type, filename} <- [
-            {503, "audio/ogg", "voice.ogg"},
-            {504, "audio/webm", "voice.webm"}
+      for {id, content_type, provider_content_type, filename} <- [
+            {503, "audio/ogg", "application/octet-stream", "voice.ogg"},
+            {504, "audio/webm", "video/webm", "voice.webm"}
           ] do
         project_id = unique_project_id()
         token = SnapshotStorage.unique_key_suffix()
@@ -1227,12 +1227,21 @@ defmodule Storyarn.Versioning.SnapshotObjectStorageTest do
         assert {:ok, stored} =
                  persist_authorized(project_id, project_object(asset), [asset], token: token)
 
+        assert provider_content_type != content_type
+        blob_path = SnapshotObjectFormat.blob_path(sha256(content), content_type)
+        blob_key = stored.object_prefix <> "/" <> blob_path
+
+        assert {:ok, %{content_type: ^provider_content_type}} = Storage.stat(blob_key)
+
         assert {:ok, loaded} =
                  SnapshotObjectStorage.load_verified(
                    stored.manifest_storage_key,
                    stored.manifest_checksum,
                    stored.manifest_size_bytes
                  )
+
+        assert %{"content_type" => ^content_type, "path" => ^blob_path} =
+                 Enum.find(loaded.manifest["objects"], &(&1["kind"] == "asset_blob"))
 
         cleanup_object_set(project_id, token, loaded.manifest, [source])
       end

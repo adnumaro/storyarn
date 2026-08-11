@@ -55,11 +55,14 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
 
   def prepare(project_id, project_snapshot, assets, opts)
       when is_integer(project_id) and project_id > 0 and is_list(assets) and is_list(opts) do
-    opts = Keyword.put_new(opts, :source_key_mode, :protected_blob)
-
-    with {:ok, prepared} <- SnapshotObjectStorage.prepare(project_id, project_snapshot, assets, opts),
+    with true <- Keyword.keyword?(opts),
+         opts = Keyword.put_new(opts, :source_key_mode, :protected_blob),
+         {:ok, prepared} <- SnapshotObjectStorage.prepare(project_id, project_snapshot, assets, opts),
          {:ok, plan} <- ProjectSnapshotZip.prepare_capture(project_id, prepared, opts) do
       {:ok, with_archive_accounting(prepared, plan)}
+    else
+      false -> {:error, :invalid_snapshot_archive_options}
+      {:error, _reason} = error -> error
     end
   end
 
@@ -79,9 +82,8 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
 
   def stage_prepared(project_id, prepared, opts)
       when is_integer(project_id) and project_id > 0 and is_map(prepared) and is_list(opts) do
-    token = Keyword.get(opts, :token, SnapshotStorage.unique_key_suffix())
-
     with true <- Keyword.keyword?(opts),
+         token = Keyword.get(opts, :token, SnapshotStorage.unique_key_suffix()),
          {:ok, before_stage} <- required_callback(opts, :before_stage, 1),
          {:ok, on_progress} <- optional_callback(opts, :on_progress, 1, fn _bytes -> :ok end),
          {:ok, reservation} <- stage_reservation(opts),

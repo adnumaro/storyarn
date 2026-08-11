@@ -124,6 +124,33 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     end
   end
 
+  test "a v2 archive failure resumes at the manifest and reports combined damage" do
+    {_user, _project, snapshot} = ready_snapshot!()
+    assert {:ok, archive} = Storage.download(snapshot.archive_storage_key)
+    <<first, rest::binary>> = archive
+    corrupt_archive = <<Bitwise.bxor(first, 1), rest::binary>>
+
+    assert {:ok, _url} =
+             Storage.upload(snapshot.archive_storage_key, corrupt_archive, "application/zip")
+
+    assert :ok = Storage.delete(snapshot.manifest_storage_key)
+
+    assert {:ok, run} = start_run()
+    completed = advance_until_terminal(run.id, run.cursor_generation)
+
+    findings =
+      run.id
+      |> Versioning.list_project_snapshot_reconciliation_findings(limit: 500)
+      |> Enum.filter(&(&1.project_snapshot_id_snapshot == snapshot.id))
+
+    assert completed.status == "completed"
+
+    assert Enum.map(findings, &{&1.category, &1.storage_key}) == [
+             {"ready_object_corrupt", snapshot.archive_storage_key},
+             {"ready_manifest_missing", snapshot.manifest_storage_key}
+           ]
+  end
+
   test "an oversized v2 archive is reported without streaming the archive" do
     {_user, _project, snapshot} = ready_snapshot!()
     max_bytes = 128 * 1024 * 1024

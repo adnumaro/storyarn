@@ -47,6 +47,16 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
              ])
   end
 
+  test "rejects malformed option lists before preparing or staging" do
+    malformed_opts = [:not_a_keyword]
+
+    assert {:error, :invalid_snapshot_archive_options} =
+             SnapshotArchiveStorage.prepare(42, %{"format_version" => 2}, [], malformed_opts)
+
+    assert {:error, :invalid_snapshot_archive_options} =
+             SnapshotArchiveStorage.stage_prepared(42, %{}, malformed_opts)
+  end
+
   test "derives an empty canonical cleanup scope only for a wholly uncaptured v2 snapshot" do
     project_id = 42
     object_prefix = SnapshotArchiveStorage.ready_prefix(project_id, "BBBBBBBBBBBBBBBB")

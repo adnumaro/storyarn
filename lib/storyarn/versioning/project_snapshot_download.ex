@@ -3,7 +3,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownload do
   Authorizes one persisted snapshot archive and owns its durable download fence.
 
   A zero-byte `snapshot_export` reservation prevents lifecycle cleanup from
-  deleting the immutable archive while a grant is usable. Grants for the same
+  deleting the published archive while a grant is usable. Grants for the same
   snapshot coalesce onto one generation-fenced lease. Every acquisition keeps
   that shared lease for the expiry reaper: releasing it from one request could
   invalidate a concurrent provider grant or local transfer.

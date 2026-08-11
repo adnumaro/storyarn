@@ -49,6 +49,15 @@ defmodule Storyarn.Repo.Migrations.CanonicalProjectSnapshotArchivesMigrationTest
     assert {:error, %Postgrex.Error{postgres: %{code: :check_violation}}} =
              insert_v2_snapshot(prefix, "V2BADACCT0000001", accounted_size_bytes: 11)
 
+    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation}}} =
+             insert_v2_snapshot(prefix, "V2NOMANIFEST0000", manifest_storage_key: nil)
+
+    assert constraint_definition(prefix, "project_snapshots_object_target") =~
+             "manifest_storage_key IS NOT NULL"
+
+    assert constraint_definition(prefix, "project_snapshots_ready_object_set") =~
+             "manifest_storage_key IS NOT NULL"
+
     assert {:error, %Postgrex.Error{postgres: %{code: :unique_violation}}} =
              insert_v2_snapshot(prefix, "V2VALID000000001")
   end
@@ -275,6 +284,7 @@ defmodule Storyarn.Repo.Migrations.CanonicalProjectSnapshotArchivesMigrationTest
 
     values = %{
       archive_storage_key: object_prefix <> "/snapshot.zip",
+      manifest_storage_key: object_prefix <> "/manifest.json",
       object_count: 2,
       accounted_size_bytes: 12
     }
@@ -296,7 +306,7 @@ defmodule Storyarn.Repo.Migrations.CanonicalProjectSnapshotArchivesMigrationTest
       [
         String.duplicate("c", 64),
         object_prefix,
-        object_prefix <> "/manifest.json",
+        values.manifest_storage_key,
         String.duplicate("d", 64),
         values.object_count,
         values.accounted_size_bytes,
@@ -350,6 +360,18 @@ defmodule Storyarn.Repo.Migrations.CanonicalProjectSnapshotArchivesMigrationTest
       WHERE namespace_row.nspname = '#{prefix}' AND constraint_row.conname = '#{constraint_name}'
     )
     """) == [[true]]
+  end
+
+  defp constraint_definition(prefix, constraint_name) do
+    [[definition]] =
+      query_rows!("""
+      SELECT pg_get_constraintdef(constraint_row.oid)
+      FROM pg_constraint AS constraint_row
+      JOIN pg_namespace AS namespace_row ON namespace_row.oid = constraint_row.connamespace
+      WHERE namespace_row.nspname = '#{prefix}' AND constraint_row.conname = '#{constraint_name}'
+      """)
+
+    definition
   end
 
   defp index_exists?(prefix, index_name) do

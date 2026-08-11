@@ -219,67 +219,22 @@ defmodule Storyarn.Versioning.ProjectSnapshotZipTest do
   end
 
   defp oversized_prepared(project_id) do
-    project = %{"format_version" => 2, "project" => %{"name" => "Large"}}
-    project_json = Jason.encode!(project)
-    project_descriptor = descriptor("project", "project.json", "application/json", project_json)
     asset_size = SnapshotObjectFormat.hard_limits().max_asset_bytes
 
-    blobs =
+    assets =
       Enum.map(1..82, fn index ->
-        hash = index |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(64, "0")
-
-        %{
-          "kind" => "asset_blob",
-          "path" => SnapshotObjectFormat.blob_path(hash, "image/png"),
-          "sha256" => hash,
-          "size_bytes" => asset_size,
-          "content_type" => "image/png"
-        }
+        oversized_asset(index, project_id, asset_size)
       end)
 
-    assets =
-      blobs
-      |> Enum.with_index(1)
-      |> Enum.map(fn {blob, index} -> logical_asset(index, "asset-#{index}.png", blob) end)
-
-    assert {:ok, manifest} =
-             SnapshotObjectFormat.build_manifest(
-               project,
+    assert {:ok, prepared} =
+             SnapshotObjectStorage.prepare(
+               project_id,
+               project_object(assets),
                assets,
-               blobs,
-               project_descriptor: project_descriptor
+               source_key_mode: :protected_blob
              )
 
-    source_keys =
-      Map.new(blobs, fn blob ->
-        {blob["sha256"], BlobStore.blob_key(project_id, blob["sha256"], "png")}
-      end)
-
-    prepared_from_manifest(project_json, manifest, source_keys)
-  end
-
-  defp prepared_from_manifest(project_json, manifest, source_keys) do
-    manifest_json = Jason.encode!(manifest)
-    project = manifest["project"]
-    counts = manifest["counts"]
-    total_size = manifest["payload_size_bytes"] + byte_size(manifest_json)
-
-    prepared = %{
-      project_json: project_json,
-      manifest_json: manifest_json,
-      source_keys: source_keys,
-      project_size_bytes: project["size_bytes"],
-      project_checksum: project["sha256"],
-      manifest_size_bytes: byte_size(manifest_json),
-      manifest_checksum: sha256(manifest_json),
-      total_size_bytes: total_size,
-      asset_blob_size_bytes: manifest["payload_size_bytes"] - project["size_bytes"],
-      object_count: counts["payload_objects"] + 1,
-      asset_count: counts["assets"],
-      blob_count: counts["blobs"]
-    }
-
-    Map.put(prepared, :capture_digest, capture_digest(prepared))
+    prepared
   end
 
   defp project_object(assets) do
@@ -329,46 +284,23 @@ defmodule Storyarn.Versioning.ProjectSnapshotZipTest do
     }
   end
 
-  defp logical_asset(index, filename, blob) do
-    %{
-      "logical_id" => "asset-#{index |> Integer.to_string() |> String.pad_leading(6, "0")}",
-      "filename" => filename,
-      "content_type" => blob["content_type"],
-      "size_bytes" => blob["size_bytes"],
-      "sha256" => blob["sha256"],
-      "blob_path" => blob["path"],
-      "metadata" => %{},
-      "relationships" => %{"original" => nil, "web" => nil, "variants" => %{}}
+  defp oversized_asset(index, project_id, size) do
+    hash = index |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(64, "0")
+    filename = "asset-#{index}.png"
+
+    %Asset{
+      id: index,
+      project_id: project_id,
+      filename: filename,
+      content_type: "image/png",
+      size: size,
+      blob_hash: hash,
+      key: "projects/#{project_id}/assets/#{Ecto.UUID.generate()}/#{filename}",
+      url: "",
+      metadata: %{},
+      inserted_at: DateTime.from_unix!(index)
     }
   end
-
-  defp descriptor(kind, path, content_type, bytes) do
-    %{
-      "kind" => kind,
-      "path" => path,
-      "sha256" => sha256(bytes),
-      "size_bytes" => byte_size(bytes),
-      "content_type" => content_type
-    }
-  end
-
-  defp capture_digest(prepared) do
-    source_inventory =
-      prepared.source_keys
-      |> Enum.sort()
-      |> Enum.map(fn {hash, key} -> [digest_part(hash), digest_part(key)] end)
-
-    [
-      "storyarn.project_snapshot.capture.v1",
-      digest_part(prepared.project_json),
-      digest_part(prepared.manifest_json),
-      source_inventory
-    ]
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
-  end
-
-  defp digest_part(value), do: [Integer.to_string(byte_size(value)), ":", value]
 
   defp archive_bytes(plan) do
     plan |> ProjectSnapshotZip.stream() |> Enum.to_list() |> IO.iodata_to_binary()
