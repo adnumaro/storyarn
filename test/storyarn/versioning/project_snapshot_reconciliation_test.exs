@@ -15,7 +15,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Versioning
-  alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCapture
@@ -23,8 +22,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRun
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Versioning.SnapshotObjectStorage
-  alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.InspectProjectSnapshotsWorker
 
@@ -187,59 +184,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
            end)
   end
 
-  test "two damaged objects in one ready snapshot both become findings and the scan completes" do
-    user = user_fixture()
-    project = project_fixture(user)
-
-    assert {:ok, _asset} =
-             Assets.upload_binary_and_create_asset(
-               "snapshot asset bytes",
-               %{filename: "snapshot.png", content_type: "image/png"},
-               project,
-               user
-             )
-
-    {_user, _project, snapshot} = legacy_ready_snapshot!(user, project)
-
-    assert {:ok, %{manifest: manifest}} =
-             SnapshotObjectStorage.inspect_ready_manifest(
-               snapshot.manifest_storage_key,
-               snapshot.manifest_checksum,
-               snapshot.manifest_size_bytes
-             )
-
-    project_descriptor = Enum.find(manifest["objects"], &(&1["kind"] == "project"))
-    blob_descriptor = Enum.find(manifest["objects"], &(&1["kind"] == "asset_blob"))
-    project_key = snapshot.object_prefix <> "/" <> project_descriptor["path"]
-    blob_key = snapshot.object_prefix <> "/" <> blob_descriptor["path"]
-
-    assert :ok = Storage.delete(blob_key)
-    assert {:ok, project_json} = Storage.download(project_key)
-    <<first, rest::binary>> = project_json
-    corrupt_json = <<Bitwise.bxor(first, 1), rest::binary>>
-
-    assert {:ok, _url} = Storage.upload(project_key, corrupt_json, project_descriptor["content_type"])
-
-    assert {:ok, run} = start_run()
-    completed = advance_until_terminal(run.id, run.cursor_generation)
-
-    findings =
-      run.id
-      |> Versioning.list_project_snapshot_reconciliation_findings(limit: 500)
-      |> Enum.filter(
-        &(&1.project_snapshot_id_snapshot == snapshot.id and
-            &1.category in ["ready_object_missing", "ready_object_corrupt"])
-      )
-
-    assert completed.status == "completed"
-
-    assert findings |> Enum.map(&{&1.category, &1.storage_key}) |> Enum.sort() ==
-             Enum.sort([
-               {"ready_object_corrupt", project_key},
-               {"ready_object_missing", blob_key}
-             ])
-  end
-
   test "missing manifests are distinguished from object corruption" do
     {_user, _project, snapshot} = ready_snapshot!()
     assert :ok = Storage.delete(snapshot.manifest_storage_key)
@@ -315,8 +259,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   test "exact inventory and global ownership scans report extras, unowned roots, and unsafe keys without deleting them" do
     {_user, project, snapshot} = ready_snapshot!()
     extra_key = snapshot.object_prefix <> "/unexpected.bin"
-    unowned_key = SnapshotObjectStorage.staging_prefix(project.id, String.duplicate("x", 16)) <> "/project.json"
-    unsafe_key = "projects/#{project.id}/snapshots/object-sets/v2/ready/not-supported/project.json"
+    unowned_key = SnapshotArchiveStorage.staging_prefix(project.id, String.duplicate("x", 16)) <> "/snapshot.zip"
+    unsafe_key = "projects/#{project.id}/snapshots/archives/v2/ready/not-supported/snapshot.zip"
 
     for key <- [extra_key, unowned_key, unsafe_key] do
       assert {:ok, _url} = Storage.upload(key, "evidence", "application/octet-stream")
@@ -346,8 +290,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
                idempotency_key: Ecto.UUID.generate()
              })
 
-    staging_key = String.replace(snapshot.object_prefix, "/ready/", "/staging/") <> "/project.json"
-    assert {:ok, _url} = Storage.upload(staging_key, "unowned", "application/json")
+    staging_key = SnapshotArchiveStorage.archive_key(String.replace(snapshot.object_prefix, "/ready/", "/staging/"))
+    assert {:ok, _url} = Storage.upload(staging_key, "unowned", "application/zip")
 
     assert {:ok, run} = start_run()
     completed = advance_until_terminal(run.id, run.cursor_generation)
@@ -382,8 +326,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     )
     |> Repo.insert!()
 
-    staging_key = String.replace(snapshot.object_prefix, "/ready/", "/staging/") <> "/project.json"
-    assert {:ok, _url} = Storage.upload(staging_key, "unowned", "application/json")
+    staging_key = SnapshotArchiveStorage.archive_key(String.replace(snapshot.object_prefix, "/ready/", "/staging/"))
+    assert {:ok, _url} = Storage.upload(staging_key, "unowned", "application/zip")
 
     assert {:ok, run} = start_run()
     completed = advance_until_terminal(run.id, run.cursor_generation)
@@ -493,7 +437,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
              Versioning.list_project_snapshot_reconciliation_findings(run.id)
   end
 
-  test "a v2 build job on the legacy queue is reported as an invalid owner" do
+  test "a build job on the wrong queue is reported as an invalid owner" do
     user = user_fixture()
     project = project_fixture(user)
 
@@ -515,7 +459,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
 
     snapshot.build_job_id
     |> then(&Repo.get!(Oban.Job, &1))
-    |> Ecto.Changeset.change(queue: "snapshots", state: "discarded", discarded_at: old)
+    |> Ecto.Changeset.change(queue: "default", state: "discarded", discarded_at: old)
     |> Repo.update!()
 
     assert {:ok, run} = start_run()
@@ -527,64 +471,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
              Versioning.list_project_snapshot_reconciliation_findings(run.id)
   end
 
-  test "a v1 build job on the legacy queue remains a recognized owner" do
-    user = user_fixture()
-    project = project_fixture(user)
-    {_user, _project, snapshot} = legacy_ready_snapshot!(user, project)
-    now = TimeHelpers.now()
-    old = %{DateTime.add(now, -86_400, :second) | microsecond: {0, 6}}
-    lease_token = Ecto.UUID.generate()
-
-    reservation =
-      %StorageReservation{}
-      |> StorageReservation.create_changeset(%{
-        workspace_id: project.workspace_id,
-        project_id: project.id,
-        project_snapshot_id: snapshot.id,
-        idempotency_key: "legacy-snapshot-build:#{snapshot.id}",
-        kind: "snapshot_build",
-        storage_namespace: "projects/#{project.id}/storage-reservations/v1/snapshot-build/#{lease_token}",
-        cleanup_object_prefix: snapshot.object_prefix,
-        reserved_bytes: snapshot.accounted_size_bytes,
-        lease_token: lease_token,
-        generation: 1,
-        expires_at: DateTime.add(now, -1, :second),
-        accounting_version: 1,
-        accounting_measured_at: DateTime.add(now, -2, :second)
-      })
-      |> Repo.insert!()
-
-    assert {:ok, job} =
-             %{"snapshot_id" => snapshot.id}
-             |> BuildProjectSnapshotWorker.new()
-             |> Ecto.Changeset.change(queue: "snapshots")
-             |> Oban.insert()
-
-    snapshot
-    |> Ecto.Changeset.change(storage_reservation_id: reservation.id, build_job_id: job.id)
-    |> Repo.update!()
-
-    job
-    |> Ecto.Changeset.change(state: "discarded", discarded_at: old)
-    |> Repo.update!()
-
-    assert {:ok, run} = start_run()
-    completed = advance_until_terminal(run.id, run.cursor_generation)
-
-    assert completed.status == "completed"
-
-    assert Enum.any?(Versioning.list_project_snapshot_reconciliation_findings(run.id), fn finding ->
-             finding.category == "stale_reservation" and
-               finding.storage_reservation_id_snapshot == reservation.id and
-               finding.details["reason"] == "owning_job_discarded"
-           end)
-  end
-
   test "active cleanup ownership protects an adopted staging namespace" do
     user = user_fixture()
     project = project_fixture(user)
-    prefix = SnapshotObjectStorage.staging_prefix(project.id, "ADOPTEDTEMP00001")
-    storage_key = prefix <> "/project.json"
+    prefix = SnapshotArchiveStorage.staging_prefix(project.id, "ADOPTEDTEMP00001")
+    storage_key = SnapshotArchiveStorage.archive_key(prefix)
 
     assert {:ok, _url} = Storage.upload(storage_key, "adopted", "application/json")
     assert {:ok, _request} = StorageCompensation.persist_planned_cleanup_request([storage_key])
@@ -600,8 +491,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   test "exact cleanup ownership of one key does not hide an extra key under the same prefix" do
     user = user_fixture()
     project = project_fixture(user)
-    prefix = SnapshotObjectStorage.staging_prefix(project.id, "OWNEDSUBSET00001")
-    owned_key = prefix <> "/project.json"
+    prefix = SnapshotArchiveStorage.staging_prefix(project.id, "OWNEDSUBSET00001")
+    owned_key = SnapshotArchiveStorage.archive_key(prefix)
     extra_key = prefix <> "/unexpected.bin"
 
     assert {:ok, _url} = Storage.upload(owned_key, "owned", "application/json")
@@ -626,8 +517,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   test "an object that reappears after cleanup completion remains investigation-only" do
     user = user_fixture()
     project = project_fixture(user)
-    prefix = SnapshotObjectStorage.staging_prefix(project.id, "HISTCLEANUP00001")
-    storage_key = prefix <> "/project.json"
+    prefix = SnapshotArchiveStorage.staging_prefix(project.id, "HISTCLEANUP00001")
+    storage_key = SnapshotArchiveStorage.archive_key(prefix)
 
     assert {:ok, request} = StorageCompensation.persist_planned_cleanup_request([storage_key])
     Repo.delete!(request)
@@ -647,8 +538,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   test "too many historical cleanup receipts fail the provider scan closed" do
     user = user_fixture()
     project = project_fixture(user)
-    prefix = SnapshotObjectStorage.staging_prefix(project.id, "MANYRECEIPTS0001")
-    storage_key = prefix <> "/project.json"
+    prefix = SnapshotArchiveStorage.staging_prefix(project.id, "MANYRECEIPTS0001")
+    storage_key = SnapshotArchiveStorage.archive_key(prefix)
 
     for _receipt <- 1..101 do
       assert {:ok, request} = StorageCompensation.persist_planned_cleanup_request([storage_key])
@@ -667,15 +558,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   test "an oversized cleanup receipt fails without expanding its key inventory" do
     user = user_fixture()
     project = project_fixture(user)
-    prefix = SnapshotObjectStorage.staging_prefix(project.id, "LARGERECEIPT0001")
-    storage_key = prefix <> "/project.json"
+    prefix = SnapshotArchiveStorage.staging_prefix(project.id, "LARGERECEIPT0001")
+    storage_key = SnapshotArchiveStorage.archive_key(prefix)
 
     oversized_inventory =
       [
         storage_key
         | Enum.map(1..20_004, fn index ->
-            hash = index |> Integer.to_string() |> String.pad_leading(64, "0")
-            "#{prefix}/blobs/#{hash}.bin"
+            suffix = index |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(12, "0")
+            asset_id = "00000000-0000-4000-8000-#{suffix}"
+            "projects/#{project.id}/assets/#{asset_id}/cleanup-evidence.bin"
           end)
       ]
 
@@ -754,7 +646,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
              })
 
     reservation = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
-    prefix = SnapshotObjectStorage.ready_prefix(project.id, "FAILEDCLAIM00001")
+    prefix = SnapshotArchiveStorage.ready_prefix(project.id, "FAILEDCLAIM00001")
 
     claim =
       prefix
@@ -1169,8 +1061,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
 
     :ok =
       Storyarn.SnapshotResetStorage.put_objects(%{
-        "projects/1/snapshots/object-sets/v1/ready//rogue-a" => 1,
-        "projects/1/snapshots/object-sets/v1/ready//rogue-b" => 1
+        "projects/1/snapshots/archives/v2/ready//rogue-a" => 1,
+        "projects/1/snapshots/archives/v2/ready//rogue-b" => 1
       })
 
     assert {:ok, run} = start_run(max_objects_per_step: 10, provider_page_size: 10)
@@ -1206,7 +1098,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     on_exit(fn -> Application.put_env(:storyarn, :storage, original_storage) end)
 
     unsafe_keys =
-      Enum.map(["a", "b"], &("projects/1/snapshots/object-sets/v1/ready/" <> <<0>> <> &1))
+      Enum.map(["a", "b"], &("projects/1/snapshots/archives/v2/ready/" <> <<0>> <> &1))
 
     Storyarn.SnapshotResetStorage.put_objects(Map.new(unsafe_keys, &{&1, 1}))
 
@@ -1230,8 +1122,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     on_exit(fn -> Application.put_env(:storyarn, :storage, original_storage) end)
 
     raw_keys = [
-      "projects/1/snapshots/object-sets/v1/ready//HTTPS://storage.example/object",
-      "projects/1/snapshots/object-sets/v1/ready/abcdefghijklmnop/file?token=secret"
+      "projects/1/snapshots/archives/v2/ready//HTTPS://storage.example/object",
+      "projects/1/snapshots/archives/v2/ready/abcdefghijklmnop/file?token=secret"
     ]
 
     Storyarn.SnapshotResetStorage.put_objects(Map.new(raw_keys, &{&1, 1}))
@@ -1362,7 +1254,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     assert {:ok, _intent} =
              Versioning.delete_project_snapshot(user_scope_fixture(user), project, snapshot.id)
 
-    claim_prefix = SnapshotObjectStorage.ready_prefix(project.id, "CURSORGUARD00001")
+    claim_prefix = SnapshotArchiveStorage.ready_prefix(project.id, "CURSORGUARD00001")
 
     claim_prefix
     |> SnapshotObjectPublicationClaim.create_changeset(
@@ -1801,30 +1693,18 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
                user
              )
 
-    {_user, _project, damaged_snapshot} = legacy_ready_snapshot!(user, project)
-
-    assert {:ok, %{manifest: manifest}} =
-             SnapshotObjectStorage.inspect_ready_manifest(
-               damaged_snapshot.manifest_storage_key,
-               damaged_snapshot.manifest_checksum,
-               damaged_snapshot.manifest_size_bytes
-             )
-
-    project_descriptor = Enum.find(manifest["objects"], &(&1["kind"] == "project"))
-    blob_descriptor = Enum.find(manifest["objects"], &(&1["kind"] == "asset_blob"))
-    project_key = damaged_snapshot.object_prefix <> "/" <> project_descriptor["path"]
-    blob_key = damaged_snapshot.object_prefix <> "/" <> blob_descriptor["path"]
-
-    assert :ok = Storage.delete(blob_key)
-    assert {:ok, project_json} = Storage.download(project_key)
-    <<first, rest::binary>> = project_json
+    {_user, _project, damaged_snapshot} = ready_snapshot!(user, project)
+    assert {:ok, archive} = Storage.download(damaged_snapshot.archive_storage_key)
+    <<first, rest::binary>> = archive
 
     assert {:ok, _url} =
              Storage.upload(
-               project_key,
+               damaged_snapshot.archive_storage_key,
                <<Bitwise.bxor(first, 1), rest::binary>>,
-               project_descriptor["content_type"]
+               "application/zip"
              )
+
+    assert :ok = Storage.delete(damaged_snapshot.manifest_storage_key)
 
     stale_project = project_fixture(user)
 
@@ -1934,77 +1814,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
     assert :ok = BuildProjectSnapshotWorker.perform(job)
     snapshot = Repo.get!(ProjectSnapshot, requested.id)
     assert snapshot.lifecycle_state == "ready"
-    {user, project, snapshot}
-  end
-
-  defp legacy_ready_snapshot!(user, project) do
-    project_snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
-    assets = Assets.list_assets_for_export(project.id)
-
-    assert {:ok, prepared} =
-             SnapshotObjectStorage.prepare(project.id, project_snapshot, assets, source_key_mode: :protected_blob)
-
-    token = SnapshotStorage.unique_key_suffix()
-    object_prefix = SnapshotObjectStorage.ready_prefix(project.id, token)
-    manifest = Jason.decode!(prepared.manifest_json)
-
-    assert {:ok, _url} =
-             Storage.upload(object_prefix <> "/project.json", prepared.project_json, "application/json")
-
-    Enum.each(manifest["objects"], fn
-      %{"kind" => "asset_blob", "path" => path, "sha256" => checksum} ->
-        assert :ok = Storage.copy(Map.fetch!(prepared.source_keys, checksum), object_prefix <> "/" <> path)
-
-      _non_blob ->
-        :ok
-    end)
-
-    assert {:ok, _url} =
-             Storage.upload(object_prefix <> "/manifest.json", prepared.manifest_json, "application/json")
-
-    now = TimeHelpers.now()
-
-    attrs = %{
-      project_id: project.id,
-      version_number: 1,
-      title: "Legacy reconciliation fixture",
-      created_by_id: user.id,
-      format_version: 1,
-      mode: "full",
-      object_prefix: object_prefix,
-      project_storage_key: object_prefix <> "/project.json",
-      project_size_bytes: prepared.project_size_bytes,
-      project_checksum: prepared.project_checksum,
-      manifest_storage_key: object_prefix <> "/manifest.json",
-      manifest_size_bytes: prepared.manifest_size_bytes,
-      manifest_checksum: prepared.manifest_checksum,
-      total_size_bytes: prepared.total_size_bytes,
-      object_count: prepared.object_count,
-      asset_count: prepared.asset_count,
-      blob_count: prepared.blob_count,
-      accounted_size_bytes: prepared.total_size_bytes,
-      asset_blob_size_bytes: prepared.asset_blob_size_bytes,
-      entity_counts: Map.get(project_snapshot, "entity_counts", %{}),
-      progress_phase: "complete",
-      progress_bytes: prepared.total_size_bytes,
-      progress_total_bytes: prepared.total_size_bytes,
-      verifying_started_at: now,
-      ready_at: now,
-      state_updated_at: now
-    }
-
-    snapshot =
-      %ProjectSnapshot{
-        idempotency_key: Ecto.UUID.generate(),
-        capture_boundary: Ecto.UUID.generate(),
-        capture_digest: prepared.capture_digest,
-        captured_at: now,
-        build_attempt: 1,
-        building_started_at: now
-      }
-      |> ProjectSnapshot.object_set_changeset(attrs)
-      |> Repo.insert!()
-
     {user, project, snapshot}
   end
 

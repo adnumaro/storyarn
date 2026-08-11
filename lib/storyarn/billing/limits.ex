@@ -235,7 +235,7 @@ defmodule Storyarn.Billing.Limits do
       storage: %{
         project_bytes: project_storage.accounted_bytes,
         project_asset_bytes: project_storage.current_assets.bytes + project_storage.asset_trash.bytes,
-        project_snapshot_bytes: project_storage.full_snapshots.bytes + project_storage.linked_snapshots.bytes,
+        project_snapshot_bytes: project_storage.full_snapshots.bytes,
         project_reservation_bytes: project_storage.active_reservations.bytes,
         asset_count: project_storage.current_assets.count + project_storage.asset_trash.count,
         workspace: workspace_storage

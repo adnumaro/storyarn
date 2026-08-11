@@ -33,8 +33,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   @template_namespace_pattern ~r/\A[a-z0-9][a-z0-9_-]{0,127}\z/
   @template_filename_pattern ~r/\A[\w.-]{1,255}\z/u
   @snapshot_token_pattern ~r/\A[A-Za-z0-9_-]{16}\z/
-  @snapshot_blob_filename_pattern ~r/\A[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z/
-  @storage_reservation_kinds ~w(snapshot-build linked-to-full-conversion restore-staging snapshot-export)
+  @storage_reservation_kinds ~w(snapshot-build restore-staging snapshot-export)
   @storage_reservation_lease_pattern ~r/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
   @storage_reservation_path_segment_pattern ~r/\A[A-Za-z0-9][A-Za-z0-9._-]{0,127}\z/
   @max_storage_reservation_relative_key_bytes 512
@@ -1414,7 +1413,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp committed_snapshot_storage_key?(storage_key) do
-    case snapshot_object_storage_identity(storage_key) do
+    case snapshot_archive_storage_identity(storage_key) do
       {:object, project_id, :ready, object_prefix, false} ->
         committed_snapshot_namespace?(project_id, object_prefix)
 
@@ -1429,12 +1428,10 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp committed_snapshot_query(project_id, object_prefix) do
-    format_version = snapshot_storage_format(object_prefix)
-
     ProjectSnapshot
     |> where([snapshot], snapshot.project_id == ^project_id)
     |> where([snapshot], snapshot.object_prefix == ^object_prefix)
-    |> where([snapshot], snapshot.format_version == ^format_version)
+    |> where([snapshot], snapshot.format_version == 2)
     |> where([snapshot], snapshot.lifecycle_state in ["ready", "deleting"])
     |> where([snapshot], snapshot.accounting_version == 1)
     |> where([snapshot], not is_nil(snapshot.accounted_size_bytes))
@@ -1542,7 +1539,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp valid_storage_key?(storage_key) when is_binary(storage_key) do
     String.valid?(storage_key) and
       (project_storage_key?(storage_key) or template_storage_key?(storage_key) or
-         snapshot_object_storage_key?(storage_key) or storage_reservation_key?(storage_key))
+         snapshot_archive_storage_key?(storage_key) or storage_reservation_key?(storage_key))
   end
 
   @doc false
@@ -1606,25 +1603,12 @@ defmodule Storyarn.Assets.StorageCompensation do
     end
   end
 
-  defp snapshot_object_storage_key?(storage_key) do
-    match?({:object, _project_id, _state, _object_prefix, _temporary?}, snapshot_object_storage_identity(storage_key))
+  defp snapshot_archive_storage_key?(storage_key) do
+    match?({:object, _project_id, _state, _object_prefix, _temporary?}, snapshot_archive_storage_identity(storage_key))
   end
 
-  defp snapshot_object_storage_identity(storage_key) do
+  defp snapshot_archive_storage_identity(storage_key) do
     case String.split(storage_key, "/", trim: false) do
-      ["projects", project_id, "snapshots", "object-sets", "v1", state, token | tail] ->
-        with true <- valid_project_id?(project_id),
-             {:ok, state} <- snapshot_state(state),
-             true <- String.match?(token, @snapshot_token_pattern),
-             {:ok, temporary?} <- snapshot_object_tail(tail) do
-          object_prefix =
-            Enum.join(["projects", project_id, "snapshots", "object-sets", "v1", Atom.to_string(state), token], "/")
-
-          {:object, String.to_integer(project_id), state, object_prefix, temporary?}
-        else
-          _invalid -> :error
-        end
-
       ["projects", project_id, "snapshots", "archives", "v2", state, token | tail] ->
         with true <- valid_project_id?(project_id),
              {:ok, state} <- snapshot_state(state),
@@ -1647,22 +1631,6 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp snapshot_state("ready"), do: {:ok, :ready}
   defp snapshot_state(_state), do: :error
 
-  defp snapshot_object_tail([filename]) when filename in ["manifest.json", "project.json"], do: {:ok, false}
-
-  defp snapshot_object_tail(["blobs", filename]) do
-    if String.match?(filename, @snapshot_blob_filename_pattern), do: {:ok, false}, else: :error
-  end
-
-  defp snapshot_object_tail([".storyarn-copy", suffix]) do
-    if String.match?(suffix, @conditional_copy_suffix_pattern), do: {:ok, true}, else: :error
-  end
-
-  defp snapshot_object_tail(["blobs", ".storyarn-copy", suffix]) do
-    if String.match?(suffix, @conditional_copy_suffix_pattern), do: {:ok, true}, else: :error
-  end
-
-  defp snapshot_object_tail(_tail), do: :error
-
   defp snapshot_archive_tail([filename]) when filename in ["snapshot.zip", "manifest.json"], do: {:ok, false}
 
   defp snapshot_archive_tail([".storyarn-copy", suffix]) do
@@ -1670,10 +1638,6 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp snapshot_archive_tail(_tail), do: :error
-
-  defp snapshot_storage_format(object_prefix) do
-    if String.contains?(object_prefix, "/snapshots/archives/v2/"), do: 2, else: 1
-  end
 
   defp storage_reservation_key?(storage_key) do
     case String.split(storage_key, "/", trim: false) do

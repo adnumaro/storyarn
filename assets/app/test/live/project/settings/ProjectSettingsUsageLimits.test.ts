@@ -13,7 +13,7 @@ function usageLimits(overrides = {}) {
     workspace: {
       projects: { used: 1, limit: 3 },
       members: { used: 1, limit: 2 },
-      storageBytes: { used: String(1024 * 1024), limit: String(4 * 1024 * 1024) },
+      storageBytes: { used: String(960 * 1024), limit: String(4 * 1024 * 1024) },
     },
     itemBreakdown: { sheets: 1, flows: 1, scenes: 1, flowNodes: 3 },
     storage: {
@@ -26,11 +26,10 @@ function usageLimits(overrides = {}) {
         currentAssetsBytes: String(512 * 1024),
         assetTrashBytes: String(128 * 1024),
         fullSnapshotsBytes: String(256 * 1024),
-        linkedSnapshotsBytes: String(64 * 1024),
         activeReservationsBytes: String(64 * 1024),
-        totalAccountedBytes: String(1024 * 1024),
+        totalAccountedBytes: String(960 * 1024),
         limitBytes: String(4 * 1024 * 1024),
-        remainingBytes: String(3 * 1024 * 1024),
+        remainingBytes: String(3136 * 1024),
         limitKind: "limited" as const,
       },
     },
@@ -46,17 +45,16 @@ describe("ProjectSettingsUsageLimits storage accounting", () => {
     const text = wrapper.text();
 
     expect(text).toContain("Counted storage");
-    expect(text).toContain("1 MB");
-    expect(text).toContain("25%");
+    expect(text).toContain("960 KB");
+    expect(text).toContain("23.44%");
     expect(text).toContain("Remaining capacity");
-    expect(text).toContain("3 MB");
+    expect(text).toContain("3.1 MB");
     expect(text).toContain("Active reservations");
     expect(text).toContain("Current project assets");
     expect(text).toContain("512 KB");
     expect(text).toContain("Recoverable asset trash");
     expect(text).toContain("128 KB");
     expect(text).toContain("Full snapshots");
-    expect(text).toContain("Linked snapshot payloads");
     expect(text).toContain("Provider replication");
     expect(text).not.toContain("monitored separately");
     wrapper.get('[data-testid="workspace-storage-progress"]');
@@ -241,7 +239,6 @@ describe("ProjectSettingsUsageLimits storage accounting", () => {
               ...base.storage.workspace,
               currentAssetsBytes: "1",
               fullSnapshotsBytes: "0",
-              linkedSnapshotsBytes: "0",
               activeReservationsBytes: "0",
               totalAccountedBytes: "1",
               limitBytes: "9007199254740993",

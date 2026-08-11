@@ -28,7 +28,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Versioning.ProjectSnapshotPolicy
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
 
@@ -39,7 +38,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   @terminal_job_states ~w(completed discarded cancelled)
   @releasable_waiting_job_states ~w(available scheduled retryable)
   @build_worker inspect(BuildProjectSnapshotWorker)
-  @legacy_build_queue "snapshots"
   @archive_build_queue "snapshot_archives"
   @stale_build_batch_size 50
   @progress_checkpoint_bytes 8 * 1024 * 1024
@@ -138,8 +136,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   defp materialize_capture_for_snapshot(%ProjectSnapshot{lifecycle_state: state}, _job_id)
        when state in ["ready", "failed", "cancelled", "deleting"], do: {:ok, :terminal}
-
-  defp materialize_capture_for_snapshot(%ProjectSnapshot{format_version: 1}, _job_id), do: {:ok, :already_captured}
 
   defp materialize_capture_for_snapshot(%ProjectSnapshot{format_version: 2, capture_digest: digest}, _job_id)
        when is_binary(digest), do: {:ok, :already_captured}
@@ -292,14 +288,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       _inactive -> {:error, :snapshot_build_not_active}
     end
   end
-
-  defp renew_publication_claim_lease(
-         %ProjectSnapshot{format_version: 1},
-         _reservation,
-         _claim,
-         _now,
-         _allow_expired_claim_recovery
-       ), do: :ok
 
   defp renew_publication_claim_lease(
          %ProjectSnapshot{format_version: 2},
@@ -462,8 +450,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   defp expected_build_queue_dynamic do
     dynamic(
       [snapshot, _project, _reservation, job],
-      (snapshot.format_version == 1 and job.queue == ^@legacy_build_queue) or
-        (snapshot.format_version == 2 and job.queue == ^@archive_build_queue)
+      snapshot.format_version == 2 and job.queue == ^@archive_build_queue
     )
   end
 
@@ -490,8 +477,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     dynamic(
       [snapshot, _project, _reservation, job],
       job.worker == ^@build_worker and
-        ((snapshot.format_version == 1 and job.queue == ^@legacy_build_queue) or
-           (snapshot.format_version == 2 and job.queue == ^@archive_build_queue)) and
+        snapshot.format_version == 2 and job.queue == ^@archive_build_queue and
         job.state in ^(@terminal_job_states ++ @releasable_waiting_job_states)
     )
   end
@@ -500,8 +486,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     dynamic(
       [snapshot, _project, _reservation, job],
       job.worker == ^@build_worker and
-        ((snapshot.format_version == 1 and job.queue == ^@legacy_build_queue) or
-           (snapshot.format_version == 2 and job.queue == ^@archive_build_queue)) and
+        snapshot.format_version == 2 and job.queue == ^@archive_build_queue and
         job.state == "executing" and job.attempted_at <= ^stale_before and
         snapshot.state_updated_at <= ^stale_before
     )
@@ -892,14 +877,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   def subscribe(_project_id), do: {:error, :invalid_project_id}
 
   defp run_request_transaction(project, user_id, request) do
-    if archive_writes_enabled?() do
-      run_enabled_request_transaction(project, user_id, request)
-    else
-      return_existing_request_while_fenced(project, request)
-    end
-  end
-
-  defp run_enabled_request_transaction(project, user_id, request) do
     result =
       Billing.transact_with_workspace_lock(
         project.workspace_id,
@@ -918,17 +895,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     exception ->
       Logger.error("Project snapshot request failed safely: #{Exception.message(exception)}")
       {:error, :snapshot_capture_failed}
-  end
-
-  defp return_existing_request_while_fenced(project, request) do
-    case snapshot_by_idempotency(project.id, request.idempotency_key) do
-      %ProjectSnapshot{} = snapshot ->
-        broadcast(snapshot)
-        {:ok, snapshot}
-
-      nil ->
-        {:error, :snapshot_archive_rollout_not_enabled}
-    end
   end
 
   defp request_locked(project, user_id, request) do
@@ -954,12 +920,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       {:error, reason} -> Repo.rollback(reason)
       {:error, reason, details} -> Repo.rollback({reason, details})
     end
-  end
-
-  defp archive_writes_enabled? do
-    configured = Application.get_env(:storyarn, __MODULE__, [])
-
-    is_list(configured) and Keyword.get(configured, :archive_writes_enabled, false) == true
   end
 
   defp insert_queued_snapshot(project, user_id, request) do
@@ -1212,10 +1172,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp execute_build(%{snapshot: %ProjectSnapshot{format_version: format_version}} = build, attempt, max_attempts)
-       when format_version in [1, 2] do
-    storage_module = if format_version == 1, do: SnapshotObjectStorage, else: SnapshotArchiveStorage
-    execute_build_with_storage(build, storage_module, attempt, max_attempts)
+  defp execute_build(%{snapshot: %ProjectSnapshot{format_version: 2}} = build, attempt, max_attempts) do
+    execute_build_with_storage(build, SnapshotArchiveStorage, attempt, max_attempts)
   end
 
   defp execute_build(build, attempt, max_attempts) do
@@ -1555,8 +1513,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp finalize_snapshot_capture(%ProjectSnapshot{format_version: 1}), do: :ok
-
   defp finalize_snapshot_capture(%ProjectSnapshot{format_version: 2, id: snapshot_id}) do
     case Repo.delete_all(
            from(capture in ProjectSnapshotCapture,
@@ -1849,25 +1805,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp retry_target(%ProjectSnapshot{format_version: 1, project_id: project_id}, token) do
-    object_prefix = SnapshotObjectStorage.ready_prefix(project_id, token)
-
-    {:ok,
-     %{
-       object_prefix: object_prefix,
-       project_storage_key: object_prefix <> "/project.json",
-       archive_storage_key: nil,
-       manifest_storage_key: object_prefix <> "/manifest.json"
-     }}
-  end
-
   defp retry_target(%ProjectSnapshot{format_version: 2, project_id: project_id}, token) do
     object_prefix = SnapshotArchiveStorage.ready_prefix(project_id, token)
 
     {:ok,
      %{
        object_prefix: object_prefix,
-       project_storage_key: nil,
        archive_storage_key: SnapshotArchiveStorage.archive_key(object_prefix),
        manifest_storage_key: SnapshotArchiveStorage.manifest_key(object_prefix)
      }}
@@ -2339,7 +2282,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   defp validate_executing_build_job(_snapshot), do: {:error, :snapshot_build_job_not_executing}
 
-  defp expected_build_queue?(%ProjectSnapshot{format_version: 1}, @legacy_build_queue), do: true
   defp expected_build_queue?(%ProjectSnapshot{format_version: 2}, @archive_build_queue), do: true
   defp expected_build_queue?(%ProjectSnapshot{}, _queue), do: false
 
@@ -2387,8 +2329,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   catch
     kind, reason -> {:error, {:snapshot_terminal_state_caught, kind, reason}}
   end
-
-  defp delete_terminal_capture(%ProjectSnapshot{format_version: 1}), do: :ok
 
   defp delete_terminal_capture(%ProjectSnapshot{format_version: 2, id: snapshot_id}) do
     case Repo.delete_all(
@@ -2464,11 +2404,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     )
   end
 
-  defp object_token(%ProjectSnapshot{format_version: 1, project_id: project_id, object_prefix: object_prefix}) do
-    if SnapshotObjectStorage.ready_prefix_for_project?(project_id, object_prefix),
-      do: List.last(String.split(object_prefix, "/"))
-  end
-
   defp object_token(%ProjectSnapshot{format_version: 2, project_id: project_id, object_prefix: object_prefix}) do
     if SnapshotArchiveStorage.ready_prefix_for_project?(project_id, object_prefix),
       do: List.last(String.split(object_prefix, "/"))
@@ -2478,24 +2413,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   defp build_cleanup_scope(%ProjectSnapshot{format_version: 2} = snapshot),
     do: SnapshotArchiveStorage.cleanup_scope_from_snapshot(snapshot)
-
-  defp build_cleanup_scope(%ProjectSnapshot{format_version: 1} = snapshot) do
-    with %ProjectSnapshotCapture{
-           capture_boundary: capture_boundary,
-           capture_digest: capture_digest,
-           manifest_json: manifest_json
-         } <- Repo.get(ProjectSnapshotCapture, snapshot.id),
-         true <- capture_boundary == snapshot.capture_boundary,
-         true <- capture_digest == snapshot.capture_digest do
-      SnapshotObjectStorage.cleanup_scope_from_capture(
-        snapshot.project_id,
-        snapshot.object_prefix,
-        manifest_json
-      )
-    else
-      _invalid -> {:error, :snapshot_capture_identity_mismatch}
-    end
-  end
 
   defp build_cleanup_scope(_snapshot), do: {:error, :invalid_snapshot_cleanup_scope}
 

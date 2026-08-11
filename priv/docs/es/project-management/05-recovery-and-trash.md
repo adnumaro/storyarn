@@ -22,7 +22,7 @@ La creación de la captura continúa en segundo plano. Storyarn genera un único
 
 Cada captura muestra su número de versión, título, creador cuando está disponible, fecha, tamaño almacenado y recuentos de entidades. Las acciones disponibles son:
 
-- **Descargar** una captura completa, lista y verificada como archivo ZIP privado. Storyarn comprueba tus permisos en cada solicitud y el navegador descarga después el archivo persistido directamente desde el almacenamiento privado. Las capturas enlazadas y las capturas antiguas que no se hayan preparado como archivo no se pueden descargar.
+- **Descargar** una captura lista y verificada como archivo ZIP privado. Storyarn comprueba tus permisos en cada solicitud y el navegador descarga después el archivo persistido directamente desde el almacenamiento privado.
 - **Eliminar** permanentemente la captura.
 
 La restauración de capturas de proyecto no está disponible actualmente en la interfaz. Conserva los archivos descargados como copias de seguridad del proyecto; las versiones de entidad y la Papelera ofrecen las rutas de restauración dentro del producto que se describen a continuación.

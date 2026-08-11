@@ -18,9 +18,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
   alias Storyarn.Versioning.ProjectSnapshotReconciliationFinding
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRepair
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRepairAction
+  alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.CleanupProjectSnapshotWorker
   alias Storyarn.Workers.RepairProjectSnapshotFindingWorker
@@ -377,8 +377,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
   test "ambiguous storage remains untouched and is recorded for manual review" do
     user = user_fixture()
     project = project_fixture(user)
-    prefix = SnapshotObjectStorage.staging_prefix(project.id, "UNOWNEDTEMP00001")
-    storage_key = prefix <> "/project.json"
+    prefix = SnapshotArchiveStorage.staging_prefix(project.id, "UNOWNEDTEMP00001")
+    storage_key = SnapshotArchiveStorage.archive_key(prefix)
 
     assert {:ok, _url} = Storage.upload(storage_key, "ambiguous", "application/json")
     run = completed_run!()
@@ -404,7 +404,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
   test "an abandoned temporary object remains untouched for manual review" do
     {_user, _project, snapshot} = ready_snapshot!()
     staging_prefix = String.replace(snapshot.object_prefix, "/ready/", "/staging/")
-    storage_key = staging_prefix <> "/project.json"
+    storage_key = SnapshotArchiveStorage.archive_key(staging_prefix)
 
     assert {:ok, _url} = Storage.upload(storage_key, "orphan", "application/json")
     run = completed_run!()
@@ -552,7 +552,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
              })
 
     reservation = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
-    prefix = SnapshotObjectStorage.ready_prefix(project.id, "FAILEDCLAIM00001")
+    prefix = SnapshotArchiveStorage.ready_prefix(project.id, "FAILEDCLAIM00001")
 
     claim =
       prefix
@@ -725,7 +725,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
     namespace_owner
     |> Ecto.Changeset.change(
       object_prefix: intent.ready_prefix,
-      project_storage_key: nil,
       archive_storage_key: "#{intent.ready_prefix}/snapshot.zip",
       manifest_storage_key: "#{intent.ready_prefix}/manifest.json"
     )
@@ -985,7 +984,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
       :lifecycle_state,
       :lifecycle_generation,
       :accounting_generation,
-      :project_storage_key,
       :archive_storage_key,
       :archive_size_bytes,
       :archive_checksum,
@@ -996,11 +994,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairTest do
     ])
   end
 
-  defp snapshot_payload_key(%ProjectSnapshot{format_version: 1, project_storage_key: key}), do: key
-  defp snapshot_payload_key(%ProjectSnapshot{format_version: 2, archive_storage_key: key}), do: key
+  defp snapshot_payload_key(%ProjectSnapshot{archive_storage_key: key}), do: key
 
-  defp snapshot_payload_content_type(%ProjectSnapshot{format_version: 1}), do: "application/json"
-  defp snapshot_payload_content_type(%ProjectSnapshot{format_version: 2}), do: "application/zip"
+  defp snapshot_payload_content_type(%ProjectSnapshot{}), do: "application/zip"
 
   defp assert_snapshot_integrity(snapshot_id, integrity_state, identity) do
     snapshot = Repo.get!(ProjectSnapshot, snapshot_id)

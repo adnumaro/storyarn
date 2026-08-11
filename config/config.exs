@@ -118,12 +118,8 @@ config :storyarn, Oban,
     # rescue, and so an expiry backlog cannot starve execution.
     ai: 2,
     ai_maintenance: 1,
-    # Legacy v1 snapshot builds remain on `:snapshots` so a rolling deployment
-    # can drain jobs created by the previous release. New canonical archive
-    # builds use a versioned queue that previous nodes do not poll. Each queue
-    # stays serialized because one job may stream many large objects and owns
-    # durable retry state.
-    snapshots: 1,
+    # Snapshot builds stay serialized because one job may stream many large
+    # objects and owns durable retry state.
     snapshot_archives: 1,
     snapshots_maintenance: 1,
     storage_cleanup: 1
@@ -210,10 +206,6 @@ config :storyarn, Storyarn.Vault,
       tag: "AES.GCM.V1", key: Base.decode64!("dGhpc2lzYWRldmVsb3BtZW50a2V5b25seTMyYnl0ZXM="), iv_length: 12
     }
   ]
-
-# Canonical archive creation is a rolling-deploy write fence. Production keeps
-# it closed until every node runs the archive-aware maintenance protocol.
-config :storyarn, Storyarn.Versioning.ProjectSnapshotBuild, archive_writes_enabled: false
 
 config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
   download_signed_url_ttl_seconds: 5 * 60,

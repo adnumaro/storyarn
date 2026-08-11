@@ -11,6 +11,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
+  alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.CleanupProjectSnapshotWorker
@@ -72,7 +73,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
     wrong_queue =
       executing_job!(ProjectSnapshotRetentionWorker, %{cursor: 2},
         attempted_at: stale_at,
-        queue: "snapshots"
+        queue: "default"
       )
 
     foreign =
@@ -83,31 +84,6 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
     assert Repo.get!(Oban.Job, recent.id).state == "executing"
     assert Repo.get!(Oban.Job, wrong_queue.id).state == "executing"
     assert Repo.get!(Oban.Job, foreign.id).state == "executing"
-  end
-
-  test "a large cleanup continues immediately through another available job" do
-    intent = cleanup_intent_fixture(499)
-
-    assert :ok =
-             CleanupProjectSnapshotWorker.perform(%Oban.Job{
-               args: %{"intent_id" => intent.id},
-               attempt: 1,
-               max_attempts: 10
-             })
-
-    assert %SnapshotCleanupIntent{status: "retrying", remaining_storage_keys: remaining} =
-             Repo.get!(SnapshotCleanupIntent, intent.id)
-
-    assert length(remaining) == 2
-
-    assert [%Oban.Job{state: "available"} = continuation] =
-             all_enqueued(
-               worker: CleanupProjectSnapshotWorker,
-               args: %{intent_id: intent.id, continuation: 1}
-             )
-
-    assert :ok = CleanupProjectSnapshotWorker.perform(%{continuation | attempt: 1})
-    assert Repo.get!(SnapshotCleanupIntent, intent.id).status == "completed"
   end
 
   test "reconciler restores a nonterminal intent whose cleanup job is dead" do
@@ -299,43 +275,6 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
     assert remaining == intent.storage_keys
   end
 
-  test "operator replay keeps a unique chain identity across every cleanup batch" do
-    intent = cleanup_intent_fixture(499)
-
-    assert {:ok, :terminal} =
-             Versioning.process_project_snapshot_cleanup_intent(intent.id,
-               delete_fun: fn keys -> {:error, keys} end,
-               final_attempt?: true
-             )
-
-    %{intent_id: intent.id, continuation: 1}
-    |> CleanupProjectSnapshotWorker.new()
-    |> Ecto.Changeset.put_change(:state, "executing")
-    |> Repo.insert!()
-
-    assert {:ok, %SnapshotCleanupIntent{status: "retrying"}} =
-             Versioning.replay_terminal_project_snapshot_cleanup(intent.id)
-
-    replay_job =
-      CleanupProjectSnapshotWorker
-      |> then(&all_enqueued(worker: &1))
-      |> Enum.find(&is_binary(&1.args["replay_token"]))
-
-    assert %Oban.Job{conflict?: false} = replay_job
-    replay_token = replay_job.args["replay_token"]
-
-    assert :ok = CleanupProjectSnapshotWorker.perform(%{replay_job | attempt: 1, max_attempts: 10})
-
-    continuation =
-      CleanupProjectSnapshotWorker
-      |> then(&all_enqueued(worker: &1))
-      |> Enum.find(fn job ->
-        job.args["replay_token"] == replay_token and job.args["continuation"] == 1
-      end)
-
-    assert %Oban.Job{conflict?: false} = continuation
-  end
-
   test "terminal cleanup logs an actionable operator replay command and preserves failures" do
     intent = cleanup_intent_fixture(0)
 
@@ -359,8 +298,11 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
     assert log =~ "Snapshot cleanup exhausted retries intent_id=#{intent.id}"
     assert log =~ "Versioning.replay_terminal_project_snapshot_cleanup(#{intent.id})"
 
-    assert %SnapshotCleanupIntent{status: "terminal", remaining_storage_keys: [^failed_key]} =
+    assert %SnapshotCleanupIntent{status: "terminal", remaining_storage_keys: remaining} =
              Repo.get!(SnapshotCleanupIntent, intent.id)
+
+    assert failed_key in remaining
+    assert remaining == intent.storage_keys
   end
 
   test "cleanup cannot report progress while a snapshot row still owns its namespace" do
@@ -417,11 +359,13 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
     assert %SnapshotCleanupIntent{status: "retrying", processing_generation: 2} =
              Repo.get!(SnapshotCleanupIntent, intent.id)
 
-    assert {:ok, :completed} =
+    assert {:ok, {:deferred, seconds}} =
              Versioning.process_project_snapshot_cleanup_intent(intent.id,
                delete_fun: fn _keys -> :ok end,
                verify_fun: fn _intent -> :ok end
              )
+
+    assert seconds > 0
   end
 
   test "cleanup fails closed when its durable ownership receipt is changed" do
@@ -579,7 +523,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
                  end
   end
 
-  defp cleanup_intent_fixture(blob_count, opts \\ []) do
+  defp cleanup_intent_fixture(_blob_count, opts \\ []) do
     user = user_fixture()
     project = project_fixture(user)
 
@@ -599,22 +543,12 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
         }
       else
         {
-          "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}",
-          "projects/#{project.id}/snapshots/object-sets/v1/staging/#{token}"
+          SnapshotArchiveStorage.ready_prefix(project.id, token),
+          SnapshotArchiveStorage.staging_prefix(project.id, token)
         }
       end
 
-    blob_paths =
-      if blob_count > 0 do
-        Enum.map(1..blob_count, fn index ->
-          digest = :sha256 |> :crypto.hash("cleanup-blob-#{index}") |> Base.encode16(case: :lower)
-          "blobs/#{digest}.bin"
-        end)
-      else
-        []
-      end
-
-    paths = if archive?, do: ["manifest.json", "snapshot.zip"], else: ["manifest.json", "project.json" | blob_paths]
+    paths = ["manifest.json", "snapshot.zip"]
 
     storage_keys =
       Enum.map(paths, &"#{ready_prefix}/#{&1}") ++

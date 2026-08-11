@@ -68,7 +68,7 @@ defmodule Storyarn.Assets.Storage.R2Test do
 
   describe "list_prefix/2" do
     test "uses a bounded provider page and returns its continuation token" do
-      prefix = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/"
+      prefix = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/"
 
       Req.Test.expect(__MODULE__, fn conn ->
         conn = Plug.Conn.fetch_query_params(conn)
@@ -138,7 +138,7 @@ defmodule Storyarn.Assets.Storage.R2Test do
           """
           <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
             <IsTruncated>false</IsTruncated>
-            <Contents><Key>projects/1/snapshots/object-sets/v1/ready//rogue</Key><ETag>"rogue"</ETag><Size>1</Size></Contents>
+            <Contents><Key>projects/1/snapshots/archives/v2/ready//rogue</Key><ETag>"rogue"</ETag><Size>1</Size></Contents>
           </ListBucketResult>
           """
         )
@@ -186,8 +186,8 @@ defmodule Storyarn.Assets.Storage.R2Test do
   describe "list_prefix_metadata/2" do
     test "returns non-canonical in-prefix keys without requiring object identities" do
       prefix = "projects/"
-      key = "projects/1/snapshots/object-sets/v1/ready//rogue"
-      encoded_key = "projects%2F1%2Fsnapshots%2Fobject-sets%2Fv1%2Fready%2F%2Frogue"
+      key = "projects/1/snapshots/archives/v2/ready//rogue"
+      encoded_key = "projects%2F1%2Fsnapshots%2Farchives%2Fv2%2Fready%2F%2Frogue"
 
       Req.Test.expect(__MODULE__, fn conn ->
         conn = Plug.Conn.fetch_query_params(conn)
@@ -285,7 +285,7 @@ defmodule Storyarn.Assets.Storage.R2Test do
           """
           <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
             <IsTruncated>false</IsTruncated>
-            <Contents><Key>projects/2/snapshots/object-sets/v1/ready//rogue</Key><Size>1</Size></Contents>
+            <Contents><Key>projects/2/snapshots/archives/v2/ready//rogue</Key><Size>1</Size></Contents>
           </ListBucketResult>
           """
         )
@@ -297,7 +297,7 @@ defmodule Storyarn.Assets.Storage.R2Test do
 
   describe "delete_if_matches/2" do
     test "deletes atomically only when the ETag still matches" do
-      key = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/manifest.json"
+      key = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/manifest.json"
 
       Req.Test.expect(__MODULE__, fn conn ->
         assert_signed_header_request(conn)
@@ -311,7 +311,7 @@ defmodule Storyarn.Assets.Storage.R2Test do
     end
 
     test "preserves an object whose ETag changed" do
-      key = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/manifest.json"
+      key = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/manifest.json"
 
       Req.Test.expect(__MODULE__, fn conn ->
         assert_signed_header(conn, "if-match")
@@ -324,7 +324,7 @@ defmodule Storyarn.Assets.Storage.R2Test do
     end
 
     test "treats an already absent object as deleted" do
-      key = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/manifest.json"
+      key = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/manifest.json"
 
       Req.Test.expect(__MODULE__, fn conn ->
         assert_signed_header(conn, "if-match")
@@ -442,7 +442,7 @@ defmodule Storyarn.Assets.Storage.R2Test do
     end
 
     test "aborts an initialized multipart upload when a part fails" do
-      key = "projects/1/snapshots/object-sets/v1/staging/AbCdEfGhIjKlMnOp/blobs/hash.png"
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
 
       Req.Test.expect(__MODULE__, 3, fn conn ->
         conn = Plug.Conn.fetch_query_params(conn)

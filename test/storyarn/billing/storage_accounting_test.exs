@@ -17,6 +17,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker
@@ -31,7 +32,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   end
 
   describe "authoritative usage projection" do
-    test "sums mutually exclusive logical assets, snapshot modes, and active reservations", context do
+    test "sums mutually exclusive logical assets, snapshots, and active reservations", context do
       asset_fixture(context.project, context.user, %{size: 2_000})
 
       context.project
@@ -42,8 +43,6 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       full_snapshot =
         insert_full_snapshot!(context.project, 1, %{project: 100, metadata: 20, assets: 50})
 
-      insert_linked_snapshot!(context.project, 2, %{project: 80, metadata: 20})
-
       assert {:ok, reservation} =
                reserve(context, "restore", "restore_staging", 30, full_snapshot)
 
@@ -52,15 +51,14 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       assert usage.current_assets == %{bytes: 2_000, count: 1}
       assert usage.asset_trash == %{bytes: 500, count: 1}
       assert usage.full_snapshots == %{bytes: 170, count: 1}
-      assert usage.linked_snapshots == %{bytes: 100, count: 1}
       assert usage.active_reservations.bytes == 30
       assert usage.active_reservations.by_kind == %{"restore_staging" => 30}
-      assert usage.accounted_bytes == 2_800
+      assert usage.accounted_bytes == 2_700
 
       project_usage = Billing.project_storage_usage(context.project.id)
       assert project_usage.current_assets == %{bytes: 2_000, count: 1}
       assert project_usage.asset_trash == %{bytes: 500, count: 1}
-      assert project_usage.accounted_bytes == 2_800
+      assert project_usage.accounted_bytes == 2_700
 
       assert {:ok, _released} =
                Billing.release_storage_reservation(reservation.id, reservation.lease_token, reservation.generation, %{
@@ -69,7 +67,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
                  cleanup_proof: no_write_proof(reservation)
                })
 
-      assert Billing.workspace_storage_usage(context.workspace.id).accounted_bytes == 2_770
+      assert Billing.workspace_storage_usage(context.workspace.id).accounted_bytes == 2_670
     end
 
     test "charges one unique blob within a full snapshot and charges separate snapshots independently", context do
@@ -333,7 +331,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
                )
     end
 
-    test "allows only one active build or conversion reservation per snapshot", context do
+    test "allows only one active build reservation per snapshot", context do
       pending_snapshot = insert_pending_snapshot!(context.project, 1)
 
       assert {:ok, build} =
@@ -363,29 +361,6 @@ defmodule Storyarn.Billing.StorageAccountingTest do
                reserve(context, "competing-build", "snapshot_build", 100, retry_target)
 
       assert retried_build.id != build.id
-
-      linked_snapshot =
-        insert_linked_snapshot!(context.project, 3, %{project: 80, metadata: 20})
-
-      assert {:ok, conversion} =
-               reserve(
-                 context,
-                 "exclusive-conversion",
-                 "linked_to_full_conversion",
-                 50,
-                 linked_snapshot
-               )
-
-      assert {:error, :storage_reservation_active_for_snapshot} =
-               reserve(
-                 context,
-                 "competing-conversion",
-                 "linked_to_full_conversion",
-                 50,
-                 linked_snapshot
-               )
-
-      assert conversion.status == "active"
     end
 
     test "rejects cross-workspace attribution before holding capacity", context do
@@ -558,55 +533,6 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       assert persisted.lifecycle_generation == advanced.lifecycle_generation
       assert persisted.lifecycle_state == "verifying"
       assert is_nil(persisted.accounted_size_bytes)
-    end
-
-    test "a linked-to-full conversion reserves and commits only its added blob bytes", context do
-      linked_snapshot =
-        insert_linked_snapshot!(context.project, 1, %{project: 80, metadata: 20})
-
-      assert {:ok, reservation} =
-               reserve(
-                 context,
-                 "linked-conversion",
-                 "linked_to_full_conversion",
-                 50,
-                 linked_snapshot
-               )
-
-      mark_reservation_started!(reservation)
-
-      usage_while_active = Billing.workspace_storage_usage(context.workspace.id)
-      assert usage_while_active.linked_snapshots == %{bytes: 100, count: 1}
-      assert usage_while_active.active_reservations.bytes == 50
-      assert usage_while_active.accounted_bytes == 150
-
-      assert {:ok, %{result: converted, reservation: committed}} =
-               Billing.commit_storage_reservation(
-                 reservation.id,
-                 reservation.lease_token,
-                 reservation.generation,
-                 50,
-                 fn locked_reservation ->
-                   {:ok,
-                    convert_linked_to_full!(
-                      linked_snapshot,
-                      50,
-                      locked_reservation.cleanup_object_prefix
-                    )}
-                 end
-               )
-
-      assert converted.id == linked_snapshot.id
-      assert converted.mode == "full"
-      assert converted.accounted_size_bytes == 150
-      assert converted.asset_blob_size_bytes == 50
-      assert committed.actual_bytes == 50
-
-      usage = Billing.workspace_storage_usage(context.workspace.id)
-      assert usage.active_reservations.bytes == 0
-      assert usage.linked_snapshots == %{bytes: 0, count: 0}
-      assert usage.full_snapshots == %{bytes: 150, count: 1}
-      assert usage.accounted_bytes == 150
     end
 
     test "same-size renewal is idempotent without letting stale workers cross the generation fence", context do
@@ -794,7 +720,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
                Billing.can_upload_asset?(context.workspace, 41)
     end
 
-    test "owned cleanup accepts only canonical keys in the build's exact object-set namespaces", context do
+    test "owned cleanup accepts only canonical keys in the build's exact archive namespaces", context do
       snapshot = insert_pending_snapshot!(context.project, 1)
 
       assert {:ok, reservation} =
@@ -828,7 +754,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       unrelated_request =
         Repo.insert!(%StorageCleanupRequest{
           storage_keys: [
-            "projects/#{context.project.id}/snapshots/object-sets/v1/ready/AAAAAAAAAAAAAAAA/project.json"
+            "projects/#{context.project.id}/snapshots/archives/v2/ready/AAAAAAAAAAAAAAAA/snapshot.zip"
           ]
         })
 
@@ -845,11 +771,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
                )
 
       {cleanup_request, cleanup_scope} =
-        insert_cleanup_scope!(reservation, [
-          "project.json",
-          "manifest.json",
-          "blobs/#{@checksum}.bin"
-        ])
+        insert_cleanup_scope!(reservation, ["snapshot.zip", "manifest.json"])
 
       assert {:ok, released} =
                Billing.release_storage_reservation(
@@ -1222,21 +1144,15 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       assert DateTime.diff(reservation.expires_at, reservation.accounting_measured_at, :second) == 24 * 60 * 60
     end
 
-    test "preserves linked conversion zero-byte accounting but rejects zero for storage writers", context do
+    test "rejects zero-byte storage writers", context do
       pending = insert_pending_snapshot!(context.project, 1)
       full = insert_full_snapshot!(context.project, 2, %{project: 10, metadata: 10, assets: 10})
-      linked = insert_linked_snapshot!(context.project, 3, %{project: 10, metadata: 10})
 
       assert {:error, :invalid_storage_reservation_snapshot} =
                reserve(context, "zero-build", "snapshot_build", 0, pending)
 
       assert {:error, :invalid_storage_reservation_snapshot} =
                reserve(context, "zero-restore", "restore_staging", 0, full)
-
-      assert {:ok, conversion} =
-               reserve(context, "zero-conversion", "linked_to_full_conversion", 0, linked)
-
-      assert conversion.reserved_bytes == 0
     end
 
     test "database rejects storage-start evidence on a zero-byte export lease", context do
@@ -1350,12 +1266,14 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       assert Repo.get!(StorageReservation, live.id).status == "active"
       assert Repo.get!(StorageReservation, positive.id).status == "active"
 
-      assert {:error, :snapshot_capture_missing} =
+      assert {:ok, %SnapshotCleanupIntent{project_snapshot_id: snapshot_id}} =
                Versioning.delete_project_snapshot(
                  user_scope_fixture(context.user),
                  context.project,
                  expired_snapshot.id
                )
+
+      assert snapshot_id == expired_snapshot.id
     end
 
     test "retention recovery drains more than one export lease batch with a stable keyset continuation", context do
@@ -1568,7 +1486,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
     Billing.reserve_storage(reservation_attrs(context, key, kind, bytes, snapshot))
   end
 
-  defp insert_cleanup_scope!(reservation, relative_paths \\ ["project.json", "manifest.json"]) do
+  defp insert_cleanup_scope!(reservation, relative_paths \\ ["snapshot.zip", "manifest.json"]) do
     assert {:ok, prefixes} = StorageAccounting.operation_object_prefixes(reservation)
     mark_reservation_started!(reservation, relative_paths)
 
@@ -1584,7 +1502,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
     {cleanup_request, cleanup_scope}
   end
 
-  defp mark_reservation_started!(reservation, relative_paths \\ ["project.json", "manifest.json"]) do
+  defp mark_reservation_started!(reservation, relative_paths \\ ["snapshot.zip", "manifest.json"]) do
     assert {:ok, prefixes} = StorageAccounting.operation_object_prefixes(reservation)
     {storage_keys, cleanup_plan} = cleanup_inventory(prefixes, relative_paths)
     cleanup_plan = Map.put(cleanup_plan, :storage_keys, storage_keys)
@@ -1606,17 +1524,6 @@ defmodule Storyarn.Billing.StorageAccountingTest do
     {storage_keys,
      %{
        staging_prefix: staging,
-       ready_prefix: ready,
-       storage_keys: storage_keys
-     }}
-  end
-
-  defp cleanup_inventory(%{temporary: temporary, ready: ready}, relative_paths) do
-    storage_keys = for prefix <- [temporary, ready], path <- relative_paths, do: prefix <> "/" <> path
-
-    {storage_keys,
-     %{
-       temporary_prefix: temporary,
        ready_prefix: ready,
        storage_keys: storage_keys
      }}
@@ -1671,7 +1578,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   end
 
   defp reservation_attrs(context, key, kind, bytes, snapshot) do
-    attrs = %{
+    %{
       workspace_id: context.workspace.id,
       project_id: context.project.id,
       project_snapshot_id: snapshot.id,
@@ -1679,13 +1586,6 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       kind: kind,
       reserved_bytes: bytes
     }
-
-    if kind == "linked_to_full_conversion" do
-      token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
-      Map.put(attrs, :ready_object_prefix, "projects/#{context.project.id}/snapshots/object-sets/v1/ready/#{token}")
-    else
-      attrs
-    end
   end
 
   defp insert_asset_row!(context, size) do
@@ -1703,14 +1603,16 @@ defmodule Storyarn.Billing.StorageAccountingTest do
 
   defp insert_pending_snapshot!(project, version, sizes \\ %{project: 100, metadata: 50, assets: 0}) do
     blob_count = if sizes.assets > 0, do: 1, else: 0
-    total = sizes.project + sizes.metadata + sizes.assets
+    archive_size = sizes.project + sizes.assets
+    total = archive_size + sizes.metadata
 
     pending_project_snapshot_fixture(project, %{
       version_number: version,
+      archive_size_bytes: archive_size,
       project_size_bytes: sizes.project,
       manifest_size_bytes: sizes.metadata,
       total_size_bytes: total,
-      object_count: blob_count + 2,
+      object_count: 2,
       asset_count: blob_count,
       blob_count: blob_count,
       progress_total_bytes: total
@@ -1751,17 +1653,21 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   end
 
   defp full_snapshot_object_set_attrs(snapshot, sizes) do
-    total = sizes.project + sizes.metadata + sizes.assets
+    archive_size = sizes.project + sizes.assets
+    total = archive_size + sizes.metadata
     now = TimeHelpers.now()
 
     %{
       expected_lifecycle_generation: snapshot.lifecycle_generation,
       project_id: snapshot.project_id,
       version_number: snapshot.version_number,
-      project_storage_key: snapshot.object_prefix <> "/project.json",
+      archive_storage_key: snapshot.object_prefix <> "/snapshot.zip",
+      archive_size_bytes: archive_size,
+      archive_checksum: String.duplicate("d", 64),
+      capture_digest: snapshot.capture_digest,
       project_size_bytes: sizes.project,
       project_checksum: @checksum,
-      format_version: 1,
+      format_version: 2,
       object_prefix: snapshot.object_prefix,
       manifest_storage_key: snapshot.object_prefix <> "/manifest.json",
       manifest_size_bytes: sizes.metadata,
@@ -1770,7 +1676,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       accounted_size_bytes: total,
       asset_blob_size_bytes: sizes.assets,
       accounting_version: 1,
-      object_count: 3,
+      object_count: 2,
       asset_count: 1,
       blob_count: 1,
       mode: "full",
@@ -1786,89 +1692,15 @@ defmodule Storyarn.Billing.StorageAccountingTest do
     }
   end
 
-  defp convert_linked_to_full!(snapshot, added_asset_bytes, prefix) do
-    total = snapshot.accounted_size_bytes + added_asset_bytes
-
-    {:ok, converted} =
-      Versioning.convert_linked_project_snapshot_object_set(
-        snapshot.id,
-        snapshot.accounting_generation,
-        %{
-          project_id: snapshot.project_id,
-          version_number: snapshot.version_number,
-          project_storage_key: prefix <> "/project.json",
-          project_size_bytes: snapshot.project_size_bytes,
-          project_checksum: snapshot.project_checksum,
-          format_version: 1,
-          object_prefix: prefix,
-          manifest_storage_key: prefix <> "/manifest.json",
-          manifest_size_bytes: snapshot.manifest_size_bytes,
-          manifest_checksum: snapshot.manifest_checksum,
-          total_size_bytes: total,
-          object_count: 3,
-          asset_count: snapshot.asset_count,
-          blob_count: 1,
-          mode: "full"
-        }
-      )
-
-    converted
-  end
-
   defp insert_full_snapshot!(project, version, sizes, asset_count \\ 1, blob_count \\ 1) do
     full_project_snapshot_fixture(project, %{
       version_number: version,
+      archive_size_bytes: sizes.project + sizes.assets,
       project_size_bytes: sizes.project,
       manifest_size_bytes: sizes.metadata,
       asset_blob_size_bytes: sizes.assets,
       asset_count: asset_count,
       blob_count: blob_count
     })
-  end
-
-  defp insert_linked_snapshot!(project, version, sizes) do
-    total = sizes.project + sizes.metadata
-    token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
-    prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
-    now = TimeHelpers.now()
-
-    %ProjectSnapshot{}
-    |> Ecto.Changeset.change(%{
-      project_id: project.id,
-      version_number: version,
-      project_storage_key: prefix <> "/project.json",
-      project_size_bytes: sizes.project,
-      project_checksum: @checksum,
-      format_version: 1,
-      object_prefix: prefix,
-      manifest_storage_key: prefix <> "/manifest.json",
-      manifest_size_bytes: sizes.metadata,
-      manifest_checksum: String.duplicate("c", 64),
-      total_size_bytes: total,
-      object_count: 2,
-      asset_count: 2,
-      blob_count: 0,
-      mode: "linked",
-      lifecycle_state: "ready",
-      integrity_state: "verified",
-      accounted_size_bytes: total,
-      asset_blob_size_bytes: 0,
-      accounting_version: 1,
-      accounting_generation: 1,
-      accounting_measured_at: now,
-      idempotency_key: Ecto.UUID.generate(),
-      capture_boundary: Ecto.UUID.generate(),
-      capture_digest: String.duplicate("d", 64),
-      captured_at: now,
-      progress_phase: "complete",
-      progress_bytes: total,
-      progress_total_bytes: total,
-      build_attempt: 1,
-      building_started_at: now,
-      verifying_started_at: now,
-      ready_at: now,
-      state_updated_at: now
-    })
-    |> Repo.insert!()
   end
 end

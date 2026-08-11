@@ -16,7 +16,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownload do
   alias Storyarn.Versioning.ProjectSnapshotCrud
   alias Storyarn.Versioning.SnapshotArchiveStorage
 
-  @archive_format_version 2
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
 
   @type delivery :: %{
@@ -54,8 +53,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownload do
 
   def with_archive(_project, _snapshot_id, _callback), do: {:error, :snapshot_not_found}
 
-  defp validate_eligibility(%ProjectSnapshot{mode: "linked"}), do: {:error, :snapshot_export_linked}
-
   defp validate_eligibility(%ProjectSnapshot{mode: mode}) when mode != "full",
     do: {:error, {:snapshot_export_corrupt, :invalid_snapshot_mode}}
 
@@ -64,9 +61,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownload do
 
   defp validate_eligibility(%ProjectSnapshot{integrity_state: state}) when state != "verified",
     do: {:error, :snapshot_export_integrity_unavailable}
-
-  defp validate_eligibility(%ProjectSnapshot{format_version: version}) when version != @archive_format_version,
-    do: {:error, :snapshot_export_unsupported_format}
 
   defp validate_eligibility(%ProjectSnapshot{}), do: :ok
 
@@ -111,13 +105,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownload do
   defp finish_delivery(_invalid, _lease), do: {:error, :snapshot_export_unavailable}
 
   defp normalize_error({:error, reason})
-       when reason in [
-              :snapshot_not_found,
-              :snapshot_export_linked,
-              :snapshot_export_not_ready,
-              :snapshot_export_integrity_unavailable,
-              :snapshot_export_unsupported_format
-            ], do: {:error, reason}
+       when reason in [:snapshot_not_found, :snapshot_export_not_ready, :snapshot_export_integrity_unavailable],
+       do: {:error, reason}
 
   defp normalize_error({:error, {:snapshot_export_corrupt, _reason}} = error), do: error
   defp normalize_error({:error, _reason}), do: {:error, :snapshot_export_unavailable}

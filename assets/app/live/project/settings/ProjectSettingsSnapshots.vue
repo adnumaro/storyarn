@@ -7,7 +7,6 @@ import {
   FileJson2,
   HardDrive,
   Image,
-  Link2,
   LoaderCircle,
   Plus,
   ShieldCheck,
@@ -33,7 +32,7 @@ import {
   type WorkspaceStorageUsage,
 } from "@shared/utils/storage-accounting";
 
-type SnapshotMode = "full" | "linked";
+type SnapshotMode = "full";
 type SnapshotLifecycle =
   | "pending"
   | "building"
@@ -42,7 +41,7 @@ type SnapshotLifecycle =
   | "failed"
   | "cancelled"
   | "deleting";
-type SnapshotIntegrity = "unknown" | "verified" | "at_risk" | "missing" | "corrupt" | "incomplete";
+type SnapshotIntegrity = "unknown" | "verified" | "missing" | "corrupt" | "incomplete";
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
 interface Snapshot {
@@ -57,12 +56,8 @@ interface Snapshot {
   lifecycleStatus: SnapshotLifecycle | null;
   integrityStatus: SnapshotIntegrity | null;
   accountedSizeBytes: ByteCount | null;
-  storageBreakdownMode: "archive" | "object_set" | null;
   archiveSizeBytes: ByteCount | null;
   sidecarSizeBytes: ByteCount | null;
-  projectDataSizeBytes: ByteCount | null;
-  metadataSizeBytes: ByteCount | null;
-  assetBlobSizeBytes: ByteCount | null;
   assetCount: number | null;
   blobCount: number | null;
   activeReservationBytes: ByteCount;
@@ -81,7 +76,6 @@ interface Snapshot {
   canDelete: boolean;
   deleteStatus: "ready" | "download_lease" | "active_operation" | null;
   downloadUrl: string | null;
-  downloadStatus: "ready" | "linked" | "archive_required" | null;
 }
 
 interface SnapshotLimit {
@@ -277,10 +271,6 @@ function snapshotRequestError(payload: Record<string, unknown>) {
       used: formatReplyCount(payload.used),
       limit: formatReplyCount(payload.limit),
     });
-  }
-
-  if (payload.reason === "rollout_not_enabled") {
-    return t("project_settings.snapshots.create.rollout_not_enabled");
   }
 
   return t("project_settings.snapshots.create.request_failed");
@@ -522,7 +512,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
           "
         />
 
-        <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <div class="rounded-md border border-border/60 bg-background/70 p-3">
             <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Image class="size-3.5" aria-hidden="true" />
@@ -548,15 +538,6 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
             </div>
             <div class="mt-1 font-medium tabular-nums">
               {{ formatBytes(storageUsage.fullSnapshotsBytes, locale) }}
-            </div>
-          </div>
-          <div class="rounded-md border border-border/60 bg-background/70 p-3">
-            <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Link2 class="size-3.5" aria-hidden="true" />
-              {{ $t("project_settings.snapshots.storage_breakdown.linked_snapshots") }}
-            </div>
-            <div class="mt-1 font-medium tabular-nums">
-              {{ formatBytes(storageUsage.linkedSnapshotsBytes, locale) }}
             </div>
           </div>
         </div>
@@ -855,7 +836,6 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
               </div>
 
               <div
-                v-if="snapshot.storageBreakdownMode === 'archive'"
                 class="mt-3 grid gap-2 rounded-lg border border-border/60 bg-background/60 p-3 sm:grid-cols-2"
                 :data-testid="`archive-breakdown-${snapshot.id}`"
               >
@@ -875,39 +855,6 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                   </div>
                   <div class="mt-1 text-sm font-medium tabular-nums">
                     {{ formatBytes(snapshot.sidecarSizeBytes, locale) }}
-                  </div>
-                </div>
-              </div>
-              <div
-                v-else-if="snapshot.storageBreakdownMode === 'object_set'"
-                class="mt-3 grid gap-2 rounded-lg border border-border/60 bg-background/60 p-3 sm:grid-cols-3"
-                :data-testid="`object-set-breakdown-${snapshot.id}`"
-              >
-                <div>
-                  <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <FileJson2 class="size-3.5" aria-hidden="true" />
-                    {{ $t("project_settings.snapshots.measurements.project_data") }}
-                  </div>
-                  <div class="mt-1 text-sm font-medium tabular-nums">
-                    {{ formatBytes(snapshot.projectDataSizeBytes, locale) }}
-                  </div>
-                </div>
-                <div>
-                  <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Database class="size-3.5" aria-hidden="true" />
-                    {{ $t("project_settings.snapshots.measurements.metadata") }}
-                  </div>
-                  <div class="mt-1 text-sm font-medium tabular-nums">
-                    {{ formatBytes(snapshot.metadataSizeBytes, locale) }}
-                  </div>
-                </div>
-                <div>
-                  <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <HardDrive class="size-3.5" aria-hidden="true" />
-                    {{ $t("project_settings.snapshots.measurements.unique_blobs") }}
-                  </div>
-                  <div class="mt-1 text-sm font-medium tabular-nums">
-                    {{ formatBytes(snapshot.assetBlobSizeBytes, locale) }}
                   </div>
                 </div>
               </div>
@@ -968,20 +915,6 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                   {{ $t("project_settings.snapshots.download.action") }}
                 </a>
               </Button>
-              <p
-                v-else-if="snapshot.downloadStatus === 'linked'"
-                class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
-                :data-testid="`download-linked-snapshot-${snapshot.id}`"
-              >
-                {{ $t("project_settings.snapshots.download.linked_requires_full") }}
-              </p>
-              <p
-                v-else-if="snapshot.downloadStatus === 'archive_required'"
-                class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
-                :data-testid="`download-archive-required-${snapshot.id}`"
-              >
-                {{ $t("project_settings.snapshots.download.archive_required") }}
-              </p>
               <p
                 v-if="snapshot.deleteStatus === 'download_lease'"
                 :id="`delete-snapshot-reason-${snapshot.id}`"

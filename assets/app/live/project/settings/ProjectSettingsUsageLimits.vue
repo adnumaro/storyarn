@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Archive, Clock3, Image, Link2, Trash2 } from "@lucide/vue";
+import { Archive, Clock3, Image, Trash2 } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";
@@ -503,15 +503,6 @@ function formattedRemainingStorage() {
                 </div>
                 <div class="mt-1 font-medium tabular-nums">
                   {{ formatBytes(usageLimits.storage.workspace.fullSnapshotsBytes, locale) }}
-                </div>
-              </div>
-              <div class="rounded-md border border-border/60 p-3">
-                <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Link2 class="size-3.5" aria-hidden="true" />
-                  {{ $t("project_settings.usage_limits.storage_breakdown.linked_snapshots") }}
-                </div>
-                <div class="mt-1 font-medium tabular-nums">
-                  {{ formatBytes(usageLimits.storage.workspace.linkedSnapshotsBytes, locale) }}
                 </div>
               </div>
               <div class="rounded-md border border-border/60 p-3">

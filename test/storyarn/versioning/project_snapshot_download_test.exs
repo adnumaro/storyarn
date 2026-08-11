@@ -3,7 +3,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownloadTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
-  import Storyarn.VersioningFixtures
 
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Shared.TimeHelpers
@@ -139,22 +138,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownloadTest do
     assert {:error, :snapshot_export_unavailable} =
              Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
                flunk("delivery must not start for a concurrently deleted project")
-             end)
-
-    refute Repo.get_by(StorageReservation,
-             project_snapshot_id_snapshot: snapshot.id,
-             kind: "snapshot_export"
-           )
-  end
-
-  test "does not synchronously rebuild a legacy format snapshot" do
-    user = user_fixture()
-    project = project_fixture(user)
-    snapshot = full_project_snapshot_fixture(project, %{asset_blob_size_bytes: 0})
-
-    assert {:error, :snapshot_export_unsupported_format} =
-             Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
-               flunk("legacy snapshots require archive preparation")
              end)
 
     refute Repo.get_by(StorageReservation,

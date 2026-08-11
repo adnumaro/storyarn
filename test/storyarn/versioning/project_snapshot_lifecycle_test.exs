@@ -15,13 +15,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotBuild
-  alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker
   alias Storyarn.Workspaces
@@ -70,7 +68,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
 
       assert {:ok, :completed} = Versioning.process_project_snapshot_cleanup_intent(intent.id)
       assert {:error, _reason} = Storage.stat(ready.manifest_storage_key)
-      assert {:error, _reason} = Storage.stat(ready.project_storage_key)
+      assert {:error, _reason} = Storage.stat(ready.archive_storage_key)
       assert {:ok, :already_completed} = Versioning.process_project_snapshot_cleanup_intent(intent.id)
     end
 
@@ -150,18 +148,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
 
       assert intent.project_snapshot_id_snapshot == ready.id
       refute Repo.get(ProjectSnapshot, ready.id)
-    end
-
-    test "rejects an oversized cleanup manifest before decoding it" do
-      max_manifest_bytes = SnapshotObjectFormat.hard_limits().max_manifest_bytes
-      oversized_manifest = :binary.copy(" ", max_manifest_bytes + 1)
-
-      assert {:error, {:snapshot_object_size_limit_exceeded, :manifest, ^max_manifest_bytes}} =
-               SnapshotObjectStorage.cleanup_scope_from_capture(
-                 1,
-                 "projects/1/snapshots/object-sets/v1/ready/OversizedTest001",
-                 oversized_manifest
-               )
     end
 
     test "rejects an actor without project management authority" do
@@ -623,7 +609,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       insert_retention_snapshot_clones!(ready, 50, expires_at)
       through_id = Versioning.project_snapshot_lifecycle_high_watermark()
 
-      assert {:error, :snapshot_retention_incomplete} =
+      assert :ok =
                ProjectSnapshotRetentionWorker.perform(%Oban.Job{
                  args: %{"expired_build_after_id" => 41}
                })
@@ -882,7 +868,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
 
       snapshot.build_job_id
       |> then(&Repo.get!(Oban.Job, &1))
-      |> Ecto.Changeset.change(queue: "snapshots")
+      |> Ecto.Changeset.change(queue: "default")
       |> Repo.update!()
 
       assert Versioning.list_expired_project_snapshot_build_candidates(now) == []
@@ -1459,22 +1445,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
     rows =
       Enum.map(1..count, fn index ->
         token = index |> Integer.to_string() |> String.pad_leading(16, "0")
-        prefix = SnapshotObjectStorage.ready_prefix(snapshot.project_id, token)
-        total_size_bytes = snapshot.project_size_bytes + snapshot.manifest_size_bytes + snapshot.asset_blob_size_bytes
+        prefix = SnapshotArchiveStorage.ready_prefix(snapshot.project_id, token)
 
         Map.merge(base, %{
           version_number: snapshot.version_number + index,
-          format_version: 1,
+          format_version: 2,
           object_prefix: prefix,
-          project_storage_key: "#{prefix}/project.json",
-          archive_storage_key: nil,
-          archive_size_bytes: nil,
-          archive_checksum: nil,
-          manifest_storage_key: "#{prefix}/manifest.json",
-          total_size_bytes: total_size_bytes,
-          accounted_size_bytes: total_size_bytes,
-          progress_bytes: total_size_bytes,
-          progress_total_bytes: total_size_bytes,
+          archive_storage_key: SnapshotArchiveStorage.archive_key(prefix),
+          manifest_storage_key: SnapshotArchiveStorage.manifest_key(prefix),
           idempotency_key: Ecto.UUID.generate(),
           capture_boundary: Ecto.UUID.generate(),
           origin: "daily",
@@ -1483,16 +1461,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       end)
 
     {^count, nil} = Repo.insert_all(ProjectSnapshot, rows)
-  end
-
-  defp snapshot_cleanup_scope(%ProjectSnapshot{format_version: 1} = snapshot, project_id) do
-    capture = Repo.get!(ProjectSnapshotCapture, snapshot.id)
-
-    SnapshotObjectStorage.cleanup_scope_from_capture(
-      project_id,
-      snapshot.object_prefix,
-      capture.manifest_json
-    )
   end
 
   defp snapshot_cleanup_scope(%ProjectSnapshot{format_version: 2} = snapshot, _project_id) do

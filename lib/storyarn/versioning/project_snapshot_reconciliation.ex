@@ -19,14 +19,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
   alias Storyarn.Versioning.ProjectSnapshotReconciliationFinding
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRun
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workers.InspectProjectSnapshotsWorker
 
   require Logger
@@ -44,13 +42,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   @inventory_digest_seed String.duplicate("0", 64)
   @provider_prefix "projects/"
   @build_worker "Storyarn.Workers.BuildProjectSnapshotWorker"
-  @legacy_build_queue "snapshots"
   @archive_build_queue "snapshot_archives"
   @inspection_worker "Storyarn.Workers.InspectProjectSnapshotsWorker"
   @active_build_job_states ~w(available scheduled executing retryable)
   @finding_insert_fields ProjectSnapshotReconciliationFinding.__schema__(:fields) -- [:id]
-  @snapshot_key_pattern ~r<\Aprojects/([1-9]\d*)/snapshots/(object-sets/v1|archives/v2)/(ready|staging)/([A-Za-z0-9_-]{16})/(.+)\z>
-  @reservation_key_pattern ~r<\Aprojects/([1-9]\d*)/storage-reservations/v1/(snapshot-build|linked-to-full-conversion|restore-staging|snapshot-export)/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/(.+)\z>
+  @snapshot_key_pattern ~r<\Aprojects/([1-9]\d*)/snapshots/archives/v2/(ready|staging)/([A-Za-z0-9_-]{16})/(.+)\z>
+  @reservation_key_pattern ~r<\Aprojects/([1-9]\d*)/storage-reservations/v1/(snapshot-build|restore-staging|snapshot-export)/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/(.+)\z>
 
   @type advance_result ::
           {:ok, :completed | :failed}
@@ -296,15 +293,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     end
   end
 
-  defp inspect_ready_snapshot(%ProjectSnapshot{format_version: 1} = snapshot, opts) do
-    SnapshotObjectStorage.inspect_ready_object_batch(
-      snapshot.manifest_storage_key,
-      snapshot.manifest_checksum,
-      snapshot.manifest_size_bytes,
-      opts
-    )
-  end
-
   defp inspect_ready_snapshot(%ProjectSnapshot{format_version: 2} = snapshot, opts) do
     with {:ok, inspection} <- validate_archive_inspection_options(opts) do
       case inspection.start_index do
@@ -446,7 +434,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
        }), do: verified_objects
 
   defp integrity_failure_inspected_objects(%ProjectSnapshot{}, %{verified_objects: verified_objects}),
-    do: verified_objects + 1
+    do: verified_objects
 
   defp commit_object_integrity_failure_result(
          run,
@@ -469,16 +457,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
          _failure,
          opts
        ), do: commit_snapshot_result(run, candidate, Keyword.put(opts, :complete?, true))
-
-  defp commit_object_integrity_failure_result(run, candidate, failure, opts) do
-    commit_snapshot_result(
-      run,
-      candidate,
-      opts
-      |> Keyword.put(:complete?, false)
-      |> Keyword.put(:next_index, min(failure.failed_index + 1, failure.object_count))
-    )
-  end
 
   defp handle_manifest_failure(run, candidate, reason) do
     cond do
@@ -527,7 +505,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     )
   end
 
-  defp inspected_object_index(%ProjectSnapshot{format_version: 1}, manifest), do: length(manifest["objects"])
   defp inspected_object_index(%ProjectSnapshot{format_version: 2}, _manifest), do: 1
 
   defp inspect_ready_inventory_page(run, candidate, manifest) do
@@ -598,8 +575,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     end
   end
 
-  defp expected_physical_object_count(%ProjectSnapshot{format_version: 1}, manifest), do: length(manifest["objects"]) + 1
-
   defp expected_physical_object_count(%ProjectSnapshot{format_version: 2}, _manifest), do: 2
 
   defp list_ready_inventory_page(prefix, page_size, cursor) do
@@ -613,25 +588,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       _invalid ->
         {:error, :invalid_snapshot_reconciliation_provider_page}
     end
-  end
-
-  defp expected_inventory(%ProjectSnapshot{format_version: 1} = snapshot, manifest) do
-    objects =
-      Enum.sort_by(
-        [
-          %{key: snapshot.manifest_storage_key, size: snapshot.manifest_size_bytes}
-          | Enum.map(manifest["objects"], fn descriptor ->
-              %{key: snapshot.object_prefix <> "/" <> descriptor["path"], size: descriptor["size_bytes"]}
-            end)
-        ],
-        & &1.key
-      )
-
-    %{
-      bytes: Enum.reduce(objects, 0, &(&1.size + &2)),
-      count: length(objects),
-      digest: inventory_digest(objects)
-    }
   end
 
   defp expected_inventory(%ProjectSnapshot{format_version: 2} = snapshot, _manifest) do
@@ -957,25 +913,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
 
   defp resolved_poisoned_claim?(_claim, _reservation, _snapshot), do: false
 
-  defp reconciliation_cleanup_scope(%ProjectSnapshot{format_version: 1} = snapshot) do
-    case Repo.get(ProjectSnapshotCapture, snapshot.id) do
-      %ProjectSnapshotCapture{} = capture ->
-        with true <- capture.capture_boundary == snapshot.capture_boundary,
-             true <- capture.capture_digest == snapshot.capture_digest do
-          SnapshotObjectStorage.cleanup_scope_from_capture(
-            snapshot.project_id,
-            snapshot.object_prefix,
-            capture.manifest_json
-          )
-        else
-          false -> {:error, :snapshot_capture_identity_mismatch}
-        end
-
-      nil ->
-        {:error, :snapshot_capture_missing}
-    end
-  end
-
   defp reconciliation_cleanup_scope(%ProjectSnapshot{format_version: 2} = snapshot) do
     SnapshotArchiveStorage.cleanup_scope_from_snapshot(snapshot)
   end
@@ -1045,8 +982,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     do: state in @active_build_job_states and build_job_queue_matches?(snapshot, job)
 
   defp live_build_job?(_snapshot, _job), do: false
-
-  defp build_job_queue_matches?(%ProjectSnapshot{format_version: 1}, %Oban.Job{queue: @legacy_build_queue}), do: true
 
   defp build_job_queue_matches?(%ProjectSnapshot{format_version: 2}, %Oban.Job{queue: @archive_build_queue}), do: true
 
@@ -1276,14 +1211,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
 
   defp provider_subject(%{key: key}) do
     with true <- Storage.canonical_key?(key),
-         [_, project_id_string, format, namespace, token, path] <- Regex.run(@snapshot_key_pattern, key),
+         [_, project_id_string, namespace, token, path] <- Regex.run(@snapshot_key_pattern, key),
          {:ok, project_id} <- parse_project_id(project_id_string) do
       %{
         kind: snapshot_namespace_atom(namespace),
         path: path,
-        prefix: "projects/#{project_id}/snapshots/#{format}/#{namespace}/#{token}",
+        prefix: "projects/#{project_id}/snapshots/archives/v2/#{namespace}/#{token}",
         project_id: project_id,
-        ready_prefix: "projects/#{project_id}/snapshots/#{format}/ready/#{token}",
+        ready_prefix: "projects/#{project_id}/snapshots/archives/v2/ready/#{token}",
         storage_key: key
       }
     else
@@ -1859,7 +1794,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     end
   end
 
-  defp same_ready_snapshot?(%ProjectSnapshot{format_version: format_version} = snapshot) when format_version in [1, 2] do
+  defp same_ready_snapshot?(%ProjectSnapshot{format_version: 2} = snapshot) do
     snapshot
     |> same_ready_snapshot_query()
     |> Repo.one()
@@ -1884,50 +1819,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
     |> lock("FOR SHARE")
   end
 
-  defp same_ready_storage_query(query, %ProjectSnapshot{format_version: 1} = snapshot) do
-    query
-    |> where([current], current.format_version == 1)
-    |> where([current], current.project_storage_key == ^snapshot.project_storage_key)
-    |> where([current], current.project_size_bytes == ^snapshot.project_size_bytes)
-    |> where([current], current.project_checksum == ^snapshot.project_checksum)
-  end
-
   defp same_ready_storage_query(query, %ProjectSnapshot{format_version: 2} = snapshot) do
     query
     |> where([current], current.format_version == 2)
-    |> where([current], is_nil(current.project_storage_key))
     |> where([current], current.archive_storage_key == ^snapshot.archive_storage_key)
     |> where([current], current.archive_size_bytes == ^snapshot.archive_size_bytes)
     |> where([current], current.archive_checksum == ^snapshot.archive_checksum)
-  end
-
-  defp manifest_mismatches(%ProjectSnapshot{format_version: 1} = snapshot, manifest) do
-    project = manifest["project"]
-    counts = manifest["counts"]
-    total_size = manifest["payload_size_bytes"] + snapshot.manifest_size_bytes
-    asset_blob_size = manifest["payload_size_bytes"] - project["size_bytes"]
-
-    row_mismatches =
-      Enum.flat_map(
-        [
-          {:format_version, snapshot.format_version, manifest["format_version"]},
-          {:project_storage_key, snapshot.project_storage_key, snapshot.object_prefix <> "/" <> project["path"]},
-          {:project_size_bytes, snapshot.project_size_bytes, project["size_bytes"]},
-          {:project_checksum, snapshot.project_checksum, project["sha256"]},
-          {:total_size_bytes, snapshot.total_size_bytes, total_size},
-          {:accounted_size_bytes, snapshot.accounted_size_bytes, total_size},
-          {:asset_blob_size_bytes, snapshot.asset_blob_size_bytes, asset_blob_size},
-          {:object_count, snapshot.object_count, counts["payload_objects"] + 1},
-          {:asset_count, snapshot.asset_count, counts["assets"]},
-          {:blob_count, snapshot.blob_count, counts["blobs"]},
-          {:accounting_version, snapshot.accounting_version, 1}
-        ],
-        fn {field, actual, expected} ->
-          if actual == expected, do: [], else: [Atom.to_string(field)]
-        end
-      )
-
-    row_mismatches ++ ownership_mismatches(snapshot)
   end
 
   defp manifest_mismatches(%ProjectSnapshot{format_version: 2} = snapshot, manifest) do
@@ -1940,7 +1837,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
       Enum.flat_map(
         [
           {:format_version, snapshot.format_version, 2},
-          {:project_storage_key, snapshot.project_storage_key, nil},
           {:archive_storage_key, snapshot.archive_storage_key,
            SnapshotArchiveStorage.archive_key(snapshot.object_prefix)},
           {:manifest_storage_key, snapshot.manifest_storage_key,

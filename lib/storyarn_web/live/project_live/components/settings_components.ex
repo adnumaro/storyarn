@@ -67,7 +67,6 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
       currentAssetsBytes: serialize_byte_count(storage.current_assets.bytes),
       assetTrashBytes: serialize_byte_count(storage.asset_trash.bytes),
       fullSnapshotsBytes: serialize_byte_count(storage.full_snapshots.bytes),
-      linkedSnapshotsBytes: serialize_byte_count(storage.linked_snapshots.bytes),
       activeReservationsBytes: serialize_byte_count(storage.active_reservations.bytes),
       totalAccountedBytes: serialize_byte_count(storage.accounted_bytes),
       limitBytes: serialized_storage_limit(limit),

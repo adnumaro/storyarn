@@ -415,17 +415,11 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
     assert_no_external_storage_response(conn)
   end
 
-  test "fails closed for non-ready, linked, unverified, and legacy snapshots", %{
+  test "fails closed for non-ready and unverified snapshots", %{
     conn: conn,
     project: project
   } do
     pending = pending_project_snapshot_fixture(project)
-
-    linked =
-      project
-      |> full_project_snapshot_fixture(%{asset_blob_size_bytes: 0})
-      |> Ecto.Changeset.change(mode: "linked")
-      |> Repo.update!()
 
     missing =
       project
@@ -433,25 +427,15 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
       |> ProjectSnapshot.reconciliation_integrity_changeset("missing")
       |> Repo.update!()
 
-    legacy = full_project_snapshot_fixture(project, %{asset_blob_size_bytes: 0})
-
     pending_conn = get(conn, download_url(project, pending.id))
     assert pending_conn.status == 409
     assert pending_conn.resp_body =~ "not ready"
-
-    linked_conn = get(conn, download_url(project, linked.id))
-    assert linked_conn.status == 409
-    assert linked_conn.resp_body =~ "Convert this linked snapshot"
 
     missing_conn = get(conn, download_url(project, missing.id))
     assert missing_conn.status == 422
     assert missing_conn.resp_body =~ "integrity"
 
-    legacy_conn = get(conn, download_url(project, legacy.id))
-    assert legacy_conn.status == 422
-    assert legacy_conn.resp_body =~ "format"
-
-    for response <- [pending_conn, linked_conn, missing_conn, legacy_conn] do
+    for response <- [pending_conn, missing_conn] do
       assert_no_external_storage_response(response)
     end
   end

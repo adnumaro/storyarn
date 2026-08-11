@@ -22,7 +22,7 @@ Snapshot creation continues in the background. Storyarn builds one private ZIP a
 
 Each stored snapshot shows its version number, title, creator when available, creation time, stored size, and entity counts. Available actions are:
 
-- **Download** a ready, verified full snapshot as a private ZIP archive. Storyarn checks your permission for every request, then the browser downloads the persisted archive directly from private storage. Linked snapshots and older snapshots that have not been prepared as archives are not downloadable.
+- **Download** a ready, verified snapshot as a private ZIP archive. Storyarn checks your permission for every request, then the browser downloads the persisted archive directly from private storage.
 - **Delete** the snapshot permanently.
 
 Project snapshot restoration is not currently available in the interface. Keep downloaded archives as project-wide backups; entity versions and Trash provide the in-product restore paths described below.

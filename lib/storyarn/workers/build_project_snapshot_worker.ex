@@ -5,7 +5,7 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
 
   @max_attempts 5
   use Oban.Worker,
-    queue: :snapshots,
+    queue: :snapshot_archives,
     max_attempts: @max_attempts,
     unique: [
       fields: [:worker, :args],

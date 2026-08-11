@@ -7,7 +7,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveContractTest do
 
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Billing.StorageReservation
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
@@ -29,7 +28,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveContractTest do
     pending = ProjectSnapshot.pending_object_set_changeset(%ProjectSnapshot{}, pending_attrs)
 
     assert pending.valid?
-    assert Ecto.Changeset.get_field(pending, :project_storage_key) == nil
     assert Ecto.Changeset.get_field(pending, :archive_storage_key) == prefix <> "/snapshot.zip"
     assert Ecto.Changeset.get_field(pending, :archive_checksum) == nil
     assert Ecto.Changeset.get_field(pending, :object_count) == 2
@@ -100,39 +98,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveContractTest do
     assert captured.object_count == 2
   end
 
-  test "publication digests preserve v1 and bind v2 without the post-stream archive checksum" do
-    v1 = %{
-      format_version: 1,
-      mode: "full",
-      object_prefix: "projects/1/snapshots/object-sets/v1/ready/ClaimContract001",
-      manifest_storage_key: "manifest",
-      manifest_size_bytes: 2,
-      manifest_checksum: @manifest_checksum,
-      project_storage_key: "project",
-      project_size_bytes: 3,
-      project_checksum: @checksum,
-      total_size_bytes: 5,
-      accounted_size_bytes: 5,
-      asset_blob_size_bytes: 0,
-      accounting_version: 1,
-      object_count: 2,
-      asset_count: 0,
-      blob_count: 0
-    }
-
-    assert SnapshotObjectPublicationClaim.inventory_digest(v1) ==
-             "242d1b277b4024eb74b8ac9dec8c7c60874b0e94054c9c8039a4afaa9c4294bd"
-
-    assert SnapshotObjectPublicationClaim.inventory_digest(v1) ==
-             SnapshotObjectPublicationClaim.inventory_digest(
-               Map.merge(v1, %{
-                 archive_storage_key: "ignored",
-                 archive_size_bytes: 99,
-                 archive_checksum: @archive_checksum,
-                 capture_digest: @capture_digest
-               })
-             )
-
+  test "publication digests bind the canonical archive without the post-stream checksum" do
     prefix = SnapshotArchiveStorage.ready_prefix(1, "ClaimContract002")
     v2 = ready_attrs(1, prefix)
 
@@ -163,32 +129,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveContractTest do
              %SnapshotCleanupIntent{},
              cleanup_intent_attrs(ready_prefix, staging_prefix, extra_keys)
            ).valid?
-  end
-
-  test "v2 archive prefixes cannot be claimed by the legacy linked conversion" do
-    lease_token = Ecto.UUID.generate()
-    measured_at = TimeHelpers.now()
-
-    changeset =
-      StorageReservation.create_changeset(%StorageReservation{}, %{
-        workspace_id: 1,
-        project_id: 1,
-        project_snapshot_id: 1,
-        idempotency_key: Ecto.UUID.generate(),
-        kind: "linked_to_full_conversion",
-        storage_namespace: "projects/1/storage-reservations/v1/linked-to-full-conversion/#{lease_token}",
-        cleanup_object_prefix: SnapshotArchiveStorage.ready_prefix(1, "NoLinkedArchive1"),
-        source_asset_count: 0,
-        reserved_bytes: 1,
-        lease_token: lease_token,
-        generation: 1,
-        expires_at: DateTime.add(measured_at, 60, :second),
-        accounting_version: 1,
-        accounting_measured_at: measured_at
-      })
-
-    refute changeset.valid?
-    assert {"has invalid format", _metadata} = changeset.errors[:cleanup_object_prefix]
   end
 
   test "v2 lifecycle deletion owns four exact keys without retaining a capture row" do

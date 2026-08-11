@@ -21,12 +21,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.ProjectSnapshotPolicy
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workers.CleanupProjectSnapshotWorker
   alias Storyarn.Workspaces.Workspace
 
@@ -42,7 +40,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   @active_job_states ~w(available scheduled executing retryable)
   @cleanup_worker inspect(CleanupProjectSnapshotWorker)
   @build_worker "Storyarn.Workers.BuildProjectSnapshotWorker"
-  @legacy_build_queue "snapshots"
   @archive_build_queue "snapshot_archives"
   @build_recovery_quarantine_seconds 15 * 60
   @cleanup_job_rescue_after_seconds 3 * 60 * 60
@@ -311,8 +308,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     matching_queue =
       dynamic(
         [snapshot, _project, _reservation, job],
-        (snapshot.format_version == 1 and job.queue == ^@legacy_build_queue) or
-          (snapshot.format_version == 2 and job.queue == ^@archive_build_queue)
+        snapshot.format_version == 2 and job.queue == ^@archive_build_queue
       )
 
     dynamic(
@@ -870,8 +866,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
 
   defp quiescent_build_job?(_snapshot, _job, _quiesced_before), do: false
 
-  defp build_job_queue_matches?(%ProjectSnapshot{format_version: 1}, %Oban.Job{queue: @legacy_build_queue}), do: true
-
   defp build_job_queue_matches?(%ProjectSnapshot{format_version: 2}, %Oban.Job{queue: @archive_build_queue}), do: true
 
   defp build_job_queue_matches?(_snapshot, _job), do: false
@@ -956,20 +950,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
          {:ok, _deleted_snapshot} <- Repo.delete(deleting),
          {:ok, _job} <- enqueue_cleanup(intent.id) do
       {:ok, intent}
-    end
-  end
-
-  defp snapshot_cleanup_scope(%ProjectSnapshot{format_version: 1} = snapshot) do
-    case lock_capture(snapshot.id) do
-      %ProjectSnapshotCapture{} = capture ->
-        SnapshotObjectStorage.cleanup_scope_from_capture(
-          snapshot.project_id,
-          snapshot.object_prefix,
-          capture.manifest_json
-        )
-
-      nil ->
-        {:error, :snapshot_capture_missing}
     end
   end
 
@@ -1213,7 +1193,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   end
 
   defp ensure_supported_mode("full"), do: :ok
-  defp ensure_supported_mode("linked"), do: {:error, :linked_snapshot_lifecycle_not_enabled}
   defp ensure_supported_mode(_mode), do: {:error, :unsupported_snapshot_mode}
 
   defp claim_cleanup_intent(intent_id) do
@@ -1773,15 +1752,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
 
   defp lock_build_job(job_id) do
     Repo.one(from(job in Oban.Job, where: job.id == ^job_id, lock: "FOR UPDATE"))
-  end
-
-  defp lock_capture(snapshot_id) do
-    Repo.one(
-      from(capture in ProjectSnapshotCapture,
-        where: capture.project_snapshot_id == ^snapshot_id,
-        lock: "FOR SHARE"
-      )
-    )
   end
 
   defp lock_cleanup_intent(intent_id) do

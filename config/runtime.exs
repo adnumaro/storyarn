@@ -394,9 +394,6 @@ end
 # Rate limiting with Redis for production (multi-node support)
 # Development and test use ETS backend (started in application.ex)
 if config_env() == :prod do
-  config :storyarn, Storyarn.Versioning.ProjectSnapshotBuild,
-    archive_writes_enabled: bool_env.("PROJECT_SNAPSHOT_ARCHIVE_WRITES_ENABLED")
-
   config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
     download_signed_url_ttl_seconds:
       bounded_positive_integer_env.("PROJECT_SNAPSHOT_DOWNLOAD_SIGNED_URL_TTL_SECONDS", 5 * 60, 5 * 60),

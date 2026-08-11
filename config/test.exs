@@ -163,8 +163,6 @@ config :storyarn, Storyarn.Repo,
   queue_target: 500,
   queue_interval: 1000
 
-config :storyarn, Storyarn.Versioning.ProjectSnapshotBuild, archive_writes_enabled: true
-
 # Entity restore contract tests exercise the guarded implementation directly.
 config :storyarn, Storyarn.Versioning.RestorePolicy,
   sheet_version_restore: true,

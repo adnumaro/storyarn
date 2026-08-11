@@ -157,7 +157,6 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
     assert List.last(ready_mutations) == {:copy_if_absent, stored.manifest_storage_key}
 
     assert stored.format_version == 2
-    assert stored.project_storage_key == nil
     assert stored.object_count == 2
     assert stored.total_size_bytes == stored.archive_size_bytes + stored.manifest_size_bytes
     assert stored.archive_checksum == staged.archive_checksum

@@ -167,15 +167,12 @@ defmodule StoryarnWeb.SnapshotDownloadController do
   end
 
   defp download_error_metadata(:snapshot_not_found), do: {:rejected, :eligibility, :snapshot_not_found}
-  defp download_error_metadata(:snapshot_export_linked), do: {:rejected, :eligibility, :linked}
   defp download_error_metadata(:snapshot_export_not_ready), do: {:rejected, :eligibility, :not_ready}
 
   defp download_error_metadata(:snapshot_export_integrity_unavailable),
     do: {:rejected, :eligibility, :integrity_unavailable}
 
   defp download_error_metadata({:snapshot_export_corrupt, _reason}), do: {:rejected, :eligibility, :integrity_failed}
-
-  defp download_error_metadata(:snapshot_export_unsupported_format), do: {:rejected, :eligibility, :unsupported_format}
 
   defp download_error_metadata(:snapshot_export_unavailable), do: {:failed, :grant, :unavailable}
 
@@ -201,11 +198,9 @@ defmodule StoryarnWeb.SnapshotDownloadController do
   end
 
   defp error_conn(:snapshot_not_found, conn), do: not_found(conn)
-  defp error_conn(:snapshot_export_linked, conn), do: linked_snapshot(conn)
   defp error_conn(:snapshot_export_not_ready, conn), do: not_ready(conn)
   defp error_conn(:snapshot_export_integrity_unavailable, conn), do: integrity_unavailable(conn)
   defp error_conn({:snapshot_export_corrupt, _reason}, conn), do: integrity_unavailable(conn)
-  defp error_conn(:snapshot_export_unsupported_format, conn), do: unsupported_format(conn)
   defp error_conn(:snapshot_export_unavailable, conn), do: temporarily_unavailable(conn)
   defp error_conn(_reason, conn), do: temporarily_unavailable(conn)
 
@@ -225,17 +220,6 @@ defmodule StoryarnWeb.SnapshotDownloadController do
     )
   end
 
-  defp linked_snapshot(conn) do
-    error_response(
-      conn,
-      :conflict,
-      dgettext(
-        "projects",
-        "Convert this linked snapshot to a full snapshot before downloading it."
-      )
-    )
-  end
-
   defp not_ready(conn) do
     error_response(
       conn,
@@ -252,14 +236,6 @@ defmodule StoryarnWeb.SnapshotDownloadController do
         "projects",
         "This snapshot cannot be downloaded because its integrity could not be verified."
       )
-    )
-  end
-
-  defp unsupported_format(conn) do
-    error_response(
-      conn,
-      :unprocessable_entity,
-      dgettext("projects", "This snapshot format cannot be downloaded.")
     )
   end
 

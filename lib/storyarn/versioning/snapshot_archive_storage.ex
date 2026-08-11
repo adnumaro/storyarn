@@ -21,7 +21,6 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
   alias Storyarn.Versioning.ProjectSnapshotZip
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Versioning.SnapshotStorage
 
   @format_version 2
@@ -57,7 +56,7 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
       when is_integer(project_id) and project_id > 0 and is_list(assets) and is_list(opts) do
     with true <- Keyword.keyword?(opts),
          opts = Keyword.put_new(opts, :source_key_mode, :protected_blob),
-         {:ok, prepared} <- SnapshotObjectStorage.prepare(project_id, project_snapshot, assets, opts),
+         {:ok, prepared} <- prepare_capture(project_id, project_snapshot, assets, opts),
          {:ok, plan} <- ProjectSnapshotZip.prepare_capture(project_id, prepared, opts) do
       {:ok, with_archive_accounting(prepared, plan)}
     else
@@ -321,6 +320,128 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
     end
   end
 
+  defp prepare_capture(project_id, project_snapshot, assets, opts) do
+    with {:ok, normalized_project} <- normalize_project_snapshot(project_snapshot),
+         {:ok, project} <- SnapshotObjectFormat.portable_project(normalized_project),
+         {:ok, catalog} <-
+           SnapshotObjectFormat.build_catalog(assets, Keyword.put(opts, :project_id, project_id)),
+         {:ok, project_descriptor, project_json} <- project_descriptor(project, opts),
+         {:ok, manifest} <-
+           SnapshotObjectFormat.build_manifest(
+             project,
+             catalog.assets,
+             catalog.blobs,
+             Keyword.put(opts, :project_descriptor, project_descriptor)
+           ),
+         {:ok, manifest_json, manifest_descriptor} <- manifest_descriptor(manifest, opts) do
+      {:ok,
+       prepared_capture(
+         project_json,
+         manifest_json,
+         manifest,
+         manifest_descriptor,
+         catalog.source_keys
+       )}
+    end
+  end
+
+  defp normalize_project_snapshot(project_snapshot) when is_map(project_snapshot) do
+    with {:ok, json} <- Jason.encode(project_snapshot),
+         {:ok, normalized} <- Jason.decode(json) do
+      {:ok, normalized}
+    else
+      {:error, _reason} -> {:error, :invalid_project_object}
+    end
+  end
+
+  defp normalize_project_snapshot(_project_snapshot), do: {:error, :invalid_project_object}
+
+  defp project_descriptor(project, opts) do
+    json = project |> Jason.encode_to_iodata!() |> IO.iodata_to_binary()
+    limits = SnapshotObjectFormat.limits(opts)
+
+    with :ok <- validate_capture_size(byte_size(json), limits.max_project_bytes, :project) do
+      {:ok,
+       %{
+         "kind" => "project",
+         "path" => SnapshotObjectFormat.project_path(),
+         "sha256" => sha256(json),
+         "size_bytes" => byte_size(json),
+         "content_type" => "application/json"
+       }, json}
+    end
+  end
+
+  defp manifest_descriptor(manifest, opts) do
+    json = manifest |> Jason.encode_to_iodata!() |> IO.iodata_to_binary()
+    limits = SnapshotObjectFormat.limits(opts)
+
+    with :ok <- validate_capture_size(byte_size(json), limits.max_manifest_bytes, :manifest) do
+      {:ok, json,
+       %{
+         "kind" => "manifest",
+         "path" => SnapshotObjectFormat.manifest_path(),
+         "sha256" => sha256(json),
+         "size_bytes" => byte_size(json),
+         "content_type" => "application/json"
+       }}
+    end
+  end
+
+  defp prepared_capture(project_json, manifest_json, manifest, manifest_descriptor, source_keys) do
+    project_descriptor = manifest["project"]
+    counts = manifest["counts"]
+    manifest_size = manifest_descriptor["size_bytes"]
+    total_size = manifest["payload_size_bytes"] + manifest_size
+    asset_blob_size = total_size - project_descriptor["size_bytes"] - manifest_size
+
+    prepared = %{
+      project_json: project_json,
+      manifest_json: manifest_json,
+      source_keys: source_keys,
+      project_size_bytes: project_descriptor["size_bytes"],
+      project_checksum: project_descriptor["sha256"],
+      manifest_size_bytes: manifest_size,
+      manifest_checksum: manifest_descriptor["sha256"],
+      total_size_bytes: total_size,
+      asset_blob_size_bytes: asset_blob_size,
+      object_count: counts["payload_objects"] + 1,
+      asset_count: counts["assets"],
+      blob_count: counts["blobs"]
+    }
+
+    Map.put(prepared, :capture_digest, capture_digest(prepared))
+  end
+
+  defp capture_digest(prepared) do
+    source_inventory =
+      prepared.source_keys
+      |> Enum.sort()
+      |> Enum.map(fn {hash, key} -> [encode_digest_part(hash), encode_digest_part(key)] end)
+
+    [
+      "storyarn.project_snapshot.capture.v1",
+      encode_digest_part(prepared.project_json),
+      encode_digest_part(prepared.manifest_json),
+      source_inventory
+    ]
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
+  defp encode_digest_part(value) when is_binary(value), do: [Integer.to_string(byte_size(value)), ":", value]
+
+  defp validate_capture_size(size, max_size, label)
+       when is_integer(size) and size >= 0 and is_integer(max_size) and max_size > 0 do
+    if size <= max_size,
+      do: :ok,
+      else: {:error, {:snapshot_object_size_limit_exceeded, label, max_size}}
+  end
+
+  defp validate_capture_size(_size, _max_size, label), do: {:error, {:invalid_snapshot_object_size, label}}
+
+  defp sha256(data), do: :sha256 |> :crypto.hash(data) |> Base.encode16(case: :lower)
+
   defp with_archive_accounting(prepared, plan) do
     archive_size = ProjectSnapshotZip.archive_size(plan)
     accounted_size = archive_size + prepared.manifest_size_bytes
@@ -360,7 +481,6 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
       manifest_size_bytes: prepared.manifest_size_bytes,
       manifest_checksum: prepared.manifest_checksum,
       manifest_json: prepared.manifest_json,
-      project_storage_key: nil,
       project_size_bytes: prepared.project_size_bytes,
       project_checksum: prepared.project_checksum,
       total_size_bytes: total_size,
@@ -662,7 +782,6 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
       manifest_storage_key: staged.manifest_storage_key,
       manifest_size_bytes: staged.manifest_size_bytes,
       manifest_checksum: staged.manifest_checksum,
-      project_storage_key: nil,
       project_size_bytes: staged.project_size_bytes,
       project_checksum: staged.project_checksum,
       total_size_bytes: staged.total_size_bytes,

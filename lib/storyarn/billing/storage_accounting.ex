@@ -28,15 +28,14 @@ defmodule Storyarn.Billing.StorageAccounting do
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workspaces.Workspace
 
   @accounting_version 1
   @default_reservation_ttl_seconds 24 * 60 * 60
   @expired_export_lease_recovery_batch_size 50
   @released_export_lease_purge_batch_size 50
-  @reservation_kinds ~w(snapshot_build linked_to_full_conversion restore_staging snapshot_export)
-  @exclusive_snapshot_operation_kinds ~w(snapshot_build linked_to_full_conversion)
+  @reservation_kinds ~w(snapshot_build restore_staging snapshot_export)
+  @exclusive_snapshot_operation_kinds ~w(snapshot_build)
   @snapshot_slot_lifecycle_states ~w(pending building verifying ready deleting)
   @workspace_lock_process_key {__MODULE__, :workspace_lock_ids}
   @storage_commit_process_key {__MODULE__, :storage_commit}
@@ -44,7 +43,6 @@ defmodule Storyarn.Billing.StorageAccounting do
     physical_bytes temporary_bytes orphan_bytes duplicate_bytes cleanup_pending_bytes
   )a
   @snapshot_object_token_regex ~r/\A[A-Za-z0-9_-]{16}\z/
-  @snapshot_blob_filename_regex ~r/\A[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z/
   @temporary_path_segment_regex ~r/\A[A-Za-z0-9][A-Za-z0-9._-]{0,127}\z/
   @max_temporary_relative_key_bytes 512
   @max_temporary_path_segments 16
@@ -65,7 +63,6 @@ defmodule Storyarn.Billing.StorageAccounting do
           current_assets: usage_bucket(),
           asset_trash: usage_bucket(),
           full_snapshots: usage_bucket(),
-          linked_snapshots: usage_bucket(),
           active_reservations: %{
             bytes: non_neg_integer(),
             count: non_neg_integer(),
@@ -534,8 +531,8 @@ defmodule Storyarn.Billing.StorageAccounting do
   @doc """
   Returns the exact object namespaces owned by a storage reservation.
 
-  Snapshot builds own paired staging/ready object-set prefixes. Conversion,
-  restore, and export operations own one reservation-specific temporary root.
+  Snapshot builds own paired staging/ready archive prefixes. Restore and export
+  operations own one reservation-specific temporary root.
   Every prefix is reconstructed from immutable reservation identity before it
   can authorize cleanup.
   """
@@ -555,37 +552,12 @@ defmodule Storyarn.Billing.StorageAccounting do
     expected_namespace = reservation_namespace(project_id, reservation.kind, lease_token)
 
     case {storage_namespace == expected_namespace, snapshot_ready_identity(project_id, ready_prefix)} do
-      {true, {:ok, 1, token}} ->
-        {:ok,
-         %{
-           staging: SnapshotObjectStorage.staging_prefix(project_id, token),
-           ready: ready_prefix
-         }}
-
-      {true, {:ok, 2, token}} ->
+      {true, {:ok, token}} ->
         {:ok,
          %{
            staging: SnapshotArchiveStorage.staging_prefix(project_id, token),
            ready: ready_prefix
          }}
-
-      _invalid ->
-        {:error, :storage_reservation_has_no_object_namespace}
-    end
-  end
-
-  def operation_object_prefixes(%StorageReservation{
-        kind: "linked_to_full_conversion" = kind,
-        project_id_snapshot: project_id,
-        storage_namespace: storage_namespace,
-        cleanup_object_prefix: ready_prefix,
-        lease_token: lease_token
-      }) do
-    expected_namespace = reservation_namespace(project_id, kind, lease_token)
-
-    case {storage_namespace == expected_namespace, snapshot_ready_identity(project_id, ready_prefix)} do
-      {true, {:ok, 1, _token}} ->
-        {:ok, %{temporary: storage_namespace, ready: ready_prefix}}
 
       _invalid ->
         {:error, :storage_reservation_has_no_object_namespace}
@@ -1228,10 +1200,7 @@ defmodule Storyarn.Billing.StorageAccounting do
     current_assets = assets.current_assets
     asset_trash = assets.asset_trash
     full_snapshots = Map.get(snapshots, "full", empty_bucket())
-    linked_snapshots = Map.get(snapshots, "linked", empty_bucket())
-
-    accounted_bytes =
-      current_assets.bytes + asset_trash.bytes + full_snapshots.bytes + linked_snapshots.bytes + reservations.bytes
+    accounted_bytes = current_assets.bytes + asset_trash.bytes + full_snapshots.bytes + reservations.bytes
 
     %{
       accounting_version: @accounting_version,
@@ -1239,7 +1208,6 @@ defmodule Storyarn.Billing.StorageAccounting do
       current_assets: current_assets,
       asset_trash: asset_trash,
       full_snapshots: full_snapshots,
-      linked_snapshots: linked_snapshots,
       active_reservations: reservations,
       accounted_bytes: accounted_bytes
     }
@@ -1295,7 +1263,7 @@ defmodule Storyarn.Billing.StorageAccounting do
       query,
       [snapshot],
       snapshot.lifecycle_state in ["ready", "deleting"] and
-        snapshot.mode in ["full", "linked"] and
+        snapshot.mode == "full" and
         snapshot.accounting_version == @accounting_version and
         not is_nil(snapshot.accounted_size_bytes)
     )
@@ -1609,7 +1577,6 @@ defmodule Storyarn.Billing.StorageAccounting do
       project_snapshot_id: reservation.project_snapshot_id_snapshot,
       kind: reservation.kind,
       reserved_bytes: reservation.reserved_bytes,
-      requested_ready_prefix: reservation.cleanup_object_prefix,
       reservation_id: reservation.id
     }
 
@@ -1652,9 +1619,12 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   defp validate_reservation_scope(%Workspace{}, _attrs), do: {:error, :invalid_storage_reservation_project}
 
-  defp validate_reservation_target(
-         %{project_id: project_id, project_snapshot_id: snapshot_id, kind: kind, reserved_bytes: reserved_bytes} = attrs
-       )
+  defp validate_reservation_target(%{
+         project_id: project_id,
+         project_snapshot_id: snapshot_id,
+         kind: kind,
+         reserved_bytes: reserved_bytes
+       })
        when is_positive_integer(project_id) and is_positive_integer(snapshot_id) and
               is_non_negative_integer(reserved_bytes) do
     snapshot =
@@ -1666,9 +1636,7 @@ defmodule Storyarn.Billing.StorageAccounting do
       )
 
     with true <- valid_reservation_target?(kind, snapshot),
-         :ok <- validate_target_allocation(kind, reserved_bytes, snapshot),
-         :ok <- validate_requested_ready_prefix(kind, attrs, snapshot),
-         :ok <- ensure_ready_prefix_available(kind, attrs) do
+         :ok <- validate_target_allocation(kind, reserved_bytes, snapshot) do
       {:ok, snapshot}
     else
       _invalid -> {:error, :invalid_storage_reservation_snapshot}
@@ -1679,25 +1647,6 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   defp valid_reservation_target?("snapshot_build", %ProjectSnapshot{
          project_id: project_id,
-         format_version: 1,
-         mode: mode,
-         lifecycle_state: lifecycle_state,
-         integrity_state: "unknown",
-         accounted_size_bytes: nil,
-         accounting_version: nil,
-         object_prefix: object_prefix,
-         project_storage_key: project_storage_key,
-         manifest_storage_key: manifest_storage_key
-       })
-       when mode in ["full", "linked"] and lifecycle_state in ["pending", "building", "verifying"] and
-              is_binary(object_prefix) do
-    project_storage_key == object_prefix <> "/project.json" and
-      manifest_storage_key == object_prefix <> "/manifest.json" and
-      SnapshotObjectStorage.ready_prefix_for_project?(project_id, object_prefix)
-  end
-
-  defp valid_reservation_target?("snapshot_build", %ProjectSnapshot{
-         project_id: project_id,
          format_version: 2,
          mode: "full",
          lifecycle_state: lifecycle_state,
@@ -1705,7 +1654,6 @@ defmodule Storyarn.Billing.StorageAccounting do
          accounted_size_bytes: nil,
          accounting_version: nil,
          object_prefix: object_prefix,
-         project_storage_key: nil,
          archive_storage_key: archive_storage_key,
          manifest_storage_key: manifest_storage_key
        })
@@ -1715,31 +1663,17 @@ defmodule Storyarn.Billing.StorageAccounting do
       SnapshotArchiveStorage.ready_prefix_for_project?(project_id, object_prefix)
   end
 
-  defp valid_reservation_target?("linked_to_full_conversion", %ProjectSnapshot{
-         format_version: 1,
-         mode: "linked",
-         lifecycle_state: "ready",
-         integrity_state: "verified",
-         accounted_size_bytes: accounted_size_bytes,
-         accounting_version: @accounting_version
-       })
-       when is_positive_integer(accounted_size_bytes), do: true
-
   defp valid_reservation_target?(kind, %ProjectSnapshot{
-         format_version: format_version,
+         format_version: 2,
          mode: "full",
          lifecycle_state: "ready",
          integrity_state: "verified",
          accounted_size_bytes: accounted_size_bytes,
          accounting_version: @accounting_version
        })
-       when kind in ["restore_staging", "snapshot_export"] and format_version in [1, 2] and
-              is_positive_integer(accounted_size_bytes), do: true
+       when kind in ["restore_staging", "snapshot_export"] and is_positive_integer(accounted_size_bytes), do: true
 
   defp valid_reservation_target?(_kind, _snapshot), do: false
-
-  defp validate_target_allocation("linked_to_full_conversion", bytes, %ProjectSnapshot{})
-       when is_non_negative_integer(bytes), do: :ok
 
   defp validate_target_allocation("snapshot_export", bytes, %ProjectSnapshot{}) when is_non_negative_integer(bytes),
     do: :ok
@@ -1748,55 +1682,6 @@ defmodule Storyarn.Billing.StorageAccounting do
        when kind in ["snapshot_build", "restore_staging"] and is_positive_integer(bytes), do: :ok
 
   defp validate_target_allocation(_kind, _bytes, _snapshot), do: {:error, :invalid_storage_reservation_allocation}
-
-  defp validate_requested_ready_prefix("linked_to_full_conversion", attrs, %ProjectSnapshot{
-         project_id: project_id,
-         object_prefix: source_prefix
-       }) do
-    ready_prefix = Map.get(attrs, :requested_ready_prefix)
-
-    if ready_prefix != source_prefix and SnapshotObjectStorage.ready_prefix_for_project?(project_id, ready_prefix),
-      do: :ok,
-      else: {:error, :invalid_storage_reservation_ready_prefix}
-  end
-
-  defp validate_requested_ready_prefix(_kind, _attrs, _snapshot), do: :ok
-
-  defp ensure_ready_prefix_available("linked_to_full_conversion", attrs) do
-    ready_prefix = Map.get(attrs, :requested_ready_prefix)
-    reservation_id = Map.get(attrs, :reservation_id)
-
-    snapshot_owns_prefix? =
-      Repo.exists?(from(snapshot in ProjectSnapshot, where: snapshot.object_prefix == ^ready_prefix))
-
-    reservations_for_prefix =
-      from(reservation in StorageReservation,
-        where:
-          reservation.kind in ^@exclusive_snapshot_operation_kinds and
-            reservation.cleanup_object_prefix == ^ready_prefix
-      )
-
-    reservations_for_prefix =
-      if is_integer(reservation_id) and reservation_id > 0,
-        do: where(reservations_for_prefix, [reservation], reservation.id != ^reservation_id),
-        else: reservations_for_prefix
-
-    reservation_owns_prefix? = Repo.exists?(reservations_for_prefix)
-
-    if snapshot_owns_prefix? or reservation_owns_prefix?,
-      do: {:error, :storage_reservation_ready_prefix_unavailable},
-      else: :ok
-  end
-
-  defp ensure_ready_prefix_available(_kind, _attrs), do: :ok
-
-  defp validate_active_target_facts(
-         %StorageReservation{kind: "linked_to_full_conversion", source_asset_count: source_asset_count},
-         %ProjectSnapshot{asset_count: source_asset_count}
-       ), do: :ok
-
-  defp validate_active_target_facts(%StorageReservation{kind: "linked_to_full_conversion"}, _snapshot),
-    do: {:error, :invalid_storage_reservation_snapshot}
 
   defp validate_active_target_facts(%StorageReservation{}, %ProjectSnapshot{}), do: :ok
 
@@ -1820,8 +1705,6 @@ defmodule Storyarn.Billing.StorageAccounting do
       status: "active",
       storage_namespace: reservation_namespace(project_id, kind, lease_token),
       cleanup_object_prefix: nil,
-      source_asset_count: nil,
-      requested_ready_prefix: value(attrs, :ready_object_prefix),
       reserved_bytes: value(attrs, :reserved_bytes),
       lease_token: lease_token,
       generation: 1,
@@ -1856,16 +1739,6 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   defp put_target_facts(attrs, %ProjectSnapshot{object_prefix: object_prefix}) when attrs.kind == "snapshot_build" do
     {:ok, %{attrs | cleanup_object_prefix: object_prefix}}
-  end
-
-  defp put_target_facts(attrs, %ProjectSnapshot{asset_count: asset_count})
-       when attrs.kind == "linked_to_full_conversion" do
-    {:ok,
-     %{
-       attrs
-       | cleanup_object_prefix: attrs.requested_ready_prefix,
-         source_asset_count: asset_count
-     }}
   end
 
   defp put_target_facts(attrs, %ProjectSnapshot{}) when attrs.kind in ["restore_staging", "snapshot_export"] do
@@ -2022,8 +1895,8 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   defp valid_inventory_bounds?(storage_keys) when is_list(storage_keys) do
     # Cleanup ownership must remain provable after operators lower runtime
-    # verification limits. The v1 object-set hard bound also contains the
-    # fixed four-key v2 archive cleanup; digest/count prove the exact inventory.
+    # verification limits. The object-format hard bound contains the fixed
+    # four-key archive cleanup; digest/count prove the exact inventory.
     max_count = 2 * (SnapshotObjectFormat.hard_limits().max_objects + 1)
 
     storage_keys != [] and length(storage_keys) <= max_count and
@@ -2139,20 +2012,6 @@ defmodule Storyarn.Billing.StorageAccounting do
     end
   end
 
-  defp validate_cleanup_inventory(%{temporary: temporary_prefix, ready: ready_prefix}, cleanup_scope, storage_keys) do
-    with ^temporary_prefix <- value(cleanup_scope, :temporary_prefix),
-         ^ready_prefix <- value(cleanup_scope, :ready_prefix),
-         true <- Enum.all?(storage_keys, &temporary_or_ready_key?(&1, temporary_prefix, ready_prefix)),
-         {:ok, temporary_paths} <- relative_cleanup_paths(storage_keys, temporary_prefix),
-         {:ok, ready_paths} <- relative_cleanup_paths(storage_keys, ready_prefix),
-         true <- MapSet.equal?(temporary_paths, ready_paths),
-         true <- required_cleanup_paths_present?(ready_paths) do
-      :ok
-    else
-      _invalid -> {:error, :invalid_conversion_cleanup_inventory}
-    end
-  end
-
   defp validate_cleanup_inventory(%{temporary: temporary_prefix}, cleanup_scope, storage_keys) do
     with ^temporary_prefix <- value(cleanup_scope, :temporary_prefix),
          true <- Enum.all?(storage_keys, &temporary_object_key?(&1, temporary_prefix)),
@@ -2177,16 +2036,11 @@ defmodule Storyarn.Billing.StorageAccounting do
   end
 
   defp required_cleanup_paths_present?(paths) do
-    MapSet.subset?(MapSet.new(["project.json", "manifest.json"]), paths) or
-      MapSet.subset?(MapSet.new(["snapshot.zip", "manifest.json"]), paths)
+    MapSet.subset?(MapSet.new(["snapshot.zip", "manifest.json"]), paths)
   end
 
   defp snapshot_cleanup_key?(storage_key, staging_prefix, ready_prefix) do
     snapshot_object_key?(storage_key, staging_prefix) or snapshot_object_key?(storage_key, ready_prefix)
-  end
-
-  defp temporary_or_ready_key?(storage_key, temporary_prefix, ready_prefix) do
-    temporary_object_key?(storage_key, temporary_prefix) or snapshot_object_key?(storage_key, ready_prefix)
   end
 
   defp temporary_object_key?(storage_key, prefix) when is_binary(storage_key) and is_binary(prefix) do
@@ -2218,31 +2072,12 @@ defmodule Storyarn.Billing.StorageAccounting do
     end
   end
 
-  defp valid_snapshot_object_tail?(prefix, ["project.json"]) do
-    String.contains?(prefix, "/snapshots/object-sets/v1/")
-  end
-
   defp valid_snapshot_object_tail?(prefix, ["manifest.json"]) do
-    String.contains?(prefix, ["/snapshots/object-sets/v1/", "/snapshots/archives/v2/"])
-  end
-
-  defp valid_snapshot_object_tail?(prefix, ["blobs", filename]) do
-    String.contains?(prefix, "/snapshots/object-sets/v1/") and
-      Regex.match?(@snapshot_blob_filename_regex, filename)
+    String.contains?(prefix, "/snapshots/archives/v2/")
   end
 
   defp valid_snapshot_object_tail?(prefix, ["snapshot.zip"]) do
     String.contains?(prefix, "/snapshots/archives/v2/")
-  end
-
-  defp valid_snapshot_object_tail?(prefix, [".storyarn-copy", suffix]) do
-    String.contains?(prefix, "/snapshots/object-sets/v1/") and
-      Regex.match?(@snapshot_object_token_regex, suffix)
-  end
-
-  defp valid_snapshot_object_tail?(prefix, ["blobs", ".storyarn-copy", suffix]) do
-    String.contains?(prefix, "/snapshots/object-sets/v1/") and
-      Regex.match?(@snapshot_object_token_regex, suffix)
   end
 
   defp valid_snapshot_object_tail?(_prefix, _parts), do: false
@@ -2250,16 +2085,10 @@ defmodule Storyarn.Billing.StorageAccounting do
   defp snapshot_ready_identity(project_id, ready_prefix)
        when is_positive_integer(project_id) and is_binary(ready_prefix) do
     case String.split(ready_prefix, "/", trim: false) do
-      ["projects", encoded_project_id, "snapshots", "object-sets", "v1", "ready", token] ->
-        if encoded_project_id == Integer.to_string(project_id) and
-             Regex.match?(@snapshot_object_token_regex, token),
-           do: {:ok, 1, token},
-           else: :error
-
       ["projects", encoded_project_id, "snapshots", "archives", "v2", "ready", token] ->
         if encoded_project_id == Integer.to_string(project_id) and
              Regex.match?(@snapshot_object_token_regex, token),
-           do: {:ok, 2, token},
+           do: {:ok, token},
            else: :error
 
       _parts ->
@@ -2318,45 +2147,11 @@ defmodule Storyarn.Billing.StorageAccounting do
            reservation,
          %ProjectSnapshot{id: snapshot_id} = snapshot
        )
-       when kind in ["snapshot_build", "linked_to_full_conversion"] do
+       when kind == "snapshot_build" do
     owner_expectation(reservation, project_id, snapshot)
   end
 
   defp committed_owner_expectation(_reservation, _snapshot), do: {:error, :storage_reservation_not_committable}
-
-  defp owner_expectation(%StorageReservation{kind: "snapshot_build"}, project_id, %ProjectSnapshot{
-         id: snapshot_id,
-         project_id: project_id,
-         format_version: 1,
-         mode: mode,
-         lifecycle_state: lifecycle_state,
-         integrity_state: "unknown",
-         accounted_size_bytes: nil,
-         accounting_version: nil,
-         object_prefix: object_prefix,
-         project_storage_key: project_storage_key,
-         manifest_storage_key: manifest_storage_key
-       })
-       when mode in ["full", "linked"] and lifecycle_state in ["pending", "building", "verifying"] and
-              is_binary(object_prefix) do
-    valid_keys? =
-      project_storage_key == object_prefix <> "/project.json" and
-        manifest_storage_key == object_prefix <> "/manifest.json"
-
-    if valid_keys? and SnapshotObjectStorage.ready_prefix_for_project?(project_id, object_prefix) do
-      {:ok,
-       %{
-         snapshot_id: snapshot_id,
-         project_id: project_id,
-         kind: "snapshot_build",
-         object_prefix: object_prefix,
-         baseline_accounted_bytes: 0,
-         final_modes: ["full", "linked"]
-       }}
-    else
-      {:error, :storage_reservation_owner_mismatch}
-    end
-  end
 
   defp owner_expectation(%StorageReservation{kind: "snapshot_build"}, project_id, %ProjectSnapshot{
          id: snapshot_id,
@@ -2368,7 +2163,6 @@ defmodule Storyarn.Billing.StorageAccounting do
          accounted_size_bytes: nil,
          accounting_version: nil,
          object_prefix: object_prefix,
-         project_storage_key: nil,
          archive_storage_key: archive_storage_key,
          manifest_storage_key: manifest_storage_key
        })
@@ -2390,39 +2184,6 @@ defmodule Storyarn.Billing.StorageAccounting do
     else
       {:error, :storage_reservation_owner_mismatch}
     end
-  end
-
-  defp owner_expectation(
-         %StorageReservation{
-           kind: "linked_to_full_conversion",
-           source_asset_count: source_asset_count,
-           cleanup_object_prefix: ready_prefix
-         },
-         project_id,
-         %ProjectSnapshot{
-           id: snapshot_id,
-           project_id: project_id,
-           format_version: 1,
-           mode: "linked",
-           lifecycle_state: "ready",
-           integrity_state: "verified",
-           accounted_size_bytes: baseline_accounted_bytes,
-           accounting_version: @accounting_version,
-           asset_count: source_asset_count
-         }
-       )
-       when is_positive_integer(baseline_accounted_bytes) and is_non_negative_integer(source_asset_count) and
-              is_binary(ready_prefix) do
-    {:ok,
-     %{
-       snapshot_id: snapshot_id,
-       project_id: project_id,
-       kind: "linked_to_full_conversion",
-       object_prefix: ready_prefix,
-       baseline_accounted_bytes: baseline_accounted_bytes,
-       source_asset_count: source_asset_count,
-       final_modes: ["full"]
-     }}
   end
 
   defp owner_expectation(_reservation, _project_id, _snapshot), do: {:error, :storage_reservation_owner_mismatch}
@@ -2459,13 +2220,6 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   defp valid_committed_accounting?(%{kind: "snapshot_build"}, %ProjectSnapshot{}, _actual_bytes), do: true
 
-  defp valid_committed_accounting?(
-         %{kind: "linked_to_full_conversion", source_asset_count: source_asset_count},
-         %ProjectSnapshot{asset_count: source_asset_count},
-         actual_bytes
-       )
-       when is_non_negative_integer(source_asset_count) and is_non_negative_integer(actual_bytes), do: true
-
   defp valid_committed_accounting?(_expectation, _snapshot, _actual_bytes), do: false
 
   defp publication_inventory_matches?(
@@ -2494,8 +2248,7 @@ defmodule Storyarn.Billing.StorageAccounting do
       reservation.project_snapshot_id_snapshot == attrs.project_snapshot_id and
       reservation.idempotency_key == attrs.idempotency_key and
       reservation.kind == attrs.kind and reservation.reserved_bytes == attrs.reserved_bytes and
-      reservation.cleanup_object_prefix == attrs.cleanup_object_prefix and
-      reservation.source_asset_count == attrs.source_asset_count
+      reservation.cleanup_object_prefix == attrs.cleanup_object_prefix
   end
 
   defp same_release?(reservation, attrs) do
@@ -2503,12 +2256,6 @@ defmodule Storyarn.Billing.StorageAccounting do
       reservation.cleanup_status == attrs.cleanup_status and
       reservation.cleanup_reference == attrs.cleanup_reference
   end
-
-  defp validate_operation_bytes(
-         %StorageReservation{kind: "linked_to_full_conversion", source_asset_count: source_asset_count},
-         bytes
-       )
-       when is_integer(source_asset_count) and source_asset_count >= 0 and is_non_negative_integer(bytes), do: :ok
 
   defp validate_operation_bytes(%StorageReservation{kind: "snapshot_export"}, bytes) when is_non_negative_integer(bytes),
     do: :ok

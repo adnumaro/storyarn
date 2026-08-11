@@ -2,9 +2,8 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   @moduledoc """
   Schema for project-level snapshots.
 
-  Every project snapshot row belongs to a canonical, versioned storage format.
-  Legacy v1 rows own a manifest, project JSON, and copied asset blobs. V2 rows
-  own one canonical ZIP archive plus its independently checksummed manifest.
+  Every project snapshot row owns one canonical v2 ZIP archive plus its
+  independently checksummed manifest.
   """
   use Ecto.Schema
 
@@ -17,14 +16,12 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.SnapshotArchiveStorage
-  alias Storyarn.Versioning.SnapshotObjectStorage
 
   @allocated_object_set_fields [
     :project_id,
     :version_number,
     :format_version,
     :object_prefix,
-    :project_storage_key,
     :archive_storage_key,
     :archive_size_bytes,
     :project_size_bytes,
@@ -42,7 +39,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     :version_number,
     :title,
     :description,
-    :project_storage_key,
     :archive_storage_key,
     :archive_size_bytes,
     :archive_checksum,
@@ -67,21 +63,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     :asset_blob_size_bytes,
     :accounting_version
   ]
-  @linked_conversion_immutable_fields [
-    :project_id,
-    :version_number,
-    :title,
-    :description,
-    :project_size_bytes,
-    :project_checksum,
-    :entity_counts,
-    :created_by_id,
-    :is_auto,
-    :format_version,
-    :asset_count,
-    :accounting_version
-  ]
-
   @origins ~w(user daily pre_restore post_restore)
   @same_generation_transitions %{
     "pending" => ~w(pending building failed cancelled),
@@ -101,7 +82,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
           version_number: integer(),
           title: String.t() | nil,
           description: String.t() | nil,
-          project_storage_key: String.t() | nil,
           archive_storage_key: String.t() | nil,
           archive_size_bytes: integer() | nil,
           archive_checksum: String.t() | nil,
@@ -160,13 +140,12 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     field :version_number, :integer
     field :title, :string
     field :description, :string
-    field :project_storage_key, :string
     field :archive_storage_key, :string
     field :archive_size_bytes, :integer
     field :archive_checksum, :string
     field :project_size_bytes, :integer
     field :project_checksum, :string
-    field :format_version, :integer
+    field :format_version, :integer, default: 2
     field :object_prefix, :string
     field :manifest_storage_key, :string
     field :manifest_size_bytes, :integer
@@ -220,27 +199,11 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   @doc """
   Changeset for persisting canonical snapshot storage.
 
-  V1 keeps independently verified project and manifest digests. V2 keeps the
-  independently verified archive and manifest digests. Readers require every
-  physical object of the selected format and never infer readiness from one
+  The canonical archive and manifest sidecar retain independent digests.
+  Readers require both physical objects and never infer readiness from one
   object alone.
   """
   def object_set_changeset(snapshot, attrs) do
-    object_set_changeset(snapshot, attrs, :finalize_or_remeasure)
-  end
-
-  @doc """
-  Changeset for the one-way linked-to-full ownership transition.
-
-  Only the new full namespace, manifest inventory, and accounting breakdown
-  may change. Portable project bytes and logical snapshot identity remain
-  immutable.
-  """
-  def full_conversion_changeset(snapshot, attrs) do
-    object_set_changeset(snapshot, attrs, :linked_to_full)
-  end
-
-  defp object_set_changeset(snapshot, attrs, transition) do
     attrs = normalize_object_set_accounting_attrs(attrs)
 
     derive_accounted_size? = not has_attr?(attrs, :accounted_size_bytes)
@@ -252,7 +215,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :version_number,
       :title,
       :description,
-      :project_storage_key,
       :archive_storage_key,
       :archive_size_bytes,
       :archive_checksum,
@@ -331,7 +293,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :state_updated_at
     ])
     |> validate_format_required_fields(:ready)
-    |> validate_inclusion(:format_version, [1, 2])
+    |> validate_inclusion(:format_version, [2])
     |> validate_inclusion(:mode, ["full"])
     |> validate_inclusion(:lifecycle_state, ["ready"])
     |> validate_inclusion(:integrity_state, ["verified"])
@@ -359,7 +321,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_format(:manifest_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:capture_digest, ~r/\A[0-9a-f]{64}\z/)
     |> validate_ready_object_keys()
-    |> validate_object_set_transition(snapshot, transition)
+    |> validate_object_set_transition(snapshot)
     |> validate_object_counts()
     |> validate_total_size()
     |> validate_accounting_breakdown()
@@ -382,8 +344,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:lifecycle_state, name: :project_snapshots_ready_accounting)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_ready_object_set)
     |> check_constraint(:accounted_size_bytes, name: :project_snapshots_full_ready_accounting)
-    |> check_constraint(:asset_blob_size_bytes, name: :project_snapshots_linked_asset_bytes)
-    |> check_constraint(:accounted_size_bytes, name: :project_snapshots_linked_ready_accounting)
     |> check_constraint(:capture_digest, name: :project_snapshots_capture_digest_format)
     |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
@@ -519,7 +479,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   def pending_object_set_changeset(snapshot, attrs) do
     attrs =
       attrs
-      |> put_default(:format_version, 1)
+      |> put_default(:format_version, 2)
       |> put_default(:lifecycle_state, "pending")
       |> put_default(:integrity_state, "unknown")
       |> put_default(:progress_phase, "pending")
@@ -537,7 +497,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :version_number,
       :title,
       :description,
-      :project_storage_key,
       :archive_storage_key,
       :archive_size_bytes,
       :archive_checksum,
@@ -601,7 +560,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :lifecycle_generation
     ])
     |> validate_format_required_fields(:pending)
-    |> validate_inclusion(:format_version, [1, 2])
+    |> validate_inclusion(:format_version, [2])
     |> validate_inclusion(:mode, ["full"])
     |> validate_inclusion(:lifecycle_state, ["pending"])
     |> validate_inclusion(:integrity_state, ["unknown"])
@@ -692,7 +651,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     snapshot
     |> cast(attrs, [
       :object_prefix,
-      :project_storage_key,
       :archive_storage_key,
       :manifest_storage_key,
       :lifecycle_state,
@@ -740,7 +698,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       "verified",
       "missing",
       "corrupt",
-      "at_risk",
       "incomplete"
     ])
     |> validate_inclusion(:progress_phase, [
@@ -913,15 +870,8 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     case {attr_value(attrs, :format_version), attr_value(attrs, :object_prefix)} do
       {2, prefix} when is_binary(prefix) ->
         attrs
-        |> put_default(:project_storage_key, nil)
         |> put_default(:archive_storage_key, SnapshotArchiveStorage.archive_key(prefix))
         |> put_default(:manifest_storage_key, SnapshotArchiveStorage.manifest_key(prefix))
-
-      {_format_version, prefix} when is_binary(prefix) ->
-        attrs
-        |> put_default(:project_storage_key, prefix <> "/project.json")
-        |> put_default(:project_size_bytes, 0)
-        |> put_default(:manifest_storage_key, prefix <> "/manifest.json")
 
       _prefix ->
         attrs
@@ -935,36 +885,16 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   defp attr_value(attrs, field), do: Map.get(attrs, field, Map.get(attrs, to_string(field)))
 
   defp validate_format_required_fields(changeset, state) do
-    case get_field(changeset, :format_version) do
-      1 ->
-        changeset
-        |> validate_required([:project_storage_key])
-        |> reject_present_fields([:archive_storage_key, :archive_size_bytes, :archive_checksum])
+    required =
+      cond do
+        state == :ready -> [:archive_storage_key, :archive_size_bytes, :archive_checksum]
+        is_nil(get_field(changeset, :capture_digest)) -> [:archive_storage_key]
+        true -> [:archive_storage_key, :archive_size_bytes]
+      end
 
-      2 ->
-        required =
-          cond do
-            state == :ready -> [:archive_storage_key, :archive_size_bytes, :archive_checksum]
-            is_nil(get_field(changeset, :capture_digest)) -> [:archive_storage_key]
-            true -> [:archive_storage_key, :archive_size_bytes]
-          end
-
-        changeset
-        |> validate_required(required)
-        |> reject_present_fields([:project_storage_key])
-        |> validate_nil_archive_checksum(state)
-
-      _format_version ->
-        changeset
-    end
-  end
-
-  defp reject_present_fields(changeset, fields) do
-    Enum.reduce(fields, changeset, fn field, changeset ->
-      if is_nil(get_field(changeset, field)),
-        do: changeset,
-        else: add_error(changeset, field, "is not valid for this snapshot format")
-    end)
+    changeset
+    |> validate_required(required)
+    |> validate_nil_archive_checksum(state)
   end
 
   defp validate_nil_archive_checksum(changeset, :pending) do
@@ -996,23 +926,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
 
   defp maybe_derive_accounted_size(changeset, false), do: changeset
 
-  defp maybe_derive_asset_blob_size(changeset, true) do
-    case get_field(changeset, :format_version) do
-      1 ->
-        total_size = get_field(changeset, :total_size_bytes)
-        project_size = get_field(changeset, :project_size_bytes)
-        manifest_size = get_field(changeset, :manifest_size_bytes)
-
-        if Enum.all?([total_size, project_size, manifest_size], &is_integer/1) do
-          put_change(changeset, :asset_blob_size_bytes, total_size - project_size - manifest_size)
-        else
-          changeset
-        end
-
-      _format_version ->
-        changeset
-    end
-  end
+  defp maybe_derive_asset_blob_size(changeset, true), do: changeset
 
   defp maybe_derive_asset_blob_size(changeset, false), do: changeset
 
@@ -1048,9 +962,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     end
   end
 
-  defp physical_object_count_error(1, object_count, blob_count) when object_count != blob_count + 2,
-    do: {:object_count, "must equal blob count plus manifest and project objects"}
-
   defp physical_object_count_error(2, object_count, _blob_count) when object_count != 2,
     do: {:object_count, "must equal the archive and manifest objects"}
 
@@ -1065,8 +976,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     do: {:blob_count, cataloged_blob_count_message(format_version)}
 
   defp cataloged_blob_count_error(_format_version, _mode, _asset_count, _blob_count), do: nil
-
-  defp cataloged_blob_count_message(1), do: "must include at least one owned blob when assets are cataloged"
 
   defp cataloged_blob_count_message(_format_version),
     do: "must include at least one logical blob when assets are cataloged"
@@ -1118,27 +1027,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
 
   defp validate_format_accounting_breakdown(
          changeset,
-         1,
-         total_size,
-         project_size,
-         manifest_size,
-         asset_blob_size,
-         _archive_size
-       ) do
-    if Enum.all?([total_size, project_size, manifest_size, asset_blob_size], &is_integer/1) and
-         total_size != project_size + manifest_size + asset_blob_size do
-      add_error(
-        changeset,
-        :asset_blob_size_bytes,
-        "must equal total size minus project and manifest sizes"
-      )
-    else
-      changeset
-    end
-  end
-
-  defp validate_format_accounting_breakdown(
-         changeset,
          2,
          total_size,
          _project_size,
@@ -1165,53 +1053,27 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
        ), do: changeset
 
   defp validate_ready_object_keys(changeset) do
-    format_version = get_field(changeset, :format_version)
     project_id = get_field(changeset, :project_id)
     prefix = get_field(changeset, :object_prefix)
-    project_storage_key = get_field(changeset, :project_storage_key)
     archive_storage_key = get_field(changeset, :archive_storage_key)
     manifest_storage_key = get_field(changeset, :manifest_storage_key)
 
-    case format_version do
-      1 ->
-        changeset
-        |> validate_canonical_prefix(SnapshotObjectStorage.ready_prefix_for_project?(project_id, prefix))
-        |> validate_storage_key(
-          :project_storage_key,
-          project_storage_key,
-          prefix,
-          "project.json",
-          "must identify project.json in the object namespace"
-        )
-        |> validate_storage_key(
-          :manifest_storage_key,
-          manifest_storage_key,
-          prefix,
-          "manifest.json",
-          "must identify manifest.json in the object namespace"
-        )
-
-      2 ->
-        changeset
-        |> validate_canonical_prefix(SnapshotArchiveStorage.ready_prefix_for_project?(project_id, prefix))
-        |> validate_storage_key(
-          :archive_storage_key,
-          archive_storage_key,
-          prefix,
-          "snapshot.zip",
-          "must identify snapshot.zip in the archive namespace"
-        )
-        |> validate_storage_key(
-          :manifest_storage_key,
-          manifest_storage_key,
-          prefix,
-          "manifest.json",
-          "must identify manifest.json in the archive namespace"
-        )
-
-      _format_version ->
-        changeset
-    end
+    changeset
+    |> validate_canonical_prefix(SnapshotArchiveStorage.ready_prefix_for_project?(project_id, prefix))
+    |> validate_storage_key(
+      :archive_storage_key,
+      archive_storage_key,
+      prefix,
+      "snapshot.zip",
+      "must identify snapshot.zip in the archive namespace"
+    )
+    |> validate_storage_key(
+      :manifest_storage_key,
+      manifest_storage_key,
+      prefix,
+      "manifest.json",
+      "must identify manifest.json in the archive namespace"
+    )
   end
 
   defp validate_canonical_prefix(changeset, true), do: changeset
@@ -1226,43 +1088,13 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       else: add_error(changeset, field, message)
   end
 
-  defp validate_object_set_transition(changeset, snapshot, :finalize_or_remeasure) do
+  defp validate_object_set_transition(changeset, snapshot) do
     fields =
       if is_integer(snapshot.accounting_generation),
         do: @ready_object_set_fields,
         else: @allocated_object_set_fields
 
     validate_immutable_fields(changeset, snapshot, fields)
-  end
-
-  defp validate_object_set_transition(changeset, snapshot, :linked_to_full) do
-    changeset
-    |> validate_linked_conversion_source(snapshot)
-    |> validate_immutable_fields(snapshot, @linked_conversion_immutable_fields)
-    |> validate_linked_conversion_growth(snapshot)
-  end
-
-  defp validate_linked_conversion_source(changeset, %__MODULE__{
-         id: id,
-         mode: "linked",
-         lifecycle_state: "ready",
-         integrity_state: "verified",
-         accounting_version: 1,
-         accounting_generation: generation
-       })
-       when is_integer(id) and is_integer(generation) and generation > 0, do: changeset
-
-  defp validate_linked_conversion_source(changeset, %__MODULE__{}),
-    do: add_error(changeset, :mode, "must transition from a verified ready linked snapshot")
-
-  defp validate_linked_conversion_growth(changeset, snapshot) do
-    accounted_size = get_field(changeset, :accounted_size_bytes)
-    asset_blob_size = get_field(changeset, :asset_blob_size_bytes)
-
-    if is_integer(accounted_size) and is_integer(snapshot.accounted_size_bytes) and
-         accounted_size >= snapshot.accounted_size_bytes and is_integer(asset_blob_size) and asset_blob_size >= 0,
-       do: changeset,
-       else: add_error(changeset, :accounted_size_bytes, "cannot reduce verified snapshot accounting")
   end
 
   defp validate_immutable_fields(changeset, %__MODULE__{id: id} = snapshot, fields) when is_integer(id) do

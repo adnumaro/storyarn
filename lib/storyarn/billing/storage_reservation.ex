@@ -14,7 +14,7 @@ defmodule Storyarn.Billing.StorageReservation do
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Workspaces.Workspace
 
-  @kinds ~w(snapshot_build linked_to_full_conversion restore_staging snapshot_export)
+  @kinds ~w(snapshot_build restore_staging snapshot_export)
   @statuses ~w(active committed released)
   @cleanup_statuses ~w(not_required owned)
 
@@ -27,7 +27,6 @@ defmodule Storyarn.Billing.StorageReservation do
     field :status, :string
     field :storage_namespace, :string
     field :cleanup_object_prefix, :string
-    field :source_asset_count, :integer
     field :reserved_bytes, :integer
     field :actual_bytes, :integer
     field :lease_token, Ecto.UUID
@@ -160,8 +159,8 @@ defmodule Storyarn.Billing.StorageReservation do
   @doc """
   Renews the exact live snapshot-build owner and rebases its expiry window.
 
-  Unlike a general reservation renewal, the new expiry may be earlier than a
-  legacy 24-hour lease. The caller must hold the workspace lock and prove the
+  Unlike a general reservation renewal, the new expiry may shorten an existing
+  24-hour lease. The caller must hold the workspace lock and prove the
   exact executing Oban owner before using this generation-fenced changeset.
   """
   def live_owner_renew_changeset(reservation, attrs) do
@@ -286,7 +285,6 @@ defmodule Storyarn.Billing.StorageReservation do
       get_attr(attrs, :workspace_id_snapshot, workspace_id)
     )
     |> put_change(:project_id_snapshot, get_attr(attrs, :project_id_snapshot, project_id))
-    |> put_change(:source_asset_count, get_attr(attrs, :source_asset_count))
     |> put_change(:project_snapshot_id, get_attr(attrs, :project_snapshot_id))
     |> put_change(
       :project_snapshot_id_snapshot,
@@ -320,43 +318,23 @@ defmodule Storyarn.Billing.StorageReservation do
     |> validate_inclusion(:status, @statuses)
     |> validate_format(
       :storage_namespace,
-      ~r<\Aprojects/[1-9]\d*/storage-reservations/v1/(snapshot-build|linked-to-full-conversion|restore-staging|snapshot-export)/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z>
+      ~r<\Aprojects/[1-9]\d*/storage-reservations/v1/(snapshot-build|restore-staging|snapshot-export)/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z>
     )
     |> validate_allocated_bytes(:reserved_bytes)
     |> validate_number(:generation, greater_than: 0)
     |> validate_inclusion(:accounting_version, [1])
     |> validate_length(:idempotency_key, max: 255)
-    |> validate_source_inventory()
     |> validate_expiry_after_measurement()
     |> validate_storage_namespace_identity()
     |> validate_cleanup_object_prefix()
   end
 
-  defp validate_source_inventory(changeset) do
-    case {get_field(changeset, :kind), get_field(changeset, :source_asset_count)} do
-      {"linked_to_full_conversion", count} when is_integer(count) ->
-        validate_number(changeset, :source_asset_count, greater_than_or_equal_to: 0)
-
-      {"linked_to_full_conversion", _count} ->
-        add_error(changeset, :source_asset_count, "can't be blank for a linked conversion")
-
-      {_kind, nil} ->
-        changeset
-
-      {_kind, _count} ->
-        add_error(changeset, :source_asset_count, "must be empty outside a linked conversion")
-    end
-  end
-
   defp validate_allocated_bytes(changeset, field) do
-    case {get_field(changeset, :kind), get_field(changeset, :source_asset_count)} do
-      {"linked_to_full_conversion", source_asset_count} when is_integer(source_asset_count) ->
+    case get_field(changeset, :kind) do
+      "snapshot_export" when field == :reserved_bytes ->
         validate_number(changeset, field, greater_than_or_equal_to: 0)
 
-      {"snapshot_export", _source_asset_count} when field == :reserved_bytes ->
-        validate_number(changeset, field, greater_than_or_equal_to: 0)
-
-      {_kind, _source_asset_count} ->
+      _kind ->
         validate_number(changeset, field, greater_than: 0)
     end
   end
@@ -394,17 +372,10 @@ defmodule Storyarn.Billing.StorageReservation do
         validate_format(
           changeset,
           :cleanup_object_prefix,
-          ~r<\Aprojects/[1-9]\d*/snapshots/(?:object-sets/v1|archives/v2)/ready/[A-Za-z0-9_-]{16}\z>
+          ~r<\Aprojects/[1-9]\d*/snapshots/archives/v2/ready/[A-Za-z0-9_-]{16}\z>
         )
 
-      {"linked_to_full_conversion", prefix} when is_binary(prefix) ->
-        validate_format(
-          changeset,
-          :cleanup_object_prefix,
-          ~r<\Aprojects/[1-9]\d*/snapshots/object-sets/v1/ready/[A-Za-z0-9_-]{16}\z>
-        )
-
-      {kind, _prefix} when kind in ["snapshot_build", "linked_to_full_conversion"] ->
+      {"snapshot_build", _prefix} ->
         add_error(changeset, :cleanup_object_prefix, "can't be blank for an operation with a ready target")
 
       {kind, prefix} when kind in @kinds and kind != "snapshot_build" ->
@@ -501,9 +472,6 @@ defmodule Storyarn.Billing.StorageReservation do
     |> check_constraint(:status, name: :workspace_storage_reservations_status)
     |> check_constraint(:reserved_bytes,
       name: :workspace_storage_reservations_positive_values
-    )
-    |> check_constraint(:source_asset_count,
-      name: :workspace_storage_reservations_source_inventory
     )
     |> check_constraint(:workspace_id_snapshot,
       name: :workspace_storage_reservations_identity

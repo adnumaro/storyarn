@@ -724,12 +724,12 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   test "deferred cleanup removes partial ready objects while their snapshot is not committed" do
     user = user_fixture()
     project = project_fixture(user)
-    prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/PENDING123456789"
-    storage_key = prefix <> "/project.json"
+    prefix = "projects/#{project.id}/snapshots/archives/v2/ready/PENDING123456789"
+    storage_key = prefix <> "/snapshot.zip"
 
     pending_project_snapshot_fixture(project, %{version_number: 1, object_prefix: prefix})
 
-    assert {:ok, _url} = Storage.upload(storage_key, "partial", "application/json")
+    assert {:ok, _url} = Storage.upload(storage_key, "partial", "application/zip")
     assert :ok = StorageCompensation.delete_storage_keys([storage_key])
     assert {:error, :enoent} = Storage.download(storage_key)
   end
@@ -737,15 +737,15 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   test "deferred cleanup retains ready snapshot objects with durable accounting ownership" do
     user = user_fixture()
     project = project_fixture(user)
-    prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/COMMITTED1234567"
-    storage_key = prefix <> "/project.json"
+    prefix = "projects/#{project.id}/snapshots/archives/v2/ready/COMMITTED1234567"
+    storage_key = prefix <> "/snapshot.zip"
     checksum = String.duplicate("a", 64)
 
     snapshot =
       full_project_snapshot_fixture(project, %{
         version_number: 1,
         object_prefix: prefix,
-        project_storage_key: storage_key,
+        archive_storage_key: storage_key,
         project_size_bytes: 1,
         project_checksum: checksum,
         manifest_size_bytes: 1,
@@ -755,7 +755,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
         blob_count: 0
       })
 
-    assert {:ok, _url} = Storage.upload(storage_key, "p", "application/json")
+    assert {:ok, _url} = Storage.upload(storage_key, "p", "application/zip")
     on_exit(fn -> Storage.adapter().delete(storage_key) end)
 
     assert :ok = StorageCompensation.delete_storage_keys([storage_key])
@@ -774,10 +774,10 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     project = project_fixture(user)
 
     published_prefix =
-      "projects/#{project.id}/snapshots/object-sets/v1/ready/PUBLISHEDCLAIM01"
+      "projects/#{project.id}/snapshots/archives/v2/ready/PUBLISHEDCLAIM01"
 
     poisoned_prefix =
-      "projects/#{project.id}/snapshots/object-sets/v1/ready/POISONEDCLAIM001"
+      "projects/#{project.id}/snapshots/archives/v2/ready/POISONEDCLAIM001"
 
     published_snapshot =
       pending_project_snapshot_fixture(project, %{
@@ -794,11 +794,11 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     insert_snapshot_publication_claim!(project, published_snapshot, "published")
     insert_snapshot_publication_claim!(project, poisoned_snapshot, "poisoned")
 
-    published_key = published_prefix <> "/project.json"
-    poisoned_key = poisoned_prefix <> "/project.json"
+    published_key = published_prefix <> "/snapshot.zip"
+    poisoned_key = poisoned_prefix <> "/snapshot.zip"
 
-    assert {:ok, _url} = Storage.upload(published_key, "published", "application/json")
-    assert {:ok, _url} = Storage.upload(poisoned_key, "poisoned", "application/json")
+    assert {:ok, _url} = Storage.upload(published_key, "published", "application/zip")
+    assert {:ok, _url} = Storage.upload(poisoned_key, "poisoned", "application/zip")
 
     on_exit(fn ->
       Storage.adapter().delete(published_key)
@@ -1086,7 +1086,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     lease_token = Ecto.UUID.generate()
 
     storage_keys =
-      for kind <- ~w(snapshot-build linked-to-full-conversion restore-staging snapshot-export),
+      for kind <- ~w(snapshot-build restore-staging snapshot-export),
           suffix <- ["payload.bin", "nested/metadata.json"] do
         "projects/#{project_id}/storage-reservations/v1/#{kind}/#{lease_token}/#{suffix}"
       end
@@ -1146,8 +1146,8 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     token = "plannedCleanup01"
 
     storage_keys = [
-      "projects/1/snapshots/object-sets/v1/ready/#{token}/manifest.json",
-      "projects/1/snapshots/object-sets/v1/staging/#{token}/manifest.json"
+      "projects/1/snapshots/archives/v2/ready/#{token}/manifest.json",
+      "projects/1/snapshots/archives/v2/staging/#{token}/manifest.json"
     ]
 
     log =

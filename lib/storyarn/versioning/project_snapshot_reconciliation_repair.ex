@@ -24,7 +24,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRun
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
-  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workers.RepairProjectSnapshotFindingWorker
 
   @contract_version 1
@@ -557,36 +556,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
     |> classify_integrity_result()
   end
 
-  defp current_integrity(%ProjectSnapshot{format_version: 1} = snapshot, %{category: category})
-       when category in ["ready_manifest_missing", "ready_manifest_corrupt"] do
-    snapshot.manifest_storage_key
-    |> SnapshotObjectStorage.inspect_ready_manifest(
-      snapshot.manifest_checksum,
-      snapshot.manifest_size_bytes
-    )
-    |> classify_integrity_result()
-  end
-
-  defp current_integrity(%ProjectSnapshot{format_version: 1} = snapshot, %{category: category} = finding)
-       when category in ["ready_object_missing", "ready_object_corrupt"] do
-    case finding.details["path"] do
-      path when is_binary(path) ->
-        snapshot.manifest_storage_key
-        |> SnapshotObjectStorage.inspect_ready_object(
-          snapshot.manifest_checksum,
-          snapshot.manifest_size_bytes,
-          path
-        )
-        |> classify_integrity_result()
-
-      nil ->
-        {:ok, :finding_stale}
-
-      _invalid ->
-        {:ok, :finding_stale}
-    end
-  end
-
   defp current_integrity(%ProjectSnapshot{}, _finding), do: {:error, :unsupported_snapshot_reconciliation_format}
 
   @doc false
@@ -824,8 +793,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
       )
     )
   end
-
-  defp integrity_storage_fence(%ProjectSnapshot{format_version: 1}), do: dynamic([snapshot], snapshot.format_version == 1)
 
   defp integrity_storage_fence(%ProjectSnapshot{format_version: 2} = observed) do
     dynamic(

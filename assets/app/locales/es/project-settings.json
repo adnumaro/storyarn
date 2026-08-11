@@ -125,8 +125,7 @@
       "storage_breakdown": {
         "current_assets": "Recursos actuales de proyectos",
         "asset_trash": "Recursos recuperables en la papelera",
-        "full_snapshots": "Snapshots completas",
-        "linked_snapshots": "Datos propios de snapshots enlazadas"
+        "full_snapshots": "Snapshots completas"
       },
       "storage_status": {
         "unlimited": "Sin límite",
@@ -145,7 +144,6 @@
       },
       "mode": {
         "full": "Completa",
-        "linked": "Enlazada",
         "unknown": "Modo desconocido"
       },
       "lifecycle": {
@@ -161,7 +159,6 @@
       "integrity": {
         "unknown": "Integridad desconocida",
         "verified": "Verificada",
-        "at_risk": "En riesgo",
         "missing": "Faltan datos",
         "corrupt": "Dañada",
         "incomplete": "Incompleta"
@@ -181,7 +178,6 @@
         "submitting": "Capturando…",
         "storage_limit_reached": "Esta snapshot necesita {required}, pero solo hay {available} disponibles. No se ha encolado nada.",
         "snapshot_limit_reached": "Este proyecto usa {used} de {limit} espacios para snapshots. No se ha encolado nada.",
-        "rollout_not_enabled": "La creación de snapshots no está disponible temporalmente mientras se activa el almacenamiento de archivos canónicos. No se ha encolado nada.",
         "request_failed": "No se ha podido solicitar la snapshot. No se ha encolado nada.",
         "connection_failed": "La conexión se ha interrumpido. Puedes reintentar con seguridad la misma solicitud.",
         "cancel_failed": "No se ha podido cancelar la snapshot."
@@ -201,9 +197,7 @@
         "accessibility": "Progreso de creación de la snapshot: {percent}"
       },
       "download": {
-        "action": "Descargar ZIP",
-        "archive_required": "Esta snapshot es anterior a los archivos descargables. Crea una snapshot nueva para descargarla.",
-        "linked_requires_full": "Convierte esta snapshot enlazada en una snapshot completa antes de descargarla."
+        "action": "Descargar ZIP"
       },
       "delete": {
         "action": "Eliminar snapshot",
@@ -219,9 +213,6 @@
         "accounted_size": "Almacenamiento de la snapshot",
         "zip_archive": "Archivo ZIP",
         "manifest_sidecar": "Manifest auxiliar",
-        "project_data": "Datos del proyecto",
-        "metadata": "Manifest y catálogo",
-        "unique_blobs": "Blobs de recursos únicos",
         "inventory": "Recursos lógicos: {assets} · Blobs únicos: {blobs}",
         "measured": "Contabilidad v{version} medida el {date}",
         "active_reservation": "Reserva de trabajo activa: {storage}",
@@ -308,7 +299,6 @@
         "current_assets": "Recursos actuales de proyectos",
         "asset_trash": "Recursos recuperables en la papelera",
         "full_snapshots": "Snapshots completas",
-        "linked_snapshots": "Datos propios de snapshots enlazadas",
         "reservations": "Reservas"
       },
       "rows": {

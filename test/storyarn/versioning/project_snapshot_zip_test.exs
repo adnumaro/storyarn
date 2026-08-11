@@ -7,8 +7,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotZipTest do
   alias Storyarn.Assets.Storage.Local
   alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Versioning.ProjectSnapshotZip
+  alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotObjectFormat
-  alias Storyarn.Versioning.SnapshotObjectStorage
 
   test "prepares without provider I/O and reads every source blob once while streaming" do
     fixture = capture_fixture("one provider read")
@@ -165,12 +165,24 @@ defmodule Storyarn.Versioning.ProjectSnapshotZipTest do
              ProjectSnapshotZip.prepare_capture(fixture.project_id, modified)
   end
 
-  test "rejects an otherwise valid capture that requires ZIP64" do
+  test "preserves the capture size-limit error at the canonical archive boundary" do
     project_id = System.unique_integer([:positive])
-    prepared = oversized_prepared(project_id)
+
+    assert {:error, {:snapshot_object_size_limit_exceeded, :project, 1}} =
+             SnapshotArchiveStorage.prepare(
+               project_id,
+               project_object([]),
+               [],
+               max_project_bytes: 1,
+               source_key_mode: :protected_blob
+             )
+  end
+
+  test "the canonical archive preparation rejects captures that require ZIP64" do
+    project_id = System.unique_integer([:positive])
 
     assert {:error, :snapshot_zip_limit_exceeded} =
-             ProjectSnapshotZip.prepare_capture(project_id, prepared)
+             oversized_prepare_result(project_id)
   end
 
   defp capture_fixture(bytes, opts \\ []) do
@@ -196,7 +208,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotZipTest do
       end
 
     assert {:ok, prepared} =
-             SnapshotObjectStorage.prepare(
+             SnapshotArchiveStorage.prepare(
                project_id,
                project_object(assets),
                assets,
@@ -218,7 +230,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotZipTest do
     }
   end
 
-  defp oversized_prepared(project_id) do
+  defp oversized_prepare_result(project_id) do
     asset_size = SnapshotObjectFormat.hard_limits().max_asset_bytes
 
     assets =
@@ -226,15 +238,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotZipTest do
         oversized_asset(index, project_id, asset_size)
       end)
 
-    assert {:ok, prepared} =
-             SnapshotObjectStorage.prepare(
-               project_id,
-               project_object(assets),
-               assets,
-               source_key_mode: :protected_blob
-             )
-
-    prepared
+    SnapshotArchiveStorage.prepare(
+      project_id,
+      project_object(assets),
+      assets,
+      source_key_mode: :protected_blob
+    )
   end
 
   defp project_object(assets) do
