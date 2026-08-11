@@ -1,0 +1,43 @@
+lib/storyarn/versioning/project_snapshot_build.ex
+  s_c2ae682cd97119::t_6717908b106aae 436-437
+test/storyarn/versioning/project_snapshot_lifecycle_test.exs
+  s_c2ae682cd97119::t_fe1b459a797e92 1159
+  s_c2ae682cd97119::t_6717908b106aae 1158,1163-1165,1172-1179,1187-1198
+  s_c2ae682cd97119::t_49a6186512e0f9 1180-1186
+test/storyarn/repo/migrations/multipart_cleanup_quiescence_migration_test.exs
+  s_c2ae682cd97119::t_178e490a5bfbdc 11-16
+lib/storyarn/versioning/project_snapshot_lifecycle.ex
+  s_c2ae682cd97119::t_6717908b106aae 272,1743-1746
+  s_c2ae682cd97119::t_119c2934bd45bd 796
+  s_8ec4f64357d21f::t_ca4ff909fbedb4 1747-1751
+test/storyarn/repo/migrations/snapshot_export_lease_migration_test.exs
+  s_c2ae682cd97119::t_178e490a5bfbdc 13-18
+test/storyarn/versioning/project_snapshot_reconciliation_test.exs
+  s_c2ae682cd97119::t_96006520635579 31-33,983,2179-2193
+test/storyarn/repo/migrations/project_snapshot_reconciliation_sequence_test.exs
+  s_8ec4f64357d21f::t_fa6d6b25c7754d 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0817fb91f9a9a678f6fd777ca55e37d895d32184",
+  "prompts": {},
+  "sessions": {
+    "s_8ec4f64357d21f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4068073-eff7-4362-91bf-620b1a874310",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
