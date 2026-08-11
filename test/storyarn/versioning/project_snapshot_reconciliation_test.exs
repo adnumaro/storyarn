@@ -28,7 +28,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.InspectProjectSnapshotsWorker
 
-  @start_run_attempts 50
+  @start_run_timeout_ms 5_000
   @start_run_retry_delay_ms 20
 
   setup do
@@ -2203,14 +2203,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   end
 
   defp start_run(opts \\ []) do
-    retry_start_run(opts, @start_run_attempts)
+    deadline_ms = System.monotonic_time(:millisecond) + @start_run_timeout_ms
+    retry_start_run(opts, deadline_ms)
   end
 
-  defp retry_start_run(opts, attempts_remaining) do
+  defp retry_start_run(opts, deadline_ms) do
     case start_run_once(opts) do
-      {:error, :snapshot_reconciliation_boundary_busy} when attempts_remaining > 1 ->
-        Process.sleep(@start_run_retry_delay_ms)
-        retry_start_run(opts, attempts_remaining - 1)
+      {:error, :snapshot_reconciliation_boundary_busy} = error ->
+        if System.monotonic_time(:millisecond) < deadline_ms do
+          Process.sleep(@start_run_retry_delay_ms)
+          retry_start_run(opts, deadline_ms)
+        else
+          error
+        end
 
       result ->
         result
