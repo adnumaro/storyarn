@@ -514,7 +514,8 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
 
   defp install_signing_adapter(result) do
     original_storage = Application.fetch_env!(:storyarn, :storage)
-    {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+    {:ok, pid} = SnapshotReadSwitchStorage.start_link(%{})
+    Process.unlink(pid)
     SnapshotReadSwitchStorage.set_presigned_download_result(result)
 
     Application.put_env(
@@ -525,11 +526,32 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
 
     on_exit(fn ->
       Application.put_env(:storyarn, :storage, original_storage)
-
-      if Process.whereis(SnapshotReadSwitchStorage) do
-        Agent.stop(SnapshotReadSwitchStorage)
-      end
+      stop_test_process(pid)
     end)
+  end
+
+  defp stop_test_process(pid) do
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :shutdown)
+
+    receive do
+      {:DOWN, ^monitor, :process, ^pid, _reason} -> :ok
+    after
+      1_000 -> kill_stuck_test_process(pid, monitor)
+    end
+  end
+
+  defp kill_stuck_test_process(pid, monitor) do
+    Process.exit(pid, :kill)
+
+    receive do
+      {:DOWN, ^monitor, :process, ^pid, _reason} ->
+        raise "snapshot read switch storage did not stop cleanly"
+    after
+      1_000 ->
+        Process.demonitor(monitor, [:flush])
+        raise "snapshot read switch storage could not be terminated"
+    end
   end
 
   defp lease_for(snapshot) do

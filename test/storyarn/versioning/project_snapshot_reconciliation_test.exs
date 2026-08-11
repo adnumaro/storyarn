@@ -28,9 +28,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.InspectProjectSnapshotsWorker
 
-  @start_run_timeout_ms 5_000
-  @start_run_retry_delay_ms 20
-
   setup do
     original_storage = Application.fetch_env!(:storyarn, :storage)
 
@@ -1008,12 +1005,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
 
     try do
       assert {:error, :snapshot_reconciliation_boundary_busy} = start_run_once([])
+      Process.send_after(lock_holder_pid, :release_claim_writer, 50)
+      assert {:ok, _run} = start_run()
     after
       send(lock_holder_pid, :release_claim_writer)
       assert {:ok, _result} = Task.await(lock_holder, 2_000)
     end
-
-    assert {:ok, _run} = start_run()
   end
 
   test "database phases retain their bounded page size after the finding budget is full" do
@@ -2203,26 +2200,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   end
 
   defp start_run(opts \\ []) do
-    deadline_ms = System.monotonic_time(:millisecond) + @start_run_timeout_ms
-    retry_start_run(opts, deadline_ms)
-  end
-
-  defp retry_start_run(opts, deadline_ms) do
-    case start_run_once(opts) do
-      {:error, :snapshot_reconciliation_boundary_busy} = error ->
-        if System.monotonic_time(:millisecond) < deadline_ms do
-          Process.sleep(@start_run_retry_delay_ms)
-          retry_start_run(opts, deadline_ms)
-        else
-          error
-        end
-
-      result ->
-        result
-    end
+    Storyarn.SnapshotReconciliationTestHelpers.start_run(default_start_run_opts(opts))
   end
 
   defp start_run_once(opts) do
+    Versioning.start_project_snapshot_reconciliation(default_start_run_opts(opts))
+  end
+
+  defp default_start_run_opts(opts) do
     defaults = [
       max_objects_per_step: 1,
       provider_page_size: 1,
@@ -2230,7 +2215,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
       max_provider_bytes: 1024 * 1024 * 1024
     ]
 
-    Versioning.start_project_snapshot_reconciliation(Keyword.merge(defaults, opts))
+    Keyword.merge(defaults, opts)
   end
 
   defp install_snapshot_read_switch_storage do
