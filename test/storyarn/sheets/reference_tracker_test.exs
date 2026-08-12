@@ -14,6 +14,8 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   alias Storyarn.Sheets
   alias Storyarn.Sheets.ReferenceTracker
 
+  @max_pg_bigint 9_223_372_036_854_775_807
+
   defp setup_project(_context \\ %{}) do
     user = user_fixture()
     project = project_fixture(user)
@@ -23,6 +25,52 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   # =============================================================================
   # Block references with nil target / unknown type
   # =============================================================================
+
+  describe "extract_block_value_references/2 for reference blocks" do
+    test "accepts a valid numeric target ID without rewriting it" do
+      assert {:ok, [%{type: "sheet", id: "42", context: "value"}]} =
+               ReferenceTracker.extract_block_value_references("reference", %{
+                 "target_type" => "sheet",
+                 "target_id" => "42"
+               })
+    end
+
+    test "rejects nonnumeric, nonscalar, nonpositive and oversized target IDs with the original diagnostic" do
+      invalid_ids = [
+        "not-an-id",
+        [1],
+        %{"id" => 1},
+        0,
+        -1,
+        "0",
+        "-1",
+        @max_pg_bigint + 1,
+        to_string(@max_pg_bigint + 1)
+      ]
+
+      for invalid_id <- invalid_ids do
+        assert {:error, {:invalid_project_reference, {:block, :value, "sheet"}, ^invalid_id}} =
+                 ReferenceTracker.extract_block_value_references("reference", %{
+                   "target_type" => "sheet",
+                   "target_id" => invalid_id
+                 })
+      end
+    end
+
+    test "rejects false target fields for string- and atom-keyed values without losing their diagnostic shape" do
+      invalid_values = [
+        {%{"target_type" => "sheet", "target_id" => false}, "sheet", false},
+        {%{target_type: "sheet", target_id: false}, "sheet", false},
+        {%{"target_type" => false, "target_id" => nil}, false, nil},
+        {%{target_type: false, target_id: nil}, false, nil}
+      ]
+
+      for {value, target_type, target_id} <- invalid_values do
+        assert {:error, {:invalid_project_reference, {:block, :value, ^target_type}, ^target_id}} =
+                 ReferenceTracker.extract_block_value_references("reference", value)
+      end
+    end
+  end
 
   describe "update_block_references/1 with nil reference target" do
     test "creates no references when a reference block has no target" do

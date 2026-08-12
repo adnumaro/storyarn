@@ -894,7 +894,9 @@ defmodule Storyarn.Scenes.SceneCrud do
         join: scene in Scene,
         on: scene.id == ambient_flow.scene_id,
         join: flow in Flow,
-        on: flow.id == ambient_flow.flow_id,
+        on:
+          flow.id == ambient_flow.flow_id and
+            flow.project_id == scene.project_id,
         where: vr.block_id == ^block_id,
         where: scene.project_id == ^project_id,
         where: is_nil(scene.deleted_at),
@@ -1066,7 +1068,9 @@ defmodule Storyarn.Scenes.SceneCrud do
         join: scene in Scene,
         on: scene.id == ambient_flow.scene_id,
         join: flow in Flow,
-        on: flow.id == ambient_flow.flow_id,
+        on:
+          flow.id == ambient_flow.flow_id and
+            flow.project_id == scene.project_id,
         join: block in Block,
         on: block.id == vr.block_id,
         join: sheet in Sheet,

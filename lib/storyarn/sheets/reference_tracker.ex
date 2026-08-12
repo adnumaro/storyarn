@@ -127,15 +127,15 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   @spec extract_block_value_references(String.t(), term()) ::
           {:ok, [map()]} | {:error, term()}
   def extract_block_value_references("reference", value) when is_map(value) do
-    target_type = value["target_type"] || value[:target_type]
-    target_id = value["target_id"] || value[:target_id]
+    target_type = reference_value(value, "target_type")
+    target_id = reference_value(value, "target_id")
 
     case {normalize_optional_target_type(target_type), target_id} do
       {nil, id} when id in [nil, ""] ->
         {:ok, []}
 
       {type, id} when type in ["sheet", "flow"] and id not in [nil, ""] ->
-        {:ok, [%{type: type, id: id, context: "value"}]}
+        validate_block_reference(type, id, target_type)
 
       _invalid_pair ->
         {:error, {:invalid_project_reference, {:block, :value, target_type}, target_id}}
@@ -152,6 +152,16 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   def extract_block_value_references(_type, _value), do: {:ok, []}
+
+  defp validate_block_reference(type, id, diagnostic_type) do
+    case ProjectReferenceIntegrity.normalize_optional_id(id) do
+      {:ok, normalized_id} when is_integer(normalized_id) ->
+        {:ok, [%{type: type, id: id, context: "value"}]}
+
+      _invalid_or_absent ->
+        {:error, {:invalid_project_reference, {:block, :value, diagnostic_type}, id}}
+    end
+  end
 
   defp clear_reference_target(value) do
     {:ok,
@@ -780,6 +790,13 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   defp normalize_optional_target_type(""), do: nil
   defp normalize_optional_target_type(type) when is_atom(type), do: Atom.to_string(type)
   defp normalize_optional_target_type(type), do: type
+
+  defp reference_value(value, key) do
+    case Map.fetch(value, key) do
+      {:ok, stored_value} -> stored_value
+      :error -> Map.get(value, reference_atom_key(key))
+    end
+  end
 
   defp put_reference_value(value, key, normalized) do
     value

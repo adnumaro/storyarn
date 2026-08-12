@@ -1058,6 +1058,130 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert rule["variable"] == "health"
     end
 
+    test "repairs every stale dialogue response variable surface without changing response shapes", ctx do
+      legacy_block =
+        block_fixture(ctx.sheet2, %{
+          type: "number",
+          config: %{"label" => "Legacy Count", "placeholder" => "0"}
+        })
+
+      condition =
+        ctx.sheet.shortcut
+        |> variable_condition(ctx.health_block.variable_name)
+        |> update_in(["blocks", Access.at(0), "rules"], &(&1 ++ ["condition draft"]))
+
+      structured_assignment =
+        ctx.sheet2.shortcut
+        |> variable_assignment(ctx.quest_block.variable_name)
+        |> Map.merge(%{
+          "value_type" => "variable_ref",
+          "value_sheet" => ctx.sheet.shortcut,
+          "value" => ctx.health_block.variable_name
+        })
+
+      legacy_assignment =
+        variable_assignment(ctx.sheet2.shortcut, legacy_block.variable_name)
+
+      untouched_response = %{
+        "id" => "draft",
+        "text" => "Not configured",
+        "condition" => "",
+        "instruction_assignments" => [],
+        "instruction" => ""
+      }
+
+      node =
+        node_fixture(ctx.flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Choose",
+            "responses" => [
+              %{
+                "id" => "structured",
+                "text" => "Structured",
+                "condition" => Jason.encode!(condition),
+                "instruction_assignments" => [structured_assignment, "assignment draft"]
+              },
+              %{
+                "id" => "legacy",
+                "text" => "Legacy",
+                "condition" => nil,
+                "instruction_assignments" => [],
+                "instruction" => Jason.encode!([legacy_assignment, 17])
+              },
+              %{
+                "id" => "map-condition",
+                "text" => "Map condition",
+                "condition" => condition,
+                "instruction_assignments" => []
+              },
+              untouched_response
+            ]
+          }
+        })
+
+      assert :ok = VariableReferenceTracker.update_references(node)
+
+      assert {:ok, _sheet} =
+               Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
+
+      assert {:ok, _sheet} =
+               Storyarn.Sheets.update_sheet(ctx.sheet2, %{shortcut: "global.renamed"})
+
+      Repo.update!(Ecto.Changeset.change(ctx.health_block, variable_name: "vitality"))
+      Repo.update!(Ecto.Changeset.change(ctx.quest_block, variable_name: "quest_complete"))
+      Repo.update!(Ecto.Changeset.change(legacy_block, variable_name: "legacy_total"))
+
+      assert {:ok, 1} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+
+      updated_node = Repo.get!(FlowNode, node.id)
+
+      [structured_response, legacy_response, map_response, draft_response] =
+        updated_node.data["responses"]
+
+      assert Enum.map(updated_node.data["responses"], & &1["id"]) ==
+               ~w(structured legacy map-condition draft)
+
+      assert is_binary(structured_response["condition"])
+
+      [repaired_rule, condition_draft] =
+        structured_response["condition"]
+        |> Jason.decode!()
+        |> then(&hd(&1["blocks"])["rules"])
+
+      assert repaired_rule["sheet"] == "mc.renamed"
+      assert repaired_rule["variable"] == "vitality"
+      assert condition_draft == "condition draft"
+
+      [repaired_structured_assignment, assignment_draft] =
+        structured_response["instruction_assignments"]
+
+      assert repaired_structured_assignment["sheet"] == "global.renamed"
+      assert repaired_structured_assignment["variable"] == "quest_complete"
+      assert repaired_structured_assignment["value_sheet"] == "mc.renamed"
+      assert repaired_structured_assignment["value"] == "vitality"
+      assert assignment_draft == "assignment draft"
+
+      assert legacy_response["instruction_assignments"] == []
+      assert is_binary(legacy_response["instruction"])
+
+      [repaired_legacy_assignment, legacy_draft] =
+        Jason.decode!(legacy_response["instruction"])
+
+      assert repaired_legacy_assignment["sheet"] == "global.renamed"
+      assert repaired_legacy_assignment["variable"] == "legacy_total"
+      assert legacy_draft == 17
+
+      assert is_map(map_response["condition"])
+      [repaired_map_rule, map_condition_draft] = hd(map_response["condition"]["blocks"])["rules"]
+      assert repaired_map_rule["sheet"] == "mc.renamed"
+      assert repaired_map_rule["variable"] == "vitality"
+      assert map_condition_draft == "condition draft"
+      assert draft_response == untouched_response
+
+      assert {:ok, 0} = VariableReferenceTracker.repair_stale_references(ctx.project.id)
+    end
+
     test "returns 0 when nothing is stale", ctx do
       node =
         node_fixture(ctx.flow, %{
@@ -2830,6 +2954,41 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
                VariableReferenceTracker.validate_snapshot_variable_references(
                  ctx.project.id,
                  [invalid]
+               )
+    end
+
+    test "accepts draft on-event ambient triggers without a variable reference", ctx do
+      trigger_configs = [
+        %{"variable_ref" => nil},
+        %{"variable_ref" => ""},
+        %{}
+      ]
+
+      sources =
+        trigger_configs
+        |> Enum.with_index(100)
+        |> Enum.map(fn {trigger_config, source_id} ->
+          changeset =
+            SceneAmbientFlow.changeset(%SceneAmbientFlow{}, %{
+              "flow_id" => ctx.flow.id,
+              "trigger_type" => "on_event",
+              "trigger_config" => trigger_config
+            })
+
+          assert changeset.valid?
+
+          %{
+            source_type: "scene_ambient_flow",
+            source_id: source_id,
+            trigger_type: "on_event",
+            trigger_config: trigger_config
+          }
+        end)
+
+      assert :ok =
+               VariableReferenceTracker.validate_snapshot_variable_references(
+                 ctx.project.id,
+                 sources
                )
     end
 

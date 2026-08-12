@@ -1674,7 +1674,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
              )
     end
 
-    test "rejects unresolved pin and zone variables before mutating the scene", %{
+    test "rejects an unresolved pin variable before mutating the scene", %{
       scene: scene
     } do
       pin =
@@ -1683,6 +1683,23 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
           "condition" => variable_condition("missing.sheet", "health")
         })
 
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      {:ok, current_scene} =
+        Storyarn.Scenes.update_scene(scene, %{"name" => "Current scene must survive pin validation"})
+
+      before_restore = persisted_scene_state(scene.id)
+
+      assert {:error, {:unresolved_variable_reference, "scene_pin", pin_id, "read", "missing.sheet", "health"}} =
+               SceneBuilder.restore_snapshot(current_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+
+      assert pin_id == pin.id
+      assert persisted_scene_state(scene.id) == before_restore
+    end
+
+    test "rejects an unresolved zone variable before mutating the scene", %{
+      scene: scene
+    } do
       zone =
         zone_fixture(scene, %{
           "name" => "Broken variable zone",
@@ -1695,15 +1712,14 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       snapshot = SceneBuilder.build_snapshot(scene)
 
       {:ok, current_scene} =
-        Storyarn.Scenes.update_scene(scene, %{"name" => "Current scene must survive"})
+        Storyarn.Scenes.update_scene(scene, %{"name" => "Current scene must survive zone validation"})
 
       before_restore = persisted_scene_state(scene.id)
 
-      assert {:error, {:unresolved_variable_reference, "scene_pin", pin_id, "read", "missing.sheet", "health"}} =
+      assert {:error, {:unresolved_variable_reference, "scene_zone", zone_id, "write", "missing.sheet", "health"}} =
                SceneBuilder.restore_snapshot(current_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
 
-      assert pin_id == pin.id
-      assert zone.id
+      assert zone_id == zone.id
       assert persisted_scene_state(scene.id) == before_restore
     end
 

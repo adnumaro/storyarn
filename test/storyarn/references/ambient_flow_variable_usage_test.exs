@@ -9,6 +9,7 @@ defmodule Storyarn.References.AmbientFlowVariableUsageTest do
 
   alias Storyarn.GlobalSearch
   alias Storyarn.References
+  alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Sheets
 
@@ -145,5 +146,30 @@ defmodule Storyarn.References.AmbientFlowVariableUsageTest do
                focus: nil
              }
            }
+  end
+
+  test "legacy usage and stale reads exclude a malformed cross-project ambient Flow", context do
+    foreign_project = project_fixture(context.user)
+    foreign_flow = flow_fixture(foreign_project, %{name: "Foreign ambience"})
+
+    malformed_ambient =
+      context.ambient_flow
+      |> Ecto.Changeset.change(flow_id: foreign_flow.id)
+      |> Repo.update!()
+
+    assert malformed_ambient.scene_id == context.scene.id
+    assert malformed_ambient.flow_id == foreign_flow.id
+
+    assert [] =
+             Scenes.get_scene_ambient_flow_variable_usage(
+               context.block.id,
+               context.project.id
+             )
+
+    assert [] =
+             Scenes.check_stale_scene_ambient_flow_variable_references(
+               context.block.id,
+               context.project.id
+             )
   end
 end

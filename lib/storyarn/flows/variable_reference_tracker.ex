@@ -902,12 +902,18 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
          "trigger_config" => %{} = config
        })
        when is_integer(source_id) do
-    strict_qualified_variable_reference_specs(
-      "scene_ambient_flow",
-      source_id,
-      config["variable_ref"],
-      :ambient_event_variable_ref
-    )
+    case config["variable_ref"] do
+      value when value in [nil, ""] ->
+        {:ok, []}
+
+      value ->
+        strict_qualified_variable_reference_specs(
+          "scene_ambient_flow",
+          source_id,
+          value,
+          :ambient_event_variable_ref
+        )
+    end
   end
 
   defp strict_scene_ambient_flow_reference_specs(%{"original_id" => source_id, "trigger_type" => trigger_type})
@@ -1216,14 +1222,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     data
     |> Map.get("condition")
     |> Condition.extract_all_rules()
-    |> Enum.flat_map(fn rule ->
-      reference_specs(
-        node_id,
-        "read",
-        rule["sheet"],
-        rule["variable"]
-      )
-    end)
+    |> Enum.flat_map(&condition_rule_reference_specs(node_id, &1))
   end
 
   defp flow_node_reference_specs(%FlowNode{id: node_id, type: "dialogue", data: data}) do
@@ -1253,10 +1252,14 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp condition_reference_specs(condition, node_id) do
     condition
     |> Condition.extract_all_rules()
-    |> Enum.flat_map(fn rule ->
-      reference_specs(node_id, "read", rule["sheet"], rule["variable"])
-    end)
+    |> Enum.flat_map(&condition_rule_reference_specs(node_id, &1))
   end
+
+  defp condition_rule_reference_specs(node_id, %{} = rule) do
+    reference_specs(node_id, "read", rule["sheet"], rule["variable"])
+  end
+
+  defp condition_rule_reference_specs(_node_id, _rule), do: []
 
   defp response_assignment_reference_specs(node_id, response) do
     response
@@ -1776,50 +1779,144 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp repair_node_data("condition", data, refs) do
-    condition = data["condition"]
+    read_refs = Enum.filter(refs, &(&1.kind == "read"))
+    condition = repair_condition(data["condition"], read_refs)
 
-    if is_nil(condition) do
+    if condition == data["condition"] do
       data
     else
-      read_refs = Enum.filter(refs, &(&1.kind == "read"))
-
-      updated_condition =
-        if condition["blocks"] do
-          updated_blocks = Enum.map(condition["blocks"], &repair_block(&1, read_refs))
-          Map.put(condition, "blocks", updated_blocks)
-        else
-          condition
-        end
-
-      Map.put(data, "condition", updated_condition)
+      Map.put(data, "condition", condition)
     end
   end
 
+  defp repair_node_data("dialogue", %{"responses" => responses} = data, refs) when is_list(responses) do
+    read_refs = Enum.filter(refs, &(&1.kind == "read"))
+    write_refs = Enum.filter(refs, &(&1.kind == "write"))
+
+    repaired_responses =
+      Enum.map(responses, &repair_dialogue_response(&1, write_refs, read_refs))
+
+    if repaired_responses == responses,
+      do: data,
+      else: Map.put(data, "responses", repaired_responses)
+  end
+
+  defp repair_node_data("dialogue", data, _refs), do: data
+
   defp repair_node_data(_, data, _refs), do: data
 
-  # Deterministic repair: match each assignment's sheet+variable to a ref's source_sheet+source_variable.
-  defp repair_write_targets(assignments, write_refs) do
-    Enum.map(assignments, fn assignment ->
-      matching_ref =
-        Enum.find(write_refs, fn ref ->
-          ref.source_sheet == assignment["sheet"] and
-            ref.source_variable == assignment["variable"]
-        end)
-
-      if matching_ref do
-        assignment
-        |> Map.put("sheet", matching_ref.current_shortcut)
-        |> Map.put("variable", matching_ref.current_variable)
-      else
-        assignment
-      end
-    end)
+  defp repair_dialogue_response(%{} = response, write_refs, read_refs) do
+    response
+    |> repair_dialogue_response_condition(read_refs)
+    |> repair_dialogue_response_assignments(write_refs, read_refs)
   end
+
+  defp repair_dialogue_response(response, _write_refs, _read_refs), do: response
+
+  defp repair_dialogue_response_condition(%{"condition" => %{} = condition} = response, read_refs) do
+    repaired_condition = repair_condition(condition, read_refs)
+
+    if repaired_condition == condition,
+      do: response,
+      else: Map.put(response, "condition", repaired_condition)
+  end
+
+  defp repair_dialogue_response_condition(%{"condition" => condition} = response, read_refs)
+       when is_binary(condition) and condition != "" do
+    case Jason.decode(condition) do
+      {:ok, %{} = decoded_condition} ->
+        repaired_condition = repair_condition(decoded_condition, read_refs)
+
+        if repaired_condition == decoded_condition,
+          do: response,
+          else: Map.put(response, "condition", Jason.encode!(repaired_condition))
+
+      _invalid ->
+        response
+    end
+  end
+
+  defp repair_dialogue_response_condition(response, _read_refs), do: response
+
+  defp repair_dialogue_response_assignments(
+         %{"instruction_assignments" => [_assignment | _rest] = assignments} = response,
+         write_refs,
+         read_refs
+       ) do
+    repaired_assignments = repair_assignments(assignments, write_refs, read_refs)
+
+    if repaired_assignments == assignments,
+      do: response,
+      else: Map.put(response, "instruction_assignments", repaired_assignments)
+  end
+
+  defp repair_dialogue_response_assignments(%{"instruction_assignments" => invalid} = response, _write_refs, _read_refs)
+       when invalid not in [nil, []], do: response
+
+  defp repair_dialogue_response_assignments(response, write_refs, read_refs) do
+    repair_legacy_response_assignments(response, write_refs, read_refs)
+  end
+
+  defp repair_legacy_response_assignments(%{"instruction" => instruction} = response, write_refs, read_refs)
+       when is_binary(instruction) and instruction != "" do
+    case Jason.decode(instruction) do
+      {:ok, assignments} when is_list(assignments) ->
+        repaired_assignments = repair_assignments(assignments, write_refs, read_refs)
+
+        if repaired_assignments == assignments,
+          do: response,
+          else: Map.put(response, "instruction", Jason.encode!(repaired_assignments))
+
+      _invalid ->
+        response
+    end
+  end
+
+  defp repair_legacy_response_assignments(response, _write_refs, _read_refs), do: response
+
+  defp repair_assignments(assignments, write_refs, read_refs) do
+    assignments
+    |> repair_write_targets(write_refs)
+    |> repair_read_sources(read_refs)
+  end
+
+  defp repair_condition(%{"blocks" => blocks} = condition, read_refs) when is_list(blocks) do
+    Map.put(condition, "blocks", Enum.map(blocks, &repair_block(&1, read_refs)))
+  end
+
+  defp repair_condition(condition, _read_refs), do: condition
+
+  # Deterministic repair: match each assignment's sheet+variable to a ref's source_sheet+source_variable.
+  defp repair_write_targets(assignments, write_refs) when is_list(assignments) do
+    Enum.map(assignments, &repair_write_target(&1, write_refs))
+  end
+
+  defp repair_write_targets(assignments, _write_refs), do: assignments
+
+  defp repair_write_target(%{} = assignment, write_refs) do
+    matching_ref =
+      Enum.find(write_refs, fn ref ->
+        ref.source_sheet == assignment["sheet"] and
+          ref.source_variable == assignment["variable"]
+      end)
+
+    if matching_ref do
+      assignment
+      |> Map.put("sheet", matching_ref.current_shortcut)
+      |> Map.put("variable", matching_ref.current_variable)
+    else
+      assignment
+    end
+  end
+
+  defp repair_write_target(assignment, _write_refs), do: assignment
 
   # Deterministic repair for variable_ref read sources in instruction assignments.
-  defp repair_read_sources(assignments, read_refs) do
+  defp repair_read_sources(assignments, read_refs) when is_list(assignments) do
     Enum.map(assignments, &repair_read_source(&1, read_refs))
   end
+
+  defp repair_read_sources(assignments, _read_refs), do: assignments
 
   defp repair_read_source(%{"value_type" => "variable_ref"} = assignment, read_refs) do
     matching_ref =
@@ -1840,30 +1937,36 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp repair_read_source(assignment, _read_refs), do: assignment
 
   # Deterministic repair for condition rules.
-  defp repair_condition_rules(rules, read_refs) do
-    Enum.map(rules, fn rule ->
-      matching_ref =
-        Enum.find(read_refs, fn ref ->
-          ref.source_sheet == rule["sheet"] and
-            ref.source_variable == rule["variable"]
-        end)
-
-      if matching_ref do
-        rule
-        |> Map.put("sheet", matching_ref.current_shortcut)
-        |> Map.put("variable", matching_ref.current_variable)
-      else
-        rule
-      end
-    end)
+  defp repair_condition_rules(rules, read_refs) when is_list(rules) do
+    Enum.map(rules, &repair_condition_rule(&1, read_refs))
   end
 
-  defp repair_block(%{"type" => "block", "rules" => rules} = block, read_refs) do
-    Map.put(block, "rules", repair_condition_rules(rules || [], read_refs))
+  defp repair_condition_rules(rules, _read_refs), do: rules
+
+  defp repair_condition_rule(%{} = rule, read_refs) do
+    matching_ref =
+      Enum.find(read_refs, fn ref ->
+        ref.source_sheet == rule["sheet"] and
+          ref.source_variable == rule["variable"]
+      end)
+
+    if matching_ref do
+      rule
+      |> Map.put("sheet", matching_ref.current_shortcut)
+      |> Map.put("variable", matching_ref.current_variable)
+    else
+      rule
+    end
   end
 
-  defp repair_block(%{"type" => "group", "blocks" => inner_blocks} = group, read_refs) do
-    Map.put(group, "blocks", Enum.map(inner_blocks || [], &repair_block(&1, read_refs)))
+  defp repair_condition_rule(rule, _read_refs), do: rule
+
+  defp repair_block(%{"type" => "block", "rules" => rules} = block, read_refs) when is_list(rules) do
+    Map.put(block, "rules", repair_condition_rules(rules, read_refs))
+  end
+
+  defp repair_block(%{"type" => "group", "blocks" => inner_blocks} = group, read_refs) when is_list(inner_blocks) do
+    Map.put(group, "blocks", Enum.map(inner_blocks, &repair_block(&1, read_refs)))
   end
 
   defp repair_block(block, _read_refs), do: block

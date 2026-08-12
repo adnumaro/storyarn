@@ -13,6 +13,8 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.ConflictDetector
 
+  @max_pg_bigint 9_223_372_036_854_775_807
+
   setup do
     user = user_fixture()
     project = project_fixture(user)
@@ -520,6 +522,65 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
       report = ConflictDetector.detect_conflicts("flow", snapshot, flow)
 
       assert [%{type: :sheet, id: "not-an-id"}] = report.conflicts
+    end
+
+    test "reports out-of-range and nonscalar IDs without binding them to queries", %{flow: flow} do
+      malformed_ids = [
+        0,
+        -1,
+        "0",
+        "-1",
+        @max_pg_bigint + 1,
+        to_string(@max_pg_bigint + 1),
+        [1],
+        %{"id" => 1}
+      ]
+
+      for malformed_id <- malformed_ids do
+        snapshot = %{
+          "name" => "Test",
+          "shortcut" => flow.shortcut,
+          "scene_id" => nil,
+          "nodes" => [
+            %{
+              "type" => "dialogue",
+              "data" => %{"speaker_sheet_id" => malformed_id}
+            }
+          ],
+          "connections" => []
+        }
+
+        report = ConflictDetector.detect_conflicts("flow", snapshot, flow)
+
+        assert [%{type: :sheet, id: ^malformed_id}] = report.conflicts
+      end
+    end
+
+    test "does not accept an oversized asset ID through a portable catalog", %{project: project} do
+      sheet = sheet_fixture(project)
+      oversized_id = @max_pg_bigint + 1
+      catalog_id = to_string(oversized_id)
+
+      snapshot = %{
+        "name" => "Test",
+        "shortcut" => sheet.shortcut,
+        "avatar_asset_id" => nil,
+        "banner_asset_id" => oversized_id,
+        "blocks" => [],
+        "asset_blob_hashes" => %{catalog_id => String.duplicate("a", 64)},
+        "asset_metadata" => %{
+          catalog_id => %{
+            "filename" => "oversized.png",
+            "content_type" => "image/png",
+            "size" => 123,
+            "project_id" => project.id
+          }
+        }
+      }
+
+      report = ConflictDetector.detect_conflicts("sheet", snapshot, sheet)
+
+      assert [%{type: :asset, id: ^oversized_id}] = report.conflicts
     end
 
     test "groups multiple references to the same missing entity", %{flow: flow} do

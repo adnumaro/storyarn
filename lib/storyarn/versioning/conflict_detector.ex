@@ -15,6 +15,7 @@ defmodule Storyarn.Versioning.ConflictDetector do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
   alias Storyarn.Flows.Flow
+  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets.Block
@@ -87,7 +88,7 @@ defmodule Storyarn.Versioning.ConflictDetector do
     |> Enum.map(&normalize_reference_ids/1)
     |> Enum.group_by(& &1.type)
     |> Enum.flat_map(fn {type, refs} ->
-      ids = refs |> Enum.map(& &1.id) |> Enum.filter(&is_integer/1) |> Enum.uniq()
+      ids = refs |> Enum.flat_map(&queryable_reference_id/1) |> Enum.uniq()
       existing_ids = existing_reference_ids(type, ids, project_id)
 
       Enum.reject(refs, fn ref ->
@@ -122,7 +123,8 @@ defmodule Storyarn.Versioning.ConflictDetector do
   # The restore remains authoritative for blob availability and persisted size.
   defp restorable_from_snapshot_catalog?(%{type: :asset, id: asset_id} = ref, project_id, entity_type, snapshot)
        when is_integer(asset_id) and asset_id > 0 and is_map(snapshot) do
-    with expected_prefix when expected_prefix in ["audio/", "image/"] <-
+    with {:ok, ^asset_id} <- ProjectReferenceIntegrity.normalize_optional_id(asset_id),
+         expected_prefix when expected_prefix in ["audio/", "image/"] <-
            expected_asset_content_type_prefix(ref, entity_type),
          %{} = blob_hashes <- snapshot["asset_blob_hashes"],
          %{} = asset_metadata <- snapshot["asset_metadata"],
@@ -251,12 +253,10 @@ defmodule Storyarn.Versioning.ConflictDetector do
     |> MapSet.new()
   end
 
-  defp normalize_ref_id(%{id: id} = ref) when is_integer(id), do: ref
-
-  defp normalize_ref_id(%{id: id} = ref) when is_binary(id) do
-    case Integer.parse(id) do
-      {int_id, ""} -> %{ref | id: int_id}
-      _invalid -> ref
+  defp normalize_ref_id(%{id: id} = ref) do
+    case ProjectReferenceIntegrity.normalize_optional_id(id) do
+      {:ok, normalized_id} when is_integer(normalized_id) -> %{ref | id: normalized_id}
+      _invalid_or_absent -> ref
     end
   end
 
@@ -274,16 +274,19 @@ defmodule Storyarn.Versioning.ConflictDetector do
 
   defp normalize_avatar_speaker_id(ref), do: ref
 
-  defp normalize_optional_reference_id(value) when is_integer(value), do: value
-
-  defp normalize_optional_reference_id(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {id, ""} -> id
-      _invalid -> value
+  defp normalize_optional_reference_id(value) do
+    case ProjectReferenceIntegrity.normalize_optional_id(value) do
+      {:ok, normalized_id} when is_integer(normalized_id) -> normalized_id
+      _invalid_or_absent -> value
     end
   end
 
-  defp normalize_optional_reference_id(value), do: value
+  defp queryable_reference_id(%{id: id}) do
+    case ProjectReferenceIntegrity.normalize_optional_id(id) do
+      {:ok, normalized_id} when is_integer(normalized_id) -> [normalized_id]
+      _invalid_or_absent -> []
+    end
+  end
 
   defp group_conflicts([]), do: []
 
