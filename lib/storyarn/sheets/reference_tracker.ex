@@ -85,25 +85,22 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   @spec lock_and_normalize_block_value(integer(), String.t(), map()) ::
           {:ok, map()} | {:error, term()}
   def lock_and_normalize_block_value(project_id, "reference", value) when is_integer(project_id) and is_map(value) do
-    target_type = value["target_type"] || value[:target_type]
-    target_id = value["target_id"] || value[:target_id]
-
-    case {normalize_optional_target_type(target_type), target_id} do
-      {nil, id} when id in [nil, ""] ->
+    case extract_block_value_references("reference", value) do
+      {:ok, []} ->
         clear_reference_target(value)
 
-      {type, id} when type in ["sheet", "flow"] and id not in [nil, ""] ->
+      {:ok, [%{type: type, id: id}]} ->
         lock_reference_target(project_id, value, type, id)
 
-      _invalid_pair ->
-        {:error, {:invalid_project_reference, {:block, :value, target_type}, target_id}}
+      {:error, _reason} = error ->
+        error
     end
   end
 
   def lock_and_normalize_block_value(project_id, "rich_text", value) when is_integer(project_id) and is_map(value) do
     content = value["content"] || value[:content] || ""
 
-    with {:ok, references} <- strict_mentions_from_html(content),
+    with {:ok, references} <- extract_block_value_references("rich_text", value),
          specs = Enum.map(references, &mention_reference_spec/1),
          {:ok, _normalized_ids} <-
            ProjectReferenceIntegrity.lock_active_references(project_id, specs) do
@@ -119,6 +116,42 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   def lock_and_normalize_block_value(_project_id, _type, value), do: {:ok, value}
+
+  @doc """
+  Extracts the project entity references encoded in a prospective block value.
+
+  Unlike the best-effort extraction used to repair historical tracker rows,
+  this function applies the same strict value contract as the writer guard so
+  restore previews can surface malformed references instead of omitting them.
+  """
+  @spec extract_block_value_references(String.t(), term()) ::
+          {:ok, [map()]} | {:error, term()}
+  def extract_block_value_references("reference", value) when is_map(value) do
+    target_type = value["target_type"] || value[:target_type]
+    target_id = value["target_id"] || value[:target_id]
+
+    case {normalize_optional_target_type(target_type), target_id} do
+      {nil, id} when id in [nil, ""] ->
+        {:ok, []}
+
+      {type, id} when type in ["sheet", "flow"] and id not in [nil, ""] ->
+        {:ok, [%{type: type, id: id, context: "value"}]}
+
+      _invalid_pair ->
+        {:error, {:invalid_project_reference, {:block, :value, target_type}, target_id}}
+    end
+  end
+
+  def extract_block_value_references("rich_text", value) when is_map(value) do
+    content = value["content"] || value[:content] || ""
+    strict_mentions_from_html(content)
+  end
+
+  def extract_block_value_references(type, value) when type in ["reference", "rich_text"] do
+    {:error, {:invalid_project_reference, {:block, :value, type}, value}}
+  end
+
+  def extract_block_value_references(_type, _value), do: {:ok, []}
 
   defp clear_reference_target(value) do
     {:ok,
@@ -852,17 +885,34 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     # Extract location reference (stored as location_sheet_id integer)
     refs = maybe_add_sheet_ref(refs, data["location_sheet_id"], "location")
 
-    # Extract mentions from dialogue text
-    refs =
-      if text = data["text"] do
-        mentions = extract_mentions_from_html(text)
-        Enum.map(mentions, fn m -> Map.put(m, :context, "dialogue") end) ++ refs
-      else
-        refs
-      end
+    # Mentions are supported anywhere in persisted node JSON (dialogue text,
+    # response text, and future nested rich-text fields). Keep this scope in
+    # lockstep with Flow reference validation so every accepted mention gets a
+    # corresponding entity_references row.
+    mention_refs =
+      data
+      |> collect_flow_node_html([])
+      |> Enum.flat_map(&extract_mentions_from_html/1)
+      |> Enum.map(&Map.put(&1, :context, "dialogue"))
 
-    refs
+    mention_refs ++ refs
   end
+
+  defp collect_flow_node_html(value, acc) when is_binary(value) do
+    if String.contains?(value, "mention"), do: [value | acc], else: acc
+  end
+
+  defp collect_flow_node_html(value, acc) when is_list(value) do
+    Enum.reduce(value, acc, &collect_flow_node_html/2)
+  end
+
+  defp collect_flow_node_html(value, acc) when is_map(value) do
+    Enum.reduce(value, acc, fn {_key, nested}, nested_acc ->
+      collect_flow_node_html(nested, nested_acc)
+    end)
+  end
+
+  defp collect_flow_node_html(_value, acc), do: acc
 
   defp maybe_add_sheet_ref(refs, nil, _context), do: refs
   defp maybe_add_sheet_ref(refs, "", _context), do: refs

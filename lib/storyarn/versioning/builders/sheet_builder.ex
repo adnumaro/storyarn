@@ -24,6 +24,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.PropertyInheritance
+  alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.TableColumn
@@ -31,7 +32,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
-  alias Storyarn.Versioning.EntityVersion
+  alias Storyarn.Versioning.EntityRestoreSafety
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
   alias Storyarn.Versioning.RestorePolicy
@@ -288,10 +289,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   defp instantiate_sheet_snapshot_transaction(project_id, snapshot, opts) do
-    Repo.transaction(
-      fn -> instantiate_sheet_snapshot(project_id, snapshot, opts) end,
-      timeout: :infinity
-    )
+    MaterializationHelpers.with_project_storage_lock(project_id, fn ->
+      instantiate_sheet_snapshot(project_id, snapshot, opts)
+    end)
   end
 
   defp validate_sheet_instantiation_localization(_project_id, snapshot, _opts) when is_map(snapshot) do
@@ -420,7 +420,14 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
         description: snapshot["description"],
         color: snapshot["color"],
         hidden_inherited_block_ids: [],
-        banner_asset_id: resolve_sheet_asset(snapshot["banner_asset_id"], snapshot, project_id, opts),
+        banner_asset_id:
+          resolve_sheet_asset(
+            snapshot["banner_asset_id"],
+            snapshot,
+            project_id,
+            opts,
+            :banner
+          ),
         parent_id: MaterializationHelpers.root_parent_id(opts),
         position: MaterializationHelpers.root_position(opts)
       },
@@ -626,10 +633,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   defp restore_sheet_snapshot_transaction(sheet, snapshot, opts) do
-    Repo.transaction(
-      fn -> restore_sheet_snapshot_in_transaction(sheet, snapshot, opts) end,
-      timeout: :infinity
-    )
+    MaterializationHelpers.with_project_storage_lock(sheet.project_id, fn ->
+      restore_sheet_snapshot_in_transaction(sheet, snapshot, opts)
+    end)
   end
 
   defp restore_sheet_snapshot_in_transaction(sheet, snapshot, opts) do
@@ -639,12 +645,30 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
          :ok <- LocalizableWords.lock_inventory!(locked_sheet.project_id),
          :ok <- verify_pre_restore_sheet_baseline(locked_sheet, opts),
          :ok <- validate_sheet_snapshot(locked_sheet, snapshot),
-         {:ok, inheritance_plan} <- preflight_property_inheritance(locked_sheet, snapshot),
-         {:ok, updated_sheet} <- restore_sheet_fields(locked_sheet, snapshot, opts),
+         {:ok, normalized_blocks} <-
+           lock_and_normalize_snapshot_block_references(
+             locked_sheet.project_id,
+             snapshot["blocks"]
+           ),
+         normalized_snapshot = Map.put(snapshot, "blocks", normalized_blocks),
+         {:ok, inheritance_plan} <-
+           preflight_property_inheritance(locked_sheet, normalized_snapshot),
+         {:ok, updated_sheet} <-
+           restore_sheet_fields(locked_sheet, normalized_snapshot, opts),
          {:ok, block_data} <-
-           reconcile_sheet_blocks(locked_sheet, snapshot, opts, inheritance_plan),
-         :ok <- reconcile_sheet_avatars(locked_sheet, snapshot, opts),
-         :ok <- restore_sheet_localization_in_place(locked_sheet, snapshot, block_data),
+           reconcile_sheet_blocks(
+             locked_sheet,
+             normalized_snapshot,
+             opts,
+             inheritance_plan
+           ),
+         :ok <- reconcile_sheet_avatars(locked_sheet, normalized_snapshot, opts),
+         :ok <-
+           restore_sheet_localization_in_place(
+             locked_sheet,
+             normalized_snapshot,
+             block_data
+           ),
          :ok <- rebuild_restored_block_references(block_data, locked_sheet.project_id, opts),
          :ok <-
            rebuild_inherited_instance_state(
@@ -686,148 +710,26 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   defp lock_pre_restore_version_record(sheet, opts) do
-    case Keyword.fetch(opts, :pre_restore_version_identity) do
-      {:ok, identity} ->
-        lock_and_verify_pre_restore_version_record(
-          sheet,
-          Keyword.get(opts, :user_id),
-          identity
-        )
-
-      :error ->
-        # Product restores always supply this identity. It remains optional at
-        # this internal builder boundary for isolated materialization tests and
-        # trusted migrations.
-        :ok
+    case EntityRestoreSafety.lock_pre_restore_version(
+           Repo,
+           "sheet",
+           sheet,
+           Keyword.get(opts, :user_id),
+           opts
+         ) do
+      {:ok, _version_or_not_required} -> :ok
+      {:error, _reason} = error -> error
     end
-  end
-
-  defp lock_and_verify_pre_restore_version_record(sheet, user_id, identity) do
-    with :ok <- ensure_valid_pre_restore_version_identity(sheet, user_id, identity),
-         {:ok, version} <- fetch_locked_pre_restore_version(sheet, identity) do
-      ensure_pre_restore_version_identity(version, identity)
-    end
-  end
-
-  defp ensure_valid_pre_restore_version_identity(sheet, user_id, identity) do
-    if valid_pre_restore_version_identity?(sheet, user_id, identity),
-      do: :ok,
-      else: {:error, :invalid_pre_restore_version_identity}
-  end
-
-  defp fetch_locked_pre_restore_version(sheet, identity) do
-    version =
-      Repo.one(
-        from(candidate in EntityVersion,
-          where:
-            candidate.id == ^identity.id and
-              candidate.entity_type == "sheet" and
-              candidate.entity_id == ^sheet.id and
-              candidate.project_id == ^sheet.project_id,
-          lock: "FOR SHARE"
-        )
-      )
-
-    if version,
-      do: {:ok, version},
-      else: {:error, :pre_restore_version_not_durable}
-  end
-
-  defp ensure_pre_restore_version_identity(version, identity) do
-    if entity_version_identity(version) == identity,
-      do: :ok,
-      else: {:error, :pre_restore_version_identity_mismatch}
-  end
-
-  defp valid_pre_restore_version_identity?(sheet, user_id, %{
-         id: version_id,
-         entity_type: "sheet",
-         entity_id: entity_id,
-         project_id: project_id,
-         created_by_id: identity_user_id,
-         version_number: version_number,
-         storage_key: storage_key,
-         snapshot_size_bytes: snapshot_size_bytes,
-         checksum: checksum
-       }) do
-    valid_pre_restore_version_scope?(
-      sheet,
-      user_id,
-      entity_id,
-      project_id,
-      identity_user_id
-    ) and
-      valid_pre_restore_version_metadata?(
-        version_id,
-        version_number,
-        storage_key,
-        snapshot_size_bytes,
-        checksum
-      )
-  end
-
-  defp valid_pre_restore_version_identity?(_sheet, _user_id, _identity), do: false
-
-  defp valid_pre_restore_version_scope?(sheet, user_id, entity_id, project_id, identity_user_id) do
-    entity_id == sheet.id and project_id == sheet.project_id and
-      identity_user_id == user_id
-  end
-
-  defp valid_pre_restore_version_metadata?(version_id, version_number, storage_key, snapshot_size_bytes, checksum) do
-    is_integer(version_id) and version_id > 0 and is_integer(version_number) and
-      version_number > 0 and is_binary(storage_key) and
-      is_integer(snapshot_size_bytes) and snapshot_size_bytes >= 0 and
-      is_binary(checksum)
-  end
-
-  defp entity_version_identity(%EntityVersion{} = version) do
-    %{
-      id: version.id,
-      entity_type: version.entity_type,
-      entity_id: version.entity_id,
-      project_id: version.project_id,
-      created_by_id: version.created_by_id,
-      version_number: version.version_number,
-      storage_key: version.storage_key,
-      snapshot_size_bytes: version.snapshot_size_bytes,
-      checksum: version.checksum
-    }
   end
 
   defp verify_pre_restore_sheet_baseline(sheet, opts) do
-    case Keyword.get(opts, :restore_action) do
-      {:entity_version_restore, "sheet"} ->
-        verify_entity_version_restore_baseline(sheet, opts)
-
-      _other_restore_action ->
-        # Full-project restore verifies its canonical project-wide safety
-        # snapshot before dispatching individual entity builders.
-        :ok
-    end
-  end
-
-  defp verify_entity_version_restore_baseline(sheet, opts) do
-    case Keyword.fetch(opts, :pre_restore_snapshot) do
-      {:ok, pre_restore_snapshot} when is_map(pre_restore_snapshot) ->
-        safely_compare_pre_restore_sheet_baseline(sheet, pre_restore_snapshot)
-
-      {:ok, _invalid_snapshot} ->
-        {:error, :invalid_pre_restore_snapshot}
-
-      :error ->
-        :ok
-    end
-  end
-
-  defp safely_compare_pre_restore_sheet_baseline(sheet, pre_restore_snapshot) do
-    current_snapshot = do_build_snapshot(sheet)
-
-    if current_snapshot == pre_restore_snapshot,
-      do: :ok,
-      else: {:error, :sheet_changed_since_pre_restore_snapshot}
-  rescue
-    error in ArgumentError ->
-      {:error, {:pre_restore_snapshot_validation_failed, Exception.message(error)}}
+    EntityRestoreSafety.verify_pre_restore_baseline(
+      "sheet",
+      sheet,
+      opts,
+      &do_build_snapshot/1,
+      :sheet_changed_since_pre_restore_snapshot
+    )
   end
 
   defp validate_sheet_snapshot(%Sheet{} = sheet, snapshot) when is_map(snapshot) do
@@ -854,6 +756,28 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   defp validate_sheet_snapshot(_sheet, _snapshot), do: {:error, {:invalid_snapshot, :expected_map}}
+
+  defp lock_and_normalize_snapshot_block_references(project_id, blocks) do
+    blocks
+    |> Enum.reduce_while({:ok, []}, fn block, {:ok, normalized_blocks} ->
+      case ReferenceTracker.lock_and_normalize_block_value(
+             project_id,
+             block["type"],
+             block["value"]
+           ) do
+        {:ok, normalized_value} ->
+          normalized_block = Map.put(block, "value", normalized_value)
+          {:cont, {:ok, [normalized_block | normalized_blocks]}}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, normalized_blocks} -> {:ok, Enum.reverse(normalized_blocks)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
 
   defp validate_snapshot_root_id(sheet_id, sheet_id) when is_integer(sheet_id) and sheet_id > 0, do: :ok
 
@@ -1922,7 +1846,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
           snapshot["banner_asset_id"],
           snapshot,
           sheet.project_id,
-          opts
+          opts,
+          :banner
         )
     })
     |> Repo.update()
@@ -2311,7 +2236,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   defp resolve_restore_asset(sheet, snapshot, image_data, opts) do
-    case resolve_sheet_asset(image_data["asset_id"], snapshot, sheet.project_id, opts) do
+    case resolve_sheet_asset(
+           image_data["asset_id"],
+           snapshot,
+           sheet.project_id,
+           opts,
+           :gallery_image
+         ) do
       nil -> {:error, {:missing_restored_asset, :gallery_image, image_data["original_id"]}}
       asset_id -> {:ok, asset_id}
     end
@@ -2428,7 +2359,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     |> Enum.reduce_while({:ok, []}, fn avatar_data, {:ok, entries} ->
       id = avatar_data["original_id"]
 
-      case resolve_sheet_asset(avatar_data["asset_id"], snapshot, sheet.project_id, opts) do
+      case resolve_sheet_asset(
+             avatar_data["asset_id"],
+             snapshot,
+             sheet.project_id,
+             opts,
+             :avatar
+           ) do
         nil ->
           {:halt, {:error, {:missing_restored_asset, :avatar, id}}}
 
@@ -2725,7 +2662,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   defp gallery_image_entry(image_data, block_id, snapshot, project_id, now, opts) do
-    case resolve_sheet_asset(image_data["asset_id"], snapshot, project_id, opts) do
+    case resolve_sheet_asset(
+           image_data["asset_id"],
+           snapshot,
+           project_id,
+           opts,
+           :gallery_image
+         ) do
       nil ->
         nil
 
@@ -2874,19 +2817,36 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end
   end
 
-  defp resolve_sheet_asset(asset_id, snapshot, project_id, opts) do
+  defp resolve_sheet_asset(asset_id, snapshot, project_id, opts, asset_context) do
     case sheet_asset_mode(opts) do
       :drop ->
         nil
 
       asset_mode ->
+        resolution_opts =
+          opts
+          |> MaterializationHelpers.asset_resolution_opts(asset_mode)
+          |> maybe_pin_in_place_asset_source_project(opts, project_id)
+          |> Keyword.put(:expected_content_type_prefix, "image/")
+          |> Keyword.put(:asset_context, asset_context)
+
         AssetHashResolver.resolve_asset_fk(
           asset_id,
           snapshot,
           project_id,
           Keyword.get(opts, :user_id),
-          MaterializationHelpers.asset_resolution_opts(opts, asset_mode)
+          resolution_opts
         )
+    end
+  end
+
+  defp maybe_pin_in_place_asset_source_project(resolution_opts, opts, project_id) do
+    case Keyword.get(opts, :restore_action) do
+      {:entity_version_restore, "sheet"} ->
+        Keyword.put(resolution_opts, :source_project_id, project_id)
+
+      _materialization_action ->
+        resolution_opts
     end
   end
 
@@ -2960,7 +2920,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   defp avatar_snapshots(_snapshot), do: []
 
   defp avatar_entry(avatar_data, snapshot, project_id, now, opts) do
-    case resolve_sheet_asset(avatar_data["asset_id"], snapshot, project_id, opts) do
+    case resolve_sheet_asset(
+           avatar_data["asset_id"],
+           snapshot,
+           project_id,
+           opts,
+           :avatar
+         ) do
       nil ->
         nil
 
@@ -3176,6 +3142,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
         block["inherited_from_block_id"],
         dgettext("sheets", "Block #%{n} — inherited source", n: idx)
       )
+      |> add_block_value_refs(block, idx)
       |> add_gallery_refs(block, idx)
     end)
   end
@@ -3208,6 +3175,53 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   defp add_gallery_refs(refs, _block, _block_index), do: refs
+
+  defp add_block_value_refs(refs, block, block_index) do
+    case ReferenceTracker.extract_block_value_references(block["type"], block["value"]) do
+      {:ok, references} ->
+        Enum.reduce(references, refs, fn reference, acc ->
+          maybe_add_ref(
+            acc,
+            reference_type(reference.type),
+            reference.id,
+            block_reference_context(reference.context, block_index)
+          )
+        end)
+
+      {:error, reason} ->
+        [
+          %{
+            type: :reference,
+            id: malformed_reference_id(reason),
+            context:
+              dgettext(
+                "sheets",
+                "Block #%{n} — malformed embedded reference",
+                n: block_index
+              )
+          }
+          | refs
+        ]
+    end
+  end
+
+  defp reference_type("sheet"), do: :sheet
+  defp reference_type("flow"), do: :flow
+
+  defp block_reference_context("value", block_index) do
+    dgettext("sheets", "Block #%{n} — reference target", n: block_index)
+  end
+
+  defp block_reference_context("content", block_index) do
+    dgettext("sheets", "Block #%{n} — rich-text mention", n: block_index)
+  end
+
+  defp malformed_reference_id({:invalid_project_reference, _context, id})
+       when is_integer(id) or is_binary(id) or is_nil(id), do: id
+
+  defp malformed_reference_id({:invalid_project_reference, _context, details}), do: inspect(details)
+
+  defp malformed_reference_id(_reason), do: nil
 
   defp maybe_add_ref(refs, _type, nil, _context), do: refs
 

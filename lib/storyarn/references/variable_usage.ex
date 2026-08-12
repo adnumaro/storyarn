@@ -16,6 +16,7 @@ defmodule Storyarn.References.VariableUsage do
   alias Storyarn.References.VariableReference
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Sheets
@@ -53,7 +54,8 @@ defmodule Storyarn.References.VariableUsage do
     tracked =
       flow_usages(project_id, definition, fetch_limit) ++
         pin_usages(project_id, definition, fetch_limit) ++
-        zone_usages(project_id, definition, fetch_limit)
+        zone_usages(project_id, definition, fetch_limit) ++
+        ambient_flow_usages(project_id, definition, fetch_limit)
 
     formula_page =
       Sheets.list_formula_variable_usages(project_id, definition.qualified_ref, limit: limit)
@@ -207,6 +209,47 @@ defmodule Storyarn.References.VariableUsage do
       |> keep_tracked_kind(usage.kind)
     end)
     |> Enum.take(limit)
+  end
+
+  defp ambient_flow_usages(project_id, definition, limit) do
+    VariableReference
+    |> join(:inner, [reference], ambient_flow in SceneAmbientFlow,
+      on:
+        reference.source_type == "scene_ambient_flow" and
+          reference.source_id == ambient_flow.id
+    )
+    |> join(:inner, [_reference, ambient_flow], scene in Scene, on: scene.id == ambient_flow.scene_id)
+    |> join(:inner, [_reference, ambient_flow, _scene], flow in Flow, on: flow.id == ambient_flow.flow_id)
+    |> where(
+      [_reference, _ambient_flow, scene, _flow],
+      scene.project_id == ^project_id and is_nil(scene.deleted_at)
+    )
+    |> scope_definition(definition)
+    |> order_by([reference, ambient_flow, scene, _flow],
+      asc: scene.name,
+      asc: reference.kind,
+      asc: ambient_flow.id,
+      asc: reference.id
+    )
+    |> limit(^limit)
+    |> select([reference, ambient_flow, scene, flow], %{
+      reference_id: reference.id,
+      block_id: reference.block_id,
+      source_variable: reference.source_variable,
+      kind: reference.kind,
+      semantic: :read,
+      source_type: :scene_ambient_flow,
+      source_id: ambient_flow.id,
+      source_kind: "ambient_event",
+      source_label: flow.name,
+      container_type: :scene,
+      container_id: scene.id,
+      container_name: scene.name,
+      stale:
+        reference.source_sheet != ^definition.sheet_shortcut or
+          reference.source_variable != ^definition.variable_name
+    })
+    |> Repo.all()
   end
 
   defp scope_definition(query, %{table_name: nil, block_id: block_id}) do

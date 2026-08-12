@@ -379,8 +379,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       view = mount_flow(conn, url)
 
       render_click(view, "confirm_restore", %{
-        "version_number" => to_string(version.version_number),
-        "skip_pre_snapshot" => true
+        "version_number" => to_string(version.version_number)
       })
 
       restored = Flows.get_flow(project.id, flow.id)

@@ -22,7 +22,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Versioning
   alias Storyarn.Versioning.Builders.SceneBuilder
+  alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   setup do
@@ -41,6 +43,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert snapshot["shortcut"] == scene.shortcut
       assert is_list(snapshot["layers"])
       assert is_list(snapshot["connections"])
+      refute Map.has_key?(snapshot, "localization")
     end
 
     test "reloads and locks the root instead of snapshotting stale root fields", %{
@@ -424,6 +427,93 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert Repo.get!(ScenePin, pin.id).label == "Current pin"
     end
 
+    test "rejects restore if the verified safety version is no longer durable", %{
+      scene: scene,
+      project: project,
+      user: user
+    } do
+      {:ok, target} =
+        Versioning.create_version("scene", scene, project.id, user.id, title: "Historical scene")
+
+      {:ok, current_scene} =
+        Storyarn.Scenes.update_scene(scene, %{"name" => "Current scene"})
+
+      assert {:error, :pre_restore_version_not_durable} =
+               Versioning.restore_version("scene", current_scene, target,
+                 user_id: user.id,
+                 __after_pre_restore_version_verified_hook: fn safety_version ->
+                   assert {:ok, _deleted} = Versioning.delete_version(safety_version)
+                 end
+               )
+
+      assert Repo.get!(Scene, scene.id).name == "Current scene"
+      assert Versioning.count_versions("scene", scene.id) == 1
+    end
+
+    test "rejects restore if the verified safety version identity changes", %{
+      scene: scene,
+      project: project,
+      user: user
+    } do
+      {:ok, target} =
+        Versioning.create_version("scene", scene, project.id, user.id, title: "Historical scene")
+
+      {:ok, current_scene} =
+        Storyarn.Scenes.update_scene(scene, %{"name" => "Current scene"})
+
+      assert {:error, :pre_restore_version_identity_mismatch} =
+               Versioning.restore_version("scene", current_scene, target,
+                 user_id: user.id,
+                 __after_pre_restore_version_verified_hook: fn safety_version ->
+                   assert {1, nil} =
+                            Repo.update_all(
+                              from(version in EntityVersion,
+                                where: version.id == ^safety_version.id
+                              ),
+                              set: [checksum: String.duplicate("b", 64)]
+                            )
+                 end
+               )
+
+      assert Repo.get!(Scene, scene.id).name == "Current scene"
+      assert Versioning.count_versions("scene", scene.id) == 2
+    end
+
+    test "does not overwrite a change made after the safety version", %{
+      scene: scene,
+      project: project,
+      user: user
+    } do
+      {:ok, target} =
+        Versioning.create_version("scene", scene, project.id, user.id, title: "Historical scene")
+
+      {:ok, current_scene} =
+        Storyarn.Scenes.update_scene(scene, %{"name" => "Before safety"})
+
+      assert {:error, :scene_changed_since_pre_restore_snapshot} =
+               Versioning.restore_version("scene", current_scene, target,
+                 user_id: user.id,
+                 __after_pre_restore_version_verified_hook: fn _safety_version ->
+                   concurrent_scene = Repo.get!(Scene, scene.id)
+
+                   assert {:ok, _changed} =
+                            Storyarn.Scenes.update_scene(concurrent_scene, %{
+                              "name" => "Concurrent change"
+                            })
+                 end
+               )
+
+      assert Repo.get!(Scene, scene.id).name == "Concurrent change"
+
+      versions = Versioning.list_versions("scene", scene.id)
+      assert length(versions) == 2
+      assert Enum.any?(versions, &(&1.title =~ "Before restore"))
+
+      refute Enum.any?(versions, fn version ->
+               is_binary(version.title) and version.title =~ "Restored from"
+             end)
+    end
+
     test "rejects cross-scene children attached to an owned layer without mutating either scene", %{
       project: project,
       scene: scene
@@ -613,6 +703,180 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert Repo.get!(Scene, scene.id).name == "Current scene must survive"
     end
 
+    test "rejects non-image assets in every visual asset slot before mutation", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      audio = uploaded_asset(project, user, "not-an-icon.mp3", "not an icon", "audio/mpeg")
+      pin = pin_fixture(scene, %{"label" => "Visual pin"})
+      zone = zone_fixture(scene, %{"name" => "Visual zone"})
+
+      snapshot =
+        scene
+        |> SceneBuilder.build_snapshot()
+        |> add_snapshot_asset(audio)
+
+      invalid_snapshots = [
+        Map.put(snapshot, "background_asset_id", audio.id),
+        Map.update!(snapshot, "orphan_pins", fn pins ->
+          Enum.map(pins, fn
+            %{"original_id" => id} = pin_snapshot when id == pin.id ->
+              Map.put(pin_snapshot, "icon_asset_id", audio.id)
+
+            pin_snapshot ->
+              pin_snapshot
+          end)
+        end),
+        Map.update!(snapshot, "orphan_zones", fn zones ->
+          Enum.map(zones, fn
+            %{"original_id" => id} = zone_snapshot when id == zone.id ->
+              Map.put(zone_snapshot, "label_icon_asset_id", audio.id)
+
+            zone_snapshot ->
+              zone_snapshot
+          end)
+        end)
+      ]
+
+      {:ok, current_scene} =
+        Storyarn.Scenes.update_scene(scene, %{"name" => "Current scene must survive"})
+
+      before_restore = persisted_scene_state(scene.id)
+
+      for invalid_snapshot <- invalid_snapshots do
+        assert {:error, {:invalid_scene_asset_content_type, asset_id, "audio/mpeg"}} =
+                 SceneBuilder.restore_snapshot(current_scene, invalid_snapshot,
+                   restore_action: {:entity_version_restore, "scene"}
+                 )
+
+        assert asset_id == audio.id
+        assert persisted_scene_state(scene.id) == before_restore
+      end
+
+      assert {:ok, _deleted_audio} = Assets.delete_asset(audio)
+
+      assert {:error, {:invalid_scene_asset_content_type, asset_id, "audio/mpeg"}} =
+               SceneBuilder.restore_snapshot(
+                 current_scene,
+                 Map.put(snapshot, "background_asset_id", audio.id),
+                 restore_action: {:entity_version_restore, "scene"}
+               )
+
+      assert asset_id == audio.id
+      assert persisted_scene_state(scene.id) == before_restore
+    end
+
+    test "rejects a copy when an image row has a tampered non-image portable catalog", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      content = "portable scene background"
+      image = uploaded_image_asset(project, user, "portable-map.png", content)
+
+      {:ok, scene} =
+        Storyarn.Scenes.update_scene(scene, %{
+          "background_asset_id" => image.id
+        })
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+      audio_blob_key = BlobStore.blob_key(project.id, image.blob_hash, "mp3")
+
+      assert {:ok, ^audio_blob_key} =
+               BlobStore.ensure_blob(project.id, image.blob_hash, "mp3", content)
+
+      on_exit(fn -> delete_storage_blob(audio_blob_key) end)
+
+      tampered_snapshot =
+        put_in(
+          snapshot,
+          ["asset_metadata", to_string(image.id), "content_type"],
+          "audio/mpeg"
+        )
+
+      {:ok, current_scene} =
+        Storyarn.Scenes.update_scene(scene, %{
+          "name" => "Current scene must survive"
+        })
+
+      before_restore = persisted_scene_state(scene.id)
+      asset_count_before = Repo.aggregate(Asset, :count)
+
+      assert {:error,
+              {:asset_materialization_failed, asset_id,
+               {:invalid_asset_content_type, :background, asset_id, "audio/mpeg"}}} =
+               SceneBuilder.restore_snapshot(current_scene, tampered_snapshot,
+                 asset_mode: :copy,
+                 user_id: user.id,
+                 restore_action: {:entity_version_restore, "scene"}
+               )
+
+      assert asset_id == image.id
+      assert persisted_scene_state(scene.id) == before_restore
+      assert Repo.aggregate(Asset, :count) == asset_count_before
+    end
+
+    test "rejects a historical asset catalog entry sourced from another project before mutation", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      asset = uploaded_image_asset(project, user, "owned-map.png", "shared map bytes")
+      foreign_project = project_fixture(user)
+      _foreign_asset = uploaded_image_asset(foreign_project, user, "foreign-map.png", "shared map bytes")
+
+      {:ok, scene} =
+        Storyarn.Scenes.update_scene(scene, %{
+          "background_asset_id" => asset.id
+        })
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      cross_project_catalog =
+        put_in(
+          snapshot,
+          ["asset_metadata", to_string(asset.id), "project_id"],
+          foreign_project.id
+        )
+
+      {:ok, current_scene} =
+        Storyarn.Scenes.update_scene(scene, %{
+          "name" => "Current scene must survive",
+          "background_asset_id" => nil
+        })
+
+      assert {:ok, _deleted_asset} = Assets.delete_asset(asset)
+      before_restore = persisted_scene_state(scene.id)
+
+      refute Repo.exists?(
+               from(candidate in Asset,
+                 where:
+                   candidate.project_id == ^project.id and
+                     candidate.blob_hash == ^asset.blob_hash and
+                     is_nil(candidate.deleted_at)
+               )
+             )
+
+      assert {:error, {:asset_materialization_failed, asset_id, :invalid_asset_source_project}} =
+               SceneBuilder.restore_snapshot(current_scene, cross_project_catalog,
+                 restore_action: {:entity_version_restore, "scene"},
+                 user_id: user.id
+               )
+
+      assert asset_id == asset.id
+      assert persisted_scene_state(scene.id) == before_restore
+
+      refute Repo.exists?(
+               from(candidate in Asset,
+                 where:
+                   candidate.project_id == ^project.id and
+                     candidate.blob_hash == ^asset.blob_hash and
+                     is_nil(candidate.deleted_at)
+               )
+             )
+    end
+
     test "reconciles exact child state with stable ids and is idempotent", %{
       scene: scene
     } do
@@ -713,6 +977,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       project: project,
       scene: scene
     } do
+      variable_sheet = sheet_fixture(project, %{shortcut: "world.state"})
+      variable_block = block_fixture(variable_sheet, %{type: "number", variable_name: "alert"})
       timed_flow = FlowsFixtures.flow_fixture(project, %{name: "Timed ambience"})
       event_flow = FlowsFixtures.flow_fixture(project, %{name: "Event ambience"})
       extra_flow = FlowsFixtures.flow_fixture(project, %{name: "Post-snapshot ambience"})
@@ -731,7 +997,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
         Storyarn.Scenes.create_ambient_flow(scene.id, %{
           "flow_id" => event_flow.id,
           "trigger_type" => "on_event",
-          "trigger_config" => %{"variable_ref" => "world.alert"},
+          "trigger_config" => %{"variable_ref" => "world.state.alert"},
           "priority" => 2,
           "enabled" => true,
           "position" => 1
@@ -781,7 +1047,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
                id: event_id,
                flow_id: event_flow_id,
                trigger_type: "on_event",
-               trigger_config: %{"variable_ref" => "world.alert"},
+               trigger_config: %{"variable_ref" => "world.state.alert"},
                priority: 2,
                enabled: true,
                position: 1
@@ -791,6 +1057,16 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert event_flow_id == event_flow.id
       assert is_nil(Repo.get(SceneAmbientFlow, extra_ambient.id))
 
+      assert Repo.exists?(
+               from(reference in VariableReference,
+                 where:
+                   reference.source_type == "scene_ambient_flow" and
+                     reference.source_id == ^event_ambient.id and
+                     reference.block_id == ^variable_block.id and
+                     reference.kind == "read"
+               )
+             )
+
       assert {:ok, restored_again} =
                SceneBuilder.restore_snapshot(restored, snapshot, restore_action: {:entity_version_restore, "scene"})
 
@@ -798,6 +1074,34 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
 
       assert Enum.sort(Enum.map(restored_again.ambient_flows, & &1.id)) ==
                Enum.sort([timed_ambient.id, event_ambient.id])
+    end
+
+    test "rejects an unresolved ambient on-event variable before mutation", %{
+      project: project,
+      scene: scene
+    } do
+      flow = FlowsFixtures.flow_fixture(project, %{name: "Broken event ambience"})
+
+      {:ok, ambient_flow} =
+        Storyarn.Scenes.create_ambient_flow(scene.id, %{
+          "flow_id" => flow.id,
+          "trigger_type" => "on_event",
+          "trigger_config" => %{"variable_ref" => "missing.sheet.health"}
+        })
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      {:ok, current_scene} =
+        Storyarn.Scenes.update_scene(scene, %{"name" => "Current scene must survive ambient validation"})
+
+      before_restore = persisted_scene_state(scene.id)
+
+      assert {:error,
+              {:unresolved_variable_reference, "scene_ambient_flow", ambient_id, "read", "missing.sheet", "health"}} =
+               SceneBuilder.restore_snapshot(current_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+
+      assert ambient_id == ambient_flow.id
+      assert persisted_scene_state(scene.id) == before_restore
     end
 
     test "rejects ambient ids and flows owned outside the scene project before mutation", %{
@@ -1311,6 +1615,96 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
                      reference.target_id == ^target_scene.id
                )
              )
+    end
+
+    test "restores resolvable pin and zone variables with matching indexes", %{
+      project: project,
+      scene: scene
+    } do
+      sheet = sheet_fixture(project, %{shortcut: "scene.variables"})
+      block = block_fixture(sheet, %{type: "number", is_constant: false})
+
+      pin =
+        pin_fixture(scene, %{
+          "label" => "Variable pin",
+          "condition" => variable_condition(sheet.shortcut, block.variable_name)
+        })
+
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Variable zone",
+          "action_type" => "action",
+          "action_data" => %{
+            "assignments" => [variable_assignment(sheet.shortcut, block.variable_name)]
+          }
+        })
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      assert {:ok, _pin_without_condition} =
+               Storyarn.Scenes.update_pin(pin, %{"condition" => nil})
+
+      assert {:ok, _zone_without_assignment} =
+               Storyarn.Scenes.update_zone(zone, %{
+                 "action_type" => "action",
+                 "action_data" => %{"assignments" => []}
+               })
+
+      assert {:ok, _restored} =
+               SceneBuilder.restore_snapshot(scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+
+      assert Repo.exists?(
+               from(reference in VariableReference,
+                 where:
+                   reference.source_type == "scene_pin" and
+                     reference.source_id == ^pin.id and
+                     reference.block_id == ^block.id and
+                     reference.kind == "read"
+               )
+             )
+
+      assert Repo.exists?(
+               from(reference in VariableReference,
+                 where:
+                   reference.source_type == "scene_zone" and
+                     reference.source_id == ^zone.id and
+                     reference.block_id == ^block.id and
+                     reference.kind == "write"
+               )
+             )
+    end
+
+    test "rejects unresolved pin and zone variables before mutating the scene", %{
+      scene: scene
+    } do
+      pin =
+        pin_fixture(scene, %{
+          "label" => "Broken variable pin",
+          "condition" => variable_condition("missing.sheet", "health")
+        })
+
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Broken variable zone",
+          "action_type" => "action",
+          "action_data" => %{
+            "assignments" => [variable_assignment("missing.sheet", "health")]
+          }
+        })
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      {:ok, current_scene} =
+        Storyarn.Scenes.update_scene(scene, %{"name" => "Current scene must survive"})
+
+      before_restore = persisted_scene_state(scene.id)
+
+      assert {:error, {:unresolved_variable_reference, "scene_pin", pin_id, "read", "missing.sheet", "health"}} =
+               SceneBuilder.restore_snapshot(current_scene, snapshot, restore_action: {:entity_version_restore, "scene"})
+
+      assert pin_id == pin.id
+      assert zone.id
+      assert persisted_scene_state(scene.id) == before_restore
     end
 
     test "deleting post-snapshot pins and zones also removes their entity and variable references", %{
@@ -2694,21 +3088,81 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
     {scene, asset, pin, zone}
   end
 
+  defp variable_assignment(sheet_shortcut, variable_name) do
+    %{
+      "id" => Ecto.UUID.generate(),
+      "sheet" => sheet_shortcut,
+      "variable" => variable_name,
+      "operator" => "set",
+      "value" => "100",
+      "value_type" => "literal"
+    }
+  end
+
+  defp variable_condition(sheet_shortcut, variable_name) do
+    %{
+      "logic" => "all",
+      "blocks" => [
+        %{
+          "id" => Ecto.UUID.generate(),
+          "type" => "block",
+          "logic" => "all",
+          "rules" => [
+            %{
+              "id" => Ecto.UUID.generate(),
+              "sheet" => sheet_shortcut,
+              "variable" => variable_name,
+              "operator" => "equals",
+              "value" => "1"
+            }
+          ]
+        }
+      ]
+    }
+  end
+
   defp uploaded_image_asset(project, user, filename, content) do
+    uploaded_asset(project, user, filename, content, "image/png")
+  end
+
+  defp uploaded_asset(project, user, filename, content, content_type) do
     {:ok, asset} =
       Assets.upload_binary_and_create_asset(
         content,
-        %{filename: filename, content_type: "image/png"},
+        %{filename: filename, content_type: content_type},
         project,
         user
       )
 
     on_exit(fn ->
       Assets.storage_delete(asset.key)
-      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
+
+      delete_storage_blob(
+        BlobStore.blob_key(
+          project.id,
+          asset.blob_hash,
+          BlobStore.ext_from_content_type(asset.content_type)
+        )
+      )
     end)
 
     asset
+  end
+
+  defp add_snapshot_asset(snapshot, asset) do
+    asset_id = to_string(asset.id)
+
+    snapshot
+    |> put_in(["asset_blob_hashes", asset_id], asset.blob_hash)
+    |> put_in(
+      ["asset_metadata", asset_id],
+      %{
+        "filename" => asset.filename,
+        "content_type" => asset.content_type,
+        "size" => asset.size,
+        "project_id" => asset.project_id
+      }
+    )
   end
 
   defp assert_copied_asset_storage(asset, project_id, expected_content) do

@@ -183,6 +183,11 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
     present, every resolved hash must exist in the catalog.
   - `:source_project_id` — when supplied, the snapshot catalog must identify
     this project as the canonical blob owner.
+  - `:expected_content_type_prefix` — when supplied, both reused and recreated
+    assets must match the semantic MIME family required by the destination
+    slot (for example, `"audio/"` or `"image/"`).
+  - `:asset_context` — identifies the destination slot in a content-type
+    mismatch error.
   """
   @spec resolve_asset_fk(integer() | nil, map(), integer(), integer() | nil, keyword()) :: integer() | nil
   def resolve_asset_fk(asset_id, snapshot, project_id, user_id \\ nil, opts \\ [])
@@ -207,7 +212,8 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
 
   defp resolve_portable_asset(asset_id, snapshot, project_id, user_id, mode, opts) do
     result =
-      with {:ok, entry} <- fetch_portable_asset_entry(asset_id, snapshot, opts) do
+      with {:ok, entry} <- fetch_portable_asset_entry(asset_id, snapshot, opts),
+           :ok <- validate_expected_content_type(asset_id, entry, opts) do
         resolve_cached_or_materialize(
           asset_id,
           project_id,
@@ -221,6 +227,24 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
     case result do
       {:ok, destination_asset_id} -> destination_asset_id
       {:error, reason} -> raise AssetCopyError, asset_id: asset_id, reason: reason
+    end
+  end
+
+  defp validate_expected_content_type(asset_id, entry, opts) do
+    case Keyword.get(opts, :expected_content_type_prefix) do
+      nil ->
+        :ok
+
+      prefix when is_binary(prefix) ->
+        if String.starts_with?(entry.metadata["content_type"], prefix) do
+          :ok
+        else
+          {:error,
+           {:invalid_asset_content_type, Keyword.get(opts, :asset_context), asset_id, entry.metadata["content_type"]}}
+        end
+
+      invalid_prefix ->
+        {:error, {:invalid_expected_content_type_prefix, invalid_prefix}}
     end
   end
 

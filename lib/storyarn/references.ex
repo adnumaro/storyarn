@@ -37,11 +37,22 @@ defmodule Storyarn.References do
   defdelegate flow_node_variable_references_current_ids(nodes, project_id),
     to: VariableTracker
 
+  @spec validate_snapshot_variable_references(integer(), [map()]) ::
+          :ok | {:error, term()}
+  defdelegate validate_snapshot_variable_references(project_id, sources),
+    to: VariableTracker
+
   defdelegate delete_flow_node_variable_references(node_id), to: VariableTracker
   defdelegate update_scene_pin_variable_references(pin, opts \\ []), to: VariableTracker
   defdelegate delete_scene_pin_variable_references(pin_id), to: VariableTracker
   defdelegate update_scene_zone_variable_references(zone, opts \\ []), to: VariableTracker
   defdelegate delete_scene_zone_variable_references(zone_id), to: VariableTracker
+
+  defdelegate update_scene_ambient_flow_variable_references(ambient_flow, opts \\ []),
+    to: VariableTracker
+
+  defdelegate delete_scene_ambient_flow_variable_references(ambient_flow_id),
+    to: VariableTracker
 
   defdelegate count_variable_usage(block_id), to: VariableUsage
   defdelegate referenced_block_ids(block_ids), to: VariableUsage

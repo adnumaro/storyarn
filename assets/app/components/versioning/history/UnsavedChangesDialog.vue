@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertTriangle, Loader2, Save, Trash2, X } from "@lucide/vue";
+import { AlertTriangle, Loader2, ShieldCheck, X } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import {
   Dialog,
@@ -21,8 +21,7 @@ const {
 
 const emit = defineEmits<{
   "update:open": [open: boolean];
-  "save-and-restore": [];
-  "discard-and-restore": [];
+  "review-restore": [];
 }>();
 </script>
 
@@ -44,22 +43,12 @@ const emit = defineEmits<{
       <div class="flex flex-col gap-2">
         <Button
           class="w-full justify-start gap-2"
-          :disabled="loadingAction === 'save-restore'"
-          @click="emit('save-and-restore')"
+          :disabled="loadingAction === 'review-restore'"
+          @click="emit('review-restore')"
         >
-          <Loader2 v-if="loadingAction === 'save-restore'" class="size-4 animate-spin" />
-          <Save v-else class="size-4" />
-          {{ $t("common.unsaved_changes_dialog.save_then_restore") }}
-        </Button>
-        <Button
-          variant="outline"
-          class="w-full justify-start gap-2 border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
-          :disabled="loadingAction === 'discard-restore'"
-          @click="emit('discard-and-restore')"
-        >
-          <Loader2 v-if="loadingAction === 'discard-restore'" class="size-4 animate-spin" />
-          <Trash2 v-else class="size-4" />
-          {{ $t("common.unsaved_changes_dialog.discard_and_restore") }}
+          <Loader2 v-if="loadingAction === 'review-restore'" class="size-4 animate-spin" />
+          <ShieldCheck v-else class="size-4" />
+          {{ $t("common.unsaved_changes_dialog.review_restore") }}
         </Button>
         <Button
           variant="ghost"

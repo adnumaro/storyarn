@@ -95,11 +95,11 @@ defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
          versionNumber: version.version_number
        })}
     else
-      show_conflict_preview(socket, version, false)
+      show_conflict_preview(socket, version)
     end
   end
 
-  def show_conflict_preview(socket, version, skip_pre_snapshot) do
+  def show_conflict_preview(socket, version) do
     sheet = socket.assigns.sheet
 
     case Versioning.load_version_snapshot(version) do
@@ -120,8 +120,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
         {:noreply,
          push_event(socket, "show_restore_modal", %{
            versionNumber: version.version_number,
-           report: serialized_report,
-           skipPreSnapshot: skip_pre_snapshot
+           report: serialized_report
          })}
 
       {:error, _} ->

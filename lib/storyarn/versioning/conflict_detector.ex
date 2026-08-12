@@ -11,18 +11,26 @@ defmodule Storyarn.Versioning.ConflictDetector do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.Storage
   alias Storyarn.Flows.Flow
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
+  alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Versioning.VersionCrud
 
+  @sha256_regex ~r/\A[0-9a-f]{64}\z/
+  @max_asset_size 52_428_800
+
   @type_to_schema %{
-    asset: Storyarn.Assets.Asset,
+    asset: Asset,
     sheet: Sheet,
     flow: Flow,
     scene: Scene,
-    block: Storyarn.Sheets.Block
+    block: Block
   }
 
   @entity_type_to_schema %{
@@ -39,26 +47,24 @@ defmodule Storyarn.Versioning.ConflictDetector do
   - `conflicts` - list of grouped conflicts by type
   - `shortcut_collision` - whether the snapshot's shortcut collides with another entity
   - `resolved_shortcut` - the shortcut that will be used (with "-restored" suffix if collision)
-  - `auto_resolved` - list of auto-resolved issues (e.g., detached block inheritance)
+  - `auto_resolved` - list of issues the restore can resolve without data loss
   """
   @spec detect_conflicts(String.t(), map(), struct()) :: map()
   def detect_conflicts(entity_type, snapshot, entity) do
     builder = VersionCrud.get_builder!(entity_type)
     references = extract_references(builder, snapshot)
-    missing = find_missing_references(references)
+    missing = find_missing_references(references, entity.project_id, entity_type, snapshot)
     grouped = group_conflicts(missing)
 
     {shortcut_collision, resolved_shortcut} =
       check_shortcut_collision(entity_type, entity, snapshot)
-
-    auto_resolved = detect_auto_resolved(entity_type, snapshot)
 
     %{
       has_conflicts: grouped != [] or shortcut_collision,
       conflicts: grouped,
       shortcut_collision: shortcut_collision,
       resolved_shortcut: resolved_shortcut,
-      auto_resolved: auto_resolved,
+      auto_resolved: [],
       summary: build_summary(grouped, shortcut_collision)
     }
   end
@@ -73,25 +79,176 @@ defmodule Storyarn.Versioning.ConflictDetector do
     end
   end
 
-  defp find_missing_references([]), do: []
+  defp find_missing_references([], _project_id, _entity_type, _snapshot), do: []
 
-  defp find_missing_references(references) do
+  defp find_missing_references(references, project_id, entity_type, snapshot) do
     # Normalize IDs to integers — snapshot data may store FKs as strings
     references
-    |> Enum.map(&normalize_ref_id/1)
-    |> Enum.reject(&is_nil(&1.id))
+    |> Enum.map(&normalize_reference_ids/1)
     |> Enum.group_by(& &1.type)
     |> Enum.flat_map(fn {type, refs} ->
-      schema = Map.fetch!(@type_to_schema, type)
-      ids = refs |> Enum.map(& &1.id) |> Enum.uniq()
+      ids = refs |> Enum.map(& &1.id) |> Enum.filter(&is_integer/1) |> Enum.uniq()
+      existing_ids = existing_reference_ids(type, ids, project_id)
 
-      existing_ids =
-        from(e in schema, where: e.id in ^ids, select: e.id)
-        |> Repo.all()
-        |> MapSet.new()
-
-      Enum.reject(refs, &MapSet.member?(existing_ids, &1.id))
+      Enum.reject(refs, fn ref ->
+        reference_materializable?(ref, existing_ids, project_id, entity_type, snapshot)
+      end)
     end)
+  end
+
+  defp reference_materializable?(%{type: :asset} = ref, existing_assets, project_id, entity_type, snapshot) do
+    restorable_from_snapshot_catalog?(ref, project_id, entity_type, snapshot) and
+      active_asset_matches_snapshot_catalog?(ref.id, existing_assets, snapshot)
+  end
+
+  defp reference_materializable?(ref, existing_ids, _project_id, _entity_type, _snapshot) do
+    reference_exists?(ref, existing_ids)
+  end
+
+  defp reference_exists?(%{type: :avatar, id: avatar_id, speaker_sheet_id: speaker_sheet_id}, existing_pairs) do
+    is_integer(avatar_id) and is_integer(speaker_sheet_id) and
+      MapSet.member?(existing_pairs, {avatar_id, speaker_sheet_id})
+  end
+
+  defp reference_exists?(%{type: :avatar}, _existing_pairs), do: false
+
+  defp reference_exists?(ref, existing_ids) do
+    is_integer(ref.id) and MapSet.member?(existing_ids, ref.id)
+  end
+
+  # Entity restores can recreate a deleted asset from its canonical project blob.
+  # Preview deliberately performs no storage I/O, so this only accepts catalog
+  # entries that satisfy every pure validation enforced by AssetHashResolver.
+  # The restore remains authoritative for blob availability and persisted size.
+  defp restorable_from_snapshot_catalog?(%{type: :asset, id: asset_id} = ref, project_id, entity_type, snapshot)
+       when is_integer(asset_id) and asset_id > 0 and is_map(snapshot) do
+    with expected_prefix when expected_prefix in ["audio/", "image/"] <-
+           expected_asset_content_type_prefix(ref, entity_type),
+         %{} = blob_hashes <- snapshot["asset_blob_hashes"],
+         %{} = asset_metadata <- snapshot["asset_metadata"],
+         blob_hash when is_binary(blob_hash) <- blob_hashes[to_string(asset_id)],
+         true <- Regex.match?(@sha256_regex, blob_hash),
+         %{} = metadata <- asset_metadata[to_string(asset_id)],
+         true <- valid_portable_asset_metadata?(metadata, project_id, expected_prefix) do
+      true
+    else
+      _invalid_or_incomplete_catalog -> false
+    end
+  end
+
+  defp restorable_from_snapshot_catalog?(_ref, _project_id, _entity_type, _snapshot), do: false
+
+  defp expected_asset_content_type_prefix(%{expected_content_type_prefix: prefix}, _entity_type), do: prefix
+
+  # Every asset slot in Sheet and Scene builders is image-only. Flow asset refs
+  # carry their slot-specific prefix because a flow contains both image and audio
+  # references.
+  defp expected_asset_content_type_prefix(_ref, entity_type) when entity_type in ["sheet", "scene"], do: "image/"
+
+  defp expected_asset_content_type_prefix(_ref, _entity_type), do: nil
+
+  defp valid_portable_asset_metadata?(metadata, project_id, expected_prefix) do
+    filename = metadata["filename"]
+    content_type = metadata["content_type"]
+    size = metadata["size"]
+
+    valid_asset_filename?(filename) and
+      valid_asset_content_type?(metadata) and
+      String.starts_with?(content_type, expected_prefix) and
+      is_integer(size) and size > 0 and size <= @max_asset_size and
+      metadata["project_id"] == project_id
+  end
+
+  defp valid_asset_filename?(filename) when is_binary(filename) do
+    if String.valid?(filename) and String.trim(filename) != "" do
+      sanitized = Assets.sanitize_filename(filename)
+
+      sanitized not in ["", ".", ".."] and
+        not String.contains?(sanitized, "/") and
+        Storage.canonical_key?(sanitized)
+    else
+      false
+    end
+  end
+
+  defp valid_asset_filename?(_filename), do: false
+
+  defp valid_asset_content_type?(%{"content_type" => "image/svg+xml", "sanitized_svg" => true}), do: true
+
+  defp valid_asset_content_type?(%{"content_type" => content_type}), do: Asset.allowed_content_type?(content_type)
+
+  defp valid_asset_content_type?(_metadata), do: false
+
+  defp active_asset_matches_snapshot_catalog?(asset_id, existing_assets, snapshot) do
+    case Map.get(existing_assets, asset_id) do
+      nil ->
+        true
+
+      %Asset{} = asset ->
+        id = to_string(asset_id)
+        metadata = get_in(snapshot, ["asset_metadata", id])
+
+        asset.blob_hash == get_in(snapshot, ["asset_blob_hashes", id]) and
+          asset.filename == metadata["filename"] and
+          asset.content_type == metadata["content_type"] and
+          asset.size == metadata["size"] and
+          sanitized_svg?(asset.metadata) == (metadata["sanitized_svg"] == true)
+    end
+  end
+
+  defp sanitized_svg?(%{"sanitized_svg" => true}), do: true
+  defp sanitized_svg?(_metadata), do: false
+
+  defp existing_reference_ids(:block, ids, project_id) do
+    from(block in Block,
+      join: sheet in Sheet,
+      on: sheet.id == block.sheet_id,
+      where:
+        block.id in ^ids and sheet.project_id == ^project_id and is_nil(block.deleted_at) and
+          is_nil(sheet.deleted_at),
+      select: block.id
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  defp existing_reference_ids(:reference, _ids, _project_id), do: MapSet.new()
+
+  defp existing_reference_ids(:asset, ids, project_id) do
+    from(asset in Asset,
+      where:
+        asset.id in ^ids and asset.project_id == ^project_id and
+          is_nil(asset.deleted_at),
+      select: asset
+    )
+    |> Repo.all()
+    |> Map.new(&{&1.id, &1})
+  end
+
+  defp existing_reference_ids(:avatar, ids, project_id) do
+    from(avatar in SheetAvatar,
+      join: sheet in Sheet,
+      on: sheet.id == avatar.sheet_id,
+      where:
+        avatar.id in ^ids and sheet.project_id == ^project_id and
+          is_nil(sheet.deleted_at),
+      select: {avatar.id, avatar.sheet_id}
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  defp existing_reference_ids(type, ids, project_id) do
+    schema = Map.fetch!(@type_to_schema, type)
+
+    from(entity in schema,
+      where:
+        entity.id in ^ids and field(entity, :project_id) == ^project_id and
+          is_nil(field(entity, :deleted_at)),
+      select: entity.id
+    )
+    |> Repo.all()
+    |> MapSet.new()
   end
 
   defp normalize_ref_id(%{id: id} = ref) when is_integer(id), do: ref
@@ -99,11 +256,34 @@ defmodule Storyarn.Versioning.ConflictDetector do
   defp normalize_ref_id(%{id: id} = ref) when is_binary(id) do
     case Integer.parse(id) do
       {int_id, ""} -> %{ref | id: int_id}
-      _ -> %{ref | id: nil}
+      _invalid -> ref
     end
   end
 
-  defp normalize_ref_id(%{} = ref), do: %{ref | id: nil}
+  defp normalize_ref_id(%{} = ref), do: Map.put(ref, :id, nil)
+
+  defp normalize_reference_ids(ref) do
+    ref
+    |> normalize_ref_id()
+    |> normalize_avatar_speaker_id()
+  end
+
+  defp normalize_avatar_speaker_id(%{type: :avatar, speaker_sheet_id: speaker_sheet_id} = ref) do
+    Map.put(ref, :speaker_sheet_id, normalize_optional_reference_id(speaker_sheet_id))
+  end
+
+  defp normalize_avatar_speaker_id(ref), do: ref
+
+  defp normalize_optional_reference_id(value) when is_integer(value), do: value
+
+  defp normalize_optional_reference_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {id, ""} -> id
+      _invalid -> value
+    end
+  end
+
+  defp normalize_optional_reference_id(value), do: value
 
   defp group_conflicts([]), do: []
 
@@ -141,29 +321,6 @@ defmodule Storyarn.Versioning.ConflictDetector do
     )
   end
 
-  defp detect_auto_resolved("sheet", snapshot) do
-    blocks = snapshot["blocks"] || []
-
-    inherited_count =
-      Enum.count(blocks, fn b ->
-        b["inherited_from_block_id"] != nil
-      end)
-
-    if inherited_count > 0 do
-      [
-        dgettext(
-          "versioning",
-          "%{count} inherited blocks will be auto-detached if source blocks are missing",
-          count: inherited_count
-        )
-      ]
-    else
-      []
-    end
-  end
-
-  defp detect_auto_resolved(_entity_type, _snapshot), do: []
-
   defp build_summary([], false), do: nil
 
   defp build_summary(grouped, shortcut_collision) do
@@ -199,4 +356,8 @@ defmodule Storyarn.Versioning.ConflictDetector do
   defp type_label(:scene, count), do: dngettext("versioning", "scene", "scenes", count)
 
   defp type_label(:block, count), do: dngettext("versioning", "block", "blocks", count)
+
+  defp type_label(:reference, count), do: dngettext("versioning", "reference", "references", count)
+
+  defp type_label(:avatar, count), do: dngettext("versioning", "avatar", "avatars", count)
 end

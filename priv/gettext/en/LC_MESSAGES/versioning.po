@@ -11,12 +11,7 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn/versioning/conflict_detector.ex:154
-#, elixir-autogen, elixir-format
-msgid "%{count} inherited blocks will be auto-detached if source blocks are missing"
-msgstr ""
-
-#: lib/storyarn/versioning/conflict_detector.ex:177
+#: lib/storyarn/versioning/conflict_detector.ex:334
 #, elixir-autogen, elixir-format
 msgid "%{count} missing %{type}"
 msgid_plural "%{count} missing %{type}"
@@ -28,38 +23,38 @@ msgstr[1] ""
 msgid "Before restore to v%{number}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:194
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:186
 #, elixir-autogen, elixir-format
 msgid "Could not create safety backup before restoring. Restore aborted."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:167
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:123
+#: lib/storyarn_web/helpers/version_event_helpers.ex:145
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:115
 #, elixir-autogen, elixir-format
 msgid "Could not create version."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:216
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:169
+#: lib/storyarn_web/helpers/version_event_helpers.ex:194
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:161
 #, elixir-autogen, elixir-format
 msgid "Could not delete version."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_history_helpers.ex:157
-#: lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex:132
+#: lib/storyarn_web/helpers/version_history_helpers.ex:156
+#: lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex:131
 #, elixir-autogen, elixir-format
 msgid "Could not load version snapshot."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:203
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:156
+#: lib/storyarn_web/helpers/version_event_helpers.ex:181
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:148
 #, elixir-autogen, elixir-format
 msgid "Could not name version."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:143
-#: lib/storyarn_web/helpers/version_event_helpers.ex:244
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:228
+#: lib/storyarn_web/helpers/version_event_helpers.ex:121
+#: lib/storyarn_web/helpers/version_event_helpers.ex:221
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:220
 #, elixir-autogen, elixir-format
 msgid "Could not restore version."
 msgstr ""
@@ -69,92 +64,92 @@ msgstr ""
 msgid "Restored from v%{number}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:248
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:240
 #, elixir-autogen, elixir-format
 msgid "Restored to version %{number}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:221
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:213
 #, elixir-autogen, elixir-format
 msgid "The safety backup is no longer available. Restore was aborted. Please try again."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:205
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:197
 #, elixir-autogen, elixir-format
 msgid "The sheet changed while restore was being prepared. Review the latest changes and try again."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:164
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:120
+#: lib/storyarn_web/helpers/version_event_helpers.ex:142
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:112
 #, elixir-autogen, elixir-format
 msgid "Version created."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:213
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:166
+#: lib/storyarn_web/helpers/version_event_helpers.ex:191
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:158
 #, elixir-autogen, elixir-format
 msgid "Version deleted."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:200
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:153
+#: lib/storyarn_web/helpers/version_event_helpers.ex:178
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:145
 #, elixir-autogen, elixir-format
 msgid "Version named successfully."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:189
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:133
+#: lib/storyarn_web/helpers/version_event_helpers.ex:167
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:125
 #, elixir-autogen, elixir-format
 msgid "Version not found."
 msgstr ""
 
-#: lib/storyarn/versioning/conflict_detector.ex:193
+#: lib/storyarn/versioning/conflict_detector.ex:350
 #, elixir-autogen, elixir-format
 msgid "asset"
 msgid_plural "assets"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/versioning/conflict_detector.ex:201
+#: lib/storyarn/versioning/conflict_detector.ex:358
 #, elixir-autogen, elixir-format
 msgid "block"
 msgid_plural "blocks"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/versioning/conflict_detector.ex:197
+#: lib/storyarn/versioning/conflict_detector.ex:354
 #, elixir-autogen, elixir-format
 msgid "flow"
 msgid_plural "flows"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/versioning/conflict_detector.ex:199
+#: lib/storyarn/versioning/conflict_detector.ex:356
 #, elixir-autogen, elixir-format
 msgid "scene"
 msgid_plural "scenes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/versioning/conflict_detector.ex:195
+#: lib/storyarn/versioning/conflict_detector.ex:352
 #, elixir-autogen, elixir-format
 msgid "sheet"
 msgid_plural "sheets"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/versioning/conflict_detector.ex:185
+#: lib/storyarn/versioning/conflict_detector.ex:342
 #, elixir-autogen, elixir-format
 msgid "shortcut collision"
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:148
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:104
+#: lib/storyarn_web/helpers/version_event_helpers.ex:126
+#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:96
 #, elixir-autogen, elixir-format
 msgid "Title is required."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:240
+#: lib/storyarn_web/helpers/version_event_helpers.ex:217
 #, elixir-autogen, elixir-format
 msgid "Version restored."
 msgstr ""
@@ -168,3 +163,17 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Version unavailable"
 msgstr ""
+
+#: lib/storyarn/versioning/conflict_detector.ex:362
+#, elixir-autogen, elixir-format
+msgid "avatar"
+msgid_plural "avatars"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn/versioning/conflict_detector.ex:360
+#, elixir-autogen, elixir-format
+msgid "reference"
+msgid_plural "references"
+msgstr[0] ""
+msgstr[1] ""

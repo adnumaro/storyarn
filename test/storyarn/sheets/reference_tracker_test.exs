@@ -283,6 +283,32 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
       assert dialogue_ref
     end
 
+    test "indexes valid mentions nested outside the top-level dialogue text" do
+      %{project: project} = setup_project()
+      target_sheet = sheet_fixture(project, %{name: "Nested mention"})
+      flow = flow_fixture(project, %{name: "Nested rich text"})
+
+      mention_html =
+        ~s(<p><span class="mention" data-type="sheet" data-id="#{target_sheet.id}">Nested</span></p>)
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Top-level text",
+            "responses" => [%{"id" => "response_nested", "text" => mention_html}]
+          }
+        })
+
+      assert :ok = ReferenceTracker.update_flow_node_references(node)
+
+      assert Enum.any?(
+               ReferenceTracker.get_backlinks("sheet", target_sheet.id),
+               &(&1.source_type == "flow_node" and &1.source_id == node.id and
+                   &1.context == "dialogue")
+             )
+    end
+
     test "infers the source project and rejects cross-project targets without opts" do
       %{user: user, project: project} = setup_project()
       other_project = project_fixture(user)

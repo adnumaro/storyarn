@@ -4,8 +4,10 @@ defmodule Storyarn.Scenes.AmbientFlowCrudTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Collaboration
+  alias Storyarn.References.VariableReference
   alias Storyarn.Scenes.AmbientFlowCrud
   alias Storyarn.Scenes.SceneAmbientFlow
 
@@ -151,6 +153,41 @@ defmodule Storyarn.Scenes.AmbientFlowCrudTest do
 
       assert ambient_flow.scene_id == scene.id
       assert ambient_flow.flow_id == flow.id
+    end
+
+    test "keeps on-event variable references synchronized across create, update, and delete" do
+      project = project_fixture()
+      scene = scene_fixture(project)
+      flow = flow_fixture(project)
+      sheet = sheet_fixture(project, %{shortcut: "hero.profile"})
+      block = block_fixture(sheet, %{type: "number", variable_name: "health"})
+
+      assert {:ok, ambient_flow} =
+               AmbientFlowCrud.create_ambient_flow(scene.id, %{
+                 "flow_id" => flow.id,
+                 "trigger_type" => "on_event",
+                 "trigger_config" => %{"variable_ref" => "hero.profile.health"}
+               })
+
+      assert ambient_variable_reference?(ambient_flow.id, block.id)
+
+      assert {:ok, timed} =
+               AmbientFlowCrud.update_ambient_flow(ambient_flow, %{
+                 "trigger_type" => "timed",
+                 "trigger_config" => %{"interval_ms" => 1_000}
+               })
+
+      refute ambient_variable_reference?(ambient_flow.id, block.id)
+
+      assert {:ok, restored_event} =
+               AmbientFlowCrud.update_ambient_flow(timed, %{
+                 "trigger_type" => "on_event",
+                 "trigger_config" => %{"variable_ref" => "hero.profile.health"}
+               })
+
+      assert ambient_variable_reference?(ambient_flow.id, block.id)
+      assert {:ok, _deleted} = AmbientFlowCrud.delete_ambient_flow(restored_event)
+      refute ambient_variable_reference?(ambient_flow.id, block.id)
     end
 
     test "rejects a soft-deleted scene without inserting a link" do
@@ -313,6 +350,18 @@ defmodule Storyarn.Scenes.AmbientFlowCrudTest do
   defp soft_delete(struct) do
     deleted_at = DateTime.truncate(DateTime.utc_now(), :second)
     Repo.update!(Ecto.Changeset.change(struct, deleted_at: deleted_at))
+  end
+
+  defp ambient_variable_reference?(ambient_flow_id, block_id) do
+    Repo.exists?(
+      from(reference in VariableReference,
+        where:
+          reference.source_type == "scene_ambient_flow" and
+            reference.source_id == ^ambient_flow_id and
+            reference.block_id == ^block_id and
+            reference.kind == "read"
+      )
+    )
   end
 
   defp assert_dashboard_invalidation_once do

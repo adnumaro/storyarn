@@ -63,49 +63,27 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
     end)
   end
 
-  def handle_save_and_restore(%{"version_number" => version_number}, socket, config) do
+  def handle_review_restore(%{"version_number" => version_number}, socket, config) do
     with_authorized_restore(socket, config.entity_type, fn authorized_socket ->
       with_version(
         authorized_socket,
         config,
         version_number,
         fn version ->
-          save_and_show_restore(authorized_socket, config, version)
+          show_restore_preview(authorized_socket, config, version)
         end,
         missing: :noop
       )
     end)
   end
 
-  def handle_discard_and_restore(%{"version_number" => version_number}, socket, config) do
+  def handle_confirm_restore(%{"version_number" => version_number}, socket, config) do
     with_authorized_restore(socket, config.entity_type, fn authorized_socket ->
       with_version(
         authorized_socket,
         config,
         version_number,
-        fn version ->
-          VersionHistoryHelpers.show_conflict_preview(
-            authorized_socket,
-            config.entity_type,
-            entity(authorized_socket, config),
-            version,
-            false
-          )
-        end,
-        missing: :noop
-      )
-    end)
-  end
-
-  def handle_confirm_restore(%{"version_number" => version_number} = params, socket, config) do
-    with_authorized_restore(socket, config.entity_type, fn authorized_socket ->
-      with_version(
-        authorized_socket,
-        config,
-        version_number,
-        fn version ->
-          restore_version(authorized_socket, config, version, params)
-        end,
+        fn version -> restore_version(authorized_socket, config, version) end,
         missing: :noop
       )
     end)
@@ -217,22 +195,21 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
     end
   end
 
-  defp save_and_show_restore(socket, config, version) do
+  defp show_restore_preview(socket, config, version) do
     VersionHistoryHelpers.show_conflict_preview(
       socket,
       config.entity_type,
       entity(socket, config),
-      version,
-      false
+      version
     )
   end
 
-  defp restore_version(socket, config, version, _params) do
+  defp restore_version(socket, config, version) do
     case Versioning.restore_version(config.entity_type, entity(socket, config), version,
            user_id: socket.assigns.current_scope.user.id
          ) do
       {:ok, _} ->
-        track_version_event(socket, config, "version restored", %{skip_pre_snapshot: false})
+        track_version_event(socket, config, "version restored")
 
         {:noreply,
          socket

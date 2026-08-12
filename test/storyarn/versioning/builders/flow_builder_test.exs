@@ -27,6 +27,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   alias Storyarn.Repo
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Versioning.Builders.FlowBuilder
+  alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Workers.DeleteStorageObjectsWorker
 
@@ -788,6 +789,101 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   end
 
   describe "restore_snapshot/3" do
+    test "rejects a restore when its verified safety-version record is no longer durable", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      target_snapshot = FlowBuilder.build_snapshot(flow)
+      {:ok, current_flow} = Flows.update_flow(flow, %{name: "Current state"})
+      pre_restore_snapshot = FlowBuilder.build_snapshot(current_flow)
+
+      safety_version =
+        %EntityVersion{}
+        |> EntityVersion.changeset(%{
+          entity_type: "flow",
+          entity_id: flow.id,
+          project_id: project.id,
+          created_by_id: user.id,
+          version_number: 1,
+          storage_key: "snapshots/flow/#{flow.id}/1-safety.json.gz",
+          snapshot_size_bytes: 1,
+          checksum: String.duplicate("a", 64)
+        })
+        |> Repo.insert!()
+
+      identity = entity_version_identity(safety_version)
+      Repo.delete!(safety_version)
+
+      assert {:error, :pre_restore_version_not_durable} =
+               FlowBuilder.restore_snapshot(current_flow, target_snapshot,
+                 restore_action: {:entity_version_restore, "flow"},
+                 user_id: user.id,
+                 pre_restore_snapshot: pre_restore_snapshot,
+                 pre_restore_version_identity: identity
+               )
+
+      assert Repo.get!(Flow, flow.id).name == "Current state"
+    end
+
+    test "does not overwrite a change made after the pre-restore snapshot", %{
+      flow: flow
+    } do
+      target_snapshot = FlowBuilder.build_snapshot(flow)
+      {:ok, current_flow} = Flows.update_flow(flow, %{name: "Before safety"})
+      pre_restore_snapshot = FlowBuilder.build_snapshot(current_flow)
+      {:ok, concurrent_flow} = Flows.update_flow(current_flow, %{name: "Concurrent change"})
+
+      assert {:error, :flow_changed_since_pre_restore_snapshot} =
+               FlowBuilder.restore_snapshot(concurrent_flow, target_snapshot,
+                 restore_action: {:entity_version_restore, "flow"},
+                 pre_restore_snapshot: pre_restore_snapshot
+               )
+
+      assert Repo.get!(Flow, flow.id).name == "Concurrent change"
+    end
+
+    test "accepts the persisted JSON form of a matching localized pre-restore snapshot", %{
+      project: project,
+      flow: flow
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Current localized line", "responses" => []}
+        })
+
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+      timestamp = ~U[2026-08-12 12:30:00Z]
+
+      assert {:ok, _translated} =
+               Localization.update_text(text, %{
+                 translated_text: "Línea localizada actual",
+                 status: "final",
+                 last_translated_at: timestamp
+               })
+
+      current_snapshot = FlowBuilder.build_snapshot(flow)
+
+      persisted_pre_restore_snapshot =
+        current_snapshot
+        |> Jason.encode!()
+        |> Jason.decode!()
+
+      target_snapshot = Map.put(current_snapshot, "name", "Historical name")
+
+      assert {:ok, restored} =
+               FlowBuilder.restore_snapshot(flow, target_snapshot,
+                 restore_action: {:entity_version_restore, "flow"},
+                 pre_restore_snapshot: persisted_pre_restore_snapshot
+               )
+
+      assert restored.name == "Historical name"
+    end
+
     test "restores flow with nodes and connections", %{flow: flow} do
       n1 =
         node_fixture(flow, %{
@@ -1091,6 +1187,177 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert asset_id == audio.id
       assert Repo.get!(Flow, flow.id).name == "Current flow"
       assert Repo.get!(FlowNode, node.id).data == updated_node.data
+    end
+
+    test "rejects wrong MIME families for every Flow asset slot before writing", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      audio = uploaded_asset(project, user, "mime-audio.mp3", "audio bytes", "audio/mpeg")
+      image = uploaded_asset(project, user, "mime-image.png", "image bytes", "image/png")
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "MIME line",
+            "responses" => [],
+            "audio_asset_id" => audio.id
+          }
+        })
+
+      [localized_text] = Localization.get_texts_for_source("flow_node", dialogue.id)
+
+      assert {:ok, _localized_text} =
+               Localization.update_text(localized_text, %{
+                 translated_text: "Línea MIME",
+                 status: "final",
+                 vo_asset_id: audio.id,
+                 vo_status: "recorded"
+               })
+
+      {:ok, sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "MIME sequence",
+          "width" => 640.0,
+          "height" => 360.0
+        })
+
+      assert {:ok, track} =
+               Flows.upsert_sequence_track(sequence.id, "music", %{
+                 "asset_id" => audio.id
+               })
+
+      assert {:ok, layer} =
+               Flows.create_sequence_visual_layer(sequence.id, %{
+                 "asset_id" => image.id,
+                 "kind" => "backdrop",
+                 "label" => "Backdrop"
+               })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      assert {:ok, current_flow} = Flows.update_flow(flow, %{name: "Keep MIME state"})
+
+      invalid_snapshots = [
+        {:node_audio, image.id, "image/png",
+         update_snapshot_node(snapshot, dialogue.id, fn node ->
+           put_in(node, ["data", "audio_asset_id"], image.id)
+         end)},
+        {:sequence_track, image.id, "image/png",
+         update_snapshot_node(snapshot, sequence.id, fn node ->
+           update_in(node["sequence_tracks"], fn [track_data] ->
+             [Map.put(track_data, "asset_id", image.id)]
+           end)
+         end)},
+        {:sequence_visual_layer, audio.id, "audio/mpeg",
+         update_snapshot_node(snapshot, sequence.id, fn node ->
+           update_in(node["sequence_visual_layers"], fn [layer_data] ->
+             [Map.put(layer_data, "asset_id", audio.id)]
+           end)
+         end)},
+        {:localization_voiceover, image.id, "image/png",
+         snapshot
+         |> Map.update!("localization", fn [row] ->
+           [Map.put(row, "vo_asset_id", image.id)]
+         end)
+         |> then(fn updated_snapshot ->
+           Map.put(
+             updated_snapshot,
+             "localization_manifest",
+             LocalizationSnapshotCodec.manifest(
+               updated_snapshot["localization"],
+               snapshot["localization_manifest"]["target_locales"]
+             )
+           )
+         end)}
+      ]
+
+      for {context, wrong_asset_id, content_type, invalid_snapshot} <- invalid_snapshots do
+        assert {:error,
+                {:asset_materialization_failed, ^wrong_asset_id,
+                 {:invalid_asset_content_type, ^context, ^wrong_asset_id, ^content_type}}} =
+                 FlowBuilder.restore_snapshot(current_flow, invalid_snapshot,
+                   restore_action: {:entity_version_restore, "flow"}
+                 )
+
+        assert Repo.get!(Flow, flow.id).name == "Keep MIME state"
+        assert Repo.get!(FlowNode, dialogue.id).data["audio_asset_id"] == audio.id
+        assert Repo.get!(SequenceTrack, track.id).asset_id == audio.id
+        assert Repo.get!(SequenceVisualLayer, layer.id).asset_id == image.id
+
+        assert [%LocalizedText{vo_asset_id: voice_id}] =
+                 Localization.get_texts_for_source("flow_node", dialogue.id)
+
+        assert voice_id == audio.id
+      end
+
+      assert {:ok, _deleted_layer} = Flows.delete_sequence_visual_layer(layer)
+      assert {:ok, _deleted_image} = Assets.delete_asset(image)
+
+      historical_wrong_mime =
+        update_snapshot_node(snapshot, dialogue.id, fn node ->
+          put_in(node, ["data", "audio_asset_id"], image.id)
+        end)
+
+      assert {:error,
+              {:asset_materialization_failed, image_id, {:invalid_asset_content_type, :node_audio, image_id, "image/png"}}} =
+               FlowBuilder.restore_snapshot(current_flow, historical_wrong_mime,
+                 restore_action: {:entity_version_restore, "flow"}
+               )
+
+      assert image_id == image.id
+      assert Repo.get!(Flow, flow.id).name == "Keep MIME state"
+    end
+
+    test "rejects an asset catalog entry owned by another project before writing", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      audio = uploaded_asset(project, user, "owned.mp3", "shared bytes", "audio/mpeg")
+      foreign_project = project_fixture(user)
+
+      _foreign_audio =
+        uploaded_asset(
+          foreign_project,
+          user,
+          "foreign.mp3",
+          "shared bytes",
+          "audio/mpeg"
+        )
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Historical line",
+            "responses" => [],
+            "audio_asset_id" => audio.id
+          }
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      cross_project_catalog =
+        put_in(
+          snapshot,
+          ["asset_metadata", to_string(audio.id), "project_id"],
+          foreign_project.id
+        )
+
+      {:ok, current_flow} = Flows.update_flow(flow, %{name: "Current flow"})
+
+      assert {:error, {:asset_materialization_failed, asset_id, :invalid_asset_source_project}} =
+               FlowBuilder.restore_snapshot(current_flow, cross_project_catalog,
+                 restore_action: {:entity_version_restore, "flow"}
+               )
+
+      assert asset_id == audio.id
+      assert Repo.get!(Flow, flow.id).name == "Current flow"
+      assert Repo.get!(FlowNode, node.id).data["audio_asset_id"] == audio.id
     end
 
     test "round-trips speaker IDs for dialogue and response localization", %{
@@ -2651,6 +2918,133 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert FlowBuilder.build_snapshot(second_restore) == snapshot
     end
 
+    test "resolves jump targets from the snapshot graph and rejects missing or ambiguous targets", %{
+      flow: flow
+    } do
+      hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "restore_target"},
+          position_x: 200.0
+        })
+
+      second_hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "other_target"},
+          position_x: 300.0
+        })
+
+      jump =
+        node_fixture(flow, %{
+          type: "jump",
+          data: %{"target_hub_id" => "restore_target"},
+          position_x: 400.0
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      assert {:ok, _deleted_hub, _meta} = Flows.delete_node(hub)
+      assert Repo.get!(FlowNode, jump.id).data["target_hub_id"] == ""
+      assert {:ok, current_flow} = Flows.update_flow(flow, %{name: "Current graph"})
+
+      assert {:ok, restored_flow} =
+               FlowBuilder.restore_snapshot(current_flow, snapshot, restore_action: {:entity_version_restore, "flow"})
+
+      assert Repo.get!(FlowNode, hub.id).deleted_at == nil
+      assert Repo.get!(FlowNode, jump.id).data["target_hub_id"] == "restore_target"
+
+      assert {:ok, current_jump, _meta} =
+               Flows.update_node_data(Repo.get!(FlowNode, jump.id), %{"target_hub_id" => ""})
+
+      assert {:ok, current_flow} = Flows.update_flow(restored_flow, %{name: "Keep graph current"})
+
+      invalid_snapshots = [
+        {{:invalid_jump_target, "missing_target"},
+         update_snapshot_node(snapshot, jump.id, fn node ->
+           put_in(node, ["data", "target_hub_id"], "missing_target")
+         end)},
+        {{:duplicate_snapshot_hub_id, "restore_target"},
+         update_snapshot_node(snapshot, second_hub.id, fn node ->
+           put_in(node, ["data", "hub_id"], "restore_target")
+         end)},
+        {{:invalid_jump_target, 17},
+         update_snapshot_node(snapshot, jump.id, fn node ->
+           put_in(node, ["data", "target_hub_id"], 17)
+         end)}
+      ]
+
+      for {expected_error, invalid_snapshot} <- invalid_snapshots do
+        assert {:error, ^expected_error} =
+                 FlowBuilder.restore_snapshot(current_flow, invalid_snapshot,
+                   restore_action: {:entity_version_restore, "flow"}
+                 )
+
+        assert Repo.get!(Flow, flow.id).name == "Keep graph current"
+        assert Repo.get!(FlowNode, jump.id).data == current_jump.data
+      end
+
+      whitespace_snapshot =
+        update_snapshot_node(snapshot, jump.id, fn node ->
+          put_in(node, ["data", "target_hub_id"], "   ")
+        end)
+
+      assert {:ok, _restored} =
+               FlowBuilder.restore_snapshot(current_flow, whitespace_snapshot,
+                 restore_action: {:entity_version_restore, "flow"}
+               )
+
+      assert Repo.get!(FlowNode, jump.id).data["target_hub_id"] == ""
+    end
+
+    test "rejects invalid or duplicate snapshot hub definitions without a referencing jump", %{
+      flow: flow
+    } do
+      first_hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "first_hub"},
+          position_x: 200.0
+        })
+
+      second_hub =
+        node_fixture(flow, %{
+          type: "hub",
+          data: %{"hub_id" => "second_hub"},
+          position_x: 300.0
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      assert {:ok, current_flow} = Flows.update_flow(flow, %{name: "Keep valid hubs"})
+
+      for invalid_hub_id <- [nil, "", "   ", 17] do
+        invalid_snapshot =
+          update_snapshot_node(snapshot, first_hub.id, fn node ->
+            put_in(node, ["data", "hub_id"], invalid_hub_id)
+          end)
+
+        assert {:error, {:invalid_snapshot_hub_id, node_id, ^invalid_hub_id}} =
+                 FlowBuilder.restore_snapshot(current_flow, invalid_snapshot,
+                   restore_action: {:entity_version_restore, "flow"}
+                 )
+
+        assert node_id == first_hub.id
+        assert Repo.get!(Flow, flow.id).name == "Keep valid hubs"
+      end
+
+      duplicate_snapshot =
+        update_snapshot_node(snapshot, second_hub.id, fn node ->
+          put_in(node, ["data", "hub_id"], "first_hub")
+        end)
+
+      assert {:error, {:duplicate_snapshot_hub_id, "first_hub"}} =
+               FlowBuilder.restore_snapshot(current_flow, duplicate_snapshot,
+                 restore_action: {:entity_version_restore, "flow"}
+               )
+
+      assert Repo.get!(Flow, flow.id).name == "Keep valid hubs"
+    end
+
     test "rebuilds entity and variable references for restored active nodes", %{
       project: project,
       flow: flow
@@ -2742,7 +3136,139 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
              )
     end
 
-    test "rebuilds only active same-project rich-text mentions in place", %{
+    test "validates and rebuilds every dialogue response variable surface atomically", %{
+      project: project,
+      flow: flow
+    } do
+      sheet = sheet_fixture(project, %{name: "Dialogue stats", shortcut: "actors.dialogue.stats"})
+      condition_block = block_fixture(sheet, %{type: "number", config: %{"label" => "Condition health"}})
+      structured_block = block_fixture(sheet, %{type: "number", config: %{"label" => "Structured health"}})
+      legacy_block = block_fixture(sheet, %{type: "number", config: %{"label" => "Legacy health"}})
+
+      condition = fn variable_name ->
+        %{
+          "logic" => "all",
+          "blocks" => [
+            %{
+              "id" => Ecto.UUID.generate(),
+              "type" => "block",
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "id" => Ecto.UUID.generate(),
+                  "sheet" => sheet.shortcut,
+                  "variable" => variable_name,
+                  "operator" => "greater_than",
+                  "value" => "0"
+                }
+              ]
+            }
+          ]
+        }
+      end
+
+      assignment = fn variable_name ->
+        %{
+          "id" => Ecto.UUID.generate(),
+          "sheet" => sheet.shortcut,
+          "variable" => variable_name,
+          "operator" => "set",
+          "value" => "1",
+          "value_type" => "literal"
+        }
+      end
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "Choose",
+            "responses" => [
+              %{
+                "id" => "response_structured",
+                "text" => "Structured",
+                "condition" => Jason.encode!(condition.(condition_block.variable_name)),
+                "instruction_assignments" => [assignment.(structured_block.variable_name)]
+              },
+              %{
+                "id" => "response_legacy",
+                "text" => "Legacy",
+                "condition" => nil,
+                "instruction_assignments" => [],
+                "instruction" => Jason.encode!([assignment.(legacy_block.variable_name)])
+              }
+            ]
+          }
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      assert {:ok, current_dialogue, _meta} =
+               Flows.update_node_data(dialogue, %{
+                 "text" => "Current",
+                 "responses" => []
+               })
+
+      assert {:ok, current_flow} = Flows.update_flow(flow, %{name: "Keep response variables"})
+
+      invalid_snapshots = [
+        {"missing_condition",
+         update_snapshot_node(snapshot, dialogue.id, fn node ->
+           put_in(
+             node,
+             ["data", "responses", Access.at(0), "condition"],
+             Jason.encode!(condition.("missing_condition"))
+           )
+         end)},
+        {"missing_structured",
+         update_snapshot_node(snapshot, dialogue.id, fn node ->
+           put_in(
+             node,
+             ["data", "responses", Access.at(0), "instruction_assignments", Access.at(0), "variable"],
+             "missing_structured"
+           )
+         end)},
+        {"missing_legacy",
+         update_snapshot_node(snapshot, dialogue.id, fn node ->
+           put_in(
+             node,
+             ["data", "responses", Access.at(1), "instruction"],
+             Jason.encode!([assignment.("missing_legacy")])
+           )
+         end)}
+      ]
+
+      for {missing_variable, invalid_snapshot} <- invalid_snapshots do
+        assert {:error, {:unresolved_variable_reference, "flow_node", node_id, _kind, source_sheet, ^missing_variable}} =
+                 FlowBuilder.restore_snapshot(current_flow, invalid_snapshot,
+                   restore_action: {:entity_version_restore, "flow"}
+                 )
+
+        assert node_id == dialogue.id
+        assert source_sheet == sheet.shortcut
+        assert Repo.get!(Flow, flow.id).name == "Keep response variables"
+        assert Repo.get!(FlowNode, dialogue.id).data == current_dialogue.data
+      end
+
+      assert {:ok, _restored} =
+               FlowBuilder.restore_snapshot(current_flow, snapshot, restore_action: {:entity_version_restore, "flow"})
+
+      assert from(reference in VariableReference,
+               where:
+                 reference.source_type == "flow_node" and
+                   reference.source_id == ^dialogue.id,
+               select: {reference.block_id, reference.kind}
+             )
+             |> Repo.all()
+             |> MapSet.new() ==
+               MapSet.new([
+                 {condition_block.id, "read"},
+                 {structured_block.id, "write"},
+                 {legacy_block.id, "write"}
+               ])
+    end
+
+    test "rejects foreign and inactive rich-text mentions atomically in place", %{
       user: user,
       project: project,
       flow: flow
@@ -2750,9 +3276,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       local_sheet = sheet_fixture(project, %{name: "Local mention"})
       other_project = project_fixture(user)
       foreign_sheet = sheet_fixture(other_project, %{name: "Foreign mention"})
-
-      text =
-        ~s(<p><span class="mention" data-type="sheet" data-id="#{local_sheet.id}">Local</span><span class="mention" data-type="sheet" data-id="#{foreign_sheet.id}">Foreign</span></p>)
+      inactive_sheet = sheet_fixture(project, %{name: "Inactive mention"})
 
       dialogue =
         node_fixture(flow, %{
@@ -2763,38 +3287,110 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
           }
         })
 
-      set_node_data(dialogue, %{"text" => text})
-
       snapshot = FlowBuilder.build_snapshot(flow)
 
-      assert {:ok, _dialogue, _meta} =
+      assert {:ok, current_dialogue, _meta} =
                Flows.update_node_data(dialogue, %{
-                 "text" => "Changed",
+                 "text" => "Current text",
                  "responses" => []
                })
 
-      assert {:ok, _restored} =
-               FlowBuilder.restore_snapshot(flow, snapshot, restore_action: {:entity_version_restore, "flow"})
+      {:ok, current_flow} = Flows.update_flow(flow, %{name: "Current flow"})
+      deleted_at = DateTime.truncate(DateTime.utc_now(), :second)
+      Repo.update!(Ecto.Changeset.change(inactive_sheet, deleted_at: deleted_at))
 
-      restored_dialogue = Repo.get!(FlowNode, dialogue.id)
-      assert restored_dialogue.data["text"] == text
+      for invalid_sheet <- [foreign_sheet, inactive_sheet] do
+        text =
+          ~s(<p><span class="mention" data-type="sheet" data-id="#{local_sheet.id}">Local</span><span class="mention" data-type="sheet" data-id="#{invalid_sheet.id}">Invalid</span></p>)
 
-      assert Repo.exists?(
-               from(reference in EntityReference,
-                 where:
-                   reference.source_type == "flow_node" and
-                     reference.source_id == ^dialogue.id and
-                     reference.target_type == "sheet" and
-                     reference.target_id == ^local_sheet.id
+        invalid_snapshot =
+          update_snapshot_node(snapshot, dialogue.id, fn node ->
+            put_in(node, ["data", "text"], text)
+          end)
+
+        assert {:error, {:invalid_project_reference, {:flow_node_mention, "sheet"}, invalid_id}} =
+                 FlowBuilder.restore_snapshot(current_flow, invalid_snapshot,
+                   restore_action: {:entity_version_restore, "flow"}
+                 )
+
+        assert invalid_id == to_string(invalid_sheet.id)
+        assert Repo.get!(Flow, flow.id).name == "Current flow"
+        assert Repo.get!(FlowNode, dialogue.id).data == current_dialogue.data
+
+        refute Repo.exists?(
+                 from(reference in EntityReference,
+                   where:
+                     reference.source_type == "flow_node" and
+                       reference.source_id == ^dialogue.id
+                 )
                )
-             )
+      end
+    end
+
+    test "rejects unresolved and malformed nominal variable refs atomically", %{
+      project: project,
+      flow: flow
+    } do
+      sheet = sheet_fixture(project, %{name: "Stats", shortcut: "actors.stats"})
+
+      health =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Health", "placeholder" => "0"}
+        })
+
+      instruction =
+        node_fixture(flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => "restore_variable",
+                "sheet" => sheet.shortcut,
+                "variable" => health.variable_name,
+                "operator" => "set",
+                "value" => "100",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      assert {:ok, current_instruction, _meta} = Flows.update_node_data(instruction, %{"assignments" => []})
+      assert {:ok, current_flow} = Flows.update_flow(flow, %{name: "Current variable state"})
+
+      Repo.update!(
+        Ecto.Changeset.change(health,
+          deleted_at: DateTime.truncate(DateTime.utc_now(), :second)
+        )
+      )
+
+      assert {:error, {:unresolved_variable_reference, "flow_node", node_id, "write", source_sheet, source_variable}} =
+               FlowBuilder.restore_snapshot(current_flow, snapshot, restore_action: {:entity_version_restore, "flow"})
+
+      assert node_id == instruction.id
+      assert source_sheet == sheet.shortcut
+      assert source_variable == health.variable_name
+
+      malformed_snapshot =
+        update_snapshot_node(snapshot, instruction.id, fn node ->
+          put_in(node, ["data", "assignments", Access.at(0), "variable"], nil)
+        end)
+
+      assert {:error, {:malformed_variable_reference, "flow_node", ^node_id, :assignment_target, {^source_sheet, nil}}} =
+               FlowBuilder.restore_snapshot(current_flow, malformed_snapshot,
+                 restore_action: {:entity_version_restore, "flow"}
+               )
+
+      assert Repo.get!(Flow, flow.id).name == "Current variable state"
+      assert Repo.get!(FlowNode, instruction.id).data == current_instruction.data
 
       refute Repo.exists?(
-               from(reference in EntityReference,
+               from(reference in VariableReference,
                  where:
                    reference.source_type == "flow_node" and
-                     reference.source_id == ^dialogue.id and
-                     reference.target_id == ^foreign_sheet.id
+                     reference.source_id == ^instruction.id
                )
              )
     end
@@ -4576,7 +5172,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   end
 
   describe "scan_references/1" do
-    test "extracts speaker, subflow, and audio refs from nodes" do
+    test "extracts every authoritative external Flow reference surface" do
+      nested_mention =
+        ~s(<p><span class="mention" data-type="sheet" data-id="12">Nested</span></p>)
+
       snapshot = %{
         "scene_id" => 42,
         "nodes" => [
@@ -4584,7 +5183,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
             "type" => "dialogue",
             "data" => %{
               "speaker_sheet_id" => 10,
-              "audio_asset_id" => 20
+              "location_sheet_id" => 11,
+              "avatar_id" => 13,
+              "audio_asset_id" => 20,
+              "responses" => [%{"text" => nested_mention}]
             }
           },
           %{
@@ -4594,9 +5196,18 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
             }
           },
           %{
-            "type" => "hub",
-            "data" => %{}
+            "type" => "exit",
+            "data" => %{"target_type" => "scene", "target_id" => 41}
+          },
+          %{
+            "type" => "sequence",
+            "data" => %{},
+            "sequence_tracks" => [%{"asset_id" => 52}],
+            "sequence_visual_layers" => [%{"asset_id" => 53}]
           }
+        ],
+        "localization" => [
+          %{"vo_asset_id" => 51, "speaker_sheet_id" => 14}
         ]
       }
 
@@ -4605,10 +5216,27 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       types_and_ids = refs |> Enum.map(&{&1.type, &1.id}) |> Enum.sort()
 
       assert {:asset, 20} in types_and_ids
+      assert {:asset, 51} in types_and_ids
+      assert {:asset, 52} in types_and_ids
+      assert {:asset, 53} in types_and_ids
+      assert {:avatar, 13} in types_and_ids
       assert {:flow, 30} in types_and_ids
+      assert {:scene, 41} in types_and_ids
       assert {:scene, 42} in types_and_ids
       assert {:sheet, 10} in types_and_ids
-      assert length(refs) == 4
+      assert {:sheet, 11} in types_and_ids
+      assert {:sheet, "12"} in types_and_ids
+      assert {:sheet, 14} in types_and_ids
+      assert length(refs) == 12
+
+      assert Enum.find(refs, &(&1.type == :avatar && &1.id == 13)).speaker_sheet_id == 10
+
+      for audio_asset_id <- [20, 51, 52] do
+        assert Enum.find(refs, &(&1.type == :asset && &1.id == audio_asset_id)).expected_content_type_prefix ==
+                 "audio/"
+      end
+
+      assert Enum.find(refs, &(&1.type == :asset && &1.id == 53)).expected_content_type_prefix == "image/"
     end
 
     test "skips nil references" do
@@ -4640,6 +5268,29 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       }
 
       assert [%{type: :asset, id: 51}] = FlowBuilder.scan_references(snapshot)
+    end
+
+    test "surfaces malformed nested rich-text mentions instead of omitting them" do
+      snapshot = %{
+        "nodes" => [
+          %{
+            "type" => "dialogue",
+            "data" => %{
+              "responses" => [
+                %{
+                  "text" => ~s(<p><span class="mention" data-type="sheet">Missing target id</span></p>)
+                }
+              ]
+            }
+          }
+        ]
+      }
+
+      assert [%{type: :reference, id: malformed_id, context: context}] =
+               FlowBuilder.scan_references(snapshot)
+
+      assert is_binary(malformed_id)
+      assert context =~ "rich-text mention"
     end
 
     test "ignores malformed sequence collections and items while scanning references" do
@@ -4758,6 +5409,20 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
     Enum.map(rows, fn row ->
       if row == target, do: update_fun.(row), else: row
     end)
+  end
+
+  defp entity_version_identity(%EntityVersion{} = version) do
+    %{
+      id: version.id,
+      entity_type: version.entity_type,
+      entity_id: version.entity_id,
+      project_id: version.project_id,
+      created_by_id: version.created_by_id,
+      version_number: version.version_number,
+      storage_key: version.storage_key,
+      snapshot_size_bytes: version.snapshot_size_bytes,
+      checksum: version.checksum
+    }
   end
 
   defp source_text_hash(text) do

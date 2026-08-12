@@ -92,7 +92,7 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:466
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:188
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:264
-#: lib/storyarn_web/live/flow_live/show.ex:1682
+#: lib/storyarn_web/live/flow_live/show.ex:1678
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:95
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:112
 #, elixir-autogen, elixir-format

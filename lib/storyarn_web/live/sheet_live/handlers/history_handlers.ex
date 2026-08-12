@@ -73,26 +73,18 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
     end)
   end
 
-  def handle_save_and_restore(%{"version_number" => version_number}, socket, _helpers) do
+  def handle_review_restore(%{"version_number" => version_number}, socket, _helpers) do
     VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
       with_version(authorized_socket, version_number, fn version ->
-        save_and_show_restore(authorized_socket, version)
+        show_restore_preview(authorized_socket, version)
       end)
     end)
   end
 
-  def handle_discard_and_restore(%{"version_number" => version_number}, socket, _helpers) do
+  def handle_confirm_restore(%{"version_number" => version_number}, socket, helpers) do
     VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
       with_version(authorized_socket, version_number, fn version ->
-        show_conflict_preview(authorized_socket, version, false)
-      end)
-    end)
-  end
-
-  def handle_confirm_restore(%{"version_number" => version_number} = params, socket, helpers) do
-    VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
-      with_version(authorized_socket, version_number, fn version ->
-        restore_version(authorized_socket, version, params, helpers)
+        restore_version(authorized_socket, version, helpers)
       end)
     end)
   end
@@ -170,19 +162,19 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
     end
   end
 
-  defp save_and_show_restore(socket, version) do
+  defp show_restore_preview(socket, version) do
     # Capture and verify the safety version at final confirmation. Creating it
     # while this modal opens would leave a race window for collaborator edits.
-    show_conflict_preview(socket, version, false)
+    show_conflict_preview(socket, version)
   end
 
-  defp restore_version(socket, version, _params, helpers) do
+  defp restore_version(socket, version, helpers) do
     sheet = socket.assigns.sheet
     restore_fun = Map.get(helpers, :restore_version, &Versioning.restore_version/4)
 
     case restore_fun.("sheet", sheet, version, user_id: socket.assigns.current_scope.user.id) do
       {:ok, _updated_entity} ->
-        track_version_event(socket, "version restored", %{skip_pre_snapshot: false})
+        track_version_event(socket, "version restored")
 
         on_version_restored(socket, version, helpers)
 

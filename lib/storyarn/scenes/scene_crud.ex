@@ -12,9 +12,11 @@ defmodule Storyarn.Scenes.SceneCrud do
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
+  alias Storyarn.Flows.Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneAnnotation
   alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.SceneLayer
@@ -874,6 +876,43 @@ defmodule Storyarn.Scenes.SceneCrud do
   end
 
   @doc """
+  Returns variable usage for a block from active Scene ambient flows.
+
+  Ambient flow references belong to the Scene that owns the link. The linked
+  Flow is joined only to provide a useful label; a soft-deleted linked Flow
+  does not hide the authored variable usage from integrity reads.
+  """
+  def get_scene_ambient_flow_variable_usage(block_id, project_id) do
+    alias Storyarn.Flows.VariableReference
+
+    Repo.all(
+      from(vr in VariableReference,
+        join: ambient_flow in SceneAmbientFlow,
+        on:
+          vr.source_type == "scene_ambient_flow" and
+            ambient_flow.id == vr.source_id,
+        join: scene in Scene,
+        on: scene.id == ambient_flow.scene_id,
+        join: flow in Flow,
+        on: flow.id == ambient_flow.flow_id,
+        where: vr.block_id == ^block_id,
+        where: scene.project_id == ^project_id,
+        where: is_nil(scene.deleted_at),
+        select: %{
+          source_type: vr.source_type,
+          kind: vr.kind,
+          scene_id: scene.id,
+          scene_name: scene.name,
+          ambient_flow_id: ambient_flow.id,
+          ambient_flow_name: flow.name,
+          trigger_config: ambient_flow.trigger_config
+        },
+        order_by: [asc: vr.kind, asc: scene.name, asc: ambient_flow.id]
+      )
+    )
+  end
+
+  @doc """
   Returns stale variable reference data for scene zones.
   Joins variable_references with scene_zones, scenes, blocks, and sheets
   to detect staleness via SQL comparison of stored vs current names.
@@ -1002,6 +1041,78 @@ defmodule Storyarn.Scenes.SceneCrud do
             )
         },
         order_by: [asc: vr.kind, asc: m.name]
+      )
+    )
+  end
+
+  @doc """
+  Returns stale variable reference data for active Scene ambient flows.
+
+  Staleness is computed with the same table-cell-aware comparison used by
+  pins and zones. This keeps the legacy Sheet references panel aligned with
+  the normalized global-search usage reader.
+  """
+  def check_stale_scene_ambient_flow_variable_references(block_id, project_id) do
+    alias Storyarn.Flows.VariableReference
+    alias Storyarn.Sheets.Block
+    alias Storyarn.Sheets.Sheet
+
+    Repo.all(
+      from(vr in VariableReference,
+        join: ambient_flow in SceneAmbientFlow,
+        on:
+          vr.source_type == "scene_ambient_flow" and
+            ambient_flow.id == vr.source_id,
+        join: scene in Scene,
+        on: scene.id == ambient_flow.scene_id,
+        join: flow in Flow,
+        on: flow.id == ambient_flow.flow_id,
+        join: block in Block,
+        on: block.id == vr.block_id,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where: vr.block_id == ^block_id,
+        where: scene.project_id == ^project_id,
+        where: is_nil(scene.deleted_at),
+        where: is_nil(sheet.deleted_at),
+        where: is_nil(block.deleted_at),
+        select: %{
+          source_type: vr.source_type,
+          kind: vr.kind,
+          scene_id: scene.id,
+          scene_name: scene.name,
+          ambient_flow_id: ambient_flow.id,
+          ambient_flow_name: flow.name,
+          trigger_config: ambient_flow.trigger_config,
+          source_sheet: vr.source_sheet,
+          source_variable: vr.source_variable,
+          stale:
+            fragment(
+              """
+              CASE WHEN ? = 'table' THEN
+                ? != ? OR NOT EXISTS (
+                  SELECT 1 FROM table_rows tr
+                  JOIN table_columns tc ON tc.block_id = tr.block_id
+                  WHERE tr.block_id = ?
+                    AND ? = ? || '.' || tr.slug || '.' || tc.slug
+                )
+              ELSE
+                ? != ? OR ? != ?
+              END
+              """,
+              block.type,
+              vr.source_sheet,
+              sheet.shortcut,
+              block.id,
+              vr.source_variable,
+              block.variable_name,
+              vr.source_sheet,
+              sheet.shortcut,
+              vr.source_variable,
+              block.variable_name
+            )
+        },
+        order_by: [asc: vr.kind, asc: scene.name, asc: ambient_flow.id]
       )
     )
   end

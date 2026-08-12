@@ -17,7 +17,7 @@ export interface VersionEntry {
 
 export interface RestoreConflict {
   type: string;
-  id: number;
+  id: number | string | null;
   contexts: string[];
 }
 
@@ -32,7 +32,6 @@ export interface RestoreReport {
 export interface RestoreData {
   versionNumber: number;
   report: RestoreReport;
-  skipPreSnapshot: boolean;
 }
 
 /**
@@ -81,7 +80,6 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
       restoreData.value = {
         versionNumber: payload.versionNumber as number,
         report: payload.report as RestoreReport,
-        skipPreSnapshot: payload.skipPreSnapshot as boolean,
       };
       showRestoreModal.value = true;
     });
@@ -170,18 +168,10 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
     live.pushEvent("preview_restore", { version_number: versionNumber });
   }
 
-  function saveAndRestore() {
+  function reviewRestore() {
     if (!restoreEnabled()) return;
-    loadingAction.value = "save-restore";
-    live.pushEvent("save_and_restore", {
-      version_number: unsavedVersionNumber.value,
-    });
-  }
-
-  function discardAndRestore() {
-    if (!restoreEnabled()) return;
-    loadingAction.value = "discard-restore";
-    live.pushEvent("discard_and_restore", {
+    loadingAction.value = "review-restore";
+    live.pushEvent("review_restore", {
       version_number: unsavedVersionNumber.value,
     });
   }
@@ -192,7 +182,6 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
     loadingAction.value = "confirm-restore";
     live.pushEvent("confirm_restore", {
       version_number: restoreData.value.versionNumber,
-      skip_pre_snapshot: restoreData.value.skipPreSnapshot,
     });
   }
 
@@ -230,8 +219,7 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
     openDeleteModal,
     confirmDelete,
     previewRestore,
-    saveAndRestore,
-    discardAndRestore,
+    reviewRestore,
     confirmRestore,
     loadMore,
   };

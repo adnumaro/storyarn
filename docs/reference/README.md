@@ -42,3 +42,4 @@ in this directory.
 - [AI provider adapters](ai-provider-adapters.md)
 - [AI operations](ai-operations.md)
 - [Versioning containment](versioning-containment.md)
+- [Entity-version restore integrity](entity-version-restore-integrity.md)

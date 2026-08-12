@@ -455,8 +455,7 @@ function changeActionColor(action: string) {
     :version-number="h.unsavedVersionNumber.value"
     :loading-action="h.loadingAction.value"
     @update:open="h.showUnsavedModal.value = $event"
-    @save-and-restore="h.saveAndRestore"
-    @discard-and-restore="h.discardAndRestore"
+    @review-restore="h.reviewRestore"
   />
 
   <RestorePreviewDialog

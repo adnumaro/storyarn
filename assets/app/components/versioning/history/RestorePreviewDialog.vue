@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Component } from "vue";
+import { computed, type Component } from "vue";
 import {
   AlertTriangle,
   CircleAlert,
@@ -11,6 +11,7 @@ import {
   Map,
   Puzzle,
   RotateCcw,
+  UserRound,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import {
@@ -37,12 +38,15 @@ const emit = defineEmits<{
   confirm: [];
 }>();
 
+const hasBlockingConflicts = computed(() => (restoreData?.report.conflicts.length ?? 0) > 0);
+
 const conflictIcons: Record<string, Component> = {
   asset: Image,
   sheet: FileText,
   flow: GitBranch,
   scene: Map,
   block: Puzzle,
+  avatar: UserRound,
 };
 
 function conflictIcon(type: string) {
@@ -56,6 +60,7 @@ function conflictLabel(type: string) {
     flow: "flow",
     scene: "scene",
     block: "block",
+    avatar: "avatar",
   };
   return labels[type] || "entity";
 }
@@ -84,7 +89,7 @@ function conflictLabel(type: string) {
             }}</span>
           </div>
           <div v-if="restoreData.report.conflicts.length > 0" class="space-y-2">
-            <p class="text-sm font-medium text-amber-600 flex items-center gap-1.5">
+            <p class="text-sm font-medium text-destructive flex items-center gap-1.5">
               <AlertTriangle class="size-4" />
               {{ $t("common.restore_preview_dialog.missing_entities") }}
             </p>
@@ -101,7 +106,7 @@ function conflictLabel(type: string) {
                       type: conflictLabel(conflict.type),
                     })
                   }}
-                  (ID: {{ conflict.id }})</span
+                  (ID: {{ conflict.id ?? $t("common.restore_preview_dialog.invalid_id") }})</span
                 >
               </div>
               <ul class="mt-1 ml-6 text-xs text-muted-foreground list-disc">
@@ -109,13 +114,8 @@ function conflictLabel(type: string) {
               </ul>
             </div>
           </div>
-          <p class="text-sm text-muted-foreground">
-            <template v-if="restoreData.skipPreSnapshot">{{
-              $t("common.restore_preview_dialog.missing_cleared")
-            }}</template>
-            <template v-else>{{
-              $t("common.restore_preview_dialog.missing_cleared_backup")
-            }}</template>
+          <p v-if="hasBlockingConflicts" class="text-sm text-destructive">
+            {{ $t("common.restore_preview_dialog.missing_blocked") }}
           </p>
         </div>
         <p v-else class="text-muted-foreground">
@@ -143,17 +143,15 @@ function conflictLabel(type: string) {
           $t("common.cancel")
         }}</Button>
         <Button
-          :class="restoreData?.report?.hasConflicts ? 'bg-amber-600 hover:bg-amber-700' : ''"
-          :disabled="loadingAction === 'confirm-restore'"
+          :disabled="loadingAction === 'confirm-restore' || hasBlockingConflicts"
           @click="emit('confirm')"
         >
           <Loader2 v-if="loadingAction === 'confirm-restore'" class="size-4 animate-spin mr-1" />
           <RotateCcw v-else class="size-4 mr-1" />
-          {{
-            restoreData?.report?.hasConflicts
-              ? $t("common.restore_preview_dialog.restore_anyway")
-              : $t("common.restore_preview_dialog.restore")
-          }}
+          <template v-if="hasBlockingConflicts">
+            {{ $t("common.restore_preview_dialog.restore_blocked") }}
+          </template>
+          <template v-else>{{ $t("common.restore_preview_dialog.restore") }}</template>
         </Button>
       </DialogFooter>
     </DialogContent>

@@ -19,10 +19,107 @@ defmodule Storyarn.Versioning.EntityRestoreLockConcurrencyTest do
   alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Versioning.MaterializationHelpers
   alias Storyarn.Workspaces.Workspace
 
   @timeout 15_000
   @blocked_timeout 5_000
+
+  test "project materialization locks Workspace before Project" do
+    %{user: user, project: project} =
+      Sandbox.unboxed_run(Repo, fn ->
+        user =
+          user_fixture(%{
+            email: "materialization-lock-order-#{Ecto.UUID.generate()}@example.com"
+          })
+
+        %{user: user, project: project_fixture(user)}
+      end)
+
+    on_exit(fn -> cleanup_project(user, project) end)
+
+    parent = self()
+    barrier = make_ref()
+
+    project_gate =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          Repo.transaction(fn ->
+            [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+
+            Repo.one!(
+              from(current in Project,
+                where: current.id == ^project.id,
+                select: current.id,
+                lock: "FOR UPDATE"
+              )
+            )
+
+            send(parent, {barrier, :project_locked, backend_pid})
+
+            receive do
+              {^barrier, :release_project} -> :released
+            after
+              @timeout -> exit(:project_gate_release_timeout)
+            end
+          end)
+        end)
+      end)
+
+    assert_receive {^barrier, :project_locked, project_gate_backend_pid}, @timeout
+
+    materializer =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          MaterializationHelpers.with_project_storage_lock(project.id, fn ->
+            [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+            send(parent, {barrier, :workspace_locked, backend_pid})
+
+            Repo.one!(
+              from(current in Project,
+                where: current.id == ^project.id,
+                select: current.id,
+                lock: "FOR UPDATE"
+              )
+            )
+
+            :materialized
+          end)
+        end)
+      end)
+
+    assert_receive {^barrier, :workspace_locked, materializer_backend_pid}, @timeout
+    assert wait_until_blocked_by(materializer_backend_pid, project_gate_backend_pid)
+
+    workspace_waiter =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          Repo.transaction(fn ->
+            [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+            send(parent, {barrier, :workspace_waiter_ready, backend_pid})
+
+            Repo.one!(
+              from(current in Workspace,
+                where: current.id == ^project.workspace_id,
+                select: current.id,
+                lock: "FOR UPDATE"
+              )
+            )
+
+            :workspace_acquired
+          end)
+        end)
+      end)
+
+    assert_receive {^barrier, :workspace_waiter_ready, workspace_waiter_backend_pid}, @timeout
+    assert wait_until_blocked_by(workspace_waiter_backend_pid, materializer_backend_pid)
+
+    send(project_gate.pid, {barrier, :release_project})
+
+    assert {:ok, :released} = Task.await(project_gate, @timeout)
+    assert {:ok, :materialized} = Task.await(materializer, @timeout)
+    assert {:ok, :workspace_acquired} = Task.await(workspace_waiter, @timeout)
+  end
 
   test "restore_flow locks Project before Flow and serializes with a stale delete" do
     %{user: user, project: project, deleted: deleted} =
