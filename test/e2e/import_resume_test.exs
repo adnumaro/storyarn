@@ -27,7 +27,7 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     import_path =
       "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
 
-    project_path = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+    navigation_path = "/users/settings"
     resume_storage_key = Imports.resume_storage_key(Scope.for_user(user), project)
 
     conn
@@ -50,8 +50,8 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     |> click("#yarn-import-confirm")
     |> assert_has("[data-testid='yarn-import-processing']")
     |> assert_attempt_reference_matches_latest(project.id, user.id, resume_storage_key)
-    |> visit(project_path)
-    |> assert_has("[data-testid='project-stat-flows']")
+    |> visit(navigation_path)
+    |> assert_has("#profile-display-name")
     |> unwrap(fn _browser ->
       queued = latest_active_attempt(project.id, user.id)
 
@@ -66,8 +66,8 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     |> click("[data-testid='yarn-import-reset']")
     |> assert_has("#yarn-import-file-picker")
     |> assert_attempt_reference_cleared(resume_storage_key)
-    |> visit(project_path)
-    |> assert_has("[data-testid='project-stat-flows']")
+    |> visit(navigation_path)
+    |> assert_has("#profile-display-name")
     |> visit(import_path)
     |> assert_has("#yarn-import-file-picker")
     |> refute_has("span", text: "The Yarn project was imported successfully.")
