@@ -11,6 +11,7 @@ import {
 } from "@lucide/vue";
 import { onMounted, onUnmounted, ref } from "vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
+import NotificationBell from "@components/notifications/NotificationBell.vue";
 import ProjectNavbarContext from "@shell/ProjectNavbarContext.vue";
 import ProjectNavbarAccount from "@shell/ProjectNavbarAccount.vue";
 import type { CurrentUser, OnlineUser, ProjectLayoutUrls } from "@shell/projectNavbarTypes";
@@ -164,6 +165,10 @@ onUnmounted(() => {
 
           <div class="flex shrink-0 items-center gap-2">
             <slot name="top-right" />
+
+            <div :class="['shrink-0', sidebarOpen && 'hidden lg:block']">
+              <NotificationBell />
+            </div>
 
             <div id="project-navbar-account-wrapper" class="shrink-0">
               <ProjectNavbarAccount

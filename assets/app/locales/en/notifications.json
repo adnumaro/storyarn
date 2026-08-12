@@ -1,0 +1,51 @@
+{
+  "notifications": {
+    "title": "Notifications",
+    "trigger": "Notifications",
+    "trigger_unread": "Notifications, {count} unread",
+    "unread_count": "{count} unread",
+    "mark_all": "Mark all as read",
+    "mark_read": "Mark as read",
+    "updating": "Updating notifications",
+    "error": "We couldn't update your notifications.",
+    "retry": "Try again",
+    "actor_fallback": "A teammate",
+    "project_context": "Project: {project}",
+    "filters": {
+      "label": "Filter notifications",
+      "all": "All",
+      "unread": "Unread"
+    },
+    "empty": {
+      "all": {
+        "title": "You're all caught up",
+        "description": "New activity will appear here."
+      },
+      "unread": {
+        "title": "No unread notifications",
+        "description": "You've read everything."
+      }
+    },
+    "entities": {
+      "content": "content",
+      "project_snapshot": "project snapshot",
+      "project_import": "project import",
+      "template_install": "template installation",
+      "localization_batch": "localization batch",
+      "sheet": "sheet",
+      "flow": "flow",
+      "scene": "scene",
+      "localization_language": "localization language"
+    },
+    "messages": {
+      "created_named": "{actor} created {entity}: {name}",
+      "created": "{actor} created {entity}",
+      "deleted_named": "{actor} deleted {entity}: {name}",
+      "deleted": "{actor} deleted {entity}",
+      "async_success_named": "{entity}: {name} completed",
+      "async_success": "{entity} completed",
+      "async_failure_named": "{entity}: {name} failed",
+      "async_failure": "{entity} failed"
+    }
+  }
+}
