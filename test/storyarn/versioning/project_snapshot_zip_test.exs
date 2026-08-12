@@ -57,6 +57,29 @@ defmodule Storyarn.Versioning.ProjectSnapshotZipTest do
     assert extracted[fixture.blob_path] == fixture.bytes
   end
 
+  test "plans the classic end record from Zstream's emitted archive contract" do
+    fixture = capture_fixture("end record sizing")
+    assert {:ok, plan} = ProjectSnapshotZip.prepare_capture(fixture.project_id, fixture.prepared)
+
+    entry_region_bytes =
+      Enum.reduce(plan.entries, 0, fn entry, total ->
+        path_bytes = byte_size(entry.path)
+
+        total +
+          30 + path_bytes + entry.size_bytes + 16 +
+          46 + path_bytes
+      end)
+
+    zstream_end_record_bytes =
+      []
+      |> Zstream.zip(zip64: false)
+      |> Enum.to_list()
+      |> IO.iodata_length()
+
+    assert plan.archive_size_bytes - entry_region_bytes == zstream_end_record_bytes
+    assert plan |> archive_bytes() |> byte_size() == plan.archive_size_bytes
+  end
+
   @tag :tmp_dir
   test "extracts with each available independent system ZIP reader", %{tmp_dir: tmp_dir} do
     fixture = capture_fixture("external readers")

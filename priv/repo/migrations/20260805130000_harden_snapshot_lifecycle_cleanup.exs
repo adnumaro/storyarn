@@ -1,10 +1,12 @@
 defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
   use Ecto.Migration
 
+  @authorization_key :storyarn_snapshot_cutover_authorized_v1
+
   def up do
     # Production releases authorize this only after the v2-only ownership
     # preflight has passed, before any pending migration is applied.
-    Storyarn.Release.ensure_project_snapshot_v2_cutover_barriers!(repo(), prefix())
+    assert_cutover_barriers!()
 
     alter table(:project_snapshots) do
       add :origin, :string, null: false, default: "user"
@@ -399,7 +401,7 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
   end
 
   def down do
-    Storyarn.Release.assert_snapshot_lifecycle_migration_authorized!()
+    assert_release_authorized!()
 
     execute("DROP TRIGGER IF EXISTS snapshot_cleanup_intents_guard ON snapshot_cleanup_intents")
     execute("DROP FUNCTION IF EXISTS storyarn_guard_snapshot_cleanup_intent()")
@@ -507,4 +509,94 @@ defmodule Storyarn.Repo.Migrations.HardenSnapshotLifecycleCleanup do
              """
            )
   end
+
+  # The first destructive migration installs these transaction-persistent
+  # barriers. This migration locks and verifies them rather than depending on a
+  # live release helper or duplicating the installer.
+  defp assert_cutover_barriers! do
+    assert_release_authorized!()
+    current_prefix = assert_current_prefix!()
+    snapshots = qualified_table(current_prefix, "project_snapshots")
+    jobs = qualified_table(current_prefix, "oban_jobs")
+    repo().query!("LOCK TABLE #{snapshots}, #{jobs} IN ACCESS EXCLUSIVE MODE")
+
+    case repo().query!(
+           """
+           SELECT count(*)
+           FROM pg_constraint AS constraint_row
+           JOIN pg_class AS table_row ON table_row.oid = constraint_row.conrelid
+           JOIN pg_namespace AS namespace_row ON namespace_row.oid = table_row.relnamespace
+           WHERE namespace_row.nspname = $1
+             AND (table_row.relname, constraint_row.conname) IN (
+               ('project_snapshots', 'project_snapshots_cutover_quiescent'),
+               ('oban_jobs', 'oban_jobs_snapshot_cutover_quiescent')
+             )
+           """,
+           [current_prefix]
+         ).rows do
+      [[2]] ->
+        :ok
+
+      [[count]] ->
+        raise "Snapshot cutover barriers are incomplete; expected 2, found #{inspect(count)}"
+
+      invalid ->
+        raise "Invalid snapshot cutover barrier state: #{inspect(invalid)}"
+    end
+  end
+
+  defp assert_release_authorized! do
+    enforced? =
+      Application.get_env(:storyarn, :enforce_snapshot_lifecycle_release_gate, false)
+
+    if enforced? and not release_authorized?() do
+      raise "Snapshot lifecycle migration must run through /app/bin/migrate after the v2-only cutover preflight"
+    end
+  end
+
+  defp release_authorized? do
+    Process.get(@authorization_key, false) == true or
+      Enum.any?(List.wrap(Process.get(:"$callers")), &authorized_caller?/1)
+  end
+
+  defp authorized_caller?(pid) when is_pid(pid) and node(pid) == node() do
+    case Process.info(pid, :dictionary) do
+      {:dictionary, dictionary} ->
+        List.keyfind(dictionary, @authorization_key, 0) == {@authorization_key, true}
+
+      nil ->
+        false
+    end
+  end
+
+  defp authorized_caller?(_pid), do: false
+
+  defp assert_current_prefix! do
+    current_prefix =
+      case repo().query!("SELECT current_schema()").rows do
+        [[value]] -> validate_prefix!(value)
+        invalid -> raise "Invalid current snapshot migration prefix: #{inspect(invalid)}"
+      end
+
+    requested_prefix = validate_prefix!(prefix() || current_prefix)
+
+    if requested_prefix == current_prefix do
+      current_prefix
+    else
+      raise "Project snapshot migrations require their explicit prefix to match current_schema(); requested #{inspect(requested_prefix)}, current #{inspect(current_prefix)}"
+    end
+  end
+
+  defp validate_prefix!(value) when is_binary(value) and byte_size(value) > 0 do
+    if Regex.match?(~r/\A[A-Za-z_][A-Za-z0-9_$]*\z/, value) do
+      value
+    else
+      raise "Unsafe project snapshot migration prefix: #{inspect(value)}"
+    end
+  end
+
+  defp validate_prefix!(value),
+    do: raise("Invalid project snapshot migration prefix: #{inspect(value)}")
+
+  defp qualified_table(current_prefix, table), do: ~s("#{current_prefix}"."#{table}")
 end

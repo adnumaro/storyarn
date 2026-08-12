@@ -47,6 +47,26 @@ defmodule Storyarn.Repo.Migrations.SnapshotExportLeaseMigrationTest do
     Repo.query!("SELECT set_config('search_path', $1, true)", ["#{prefix}, public"])
     assert :ok = run_migration(:down, prefix)
 
+    Repo.query!("""
+    ALTER TABLE #{prefix}.project_snapshots
+    ADD CONSTRAINT project_snapshots_cutover_quiescent CHECK (FALSE)
+    """)
+
+    Repo.query!("""
+    ALTER TABLE #{prefix}.oban_jobs
+    ADD CONSTRAINT oban_jobs_snapshot_cutover_quiescent
+    CHECK (
+      state NOT IN ('available', 'scheduled', 'executing', 'retryable') OR
+      worker NOT IN (
+        'Storyarn.Workers.BuildProjectSnapshotWorker',
+        'Storyarn.Workers.DailySnapshotWorker',
+        'Storyarn.Workers.SnapshotRetentionWorker',
+        'Storyarn.Workers.RestoreProjectWorker',
+        'Storyarn.Workers.RecoverProjectWorker'
+      )
+    )
+    """)
+
     %{prefix: prefix}
   end
 
@@ -81,6 +101,22 @@ defmodule Storyarn.Repo.Migrations.SnapshotExportLeaseMigrationTest do
     assert constraint_exists?(prefix, @positive_values_constraint)
     assert constraint_exists?(prefix, @zero_lease_constraint)
     assert index_exists?(prefix, @expired_lease_index)
+  end
+
+  test "up fails before DDL when the persistent cutover barrier is incomplete", %{
+    prefix: prefix
+  } do
+    Repo.query!("""
+    ALTER TABLE #{prefix}.oban_jobs
+    DROP CONSTRAINT oban_jobs_snapshot_cutover_quiescent
+    """)
+
+    assert_raise RuntimeError, ~r/cutover barriers are incomplete/, fn ->
+      run_migration(:up, prefix)
+    end
+
+    refute constraint_exists?(prefix, @zero_lease_constraint)
+    refute index_exists?(prefix, @expired_lease_index)
   end
 
   defp run_migration(direction, prefix) do

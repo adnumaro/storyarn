@@ -10,10 +10,10 @@ defmodule Storyarn.Release do
   @snapshot_lifecycle_migration 20_260_805_130_000
   @snapshot_v2_cutover_barrier_migration 20_260_810_130_000
   @snapshot_v2_only_migration 20_260_811_180_000
-  @snapshot_lifecycle_migration_authorization_key {
-    __MODULE__,
-    :snapshot_lifecycle_migration_authorized
-  }
+  # Frozen migrations consume this process-local key directly so they can
+  # enforce the release gate without calling application code. Keep the atom
+  # stable even if this module or its helper functions are renamed.
+  @snapshot_lifecycle_migration_authorization_key :storyarn_snapshot_cutover_authorized_v1
 
   def migrate do
     load_app()
@@ -132,44 +132,6 @@ defmodule Storyarn.Release do
         )
       )
       """
-    )
-
-    :ok
-  end
-
-  @doc false
-  def remove_project_snapshot_v2_cutover_barriers!(repo, prefix) when is_atom(repo) do
-    assert_snapshot_lifecycle_migration_authorized!()
-    prefix = assert_project_snapshot_cutover_prefix!(repo, prefix)
-
-    with_snapshot_cutover_transaction(repo, fn ->
-      remove_project_snapshot_v2_cutover_barriers_in_transaction!(repo, prefix)
-    end)
-  end
-
-  defp remove_project_snapshot_v2_cutover_barriers_in_transaction!(repo, prefix) do
-    snapshots = qualified_snapshot_cutover_table(prefix, "project_snapshots")
-    jobs = qualified_snapshot_cutover_table(prefix, "oban_jobs")
-    entity_versions = qualified_snapshot_cutover_table(prefix, "entity_versions")
-
-    repo.query!(
-      "LOCK TABLE #{snapshots}, #{jobs}, #{entity_versions} IN ACCESS EXCLUSIVE MODE",
-      []
-    )
-
-    repo.query!(
-      "ALTER TABLE #{snapshots} DROP CONSTRAINT IF EXISTS project_snapshots_cutover_quiescent",
-      []
-    )
-
-    repo.query!(
-      "ALTER TABLE #{jobs} DROP CONSTRAINT IF EXISTS oban_jobs_snapshot_cutover_quiescent",
-      []
-    )
-
-    repo.query!(
-      "ALTER TABLE #{entity_versions} DROP CONSTRAINT IF EXISTS entity_versions_cutover_quiescent",
-      []
     )
 
     :ok
@@ -485,9 +447,12 @@ defmodule Storyarn.Release do
   end
 
   defp snapshot_cutover_tables_exist?(repo, prefix) do
+    snapshots = qualified_snapshot_cutover_table(prefix, "project_snapshots")
+    jobs = qualified_snapshot_cutover_table(prefix, "oban_jobs")
+
     case repo.query!(
            "SELECT to_regclass($1) IS NOT NULL AND to_regclass($2) IS NOT NULL",
-           ["#{prefix}.project_snapshots", "#{prefix}.oban_jobs"]
+           [snapshots, jobs]
          ).rows do
       [[exists?]] when is_boolean(exists?) -> exists?
       invalid -> raise "Invalid snapshot cutover table state: #{inspect(invalid)}"
@@ -499,7 +464,7 @@ defmodule Storyarn.Release do
 
     case repo.query!(
            "SELECT to_regclass($1) IS NOT NULL",
-           ["#{prefix}.schema_migrations"]
+           [migrations]
          ).rows do
       [[false]] ->
         false

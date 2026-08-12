@@ -281,7 +281,7 @@ defmodule StoryarnWeb.TelemetryTest do
              )
 
       refute Enum.any?(metrics, fn metric ->
-               Enum.any?([:workspace_id, :project_id, :snapshot_id, :inventory_digest], &(&1 in metric.tags))
+               Enum.any?([:user_id, :workspace_id, :project_id, :snapshot_id, :inventory_digest], &(&1 in metric.tags))
              end)
     end
 

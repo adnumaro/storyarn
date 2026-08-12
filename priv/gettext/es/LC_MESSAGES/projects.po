@@ -1249,27 +1249,27 @@ msgstr "Este elemento hace referencia a contenido no disponible. Si hay elemento
 msgid "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
 msgstr "Este recurso todavía está referenciado por otro contenido. Elimina esas referencias o borra permanentemente de la Papelera los elementos que lo referencian y vuelve a intentarlo."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:246
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:305
 #, elixir-autogen, elixir-format
 msgid "Snapshot download is temporarily unavailable."
 msgstr "La descarga de snapshots no está disponible temporalmente."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:211
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:270
 #, elixir-autogen, elixir-format
 msgid "Snapshot not found."
 msgstr "No se encontró la snapshot."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:235
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:294
 #, elixir-autogen, elixir-format
 msgid "This snapshot cannot be downloaded because its integrity could not be verified."
 msgstr "No se puede descargar esta snapshot porque no se pudo verificar su integridad."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:227
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:286
 #, elixir-autogen, elixir-format
 msgid "This snapshot is not ready to download."
 msgstr "Esta snapshot todavía no está lista para descargar."
 
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:219
+#: lib/storyarn_web/controllers/snapshot_download_controller.ex:278
 #, elixir-autogen, elixir-format
 msgid "You do not have permission to download this snapshot."
 msgstr "No tienes permiso para descargar esta snapshot."

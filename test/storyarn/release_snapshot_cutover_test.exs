@@ -6,6 +6,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
   alias Storyarn.Repo
   alias Storyarn.Repo.Migrations.AddSnapshotStorageAccounting
   alias Storyarn.Repo.Migrations.AllowZeroByteSnapshotExportLeases
+  alias Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only
 
   @storage_accounting_migration 20_260_804_120_000
   @lifecycle_migration 20_260_805_130_000
@@ -37,6 +38,15 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     Code.require_file(
       Path.expand(
         "../../priv/repo/migrations/20260810130000_allow_zero_byte_snapshot_export_leases.exs",
+        __DIR__
+      )
+    )
+  end
+
+  if !Code.ensure_loaded?(MakeProjectSnapshotsV2Only) do
+    Code.require_file(
+      Path.expand(
+        "../../priv/repo/migrations/20260811180000_make_project_snapshots_v2_only.exs",
         __DIR__
       )
     )
@@ -115,6 +125,62 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
                ["Storyarn.Workers.RestoreProjectWorker"],
                mode: :savepoint
              )
+  end
+
+  test "a mixed-case prefix reaches the frozen migration ABI and applies real DDL" do
+    prefix = use_mixed_case_schema!()
+    create_schema_migrations!(@storage_accounting_migration)
+
+    Repo.query!("CREATE TABLE project_snapshots (id bigint PRIMARY KEY)")
+    Repo.query!("CREATE TABLE entity_versions (id bigint PRIMARY KEY)")
+
+    Repo.query!("""
+    CREATE TABLE oban_jobs (
+      id bigserial PRIMARY KEY,
+      worker text NOT NULL,
+      queue text NOT NULL,
+      state text NOT NULL,
+      args jsonb NOT NULL DEFAULT '{}'::jsonb
+    )
+    """)
+
+    Repo.query!("""
+    CREATE TABLE workspace_storage_reservations
+    (LIKE public.workspace_storage_reservations INCLUDING ALL)
+    """)
+
+    assert :ok =
+             Runner.run(
+               Repo,
+               Repo.config(),
+               @barrier_migration,
+               AllowZeroByteSnapshotExportLeases,
+               :forward,
+               :down,
+               :down,
+               prefix: prefix,
+               log: false
+             )
+
+    assert :ok =
+             Release.run_project_snapshot_migrations(Repo, fn ->
+               Runner.run(
+                 Repo,
+                 Repo.config(),
+                 @barrier_migration,
+                 AllowZeroByteSnapshotExportLeases,
+                 :forward,
+                 :up,
+                 :up,
+                 prefix: prefix,
+                 log: false
+               )
+             end)
+
+    assert constraint_exists?("project_snapshots_cutover_quiescent")
+    assert constraint_exists?("oban_jobs_snapshot_cutover_quiescent")
+
+    assert constraint_exists?("workspace_storage_reservations_zero_byte_snapshot_export_lease")
   end
 
   test "a pre-archive v1 snapshot blocks the release before the lifecycle migration or runner" do
@@ -261,7 +327,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     Repo.query!("CREATE TABLE project_snapshots (id bigint PRIMARY KEY)")
     Repo.query!("CREATE TABLE oban_jobs (id bigint PRIMARY KEY, worker text, state text)")
 
-    assert_raise RuntimeError, ~r/must run through Storyarn.Release.migrate/, fn ->
+    assert_raise RuntimeError, ~r/must run through \/app\/bin\/migrate/, fn ->
       Runner.run(
         Repo,
         Repo.config(),
@@ -276,6 +342,45 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     end
 
     assert snapshot_cutover_constraint_count(prefix) == 0
+  end
+
+  test "the final v2-only migration rejects a direct production migrator before DDL" do
+    prefix = use_isolated_schema!()
+
+    assert_raise RuntimeError, ~r/must run through \/app\/bin\/migrate/, fn ->
+      Runner.run(
+        Repo,
+        Repo.config(),
+        @v2_only_migration,
+        MakeProjectSnapshotsV2Only,
+        :forward,
+        :up,
+        :up,
+        prefix: prefix,
+        log: false
+      )
+    end
+
+    assert snapshot_cutover_constraint_count(prefix) == 0
+  end
+
+  test "cutover migrations do not call live release-task functions" do
+    migration_files = [
+      "20260804120000_add_snapshot_storage_accounting.exs",
+      "20260805130000_harden_snapshot_lifecycle_cleanup.exs",
+      "20260810130000_allow_zero_byte_snapshot_export_leases.exs",
+      "20260811180000_make_project_snapshots_v2_only.exs"
+    ]
+
+    for migration_file <- migration_files do
+      source =
+        "../../priv/repo/migrations/#{migration_file}"
+        |> Path.expand(__DIR__)
+        |> File.read!()
+
+      refute source =~ "Storyarn.Release.",
+             "#{migration_file} must remain independent of live release-task functions"
+    end
   end
 
   test "release authorization reaches an Ecto migration task and is always cleared" do
@@ -330,7 +435,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     Repo.query!("INSERT INTO project_snapshots (id, evidence) VALUES (1, 'snapshot-v1')")
     Repo.query!("INSERT INTO entity_versions (id, evidence) VALUES (1, 'entity-v1')")
 
-    assert_raise RuntimeError, ~r/must run through Storyarn.Release.migrate/, fn ->
+    assert_raise RuntimeError, ~r/must run through \/app\/bin\/migrate/, fn ->
       Runner.run(
         Repo,
         Repo.config(),
@@ -457,6 +562,13 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     prefix
   end
 
+  defp use_mixed_case_schema! do
+    prefix = "ReleaseSnapshotCutover#{System.unique_integer([:positive])}"
+    Repo.query!(~s(CREATE SCHEMA "#{prefix}"))
+    Repo.query!("SELECT set_config('search_path', $1, true)", [~s("#{prefix}")])
+    prefix
+  end
+
   defp create_schema_migrations!(versions \\ []) do
     Repo.query!("CREATE TABLE schema_migrations (version bigint PRIMARY KEY)")
 
@@ -494,7 +606,16 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
 
   defp constraint_exists?(constraint) do
     Repo.query!(
-      "SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE connamespace = current_schema()::regnamespace AND conname = $1)",
+      """
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_constraint AS constraint_row
+        JOIN pg_namespace AS namespace_row
+          ON namespace_row.oid = constraint_row.connamespace
+        WHERE namespace_row.nspname = current_schema()
+          AND constraint_row.conname = $1
+      )
+      """,
       [constraint]
     ).rows == [[true]]
   end

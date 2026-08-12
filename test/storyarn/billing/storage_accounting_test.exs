@@ -1232,13 +1232,6 @@ defmodule Storyarn.Billing.StorageAccountingTest do
 
       on_exit(fn -> :telemetry.detach(handler_id) end)
 
-      assert {:error, :snapshot_active_operation_blocks_deletion} =
-               Versioning.delete_project_snapshot(
-                 user_scope_fixture(context.user),
-                 context.project,
-                 expired_snapshot.id
-               )
-
       Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{context.project.id}")
       assert :ok = ProjectSnapshotRetentionWorker.perform(%Oban.Job{args: %{}})
 

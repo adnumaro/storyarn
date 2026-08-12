@@ -690,7 +690,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       assert :grant_issued =
                Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
-                 {:retain_lease, :grant_issued}
+                 {:keep_lease, :grant_issued}
                end)
 
       assert [leased] = get_snapshots_vue(view).props["snapshots"]

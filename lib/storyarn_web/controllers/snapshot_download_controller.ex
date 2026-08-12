@@ -69,7 +69,7 @@ defmodule StoryarnWeb.SnapshotDownloadController do
           |> put_resp_header("location", signed_url)
           |> send_resp(:found, "")
 
-        {:retain_lease, {:grant_issued, conn, delivery.size_bytes}}
+        {:keep_lease, {:grant_issued, conn, delivery.size_bytes}}
 
       {:error, :not_supported} ->
         result =
@@ -87,10 +87,10 @@ defmodule StoryarnWeb.SnapshotDownloadController do
               {:local_failed, :snapshot_export_unavailable, delivery.size_bytes, local_preflight_error(reason)}
           end
 
-        {:release_lease, result}
+        {:keep_lease, result}
 
       {:error, _reason} ->
-        {:release_lease, {:error, :snapshot_export_unavailable}}
+        {:keep_lease, {:error, :snapshot_export_unavailable}}
     end
   end
 
@@ -110,7 +110,16 @@ defmodule StoryarnWeb.SnapshotDownloadController do
   end
 
   defp handle_result({:grant_issued, %Plug.Conn{} = conn, artifact_bytes}, _conn, started_at, project_id, snapshot_id) do
-    emit_download_stop(started_at, 0, artifact_bytes, :grant_issued, :redirect, :none, project_id, snapshot_id)
+    emit_download_stop(
+      started_at,
+      0,
+      artifact_bytes,
+      :grant_issued,
+      :redirect,
+      :none,
+      download_identity(conn, project_id, snapshot_id)
+    )
+
     conn
   end
 
@@ -121,12 +130,30 @@ defmodule StoryarnWeb.SnapshotDownloadController do
          project_id,
          snapshot_id
        ) do
-    emit_download_stop(started_at, bytes, artifact_bytes, :delivered, :local, :none, project_id, snapshot_id)
+    emit_download_stop(
+      started_at,
+      bytes,
+      artifact_bytes,
+      :delivered,
+      :local,
+      :none,
+      download_identity(conn, project_id, snapshot_id)
+    )
+
     conn
   end
 
   defp handle_result({:local_failed, reason, artifact_bytes, error_code}, conn, started_at, project_id, snapshot_id) do
-    emit_download_stop(started_at, 0, artifact_bytes, :failed, :local, error_code, project_id, snapshot_id)
+    emit_download_stop(
+      started_at,
+      0,
+      artifact_bytes,
+      :failed,
+      :local,
+      error_code,
+      download_identity(conn, project_id, snapshot_id)
+    )
+
     error_conn(reason, conn)
   end
 
@@ -138,13 +165,33 @@ defmodule StoryarnWeb.SnapshotDownloadController do
          snapshot_id
        ) do
     {outcome, error_code} = local_delivery_metadata(delivery_outcome)
-    emit_download_stop(started_at, bytes, artifact_bytes, outcome, :local, error_code, project_id, snapshot_id)
+
+    emit_download_stop(
+      started_at,
+      bytes,
+      artifact_bytes,
+      outcome,
+      :local,
+      error_code,
+      download_identity(conn, project_id, snapshot_id)
+    )
+
     conn
   end
 
   defp handle_result({:error, reason}, conn, started_at, project_id, snapshot_id) do
     {outcome, phase, error_code} = download_error_metadata(reason)
-    emit_download_stop(started_at, 0, 0, outcome, phase, error_code, project_id, snapshot_id)
+
+    emit_download_stop(
+      started_at,
+      0,
+      0,
+      outcome,
+      phase,
+      error_code,
+      download_identity(conn, project_id, snapshot_id)
+    )
+
     error_conn(reason, conn)
   end
 
@@ -162,7 +209,16 @@ defmodule StoryarnWeb.SnapshotDownloadController do
   end
 
   defp request_error(conn, started_at, error_code, response) do
-    emit_download_stop(started_at, 0, 0, :rejected, :request, error_code, nil, nil)
+    emit_download_stop(
+      started_at,
+      0,
+      0,
+      :rejected,
+      :request,
+      error_code,
+      download_identity(conn, nil, nil)
+    )
+
     response.(conn)
   end
 
@@ -178,7 +234,7 @@ defmodule StoryarnWeb.SnapshotDownloadController do
 
   defp download_error_metadata(_reason), do: {:failed, :grant, :unexpected_error}
 
-  defp emit_download_stop(started_at, bytes, artifact_bytes, outcome, phase, error_code, project_id, snapshot_id) do
+  defp emit_download_stop(started_at, bytes, artifact_bytes, outcome, phase, error_code, identity) do
     :telemetry.execute(
       @download_stop_event,
       %{
@@ -187,14 +243,17 @@ defmodule StoryarnWeb.SnapshotDownloadController do
         bytes: bytes,
         artifact_bytes: artifact_bytes
       },
-      %{
+      Map.merge(identity, %{
         outcome: outcome,
         phase: phase,
-        error_code: error_code,
-        project_id: project_id,
-        snapshot_id: snapshot_id
-      }
+        error_code: error_code
+      })
     )
+  end
+
+  defp download_identity(%Plug.Conn{assigns: %{current_scope: %{user: %{id: user_id}}}}, project_id, snapshot_id)
+       when is_integer(user_id) and user_id > 0 do
+    %{user_id: user_id, project_id: project_id, snapshot_id: snapshot_id}
   end
 
   defp error_conn(:snapshot_not_found, conn), do: not_found(conn)

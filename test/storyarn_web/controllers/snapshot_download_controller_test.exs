@@ -52,21 +52,21 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
     assert_direct_private_response(conn, archive)
 
     assert_receive {:snapshot_download_stop,
-                    %{count: 1, bytes: bytes, artifact_bytes: artifact_bytes, duration: duration},
-                    %{
-                      outcome: :delivered,
-                      phase: :local,
-                      error_code: :none,
-                      project_id: project_id,
-                      snapshot_id: snapshot_id,
-                      lease_status_at_emit: "active"
-                    }}
+                    %{count: 1, bytes: bytes, artifact_bytes: artifact_bytes, duration: duration}, metadata}
+
+    assert metadata == %{
+             outcome: :delivered,
+             phase: :local,
+             error_code: :none,
+             user_id: user.id,
+             project_id: project.id,
+             snapshot_id: snapshot.id,
+             lease_status_at_emit: "active"
+           }
 
     assert bytes == byte_size(archive)
     assert artifact_bytes == snapshot.archive_size_bytes
     assert duration >= 0
-    assert project_id == project.id
-    assert snapshot_id == snapshot.id
 
     assert {:ok, entries} = :zip.unzip(archive, [:memory])
     paths = MapSet.new(entries, fn {path, _content} -> List.to_string(path) end)
@@ -197,6 +197,7 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
                       outcome: :failed,
                       phase: :local,
                       error_code: :stat_unavailable,
+                      user_id: user_id,
                       project_id: project_id,
                       snapshot_id: snapshot_id,
                       lease_status_at_emit: "active"
@@ -204,6 +205,7 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
 
     assert artifact_bytes == snapshot.archive_size_bytes
     assert duration >= 0
+    assert user_id == user.id
     assert project_id == project.id
     assert snapshot_id == snapshot.id
     assert %StorageReservation{status: "active"} = lease_for(snapshot)
@@ -285,6 +287,7 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
                       outcome: :grant_issued,
                       phase: :redirect,
                       error_code: :none,
+                      user_id: user_id,
                       project_id: project_id,
                       snapshot_id: snapshot_id,
                       lease_status_at_emit: "active"
@@ -292,6 +295,7 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
 
     assert artifact_bytes == snapshot.archive_size_bytes
     assert duration >= 0
+    assert user_id == user.id
     assert project_id == project.id
     assert snapshot_id == snapshot.id
 
@@ -369,12 +373,18 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
 
   test "returns 404 for unknown, malformed, or out-of-range snapshot identifiers", %{
     conn: conn,
-    project: project
+    project: project,
+    user: user
   } do
+    attach_download_telemetry()
+
     for snapshot_id <- [123, "not-an-id", 9_223_372_036_854_775_808] do
       response = get(conn, download_url(project, snapshot_id))
       assert response.status == 404
       assert_no_external_storage_response(response)
+
+      assert_receive {:snapshot_download_stop, _measurements, %{user_id: user_id}}
+      assert user_id == user.id
     end
   end
 
@@ -382,12 +392,15 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
     owner = user_fixture()
     project = owner |> project_fixture() |> Repo.preload(:workspace)
     membership_fixture(project, user, "editor")
+    attach_download_telemetry()
 
     conn = get(conn, download_url(project, 1))
 
     assert conn.status == 403
     assert conn.resp_body =~ "permission"
     assert_no_external_storage_response(conn)
+    assert_receive {:snapshot_download_stop, _measurements, %{user_id: user_id}}
+    assert user_id == user.id
   end
 
   test "returns 404 to a user outside the requested project", %{conn: conn} do
@@ -417,8 +430,10 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
 
   test "fails closed for non-ready and unverified snapshots", %{
     conn: conn,
-    project: project
+    project: project,
+    user: user
   } do
+    attach_download_telemetry()
     pending = pending_project_snapshot_fixture(project)
 
     missing =
@@ -430,10 +445,14 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
     pending_conn = get(conn, download_url(project, pending.id))
     assert pending_conn.status == 409
     assert pending_conn.resp_body =~ "not ready"
+    assert_receive {:snapshot_download_stop, _measurements, %{user_id: pending_user_id}}
+    assert pending_user_id == user.id
 
     missing_conn = get(conn, download_url(project, missing.id))
     assert missing_conn.status == 422
     assert missing_conn.resp_body =~ "integrity"
+    assert_receive {:snapshot_download_stop, _measurements, %{user_id: missing_user_id}}
+    assert missing_user_id == user.id
 
     for response <- [pending_conn, missing_conn] do
       assert_no_external_storage_response(response)

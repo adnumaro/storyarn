@@ -22,7 +22,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownloadTest do
                assert delivery.storage_key == snapshot.archive_storage_key
                assert delivery.size_bytes == snapshot.archive_size_bytes
                assert delivery.checksum == snapshot.archive_checksum
-               {:retain_lease, :grant_issued}
+               {:keep_lease, :grant_issued}
              end)
 
     assert %StorageReservation{
@@ -47,7 +47,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownloadTest do
 
     assert :second_grant_issued =
              Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
-               {:retain_lease, :second_grant_issued}
+               {:keep_lease, :second_grant_issued}
              end)
 
     second_lease = lease_for(snapshot)
@@ -75,7 +75,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownloadTest do
     assert snapshot_id == snapshot.id
   end
 
-  test "retains the shared lease after local delivery" do
+  test "keeps the shared lease after local delivery" do
     user = user_fixture()
     project = project_fixture(user)
     snapshot = build_ready_snapshot(project, user)
@@ -83,7 +83,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownloadTest do
 
     assert :delivered =
              Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
-               {:release_lease, :delivered}
+               {:keep_lease, :delivered}
              end)
 
     assert %StorageReservation{
@@ -153,14 +153,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownloadTest do
 
     assert :grant_issued =
              Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
-               {:retain_lease, :grant_issued}
+               {:keep_lease, :grant_issued}
              end)
 
     first_lease = lease_for(snapshot)
 
     assert {:error, :provider_unavailable} =
              Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
-               {:release_lease, {:error, :provider_unavailable}}
+               {:keep_lease, {:error, :provider_unavailable}}
              end)
 
     assert %StorageReservation{id: lease_id, status: "active", generation: generation} =

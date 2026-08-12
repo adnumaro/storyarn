@@ -19,7 +19,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotZip do
   @classic_zip_local_header_bytes 30
   @classic_zip_data_descriptor_bytes 16
   @classic_zip_central_directory_header_bytes 46
-  @classic_zip_end_record_bytes 40
+
+  # With no entries and ZIP64 disabled, Zstream emits only its classic ZIP end
+  # record, including its implementation-defined archive comment. Derive the
+  # size through the public API at compile time instead of copying that private
+  # comment's length into the archive-size contract.
+  @classic_zip_end_record_bytes []
+                                |> Zstream.zip(zip64: false)
+                                |> Enum.to_list()
+                                |> IO.iodata_length()
   @stream_chunk_size 1_048_576
   @max_zip_path_bytes 255
   @sha256_regex ~r/\A[0-9a-f]{64}\z/

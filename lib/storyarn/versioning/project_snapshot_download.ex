@@ -24,17 +24,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownload do
           size_bytes: pos_integer(),
           checksum: String.t()
         }
-  @type lease_action(result) :: {:retain_lease, result} | {:release_lease, result}
+  @type delivery_result(result) :: {:keep_lease, result}
 
   @doc """
   Revalidates and leases one scoped persisted ZIP, then yields its delivery data.
 
-  The callback keeps the existing tagged result contract for the HTTP delivery
-  boundary. Both tags retain the shared lease until bounded expiry; the tag is
-  not cleanup authority because another request may already depend on the same
-  lease generation.
+  The callback must explicitly acknowledge that the shared lease remains active
+  until bounded expiry. Request completion is not cleanup authority because
+  another request may already depend on the same lease generation.
   """
-  @spec with_archive(Project.t(), pos_integer(), (delivery() -> lease_action(result))) ::
+  @spec with_archive(Project.t(), pos_integer(), (delivery() -> delivery_result(result))) ::
           result | {:error, term()}
         when result: term()
   def with_archive(%Project{id: project_id, deleted_at: nil} = project, snapshot_id, callback)
@@ -43,8 +42,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownload do
     with %ProjectSnapshot{} = snapshot <- ProjectSnapshotCrud.get_snapshot_by_id(project.id, snapshot_id),
          :ok <- validate_eligibility(snapshot),
          {:ok, delivery} <- delivery(snapshot),
-         {:ok, lease} <- reserve_read_lease(project, snapshot) do
-      invoke_delivery(callback, delivery, lease)
+         {:ok, _lease} <- reserve_read_lease(project, snapshot) do
+      invoke_delivery(callback, delivery)
     else
       nil -> {:error, :snapshot_not_found}
       {:error, _reason} = error -> normalize_error(error)
@@ -94,15 +93,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownload do
     })
   end
 
-  defp invoke_delivery(callback, delivery, lease) do
-    delivery
-    |> callback.()
-    |> finish_delivery(lease)
+  defp invoke_delivery(callback, delivery) do
+    case callback.(delivery) do
+      {:keep_lease, result} -> result
+      _invalid -> {:error, :snapshot_export_unavailable}
+    end
   end
-
-  defp finish_delivery({:retain_lease, result}, _lease), do: result
-  defp finish_delivery({:release_lease, result}, _lease), do: result
-  defp finish_delivery(_invalid, _lease), do: {:error, :snapshot_export_unavailable}
 
   defp normalize_error({:error, reason})
        when reason in [:snapshot_not_found, :snapshot_export_not_ready, :snapshot_export_integrity_unavailable],

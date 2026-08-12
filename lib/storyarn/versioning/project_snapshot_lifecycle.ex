@@ -677,6 +677,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     with %Project{} <- lock_active_project(project.id, project.workspace_id),
          %ProjectSnapshot{} = snapshot <- lock_snapshot(project.id, snapshot_id),
          true <- snapshot.lifecycle_state in @deletable_user_states,
+         :ok <- Billing.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
          :ok <- ensure_no_active_snapshot_operations(snapshot.id),
          {:ok, intent} <- create_cleanup_and_delete(snapshot, project.workspace_id, :user_delete, {:user, user_id}) do
       {:ok, {:created, intent}}
@@ -705,7 +706,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   end
 
   defp prepare_hard_delete_snapshot(snapshot, {:ok, intents}, workspace_id, reason) do
-    with :ok <- ensure_hard_delete_operations_supported(snapshot),
+    with :ok <- Billing.settle_expired_snapshot_export_leases_locked(snapshot, workspace_id),
+         :ok <- ensure_hard_delete_operations_supported(snapshot),
          {:ok, intent} <- create_cleanup_and_delete(snapshot, workspace_id, reason, :system) do
       {:cont, {:ok, [intent | intents]}}
     else
@@ -775,6 +777,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
     with %Project{} = project <- lock_active_project(project_id, Map.get(candidate, :workspace_id)),
          %ProjectSnapshot{} = snapshot <- lock_snapshot(project_id, snapshot_id),
          :ok <- revalidate_retention_candidate(snapshot, project, candidate, now),
+         :ok <- Billing.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
          :ok <- ensure_no_active_snapshot_operations(snapshot.id) do
       snapshot
       |> create_cleanup_and_delete(project.workspace_id, :retention, :system)
@@ -793,6 +796,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
          %ProjectSnapshot{} = snapshot <- lock_snapshot(project_id, snapshot_id),
          %StorageReservation{} = reservation <- lock_build_reservation(snapshot_id, candidate),
          :ok <- revalidate_expired_build_candidate(snapshot, project, reservation, candidate, now),
+         :ok <- Billing.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
          :ok <- ensure_expired_build_operation_supported(snapshot, reservation) do
       snapshot
       |> create_cleanup_and_delete(project.workspace_id, :expired_build, :system, namespace_expectation)

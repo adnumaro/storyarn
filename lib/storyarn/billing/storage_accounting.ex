@@ -474,6 +474,31 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   def recover_expired_snapshot_export_leases(_now, _opts), do: invalid_expired_snapshot_export_lease_recovery()
 
+  @doc false
+  @spec settle_expired_snapshot_export_leases_locked(ProjectSnapshot.t(), pos_integer()) ::
+          :ok | {:error, term()}
+  def settle_expired_snapshot_export_leases_locked(
+        %ProjectSnapshot{id: snapshot_id, project_id: project_id},
+        workspace_id
+      )
+      when is_positive_integer(snapshot_id) and is_positive_integer(project_id) and is_positive_integer(workspace_id) do
+    if workspace_lock_held?(workspace_id) do
+      with true <- snapshot_in_workspace?(snapshot_id, project_id, workspace_id),
+           reservations = lock_active_snapshot_export_leases(snapshot_id, workspace_id),
+           :ok <- settle_expired_snapshot_export_leases(reservations, database_clock_now()) do
+        :ok
+      else
+        false -> {:error, :storage_reservation_target_mismatch}
+        {:error, _reason} = error -> error
+      end
+    else
+      {:error, :storage_accounting_lock_required}
+    end
+  end
+
+  def settle_expired_snapshot_export_leases_locked(_snapshot, _workspace_id),
+    do: {:error, :invalid_snapshot_export_lease_settlement}
+
   @doc """
   Purges one bounded batch of terminal, zero-byte export lease history.
 
@@ -1314,6 +1339,56 @@ defmodule Storyarn.Billing.StorageAccounting do
     end)
   end
 
+  defp snapshot_in_workspace?(snapshot_id, project_id, workspace_id) do
+    Repo.exists?(
+      from(snapshot in ProjectSnapshot,
+        join: project in Project,
+        on: project.id == snapshot.project_id,
+        where:
+          snapshot.id == ^snapshot_id and snapshot.project_id == ^project_id and
+            project.workspace_id == ^workspace_id
+      )
+    )
+  end
+
+  defp lock_active_snapshot_export_leases(snapshot_id, workspace_id) do
+    Repo.all(
+      from(reservation in StorageReservation,
+        where:
+          reservation.workspace_id_snapshot == ^workspace_id and
+            reservation.project_snapshot_id_snapshot == ^snapshot_id and
+            reservation.status == "active" and reservation.kind == "snapshot_export",
+        order_by: [asc: reservation.id],
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp settle_expired_snapshot_export_leases(reservations, now) do
+    Enum.reduce_while(reservations, :ok, fn reservation, :ok ->
+      case settle_expired_snapshot_export_lease(reservation, now) do
+        :ok -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp settle_expired_snapshot_export_lease(
+         %StorageReservation{reserved_bytes: 0, storage_started_at: nil, expires_at: %DateTime{} = expires_at} =
+           reservation,
+         now
+       ) do
+    if DateTime.compare(expires_at, now) in [:lt, :eq] do
+      with {:ok, %StorageReservation{status: "released"}} <- release_expired_snapshot_export_lease(reservation) do
+        :ok
+      end
+    else
+      :ok
+    end
+  end
+
+  defp settle_expired_snapshot_export_lease(%StorageReservation{}, _now), do: :ok
+
   defp expired_snapshot_export_lease_candidates(now, after_id, limit) do
     Repo.all(
       from(reservation in StorageReservation,
@@ -1394,16 +1469,8 @@ defmodule Storyarn.Billing.StorageAccounting do
            :ok <- verify_lease(reservation, candidate.lease_token),
            :ok <- verify_generation(reservation, candidate.generation),
            :ok <- verify_expired_snapshot_export_lease(reservation, candidate, database_clock_now()),
-           {:ok, release_attrs} <-
-             normalize_release_attrs(reservation, %{
-               reason: "expired_snapshot_export_lease",
-               cleanup_status: "not_required",
-               cleanup_proof: %{
-                 type: "storage_not_started",
-                 storage_namespace: reservation.storage_namespace
-               }
-             }) do
-        release_for_status(reservation, candidate.generation, release_attrs)
+           {:ok, %StorageReservation{} = released} <- release_expired_snapshot_export_lease(reservation) do
+        {:ok, released}
       else
         nil ->
           {:error, :expired_snapshot_export_lease_changed}
@@ -1429,6 +1496,20 @@ defmodule Storyarn.Billing.StorageAccounting do
          not DateTime.after?(reservation.expires_at, now),
        do: :ok,
        else: {:error, :expired_snapshot_export_lease_changed}
+  end
+
+  defp release_expired_snapshot_export_lease(reservation) do
+    with {:ok, release_attrs} <-
+           normalize_release_attrs(reservation, %{
+             reason: "expired_snapshot_export_lease",
+             cleanup_status: "not_required",
+             cleanup_proof: %{
+               type: "storage_not_started",
+               storage_namespace: reservation.storage_namespace
+             }
+           }) do
+      release_for_status(reservation, reservation.generation, release_attrs)
+    end
   end
 
   defp purge_released_snapshot_export_lease_candidates(cutoff, opts) do

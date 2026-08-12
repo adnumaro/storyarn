@@ -74,6 +74,10 @@ defmodule Storyarn.Billing do
   defdelegate recover_expired_snapshot_export_leases(now, opts \\ []),
     to: StorageAccounting
 
+  @doc false
+  defdelegate settle_expired_snapshot_export_leases_locked(snapshot, workspace_id),
+    to: StorageAccounting
+
   defdelegate purge_released_snapshot_export_leases(cutoff, opts \\ []),
     to: StorageAccounting
 

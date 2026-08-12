@@ -15,6 +15,8 @@ defmodule Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only do
 
   use Ecto.Migration
 
+  @authorization_key :storyarn_snapshot_cutover_authorized_v1
+
   @snapshot_constraints [
     :project_snapshots_object_format_version,
     :project_snapshots_archive_format,
@@ -38,7 +40,8 @@ defmodule Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only do
   ]
 
   def up do
-    Storyarn.Release.assert_project_snapshot_cutover_prefix!(repo(), prefix())
+    assert_release_authorized!()
+    assert_current_prefix!()
     lock_snapshot_contract_tables()
     assert_no_live_legacy_ownership!()
     drop_if_exists constraint(:project_snapshots, :project_snapshots_cutover_quiescent)
@@ -131,6 +134,9 @@ defmodule Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only do
   end
 
   defp install_snapshot_worker_routing_contract do
+    # Keep old binaries fenced for this rolling-deploy boundary. The next
+    # release removes this transitional worker-name contract after every node
+    # is confirmed to run the v2-only application.
     create constraint(:oban_jobs, :oban_jobs_snapshot_worker_routing,
              check: """
              state NOT IN ('available', 'scheduled', 'executing', 'retryable') OR
@@ -453,4 +459,59 @@ defmodule Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only do
     $$
     """)
   end
+
+  # These checks are frozen in the migration so a future refactor of release
+  # tasks cannot break clean database creation or regional rebuilds.
+  defp assert_release_authorized! do
+    enforced? =
+      Application.get_env(:storyarn, :enforce_snapshot_lifecycle_release_gate, false)
+
+    if enforced? and not release_authorized?() do
+      raise "Snapshot lifecycle migration must run through /app/bin/migrate after the v2-only cutover preflight"
+    end
+  end
+
+  defp release_authorized? do
+    Process.get(@authorization_key, false) == true or
+      Enum.any?(List.wrap(Process.get(:"$callers")), &authorized_caller?/1)
+  end
+
+  defp authorized_caller?(pid) when is_pid(pid) and node(pid) == node() do
+    case Process.info(pid, :dictionary) do
+      {:dictionary, dictionary} ->
+        List.keyfind(dictionary, @authorization_key, 0) == {@authorization_key, true}
+
+      nil ->
+        false
+    end
+  end
+
+  defp authorized_caller?(_pid), do: false
+
+  defp assert_current_prefix! do
+    current_prefix =
+      case repo().query!("SELECT current_schema()").rows do
+        [[value]] -> validate_prefix!(value)
+        invalid -> raise "Invalid current snapshot migration prefix: #{inspect(invalid)}"
+      end
+
+    requested_prefix = validate_prefix!(prefix() || current_prefix)
+
+    if requested_prefix == current_prefix do
+      current_prefix
+    else
+      raise "Project snapshot migrations require their explicit prefix to match current_schema(); requested #{inspect(requested_prefix)}, current #{inspect(current_prefix)}"
+    end
+  end
+
+  defp validate_prefix!(value) when is_binary(value) and byte_size(value) > 0 do
+    if Regex.match?(~r/\A[A-Za-z_][A-Za-z0-9_$]*\z/, value) do
+      value
+    else
+      raise "Unsafe project snapshot migration prefix: #{inspect(value)}"
+    end
+  end
+
+  defp validate_prefix!(value),
+    do: raise("Invalid project snapshot migration prefix: #{inspect(value)}")
 end
