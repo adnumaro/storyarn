@@ -185,34 +185,19 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
 
   test "fails before DDL while retired or misrouted snapshot work is active", %{prefix: prefix} do
     jobs = qualified_table(prefix, "oban_jobs")
-    Repo.query!("ALTER TABLE #{jobs} DROP CONSTRAINT oban_jobs_snapshot_worker_routing")
 
+    # CHECK constraints accept NULL, while the cleanup preflight deliberately
+    # uses IS DISTINCT FROM so nullable-schema drift cannot hide this job.
     Repo.query!("""
-    INSERT INTO #{jobs} (id, worker, queue, state)
-    VALUES (9001, 'Storyarn.Workers.DailySnapshotWorker', 'snapshots', 'available')
+    INSERT INTO #{jobs} (worker, queue, state)
+    VALUES ('Storyarn.Workers.BuildProjectSnapshotWorker', NULL, 'available')
     """)
 
-    Repo.query!("""
-    ALTER TABLE #{jobs}
-    ADD CONSTRAINT oban_jobs_snapshot_worker_routing
-    CHECK (
-      id = 9001 OR
-      state NOT IN ('available', 'scheduled', 'executing', 'retryable') OR
-      (
-        worker NOT IN (
-          'Storyarn.Workers.DailySnapshotWorker',
-          'Storyarn.Workers.SnapshotRetentionWorker',
-          'Storyarn.Workers.RestoreProjectWorker',
-          'Storyarn.Workers.RecoverProjectWorker'
-        ) AND
-        (worker <> 'Storyarn.Workers.BuildProjectSnapshotWorker' OR queue = 'snapshot_archives')
-      )
-    )
-    """)
-
-    assert_raise Ecto.MigrationError, ~r/canonical oban_jobs_snapshot_worker_routing definition/, fn ->
-      run_migration(:up, prefix)
-    end
+    assert_raise Ecto.MigrationError,
+                 ~r/no active retired or misrouted snapshot workers/,
+                 fn ->
+                   run_migration(:up, prefix)
+                 end
 
     assert_scaffolding_intact!(prefix)
   end

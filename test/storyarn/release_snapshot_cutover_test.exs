@@ -19,61 +19,60 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
   @authorization_probe_migration 90_000_000_000_001
   @cleanup_authorization_probe_migration 90_000_000_000_002
 
-  defmodule AuthorizationProbeMigration do
+  defmodule MigrationAuthorizationProbe do
     @moduledoc false
-    use Ecto.Migration
 
-    @authorization_key :storyarn_snapshot_cutover_authorized_v1
-
-    def up do
-      if !authorized?(), do: raise("snapshot lifecycle authorization missing")
-      execute("CREATE TABLE snapshot_cutover_authorization_probe (id bigint PRIMARY KEY)")
+    def authorized?(authorization_key) do
+      Process.get(authorization_key, false) == true or
+        Enum.any?(
+          List.wrap(Process.get(:"$callers")),
+          &authorized_caller?(&1, authorization_key)
+        )
     end
 
-    defp authorized? do
-      Process.get(@authorization_key, false) == true or
-        Enum.any?(List.wrap(Process.get(:"$callers")), &authorized_caller?/1)
-    end
-
-    defp authorized_caller?(pid) when is_pid(pid) and node(pid) == node() do
+    defp authorized_caller?(pid, authorization_key) when is_pid(pid) and node(pid) == node() do
       case Process.info(pid, :dictionary) do
         {:dictionary, dictionary} ->
-          List.keyfind(dictionary, @authorization_key, 0) == {@authorization_key, true}
+          List.keyfind(dictionary, authorization_key, 0) == {authorization_key, true}
 
         nil ->
           false
       end
     end
 
-    defp authorized_caller?(_pid), do: false
+    defp authorized_caller?(_pid, _authorization_key), do: false
+  end
+
+  defmodule AuthorizationProbeMigration do
+    @moduledoc false
+    use Ecto.Migration
+
+    alias Storyarn.ReleaseSnapshotCutoverTest.MigrationAuthorizationProbe
+
+    @authorization_key :storyarn_snapshot_cutover_authorized_v1
+
+    def up do
+      if !MigrationAuthorizationProbe.authorized?(@authorization_key),
+        do: raise("snapshot lifecycle authorization missing")
+
+      execute("CREATE TABLE snapshot_cutover_authorization_probe (id bigint PRIMARY KEY)")
+    end
   end
 
   defmodule CleanupAuthorizationProbeMigration do
     @moduledoc false
     use Ecto.Migration
 
+    alias Storyarn.ReleaseSnapshotCutoverTest.MigrationAuthorizationProbe
+
     @authorization_key :storyarn_snapshot_scaffolding_cleanup_authorized_v1
 
     def up do
-      authorized? =
-        Process.get(@authorization_key, false) == true or
-          Enum.any?(List.wrap(Process.get(:"$callers")), &authorized_caller?/1)
+      if !MigrationAuthorizationProbe.authorized?(@authorization_key),
+        do: raise("cleanup authorization missing")
 
-      if !authorized?, do: raise("cleanup authorization missing")
       execute("CREATE TABLE snapshot_scaffolding_cleanup_authorization_probe (id bigint PRIMARY KEY)")
     end
-
-    defp authorized_caller?(pid) when is_pid(pid) and node(pid) == node() do
-      case Process.info(pid, :dictionary) do
-        {:dictionary, dictionary} ->
-          List.keyfind(dictionary, @authorization_key, 0) == {@authorization_key, true}
-
-        nil ->
-          false
-      end
-    end
-
-    defp authorized_caller?(_pid), do: false
   end
 
   if !Code.ensure_loaded?(AddSnapshotStorageAccounting) do
