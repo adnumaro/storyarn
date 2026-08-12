@@ -1,0 +1,35 @@
+lib/storyarn/notifications.ex
+  s_d64ccabdb01eb7::t_0c9e71fc6243dc 269-274,283-288,340
+  s_d64ccabdb01eb7::t_2d119109231b08 139-152,159,163-164,166-167
+  s_d64ccabdb01eb7::t_d2190601ecefff 1-131,133-134,137-138,153-158,161-162,165,168-188,191-235,237-268,275-282,289-339,341-368,372-384
+  s_d64ccabdb01eb7::t_188c7d598118ab 370
+  s_d64ccabdb01eb7::t_a35bf67cc49596 132,160
+  s_d64ccabdb01eb7::t_c0d5d6e06a9bc4 135-136,189-190,236,369,371
+lib/storyarn/notifications/notification.ex
+  s_d64ccabdb01eb7::t_d2190601ecefff 1-29,39-88,90-98,100-138,150-152
+  s_d64ccabdb01eb7::t_188c7d598118ab 30-38,89,99,139-149
+priv/repo/migrations/20260812110000_create_notifications.exs
+  s_d64ccabdb01eb7::t_d2190601ecefff 1-30,40-68
+  s_d64ccabdb01eb7::t_188c7d598118ab 31-39
+test/storyarn/notifications_test.exs
+  s_d64ccabdb01eb7::t_2d119109231b08 272,360-362,364-365,370,372-373,376-377,383,392-393,401
+  s_d64ccabdb01eb7::t_c0d5d6e06a9bc4 288-318,348,430-431
+  s_d64ccabdb01eb7::t_0c9e71fc6243dc 1-34,36-44,46-57,59-102,104-108,124-271,273-287,319-335,356-359,363,366-369,371,374-375,378-382,384-391,394-400,402-421,423-426,433-434
+  s_d64ccabdb01eb7::t_188c7d598118ab 35,45,58,103,109-123,336-347,349-355,422,427-429,432
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a84bb7be6203d87938cccf3f891535efe6ea4a9c",
+  "prompts": {},
+  "sessions": {
+    "s_d64ccabdb01eb7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff51e-6200-7312-96d7-fd26ee5eb12d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
