@@ -1,6 +1,7 @@
 defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingMigrationTest do
   use Storyarn.DataCase, async: false
 
+  alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Release
   alias Storyarn.Repo
   alias Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffolding
@@ -14,6 +15,7 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
   @cleanup_authorization_config :project_snapshot_scaffolding_cleanup_authorization
   @cleanup_authorization "20260812100000"
   @authorization_key :storyarn_snapshot_scaffolding_cleanup_authorized_v1
+  @lock_gate_timeout 15_000
 
   if !Code.ensure_loaded?(RemoveTransitionalSnapshotCutoverScaffolding) do
     Code.require_file(
@@ -200,6 +202,54 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
                  end
 
     assert_scaffolding_intact!(prefix)
+  end
+
+  test "fails closed when oban_jobs cannot be locked within the bounded timeout" do
+    prefix = "RemoveSnapshotLockTimeout#{System.unique_integer([:positive])}"
+
+    Sandbox.unboxed_run(Repo, fn ->
+      Repo.query!(~s(CREATE SCHEMA "#{prefix}"))
+      create_transitional_schema!(prefix)
+      parent = self()
+      barrier = make_ref()
+      jobs = qualified_table(prefix, "oban_jobs")
+
+      gate =
+        Task.async(fn ->
+          Sandbox.unboxed_run(Repo, fn ->
+            Repo.transaction(fn ->
+              Repo.query!("LOCK TABLE #{jobs} IN ACCESS SHARE MODE")
+              send(parent, {barrier, :locked})
+
+              receive do
+                {^barrier, :release} -> :released
+              after
+                @lock_gate_timeout -> exit(:lock_gate_release_timeout)
+              end
+            end)
+          end)
+        end)
+
+      try do
+        assert_receive {^barrier, :locked}, @lock_gate_timeout
+
+        error =
+          assert_raise Postgrex.Error, fn ->
+            Repo.transaction(fn ->
+              Repo.query!("SELECT set_config('search_path', $1, true)", [~s("#{prefix}", public)])
+              run_migration(:up, prefix)
+            end)
+          end
+
+        assert error.postgres.code == :lock_not_available
+        assert error.postgres.pg_code == "55P03"
+        assert_scaffolding_intact!(prefix)
+      after
+        send(gate.pid, {barrier, :release})
+        assert {:ok, :released} = Task.await(gate, @lock_gate_timeout)
+        Repo.query!(~s(DROP SCHEMA "#{prefix}" CASCADE))
+      end
+    end)
   end
 
   test "production enforcement rejects direct execution before DDL", %{prefix: prefix} do

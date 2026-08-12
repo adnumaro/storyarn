@@ -263,6 +263,38 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     end
   end
 
+  test "a cleanup marker without its destructive prerequisites fails before migration DDL" do
+    use_isolated_schema!()
+
+    migration_history = [
+      @storage_accounting_migration,
+      @lifecycle_migration,
+      @barrier_migration,
+      @scaffolding_cleanup_migration
+    ]
+
+    create_schema_migrations!(migration_history)
+    Repo.query!("CREATE TABLE release_preflight_evidence (id bigint PRIMARY KEY, evidence text)")
+    Repo.query!("INSERT INTO release_preflight_evidence (id, evidence) VALUES (1, 'preserved')")
+
+    assert_raise RuntimeError, ~r/inconsistent_snapshot_scaffolding_cleanup_history/, fn ->
+      Release.run_project_snapshot_migrations(Repo, fn ->
+        send(self(), :migration_runner_invoked)
+        Repo.query!("ALTER TABLE release_preflight_evidence ADD COLUMN mutated boolean")
+      end)
+    end
+
+    refute_received :migration_runner_invoked
+    refute column_exists?("release_preflight_evidence", "mutated")
+
+    assert Repo.query!("SELECT id, evidence FROM release_preflight_evidence").rows == [
+             [1, "preserved"]
+           ]
+
+    assert Repo.query!("SELECT version FROM schema_migrations ORDER BY version").rows ==
+             Enum.map(Enum.sort(migration_history), &[&1])
+  end
+
   test "the current-main barrier migration rejects a direct production migrator before DDL" do
     prefix = use_isolated_schema!()
     Repo.query!("CREATE TABLE project_snapshots (id bigint PRIMARY KEY)")

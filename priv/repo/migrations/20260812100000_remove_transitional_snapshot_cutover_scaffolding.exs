@@ -44,6 +44,12 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffolding 
     cleanup_intents = qualified_table(current_prefix, "snapshot_cleanup_intents")
     jobs = qualified_table(current_prefix, "oban_jobs")
 
+    # `oban_jobs` is continuously active in production. Bound every lock
+    # acquisition instead of letting the release command queue indefinitely
+    # behind an application transaction. SET LOCAL is rolled back with this
+    # migration and does not alter the database or role defaults.
+    repo().query!("SET LOCAL lock_timeout = '5s'")
+
     repo().query!("""
     LOCK TABLE
       #{snapshots},

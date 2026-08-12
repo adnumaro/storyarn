@@ -237,6 +237,16 @@ both retired columns contain only `NULL`; and no active retired or misrouted
 snapshot worker remains. It then removes the two retained compatibility columns
 and the transitional worker-name routing fence.
 
+Each table-lock acquisition has a transaction-local five-second
+`lock_timeout`. This bounds contention on the continuously active `oban_jobs`
+table without changing the database or role default. PostgreSQL acquires the
+listed locks one at a time, so the timeout applies separately to each lock
+attempt rather than to the migration as a whole. If lock acquisition times out,
+the migration transaction rolls back and retains all transitional scaffolding.
+Do not remove or increase the timeout while application traffic is active;
+identify the blocking transaction, let it finish or stop it through the normal
+operational procedure, and retry the release command during a quiet window.
+
 Run this migration only after the preceding v2-only deployment has completed
 and every application, worker, release-command, and one-off machine runs that
 code. The database preflight cannot prove which application image an external
