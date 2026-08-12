@@ -1,0 +1,51 @@
+{
+  "notifications": {
+    "title": "Notificaciones",
+    "trigger": "Notificaciones",
+    "trigger_unread": "Notificaciones, {count} sin leer",
+    "unread_count": "{count} sin leer",
+    "mark_all": "Marcar todo como leído",
+    "mark_read": "Marcar como leído",
+    "updating": "Actualizando notificaciones",
+    "error": "No hemos podido actualizar tus notificaciones.",
+    "retry": "Reintentar",
+    "actor_fallback": "Alguien del equipo",
+    "project_context": "Proyecto: {project}",
+    "filters": {
+      "label": "Filtrar notificaciones",
+      "all": "Todas",
+      "unread": "Sin leer"
+    },
+    "empty": {
+      "all": {
+        "title": "Todo al día",
+        "description": "La nueva actividad aparecerá aquí."
+      },
+      "unread": {
+        "title": "No hay notificaciones sin leer",
+        "description": "Ya has leído todo."
+      }
+    },
+    "entities": {
+      "content": "contenido",
+      "project_snapshot": "snapshot del proyecto",
+      "project_import": "importación del proyecto",
+      "template_install": "instalación de plantilla",
+      "localization_batch": "lote de localización",
+      "sheet": "ficha",
+      "flow": "flujo",
+      "scene": "escena",
+      "localization_language": "idioma de localización"
+    },
+    "messages": {
+      "created_named": "{actor} creó {entity}: {name}",
+      "created": "{actor} creó {entity}",
+      "deleted_named": "{actor} eliminó {entity}: {name}",
+      "deleted": "{actor} eliminó {entity}",
+      "async_success_named": "{entity}: {name} ha terminado",
+      "async_success": "{entity} ha terminado",
+      "async_failure_named": "{entity}: {name} ha fallado",
+      "async_failure": "{entity} ha fallado"
+    }
+  }
+}

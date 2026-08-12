@@ -23,6 +23,7 @@ import {
   Users,
 } from "@lucide/vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
+import NotificationBell from "@components/notifications/NotificationBell.vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
 import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";
 import { sensitiveSettingsPath } from "@shared/navigation/sensitiveSettingsPath";
@@ -337,12 +338,10 @@ const contentWidthClass = computed(() =>
           : 'ml-0 w-full',
       ]"
     >
-      <div
-        class="flex h-12 shrink-0 items-center border-b border-border/70 bg-background/95 px-3 lg:hidden"
-      >
+      <div class="flex h-12 shrink-0 items-center border-b border-border/70 bg-background/95 px-3">
         <button
           type="button"
-          class="toolbar-btn size-9"
+          class="toolbar-btn size-9 lg:hidden"
           :aria-label="
             sidebarOpen
               ? $t('layout.main_sidebar.hide_panel')
@@ -359,6 +358,12 @@ const contentWidthClass = computed(() =>
           <PanelLeftClose v-if="sidebarOpen" class="size-4" />
           <PanelLeft v-else class="size-4" />
         </button>
+
+        <div class="flex-1" />
+
+        <div :class="sidebarOpen && 'hidden lg:block'">
+          <NotificationBell />
+        </div>
       </div>
 
       <div class="flex-1 min-h-0 overflow-y-auto p-4 lg:p-8">

@@ -34,6 +34,7 @@ const authenticatedSession =
 const requiredSnippets = [
   "{@user_auth_hook, :require_authenticated}",
   "{@user_auth_hook, :load_workspaces}",
+  "{StoryarnWeb.Live.Hooks.Notifications, :setup_notifications}",
   "{StoryarnWeb.Live.Hooks.ProjectScope, :load_project}",
   "{StoryarnWeb.Live.Hooks.WorkspaceScope, :load_workspace}",
   'live "/workspaces/:workspace_slug", WorkspaceLive.Show, :show',

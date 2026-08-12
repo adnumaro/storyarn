@@ -113,6 +113,7 @@ defmodule Storyarn.Notifications do
     |> order_by([notification], desc: notification.inserted_at, desc: notification.id)
     |> limit(^normalize_limit(Keyword.get(opts, :limit, @default_limit)))
     |> Repo.all()
+    |> Repo.preload([:actor, :project])
   end
 
   def list_notifications(%Scope{}, _opts), do: []

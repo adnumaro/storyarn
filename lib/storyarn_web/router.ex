@@ -180,6 +180,7 @@ defmodule StoryarnWeb.Router do
           [
             {@user_auth_hook, :require_authenticated},
             {@user_auth_hook, :load_workspaces},
+            {StoryarnWeb.Live.Hooks.Notifications, :setup_notifications},
             {StoryarnWeb.Live.Hooks.Onboarding, :load_onboarding},
             {StoryarnWeb.Live.Hooks.Palette, :setup_palette},
             {StoryarnWeb.Live.Hooks.ProjectScope, :load_project},
