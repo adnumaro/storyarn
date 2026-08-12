@@ -1,0 +1,73 @@
+assets/app/locales/en/notifications.json
+  s_d64ccabdb01eb7::t_357e2c5c61129c 1-51
+lib/storyarn_web/helpers/authorize.ex
+  s_d64ccabdb01eb7::t_bfd7ea8fa1de63 224-229
+scripts/verify-live-sessions.mjs
+  s_d64ccabdb01eb7::t_d1583843c4b7cc 37
+lib/storyarn_web/router.ex
+  s_d64ccabdb01eb7::t_0789f98ca9ea87 183
+assets/app/components/notifications/types.ts
+  s_d64ccabdb01eb7::t_357e2c5c61129c 1-19
+assets/app/live/layouts/workspace/Layout.vue
+  s_d64ccabdb01eb7::t_167a1a866aa6dc 5,91,108-111,113
+  s_d64ccabdb01eb7::t_1f525ed2b7d502 88
+  s_d64ccabdb01eb7::t_bfd7ea8fa1de63 112
+assets/app/test/components/notifications/NotificationBell.test.ts
+  s_d64ccabdb01eb7::t_9403e75cb86a4a 62,65,172-173,175
+  s_d64ccabdb01eb7::t_49fe46d42b3208 63-64,118-119,121,123-128
+  s_d64ccabdb01eb7::t_bfd7ea8fa1de63 50,52,54-57,71,73,78
+  s_d64ccabdb01eb7::t_9659b61f4578ac 47,53,100-106
+  s_d64ccabdb01eb7::t_933a76d1f3f01d 170,174,176-183,220
+  s_d64ccabdb01eb7::t_ca07c9dbfbfa79 1-46,48-49,51,58-61,66-70,74-77,79-99,107-108,111-117,129-131,133-151,184,186-213,215-219,221-239,245-269,271-288
+  s_d64ccabdb01eb7::t_fb098c2125dcd4 72,109-110,120,122,132,171,185,214,240,270
+  s_d64ccabdb01eb7::t_764a49cb073c19 152-169
+  s_d64ccabdb01eb7::t_ec3caad8c92384 241-244
+assets/app/components/notifications/NotificationBell.vue
+  s_d64ccabdb01eb7::t_9a5768fdf40530 155-159
+  s_d64ccabdb01eb7::t_1f525ed2b7d502 16,21,211-216,221-224,283,301-303,305,346,395-397
+  s_d64ccabdb01eb7::t_bfd7ea8fa1de63 12,20,60-61
+  s_d64ccabdb01eb7::t_357e2c5c61129c 1,13-15,17-19,22-23,25-52,54-59,62-122,124-154,164-210,217-220,225-229,231-253,255-256,260-275,277-282,284-300,306-314,325-327,329-345,347-390,398-409
+  s_d64ccabdb01eb7::t_9659b61f4578ac 2-11,24,53,123,315-324,392
+  s_d64ccabdb01eb7::t_2a879178fc7fc4 328
+  s_d64ccabdb01eb7::t_7d05b0ad2072df 254,257-259,276,304,391,393-394
+  s_d64ccabdb01eb7::t_e9c77ce7af7d8c 160-163,230
+lib/storyarn/notifications.ex
+  s_d64ccabdb01eb7::t_d1583843c4b7cc 116
+assets/app/locales/es/notifications.json
+  s_d64ccabdb01eb7::t_357e2c5c61129c 1-51
+test/storyarn_web/live/hooks/notifications_test.exs
+  s_d64ccabdb01eb7::t_bfd7ea8fa1de63 23,31-32,34,36-40
+  s_d64ccabdb01eb7::t_448cdbe567aa60 1-22,24-30,33,35,41-149
+lib/storyarn_web/live/shared/notification_helpers.ex
+  s_d64ccabdb01eb7::t_d1583843c4b7cc 6-7,24,29,34,39
+  s_d64ccabdb01eb7::t_0789f98ca9ea87 1-5,8-23,25-28,30-33,35-38,40-51
+lib/storyarn_web/live/hooks/notifications.ex
+  s_d64ccabdb01eb7::t_6d2bad1b676177 67,79
+  s_d64ccabdb01eb7::t_0789f98ca9ea87 1-16,23-52,61-66,68-78,80-105,107-108
+  s_d64ccabdb01eb7::t_d47995228d5203 60,106
+  s_d64ccabdb01eb7::t_f2126004979fc3 17-22,53-59
+assets/app/live/layouts/project/Layout.vue
+  s_d64ccabdb01eb7::t_bfd7ea8fa1de63 170
+  s_d64ccabdb01eb7::t_167a1a866aa6dc 14,169,171
+  s_d64ccabdb01eb7::t_60db43510b0c3b 172
+assets/app/live/layouts/settings/Layout.vue
+  s_d64ccabdb01eb7::t_bfd7ea8fa1de63 365
+  s_d64ccabdb01eb7::t_167a1a866aa6dc 26,344,361-364,366
+  s_d64ccabdb01eb7::t_1f525ed2b7d502 341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5cf6dcdaaebb377e72cf6d248fa7d4028af0c88e",
+  "prompts": {},
+  "sessions": {
+    "s_d64ccabdb01eb7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff51e-6200-7312-96d7-fd26ee5eb12d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
