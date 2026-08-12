@@ -1,7 +1,19 @@
 defmodule Storyarn.Repo.Migrations.AddSnapshotStorageAccounting do
   use Ecto.Migration
 
+  @storage_accounting_migration 20_260_804_120_000
+  @authorization_key :storyarn_snapshot_cutover_authorized_v1
+
   def change do
+    # This is the first historical migration that destructively resets snapshot
+    # state. Production releases authorize it only after the v2-only cutover
+    # preflight has passed, so a direct migrator cannot delete legacy evidence.
+    if direction() == :up do
+      ensure_cutover_barriers!()
+    else
+      remove_cutover_barriers!()
+    end
+
     # Reset policy: the canonical accounting contract intentionally has no
     # compatibility path for project snapshots created before this rollout.
     # Clear any restoration lock that references those rows before deleting
@@ -28,6 +40,15 @@ defmodule Storyarn.Repo.Migrations.AddSnapshotStorageAccounting do
     # project-level snapshots. Current-version foreign keys use ON DELETE SET
     # NULL, so no entity can continue pointing at a pre-rollout archive.
     execute("DELETE FROM entity_versions", "SELECT 1")
+
+    # The release preflight fences new legacy versions until the destructive
+    # reset above commits. Queue the DROP after the DELETE so both operations
+    # remain ordered in this migration transaction; PostgreSQL retains the
+    # ACCESS EXCLUSIVE lock until the migration marker commits.
+    execute(
+      "ALTER TABLE entity_versions DROP CONSTRAINT IF EXISTS entity_versions_cutover_quiescent",
+      "SELECT 1"
+    )
 
     # The reset also removes every persisted job for the retired synchronous
     # snapshot implementation. Otherwise Oban could execute a module that no
@@ -699,4 +720,216 @@ defmodule Storyarn.Repo.Migrations.AddSnapshotStorageAccounting do
       """
     )
   end
+
+  # This cutover guard is deliberately frozen inside the migration. Historical
+  # migrations must remain runnable if the release module is later refactored.
+  defp ensure_cutover_barriers! do
+    assert_release_authorized!()
+    current_prefix = assert_current_prefix!()
+    snapshots = qualified_table(current_prefix, "project_snapshots")
+    jobs = qualified_table(current_prefix, "oban_jobs")
+    entity_versions = qualified_table(current_prefix, "entity_versions")
+    storage_accounting_pending? = not storage_accounting_applied?(current_prefix)
+
+    lock_tables =
+      if storage_accounting_pending?,
+        do: [snapshots, jobs, entity_versions],
+        else: [snapshots, jobs]
+
+    repo().query!("LOCK TABLE #{Enum.join(lock_tables, ", ")} IN ACCESS EXCLUSIVE MODE")
+
+    case repo().query!("""
+         SELECT
+           EXISTS (SELECT 1 FROM #{snapshots}) OR
+           EXISTS (
+             SELECT 1
+             FROM #{jobs}
+             WHERE worker IN (
+               'Storyarn.Workers.BuildProjectSnapshotWorker',
+               'Storyarn.Workers.DailySnapshotWorker',
+               'Storyarn.Workers.SnapshotRetentionWorker',
+               'Storyarn.Workers.RestoreProjectWorker',
+               'Storyarn.Workers.RecoverProjectWorker'
+             )
+             AND state IN ('available', 'scheduled', 'executing', 'retryable')
+           )
+         """).rows do
+      [[false]] ->
+        :ok
+
+      [[true]] ->
+        raise "Project snapshot v2-only cutover requires an empty snapshot table and no active pre-cutover snapshot worker"
+
+      invalid ->
+        raise "Invalid snapshot cutover barrier precondition: #{inspect(invalid)}"
+    end
+
+    if storage_accounting_pending? do
+      case repo().query!("SELECT NOT EXISTS (SELECT 1 FROM #{entity_versions})").rows do
+        [[true]] ->
+          :ok
+
+        [[false]] ->
+          raise "Project snapshot v2-only cutover requires legacy entity-version history to be empty before the storage-accounting reset"
+
+        invalid ->
+          raise "Invalid entity-version cutover precondition: #{inspect(invalid)}"
+      end
+
+      ensure_constraint!(
+        current_prefix,
+        "entity_versions",
+        "entity_versions_cutover_quiescent",
+        "CHECK (FALSE)"
+      )
+    end
+
+    ensure_constraint!(
+      current_prefix,
+      "project_snapshots",
+      "project_snapshots_cutover_quiescent",
+      "CHECK (FALSE)"
+    )
+
+    ensure_constraint!(
+      current_prefix,
+      "oban_jobs",
+      "oban_jobs_snapshot_cutover_quiescent",
+      """
+      CHECK (
+        state NOT IN ('available', 'scheduled', 'executing', 'retryable') OR
+        worker NOT IN (
+          'Storyarn.Workers.BuildProjectSnapshotWorker',
+          'Storyarn.Workers.DailySnapshotWorker',
+          'Storyarn.Workers.SnapshotRetentionWorker',
+          'Storyarn.Workers.RestoreProjectWorker',
+          'Storyarn.Workers.RecoverProjectWorker'
+        )
+      )
+      """
+    )
+  end
+
+  defp remove_cutover_barriers! do
+    assert_release_authorized!()
+    current_prefix = assert_current_prefix!()
+    snapshots = qualified_table(current_prefix, "project_snapshots")
+    jobs = qualified_table(current_prefix, "oban_jobs")
+    entity_versions = qualified_table(current_prefix, "entity_versions")
+
+    repo().query!("LOCK TABLE #{snapshots}, #{jobs}, #{entity_versions} IN ACCESS EXCLUSIVE MODE")
+
+    repo().query!(
+      "ALTER TABLE #{snapshots} DROP CONSTRAINT IF EXISTS project_snapshots_cutover_quiescent"
+    )
+
+    repo().query!(
+      "ALTER TABLE #{jobs} DROP CONSTRAINT IF EXISTS oban_jobs_snapshot_cutover_quiescent"
+    )
+
+    repo().query!(
+      "ALTER TABLE #{entity_versions} DROP CONSTRAINT IF EXISTS entity_versions_cutover_quiescent"
+    )
+  end
+
+  defp storage_accounting_applied?(current_prefix) do
+    migrations = qualified_table(current_prefix, "schema_migrations")
+
+    case repo().query!("SELECT to_regclass($1) IS NOT NULL", [migrations]).rows do
+      [[false]] ->
+        false
+
+      [[true]] ->
+        repo().query!(
+          "SELECT EXISTS (SELECT 1 FROM #{migrations} WHERE version = $1)",
+          [@storage_accounting_migration]
+        ).rows == [[true]]
+
+      invalid ->
+        raise "Invalid snapshot cutover migration table state: #{inspect(invalid)}"
+    end
+  end
+
+  defp ensure_constraint!(current_prefix, table, constraint, definition) do
+    case repo().query!(
+           """
+           SELECT EXISTS (
+             SELECT 1
+             FROM pg_constraint AS constraint_row
+             JOIN pg_class AS table_row ON table_row.oid = constraint_row.conrelid
+             JOIN pg_namespace AS namespace_row ON namespace_row.oid = table_row.relnamespace
+             WHERE namespace_row.nspname = $1
+               AND table_row.relname = $2
+               AND constraint_row.conname = $3
+           )
+           """,
+           [current_prefix, table, constraint]
+         ).rows do
+      [[true]] ->
+        :ok
+
+      [[false]] ->
+        repo().query!(
+          "ALTER TABLE #{qualified_table(current_prefix, table)} ADD CONSTRAINT #{constraint} #{definition}"
+        )
+
+      invalid ->
+        raise "Invalid snapshot cutover constraint state: #{inspect(invalid)}"
+    end
+  end
+
+  defp assert_release_authorized! do
+    enforced? =
+      Application.get_env(:storyarn, :enforce_snapshot_lifecycle_release_gate, false)
+
+    if enforced? and not release_authorized?() do
+      raise "Snapshot lifecycle migration must run through /app/bin/migrate after the v2-only cutover preflight"
+    end
+  end
+
+  defp release_authorized? do
+    Process.get(@authorization_key, false) == true or
+      Enum.any?(List.wrap(Process.get(:"$callers")), &authorized_caller?/1)
+  end
+
+  defp authorized_caller?(pid) when is_pid(pid) and node(pid) == node() do
+    case Process.info(pid, :dictionary) do
+      {:dictionary, dictionary} ->
+        List.keyfind(dictionary, @authorization_key, 0) == {@authorization_key, true}
+
+      nil ->
+        false
+    end
+  end
+
+  defp authorized_caller?(_pid), do: false
+
+  defp assert_current_prefix! do
+    current_prefix =
+      case repo().query!("SELECT current_schema()").rows do
+        [[value]] -> validate_prefix!(value)
+        invalid -> raise "Invalid current snapshot migration prefix: #{inspect(invalid)}"
+      end
+
+    requested_prefix = validate_prefix!(prefix() || current_prefix)
+
+    if requested_prefix == current_prefix do
+      current_prefix
+    else
+      raise "Project snapshot migrations require their explicit prefix to match current_schema(); requested #{inspect(requested_prefix)}, current #{inspect(current_prefix)}"
+    end
+  end
+
+  defp validate_prefix!(value) when is_binary(value) and byte_size(value) > 0 do
+    if Regex.match?(~r/\A[A-Za-z_][A-Za-z0-9_$]*\z/, value) do
+      value
+    else
+      raise "Unsafe project snapshot migration prefix: #{inspect(value)}"
+    end
+  end
+
+  defp validate_prefix!(value),
+    do: raise("Invalid project snapshot migration prefix: #{inspect(value)}")
+
+  defp qualified_table(current_prefix, table), do: ~s("#{current_prefix}"."#{table}")
 end

@@ -22,10 +22,11 @@ defmodule Storyarn.Versioning.SnapshotObjectPublicationClaim do
     {:format_version, [:format_version]},
     {:mode, [:mode]},
     {:object_prefix, [:object_prefix]},
+    {:archive_storage_key, [:archive_storage_key]},
+    {:archive_size_bytes, [:archive_size_bytes]},
     {:manifest_storage_key, [:manifest_storage_key]},
     {:manifest_size_bytes, [:manifest_size_bytes]},
     {:manifest_checksum, [:manifest_checksum]},
-    {:project_storage_key, [:project_storage_key]},
     {:project_size_bytes, [:project_size_bytes]},
     {:project_checksum, [:project_checksum]},
     {:total_size_bytes, [:total_size_bytes]},
@@ -34,7 +35,8 @@ defmodule Storyarn.Versioning.SnapshotObjectPublicationClaim do
     {:accounting_version, [:accounting_version]},
     {:object_count, [:object_count]},
     {:asset_count, [:asset_count]},
-    {:blob_count, [:blob_count]}
+    {:blob_count, [:blob_count]},
+    {:capture_digest, [:capture_digest]}
   ]
 
   @primary_key {:object_prefix, :string, autogenerate: false}
@@ -82,7 +84,7 @@ defmodule Storyarn.Versioning.SnapshotObjectPublicationClaim do
     |> validate_inclusion(:status, @statuses)
     |> validate_format(
       :object_prefix,
-      ~r<\Aprojects/[1-9]\d*/snapshots/object-sets/v1/ready/[A-Za-z0-9_-]{16}\z>
+      ~r<\Aprojects/[1-9]\d*/snapshots/archives/v2/ready/[A-Za-z0-9_-]{16}\z>
     )
     |> validate_format(:inventory_digest, ~r/\A[0-9a-f]{64}\z/)
     |> unique_constraint(:object_prefix, name: :snapshot_object_publication_claims_pkey)
@@ -108,11 +110,17 @@ defmodule Storyarn.Versioning.SnapshotObjectPublicationClaim do
   @doc "Returns the canonical digest binding a publication claim to its final snapshot row."
   @spec inventory_digest(map()) :: String.t()
   def inventory_digest(source) when is_map(source) do
-    @inventory_fields
-    |> Enum.map(fn {field, aliases} -> {field, first_value(source, aliases)} end)
-    |> :erlang.term_to_binary([:deterministic])
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
+    case first_value(source, [:format_version]) do
+      2 ->
+        @inventory_fields
+        |> Enum.map(fn {field, aliases} -> {field, first_value(source, aliases)} end)
+        |> :erlang.term_to_binary([:deterministic])
+        |> then(&:crypto.hash(:sha256, &1))
+        |> Base.encode16(case: :lower)
+
+      format_version ->
+        raise ArgumentError, "unsupported snapshot claim format: #{inspect(format_version)}"
+    end
   end
 
   defp validate_status_transition(changeset, current_status) do

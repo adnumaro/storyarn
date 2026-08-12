@@ -22,10 +22,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
         |> Ecto.Changeset.change(%{
           project_id: project.id,
           version_number: 1,
-          project_storage_key: "snapshots/invalid-monolith/project.json",
+          archive_storage_key: "snapshots/invalid-monolith/snapshot.zip",
+          archive_size_bytes: 100,
           project_size_bytes: 100,
           project_checksum: String.duplicate("a", 64),
-          format_version: 1,
+          format_version: 2,
           object_prefix: "snapshots/invalid-monolith",
           manifest_storage_key: "snapshots/invalid-monolith/manifest.json",
           manifest_size_bytes: 50,

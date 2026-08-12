@@ -13,6 +13,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Billing
+  alias Storyarn.Billing.StorageReservation
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
@@ -20,8 +21,10 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
+  alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Workers.ProjectSnapshotRetentionWorker
 
   defp settings_path(project, section \\ nil) do
     base = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings"
@@ -372,24 +375,29 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       _asset = asset_fixture(project, user, %{size: 2_048})
       token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
-      prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
+      prefix = "projects/#{project.id}/snapshots/archives/v2/ready/#{token}"
 
       snapshot =
         full_project_snapshot_fixture(project, %{
           title: "Measured checkpoint",
-          project_storage_key: prefix <> "/project.json",
           project_size_bytes: 100,
           project_checksum: String.duplicate("a", 64),
-          format_version: 1,
+          format_version: 2,
           object_prefix: prefix,
+          archive_storage_key: prefix <> "/snapshot.zip",
+          archive_size_bytes: 150,
+          archive_checksum: String.duplicate("c", 64),
           manifest_storage_key: prefix <> "/manifest.json",
           manifest_size_bytes: 25,
           manifest_checksum: String.duplicate("b", 64),
           total_size_bytes: 175,
-          object_count: 3,
+          accounted_size_bytes: 175,
+          object_count: 2,
           asset_count: 2,
           blob_count: 1,
-          asset_blob_size_bytes: 50
+          asset_blob_size_bytes: 50,
+          progress_bytes: 175,
+          progress_total_bytes: 175
         })
 
       assert {:ok, _reservation} =
@@ -415,36 +423,38 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                "lifecycleStatus",
                "integrityStatus",
                "accountedSizeBytes",
-               "projectDataSizeBytes",
-               "metadataSizeBytes",
-               "assetBlobSizeBytes",
+               "archiveSizeBytes",
+               "sidecarSizeBytes",
                "assetCount",
                "blobCount",
                "activeReservationBytes",
                "exportReservationBytes",
-               "accountingVersion"
+               "accountingVersion",
+               "deleteStatus"
              ]) == %{
                "mode" => "full",
                "lifecycleStatus" => "ready",
                "integrityStatus" => "verified",
                "accountedSizeBytes" => "175",
-               "projectDataSizeBytes" => "100",
-               "metadataSizeBytes" => "25",
-               "assetBlobSizeBytes" => "50",
+               "archiveSizeBytes" => "150",
+               "sidecarSizeBytes" => "25",
                "assetCount" => 2,
                "blobCount" => 1,
                "activeReservationBytes" => "0",
                "exportReservationBytes" => "60",
-               "accountingVersion" => 1
+               "accountingVersion" => 1,
+               "deleteStatus" => "active_operation"
              }
 
       assert is_binary(serialized["accountingMeasuredAt"])
+
+      assert serialized["downloadUrl"] ==
+               "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/snapshots/#{snapshot.id}/download"
 
       assert vue.props["storage-usage"] == %{
                "currentAssetsBytes" => "2048",
                "assetTrashBytes" => "0",
                "fullSnapshotsBytes" => "175",
-               "linkedSnapshotsBytes" => "0",
                "activeReservationsBytes" => "60",
                "totalAccountedBytes" => "2283",
                "limitBytes" => "262144000",
@@ -459,34 +469,105 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     } do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
-      prefix = "projects/#{project.id}/snapshots/object-sets/v1/ready/#{token}"
-      asset_blob_bytes = 9_007_199_254_740_993
-      total_bytes = asset_blob_bytes + 125
+      prefix = "projects/#{project.id}/snapshots/archives/v2/ready/#{token}"
+      archive_bytes = 9_007_199_254_740_993
+      total_bytes = archive_bytes + 25
 
       full_project_snapshot_fixture(project, %{
         title: "Large measured checkpoint",
-        project_storage_key: prefix <> "/project.json",
         project_size_bytes: 100,
         project_checksum: String.duplicate("a", 64),
-        format_version: 1,
+        format_version: 2,
         object_prefix: prefix,
+        archive_storage_key: prefix <> "/snapshot.zip",
+        archive_size_bytes: archive_bytes,
+        archive_checksum: String.duplicate("c", 64),
         manifest_storage_key: prefix <> "/manifest.json",
         manifest_size_bytes: 25,
         manifest_checksum: String.duplicate("b", 64),
         total_size_bytes: total_bytes,
-        asset_blob_size_bytes: asset_blob_bytes,
-        object_count: 3,
+        accounted_size_bytes: total_bytes,
+        asset_blob_size_bytes: 0,
+        object_count: 2,
         asset_count: 1,
-        blob_count: 1
+        blob_count: 1,
+        progress_bytes: total_bytes,
+        progress_total_bytes: total_bytes
       })
 
       {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
       vue = get_snapshots_vue(view)
 
       assert [serialized] = vue.props["snapshots"]
-      assert serialized["assetBlobSizeBytes"] == "9007199254740993"
-      assert serialized["accountedSizeBytes"] == "9007199254741118"
-      assert vue.props["storage-usage"]["totalAccountedBytes"] == "9007199254741118"
+      assert serialized["archiveSizeBytes"] == "9007199254740993"
+      assert serialized["accountedSizeBytes"] == "9007199254741018"
+      assert vue.props["storage-usage"]["totalAccountedBytes"] == "9007199254741018"
+    end
+
+    test "exposes the internal download route only for a verified v2 archive", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      prefix = "projects/#{project.id}/snapshots/archives/v2/ready/#{String.duplicate("A", 16)}"
+
+      snapshot =
+        full_project_snapshot_fixture(project, %{
+          format_version: 2,
+          object_prefix: prefix,
+          archive_storage_key: prefix <> "/snapshot.zip",
+          archive_size_bytes: 125,
+          archive_checksum: String.duplicate("c", 64),
+          manifest_storage_key: prefix <> "/manifest.json",
+          manifest_size_bytes: 25,
+          total_size_bytes: 150,
+          accounted_size_bytes: 150,
+          object_count: 2,
+          asset_blob_size_bytes: 0,
+          asset_count: 0,
+          blob_count: 0,
+          progress_bytes: 150,
+          progress_total_bytes: 150
+        })
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+      assert [serialized] = get_snapshots_vue(view).props["snapshots"]
+
+      assert serialized["archiveSizeBytes"] == "125"
+      assert serialized["sidecarSizeBytes"] == "25"
+      assert serialized["accountedSizeBytes"] == "150"
+      assert serialized["deleteStatus"] == "ready"
+
+      assert serialized["downloadUrl"] ==
+               "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/snapshots/#{snapshot.id}/download"
+
+      refute serialized["downloadUrl"] =~ "X-Amz-"
+    end
+
+    test "omits download URLs for unverified snapshots", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      missing =
+        project
+        |> full_project_snapshot_fixture(%{
+          title: "Missing snapshot",
+          asset_blob_size_bytes: 0
+        })
+        |> ProjectSnapshot.reconciliation_integrity_changeset("missing")
+        |> Repo.update!()
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+
+      serialized_by_id =
+        view
+        |> get_snapshots_vue()
+        |> then(& &1.props["snapshots"])
+        |> Map.new(&{&1["id"], &1})
+
+      assert serialized_by_id[missing.id]["downloadUrl"] == nil
     end
 
     test "requests and cancels a durable full snapshot from the settings surface", %{
@@ -509,8 +590,11 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert pending["lifecycleStatus"] == "pending"
       assert pending["progressPhase"] == "pending"
       assert pending["progressBytes"] == "0"
-      assert pending["plannedSizeBytes"] == pending["progressTotalBytes"]
+      assert pending["plannedSizeBytes"] == nil
+      assert pending["progressTotalBytes"] == nil
       assert pending["canCancel"] == true
+      assert pending["deleteStatus"] == nil
+      assert pending["downloadUrl"] == nil
 
       render_click(view, "cancel_snapshot", %{"id" => pending["id"]})
 
@@ -560,6 +644,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
       assert [ready] = get_snapshots_vue(view).props["snapshots"]
       assert ready["canDelete"] == true
+      assert ready["deleteStatus"] == "ready"
 
       render_click(view, "delete_snapshot", %{"id" => ready["id"]})
 
@@ -569,6 +654,71 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                Repo.get_by(SnapshotCleanupIntent,
                  project_snapshot_id_snapshot: ready["id"]
                )
+    end
+
+    test "tracks the retained download lease until the reaper releases it", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      token = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
+      prefix = "projects/#{project.id}/snapshots/archives/v2/ready/#{token}"
+
+      snapshot =
+        full_project_snapshot_fixture(project, %{
+          format_version: 2,
+          object_prefix: prefix,
+          archive_storage_key: prefix <> "/snapshot.zip",
+          archive_size_bytes: 125,
+          archive_checksum: String.duplicate("c", 64),
+          manifest_storage_key: prefix <> "/manifest.json",
+          manifest_size_bytes: 25,
+          total_size_bytes: 150,
+          accounted_size_bytes: 150,
+          object_count: 2,
+          asset_blob_size_bytes: 0,
+          asset_count: 0,
+          blob_count: 0,
+          progress_bytes: 150,
+          progress_total_bytes: 150
+        })
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+      assert [ready] = get_snapshots_vue(view).props["snapshots"]
+      assert ready["canDelete"] == true
+      assert ready["deleteStatus"] == "ready"
+
+      assert :grant_issued =
+               Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
+                 {:keep_lease, :grant_issued}
+               end)
+
+      assert [leased] = get_snapshots_vue(view).props["snapshots"]
+      assert leased["canDelete"] == false
+      assert leased["deleteStatus"] == "download_lease"
+
+      assert {:error, :snapshot_active_operation_blocks_deletion} =
+               Versioning.delete_project_snapshot(
+                 user_scope_fixture(user),
+                 project,
+                 snapshot.id
+               )
+
+      now = TimeHelpers.now()
+
+      StorageReservation
+      |> Repo.get_by!(project_snapshot_id_snapshot: snapshot.id, kind: "snapshot_export")
+      |> Ecto.Changeset.change(
+        accounting_measured_at: DateTime.add(now, -120, :second),
+        expires_at: DateTime.add(now, -60, :second)
+      )
+      |> Repo.update!()
+
+      assert :ok = ProjectSnapshotRetentionWorker.perform(%Oban.Job{args: %{}})
+
+      assert [released] = get_snapshots_vue(view).props["snapshots"]
+      assert released["canDelete"] == true
+      assert released["deleteStatus"] == "ready"
     end
   end
 
@@ -649,7 +799,6 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                  "currentAssetsBytes" => "2048",
                  "assetTrashBytes" => "0",
                  "fullSnapshotsBytes" => "0",
-                 "linkedSnapshotsBytes" => "0",
                  "activeReservationsBytes" => "0",
                  "totalAccountedBytes" => "2048",
                  "limitBytes" => "262144000",

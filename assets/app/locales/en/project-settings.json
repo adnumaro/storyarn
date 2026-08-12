@@ -125,8 +125,7 @@
       "storage_breakdown": {
         "current_assets": "Current project assets",
         "asset_trash": "Recoverable asset trash",
-        "full_snapshots": "Full snapshots",
-        "linked_snapshots": "Linked snapshot payloads"
+        "full_snapshots": "Full snapshots"
       },
       "storage_status": {
         "unlimited": "No limit",
@@ -145,7 +144,6 @@
       },
       "mode": {
         "full": "Full",
-        "linked": "Linked",
         "unknown": "Mode unknown"
       },
       "lifecycle": {
@@ -161,7 +159,6 @@
       "integrity": {
         "unknown": "Integrity unknown",
         "verified": "Verified",
-        "at_risk": "At risk",
         "missing": "Missing data",
         "corrupt": "Corrupt",
         "incomplete": "Incomplete"
@@ -199,19 +196,23 @@
         "cancelling": "Cancellation requested",
         "accessibility": "Snapshot build progress: {percent}"
       },
+      "download": {
+        "action": "Download ZIP"
+      },
       "delete": {
         "action": "Delete snapshot",
         "title": "Delete snapshot?",
         "description": "Snapshot v{version}, “{name}”, will be removed permanently. Its storage is handed to durable cleanup and this action cannot be undone.",
         "confirm": "Delete snapshot",
         "cancel": "Keep snapshot",
+        "download_lease": "Download protection is active. Deletion will be available when its protection window expires.",
+        "active_operation": "Another snapshot operation is active. Deletion will be available when it finishes.",
         "failed": "The snapshot could not be deleted."
       },
       "measurements": {
         "accounted_size": "Snapshot storage",
-        "project_data": "Project data",
-        "metadata": "Manifest and catalog",
-        "unique_blobs": "Unique asset blobs",
+        "zip_archive": "ZIP archive",
+        "manifest_sidecar": "Manifest sidecar",
         "inventory": "Logical assets: {assets} · Unique blobs: {blobs}",
         "measured": "Accounting v{version} measured {date}",
         "active_reservation": "Active work reservation: {storage}",
@@ -298,7 +299,6 @@
         "current_assets": "Current project assets",
         "asset_trash": "Recoverable asset trash",
         "full_snapshots": "Full snapshots",
-        "linked_snapshots": "Linked snapshot payloads",
         "reservations": "Reservations"
       },
       "rows": {

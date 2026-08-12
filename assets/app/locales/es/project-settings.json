@@ -125,8 +125,7 @@
       "storage_breakdown": {
         "current_assets": "Recursos actuales de proyectos",
         "asset_trash": "Recursos recuperables en la papelera",
-        "full_snapshots": "Snapshots completas",
-        "linked_snapshots": "Datos propios de snapshots enlazadas"
+        "full_snapshots": "Snapshots completas"
       },
       "storage_status": {
         "unlimited": "Sin límite",
@@ -145,7 +144,6 @@
       },
       "mode": {
         "full": "Completa",
-        "linked": "Enlazada",
         "unknown": "Modo desconocido"
       },
       "lifecycle": {
@@ -161,7 +159,6 @@
       "integrity": {
         "unknown": "Integridad desconocida",
         "verified": "Verificada",
-        "at_risk": "En riesgo",
         "missing": "Faltan datos",
         "corrupt": "Dañada",
         "incomplete": "Incompleta"
@@ -199,19 +196,23 @@
         "cancelling": "Cancelación solicitada",
         "accessibility": "Progreso de creación de la snapshot: {percent}"
       },
+      "download": {
+        "action": "Descargar ZIP"
+      },
       "delete": {
         "action": "Eliminar snapshot",
         "title": "¿Eliminar la snapshot?",
         "description": "La snapshot v{version}, «{name}», se eliminará permanentemente. Su almacenamiento se entrega a una limpieza duradera y esta acción no se puede deshacer.",
         "confirm": "Eliminar snapshot",
         "cancel": "Conservar snapshot",
+        "download_lease": "La protección de descarga está activa. Podrás eliminar la snapshot cuando termine su periodo de protección.",
+        "active_operation": "Hay otra operación activa sobre la snapshot. Podrás eliminarla cuando termine.",
         "failed": "No se ha podido eliminar la snapshot."
       },
       "measurements": {
         "accounted_size": "Almacenamiento de la snapshot",
-        "project_data": "Datos del proyecto",
-        "metadata": "Manifest y catálogo",
-        "unique_blobs": "Blobs de recursos únicos",
+        "zip_archive": "Archivo ZIP",
+        "manifest_sidecar": "Manifest auxiliar",
         "inventory": "Recursos lógicos: {assets} · Blobs únicos: {blobs}",
         "measured": "Contabilidad v{version} medida el {date}",
         "active_reservation": "Reserva de trabajo activa: {storage}",
@@ -298,7 +299,6 @@
         "current_assets": "Recursos actuales de proyectos",
         "asset_trash": "Recursos recuperables en la papelera",
         "full_snapshots": "Snapshots completas",
-        "linked_snapshots": "Datos propios de snapshots enlazadas",
         "reservations": "Reservas"
       },
       "rows": {

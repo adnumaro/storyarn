@@ -13,6 +13,8 @@ defmodule Storyarn.Assets.StorageCleanupRequest do
           owner_kind: String.t(),
           owner_token: Ecto.UUID.t() | nil,
           provider_namespace_fingerprint: String.t() | nil,
+          multipart_quiescence_started_at: DateTime.t() | nil,
+          multipart_quiescence_not_before: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -22,6 +24,8 @@ defmodule Storyarn.Assets.StorageCleanupRequest do
     field :owner_kind, :string, default: "storage_compensation"
     field :owner_token, Ecto.UUID
     field :provider_namespace_fingerprint, :string
+    field :multipart_quiescence_started_at, :utc_datetime
+    field :multipart_quiescence_not_before, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end
@@ -40,6 +44,22 @@ defmodule Storyarn.Assets.StorageCleanupRequest do
     |> check_constraint(:provider_namespace_fingerprint,
       name: :storage_cleanup_requests_provider_namespace
     )
+    |> check_constraint(:multipart_quiescence_not_before,
+      name: :storage_cleanup_requests_multipart_quiescence
+    )
+  end
+
+  @doc false
+  def multipart_quiescence_changeset(request, started_at, not_before) do
+    request
+    |> change(
+      multipart_quiescence_started_at: started_at,
+      multipart_quiescence_not_before: not_before
+    )
+    |> validate_multipart_quiescence()
+    |> check_constraint(:multipart_quiescence_not_before,
+      name: :storage_cleanup_requests_multipart_quiescence
+    )
   end
 
   defp validate_owner(changeset) do
@@ -54,6 +74,24 @@ defmodule Storyarn.Assets.StorageCleanupRequest do
       {"storage_compensation", nil, nil} -> changeset
       {"snapshot_lifecycle", token, fingerprint} when is_binary(token) and is_binary(fingerprint) -> changeset
       _invalid -> add_error(changeset, :owner_kind, "does not match its ownership token")
+    end
+  end
+
+  defp validate_multipart_quiescence(changeset) do
+    started_at = get_field(changeset, :multipart_quiescence_started_at)
+    not_before = get_field(changeset, :multipart_quiescence_not_before)
+
+    case {started_at, not_before} do
+      {nil, nil} ->
+        changeset
+
+      {%DateTime{} = started_at, %DateTime{} = not_before} ->
+        if DateTime.compare(not_before, started_at) in [:eq, :gt],
+          do: changeset,
+          else: add_error(changeset, :multipart_quiescence_not_before, "must not precede its start")
+
+      _partial ->
+        add_error(changeset, :multipart_quiescence_not_before, "must be paired with its start")
     end
   end
 end

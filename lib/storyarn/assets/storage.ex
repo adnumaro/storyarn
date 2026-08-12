@@ -33,6 +33,10 @@ defmodule Storyarn.Assets.Storage do
 
   @callback upload(key, binary_data, content_type) :: {:ok, url} | {:error, term()}
   @callback upload_stream(key, Enumerable.t(), content_type) :: {:ok, url} | {:error, term()}
+  @callback abort_incomplete_multipart_uploads(key, opts :: keyword()) ::
+              {:ok, non_neg_integer()} | {:error, term()}
+  @callback incomplete_multipart_upload_count(key, opts :: keyword()) ::
+              {:ok, non_neg_integer()} | {:error, term()}
   @callback put_if_absent(key, binary_data, content_type) ::
               {:ok, url, created? :: boolean()} | {:error, term()}
   @callback delete(key) :: :ok | {:error, term()}
@@ -54,13 +58,48 @@ defmodule Storyarn.Assets.Storage do
               {:ok, Enumerable.t()} | {:error, term()}
   @callback presigned_upload_url(key, content_type, opts :: keyword()) ::
               {:ok, url, map()} | {:error, term()}
+  @callback presigned_download_url(key, content_type, opts :: keyword()) ::
+              {:ok, url} | {:error, term()}
   @callback copy(source_key :: key, dest_key :: key) :: :ok | {:error, term()}
   @callback copy_if_absent(source_key :: key, dest_key :: key) ::
               {:ok, created? :: boolean()} | {:error, term()}
   @callback key_from_url(url) :: {:ok, key} | {:error, :invalid_url}
   @callback list_prefix(String.t(), keyword()) :: {:ok, list_page()} | {:error, term()}
   @callback list_prefix_metadata(String.t(), keyword()) :: {:ok, metadata_list_page()} | {:error, term()}
-  @optional_callbacks list_prefix_metadata: 2
+  @optional_callbacks list_prefix_metadata: 2,
+                      abort_incomplete_multipart_uploads: 2,
+                      incomplete_multipart_upload_count: 2
+
+  @snapshot_archive_multipart_cleanup_key_pattern ~r'\Aprojects/[1-9][0-9]*/snapshots/archives/v2/(?:staging|ready)/[A-Za-z0-9_-]{16}/(?:snapshot\.zip|manifest\.json)\z'
+
+  @doc "Returns the hard wall-clock deadline shared by UploadPart and cleanup quiescence."
+  @spec multipart_upload_part_deadline_ms() :: pos_integer()
+  def multipart_upload_part_deadline_ms do
+    config = Application.fetch_env!(:storyarn, __MODULE__)
+
+    case Keyword.fetch!(config, :multipart_upload_part_deadline_ms) do
+      timeout when is_integer(timeout) and timeout > 0 -> timeout
+      _invalid -> raise "invalid multipart UploadPart deadline"
+    end
+  end
+
+  @doc "Returns the cleanup quiescence window with a database-clock precision margin."
+  @spec multipart_cleanup_quiescence_seconds() :: pos_integer()
+  def multipart_cleanup_quiescence_seconds do
+    timeout_ms = multipart_upload_part_deadline_ms()
+
+    # Cleanup receipts use second-precision timestamps. One extra second keeps
+    # the real elapsed window at or above the UploadPart deadline even when the
+    # database clock is truncated immediately before the next whole second.
+    div(timeout_ms + 999, 1_000) + 1
+  end
+
+  @doc false
+  @spec multipart_cleanup_key?(term()) :: boolean()
+  def multipart_cleanup_key?(key) when is_binary(key),
+    do: Regex.match?(@snapshot_archive_multipart_cleanup_key_pattern, key)
+
+  def multipart_cleanup_key?(_key), do: false
 
   @doc """
   Returns the configured storage adapter.
@@ -91,6 +130,57 @@ defmodule Storyarn.Assets.Storage do
   def upload_stream(key, chunks, content_type) do
     adapter().upload_stream(key, chunks, content_type)
   end
+
+  @doc """
+  Aborts every incomplete multipart upload owned by one exact canonical key.
+
+  Cleanup calls this only after durable ownership and provider namespace have
+  been revalidated. Adapters that do not use multipart uploads may omit the
+  callback and are treated as having no incomplete uploads.
+  """
+  @spec abort_incomplete_multipart_uploads(key(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def abort_incomplete_multipart_uploads(key, opts \\ [])
+
+  def abort_incomplete_multipart_uploads(key, opts) when is_binary(key) and is_list(opts) do
+    if canonical_key?(key) and Keyword.keyword?(opts) do
+      adapter = adapter()
+      _loaded? = Code.ensure_loaded?(adapter)
+
+      if function_exported?(adapter, :abort_incomplete_multipart_uploads, 2),
+        do: adapter.abort_incomplete_multipart_uploads(key, opts),
+        else: {:ok, 0}
+    else
+      {:error, :invalid_multipart_cleanup_request}
+    end
+  end
+
+  def abort_incomplete_multipart_uploads(_key, _opts), do: {:error, :invalid_multipart_cleanup_request}
+
+  @doc """
+  Counts incomplete multipart uploads for one exact canonical cleanup key.
+
+  This is read-only operational evidence. It does not grant deletion authority
+  and adapters without exact multipart inventory must fail closed.
+  """
+  @spec incomplete_multipart_upload_count(key(), keyword()) ::
+          {:ok, non_neg_integer()} | {:error, term()}
+  def incomplete_multipart_upload_count(key, opts \\ [])
+
+  def incomplete_multipart_upload_count(key, opts) when is_binary(key) and is_list(opts) do
+    if canonical_key?(key) and Keyword.keyword?(opts) do
+      adapter = adapter()
+      _loaded? = Code.ensure_loaded?(adapter)
+
+      if function_exported?(adapter, :incomplete_multipart_upload_count, 2),
+        do: adapter.incomplete_multipart_upload_count(key, opts),
+        else: {:error, :multipart_inventory_not_supported}
+    else
+      {:error, :invalid_multipart_inventory_request}
+    end
+  end
+
+  def incomplete_multipart_upload_count(_key, _opts), do: {:error, :invalid_multipart_inventory_request}
 
   @doc """
   Stores an object only when the key does not already exist.
@@ -216,6 +306,29 @@ defmodule Storyarn.Assets.Storage do
   end
 
   @doc """
+  Generates a short-lived URL for a direct private download.
+
+  The URL is a bearer credential and must only be returned after the caller
+  has authorized the exact object. Download URLs are capped at five minutes;
+  response metadata is fixed by the signature so browsers receive a private
+  attachment rather than provider defaults.
+  """
+  def presigned_download_url(key, content_type, opts \\ []) do
+    with true <- canonical_key?(key),
+         true <- valid_download_content_type?(content_type),
+         true <- Keyword.keyword?(opts),
+         {:ok, expires_in} <- download_expiry(opts),
+         {:ok, filename} <- download_filename(opts) do
+      adapter().presigned_download_url(key, content_type,
+        expires_in: expires_in,
+        filename: filename
+      )
+    else
+      _invalid -> {:error, :invalid_presigned_download_request}
+    end
+  end
+
+  @doc """
   Copies a file from one storage key to another.
   """
   def copy(source_key, dest_key) do
@@ -289,6 +402,35 @@ defmodule Storyarn.Assets.Storage do
   def key_from_url(url) do
     adapter().key_from_url(url)
   end
+
+  defp download_expiry(opts) do
+    case Keyword.get(opts, :expires_in, 300) do
+      expires_in when is_integer(expires_in) and expires_in > 0 and expires_in <= 300 ->
+        {:ok, expires_in}
+
+      _invalid ->
+        {:error, :invalid_expiry}
+    end
+  end
+
+  defp download_filename(opts) do
+    case Keyword.get(opts, :filename) do
+      filename when is_binary(filename) and byte_size(filename) > 0 and byte_size(filename) <= 255 ->
+        if String.valid?(filename) and not String.contains?(filename, ["\r", "\n", "\"", "\\", <<0>>]),
+          do: {:ok, filename},
+          else: {:error, :invalid_filename}
+
+      _invalid ->
+        {:error, :invalid_filename}
+    end
+  end
+
+  defp valid_download_content_type?(content_type) when is_binary(content_type) do
+    byte_size(content_type) in 1..255 and String.valid?(content_type) and
+      not String.contains?(content_type, ["\r", "\n", <<0>>])
+  end
+
+  defp valid_download_content_type?(_content_type), do: false
 
   defp recoverable_blob_key?(key) when is_binary(key) do
     case String.split(key, "/", trim: false) do

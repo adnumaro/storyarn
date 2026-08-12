@@ -176,6 +176,80 @@ defmodule Storyarn.Billing.StorageAccountingConcurrencyTest do
     assert active_count == 1
   end
 
+  test "concurrent snapshot download grants coalesce onto one active lease" do
+    %{user: user, project: project, snapshot: snapshot, workspace: workspace} =
+      Sandbox.unboxed_run(Repo, fn ->
+        user =
+          user_fixture(%{
+            email: "snapshot-export-lease-race-#{Ecto.UUID.generate()}@example.com"
+          })
+
+        project = project_fixture(user)
+        workspace = Repo.get!(Workspace, project.workspace_id)
+        snapshot = insert_full_snapshot!(project)
+
+        %{user: user, project: project, snapshot: snapshot, workspace: workspace}
+      end)
+
+    on_exit(fn -> cleanup_fixture(user, project, workspace) end)
+
+    parent = self()
+    barrier = make_ref()
+
+    acquire = fn ->
+      Task.async(fn ->
+        :ok = Sandbox.checkout(Repo, sandbox: false)
+
+        try do
+          send(parent, {barrier, :ready, self()})
+
+          receive do
+            {^barrier, :acquire} ->
+              Billing.acquire_snapshot_export_lease(%{
+                workspace_id: workspace.id,
+                project_id: project.id,
+                project_snapshot_id: snapshot.id
+              })
+          after
+            @timeout -> exit(:snapshot_export_lease_barrier_timeout)
+          end
+        after
+          Sandbox.checkin(Repo)
+        end
+      end)
+    end
+
+    first = acquire.()
+    second = acquire.()
+
+    assert_receive {^barrier, :ready, first_pid}, @timeout
+    assert_receive {^barrier, :ready, second_pid}, @timeout
+
+    send(first_pid, {barrier, :acquire})
+    send(second_pid, {barrier, :acquire})
+
+    assert [
+             {:ok, %StorageReservation{id: lease_id, generation: 1}},
+             {:ok, %StorageReservation{id: lease_id, generation: 2}}
+           ] =
+             Enum.sort_by([Task.await(first, @timeout), Task.await(second, @timeout)], fn {:ok, reservation} ->
+               reservation.generation
+             end)
+
+    persisted =
+      Sandbox.unboxed_run(Repo, fn ->
+        Repo.all(
+          from(reservation in StorageReservation,
+            where:
+              reservation.project_snapshot_id_snapshot == ^snapshot.id and
+                reservation.kind == "snapshot_export" and reservation.status == "active"
+          )
+        )
+      end)
+
+    assert [%StorageReservation{id: ^lease_id, generation: 2}] = persisted
+  end
+
   defp insert_full_snapshot!(project) do
     full_project_snapshot_fixture(project, %{
       version_number: 1,

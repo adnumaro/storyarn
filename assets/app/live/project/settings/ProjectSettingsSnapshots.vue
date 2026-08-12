@@ -7,7 +7,6 @@ import {
   FileJson2,
   HardDrive,
   Image,
-  Link2,
   LoaderCircle,
   Plus,
   ShieldCheck,
@@ -33,7 +32,7 @@ import {
   type WorkspaceStorageUsage,
 } from "@shared/utils/storage-accounting";
 
-type SnapshotMode = "full" | "linked";
+type SnapshotMode = "full";
 type SnapshotLifecycle =
   | "pending"
   | "building"
@@ -42,7 +41,7 @@ type SnapshotLifecycle =
   | "failed"
   | "cancelled"
   | "deleting";
-type SnapshotIntegrity = "unknown" | "verified" | "at_risk" | "missing" | "corrupt" | "incomplete";
+type SnapshotIntegrity = "unknown" | "verified" | "missing" | "corrupt" | "incomplete";
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
 interface Snapshot {
@@ -57,9 +56,8 @@ interface Snapshot {
   lifecycleStatus: SnapshotLifecycle | null;
   integrityStatus: SnapshotIntegrity | null;
   accountedSizeBytes: ByteCount | null;
-  projectDataSizeBytes: ByteCount | null;
-  metadataSizeBytes: ByteCount | null;
-  assetBlobSizeBytes: ByteCount | null;
+  archiveSizeBytes: ByteCount | null;
+  sidecarSizeBytes: ByteCount | null;
   assetCount: number | null;
   blobCount: number | null;
   activeReservationBytes: ByteCount;
@@ -76,6 +74,8 @@ interface Snapshot {
   cancelRequestedAt: string | null;
   canCancel: boolean;
   canDelete: boolean;
+  deleteStatus: "ready" | "download_lease" | "active_operation" | null;
+  downloadUrl: string | null;
 }
 
 interface SnapshotLimit {
@@ -512,7 +512,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
           "
         />
 
-        <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <div class="rounded-md border border-border/60 bg-background/70 p-3">
             <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Image class="size-3.5" aria-hidden="true" />
@@ -538,15 +538,6 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
             </div>
             <div class="mt-1 font-medium tabular-nums">
               {{ formatBytes(storageUsage.fullSnapshotsBytes, locale) }}
-            </div>
-          </div>
-          <div class="rounded-md border border-border/60 bg-background/70 p-3">
-            <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Link2 class="size-3.5" aria-hidden="true" />
-              {{ $t("project_settings.snapshots.storage_breakdown.linked_snapshots") }}
-            </div>
-            <div class="mt-1 font-medium tabular-nums">
-              {{ formatBytes(storageUsage.linkedSnapshotsBytes, locale) }}
             </div>
           </div>
         </div>
@@ -845,33 +836,25 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
               </div>
 
               <div
-                class="mt-3 grid gap-2 rounded-lg border border-border/60 bg-background/60 p-3 sm:grid-cols-3"
+                class="mt-3 grid gap-2 rounded-lg border border-border/60 bg-background/60 p-3 sm:grid-cols-2"
+                :data-testid="`archive-breakdown-${snapshot.id}`"
               >
                 <div>
                   <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Archive class="size-3.5" aria-hidden="true" />
+                    {{ $t("project_settings.snapshots.measurements.zip_archive") }}
+                  </div>
+                  <div class="mt-1 text-sm font-medium tabular-nums">
+                    {{ formatBytes(snapshot.archiveSizeBytes, locale) }}
+                  </div>
+                </div>
+                <div>
+                  <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <FileJson2 class="size-3.5" aria-hidden="true" />
-                    {{ $t("project_settings.snapshots.measurements.project_data") }}
+                    {{ $t("project_settings.snapshots.measurements.manifest_sidecar") }}
                   </div>
                   <div class="mt-1 text-sm font-medium tabular-nums">
-                    {{ formatBytes(snapshot.projectDataSizeBytes, locale) }}
-                  </div>
-                </div>
-                <div>
-                  <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Database class="size-3.5" aria-hidden="true" />
-                    {{ $t("project_settings.snapshots.measurements.metadata") }}
-                  </div>
-                  <div class="mt-1 text-sm font-medium tabular-nums">
-                    {{ formatBytes(snapshot.metadataSizeBytes, locale) }}
-                  </div>
-                </div>
-                <div>
-                  <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <HardDrive class="size-3.5" aria-hidden="true" />
-                    {{ $t("project_settings.snapshots.measurements.unique_blobs") }}
-                  </div>
-                  <div class="mt-1 text-sm font-medium tabular-nums">
-                    {{ formatBytes(snapshot.assetBlobSizeBytes, locale) }}
+                    {{ formatBytes(snapshot.sidecarSizeBytes, locale) }}
                   </div>
                 </div>
               </div>
@@ -920,24 +903,56 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                 </span>
               </div>
             </div>
-            <Button
-              v-if="snapshot.canDelete"
-              type="button"
-              variant="ghost"
-              size="sm"
-              class="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              :disabled="deletingSnapshotIds.has(snapshot.id)"
-              :data-testid="`delete-snapshot-${snapshot.id}`"
-              @click="openDeleteDialog(snapshot)"
-            >
-              <LoaderCircle
-                v-if="deletingSnapshotIds.has(snapshot.id)"
-                class="size-4 animate-spin"
-                aria-hidden="true"
-              />
-              <Trash2 v-else class="size-4" aria-hidden="true" />
-              {{ $t("project_settings.snapshots.delete.action") }}
-            </Button>
+            <div class="flex shrink-0 flex-col items-stretch gap-2 lg:items-end">
+              <Button v-if="snapshot.downloadUrl" variant="outline" size="sm" as-child>
+                <a
+                  :href="snapshot.downloadUrl"
+                  referrerpolicy="no-referrer"
+                  data-live-link-exempt="download"
+                  :data-testid="`download-snapshot-${snapshot.id}`"
+                >
+                  <Download class="size-4" aria-hidden="true" />
+                  {{ $t("project_settings.snapshots.download.action") }}
+                </a>
+              </Button>
+              <p
+                v-if="snapshot.deleteStatus === 'download_lease'"
+                :id="`delete-snapshot-reason-${snapshot.id}`"
+                class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
+                :data-testid="`delete-download-lease-${snapshot.id}`"
+              >
+                {{ $t("project_settings.snapshots.delete.download_lease") }}
+              </p>
+              <p
+                v-else-if="snapshot.deleteStatus === 'active_operation'"
+                :id="`delete-snapshot-reason-${snapshot.id}`"
+                class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
+                :data-testid="`delete-active-operation-${snapshot.id}`"
+              >
+                {{ $t("project_settings.snapshots.delete.active_operation") }}
+              </p>
+              <Button
+                v-if="snapshot.deleteStatus"
+                type="button"
+                variant="ghost"
+                size="sm"
+                class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                :disabled="!snapshot.canDelete || deletingSnapshotIds.has(snapshot.id)"
+                :aria-describedby="
+                  snapshot.canDelete ? undefined : `delete-snapshot-reason-${snapshot.id}`
+                "
+                :data-testid="`delete-snapshot-${snapshot.id}`"
+                @click="openDeleteDialog(snapshot)"
+              >
+                <LoaderCircle
+                  v-if="deletingSnapshotIds.has(snapshot.id)"
+                  class="size-4 animate-spin"
+                  aria-hidden="true"
+                />
+                <Trash2 v-else class="size-4" aria-hidden="true" />
+                {{ $t("project_settings.snapshots.delete.action") }}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

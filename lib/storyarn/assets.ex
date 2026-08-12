@@ -1724,7 +1724,13 @@ defmodule Storyarn.Assets do
   end
 
   defp ensure_upload_blob(blob_key, blob_hash, ext, context) do
-    case BlobStore.ensure_blob_with_status(context.project.id, blob_hash, ext, context.binary_data) do
+    case BlobStore.ensure_blob_with_status(
+           context.project.id,
+           blob_hash,
+           ext,
+           context.binary_data,
+           context.content_type
+         ) do
       {:ok, blob_key, blob_created?} ->
         track_new_upload_blob(blob_key, blob_created?)
 

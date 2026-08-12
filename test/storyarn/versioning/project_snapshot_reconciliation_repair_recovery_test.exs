@@ -444,7 +444,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairRecoveryTest do
     assert {:ok, namespace} = Storage.namespace_fingerprint()
 
     assert {:ok, run} =
-             Versioning.start_project_snapshot_reconciliation(
+             Storyarn.SnapshotReconciliationTestHelpers.start_run(
                max_objects_per_step: 10,
                provider_page_size: 100,
                max_provider_objects: 10_000,

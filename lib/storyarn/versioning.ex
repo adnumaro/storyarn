@@ -12,19 +12,20 @@ defmodule Storyarn.Versioning do
   - `Builders.*` - Entity-specific snapshot building and restoration
   """
 
+  alias Storyarn.Billing
   alias Storyarn.Versioning.ChangeDetector
   alias Storyarn.Versioning.ConflictDetector
   alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCrud
+  alias Storyarn.Versioning.ProjectSnapshotDownload
+  alias Storyarn.Versioning.ProjectSnapshotLeasePolicy
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
   alias Storyarn.Versioning.ProjectSnapshotReconciliation
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRepair
-  alias Storyarn.Versioning.ProjectSnapshotReset
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
-  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Versioning.SnapshotViewer
   alias Storyarn.Versioning.VersionCrud
 
@@ -278,6 +279,41 @@ defmodule Storyarn.Versioning do
     as: :delete_expired_build_candidate
 
   @doc false
+  defdelegate recover_expired_project_snapshot_export_leases(now, opts \\ []),
+    to: Billing,
+    as: :recover_expired_snapshot_export_leases
+
+  @doc false
+  defdelegate purge_released_project_snapshot_export_leases(cutoff, opts \\ []),
+    to: Billing,
+    as: :purge_released_snapshot_export_leases
+
+  @doc false
+  defdelegate project_snapshot_download_signed_url_ttl_seconds(),
+    to: ProjectSnapshotLeasePolicy,
+    as: :download_signed_url_ttl_seconds
+
+  @doc false
+  defdelegate project_snapshot_download_export_lease_ttl_seconds(),
+    to: ProjectSnapshotLeasePolicy,
+    as: :download_export_lease_ttl_seconds
+
+  @doc false
+  defdelegate project_snapshot_export_lease_retention_seconds(),
+    to: ProjectSnapshotLeasePolicy,
+    as: :export_lease_retention_seconds
+
+  @doc false
+  defdelegate project_snapshot_build_heartbeat_interval_ms(),
+    to: ProjectSnapshotLeasePolicy,
+    as: :build_heartbeat_interval_ms
+
+  @doc false
+  defdelegate project_snapshot_build_lease_ttl_seconds(),
+    to: ProjectSnapshotLeasePolicy,
+    as: :build_lease_ttl_seconds
+
+  @doc false
   defdelegate project_snapshot_build_recovery_quarantine_seconds(),
     to: ProjectSnapshotLifecycle,
     as: :build_recovery_quarantine_seconds
@@ -334,30 +370,6 @@ defmodule Storyarn.Versioning do
     to: ProjectSnapshotLifecycle,
     as: :cleanup_backlog
 
-  @doc false
-  defdelegate prepare_project_snapshot_reset(workspace_id, environment, opts \\ []),
-    to: ProjectSnapshotReset,
-    as: :prepare
-
-  @doc false
-  defdelegate execute_project_snapshot_reset(plan, confirmation_digest, opts \\ []),
-    to: ProjectSnapshotReset,
-    as: :execute
-
-  @doc false
-  defdelegate prepare_project_snapshot_provider_reset(environment, opts \\ []),
-    to: ProjectSnapshotReset,
-    as: :prepare_provider
-
-  @doc false
-  defdelegate validate_project_snapshot_reset_plan(plan),
-    to: ProjectSnapshotReset,
-    as: :validate_plan
-
-  defdelegate verify_project_snapshot_reset_rollout_readiness(environment, opts \\ []),
-    to: ProjectSnapshotReset,
-    as: :verify_rollout_readiness
-
   @doc "Subscribes the current process to lifecycle changes for one project's snapshots."
   defdelegate subscribe_project_snapshots(project_id),
     to: ProjectSnapshotBuild,
@@ -373,6 +385,11 @@ defmodule Storyarn.Versioning do
   """
   defdelegate get_project_snapshot(project_id, id), to: ProjectSnapshotCrud, as: :get_snapshot_by_id
 
+  @doc "Yields one authorized persisted snapshot archive behind its durable download lease."
+  defdelegate with_project_snapshot_archive(project, snapshot_id, callback),
+    to: ProjectSnapshotDownload,
+    as: :with_archive
+
   @doc """
   Updates a project snapshot's title and description.
   """
@@ -386,13 +403,6 @@ defmodule Storyarn.Versioning do
     as: :finalize_object_set
 
   @doc """
-  Converts linked ownership to a self-contained full object set inside its reservation commit.
-  """
-  defdelegate convert_linked_project_snapshot_object_set(snapshot_id, expected_generation, attrs),
-    to: ProjectSnapshotCrud,
-    as: :convert_linked_object_set
-
-  @doc """
   Reconfirms immutable snapshot accounting behind a workspace and generation fence.
   """
   defdelegate remeasure_project_snapshot_object_set(snapshot_id, expected_generation, attrs),
@@ -403,44 +413,6 @@ defmodule Storyarn.Versioning do
   Counts project snapshots for billing limit checks.
   """
   defdelegate count_project_snapshots(project_id), to: ProjectSnapshotCrud, as: :count_snapshots
-
-  @doc """
-  Persists a canonical snapshot-owned object set without scheduling capture.
-  """
-  defdelegate persist_snapshot_object_set(project_id, project_snapshot, assets, opts \\ []),
-    to: SnapshotObjectStorage,
-    as: :persist
-
-  @doc "Materializes exact project and manifest bytes without writing storage objects."
-  defdelegate prepare_snapshot_object_set(project_id, project_snapshot, assets, opts \\ []),
-    to: SnapshotObjectStorage,
-    as: :prepare
-
-  @doc """
-  Stages and verifies a canonical snapshot object set without publishing it.
-  """
-  defdelegate stage_snapshot_object_set(project_id, project_snapshot, assets, opts \\ []),
-    to: SnapshotObjectStorage,
-    as: :stage
-
-  @doc "Stages a previously materialized immutable snapshot capture."
-  defdelegate stage_prepared_snapshot_object_set(project_id, prepared, opts \\ []),
-    to: SnapshotObjectStorage,
-    as: :stage_prepared
-
-  @doc """
-  Publishes a staged object set after the supplied exact-size authorization.
-  """
-  defdelegate publish_snapshot_object_set(staged, before_publish),
-    to: SnapshotObjectStorage,
-    as: :publish
-
-  @doc """
-  Loads a ready object set after verifying its manifest and complete inventory.
-  """
-  defdelegate load_snapshot_object_set(manifest_storage_key, manifest_checksum, manifest_size_bytes, opts \\ []),
-    to: SnapshotObjectStorage,
-    as: :load_verified
 
   # ========== Snapshot Diff ==========
 

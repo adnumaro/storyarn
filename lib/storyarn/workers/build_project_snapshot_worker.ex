@@ -5,7 +5,7 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
 
   @max_attempts 5
   use Oban.Worker,
-    queue: :snapshots,
+    queue: :snapshot_archives,
     max_attempts: @max_attempts,
     unique: [
       fields: [:worker, :args],
@@ -14,8 +14,6 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
     ]
 
   alias Storyarn.Versioning
-
-  @heartbeat_interval_ms 60_000
 
   @impl Oban.Worker
   def backoff(%Oban.Job{attempt: attempt, max_attempts: max_attempts} = job) do
@@ -59,10 +57,9 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
 
   defp heartbeat_loop(snapshot_id, job_id) do
     receive do
-      :stop ->
-        :ok
+      :stop -> :ok
     after
-      @heartbeat_interval_ms ->
+      Versioning.project_snapshot_build_heartbeat_interval_ms() ->
         case Versioning.heartbeat_project_snapshot_build(snapshot_id, job_id) do
           :ok -> heartbeat_loop(snapshot_id, job_id)
           {:error, reason} -> exit({:snapshot_build_heartbeat_failed, reason})

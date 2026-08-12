@@ -26,6 +26,21 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
 
     now = TimeHelpers.now()
     build_recovery = Versioning.reconcile_stale_project_snapshot_builds()
+    {export_lease_after_id, export_lease_cutoff} = export_lease_cursor(args, now)
+    {export_lease_purge_after_id, export_lease_purge_cutoff} = export_lease_purge_cursor(args, now)
+
+    export_lease_recovery =
+      Versioning.recover_expired_project_snapshot_export_leases(export_lease_cutoff,
+        after_id: export_lease_after_id,
+        limit: @batch_size
+      )
+
+    export_lease_purge =
+      Versioning.purge_released_project_snapshot_export_leases(export_lease_purge_cutoff,
+        after_id: export_lease_purge_after_id,
+        limit: @batch_size
+      )
+
     retention_after_id = Map.get(args, "retention_after_id", 0)
     expired_build_after_id = Map.get(args, "expired_build_after_id", 0)
     through_id = Map.get(args, "through_id") || Versioning.project_snapshot_lifecycle_high_watermark()
@@ -58,17 +73,26 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
         :retention_candidate_changed
       )
 
-    failure_count = failure_count + expired_build_failure_count + build_recovery.failure_count
+    failure_count =
+      failure_count + expired_build_failure_count + build_recovery.failure_count +
+        export_lease_recovery.failure_count + export_lease_purge.failure_count
+
+    continuation = %{
+      candidates: candidates,
+      expired_builds: expired_builds,
+      retention_after_id: retention_after_id,
+      expired_build_after_id: expired_build_after_id,
+      through_id: through_id,
+      export_lease_recovery: export_lease_recovery,
+      export_lease_after_id: export_lease_after_id,
+      export_lease_cutoff: export_lease_cutoff,
+      export_lease_purge: export_lease_purge,
+      export_lease_purge_after_id: export_lease_purge_after_id,
+      export_lease_purge_cutoff: export_lease_purge_cutoff
+    }
 
     {continuation_count, failure_count} =
-      continuation_result(
-        candidates,
-        expired_builds,
-        retention_after_id,
-        expired_build_after_id,
-        through_id,
-        failure_count
-      )
+      continuation_result(continuation, failure_count)
 
     {recovery_followup_count, failure_count} =
       build_recovery_followup_result(build_recovery.orphaned_count, now, failure_count)
@@ -80,6 +104,12 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
       %{
         deleted_count: deleted_count,
         expired_build_count: expired_build_count,
+        expired_export_lease_candidate_count: export_lease_recovery.candidate_count,
+        expired_export_lease_count: export_lease_recovery.released_count,
+        expired_export_lease_changed_count: export_lease_recovery.changed_count,
+        purged_export_lease_candidate_count: export_lease_purge.candidate_count,
+        purged_export_lease_count: export_lease_purge.purged_count,
+        purged_export_lease_changed_count: export_lease_purge.changed_count,
         orphaned_build_count: build_recovery.orphaned_count,
         settled_build_count: build_recovery.settled_count,
         failure_count: failure_count,
@@ -104,21 +134,8 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     end)
   end
 
-  defp continuation_result(
-         candidates,
-         expired_builds,
-         retention_after_id,
-         expired_build_after_id,
-         through_id,
-         failure_count
-       ) do
-    case maybe_schedule_followup(
-           candidates,
-           expired_builds,
-           retention_after_id,
-           expired_build_after_id,
-           through_id
-         ) do
+  defp continuation_result(continuation, failure_count) do
+    case maybe_schedule_followup(continuation) do
       {:ok, count} -> {count, failure_count}
       {:error, _reason} -> {0, failure_count + 1}
     end
@@ -143,31 +160,138 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     end
   end
 
-  defp maybe_schedule_followup(candidates, expired_builds, retention_after_id, expired_build_after_id, through_id) do
-    next_retention_id = next_after_id(candidates, retention_after_id)
-    next_expired_build_id = next_after_id(expired_builds, expired_build_after_id)
+  defp maybe_schedule_followup(continuation) do
+    cursor = continuation_cursor(continuation)
 
-    continue? =
-      (candidates != [] and next_retention_id < through_id) or
-        (expired_builds != [] and next_expired_build_id < through_id)
-
-    if continue? do
-      %{
-        retention_after_id: next_retention_id,
-        expired_build_after_id: next_expired_build_id,
-        through_id: through_id
-      }
-      |> new()
-      |> Oban.insert()
-      |> case do
-        {:ok, _job} -> {:ok, 1}
-        {:error, reason} -> {:error, reason}
-      end
+    if continuation_required?(continuation, cursor) do
+      continuation
+      |> followup_args(cursor)
+      |> schedule_followup()
     else
       {:ok, 0}
     end
   end
 
+  defp continuation_cursor(continuation) do
+    recovery = continuation.export_lease_recovery
+    purge = continuation.export_lease_purge
+
+    %{
+      retention_after_id: next_after_id(continuation.candidates, continuation.retention_after_id),
+      expired_build_after_id: next_after_id(continuation.expired_builds, continuation.expired_build_after_id),
+      export_lease_after_id: recovery.last_candidate_id || continuation.export_lease_after_id,
+      continue_export_leases?: recovery.candidate_count == @batch_size and is_integer(recovery.last_candidate_id),
+      export_lease_purge_after_id: purge.last_candidate_id || continuation.export_lease_purge_after_id,
+      continue_export_lease_purge?: purge.candidate_count == @batch_size and is_integer(purge.last_candidate_id)
+    }
+  end
+
+  defp continuation_required?(continuation, cursor) do
+    stream_remaining?(
+      continuation.candidates,
+      cursor.retention_after_id,
+      continuation.through_id
+    ) or
+      stream_remaining?(
+        continuation.expired_builds,
+        cursor.expired_build_after_id,
+        continuation.through_id
+      ) or cursor.continue_export_leases? or cursor.continue_export_lease_purge?
+  end
+
+  defp stream_remaining?([], _next_after_id, _through_id), do: false
+  defp stream_remaining?(_candidates, next_after_id, through_id), do: next_after_id < through_id
+
+  defp followup_args(continuation, cursor) do
+    %{
+      retention_after_id: cursor.retention_after_id,
+      expired_build_after_id: cursor.expired_build_after_id,
+      through_id: continuation.through_id
+    }
+    |> maybe_put_export_lease_cursor(
+      cursor.continue_export_leases?,
+      cursor.export_lease_after_id,
+      continuation.export_lease_cutoff
+    )
+    |> maybe_put_export_lease_purge_cursor(
+      cursor.continue_export_lease_purge?,
+      cursor.export_lease_purge_after_id,
+      continuation.export_lease_purge_cutoff
+    )
+  end
+
+  defp schedule_followup(args) do
+    args
+    |> new()
+    |> Oban.insert()
+    |> case do
+      {:ok, _job} -> {:ok, 1}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp next_after_id([], current_after_id), do: current_after_id
   defp next_after_id(candidates, _current_after_id), do: List.last(candidates).snapshot_id
+
+  defp export_lease_cursor(args, now) do
+    after_id = Map.get(args, "export_lease_after_id", Map.get(args, :export_lease_after_id, 0))
+    cutoff = Map.get(args, "export_lease_cutoff", Map.get(args, :export_lease_cutoff))
+
+    {normalize_export_lease_after_id(after_id), normalize_export_lease_cutoff(cutoff, now)}
+  end
+
+  defp normalize_export_lease_after_id(after_id) when is_integer(after_id) and after_id >= 0, do: after_id
+  defp normalize_export_lease_after_id(_after_id), do: 0
+
+  defp normalize_export_lease_cutoff(nil, now), do: now
+
+  defp normalize_export_lease_cutoff(value, now) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, cutoff, 0} -> cutoff
+      _invalid -> now
+    end
+  end
+
+  defp normalize_export_lease_cutoff(_value, now), do: now
+
+  defp maybe_put_export_lease_cursor(args, true, after_id, cutoff) do
+    args
+    |> Map.put(:export_lease_after_id, after_id)
+    |> Map.put(:export_lease_cutoff, DateTime.to_iso8601(cutoff))
+  end
+
+  defp maybe_put_export_lease_cursor(args, false, _after_id, _cutoff), do: args
+
+  defp export_lease_purge_cursor(args, now) do
+    after_id =
+      Map.get(
+        args,
+        "export_lease_purge_after_id",
+        Map.get(args, :export_lease_purge_after_id, 0)
+      )
+
+    cutoff =
+      Map.get(
+        args,
+        "export_lease_purge_cutoff",
+        Map.get(args, :export_lease_purge_cutoff)
+      )
+
+    default_cutoff =
+      DateTime.add(
+        now,
+        -Versioning.project_snapshot_export_lease_retention_seconds(),
+        :second
+      )
+
+    {normalize_export_lease_after_id(after_id), normalize_export_lease_cutoff(cutoff, default_cutoff)}
+  end
+
+  defp maybe_put_export_lease_purge_cursor(args, true, after_id, cutoff) do
+    args
+    |> Map.put(:export_lease_purge_after_id, after_id)
+    |> Map.put(:export_lease_purge_cutoff, DateTime.to_iso8601(cutoff))
+  end
+
+  defp maybe_put_export_lease_purge_cursor(args, false, _after_id, _cutoff), do: args
 end

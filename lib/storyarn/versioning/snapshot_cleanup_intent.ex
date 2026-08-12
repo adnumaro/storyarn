@@ -19,7 +19,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
   @statuses ~w(pending processing retrying completed terminal)
   @reasons ~w(user_delete retention expired_build project_hard_delete workspace_hard_delete)
   @origins ~w(user daily pre_restore post_restore)
-  @blob_path ~r|\Ablobs/[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z|
+  @v2_ready_prefix ~r|\Aprojects/[1-9]\d*/snapshots/archives/v2/ready/[A-Za-z0-9_-]{16}\z|
   @provider_namespace_pattern ~r/\A[0-9a-f]{64}\z/
 
   @type t :: %__MODULE__{
@@ -158,7 +158,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
       :provider_namespace_fingerprint,
       :requested_at
     ])
-    |> validate_inclusion(:mode, ["full", "linked"])
+    |> validate_inclusion(:mode, ["full"])
     |> validate_inclusion(:origin, @origins)
     |> validate_inclusion(:reason, @reasons)
     |> validate_inclusion(:authority_kind, ["user", "system"])
@@ -409,7 +409,8 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
     is_binary(ready_prefix) and is_binary(staging_prefix) and
       Storage.canonical_key?(ready_prefix) and Storage.canonical_key?(staging_prefix) and
       ready_prefix != staging_prefix and
-      String.replace(ready_prefix, "/ready/", "/staging/", global: false) == staging_prefix
+      String.replace(ready_prefix, "/ready/", "/staging/", global: false) == staging_prefix and
+      Regex.match?(@v2_ready_prefix, ready_prefix)
   end
 
   defp valid_storage_keys?(keys, ready_prefix, staging_prefix) do
@@ -417,11 +418,20 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
     ready_paths = relative_paths(grouped[:ready] || [], ready_prefix)
     staging_paths = relative_paths(grouped[:staging] || [], staging_prefix)
 
-    (grouped[:invalid] || []) == [] and ready_paths != [] and
-      MapSet.new(ready_paths) == MapSet.new(staging_paths) and
-      "manifest.json" in ready_paths and "project.json" in ready_paths and
-      Enum.all?(ready_paths, &valid_relative_path?/1)
+    valid_storage_path_pair?(grouped, ready_paths, staging_paths) and
+      valid_storage_paths_for_prefix?(ready_prefix, ready_paths)
   end
+
+  defp valid_storage_path_pair?(grouped, ready_paths, staging_paths) do
+    (grouped[:invalid] || []) == [] and ready_paths != [] and
+      MapSet.new(ready_paths) == MapSet.new(staging_paths)
+  end
+
+  defp valid_storage_paths_for_prefix?(ready_prefix, ready_paths) do
+    Regex.match?(@v2_ready_prefix, ready_prefix) and valid_v2_storage_paths?(ready_paths)
+  end
+
+  defp valid_v2_storage_paths?(paths), do: MapSet.new(paths) == MapSet.new(["manifest.json", "snapshot.zip"])
 
   defp key_prefix(key, ready_prefix, staging_prefix) when is_binary(key) do
     cond do
@@ -434,9 +444,6 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
   defp key_prefix(_key, _ready_prefix, _staging_prefix), do: :invalid
 
   defp relative_paths(keys, prefix), do: Enum.map(keys, &String.replace_prefix(&1, prefix <> "/", ""))
-
-  defp valid_relative_path?(path) when path in ["manifest.json", "project.json"], do: true
-  defp valid_relative_path?(path), do: Regex.match?(@blob_path, path)
 
   defp inventory_digest(keys) do
     keys

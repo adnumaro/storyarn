@@ -1,11 +1,12 @@
 defmodule Storyarn.Versioning.SnapshotObjectFormat do
   @moduledoc """
-  Defines the canonical, self-contained project snapshot object set.
+  Defines the logical payload framing embedded in a canonical snapshot archive.
 
-  A ready snapshot owns one immutable namespace containing `manifest.json`,
-  `project.json`, and one content-addressed blob for each unique verified
-  SHA-256 digest. Asset catalog entries are logical records: duplicate
-  filenames remain distinct while equal content shares a snapshot-owned blob.
+  The persisted v2 snapshot contains `snapshot.zip` plus a sidecar
+  `manifest.json`. Inside the ZIP, the manifest describes `project.json` and one
+  content-addressed blob for each unique verified SHA-256 digest. Asset catalog
+  entries are logical records: duplicate filenames remain distinct while equal
+  content shares one archive entry.
   """
 
   alias Storyarn.Assets.Asset

@@ -33,12 +33,12 @@ defmodule Storyarn.Assets.StorageCompensation do
   @template_namespace_pattern ~r/\A[a-z0-9][a-z0-9_-]{0,127}\z/
   @template_filename_pattern ~r/\A[\w.-]{1,255}\z/u
   @snapshot_token_pattern ~r/\A[A-Za-z0-9_-]{16}\z/
-  @snapshot_blob_filename_pattern ~r/\A[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z/
-  @storage_reservation_kinds ~w(snapshot-build linked-to-full-conversion restore-staging snapshot-export)
+  @storage_reservation_kinds ~w(snapshot-build restore-staging snapshot-export)
   @storage_reservation_lease_pattern ~r/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
   @storage_reservation_path_segment_pattern ~r/\A[A-Za-z0-9][A-Za-z0-9._-]{0,127}\z/
   @max_storage_reservation_relative_key_bytes 512
   @max_storage_reservation_path_segments 16
+  @multipart_cleanup_evidence_key {__MODULE__, :multipart_cleanup_aborted_count}
 
   @spec new() :: reference()
   def new do
@@ -270,6 +270,427 @@ defmodule Storyarn.Assets.StorageCompensation do
     if failed_targets == [], do: :ok, else: {:error, failed_targets}
   end
 
+  @doc false
+  @spec delete_storage_keys_with_evidence([String.t()]) ::
+          {:ok, %{aborted_count: non_neg_integer()}} | {:error, [String.t()]}
+  def delete_storage_keys_with_evidence(cleanup_targets) when is_list(cleanup_targets) do
+    previous = Process.get(@multipart_cleanup_evidence_key, :not_collecting)
+    Process.put(@multipart_cleanup_evidence_key, 0)
+
+    try do
+      case delete_storage_keys(cleanup_targets) do
+        :ok -> {:ok, %{aborted_count: Process.get(@multipart_cleanup_evidence_key, 0)}}
+        {:error, failed_targets} -> {:error, failed_targets}
+      end
+    after
+      restore_multipart_cleanup_evidence(previous)
+    end
+  end
+
+  @doc false
+  @spec delete_cleanup_request_keys(pos_integer(), [String.t()], keyword()) ::
+          :ok | {:deferred, pos_integer()} | {:error, [String.t()]}
+  def delete_cleanup_request_keys(cleanup_request_id, cleanup_targets, opts \\ [])
+
+  def delete_cleanup_request_keys(cleanup_request_id, cleanup_targets, opts)
+      when is_integer(cleanup_request_id) and cleanup_request_id > 0 and is_list(cleanup_targets) and is_list(opts) do
+    delete_fun = Keyword.get(opts, :delete_fun, &delete_storage_keys_with_evidence/1)
+    inventory_fun = Keyword.get(opts, :inventory_fun, &Storage.incomplete_multipart_upload_count/1)
+    consume? = Keyword.get(opts, :consume?, false) == true
+
+    if Keyword.keyword?(opts) and Enum.all?(Keyword.keys(opts), &(&1 in [:consume?, :delete_fun, :inventory_fun])) and
+         is_function(delete_fun, 1) and is_function(inventory_fun, 1) do
+      do_delete_cleanup_request_keys(cleanup_request_id, cleanup_targets, delete_fun, inventory_fun, consume?)
+    else
+      {:error, cleanup_targets}
+    end
+  rescue
+    error ->
+      Logger.error("Durable multipart cleanup raised error=#{safe_error(error)}")
+      {:error, cleanup_targets}
+  catch
+    kind, reason ->
+      Logger.error("Durable multipart cleanup failed error=#{safe_error({kind, reason})}")
+      {:error, cleanup_targets}
+  end
+
+  def delete_cleanup_request_keys(_cleanup_request_id, cleanup_targets, _opts) when is_list(cleanup_targets),
+    do: {:error, cleanup_targets}
+
+  def delete_cleanup_request_keys(_cleanup_request_id, _cleanup_targets, _opts), do: {:error, []}
+
+  defp do_delete_cleanup_request_keys(cleanup_request_id, cleanup_targets, delete_fun, inventory_fun, consume?) do
+    with {:ok, request} <- load_cleanup_request(cleanup_request_id),
+         {:ok, cleanup_targets} <- validate_cleanup_request_targets(request, cleanup_targets) do
+      dispatch_cleanup_request(request, cleanup_targets, delete_fun, inventory_fun, consume?)
+    else
+      {:error, _reason} -> {:error, cleanup_targets}
+    end
+  end
+
+  defp dispatch_cleanup_request(request, cleanup_targets, delete_fun, inventory_fun, consume?) do
+    case multipart_cleanup_keys(request.storage_keys) do
+      [] ->
+        normalize_cleanup_delete(call_multipart_delete(delete_fun, cleanup_targets))
+
+      multipart_keys ->
+        process_multipart_cleanup(
+          request,
+          cleanup_targets,
+          multipart_keys,
+          delete_fun,
+          inventory_fun,
+          consume?
+        )
+    end
+  end
+
+  defp normalize_cleanup_delete({:ok, _evidence}), do: :ok
+  defp normalize_cleanup_delete({:error, failed_targets}), do: {:error, failed_targets}
+
+  defp load_cleanup_request(cleanup_request_id) do
+    case Repo.get(StorageCleanupRequest, cleanup_request_id) do
+      %StorageCleanupRequest{} = request -> {:ok, request}
+      nil -> {:error, :storage_cleanup_request_not_found}
+    end
+  end
+
+  defp validate_cleanup_request_targets(request, cleanup_targets) do
+    cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
+    owned_targets = MapSet.new(request.storage_keys)
+
+    cond do
+      cleanup_targets == [] ->
+        {:error, :empty_storage_cleanup_batch}
+
+      not Enum.all?(cleanup_targets, &MapSet.member?(owned_targets, &1)) ->
+        {:error, :storage_cleanup_batch_not_owned}
+
+      not MapSet.subset?(
+        request.storage_keys |> multipart_cleanup_keys() |> MapSet.new(),
+        cleanup_targets |> multipart_cleanup_keys() |> MapSet.new()
+      ) ->
+        {:error, :multipart_cleanup_batch_incomplete}
+
+      true ->
+        {:ok, cleanup_targets}
+    end
+  end
+
+  defp multipart_cleanup_keys(cleanup_targets) do
+    cleanup_targets
+    |> Enum.map(&cleanup_target_storage_key/1)
+    |> Enum.filter(&Storage.multipart_cleanup_key?/1)
+    |> Enum.uniq()
+  end
+
+  defp process_multipart_cleanup(request, cleanup_targets, multipart_keys, delete_fun, inventory_fun, consume?) do
+    case cleanup_quiescence_state(request.id) do
+      {:ok, :first_pass} ->
+        run_first_multipart_cleanup(request.id, cleanup_targets, delete_fun)
+
+      {:ok, {:deferred, seconds}} ->
+        {:deferred, seconds}
+
+      {:ok, {:verify, started_at, not_before}} ->
+        verify_multipart_quiescence(
+          request.id,
+          cleanup_targets,
+          multipart_keys,
+          started_at,
+          not_before,
+          delete_fun,
+          inventory_fun,
+          consume?
+        )
+
+      {:error, _reason} ->
+        {:error, cleanup_targets}
+    end
+  end
+
+  defp run_first_multipart_cleanup(cleanup_request_id, cleanup_targets, delete_fun) do
+    case call_multipart_delete(delete_fun, cleanup_targets) do
+      {:ok, _evidence} -> reset_multipart_quiescence_window(cleanup_request_id, nil, nil, cleanup_targets)
+      {:error, _failed_targets} -> {:error, cleanup_targets}
+    end
+  end
+
+  defp verify_multipart_quiescence(
+         cleanup_request_id,
+         cleanup_targets,
+         multipart_keys,
+         started_at,
+         not_before,
+         delete_fun,
+         inventory_fun,
+         consume?
+       ) do
+    case exact_multipart_inventory(multipart_keys, inventory_fun) do
+      {:ok, :empty} ->
+        finish_empty_multipart_inventory(
+          cleanup_request_id,
+          cleanup_targets,
+          started_at,
+          not_before,
+          delete_fun,
+          consume?
+        )
+
+      {:ok, :present} ->
+        clean_late_multipart_inventory(
+          cleanup_request_id,
+          cleanup_targets,
+          started_at,
+          not_before,
+          delete_fun
+        )
+
+      {:error, _reason} ->
+        {:error, cleanup_targets}
+    end
+  end
+
+  defp exact_multipart_inventory(multipart_keys, inventory_fun) do
+    Enum.reduce_while(multipart_keys, {:ok, :empty}, fn storage_key, {:ok, state} ->
+      storage_key
+      |> inventory_fun.()
+      |> reduce_multipart_inventory(state)
+    end)
+  rescue
+    error -> {:error, {:multipart_inventory_exception, error.__struct__}}
+  catch
+    kind, _reason -> {:error, {:multipart_inventory_failure, kind}}
+  end
+
+  defp reduce_multipart_inventory({:ok, count}, state) when is_integer(count) and count >= 0 do
+    next_state = if count > 0, do: :present, else: state
+    {:cont, {:ok, next_state}}
+  end
+
+  defp reduce_multipart_inventory({:error, reason}, _state), do: {:halt, {:error, reason}}
+
+  defp reduce_multipart_inventory(_invalid, _state), do: {:halt, {:error, :invalid_multipart_inventory_result}}
+
+  defp call_multipart_delete(delete_fun, cleanup_targets) do
+    case delete_fun.(cleanup_targets) do
+      :ok ->
+        {:ok, %{aborted_count: 0}}
+
+      {:ok, %{aborted_count: aborted_count}} when is_integer(aborted_count) and aborted_count >= 0 ->
+        {:ok, %{aborted_count: aborted_count}}
+
+      {:error, failed_targets} when is_list(failed_targets) ->
+        {:error, normalize_failed_keys(failed_targets, cleanup_targets)}
+
+      _invalid ->
+        {:error, cleanup_targets}
+    end
+  rescue
+    error ->
+      Logger.error("Durable multipart object deletion raised error=#{safe_error(error)}")
+      {:error, cleanup_targets}
+  catch
+    kind, reason ->
+      Logger.error("Durable multipart object deletion failed error=#{safe_error({kind, reason})}")
+      {:error, cleanup_targets}
+  end
+
+  defp finish_empty_multipart_inventory(cleanup_request_id, cleanup_targets, started_at, not_before, delete_fun, consume?) do
+    case call_multipart_delete(delete_fun, cleanup_targets) do
+      {:ok, %{aborted_count: 0}} ->
+        confirm_multipart_quiescence(
+          cleanup_request_id,
+          started_at,
+          not_before,
+          cleanup_targets,
+          consume?
+        )
+
+      {:ok, %{aborted_count: _positive_count}} ->
+        reset_multipart_quiescence_window(
+          cleanup_request_id,
+          started_at,
+          not_before,
+          cleanup_targets
+        )
+
+      {:error, _failed_targets} ->
+        {:error, cleanup_targets}
+    end
+  end
+
+  defp clean_late_multipart_inventory(cleanup_request_id, cleanup_targets, started_at, not_before, delete_fun) do
+    case call_multipart_delete(delete_fun, cleanup_targets) do
+      {:ok, _evidence} ->
+        reset_multipart_quiescence_window(
+          cleanup_request_id,
+          started_at,
+          not_before,
+          cleanup_targets
+        )
+
+      {:error, _failed_targets} ->
+        {:error, cleanup_targets}
+    end
+  end
+
+  defp cleanup_quiescence_state(cleanup_request_id) do
+    Repo.transact(fn ->
+      case lock_cleanup_request(cleanup_request_id) do
+        %StorageCleanupRequest{} = request ->
+          now = database_clock_now()
+          {:ok, request_quiescence_state(request, now)}
+
+        nil ->
+          {:error, :storage_cleanup_request_not_found}
+      end
+    end)
+  end
+
+  defp request_quiescence_state(
+         %StorageCleanupRequest{multipart_quiescence_started_at: nil, multipart_quiescence_not_before: nil},
+         _now
+       ), do: :first_pass
+
+  defp request_quiescence_state(
+         %StorageCleanupRequest{
+           multipart_quiescence_started_at: %DateTime{} = started_at,
+           multipart_quiescence_not_before: %DateTime{} = not_before
+         },
+         now
+       ) do
+    if DateTime.after?(not_before, now),
+      do: {:deferred, seconds_until(not_before, now)},
+      else: {:verify, started_at, not_before}
+  end
+
+  defp request_quiescence_state(_request, _now), do: {:invalid, :multipart_quiescence_shape}
+
+  defp reset_multipart_quiescence_window(cleanup_request_id, expected_started_at, expected_not_before, cleanup_targets) do
+    fn ->
+      reset_locked_multipart_quiescence(cleanup_request_id, expected_started_at, expected_not_before)
+    end
+    |> Repo.transact()
+    |> normalize_quiescence_result(cleanup_targets)
+  end
+
+  defp reset_locked_multipart_quiescence(cleanup_request_id, expected_started_at, expected_not_before) do
+    case lock_cleanup_request(cleanup_request_id) do
+      %StorageCleanupRequest{} = request ->
+        maybe_reset_multipart_quiescence(request, expected_started_at, expected_not_before)
+
+      nil ->
+        {:error, :storage_cleanup_request_not_found}
+    end
+  end
+
+  defp maybe_reset_multipart_quiescence(request, expected_started_at, expected_not_before) do
+    now = database_clock_now()
+
+    if quiescence_matches?(request, expected_started_at, expected_not_before),
+      do: persist_reset_multipart_quiescence(request, now),
+      else: defer_from_concurrent_quiescence(request, now)
+  end
+
+  defp persist_reset_multipart_quiescence(request, now) do
+    not_before = DateTime.add(now, Storage.multipart_cleanup_quiescence_seconds(), :second)
+
+    request
+    |> StorageCleanupRequest.multipart_quiescence_changeset(now, not_before)
+    |> Repo.update()
+    |> case do
+      {:ok, _request} -> {:ok, {:deferred, seconds_until(not_before, now)}}
+      {:error, _changeset} -> {:error, :multipart_quiescence_not_persisted}
+    end
+  end
+
+  defp confirm_multipart_quiescence(cleanup_request_id, started_at, not_before, cleanup_targets, consume?) do
+    fn ->
+      confirm_locked_multipart_quiescence(cleanup_request_id, started_at, not_before, consume?)
+    end
+    |> Repo.transact()
+    |> normalize_confirm_quiescence(cleanup_targets)
+  end
+
+  defp confirm_locked_multipart_quiescence(cleanup_request_id, started_at, not_before, consume?) do
+    case lock_cleanup_request(cleanup_request_id) do
+      %StorageCleanupRequest{} = request ->
+        decide_multipart_quiescence_confirmation(request, started_at, not_before, consume?)
+
+      nil ->
+        {:error, :storage_cleanup_request_not_found}
+    end
+  end
+
+  defp decide_multipart_quiescence_confirmation(request, started_at, not_before, consume?) do
+    now = database_clock_now()
+
+    cond do
+      not quiescence_matches?(request, started_at, not_before) ->
+        defer_from_concurrent_quiescence(request, now)
+
+      DateTime.after?(not_before, now) ->
+        {:ok, {:deferred, seconds_until(not_before, now)}}
+
+      consume? and request.owner_kind == "storage_compensation" ->
+        consume_multipart_cleanup_receipt(request)
+
+      consume? ->
+        {:error, :multipart_cleanup_receipt_not_consumable}
+
+      true ->
+        {:ok, :confirmed}
+    end
+  end
+
+  defp consume_multipart_cleanup_receipt(request) do
+    case Repo.delete(request) do
+      {:ok, _request} -> {:ok, :confirmed}
+      {:error, _changeset} -> {:error, :multipart_cleanup_receipt_not_consumed}
+    end
+  end
+
+  defp normalize_confirm_quiescence({:ok, :confirmed}, _cleanup_targets), do: :ok
+
+  defp normalize_confirm_quiescence({:ok, {:deferred, seconds}}, _cleanup_targets), do: {:deferred, seconds}
+
+  defp normalize_confirm_quiescence({:error, _reason}, cleanup_targets), do: {:error, cleanup_targets}
+
+  defp lock_cleanup_request(cleanup_request_id) do
+    Repo.one(
+      from(request in StorageCleanupRequest,
+        where: request.id == ^cleanup_request_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp quiescence_matches?(request, expected_started_at, expected_not_before) do
+    request.multipart_quiescence_started_at == expected_started_at and
+      request.multipart_quiescence_not_before == expected_not_before
+  end
+
+  defp defer_from_concurrent_quiescence(request, now) do
+    case request_quiescence_state(request, now) do
+      {:deferred, seconds} -> {:ok, {:deferred, seconds}}
+      {:verify, _started_at, _not_before} -> {:ok, {:deferred, 1}}
+      :first_pass -> {:error, :multipart_quiescence_changed}
+      {:invalid, reason} -> {:error, reason}
+    end
+  end
+
+  defp database_clock_now do
+    %Postgrex.Result{rows: [[now]]} = Repo.query!("SELECT clock_timestamp()")
+    DateTime.truncate(now, :second)
+  end
+
+  defp seconds_until(not_before, now), do: max(DateTime.diff(not_before, now, :second), 1)
+
+  defp normalize_quiescence_result({:ok, {:deferred, seconds}}, _cleanup_targets), do: {:deferred, seconds}
+
+  defp normalize_quiescence_result({:error, _reason}, cleanup_targets), do: {:error, cleanup_targets}
+
   @spec enqueue_cleanup([String.t()], keyword()) :: :ok | {:error, term()}
   def enqueue_cleanup(cleanup_targets, opts \\ []) when is_list(cleanup_targets) do
     cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
@@ -435,20 +856,29 @@ defmodule Storyarn.Assets.StorageCompensation do
     end
   end
 
-  @spec retry_persisted_cleanup_requests(pos_integer()) :: :ok | {:error, non_neg_integer()}
-  def retry_persisted_cleanup_requests(limit \\ @persisted_cleanup_batch_size) when is_integer(limit) and limit > 0 do
+  @spec retry_persisted_cleanup_requests(pos_integer(), keyword()) :: :ok | {:error, non_neg_integer()}
+  def retry_persisted_cleanup_requests(limit \\ @persisted_cleanup_batch_size, opts \\ [])
+
+  def retry_persisted_cleanup_requests(limit, opts) when is_integer(limit) and limit > 0 and is_list(opts) do
     cleanup_requests =
       StorageCleanupRequest
       |> where([request], request.owner_kind == "storage_compensation")
+      |> where(
+        [request],
+        is_nil(request.multipart_quiescence_not_before) or
+          request.multipart_quiescence_not_before <= fragment("clock_timestamp()")
+      )
       |> order_by([request], asc: request.inserted_at, asc: request.id)
       |> limit(^limit)
       |> Repo.all()
 
-    failed_count = Enum.count(cleanup_requests, &(retry_persisted_cleanup_request(&1) == :error))
+    results = Enum.map(cleanup_requests, &retry_persisted_cleanup_request(&1, opts))
+    failed_count = Enum.count(results, &(&1 == :error))
+    deferred_count = Enum.count(results, &(&1 == :deferred))
 
     :telemetry.execute(
       [:storyarn, :assets, :storage_compensation, :persisted_retry],
-      %{count: length(cleanup_requests), failed_count: failed_count},
+      %{count: length(cleanup_requests), failed_count: failed_count, deferred_count: deferred_count},
       %{}
     )
 
@@ -759,17 +1189,31 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp cleanup_persistence_label(:snapshot_lifecycle), do: "snapshot lifecycle cleanup request"
   defp cleanup_persistence_label(:fallback), do: "copied asset cleanup fallback"
 
-  defp retry_persisted_cleanup_request(cleanup_request) do
-    case delete_storage_keys(cleanup_request.storage_keys) do
+  defp retry_persisted_cleanup_request(cleanup_request, opts) do
+    multipart? = multipart_cleanup_keys(cleanup_request.storage_keys) != []
+    cleanup_opts = if multipart?, do: Keyword.put(opts, :consume?, true), else: opts
+
+    case delete_cleanup_request_keys(cleanup_request.id, cleanup_request.storage_keys, cleanup_opts) do
       :ok ->
-        cleanup_request
-        |> Repo.delete()
-        |> persisted_retry_result()
+        if multipart? do
+          :ok
+        else
+          cleanup_request
+          |> Repo.delete()
+          |> persisted_retry_result()
+        end
+
+      {:deferred, _seconds} ->
+        :deferred
 
       {:error, failed_keys} ->
-        cleanup_request
-        |> rotate_persisted_cleanup_request(failed_keys)
-        |> persisted_retry_result(:error)
+        if multipart? do
+          :error
+        else
+          cleanup_request
+          |> rotate_persisted_cleanup_request(failed_keys)
+          |> persisted_retry_result(:error)
+        end
     end
   end
 
@@ -899,7 +1343,39 @@ defmodule Storyarn.Assets.StorageCompensation do
   # boundary. Compensation reaches the adapter only after validating the key,
   # fencing it with `StorageKeyLock`, and proving that no committed owner must
   # retain it.
-  defp delete_storage_object(storage_key), do: Storage.adapter().delete(storage_key)
+  defp delete_storage_object(storage_key) do
+    with {:ok, aborted_count} <- Storage.abort_incomplete_multipart_uploads(storage_key),
+         :ok <- Storage.adapter().delete(storage_key) do
+      record_multipart_cleanup_evidence(aborted_count)
+      report_aborted_multipart_uploads(aborted_count)
+      :ok
+    end
+  end
+
+  defp record_multipart_cleanup_evidence(aborted_count) when is_integer(aborted_count) and aborted_count >= 0 do
+    case Process.get(@multipart_cleanup_evidence_key, :not_collecting) do
+      count when is_integer(count) and count >= 0 ->
+        Process.put(@multipart_cleanup_evidence_key, count + aborted_count)
+        :ok
+
+      :not_collecting ->
+        :ok
+    end
+  end
+
+  defp restore_multipart_cleanup_evidence(:not_collecting), do: Process.delete(@multipart_cleanup_evidence_key)
+
+  defp restore_multipart_cleanup_evidence(previous), do: Process.put(@multipart_cleanup_evidence_key, previous)
+
+  defp report_aborted_multipart_uploads(0), do: :ok
+
+  defp report_aborted_multipart_uploads(count) when is_integer(count) and count > 0 do
+    :telemetry.execute(
+      [:storyarn, :assets, :storage_compensation, :multipart_aborted],
+      %{count: count},
+      %{}
+    )
+  end
 
   defp committed_asset_key?(storage_key) do
     Repo.exists?(from asset in Asset, where: asset.key == ^storage_key)
@@ -937,23 +1413,34 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp committed_snapshot_storage_key?(storage_key) do
-    case snapshot_object_storage_identity(storage_key) do
+    case snapshot_archive_storage_identity(storage_key) do
       {:object, project_id, :ready, object_prefix, false} ->
-        Repo.exists?(
-          from snapshot in ProjectSnapshot,
-            where:
-              snapshot.project_id == ^project_id and snapshot.object_prefix == ^object_prefix and
-                snapshot.lifecycle_state in ["ready", "deleting"] and
-                snapshot.accounting_version == 1 and not is_nil(snapshot.accounted_size_bytes)
-        ) or
-          Repo.exists?(
-            from claim in SnapshotObjectPublicationClaim,
-              where: claim.object_prefix == ^object_prefix and claim.status == "published"
-          )
+        committed_snapshot_namespace?(project_id, object_prefix)
 
       _other ->
         false
     end
+  end
+
+  defp committed_snapshot_namespace?(project_id, object_prefix) do
+    Repo.exists?(committed_snapshot_query(project_id, object_prefix)) or
+      Repo.exists?(published_snapshot_claim_query(object_prefix))
+  end
+
+  defp committed_snapshot_query(project_id, object_prefix) do
+    ProjectSnapshot
+    |> where([snapshot], snapshot.project_id == ^project_id)
+    |> where([snapshot], snapshot.object_prefix == ^object_prefix)
+    |> where([snapshot], snapshot.format_version == 2)
+    |> where([snapshot], snapshot.lifecycle_state in ["ready", "deleting"])
+    |> where([snapshot], snapshot.accounting_version == 1)
+    |> where([snapshot], not is_nil(snapshot.accounted_size_bytes))
+  end
+
+  defp published_snapshot_claim_query(object_prefix) do
+    SnapshotObjectPublicationClaim
+    |> where([claim], claim.object_prefix == ^object_prefix)
+    |> where([claim], claim.status == "published")
   end
 
   defp committed_template_version_storage_key?(storage_key) do
@@ -1052,7 +1539,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp valid_storage_key?(storage_key) when is_binary(storage_key) do
     String.valid?(storage_key) and
       (project_storage_key?(storage_key) or template_storage_key?(storage_key) or
-         snapshot_object_storage_key?(storage_key) or storage_reservation_key?(storage_key))
+         snapshot_archive_storage_key?(storage_key) or storage_reservation_key?(storage_key))
   end
 
   @doc false
@@ -1116,19 +1603,19 @@ defmodule Storyarn.Assets.StorageCompensation do
     end
   end
 
-  defp snapshot_object_storage_key?(storage_key) do
-    match?({:object, _project_id, _state, _object_prefix, _temporary?}, snapshot_object_storage_identity(storage_key))
+  defp snapshot_archive_storage_key?(storage_key) do
+    match?({:object, _project_id, _state, _object_prefix, _temporary?}, snapshot_archive_storage_identity(storage_key))
   end
 
-  defp snapshot_object_storage_identity(storage_key) do
+  defp snapshot_archive_storage_identity(storage_key) do
     case String.split(storage_key, "/", trim: false) do
-      ["projects", project_id, "snapshots", "object-sets", "v1", state, token | tail] ->
+      ["projects", project_id, "snapshots", "archives", "v2", state, token | tail] ->
         with true <- valid_project_id?(project_id),
              {:ok, state} <- snapshot_state(state),
              true <- String.match?(token, @snapshot_token_pattern),
-             {:ok, temporary?} <- snapshot_object_tail(tail) do
+             {:ok, temporary?} <- snapshot_archive_tail(tail) do
           object_prefix =
-            Enum.join(["projects", project_id, "snapshots", "object-sets", "v1", Atom.to_string(state), token], "/")
+            Enum.join(["projects", project_id, "snapshots", "archives", "v2", Atom.to_string(state), token], "/")
 
           {:object, String.to_integer(project_id), state, object_prefix, temporary?}
         else
@@ -1144,21 +1631,13 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp snapshot_state("ready"), do: {:ok, :ready}
   defp snapshot_state(_state), do: :error
 
-  defp snapshot_object_tail([filename]) when filename in ["manifest.json", "project.json"], do: {:ok, false}
+  defp snapshot_archive_tail([filename]) when filename in ["snapshot.zip", "manifest.json"], do: {:ok, false}
 
-  defp snapshot_object_tail(["blobs", filename]) do
-    if String.match?(filename, @snapshot_blob_filename_pattern), do: {:ok, false}, else: :error
-  end
-
-  defp snapshot_object_tail([".storyarn-copy", suffix]) do
+  defp snapshot_archive_tail([".storyarn-copy", suffix]) do
     if String.match?(suffix, @conditional_copy_suffix_pattern), do: {:ok, true}, else: :error
   end
 
-  defp snapshot_object_tail(["blobs", ".storyarn-copy", suffix]) do
-    if String.match?(suffix, @conditional_copy_suffix_pattern), do: {:ok, true}, else: :error
-  end
-
-  defp snapshot_object_tail(_tail), do: :error
+  defp snapshot_archive_tail(_tail), do: :error
 
   defp storage_reservation_key?(storage_key) do
     case String.split(storage_key, "/", trim: false) do

@@ -314,15 +314,15 @@ defmodule Storyarn.Assets.Storage.LocalTest do
 
   describe "list_prefix/2" do
     test "returns stable bounded pages from only the exact canonical prefix" do
-      prefix = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp/"
+      prefix = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/"
 
-      for {filename, contents} <- [{"project.json", "one"}, {"manifest.json", "two"}, {"blobs/a.bin", "three"}] do
+      for {filename, contents} <- [{"snapshot.zip", "one"}, {"manifest.json", "two"}, {"unexpected.tmp", "three"}] do
         assert {:ok, _url} = Local.upload(prefix <> filename, contents, "application/octet-stream")
       end
 
       assert {:ok, _url} =
                Local.upload(
-                 "projects/1/snapshots/object-sets/v1/ready/OtherToken123456/sibling.json",
+                 "projects/1/snapshots/archives/v2/ready/OtherToken123456/snapshot.zip",
                  "outside",
                  "application/json"
                )
@@ -338,7 +338,7 @@ defmodule Storyarn.Assets.Storage.LocalTest do
       assert {:ok, %{objects: second_page, cursor: nil}} = Local.list_prefix(prefix, limit: 2, cursor: cursor)
 
       assert (first_page ++ second_page) |> Enum.map(& &1.key) |> Enum.sort() ==
-               Enum.sort([prefix <> "project.json", prefix <> "manifest.json", prefix <> "blobs/a.bin"])
+               Enum.sort([prefix <> "snapshot.zip", prefix <> "manifest.json", prefix <> "unexpected.tmp"])
 
       assert {:error, :invalid_prefix} = Local.list_prefix("", [])
       assert {:error, :invalid_prefix} = Local.list_prefix(prefix <> "/", [])
@@ -347,20 +347,20 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     end
 
     test "returns an empty page only when the prefix directory is absent" do
-      prefix = "projects/1/snapshots/object-sets/v1/ready/MissingToken1234/"
+      prefix = "projects/1/snapshots/archives/v2/ready/MissingToken1234/"
 
       assert {:ok, %{objects: [], cursor: nil}} = Local.list_prefix(prefix, [])
     end
 
     test "fails closed when the prefix resolves to a regular file" do
-      root_key = "projects/1/snapshots/object-sets/v1/ready/NotADirectory123"
+      root_key = "projects/1/snapshots/archives/v2/ready/NotADirectory123"
       assert {:ok, _url} = Local.upload(root_key, "not-a-directory", "application/octet-stream")
 
       assert {:error, :invalid_prefix_target} = Local.list_prefix(root_key <> "/", [])
     end
 
     test "propagates traversal errors instead of returning a partial inventory", %{test_dir: test_dir} do
-      prefix = "projects/1/snapshots/object-sets/v1/ready/UnreadableDir123/"
+      prefix = "projects/1/snapshots/archives/v2/ready/UnreadableDir123/"
       unreadable = Path.join([test_dir, prefix, "blocked"])
       File.mkdir_p!(unreadable)
       File.chmod!(unreadable, 0o000)
@@ -373,7 +373,7 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     end
 
     test "rejects unsafe filesystem entries", %{test_dir: test_dir} do
-      prefix = "projects/1/snapshots/object-sets/v1/ready/UnsafeEntry1234/"
+      prefix = "projects/1/snapshots/archives/v2/ready/UnsafeEntry1234/"
       prefix_path = Path.join(test_dir, prefix)
       File.mkdir_p!(prefix_path)
       assert :ok = File.ln_s(Path.expand(test_dir), Path.join(prefix_path, "linked"))
@@ -384,9 +384,9 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     test "never inventories through an ancestor symlink outside the storage root", %{
       test_dir: test_dir
     } do
-      prefix = "projects/1/snapshots/object-sets/v1/ready/LinkedPrefix1234/"
+      prefix = "projects/1/snapshots/archives/v2/ready/LinkedPrefix1234/"
       external_dir = external_storage_dir()
-      external_prefix_path = Path.join(external_dir, "snapshots/object-sets/v1/ready/LinkedPrefix1234")
+      external_prefix_path = Path.join(external_dir, "snapshots/archives/v2/ready/LinkedPrefix1234")
       linked_directory = Path.join(test_dir, "projects/1")
 
       File.mkdir_p!(external_prefix_path)
@@ -399,7 +399,7 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     end
 
     test "keeps cursor order stable across sibling files and directories" do
-      prefix = "projects/1/snapshots/object-sets/v1/ready/LexicalOrder1234/"
+      prefix = "projects/1/snapshots/archives/v2/ready/LexicalOrder1234/"
 
       for filename <- ["a.txt", "a/z.bin", "b.txt"] do
         assert {:ok, _url} = Local.upload(prefix <> filename, filename, "application/octet-stream")
@@ -838,6 +838,16 @@ defmodule Storyarn.Assets.Storage.LocalTest do
     test "returns error not_supported" do
       assert {:error, :not_supported} =
                Local.presigned_upload_url("key", "text/plain", [])
+    end
+  end
+
+  describe "presigned_download_url/3" do
+    test "keeps local private downloads on the authorized application route" do
+      assert {:error, :not_supported} =
+               Local.presigned_download_url("projects/1/archive.zip", "application/zip",
+                 expires_in: 300,
+                 filename: "snapshot.zip"
+               )
     end
   end
 end

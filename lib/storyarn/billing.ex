@@ -49,6 +49,12 @@ defmodule Storyarn.Billing do
 
   defdelegate reserve_storage(attrs), to: StorageAccounting, as: :reserve
 
+  defdelegate acquire_snapshot_export_lease(attrs), to: StorageAccounting
+
+  @doc false
+  defdelegate renew_live_storage_reservation(reservation_id, lease_token, expected_generation),
+    to: StorageAccounting
+
   defdelegate extend_storage_reservation(reservation_id, lease_token, expected_generation, target_bytes),
     to: StorageAccounting,
     as: :extend_to
@@ -64,6 +70,16 @@ defmodule Storyarn.Billing do
   defdelegate release_storage_reservation(reservation_id, lease_token, expected_generation, attrs),
     to: StorageAccounting,
     as: :release
+
+  defdelegate recover_expired_snapshot_export_leases(now, opts \\ []),
+    to: StorageAccounting
+
+  @doc false
+  defdelegate settle_expired_snapshot_export_leases_locked(snapshot, workspace_id),
+    to: StorageAccounting
+
+  defdelegate purge_released_snapshot_export_leases(cutoff, opts \\ []),
+    to: StorageAccounting
 
   defdelegate storage_reservation_object_prefixes(reservation),
     to: StorageAccounting,

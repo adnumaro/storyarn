@@ -72,6 +72,7 @@ defmodule Storyarn.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.26 or ~> 1.0"},
       {:jason, "~> 1.2"},
+      {:zstream, "~> 0.6"},
       {:floki, "~> 0.36"},
       {:hammer, "~> 7.0"},
       {:hammer_backend_redis, "~> 7.0"},

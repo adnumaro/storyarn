@@ -40,6 +40,9 @@ defmodule Storyarn.FailingStreamStorage do
   def presigned_upload_url(_key, _content_type, _opts), do: {:error, :unsupported}
 
   @impl true
+  def presigned_download_url(_key, _content_type, _opts), do: {:error, :not_supported}
+
+  @impl true
   def copy(_source_key, _dest_key), do: {:error, :unsupported}
 
   @impl true

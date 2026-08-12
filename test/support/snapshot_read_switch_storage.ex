@@ -12,6 +12,10 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
           counts: %{},
           replacements: replacements,
           content_type_overrides: %{},
+          put_content_types: %{},
+          presigned_download_result: {:error, :not_supported},
+          stat_result: :delegate,
+          stream_result: :delegate,
           io_observer: nil,
           namespace_observer: nil,
           namespace_fingerprint_override: nil
@@ -33,6 +37,22 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
     Agent.update(__MODULE__, &put_in(&1, [:content_type_overrides, key], content_type))
   end
 
+  def put_content_type(key) do
+    Agent.get(__MODULE__, &Map.get(&1.put_content_types, key))
+  end
+
+  def set_presigned_download_result(result) do
+    Agent.update(__MODULE__, &%{&1 | presigned_download_result: result})
+  end
+
+  def set_stat_result(result) do
+    Agent.update(__MODULE__, &%{&1 | stat_result: result})
+  end
+
+  def set_stream_result(result) do
+    Agent.update(__MODULE__, &%{&1 | stream_result: result})
+  end
+
   def observe_io(callback) when is_function(callback, 2) do
     Agent.update(__MODULE__, &%{&1 | io_observer: callback})
   end
@@ -50,6 +70,14 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
 
   @impl true
   def stream(key, offset, length, opts) do
+    case Agent.get(__MODULE__, & &1.stream_result) do
+      :delegate -> delegated_stream(key, offset, length, opts)
+      callback when is_function(callback, 4) -> callback.(key, offset, length, opts)
+      result -> result
+    end
+  end
+
+  defp delegated_stream(key, offset, length, opts) do
     read_number =
       Agent.get_and_update(__MODULE__, fn state ->
         read_number = Map.get(state.counts, key, 0) + 1
@@ -73,10 +101,29 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   defdelegate upload(key, data, content_type), to: Local
 
   @impl true
-  defdelegate upload_stream(key, chunks, content_type), to: Local
+  def upload_stream(key, chunks, content_type) do
+    observed_chunks =
+      Stream.map(chunks, fn
+        {:ok, chunk} = item when is_binary(chunk) ->
+          observe_io({:upload_stream_chunk, byte_size(chunk)}, key)
+          item
+
+        item ->
+          item
+      end)
+
+    result = Local.upload_stream(key, observed_chunks, content_type)
+    if match?({:ok, _url}, result), do: observe_io(:upload_stream, key)
+    result
+  end
 
   @impl true
-  defdelegate put_if_absent(key, data, content_type), to: Local
+  def put_if_absent(key, data, content_type) do
+    Agent.update(__MODULE__, &put_in(&1, [:put_content_types, key], content_type))
+    result = Local.put_if_absent(key, data, content_type)
+    if match?({:ok, _url, true}, result), do: observe_io(:put_if_absent, key)
+    result
+  end
 
   @impl true
   defdelegate delete(key), to: Local
@@ -110,6 +157,14 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   def stat(key) do
     observe_io(:stat, key)
 
+    case Agent.get(__MODULE__, & &1.stat_result) do
+      :delegate -> delegated_stat(key)
+      callback when is_function(callback, 1) -> callback.(key)
+      result -> result
+    end
+  end
+
+  defp delegated_stat(key) do
     with {:ok, stat} <- Local.stat(key) do
       case Agent.get(__MODULE__, &Map.fetch(&1.content_type_overrides, key)) do
         {:ok, content_type} -> {:ok, %{stat | content_type: content_type}}
@@ -122,10 +177,22 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   defdelegate presigned_upload_url(key, content_type, opts), to: Local
 
   @impl true
+  def presigned_download_url(_key, _content_type, _opts) do
+    case Agent.get(__MODULE__, & &1.presigned_download_result) do
+      callback when is_function(callback, 0) -> callback.()
+      result -> result
+    end
+  end
+
+  @impl true
   defdelegate copy(source_key, destination_key), to: Local
 
   @impl true
-  defdelegate copy_if_absent(source_key, destination_key), to: Local
+  def copy_if_absent(source_key, destination_key) do
+    result = Local.copy_if_absent(source_key, destination_key)
+    if match?({:ok, true}, result), do: observe_io(:copy_if_absent, destination_key)
+    result
+  end
 
   @impl true
   defdelegate key_from_url(url), to: Local

@@ -190,8 +190,3 @@ msgstr "Archivo multimedia no encontrado"
 #, elixir-autogen, elixir-format
 msgid "You do not have permission to export this project"
 msgstr "No tienes permiso para exportar este proyecto"
-
-#: lib/storyarn_web/controllers/snapshot_download_controller.ex:13
-#, elixir-autogen, elixir-format
-msgid "Snapshot download is not available"
-msgstr "La descarga de snapshots no está disponible"

@@ -9,7 +9,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntentTest do
 
       assert SnapshotCleanupIntent.create_changeset(%SnapshotCleanupIntent{}, attrs).valid?
 
-      relative_paths = ["manifest.json", "project.json", "blobs/#{String.duplicate("a", 64)}.bin"]
+      relative_paths = ["manifest.json", "snapshot.zip"]
       ready_keys = Enum.map(relative_paths, &"#{attrs.ready_prefix}/#{&1}")
       escaped_keys = ready_keys ++ relative_paths
 
@@ -96,9 +96,9 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntentTest do
   end
 
   defp valid_attrs do
-    ready_prefix = "projects/1/snapshots/object-sets/v1/ready/AbCdEfGhIjKlMnOp"
-    staging_prefix = "projects/1/snapshots/object-sets/v1/staging/AbCdEfGhIjKlMnOp"
-    relative_paths = ["manifest.json", "project.json", "blobs/#{String.duplicate("a", 64)}.bin"]
+    ready_prefix = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp"
+    staging_prefix = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp"
+    relative_paths = ["manifest.json", "snapshot.zip"]
 
     storage_keys =
       Enum.flat_map([ready_prefix, staging_prefix], fn prefix ->

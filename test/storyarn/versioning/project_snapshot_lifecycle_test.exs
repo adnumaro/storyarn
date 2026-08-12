@@ -14,17 +14,83 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Versioning.ProjectSnapshotCapture
+  alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
+  alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Versioning.SnapshotObjectStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker
   alias Storyarn.Workspaces
 
   describe "delete_project_snapshot/3" do
+    test "settles an expired download lease and deletes without waiting for the reaper" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+
+      assert {:ok, lease} =
+               Billing.acquire_snapshot_export_lease(%{
+                 workspace_id: project.workspace_id,
+                 project_id: project.id,
+                 project_snapshot_id: ready.id
+               })
+
+      now = database_clock_now()
+
+      lease
+      |> Ecto.Changeset.change(
+        accounting_measured_at: DateTime.add(now, -120, :second),
+        expires_at: DateTime.add(now, -60, :second)
+      )
+      |> Repo.update!()
+
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{project.id}")
+
+      assert {:ok, intent} =
+               Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      assert intent.reason == "user_delete"
+      refute Repo.get(ProjectSnapshot, ready.id)
+
+      assert %StorageReservation{
+               status: "released",
+               release_reason: "expired_snapshot_export_lease",
+               cleanup_status: "not_required",
+               cleanup_reference: cleanup_reference
+             } = Repo.get!(StorageReservation, lease.id)
+
+      assert cleanup_reference == "storage_not_started:#{lease.storage_namespace}"
+      assert_receive {:project_snapshot_updated, snapshot_id}
+      assert snapshot_id == ready.id
+      refute_receive {:project_snapshot_updated, _snapshot_id}
+    end
+
+    test "keeps an unexpired download lease as an active deletion fence" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+
+      assert {:ok, lease} =
+               Billing.acquire_snapshot_export_lease(%{
+                 workspace_id: project.workspace_id,
+                 project_id: project.id,
+                 project_snapshot_id: ready.id
+               })
+
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{project.id}")
+
+      assert {:error, :snapshot_active_operation_blocks_deletion} =
+               Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      assert Repo.get!(ProjectSnapshot, ready.id).lifecycle_state == "ready"
+      assert %StorageReservation{status: "active", generation: generation} = Repo.get!(StorageReservation, lease.id)
+      assert generation == lease.generation
+      refute Repo.exists?(SnapshotCleanupIntent)
+      refute_receive {:project_snapshot_updated, _snapshot_id}
+    end
+
     test "records exact immutable ownership before dropping quota and cleans idempotently" do
       user = user_fixture()
       project = project_fixture(user)
@@ -48,7 +114,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert intent.storage_keys == Enum.uniq(intent.storage_keys)
       assert intent.object_count == length(intent.storage_keys)
       assert ready.manifest_storage_key in intent.storage_keys
-      assert ready.project_storage_key in intent.storage_keys
+      assert ready.archive_storage_key in intent.storage_keys
       assert Enum.any?(intent.storage_keys, &String.contains?(&1, "/staging/"))
       assert {:ok, provider_namespace_fingerprint} = Storage.namespace_fingerprint()
       assert intent.provider_namespace_fingerprint == provider_namespace_fingerprint
@@ -62,10 +128,71 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert request_storage_keys == intent.storage_keys
       assert Billing.workspace_storage_usage(project.workspace_id).full_snapshots == %{bytes: 0, count: 0}
 
+      assert {:ok, {:deferred, seconds}} = Versioning.process_project_snapshot_cleanup_intent(intent.id)
+      assert seconds == Storage.multipart_cleanup_quiescence_seconds()
+      expire_multipart_quiescence!(intent.cleanup_request_id)
+
       assert {:ok, :completed} = Versioning.process_project_snapshot_cleanup_intent(intent.id)
       assert {:error, _reason} = Storage.stat(ready.manifest_storage_key)
-      assert {:error, _reason} = Storage.stat(ready.project_storage_key)
+      assert {:error, _reason} = Storage.stat(ready.archive_storage_key)
       assert {:ok, :already_completed} = Versioning.process_project_snapshot_cleanup_intent(intent.id)
+    end
+
+    test "deletes a v2 request cancelled before capture with an empty canonical provider scope" do
+      user = user_fixture()
+      project = project_fixture(user)
+      scope = user_scope_fixture(user)
+      assert {:ok, requested} = request_snapshot(user, project)
+      assert {:ok, cancelled} = Versioning.cancel_project_snapshot(scope, project, requested.id)
+
+      assert cancelled.lifecycle_state == "cancelled"
+      assert is_nil(cancelled.capture_digest)
+      assert is_nil(cancelled.archive_size_bytes)
+      assert is_nil(cancelled.manifest_size_bytes)
+
+      assert {:ok, expected_scope} =
+               SnapshotArchiveStorage.cleanup_scope(cancelled.project_id, cancelled.object_prefix)
+
+      Enum.each(expected_scope.storage_keys, fn storage_key ->
+        assert {:error, :enoent} = Storage.stat(storage_key)
+      end)
+
+      assert {:ok, intent} = Versioning.delete_project_snapshot(scope, project, cancelled.id)
+
+      assert intent.estimated_cleanup_bytes == 0
+      assert intent.storage_keys == expected_scope.storage_keys
+      assert intent.object_count == 4
+      refute Repo.get(ProjectSnapshot, cancelled.id)
+
+      Enum.each(intent.storage_keys, fn storage_key ->
+        assert {:error, :enoent} = Storage.stat(storage_key)
+      end)
+    end
+
+    test "restarts lifecycle quiescence when delete observes a multipart upload after empty inventory" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+      assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      assert {:ok, {:deferred, _seconds}} = Versioning.process_project_snapshot_cleanup_intent(intent.id)
+      expire_multipart_quiescence!(intent.cleanup_request_id)
+
+      before_reset = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+
+      assert {:ok, {:deferred, _seconds}} =
+               Versioning.process_project_snapshot_cleanup_intent(intent.id,
+                 delete_fun: fn _keys -> {:ok, %{aborted_count: 1}} end
+               )
+
+      after_reset = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+      refute after_reset.multipart_quiescence_started_at == before_reset.multipart_quiescence_started_at
+      refute after_reset.multipart_quiescence_not_before == before_reset.multipart_quiescence_not_before
+
+      assert Repo.get!(SnapshotCleanupIntent, intent.id).remaining_storage_keys == intent.storage_keys
+
+      expire_multipart_quiescence!(intent.cleanup_request_id)
+      assert {:ok, :completed} = Versioning.process_project_snapshot_cleanup_intent(intent.id)
     end
 
     test "keeps deletion available after runtime manifest limits are lowered" do
@@ -89,18 +216,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       refute Repo.get(ProjectSnapshot, ready.id)
     end
 
-    test "rejects an oversized cleanup manifest before decoding it" do
-      max_manifest_bytes = SnapshotObjectFormat.hard_limits().max_manifest_bytes
-      oversized_manifest = :binary.copy(" ", max_manifest_bytes + 1)
-
-      assert {:error, {:snapshot_object_size_limit_exceeded, :manifest, ^max_manifest_bytes}} =
-               SnapshotObjectStorage.cleanup_scope_from_capture(
-                 1,
-                 "projects/1/snapshots/object-sets/v1/ready/OversizedTest001",
-                 oversized_manifest
-               )
-    end
-
     test "rejects an actor without project management authority" do
       owner = user_fixture()
       outsider = user_fixture()
@@ -114,7 +229,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       refute Repo.exists?(SnapshotCleanupIntent)
     end
 
-    test "checkpoints partial provider success and retries only the remaining inventory" do
+    test "keeps the full v2 inventory pending when one provider delete fails" do
       user = user_fixture()
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
@@ -134,8 +249,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
 
       retrying = Repo.get!(SnapshotCleanupIntent, intent.id)
       assert retrying.status == "retrying"
-      assert retrying.remaining_storage_keys == [failed_key]
+      assert retrying.remaining_storage_keys == intent.storage_keys
       assert retrying.retry_count == 1
+
+      assert {:ok, {:deferred, _seconds}} = Versioning.process_project_snapshot_cleanup_intent(intent.id)
+      expire_multipart_quiescence!(intent.cleanup_request_id)
 
       assert {:ok, :completed} = Versioning.process_project_snapshot_cleanup_intent(intent.id)
       assert Repo.get!(SnapshotCleanupIntent, intent.id).remaining_storage_keys == []
@@ -475,6 +593,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       user = user_fixture()
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
+      lease = expired_snapshot_export_lease!(project, ready)
 
       ready
       |> Ecto.Changeset.change(
@@ -505,6 +624,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
 
       assert %SnapshotCleanupIntent{reason: "retention"} =
                Repo.get_by!(SnapshotCleanupIntent, project_snapshot_id_snapshot: ready.id)
+
+      assert %StorageReservation{
+               status: "released",
+               release_reason: "expired_snapshot_export_lease"
+             } = Repo.get!(StorageReservation, lease.id)
 
       assert_receive {:project_snapshot_updated, snapshot_id}
       assert snapshot_id == ready.id
@@ -557,7 +681,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       insert_retention_snapshot_clones!(ready, 50, expires_at)
       through_id = Versioning.project_snapshot_lifecycle_high_watermark()
 
-      assert {:error, :snapshot_retention_incomplete} =
+      assert :ok =
                ProjectSnapshotRetentionWorker.perform(%Oban.Job{
                  args: %{"expired_build_after_id" => 41}
                })
@@ -603,6 +727,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert intent.reason == "expired_build"
       assert intent.required_delete_passes == 2
       assert intent.completed_delete_passes == 0
+
+      assert {:ok, {:deferred, defer_seconds}} =
+               Versioning.process_project_snapshot_cleanup_intent(intent.id)
+
+      assert defer_seconds == Storage.multipart_cleanup_quiescence_seconds()
+
+      awaiting_quiescence = Repo.get!(SnapshotCleanupIntent, intent.id)
+      assert awaiting_quiescence.completed_delete_passes == 0
+      assert awaiting_quiescence.remaining_storage_keys == awaiting_quiescence.storage_keys
+      expire_multipart_quiescence!(intent.cleanup_request_id)
 
       assert {:ok, {:deferred, defer_seconds}} =
                Versioning.process_project_snapshot_cleanup_intent(intent.id)
@@ -716,6 +850,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       user = user_fixture()
       project = project_fixture(user)
       assert {:ok, snapshot} = request_snapshot(user, project)
+      snapshot = materialize_snapshot_capture!(snapshot)
       now = TimeHelpers.now()
 
       building =
@@ -802,6 +937,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
 
       assert Repo.get!(ProjectSnapshot, snapshot.id).lifecycle_state == "pending"
       discard_job!(snapshot.build_job_id, DateTime.add(now, -16 * 60, :second))
+
+      snapshot.build_job_id
+      |> then(&Repo.get!(Oban.Job, &1))
+      |> Ecto.Changeset.change(queue: "default")
+      |> Repo.update!()
+
+      assert Versioning.list_expired_project_snapshot_build_candidates(now) == []
+
+      snapshot.build_job_id
+      |> then(&Repo.get!(Oban.Job, &1))
+      |> Ecto.Changeset.change(queue: "snapshot_archives")
+      |> Repo.update!()
+
       assert [candidate] = Versioning.list_expired_project_snapshot_build_candidates(now)
 
       assert {:ok, intent} =
@@ -818,6 +966,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       project = project_fixture(user)
 
       assert {:ok, snapshot} = request_snapshot(user, project)
+      snapshot = materialize_snapshot_capture!(snapshot)
 
       reservation = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
       now = TimeHelpers.now()
@@ -959,6 +1108,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       user = user_fixture()
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
+      lease = expired_snapshot_export_lease!(project, ready)
       assert {:ok, deleted} = Projects.delete_project(project, user.id)
       parent = self()
       handler_id = "snapshot-hard-delete-intent-#{System.unique_integer([:positive])}"
@@ -985,6 +1135,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert intent.authority_kind == "system"
       assert ready.manifest_storage_key in intent.storage_keys
 
+      assert %StorageReservation{
+               status: "released",
+               release_reason: "expired_snapshot_export_lease"
+             } = Repo.get!(StorageReservation, lease.id)
+
       assert_receive {:project_snapshot_updated, snapshot_id}
       assert snapshot_id == ready.id
 
@@ -993,6 +1148,40 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
         %{count: 1},
         %{reason: "project_hard_delete", authority_kind: "system"}
       }
+    end
+
+    test "project hard deletion owns the empty namespace of a request cancelled before capture" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, requested} = request_snapshot(user, project)
+
+      assert {:ok, cancelled} =
+               Versioning.cancel_project_snapshot(user_scope_fixture(user), project, requested.id)
+
+      assert cancelled.lifecycle_state == "cancelled"
+      assert is_nil(cancelled.capture_digest)
+
+      assert {:ok, expected_scope} =
+               SnapshotArchiveStorage.cleanup_scope(cancelled.project_id, cancelled.object_prefix)
+
+      Enum.each(expected_scope.storage_keys, fn storage_key ->
+        assert {:error, :enoent} = Storage.stat(storage_key)
+      end)
+
+      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, _project} = Projects.permanently_delete_project(deleted)
+
+      refute Repo.get(ProjectSnapshot, cancelled.id)
+
+      intent = Repo.get_by!(SnapshotCleanupIntent, project_snapshot_id_snapshot: cancelled.id)
+      assert intent.reason == "project_hard_delete"
+      assert intent.estimated_cleanup_bytes == 0
+      assert intent.storage_keys == expected_scope.storage_keys
+      assert intent.object_count == 4
+
+      Enum.each(intent.storage_keys, fn storage_key ->
+        assert {:error, :enoent} = Storage.stat(storage_key)
+      end)
     end
 
     test "workspace deletion records cleanup before deleting every project" do
@@ -1020,6 +1209,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
 
       assert Repo.get!(Oban.Job, snapshot.build_job_id).state == "available"
       assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{project.id}")
 
       assert {:error, :snapshot_active_operation_blocks_deletion} =
                Projects.permanently_delete_project(deleted)
@@ -1028,29 +1218,57 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert Repo.get!(ProjectSnapshot, snapshot.id)
       assert Repo.get_by!(StorageReservation, project_snapshot_id_snapshot: snapshot.id).status == "active"
       refute Repo.exists?(SnapshotCleanupIntent)
+      refute_receive {:project_snapshot_updated, _snapshot_id}
     end
 
-    test "project deletion remains blocked after recovery discards a job until its reservation is reconciled" do
+    test "stale build recovery lets a soft-deleted project converge to hard deletion" do
+      set_stale_build_heartbeat_seconds(0)
       user = user_fixture()
       project = project_fixture(user)
       assert {:ok, snapshot} = request_snapshot(user, project)
+      now = database_clock_now()
+      stale_at = DateTime.add(now, -16 * 60, :second)
+      {_building, job, reservation} = stale_executing_build!(snapshot, stale_at)
 
-      discard_job!(snapshot.build_job_id, TimeHelpers.now())
       assert {:ok, deleted} = Projects.delete_project(project, user.id)
 
       assert {:error, :snapshot_active_operation_blocks_deletion} =
                Projects.permanently_delete_project(deleted)
 
-      assert Repo.get!(Projects.Project, project.id)
-      assert Repo.get!(ProjectSnapshot, snapshot.id)
-      assert Repo.get!(StorageReservation, snapshot.storage_reservation_id).status == "active"
-      refute Repo.exists?(SnapshotCleanupIntent)
+      assert %{failure_count: 0, orphaned_count: 1, settled_count: 0} =
+               Versioning.reconcile_stale_project_snapshot_builds()
+
+      assert Repo.get!(Oban.Job, job.id).state == "discarded"
+      assert Repo.get!(StorageReservation, reservation.id).status == "active"
+
+      discard_job!(job.id, stale_at)
+
+      candidate =
+        stale_at
+        |> build_cleanup_quiesced_at()
+        |> Versioning.list_expired_project_snapshot_build_candidates()
+        |> Enum.find(&(&1.snapshot_id == snapshot.id))
+
+      assert candidate
+
+      assert {:ok, intent} =
+               Versioning.delete_expired_project_snapshot_build_candidate(candidate)
+
+      assert intent.reason == "expired_build"
+      refute Repo.get(ProjectSnapshot, snapshot.id)
+      assert Repo.get!(StorageReservation, reservation.id).status == "released"
+
+      assert {:ok, _project} = Projects.permanently_delete_project(deleted)
+
+      refute Repo.get(Projects.Project, project.id)
+      assert Repo.get!(SnapshotCleanupIntent, intent.id)
     end
 
     test "rolled-back parent cleanup does not publish intents from earlier snapshots" do
       user = user_fixture()
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
+      lease = expired_snapshot_export_lease!(project, ready)
 
       assert {:ok, active} =
                Versioning.request_full_project_snapshot(user_scope_fixture(user), project, %{
@@ -1079,6 +1297,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       refute Repo.exists?(SnapshotCleanupIntent)
       assert Repo.get!(ProjectSnapshot, ready.id)
       assert Repo.get!(ProjectSnapshot, active.id)
+      assert Repo.get!(StorageReservation, lease.id).status == "active"
     end
 
     test "project deletion fails closed before loading an oversized snapshot inventory" do
@@ -1167,6 +1386,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
   end
 
   defp stale_executing_build!(snapshot, now) do
+    snapshot = materialize_snapshot_capture!(snapshot)
     database_now = database_clock_now()
 
     state_now =
@@ -1207,20 +1427,31 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
     {building, job, reservation}
   end
 
+  defp materialize_snapshot_capture!(snapshot) do
+    job =
+      snapshot.build_job_id
+      |> then(&Repo.get!(Oban.Job, &1))
+      |> Ecto.Changeset.change(
+        state: "executing",
+        attempt: 1,
+        attempted_at: %{TimeHelpers.now() | microsecond: {0, 6}}
+      )
+      |> Repo.update!()
+
+    assert {:ok, state} = ProjectSnapshotBuild.materialize_capture(snapshot.id, job.id)
+    assert state in [:captured, :already_captured]
+
+    Repo.get!(ProjectSnapshot, snapshot.id)
+  end
+
   defp start_snapshot_storage!(project, snapshot, reservation, now, opts \\ []) do
     reservation =
       reservation
       |> Ecto.Changeset.change(expires_at: DateTime.add(now, 60 * 60, :second))
       |> Repo.update!()
 
-    capture = Repo.get!(ProjectSnapshotCapture, snapshot.id)
-
     assert {:ok, cleanup_scope} =
-             SnapshotObjectStorage.cleanup_scope_from_capture(
-               project.id,
-               snapshot.object_prefix,
-               capture.manifest_json
-             )
+             snapshot_cleanup_scope(snapshot, project.id)
 
     assert {:ok, started} =
              Billing.mark_storage_reservation_started(
@@ -1274,6 +1505,39 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
     on_exit(fn -> Application.put_env(:storyarn, :snapshot_lifecycle, original) end)
   end
 
+  defp expire_multipart_quiescence!(cleanup_request_id) do
+    now = TimeHelpers.now()
+
+    {1, nil} =
+      Repo.update_all(
+        from(request in StorageCleanupRequest, where: request.id == ^cleanup_request_id),
+        set: [
+          multipart_quiescence_started_at: DateTime.add(now, -2, :second),
+          multipart_quiescence_not_before: DateTime.add(now, -1, :second)
+        ]
+      )
+
+    :ok
+  end
+
+  defp expired_snapshot_export_lease!(project, snapshot) do
+    assert {:ok, lease} =
+             Billing.acquire_snapshot_export_lease(%{
+               workspace_id: project.workspace_id,
+               project_id: project.id,
+               project_snapshot_id: snapshot.id
+             })
+
+    now = database_clock_now()
+
+    lease
+    |> Ecto.Changeset.change(
+      accounting_measured_at: DateTime.add(now, -120, :second),
+      expires_at: DateTime.add(now, -60, :second)
+    )
+    |> Repo.update!()
+  end
+
   defp insert_retention_snapshot_clones!(snapshot, count, expires_at) do
     fields = ProjectSnapshot.__schema__(:fields) -- [:id]
     base = snapshot |> Map.from_struct() |> Map.take(fields)
@@ -1281,13 +1545,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
     rows =
       Enum.map(1..count, fn index ->
         token = index |> Integer.to_string() |> String.pad_leading(16, "0")
-        prefix = "projects/#{snapshot.project_id}/snapshots/object-sets/v1/ready/#{token}"
+        prefix = SnapshotArchiveStorage.ready_prefix(snapshot.project_id, token)
 
         Map.merge(base, %{
           version_number: snapshot.version_number + index,
+          format_version: 2,
           object_prefix: prefix,
-          project_storage_key: "#{prefix}/project.json",
-          manifest_storage_key: "#{prefix}/manifest.json",
+          archive_storage_key: SnapshotArchiveStorage.archive_key(prefix),
+          manifest_storage_key: SnapshotArchiveStorage.manifest_key(prefix),
           idempotency_key: Ecto.UUID.generate(),
           capture_boundary: Ecto.UUID.generate(),
           origin: "daily",
@@ -1296,6 +1561,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       end)
 
     {^count, nil} = Repo.insert_all(ProjectSnapshot, rows)
+  end
+
+  defp snapshot_cleanup_scope(%ProjectSnapshot{format_version: 2} = snapshot, _project_id) do
+    SnapshotArchiveStorage.cleanup_scope_from_snapshot(snapshot)
   end
 
   defp cleanup_replay_expectations(intent) do

@@ -2,7 +2,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   @moduledoc """
   Persistence primitives for canonical project snapshot lifecycle rows.
 
-  ENG-79 exposes query, metadata, finalization, conversion, and remeasurement
+  ENG-79 exposes query, metadata, finalization, and remeasurement
   primitives. Capture orchestration, restore, deletion, recovery, and retention
   are owned by their later canonical lifecycle tickets.
   """
@@ -95,24 +95,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   def finalize_object_set(_snapshot_id, _expected_generation, _attrs), do: {:error, :invalid_snapshot_accounting_update}
 
   @doc """
-  Applies the one-way linked-to-full ownership transition inside the matching
-  conversion reservation commit.
-  """
-  @spec convert_linked_object_set(pos_integer(), pos_integer(), map()) ::
-          {:ok, ProjectSnapshot.t()} | {:error, term()}
-  def convert_linked_object_set(snapshot_id, expected_generation, attrs)
-      when valid_accounting_generation(snapshot_id, expected_generation) and is_map(attrs) do
-    if Billing.snapshot_storage_commit_context?(snapshot_id, "linked_to_full_conversion") do
-      convert_linked_object_set_locked(snapshot_id, expected_generation, attrs)
-    else
-      {:error, :snapshot_storage_commit_context_required}
-    end
-  end
-
-  def convert_linked_object_set(_snapshot_id, _expected_generation, _attrs),
-    do: {:error, :invalid_snapshot_accounting_update}
-
-  @doc """
   Reconfirms immutable full-snapshot accounting behind a workspace lock and
   generation fence. Object identity and inventory cannot change.
   """
@@ -178,26 +160,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
        when is_integer(generation), do: true
 
   defp lifecycle_generation_matches?(_snapshot, _expected), do: false
-
-  defp convert_linked_object_set_locked(snapshot_id, expected_generation, attrs) do
-    case lock_snapshot(snapshot_id) do
-      nil ->
-        {:error, :project_snapshot_not_found}
-
-      %ProjectSnapshot{
-        accounting_generation: ^expected_generation,
-        mode: "linked",
-        lifecycle_state: "ready",
-        integrity_state: "verified"
-      } = snapshot ->
-        snapshot
-        |> ProjectSnapshot.full_conversion_changeset(attrs)
-        |> Repo.update(stale_error_field: :accounting_generation)
-
-      %ProjectSnapshot{} ->
-        {:error, :stale_snapshot_accounting_measurement}
-    end
-  end
 
   defp remeasure_object_set_locked(snapshot_id, expected_generation, attrs) do
     case lock_snapshot(snapshot_id) do

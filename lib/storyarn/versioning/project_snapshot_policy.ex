@@ -1,12 +1,12 @@
 defmodule Storyarn.Versioning.ProjectSnapshotPolicy do
   @moduledoc """
-  Product policy for snapshot origins while full snapshots roll out.
+  Product policy for canonical full-archive snapshot origins.
 
   User-created snapshots are full, consume the normal workspace byte quota and
   project snapshot slot, and have no implicit retention deletion. System daily,
   pre-restore, and post-restore capture remains disabled until its owning flow
   exists, but each origin has an explicit TTL for rows created by those flows.
-  No origin may bypass quota or silently fall back to linked mode.
+  No origin may bypass quota or use a retired snapshot mode.
   """
 
   @policies %{

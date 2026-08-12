@@ -10,11 +10,10 @@ const storageUsage = {
   currentAssetsBytes: String(512 * 1024),
   assetTrashBytes: String(128 * 1024),
   fullSnapshotsBytes: String(256 * 1024),
-  linkedSnapshotsBytes: String(64 * 1024),
   activeReservationsBytes: String(64 * 1024),
-  totalAccountedBytes: String(1024 * 1024),
+  totalAccountedBytes: String(960 * 1024),
   limitBytes: String(4 * 1024 * 1024),
-  remainingBytes: String(3 * 1024 * 1024),
+  remainingBytes: String(3136 * 1024),
   limitKind: "limited" as const,
 };
 
@@ -26,7 +25,7 @@ interface SnapshotFixture {
   insertedAt: string;
   entityCounts: Record<string, number>;
   createdByEmail: string;
-  mode: "full" | "linked" | null;
+  mode: "full" | null;
   lifecycleStatus:
     | "pending"
     | "building"
@@ -36,11 +35,10 @@ interface SnapshotFixture {
     | "cancelled"
     | "deleting"
     | null;
-  integrityStatus: "unknown" | "verified" | "at_risk" | "missing" | "corrupt" | "incomplete" | null;
+  integrityStatus: "unknown" | "verified" | "missing" | "corrupt" | "incomplete" | null;
   accountedSizeBytes: string | null;
-  projectDataSizeBytes: string | null;
-  metadataSizeBytes: string | null;
-  assetBlobSizeBytes: string | null;
+  archiveSizeBytes: string | null;
+  sidecarSizeBytes: string | null;
   assetCount: number | null;
   blobCount: number | null;
   activeReservationBytes: string;
@@ -57,6 +55,8 @@ interface SnapshotFixture {
   cancelRequestedAt: string | null;
   canCancel: boolean;
   canDelete: boolean;
+  deleteStatus: "ready" | "download_lease" | "active_operation" | null;
+  downloadUrl: string | null;
 }
 
 const measuredSnapshot: SnapshotFixture = {
@@ -71,9 +71,8 @@ const measuredSnapshot: SnapshotFixture = {
   lifecycleStatus: "ready",
   integrityStatus: "verified",
   accountedSizeBytes: String(6 * 1024),
-  projectDataSizeBytes: "1024",
-  metadataSizeBytes: String(2 * 1024),
-  assetBlobSizeBytes: String(3 * 1024),
+  archiveSizeBytes: String(4 * 1024),
+  sidecarSizeBytes: String(2 * 1024),
   assetCount: 2,
   blobCount: 1,
   activeReservationBytes: "768",
@@ -90,6 +89,8 @@ const measuredSnapshot: SnapshotFixture = {
   cancelRequestedAt: null,
   canCancel: false,
   canDelete: false,
+  deleteStatus: "active_operation",
+  downloadUrl: "/workspaces/alpha/projects/veilbreak/snapshots/21/download",
 };
 
 function mountSnapshots(
@@ -119,14 +120,14 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     const text = wrapper.text();
 
     expect(text).toContain("Storage counted toward your plan");
-    expect(text).toContain("1 MB");
-    expect(text).toContain("25%");
+    expect(text).toContain("960 KB");
+    expect(text).toContain("23.44%");
     expect(text).toContain("512 KB");
     expect(text).toContain("Recoverable asset trash");
     expect(text).toContain("128 KB");
     expect(text).toContain("256 KB");
     expect(text).toContain("64 KB");
-    expect(text).toContain("3 MB");
+    expect(text).toContain("3.1 MB");
     expect(text).toContain("Active reservations");
     wrapper.get('[data-testid="workspace-storage-progress"]');
   });
@@ -140,12 +141,10 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(text).toContain("Verified");
     expect(text).toContain("6 KB");
     expect(text).toContain("0.15%");
-    expect(text).toContain("Project data");
-    expect(text).toContain("1 KB");
-    expect(text).toContain("Manifest and catalog");
+    expect(text).toContain("ZIP archive");
+    expect(text).toContain("4 KB");
+    expect(text).toContain("Manifest sidecar");
     expect(text).toContain("2 KB");
-    expect(text).toContain("Unique asset blobs");
-    expect(text).toContain("3 KB");
     expect(text).toContain("Logical assets: 2 · Unique blobs: 1");
     expect(text).toContain("Accounting v1 measured");
     expect(text).toContain("Active work reservation: 768 B");
@@ -163,7 +162,16 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       "Snapshot slots: 2 of 10 used",
     );
     expect(wrapper.get('button[type="submit"]').text()).toContain("Create snapshot");
-    expect(wrapper.find('a[href*="/snapshots/"]').exists()).toBe(false);
+    const download = wrapper.get('[data-testid="download-snapshot-21"]');
+    expect(download.attributes("href")).toBe(
+      "/workspaces/alpha/projects/veilbreak/snapshots/21/download",
+    );
+    expect(download.attributes("download")).toBeUndefined();
+    expect(download.attributes("target")).toBeUndefined();
+    expect(download.attributes("rel")).toBeUndefined();
+    expect(download.attributes("referrerpolicy")).toBe("no-referrer");
+    expect(download.attributes("data-live-link-exempt")).toBe("download");
+    expect(download.text()).toContain("Download ZIP");
   });
 
   it("renders export reservation bytes independently from other active work", () => {
@@ -177,6 +185,23 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(wrapper.text()).not.toContain("Active work reservation");
   });
 
+  it("keeps deletion visible and explains a protected zero-byte download lease", () => {
+    const wrapper = mountSnapshots({
+      ...measuredSnapshot,
+      activeReservationBytes: "0",
+      exportReservationBytes: "0",
+      canDelete: false,
+      deleteStatus: "download_lease",
+    });
+
+    expect(wrapper.get('[data-testid="delete-download-lease-21"]').text()).toContain(
+      "Download protection is active.",
+    );
+    const deleteButton = wrapper.get('[data-testid="delete-snapshot-21"]');
+    expect(deleteButton.attributes("disabled")).toBeDefined();
+    expect(deleteButton.attributes("aria-describedby")).toBe("delete-snapshot-reason-21");
+  });
+
   it("renders a pending canonical row before accounting measurements are available", () => {
     const wrapper = mountSnapshots({
       ...measuredSnapshot,
@@ -184,9 +209,8 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       lifecycleStatus: "pending",
       integrityStatus: "unknown",
       accountedSizeBytes: null,
-      projectDataSizeBytes: "1024",
-      metadataSizeBytes: "2048",
-      assetBlobSizeBytes: null,
+      archiveSizeBytes: null,
+      sidecarSizeBytes: null,
       assetCount: 2,
       blobCount: 1,
       activeReservationBytes: String(6 * 1024),
@@ -197,6 +221,8 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       progressBytes: "0",
       progressTotalBytes: String(6 * 1024),
       canCancel: true,
+      deleteStatus: null,
+      downloadUrl: null,
     });
 
     const text = wrapper.text();
@@ -241,7 +267,6 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       ...storageUsage,
       currentAssetsBytes: "1",
       fullSnapshotsBytes: "0",
-      linkedSnapshotsBytes: "0",
       activeReservationsBytes: "0",
       totalAccountedBytes: "1",
       limitBytes: "20000",
@@ -268,7 +293,11 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
 
   it("requires confirmation before requesting durable snapshot deletion", async () => {
     const live = createMockLive();
-    const wrapper = mountSnapshots({ ...measuredSnapshot, canDelete: true }, storageUsage, live);
+    const wrapper = mountSnapshots(
+      { ...measuredSnapshot, canDelete: true, deleteStatus: "ready" },
+      storageUsage,
+      live,
+    );
 
     await wrapper.get('[data-testid="delete-snapshot-21"]').trigger("click");
 
