@@ -1538,7 +1538,7 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp valid_storage_key?(storage_key) when is_binary(storage_key) do
     String.valid?(storage_key) and
-      (project_storage_key?(storage_key) or template_storage_key?(storage_key) or
+      (project_owned_storage_key?(storage_key) or template_storage_key?(storage_key) or
          snapshot_archive_storage_key?(storage_key) or storage_reservation_key?(storage_key))
   end
 
@@ -1550,7 +1550,7 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   def template_storage_key?(_storage_key), do: false
 
-  defp project_storage_key?(storage_key) do
+  defp project_owned_storage_key?(storage_key) do
     project_blob_storage_key?(storage_key) or
       project_asset_storage_key?(storage_key) or
       project_thumbnail_storage_key?(storage_key) or

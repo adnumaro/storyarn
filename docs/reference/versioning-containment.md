@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-11
+> Last reviewed: 2026-08-12
 >
 > Source of truth: `lib/storyarn/versioning/project_snapshot_lifecycle.ex`,
 > `lib/storyarn/versioning/snapshot_archive_storage.ex`,
@@ -11,7 +11,8 @@
 > `lib/storyarn/versioning/project_snapshot_reconciliation_repair.ex`,
 > `lib/storyarn/assets/storage/`, `lib/storyarn/release.ex`, and
 > `lib/storyarn/workers/`, plus
-> `priv/repo/migrations/20260811180000_make_project_snapshots_v2_only.exs`
+> `priv/repo/migrations/20260811180000_make_project_snapshots_v2_only.exs` and
+> `priv/repo/migrations/20260812100000_remove_transitional_snapshot_cutover_scaffolding.exs`
 
 Project snapshots have one canonical representation: a v2 full ZIP archive and
 its manifest sidecar. There is no runtime switch, alternate format, linked mode,
@@ -171,14 +172,12 @@ evidence. Manual and failed outcomes require operator review.
 
 Migration `20260811180000_make_project_snapshots_v2_only.exs` is irreversible
 and fails closed before changing the schema if any live retired ownership still
-exists. The release entrypoint performs a stricter preflight before it runs any
-pending migration: `project_snapshots` must be completely empty. A v2/full row
-created by an earlier build of this branch also blocks the release even though
-the final migration could preserve it. This deliberate empty-table rule keeps
-the one-time reset from silently adopting ownership created before the complete
-cutover contract was deployed.
-
-The release preflight also requires all of the following to be absent:
+exists. The cutover checks are frozen in the historical migrations rather than
+implemented by live release-task code. When the first destructive migration,
+`20260804120000`, is still pending, it requires `project_snapshots` to be empty,
+rejects active pre-cutover snapshot workers, and conditionally requires legacy
+`entity_versions` to be empty. Migration `20260811180000` later requires all of
+the following retired ownership to be absent:
 
 - legacy `entity_versions` while the storage-accounting reset migration
   `20260804120000` is still pending; versions created after that migration are
@@ -190,12 +189,16 @@ The release preflight also requires all of the following to be absent:
 - active `BuildProjectSnapshotWorker` jobs in any queue; or
 - active generic cleanup jobs carrying retired snapshot keys.
 
-After the preflight, the release installs persistent database barriers before
-starting Ecto migrations. They reject every project-snapshot insert, the listed
-live pre-cutover snapshot workers, and—until the storage-accounting reset
-commits—new `entity_versions`. Each migration has its own transaction, so the barriers
-intentionally remain installed if an intermediate migration fails. Normal
-recovery is to fix the migration failure and rerun the release migrator:
+The first destructive migration installs persistent database barriers in its
+own transaction. The lifecycle-hardening and barrier-checkpoint migrations
+verify those barriers before their DDL; the final v2-only migration instead
+locks every affected table and revalidates the complete ownership precondition
+before replacing the barriers with the canonical constraints. The barriers
+reject every project-snapshot insert, the listed live pre-cutover snapshot
+workers, and—until the storage-accounting reset commits—new `entity_versions`.
+Each migration has its own transaction, so the barriers intentionally remain
+installed if an intermediate migration fails. Normal recovery is to fix the
+migration failure and rerun the release migrator:
 
 ```text
 /app/bin/migrate
@@ -203,13 +206,13 @@ recovery is to fix the migration failure and rerun the release migrator:
 
 Do not manually remove the barriers merely to retry or abandon the cutover.
 When Fly's release command fails, the active application machines still run the
-previous image and cannot invoke the new release helpers. More importantly, an
-intermediate migration may already have committed schema that the previous
-binary cannot safely write. Recovery is therefore forward-only: leave the
-barriers installed, fix the failing migration or its precondition, and deploy
-the corrected image so `/app/bin/migrate` can resume. Pause the snapshot and
-storage-cleanup queues while investigating. There is no supported production
-bypass that removes the barriers from a partially migrated schema.
+previous image. More importantly, an intermediate migration may already have
+committed schema that the previous binary cannot safely write. Recovery is
+therefore forward-only: leave the barriers installed, fix the failing migration
+or its precondition, and deploy the corrected image so `/app/bin/migrate` can
+resume. Pause the snapshot and storage-cleanup queues while investigating.
+There is no supported production bypass that removes the barriers from a
+partially migrated schema.
 
 The current production assumption is that the project-snapshot ownership sets
 are empty because no project snapshots have been created. The conditional
@@ -224,20 +227,67 @@ cleanup protocol to purge the owned provider bytes. Terminal immutable cleanup
 receipts and namespace evidence remain preserved for audit, but the replacement
 database trigger can never create new retired-format evidence.
 
-The runtime no longer maps, reads, or writes `project_storage_key` or
-`source_asset_count`. Their physical columns remain nullable for this one
-rolling-deploy boundary because the pre-cutover Ecto schemas still select them,
-but database constraints require both values to remain `NULL`.
-The immediately following release must drop both columns, after every
-application machine is confirmed to be running the v2-only schema. Do not defer
-that cleanup beyond the next release. These columns do not authorize v1 storage
-or linked conversion.
+Migration
+`20260812100000_remove_transitional_snapshot_cutover_scaffolding.exs` is the
+required second deployment after the v2-only release. Before destructive DDL,
+it locks snapshots, publication claims, reservations, cleanup intents, and Oban
+jobs. It proves that the v2-only marker, all canonical v2 `CHECK` constraints,
+and the three transitional constraints have their exact validated definitions;
+both retired columns contain only `NULL`; and no active retired or misrouted
+snapshot worker remains. It then removes the two retained compatibility columns
+and the transitional worker-name routing fence.
 
-The `oban_jobs_snapshot_worker_routing` constraint is also a transitional
-rolling-deploy fence. Keep it for this rollout so an old node cannot enqueue a
-retired worker or route a canonical build outside `snapshot_archives`. The
-immediately following release must remove it together with the retained legacy
-columns, after every application machine is confirmed to run the v2-only code.
+Each table-lock acquisition has a transaction-local five-second
+`lock_timeout`. This bounds contention on the continuously active `oban_jobs`
+table without changing the database or role default. PostgreSQL acquires the
+listed locks one at a time, so the timeout applies separately to each lock
+attempt rather than to the migration as a whole. If lock acquisition times out,
+the migration transaction rolls back and retains all transitional scaffolding.
+Do not remove or increase the timeout while application traffic is active;
+identify the blocking transaction, let it finish or stop it through the normal
+operational procedure, and retry the release command during a quiet window.
+
+Run this migration only after the preceding v2-only deployment has completed
+and every application, worker, release-command, and one-off machine runs that
+code. The database preflight cannot prove which application image an external
+machine has loaded. This includes stopped Fly Machines that may auto-start.
+Before deploying this cleanup release, inventory the complete application fleet
+and remove or update every machine that can still start a pre-v2 image.
+
+For an existing production database, `/app/bin/migrate` requires a one-release
+operator acknowledgement in addition to its database checks. Stage the exact
+migration version before starting the normal deploy:
+
+```text
+fly secrets set --stage -a storyarn-prod \
+  PROJECT_SNAPSHOT_SCAFFOLDING_CLEANUP_AUTHORIZATION=20260812100000
+```
+
+The value is neither a runtime feature flag nor an override for a failed
+precondition. It only records that the external machine inventory was checked;
+a missing v2-only marker, weakened constraint, non-`NULL` retired value, or
+active retired/misrouted job still aborts before destructive DDL. A genuinely
+empty database may bootstrap from zero without this acknowledgement, and once
+the cleanup marker exists later releases no longer require it. If that empty
+bootstrap fails before reaching the v2-only marker, the next production run
+fails closed because the schema is no longer provably fresh. Recreate the still
+empty database and retry from zero; do not use the cleanup acknowledgement to
+bypass the required release boundary. If the failed bootstrap has acquired any
+real data, treat it as an existing deployment and advance it through the
+preceding v2-only release first.
+
+After the deploy and release command succeed, remove the temporary value:
+
+```text
+fly secrets unset -a storyarn-prod \
+  PROJECT_SNAPSHOT_SCAFFOLDING_CLEANUP_AUTHORIZATION
+```
+
+If the release command fails, keep the acknowledgement staged, fix the
+precondition or migration, and redeploy forward. Once the cleanup commits, the
+schema is deliberately incompatible with pre-v2 binaries and rollback to one
+is unsupported. Leave the canonical v2 constraints intact; do not reconstruct
+the retired columns or worker-name fence.
 
 ## Real Tigris validation
 

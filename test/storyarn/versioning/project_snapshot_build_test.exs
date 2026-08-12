@@ -172,6 +172,52 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       end
     end
 
+    test "heartbeat rejects a build job outside the canonical archive queue" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, snapshot} = request_snapshot(user, project)
+      now = TimeHelpers.now()
+
+      job =
+        snapshot
+        |> requested_job()
+        |> Ecto.Changeset.change(
+          state: "executing",
+          attempted_at: %{now | microsecond: {0, 6}}
+        )
+        |> Repo.update!()
+
+      assert job.queue == "snapshot_archives"
+
+      misrouted_job =
+        job
+        |> Ecto.Changeset.change(queue: "default")
+        |> Repo.update!()
+
+      assert misrouted_job.queue == "default"
+
+      handler_id = "snapshot-build-misrouting-#{System.unique_integer([:positive])}"
+      parent = self()
+
+      :ok =
+        :telemetry.attach(
+          handler_id,
+          [:storyarn, :snapshot, :build, :heartbeat],
+          fn _event, measurements, metadata, pid ->
+            send(pid, {:snapshot_build_heartbeat, measurements, metadata})
+          end,
+          parent
+        )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      assert {:error, :snapshot_build_not_active} =
+               Versioning.heartbeat_project_snapshot_build(snapshot.id, job.id)
+
+      assert_receive {:snapshot_build_heartbeat, %{count: 1}, %{outcome: :rejected, snapshot_id: snapshot_id}}
+      assert snapshot_id == snapshot.id
+    end
+
     test "heartbeat is fenced and lifecycle time stays monotonic under clock skew" do
       user = user_fixture()
       project = project_fixture(user)
@@ -279,6 +325,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       |> Ecto.Changeset.change(lease_expires_at: expired_claim_lease)
       |> Repo.update!()
 
+      assert Repo.get!(Oban.Job, job.id).queue == "snapshot_archives"
+
       assert {:error, :snapshot_build_not_active} =
                Versioning.heartbeat_project_snapshot_build(building.id, job.id)
 
@@ -306,10 +354,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
 
       assert DateTime.compare(caught_up.state_updated_at, normalized.state_updated_at) in [:eq, :gt]
       assert caught_up.progress_bytes == 1
-
-      assert_raise Ecto.ConstraintError, ~r/oban_jobs_snapshot_worker_routing/, fn ->
-        job |> Ecto.Changeset.change(queue: "default") |> Repo.update!()
-      end
 
       caught_up |> ProjectSnapshot.cancel_request_changeset(TimeHelpers.now()) |> Repo.update!()
 
@@ -929,6 +973,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
                %{snapshot_id: requested.id, delivery: Ecto.UUID.generate()}
                |> BuildProjectSnapshotWorker.new(queue: :snapshot_archives)
                |> Oban.insert()
+
+      assert foreign_job.queue == "snapshot_archives"
 
       assert {:discard, :snapshot_build_owned_by_another_job} =
                Versioning.perform_project_snapshot_build(requested.id,
