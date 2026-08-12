@@ -185,6 +185,23 @@ defmodule Storyarn.NotificationsTest do
 
       assert Repo.aggregate(Notification, :count, :id) == 0
     end
+
+    test "returns a validation error for an all-whitespace dedupe key" do
+      actor = user_fixture()
+      recipient = user_fixture()
+      project = project_fixture(actor)
+      membership_fixture(project, recipient)
+
+      assert {:error, changeset} =
+               Notifications.deliver_to_project_members(
+                 user_scope_fixture(actor),
+                 project,
+                 content_attrs("   ")
+               )
+
+      assert "can't be blank" in errors_on(changeset).dedupe_key
+      assert Repo.aggregate(Notification, :count, :id) == 0
+    end
   end
 
   describe "recipient-scoped reads" do
