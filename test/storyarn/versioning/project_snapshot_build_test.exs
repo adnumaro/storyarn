@@ -255,6 +255,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert DateTime.after?(renewed_reservation.expires_at, database_after)
       assert DateTime.after?(renewed_claim.lease_expires_at, database_after)
 
+      job |> Ecto.Changeset.change(queue: "default") |> Repo.update!()
+
+      assert {:error, :snapshot_build_not_active} =
+               Versioning.heartbeat_project_snapshot_build(building.id, job.id)
+
+      assert_receive {:snapshot_build_heartbeat, %{count: 1}, %{outcome: :rejected, snapshot_id: snapshot_id}}
+      assert snapshot_id == building.id
+
+      job |> Ecto.Changeset.change(queue: "snapshot_archives") |> Repo.update!()
+
       claim_lease_ttl = Versioning.project_snapshot_build_lease_ttl_seconds()
 
       assert DateTime.diff(renewed_claim.lease_expires_at, database_before, :second) in (claim_lease_ttl - 1)..(claim_lease_ttl +
@@ -306,10 +316,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
 
       assert DateTime.compare(caught_up.state_updated_at, normalized.state_updated_at) in [:eq, :gt]
       assert caught_up.progress_bytes == 1
-
-      assert_raise Ecto.ConstraintError, ~r/oban_jobs_snapshot_worker_routing/, fn ->
-        job |> Ecto.Changeset.change(queue: "default") |> Repo.update!()
-      end
 
       caught_up |> ProjectSnapshot.cancel_request_changeset(TimeHelpers.now()) |> Repo.update!()
 

@@ -3,6 +3,10 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorkerTest do
 
   alias Storyarn.Workers.BuildProjectSnapshotWorker
 
+  test "uses the canonical archive queue" do
+    assert Keyword.fetch!(BuildProjectSnapshotWorker.__opts__(), :queue) == :snapshot_archives
+  end
+
   test "snoozes preserve the five-attempt backoff budget" do
     assert Keyword.fetch!(BuildProjectSnapshotWorker.__opts__(), :max_attempts) == 5
 
