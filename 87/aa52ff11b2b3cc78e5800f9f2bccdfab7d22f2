@@ -1,0 +1,19 @@
+test/storyarn/notifications_test.exs
+  s_d64ccabdb01eb7::t_75ce1303edeece 188-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "87aa52ff11b2b3cc78e5800f9f2bccdfab7d22f2",
+  "prompts": {},
+  "sessions": {
+    "s_d64ccabdb01eb7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff51e-6200-7312-96d7-fd26ee5eb12d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
