@@ -23,7 +23,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
          {:ok, bg_asset, img_dims} <-
            Scenes.extract_zone_image(scene, zone, socket.assigns.project),
          child_attrs = build_child_scene_attrs(zone, scene, bg_asset, img_dims),
-         {:ok, child_scene} <- Scenes.create_scene(socket.assigns.project, child_attrs),
+         {:ok, child_scene} <-
+           Scenes.create_scene(socket.assigns.current_scope, socket.assigns.project, child_attrs),
          {:ok, _updated_zone} <-
            Scenes.update_zone(zone, %{target_type: "scene", target_id: child_scene.id}) do
       {:noreply,
@@ -131,7 +132,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
     if zone do
       child_attrs = build_child_scene_attrs(zone, scene, nil, nil)
 
-      case Scenes.create_scene(socket.assigns.project, child_attrs) do
+      case Scenes.create_scene(socket.assigns.current_scope, socket.assigns.project, child_attrs) do
         {:ok, child_scene} ->
           link_zone_to_child_scene(zone, child_scene)
 

@@ -33,19 +33,19 @@ msgid "Condition"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/form.ex:63
-#: lib/storyarn_web/live/flow_sidebar_live.ex:99
-#: lib/storyarn_web/live/flow_sidebar_live.ex:116
+#: lib/storyarn_web/live/flow_sidebar_live.ex:103
+#: lib/storyarn_web/live/flow_sidebar_live.ex:120
 #, elixir-autogen, elixir-format
 msgid "Could not create flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:469
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:473
 #, elixir-autogen, elixir-format
 msgid "Could not create sheet."
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/index.ex:467
-#: lib/storyarn_web/live/flow_sidebar_live.ex:199
+#: lib/storyarn_web/live/flow_sidebar_live.ex:203
 #, elixir-autogen, elixir-format
 msgid "Could not delete flow."
 msgstr ""
@@ -55,7 +55,7 @@ msgstr ""
 msgid "Could not load flow data."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_sidebar_live.ex:208
+#: lib/storyarn_web/live/flow_sidebar_live.ex:212
 #, elixir-autogen, elixir-format
 msgid "Could not move flow."
 msgstr ""
@@ -65,14 +65,14 @@ msgstr ""
 msgid "Could not save flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:981
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:985
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:989
 #, elixir-autogen, elixir-format
 msgid "Could not save shortcut."
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/index.ex:485
-#: lib/storyarn_web/live/flow_sidebar_live.ex:128
+#: lib/storyarn_web/live/flow_sidebar_live.ex:132
 #, elixir-autogen, elixir-format
 msgid "Could not set main flow."
 msgstr ""
@@ -101,7 +101,7 @@ msgid "Exit"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/index.ex:454
-#: lib/storyarn_web/live/flow_sidebar_live.ex:198
+#: lib/storyarn_web/live/flow_sidebar_live.ex:202
 #, elixir-autogen, elixir-format
 msgid "Flow moved to trash."
 msgstr ""
@@ -155,7 +155,7 @@ msgstr ""
 msgid "No entry node found in this flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:980
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:984
 #, elixir-autogen, elixir-format
 msgid "Shortcut %{error}"
 msgstr ""
@@ -166,7 +166,7 @@ msgstr ""
 msgid "Subflow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1013
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1017
 #, elixir-autogen, elixir-format
 msgid "This node is being edited by %{user}"
 msgstr ""
@@ -176,9 +176,9 @@ msgstr ""
 msgid "This would create a circular reference."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_sidebar_live.ex:91
-#: lib/storyarn_web/live/flow_sidebar_live.ex:106
-#: lib/storyarn_web/live/hooks/palette.ex:587
+#: lib/storyarn_web/live/flow_sidebar_live.ex:94
+#: lib/storyarn_web/live/flow_sidebar_live.ex:110
+#: lib/storyarn_web/live/hooks/palette.ex:588
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""
@@ -213,12 +213,12 @@ msgstr ""
 msgid "Could not restore flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1685
+#: lib/storyarn_web/live/flow_live/show.ex:1690
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:499
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:503
 #, elixir-autogen, elixir-format
 msgid "Could not update node positions."
 msgstr ""
@@ -369,8 +369,8 @@ msgstr ""
 msgid "Node not found."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_sidebar_live.ex:96
-#: lib/storyarn_web/live/flow_sidebar_live.ex:113
+#: lib/storyarn_web/live/flow_sidebar_live.ex:100
+#: lib/storyarn_web/live/flow_sidebar_live.ex:117
 #, elixir-autogen, elixir-format
 msgid "Item limit reached for your plan"
 msgstr ""
@@ -391,7 +391,7 @@ msgstr ""
 msgid "Unknown"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_sidebar_live.ex:189
+#: lib/storyarn_web/live/flow_sidebar_live.ex:193
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr ""

@@ -48,7 +48,7 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
     lang = Localization.get_language(socket.assigns.project.id, id)
 
     if lang && !lang.is_source do
-      case Localization.remove_language(lang) do
+      case Localization.remove_language(socket.assigns.current_scope, lang) do
         {:ok, _} ->
           socket = reload_languages(socket)
           {:noreply, put_flash(socket, :info, dgettext("localization", "Language removed."))}
@@ -124,7 +124,7 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
   defp do_add_target_language(socket, code) do
     name = Localization.language_name(code)
 
-    case Localization.add_language_with_count(socket.assigns.project, %{
+    case Localization.add_language_with_count(socket.assigns.current_scope, socket.assigns.project, %{
            "locale_code" => code,
            "name" => name,
            "is_source" => false

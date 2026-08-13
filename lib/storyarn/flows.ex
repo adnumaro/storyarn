@@ -152,6 +152,7 @@ defmodule Storyarn.Flows do
   @spec create_linked_flow(Project.t(), flow(), flow_node(), keyword()) ::
           {:ok, map()} | {:error, atom(), term(), map()}
   defdelegate create_linked_flow(project, parent_flow, node, opts \\ []), to: FlowCrud
+  defdelegate create_linked_flow(actor_scope, project, parent_flow, node, opts), to: FlowCrud
 
   @doc """
   Creates a new flow in a project.
@@ -159,9 +160,11 @@ defmodule Storyarn.Flows do
   """
   @spec create_flow(Project.t(), attrs()) :: {:ok, flow()} | {:error, changeset()}
   defdelegate create_flow(project, attrs), to: FlowCrud
+  defdelegate create_flow(actor_scope, project, attrs), to: FlowCrud
 
   @doc false
   defdelegate create_flow_in_transaction(project, attrs), to: FlowCrud
+  defdelegate create_flow_in_transaction(actor_scope, project, attrs), to: FlowCrud
 
   @doc """
   Updates a flow.
@@ -175,6 +178,7 @@ defmodule Storyarn.Flows do
   """
   @spec delete_flow(flow()) :: {:ok, flow()} | {:error, term()}
   defdelegate delete_flow(flow), to: FlowCrud
+  defdelegate delete_flow(actor_scope, flow), to: FlowCrud
 
   @doc """
   Soft deletes a flow and its descendants, returning the committed cascade
@@ -183,9 +187,11 @@ defmodule Storyarn.Flows do
   @spec delete_flow_subtree(flow()) ::
           {:ok, %{entity: flow(), deleted_ids: [integer()], affected_flow_ids: [integer()]}} | {:error, term()}
   defdelegate delete_flow_subtree(flow), to: FlowCrud
+  defdelegate delete_flow_subtree(actor_scope, flow), to: FlowCrud
 
   @doc false
   defdelegate delete_flow_subtree_in_transaction(flow), to: FlowCrud
+  defdelegate delete_flow_subtree_in_transaction(actor_scope, flow), to: FlowCrud
 
   @doc false
   defdelegate broadcast_flow_refreshes(affected_flow_ids), to: FlowCrud

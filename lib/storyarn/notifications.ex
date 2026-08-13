@@ -23,6 +23,7 @@ defmodule Storyarn.Notifications do
 
   @default_limit 20
   @max_limit 100
+  @content_entity_types ~w(sheet flow scene localization_language)
 
   @type delivery_outcome ::
           {:created, Notification.t()}
@@ -31,6 +32,7 @@ defmodule Storyarn.Notifications do
           | :suppressed
 
   @type delivery_error :: :not_found | Changeset.t()
+  @type content_action :: :created | :deleted
 
   @doc """
   Inserts one notification for the scoped recipient without broadcasting.
@@ -96,6 +98,37 @@ defmodule Storyarn.Notifications do
   end
 
   def deliver_to_project_members(%Scope{}, %Project{}, _attrs), do: {:error, :not_found}
+
+  @doc """
+  Inserts one structural content notification for every other effective project member.
+
+  The entity identity and action form the stable deduplication key. Producers
+  call this inside their source transaction and publish the returned outcome
+  only after that transaction commits.
+  """
+  @spec deliver_content_activity(
+          Scope.t(),
+          Project.t(),
+          content_action(),
+          String.t(),
+          %{required(:id) => integer(), required(:name) => String.t()}
+        ) :: {:ok, delivery_outcome()} | {:error, delivery_error()}
+  def deliver_content_activity(%Scope{} = actor_scope, %Project{} = project, action, entity_type, %{
+        id: entity_id,
+        name: entity_name
+      })
+      when action in [:created, :deleted] and entity_type in @content_entity_types and is_integer(entity_id) and
+             is_binary(entity_name) do
+    ensure_inside_transaction!("deliver_content_activity/5")
+
+    deliver_to_project_members(actor_scope, project, %{
+      kind: "content_#{action}",
+      entity_type: entity_type,
+      entity_id: entity_id,
+      entity_name: entity_name,
+      dedupe_key: "structural-content:v1:#{project.id}:#{entity_type}:#{entity_id}:#{action}"
+    })
+  end
 
   @doc """
   Lists the scoped user's recent, currently visible notifications.
@@ -370,6 +403,12 @@ defmodule Storyarn.Notifications do
   defp ensure_outside_transaction!(operation) do
     if Repo.in_transaction?() do
       raise ArgumentError, "#{operation} must be called outside an open transaction"
+    end
+  end
+
+  defp ensure_inside_transaction!(operation) do
+    if !Repo.in_transaction?() do
+      raise ArgumentError, "#{operation} must be called inside an open transaction"
     end
   end
 

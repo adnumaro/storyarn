@@ -11,6 +11,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.CommandPalette.Definition
+  alias Storyarn.Notifications
 
   defmodule TestAdapter do
     @moduledoc false
@@ -735,15 +736,30 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
          %{view: view, user: user} do
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
+      recipient = user_fixture()
+      membership_fixture(project, recipient, "editor")
+      recipient_scope = user_scope_fixture(recipient)
+      :ok = Notifications.subscribe(recipient_scope)
       payload = %{"type" => "sheet", "project_id" => project.id, "execution_id" => "stable-create-id"}
 
       render_hook(view, "palette_create", payload)
       assert_reply(view, %{url: first_url})
+
+      assert_receive :notifications_changed
+
+      assert [notification] = Notifications.list_notifications(recipient_scope)
+      assert notification.kind == "content_created"
+      assert notification.entity_type == "sheet"
+      assert notification.entity_name == "Untitled"
+
       render_hook(view, "palette_create", payload)
       assert_reply(view, %{url: second_url})
 
       assert first_url == second_url
       assert length(Storyarn.Sheets.search_sheets_in_projects([project.id], "")) == 1
+      assert [replayed_notification] = Notifications.list_notifications(recipient_scope)
+      assert replayed_notification.id == notification.id
+      refute_receive :notifications_changed, 100
     end
 
     test "replaying after a LiveView reconnect returns the durable create result",
@@ -929,6 +945,10 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
       sheet = sheet_fixture(project)
+      recipient = user_fixture()
+      membership_fixture(project, recipient, "editor")
+      recipient_scope = user_scope_fixture(recipient)
+      :ok = Notifications.subscribe(recipient_scope)
 
       payload = %{
         "type" => "sheet",
@@ -940,11 +960,22 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       render_hook(view, "palette_delete", payload)
       assert_reply(view, %{deleted: true})
 
+      assert_receive :notifications_changed
+
+      assert [notification] = Notifications.list_notifications(recipient_scope)
+      assert notification.kind == "content_deleted"
+      assert notification.entity_type == "sheet"
+      assert notification.entity_id == sheet.id
+      assert notification.entity_name == sheet.name
+
       {:ok, reconnected_view, _html} = live(conn, workspace_path)
       render_hook(reconnected_view, "palette_delete", payload)
       assert_reply(reconnected_view, %{deleted: true})
 
       assert Storyarn.Sheets.get_sheet(project.id, sheet.id) == nil
+      assert [replayed_notification] = Notifications.list_notifications(recipient_scope)
+      assert replayed_notification.id == notification.id
+      refute_receive :notifications_changed, 100
     end
   end
 

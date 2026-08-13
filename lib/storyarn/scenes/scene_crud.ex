@@ -9,9 +9,11 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Accounts.Scope
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
+  alias Storyarn.Notifications
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
@@ -444,6 +446,26 @@ defmodule Storyarn.Scenes.SceneCrud do
   Creates a scene with auto-generated shortcut and default layer.
   Auto-assigns position if not provided.
   """
+  def create_scene(%Scope{} = actor_scope, %Project{} = project, attrs) do
+    result =
+      fn ->
+        scene = create_scene_in_transaction(project, attrs)
+        {scene, deliver_content_activity!(actor_scope, project, :created, scene)}
+      end
+      |> Repo.transaction()
+      |> normalize_item_limit_result()
+
+    case result do
+      {:ok, {scene, notification_outcome}} ->
+        Notifications.publish_committed(notification_outcome)
+        Collaboration.broadcast_dashboard_change(project.id, :scenes)
+        {:ok, scene}
+
+      other ->
+        other
+    end
+  end
+
   def create_scene(%Project{} = project, attrs) do
     result = do_create_scene(project, attrs)
 
@@ -481,6 +503,12 @@ defmodule Storyarn.Scenes.SceneCrud do
       {:error, reason, details} -> Repo.rollback({reason, details})
       {:error, reason} -> Repo.rollback(reason)
     end
+  end
+
+  @doc false
+  def create_scene_in_transaction(%Scope{} = actor_scope, %Project{} = project, attrs) do
+    scene = create_scene_in_transaction(project, attrs)
+    {scene, deliver_content_activity!(actor_scope, project, :created, scene)}
   end
 
   defp insert_scene_with_default_layer(project_id, attrs) do
@@ -537,6 +565,10 @@ defmodule Storyarn.Scenes.SceneCrud do
     with {:ok, %{entity: entity}} <- delete_scene_subtree(scene), do: {:ok, entity}
   end
 
+  def delete_scene(%Scope{} = actor_scope, %Scene{} = scene) do
+    with {:ok, %{entity: entity}} <- delete_scene_subtree(actor_scope, scene), do: {:ok, entity}
+  end
+
   @doc """
   Same soft-delete as `delete_scene/1`, additionally returning `deleted_ids` —
   the committed cascade set, collected by the deletion itself under the same
@@ -555,6 +587,20 @@ defmodule Storyarn.Scenes.SceneCrud do
     end
 
     result
+  end
+
+  def delete_scene_subtree(%Scope{} = actor_scope, %Scene{} = scene) do
+    result = Repo.transaction(fn -> delete_scene_subtree_in_transaction(actor_scope, scene) end)
+
+    case result do
+      {:ok, %{entity: deleted_scene, notification_outcome: notification_outcome} = deleted} ->
+        Notifications.publish_committed(notification_outcome)
+        Collaboration.broadcast_dashboard_change(deleted_scene.project_id, :scenes)
+        {:ok, Map.delete(deleted, :notification_outcome)}
+
+      _ ->
+        result
+    end
   end
 
   @doc false
@@ -579,6 +625,21 @@ defmodule Storyarn.Scenes.SceneCrud do
         end
       end
     )
+  end
+
+  @doc false
+  def delete_scene_subtree_in_transaction(%Scope{} = actor_scope, %Scene{} = scene) do
+    deleted = delete_scene_subtree_in_transaction(scene)
+    project = Repo.get!(Project, deleted.entity.project_id)
+    outcome = deliver_content_activity!(actor_scope, project, :deleted, deleted.entity)
+    Map.put(deleted, :notification_outcome, outcome)
+  end
+
+  defp deliver_content_activity!(actor_scope, project, action, scene) do
+    case Notifications.deliver_content_activity(actor_scope, project, action, "scene", scene) do
+      {:ok, outcome} -> outcome
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   @doc """

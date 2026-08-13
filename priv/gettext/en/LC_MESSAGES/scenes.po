@@ -55,7 +55,7 @@ msgstr ""
 msgid "Cannot duplicate a locked element."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:143
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:144
 #, elixir-autogen, elixir-format
 msgid "Child scene created. Add a background image to continue."
 msgstr ""
@@ -80,8 +80,8 @@ msgstr ""
 msgid "Could not create annotation."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:63
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:154
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:64
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:155
 #, elixir-autogen, elixir-format
 msgid "Could not create child scene."
 msgstr ""
@@ -102,8 +102,8 @@ msgstr ""
 msgid "Could not create pin."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_sidebar_live.ex:98
-#: lib/storyarn_web/live/scene_sidebar_live.ex:116
+#: lib/storyarn_web/live/scene_sidebar_live.ex:102
+#: lib/storyarn_web/live/scene_sidebar_live.ex:120
 #, elixir-autogen, elixir-format
 msgid "Could not create scene."
 msgstr ""
@@ -135,7 +135,7 @@ msgid "Could not delete pin."
 msgstr ""
 
 #: lib/storyarn_web/live/scene_live/index.ex:380
-#: lib/storyarn_web/live/scene_sidebar_live.ex:166
+#: lib/storyarn_web/live/scene_sidebar_live.ex:170
 #, elixir-autogen, elixir-format
 msgid "Could not delete scene."
 msgstr ""
@@ -170,7 +170,7 @@ msgstr ""
 msgid "Could not move pin."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_sidebar_live.ex:175
+#: lib/storyarn_web/live/scene_sidebar_live.ex:179
 #, elixir-autogen, elixir-format
 msgid "Could not move scene."
 msgstr ""
@@ -316,7 +316,7 @@ msgstr ""
 msgid "Layer renamed."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:45
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:46
 #, elixir-autogen, elixir-format
 msgid "Name the zone before creating a child scene."
 msgstr ""
@@ -382,7 +382,7 @@ msgid "Pin pasted."
 msgstr ""
 
 #: lib/storyarn_web/live/scene_live/index.ex:379
-#: lib/storyarn_web/live/scene_sidebar_live.ex:165
+#: lib/storyarn_web/live/scene_sidebar_live.ex:169
 #, elixir-autogen, elixir-format
 msgid "Scene moved to trash."
 msgstr ""
@@ -403,7 +403,7 @@ msgstr ""
 msgid "Target flow has no entry node."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:79
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:80
 #, elixir-autogen, elixir-format
 msgid "The target scene no longer exists. The reference has been cleared."
 msgstr ""
@@ -458,9 +458,9 @@ msgstr ""
 msgid "Undo: zone restored."
 msgstr ""
 
-#: lib/storyarn_web/live/hooks/palette.ex:590
-#: lib/storyarn_web/live/scene_sidebar_live.ex:90
-#: lib/storyarn_web/live/scene_sidebar_live.ex:106
+#: lib/storyarn_web/live/hooks/palette.ex:591
+#: lib/storyarn_web/live/scene_sidebar_live.ex:93
+#: lib/storyarn_web/live/scene_sidebar_live.ex:110
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""
@@ -485,8 +485,8 @@ msgstr ""
 msgid "Zone duplicated."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:38
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:157
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:39
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:158
 #, elixir-autogen, elixir-format
 msgid "Zone not found."
 msgstr ""
@@ -777,9 +777,9 @@ msgstr ""
 msgid "Event"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:151
-#: lib/storyarn_web/live/scene_sidebar_live.ex:95
-#: lib/storyarn_web/live/scene_sidebar_live.ex:113
+#: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:152
+#: lib/storyarn_web/live/scene_sidebar_live.ex:99
+#: lib/storyarn_web/live/scene_sidebar_live.ex:117
 #, elixir-autogen, elixir-format
 msgid "Item limit reached for your plan"
 msgstr ""
@@ -800,7 +800,7 @@ msgstr ""
 msgid "Too many nested subflows. Stopping execution."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_sidebar_live.ex:156
+#: lib/storyarn_web/live/scene_sidebar_live.ex:160
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr ""

@@ -454,7 +454,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @spec handle_create_sheet(Socket.t()) ::
           {:noreply, Socket.t()}
   def handle_create_sheet(socket) do
-    case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
+    case Sheets.create_sheet(
+           socket.assigns.current_scope,
+           socket.assigns.project,
+           %{name: dgettext("sheets", "Untitled")}
+         ) do
       {:ok, new_sheet} ->
         {:noreply,
          push_navigate(socket,

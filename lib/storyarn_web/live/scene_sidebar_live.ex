@@ -87,7 +87,11 @@ defmodule StoryarnWeb.SceneSidebarLive do
   @impl true
   def handle_event("create_scene", _params, socket) do
     with_edit(socket, fn socket ->
-      case Scenes.create_scene(socket.assigns.project, %{name: dgettext("scenes", "Untitled")}) do
+      case Scenes.create_scene(
+             socket.assigns.current_scope,
+             socket.assigns.project,
+             %{name: dgettext("scenes", "Untitled")}
+           ) do
         {:ok, new_scene} ->
           {:noreply, on_tree_change_and_open(socket, new_scene.id)}
 
@@ -105,7 +109,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
       parent_id = params["parent_id"] || params["parent-id"]
       attrs = %{name: dgettext("scenes", "Untitled"), parent_id: parent_id}
 
-      case Scenes.create_scene(socket.assigns.project, attrs) do
+      case Scenes.create_scene(socket.assigns.current_scope, socket.assigns.project, attrs) do
         {:ok, new_scene} ->
           {:noreply, on_tree_change_and_open(socket, new_scene.id)}
 
@@ -159,7 +163,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
   defp confirm_delete_scene(socket) do
     TreeSidebarActions.confirm_delete(socket, %{
       get_entity: &Scenes.get_scene/2,
-      delete_entity: &Scenes.delete_scene_subtree/1,
+      delete_entity: &Scenes.delete_scene_subtree(socket.assigns.current_scope, &1),
       broadcast_deleted: &broadcast_entities_deleted/2,
       refresh_tree: &refresh_tree_and_broadcast/1,
       deleted_message: dgettext("scenes", "Scene moved to trash."),

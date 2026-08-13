@@ -87,7 +87,11 @@ defmodule StoryarnWeb.SheetsSidebarLive do
   @impl true
   def handle_event("create_sheet", _params, socket) do
     with_edit(socket, fn socket ->
-      case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
+      case Sheets.create_sheet(
+             socket.assigns.current_scope,
+             socket.assigns.project,
+             %{name: dgettext("sheets", "Untitled")}
+           ) do
         {:ok, new_sheet} ->
           {:noreply, on_tree_change_and_open(socket, new_sheet.id)}
 
@@ -104,7 +108,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
     with_edit(socket, fn socket ->
       attrs = %{name: dgettext("sheets", "New Sheet"), parent_id: parent_id}
 
-      case Sheets.create_sheet(socket.assigns.project, attrs) do
+      case Sheets.create_sheet(socket.assigns.current_scope, socket.assigns.project, attrs) do
         {:ok, new_sheet} ->
           {:noreply, on_tree_change_and_open(socket, new_sheet.id)}
 
@@ -160,7 +164,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
   defp confirm_delete_sheet(socket) do
     TreeSidebarActions.confirm_delete(socket, %{
       get_entity: &Sheets.get_sheet/2,
-      delete_entity: &Sheets.delete_sheet_subtree/1,
+      delete_entity: &Sheets.delete_sheet_subtree(socket.assigns.current_scope, &1),
       broadcast_deleted: &broadcast_entities_deleted/2,
       refresh_tree: &refresh_tree_and_broadcast/1,
       deleted_message: dgettext("sheets", "Sheet moved to trash."),

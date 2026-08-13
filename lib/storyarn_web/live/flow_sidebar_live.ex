@@ -88,7 +88,11 @@ defmodule StoryarnWeb.FlowSidebarLive do
   @impl true
   def handle_event("create_flow", _params, socket) do
     with_edit(socket, fn socket ->
-      case Flows.create_flow(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
+      case Flows.create_flow(
+             socket.assigns.current_scope,
+             socket.assigns.project,
+             %{name: dgettext("flows", "Untitled")}
+           ) do
         {:ok, new_flow} ->
           {:noreply, on_tree_change_and_open(socket, new_flow.id)}
 
@@ -105,7 +109,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
     with_edit(socket, fn socket ->
       attrs = %{name: dgettext("flows", "Untitled"), parent_id: parent_id}
 
-      case Flows.create_flow(socket.assigns.project, attrs) do
+      case Flows.create_flow(socket.assigns.current_scope, socket.assigns.project, attrs) do
         {:ok, new_flow} ->
           {:noreply, on_tree_change_and_open(socket, new_flow.id)}
 
@@ -192,7 +196,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
   defp confirm_delete_flow(socket) do
     TreeSidebarActions.confirm_delete(socket, %{
       get_entity: &Flows.get_flow/2,
-      delete_entity: &Flows.delete_flow_subtree/1,
+      delete_entity: &Flows.delete_flow_subtree(socket.assigns.current_scope, &1),
       broadcast_deleted: &broadcast_entities_deleted/2,
       refresh_tree: &refresh_tree_and_broadcast/1,
       deleted_message: dgettext("flows", "Flow moved to trash."),

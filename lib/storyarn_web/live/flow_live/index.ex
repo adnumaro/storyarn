@@ -445,7 +445,7 @@ defmodule StoryarnWeb.FlowLive.Index do
 
   defp delete_authorized_flow(socket, flow_id) do
     with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
-         {:ok, _} <- Flows.delete_flow(flow) do
+         {:ok, _} <- Flows.delete_flow(socket.assigns.current_scope, flow) do
       broadcast_tree_changed(socket)
 
       {:noreply,

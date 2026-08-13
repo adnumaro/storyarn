@@ -1670,7 +1670,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp do_create_linked_flow(socket, node) do
-    case Flows.create_linked_flow(socket.assigns.project, socket.assigns.flow, node) do
+    case Flows.create_linked_flow(
+           socket.assigns.current_scope,
+           socket.assigns.project,
+           socket.assigns.flow,
+           node
+         ) do
       {:ok, %{flow: new_flow}} ->
         {:noreply,
          push_patch(socket,

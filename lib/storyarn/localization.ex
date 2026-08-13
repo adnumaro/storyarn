@@ -76,12 +76,14 @@ defmodule Storyarn.Localization do
   @doc "Adds a new language to a project."
   @spec add_language(Project.t(), attrs()) :: {:ok, project_language()} | {:error, language_add_error()}
   defdelegate add_language(project, attrs), to: LanguageCrud
+  defdelegate add_language(actor_scope, project, attrs), to: LanguageCrud
 
   @doc "Adds a language and reports how many localization rows were reconciled."
   @spec add_language_with_count(Project.t(), attrs()) ::
           {:ok, %{language: project_language(), extracted_count: non_neg_integer()}}
           | {:error, language_add_error()}
   defdelegate add_language_with_count(project, attrs), to: LanguageCrud
+  defdelegate add_language_with_count(actor_scope, project, attrs), to: LanguageCrud
 
   @doc "Updates a project language."
   @spec update_language(project_language(), attrs()) ::
@@ -92,6 +94,7 @@ defmodule Storyarn.Localization do
   @spec remove_language(project_language()) ::
           {:ok, project_language()} | {:error, changeset() | :source_language}
   defdelegate remove_language(language), to: LanguageCrud
+  defdelegate remove_language(actor_scope, language), to: LanguageCrud
 
   @doc "Sets a language as the source language (unsets any existing source)."
   @spec set_source_language(project_language()) ::

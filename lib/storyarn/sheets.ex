@@ -234,9 +234,11 @@ defmodule Storyarn.Sheets do
   """
   @spec create_sheet(Project.t(), attrs()) :: {:ok, sheet()} | {:error, changeset()}
   defdelegate create_sheet(project, attrs), to: SheetCrud
+  defdelegate create_sheet(actor_scope, project, attrs), to: SheetCrud
 
   @doc false
   defdelegate create_sheet_in_transaction(project, attrs), to: SheetCrud
+  defdelegate create_sheet_in_transaction(actor_scope, project, attrs), to: SheetCrud
 
   @doc false
   defdelegate sync_created_sheet_localization(sheet), to: SheetCrud
@@ -253,6 +255,7 @@ defmodule Storyarn.Sheets do
   """
   @spec delete_sheet(sheet()) :: {:ok, sheet()} | {:error, term()}
   defdelegate delete_sheet(sheet), to: SheetCrud
+  defdelegate delete_sheet(actor_scope, sheet), to: SheetCrud
 
   @doc """
   Soft deletes a sheet and its descendants, returning the committed cascade
@@ -261,9 +264,11 @@ defmodule Storyarn.Sheets do
   @spec delete_sheet_subtree(sheet()) ::
           {:ok, %{entity: sheet(), deleted_ids: [integer()]}} | {:error, term()}
   defdelegate delete_sheet_subtree(sheet), to: SheetCrud
+  defdelegate delete_sheet_subtree(actor_scope, sheet), to: SheetCrud
 
   @doc false
   defdelegate delete_sheet_subtree_in_transaction(sheet), to: SheetCrud
+  defdelegate delete_sheet_subtree_in_transaction(actor_scope, sheet), to: SheetCrud
 
   @doc """
   Soft deletes a sheet and all its descendants (moves to trash).
