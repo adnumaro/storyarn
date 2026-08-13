@@ -1,0 +1,47 @@
+test/storyarn/notifications_test.exs
+  s_d64ccabdb01eb7::t_447afad6abda49 9,393-403
+  s_d64ccabdb01eb7::t_8e242e717a9095 4,299,302-392,404,646-658
+  s_d64ccabdb01eb7::t_0d507349e53027 659-660
+priv/repo/migrations/20260813120000_create_notification_content_activity_markers.exs
+  s_d64ccabdb01eb7::t_0155cfcc718c13 1-34
+lib/storyarn/notifications.ex
+  s_d64ccabdb01eb7::t_1cedd78869bfb9 27,92-93,121,127-129,131,133-136,315,319-353,360-384
+  s_d64ccabdb01eb7::t_8921bdc58c7dbf 113,130,132,137-143
+  s_d64ccabdb01eb7::t_9bcbaf3b9a4208 385-386
+test/storyarn/sheets/structural_notifications_test.exs
+  s_d64ccabdb01eb7::t_850c21b5970661 10,30-31,80-108
+  s_c2ae682cd97119::t_3c4aaa7c52879a 109-110
+test/storyarn/localization/structural_notifications_test.exs
+  s_d64ccabdb01eb7::t_0cdb5f4d86c663 134
+  s_d64ccabdb01eb7::t_116947bdc43825 119-133,135-136
+  s_d64ccabdb01eb7::t_77b348be58c8ec 91-118
+lib/storyarn/localization/language_crud.ex
+  s_d64ccabdb01eb7::t_3ebf6d46f5d3a4 369
+  s_d64ccabdb01eb7::t_1ab0eaea8da4d7 14,123-124,127,368,370-378,382
+  s_d64ccabdb01eb7::t_77b348be58c8ec 126,138-142,146-147,379-381
+  s_d64ccabdb01eb7::t_0f3c610c6628b1 148,383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "dc2702a7d2aa2690eff48c2fbebdc53511a353f8",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_d64ccabdb01eb7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff51e-6200-7312-96d7-fd26ee5eb12d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
