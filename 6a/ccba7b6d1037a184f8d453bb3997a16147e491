@@ -1,0 +1,208 @@
+lib/storyarn/scenes/scene_crud.ex
+  s_d64ccabdb01eb7::t_0a9cbae0ba9bc8 16-17,22,36-37,40-72,971-1007,1040,1078,1085-1129
+  s_d64ccabdb01eb7::t_9e87896245c57e 1130
+assets/app/components/versioning/history/RestorePreviewDialog.vue
+  s_d64ccabdb01eb7::t_0563b59077700e 2,9,14-15,42-43,50-52,59-68,70,97,107,111,114,122-123,137,142-145
+assets/app/components/versioning/history/UnsavedChangesDialog.vue
+  s_d64ccabdb01eb7::t_8afd3a079fd8e4 2,24,46-47,49-51
+assets/app/components/versioning/history/VersionHistory.vue
+  s_d64ccabdb01eb7::t_6475573b917840 458
+assets/app/components/versioning/history/useVersionHistory.ts
+  s_d64ccabdb01eb7::t_eaf492bf723500 20,167-172,175,177-185,192-203,240
+assets/app/locales/en/common.json
+  s_d64ccabdb01eb7::t_1902c1712edf03 79-80,85,87-99,101
+assets/app/locales/es/common.json
+  s_d64ccabdb01eb7::t_b0953dd0de6156 79-80,85,87-99,101
+assets/app/modules/sheets/components/panels/tabs/ReferencesTab.vue
+  s_d64ccabdb01eb7::t_bfdbcc9e760799 76-109,198,206,212,216,219,249,257,263,267,270
+assets/app/modules/sheets/types.ts
+  s_d64ccabdb01eb7::t_f13cca1bdef684 292
+assets/app/test/components/versioning/RestoreContainment.test.ts
+  s_d64ccabdb01eb7::t_12f7d8fa483074 99,137,145
+assets/app/test/components/versioning/RestoreDialogs.test.ts
+  s_d64ccabdb01eb7::t_acb94ddc3c15ee 1-224
+assets/app/test/modules/sheets/components/panels/tabs/ReferencesTab.test.ts
+  s_d64ccabdb01eb7::t_5a3cf0bb4ecd9f 1-65
+docs/reference/README.md
+  s_d64ccabdb01eb7::t_83a1e7a7a426c2 45
+docs/reference/entity-version-restore-integrity.md
+  s_d64ccabdb01eb7::t_a0eac0ca5a9474 1-140
+lib/storyarn/analytics.ex
+  s_d64ccabdb01eb7::t_a9d4d0c89101c6 50
+lib/storyarn/assets/blob_store.ex
+  s_d64ccabdb01eb7::t_29f0961c3e285b 155,175-182
+lib/storyarn/flows/reference_integrity.ex
+  s_d64ccabdb01eb7::t_13b3ad1b229a77 13,686,696-704,707-708,712,714
+lib/storyarn/flows/variable_reference.ex
+  s_d64ccabdb01eb7::t_ce090e8f5297f3 24
+lib/storyarn/flows/variable_reference_tracker.ex
+  s_d64ccabdb01eb7::t_4cbad0fc14c422 6,9,11-15,37,45,48-50,69,94-100,103,105-106,119,154-295,376-408,411,419-420,457-460,539-547,568-570,578,595-600,648-649,658-659,674-677,743-1351,1353-1359,1362-1369,1372-1378,1381-1382,1385,1387-1400,1413-1420,1425-1473,1515-1543,1566-1569,1573-1672,1695-1696,1715-1718,1720-1745,1782-1791,1807-1818,1947-1948,1952-1953,1970-1971,1973,1976-1978,1980-1982,1984-1989,1992-1993,1996-2076,2078-2080,2082-2097,2100-2101,2103,2107-2108,2128-2130,2132-2147,2150-2153,2156-2157,2187-2195,2207-2213,2219-2240,2243-2246,2248,2260-2263,2266-2267,2308,2329-2336,2407-2414
+lib/storyarn/global_search/variable_search.ex
+  s_d64ccabdb01eb7::t_c3df1b405375da 407
+lib/storyarn/references.ex
+  s_d64ccabdb01eb7::t_909dfe84409bb6 40-49,56-61
+lib/storyarn/references/avatar_integrity.ex
+  s_d64ccabdb01eb7::t_678bbed88b078a 26-36
+lib/storyarn/references/project_reference_integrity.ex
+  s_d64ccabdb01eb7::t_41c7b97ef01a3c 25,132,136-137,141
+lib/storyarn/references/rich_text_mentions.ex
+  s_d64ccabdb01eb7::t_f93580d4e54359 1-80
+lib/storyarn/references/variable_reference.ex
+  s_d64ccabdb01eb7::t_f293ab02a641a0 11,34
+lib/storyarn/references/variable_tracker.ex
+  s_d64ccabdb01eb7::t_5978e76de56069 20-25,37-42
+lib/storyarn/references/variable_usage.ex
+  s_d64ccabdb01eb7::t_d60d7aaae9bbbc 19,57-58,214-254
+lib/storyarn/scenes.ex
+  s_d64ccabdb01eb7::t_5bb6475836f202 593-595,602-604
+lib/storyarn/scenes/ambient_flow_crud.ex
+  s_d64ccabdb01eb7::t_4dcc44ec6d74af 8,51-56,79-84,99-101
+lib/storyarn/sheets/reference_tracker.ex
+  s_d64ccabdb01eb7::t_a8e117582ad1f5 35,89-90,93,96-97,104,121-166,795-801,850-852,854,856-858,866-867,870-871,887-897
+lib/storyarn/sheets/sheet_queries.ex
+  s_d64ccabdb01eb7::t_5e6976e06a474f 24,1419-1421,1424-1425,1433-1434,1446-1448,1451-1453,1466-1467
+lib/storyarn/sheets/variable_catalog.ex
+  s_d64ccabdb01eb7::t_9c8cf1232b7803 23,27-38,369-370
+lib/storyarn/versioning.ex
+  s_d64ccabdb01eb7::t_6d62f762fe7f2e 109
+lib/storyarn/versioning/builders/asset_hash_resolver.ex
+  s_d64ccabdb01eb7::t_b9b2ed181a9bc4 186-190,215-216,233-250,360-365,394-415
+lib/storyarn/versioning/builders/flow_builder.ex
+  s_d64ccabdb01eb7::t_461ea20a2b9635 20,24,35,41,46,703-705,1007-1014,1058,1063-1079,1093-1095,1099-1100,1121-1133,1178-1187,2327-2350,3008-3016,3053-3061,3414-3422,3458-3467,3542-3551,3682-3803,4199,4205-4210,4216,4566-4570,4576,4578-4579,4581-4587,4599-4676,4684,4690-4691,4703,4709-4710,4724-4725,4727-4733
+lib/storyarn/versioning/builders/scene_builder.ex
+  s_d64ccabdb01eb7::t_318475c8b6cea1 8-10,37,486-488,633-637,640-641,670-675,683-688,691-692,703-713,718-719,739,806-828,927,949,1002-1009,1016-1043,2019,2029,2032-2035,2045-2054,2068-2074,2217-2222,2281-2285,2295-2299,2329-2334,2349-2352,2469-2475,2630-2636,3024,3122-3128,3303-3307,3310-3314,3320-3325,3331
+lib/storyarn/versioning/builders/sheet_builder.ex
+  s_d64ccabdb01eb7::t_6e6141055c475b 27,35,292-294,423-430,636-638,648-657,659-671,713-721,726-732,760-781,1849-1850,2239-2245,2362-2368,2665-2671,2820,2826-2831,2837,2912-2918,3134,3168-3214
+lib/storyarn/versioning/conflict_detector.ex
+  s_d64ccabdb01eb7::t_66d4414489aec6 14,16-18,21,23-24,28,32,54-58,83,85,88,91-92,94-96,100-194,196-218,222-338,411-416
+lib/storyarn/versioning/entity_restore_safety.ex
+  s_d64ccabdb01eb7::t_21e3dcd95b18dc 1-173
+lib/storyarn/versioning/materialization_helpers.ex
+  s_d64ccabdb01eb7::t_af53455280afa3 7-8,35-72,76-77,85-95
+lib/storyarn/versioning/snapshot_builder.ex
+  s_d64ccabdb01eb7::t_41a2b47f7f2658 51-53
+lib/storyarn_web/helpers/version_event_helpers.ex
+  s_d64ccabdb01eb7::t_693c6624375a89 66,73,80,86,198,203,207,212,227,231-234
+lib/storyarn_web/helpers/version_history_helpers.ex
+  s_d64ccabdb01eb7::t_028da7353c21c9 124,129,141,147
+lib/storyarn_web/live/flow_live/show.ex
+  s_d64ccabdb01eb7::t_70ab215eeeb0c0 473-474,477,479
+lib/storyarn_web/live/scene_live/show.ex
+  s_d64ccabdb01eb7::t_f2cc59a7c6ac86 768-769,772,774
+lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex
+  s_d64ccabdb01eb7::t_04bf779671e77c 76,79,84,87,165,168,171,177,244,248-251
+lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex
+  s_d64ccabdb01eb7::t_20bcb87f11cb66 98,102,116,122
+lib/storyarn_web/live/sheet_live/helpers/references_data_helpers.ex
+  s_d64ccabdb01eb7::t_dfaf90b8ec3649 58-77
+lib/storyarn_web/live/sheet_live/show.ex
+  s_d64ccabdb01eb7::t_8b7c7ba86db3b2 843-844
+priv/blog/en/2026-07-17-version-control-branching-narratives.md
+  s_d64ccabdb01eb7::t_782133b2d03b06 54,58
+priv/blog/es/2026-07-17-control-versiones-narrativa-ramificada.md
+  s_d64ccabdb01eb7::t_f1b30f71d4a91e 54,58
+priv/gettext/assets.pot
+  s_d64ccabdb01eb7::t_1ff7ca427ddf10 57
+priv/gettext/default.pot
+  s_d64ccabdb01eb7::t_186f5099cbddd7 95
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_d64ccabdb01eb7::t_50b14a030a493c 57
+priv/gettext/en/LC_MESSAGES/default.po
+  s_d64ccabdb01eb7::t_da7a9fc46a74a8 95
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_d64ccabdb01eb7::t_c5b14b31ad017d 53,216,226,287,292,297,302,307,312,317,327,332,337,342,347,352,357,362,367,405,410,415,420,425,430,443,457-481
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_d64ccabdb01eb7::t_2d948599ebc866 35,234,249,256-257,278,294,373-374,504,509,514,519,524,529,534,539,544,549,554,559,564,569,574,579,584,589,594,599,604,609,614,619,624,639-640,695,700,705,720,725,730,740,745,750,808,813,823,833,863,868,873,878,883,888
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_d64ccabdb01eb7::t_d1a4b45590ec03 14,19,24,103,221,226,231-232,237,242,247,252,257,262,267,298,303,308,313,318,323,408-422
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_d64ccabdb01eb7::t_ab14c4eb5a48a7 14,26,31-32,37-38,43-44,49-50,55-57,67,72,77,82-83,88-89,94-95,100-101,106,113,120,127,134,141,146-147,152,166-241
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_d64ccabdb01eb7::t_04657e7d322c97 57
+priv/gettext/es/LC_MESSAGES/default.po
+  s_d64ccabdb01eb7::t_7c6ca09910bd85 95
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_d64ccabdb01eb7::t_b6201885c4b128 53,216,226,287,292,297,302,307,312,317,327,332,337,342,347,352,357,362,367,405,410,415,420,425,430,443,457-481
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_d64ccabdb01eb7::t_560decec2b3a02 35,234,249,256-257,278,294,373-374,504,509,514,519,524,529,534,539,544,549,554,559,564,569,574,579,584,589,594,599,604,609,614,619,624,639-640,695,700,705,720,725,730,740,745,750,808,813,823,833,863,868,873,878,883,888
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_d64ccabdb01eb7::t_2383f81d88fb9d 14,19,24,103,221,226,231-232,237,242,247,252,257,262,267,298,303,308,313,318,323,408-422
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_d64ccabdb01eb7::t_326e6e305b685a 14,26,31-32,37-38,43-44,49-50,55-57,67,72,77,82-83,88-89,94-95,100-101,106,113,120,127,134,141,146-147,152,166-241
+priv/gettext/flows.pot
+  s_d64ccabdb01eb7::t_4eab96fabeb9e2 53,216,226,287,292,297,302,307,312,317,327,332,337,342,347,352,357,362,367,405,410,415,420,425,430,443,457-481
+priv/gettext/scenes.pot
+  s_d64ccabdb01eb7::t_eebf3d6ef0e2fd 35,234,249,256-257,278,294,373-374,504,509,514,519,524,529,534,539,544,549,554,559,564,569,574,579,584,589,594,599,604,609,614,619,624,639-640,695,700,705,720,725,730,740,745,750,808,813,823,833,863,868,873,878,883,888
+priv/gettext/sheets.pot
+  s_d64ccabdb01eb7::t_058eebc7625a1e 14,19,24,103,221,226,231-232,237,242,247,252,257,262,267,298,303,308,313,318,323,408-422
+priv/gettext/versioning.pot
+  s_d64ccabdb01eb7::t_ec3ccc2fcd2254 14,26,31-32,37-38,43-44,49-50,55-57,67,72,77,82-83,88-89,94-95,100-101,106,113,120,127,134,141,146-147,152,166-241
+test/storyarn/assets/blob_store_test.exs
+  s_d64ccabdb01eb7::t_db8352fdc3dda9 143-176,349,393-394,449
+test/storyarn/blog_test.exs
+  s_d64ccabdb01eb7::t_1b93e8e84982ae 141-145,164-168
+test/storyarn/flows/variable_reference_tracker_test.exs
+  s_d64ccabdb01eb7::t_7584101a13d9a7 16-17,1062-1185,2422-2470,2617-3471
+test/storyarn/references/ambient_flow_variable_usage_test.exs
+  s_d64ccabdb01eb7::t_aadb152547719a 1-175
+test/storyarn/references/project_reference_integrity_test.exs
+  s_d64ccabdb01eb7::t_7fa4622957b535 14-45
+test/storyarn/references/rich_text_mentions_test.exs
+  s_d64ccabdb01eb7::t_ed82e61edbd509 1-61
+test/storyarn/scenes/ambient_flow_crud_test.exs
+  s_d64ccabdb01eb7::t_21073da83e710a 7,10,158-192,355-366
+test/storyarn/sheets/reference_tracker_test.exs
+  s_d64ccabdb01eb7::t_5f8d8792b3255f 17-18,29-74,334-359
+test/storyarn/sheets/sheet_queries_test.exs
+  s_d64ccabdb01eb7::t_c089ab2482a2e4 1447-1469,1505-1525
+test/storyarn/versioning/builders/asset_hash_resolver_test.exs
+  s_d64ccabdb01eb7::t_a17783d74ea613 24-48
+test/storyarn/versioning/builders/flow_builder_test.exs
+  s_d64ccabdb01eb7::t_6c29e46a9c7f91 30,792-886,1192-1362,2921-3047,3139-3271,3279,3292,3294,3298-3300,3302-3304,3306-3325,3327-3387,3390,3393,5175-5178,5186-5189,5199-5206,5208-5210,5219-5222,5224,5227-5239,5273-5295,5414-5427
+test/storyarn/versioning/builders/scene_builder_test.exs
+  s_d64ccabdb01eb7::t_fa818aec96d669 25,27,46,430-516,706-879,980-981,1000,1050,1060-1069,1079-1106,1620-1725,3107-3139,3141-3144,3148,3155-3162,3168-3183
+test/storyarn/versioning/builders/sheet_builder_test.exs
+  s_d64ccabdb01eb7::t_7935b09bd0a419 901-1174,2056-2126,3346,3353-3367,3379-3405,3628-3631,3635,3642-3649,3655-3670
+test/storyarn/versioning/conflict_detector_test.exs
+  s_d64ccabdb01eb7::t_efd4ddd74b84de 5,8,11-14,17-18,69-645,674-751,841,856,859-884
+test/storyarn/versioning/entity_restore_lock_concurrency_test.exs
+  s_d64ccabdb01eb7::t_bdfe2d0c9ae0b7 22,28-123
+test/storyarn/versioning/entity_restore_safety_test.exs
+  s_d64ccabdb01eb7::t_d47279896da38c 1-181
+test/storyarn/versioning/localization_snapshot_codec_test.exs
+  s_d64ccabdb01eb7::t_0e3c87702538f3 148-167
+test/storyarn/versioning/materialization_helpers_test.exs
+  s_d64ccabdb01eb7::t_2dfd5c7129333d 1-33
+test/storyarn/versioning/version_concurrency_test.exs
+  s_d64ccabdb01eb7::t_562b2bbdb04542 2,4,10-13,15-16,18,21-27,29-30,32-36,47-49,55,58-60,65-149,172,182-201
+test/storyarn_web/helpers/version_event_helpers_test.exs
+  s_d64ccabdb01eb7::t_f0628b22f2057a 39-40,55,64-65,87,126-127,130,134
+test/storyarn_web/live/flow_live/show_test.exs
+  s_d64ccabdb01eb7::t_ed189adf6a93db 382
+test/storyarn_web/live/hooks/palette_test.exs
+  s_d64ccabdb01eb7::t_ea57777af4d4e1 482-488,511
+test/storyarn_web/live/restore_containment_test.exs
+  s_d64ccabdb01eb7::t_bfc75f187913a8 118-119
+test/storyarn_web/live/scene_live/show_test.exs
+  s_d64ccabdb01eb7::t_1b5746ea6507f3 4126
+test/storyarn_web/live/sheet_live/ambient_flow_variable_usage_test.exs
+  s_d64ccabdb01eb7::t_a9f6ab57e9811a 1-100
+test/storyarn_web/live/sheet_live/handlers/history_handlers_test.exs
+  s_d64ccabdb01eb7::t_007867aa32973c 113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6accba7b6d1037a184f8d453bb3997a16147e491",
+  "prompts": {},
+  "sessions": {
+    "s_d64ccabdb01eb7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff51e-6200-7312-96d7-fd26ee5eb12d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
