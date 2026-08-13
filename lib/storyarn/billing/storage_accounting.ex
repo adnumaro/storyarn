@@ -15,6 +15,7 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Billing.Plan
@@ -1661,8 +1662,10 @@ defmodule Storyarn.Billing.StorageAccounting do
       reservation_id: reservation.id
     }
 
-    with :ok <- validate_reservation_scope(workspace, attrs),
-         {:ok, target} <- validate_reservation_target(attrs),
+    with {:ok, target_identity} <- reservation_target_identity(attrs),
+         :ok <- validate_reservation_scope(workspace, attrs),
+         :ok <- lock_snapshot_requester_parent(target_identity),
+         {:ok, target} <- validate_reservation_target(attrs, target_identity),
          :ok <- validate_active_target_facts(reservation, target) do
       {:ok, target}
     end
@@ -1700,12 +1703,46 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   defp validate_reservation_scope(%Workspace{}, _attrs), do: {:error, :invalid_storage_reservation_project}
 
-  defp validate_reservation_target(%{
-         project_id: project_id,
-         project_snapshot_id: snapshot_id,
-         kind: kind,
-         reserved_bytes: reserved_bytes
-       })
+  defp reservation_target_identity(%{project_id: project_id, project_snapshot_id: snapshot_id, kind: "snapshot_build"}) do
+    case Repo.one(
+           from(snapshot in ProjectSnapshot,
+             where: snapshot.id == ^snapshot_id and snapshot.project_id == ^project_id,
+             select: %{
+               snapshot_id: snapshot.id,
+               project_id: snapshot.project_id,
+               created_by_id: snapshot.created_by_id,
+               origin: snapshot.origin,
+               lifecycle_generation: snapshot.lifecycle_generation
+             }
+           )
+         ) do
+      identity when is_map(identity) ->
+        with :ok <- run_snapshot_target_identity_observed(identity), do: {:ok, identity}
+
+      nil ->
+        {:error, :invalid_storage_reservation_snapshot}
+    end
+  end
+
+  defp reservation_target_identity(_attrs), do: {:ok, nil}
+
+  defp lock_snapshot_requester_parent(%{created_by_id: nil}), do: :ok
+
+  defp lock_snapshot_requester_parent(%{created_by_id: user_id}) when is_integer(user_id) do
+    case Repo.one(from(user in User, where: user.id == ^user_id, lock: "FOR KEY SHARE")) do
+      %User{} -> :ok
+      nil -> :ok
+    end
+  end
+
+  defp lock_snapshot_requester_parent(nil), do: :ok
+
+  defp validate_reservation_target(attrs), do: validate_reservation_target(attrs, nil)
+
+  defp validate_reservation_target(
+         %{project_id: project_id, project_snapshot_id: snapshot_id, kind: kind, reserved_bytes: reserved_bytes},
+         target_identity
+       )
        when is_positive_integer(project_id) and is_positive_integer(snapshot_id) and
               is_non_negative_integer(reserved_bytes) do
     snapshot =
@@ -1716,7 +1753,8 @@ defmodule Storyarn.Billing.StorageAccounting do
         )
       )
 
-    with true <- valid_reservation_target?(kind, snapshot),
+    with :ok <- validate_target_identity(snapshot, target_identity),
+         true <- valid_reservation_target?(kind, snapshot),
          :ok <- validate_target_allocation(kind, reserved_bytes, snapshot) do
       {:ok, snapshot}
     else
@@ -1724,7 +1762,48 @@ defmodule Storyarn.Billing.StorageAccounting do
     end
   end
 
-  defp validate_reservation_target(_attrs), do: {:error, :invalid_storage_reservation_snapshot}
+  defp validate_reservation_target(_attrs, _target_identity), do: {:error, :invalid_storage_reservation_snapshot}
+
+  defp validate_target_identity(
+         %ProjectSnapshot{
+           id: snapshot_id,
+           project_id: project_id,
+           created_by_id: created_by_id,
+           origin: origin,
+           lifecycle_generation: lifecycle_generation
+         },
+         %{
+           snapshot_id: snapshot_id,
+           project_id: project_id,
+           created_by_id: expected_created_by_id,
+           origin: origin,
+           lifecycle_generation: lifecycle_generation
+         }
+       ) do
+    if requester_identity_compatible?(created_by_id, expected_created_by_id),
+      do: :ok,
+      else: {:error, :invalid_storage_reservation_snapshot}
+  end
+
+  defp validate_target_identity(%ProjectSnapshot{}, nil), do: :ok
+  defp validate_target_identity(_snapshot, _target_identity), do: {:error, :invalid_storage_reservation_snapshot}
+
+  defp requester_identity_compatible?(created_by_id, created_by_id), do: true
+  defp requester_identity_compatible?(nil, expected_created_by_id) when is_integer(expected_created_by_id), do: true
+  defp requester_identity_compatible?(_created_by_id, _expected_created_by_id), do: false
+
+  defp run_snapshot_target_identity_observed(identity) do
+    case Application.get_env(:storyarn, __MODULE__, []) do
+      opts when is_list(opts) ->
+        case Keyword.get(opts, :snapshot_target_identity_observed_fun) do
+          callback when is_function(callback, 1) -> callback.(identity)
+          _invalid -> :ok
+        end
+
+      _invalid ->
+        :ok
+    end
+  end
 
   defp valid_reservation_target?("snapshot_build", %ProjectSnapshot{
          project_id: project_id,
@@ -2268,6 +2347,15 @@ defmodule Storyarn.Billing.StorageAccounting do
   end
 
   defp owner_expectation(_reservation, _project_id, _snapshot), do: {:error, :storage_reservation_owner_mismatch}
+
+  defp validate_committed_owner(
+         reservation,
+         expectation,
+         {%ProjectSnapshot{} = owner, _transaction_metadata},
+         actual_bytes
+       ) do
+    validate_committed_owner(reservation, expectation, owner, actual_bytes)
+  end
 
   defp validate_committed_owner(reservation, expectation, %ProjectSnapshot{id: snapshot_id}, actual_bytes)
        when snapshot_id == expectation.snapshot_id do

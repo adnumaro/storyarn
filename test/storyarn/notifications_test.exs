@@ -126,6 +126,81 @@ defmodule Storyarn.NotificationsTest do
     end
   end
 
+  describe "deliver_async_result/3" do
+    test "requires the source transaction and rolls delivery back with it" do
+      recipient = user_fixture()
+      project = project_fixture(recipient)
+      scope = user_scope_fixture(recipient)
+
+      attrs = %{
+        entity_type: "project_snapshot",
+        entity_id: 7,
+        status: "success",
+        dedupe_key: "project_snapshot:7:success"
+      }
+
+      assert_raise ArgumentError,
+                   "deliver_async_result/3 must be called inside an open transaction",
+                   fn -> Notifications.deliver_async_result(scope, project, attrs) end
+
+      assert {:error, :forced_rollback} =
+               Repo.transact(fn ->
+                 assert {:ok, {:created, _notification}} =
+                          Notifications.deliver_async_result(scope, project, attrs)
+
+                 refute_receive :notifications_changed
+                 {:error, :forced_rollback}
+               end)
+
+      assert Repo.aggregate(Notification, :count, :id) == 0
+      refute_receive :notifications_changed
+    end
+
+    test "suppresses a missing requester only from inside the source transaction" do
+      attrs = %{
+        entity_type: "template_install",
+        entity_id: 8,
+        status: "failure",
+        dedupe_key: "template_install:8:failure"
+      }
+
+      assert_raise ArgumentError,
+                   "deliver_async_result/3 must be called inside an open transaction",
+                   fn -> Notifications.deliver_async_result(nil, nil, attrs) end
+
+      assert {:ok, {:ok, :suppressed}} =
+               Repo.transaction(fn -> Notifications.deliver_async_result(nil, nil, attrs) end)
+    end
+
+    test "delivers the outcome only to its requester" do
+      requester = user_fixture()
+      teammate = user_fixture()
+      project = project_fixture(requester)
+      membership_fixture(project, teammate)
+      requester_scope = user_scope_fixture(requester)
+      teammate_scope = user_scope_fixture(teammate)
+
+      attrs = %{
+        entity_type: "project_import",
+        entity_id: 9,
+        status: "success",
+        dedupe_key: "project_import:9:success"
+      }
+
+      :ok = Notifications.subscribe(requester_scope)
+      :ok = Notifications.subscribe(teammate_scope)
+
+      assert {:ok, {:ok, {:created, notification} = outcome}} =
+               Repo.transaction(fn -> Notifications.deliver_async_result(requester_scope, project, attrs) end)
+
+      assert notification.recipient_id == requester.id
+      assert :ok = Notifications.publish_committed(outcome)
+      assert_receive :notifications_changed
+      refute_receive :notifications_changed
+      assert Notifications.list_notifications(teammate_scope) == []
+    end
+  end
+
   describe "deliver_to_project_members/3" do
     test "notifies every other effective member exactly once" do
       actor = user_fixture()

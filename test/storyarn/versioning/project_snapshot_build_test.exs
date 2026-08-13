@@ -13,7 +13,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
+  alias Storyarn.Billing.StorageAccounting
   alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Notifications
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
@@ -369,14 +371,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
     test "publishes only the immutable capture after current asset deletion" do
       user = user_fixture()
       project = project_fixture(user)
+      scope = user_scope_fixture(user)
       asset = upload_asset!(project, user, "durable snapshot bytes")
 
-      assert {:ok, requested} = request_snapshot(user, project)
+      :ok = Notifications.subscribe(scope)
+      assert {:ok, requested} = request_snapshot(user, project, %{title: "Milestone"})
+      assert Notifications.list_notifications(scope) == []
+      refute_receive :notifications_changed
+
       requested = materialize_snapshot_capture!(requested)
       assert {:ok, _deleted} = Assets.delete_asset(asset)
       assert :ok = Storage.delete(asset.key)
 
       assert :ok = perform_requested_job(requested)
+      assert_receive :notifications_changed
 
       ready = Repo.get!(ProjectSnapshot, requested.id)
       assert ready.lifecycle_state == "ready"
@@ -414,8 +422,59 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert Enum.map(ready_objects, & &1.key) ==
                Enum.sort([ready.archive_storage_key, ready.manifest_storage_key])
 
+      assert_snapshot_notification(scope, ready, "success", "Milestone")
+
       assert :ok = perform_requested_job(ready)
+      refute_receive :notifications_changed
+      assert_snapshot_notification(scope, ready, "success", "Milestone")
       assert Repo.get!(ProjectSnapshot, ready.id).accounting_generation == 1
+    end
+
+    test "finalizes ready when the requester is nilified after advisory identity and suppresses notification" do
+      user = user_fixture()
+      project = project_fixture(user)
+      scope = user_scope_fixture(user)
+      _asset = upload_asset!(project, user, "requester race")
+
+      :ok = Notifications.subscribe(scope)
+      assert {:ok, requested} = request_snapshot(user, project, %{title: "Requester race"})
+      requested = materialize_snapshot_capture!(requested)
+
+      original_config = Application.get_env(:storyarn, StorageAccounting, [])
+      parent = self()
+
+      Application.put_env(
+        :storyarn,
+        StorageAccounting,
+        Keyword.put(original_config, :snapshot_target_identity_observed_fun, fn identity ->
+          if identity.snapshot_id == requested.id and is_integer(identity.created_by_id) do
+            assert {1, nil} =
+                     Repo.update_all(
+                       from(snapshot in ProjectSnapshot,
+                         where:
+                           snapshot.id == ^identity.snapshot_id and
+                             snapshot.created_by_id == ^identity.created_by_id
+                       ),
+                       set: [created_by_id: nil]
+                     )
+
+            send(parent, :snapshot_ready_requester_nilified)
+          end
+
+          :ok
+        end)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, StorageAccounting, original_config) end)
+
+      assert :ok = perform_requested_job(requested)
+      assert_receive :snapshot_ready_requester_nilified
+      refute_receive :notifications_changed
+
+      assert %ProjectSnapshot{lifecycle_state: "ready", created_by_id: nil} =
+               Repo.get!(ProjectSnapshot, requested.id)
+
+      assert Notifications.list_notifications(scope) == []
     end
 
     test "retries the published namespace when staging cleanup has no durable owner" do
@@ -534,9 +593,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
     test "fails closed when a protected source blob is missing" do
       user = user_fixture()
       project = project_fixture(user)
+      scope = user_scope_fixture(user)
       asset = upload_asset!(project, user, "missing source")
 
-      assert {:ok, requested} = request_snapshot(user, project)
+      :ok = Notifications.subscribe(scope)
+      assert {:ok, requested} = request_snapshot(user, project, %{title: "Broken milestone"})
+      refute_receive :notifications_changed
+
       assert :ok = Local.delete(protected_blob_key(project.id, asset))
 
       job = requested_job(requested)
@@ -548,6 +611,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
                  max_attempts: 1
                )
 
+      assert_receive :notifications_changed
+
       failed = Repo.get!(ProjectSnapshot, requested.id)
       assert failed.lifecycle_state == "failed"
       assert failed.integrity_state == "missing"
@@ -556,6 +621,65 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert {:error, _reason} = Storage.stat(failed.manifest_storage_key)
       assert Repo.get!(StorageReservation, failed.storage_reservation_id).status == "released"
       refute Repo.get(ProjectSnapshotCapture, failed.id)
+      assert_snapshot_notification(scope, failed, "failure", "Broken milestone")
+    end
+
+    test "terminalizes failure when the requester is nilified after advisory identity and suppresses notification" do
+      user = user_fixture()
+      project = project_fixture(user)
+      scope = user_scope_fixture(user)
+      asset = upload_asset!(project, user, "missing requester race")
+
+      :ok = Notifications.subscribe(scope)
+      assert {:ok, requested} = request_snapshot(user, project, %{title: "Missing requester"})
+      assert :ok = Local.delete(protected_blob_key(project.id, asset))
+
+      original_config = Application.get_env(:storyarn, ProjectSnapshotBuild, [])
+      parent = self()
+
+      Application.put_env(
+        :storyarn,
+        ProjectSnapshotBuild,
+        Keyword.put(original_config, :terminal_identity_observed_fun, fn identity ->
+          if identity.snapshot_id == requested.id and is_integer(identity.created_by_id) do
+            assert {1, nil} =
+                     Repo.update_all(
+                       from(snapshot in ProjectSnapshot,
+                         where:
+                           snapshot.id == ^identity.snapshot_id and
+                             snapshot.created_by_id == ^identity.created_by_id
+                       ),
+                       set: [created_by_id: nil]
+                     )
+
+            send(parent, :snapshot_failure_requester_nilified)
+          end
+
+          :ok
+        end)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, ProjectSnapshotBuild, original_config) end)
+
+      job = requested_job(requested)
+
+      assert {:discard, :source_missing} =
+               Versioning.perform_project_snapshot_build(requested.id,
+                 job_id: job.id,
+                 attempt: 1,
+                 max_attempts: 1
+               )
+
+      assert_receive :snapshot_failure_requester_nilified
+      refute_receive :notifications_changed
+
+      assert %ProjectSnapshot{
+               lifecycle_state: "failed",
+               integrity_state: "missing",
+               created_by_id: nil
+             } = Repo.get!(ProjectSnapshot, requested.id)
+
+      assert Notifications.list_notifications(scope) == []
     end
 
     test "fails closed when protected source bytes do not match their captured digest" do
@@ -636,7 +760,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
     test "allocates a fresh owned namespace and reservation before retrying" do
       user = user_fixture()
       project = project_fixture(user)
+      scope = user_scope_fixture(user)
       _asset = upload_asset!(project, user, "retryable source")
+
+      :ok = Notifications.subscribe(scope)
       assert {:ok, requested} = request_snapshot(user, project)
       job = requested_job(requested)
       original_storage_config = Application.get_env(:storyarn, :storage, [])
@@ -658,6 +785,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
                  max_attempts: 2
                )
 
+      refute_receive :notifications_changed
+      assert Notifications.list_notifications(scope) == []
+
       retrying = Repo.get!(ProjectSnapshot, requested.id)
       assert retrying.lifecycle_state == "pending"
       assert retrying.progress_phase == "retrying"
@@ -675,11 +805,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
                  max_attempts: 2
                )
 
+      assert_receive :notifications_changed
+
       ready = Repo.get!(ProjectSnapshot, requested.id)
       assert ready.lifecycle_state == "ready"
       assert ready.integrity_state == "verified"
       assert ready.object_prefix == retrying.object_prefix
       assert Repo.get!(StorageReservation, ready.storage_reservation_id).status == "committed"
+      assert_snapshot_notification(scope, ready, "success", nil)
     end
 
     test "cancellation after release fences retry allocation without creating another reservation" do
@@ -1248,6 +1381,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
     test "terminal persistence failure leaves a reconcilable release and emits accounting only once" do
       user = user_fixture()
       project = project_fixture(user)
+      scope = user_scope_fixture(user)
+
+      :ok = Notifications.subscribe(scope)
       assert {:ok, requested} = request_snapshot(user, project)
       {reservation, _cleanup_scope, _claim, _capture} = start_snapshot_storage!(project, requested)
 
@@ -1297,6 +1433,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
 
       assert workspace_id == project.workspace_id
       refute_receive {:project_snapshot_updated, _snapshot_id}
+      refute_receive :notifications_changed
+      assert Notifications.list_notifications(scope) == []
 
       Application.put_env(:storyarn, ProjectSnapshotBuild, original_config)
 
@@ -1317,12 +1455,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert_receive {:project_snapshot_updated, snapshot_id}
       assert snapshot_id == requested.id
       refute_receive {[:storyarn, :storage, :accounting, :updated], _, _}
+      refute_receive :notifications_changed
+      assert Notifications.list_notifications(scope) == []
     end
 
     test "reconciliation terminalizes a pending build released before capture persistence" do
       user = user_fixture()
       project = project_fixture(user)
-      assert {:ok, requested} = request_snapshot(user, project)
+      scope = user_scope_fixture(user)
+
+      :ok = Notifications.subscribe(scope)
+      assert {:ok, requested} = request_snapshot(user, project, %{title: "Recovered failure"})
 
       reservation = Repo.get!(StorageReservation, requested.storage_reservation_id)
 
@@ -1349,8 +1492,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       )
       |> Repo.update!()
 
+      refute_receive :notifications_changed
+      assert Notifications.list_notifications(scope) == []
+
       assert %{failure_count: 0, orphaned_count: 0, settled_count: 1} =
                Versioning.reconcile_stale_project_snapshot_builds()
+
+      assert_receive :notifications_changed
 
       assert %ProjectSnapshot{
                lifecycle_state: "failed",
@@ -1361,6 +1509,67 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
              } = Repo.get!(ProjectSnapshot, requested.id)
 
       refute Repo.get(ProjectSnapshotCapture, requested.id)
+      assert_snapshot_notification(scope, requested, "failure", "Recovered failure")
+    end
+
+    test "reconciliation terminalizes a released build after Oban prunes its job" do
+      user = user_fixture()
+      project = project_fixture(user)
+      scope = user_scope_fixture(user)
+
+      :ok = Notifications.subscribe(scope)
+      assert {:ok, requested} = request_snapshot(user, project, %{title: "Pruned job failure"})
+
+      reservation = Repo.get!(StorageReservation, requested.storage_reservation_id)
+
+      assert {:ok, %StorageReservation{status: "released"}} =
+               Billing.release_storage_reservation(
+                 reservation.id,
+                 reservation.lease_token,
+                 reservation.generation,
+                 %{
+                   reason: "build_failed",
+                   cleanup_status: "not_required",
+                   cleanup_proof: %{
+                     type: "storage_not_started",
+                     storage_namespace: reservation.storage_namespace
+                   }
+                 }
+               )
+
+      job_id = requested.build_job_id
+      job_id |> then(&Repo.get!(Oban.Job, &1)) |> Repo.delete!()
+
+      refute Repo.get(Oban.Job, job_id)
+
+      assert %ProjectSnapshot{build_job_id: ^job_id, lifecycle_state: "pending"} =
+               Repo.get!(ProjectSnapshot, requested.id)
+
+      refute_receive :notifications_changed
+      assert Notifications.list_notifications(scope) == []
+
+      assert %{failure_count: 0, orphaned_count: 0, settled_count: 1} =
+               Versioning.reconcile_stale_project_snapshot_builds()
+
+      assert_receive :notifications_changed
+      refute_receive :notifications_changed
+
+      assert %ProjectSnapshot{
+               build_job_id: ^job_id,
+               lifecycle_state: "failed",
+               integrity_state: "incomplete",
+               progress_phase: "failed",
+               failure_code: "build_failed",
+               failed_at: %DateTime{}
+             } = Repo.get!(ProjectSnapshot, requested.id)
+
+      assert_snapshot_notification(scope, requested, "failure", "Pruned job failure")
+
+      assert %{failure_count: 0, orphaned_count: 0, settled_count: 0} =
+               Versioning.reconcile_stale_project_snapshot_builds()
+
+      refute_receive :notifications_changed
+      assert_snapshot_notification(scope, requested, "failure", "Pruned job failure")
     end
 
     test "rejects callers without project management permission" do
@@ -1502,10 +1711,23 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
     {started, cleanup_scope, claim, capture}
   end
 
-  defp request_snapshot(user, project) do
-    Versioning.request_full_project_snapshot(user_scope_fixture(user), project, %{
-      idempotency_key: Ecto.UUID.generate()
-    })
+  defp request_snapshot(user, project, attrs \\ %{}) do
+    request_attrs = Map.put(attrs, :idempotency_key, Ecto.UUID.generate())
+    Versioning.request_full_project_snapshot(user_scope_fixture(user), project, request_attrs)
+  end
+
+  defp assert_snapshot_notification(scope, snapshot, status, entity_name) do
+    assert [notification] = Notifications.list_notifications(scope)
+    assert notification.recipient_id == scope.user.id
+    assert is_nil(notification.actor_id)
+    assert notification.project_id == snapshot.project_id
+    assert notification.kind == "async_operation"
+    assert notification.entity_type == "project_snapshot"
+    assert notification.entity_id == snapshot.id
+    assert notification.entity_name == entity_name
+    assert notification.status == status
+    assert notification.dedupe_key == "project_snapshot:#{snapshot.id}:#{status}"
+    notification
   end
 
   defp materialize_snapshot_capture!(snapshot) do

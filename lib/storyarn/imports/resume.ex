@@ -19,12 +19,14 @@ defmodule Storyarn.Imports.Resume do
   alias Storyarn.Imports.Execution
   alias Storyarn.Imports.Expiration
   alias Storyarn.Imports.ImportPlan
+  alias Storyarn.Imports.NotificationDelivery
   alias Storyarn.Imports.PlanCleanup
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.Preview
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Queue
   alias Storyarn.Imports.Shared
+  alias Storyarn.Notifications
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
@@ -336,6 +338,7 @@ defmodule Storyarn.Imports.Resume do
 
   defp reconcile_non_executable_attempt(candidate) do
     Repo.transact(fn ->
+      notification_context = NotificationDelivery.lock_context(candidate)
       job_state = Expiration.lock_import_job_state(candidate.oban_job_id)
       attempt = lock_active_import_attempt(candidate.id, candidate.project_id, candidate.user_id)
 
@@ -350,7 +353,7 @@ defmodule Storyarn.Imports.Resume do
           {:ok, {:current, attempt}}
 
         job_state in @terminal_import_job_states or job_state == :absent ->
-          Expiration.expire_stale_attempt_record(attempt, TimeHelpers.now())
+          Expiration.expire_stale_attempt_record(attempt, notification_context, TimeHelpers.now())
 
         true ->
           {:ok, {:current, attempt}}
@@ -371,7 +374,14 @@ defmodule Storyarn.Imports.Resume do
     |> Repo.one()
   end
 
-  defp finish_attempt_reconciliation({:ok, {:expired, expired}}, _project_id, _attempt_id, _user_id, opts) do
+  defp finish_attempt_reconciliation(
+         {:ok, {:expired, expired, notification_outcome}},
+         _project_id,
+         _attempt_id,
+         _user_id,
+         opts
+       ) do
+    Notifications.publish_committed(notification_outcome)
     PlanCleanup.cleanup_plan(expired, opts)
     Queue.broadcast(expired)
     {:ok, expired}

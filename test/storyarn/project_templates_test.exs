@@ -14,6 +14,8 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.FlowsFixtures
   alias Storyarn.Localization
   alias Storyarn.LocalizationFixtures
+  alias Storyarn.Notifications
+  alias Storyarn.Notifications.Notification
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectsFixtures
   alias Storyarn.ProjectTemplates
@@ -1229,6 +1231,7 @@ defmodule Storyarn.ProjectTemplatesTest do
 
       assert installation.status == "queued"
       assert installation.stage == "queued"
+      assert installation.user_id == user.id
       assert installation.oban_job_id
 
       assert {:ok, duplicate} =
@@ -1245,10 +1248,18 @@ defmodule Storyarn.ProjectTemplatesTest do
         args: %{"installation_id" => installation.id}
       )
 
+      :ok = Notifications.subscribe(scope)
+      {lock_marker, lock_handler_id} = attach_install_terminal_lock_probe()
+      on_exit(fn -> :telemetry.detach(lock_handler_id) end)
+
       assert :ok =
                perform_job(InstallProjectTemplateWorker, %{
                  "installation_id" => installation.id
                })
+
+      assert_receive {^lock_marker, :project}
+      assert_receive {^lock_marker, :requester}
+      assert_receive {^lock_marker, :install}
 
       completed = Repo.get!(ProjectTemplateInstall, installation.id)
       project = Repo.get!(Project, completed.project_id)
@@ -1259,12 +1270,36 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert project.name == "Async Copy"
       assert project.created_from_template_version_id == version.id
 
+      notification =
+        Repo.get_by!(Notification,
+          recipient_id: user.id,
+          entity_type: "template_install",
+          entity_id: installation.id
+        )
+
+      assert notification.kind == "async_operation"
+      assert notification.entity_name == "Async Copy"
+      assert notification.project_id == project.id
+      assert notification.status == "success"
+      assert notification.dedupe_key == "template_install:#{installation.id}:success"
+      assert_received :notifications_changed
+
       assert :ok =
                perform_job(InstallProjectTemplateWorker, %{
                  "installation_id" => installation.id
                })
 
       assert Repo.aggregate(Project, :count) == 2
+
+      assert Repo.aggregate(
+               from(notification in Notification,
+                 where:
+                   notification.recipient_id == ^user.id and
+                     notification.entity_type == "template_install" and
+                     notification.entity_id == ^installation.id
+               ),
+               :count
+             ) == 1
     end
 
     test "records an integrity failure without creating a project" do
@@ -1292,6 +1327,8 @@ defmodule Storyarn.ProjectTemplatesTest do
                  source: "template_show"
                })
 
+      :ok = Notifications.subscribe(scope)
+
       assert :ok =
                perform_job(InstallProjectTemplateWorker, %{
                  "installation_id" => installation.id
@@ -1302,41 +1339,83 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert failed.stage == "failed"
       assert failed.error_code == "checksum_mismatch"
       assert failed.completed_at
+      assert failed.feedback_dismissed_at
       assert is_nil(failed.project_id)
       assert Repo.aggregate(Project, :count) == project_count
 
-      assert [pending_failure] =
-               ProjectTemplates.list_pending_workspace_installation_failures(scope, workspace)
-
-      assert pending_failure.id == installation.id
-
-      other_user = AccountsFixtures.user_fixture()
-      other_scope = AccountsFixtures.user_scope_fixture(other_user)
-      _membership = WorkspacesFixtures.workspace_membership_fixture(workspace, other_user)
-
-      assert [] =
-               ProjectTemplates.list_pending_workspace_installation_failures(
-                 other_scope,
-                 workspace
-               )
-
-      assert {:error, :not_found} =
-               ProjectTemplates.dismiss_installation_failure(
-                 other_scope,
-                 workspace,
-                 installation.id
-               )
-
-      assert {:ok, dismissed} =
-               ProjectTemplates.dismiss_installation_failure(scope, workspace, installation.id)
-
-      assert dismissed.feedback_dismissed_at
-
-      assert {:ok, dismissed_again} =
-               ProjectTemplates.dismiss_installation_failure(scope, workspace, installation.id)
-
-      assert dismissed_again.feedback_dismissed_at == dismissed.feedback_dismissed_at
       assert [] = ProjectTemplates.list_pending_workspace_installation_failures(scope, workspace)
+
+      notification =
+        Repo.get_by!(Notification,
+          recipient_id: user.id,
+          entity_type: "template_install",
+          entity_id: installation.id
+        )
+
+      assert notification.kind == "async_operation"
+      assert notification.entity_name == "Must Not Exist"
+      assert is_nil(notification.project_id)
+      assert notification.status == "failure"
+      assert notification.dedupe_key == "template_install:#{installation.id}:failure"
+      assert_received :notifications_changed
+    end
+
+    test "rolls back a success notification when the installation transaction fails late" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Late Failure Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Late Failure Starter"
+               })
+
+      version = Repo.get!(ProjectTemplateVersion, template.current_version_id)
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Rolled Back Copy",
+                 source: "workspace_dashboard"
+               })
+
+      :ok = Notifications.subscribe(scope)
+
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_installation(installation.id,
+                 attempt: 1,
+                 max_attempts: 1,
+                 before_install_transaction_commit: fn ->
+                   refute_receive :notifications_changed
+                   raise "simulated late installation failure"
+                 end
+               )
+
+      assert failed.status == "failed"
+      assert is_nil(failed.project_id)
+      refute Repo.get_by(Project, name: "Rolled Back Copy")
+      assert_receive :notifications_changed
+
+      notification =
+        Repo.get_by!(Notification,
+          recipient_id: user.id,
+          entity_type: "template_install",
+          entity_id: installation.id
+        )
+
+      assert notification.status == "failure"
+      assert is_nil(notification.project_id)
+      assert notification.dedupe_key == "template_install:#{installation.id}:failure"
+
+      assert Repo.aggregate(
+               from(notification in Notification,
+                 where:
+                   notification.recipient_id == ^user.id and
+                     notification.entity_type == "template_install" and
+                     notification.entity_id == ^installation.id
+               ),
+               :count
+             ) == 1
     end
 
     test "a terminal failure clears any stale project association" do
@@ -1667,7 +1746,7 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert Map.delete(usage_after, :measured_at) == Map.delete(usage_before, :measured_at)
     end
 
-    test "lets a workspace member list and dismiss their own failed installation" do
+    test "automatically dismisses legacy feedback for a workspace member failure" do
       workspace_owner = AccountsFixtures.user_fixture()
       workspace = WorkspacesFixtures.workspace_fixture(workspace_owner)
       installer = AccountsFixtures.user_fixture()
@@ -1697,28 +1776,25 @@ defmodule Storyarn.ProjectTemplatesTest do
                  "installation_id" => installation.id
                })
 
-      assert [%ProjectTemplateInstall{id: installation_id}] =
-               ProjectTemplates.list_pending_workspace_installation_failures(
-                 installer_scope,
-                 workspace
-               )
-
-      assert installation_id == installation.id
-
-      assert {:ok, dismissed} =
-               ProjectTemplates.dismiss_installation_failure(
-                 installer_scope,
-                 workspace,
-                 installation.id
-               )
-
-      assert dismissed.feedback_dismissed_at
+      failed = Repo.get!(ProjectTemplateInstall, installation.id)
+      assert failed.feedback_dismissed_at
 
       assert [] =
                ProjectTemplates.list_pending_workspace_installation_failures(
                  installer_scope,
                  workspace
                )
+
+      notification =
+        Repo.get_by!(Notification,
+          recipient_id: installer.id,
+          entity_type: "template_install",
+          entity_id: installation.id
+        )
+
+      assert notification.status == "failure"
+      assert is_nil(notification.project_id)
+      assert notification.dedupe_key == "template_install:#{installation.id}:failure"
     end
 
     test "persists retry progress for transient storage failures before failing the last attempt" do
@@ -1755,6 +1831,15 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert retrying.stage == "retrying"
       assert retrying.error_report == %{"attempt" => 1, "max_attempts" => 2}
 
+      refute Repo.exists?(
+               from(notification in Notification,
+                 where:
+                   notification.recipient_id == ^user.id and
+                     notification.entity_type == "template_install" and
+                     notification.entity_id == ^installation.id
+               )
+             )
+
       assert {:ok, failed} =
                ProjectTemplates.perform_template_installation(installation.id,
                  attempt: 2,
@@ -1764,6 +1849,36 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert failed.status == "failed"
       assert failed.error_code
       assert failed.completed_at
+      assert failed.feedback_dismissed_at
+
+      notification =
+        Repo.get_by!(Notification,
+          recipient_id: user.id,
+          entity_type: "template_install",
+          entity_id: installation.id
+        )
+
+      assert notification.status == "failure"
+      assert is_nil(notification.project_id)
+      assert notification.dedupe_key == "template_install:#{installation.id}:failure"
+
+      assert {:ok, terminal} =
+               ProjectTemplates.perform_template_installation(installation.id,
+                 attempt: 2,
+                 max_attempts: 2
+               )
+
+      assert terminal.status == "failed"
+
+      assert Repo.aggregate(
+               from(notification in Notification,
+                 where:
+                   notification.recipient_id == ^user.id and
+                     notification.entity_type == "template_install" and
+                     notification.entity_id == ^installation.id
+               ),
+               :count
+             ) == 1
     end
 
     test "rechecks workspace capacity when queued installations start" do
@@ -2229,6 +2344,45 @@ defmodule Storyarn.ProjectTemplatesTest do
       []
     end
   end
+
+  defp attach_install_terminal_lock_probe do
+    handler_id = "template-install-terminal-lock-order-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        &handle_install_terminal_lock_query/4,
+        {test_pid, marker}
+      )
+
+    {marker, handler_id}
+  end
+
+  defp handle_install_terminal_lock_query(_event, _measurements, %{query: query}, {pid, ref}) do
+    if self() == pid, do: maybe_send_install_terminal_lock(pid, ref, install_terminal_lock(query))
+  end
+
+  defp install_terminal_lock(query) do
+    cond do
+      String.contains?(query, ~s(FROM "projects")) and String.contains?(query, "FOR SHARE") ->
+        :project
+
+      String.contains?(query, ~s(FROM "users")) and String.contains?(query, "FOR KEY SHARE") ->
+        :requester
+
+      String.contains?(query, ~s(FROM "project_template_installs")) and String.contains?(query, "FOR UPDATE") ->
+        :install
+
+      true ->
+        nil
+    end
+  end
+
+  defp maybe_send_install_terminal_lock(_pid, _ref, nil), do: :ok
+  defp maybe_send_install_terminal_lock(pid, ref, lock), do: send(pid, {ref, lock})
 
   defp insert_template_row(user, project, name) do
     slug =

@@ -11,11 +11,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Accounts.User
   alias Storyarn.Assets
   alias Storyarn.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Notifications
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
@@ -428,8 +430,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         limit: ^@stale_build_batch_size,
         select: %{
           snapshot_id: snapshot.id,
+          project_id: snapshot.project_id,
+          created_by_id: snapshot.created_by_id,
+          origin: snapshot.origin,
+          lifecycle_generation: snapshot.lifecycle_generation,
           workspace_id: project.workspace_id,
           reservation_id: reservation.id,
+          build_job_id: snapshot.build_job_id,
           job_id: job.id
         }
       )
@@ -504,8 +511,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       {:ok, {:orphaned, _snapshot_id}} ->
         Map.update!(counts, :orphaned_count, &(&1 + 1))
 
-      {:ok, {:settled, %ProjectSnapshot{} = snapshot}} ->
+      {:ok, {:settled, %ProjectSnapshot{} = snapshot, notification_outcome}} ->
         broadcast(snapshot)
+        Notifications.publish_committed(notification_outcome)
         Map.update!(counts, :settled_count, &(&1 + 1))
 
       {:error, :snapshot_build_recovery_candidate_changed} ->
@@ -517,12 +525,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   end
 
   defp reconcile_stale_build_candidate_locked(candidate, now, stale_before) do
-    snapshot = lock_snapshot(candidate.snapshot_id)
-    reservation = lock_reservation(candidate.reservation_id)
-    job = lock_build_job(candidate.job_id)
-
-    with :ok <- validate_stale_build_identity(candidate, snapshot, reservation, job) do
+    with :ok <- lock_recovery_notification_parents(candidate),
+         snapshot = lock_snapshot(candidate.snapshot_id),
+         reservation = lock_reservation(candidate.reservation_id),
+         job = lock_build_job(candidate.job_id),
+         :ok <- validate_stale_build_identity(candidate, snapshot, reservation, job) do
       reconcile_stale_build_status(snapshot, reservation, job, now, stale_before)
+    end
+  end
+
+  defp lock_recovery_notification_parents(candidate) do
+    case lock_terminal_notification_parents(candidate) do
+      :ok -> :ok
+      {:error, :snapshot_build_parent_changed} -> {:error, :snapshot_build_recovery_candidate_changed}
     end
   end
 
@@ -531,6 +546,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
          %ProjectSnapshot{
            id: snapshot_id,
            project_id: project_id,
+           created_by_id: created_by_id,
+           origin: origin,
+           lifecycle_generation: lifecycle_generation,
            object_prefix: object_prefix,
            storage_reservation_id: reservation_id,
            build_job_id: job_id,
@@ -546,21 +564,36 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
          },
          job
        ) do
-    valid_job? =
-      case {candidate.job_id, job} do
-        {nil, nil} -> true
-        {^job_id, %Oban.Job{id: ^job_id}} -> true
-        _job -> false
-      end
+    locked_identity = %{
+      snapshot_id: snapshot_id,
+      project_id: project_id,
+      origin: origin,
+      lifecycle_generation: lifecycle_generation,
+      reservation_id: reservation_id,
+      build_job_id: job_id,
+      workspace_id: workspace_id
+    }
 
-    if snapshot_id == candidate.snapshot_id and reservation_id == candidate.reservation_id and
-         workspace_id == candidate.workspace_id and lifecycle_state in @active_build_states and valid_job?,
+    if locked_identity == Map.take(candidate, Map.keys(locked_identity)) and
+         requester_identity_compatible?(created_by_id, candidate.created_by_id) and
+         lifecycle_state in @active_build_states and
+         stale_build_job_matches?(candidate.job_id, job_id, job),
        do: :ok,
        else: {:error, :snapshot_build_recovery_candidate_changed}
   end
 
   defp validate_stale_build_identity(_candidate, _snapshot, _reservation, _job),
     do: {:error, :snapshot_build_recovery_candidate_changed}
+
+  # The advisory candidate reads `job.id` through a LEFT JOIN. Once Oban has
+  # pruned the row, that value is nil even though the snapshot deliberately
+  # retains its former `build_job_id`. An absent job is a valid released-build
+  # recovery state; the locked snapshot identity is checked separately.
+  defp stale_build_job_matches?(nil, _snapshot_job_id, nil), do: true
+
+  defp stale_build_job_matches?(job_id, job_id, %Oban.Job{id: job_id}) when is_integer(job_id), do: true
+
+  defp stale_build_job_matches?(_candidate_job_id, _snapshot_job_id, _job), do: false
 
   defp reconcile_stale_build_status(
          %ProjectSnapshot{} = snapshot,
@@ -591,8 +624,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
        ) do
     with :ok <- validate_released_cleanup_proof(snapshot, reservation),
          :ok <- settle_released_build_job(snapshot, job, now, stale_before),
-         {:ok, terminal} <- terminalize_released_build(snapshot, reservation, now) do
-      {:ok, {:settled, terminal}}
+         {:ok, {terminal, notification_outcome}} <- terminalize_released_build(snapshot, reservation, now) do
+      {:ok, {:settled, terminal, notification_outcome}}
     end
   end
 
@@ -1207,8 +1240,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
              &authorize_publication(build.snapshot.id, generation, &1),
              on_progress: build_fence_callback(build.snapshot.id, generation)
            ),
-         {:ok, snapshot} <- commit_ready(build.snapshot.id, generation, stored) do
+         {:ok, {snapshot, notification_outcome}} <- commit_ready(build.snapshot.id, generation, stored) do
       broadcast(snapshot)
+      Notifications.publish_committed(notification_outcome)
       {:ok, snapshot}
     else
       nil ->
@@ -1474,7 +1508,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
     with %ProjectSnapshot{} <- snapshot,
          %StorageReservation{} <- reservation,
-         {:ok, %{result: %ProjectSnapshot{} = ready_snapshot}} <-
+         {:ok, %{result: {%ProjectSnapshot{} = ready_snapshot, notification_outcome}}} <-
            Billing.commit_storage_reservation(
              reservation.id,
              reservation.lease_token,
@@ -1482,7 +1516,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
              stored.total_size_bytes,
              fn _reservation -> finalize_ready_snapshot(snapshot, expected_generation, stored, now) end
            ) do
-      {:ok, ready_snapshot}
+      {:ok, {ready_snapshot, notification_outcome}}
     else
       nil -> {:error, :snapshot_build_state_missing}
       {:error, reason} -> {:error, reason}
@@ -1505,8 +1539,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
                  state_updated_at: now
                })
              ),
-           :ok <- finalize_snapshot_capture(snapshot) do
-        {:ok, ready_snapshot}
+           :ok <- finalize_snapshot_capture(snapshot),
+           {:ok, notification_outcome} <- deliver_snapshot_result(ready_snapshot) do
+        {:ok, {ready_snapshot, notification_outcome}}
       else
         {:error, _reason} = error -> error
       end
@@ -1872,8 +1907,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
              state_updated_at: now
            })
          end) do
-      {:ok, failed} ->
+      {:ok, {failed, notification_outcome}} ->
         broadcast(failed)
+        Notifications.publish_committed(notification_outcome)
         {:discard, code}
 
       {:error, _reason} ->
@@ -2098,8 +2134,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
              state_updated_at: now
            })
          end) do
-      {:ok, cancelled} ->
+      {:ok, {cancelled, notification_outcome}} ->
         broadcast(cancelled)
+        Notifications.publish_committed(notification_outcome)
         {:ok, cancelled}
 
       {:error, _reason} ->
@@ -2286,18 +2323,95 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   defp expected_build_queue?(%ProjectSnapshot{}, _queue), do: false
 
   defp update_terminal_build_state(snapshot_id, expected_generation, changeset_fun) do
-    Repo.transact(fn ->
-      case lock_snapshot(snapshot_id) do
-        %ProjectSnapshot{lifecycle_generation: ^expected_generation} = snapshot ->
-          snapshot |> changeset_fun.() |> persist_terminal_snapshot()
+    with {:ok, identity} <- terminal_snapshot_identity(snapshot_id) do
+      Repo.transact(fn ->
+        update_terminal_build_state_locked(snapshot_id, expected_generation, changeset_fun, identity)
+      end)
+    end
+  end
 
-        %ProjectSnapshot{} ->
-          {:error, :stale_snapshot_build_generation}
+  defp update_terminal_build_state_locked(snapshot_id, expected_generation, changeset_fun, identity) do
+    with :ok <- lock_terminal_notification_parents(identity),
+         %ProjectSnapshot{} = snapshot <- lock_snapshot(snapshot_id),
+         :ok <- validate_terminal_snapshot_identity(snapshot, identity, expected_generation) do
+      snapshot |> changeset_fun.() |> persist_terminal_snapshot()
+    else
+      nil -> {:error, :project_snapshot_not_found}
+      {:error, _reason} = error -> error
+    end
+  end
 
-        nil ->
-          {:error, :project_snapshot_not_found}
-      end
-    end)
+  defp terminal_snapshot_identity(snapshot_id) do
+    case Repo.one(
+           from(snapshot in ProjectSnapshot,
+             where: snapshot.id == ^snapshot_id,
+             select: %{
+               snapshot_id: snapshot.id,
+               project_id: snapshot.project_id,
+               created_by_id: snapshot.created_by_id,
+               origin: snapshot.origin,
+               lifecycle_generation: snapshot.lifecycle_generation
+             }
+           )
+         ) do
+      identity when is_map(identity) ->
+        with :ok <- run_terminal_identity_observed(identity), do: {:ok, identity}
+
+      nil ->
+        {:error, :project_snapshot_not_found}
+    end
+  end
+
+  defp lock_terminal_notification_parents(%{project_id: project_id, created_by_id: created_by_id}) do
+    with %Project{} <- lock_notification_project(project_id),
+         :ok <- lock_notification_user(created_by_id) do
+      :ok
+    else
+      nil -> {:error, :snapshot_build_parent_changed}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp validate_terminal_snapshot_identity(
+         %ProjectSnapshot{
+           id: snapshot_id,
+           project_id: project_id,
+           created_by_id: created_by_id,
+           origin: origin,
+           lifecycle_generation: lifecycle_generation
+         },
+         %{
+           snapshot_id: snapshot_id,
+           project_id: project_id,
+           created_by_id: expected_created_by_id,
+           origin: origin,
+           lifecycle_generation: lifecycle_generation
+         },
+         lifecycle_generation
+       ) do
+    if requester_identity_compatible?(created_by_id, expected_created_by_id),
+      do: :ok,
+      else: {:error, :stale_snapshot_build_generation}
+  end
+
+  defp validate_terminal_snapshot_identity(%ProjectSnapshot{}, _identity, _expected_generation),
+    do: {:error, :stale_snapshot_build_generation}
+
+  defp requester_identity_compatible?(created_by_id, created_by_id), do: true
+  defp requester_identity_compatible?(nil, expected_created_by_id) when is_integer(expected_created_by_id), do: true
+  defp requester_identity_compatible?(_created_by_id, _expected_created_by_id), do: false
+
+  defp run_terminal_identity_observed(identity) do
+    case Application.get_env(:storyarn, __MODULE__, []) do
+      opts when is_list(opts) ->
+        case Keyword.get(opts, :terminal_identity_observed_fun) do
+          callback when is_function(callback, 1) -> callback.(identity)
+          _invalid -> :ok
+        end
+
+      _invalid ->
+        :ok
+    end
   end
 
   defp persist_terminal_snapshot(changeset) do
@@ -2315,7 +2429,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
     case persist_fun.(changeset) do
       {:ok, %ProjectSnapshot{} = snapshot} ->
-        with :ok <- delete_terminal_capture(snapshot), do: {:ok, snapshot}
+        with :ok <- delete_terminal_capture(snapshot),
+             {:ok, notification_outcome} <- deliver_snapshot_result(snapshot) do
+          {:ok, {snapshot, notification_outcome}}
+        end
 
       {:error, reason} ->
         {:error, reason}
@@ -2329,6 +2446,28 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   catch
     kind, reason -> {:error, {:snapshot_terminal_state_caught, kind, reason}}
   end
+
+  defp deliver_snapshot_result(%ProjectSnapshot{origin: "user", lifecycle_state: state} = snapshot)
+       when state in ["ready", "failed"] do
+    snapshot = Repo.preload(snapshot, [:created_by, :project], force: true)
+
+    Notifications.deliver_async_result(
+      Scope.for_user(snapshot.created_by),
+      snapshot.project,
+      %{
+        entity_type: "project_snapshot",
+        entity_id: snapshot.id,
+        entity_name: snapshot.title,
+        status: if(state == "ready", do: "success", else: "failure"),
+        dedupe_key: "project_snapshot:#{snapshot.id}:#{notification_status(state)}"
+      }
+    )
+  end
+
+  defp deliver_snapshot_result(%ProjectSnapshot{}), do: {:ok, :suppressed}
+
+  defp notification_status("ready"), do: "success"
+  defp notification_status("failed"), do: "failure"
 
   defp delete_terminal_capture(%ProjectSnapshot{format_version: 2, id: snapshot_id}) do
     case Repo.delete_all(
@@ -2352,6 +2491,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
         lock: "FOR UPDATE"
       )
     )
+  end
+
+  defp lock_notification_project(project_id) do
+    Repo.one(from(project in Project, where: project.id == ^project_id, lock: "FOR KEY SHARE"))
+  end
+
+  defp lock_notification_user(nil), do: :ok
+
+  defp lock_notification_user(user_id) when is_integer(user_id) do
+    case Repo.one(from(user in User, where: user.id == ^user_id, lock: "FOR KEY SHARE")) do
+      %User{} -> :ok
+      nil -> :ok
+    end
   end
 
   defp lock_snapshot(snapshot_id) do
