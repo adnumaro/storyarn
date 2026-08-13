@@ -1,0 +1,60 @@
+test/storyarn/flows/structural_notifications_test.exs
+  s_d64ccabdb01eb7::t_ae48c90094ec0e 35-37,51-52,60-61,76-77
+  s_d64ccabdb01eb7::t_83ead142d16602 11
+  s_d64ccabdb01eb7::t_a6ab2720a7b911 102
+lib/storyarn/sheets/sheet_crud.ex
+  s_d64ccabdb01eb7::t_a6ab2720a7b911 182,185-188,190-192,194
+  s_d64ccabdb01eb7::t_5781d7b8c6e638 183
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_d64ccabdb01eb7::t_134d7183dec34b 161-166
+lib/storyarn_web/live/hooks/palette.ex
+  s_d64ccabdb01eb7::t_a6ab2720a7b911 627-628,636-637
+test/storyarn/sheets/structural_notifications_test.exs
+  s_d64ccabdb01eb7::t_a6ab2720a7b911 61,67
+  s_d64ccabdb01eb7::t_ae48c90094ec0e 36-38,52-53,62,68
+  s_d64ccabdb01eb7::t_c1d3c1c9241ad1 69
+test/storyarn_web/live/localization_live/index_test.exs
+  s_d64ccabdb01eb7::t_4d6c9c2b0d64ab 10,195-199,208-215
+lib/storyarn/localization/language_crud.ex
+  s_d64ccabdb01eb7::t_134d7183dec34b 258-260,262-264,266-269,271-277,285-305,404-405,473,479-486,500,505-510,513-523
+lib/storyarn_web/live/localization_sidebar_live.ex
+  s_d64ccabdb01eb7::t_134d7183dec34b 77-82
+lib/storyarn/flows.ex
+  s_d64ccabdb01eb7::t_a6ab2720a7b911 158-159,161-164,166-169
+  s_d64ccabdb01eb7::t_0497aebf9997ab 14,57-60,157,160,165,170
+test/storyarn/localization/structural_notifications_test.exs
+  s_d64ccabdb01eb7::t_07b429a1cbfa2b 4,11,57,59-145,274-284
+  s_d64ccabdb01eb7::t_ae48c90094ec0e 35-37,55-56,160-161,171-172
+  s_d64ccabdb01eb7::t_043f48fab599c7 58
+test/storyarn/scenes/structural_notifications_test.exs
+  s_d64ccabdb01eb7::t_7dbfd7701ea1d4 33-35,53-54,75-76,90-91
+  s_d64ccabdb01eb7::t_baa670a5273159 114-116,125
+test/storyarn_web/live/project_live/settings_test.exs
+  s_d64ccabdb01eb7::t_4d6c9c2b0d64ab 18,146-150,164-170
+  s_d64ccabdb01eb7::t_90ebfbc08bbc38 171
+lib/storyarn/localization.ex
+  s_d64ccabdb01eb7::t_134d7183dec34b 16,111-112,122-126
+  s_d64ccabdb01eb7::t_c146ba41aa8083 113-116,119-121
+lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex
+  s_d64ccabdb01eb7::t_134d7183dec34b 26-30
+priv/gettext/localization.pot
+  s_d64ccabdb01eb7::t_5e7a4115239f0b 19-20,30-31,46-47,52,59-60,85-86,101,107,122-123,128,133-134,139-140,145-146,151,157
+priv/gettext/projects.pot
+  s_d64ccabdb01eb7::t_b6aec8c0542ffb 40,85,209,214,219,224,264,284,289,411,705,715,738,754,798
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "16aca0670ce90635bd021619a3134df86df3b84c",
+  "prompts": {},
+  "sessions": {
+    "s_d64ccabdb01eb7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff51e-6200-7312-96d7-fd26ee5eb12d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
