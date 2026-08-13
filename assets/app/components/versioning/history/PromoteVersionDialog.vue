@@ -13,6 +13,7 @@ import {
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Textarea } from "@components/ui/textarea";
+import VersionTransportError from "./VersionTransportError.vue";
 
 interface PromoteVersionEntry {
   versionNumber: number;
@@ -25,12 +26,14 @@ const {
   description,
   promoteVersion = null,
   loadingAction = null,
+  transportError = false,
 } = defineProps<{
   open: boolean;
   title: string;
   description: string;
   promoteVersion?: PromoteVersionEntry | null;
   loadingAction?: string | null;
+  transportError?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -48,6 +51,7 @@ const emit = defineEmits<{
         <DialogTitle>{{ $t("common.promote_version_dialog.title") }}</DialogTitle>
         <DialogDescription>{{ $t("common.promote_version_dialog.description") }}</DialogDescription>
       </DialogHeader>
+      <VersionTransportError :visible="transportError" />
       <form @submit.prevent="emit('submit')" class="space-y-4">
         <div class="space-y-2">
           <Label for="promote-title">{{ $t("common.promote_version_dialog.title_label") }}</Label>

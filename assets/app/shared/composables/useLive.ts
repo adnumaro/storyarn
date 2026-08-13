@@ -24,6 +24,15 @@ export interface LiveInterface {
   upload: (name: string, files: FileList) => void;
 }
 
+interface PromisePushEventTarget {
+  liveSocket: unknown;
+  pushEvent: (event: string, payload?: Record<string, unknown>) => Promise<Record<string, unknown>>;
+}
+
+function supportsPromisePushEvent(live: LiveInterface): boolean {
+  return "liveSocket" in live;
+}
+
 export function useLive(): LiveInterface {
   // LiveVue replaces this injection for components teleported with `v-inject`,
   // so events keep targeting the LiveView that owns the injected component.
@@ -61,11 +70,11 @@ export function useLive(): LiveInterface {
     /**
      * Push an event to the LiveView server.
      *
-     * `$live.pushEvent` is fire-and-forget (no promise, no retry). It throws
-     * when the socket is gone (typical case: cleanup pushEvent from
-     * `onUnmounted` during navigation, where LiveView tore down before the
-     * Vue tree). The caller cannot recover; we catch and warn so an
-     * unhandled promise rejection doesn't break subsequent teardown steps.
+     * Phoenix only exposes transport failures through the Promise overload;
+     * its callback overload deliberately consumes rejections. Use the Promise
+     * overload whenever a caller supplied `onError`, while retaining callback
+     * compatibility for app-level adapters and tests that do not expose the
+     * underlying LiveView hook.
      */
     pushEvent: (
       event: string,
@@ -73,14 +82,27 @@ export function useLive(): LiveInterface {
       callback?: (reply: Record<string, unknown>) => void,
       onError?: (error: unknown) => void,
     ) => {
-      try {
-        $live.pushEvent(event, payload, callback);
-      } catch (err) {
+      const reportError = (err: unknown) => {
         console.warn(
           `[useLive] pushEvent("${event}") dropped:`,
           err instanceof Error ? err.message : err,
         );
         onError?.(err);
+      };
+
+      try {
+        if (onError && supportsPromisePushEvent($live)) {
+          const promiseLive = $live as unknown as PromisePushEventTarget;
+
+          void promiseLive.pushEvent(event, payload).then(
+            (reply) => callback?.(reply),
+            (err) => reportError(err),
+          );
+        } else {
+          $live.pushEvent(event, payload, callback);
+        }
+      } catch (err) {
+        reportError(err);
       }
     },
 

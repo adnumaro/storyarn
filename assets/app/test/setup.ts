@@ -80,6 +80,22 @@ export function createMockLive(
 }
 
 /**
+ * Create a mock matching LiveVue's real hook shape, including its Promise
+ * pushEvent overload. Keep this separate from createMockLive so tests for
+ * callback-only adapters can continue exercising that compatibility path.
+ */
+export function createPromiseMockLive(
+  initialProps: Record<string, unknown> = {},
+  pushEvent: (...args: unknown[]) => unknown = vi.fn(() => Promise.resolve({})),
+): LiveInterface & { _props: Record<string, unknown> } {
+  return {
+    ...createMockLive(initialProps),
+    liveSocket: {},
+    pushEvent,
+  } as unknown as LiveInterface & { _props: Record<string, unknown> };
+}
+
+/**
  * Run a composable inside a minimal Vue app and return its result.
  * Useful for testing composables that call getCurrentInstance().
  */

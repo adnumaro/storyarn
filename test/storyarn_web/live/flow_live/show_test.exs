@@ -379,8 +379,11 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       view = mount_flow(conn, url)
 
       render_click(view, "confirm_restore", %{
-        "version_number" => to_string(version.version_number)
+        "version_number" => to_string(version.version_number),
+        "request_id" => "flow-confirm-request"
       })
+
+      assert_push_event(view, "version_restored", %{request_id: "flow-confirm-request"})
 
       restored = Flows.get_flow(project.id, flow.id)
       assert restored.name == "History Flow"

@@ -93,9 +93,10 @@ describe("restore containment", () => {
 
     expect(live.pushEvent).toHaveBeenCalledWith(
       "preview_restore",
-      {
+      expect.objectContaining({
         version_number: 3,
-      },
+        request_id: expect.any(String),
+      }),
       expect.any(Function),
     );
   });
@@ -131,17 +132,19 @@ describe("restore containment", () => {
     expect(live.pushEvent).toHaveBeenNthCalledWith(
       1,
       "preview_restore",
-      {
+      expect.objectContaining({
         version_number: 3,
-      },
+        request_id: expect.any(String),
+      }),
       expect.any(Function),
     );
     expect(live.pushEvent).toHaveBeenNthCalledWith(
       2,
       "preview_restore",
-      {
+      expect.objectContaining({
         version_number: 2,
-      },
+        request_id: expect.any(String),
+      }),
       expect.any(Function),
     );
   });

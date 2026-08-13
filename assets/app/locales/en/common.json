@@ -50,7 +50,8 @@
       "current": "Current",
       "auto_save": "auto-save | auto-saves",
       "no_summary": "No summary",
-      "load_more": "Load more"
+      "load_more": "Load more",
+      "transport_error": "The request did not complete. Check your connection and try again."
     },
     "create_version_dialog": {
       "title": "Create Version",

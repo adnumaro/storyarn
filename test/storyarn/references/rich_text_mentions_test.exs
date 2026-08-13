@@ -29,6 +29,46 @@ defmodule Storyarn.References.RichTextMentionsTest do
       assert RichTextMentions.html_candidates(%{"content" => mention}) == [mention]
       assert {:ok, [%{type: "sheet", id: "42"}]} = RichTextMentions.extract_from_html(mention)
     end
+
+    test "recognizes mention classes containing decoded HTML entities" do
+      mentions = [
+        ~s(<span class="foo&#32;mention" data-type="sheet" data-id="42">Target</span>),
+        ~s(<span class="m&#101;ntion" data-type="flow" data-id="7">Target</span>)
+      ]
+
+      for mention <- mentions do
+        assert {:ok, [_mention]} = RichTextMentions.extract_from_html(mention)
+        assert RichTextMentions.html_candidates(%{"content" => mention}) == [mention]
+      end
+    end
+
+    test "recognizes mentions after a quoted greater-than character" do
+      mentions = [
+        ~s(<span title="a > b" class="mention" data-type="sheet" data-id="42">Target</span>),
+        ~s(<span title="a > b" class="m&#101;ntion" data-type="flow" data-id="7">Target</span>)
+      ]
+
+      for mention <- mentions do
+        assert {:ok, [_mention]} = RichTextMentions.extract_from_html(mention)
+        assert RichTextMentions.html_candidates(%{"content" => mention}) == [mention]
+      end
+    end
+
+    test "keeps malformed entity-encoded mentions so strict callers can reject them" do
+      malformed = ~s(<span class="m&#101;ntion" data-type="sheet">Missing target</span>)
+
+      assert RichTextMentions.html_candidates(%{"content" => malformed}) == [malformed]
+
+      assert {:error, {:invalid_mention, %{type: ["sheet"], id: []}}} =
+               RichTextMentions.extract_from_html(malformed)
+    end
+
+    test "ignores variable-reference markup without mention hints" do
+      variable_reference =
+        ~s(<span class="variable-ref" data-ref="mc.health">$mc.health</span>)
+
+      assert RichTextMentions.html_candidates(%{"content" => variable_reference}) == []
+    end
   end
 
   describe "extract_from_html/1" do

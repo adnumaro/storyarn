@@ -50,7 +50,8 @@
       "current": "Actual",
       "auto_save": "auto-guardado | auto-guardados",
       "no_summary": "Sin resumen",
-      "load_more": "Cargar más"
+      "load_more": "Cargar más",
+      "transport_error": "La solicitud no se completó. Comprueba tu conexión e inténtalo de nuevo."
     },
     "create_version_dialog": {
       "title": "Crear versión",
