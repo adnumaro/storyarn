@@ -34,26 +34,13 @@ defmodule Storyarn.Versioning.EntityRestoreSafety do
 
   @doc false
   def verify_pre_restore_baseline(entity_type, entity, opts, build_snapshot, changed_reason) do
-    verify_pre_restore_baseline(
-      entity_type,
-      entity,
-      opts,
-      build_snapshot,
-      changed_reason,
-      &Function.identity/1
-    )
-  end
-
-  @doc false
-  def verify_pre_restore_baseline(entity_type, entity, opts, build_snapshot, changed_reason, normalize_snapshot) do
     case Keyword.get(opts, :restore_action) do
       {:entity_version_restore, ^entity_type} ->
         verify_entity_version_restore_baseline(
           entity,
           opts,
           build_snapshot,
-          changed_reason,
-          normalize_snapshot
+          changed_reason
         )
 
       _other_restore_action ->
@@ -148,15 +135,14 @@ defmodule Storyarn.Versioning.EntityRestoreSafety do
     }
   end
 
-  defp verify_entity_version_restore_baseline(entity, opts, build_snapshot, changed_reason, normalize_snapshot) do
+  defp verify_entity_version_restore_baseline(entity, opts, build_snapshot, changed_reason) do
     case Keyword.fetch(opts, :pre_restore_snapshot) do
       {:ok, pre_restore_snapshot} when is_map(pre_restore_snapshot) ->
         safely_compare_pre_restore_baseline(
           entity,
           pre_restore_snapshot,
           build_snapshot,
-          changed_reason,
-          normalize_snapshot
+          changed_reason
         )
 
       {:ok, _invalid_snapshot} ->
@@ -167,15 +153,9 @@ defmodule Storyarn.Versioning.EntityRestoreSafety do
     end
   end
 
-  defp safely_compare_pre_restore_baseline(
-         entity,
-         pre_restore_snapshot,
-         build_snapshot,
-         changed_reason,
-         normalize_snapshot
-       ) do
-    current_snapshot = entity |> build_snapshot.() |> normalize_snapshot.()
-    pre_restore_snapshot = normalize_snapshot.(pre_restore_snapshot)
+  defp safely_compare_pre_restore_baseline(entity, pre_restore_snapshot, build_snapshot, changed_reason) do
+    current_snapshot = entity |> build_snapshot.() |> normalize_snapshot!()
+    pre_restore_snapshot = normalize_snapshot!(pre_restore_snapshot)
 
     if current_snapshot == pre_restore_snapshot,
       do: :ok,
@@ -183,5 +163,11 @@ defmodule Storyarn.Versioning.EntityRestoreSafety do
   rescue
     error in ArgumentError ->
       {:error, {:pre_restore_snapshot_validation_failed, Exception.message(error)}}
+  end
+
+  defp normalize_snapshot!(snapshot) do
+    snapshot
+    |> Jason.encode!()
+    |> Jason.decode!()
   end
 end

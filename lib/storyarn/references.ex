@@ -42,6 +42,11 @@ defmodule Storyarn.References do
   defdelegate validate_snapshot_variable_references(project_id, sources),
     to: VariableTracker
 
+  @spec validate_entity_snapshot_variable_references(integer(), String.t(), map()) ::
+          :ok | {:error, term()}
+  defdelegate validate_entity_snapshot_variable_references(project_id, entity_type, snapshot),
+    to: VariableTracker
+
   defdelegate delete_flow_node_variable_references(node_id), to: VariableTracker
   defdelegate update_scene_pin_variable_references(pin, opts \\ []), to: VariableTracker
   defdelegate delete_scene_pin_variable_references(pin_id), to: VariableTracker

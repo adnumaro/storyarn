@@ -32,6 +32,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.References.ProjectReferenceIntegrity
+  alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.TimeHelpers
@@ -846,18 +847,15 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   defp extract_mentions_from_html(_), do: []
 
   defp strict_mentions_from_html(content) when is_binary(content) do
-    case Floki.parse_fragment(content) do
-      {:ok, document} ->
-        document
-        |> Floki.find(".mention")
-        |> Enum.reduce_while({:ok, []}, &accumulate_mention_reference/2)
-        |> case do
-          {:ok, references} -> {:ok, Enum.reverse(references)}
-          {:error, _reason} = error -> error
-        end
+    case RichTextMentions.extract_from_html(content) do
+      {:ok, mentions} ->
+        {:ok, Enum.map(mentions, &Map.put(&1, :context, "content"))}
 
-      {:error, reason} ->
+      {:error, {:invalid_html, reason}} ->
         {:error, {:invalid_project_reference, {:block, :content, :invalid_html}, reason}}
+
+      {:error, {:invalid_mention, details}} ->
+        invalid_mention_reference(details)
     end
   end
 
@@ -865,28 +863,12 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     {:error, {:invalid_project_reference, {:block, :content, :invalid_html}, content}}
   end
 
-  defp accumulate_mention_reference(element, {:ok, references}) do
-    case mention_element_to_ref(element) do
-      {:ok, reference} -> {:cont, {:ok, [reference | references]}}
-      {:error, reason} -> {:halt, {:error, reason}}
-    end
+  defp invalid_mention_reference(%{type: [type], id: [id]}) do
+    {:error, {:invalid_project_reference, {:block, :content, type}, id}}
   end
 
-  defp mention_element_to_ref(element) do
-    type_attributes = Floki.attribute(element, "data-type")
-    id_attributes = Floki.attribute(element, "data-id")
-
-    case {type_attributes, id_attributes} do
-      {[type], [id]} when type in ["sheet", "flow"] and id != "" ->
-        {:ok, %{type: type, id: id, context: "content"}}
-
-      {[type], [id]} ->
-        {:error, {:invalid_project_reference, {:block, :content, type}, id}}
-
-      _malformed_attributes ->
-        attributes = %{type: type_attributes, id: id_attributes}
-        {:error, {:invalid_project_reference, {:block, :content, :malformed_mention}, attributes}}
-    end
+  defp invalid_mention_reference(details) do
+    {:error, {:invalid_project_reference, {:block, :content, :malformed_mention}, details}}
   end
 
   defp mention_reference_spec(%{type: "sheet", id: id}), do: {:sheet, {:block, :content, "sheet"}, id}
@@ -908,28 +890,12 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     # corresponding entity_references row.
     mention_refs =
       data
-      |> collect_flow_node_html([])
+      |> RichTextMentions.html_candidates()
       |> Enum.flat_map(&extract_mentions_from_html/1)
       |> Enum.map(&Map.put(&1, :context, "dialogue"))
 
     mention_refs ++ refs
   end
-
-  defp collect_flow_node_html(value, acc) when is_binary(value) do
-    if String.contains?(value, "mention"), do: [value | acc], else: acc
-  end
-
-  defp collect_flow_node_html(value, acc) when is_list(value) do
-    Enum.reduce(value, acc, &collect_flow_node_html/2)
-  end
-
-  defp collect_flow_node_html(value, acc) when is_map(value) do
-    Enum.reduce(value, acc, fn {_key, nested}, nested_acc ->
-      collect_flow_node_html(nested, nested_acc)
-    end)
-  end
-
-  defp collect_flow_node_html(_value, acc), do: acc
 
   defp maybe_add_sheet_ref(refs, nil, _context), do: refs
   defp maybe_add_sheet_ref(refs, "", _context), do: refs

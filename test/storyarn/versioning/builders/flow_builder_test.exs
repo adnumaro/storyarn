@@ -3375,10 +3375,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       malformed_snapshot =
         update_snapshot_node(snapshot, instruction.id, fn node ->
-          put_in(node, ["data", "assignments", Access.at(0), "variable"], nil)
+          put_in(node, ["data", "assignments", Access.at(0), "sheet"], nil)
         end)
 
-      assert {:error, {:malformed_variable_reference, "flow_node", ^node_id, :assignment_target, {^source_sheet, nil}}} =
+      assert {:error, {:malformed_variable_reference, "flow_node", ^node_id, :assignment_target, {nil, ^source_variable}}} =
                FlowBuilder.restore_snapshot(current_flow, malformed_snapshot,
                  restore_action: {:entity_version_restore, "flow"}
                )

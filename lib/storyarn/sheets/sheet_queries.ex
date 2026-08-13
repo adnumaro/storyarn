@@ -21,6 +21,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+  alias Storyarn.Sheets.VariableCatalog
 
   # =============================================================================
   # Tree Operations
@@ -1415,9 +1416,13 @@ defmodule Storyarn.Sheets.SheetQueries do
   @doc """
   Resolves a block ID by sheet shortcut and variable name.
   Returns the block ID or nil if not found.
-  Used by the Flows.VariableReferenceTracker for variable reference resolution.
+
+  The query follows the canonical variable catalog contract: constants and
+  unsupported block types are not runtime variables.
   """
   def resolve_block_id_by_variable(project_id, sheet_shortcut, variable_name) do
+    variable_types = VariableCatalog.regular_variable_types()
+
     Repo.one(
       from(b in Block,
         join: s in Sheet,
@@ -1425,6 +1430,8 @@ defmodule Storyarn.Sheets.SheetQueries do
         where: s.project_id == ^project_id,
         where: s.shortcut == ^sheet_shortcut,
         where: b.variable_name == ^variable_name,
+        where: b.type in ^variable_types,
+        where: b.is_constant == false,
         where: is_nil(s.deleted_at),
         where: is_nil(b.deleted_at),
         select: b.id,
@@ -1436,9 +1443,14 @@ defmodule Storyarn.Sheets.SheetQueries do
   @doc """
   Resolves a table block ID by sheet shortcut, table name, row slug, and column slug.
   Returns the block ID or nil if not found.
-  Used by the Flows.VariableReferenceTracker for table variable reference resolution.
+
+  The selected column must satisfy the same type and constant rules as the
+  canonical variable catalog.
   """
   def resolve_table_block_id_by_variable(project_id, sheet_shortcut, table_name, row_slug, column_slug) do
+    variable_types = VariableCatalog.table_variable_types()
+    constant_variable_types = VariableCatalog.constant_table_variable_types()
+
     Repo.one(
       from(b in Block,
         join: s in Sheet,
@@ -1451,6 +1463,8 @@ defmodule Storyarn.Sheets.SheetQueries do
         where: s.shortcut == ^sheet_shortcut,
         where: b.variable_name == ^table_name,
         where: b.type == "table",
+        where: tc.type in ^variable_types,
+        where: tc.is_constant == false or tc.type in ^constant_variable_types,
         where: tr.slug == ^row_slug,
         where: tc.slug == ^column_slug,
         where: is_nil(s.deleted_at),

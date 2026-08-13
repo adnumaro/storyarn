@@ -84,10 +84,20 @@
       "shortcut_collision": "Shortcut collision — will be renamed to \"{name}\"",
       "missing_entities": "Restore is blocked because some references are invalid or unavailable:",
       "missing_prefix": "Missing {type}",
+      "entity_types": {
+        "asset": "asset",
+        "sheet": "sheet",
+        "flow": "flow",
+        "scene": "scene",
+        "block": "block",
+        "avatar": "avatar",
+        "reference": "reference",
+        "variable": "variable",
+        "entity": "entity"
+      },
       "invalid_id": "invalid",
       "missing_blocked": "Restore or repair the referenced content, or choose another version, then try again.",
       "restore_info": "This will restore to version {version}.",
-      "auto_resolved": "Auto-resolved:",
       "restore_blocked": "Restore unavailable",
       "restore": "Restore"
     },

@@ -14,6 +14,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
   alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.References
   alias Storyarn.Scenes.SceneAmbientFlow
+  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Sheets.Block
 
   setup do
@@ -2614,6 +2615,351 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
   end
 
   describe "strict snapshot variable validation" do
+    test "accepts Scene display drafts but still rejects malformed display refs", ctx do
+      changeset =
+        SceneZone.update_changeset(
+          %SceneZone{
+            name: "Draft display",
+            vertices: [
+              %{"x" => 0, "y" => 0},
+              %{"x" => 10, "y" => 0},
+              %{"x" => 0, "y" => 10}
+            ]
+          },
+          %{
+            "action_type" => "display",
+            "action_data" => %{"variable_ref" => "", "display_mode" => "value"}
+          }
+        )
+
+      assert changeset.valid?
+
+      for action_data <- [
+            %{"variable_ref" => "", "display_mode" => "value"},
+            %{"variable_ref" => nil, "display_mode" => "value"},
+            %{"display_mode" => "value"}
+          ] do
+        assert :ok =
+                 VariableReferenceTracker.validate_snapshot_variable_references(
+                   ctx.project.id,
+                   [
+                     %{
+                       source_type: "scene_zone",
+                       source_id: 80,
+                       action_type: "display",
+                       action_data: action_data,
+                       condition: nil
+                     }
+                   ]
+                 )
+      end
+
+      assert {:error, {:malformed_variable_reference, "scene_zone", 80, :display_variable_ref, 123}} =
+               VariableReferenceTracker.validate_snapshot_variable_references(
+                 ctx.project.id,
+                 [
+                   %{
+                     source_type: "scene_zone",
+                     source_id: 80,
+                     action_type: "display",
+                     action_data: %{"variable_ref" => 123},
+                     condition: nil
+                   }
+                 ]
+               )
+    end
+
+    test "accepts Flow and Scene condition rules while their variable selection is incomplete", ctx do
+      draft_condition =
+        Flows.condition_sanitize(%{
+          "logic" => "all",
+          "blocks" => [
+            %{
+              "id" => "draft-block",
+              "type" => "block",
+              "logic" => "all",
+              "rules" => [
+                %{"id" => "empty", "sheet" => nil, "variable" => nil, "operator" => "equals", "value" => nil},
+                %{"id" => "blank", "sheet" => "", "variable" => "", "operator" => "equals", "value" => nil},
+                %{
+                  "id" => "sheet-selected",
+                  "sheet" => ctx.sheet.shortcut,
+                  "variable" => nil,
+                  "operator" => "equals",
+                  "value" => nil
+                }
+              ]
+            }
+          ]
+        })
+
+      assert get_in(draft_condition, ["blocks", Access.at(0), "rules", Access.at(0), "sheet"]) == nil
+      assert get_in(draft_condition, ["blocks", Access.at(0), "rules", Access.at(1), "variable"]) == ""
+
+      assert :ok =
+               VariableReferenceTracker.validate_snapshot_variable_references(
+                 ctx.project.id,
+                 [
+                   %{
+                     source_type: "flow_node",
+                     source_id: 81,
+                     type: "condition",
+                     data: %{"condition" => draft_condition}
+                   },
+                   %{
+                     source_type: "scene_pin",
+                     source_id: 82,
+                     condition: draft_condition
+                   }
+                 ]
+               )
+
+      malformed_condition =
+        put_in(
+          draft_condition,
+          ["blocks", Access.at(0), "rules", Access.at(0)],
+          %{"sheet" => nil, "variable" => ctx.health_block.variable_name, "operator" => "equals"}
+        )
+
+      assert {:error, {:malformed_variable_reference, "flow_node", 81, :condition_rule, {nil, variable_name}}} =
+               VariableReferenceTracker.validate_snapshot_variable_references(
+                 ctx.project.id,
+                 [
+                   %{
+                     source_type: "flow_node",
+                     source_id: 81,
+                     type: "condition",
+                     data: %{"condition" => malformed_condition}
+                   }
+                 ]
+               )
+
+      assert variable_name == ctx.health_block.variable_name
+    end
+
+    test "accepts assignment targets and variable sources in writer-produced draft states", ctx do
+      assignments =
+        Flows.instruction_sanitize([
+          %{
+            "sheet" => nil,
+            "variable" => nil,
+            "operator" => "set",
+            "value_type" => "literal",
+            "value" => nil,
+            "value_sheet" => nil
+          },
+          %{
+            "sheet" => ctx.sheet.shortcut,
+            "variable" => nil,
+            "operator" => "set",
+            "value_type" => "literal",
+            "value" => nil,
+            "value_sheet" => nil
+          },
+          %{
+            "sheet" => ctx.sheet.shortcut,
+            "variable" => ctx.health_block.variable_name,
+            "operator" => "set",
+            "value_type" => "variable_ref",
+            "value" => nil,
+            "value_sheet" => nil
+          },
+          %{
+            "sheet" => ctx.sheet.shortcut,
+            "variable" => ctx.health_block.variable_name,
+            "operator" => "set",
+            "value_type" => "variable_ref",
+            "value" => nil,
+            "value_sheet" => ctx.sheet2.shortcut
+          }
+        ])
+
+      assert Enum.at(assignments, 0)["sheet"] == nil
+      assert Enum.at(assignments, 0)["variable"] == nil
+      assert Enum.at(assignments, 2)["value_sheet"] == nil
+      assert Enum.at(assignments, 2)["value"] == nil
+
+      assert :ok =
+               VariableReferenceTracker.validate_snapshot_variable_references(
+                 ctx.project.id,
+                 [
+                   %{
+                     source_type: "flow_node",
+                     source_id: 83,
+                     type: "instruction",
+                     data: %{"assignments" => assignments}
+                   },
+                   %{
+                     source_type: "scene_zone",
+                     source_id: 84,
+                     action_type: "action",
+                     action_data: %{"assignments" => assignments},
+                     condition: nil
+                   }
+                 ]
+               )
+
+      malformed =
+        Flows.instruction_sanitize([
+          %{
+            "sheet" => nil,
+            "variable" => ctx.health_block.variable_name,
+            "operator" => "set",
+            "value_type" => "literal",
+            "value" => nil,
+            "value_sheet" => nil
+          }
+        ])
+
+      assert {:error, {:malformed_variable_reference, "flow_node", 83, :assignment_target, {nil, variable_name}}} =
+               VariableReferenceTracker.validate_snapshot_variable_references(
+                 ctx.project.id,
+                 [
+                   %{
+                     source_type: "flow_node",
+                     source_id: 83,
+                     type: "instruction",
+                     data: %{"assignments" => malformed}
+                   }
+                 ]
+               )
+
+      assert variable_name == ctx.health_block.variable_name
+    end
+
+    test "extracts Flow and every Scene variable-reference surface through one entity API", ctx do
+      draft_condition =
+        variable_condition(nil, nil)
+
+      flow_snapshot = %{
+        "nodes" => [
+          %{
+            "original_id" => 85,
+            "type" => "condition",
+            "data" => %{"condition" => draft_condition}
+          }
+        ]
+      }
+
+      scene_snapshot = %{
+        "layers" => [
+          %{
+            "pins" => [%{"original_id" => 86, "condition" => draft_condition}],
+            "zones" => [
+              %{
+                "original_id" => 87,
+                "action_type" => "display",
+                "action_data" => %{"variable_ref" => ""},
+                "condition" => nil
+              }
+            ]
+          }
+        ],
+        "orphan_pins" => [%{"original_id" => 88, "condition" => draft_condition}],
+        "orphan_zones" => [
+          %{
+            "original_id" => 89,
+            "action_type" => "action",
+            "action_data" => %{
+              "assignments" =>
+                Flows.instruction_sanitize([
+                  %{"sheet" => nil, "variable" => nil, "operator" => "set", "value_type" => "literal"}
+                ])
+            },
+            "condition" => nil
+          }
+        ],
+        "ambient_flows" => [
+          %{
+            "original_id" => 90,
+            "trigger_type" => "on_event",
+            "trigger_config" => %{"variable_ref" => ""}
+          }
+        ]
+      }
+
+      assert :ok =
+               VariableReferenceTracker.validate_entity_snapshot_variable_references(
+                 ctx.project.id,
+                 "flow",
+                 flow_snapshot
+               )
+
+      assert :ok =
+               VariableReferenceTracker.validate_entity_snapshot_variable_references(
+                 ctx.project.id,
+                 "scene",
+                 scene_snapshot
+               )
+
+      assert :ok =
+               VariableReferenceTracker.validate_entity_snapshot_variable_references(
+                 ctx.project.id,
+                 "sheet",
+                 %{}
+               )
+
+      invalid_scene_snapshot = put_in(scene_snapshot, ["layers", Access.at(0), "pins"], "not-a-list")
+
+      assert {:error, {:invalid_variable_reference_snapshot_collection, "scene_layer", "pins", "not-a-list"}} =
+               VariableReferenceTracker.validate_entity_snapshot_variable_references(
+                 ctx.project.id,
+                 "scene",
+                 invalid_scene_snapshot
+               )
+    end
+
+    test "entity extraction ignores snapshot members with no variable surface", ctx do
+      flow_snapshot = %{
+        "nodes" => [
+          %{"type" => "dialogue", "data" => %{"responses" => []}},
+          %{"type" => "condition", "data" => %{"condition" => nil}},
+          %{"type" => "instruction", "data" => %{"assignments" => []}},
+          %{"type" => "hub", "data" => %{}}
+        ]
+      }
+
+      scene_snapshot = %{
+        "layers" => [
+          %{
+            "pins" => [%{"condition" => nil}],
+            "zones" => [
+              %{
+                "action_type" => "action",
+                "action_data" => %{"assignments" => []},
+                "condition" => nil
+              },
+              %{
+                "action_type" => "collection",
+                "action_data" => %{"items" => []},
+                "condition" => nil
+              }
+            ]
+          }
+        ],
+        "orphan_pins" => [%{"condition" => nil}],
+        "orphan_zones" => [],
+        "ambient_flows" => [
+          %{"trigger_type" => "always", "trigger_config" => %{}},
+          %{"trigger_type" => "on_event", "trigger_config" => %{"variable_ref" => ""}}
+        ]
+      }
+
+      assert :ok =
+               VariableReferenceTracker.validate_entity_snapshot_variable_references(
+                 ctx.project.id,
+                 "flow",
+                 flow_snapshot
+               )
+
+      assert :ok =
+               VariableReferenceTracker.validate_entity_snapshot_variable_references(
+                 ctx.project.id,
+                 "scene",
+                 scene_snapshot
+               )
+    end
+
     test "validates every authoritative dialogue response variable surface", ctx do
       valid_condition = variable_condition(ctx.sheet.shortcut, ctx.health_block.variable_name)
       valid_assignment = variable_assignment(ctx.sheet.shortcut, ctx.health_block.variable_name)

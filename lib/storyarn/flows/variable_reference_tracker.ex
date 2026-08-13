@@ -214,9 +214,9 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   Each source map must include `source_type` (`"flow_node"`, `"scene_pin"`,
   `"scene_zone"`, or `"scene_ambient_flow"`) and `source_id`. Flow sources
-  also carry `type` and `data`; pin/zone sources carry `action_type`,
-  `action_data`, and `condition`; ambient-flow sources carry `trigger_type`
-  and `trigger_config`.
+  also carry `type` and `data`; pin sources carry `condition`; zone sources
+  carry `action_type`, `action_data`, and `condition`; ambient-flow sources
+  carry `trigger_type` and `trigger_config`.
   """
   @spec validate_snapshot_variable_references(integer(), [map()]) ::
           :ok | {:error, term()}
@@ -241,6 +241,57 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   def validate_snapshot_variable_references(project_id, sources),
     do: {:error, {:invalid_variable_reference_validation_scope, :mixed, project_id, sources}}
+
+  @doc """
+  Extracts and validates every variable-reference surface from an entity
+  snapshot.
+
+  Flow snapshots contribute nodes that contain a variable surface. Scene
+  snapshots contribute pin conditions, zone actions and conditions, and
+  on-event ambient-flow references across layered and orphan children. Sheet
+  snapshots have no variable-reference surfaces of their own.
+  """
+  @spec validate_entity_snapshot_variable_references(integer(), String.t(), map()) ::
+          :ok | {:error, term()}
+  def validate_entity_snapshot_variable_references(project_id, "flow", %{} = snapshot)
+      when is_integer(project_id) and project_id > 0 do
+    with {:ok, nodes} <- snapshot_reference_collection(snapshot, "flow", "nodes") do
+      sources =
+        nodes
+        |> Enum.filter(&flow_snapshot_variable_surface?/1)
+        |> Enum.map(&flow_snapshot_variable_source/1)
+
+      validate_snapshot_variable_references(project_id, sources)
+    end
+  end
+
+  def validate_entity_snapshot_variable_references(project_id, "scene", %{} = snapshot)
+      when is_integer(project_id) and project_id > 0 do
+    with {:ok, layers} <- snapshot_reference_collection(snapshot, "scene", "layers"),
+         {:ok, layer_pins} <- layer_snapshot_variable_sources(layers, "pins", "scene_pin"),
+         {:ok, layer_zones} <- layer_snapshot_variable_sources(layers, "zones", "scene_zone"),
+         {:ok, orphan_pins} <- snapshot_reference_collection(snapshot, "scene", "orphan_pins"),
+         {:ok, orphan_zones} <- snapshot_reference_collection(snapshot, "scene", "orphan_zones"),
+         {:ok, ambient_flows} <- snapshot_reference_collection(snapshot, "scene", "ambient_flows") do
+      sources =
+        layer_pins ++
+          layer_zones ++
+          scene_snapshot_variable_sources(orphan_pins, "scene_pin") ++
+          scene_snapshot_variable_sources(orphan_zones, "scene_zone") ++
+          (ambient_flows
+           |> Enum.filter(&scene_ambient_snapshot_variable_surface?/1)
+           |> Enum.map(&scene_ambient_snapshot_variable_source/1))
+
+      validate_snapshot_variable_references(project_id, sources)
+    end
+  end
+
+  def validate_entity_snapshot_variable_references(project_id, "sheet", %{})
+      when is_integer(project_id) and project_id > 0, do: :ok
+
+  def validate_entity_snapshot_variable_references(project_id, entity_type, snapshot) do
+    {:error, {:invalid_variable_reference_entity_snapshot, project_id, entity_type, snapshot}}
+  end
 
   @doc """
   Deletes all variable references for a node.
@@ -594,8 +645,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   of `source_sheet`/`source_variable` against the current sheet shortcut and
   block variable_name.
 
-  Returns both flow node and map zone sources. Each result includes a
-  `:source_type` field ("flow_node" or "scene_zone") to distinguish them.
+  Returns Flow-node, Scene-zone, Scene-pin, and Scene-ambient-flow sources.
+  Each result includes a `:source_type` field to distinguish them.
 
   Filters out references whose sheet or block has been soft-deleted.
   """
@@ -972,7 +1023,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         )
 
       "display" ->
-        strict_qualified_variable_reference_specs(
+        strict_draftable_qualified_reference_specs(
           source_type,
           element.id,
           element.action_data["variable_ref"],
@@ -1099,8 +1150,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp strict_assignment_reference_specs(source_type, source_id, %{} = assignment) do
-    with {:ok, write_spec} <-
-           strict_required_reference_spec(
+    with {:ok, write_specs} <-
+           strict_draftable_reference_specs(
              source_type,
              source_id,
              "write",
@@ -1110,7 +1161,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
            ),
          {:ok, read_specs} <-
            strict_assignment_read_specs(source_type, source_id, assignment) do
-      {:ok, [write_spec | read_specs]}
+      {:ok, write_specs ++ read_specs}
     end
   end
 
@@ -1119,17 +1170,14 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp strict_assignment_read_specs(source_type, source_id, %{"value_type" => "variable_ref"} = assignment) do
-    case strict_required_reference_spec(
-           source_type,
-           source_id,
-           "read",
-           assignment["value_sheet"],
-           assignment["value"],
-           :assignment_value
-         ) do
-      {:ok, spec} -> {:ok, [spec]}
-      {:error, _reason} = error -> error
-    end
+    strict_draftable_reference_specs(
+      source_type,
+      source_id,
+      "read",
+      assignment["value_sheet"],
+      assignment["value"],
+      :assignment_value
+    )
   end
 
   defp strict_assignment_read_specs(_source_type, _source_id, _assignment), do: {:ok, []}
@@ -1159,7 +1207,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp strict_condition_rule_spec(rule, specs, source_type, source_id) do
-    case strict_required_reference_spec(
+    case strict_draftable_reference_specs(
            source_type,
            source_id,
            "read",
@@ -1167,9 +1215,44 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
            rule["variable"],
            :condition_rule
          ) do
-      {:ok, spec} -> {:cont, {:ok, [spec | specs]}}
+      {:ok, rule_specs} -> {:cont, {:ok, rule_specs ++ specs}}
       {:error, _reason} = error -> {:halt, error}
     end
+  end
+
+  defp strict_draftable_reference_specs(source_type, source_id, kind, sheet_shortcut, variable_name, context) do
+    cond do
+      nonempty_reference_part?(sheet_shortcut) and nonempty_reference_part?(variable_name) ->
+        case strict_required_reference_spec(
+               source_type,
+               source_id,
+               kind,
+               sheet_shortcut,
+               variable_name,
+               context
+             ) do
+          {:ok, spec} -> {:ok, [spec]}
+          {:error, _reason} = error -> error
+        end
+
+      draft_reference_pair?(sheet_shortcut, variable_name) ->
+        {:ok, []}
+
+      true ->
+        malformed_variable_reference(
+          source_type,
+          source_id,
+          context,
+          {sheet_shortcut, variable_name}
+        )
+    end
+  end
+
+  defp nonempty_reference_part?(value), do: is_binary(value) and String.trim(value) != ""
+
+  defp draft_reference_pair?(sheet_shortcut, variable_name) do
+    (sheet_shortcut in [nil, ""] and variable_name in [nil, ""]) or
+      (nonempty_reference_part?(sheet_shortcut) and variable_name in [nil, ""])
   end
 
   defp strict_required_reference_spec(source_type, source_id, kind, sheet_shortcut, variable_name, context) do
@@ -1188,6 +1271,111 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   defp strict_qualified_variable_reference_specs(source_type, source_id, value, context) do
     malformed_variable_reference(source_type, source_id, context, value)
+  end
+
+  defp strict_draftable_qualified_reference_specs(_source_type, _source_id, value, _context) when value in [nil, ""],
+    do: {:ok, []}
+
+  defp strict_draftable_qualified_reference_specs(source_type, source_id, value, context),
+    do: strict_qualified_variable_reference_specs(source_type, source_id, value, context)
+
+  defp snapshot_reference_collection(snapshot, entity_type, key) do
+    case Map.fetch(snapshot, key) do
+      {:ok, values} when is_list(values) ->
+        if Enum.all?(values, &is_map/1) do
+          {:ok, values}
+        else
+          {:error, {:invalid_variable_reference_snapshot_collection, entity_type, key, values}}
+        end
+
+      {:ok, value} ->
+        {:error, {:invalid_variable_reference_snapshot_collection, entity_type, key, value}}
+
+      :error ->
+        {:error, {:missing_variable_reference_snapshot_collection, entity_type, key}}
+    end
+  end
+
+  defp layer_snapshot_variable_sources(layers, child_key, source_type) do
+    Enum.reduce_while(layers, {:ok, []}, fn layer, {:ok, sources} ->
+      case snapshot_reference_collection(layer, "scene_layer", child_key) do
+        {:ok, children} ->
+          child_sources = scene_snapshot_variable_sources(children, source_type)
+          {:cont, {:ok, sources ++ child_sources}}
+
+        {:error, _reason} = error ->
+          {:halt, error}
+      end
+    end)
+  end
+
+  defp flow_snapshot_variable_surface?(%{"type" => "instruction", "data" => %{} = data}),
+    do: potential_collection_reference_surface?(Map.get(data, "assignments", []))
+
+  defp flow_snapshot_variable_surface?(%{"type" => "condition", "data" => %{} = data}),
+    do: not is_nil(Map.get(data, "condition"))
+
+  defp flow_snapshot_variable_surface?(%{"type" => "dialogue", "data" => %{} = data}),
+    do: potential_collection_reference_surface?(Map.get(data, "responses", []))
+
+  defp flow_snapshot_variable_surface?(_node), do: false
+
+  defp scene_snapshot_variable_sources(elements, source_type) do
+    elements
+    |> Enum.filter(&scene_snapshot_variable_surface?(&1, source_type))
+    |> Enum.map(&scene_snapshot_variable_source(source_type, &1))
+  end
+
+  defp scene_snapshot_variable_surface?(element, "scene_pin"), do: not is_nil(Map.get(element, "condition"))
+
+  defp scene_snapshot_variable_surface?(element, "scene_zone") do
+    not is_nil(Map.get(element, "condition")) or
+      scene_zone_action_variable_surface?(element["action_type"], element["action_data"])
+  end
+
+  defp scene_zone_action_variable_surface?("action", %{} = action_data),
+    do: potential_collection_reference_surface?(Map.get(action_data, "assignments", []))
+
+  defp scene_zone_action_variable_surface?("display", %{}), do: true
+
+  defp scene_zone_action_variable_surface?("collection", %{} = action_data),
+    do: potential_collection_reference_surface?(Map.get(action_data, "items", []))
+
+  defp scene_zone_action_variable_surface?(_action_type, _action_data), do: false
+
+  defp scene_ambient_snapshot_variable_surface?(%{"trigger_type" => "on_event", "trigger_config" => %{} = config}),
+    do: Map.get(config, "variable_ref") not in [nil, ""]
+
+  defp scene_ambient_snapshot_variable_surface?(_ambient_flow), do: false
+
+  defp potential_collection_reference_surface?(value), do: value not in [nil, []]
+
+  defp flow_snapshot_variable_source(node) do
+    %{
+      source_type: "flow_node",
+      source_id: node["original_id"],
+      type: node["type"],
+      data: node["data"]
+    }
+  end
+
+  defp scene_snapshot_variable_source(source_type, element) do
+    %{
+      source_type: source_type,
+      source_id: element["original_id"],
+      action_type: element["action_type"],
+      action_data: element["action_data"],
+      condition: element["condition"]
+    }
+  end
+
+  defp scene_ambient_snapshot_variable_source(ambient_flow) do
+    %{
+      source_type: "scene_ambient_flow",
+      source_id: ambient_flow["original_id"],
+      trigger_type: ambient_flow["trigger_type"],
+      trigger_config: ambient_flow["trigger_config"]
+    }
   end
 
   defp malformed_variable_reference(source_type, source_id, context, value) do

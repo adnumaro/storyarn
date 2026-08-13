@@ -357,14 +357,12 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   end
 
   defp portable_asset_entry(blob_hash, metadata, expected_source_project_id, opts \\ []) do
-    with :ok <- validate_blob_hash(blob_hash),
-         :ok <- validate_asset_filename(metadata["filename"]),
-         :ok <- validate_asset_content_type(metadata, opts),
-         :ok <- validate_asset_size(metadata["size"]),
-         {:ok, source_project_id} <-
-           validate_source_project_id(
-             metadata["project_id"],
-             expected_source_project_id
+    with {:ok, source_project_id} <-
+           validate_portable_catalog_entry(
+             blob_hash,
+             metadata,
+             expected_source_project_id,
+             opts
            ),
          {:ok, source_key} <-
            resolve_trusted_source_key(
@@ -390,6 +388,28 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
              )
          }}
       end
+    end
+  end
+
+  @doc """
+  Validates the pure, storage-independent contract of a portable asset catalog
+  entry.
+
+  Preview and materialization share this boundary. Object existence and size
+  are intentionally checked later by the materializer because they require
+  storage I/O.
+  """
+  @spec validate_portable_catalog_entry(binary(), map(), integer() | nil, keyword()) ::
+          {:ok, pos_integer()} | {:error, term()}
+  def validate_portable_catalog_entry(blob_hash, metadata, expected_source_project_id, opts \\ []) do
+    with :ok <- validate_blob_hash(blob_hash),
+         :ok <- validate_asset_filename(metadata["filename"]),
+         :ok <- validate_asset_content_type(metadata, opts),
+         :ok <- validate_asset_size(metadata["size"]) do
+      validate_source_project_id(
+        metadata["project_id"],
+        expected_source_project_id
+      )
     end
   end
 

@@ -113,8 +113,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
           conflicts:
             Enum.map(report.conflicts, fn c ->
               %{type: to_string(c.type), id: c.id, contexts: c.contexts}
-            end),
-          autoResolved: report.auto_resolved
+            end)
         }
 
         {:noreply,

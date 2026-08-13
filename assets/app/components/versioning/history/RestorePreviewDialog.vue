@@ -6,11 +6,12 @@ import {
   FileText,
   GitBranch,
   Image,
-  Info,
+  Link2,
   Loader2,
   Map,
   Puzzle,
   RotateCcw,
+  Variable,
   UserRound,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
@@ -47,22 +48,26 @@ const conflictIcons: Record<string, Component> = {
   scene: Map,
   block: Puzzle,
   avatar: UserRound,
+  reference: Link2,
+  variable: Variable,
 };
 
 function conflictIcon(type: string) {
   return conflictIcons[type] || CircleAlert;
 }
 
-function conflictLabel(type: string) {
-  const labels: Record<string, string> = {
-    asset: "asset",
-    sheet: "sheet",
-    flow: "flow",
-    scene: "scene",
-    block: "block",
-    avatar: "avatar",
+function conflictLabelKey(type: string) {
+  const keys: Record<string, string> = {
+    asset: "common.restore_preview_dialog.entity_types.asset",
+    sheet: "common.restore_preview_dialog.entity_types.sheet",
+    flow: "common.restore_preview_dialog.entity_types.flow",
+    scene: "common.restore_preview_dialog.entity_types.scene",
+    block: "common.restore_preview_dialog.entity_types.block",
+    avatar: "common.restore_preview_dialog.entity_types.avatar",
+    reference: "common.restore_preview_dialog.entity_types.reference",
+    variable: "common.restore_preview_dialog.entity_types.variable",
   };
-  return labels[type] || "entity";
+  return keys[type] || "common.restore_preview_dialog.entity_types.entity";
 }
 </script>
 
@@ -99,11 +104,11 @@ function conflictLabel(type: string) {
               class="bg-muted/50 rounded-lg p-3"
             >
               <div class="flex items-center gap-2 text-sm font-medium">
-                <component :is="conflictIcon(conflict.type)" class="size-4 text-amber-500" />
+                <component :is="conflictIcon(conflict.type)" class="size-4 text-destructive" />
                 <span
                   >{{
                     $t("common.restore_preview_dialog.missing_prefix", {
-                      type: conflictLabel(conflict.type),
+                      type: $t(conflictLabelKey(conflict.type)),
                     })
                   }}
                   (ID: {{ conflict.id ?? $t("common.restore_preview_dialog.invalid_id") }})</span
@@ -123,20 +128,6 @@ function conflictLabel(type: string) {
             $t("common.restore_preview_dialog.restore_info", { version: restoreData.versionNumber })
           }}
         </p>
-        <div
-          v-if="(restoreData.report.autoResolved?.length ?? 0) > 0"
-          class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3"
-        >
-          <p
-            class="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1 flex items-center gap-1.5"
-          >
-            <Info class="size-4" />
-            {{ $t("common.restore_preview_dialog.auto_resolved") }}
-          </p>
-          <ul class="text-xs text-muted-foreground list-disc ml-5">
-            <li v-for="(item, i) in restoreData.report.autoResolved" :key="i">{{ item }}</li>
-          </ul>
-        </div>
       </template>
       <DialogFooter>
         <Button variant="ghost" @click="emit('update:open', false)">{{

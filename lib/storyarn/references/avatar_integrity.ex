@@ -23,6 +23,17 @@ defmodule Storyarn.References.AvatarIntegrity do
           | {:avatar_project_mismatch, integer()}
           | {:avatar_speaker_mismatch, integer(), integer(), integer()}
 
+  @doc false
+  @spec validate_avatar_speaker(integer(), integer(), integer() | nil) ::
+          :ok | {:error, {:avatar_speaker_mismatch, integer(), integer(), integer()}}
+  def validate_avatar_speaker(_avatar_id, _avatar_sheet_id, nil), do: :ok
+
+  def validate_avatar_speaker(_avatar_id, avatar_sheet_id, avatar_sheet_id), do: :ok
+
+  def validate_avatar_speaker(avatar_id, avatar_sheet_id, speaker_sheet_id) do
+    {:error, {:avatar_speaker_mismatch, avatar_id, avatar_sheet_id, speaker_sheet_id}}
+  end
+
   @spec lock_and_normalize_node_avatar(integer(), String.t(), map()) ::
           {:ok, map()} | {:error, validation_error()}
   def lock_and_normalize_node_avatar(flow_id, node_type, data) when is_integer(flow_id) and is_map(data) do
@@ -297,14 +308,6 @@ defmodule Storyarn.References.AvatarIntegrity do
           do: {:error, {:avatar_project_mismatch, avatar_id}},
           else: {:error, {:invalid_avatar_reference, avatar_id}}
     end
-  end
-
-  defp validate_avatar_speaker(_avatar_id, _avatar_sheet_id, nil), do: :ok
-
-  defp validate_avatar_speaker(_avatar_id, avatar_sheet_id, avatar_sheet_id), do: :ok
-
-  defp validate_avatar_speaker(avatar_id, avatar_sheet_id, speaker_sheet_id) do
-    {:error, {:avatar_speaker_mismatch, avatar_id, avatar_sheet_id, speaker_sheet_id}}
   end
 
   defp validate_delete_ownership(avatar, project_id, opts) do

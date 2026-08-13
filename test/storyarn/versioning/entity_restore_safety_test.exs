@@ -114,20 +114,17 @@ defmodule Storyarn.Versioning.EntityRestoreSafetyTest do
                )
     end
 
-    test "supports Flow's JSON normalization before comparison" do
-      normalize = fn snapshot -> snapshot |> Jason.encode!() |> Jason.decode!() end
-
+    test "normalizes every builder snapshot through its persisted JSON representation" do
       assert :ok =
                EntityRestoreSafety.verify_pre_restore_baseline(
                  "flow",
                  entity(),
                  [
                    restore_action: {:entity_version_restore, "flow"},
-                   pre_restore_snapshot: %{"name" => "same"}
+                   pre_restore_snapshot: %{"name" => "same", "weight" => "1.50"}
                  ],
-                 fn _entity -> %{name: "same"} end,
-                 :flow_changed_since_pre_restore_snapshot,
-                 normalize
+                 fn _entity -> %{name: "same", weight: Decimal.new("1.50")} end,
+                 :flow_changed_since_pre_restore_snapshot
                )
     end
 

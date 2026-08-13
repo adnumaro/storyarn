@@ -26,7 +26,6 @@ export interface RestoreReport {
   shortcutCollision?: boolean;
   resolvedShortcut?: string;
   conflicts: RestoreConflict[];
-  autoResolved?: string[];
 }
 
 export interface RestoreData {
@@ -165,24 +164,43 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
   function previewRestore(versionNumber: number) {
     if (!restoreEnabled()) return;
     loadingAction.value = `restore-${versionNumber}`;
-    live.pushEvent("preview_restore", { version_number: versionNumber });
+    live.pushEvent(
+      "preview_restore",
+      { version_number: versionNumber },
+      finishRestoreAction,
+      finishRestoreAction,
+    );
   }
 
   function reviewRestore() {
     if (!restoreEnabled()) return;
     loadingAction.value = "review-restore";
-    live.pushEvent("review_restore", {
-      version_number: unsavedVersionNumber.value,
-    });
+    live.pushEvent(
+      "review_restore",
+      {
+        version_number: unsavedVersionNumber.value,
+      },
+      finishRestoreAction,
+      finishRestoreAction,
+    );
   }
 
   function confirmRestore() {
     if (!restoreEnabled()) return;
     if (!restoreData.value) return;
     loadingAction.value = "confirm-restore";
-    live.pushEvent("confirm_restore", {
-      version_number: restoreData.value.versionNumber,
-    });
+    live.pushEvent(
+      "confirm_restore",
+      {
+        version_number: restoreData.value.versionNumber,
+      },
+      finishRestoreAction,
+      finishRestoreAction,
+    );
+  }
+
+  function finishRestoreAction() {
+    loadingAction.value = null;
   }
 
   function loadMore() {

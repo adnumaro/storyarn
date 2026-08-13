@@ -13,6 +13,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.VariableReference
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
@@ -30,7 +31,42 @@ defmodule Storyarn.Scenes.SceneCrud do
   alias Storyarn.Shared.ShortcutHelpers
   alias Storyarn.Shared.SoftDelete
   alias Storyarn.Shared.TreeOperations, as: SharedTree
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Sheet
   alias Storyarn.Shortcuts
+
+  @stale_variable_reference_sql """
+  CASE WHEN ? = 'table' THEN
+    ? != ? OR NOT EXISTS (
+      SELECT 1 FROM table_rows tr
+      JOIN table_columns tc ON tc.block_id = tr.block_id
+      WHERE tr.block_id = ?
+        AND ? = ? || '.' || tr.slug || '.' || tc.slug
+    )
+  ELSE
+    ? != ? OR ? != ?
+  END
+  """
+
+  defmacrop stale_variable_reference(block, reference, sheet) do
+    sql = @stale_variable_reference_sql
+
+    quote do
+      fragment(
+        unquote(sql),
+        unquote(block).type,
+        unquote(reference).source_sheet,
+        unquote(sheet).shortcut,
+        unquote(block).id,
+        unquote(reference).source_variable,
+        unquote(block).variable_name,
+        unquote(reference).source_sheet,
+        unquote(sheet).shortcut,
+        unquote(reference).source_variable,
+        unquote(block).variable_name
+      )
+    end
+  end
 
   @doc """
   Lists all non-deleted scenes for a project.
@@ -820,8 +856,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   Used by the Flows.VariableReferenceTracker to avoid cross-context schema queries.
   """
   def get_scene_zone_variable_usage(block_id, project_id) do
-    alias Storyarn.Flows.VariableReference
-
     Repo.all(
       from(vr in VariableReference,
         join: z in SceneZone,
@@ -851,8 +885,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   Used by the Flows.VariableReferenceTracker to avoid cross-context schema queries.
   """
   def get_scene_pin_variable_usage(block_id, project_id) do
-    alias Storyarn.Flows.VariableReference
-
     Repo.all(
       from(vr in VariableReference,
         join: p in ScenePin,
@@ -883,8 +915,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   does not hide the authored variable usage from integrity reads.
   """
   def get_scene_ambient_flow_variable_usage(block_id, project_id) do
-    alias Storyarn.Flows.VariableReference
-
     Repo.all(
       from(vr in VariableReference,
         join: ambient_flow in SceneAmbientFlow,
@@ -921,10 +951,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   Used by the Flows.VariableReferenceTracker for stale reference detection.
   """
   def check_stale_scene_zone_variable_references(block_id, project_id) do
-    alias Storyarn.Flows.VariableReference
-    alias Storyarn.Sheets.Block
-    alias Storyarn.Sheets.Sheet
-
     Repo.all(
       from(vr in VariableReference,
         join: z in SceneZone,
@@ -950,31 +976,7 @@ defmodule Storyarn.Scenes.SceneCrud do
           zone_action_data: z.action_data,
           source_sheet: vr.source_sheet,
           source_variable: vr.source_variable,
-          stale:
-            fragment(
-              """
-              CASE WHEN ? = 'table' THEN
-                ? != ? OR NOT EXISTS (
-                  SELECT 1 FROM table_rows tr
-                  JOIN table_columns tc ON tc.block_id = tr.block_id
-                  WHERE tr.block_id = ?
-                    AND ? = ? || '.' || tr.slug || '.' || tc.slug
-                )
-              ELSE
-                ? != ? OR ? != ?
-              END
-              """,
-              b.type,
-              vr.source_sheet,
-              s.shortcut,
-              b.id,
-              vr.source_variable,
-              b.variable_name,
-              vr.source_sheet,
-              s.shortcut,
-              vr.source_variable,
-              b.variable_name
-            )
+          stale: stale_variable_reference(b, vr, s)
         },
         order_by: [asc: vr.kind, asc: m.name]
       )
@@ -988,10 +990,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   Used by the Flows.VariableReferenceTracker for stale reference detection.
   """
   def check_stale_scene_pin_variable_references(block_id, project_id) do
-    alias Storyarn.Flows.VariableReference
-    alias Storyarn.Sheets.Block
-    alias Storyarn.Sheets.Sheet
-
     Repo.all(
       from(vr in VariableReference,
         join: p in ScenePin,
@@ -1016,31 +1014,7 @@ defmodule Storyarn.Scenes.SceneCrud do
           pin_label: p.label,
           source_sheet: vr.source_sheet,
           source_variable: vr.source_variable,
-          stale:
-            fragment(
-              """
-              CASE WHEN ? = 'table' THEN
-                ? != ? OR NOT EXISTS (
-                  SELECT 1 FROM table_rows tr
-                  JOIN table_columns tc ON tc.block_id = tr.block_id
-                  WHERE tr.block_id = ?
-                    AND ? = ? || '.' || tr.slug || '.' || tc.slug
-                )
-              ELSE
-                ? != ? OR ? != ?
-              END
-              """,
-              b.type,
-              vr.source_sheet,
-              s.shortcut,
-              b.id,
-              vr.source_variable,
-              b.variable_name,
-              vr.source_sheet,
-              s.shortcut,
-              vr.source_variable,
-              b.variable_name
-            )
+          stale: stale_variable_reference(b, vr, s)
         },
         order_by: [asc: vr.kind, asc: m.name]
       )
@@ -1055,10 +1029,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   the normalized global-search usage reader.
   """
   def check_stale_scene_ambient_flow_variable_references(block_id, project_id) do
-    alias Storyarn.Flows.VariableReference
-    alias Storyarn.Sheets.Block
-    alias Storyarn.Sheets.Sheet
-
     Repo.all(
       from(vr in VariableReference,
         join: ambient_flow in SceneAmbientFlow,
@@ -1090,31 +1060,7 @@ defmodule Storyarn.Scenes.SceneCrud do
           trigger_config: ambient_flow.trigger_config,
           source_sheet: vr.source_sheet,
           source_variable: vr.source_variable,
-          stale:
-            fragment(
-              """
-              CASE WHEN ? = 'table' THEN
-                ? != ? OR NOT EXISTS (
-                  SELECT 1 FROM table_rows tr
-                  JOIN table_columns tc ON tc.block_id = tr.block_id
-                  WHERE tr.block_id = ?
-                    AND ? = ? || '.' || tr.slug || '.' || tc.slug
-                )
-              ELSE
-                ? != ? OR ? != ?
-              END
-              """,
-              block.type,
-              vr.source_sheet,
-              sheet.shortcut,
-              block.id,
-              vr.source_variable,
-              block.variable_name,
-              vr.source_sheet,
-              sheet.shortcut,
-              vr.source_variable,
-              block.variable_name
-            )
+          stale: stale_variable_reference(block, vr, sheet)
         },
         order_by: [asc: vr.kind, asc: scene.name, asc: ambient_flow.id]
       )

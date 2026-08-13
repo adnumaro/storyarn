@@ -20,6 +20,9 @@ defmodule Storyarn.References.VariableTracker do
   def validate_snapshot_variable_references(project_id, sources),
     do: VariableReferenceTracker.validate_snapshot_variable_references(project_id, sources)
 
+  def validate_entity_snapshot_variable_references(project_id, entity_type, snapshot),
+    do: VariableReferenceTracker.validate_entity_snapshot_variable_references(project_id, entity_type, snapshot)
+
   def delete_flow_node_variable_references(node_id), do: VariableReferenceTracker.delete_references(node_id)
 
   def update_scene_pin_variable_references(pin, opts \\ []),

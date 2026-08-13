@@ -32,6 +32,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.References.AvatarIntegrity
+  alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.HtmlUtils
@@ -2343,15 +2344,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       flow,
       opts,
       &do_build_snapshot/1,
-      :flow_changed_since_pre_restore_snapshot,
-      &json_round_trip_snapshot!/1
+      :flow_changed_since_pre_restore_snapshot
     )
-  end
-
-  defp json_round_trip_snapshot!(snapshot) do
-    snapshot
-    |> Jason.encode!()
-    |> Jason.decode!()
   end
 
   defp lock_and_validate_incoming_dynamic_pins(repo, project_id, restored_flow_id, snapshot_nodes) do
@@ -4210,8 +4204,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       asset_mode ->
         resolution_opts =
           opts
-          |> MaterializationHelpers.asset_resolution_opts(asset_mode)
-          |> maybe_pin_in_place_asset_source_project(opts, project_id)
+          |> MaterializationHelpers.asset_resolution_opts(asset_mode, project_id)
           |> Keyword.put(:expected_content_type_prefix, expected_content_type_prefix)
           |> Keyword.put(:asset_context, asset_context)
 
@@ -4222,16 +4215,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
           Keyword.get(opts, :user_id),
           resolution_opts
         )
-    end
-  end
-
-  defp maybe_pin_in_place_asset_source_project(resolution_opts, opts, project_id) do
-    case Keyword.get(opts, :restore_action) do
-      {:entity_version_restore, "flow"} ->
-        Keyword.put(resolution_opts, :source_project_id, project_id)
-
-      _materialization_action ->
-        resolution_opts
     end
   end
 
@@ -4669,7 +4652,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp flow_node_mention_refs(data) do
     data
-    |> collect_flow_node_html([])
+    |> RichTextMentions.html_candidates()
     |> Enum.flat_map(&flow_node_html_mention_refs/1)
   end
 
@@ -4681,22 +4664,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   end
 
   defp flow_node_mention_ref(reference), do: %{type: flow_mention_reference_type(reference.type), id: reference.id}
-
-  defp collect_flow_node_html(value, acc) when is_binary(value) do
-    if String.contains?(value, "mention"), do: [value | acc], else: acc
-  end
-
-  defp collect_flow_node_html(value, acc) when is_list(value) do
-    Enum.reduce(value, acc, &collect_flow_node_html/2)
-  end
-
-  defp collect_flow_node_html(value, acc) when is_map(value) do
-    Enum.reduce(value, acc, fn {_key, nested}, nested_acc ->
-      collect_flow_node_html(nested, nested_acc)
-    end)
-  end
-
-  defp collect_flow_node_html(_value, acc), do: acc
 
   defp flow_mention_reference_type("sheet"), do: :sheet
   defp flow_mention_reference_type("flow"), do: :flow

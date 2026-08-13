@@ -84,10 +84,20 @@
       "shortcut_collision": "Colisión de atajo — se renombrará a \"{name}\"",
       "missing_entities": "La restauración está bloqueada porque algunas referencias no son válidas o no están disponibles:",
       "missing_prefix": "{type} faltante",
+      "entity_types": {
+        "asset": "recurso",
+        "sheet": "ficha",
+        "flow": "flujo",
+        "scene": "escena",
+        "block": "bloque",
+        "avatar": "avatar",
+        "reference": "referencia",
+        "variable": "variable",
+        "entity": "entidad"
+      },
       "invalid_id": "no válido",
       "missing_blocked": "Restaura o repara el contenido referenciado, o elige otra versión, e inténtalo de nuevo.",
       "restore_info": "Se restaurará a la versión {version}.",
-      "auto_resolved": "Auto-resuelto:",
       "restore_blocked": "Restauración no disponible",
       "restore": "Restaurar"
     },

@@ -73,8 +73,8 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   @spec preserve_external_refs?(keyword()) :: boolean()
   def preserve_external_refs?(opts), do: Keyword.get(opts, :preserve_external_refs, true)
 
-  @spec asset_resolution_opts(keyword(), atom()) :: keyword()
-  def asset_resolution_opts(opts, asset_mode) do
+  @spec asset_resolution_opts(keyword(), atom(), pos_integer()) :: keyword()
+  def asset_resolution_opts(opts, asset_mode, project_id) do
     opts
     |> Keyword.take([
       :asset_copy_tracker,
@@ -82,6 +82,17 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
       :asset_source_keys
     ])
     |> Keyword.put(:asset_mode, asset_mode)
+    |> maybe_pin_entity_restore_source(opts, project_id)
+  end
+
+  defp maybe_pin_entity_restore_source(resolution_opts, opts, project_id) do
+    case Keyword.get(opts, :restore_action) do
+      {:entity_version_restore, _entity_type} ->
+        Keyword.put(resolution_opts, :source_project_id, project_id)
+
+      _materialization_action ->
+        resolution_opts
+    end
   end
 
   @doc """

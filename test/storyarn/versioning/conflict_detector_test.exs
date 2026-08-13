@@ -5,6 +5,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Assets
@@ -117,6 +118,171 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
       assert mismatch_report.has_conflicts
       assert [%{type: :avatar, id: id}] = mismatch_report.conflicts
       assert id == avatar.id
+    end
+
+    test "accepts a Flow avatar when the optional speaker is absent", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      avatar_owner = sheet_fixture(project)
+      avatar_asset = image_asset_fixture(project, user)
+      assert {:ok, avatar} = Sheets.add_avatar(avatar_owner, avatar_asset.id)
+
+      snapshot = %{
+        "name" => "Test",
+        "shortcut" => flow.shortcut,
+        "scene_id" => nil,
+        "nodes" => [
+          %{
+            "type" => "dialogue",
+            "data" => %{
+              "speaker_sheet_id" => nil,
+              "avatar_id" => avatar.id
+            }
+          }
+        ],
+        "connections" => []
+      }
+
+      report = ConflictDetector.detect_conflicts("flow", snapshot, flow)
+
+      refute report.has_conflicts
+      assert report.conflicts == []
+    end
+
+    test "reports the same unresolved Flow variable that strict restore validation rejects", %{
+      project: project,
+      flow: flow
+    } do
+      sheet = sheet_fixture(project)
+      block = block_fixture(sheet)
+
+      snapshot = %{
+        "name" => "Test",
+        "shortcut" => flow.shortcut,
+        "scene_id" => nil,
+        "nodes" => [
+          %{
+            "original_id" => 501,
+            "type" => "instruction",
+            "data" => %{
+              "assignments" => [
+                %{
+                  "sheet" => sheet.shortcut,
+                  "variable" => block.variable_name,
+                  "value_type" => "literal"
+                }
+              ]
+            }
+          }
+        ],
+        "connections" => []
+      }
+
+      valid_report = ConflictDetector.detect_conflicts("flow", snapshot, flow)
+      refute valid_report.has_conflicts
+
+      missing_variable = "missing_preview_variable"
+
+      invalid_snapshot =
+        put_in(
+          snapshot,
+          ["nodes", Access.at(0), "data", "assignments", Access.at(0), "variable"],
+          missing_variable
+        )
+
+      report = ConflictDetector.detect_conflicts("flow", invalid_snapshot, flow)
+
+      assert report.has_conflicts
+
+      assert [
+               %{
+                 type: :variable,
+                 id: qualified_id,
+                 contexts: [context]
+               }
+             ] = report.conflicts
+
+      assert qualified_id == "#{sheet.shortcut}.#{missing_variable}"
+      assert context =~ "Flow node #501"
+      assert context =~ "unresolved write variable"
+
+      malformed_snapshot =
+        put_in(
+          snapshot,
+          ["nodes", Access.at(0), "data", "assignments", Access.at(0), "sheet"],
+          nil
+        )
+
+      malformed_report =
+        ConflictDetector.detect_conflicts("flow", malformed_snapshot, flow)
+
+      assert [
+               %{
+                 type: :variable,
+                 id: nil,
+                 contexts: [malformed_context]
+               }
+             ] = malformed_report.conflicts
+
+      assert malformed_context =~ "Flow node #501"
+      assert malformed_context =~ "malformed variable reference"
+    end
+
+    test "reports unresolved Scene display variables from layered zones", %{
+      project: project
+    } do
+      scene = scene_fixture(project)
+      sheet = sheet_fixture(project)
+      block = block_fixture(sheet)
+
+      zone = %{
+        "original_id" => 601,
+        "action_type" => "display",
+        "action_data" => %{
+          "variable_ref" => "#{sheet.shortcut}.#{block.variable_name}"
+        },
+        "condition" => nil,
+        "target_type" => nil,
+        "target_id" => nil,
+        "label_icon_asset_id" => nil
+      }
+
+      snapshot = %{
+        "shortcut" => scene.shortcut,
+        "background_asset_id" => nil,
+        "layers" => [%{"pins" => [], "zones" => [zone]}],
+        "orphan_pins" => [],
+        "orphan_zones" => [],
+        "ambient_flows" => []
+      }
+
+      valid_report = ConflictDetector.detect_conflicts("scene", snapshot, scene)
+      refute valid_report.has_conflicts
+
+      missing_variable = "missing_scene_preview_variable"
+
+      invalid_snapshot =
+        put_in(
+          snapshot,
+          ["layers", Access.at(0), "zones", Access.at(0), "action_data", "variable_ref"],
+          "#{sheet.shortcut}.#{missing_variable}"
+        )
+
+      report = ConflictDetector.detect_conflicts("scene", invalid_snapshot, scene)
+
+      assert [
+               %{
+                 type: :variable,
+                 id: qualified_id,
+                 contexts: [context]
+               }
+             ] = report.conflicts
+
+      assert qualified_id == "#{sheet.shortcut}.#{missing_variable}"
+      assert context =~ "Scene zone #601"
+      assert context =~ "unresolved read variable"
     end
 
     test "treats references to another project as missing", %{
@@ -687,7 +853,6 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
 
       report = ConflictDetector.detect_conflicts("sheet", snapshot, sheet)
 
-      assert report.auto_resolved == []
       assert [%{type: :block, id: 999_999}] = report.conflicts
     end
   end

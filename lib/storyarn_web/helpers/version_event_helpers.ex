@@ -224,17 +224,14 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
 
   defp entity(socket, config), do: Map.fetch!(socket.assigns, config.entity_key)
 
-  defp track_version_event(socket, config, event_name, extra \\ %{}) do
+  defp track_version_event(socket, config, event_name) do
     Analytics.track(
       socket.assigns.current_scope,
       event_name,
-      Map.merge(
-        %{
-          entity_type: config.entity_type,
-          project_id: socket.assigns.project.id
-        },
-        extra
-      )
+      %{
+        entity_type: config.entity_type,
+        project_id: socket.assigns.project.id
+      }
     )
   end
 end

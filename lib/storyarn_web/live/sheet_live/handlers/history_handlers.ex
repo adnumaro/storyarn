@@ -241,17 +241,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
      )}
   end
 
-  defp track_version_event(socket, event_name, extra \\ %{}) do
+  defp track_version_event(socket, event_name) do
     Analytics.track(
       socket.assigns.current_scope,
       event_name,
-      Map.merge(
-        %{
-          entity_type: "sheet",
-          project_id: socket.assigns.project.id
-        },
-        extra
-      )
+      %{
+        entity_type: "sheet",
+        project_id: socket.assigns.project.id
+      }
     )
   end
 end

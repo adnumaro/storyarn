@@ -56,6 +56,16 @@ describe("entity restore dialogs", () => {
                 id: null,
                 contexts: ["Dialogue speaker"],
               },
+              {
+                type: "reference",
+                id: "invalid",
+                contexts: ["Rich text mention"],
+              },
+              {
+                type: "variable",
+                id: "hero.health",
+                contexts: ["Dialogue condition"],
+              },
             ],
           },
         },
@@ -67,7 +77,13 @@ describe("entity restore dialogs", () => {
     expect(wrapper.text()).toContain("malformed-id");
     expect(wrapper.text()).toContain("ID: invalid");
     expect(wrapper.text()).toContain("Missing avatar");
+    expect(wrapper.text()).toContain("Missing reference");
+    expect(wrapper.text()).toContain("Missing variable");
+    expect(wrapper.text()).not.toContain("Missing entity");
     expect(wrapper.text()).toContain("Restore unavailable");
+
+    const conflictIcons = wrapper.findAll("svg.text-destructive");
+    expect(conflictIcons).toHaveLength(4);
 
     const restoreButton = wrapper
       .findAll("button")
@@ -103,7 +119,7 @@ describe("entity restore dialogs", () => {
     expect(wrapper.emitted("confirm")).toHaveLength(1);
   });
 
-  it("uses one review event and confirms without a safety-version bypass", () => {
+  it("clears every restore loading state when LiveView replies with an error", () => {
     const live = createMockLive();
     const { result, app } = withSetup(() => useVersionHistory(() => true), { live });
     const handlers = vi.mocked(live.handleEvent).mock.calls;
@@ -113,26 +129,95 @@ describe("entity restore dialogs", () => {
     expect(unsavedHandler).toBeDefined();
     expect(restoreHandler).toBeDefined();
 
+    result.previewRestore(11);
+    expect(result.loadingAction.value).toBe("restore-11");
+    expect(live.pushEvent).toHaveBeenLastCalledWith(
+      "preview_restore",
+      { version_number: 11 },
+      expect.any(Function),
+    );
+    vi.mocked(live.pushEvent).mock.calls.at(-1)?.[2]?.({ error: "preview failed" });
+    expect(result.loadingAction.value).toBeNull();
+
     unsavedHandler!({ versionNumber: 11 });
     result.reviewRestore();
+    expect(result.loadingAction.value).toBe("review-restore");
 
     expect(live.pushEvent).toHaveBeenCalledWith(
       "review_restore",
       { version_number: 11 },
-      undefined,
+      expect.any(Function),
     );
+    vi.mocked(live.pushEvent).mock.calls.at(-1)?.[2]?.({ error: "review failed" });
+    expect(result.loadingAction.value).toBeNull();
 
     restoreHandler!({
       versionNumber: 11,
       report: { hasConflicts: false, conflicts: [] },
     });
     result.confirmRestore();
+    expect(result.loadingAction.value).toBe("confirm-restore");
 
     expect(live.pushEvent).toHaveBeenLastCalledWith(
       "confirm_restore",
       { version_number: 11 },
-      undefined,
+      expect.any(Function),
     );
+    vi.mocked(live.pushEvent).mock.calls.at(-1)?.[2]?.({ error: "restore failed" });
+    expect(result.loadingAction.value).toBeNull();
+    expect(result.showRestoreModal.value).toBe(true);
+
+    app.unmount();
+  });
+
+  it("preserves restore modal transitions while clearing their loading states", () => {
+    const live = createMockLive();
+    const { result, app } = withSetup(() => useVersionHistory(() => true), { live });
+    const handlers = vi.mocked(live.handleEvent).mock.calls;
+    const unsavedHandler = handlers.find(([event]) => event === "show_unsaved_modal")?.[1];
+    const restoreHandler = handlers.find(([event]) => event === "show_restore_modal")?.[1];
+    const restoredHandler = handlers.find(([event]) => event === "version_restored")?.[1];
+
+    expect(unsavedHandler).toBeDefined();
+    expect(restoreHandler).toBeDefined();
+    expect(restoredHandler).toBeDefined();
+
+    result.previewRestore(12);
+    expect(result.loadingAction.value).toBe("restore-12");
+    unsavedHandler!({ versionNumber: 12 });
+    expect(result.loadingAction.value).toBeNull();
+    expect(result.showUnsavedModal.value).toBe(true);
+
+    result.reviewRestore();
+    expect(result.loadingAction.value).toBe("review-restore");
+    restoreHandler!({
+      versionNumber: 12,
+      report: { hasConflicts: false, conflicts: [] },
+    });
+    expect(result.loadingAction.value).toBeNull();
+    expect(result.showUnsavedModal.value).toBe(false);
+    expect(result.showRestoreModal.value).toBe(true);
+
+    result.confirmRestore();
+    expect(result.loadingAction.value).toBe("confirm-restore");
+    restoredHandler!({});
+    expect(result.loadingAction.value).toBeNull();
+    expect(result.showRestoreModal.value).toBe(false);
+    expect(result.restoreData.value).toBeNull();
+
+    app.unmount();
+  });
+
+  it("clears restore loading state when pushing an event throws", () => {
+    const live = createMockLive();
+    vi.mocked(live.pushEvent).mockImplementation(() => {
+      throw new Error("disconnected");
+    });
+
+    const { result, app } = withSetup(() => useVersionHistory(() => true), { live });
+
+    result.previewRestore(13);
+    expect(result.loadingAction.value).toBeNull();
 
     app.unmount();
   });

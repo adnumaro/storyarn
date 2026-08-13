@@ -2825,8 +2825,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       asset_mode ->
         resolution_opts =
           opts
-          |> MaterializationHelpers.asset_resolution_opts(asset_mode)
-          |> maybe_pin_in_place_asset_source_project(opts, project_id)
+          |> MaterializationHelpers.asset_resolution_opts(asset_mode, project_id)
           |> Keyword.put(:expected_content_type_prefix, "image/")
           |> Keyword.put(:asset_context, asset_context)
 
@@ -2837,16 +2836,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
           Keyword.get(opts, :user_id),
           resolution_opts
         )
-    end
-  end
-
-  defp maybe_pin_in_place_asset_source_project(resolution_opts, opts, project_id) do
-    case Keyword.get(opts, :restore_action) do
-      {:entity_version_restore, "sheet"} ->
-        Keyword.put(resolution_opts, :source_project_id, project_id)
-
-      _materialization_action ->
-        resolution_opts
     end
   end
 
