@@ -55,6 +55,26 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers do
     }
   end
 
+  defp serialize_usage_ref(%{source_type: "scene_pin"} = ref, _sheet, _block) do
+    %{
+      sourceType: "scene_pin",
+      sceneId: ref.scene_id,
+      sceneName: ref.scene_name,
+      pinLabel: ref.pin_label,
+      stale: ref[:stale] || false
+    }
+  end
+
+  defp serialize_usage_ref(%{source_type: "scene_ambient_flow"} = ref, _sheet, _block) do
+    %{
+      sourceType: "scene_ambient_flow",
+      sceneId: ref.scene_id,
+      sceneName: ref.scene_name,
+      flowName: ref.ambient_flow_name,
+      stale: ref[:stale] || false
+    }
+  end
+
   defp serialize_usage_ref(ref, sheet, block) do
     %{
       sourceType: "flow_node",

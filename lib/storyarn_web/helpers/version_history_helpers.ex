@@ -121,12 +121,12 @@ defmodule StoryarnWeb.Helpers.VersionHistoryHelpers do
          versionNumber: version.version_number
        })}
     else
-      show_conflict_preview(socket, entity_type, entity, version, false)
+      show_conflict_preview(socket, entity_type, entity, version)
     end
   end
 
   @doc "Shows the conflict preview modal for a version restore."
-  def show_conflict_preview(socket, entity_type, entity, version, skip_pre_snapshot) do
+  def show_conflict_preview(socket, entity_type, entity, version) do
     case Versioning.load_version_snapshot(version) do
       {:ok, snapshot} ->
         report = Versioning.detect_restore_conflicts(entity_type, snapshot, entity)
@@ -138,15 +138,13 @@ defmodule StoryarnWeb.Helpers.VersionHistoryHelpers do
           conflicts:
             Enum.map(report.conflicts, fn c ->
               %{type: to_string(c.type), id: c.id, contexts: c.contexts}
-            end),
-          autoResolved: report.auto_resolved
+            end)
         }
 
         {:noreply,
          push_event(socket, "show_restore_modal", %{
            versionNumber: version.version_number,
-           report: serialized_report,
-           skipPreSnapshot: skip_pre_snapshot
+           report: serialized_report
          })}
 
       {:error, _} ->

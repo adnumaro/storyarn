@@ -5,6 +5,7 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows.Flow
+  alias Storyarn.References
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes.SceneAmbientFlow
@@ -47,7 +48,12 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
            {:ok, ambient_flow} <-
              %SceneAmbientFlow{scene_id: scene.id, position: next_pos}
              |> SceneAmbientFlow.changeset(Map.put(attrs, "flow_id", flow_id))
-             |> Repo.insert() do
+             |> Repo.insert(),
+           :ok <-
+             References.update_scene_ambient_flow_variable_references(
+               ambient_flow,
+               project_id: scene.project_id
+             ) do
         {:ok, {ambient_flow, scene.project_id, true}}
       end
     end)
@@ -70,7 +76,12 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
            {:ok, updated_ambient_flow, changed?} <-
              locked_ambient_flow
              |> SceneAmbientFlow.changeset(Map.put(attrs, "flow_id", flow_id))
-             |> update_ambient_flow_if_changed(locked_ambient_flow) do
+             |> update_ambient_flow_if_changed(locked_ambient_flow),
+           :ok <-
+             References.update_scene_ambient_flow_variable_references(
+               updated_ambient_flow,
+               project_id: scene.project_id
+             ) do
         {:ok, {updated_ambient_flow, scene.project_id, changed?}}
       end
     end)
@@ -85,7 +96,9 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
     |> SceneReferenceIntegrity.with_active_scene_lock(fn scene ->
       with {:ok, locked_ambient_flow} <-
              lock_ambient_flow_for_scene(ambient_flow.id, scene.id),
-           {:ok, deleted_ambient_flow} <- Repo.delete(locked_ambient_flow) do
+           {:ok, deleted_ambient_flow} <- Repo.delete(locked_ambient_flow),
+           :ok <-
+             References.delete_scene_ambient_flow_variable_references(locked_ambient_flow.id) do
         {:ok, {deleted_ambient_flow, scene.project_id, true}}
       end
     end)

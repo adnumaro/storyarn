@@ -47,7 +47,7 @@ defmodule Storyarn.Analytics do
       MapSet.new(~w(auto_version_flows auto_version_scenes auto_version_sheets project_id)),
     "version created" => MapSet.new(~w(entity_type project_id)),
     "version panel opened" => MapSet.new(~w(entity_type project_id)),
-    "version restored" => MapSet.new(~w(entity_type project_id skip_pre_snapshot)),
+    "version restored" => MapSet.new(~w(entity_type project_id)),
     "workspace created" => MapSet.new(~w(workspace_id))
   }
 

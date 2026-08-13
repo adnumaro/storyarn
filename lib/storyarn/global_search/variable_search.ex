@@ -404,6 +404,7 @@ defmodule Storyarn.GlobalSearch.VariableSearch do
   defp usage_focus(%{source_type: :flow_node, source_id: id}), do: %{type: :node, id: id}
   defp usage_focus(%{source_type: :scene_pin, source_id: id}), do: %{type: :pin, id: id}
   defp usage_focus(%{source_type: :scene_zone, source_id: id}), do: %{type: :zone, id: id}
+  defp usage_focus(%{source_type: :scene_ambient_flow}), do: nil
 
   defp usage_focus(%{source_type: :table_formula} = usage) do
     %{

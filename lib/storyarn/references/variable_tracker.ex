@@ -17,6 +17,12 @@ defmodule Storyarn.References.VariableTracker do
   def flow_node_variable_references_current_ids(nodes, project_id),
     do: VariableReferenceTracker.flow_node_references_current_ids(nodes, project_id)
 
+  def validate_snapshot_variable_references(project_id, sources),
+    do: VariableReferenceTracker.validate_snapshot_variable_references(project_id, sources)
+
+  def validate_entity_snapshot_variable_references(project_id, entity_type, snapshot),
+    do: VariableReferenceTracker.validate_entity_snapshot_variable_references(project_id, entity_type, snapshot)
+
   def delete_flow_node_variable_references(node_id), do: VariableReferenceTracker.delete_references(node_id)
 
   def update_scene_pin_variable_references(pin, opts \\ []),
@@ -28,4 +34,10 @@ defmodule Storyarn.References.VariableTracker do
     do: VariableReferenceTracker.update_scene_zone_references(zone, opts)
 
   def delete_scene_zone_variable_references(zone_id), do: VariableReferenceTracker.delete_map_zone_references(zone_id)
+
+  def update_scene_ambient_flow_variable_references(ambient_flow, opts \\ []),
+    do: VariableReferenceTracker.update_scene_ambient_flow_references(ambient_flow, opts)
+
+  def delete_scene_ambient_flow_variable_references(ambient_flow_id),
+    do: VariableReferenceTracker.delete_scene_ambient_flow_references(ambient_flow_id)
 end

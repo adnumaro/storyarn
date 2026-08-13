@@ -152,6 +152,7 @@ defmodule Storyarn.Assets.BlobStore do
     caller_transactional? = Repo.in_transaction?()
 
     with {:ok, workspace_id} <- project_workspace_id(project_id),
+         :ok <- require_workspace_lock_for_transaction(workspace_id, caller_transactional?),
          {:ok, tracker, owns_tracker?} <- asset_copy_tracker(opts, caller_transactional?) do
       opts = Keyword.put(opts, :asset_copy_tracker, tracker)
 
@@ -170,6 +171,14 @@ defmodule Storyarn.Assets.BlobStore do
       end
     end
   end
+
+  defp require_workspace_lock_for_transaction(workspace_id, true) do
+    if Billing.workspace_lock_held?(workspace_id),
+      do: :ok,
+      else: {:error, :asset_materialization_requires_workspace_lock}
+  end
+
+  defp require_workspace_lock_for_transaction(_workspace_id, false), do: :ok
 
   defp materialize_under_storage_lock(workspace_id, project_id, user_id, blob_hash, source_key, metadata, opts) do
     workspace_id

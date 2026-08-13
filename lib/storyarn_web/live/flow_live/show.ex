@@ -470,17 +470,13 @@ defmodule StoryarnWeb.FlowLive.Show do
     VersionEventHelpers.handle_preview_restore(%{"version_number" => vn}, socket, flow_version_config())
   end
 
-  def handle_event("save_and_restore", %{"version_number" => vn}, socket) do
-    VersionEventHelpers.handle_save_and_restore(%{"version_number" => vn}, socket, flow_version_config())
+  def handle_event("review_restore", %{"version_number" => vn}, socket) do
+    VersionEventHelpers.handle_review_restore(%{"version_number" => vn}, socket, flow_version_config())
   end
 
-  def handle_event("discard_and_restore", %{"version_number" => vn}, socket) do
-    VersionEventHelpers.handle_discard_and_restore(%{"version_number" => vn}, socket, flow_version_config())
-  end
-
-  def handle_event("confirm_restore", %{"version_number" => vn} = params, socket) do
+  def handle_event("confirm_restore", %{"version_number" => vn}, socket) do
     VersionEventHelpers.handle_confirm_restore(
-      %{"version_number" => vn, "skip_pre_snapshot" => params["skip_pre_snapshot"]},
+      %{"version_number" => vn},
       socket,
       flow_version_config()
     )

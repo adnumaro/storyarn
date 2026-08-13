@@ -17,9 +17,11 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCreate
+  alias Storyarn.Flows.ReferenceIntegrity
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
+  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Localization
   alias Storyarn.Localization.HtmlHandler
   alias Storyarn.Localization.LocaleCode
@@ -30,15 +32,18 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.References.AvatarIntegrity
+  alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Shared.WordCount
   alias Storyarn.Sheets
+  alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
+  alias Storyarn.Versioning.EntityRestoreSafety
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
   alias Storyarn.Versioning.RestorePolicy
@@ -695,10 +700,9 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp instantiate_flow_snapshot_transaction(project_id, snapshot, opts) do
     result =
-      Repo.transaction(
-        fn -> instantiate_flow_snapshot(project_id, snapshot, opts) end,
-        timeout: :infinity
-      )
+      MaterializationHelpers.with_project_storage_lock(project_id, fn ->
+        instantiate_flow_snapshot(project_id, snapshot, opts)
+      end)
 
     if retry_main_constraint?(result, opts) do
       instantiate_flow_snapshot_transaction(
@@ -1000,7 +1004,14 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         Map.put(
           row,
           "vo_asset_id",
-          resolve_flow_asset(asset_id, snapshot, project_id, opts)
+          resolve_flow_asset(
+            asset_id,
+            snapshot,
+            project_id,
+            opts,
+            "audio/",
+            :localization_voiceover
+          )
         )
     end
   end
@@ -1044,8 +1055,25 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp do_restore_snapshot(flow, snapshot, opts) do
     case validate_restore_snapshot(flow, snapshot) do
-      :ok -> execute_restore_snapshot(flow, snapshot, opts)
+      :ok -> execute_restore_snapshot_with_workspace_lock(flow, snapshot, opts)
       {:error, _reason} = error -> error
+    end
+  end
+
+  defp execute_restore_snapshot_with_workspace_lock(flow, snapshot, opts) do
+    result =
+      MaterializationHelpers.with_project_storage_lock(flow.project_id, fn ->
+        execute_restore_snapshot(flow, snapshot, opts)
+      end)
+
+    if retry_main_constraint?(result, opts) do
+      execute_restore_snapshot_with_workspace_lock(
+        flow,
+        snapshot,
+        Keyword.put(opts, :__force_non_main_on_conflict, true)
+      )
+    else
+      result
     end
   end
 
@@ -1062,10 +1090,14 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     |> Multi.run(:lock_flow, fn repo, %{lock_project: _project} ->
       lock_restore_flow(repo, flow)
     end)
+    |> Multi.run(:lock_pre_restore_version, fn repo, %{lock_flow: locked_flow} ->
+      lock_pre_restore_version_record(repo, locked_flow, opts)
+    end)
     |> Multi.run(:lock_external_refs, fn repo,
                                          %{
                                            lock_project: _project,
-                                           lock_flow: locked_flow
+                                           lock_flow: locked_flow,
+                                           lock_pre_restore_version: _version
                                          } ->
       lock_flow_external_references(
         repo,
@@ -1086,6 +1118,19 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
                opts,
                :strict
              ),
+           {:ok, normalized_nodes} <-
+             lock_and_normalize_restored_node_references(
+               locked_flow.project_id,
+               locked_flow.id,
+               external_refs.nodes
+             ),
+           {:ok, normalized_nodes} <- normalize_snapshot_jump_targets(normalized_nodes),
+           :ok <-
+             VariableReferenceTracker.validate_flow_node_variable_targets(
+               normalized_nodes,
+               locked_flow.project_id
+             ),
+           external_refs = Map.put(external_refs, :nodes, normalized_nodes),
            :ok <-
              validate_materialized_flow_reference_cycles(
                locked_flow.id,
@@ -1129,6 +1174,16 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
                                                   } ->
       :ok = LocalizableWords.lock_inventory!(locked_flow.project_id)
       {:ok, locked_flow.project_id}
+    end)
+    |> Multi.run(:verify_pre_restore_baseline, fn _repo,
+                                                  %{
+                                                    lock_flow: locked_flow,
+                                                    lock_localization_inventory: _inventory
+                                                  } ->
+      case verify_pre_restore_flow_baseline(locked_flow, opts) do
+        :ok -> {:ok, :verified}
+        {:error, reason} -> {:error, reason}
+      end
     end)
     |> Multi.run(:validate_ownership, fn repo, _changes ->
       validate_restore_ownership(repo, flow.id, nodes_data, connections_data)
@@ -1254,17 +1309,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       )
     end)
     |> Repo.transaction(timeout: :infinity)
-    |> then(fn result ->
-      if retry_main_constraint?(result, opts) do
-        execute_restore_snapshot(
-          flow,
-          snapshot,
-          Keyword.put(opts, :__force_non_main_on_conflict, true)
-        )
-      else
-        result
-      end
-    end)
   end
 
   defp finalize_in_place_flow_restore(
@@ -2280,6 +2324,30 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     end
   end
 
+  defp lock_pre_restore_version_record(repo, flow, opts) do
+    case EntityRestoreSafety.lock_pre_restore_version(
+           repo,
+           "flow",
+           flow,
+           Keyword.get(opts, :user_id),
+           opts
+         ) do
+      {:ok, :not_required} -> {:ok, :not_required}
+      {:ok, version} -> {:ok, version.id}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp verify_pre_restore_flow_baseline(flow, opts) do
+    EntityRestoreSafety.verify_pre_restore_baseline(
+      "flow",
+      flow,
+      opts,
+      &do_build_snapshot/1,
+      :flow_changed_since_pre_restore_snapshot
+    )
+  end
+
   defp lock_and_validate_incoming_dynamic_pins(repo, project_id, restored_flow_id, snapshot_nodes) do
     project_flow_ids =
       repo.all(
@@ -2937,7 +3005,15 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp insert_restored_sequence_tracks(repo, node_id, tracks, snapshot, project_id, opts, now) do
     insert_restored_sequence_items(tracks, fn track_data ->
-      asset_id = resolve_flow_asset(track_data["asset_id"], snapshot, project_id, opts)
+      asset_id =
+        resolve_flow_asset(
+          track_data["asset_id"],
+          snapshot,
+          project_id,
+          opts,
+          "audio/",
+          :sequence_track
+        )
 
       attrs =
         track_data
@@ -2974,7 +3050,15 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   end
 
   defp insert_restored_sequence_visual_layer(repo, node_id, layer_data, snapshot, project_id, opts, now) do
-    asset_id = resolve_flow_asset(layer_data["asset_id"], snapshot, project_id, opts)
+    asset_id =
+      resolve_flow_asset(
+        layer_data["asset_id"],
+        snapshot,
+        project_id,
+        opts,
+        "image/",
+        :sequence_visual_layer
+      )
 
     if is_nil(asset_id) do
       {:error, {:missing_sequence_visual_layer_asset, layer_data["asset_id"]}}
@@ -3327,7 +3411,15 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       tracks,
       :sequence_track,
       fn track_data ->
-        asset_id = resolve_flow_asset(track_data["asset_id"], snapshot, project_id, opts)
+        asset_id =
+          resolve_flow_asset(
+            track_data["asset_id"],
+            snapshot,
+            project_id,
+            opts,
+            "audio/",
+            :sequence_track
+          )
 
         attrs =
           track_data
@@ -3363,7 +3455,16 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       layers,
       :sequence_visual_layer,
       fn layer_data ->
-        asset_id = resolve_flow_asset(layer_data["asset_id"], snapshot, project_id, opts)
+        asset_id =
+          resolve_flow_asset(
+            layer_data["asset_id"],
+            snapshot,
+            project_id,
+            opts,
+            "image/",
+            :sequence_visual_layer
+          )
+
         insert_sequence_visual_layer(repo, node_id, layer_data, asset_id, now)
       end
     )
@@ -3438,7 +3539,16 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         data
 
       audio_id ->
-        resolved = resolve_flow_asset(audio_id, snapshot, project_id, opts)
+        resolved =
+          resolve_flow_asset(
+            audio_id,
+            snapshot,
+            project_id,
+            opts,
+            "audio/",
+            :node_audio
+          )
+
         Map.put(data, "audio_asset_id", resolved)
     end
   end
@@ -3566,6 +3676,128 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
              mode
            ) do
       {:ok, %{scene_id: scene_id, nodes: nodes}}
+    end
+  end
+
+  defp lock_and_normalize_restored_node_references(project_id, flow_id, nodes) do
+    candidates =
+      Enum.map(nodes, fn node ->
+        data = node["data"] || %{}
+
+        reference_data =
+          data
+          |> Map.put("audio_asset_id", nil)
+          |> Map.put("target_hub_id", nil)
+          |> Map.put("referenced_flow_id", nil)
+
+        {node["original_id"], flow_id, node["type"], reference_data}
+      end)
+
+    with {:ok, normalized_by_node_id} <-
+           ReferenceIntegrity.lock_and_normalize_node_reference_batch(
+             project_id,
+             candidates
+           ) do
+      restore_normalized_node_references(nodes, normalized_by_node_id)
+    end
+  end
+
+  defp restore_normalized_node_references(nodes, normalized_by_node_id) do
+    nodes
+    |> Enum.reduce_while({:ok, []}, &restore_normalized_node_reference(&1, &2, normalized_by_node_id))
+    |> reverse_normalized_node_references()
+  end
+
+  defp restore_normalized_node_reference(node, {:ok, normalized_nodes}, normalized_by_node_id) do
+    node_id = node["original_id"]
+
+    case Map.fetch(normalized_by_node_id, node_id) do
+      {:ok, normalized_data} ->
+        restored_data = restore_deferred_node_fields(normalized_data, node["data"] || %{})
+        normalized_node = Map.put(node, "data", restored_data)
+        {:cont, {:ok, [normalized_node | normalized_nodes]}}
+
+      :error ->
+        {:halt, {:error, {:missing_normalized_flow_node_reference, node_id}}}
+    end
+  end
+
+  defp reverse_normalized_node_references({:ok, normalized_nodes}), do: {:ok, Enum.reverse(normalized_nodes)}
+
+  defp reverse_normalized_node_references({:error, _reason} = error), do: error
+
+  defp restore_deferred_node_fields(normalized_data, original_data) do
+    Enum.reduce(["audio_asset_id", "target_hub_id", "referenced_flow_id"], normalized_data, fn key, data ->
+      if Map.has_key?(original_data, key),
+        do: Map.put(data, key, original_data[key]),
+        else: Map.delete(data, key)
+    end)
+  end
+
+  defp normalize_snapshot_jump_targets(nodes) do
+    with {:ok, hub_counts} <- validate_snapshot_hub_ids(nodes),
+         do: normalize_snapshot_jump_targets(nodes, hub_counts)
+  end
+
+  defp normalize_snapshot_jump_targets(nodes, hub_counts) do
+    nodes
+    |> Enum.reduce_while({:ok, []}, fn
+      %{"type" => "jump", "data" => data} = node, {:ok, normalized_nodes} ->
+        normalize_snapshot_jump_node(node, data, hub_counts, normalized_nodes)
+
+      node, {:ok, normalized_nodes} ->
+        {:cont, {:ok, [node | normalized_nodes]}}
+    end)
+    |> reverse_normalized_node_references()
+  end
+
+  defp normalize_snapshot_jump_node(node, data, hub_counts, normalized_nodes) do
+    case normalize_snapshot_jump_target(data, hub_counts) do
+      {:ok, normalized_data} ->
+        {:cont, {:ok, [Map.put(node, "data", normalized_data) | normalized_nodes]}}
+
+      {:error, reason} ->
+        {:halt, {:error, reason}}
+    end
+  end
+
+  defp validate_snapshot_hub_ids(nodes) do
+    nodes
+    |> Enum.reduce_while({:ok, %{}}, fn
+      %{"original_id" => node_id, "type" => "hub", "data" => data}, {:ok, counts}
+      when is_map(data) ->
+        hub_id = data["hub_id"]
+
+        if is_binary(hub_id) and String.trim(hub_id) != "" do
+          {:cont, {:ok, Map.update(counts, hub_id, 1, &(&1 + 1))}}
+        else
+          {:halt, {:error, {:invalid_snapshot_hub_id, node_id, hub_id}}}
+        end
+
+      _node, {:ok, counts} ->
+        {:cont, {:ok, counts}}
+    end)
+    |> reject_duplicate_snapshot_hub_id()
+  end
+
+  defp reject_duplicate_snapshot_hub_id({:ok, hub_counts}) do
+    case Enum.find(hub_counts, fn {_hub_id, count} -> count > 1 end) do
+      {hub_id, _count} -> {:error, {:duplicate_snapshot_hub_id, hub_id}}
+      nil -> {:ok, hub_counts}
+    end
+  end
+
+  defp reject_duplicate_snapshot_hub_id({:error, _reason} = error), do: error
+
+  defp normalize_snapshot_jump_target(%{} = data, hub_counts) do
+    value = data["target_hub_id"]
+
+    cond do
+      value in [nil, ""] -> {:ok, data}
+      not is_binary(value) -> {:error, {:invalid_jump_target, value}}
+      String.trim(value) == "" -> {:ok, Map.put(data, "target_hub_id", "")}
+      Map.get(hub_counts, value) == 1 -> {:ok, data}
+      true -> {:error, {:invalid_jump_target, value}}
     end
   end
 
@@ -3964,18 +4196,24 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp parse_dynamic_exit_pin(_pin), do: :not_dynamic
 
-  defp resolve_flow_asset(asset_id, snapshot, project_id, opts) do
+  defp resolve_flow_asset(asset_id, snapshot, project_id, opts, expected_content_type_prefix, asset_context) do
     case flow_asset_mode(opts) do
       :drop ->
         nil
 
       asset_mode ->
+        resolution_opts =
+          opts
+          |> MaterializationHelpers.asset_resolution_opts(asset_mode, project_id)
+          |> Keyword.put(:expected_content_type_prefix, expected_content_type_prefix)
+          |> Keyword.put(:asset_context, asset_context)
+
         AssetHashResolver.resolve_asset_fk(
           asset_id,
           snapshot,
           project_id,
           Keyword.get(opts, :user_id),
-          MaterializationHelpers.asset_resolution_opts(opts, asset_mode)
+          resolution_opts
         )
     end
   end
@@ -4326,15 +4564,27 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
             dgettext("flows", "Node #%{n} (%{type}) — speaker", n: idx, type: type)
           )
           |> maybe_add_ref(
+            :sheet,
+            data["location_sheet_id"],
+            dgettext("flows", "Node #%{n} (%{type}) — location", n: idx, type: type)
+          )
+          |> maybe_add_ref(
             :flow,
             data["referenced_flow_id"],
             dgettext("flows", "Node #%{n} (%{type}) — referenced flow", n: idx, type: type)
           )
-          |> maybe_add_ref(
-            :asset,
+          |> maybe_add_asset_ref(
             data["audio_asset_id"],
-            dgettext("flows", "Node #%{n} (%{type}) — audio", n: idx, type: type)
+            dgettext("flows", "Node #%{n} (%{type}) — audio", n: idx, type: type),
+            "audio/"
           )
+          |> maybe_add_avatar_ref(
+            data["avatar_id"],
+            data["speaker_sheet_id"],
+            dgettext("flows", "Node #%{n} (%{type}) — avatar", n: idx, type: type)
+          )
+          |> add_flow_exit_target_ref(data, idx, type)
+          |> add_flow_node_mention_refs(data, idx, type)
 
         add_sequence_asset_refs(acc, node, idx)
       end)
@@ -4346,6 +4596,84 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp maybe_add_ref(refs, type, id, context), do: [%{type: type, id: id, context: context} | refs]
 
+  defp maybe_add_asset_ref(refs, nil, _context, _expected_content_type_prefix), do: refs
+
+  defp maybe_add_asset_ref(refs, id, context, expected_content_type_prefix) do
+    [
+      %{
+        type: :asset,
+        id: id,
+        context: context,
+        expected_content_type_prefix: expected_content_type_prefix
+      }
+      | refs
+    ]
+  end
+
+  defp maybe_add_avatar_ref(refs, nil, _speaker_sheet_id, _context), do: refs
+
+  defp maybe_add_avatar_ref(refs, avatar_id, speaker_sheet_id, context) do
+    [
+      %{
+        type: :avatar,
+        id: avatar_id,
+        context: context,
+        speaker_sheet_id: speaker_sheet_id
+      }
+      | refs
+    ]
+  end
+
+  defp add_flow_exit_target_ref(refs, %{"target_type" => target_type, "target_id" => target_id}, node_index, type)
+       when target_type in ["flow", "scene"] do
+    maybe_add_ref(
+      refs,
+      String.to_existing_atom(target_type),
+      target_id,
+      dgettext("flows", "Node #%{n} (%{type}) — terminal target", n: node_index, type: type)
+    )
+  end
+
+  defp add_flow_exit_target_ref(refs, _data, _node_index, _type), do: refs
+
+  defp add_flow_node_mention_refs(refs, data, node_index, node_type) do
+    context =
+      dgettext("flows", "Node #%{n} (%{type}) — rich-text mention",
+        n: node_index,
+        type: node_type
+      )
+
+    data
+    |> flow_node_mention_refs()
+    |> Enum.reduce(refs, fn mention, acc ->
+      [Map.put(mention, :context, context) | acc]
+    end)
+  end
+
+  defp flow_node_mention_refs(data) do
+    data
+    |> RichTextMentions.html_candidates()
+    |> Enum.flat_map(&flow_node_html_mention_refs/1)
+  end
+
+  defp flow_node_html_mention_refs(html) do
+    case ReferenceTracker.extract_block_value_references("rich_text", %{"content" => html}) do
+      {:ok, references} -> Enum.map(references, &flow_node_mention_ref/1)
+      {:error, reason} -> [%{type: :reference, id: malformed_flow_mention_id(reason)}]
+    end
+  end
+
+  defp flow_node_mention_ref(reference), do: %{type: flow_mention_reference_type(reference.type), id: reference.id}
+
+  defp flow_mention_reference_type("sheet"), do: :sheet
+  defp flow_mention_reference_type("flow"), do: :flow
+
+  defp malformed_flow_mention_id({:invalid_project_reference, _context, id})
+       when is_integer(id) or is_binary(id) or is_nil(id), do: id
+
+  defp malformed_flow_mention_id({:invalid_project_reference, _context, details}), do: inspect(details)
+  defp malformed_flow_mention_id(_reason), do: nil
+
   defp add_sequence_asset_refs(refs, node, node_index) do
     refs =
       node
@@ -4353,14 +4681,14 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       |> Enum.with_index(1)
       |> Enum.reduce(refs, fn {track, track_index}, acc ->
         if is_map(track) do
-          maybe_add_ref(
+          maybe_add_asset_ref(
             acc,
-            :asset,
             track["asset_id"],
             dgettext("flows", "Node #%{n} sequence track #%{track} — audio",
               n: node_index,
               track: track_index
-            )
+            ),
+            "audio/"
           )
         else
           acc
@@ -4372,14 +4700,14 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     |> Enum.with_index(1)
     |> Enum.reduce(refs, fn {layer, layer_index}, acc ->
       if is_map(layer) do
-        maybe_add_ref(
+        maybe_add_asset_ref(
           acc,
-          :asset,
           layer["asset_id"],
           dgettext("flows", "Node #%{n} sequence visual layer #%{layer}",
             n: node_index,
             layer: layer_index
-          )
+          ),
+          "image/"
         )
       else
         acc
@@ -4393,11 +4721,16 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     |> Enum.with_index(1)
     |> Enum.reduce(refs, fn
       {%{} = row, index}, acc ->
-        maybe_add_ref(
-          acc,
-          :asset,
+        acc
+        |> maybe_add_asset_ref(
           row["vo_asset_id"],
-          dgettext("flows", "Localization row #%{n} — voice-over", n: index)
+          dgettext("flows", "Localization row #%{n} — voice-over", n: index),
+          "audio/"
+        )
+        |> maybe_add_ref(
+          :sheet,
+          row["speaker_sheet_id"],
+          dgettext("flows", "Localization row #%{n} — speaker", n: index)
         )
 
       {_row, _index}, acc ->

@@ -21,6 +21,31 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
     %{user: user, project: project}
   end
 
+  describe "validate_portable_catalog_entry/4" do
+    test "shares the pure SVG source-key restriction with restore preview" do
+      hash = String.duplicate("a", 64)
+
+      metadata = %{
+        "filename" => "safe.svg",
+        "content_type" => "image/svg+xml",
+        "sanitized_svg" => true,
+        "size" => 123,
+        "project_id" => 42
+      }
+
+      assert {:ok, 42} =
+               AssetHashResolver.validate_portable_catalog_entry(hash, metadata, 42)
+
+      assert {:error, :unsupported_portable_svg} =
+               AssetHashResolver.validate_portable_catalog_entry(
+                 hash,
+                 metadata,
+                 42,
+                 asset_source_keys: %{hash => "trusted/source.svg"}
+               )
+    end
+  end
+
   describe "resolve_hashes/1" do
     test "returns empty maps for empty input" do
       assert {%{}, %{}} = AssetHashResolver.resolve_hashes([])

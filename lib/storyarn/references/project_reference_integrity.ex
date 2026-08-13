@@ -22,6 +22,7 @@ defmodule Storyarn.References.ProjectReferenceIntegrity do
 
   @reference_types [:asset, :flow, :scene, :sheet]
   @project_lock_modes [:key_share, :share, :update]
+  @max_pg_bigint 9_223_372_036_854_775_807
 
   @type reference_type :: :asset | :flow | :scene | :sheet
   @type reference_context :: term()
@@ -128,15 +129,16 @@ defmodule Storyarn.References.ProjectReferenceIntegrity do
     )
   end
 
-  @doc "Normalizes an optional positive database ID."
+  @doc "Normalizes an optional positive PostgreSQL bigint ID."
   @spec normalize_optional_id(term()) :: {:ok, integer() | nil} | :error
   def normalize_optional_id(nil), do: {:ok, nil}
   def normalize_optional_id(""), do: {:ok, nil}
-  def normalize_optional_id(id) when is_integer(id) and id > 0, do: {:ok, id}
+
+  def normalize_optional_id(id) when is_integer(id) and id > 0 and id <= @max_pg_bigint, do: {:ok, id}
 
   def normalize_optional_id(id) when is_binary(id) do
     case Integer.parse(id) do
-      {parsed, ""} when parsed > 0 -> {:ok, parsed}
+      {parsed, ""} when parsed > 0 and parsed <= @max_pg_bigint -> {:ok, parsed}
       _other -> :error
     end
   end

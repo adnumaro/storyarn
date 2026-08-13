@@ -106,7 +106,7 @@ defmodule Storyarn.Versioning do
 
   @doc """
   Detects conflicts that would occur when restoring from a snapshot.
-  Returns a report with missing references, shortcut collisions, and auto-resolved items.
+  Returns a report with blocking reference conflicts and shortcut collisions.
   """
   defdelegate detect_restore_conflicts(entity_type, snapshot, entity), to: ConflictDetector, as: :detect_conflicts
 

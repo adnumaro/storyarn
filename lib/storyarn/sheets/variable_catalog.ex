@@ -20,8 +20,21 @@ defmodule Storyarn.Sheets.VariableCatalog do
   @max_limit 50
   @variable_types ~w(text rich_text number select multi_select boolean date)
   @variable_column_types ~w(number text boolean select multi_select date reference formula)
+  @constant_variable_column_types ~w(formula)
 
   @type page(item) :: %{items: [item], truncated: boolean()}
+
+  @doc "Returns the canonical regular Block types exposed as variables."
+  @spec regular_variable_types() :: [String.t()]
+  def regular_variable_types, do: @variable_types
+
+  @doc "Returns the canonical table-column types exposed as variables."
+  @spec table_variable_types() :: [String.t()]
+  def table_variable_types, do: @variable_column_types
+
+  @doc "Returns table-column types that remain variables when marked constant."
+  @spec constant_table_variable_types() :: [String.t()]
+  def constant_table_variable_types, do: @constant_variable_column_types
 
   @doc """
   Lists lightweight variable definitions in one project.
@@ -353,7 +366,8 @@ defmodule Storyarn.Sheets.VariableCatalog do
         sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and
           is_nil(block.deleted_at) and block.type == "table" and
           column.type in ^@variable_column_types and
-          (column.is_constant == false or column.type == "formula") and
+          (column.is_constant == false or
+             column.type in ^@constant_variable_column_types) and
           not is_nil(block.variable_name) and block.variable_name != "",
       order_by: [
         asc:

@@ -138,7 +138,11 @@ defmodule Storyarn.BlogTest do
     assert english.body =~ "A restore can complete without errors and still break a story."
     assert english.body =~ "did not model how teams actually worked"
     assert english.body =~ "qualitative examples, not measurements of frequency"
-    assert english.body =~ "does not cover every kind of reference"
+
+    assert english.body =~
+             "missing, malformed, or ambiguous dependencies block the restore instead of being silently cleared"
+
+    assert english.body =~ "Entity restore is independently contained"
     assert english.body =~ "do not yet reproduce an exact moment in time"
     assert english.body =~ "https://doi.org/10.1109/TSE.1975.6312866"
     assert english.body =~ "https://la.disneyresearch.com/publication/story-version-control"
@@ -157,7 +161,11 @@ defmodule Storyarn.BlogTest do
     assert spanish.body =~ "Una restauración puede terminar sin errores y aun así romper una historia."
     assert spanish.body =~ "no modelaba bien cómo trabajaban realmente los equipos"
     assert spanish.body =~ "ejemplos cualitativos, no una medición de frecuencia"
-    assert spanish.body =~ "no cubre todas las formas de referencia"
+
+    assert spanish.body =~
+             "dependencias ausentes, mal formadas o ambiguas bloquean la restauración"
+
+    assert spanish.body =~ "restauración de entidades se mantiene contenida de forma independiente"
     assert spanish.body =~ "no reproducen todavía un instante exacto"
     assert spanish.body =~ "https://doi.org/10.1109/TSE.1975.6312866"
     assert spanish.body =~ "https://la.disneyresearch.com/publication/story-version-control"

@@ -1444,6 +1444,29 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
 
       assert SheetQueries.resolve_block_id_by_variable(project.id, "mc", "health") == nil
     end
+
+    test "does not resolve constants or unsupported block types as runtime variables" do
+      %{project: project} = setup_project()
+
+      sheet = sheet_fixture(project, %{name: "MC", shortcut: "mc"})
+
+      _constant =
+        block_fixture(sheet, %{
+          type: "number",
+          is_constant: true,
+          variable_name: "constant_health"
+        })
+
+      _unsupported =
+        block_fixture(sheet, %{
+          type: "reference",
+          is_constant: false,
+          variable_name: "unsupported_reference"
+        })
+
+      assert SheetQueries.resolve_block_id_by_variable(project.id, "mc", "constant_health") == nil
+      assert SheetQueries.resolve_block_id_by_variable(project.id, "mc", "unsupported_reference") == nil
+    end
   end
 
   describe "resolve_table_block_id_by_variable/5" do
@@ -1477,6 +1500,27 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
                "nonexistent",
                "row",
                "col"
+             ) == nil
+    end
+
+    test "does not resolve constant non-formula table columns as runtime variables" do
+      %{project: project} = setup_project()
+
+      sheet = sheet_fixture(project, %{name: "Jaime", shortcut: "mc.jaime"})
+      table = table_block_fixture(sheet, %{label: "Stats"})
+      [default_row] = table.table_rows
+      [default_col] = table.table_columns
+
+      default_col
+      |> Ecto.Changeset.change(is_constant: true)
+      |> Storyarn.Repo.update!()
+
+      assert SheetQueries.resolve_table_block_id_by_variable(
+               project.id,
+               "mc.jaime",
+               "stats",
+               default_row.slug,
+               default_col.slug
              ) == nil
     end
   end

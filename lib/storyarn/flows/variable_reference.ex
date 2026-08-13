@@ -21,7 +21,7 @@ defmodule Storyarn.Flows.VariableReference do
   # `"map_zone"` was here from before the Maps→Scenes rename and matches no row;
   # the mismatch is invisible today only because the write path is
   # `Repo.insert_all/3` and never builds this changeset.
-  @source_types ~w(flow_node scene_zone scene_pin)
+  @source_types ~w(flow_node scene_zone scene_pin scene_ambient_flow)
 
   @type t :: %__MODULE__{
           id: integer() | nil,

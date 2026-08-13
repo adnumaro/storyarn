@@ -115,14 +115,8 @@ defmodule StoryarnWeb.RestoreContainmentTest do
     params = %{"version_number" => to_string(version.version_number)}
 
     render_click(view, "preview_restore", params)
-    render_click(view, "save_and_restore", params)
-    render_click(view, "discard_and_restore", params)
-
-    render_click(
-      view,
-      "confirm_restore",
-      Map.put(params, "skip_pre_snapshot", true)
-    )
+    render_click(view, "review_restore", params)
+    render_click(view, "confirm_restore", params)
 
     assert Sheets.get_sheet(project.id, sheet.id).name == "Changed"
     assert Enum.map(Sheets.list_blocks(sheet.id), & &1.id) == [block.id]

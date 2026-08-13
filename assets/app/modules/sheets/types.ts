@@ -289,6 +289,7 @@ export interface VariableRef {
   sourceType?: string;
   sceneId?: number | string;
   sceneName?: string;
+  pinLabel?: string;
   zoneName?: string;
 }
 
