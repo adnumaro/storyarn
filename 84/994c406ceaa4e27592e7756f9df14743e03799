@@ -1,0 +1,96 @@
+assets/app/test/setup.ts
+  s_c2ae682cd97119::t_e02da63d6d99a0 83-97
+  s_c2ae682cd97119::t_e0c2fb10272b7c 82
+assets/app/components/versioning/history/VersionTransportError.vue
+  s_c2ae682cd97119::t_b831bad79a06cc 1-19
+test/storyarn_web/helpers/version_event_helpers_test.exs
+  s_c2ae682cd97119::t_2fd71dbc09f9f7 250,272-274,280-323
+  s_c2ae682cd97119::t_05a21baadc8615 223-249
+assets/app/locales/en/common.json
+  s_c2ae682cd97119::t_b831bad79a06cc 53-54
+test/storyarn_web/live/sheet_live/handlers/history_handlers_test.exs
+  s_c2ae682cd97119::t_aeffb1852cb2b4 224-260,262-297,309-310,314-326
+  s_c2ae682cd97119::t_c9d0d6c356969b 261
+assets/app/components/versioning/history/PromoteVersionDialog.vue
+  s_c2ae682cd97119::t_b831bad79a06cc 16,29,36,54
+lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex
+  s_c2ae682cd97119::t_371e261d30f75d 18,72,74,84,86,96,98,258,261-263,270
+  s_c2ae682cd97119::t_8bee4cea29783a 73,85,97,184-200
+  s_c2ae682cd97119::t_965725c50a1601 76-78,88-90,100-102
+  s_c2ae682cd97119::t_c82cb4d5473c42 70-71
+  s_c2ae682cd97119::t_b4332f4334bfe6 82-83
+  s_c2ae682cd97119::t_082b0ae7c1e842 94-95
+  s_c2ae682cd97119::t_523933312e562e 201
+  s_c2ae682cd97119::t_4adefa82cab0f9 259-260
+assets/app/components/versioning/history/CreateVersionDialog.vue
+  s_c2ae682cd97119::t_b831bad79a06cc 16,23,29,47
+assets/app/components/versioning/history/DeleteVersionDialog.vue
+  s_c2ae682cd97119::t_b831bad79a06cc 13,15-17,19,22,41
+  s_c2ae682cd97119::t_2c5972eda64637 18
+assets/app/components/versioning/history/UnsavedChangesDialog.vue
+  s_c2ae682cd97119::t_b831bad79a06cc 11,17,22,43
+assets/app/locales/es/common.json
+  s_c2ae682cd97119::t_b831bad79a06cc 53-54
+assets/app/test/components/versioning/RestoreDialogs.test.ts
+  s_c2ae682cd97119::t_e227e40d512a81 657-659
+  s_c2ae682cd97119::t_24806875dacc6c 87-91
+  s_c2ae682cd97119::t_ca3d2f330ea91b 609,613,616,620,623,627,630,634,637,641,644,647,650,652,655,672,676,679,704,708,713,734,738,743
+  s_c2ae682cd97119::t_31d608c254dce9 3-5,8,52-86,92-144
+  s_c2ae682cd97119::t_e02da63d6d99a0 10,33-50,593-608,610-611,617-619,621-622,624-625,631-633,635-636,638-639,645-646,648,654,656,660-671,673-675,677,680-703,705-706,714-733,735-736,744-747
+  s_c2ae682cd97119::t_f3c2deff7b6f3a 612,614-615,626,628-629,640,642-643,649,651,653,678,707,709-712,737,739-742
+lib/storyarn_web/helpers/version_history_helpers.ex
+  s_c2ae682cd97119::t_965725c50a1601 29,31-33
+  s_c2ae682cd97119::t_fcd893610c86af 23
+  s_c2ae682cd97119::t_371e261d30f75d 15,24-28,30,34-43,147-148,176
+  s_c2ae682cd97119::t_567fd4cab6a9d3 170
+  s_c2ae682cd97119::t_9cd20acaf2fe38 171-174
+  s_c2ae682cd97119::t_e26760d5219247 18-21
+  s_c2ae682cd97119::t_abb7c2a45b468a 22
+  s_c2ae682cd97119::t_95bdd4a7b0b4ea 146
+  s_c2ae682cd97119::t_a267d5d94ca52c 175
+lib/storyarn_web/helpers/version_event_helpers.ex
+  s_c2ae682cd97119::t_8bee4cea29783a 57,69,81,205-235
+  s_c2ae682cd97119::t_371e261d30f75d 56,58,68,70,80,82,244-245,248
+  s_c2ae682cd97119::t_965725c50a1601 60-62,72-74,84-86
+  s_c2ae682cd97119::t_7cf2fffc5786d0 54-55
+  s_c2ae682cd97119::t_4533a23c1c7b24 59
+  s_c2ae682cd97119::t_2d9b1ed54182ce 66-67
+  s_c2ae682cd97119::t_1f021341c8bb2b 71
+  s_c2ae682cd97119::t_0bc717a4c450aa 78-79
+  s_c2ae682cd97119::t_21536375fa9d0b 83
+  s_c2ae682cd97119::t_35c12a07022401 236
+lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex
+  s_c2ae682cd97119::t_371e261d30f75d 11,95-96,119,122-125
+  s_c2ae682cd97119::t_c85f430ee5ea4b 94,120-121
+assets/app/components/versioning/history/VersionHistory.vue
+  s_c2ae682cd97119::t_b831bad79a06cc 2,19,54-62,80-85,444,457,467,477,487
+assets/app/components/versioning/history/useVersionHistory.ts
+  s_c2ae682cd97119::t_9dc7671ee4c663 254,278,305
+  s_c2ae682cd97119::t_0f653fe38870e1 198-201,270,296,313-320,322,386-389,391
+  s_c2ae682cd97119::t_b831bad79a06cc 77,175,202-213,226,262,273,287,300,312,321,385,408
+  s_c2ae682cd97119::t_fc765ea0af9cda 390
+assets/app/components/versioning/history/RestorePreviewDialog.vue
+  s_c2ae682cd97119::t_b831bad79a06cc 26,32,37,86
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_c2ae682cd97119::t_763c04d1855069 26,31-32,37-38,43,49-50,55-57,67,72,77,82-83,88-89,94-95,100-101,146-147,152
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_c2ae682cd97119::t_b67a58a17d2a1f 26,31-32,37-38,43,49-50,55-57,67,72,77,82-83,88-89,94-95,100-101,146-147,152
+priv/gettext/versioning.pot
+  s_c2ae682cd97119::t_d23aa9a0370114 26,31-32,37-38,43,49-50,55-57,67,72,77,82-83,88-89,94-95,100-101,146-147,152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "84994c406ceaa4e27592e7756f9df14743e03799",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
