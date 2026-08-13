@@ -7,6 +7,7 @@ defmodule Storyarn.Sheets.StructuralNotificationsTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Notifications
   alias Storyarn.Notifications.Notification
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -26,7 +27,8 @@ defmodule Storyarn.Sheets.StructuralNotificationsTest do
       actor_scope: user_scope_fixture(actor),
       direct_member: direct_member,
       inherited_member: inherited_member,
-      project: project
+      project: project,
+      workspace: workspace
     }
   end
 
@@ -73,6 +75,37 @@ defmodule Storyarn.Sheets.StructuralNotificationsTest do
     assert {:ok, _deleted} = Sheets.delete_sheet(updated)
 
     assert sheet_notifications(context.project) == []
+  end
+
+  test "a later inherited member is not notified when a deleted sheet lifecycle repeats", context do
+    sheet = sheet_fixture(context.project, %{name: "One-time deletion"})
+
+    assert {:ok, %{entity: deleted}} =
+             Sheets.delete_sheet_subtree(context.actor_scope, sheet)
+
+    late_member = user_fixture()
+    workspace_membership_fixture(context.workspace, late_member, "viewer")
+    late_member_scope = user_scope_fixture(late_member)
+    :ok = Notifications.subscribe(late_member_scope)
+
+    assert {:ok, restored} = Sheets.restore_sheet(deleted)
+
+    assert {:ok, %{entity: redeleted}} =
+             Sheets.delete_sheet_subtree(context.actor_scope, restored)
+
+    assert redeleted.id == sheet.id
+
+    assert Repo.all(
+             from(notification in Notification,
+               where:
+                 notification.project_id == ^context.project.id and
+                   notification.recipient_id == ^late_member.id and
+                   notification.entity_type == "sheet" and
+                   notification.entity_id == ^sheet.id
+             )
+           ) == []
+
+    refute_receive :notifications_changed
   end
 
   defp sheet_notifications(project) do

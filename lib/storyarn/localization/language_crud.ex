@@ -11,6 +11,7 @@ defmodule Storyarn.Localization.LanguageCrud do
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.TranslationRunCrud
   alias Storyarn.Notifications
+  alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
@@ -119,9 +120,11 @@ defmodule Storyarn.Localization.LanguageCrud do
       lock_project!(project.id)
       :ok = LocalizableWords.lock_inventory!(project.id)
 
-      with {:ok, language} <- persist_language(project, attrs),
+      with {:ok, authorized_project} <- authorize_actor_project(actor_scope, project),
+           {:ok, {language, persistence}} <- persist_language(authorized_project, attrs),
            {:ok, count} <- collect_existing_sources(project.id, language) do
-        outcome = maybe_deliver_content_activity!(actor_scope, project, :created, language)
+        outcome =
+          maybe_deliver_created_content_activity!(actor_scope, authorized_project, language, persistence)
 
         %{language: language, extracted_count: count, notification_outcome: outcome}
       else
@@ -132,10 +135,16 @@ defmodule Storyarn.Localization.LanguageCrud do
 
   defp persist_language(project, attrs) do
     case get_archived_language_by_locale(project.id, attrs["locale_code"]) do
-      %ProjectLanguage{} = archived -> reactivate_language(archived, project.id, attrs)
-      nil -> insert_language(project.id, attrs)
+      %ProjectLanguage{} = archived ->
+        tag_language_persistence(reactivate_language(archived, project.id, attrs), :reactivated)
+
+      nil ->
+        tag_language_persistence(insert_language(project.id, attrs), :inserted)
     end
   end
+
+  defp tag_language_persistence({:ok, language}, persistence), do: {:ok, {language, persistence}}
+  defp tag_language_persistence({:error, reason}, _persistence), do: {:error, reason}
 
   defp reactivate_language(archived, project_id, attrs) do
     archived
@@ -354,6 +363,22 @@ defmodule Storyarn.Localization.LanguageCrud do
 
   defp maybe_deliver_content_activity!(%Scope{} = actor_scope, project, action, language) do
     deliver_content_activity!(actor_scope, project, action, language)
+  end
+
+  defp authorize_actor_project(nil, project), do: {:ok, project}
+  defp authorize_actor_project(%Scope{user: nil}, _project), do: {:error, :not_found}
+
+  defp authorize_actor_project(%Scope{} = actor_scope, project) do
+    case Projects.get_project(actor_scope, project.id) do
+      {:ok, authorized_project, _membership} -> {:ok, authorized_project}
+      {:error, _reason} -> {:error, :not_found}
+    end
+  end
+
+  defp maybe_deliver_created_content_activity!(_actor_scope, _project, _language, :reactivated), do: :suppressed
+
+  defp maybe_deliver_created_content_activity!(actor_scope, project, language, :inserted) do
+    maybe_deliver_content_activity!(actor_scope, project, :created, language)
   end
 
   defp deliver_content_activity!(actor_scope, project, action, language) do

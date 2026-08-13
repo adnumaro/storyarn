@@ -88,6 +88,52 @@ defmodule Storyarn.Localization.StructuralNotificationsTest do
     assert Notifications.list_notifications(actor_scope) == []
   end
 
+  test "scoped addition reactivates a legacy archived locale without notifying", %{
+    actor_scope: actor_scope,
+    recipient_scope: recipient_scope,
+    project: project
+  } do
+    :ok = Notifications.subscribe(recipient_scope)
+
+    assert {:ok, language} =
+             Localization.add_language(project, %{locale_code: "nl", name: "Dutch"})
+
+    assert {:ok, archived} = Localization.remove_language(language)
+    assert archived.id == language.id
+    assert archived.archived_at
+    assert Notifications.list_notifications(recipient_scope) == []
+    refute_receive :notifications_changed
+
+    assert {:ok, reactivated} =
+             Localization.add_language(actor_scope, project, %{
+               locale_code: "nl",
+               name: "Dutch (reactivated)"
+             })
+
+    assert reactivated.id == language.id
+    assert is_nil(reactivated.archived_at)
+    assert Notifications.list_notifications(recipient_scope) == []
+    refute_receive :notifications_changed, 100
+  end
+
+  test "scoped reactivation rejects a user without project access", %{project: project} do
+    assert {:ok, language} =
+             Localization.add_language(project, %{locale_code: "sv", name: "Swedish"})
+
+    assert {:ok, archived} = Localization.remove_language(language)
+    assert archived.archived_at
+
+    outsider_scope = user_scope_fixture(user_fixture())
+
+    assert {:error, :not_found} =
+             Localization.add_language(outsider_scope, project, %{
+               locale_code: "sv",
+               name: "Unauthorized reactivation"
+             })
+
+    assert is_nil(Localization.get_language(project.id, language.id))
+  end
+
   test "rejecting source-language archival rolls back without a notification", %{
     actor_scope: actor_scope,
     recipient_scope: recipient_scope,

@@ -24,6 +24,7 @@ defmodule Storyarn.Notifications do
   @default_limit 20
   @max_limit 100
   @content_entity_types ~w(sheet flow scene localization_language)
+  @content_activity_marker_table "notification_content_activity_markers"
 
   @type delivery_outcome ::
           {:created, Notification.t()}
@@ -88,12 +89,8 @@ defmodule Storyarn.Notifications do
           {:ok, delivery_outcome()} | {:error, delivery_error()}
   def deliver_to_project_members(%Scope{user: %User{} = actor} = actor_scope, %Project{} = project, attrs)
       when is_map(attrs) do
-    case Projects.get_project(actor_scope, project.id) do
-      {:ok, authorized_project, _membership} ->
-        insert_for_effective_members(actor, authorized_project, attrs)
-
-      {:error, _reason} ->
-        {:error, :not_found}
+    with {:ok, authorized_project} <- authorize_project(actor_scope, project) do
+      insert_for_effective_members(actor, authorized_project, attrs)
     end
   end
 
@@ -113,7 +110,7 @@ defmodule Storyarn.Notifications do
           String.t(),
           %{required(:id) => integer(), required(:name) => String.t()}
         ) :: {:ok, delivery_outcome()} | {:error, delivery_error()}
-  def deliver_content_activity(%Scope{} = actor_scope, %Project{} = project, action, entity_type, %{
+  def deliver_content_activity(%Scope{user: %User{} = actor} = actor_scope, %Project{} = project, action, entity_type, %{
         id: entity_id,
         name: entity_name
       })
@@ -121,13 +118,29 @@ defmodule Storyarn.Notifications do
              is_binary(entity_name) do
     ensure_inside_transaction!("deliver_content_activity/5")
 
-    deliver_to_project_members(actor_scope, project, %{
+    attrs = %{
       kind: "content_#{action}",
       entity_type: entity_type,
       entity_id: entity_id,
       entity_name: entity_name,
       dedupe_key: "structural-content:v1:#{project.id}:#{entity_type}:#{entity_id}:#{action}"
-    })
+    }
+
+    with {:ok, authorized_project} <- authorize_project(actor_scope, project),
+         {:ok, validated} <- validate_fanout_attrs(actor, authorized_project, attrs) do
+      if claim_content_activity(authorized_project, action, entity_type, entity_id) do
+        insert_validated_for_effective_members(actor, authorized_project, validated)
+      else
+        {:ok, {:created, []}}
+      end
+    end
+  end
+
+  def deliver_content_activity(%Scope{}, %Project{}, action, entity_type, %{id: entity_id, name: entity_name})
+      when action in [:created, :deleted] and entity_type in @content_entity_types and is_integer(entity_id) and
+             is_binary(entity_name) do
+    ensure_inside_transaction!("deliver_content_activity/5")
+    {:error, :not_found}
   end
 
   @doc """
@@ -299,45 +312,76 @@ defmodule Storyarn.Notifications do
 
   defp insert_for_effective_members(actor, project, attrs) do
     with {:ok, validated} <- validate_fanout_attrs(actor, project, attrs) do
-      now = TimeHelpers.now()
-      kind = validated.kind
-      entity_type = validated.entity_type
-      entity_id = validated.entity_id
-      entity_name = validated.entity_name
-      status = validated.status
-      dedupe_key = validated.dedupe_key
-
-      rows_query =
-        project
-        |> effective_recipient_ids(actor.id)
-        |> select([recipient], %{
-          recipient_id: recipient.user_id,
-          actor_id: ^actor.id,
-          project_id: ^project.id,
-          kind: ^kind,
-          entity_type: ^entity_type,
-          entity_id: ^entity_id,
-          entity_name: ^entity_name,
-          status: ^status,
-          dedupe_key: ^dedupe_key,
-          inserted_at: ^now
-        })
-
-      {_count, notifications} =
-        Repo.insert_all(Notification, rows_query,
-          on_conflict: :nothing,
-          conflict_target: [:recipient_id, :dedupe_key],
-          returning: true
-        )
-
-      {:ok, {:created, notifications}}
+      insert_validated_for_effective_members(actor, project, validated)
     end
+  end
+
+  defp insert_validated_for_effective_members(actor, project, validated) do
+    now = TimeHelpers.now()
+    kind = validated.kind
+    entity_type = validated.entity_type
+    entity_id = validated.entity_id
+    entity_name = validated.entity_name
+    status = validated.status
+    dedupe_key = validated.dedupe_key
+
+    rows_query =
+      project
+      |> effective_recipient_ids(actor.id)
+      |> select([recipient], %{
+        recipient_id: recipient.user_id,
+        actor_id: ^actor.id,
+        project_id: ^project.id,
+        kind: ^kind,
+        entity_type: ^entity_type,
+        entity_id: ^entity_id,
+        entity_name: ^entity_name,
+        status: ^status,
+        dedupe_key: ^dedupe_key,
+        inserted_at: ^now
+      })
+
+    {_count, notifications} =
+      Repo.insert_all(Notification, rows_query,
+        on_conflict: :nothing,
+        conflict_target: [:recipient_id, :dedupe_key],
+        returning: true
+      )
+
+    {:ok, {:created, notifications}}
   end
 
   defp validate_fanout_attrs(actor, project, attrs) do
     %Notification{recipient_id: -1, actor_id: actor.id, project_id: project.id}
     |> Notification.create_changeset(attrs)
     |> Changeset.apply_action(:insert)
+  end
+
+  defp authorize_project(actor_scope, project) do
+    case Projects.get_project(actor_scope, project.id) do
+      {:ok, authorized_project, _membership} -> {:ok, authorized_project}
+      {:error, _reason} -> {:error, :not_found}
+    end
+  end
+
+  defp claim_content_activity(project, action, entity_type, entity_id) do
+    {claimed_count, _rows} =
+      Repo.insert_all(
+        @content_activity_marker_table,
+        [
+          %{
+            project_id: project.id,
+            entity_type: entity_type,
+            entity_id: entity_id,
+            action: Atom.to_string(action),
+            inserted_at: TimeHelpers.now()
+          }
+        ],
+        on_conflict: :nothing,
+        conflict_target: [:project_id, :entity_type, :entity_id, :action]
+      )
+
+    claimed_count == 1
   end
 
   defp effective_recipient_ids(project, actor_id) do

@@ -1,10 +1,12 @@
 defmodule Storyarn.NotificationsTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Accounts.Scope
   alias Storyarn.Notifications
   alias Storyarn.Notifications.Notification
   alias Storyarn.Repo
@@ -294,7 +296,111 @@ defmodule Storyarn.NotificationsTest do
                end)
 
       assert Repo.aggregate(Notification, :count, :id) == 0
+      assert content_activity_marker_count(project, "flow", 9, :deleted) == 0
       refute_receive :notifications_changed
+    end
+
+    test "claims an event with no recipients and suppresses a retry after a member joins" do
+      actor = user_fixture()
+      project = project_fixture(actor)
+      actor_scope = user_scope_fixture(actor)
+      entity_id = System.unique_integer([:positive])
+
+      assert {:ok, {:ok, {:created, []} = first_outcome}} =
+               Repo.transaction(fn ->
+                 Notifications.deliver_content_activity(
+                   actor_scope,
+                   project,
+                   :created,
+                   "sheet",
+                   %{id: entity_id, name: "Initially private"}
+                 )
+               end)
+
+      assert content_activity_marker_count(project, "sheet", entity_id, :created) == 1
+      assert :ok = Notifications.publish_committed(first_outcome)
+
+      late_member = user_fixture()
+      membership_fixture(project, late_member, "viewer")
+      late_scope = user_scope_fixture(late_member)
+      :ok = Notifications.subscribe(late_scope)
+
+      assert {:ok, {:ok, {:created, []} = retry_outcome}} =
+               Repo.transaction(fn ->
+                 Notifications.deliver_content_activity(
+                   actor_scope,
+                   project,
+                   :created,
+                   "sheet",
+                   %{id: entity_id, name: "Changed retry payload"}
+                 )
+               end)
+
+      assert :ok = Notifications.publish_committed(retry_outcome)
+      refute_receive :notifications_changed
+      assert content_activity_marker_count(project, "sheet", entity_id, :created) == 1
+
+      dedupe_key = "structural-content:v1:#{project.id}:sheet:#{entity_id}:created"
+
+      assert Repo.aggregate(
+               from(notification in Notification,
+                 where: notification.dedupe_key == ^dedupe_key
+               ),
+               :count,
+               :id
+             ) == 0
+    end
+
+    test "authorizes and validates before claiming an event" do
+      owner = user_fixture()
+      outsider_scope = user_scope_fixture(user_fixture())
+      project = project_fixture(owner)
+      owner_scope = user_scope_fixture(owner)
+      unauthorized_entity_id = System.unique_integer([:positive])
+      invalid_entity_id = System.unique_integer([:positive])
+
+      assert {:ok, {:error, :not_found}} =
+               Repo.transaction(fn ->
+                 Notifications.deliver_content_activity(
+                   outsider_scope,
+                   project,
+                   :created,
+                   "scene",
+                   %{id: unauthorized_entity_id, name: "Unauthorized"}
+                 )
+               end)
+
+      assert content_activity_marker_count(
+               project,
+               "scene",
+               unauthorized_entity_id,
+               :created
+             ) == 0
+
+      assert {:ok, {:error, changeset}} =
+               Repo.transaction(fn ->
+                 Notifications.deliver_content_activity(
+                   owner_scope,
+                   project,
+                   :created,
+                   "scene",
+                   %{id: invalid_entity_id, name: String.duplicate("x", 256)}
+                 )
+               end)
+
+      assert "should be at most 255 character(s)" in errors_on(changeset).entity_name
+      assert content_activity_marker_count(project, "scene", invalid_entity_id, :created) == 0
+
+      assert {:ok, {:error, :not_found}} =
+               Repo.transaction(fn ->
+                 Notifications.deliver_content_activity(
+                   %Scope{},
+                   project,
+                   :created,
+                   "scene",
+                   %{id: System.unique_integer([:positive]), name: "Missing actor"}
+                 )
+               end)
     end
   end
 
@@ -535,6 +641,21 @@ defmodule Storyarn.NotificationsTest do
       status: status,
       dedupe_key: dedupe_key
     }
+  end
+
+  defp content_activity_marker_count(project, entity_type, entity_id, action) do
+    action = Atom.to_string(action)
+
+    Repo.one(
+      from(marker in "notification_content_activity_markers",
+        where:
+          field(marker, :project_id) == ^project.id and
+            field(marker, :entity_type) == ^entity_type and
+            field(marker, :entity_id) == ^entity_id and
+            field(marker, :action) == ^action,
+        select: count(field(marker, :id))
+      )
+    )
   end
 
   defp publish_outside_transaction(outcome) do
