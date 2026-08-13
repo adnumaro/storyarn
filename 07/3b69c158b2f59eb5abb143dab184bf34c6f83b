@@ -1,0 +1,130 @@
+lib/storyarn/billing/storage_accounting.ex
+  s_d64ccabdb01eb7::t_8a356e695337e3 1706,1739-1744
+  s_d64ccabdb01eb7::t_08a3ca88b7906c 2351-2358
+  s_d64ccabdb01eb7::t_003cf1172c8a5d 1714,1719-1721,1733,1771,1777-1778,1781-1785,1789-1805
+  s_d64ccabdb01eb7::t_869c3966f2b14a 18,1665-1668,1707-1713,1715-1718,1722-1732,1734-1738,1756-1757,1765-1770,1772-1776,1779-1780,1786-1788
+  s_d64ccabdb01eb7::t_6330d03e4b853e 1745,1806,2359
+test/storyarn_web/live/workspace_live/template_creation_test.exs
+  s_d64ccabdb01eb7::t_ccdee7ba1efbae 11,106,136,138-144
+test/storyarn/versioning/project_snapshot_build_test.exs
+  s_d64ccabdb01eb7::t_3be055079f89b6 16,433-479,625-682,1513
+  s_d64ccabdb01eb7::t_39b4185c8cccdd 1384-1386,1436-1437,1458-1459,1465-1468,1495-1497,1501-1502,1512,1714-1728,1730
+  s_d64ccabdb01eb7::t_51f22c2ec37c03 18,374,377-381,387,425-426,428-429,596,599-602,614-615,624,763,765-766,788-790,808-809,815
+  s_d64ccabdb01eb7::t_c0efdffcc02bf1 1729
+  s_d64ccabdb01eb7::t_b4f2156874d96b 1515-1572
+  s_d64ccabdb01eb7::t_8c36bebbf17b0e 1514
+lib/storyarn/versioning/project_snapshot_build.ex
+  s_d64ccabdb01eb7::t_aa5ca20c4d196b 514,516,627-628
+  s_d64ccabdb01eb7::t_0b1a8e45d37d91 2432-2435,2450-2461,2463-2467
+  s_d64ccabdb01eb7::t_61a9f72e7ce635 2462,2468-2470
+  s_d64ccabdb01eb7::t_e4b42eba162f22 1511,1519,1542-1544
+  s_d64ccabdb01eb7::t_cf4ec373f5c442 1910,1912,2137,2139
+  s_d64ccabdb01eb7::t_ee1a33ef7652b7 528,537-543,2397-2398
+  s_d64ccabdb01eb7::t_80fa6f3aa76b35 20
+  s_d64ccabdb01eb7::t_7e1a815d1ffa13 567-572,574-575,577,579-580,593,596-597,2328,2330-2340,2360-2361
+  s_d64ccabdb01eb7::t_f727deae19cc87 588-592,594
+  s_d64ccabdb01eb7::t_003cf1172c8a5d 435,550,578,2352,2357-2358,2380,2386-2387,2391-2395,2399-2414,2505
+  s_d64ccabdb01eb7::t_c47cae9adebeb7 439,573
+  s_d64ccabdb01eb7::t_869c3966f2b14a 14,433-434,436,529-532,549,551,2326-2327,2329,2341-2342,2344-2351,2353-2356,2362-2379,2381-2385,2388-2390,2396,2496-2504,2506-2507
+  s_d64ccabdb01eb7::t_afab70ff75486c 1243,1245
+  s_d64ccabdb01eb7::t_062b38d7232c62 595
+  s_d64ccabdb01eb7::t_9c5e2d08566265 2471
+  s_d64ccabdb01eb7::t_ab446c70686a3c 2508
+lib/storyarn/notifications.ex
+  s_d64ccabdb01eb7::t_8858d0be0a1695 82-90,95-96,98-105
+  s_d64ccabdb01eb7::t_4e5b2be326fe12 91-94,97
+  s_d64ccabdb01eb7::t_8ee245ec72d9dc 81
+test/storyarn/workers/localization_batch_translation_worker_test.exs
+  s_d64ccabdb01eb7::t_cc592d3e3ecfc8 83,110,170-192,210,267,371,376,379-392
+  s_d64ccabdb01eb7::t_e4e21069bb5da3 13-14,68-73,81-82,264-265,287-291,293-329,331-359
+  s_d64ccabdb01eb7::t_fca4daeafd54ad 51-53,56-57,360-370,372-375
+  s_d64ccabdb01eb7::t_d908fad4e16326 112-148
+  s_d64ccabdb01eb7::t_733578a2418275 59,149-169
+  s_d64ccabdb01eb7::t_77ac52de6809be 11,91-109
+  s_d64ccabdb01eb7::t_c0efdffcc02bf1 74,266,292,330
+  s_d64ccabdb01eb7::t_2d6fb4db3b2f45 15,42,46,58,75,111,193,251,393-394
+lib/storyarn/imports/notification_delivery.ex
+  s_d64ccabdb01eb7::t_61a9f72e7ce635 63
+  s_d64ccabdb01eb7::t_534889e7a18652 4-5,13-41,44-51,53-54,68-84
+  s_d64ccabdb01eb7::t_b8d4954213a117 1-3,6-12,42-43,52,55-62,64-66
+  s_d64ccabdb01eb7::t_1d032b076bffa4 67
+lib/storyarn/workers/localization_batch_translation_worker.ex
+  s_d64ccabdb01eb7::t_f824b650e841d7 10,37,44-51,84,91,93,116-129
+  s_d64ccabdb01eb7::t_3fd0b154a869fd 130-132
+test/storyarn/project_templates_test.exs
+  s_d64ccabdb01eb7::t_fa5e27e230cdac 1363-1367,1369-1372,1374,1376-1380,1382,1384-1398,1409-1418
+  s_d64ccabdb01eb7::t_8170ff464a4d9a 1252-1253,1260-1263,2348-2356,2358-2361
+  s_d64ccabdb01eb7::t_ffe8fd9d9fc1f2 1234,1862
+  s_d64ccabdb01eb7::t_a74ef49fdf611a 1399-1408
+  s_d64ccabdb01eb7::t_0bee1ca56bb238 1749,1779-1780,1787-1796
+  s_d64ccabdb01eb7::t_92918a86a10b33 17-18,1251,1254,1273-1283,1285-1286,1293-1302,1330-1331,1342,1346,1348-1353,1355-1358,1360,1834-1842,1852-1861,1864-1881
+  s_d64ccabdb01eb7::t_7e1a815d1ffa13 1361,2357,2362-2380
+  s_d64ccabdb01eb7::t_c0efdffcc02bf1 1284,1359,1797,1863
+  s_d64ccabdb01eb7::t_07468fd0bacb2f 2381-2386
+lib/storyarn/imports/expiration.ex
+  s_d64ccabdb01eb7::t_b8d4954213a117 19,23,78-79,323
+  s_d64ccabdb01eb7::t_5bb95822ca6df1 217-221,224,230,253-254,258,264,269,279-286,295,309,311,313-315,317,321-322,324-325
+lib/storyarn/imports/execution.ex
+  s_d64ccabdb01eb7::t_639512eca772f8 167-168,171-172,176,185-186,188,191-192,194,203,213-214,218-224,252,256,261,264,270-271,280-281,283,288-289
+  s_d64ccabdb01eb7::t_f19eb790d6fb16 497
+  s_d64ccabdb01eb7::t_b8d4954213a117 20,290,295,341-342
+  s_d64ccabdb01eb7::t_00db7611d6aee6 299-302,309,319,406,444,446-447,450,459-467,472-480,485,498
+  s_d64ccabdb01eb7::t_d6bbac0b0c032f 28,275,327-328,412-413,496,500
+  s_d64ccabdb01eb7::t_3af50d2bcef7c3 504,521
+lib/storyarn/project_templates/installation.ex
+  s_d64ccabdb01eb7::t_5181b60b0a60c7 508,669,692,695,714-717
+  s_d64ccabdb01eb7::t_a5be87926bc5e6 13
+  s_d64ccabdb01eb7::t_23ac305f12dd0f 693,791
+  s_d64ccabdb01eb7::t_7eee0a2d979588 754-755,775-778,783-790,792,795-799
+  s_d64ccabdb01eb7::t_df4368b628c294 121-131
+  s_d64ccabdb01eb7::t_b7a50e19a57b3f 307,318
+  s_d64ccabdb01eb7::t_0455ba99d71c59 314-316
+  s_d64ccabdb01eb7::t_04bcf2d9ea47c9 667-668,831,833,850-856,880-901,904-908
+  s_d64ccabdb01eb7::t_f89ec2d7bf41c3 816,818-823,825-826
+  s_d64ccabdb01eb7::t_61a9f72e7ce635 824
+  s_d64ccabdb01eb7::t_b770375da852f6 864,910-912
+  s_d64ccabdb01eb7::t_8a6aef78d5b210 7,688-691,694,779-782,793-794,815,817,827-830,832,834-849,857-863,865-879,902-903,909
+lib/storyarn/localization/translation_run_crud.ex
+  s_d64ccabdb01eb7::t_04bcf2d9ea47c9 177,201-209
+  s_d64ccabdb01eb7::t_61a9f72e7ce635 223,237-239
+  s_d64ccabdb01eb7::t_5e075e5d3e0223 7,11-12,90,94-95,178,197,213,215,217-220,224,236
+  s_d64ccabdb01eb7::t_d0acbcf2aba4e8 8,91,93,142-176,179-185,198-200,214,216,221-222,225-235
+  s_d64ccabdb01eb7::t_7e1a815d1ffa13 92,186-196,210-212
+  s_d64ccabdb01eb7::t_5f52800ac84d84 240
+lib/storyarn/imports/resume.ex
+  s_d64ccabdb01eb7::t_d554110b589ffb 22,341,356
+  s_d64ccabdb01eb7::t_b8d4954213a117 29,377-384
+test/storyarn/imports/import_lifecycle_test.exs
+  s_d64ccabdb01eb7::t_58bce921bff397 1099-1151,1158
+  s_d64ccabdb01eb7::t_961ec9f7840047 1097,2804-2806,2808-2811,2813,2815-2818
+  s_d64ccabdb01eb7::t_815034ba999e40 2807,2812
+  s_d64ccabdb01eb7::t_433392036a402e 18,706,723-725,734-736,790,796-799,806-807,812-813,818-847
+  s_d64ccabdb01eb7::t_140ee9f1fd105c 1032,1054-1057,1081-1096
+  s_d64ccabdb01eb7::t_57d0800700e3ee 509,520-559,567-574
+  s_d64ccabdb01eb7::t_976814ac9fb45e 1549,1563-1577,1579-1596
+  s_d64ccabdb01eb7::t_cd91eda8a10ed1 1578
+  s_d64ccabdb01eb7::t_ad88d82b07e358 1931,1944-1983,1992-1999
+  s_d64ccabdb01eb7::t_5b19e70602f5dd 462,466-467,560,565-566,2200,2229-2230,2256,2269-2270,2714,2722-2723
+  s_d64ccabdb01eb7::t_c0efdffcc02bf1 2814
+  s_d64ccabdb01eb7::t_cb3bcaf7d7c31d 1098
+test/storyarn/notifications_test.exs
+  s_d64ccabdb01eb7::t_375387a5d9c257 174-201
+  s_d64ccabdb01eb7::t_fe4c50f72c1f66 129-133,135-138,140-163,165-173,202-203
+  s_d64ccabdb01eb7::t_c0efdffcc02bf1 134,139,164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "073b69c158b2f59eb5abb143dab184bf34c6f83b",
+  "prompts": {},
+  "sessions": {
+    "s_d64ccabdb01eb7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff51e-6200-7312-96d7-fd26ee5eb12d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
