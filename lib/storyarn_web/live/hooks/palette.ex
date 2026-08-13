@@ -624,21 +624,23 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp run_post_commit(nil), do: :ok
 
   defp run_post_commit({:entity_created, project_id, type, entity, notification_outcome}) do
+    Notifications.publish_committed(notification_outcome)
+
     if type == "sheet", do: Sheets.sync_created_sheet_localization(entity)
 
     Collaboration.broadcast_dashboard_change(project_id, tree_key(type))
     broadcast_tree_changed(project_id, type)
-    Notifications.publish_committed(notification_outcome)
   end
 
   defp run_post_commit({:entities_deleted, project_id, type, deleted_ids, affected_flow_ids, notification_outcome}) do
+    Notifications.publish_committed(notification_outcome)
+
     # Plain broadcast (not broadcast_from): the LV serving this event may
     # itself be showing a deleted entity and must navigate away too.
     Flows.broadcast_flow_refreshes(affected_flow_ids)
     Collaboration.broadcast_dashboard_change(project_id, tree_key(type))
     broadcast_entities_deleted(project_id, entity_type(type), deleted_ids)
     broadcast_tree_changed(project_id, type)
-    Notifications.publish_committed(notification_outcome)
   end
 
   defp broadcast_tree_changed(project_id, type) do

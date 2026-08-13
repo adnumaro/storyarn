@@ -11,6 +11,7 @@ defmodule Storyarn.Flows do
   - `ConnectionCrud` - CRUD operations for connections
   """
 
+  alias Storyarn.Accounts.Scope
   alias Storyarn.Flows.Condition
   alias Storyarn.Flows.ConnectionCrud
   alias Storyarn.Flows.ContextQueries
@@ -53,6 +54,10 @@ defmodule Storyarn.Flows do
   @type sequence :: FlowNode.t()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
+  @type linked_flow_result ::
+          {:ok, map()}
+          | {:error, :limit_reached, term()}
+          | {:error, atom(), term(), map()}
 
   # =============================================================================
   # Node Types
@@ -149,9 +154,20 @@ defmodule Storyarn.Flows do
   Creates a child flow and assigns it to a node's referenced_flow_id.
   Used by exit (flow_reference mode) and subflow nodes.
   """
-  @spec create_linked_flow(Project.t(), flow(), flow_node(), keyword()) ::
-          {:ok, map()} | {:error, atom(), term(), map()}
-  defdelegate create_linked_flow(project, parent_flow, node, opts \\ []), to: FlowCrud
+  @spec create_linked_flow(Project.t(), flow(), flow_node()) :: linked_flow_result()
+  defdelegate create_linked_flow(project, parent_flow, node), to: FlowCrud
+
+  @spec create_linked_flow(Project.t(), flow(), flow_node(), keyword()) :: linked_flow_result()
+  def create_linked_flow(%Project{} = project, parent_flow, node, opts) do
+    FlowCrud.create_linked_flow(project, parent_flow, node, opts)
+  end
+
+  @spec create_linked_flow(Scope.t(), Project.t(), flow(), flow_node()) :: linked_flow_result()
+  def create_linked_flow(%Scope{} = actor_scope, project, parent_flow, node) do
+    FlowCrud.create_linked_flow(actor_scope, project, parent_flow, node)
+  end
+
+  @spec create_linked_flow(Scope.t(), Project.t(), flow(), flow_node(), keyword()) :: linked_flow_result()
   defdelegate create_linked_flow(actor_scope, project, parent_flow, node, opts), to: FlowCrud
 
   @doc """

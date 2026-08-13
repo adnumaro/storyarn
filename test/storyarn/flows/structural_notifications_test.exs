@@ -8,6 +8,7 @@ defmodule Storyarn.Flows.StructuralNotificationsTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Flows
+  alias Storyarn.Notifications
   alias Storyarn.Notifications.Notification
   alias Storyarn.Repo
 
@@ -31,6 +32,9 @@ defmodule Storyarn.Flows.StructuralNotificationsTest do
   end
 
   test "scoped create notifies direct and inherited members but excludes the actor", context do
+    :ok = Notifications.subscribe(user_scope_fixture(context.direct_member))
+    :ok = Notifications.subscribe(context.actor_scope)
+
     assert {:ok, flow} =
              Flows.create_flow(context.actor_scope, context.project, %{name: "Opening"})
 
@@ -44,6 +48,8 @@ defmodule Storyarn.Flows.StructuralNotificationsTest do
     assert Enum.all?(notifications, &(&1.entity_id == flow.id))
     assert Enum.all?(notifications, &(&1.entity_name == "Opening"))
     refute Enum.any?(notifications, &(&1.recipient_id == context.actor.id))
+    assert_receive :notifications_changed
+    refute_receive :notifications_changed, 50
   end
 
   test "scoped cascade delete emits only the root with its locked current name", context do
@@ -51,6 +57,8 @@ defmodule Storyarn.Flows.StructuralNotificationsTest do
     child = flow_fixture(context.project, %{name: "Child", parent_id: root.id})
     assert {:ok, _renamed} = Flows.update_flow(root, %{name: "Locked Root"})
     assert flow_notifications(context.project) == []
+    :ok = Notifications.subscribe(user_scope_fixture(context.direct_member))
+    :ok = Notifications.subscribe(context.actor_scope)
 
     assert {:ok, %{entity: deleted, deleted_ids: deleted_ids}} =
              Flows.delete_flow_subtree(context.actor_scope, root)
@@ -65,6 +73,8 @@ defmodule Storyarn.Flows.StructuralNotificationsTest do
     assert Enum.all?(notifications, &(&1.entity_id == root.id))
     assert Enum.all?(notifications, &(&1.entity_name == "Locked Root"))
     refute Enum.any?(notifications, &(&1.entity_id == child.id))
+    assert_receive :notifications_changed
+    refute_receive :notifications_changed, 50
   end
 
   test "updates and legacy unscoped create and delete APIs stay silent", context do
@@ -89,7 +99,7 @@ defmodule Storyarn.Flows.StructuralNotificationsTest do
       })
 
     assert {:ok, %{flow: child, node: updated_node}} =
-             Flows.create_linked_flow(context.actor_scope, context.project, parent, node, [])
+             Flows.create_linked_flow(context.actor_scope, context.project, parent, node)
 
     assert updated_node.data["referenced_flow_id"] == child.id
 

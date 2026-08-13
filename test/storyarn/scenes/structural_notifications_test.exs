@@ -30,6 +30,9 @@ defmodule Storyarn.Scenes.StructuralNotificationsTest do
     recipient_scope: recipient_scope,
     project: project
   } do
+    :ok = Notifications.subscribe(recipient_scope)
+    :ok = Notifications.subscribe(actor_scope)
+
     assert {:ok, scene} =
              Scenes.create_scene(actor_scope, project, %{
                name: "Northern Reach",
@@ -47,6 +50,8 @@ defmodule Storyarn.Scenes.StructuralNotificationsTest do
     assert notification.entity_name == "Northern Reach"
 
     assert Notifications.list_notifications(actor_scope) == []
+    assert_receive :notifications_changed
+    refute_receive :notifications_changed, 50
   end
 
   test "scoped subtree deletion reports only the root and uses its locked current name", %{
@@ -67,6 +72,8 @@ defmodule Storyarn.Scenes.StructuralNotificationsTest do
 
     assert updated_parent.name == "Current Region Name"
     assert Notifications.list_notifications(recipient_scope) == []
+    :ok = Notifications.subscribe(recipient_scope)
+    :ok = Notifications.subscribe(actor_scope)
 
     assert {:ok, %{entity: deleted, deleted_ids: deleted_ids}} =
              Scenes.delete_scene_subtree(actor_scope, stale_parent)
@@ -80,6 +87,8 @@ defmodule Storyarn.Scenes.StructuralNotificationsTest do
     assert notification.entity_id == stale_parent.id
     assert notification.entity_name == "Current Region Name"
     refute notification.entity_id == child.id
+    assert_receive :notifications_changed
+    refute_receive :notifications_changed, 50
   end
 
   test "updates and the unscoped create/delete API stay silent", %{
@@ -102,6 +111,9 @@ defmodule Storyarn.Scenes.StructuralNotificationsTest do
     project: project
   } do
     outsider_scope = user_scope_fixture(user_fixture())
+    :ok = Notifications.subscribe(recipient_scope)
+    :ok = Notifications.subscribe(actor_scope)
+    :ok = Notifications.subscribe(outsider_scope)
 
     assert {:error, :not_found} =
              Scenes.create_scene(outsider_scope, project, %{name: "Must Roll Back"})
@@ -110,5 +122,6 @@ defmodule Storyarn.Scenes.StructuralNotificationsTest do
     assert Notifications.list_notifications(recipient_scope) == []
     assert Notifications.list_notifications(actor_scope) == []
     assert Notifications.list_notifications(outsider_scope) == []
+    refute_receive :notifications_changed, 50
   end
 end

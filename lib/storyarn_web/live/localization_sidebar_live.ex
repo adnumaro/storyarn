@@ -74,7 +74,12 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     with_edit(socket, fn socket ->
       opts = if params["reset_translations"] == true, do: [reset_translations: true], else: []
 
-      case Localization.change_source_language(socket.assigns.project, code, opts) do
+      case Localization.change_source_language(
+             socket.assigns.current_scope,
+             socket.assigns.project,
+             code,
+             opts
+           ) do
         {:ok, _language} ->
           {:noreply,
            socket

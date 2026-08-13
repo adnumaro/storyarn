@@ -33,6 +33,9 @@ defmodule Storyarn.Sheets.StructuralNotificationsTest do
   end
 
   test "scoped create notifies direct and inherited members but excludes the actor", context do
+    :ok = Notifications.subscribe(user_scope_fixture(context.direct_member))
+    :ok = Notifications.subscribe(context.actor_scope)
+
     assert {:ok, sheet} =
              Sheets.create_sheet(context.actor_scope, context.project, %{name: "Main Characters"})
 
@@ -46,6 +49,8 @@ defmodule Storyarn.Sheets.StructuralNotificationsTest do
     assert Enum.all?(notifications, &(&1.entity_id == sheet.id))
     assert Enum.all?(notifications, &(&1.entity_name == "Main Characters"))
     refute Enum.any?(notifications, &(&1.recipient_id == context.actor.id))
+    assert_receive :notifications_changed
+    refute_receive :notifications_changed, 50
   end
 
   test "scoped cascade delete emits only the root with its locked current name", context do
@@ -53,9 +58,14 @@ defmodule Storyarn.Sheets.StructuralNotificationsTest do
     child = child_sheet_fixture(context.project, root, %{name: "Child"})
     assert {:ok, _renamed} = Sheets.update_sheet(root, %{name: "Locked Root"})
     assert sheet_notifications(context.project) == []
+    :ok = Notifications.subscribe(user_scope_fixture(context.direct_member))
+    :ok = Notifications.subscribe(context.actor_scope)
 
     assert {:ok, %{entity: deleted, deleted_ids: deleted_ids}} =
              Sheets.delete_sheet_subtree(context.actor_scope, root)
+
+    assert_receive :notifications_changed
+    refute_receive :notifications_changed, 50
 
     assert deleted.id == root.id
     assert Enum.sort(deleted_ids) == Enum.sort([root.id, child.id])

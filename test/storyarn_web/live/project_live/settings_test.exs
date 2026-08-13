@@ -15,6 +15,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Localization
+  alias Storyarn.Notifications
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
@@ -142,6 +143,11 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       user: user
     } do
       project = user |> project_fixture() |> Repo.preload(:workspace)
+      recipient = user_fixture()
+      membership_fixture(project, recipient, "viewer")
+      recipient_scope = user_scope_fixture(recipient)
+      actor_scope = user_scope_fixture(user)
+      :ok = Notifications.subscribe(recipient_scope)
 
       {:ok, view, _html} = live(conn, settings_path(project))
 
@@ -154,6 +160,14 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       source_language = Localization.get_source_language(project.id)
       assert source_language.locale_code == "es-419"
+
+      assert_receive :notifications_changed
+      assert [notification] = Notifications.list_notifications(recipient_scope)
+      assert notification.actor_id == user.id
+      assert notification.entity_type == "localization_language"
+      assert notification.entity_id == source_language.id
+      assert notification.kind == "content_created"
+      assert Notifications.list_notifications(actor_scope) == []
 
       previous_source = Localization.get_language_by_locale(project.id, "en")
       refute previous_source.is_source

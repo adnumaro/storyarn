@@ -1,12 +1,14 @@
 defmodule Storyarn.Localization.StructuralNotificationsTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Localization
   alias Storyarn.Notifications
+  alias Storyarn.Repo
 
   setup do
     actor = user_fixture()
@@ -30,6 +32,9 @@ defmodule Storyarn.Localization.StructuralNotificationsTest do
     recipient_scope: recipient_scope,
     project: project
   } do
+    :ok = Notifications.subscribe(recipient_scope)
+    :ok = Notifications.subscribe(actor_scope)
+
     assert {:ok, language} =
              Localization.add_language(actor_scope, project, %{
                locale_code: "fr-FR",
@@ -47,6 +52,97 @@ defmodule Storyarn.Localization.StructuralNotificationsTest do
     assert notification.entity_name == "French (France)"
 
     assert Notifications.list_notifications(actor_scope) == []
+    assert_receive :notifications_changed
+    refute_receive :notifications_changed, 50
+  end
+
+  test "scoped source-language change notifies a member when it creates a locale", %{
+    actor: actor,
+    actor_scope: actor_scope,
+    recipient: recipient,
+    recipient_scope: recipient_scope,
+    project: project
+  } do
+    _source = source_language_fixture(project, %{locale_code: "en", name: "English"})
+    :ok = Notifications.subscribe(recipient_scope)
+
+    assert {:ok, new_source} =
+             Localization.change_source_language(actor_scope, project, "fr-FR")
+
+    assert_receive :notifications_changed
+
+    assert [notification] = Notifications.list_notifications(recipient_scope)
+    assert notification.recipient_id == recipient.id
+    assert notification.actor_id == actor.id
+    assert notification.project_id == project.id
+    assert notification.kind == "content_created"
+    assert notification.entity_type == "localization_language"
+    assert notification.entity_id == new_source.id
+    assert notification.entity_name == new_source.name
+
+    assert Notifications.list_notifications(actor_scope) == []
+    assert content_activity_marker_count(project) == 1
+  end
+
+  test "scoped source-language promotion of an existing target stays silent", %{
+    actor_scope: actor_scope,
+    recipient_scope: recipient_scope,
+    project: project
+  } do
+    _source = source_language_fixture(project, %{locale_code: "en", name: "English"})
+    target = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+    :ok = Notifications.subscribe(recipient_scope)
+
+    assert {:ok, promoted} =
+             Localization.change_source_language(actor_scope, project, "es")
+
+    assert promoted.id == target.id
+    assert promoted.is_source
+    assert Notifications.list_notifications(recipient_scope) == []
+    refute_receive :notifications_changed, 100
+    assert content_activity_marker_count(project) == 0
+  end
+
+  test "scoped source-language reactivation of an archived target stays silent", %{
+    actor_scope: actor_scope,
+    recipient_scope: recipient_scope,
+    project: project
+  } do
+    _source = source_language_fixture(project, %{locale_code: "en", name: "English"})
+    target = language_fixture(project, %{locale_code: "it", name: "Italian"})
+    assert {:ok, archived} = Localization.remove_language(target)
+    assert archived.archived_at
+    :ok = Notifications.subscribe(recipient_scope)
+
+    assert {:ok, reactivated} =
+             Localization.change_source_language(actor_scope, project, "it")
+
+    assert reactivated.id == target.id
+    assert reactivated.is_source
+    assert is_nil(reactivated.archived_at)
+    assert Notifications.list_notifications(recipient_scope) == []
+    refute_receive :notifications_changed, 100
+    assert content_activity_marker_count(project) == 0
+  end
+
+  test "unauthorized source-language creation leaves no language, notification, or marker", %{
+    actor_scope: actor_scope,
+    recipient_scope: recipient_scope,
+    project: project
+  } do
+    _source = source_language_fixture(project, %{locale_code: "en", name: "English"})
+    outsider_scope = user_scope_fixture(user_fixture())
+    :ok = Notifications.subscribe(recipient_scope)
+
+    assert {:error, :not_found} =
+             Localization.change_source_language(outsider_scope, project, "pt-BR")
+
+    assert Localization.get_language_by_locale(project.id, "pt-BR") == nil
+    assert Notifications.list_notifications(recipient_scope) == []
+    assert Notifications.list_notifications(actor_scope) == []
+    assert Notifications.list_notifications(outsider_scope) == []
+    refute_receive :notifications_changed, 100
+    assert content_activity_marker_count(project) == 0
   end
 
   test "scoped archival uses the locked current language name", %{
@@ -61,6 +157,8 @@ defmodule Storyarn.Localization.StructuralNotificationsTest do
 
     assert updated_language.name == "Current German Name"
     assert Notifications.list_notifications(recipient_scope) == []
+    :ok = Notifications.subscribe(recipient_scope)
+    :ok = Notifications.subscribe(actor_scope)
 
     assert {:ok, archived} = Localization.remove_language(actor_scope, stale_language)
     assert archived.archived_at
@@ -70,6 +168,8 @@ defmodule Storyarn.Localization.StructuralNotificationsTest do
     assert notification.entity_type == "localization_language"
     assert notification.entity_id == stale_language.id
     assert notification.entity_name == "Current German Name"
+    assert_receive :notifications_changed
+    refute_receive :notifications_changed, 50
   end
 
   test "updates and the unscoped add/archive API stay silent", %{
@@ -170,5 +270,16 @@ defmodule Storyarn.Localization.StructuralNotificationsTest do
     assert Notifications.list_notifications(recipient_scope) == []
     assert Notifications.list_notifications(actor_scope) == []
     assert Notifications.list_notifications(outsider_scope) == []
+  end
+
+  defp content_activity_marker_count(project) do
+    Repo.one(
+      from(marker in "notification_content_activity_markers",
+        where:
+          field(marker, :project_id) == ^project.id and
+            field(marker, :entity_type) == "localization_language",
+        select: count(field(marker, :id))
+      )
+    )
   end
 end

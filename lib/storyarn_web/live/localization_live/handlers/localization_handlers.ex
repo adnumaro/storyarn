@@ -23,7 +23,11 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
   @spec handle_change_source_language(map(), Socket.t()) ::
           {:noreply, Socket.t()}
   def handle_change_source_language(%{"locale_code" => code}, socket) do
-    case Localization.change_source_language(socket.assigns.project, code) do
+    case Localization.change_source_language(
+           socket.assigns.current_scope,
+           socket.assigns.project,
+           code
+         ) do
       {:ok, _language} ->
         socket =
           socket

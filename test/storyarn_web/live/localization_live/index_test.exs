@@ -7,6 +7,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Localization
+  alias Storyarn.Notifications
   alias Storyarn.Repo
 
   defp loc_path(project, locale \\ "es") do
@@ -191,6 +192,11 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "updates the project's source language", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
+      recipient = user_fixture()
+      membership_fixture(project, recipient, "viewer")
+      recipient_scope = user_scope_fixture(recipient)
+      actor_scope = user_scope_fixture(user)
+      :ok = Notifications.subscribe(recipient_scope)
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
@@ -199,6 +205,14 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       source_language = Localization.get_source_language(project.id)
       assert source_language.locale_code == "en-us"
+
+      assert_receive :notifications_changed
+      assert [notification] = Notifications.list_notifications(recipient_scope)
+      assert notification.actor_id == user.id
+      assert notification.entity_type == "localization_language"
+      assert notification.entity_id == source_language.id
+      assert notification.kind == "content_created"
+      assert Notifications.list_notifications(actor_scope) == []
     end
 
     test "viewer cannot change source language", %{conn: conn, user: user} do

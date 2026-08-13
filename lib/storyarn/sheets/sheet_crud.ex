@@ -179,19 +179,19 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   def delete_sheet_subtree(%Scope{} = actor_scope, %Sheet{} = sheet) do
+    result = Repo.transaction(fn -> delete_sheet_subtree_in_transaction(actor_scope, sheet) end)
+
     result =
-      fn -> delete_sheet_subtree_in_transaction(actor_scope, sheet) end
-      |> Repo.transaction()
-      |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
+      case result do
+        {:ok, %{notification_outcome: outcome} = deleted} ->
+          Notifications.publish_committed(outcome)
+          {:ok, Map.delete(deleted, :notification_outcome)}
 
-    case result do
-      {:ok, %{notification_outcome: outcome} = deleted} ->
-        Notifications.publish_committed(outcome)
-        {:ok, Map.delete(deleted, :notification_outcome)}
+        other ->
+          other
+      end
 
-      other ->
-        other
-    end
+    Collaboration.broadcast_dashboard_result(result, sheet.project_id, :sheets)
   end
 
   @doc false

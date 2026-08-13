@@ -13,6 +13,7 @@ defmodule Storyarn.Localization do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Accounts.Scope
   alias Storyarn.Localization.BatchTranslator
   alias Storyarn.Localization.ExportImport
   alias Storyarn.Localization.GlossaryCrud
@@ -107,9 +108,22 @@ defmodule Storyarn.Localization do
   defdelegate change_source_language(project, locale_code), to: LanguageCrud
 
   @doc "Changes the source language, optionally resetting all translations."
+  @spec change_source_language(Scope.t(), Project.t(), String.t()) ::
+          {:ok, project_language()} | {:error, term()}
+  def change_source_language(%Scope{} = actor_scope, %Project{} = project, locale_code) do
+    LanguageCrud.change_source_language(actor_scope, project, locale_code)
+  end
+
   @spec change_source_language(Project.t(), String.t(), keyword()) ::
           {:ok, project_language()} | {:error, term()}
-  defdelegate change_source_language(project, locale_code, opts), to: LanguageCrud
+  def change_source_language(%Project{} = project, locale_code, opts) do
+    LanguageCrud.change_source_language(project, locale_code, opts)
+  end
+
+  @doc "Changes the source language for an authorized actor, optionally resetting translations."
+  @spec change_source_language(Scope.t(), Project.t(), String.t(), keyword()) ::
+          {:ok, project_language()} | {:error, term()}
+  defdelegate change_source_language(actor_scope, project, locale_code, opts), to: LanguageCrud
 
   @doc "Reorders languages by the given list of IDs."
   @spec reorder_languages(id(), [id()]) :: {:ok, any()}
