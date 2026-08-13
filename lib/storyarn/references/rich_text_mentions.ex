@@ -4,6 +4,7 @@ defmodule Storyarn.References.RichTextMentions do
   @mention_markup ~r/<[^>]*\bclass\s*=\s*["'](?:[^"']*\s)?mention(?:\s[^"']*)?["'][^>]*>/iu
   @unquoted_mention_markup ~r/<[^>]*\bclass\s*=\s*mention(?=[\s\/>])[^>]*>/iu
   @class_attribute_markup ~r/\bclass\s*=/iu
+  @mention_hint ~r/mention/iu
 
   @type mention :: %{type: String.t(), id: String.t()}
   @type parse_error ::
@@ -60,9 +61,10 @@ defmodule Storyarn.References.RichTextMentions do
 
   # HTML character references and quoted `>` characters are decoded/handled by the parser before
   # CSS class matching. Keep the common literal path cheap, and parse only binaries that declare a
-  # class attribute when the fast path cannot decide.
+  # class attribute and can still contain a mention when the fast path cannot decide.
   defp parser_detected_mention_markup?(value) do
-    if Regex.match?(@class_attribute_markup, value) do
+    if Regex.match?(@class_attribute_markup, value) and
+         (String.contains?(value, "&") or Regex.match?(@mention_hint, value)) do
       case Floki.parse_fragment(value) do
         {:ok, document} -> Floki.find(document, ".mention") != []
         {:error, _reason} -> true

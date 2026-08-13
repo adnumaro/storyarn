@@ -62,6 +62,13 @@ defmodule Storyarn.References.RichTextMentionsTest do
       assert {:error, {:invalid_mention, %{type: ["sheet"], id: []}}} =
                RichTextMentions.extract_from_html(malformed)
     end
+
+    test "ignores variable-reference markup without mention hints" do
+      variable_reference =
+        ~s(<span class="variable-ref" data-ref="mc.health">$mc.health</span>)
+
+      assert RichTextMentions.html_candidates(%{"content" => variable_reference}) == []
+    end
   end
 
   describe "extract_from_html/1" do

@@ -246,19 +246,18 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   Extracts and validates every variable-reference surface from an entity
   snapshot.
 
-  Flow snapshots contribute nodes that declare a variable surface. Scene
-  snapshots contribute declared pin conditions, zone actions and conditions,
-  and on-event ambient-flow references across layered and orphan children. The
-  strict source parser accepts empty surfaces and rejects malformed ones exactly
-  as restore does. Sheet snapshots have no variable-reference surfaces of their
-  own.
+  Flow snapshots contribute every node. Scene snapshots contribute every pin,
+  zone, and ambient flow across layered and orphan children. The strict source
+  parser accepts canonical sources without variable surfaces and rejects
+  malformed ones exactly as restore does. Sheet snapshots have no
+  variable-reference surfaces of their own.
   """
   @spec validate_entity_snapshot_variable_references(integer(), String.t(), map()) ::
           :ok | {:error, term()}
   def validate_entity_snapshot_variable_references(project_id, "flow", %{} = snapshot)
       when is_integer(project_id) and project_id > 0 do
     with {:ok, nodes} <- snapshot_reference_collection(snapshot, "flow", "nodes") do
-      sources = Enum.flat_map(nodes, &flow_snapshot_variable_sources/1)
+      sources = Enum.map(nodes, &flow_snapshot_variable_source/1)
 
       validate_snapshot_variable_references(project_id, sources)
     end
@@ -277,7 +276,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
           layer_zones ++
           scene_snapshot_variable_sources(orphan_pins, "scene_pin") ++
           scene_snapshot_variable_sources(orphan_zones, "scene_zone") ++
-          Enum.flat_map(ambient_flows, &scene_ambient_snapshot_variable_sources/1)
+          Enum.map(ambient_flows, &scene_ambient_snapshot_variable_source/1)
 
       validate_snapshot_variable_references(project_id, sources)
     end
@@ -839,7 +838,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     element = %{
       "original_id" => source_id,
       "action_type" => Map.get(source, :action_type) || Map.get(source, "action_type"),
-      "action_data" => Map.get(source, :action_data) || Map.get(source, "action_data") || %{},
+      "action_data" => scene_element_action_data(source),
       "condition" => Map.get(source, :condition) || Map.get(source, "condition")
     }
 
@@ -993,11 +992,13 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       Map.get(element, :id) || Map.get(element, "original_id") ||
         Map.get(element, :original_id) || Map.get(element, "id")
 
-    if is_integer(source_id) do
+    action_data = scene_element_action_data(element)
+
+    if is_integer(source_id) and is_map(action_data) do
       normalized = %{
         id: source_id,
         action_type: Map.get(element, :action_type) || Map.get(element, "action_type"),
-        action_data: Map.get(element, :action_data) || Map.get(element, "action_data") || %{},
+        action_data: action_data,
         condition: Map.get(element, :condition) || Map.get(element, "condition")
       }
 
@@ -1009,6 +1010,13 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   defp strict_scene_element_reference_specs(element, source_type),
     do: {:error, {:invalid_variable_reference_source, source_type, element}}
+
+  defp scene_element_action_data(element) do
+    case Map.get(element, :action_data, Map.get(element, "action_data")) do
+      nil -> %{}
+      value -> value
+    end
+  end
 
   defp strict_scene_action_reference_specs(element, source_type) do
     case element.action_type do
@@ -1306,54 +1314,9 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     end)
   end
 
-  defp flow_snapshot_variable_sources(%{"type" => "instruction", "data" => %{} = data} = node) do
-    if Map.has_key?(data, "assignments"), do: [flow_snapshot_variable_source(node)], else: []
-  end
-
-  defp flow_snapshot_variable_sources(%{"type" => "condition", "data" => %{} = data} = node) do
-    if Map.has_key?(data, "condition"), do: [flow_snapshot_variable_source(node)], else: []
-  end
-
-  defp flow_snapshot_variable_sources(%{"type" => "dialogue", "data" => %{} = data} = node) do
-    if Map.has_key?(data, "responses"), do: [flow_snapshot_variable_source(node)], else: []
-  end
-
-  defp flow_snapshot_variable_sources(_node), do: []
-
   defp scene_snapshot_variable_sources(elements, source_type) when is_list(elements) do
-    Enum.flat_map(elements, &scene_snapshot_variable_sources(&1, source_type))
+    Enum.map(elements, &scene_snapshot_variable_source(source_type, &1))
   end
-
-  defp scene_snapshot_variable_sources(%{} = pin, "scene_pin") do
-    if Map.has_key?(pin, "condition"), do: [scene_snapshot_variable_source("scene_pin", pin)], else: []
-  end
-
-  defp scene_snapshot_variable_sources(%{} = zone, "scene_zone") do
-    if Map.has_key?(zone, "condition") or scene_zone_variable_action?(zone) do
-      [scene_snapshot_variable_source("scene_zone", zone)]
-    else
-      []
-    end
-  end
-
-  defp scene_zone_variable_action?(%{"action_type" => "action", "action_data" => %{} = data}),
-    do: Map.has_key?(data, "assignments")
-
-  defp scene_zone_variable_action?(%{"action_type" => "display", "action_data" => %{} = data}),
-    do: Map.has_key?(data, "variable_ref")
-
-  defp scene_zone_variable_action?(%{"action_type" => "collection", "action_data" => %{} = data}),
-    do: Map.has_key?(data, "items")
-
-  defp scene_zone_variable_action?(_zone), do: false
-
-  defp scene_ambient_snapshot_variable_sources(
-         %{"trigger_type" => "on_event", "trigger_config" => %{} = config} = ambient_flow
-       ) do
-    if Map.has_key?(config, "variable_ref"), do: [scene_ambient_snapshot_variable_source(ambient_flow)], else: []
-  end
-
-  defp scene_ambient_snapshot_variable_sources(_ambient_flow), do: []
 
   defp flow_snapshot_variable_source(node) do
     %{

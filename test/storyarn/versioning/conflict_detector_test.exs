@@ -52,10 +52,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         "shortcut" => flow.shortcut,
         "scene_id" => nil,
         "nodes" => [
-          %{
-            "type" => "dialogue",
-            "data" => %{"speaker_sheet_id" => sheet.id}
-          }
+          flow_snapshot_node(101, "dialogue", %{"speaker_sheet_id" => sheet.id})
         ],
         "connections" => []
       }
@@ -81,13 +78,10 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         "shortcut" => flow.shortcut,
         "scene_id" => nil,
         "nodes" => [
-          %{
-            "type" => "dialogue",
-            "data" => %{
-              "speaker_sheet_id" => avatar_owner.id,
-              "avatar_id" => avatar.id
-            }
-          }
+          flow_snapshot_node(102, "dialogue", %{
+            "speaker_sheet_id" => avatar_owner.id,
+            "avatar_id" => avatar.id
+          })
         ],
         "connections" => []
       }
@@ -134,13 +128,10 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         "shortcut" => flow.shortcut,
         "scene_id" => nil,
         "nodes" => [
-          %{
-            "type" => "dialogue",
-            "data" => %{
-              "speaker_sheet_id" => nil,
-              "avatar_id" => avatar.id
-            }
-          }
+          flow_snapshot_node(103, "dialogue", %{
+            "speaker_sheet_id" => nil,
+            "avatar_id" => avatar.id
+          })
         ],
         "connections" => []
       }
@@ -356,10 +347,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         "shortcut" => flow.shortcut,
         "scene_id" => nil,
         "nodes" => [
-          %{
-            "type" => "dialogue",
-            "data" => %{"speaker_sheet_id" => foreign_sheet.id}
-          }
+          flow_snapshot_node(104, "dialogue", %{"speaker_sheet_id" => foreign_sheet.id})
         ],
         "connections" => []
       }
@@ -382,10 +370,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         "shortcut" => flow.shortcut,
         "scene_id" => nil,
         "nodes" => [
-          %{
-            "type" => "dialogue",
-            "data" => %{"speaker_sheet_id" => deleted_sheet.id}
-          }
+          flow_snapshot_node(105, "dialogue", %{"speaker_sheet_id" => deleted_sheet.id})
         ],
         "connections" => []
       }
@@ -536,10 +521,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         "shortcut" => flow.shortcut,
         "scene_id" => nil,
         "nodes" => [
-          %{
-            "type" => "dialogue",
-            "data" => %{"audio_asset_id" => asset.id}
-          }
+          flow_snapshot_node(106, "dialogue", %{"audio_asset_id" => asset.id})
         ],
         "connections" => [],
         "asset_blob_hashes" => %{asset_id => String.duplicate("b", 64)},
@@ -582,16 +564,11 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         "shortcut" => flow.shortcut,
         "scene_id" => nil,
         "nodes" => [
-          %{
-            "type" => "dialogue",
-            "data" => %{"audio_asset_id" => 999_991}
-          },
-          %{
-            "type" => "sequence",
-            "data" => %{},
+          flow_snapshot_node(107, "dialogue", %{"audio_asset_id" => 999_991}),
+          flow_snapshot_node(108, "sequence", %{}, %{
             "sequence_tracks" => [%{"asset_id" => 999_992}],
             "sequence_visual_layers" => [%{"asset_id" => 999_993}]
-          }
+          })
         ],
         "connections" => [],
         "localization" => [%{"vo_asset_id" => 999_994}]
@@ -710,10 +687,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         "shortcut" => flow.shortcut,
         "scene_id" => nil,
         "nodes" => [
-          %{
-            "type" => "dialogue",
-            "data" => %{"speaker_sheet_id" => missing_id}
-          }
+          flow_snapshot_node(109, "dialogue", %{"speaker_sheet_id" => missing_id})
         ],
         "connections" => []
       }
@@ -736,10 +710,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         "shortcut" => flow.shortcut,
         "scene_id" => nil,
         "nodes" => [
-          %{
-            "type" => "dialogue",
-            "data" => %{"speaker_sheet_id" => "not-an-id"}
-          }
+          flow_snapshot_node(110, "dialogue", %{"speaker_sheet_id" => "not-an-id"})
         ],
         "connections" => []
       }
@@ -767,10 +738,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
           "shortcut" => flow.shortcut,
           "scene_id" => nil,
           "nodes" => [
-            %{
-              "type" => "dialogue",
-              "data" => %{"speaker_sheet_id" => malformed_id}
-            }
+            flow_snapshot_node(111, "dialogue", %{"speaker_sheet_id" => malformed_id})
           ],
           "connections" => []
         }
@@ -816,14 +784,8 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         "shortcut" => flow.shortcut,
         "scene_id" => nil,
         "nodes" => [
-          %{
-            "type" => "dialogue",
-            "data" => %{"speaker_sheet_id" => missing_id}
-          },
-          %{
-            "type" => "dialogue",
-            "data" => %{"speaker_sheet_id" => missing_id}
-          }
+          flow_snapshot_node(112, "dialogue", %{"speaker_sheet_id" => missing_id}),
+          flow_snapshot_node(113, "dialogue", %{"speaker_sheet_id" => missing_id})
         ],
         "connections" => []
       }
@@ -847,14 +809,8 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         "shortcut" => flow.shortcut,
         "scene_id" => nil,
         "nodes" => [
-          %{
-            "type" => "dialogue",
-            "data" => %{"speaker_sheet_id" => missing_sheet_id}
-          },
-          %{
-            "type" => "subflow",
-            "data" => %{"referenced_flow_id" => missing_flow_id}
-          }
+          flow_snapshot_node(114, "dialogue", %{"speaker_sheet_id" => missing_sheet_id}),
+          flow_snapshot_node(115, "subflow", %{"referenced_flow_id" => missing_flow_id})
         ],
         "connections" => []
       }
@@ -935,6 +891,15 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         }
       }
     }
+  end
+
+  defp flow_snapshot_node(original_id, type, data, extra \\ %{}) do
+    data = if type == "dialogue", do: Map.put_new(data, "responses", []), else: data
+
+    Map.merge(
+      %{"original_id" => original_id, "type" => type, "data" => data},
+      extra
+    )
   end
 
   defp soft_delete!(asset) do

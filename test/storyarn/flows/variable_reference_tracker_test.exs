@@ -2915,7 +2915,8 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           %{"original_id" => 91, "type" => "dialogue", "data" => %{"responses" => []}},
           %{"original_id" => 92, "type" => "condition", "data" => %{"condition" => nil}},
           %{"original_id" => 93, "type" => "instruction", "data" => %{"assignments" => []}},
-          %{"type" => "hub", "data" => %{}}
+          %{"original_id" => 94, "type" => "entry", "data" => %{}},
+          %{"original_id" => 95, "type" => "hub", "data" => %{}}
         ]
       }
 
@@ -2966,18 +2967,23 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
                )
     end
 
-    test "entity preview and restore validation reject the same malformed Flow collections", ctx do
+    test "entity preview and restore validation reject the same malformed Flow sources", ctx do
       cases = [
+        {%{"original_id" => 100, "type" => "entry", "data" => nil},
+         {:invalid_variable_reference_source, "flow_node", 100}},
+        {%{"original_id" => 101, "type" => nil, "data" => %{}}, {:invalid_variable_reference_source, "flow_node", 101}},
+        {%{"original_id" => "invalid", "type" => "entry", "data" => %{}},
+         {:invalid_variable_reference_source, "flow_node", "invalid"}},
         {%{
-           "original_id" => 100,
+           "original_id" => 102,
            "type" => "instruction",
            "data" => %{"assignments" => nil}
-         }, {:malformed_variable_reference, "flow_node", 100, :assignments, nil}},
+         }, {:malformed_variable_reference, "flow_node", 102, :assignments, nil}},
         {%{
-           "original_id" => 101,
+           "original_id" => 103,
            "type" => "dialogue",
            "data" => %{"responses" => nil}
-         }, {:malformed_variable_reference, "flow_node", 101, :dialogue_responses, nil}}
+         }, {:malformed_variable_reference, "flow_node", 103, :dialogue_responses, nil}}
       ]
 
       for {node, reason} <- cases do
@@ -2999,17 +3005,29 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
     test "entity preview and restore validation reject the same malformed Scene action collections", ctx do
       cases = [
         {%{
-           "original_id" => 102,
+           "original_id" => 104,
            "action_type" => "action",
            "action_data" => %{"assignments" => nil},
            "condition" => nil
-         }, {:malformed_variable_reference, "scene_zone", 102, :assignments, nil}},
+         }, {:malformed_variable_reference, "scene_zone", 104, :assignments, nil}},
         {%{
-           "original_id" => 103,
+           "original_id" => 105,
            "action_type" => "collection",
            "action_data" => %{"items" => nil},
            "condition" => nil
-         }, {:malformed_variable_reference, "scene_zone", 103, :collection_items, nil}}
+         }, {:malformed_variable_reference, "scene_zone", 105, :collection_items, nil}},
+        {%{
+           "original_id" => 106,
+           "action_type" => "collection",
+           "action_data" => %{"assignments" => []},
+           "condition" => nil
+         }, {:malformed_variable_reference, "scene_zone", 106, :collection_items, nil}},
+        {%{
+           "original_id" => 107,
+           "action_type" => "collection",
+           "action_data" => [],
+           "condition" => nil
+         }, {:invalid_variable_reference_source, "scene_zone", 107}}
       ]
 
       for {zone, reason} <- cases do
@@ -3022,6 +3040,79 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
         }
 
         assert {:error, ^reason} =
+                 run_variable_validation(fn ->
+                   VariableReferenceTracker.validate_scene_element_variable_targets(
+                     [zone],
+                     ctx.project.id,
+                     "scene_zone"
+                   )
+                 end)
+
+        assert {:error, ^reason} =
+                 run_variable_validation(fn ->
+                   VariableReferenceTracker.validate_snapshot_variable_references(
+                     ctx.project.id,
+                     [restore_source]
+                   )
+                 end)
+
+        assert {:error, ^reason} =
+                 run_variable_validation(fn ->
+                   VariableReferenceTracker.validate_entity_snapshot_variable_references(
+                     ctx.project.id,
+                     "scene",
+                     scene_variable_snapshot([], [zone], [])
+                   )
+                 end)
+      end
+    end
+
+    test "entity preview and restore validation reject the same malformed Scene source identities", ctx do
+      zone = %{
+        "original_id" => "invalid-zone",
+        "action_type" => nil,
+        "action_data" => %{},
+        "condition" => nil
+      }
+
+      pin = %{"original_id" => "invalid-pin", "condition" => nil}
+
+      ambient_flow = %{
+        "original_id" => 108,
+        "trigger_type" => nil,
+        "trigger_config" => %{}
+      }
+
+      cases = [
+        {
+          %{
+            source_type: "scene_zone",
+            source_id: zone["original_id"],
+            action_type: zone["action_type"],
+            action_data: zone["action_data"],
+            condition: zone["condition"]
+          },
+          scene_variable_snapshot([], [zone], []),
+          {:invalid_variable_reference_source, "scene_zone", "invalid-zone"}
+        },
+        {%{
+           source_type: "scene_pin",
+           source_id: pin["original_id"],
+           action_type: nil,
+           action_data: nil,
+           condition: pin["condition"]
+         }, scene_variable_snapshot([pin], [], []), {:invalid_variable_reference_source, "scene_pin", "invalid-pin"}},
+        {%{
+           source_type: "scene_ambient_flow",
+           source_id: ambient_flow["original_id"],
+           trigger_type: ambient_flow["trigger_type"],
+           trigger_config: ambient_flow["trigger_config"]
+         }, scene_variable_snapshot([], [], [ambient_flow]),
+         {:invalid_variable_reference_source, "scene_ambient_flow", 108}}
+      ]
+
+      for {restore_source, snapshot, reason} <- cases do
+        assert {:error, ^reason} =
                  VariableReferenceTracker.validate_snapshot_variable_references(
                    ctx.project.id,
                    [restore_source]
@@ -3031,12 +3122,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
                  VariableReferenceTracker.validate_entity_snapshot_variable_references(
                    ctx.project.id,
                    "scene",
-                   %{
-                     "layers" => [%{"pins" => [], "zones" => [zone]}],
-                     "orphan_pins" => [],
-                     "orphan_zones" => [],
-                     "ambient_flows" => []
-                   }
+                   snapshot
                  )
       end
     end
@@ -3581,6 +3667,24 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
         }
       ]
     }
+  end
+
+  defp scene_variable_snapshot(pins, zones, ambient_flows) do
+    %{
+      "layers" => [%{"pins" => pins, "zones" => zones}],
+      "orphan_pins" => [],
+      "orphan_zones" => [],
+      "ambient_flows" => ambient_flows
+    }
+  end
+
+  defp run_variable_validation(validation) do
+    task = Task.async(validation)
+
+    case Task.yield(task, 1_000) || Task.shutdown(task, :brutal_kill) do
+      {:ok, result} -> result
+      nil -> flunk("variable-reference validation did not terminate")
+    end
   end
 
   defp source_identities(block_id) do
