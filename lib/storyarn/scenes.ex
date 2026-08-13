@@ -136,9 +136,11 @@ defmodule Storyarn.Scenes do
   """
   @spec create_scene(Project.t(), attrs()) :: {:ok, scene_record()} | {:error, changeset()}
   defdelegate create_scene(project, attrs), to: SceneCrud
+  defdelegate create_scene(actor_scope, project, attrs), to: SceneCrud
 
   @doc false
   defdelegate create_scene_in_transaction(project, attrs), to: SceneCrud
+  defdelegate create_scene_in_transaction(actor_scope, project, attrs), to: SceneCrud
 
   @doc """
   Updates a scene.
@@ -153,6 +155,7 @@ defmodule Storyarn.Scenes do
   """
   @spec delete_scene(scene_record()) :: {:ok, scene_record()} | {:error, term()}
   defdelegate delete_scene(scene), to: SceneCrud
+  defdelegate delete_scene(actor_scope, scene), to: SceneCrud
 
   @doc """
   Soft deletes a scene and its descendants, returning the committed cascade
@@ -161,9 +164,11 @@ defmodule Storyarn.Scenes do
   @spec delete_scene_subtree(scene_record()) ::
           {:ok, %{entity: scene_record(), deleted_ids: [integer()]}} | {:error, term()}
   defdelegate delete_scene_subtree(scene), to: SceneCrud
+  defdelegate delete_scene_subtree(actor_scope, scene), to: SceneCrud
 
   @doc false
   defdelegate delete_scene_subtree_in_transaction(scene), to: SceneCrud
+  defdelegate delete_scene_subtree_in_transaction(actor_scope, scene), to: SceneCrud
 
   @doc """
   Permanently deletes a scene from the database.

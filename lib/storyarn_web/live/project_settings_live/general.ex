@@ -158,7 +158,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
       opts = if reset_translations?(params), do: [reset_translations: true], else: []
 
-      case Localization.change_source_language(socket.assigns.project, locale_code, opts) do
+      case Localization.change_source_language(
+             socket.assigns.current_scope,
+             socket.assigns.project,
+             locale_code,
+             opts
+           ) do
         {:ok, source_language} ->
           {:noreply,
            socket

@@ -3,6 +3,7 @@ defmodule Storyarn.Flows.FlowCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Accounts.Scope
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
@@ -16,6 +17,7 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.TreeOperations
   alias Storyarn.Localization
+  alias Storyarn.Notifications
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.Repo
@@ -287,27 +289,63 @@ defmodule Storyarn.Flows.FlowCrud do
   Used by exit (flow_reference mode) and subflow nodes.
   Returns `{:ok, %{flow: flow, node: node}}` or `{:error, step, reason, changes}`.
   """
-  def create_linked_flow(%Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node, opts \\ []) do
+  def create_linked_flow(%Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node) do
+    create_linked_flow(project, parent_flow, node, [])
+  end
+
+  def create_linked_flow(%Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node, opts) do
+    create_linked_flow_for_actor(nil, project, parent_flow, node, opts)
+  end
+
+  def create_linked_flow(%Scope{} = actor_scope, %Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node) do
+    create_linked_flow_for_actor(actor_scope, project, parent_flow, node, [])
+  end
+
+  def create_linked_flow(%Scope{} = actor_scope, %Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node, opts) do
+    create_linked_flow_for_actor(actor_scope, project, parent_flow, node, opts)
+  end
+
+  defp create_linked_flow_for_actor(actor_scope, project, parent_flow, node, opts) do
     name = opts[:name] || derive_linked_flow_name(parent_flow, node)
 
-    Ecto.Multi.new()
-    |> Ecto.Multi.run(:source, fn _repo, _changes ->
-      lock_linked_flow_source(project, parent_flow, node)
-    end)
-    |> Ecto.Multi.run(:flow, fn _repo, _ ->
-      create_linked_flow_record(project, parent_flow, name)
-    end)
-    |> Ecto.Multi.run(:node, fn _repo, %{flow: new_flow, source: %{node: locked_node}} ->
-      link_node_to_new_flow(locked_node, new_flow)
-    end)
-    |> Repo.transaction()
-    |> case do
-      {:error, :flow, {:limit_reached, details}, _changes} ->
-        {:error, :limit_reached, details}
+    multi =
+      Ecto.Multi.new()
+      |> Ecto.Multi.run(:source, fn _repo, _changes ->
+        lock_linked_flow_source(project, parent_flow, node)
+      end)
+      |> Ecto.Multi.run(:flow, fn _repo, _ ->
+        create_linked_flow_record(project, parent_flow, name)
+      end)
+      |> Ecto.Multi.run(:node, fn _repo, %{flow: new_flow, source: %{node: locked_node}} ->
+        link_node_to_new_flow(locked_node, new_flow)
+      end)
 
-      result ->
-        result
-    end
+    multi =
+      case actor_scope do
+        %Scope{} ->
+          Ecto.Multi.run(multi, :notification, fn _repo, %{flow: flow} ->
+            Notifications.deliver_content_activity(actor_scope, project, :created, "flow", flow)
+          end)
+
+        nil ->
+          multi
+      end
+
+    result =
+      multi
+      |> Repo.transaction()
+      |> case do
+        {:error, :flow, {:limit_reached, details}, _changes} ->
+          {:error, :limit_reached, details}
+
+        result ->
+          result
+      end
+
+    publish_linked_flow_notification(result)
+
+    result
+    |> strip_linked_flow_notification()
     |> broadcast_flow_dashboard_result(project.id)
   end
 
@@ -356,6 +394,26 @@ defmodule Storyarn.Flows.FlowCrud do
     if label && label != "", do: label, else: "#{parent_flow.name} - Sub"
   end
 
+  def create_flow(%Scope{} = actor_scope, %Project{} = project, attrs) do
+    result =
+      fn ->
+        flow = create_flow_in_transaction(project, attrs)
+        {flow, deliver_content_activity!(actor_scope, project, :created, flow)}
+      end
+      |> Repo.transaction()
+      |> normalize_item_limit_result()
+
+    case result do
+      {:ok, {flow, notification_outcome}} ->
+        Notifications.publish_committed(notification_outcome)
+        Collaboration.broadcast_dashboard_change(project.id, :flows)
+        {:ok, flow}
+
+      other ->
+        other
+    end
+  end
+
   def create_flow(%Project{} = project, attrs) do
     project
     |> do_create_flow(attrs)
@@ -399,6 +457,12 @@ defmodule Storyarn.Flows.FlowCrud do
       {:error, reason} ->
         Repo.rollback(flow_reference_changeset(%Flow{project_id: project.id}, attrs, reason))
     end
+  end
+
+  @doc false
+  def create_flow_in_transaction(%Scope{} = actor_scope, %Project{} = project, attrs) do
+    flow = create_flow_in_transaction(project, attrs)
+    {flow, deliver_content_activity!(actor_scope, project, :created, flow)}
   end
 
   defp insert_flow_with_default_nodes(project_id, attrs) do
@@ -521,6 +585,10 @@ defmodule Storyarn.Flows.FlowCrud do
     with {:ok, %{entity: entity}} <- delete_flow_subtree(flow), do: {:ok, entity}
   end
 
+  def delete_flow(%Scope{} = actor_scope, %Flow{} = flow) do
+    with {:ok, %{entity: entity}} <- delete_flow_subtree(actor_scope, flow), do: {:ok, entity}
+  end
+
   @doc """
   Same soft-delete as `delete_flow/1`, additionally returning `deleted_ids` —
   the committed cascade set, collected by the deletion itself under the same
@@ -544,9 +612,37 @@ defmodule Storyarn.Flows.FlowCrud do
     result
   end
 
+  def delete_flow_subtree(%Scope{} = actor_scope, %Flow{} = flow) do
+    result = Repo.transaction(fn -> delete_flow_subtree_in_transaction(actor_scope, flow) end)
+
+    case result do
+      {:ok,
+       %{
+         entity: deleted_flow,
+         affected_flow_ids: affected_flow_ids,
+         notification_outcome: notification_outcome
+       } = deleted} ->
+        Notifications.publish_committed(notification_outcome)
+        broadcast_flow_refreshes(affected_flow_ids)
+        Collaboration.broadcast_dashboard_change(deleted_flow.project_id, :flows)
+        {:ok, Map.delete(deleted, :notification_outcome)}
+
+      _ ->
+        result
+    end
+  end
+
   @doc false
   def delete_flow_subtree_in_transaction(%Flow{} = flow) do
     delete_flow_transaction(flow)
+  end
+
+  @doc false
+  def delete_flow_subtree_in_transaction(%Scope{} = actor_scope, %Flow{} = flow) do
+    deleted = delete_flow_subtree_in_transaction(flow)
+    project = Repo.get!(Project, deleted.entity.project_id)
+    outcome = deliver_content_activity!(actor_scope, project, :deleted, deleted.entity)
+    Map.put(deleted, :notification_outcome, outcome)
   end
 
   defp delete_flow_transaction(flow) do
@@ -1185,6 +1281,25 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
+
+  defp deliver_content_activity!(actor_scope, project, action, flow) do
+    case Notifications.deliver_content_activity(actor_scope, project, action, "flow", flow) do
+      {:ok, outcome} -> outcome
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp publish_linked_flow_notification({:ok, %{notification: outcome}}) do
+    Notifications.publish_committed(outcome)
+  end
+
+  defp publish_linked_flow_notification(_result), do: :ok
+
+  defp strip_linked_flow_notification({:ok, changes}) do
+    {:ok, Map.delete(changes, :notification)}
+  end
+
+  defp strip_linked_flow_notification(result), do: result
 
   defp maybe_assign_position(attrs, project_id, parent_id) do
     ShortcutHelpers.maybe_assign_position(

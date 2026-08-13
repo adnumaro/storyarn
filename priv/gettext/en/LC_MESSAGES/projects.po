@@ -37,7 +37,7 @@ msgstr ""
 msgid "Create Project"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:197
+#: lib/storyarn_web/live/project_settings_live/general.ex:202
 #, elixir-autogen, elixir-format
 msgid "Failed to delete project."
 msgstr ""
@@ -82,7 +82,7 @@ msgstr ""
 msgid "Project Settings"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:193
+#: lib/storyarn_web/live/project_settings_live/general.ex:198
 #, elixir-autogen, elixir-format
 msgid "Project deleted."
 msgstr ""
@@ -206,22 +206,22 @@ msgstr ""
 msgid "You're already a member of this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:243
+#: lib/storyarn_web/live/project_settings_live/general.ex:248
 #, elixir-autogen, elixir-format
 msgid "Failed to reset theme."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:457
+#: lib/storyarn_web/live/project_settings_live/general.ex:462
 #, elixir-autogen, elixir-format
 msgid "Failed to save theme."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:240
+#: lib/storyarn_web/live/project_settings_live/general.ex:245
 #, elixir-autogen, elixir-format
 msgid "Theme reset to default."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:454
+#: lib/storyarn_web/live/project_settings_live/general.ex:459
 #, elixir-autogen, elixir-format
 msgid "Theme saved."
 msgstr ""
@@ -261,7 +261,7 @@ msgstr ""
 msgid "Failed to save settings."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:460
+#: lib/storyarn_web/live/project_settings_live/general.ex:465
 #, elixir-autogen, elixir-format
 msgid "Invalid color format. Use #RRGGBB."
 msgstr ""
@@ -281,12 +281,12 @@ msgstr ""
 msgid "Version control settings saved."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:173
+#: lib/storyarn_web/live/project_settings_live/general.ex:178
 #, elixir-autogen, elixir-format
 msgid "Could not update the source language."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:166
+#: lib/storyarn_web/live/project_settings_live/general.ex:171
 #, elixir-autogen, elixir-format
 msgid "Source language updated."
 msgstr ""
@@ -408,7 +408,7 @@ msgstr "Retrying after a temporary issue…"
 msgid "Creating project…"
 msgstr "Creating project…"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:334
+#: lib/storyarn_web/live/project_settings_live/general.ex:339
 #: lib/storyarn_web/live/template_live/show.ex:518
 #, elixir-autogen, elixir-format
 msgid "A template publication is already running."
@@ -702,7 +702,7 @@ msgstr ""
 msgid "Template could not be installed."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:346
+#: lib/storyarn_web/live/project_settings_live/general.ex:351
 #, elixir-autogen, elixir-format
 msgid "Template could not be queued."
 msgstr ""
@@ -712,7 +712,7 @@ msgstr ""
 msgid "Template could not be restored."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:338
+#: lib/storyarn_web/live/project_settings_live/general.ex:343
 #: lib/storyarn_web/live/template_live/show.ex:524
 #, elixir-autogen, elixir-format
 msgid "Template limit reached for your plan."
@@ -735,7 +735,7 @@ msgstr ""
 msgid "Template publication could not be queued."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:295
+#: lib/storyarn_web/live/project_settings_live/general.ex:300
 #: lib/storyarn_web/live/template_live/show.ex:512
 #, elixir-autogen, elixir-format
 msgid "Template publication queued."
@@ -751,7 +751,7 @@ msgstr ""
 msgid "Template version"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:342
+#: lib/storyarn_web/live/project_settings_live/general.ex:347
 #: lib/storyarn_web/live/template_live/show.ex:521
 #, elixir-autogen, elixir-format
 msgid "Template version limit reached for your plan."
@@ -795,7 +795,7 @@ msgstr ""
 msgid "Versions"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:210
+#: lib/storyarn_web/live/project_settings_live/general.ex:215
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to publish templates from this project."
 msgstr ""

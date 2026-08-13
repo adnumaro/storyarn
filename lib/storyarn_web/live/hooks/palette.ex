@@ -32,6 +32,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   alias Storyarn.CommandPalette
   alias Storyarn.Flows
   alias Storyarn.GlobalSearch
+  alias Storyarn.Notifications
   alias Storyarn.RateLimiter
   alias Storyarn.Scenes
   alias Storyarn.Sheets
@@ -217,7 +218,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
         fn ->
           case GlobalSearch.editable_project(scope, project_id) do
             {:ok, %{project: project, workspace: workspace}} ->
-              entity = create_entity_in_transaction(type, project)
+              {entity, notification_outcome} = create_entity_in_transaction(scope, type, project)
 
               reply = %{
                 url:
@@ -229,7 +230,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
                   })
               }
 
-              {reply, {:entity_created, project.id, type, entity}}
+              {reply, {:entity_created, project.id, type, entity, notification_outcome}}
 
             {:error, :unauthorized} ->
               {%{error: "unauthorized"}, nil}
@@ -280,7 +281,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
             {:ok, %{entity: entity, project: project}} ->
               # The delete itself reports the committed cascade set (collected
               # under its own lock) — never a separate pre-delete traversal.
-              delete_result = delete_entity_subtree_in_transaction(type, entity)
+              delete_result = delete_entity_subtree_in_transaction(scope, type, entity)
 
               {%{deleted: true}, delete_post_commit(project.id, type, delete_result)}
 
@@ -580,20 +581,23 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   # Same default names the tree sidebars use — one concept, one name.
-  defp create_entity_in_transaction("sheet", project),
-    do: Sheets.create_sheet_in_transaction(project, %{name: dgettext("sheets", "Untitled")})
+  defp create_entity_in_transaction(scope, "sheet", project),
+    do: Sheets.create_sheet_in_transaction(scope, project, %{name: dgettext("sheets", "Untitled")})
 
-  defp create_entity_in_transaction("flow", project),
-    do: Flows.create_flow_in_transaction(project, %{name: dgettext("flows", "Untitled")})
+  defp create_entity_in_transaction(scope, "flow", project),
+    do: Flows.create_flow_in_transaction(scope, project, %{name: dgettext("flows", "Untitled")})
 
-  defp create_entity_in_transaction("scene", project),
-    do: Scenes.create_scene_in_transaction(project, %{name: dgettext("scenes", "Untitled")})
+  defp create_entity_in_transaction(scope, "scene", project),
+    do: Scenes.create_scene_in_transaction(scope, project, %{name: dgettext("scenes", "Untitled")})
 
-  defp delete_entity_subtree_in_transaction("sheet", entity), do: Sheets.delete_sheet_subtree_in_transaction(entity)
+  defp delete_entity_subtree_in_transaction(scope, "sheet", entity),
+    do: Sheets.delete_sheet_subtree_in_transaction(scope, entity)
 
-  defp delete_entity_subtree_in_transaction("flow", entity), do: Flows.delete_flow_subtree_in_transaction(entity)
+  defp delete_entity_subtree_in_transaction(scope, "flow", entity),
+    do: Flows.delete_flow_subtree_in_transaction(scope, entity)
 
-  defp delete_entity_subtree_in_transaction("scene", entity), do: Scenes.delete_scene_subtree_in_transaction(entity)
+  defp delete_entity_subtree_in_transaction(scope, "scene", entity),
+    do: Scenes.delete_scene_subtree_in_transaction(scope, entity)
 
   defp create_error_reply({:limit_reached, _details}), do: %{error: "limit_reached"}
   defp create_error_reply(_reason), do: %{error: "create_failed"}
@@ -605,24 +609,32 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp tree_key("flow"), do: :flows
   defp tree_key("scene"), do: :scenes
 
-  defp delete_post_commit(project_id, "flow" = type, %{deleted_ids: deleted_ids, affected_flow_ids: affected_flow_ids}) do
-    {:entities_deleted, project_id, type, deleted_ids, affected_flow_ids}
+  defp delete_post_commit(project_id, "flow" = type, %{
+         deleted_ids: deleted_ids,
+         affected_flow_ids: affected_flow_ids,
+         notification_outcome: outcome
+       }) do
+    {:entities_deleted, project_id, type, deleted_ids, affected_flow_ids, outcome}
   end
 
-  defp delete_post_commit(project_id, type, %{deleted_ids: deleted_ids}) do
-    {:entities_deleted, project_id, type, deleted_ids, []}
+  defp delete_post_commit(project_id, type, %{deleted_ids: deleted_ids, notification_outcome: outcome}) do
+    {:entities_deleted, project_id, type, deleted_ids, [], outcome}
   end
 
   defp run_post_commit(nil), do: :ok
 
-  defp run_post_commit({:entity_created, project_id, type, entity}) do
+  defp run_post_commit({:entity_created, project_id, type, entity, notification_outcome}) do
+    Notifications.publish_committed(notification_outcome)
+
     if type == "sheet", do: Sheets.sync_created_sheet_localization(entity)
 
     Collaboration.broadcast_dashboard_change(project_id, tree_key(type))
     broadcast_tree_changed(project_id, type)
   end
 
-  defp run_post_commit({:entities_deleted, project_id, type, deleted_ids, affected_flow_ids}) do
+  defp run_post_commit({:entities_deleted, project_id, type, deleted_ids, affected_flow_ids, notification_outcome}) do
+    Notifications.publish_committed(notification_outcome)
+
     # Plain broadcast (not broadcast_from): the LV serving this event may
     # itself be showing a deleted entity and must navigate away too.
     Flows.broadcast_flow_refreshes(affected_flow_ids)

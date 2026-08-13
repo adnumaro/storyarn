@@ -3,12 +3,15 @@ defmodule Storyarn.Localization.LanguageCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Accounts.Scope
   alias Storyarn.Localization.Languages
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.TranslationRunCrud
+  alias Storyarn.Notifications
+  alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
@@ -76,6 +79,13 @@ defmodule Storyarn.Localization.LanguageCrud do
   # Mutations
   # =============================================================================
 
+  def add_language(%Scope{} = actor_scope, %Project{} = project, attrs) do
+    case add_language_with_count(actor_scope, project, attrs) do
+      {:ok, %{language: language}} -> {:ok, language}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   def add_language(%Project{} = project, attrs) do
     case add_language_with_count(project, attrs) do
       {:ok, %{language: language}} -> {:ok, language}
@@ -83,16 +93,40 @@ defmodule Storyarn.Localization.LanguageCrud do
     end
   end
 
+  def add_language_with_count(%Scope{} = actor_scope, %Project{} = project, attrs) do
+    result = add_language_with_count_for_actor(actor_scope, project, attrs)
+
+    case result do
+      {:ok, %{notification_outcome: outcome} = value} ->
+        Notifications.publish_committed(outcome)
+        {:ok, Map.delete(value, :notification_outcome)}
+
+      other ->
+        other
+    end
+  end
+
   def add_language_with_count(%Project{} = project, attrs) do
+    case add_language_with_count_for_actor(nil, project, attrs) do
+      {:ok, value} -> {:ok, Map.delete(value, :notification_outcome)}
+      other -> other
+    end
+  end
+
+  defp add_language_with_count_for_actor(actor_scope, project, attrs) do
     attrs = MapUtils.stringify_keys(attrs)
 
     Repo.transaction(fn ->
       lock_project!(project.id)
       :ok = LocalizableWords.lock_inventory!(project.id)
 
-      with {:ok, language} <- persist_language(project, attrs),
+      with {:ok, authorized_project} <- authorize_actor_project(actor_scope, project),
+           {:ok, {language, persistence}} <- persist_language(authorized_project, attrs),
            {:ok, count} <- collect_existing_sources(project.id, language) do
-        %{language: language, extracted_count: count}
+        outcome =
+          maybe_deliver_created_content_activity!(actor_scope, authorized_project, language, persistence)
+
+        %{language: language, extracted_count: count, notification_outcome: outcome}
       else
         {:error, reason} -> Repo.rollback(reason)
       end
@@ -101,10 +135,16 @@ defmodule Storyarn.Localization.LanguageCrud do
 
   defp persist_language(project, attrs) do
     case get_archived_language_by_locale(project.id, attrs["locale_code"]) do
-      %ProjectLanguage{} = archived -> reactivate_language(archived, project.id, attrs)
-      nil -> insert_language(project.id, attrs)
+      %ProjectLanguage{} = archived ->
+        tag_language_persistence(reactivate_language(archived, project.id, attrs), :reactivated)
+
+      nil ->
+        tag_language_persistence(insert_language(project.id, attrs), :inserted)
     end
   end
+
+  defp tag_language_persistence({:ok, language}, persistence), do: {:ok, {language, persistence}}
+  defp tag_language_persistence({:error, reason}, _persistence), do: {:error, reason}
 
   defp reactivate_language(archived, project_id, attrs) do
     archived
@@ -150,27 +190,50 @@ defmodule Storyarn.Localization.LanguageCrud do
   end
 
   def remove_language(%ProjectLanguage{} = language) do
-    Repo.transaction(fn ->
-      lock_project!(language.project_id)
+    remove_language_for_actor(nil, language)
+  end
+
+  def remove_language(%Scope{} = actor_scope, %ProjectLanguage{} = language) do
+    result = remove_language_for_actor(actor_scope, language)
+
+    case result do
+      {:ok, {archived, notification_outcome}} ->
+        Notifications.publish_committed(notification_outcome)
+        {:ok, archived}
+
+      other ->
+        other
+    end
+  end
+
+  defp remove_language_for_actor(actor_scope, language) do
+    fn ->
+      project = lock_project!(language.project_id)
       :ok = LocalizableWords.lock_inventory!(language.project_id)
       locked_language = lock_language!(language.project_id, language.id)
 
-      archive_locked_language(locked_language)
-    end)
+      archived = archive_language!(locked_language)
+      outcome = maybe_deliver_content_activity!(actor_scope, project, :deleted, archived)
+
+      :ok = cancel_active_translation_run(archived)
+      {archived, outcome}
+    end
+    |> Repo.transaction()
+    |> case do
+      {:ok, {archived, :suppressed}} -> {:ok, archived}
+      other -> other
+    end
   end
 
-  defp archive_locked_language(%ProjectLanguage{is_source: true}), do: Repo.rollback(:source_language)
+  defp archive_language!(%ProjectLanguage{is_source: true}), do: Repo.rollback(:source_language)
 
-  defp archive_locked_language(%ProjectLanguage{} = language) do
-    with {:ok, archived} <-
-           language
-           |> ProjectLanguage.update_changeset(%{
-             "archived_at" => Storyarn.Shared.TimeHelpers.now()
-           })
-           |> Repo.update(),
-         :ok <- cancel_active_translation_run(archived) do
-      archived
-    else
+  defp archive_language!(%ProjectLanguage{} = language) do
+    case language
+         |> ProjectLanguage.update_changeset(%{
+           "archived_at" => Storyarn.Shared.TimeHelpers.now()
+         })
+         |> Repo.update() do
+      {:ok, archived} -> archived
       {:error, reason} -> Repo.rollback(reason)
     end
   end
@@ -192,28 +255,52 @@ defmodule Storyarn.Localization.LanguageCrud do
   Otherwise a new source language row is created. The previous source remains
   available as a target. Existing translations require an explicit reset.
   """
-  def change_source_language(%Project{} = project, locale_code, opts \\ []) when is_binary(locale_code) do
-    locale_code = LocaleCode.normalize(locale_code)
-    reset_translations? = Keyword.get(opts, :reset_translations, false)
+  def change_source_language(%Project{} = project, locale_code) when is_binary(locale_code) do
+    change_source_language(project, locale_code, [])
+  end
 
-    fn ->
-      lock_project!(project.id)
-      :ok = LocalizableWords.lock_inventory!(project.id)
-      language = change_source_in_transaction(project.id, locale_code, reset_translations?)
+  def change_source_language(%Scope{} = actor_scope, %Project{} = project, locale_code) when is_binary(locale_code) do
+    change_source_language(actor_scope, project, locale_code, [])
+  end
 
-      case LocalizableWords.extract_all(project.id) do
-        {:ok, _count} -> language
-        {:error, reason} -> Repo.rollback(reason)
-      end
+  def change_source_language(%Project{} = project, locale_code, opts) when is_binary(locale_code) do
+    case change_source_language_for_actor(nil, project, locale_code, opts) do
+      {:ok, {language, _notification_outcome}} -> {:ok, language}
+      {:error, reason} -> {:error, reason}
     end
-    |> Repo.transaction()
-    |> case do
-      {:ok, %ProjectLanguage{} = language} ->
+  end
+
+  def change_source_language(%Scope{} = actor_scope, %Project{} = project, locale_code, opts)
+      when is_binary(locale_code) do
+    case change_source_language_for_actor(actor_scope, project, locale_code, opts) do
+      {:ok, {language, notification_outcome}} ->
+        Notifications.publish_committed(notification_outcome)
         {:ok, language}
 
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  defp change_source_language_for_actor(actor_scope, project, locale_code, opts) do
+    locale_code = LocaleCode.normalize(locale_code)
+    reset_translations? = Keyword.get(opts, :reset_translations, false)
+
+    Repo.transaction(fn ->
+      locked_project = lock_project!(project.id)
+      :ok = LocalizableWords.lock_inventory!(project.id)
+
+      with {:ok, authorized_project} <- authorize_actor_project(actor_scope, locked_project),
+           {language, persistence} <- change_source_in_transaction(project.id, locale_code, reset_translations?),
+           {:ok, _count} <- LocalizableWords.extract_all(project.id) do
+        notification_outcome =
+          maybe_deliver_created_content_activity!(actor_scope, authorized_project, language, persistence)
+
+        {language, notification_outcome}
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   @doc """
@@ -296,6 +383,43 @@ defmodule Storyarn.Localization.LanguageCrud do
   defp unwrap_language_write({:ok, language}), do: language
   defp unwrap_language_write({:error, reason}), do: Repo.rollback(reason)
 
+  defp maybe_deliver_content_activity!(nil, _project, _action, _language), do: :suppressed
+
+  defp maybe_deliver_content_activity!(%Scope{} = actor_scope, project, action, language) do
+    deliver_content_activity!(actor_scope, project, action, language)
+  end
+
+  defp authorize_actor_project(nil, project), do: {:ok, project}
+  defp authorize_actor_project(%Scope{user: nil}, _project), do: {:error, :not_found}
+
+  defp authorize_actor_project(%Scope{} = actor_scope, project) do
+    case Projects.get_project(actor_scope, project.id) do
+      {:ok, authorized_project, _membership} -> {:ok, authorized_project}
+      {:error, _reason} -> {:error, :not_found}
+    end
+  end
+
+  defp maybe_deliver_created_content_activity!(_actor_scope, _project, _language, :reactivated), do: :suppressed
+
+  defp maybe_deliver_created_content_activity!(_actor_scope, _project, _language, :existing), do: :suppressed
+
+  defp maybe_deliver_created_content_activity!(actor_scope, project, language, :inserted) do
+    maybe_deliver_content_activity!(actor_scope, project, :created, language)
+  end
+
+  defp deliver_content_activity!(actor_scope, project, action, language) do
+    case Notifications.deliver_content_activity(
+           actor_scope,
+           project,
+           action,
+           "localization_language",
+           language
+         ) do
+      {:ok, outcome} -> outcome
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
   defp lock_project!(project_id) do
     case Repo.one(
            from(project in Project,
@@ -346,16 +470,20 @@ defmodule Storyarn.Localization.LanguageCrud do
 
     cond do
       current_source.locale_code == locale_code ->
-        current_source
+        {current_source, :existing}
 
       translations_exist?(project_id) and not reset_translations? ->
         Repo.rollback(:translations_exist)
 
       true ->
-        project_id
-        |> find_or_create_source_candidate(locale_code)
-        |> promote_source_language(project_id)
-        |> maybe_reset_translations(project_id, reset_translations?)
+        {candidate, persistence} = find_or_create_source_candidate(project_id, locale_code)
+
+        language =
+          candidate
+          |> promote_source_language(project_id)
+          |> maybe_reset_translations(project_id, reset_translations?)
+
+        {language, persistence}
     end
   end
 
@@ -369,24 +497,30 @@ defmodule Storyarn.Localization.LanguageCrud do
   defp find_or_create_source_candidate(project_id, locale_code) do
     case get_language_by_locale(project_id, locale_code) do
       %ProjectLanguage{} = language ->
-        language
+        {language, :existing}
 
       nil ->
         case get_archived_language_by_locale(project_id, locale_code) do
           %ProjectLanguage{} = archived ->
-            archived
-            |> ProjectLanguage.update_changeset(%{"archived_at" => nil})
-            |> Repo.update!()
+            language =
+              archived
+              |> ProjectLanguage.update_changeset(%{"archived_at" => nil})
+              |> Repo.update!()
+
+            {language, :reactivated}
 
           nil ->
-            %ProjectLanguage{project_id: project_id}
-            |> ProjectLanguage.create_changeset(%{
-              "locale_code" => locale_code,
-              "name" => Languages.name(locale_code),
-              "is_source" => false,
-              "position" => next_position(project_id)
-            })
-            |> Repo.insert!()
+            language =
+              %ProjectLanguage{project_id: project_id}
+              |> ProjectLanguage.create_changeset(%{
+                "locale_code" => locale_code,
+                "name" => Languages.name(locale_code),
+                "is_source" => false,
+                "position" => next_position(project_id)
+              })
+              |> Repo.insert!()
+
+            {language, :inserted}
         end
     end
   end

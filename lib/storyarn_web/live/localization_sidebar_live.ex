@@ -74,7 +74,12 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     with_edit(socket, fn socket ->
       opts = if params["reset_translations"] == true, do: [reset_translations: true], else: []
 
-      case Localization.change_source_language(socket.assigns.project, code, opts) do
+      case Localization.change_source_language(
+             socket.assigns.current_scope,
+             socket.assigns.project,
+             code,
+             opts
+           ) do
         {:ok, _language} ->
           {:noreply,
            socket
@@ -209,7 +214,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   defp add_target_language(socket, code) do
     attrs = %{"locale_code" => code, "name" => Localization.language_name(code), "is_source" => false}
 
-    case Localization.add_language(socket.assigns.project, attrs) do
+    case Localization.add_language(socket.assigns.current_scope, socket.assigns.project, attrs) do
       {:ok, _lang} ->
         {:noreply, on_target_language_added(socket)}
 
@@ -242,7 +247,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   end
 
   defp remove_existing_language(lang, socket) do
-    case Localization.remove_language(lang) do
+    case Localization.remove_language(socket.assigns.current_scope, lang) do
       {:ok, _} ->
         {:noreply,
          socket

@@ -89,12 +89,12 @@ msgid "Unknown format"
 msgstr "Formato desconocido"
 
 #: lib/storyarn_web/live/flow_live/form.ex:57
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:466
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:470
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:188
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:264
-#: lib/storyarn_web/live/flow_live/show.ex:1674
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:95
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:112
+#: lib/storyarn_web/live/flow_live/show.ex:1679
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:99
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:116
 #, elixir-autogen, elixir-format
 msgid "Item limit reached for your plan"
 msgstr "Límite de elementos alcanzado para tu plan"
@@ -164,7 +164,7 @@ msgstr "Versión no encontrada"
 msgid "Someone"
 msgstr "Alguien"
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:157
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:161
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr "No tienes permiso para editar."

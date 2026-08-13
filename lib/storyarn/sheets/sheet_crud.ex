@@ -3,10 +3,12 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Accounts.Scope
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Localization
+  alias Storyarn.Notifications
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.References.ProjectReferenceIntegrity
@@ -24,6 +26,28 @@ defmodule Storyarn.Sheets.SheetCrud do
   # =============================================================================
   # CRUD Operations
   # =============================================================================
+
+  def create_sheet(%Scope{} = actor_scope, %Project{} = project, attrs) do
+    result =
+      Repo.transaction(fn ->
+        sheet = create_sheet_in_transaction(project, attrs)
+        {sheet, deliver_content_activity!(actor_scope, project, :created, sheet)}
+      end)
+
+    case result do
+      {:ok, {sheet, notification_outcome}} ->
+        Notifications.publish_committed(notification_outcome)
+        sync_created_sheet_localization(sheet)
+        Collaboration.broadcast_dashboard_change(project.id, :sheets)
+        {:ok, sheet}
+
+      {:error, {:limit_reached, details}} ->
+        {:error, :limit_reached, details}
+
+      other ->
+        other
+    end
+  end
 
   def create_sheet(%Project{} = project, attrs) do
     result = Repo.transaction(fn -> create_sheet_in_transaction(project, attrs) end)
@@ -85,6 +109,12 @@ defmodule Storyarn.Sheets.SheetCrud do
     end
   end
 
+  @doc false
+  def create_sheet_in_transaction(%Scope{} = actor_scope, %Project{} = project, attrs) do
+    sheet = create_sheet_in_transaction(project, attrs)
+    {sheet, deliver_content_activity!(actor_scope, project, :created, sheet)}
+  end
+
   def update_sheet(%Sheet{} = sheet, attrs) do
     result =
       Repo.transaction(fn ->
@@ -121,11 +151,19 @@ defmodule Storyarn.Sheets.SheetCrud do
     trash_sheet(sheet)
   end
 
+  def delete_sheet(%Scope{} = actor_scope, %Sheet{} = sheet) do
+    trash_sheet(actor_scope, sheet)
+  end
+
   @doc """
   Soft deletes a sheet and all its descendants (moves to trash).
   """
   def trash_sheet(%Sheet{} = sheet) do
     with {:ok, %{entity: entity}} <- delete_sheet_subtree(sheet), do: {:ok, entity}
+  end
+
+  def trash_sheet(%Scope{} = actor_scope, %Sheet{} = sheet) do
+    with {:ok, %{entity: entity}} <- delete_sheet_subtree(actor_scope, sheet), do: {:ok, entity}
   end
 
   @doc """
@@ -138,6 +176,22 @@ defmodule Storyarn.Sheets.SheetCrud do
     fn -> delete_sheet_subtree_in_transaction(sheet) end
     |> Repo.transaction()
     |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
+  end
+
+  def delete_sheet_subtree(%Scope{} = actor_scope, %Sheet{} = sheet) do
+    result = Repo.transaction(fn -> delete_sheet_subtree_in_transaction(actor_scope, sheet) end)
+
+    result =
+      case result do
+        {:ok, %{notification_outcome: outcome} = deleted} ->
+          Notifications.publish_committed(outcome)
+          {:ok, Map.delete(deleted, :notification_outcome)}
+
+        other ->
+          other
+      end
+
+    Collaboration.broadcast_dashboard_result(result, sheet.project_id, :sheets)
   end
 
   @doc false
@@ -166,6 +220,14 @@ defmodule Storyarn.Sheets.SheetCrud do
       |> Repo.update!()
 
     %{entity: deleted, deleted_ids: [deleted.id | descendant_ids]}
+  end
+
+  @doc false
+  def delete_sheet_subtree_in_transaction(%Scope{} = actor_scope, %Sheet{} = sheet) do
+    deleted = delete_sheet_subtree_in_transaction(sheet)
+    project = Repo.get!(Project, deleted.entity.project_id)
+    outcome = deliver_content_activity!(actor_scope, project, :deleted, deleted.entity)
+    Map.put(deleted, :notification_outcome, outcome)
   end
 
   @doc """
@@ -348,6 +410,13 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
+
+  defp deliver_content_activity!(actor_scope, project, action, sheet) do
+    case Notifications.deliver_content_activity(actor_scope, project, action, "sheet", sheet) do
+      {:ok, outcome} -> outcome
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
 
   defp lock_active_project!(project_id) do
     case Repo.one(

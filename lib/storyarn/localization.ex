@@ -13,6 +13,7 @@ defmodule Storyarn.Localization do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Accounts.Scope
   alias Storyarn.Localization.BatchTranslator
   alias Storyarn.Localization.ExportImport
   alias Storyarn.Localization.GlossaryCrud
@@ -76,12 +77,14 @@ defmodule Storyarn.Localization do
   @doc "Adds a new language to a project."
   @spec add_language(Project.t(), attrs()) :: {:ok, project_language()} | {:error, language_add_error()}
   defdelegate add_language(project, attrs), to: LanguageCrud
+  defdelegate add_language(actor_scope, project, attrs), to: LanguageCrud
 
   @doc "Adds a language and reports how many localization rows were reconciled."
   @spec add_language_with_count(Project.t(), attrs()) ::
           {:ok, %{language: project_language(), extracted_count: non_neg_integer()}}
           | {:error, language_add_error()}
   defdelegate add_language_with_count(project, attrs), to: LanguageCrud
+  defdelegate add_language_with_count(actor_scope, project, attrs), to: LanguageCrud
 
   @doc "Updates a project language."
   @spec update_language(project_language(), attrs()) ::
@@ -92,6 +95,7 @@ defmodule Storyarn.Localization do
   @spec remove_language(project_language()) ::
           {:ok, project_language()} | {:error, changeset() | :source_language}
   defdelegate remove_language(language), to: LanguageCrud
+  defdelegate remove_language(actor_scope, language), to: LanguageCrud
 
   @doc "Sets a language as the source language (unsets any existing source)."
   @spec set_source_language(project_language()) ::
@@ -104,9 +108,22 @@ defmodule Storyarn.Localization do
   defdelegate change_source_language(project, locale_code), to: LanguageCrud
 
   @doc "Changes the source language, optionally resetting all translations."
+  @spec change_source_language(Scope.t(), Project.t(), String.t()) ::
+          {:ok, project_language()} | {:error, term()}
+  def change_source_language(%Scope{} = actor_scope, %Project{} = project, locale_code) do
+    LanguageCrud.change_source_language(actor_scope, project, locale_code)
+  end
+
   @spec change_source_language(Project.t(), String.t(), keyword()) ::
           {:ok, project_language()} | {:error, term()}
-  defdelegate change_source_language(project, locale_code, opts), to: LanguageCrud
+  def change_source_language(%Project{} = project, locale_code, opts) do
+    LanguageCrud.change_source_language(project, locale_code, opts)
+  end
+
+  @doc "Changes the source language for an authorized actor, optionally resetting translations."
+  @spec change_source_language(Scope.t(), Project.t(), String.t(), keyword()) ::
+          {:ok, project_language()} | {:error, term()}
+  defdelegate change_source_language(actor_scope, project, locale_code, opts), to: LanguageCrud
 
   @doc "Reorders languages by the given list of IDs."
   @spec reorder_languages(id(), [id()]) :: {:ok, any()}

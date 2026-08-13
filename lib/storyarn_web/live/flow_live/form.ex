@@ -48,7 +48,7 @@ defmodule StoryarnWeb.FlowLive.Form do
   end
 
   def handle_event("save", %{"flow" => flow_params}, socket) do
-    case Flows.create_flow(socket.assigns.project, flow_params) do
+    case Flows.create_flow(socket.assigns.current_scope, socket.assigns.project, flow_params) do
       {:ok, flow} ->
         notify_parent({:saved, flow})
         {:noreply, socket}

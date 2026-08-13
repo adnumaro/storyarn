@@ -31,8 +31,8 @@ msgstr "Atajo cambiado"
 msgid "Could not create block."
 msgstr "No se pudo crear el bloque."
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:98
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:115
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:102
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:119
 #, elixir-autogen, elixir-format
 msgid "Could not create sheet."
 msgstr "No se pudo crear la ficha."
@@ -43,12 +43,12 @@ msgid "Could not delete block."
 msgstr "No se pudo eliminar el bloque."
 
 #: lib/storyarn_web/live/sheet_live/index.ex:380
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:167
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:171
 #, elixir-autogen, elixir-format
 msgid "Could not delete sheet."
 msgstr "No se pudo eliminar la ficha."
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:176
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:180
 #, elixir-autogen, elixir-format
 msgid "Could not move sheet."
 msgstr "No se pudo mover la ficha."
@@ -90,7 +90,7 @@ msgstr "No se pudo subir el banner."
 msgid "Invalid file data."
 msgstr "Datos de archivo inválidos."
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:105
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:109
 #, elixir-autogen, elixir-format
 msgid "New Sheet"
 msgstr "Nueva Ficha"
@@ -120,9 +120,9 @@ msgstr "Atajo %{error}"
 msgid "Unsupported file type."
 msgstr "Tipo de archivo no compatible."
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:457
-#: lib/storyarn_web/live/hooks/palette.ex:584
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:90
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:460
+#: lib/storyarn_web/live/hooks/palette.ex:585
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:93
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr "Sin título"
@@ -213,7 +213,7 @@ msgid "Could not duplicate block."
 msgstr "No se pudo duplicar el bloque."
 
 #: lib/storyarn_web/live/sheet_live/index.ex:379
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:166
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:170
 #, elixir-autogen, elixir-format
 msgid "Sheet moved to trash."
 msgstr "Ficha movida a la papelera."

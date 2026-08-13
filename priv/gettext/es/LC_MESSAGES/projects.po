@@ -37,7 +37,7 @@ msgstr "Conexión establecida."
 msgid "Create Project"
 msgstr "Crear proyecto"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:197
+#: lib/storyarn_web/live/project_settings_live/general.ex:202
 #, elixir-autogen, elixir-format
 msgid "Failed to delete project."
 msgstr "Error al eliminar el proyecto."
@@ -82,7 +82,7 @@ msgstr "No hay ninguna clave API configurada."
 msgid "Project Settings"
 msgstr "Configuración del proyecto"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:193
+#: lib/storyarn_web/live/project_settings_live/general.ex:198
 #, elixir-autogen, elixir-format
 msgid "Project deleted."
 msgstr "Proyecto eliminado."
@@ -206,22 +206,22 @@ msgstr "No tienes permiso para gestionar este proyecto."
 msgid "You're already a member of this project."
 msgstr "Ya eres miembro de este proyecto."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:243
+#: lib/storyarn_web/live/project_settings_live/general.ex:248
 #, elixir-autogen, elixir-format
 msgid "Failed to reset theme."
 msgstr "Error al restablecer el tema."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:457
+#: lib/storyarn_web/live/project_settings_live/general.ex:462
 #, elixir-autogen, elixir-format
 msgid "Failed to save theme."
 msgstr "Error al guardar el tema."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:240
+#: lib/storyarn_web/live/project_settings_live/general.ex:245
 #, elixir-autogen, elixir-format
 msgid "Theme reset to default."
 msgstr "Tema restablecido por defecto."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:454
+#: lib/storyarn_web/live/project_settings_live/general.ex:459
 #, elixir-autogen, elixir-format
 msgid "Theme saved."
 msgstr "Tema guardado."
@@ -261,7 +261,7 @@ msgstr "Configuración del proveedor de traducción"
 msgid "Failed to save settings."
 msgstr "Error al guardar la configuración."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:460
+#: lib/storyarn_web/live/project_settings_live/general.ex:465
 #, elixir-autogen, elixir-format
 msgid "Invalid color format. Use #RRGGBB."
 msgstr "Formato de color no válido. Usa #RRGGBB."
@@ -281,12 +281,12 @@ msgstr "Control de versiones"
 msgid "Version control settings saved."
 msgstr "Ajustes de control de versiones guardados."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:173
+#: lib/storyarn_web/live/project_settings_live/general.ex:178
 #, elixir-autogen, elixir-format
 msgid "Could not update the source language."
 msgstr "No se pudo actualizar el idioma de origen."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:166
+#: lib/storyarn_web/live/project_settings_live/general.ex:171
 #, elixir-autogen, elixir-format
 msgid "Source language updated."
 msgstr "Idioma de origen actualizado."
@@ -408,7 +408,7 @@ msgstr "Reintentando tras un problema temporal…"
 msgid "Creating project…"
 msgstr "Creando proyecto…"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:334
+#: lib/storyarn_web/live/project_settings_live/general.ex:339
 #: lib/storyarn_web/live/template_live/show.ex:518
 #, elixir-autogen, elixir-format
 msgid "A template publication is already running."
@@ -702,7 +702,7 @@ msgstr "No se pudo eliminar la template."
 msgid "Template could not be installed."
 msgstr "No se pudo instalar la template."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:346
+#: lib/storyarn_web/live/project_settings_live/general.ex:351
 #, elixir-autogen, elixir-format
 msgid "Template could not be queued."
 msgstr "No se pudo poner en cola la template."
@@ -712,7 +712,7 @@ msgstr "No se pudo poner en cola la template."
 msgid "Template could not be restored."
 msgstr "No se pudo restaurar la template."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:338
+#: lib/storyarn_web/live/project_settings_live/general.ex:343
 #: lib/storyarn_web/live/template_live/show.ex:524
 #, elixir-autogen, elixir-format
 msgid "Template limit reached for your plan."
@@ -735,7 +735,7 @@ msgstr "Template eliminada permanentemente."
 msgid "Template publication could not be queued."
 msgstr "No se pudo poner en cola la publicación de la template."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:295
+#: lib/storyarn_web/live/project_settings_live/general.ex:300
 #: lib/storyarn_web/live/template_live/show.ex:512
 #, elixir-autogen, elixir-format
 msgid "Template publication queued."
@@ -751,7 +751,7 @@ msgstr "Template restaurada."
 msgid "Template version"
 msgstr "Versión de la template"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:342
+#: lib/storyarn_web/live/project_settings_live/general.ex:347
 #: lib/storyarn_web/live/template_live/show.ex:521
 #, elixir-autogen, elixir-format
 msgid "Template version limit reached for your plan."
@@ -795,7 +795,7 @@ msgstr "Notas de versión"
 msgid "Versions"
 msgstr "Versiones"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:210
+#: lib/storyarn_web/live/project_settings_live/general.ex:215
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to publish templates from this project."
 msgstr "No tienes permiso para publicar templates desde este proyecto."
