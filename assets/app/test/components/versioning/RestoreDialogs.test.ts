@@ -1,9 +1,13 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
+import CreateVersionDialog from "../../../components/versioning/history/CreateVersionDialog.vue";
+import DeleteVersionDialog from "../../../components/versioning/history/DeleteVersionDialog.vue";
+import PromoteVersionDialog from "../../../components/versioning/history/PromoteVersionDialog.vue";
 import RestorePreviewDialog from "../../../components/versioning/history/RestorePreviewDialog.vue";
 import UnsavedChangesDialog from "../../../components/versioning/history/UnsavedChangesDialog.vue";
+import VersionHistory from "../../../components/versioning/history/VersionHistory.vue";
 import { useVersionHistory } from "../../../components/versioning/history/useVersionHistory";
-import { createMockLive, withSetup } from "../../setup";
+import { createMockLive, createPromiseMockLive, withSetup } from "../../setup";
 
 const dialogStubs = {
   Dialog: { template: "<div><slot /></div>" },
@@ -26,7 +30,118 @@ function requestIdFor(live: MockLive, event: string, index = -1): string {
   return requestId as string;
 }
 
+function createRejectingLive(rejectedEvents: string[]) {
+  const error = new Error("socket timeout");
+  const rejected = new Set(rejectedEvents);
+  const pushEvent = vi.fn((event: unknown, _payload?: unknown, callback?: unknown) => {
+    // The callback overload intentionally swallows transport failures in
+    // Phoenix. Leaving it pending here makes a missing onError observable as
+    // the same stuck loading state without creating an unhandled rejection.
+    if (typeof callback === "function") return undefined;
+    return rejected.has(String(event)) ? Promise.reject(error) : Promise.resolve({});
+  });
+
+  return {
+    error,
+    live: createPromiseMockLive({}, pushEvent),
+    pushEvent,
+  };
+}
+
 describe("entity restore dialogs", () => {
+  it("renders the shared transport failure inside every version action dialog", () => {
+    const cases = [
+      {
+        component: CreateVersionDialog,
+        props: { open: true, title: "Milestone", description: "" },
+      },
+      {
+        component: PromoteVersionDialog,
+        props: {
+          open: true,
+          title: "Milestone",
+          description: "",
+          promoteVersion: { versionNumber: 4 },
+        },
+      },
+      { component: DeleteVersionDialog, props: { open: true } },
+      {
+        component: UnsavedChangesDialog,
+        props: { open: true, versionNumber: 4 },
+      },
+      {
+        component: RestorePreviewDialog,
+        props: {
+          open: true,
+          restoreData: {
+            versionNumber: 4,
+            report: { hasConflicts: false, conflicts: [] },
+          },
+        },
+      },
+    ];
+
+    for (const { component, props } of cases) {
+      const wrapper = mount(component, {
+        props: { ...props, transportError: true },
+        shallow: true,
+        global: {
+          renderStubDefaultSlot: true,
+          stubs: { VersionTransportError: false },
+        },
+      });
+
+      expect(wrapper.get('[data-testid="version-transport-error"]').attributes("role")).toBe(
+        "alert",
+      );
+      expect(wrapper.get('[data-testid="version-transport-error"]').text()).toBe(
+        "The request did not complete. Check your connection and try again.",
+      );
+      wrapper.unmount();
+    }
+  });
+
+  it("surfaces a transport failure outside dialogs for list actions", async () => {
+    const { live } = createRejectingLive(["load_more_versions"]);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const wrapper = mount(VersionHistory, {
+      props: {
+        versions: [{ id: 10, versionNumber: 4, title: "Milestone" }],
+        namedVersions: [{ id: 10, versionNumber: 4, title: "Milestone" }],
+        autoVersions: [],
+        hasMore: true,
+        canEdit: true,
+        canNameVersion: true,
+        restoreEnabled: true,
+      },
+      global: {
+        provide: { _live_vue: live },
+        stubs: {
+          ...dialogStubs,
+          CreateVersionDialog: true,
+          DeleteVersionDialog: true,
+          PromoteVersionDialog: true,
+          RestorePreviewDialog: true,
+          UnsavedChangesDialog: true,
+        },
+      },
+    });
+
+    const loadMore = wrapper.findAll("button").find((button) => button.text() === "Load more");
+    expect(loadMore).toBeDefined();
+    await loadMore!.trigger("click");
+
+    await vi.waitFor(() =>
+      expect(wrapper.get('[data-testid="version-transport-error"]').text()).toBe(
+        "The request did not complete. Check your connection and try again.",
+      ),
+    );
+    expect(loadMore!.attributes("disabled")).toBeUndefined();
+
+    wrapper.unmount();
+    warn.mockRestore();
+  });
+
   it("offers one restore path and explains the mandatory safety version", async () => {
     const wrapper = mount(UnsavedChangesDialog, {
       props: { open: true, versionNumber: 4 },
@@ -473,6 +588,161 @@ describe("entity restore dialogs", () => {
     expect(result.showRestoreModal.value).toBe(false);
 
     app.unmount();
+    warn.mockRestore();
+  });
+
+  it("clears non-restore loading states after asynchronous Phoenix rejections", async () => {
+    const { live } = createRejectingLive([
+      "create_version",
+      "promote_version",
+      "delete_version",
+      "load_more_versions",
+    ]);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { result, app } = withSetup(() => useVersionHistory(() => true), { live });
+
+    result.openCreateModal();
+    result.createTitle.value = "Milestone";
+    result.submitCreate();
+    expect(result.loadingAction.value).toBe("create");
+    await vi.waitFor(() => expect(result.loadingAction.value).toBeNull());
+    expect(result.transportError.value).toBe(true);
+    expect(result.showCreateModal.value).toBe(true);
+    expect(result.createTitle.value).toBe("Milestone");
+    result.submitCreate();
+    expect(result.transportError.value).toBe(false);
+    await vi.waitFor(() => expect(eventCalls(live, "create_version")).toHaveLength(2));
+    await vi.waitFor(() => expect(result.loadingAction.value).toBeNull());
+    expect(result.transportError.value).toBe(true);
+
+    result.openPromoteModal({ versionNumber: 4, changeSummary: "Auto-save" });
+    result.submitPromote();
+    expect(result.transportError.value).toBe(false);
+    expect(result.loadingAction.value).toBe("promote");
+    await vi.waitFor(() => expect(result.loadingAction.value).toBeNull());
+    expect(result.transportError.value).toBe(true);
+    expect(result.showPromoteModal.value).toBe(true);
+    expect(result.promoteVersion.value?.versionNumber).toBe(4);
+    result.submitPromote();
+    expect(result.transportError.value).toBe(false);
+    await vi.waitFor(() => expect(eventCalls(live, "promote_version")).toHaveLength(2));
+    await vi.waitFor(() => expect(result.loadingAction.value).toBeNull());
+    expect(result.transportError.value).toBe(true);
+
+    result.openDeleteModal(4);
+    result.confirmDelete();
+    expect(result.transportError.value).toBe(false);
+    expect(result.loadingAction.value).toBe("delete");
+    await vi.waitFor(() => expect(result.loadingAction.value).toBeNull());
+    expect(result.transportError.value).toBe(true);
+    expect(result.showDeleteModal.value).toBe(true);
+    expect(result.deleteVersionNumber.value).toBe(4);
+    result.confirmDelete();
+    expect(result.transportError.value).toBe(false);
+    await vi.waitFor(() => expect(eventCalls(live, "delete_version")).toHaveLength(2));
+    await vi.waitFor(() => expect(result.loadingAction.value).toBeNull());
+    expect(result.transportError.value).toBe(true);
+
+    result.loadMore();
+    expect(result.transportError.value).toBe(false);
+    expect(result.loadingAction.value).toBe("load-more");
+    await vi.waitFor(() => expect(result.loadingAction.value).toBeNull());
+    expect(result.transportError.value).toBe(true);
+    result.loadMore();
+    expect(result.transportError.value).toBe(false);
+    await vi.waitFor(() => expect(eventCalls(live, "load_more_versions")).toHaveLength(2));
+    await vi.waitFor(() => expect(result.loadingAction.value).toBeNull());
+    expect(result.transportError.value).toBe(true);
+
+    result.openCreateModal();
+    expect(result.transportError.value).toBe(false);
+
+    app.unmount();
+    warn.mockRestore();
+  });
+
+  it("clears every restore loading state through the real Promise rejection path", async () => {
+    const { live } = createRejectingLive(["preview_restore"]);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { result, app } = withSetup(() => useVersionHistory(() => true), { live });
+
+    result.previewRestore(31);
+    expect(result.loadingAction.value).toBe("restore-31");
+    await vi.waitFor(() => expect(result.loadingAction.value).toBeNull());
+    expect(result.transportError.value).toBe(true);
+
+    // The failed request is invalidated, so the same action can be retried.
+    result.previewRestore(31);
+    expect(result.transportError.value).toBe(false);
+    await vi.waitFor(() => expect(eventCalls(live, "preview_restore")).toHaveLength(2));
+    await vi.waitFor(() => expect(result.loadingAction.value).toBeNull());
+    expect(result.transportError.value).toBe(true);
+
+    app.unmount();
+    warn.mockRestore();
+  });
+
+  it("preserves review and confirmation context when their Promise pushes reject", async () => {
+    const reviewTransport = createRejectingLive(["review_restore"]);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const reviewSetup = withSetup(() => useVersionHistory(() => true), {
+      live: reviewTransport.live,
+    });
+    const unsavedHandler = vi
+      .mocked(reviewTransport.live.handleEvent)
+      .mock.calls.find(([event]) => event === "show_unsaved_modal")?.[1];
+
+    reviewSetup.result.previewRestore(32);
+    await vi.waitFor(() => expect(reviewSetup.result.loadingAction.value).toBeNull());
+    unsavedHandler!({
+      versionNumber: 32,
+      request_id: requestIdFor(reviewTransport.live, "preview_restore"),
+    });
+    reviewSetup.result.reviewRestore();
+    expect(reviewSetup.result.loadingAction.value).toBe("review-restore");
+    await vi.waitFor(() => expect(reviewSetup.result.loadingAction.value).toBeNull());
+    expect(reviewSetup.result.transportError.value).toBe(true);
+    expect(reviewSetup.result.showUnsavedModal.value).toBe(true);
+    expect(reviewSetup.result.unsavedVersionNumber.value).toBe(32);
+    reviewSetup.result.reviewRestore();
+    expect(reviewSetup.result.transportError.value).toBe(false);
+    await vi.waitFor(() =>
+      expect(eventCalls(reviewTransport.live, "review_restore")).toHaveLength(2),
+    );
+    await vi.waitFor(() => expect(reviewSetup.result.loadingAction.value).toBeNull());
+    expect(reviewSetup.result.transportError.value).toBe(true);
+    reviewSetup.app.unmount();
+
+    const confirmTransport = createRejectingLive(["confirm_restore"]);
+    const confirmSetup = withSetup(() => useVersionHistory(() => true), {
+      live: confirmTransport.live,
+    });
+    const restoreHandler = vi
+      .mocked(confirmTransport.live.handleEvent)
+      .mock.calls.find(([event]) => event === "show_restore_modal")?.[1];
+
+    confirmSetup.result.previewRestore(33);
+    await vi.waitFor(() => expect(confirmSetup.result.loadingAction.value).toBeNull());
+    restoreHandler!({
+      versionNumber: 33,
+      request_id: requestIdFor(confirmTransport.live, "preview_restore"),
+      report: { hasConflicts: false, conflicts: [] },
+    });
+    confirmSetup.result.confirmRestore();
+    expect(confirmSetup.result.loadingAction.value).toBe("confirm-restore");
+    await vi.waitFor(() => expect(confirmSetup.result.loadingAction.value).toBeNull());
+    expect(confirmSetup.result.transportError.value).toBe(true);
+    expect(confirmSetup.result.showRestoreModal.value).toBe(true);
+    expect(confirmSetup.result.restoreData.value?.versionNumber).toBe(33);
+    confirmSetup.result.confirmRestore();
+    expect(confirmSetup.result.transportError.value).toBe(false);
+    await vi.waitFor(() =>
+      expect(eventCalls(confirmTransport.live, "confirm_restore")).toHaveLength(2),
+    );
+    await vi.waitFor(() => expect(confirmSetup.result.loadingAction.value).toBeNull());
+    expect(confirmSetup.result.transportError.value).toBe(true);
+
+    confirmSetup.app.unmount();
     warn.mockRestore();
   });
 });

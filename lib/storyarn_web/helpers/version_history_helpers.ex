@@ -12,7 +12,34 @@ defmodule StoryarnWeb.Helpers.VersionHistoryHelpers do
   alias Storyarn.Billing
   alias Storyarn.Versioning
 
+  @max_restore_request_id_bytes 64
   @versions_per_page 20
+
+  defguardp valid_restore_request_id?(request_id)
+            when is_binary(request_id) and byte_size(request_id) > 0 and
+                   byte_size(request_id) <= @max_restore_request_id_bytes
+
+  @doc """
+  Extracts and validates a restore request ID.
+
+  Clients predating restore request correlation may omit the ID. A present ID
+  must be a non-empty, bounded string so malformed requests cannot be treated
+  as legacy traffic or echoed back to the client.
+  """
+  def restore_request_id(params) when is_map(params) do
+    case Map.fetch(params, "request_id") do
+      :error -> {:ok, nil}
+      {:ok, request_id} when valid_restore_request_id?(request_id) -> {:ok, request_id}
+      {:ok, _invalid_request_id} -> :error
+    end
+  end
+
+  @doc "Adds a validated restore request ID to an outbound payload when one was supplied."
+  def put_restore_request_id(payload, nil) when is_map(payload), do: payload
+
+  def put_restore_request_id(payload, request_id) when is_map(payload) and valid_restore_request_id?(request_id) do
+    Map.put(payload, :request_id, request_id)
+  end
 
   @doc """
   Loads version history for an entity and assigns it to `:history_data`.
@@ -116,11 +143,9 @@ defmodule StoryarnWeb.Helpers.VersionHistoryHelpers do
       end
 
     if has_unsaved do
-      {:noreply,
-       push_event(socket, "show_unsaved_modal", %{
-         versionNumber: version.version_number,
-         request_id: request_id
-       })}
+      payload = put_restore_request_id(%{versionNumber: version.version_number}, request_id)
+
+      {:noreply, push_event(socket, "show_unsaved_modal", payload)}
     else
       show_conflict_preview(socket, entity_type, entity, version, request_id)
     end
@@ -142,12 +167,13 @@ defmodule StoryarnWeb.Helpers.VersionHistoryHelpers do
             end)
         }
 
-        {:noreply,
-         push_event(socket, "show_restore_modal", %{
-           versionNumber: version.version_number,
-           request_id: request_id,
-           report: serialized_report
-         })}
+        payload =
+          put_restore_request_id(
+            %{versionNumber: version.version_number, report: serialized_report},
+            request_id
+          )
+
+        {:noreply, push_event(socket, "show_restore_modal", payload)}
 
       {:error, _} ->
         {:noreply,

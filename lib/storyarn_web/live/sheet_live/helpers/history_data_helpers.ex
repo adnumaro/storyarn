@@ -8,6 +8,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
 
   alias Storyarn.Billing
   alias Storyarn.Versioning
+  alias StoryarnWeb.Helpers.VersionHistoryHelpers
 
   @versions_per_page 20
 
@@ -90,11 +91,9 @@ defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
       end
 
     if has_unsaved do
-      {:noreply,
-       push_event(socket, "show_unsaved_modal", %{
-         versionNumber: version.version_number,
-         request_id: request_id
-       })}
+      payload = VersionHistoryHelpers.put_restore_request_id(%{versionNumber: version.version_number}, request_id)
+
+      {:noreply, push_event(socket, "show_unsaved_modal", payload)}
     else
       show_conflict_preview(socket, version, request_id)
     end
@@ -117,12 +116,13 @@ defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
             end)
         }
 
-        {:noreply,
-         push_event(socket, "show_restore_modal", %{
-           versionNumber: version.version_number,
-           request_id: request_id,
-           report: serialized_report
-         })}
+        payload =
+          VersionHistoryHelpers.put_restore_request_id(
+            %{versionNumber: version.version_number, report: serialized_report},
+            request_id
+          )
+
+        {:noreply, push_event(socket, "show_restore_modal", payload)}
 
       {:error, _} ->
         {:noreply,

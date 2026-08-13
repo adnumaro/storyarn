@@ -15,6 +15,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
   alias Storyarn.Versioning
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.VersionEventHelpers
+  alias StoryarnWeb.Helpers.VersionHistoryHelpers
 
   def handle_compare(%{"version_number" => version_number}, socket, _helpers) do
     case parse_version_number(version_number) do
@@ -66,33 +67,39 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
   end
 
   def handle_preview_restore(%{"version_number" => version_number} = params, socket, _helpers) do
-    request_id = params["request_id"]
+    case VersionHistoryHelpers.restore_request_id(params) do
+      {:ok, request_id} ->
+        VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
+          preview_restore(authorized_socket, version_number, request_id)
+        end)
 
-    VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
-      with_version(authorized_socket, version_number, fn version ->
-        detect_and_show_restore_preview(authorized_socket, version, request_id)
-      end)
-    end)
+      :error ->
+        {:noreply, socket}
+    end
   end
 
   def handle_review_restore(%{"version_number" => version_number} = params, socket, _helpers) do
-    request_id = params["request_id"]
+    case VersionHistoryHelpers.restore_request_id(params) do
+      {:ok, request_id} ->
+        VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
+          review_restore(authorized_socket, version_number, request_id)
+        end)
 
-    VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
-      with_version(authorized_socket, version_number, fn version ->
-        show_restore_preview(authorized_socket, version, request_id)
-      end)
-    end)
+      :error ->
+        {:noreply, socket}
+    end
   end
 
   def handle_confirm_restore(%{"version_number" => version_number} = params, socket, helpers) do
-    request_id = params["request_id"]
+    case VersionHistoryHelpers.restore_request_id(params) do
+      {:ok, request_id} ->
+        VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
+          confirm_restore(authorized_socket, version_number, helpers, request_id)
+        end)
 
-    VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
-      with_version(authorized_socket, version_number, fn version ->
-        restore_version(authorized_socket, version, helpers, request_id)
-      end)
-    end)
+      :error ->
+        {:noreply, socket}
+    end
   end
 
   defp blank_to_nil(""), do: nil
@@ -174,6 +181,24 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
     show_conflict_preview(socket, version, request_id)
   end
 
+  defp preview_restore(socket, version_number, request_id) do
+    with_version(socket, version_number, fn version ->
+      detect_and_show_restore_preview(socket, version, request_id)
+    end)
+  end
+
+  defp review_restore(socket, version_number, request_id) do
+    with_version(socket, version_number, fn version ->
+      show_restore_preview(socket, version, request_id)
+    end)
+  end
+
+  defp confirm_restore(socket, version_number, helpers, request_id) do
+    with_version(socket, version_number, fn version ->
+      restore_version(socket, version, helpers, request_id)
+    end)
+  end
+
   defp restore_version(socket, version, helpers, request_id) do
     sheet = socket.assigns.sheet
     restore_fun = Map.get(helpers, :restore_version, &Versioning.restore_version/4)
@@ -230,17 +255,19 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
   defp on_version_restored(socket, version, helpers, request_id) do
     updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
 
+    payload =
+      VersionHistoryHelpers.put_restore_request_id(
+        %{name: updated_sheet.name, shortcut: updated_sheet.shortcut},
+        request_id
+      )
+
     {:noreply,
      socket
      |> assign(:sheet, updated_sheet)
      |> helpers.reload_blocks.()
      |> helpers.clear_undo.()
      |> load_history_data()
-     |> push_event("version_restored", %{
-       name: updated_sheet.name,
-       shortcut: updated_sheet.shortcut,
-       request_id: request_id
-     })
+     |> push_event("version_restored", payload)
      |> helpers.broadcast.(:sheet_restored)
      |> put_flash(
        :info,

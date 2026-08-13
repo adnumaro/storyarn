@@ -74,6 +74,7 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
   const showRestoreModal = ref(false);
   const restoreData = ref<RestoreData | null>(null);
   const loadingAction = ref<string | null>(null);
+  const transportError = ref(false);
 
   let restoreRequest: RestoreRequest | null = null;
 
@@ -171,6 +172,7 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
     };
 
     restoreRequest = request;
+    transportError.value = false;
     loadingAction.value = loadingKey;
 
     return request;
@@ -193,6 +195,22 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
     if (loadingAction.value === request.loadingKey) loadingAction.value = null;
   }
 
+  function clearLoadingAction(loadingKey: string) {
+    if (loadingAction.value === loadingKey) loadingAction.value = null;
+  }
+
+  function beginLoadingAction(loadingKey: string) {
+    transportError.value = false;
+    loadingAction.value = loadingKey;
+  }
+
+  function failLoadingAction(loadingKey: string) {
+    if (loadingAction.value !== loadingKey) return;
+
+    loadingAction.value = null;
+    transportError.value = true;
+  }
+
   function finishRestoreTransport(request: RestoreRequest) {
     if (restoreRequest?.requestId !== request.requestId) return;
 
@@ -205,6 +223,7 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
 
     clearRestoreLoading(request);
     restoreRequest = null;
+    transportError.value = true;
   }
 
   function invalidateRestoreRequest() {
@@ -232,6 +251,7 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
   }
 
   function openCreateModal() {
+    transportError.value = false;
     createTitle.value = "";
     createDescription.value = "";
     showCreateModal.value = true;
@@ -239,7 +259,7 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
 
   function submitCreate() {
     if (!createTitle.value.trim()) return;
-    loadingAction.value = "create";
+    beginLoadingAction("create");
     live.pushEvent(
       "create_version",
       {
@@ -247,13 +267,15 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
         description: createDescription.value.trim(),
       },
       () => {
-        loadingAction.value = null;
+        clearLoadingAction("create");
         showCreateModal.value = false;
       },
+      () => failLoadingAction("create"),
     );
   }
 
   function openPromoteModal(version: VersionEntry) {
+    transportError.value = false;
     promoteVersion.value = version;
     promoteTitle.value = version.changeSummary || "";
     promoteDescription.value = "";
@@ -262,7 +284,7 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
 
   function submitPromote() {
     if (!promoteVersion.value || !promoteTitle.value.trim()) return;
-    loadingAction.value = "promote";
+    beginLoadingAction("promote");
     live.pushEvent(
       "promote_version",
       {
@@ -271,26 +293,33 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
         description: promoteDescription.value.trim(),
       },
       () => {
-        loadingAction.value = null;
+        clearLoadingAction("promote");
         showPromoteModal.value = false;
         promoteVersion.value = null;
       },
+      () => failLoadingAction("promote"),
     );
   }
 
   function openDeleteModal(versionNumber: number) {
+    transportError.value = false;
     deleteVersionNumber.value = versionNumber;
     showDeleteModal.value = true;
   }
 
   function confirmDelete() {
     if (!deleteVersionNumber.value) return;
-    loadingAction.value = "delete";
-    live.pushEvent("delete_version", { version_number: deleteVersionNumber.value }, () => {
-      loadingAction.value = null;
-      showDeleteModal.value = false;
-      deleteVersionNumber.value = null;
-    });
+    beginLoadingAction("delete");
+    live.pushEvent(
+      "delete_version",
+      { version_number: deleteVersionNumber.value },
+      () => {
+        clearLoadingAction("delete");
+        showDeleteModal.value = false;
+        deleteVersionNumber.value = null;
+      },
+      () => failLoadingAction("delete"),
+    );
   }
 
   function previewRestore(versionNumber: number) {
@@ -353,10 +382,13 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
   }
 
   function loadMore() {
-    loadingAction.value = "load-more";
-    live.pushEvent("load_more_versions", {}, () => {
-      loadingAction.value = null;
-    });
+    beginLoadingAction("load-more");
+    live.pushEvent(
+      "load_more_versions",
+      {},
+      () => clearLoadingAction("load-more"),
+      () => failLoadingAction("load-more"),
+    );
   }
 
   return {
@@ -373,6 +405,7 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
     showRestoreModal,
     restoreData,
     loadingAction,
+    transportError,
     createTitle,
     createDescription,
     promoteTitle,
