@@ -1,0 +1,117 @@
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_d64ccabdb01eb7::t_52932a16dca376 57
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_d64ccabdb01eb7::t_52932a16dca376 57
+priv/gettext/es/LC_MESSAGES/default.po
+  s_d64ccabdb01eb7::t_52932a16dca376 95
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_d64ccabdb01eb7::t_52932a16dca376 53,216,226,367,405,410,415,420
+priv/gettext/assets.pot
+  s_d64ccabdb01eb7::t_52932a16dca376 57
+priv/gettext/default.pot
+  s_d64ccabdb01eb7::t_52932a16dca376 95
+priv/gettext/flows.pot
+  s_d64ccabdb01eb7::t_52932a16dca376 53,216,226,367,405,410,415,420
+priv/gettext/en/LC_MESSAGES/default.po
+  s_d64ccabdb01eb7::t_52932a16dca376 95
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_d64ccabdb01eb7::t_52932a16dca376 53,216,226,367,405,410,415,420
+assets/app/components/versioning/history/CreateVersionDialog.vue
+  s_d64ccabdb01eb7::t_e2881f36312731 16,23,29,47
+assets/app/components/versioning/history/DeleteVersionDialog.vue
+  s_d64ccabdb01eb7::t_0f7e9632d10279 13,15-19,22,41
+assets/app/components/versioning/history/PromoteVersionDialog.vue
+  s_d64ccabdb01eb7::t_f19d244d1fab0a 16,29,36,54
+assets/app/components/versioning/history/RestorePreviewDialog.vue
+  s_d64ccabdb01eb7::t_83c1d261752628 26,32,37,86
+assets/app/components/versioning/history/UnsavedChangesDialog.vue
+  s_d64ccabdb01eb7::t_20d3cf1978ff45 11,17,22,43
+assets/app/components/versioning/history/VersionHistory.vue
+  s_d64ccabdb01eb7::t_767df93c8607aa 2,19,54-62,80-85,444,457,467,477,487
+assets/app/components/versioning/history/VersionTransportError.vue
+  s_d64ccabdb01eb7::t_26db50da2c7d17 1-19
+assets/app/components/versioning/history/useVersionHistory.ts
+  s_d64ccabdb01eb7::t_9161a96ee8894d 36-53,77-79,90-110,115-134,137,143-155,161-243,254,262,270,273,278,287,296,300,305,312-322,327-335,338-340,346-350,355,357-358,365-372,377,379-380,385-391,408
+assets/app/locales/en/common.json
+  s_d64ccabdb01eb7::t_74f628cf37dd92 53-54
+assets/app/locales/es/common.json
+  s_d64ccabdb01eb7::t_1a85d72dbf1184 53-54
+assets/app/shared/composables/useLive.ts
+  s_d64ccabdb01eb7::t_2fb05557a9edd8 27-35,73-77,85,91-105
+assets/app/test/components/versioning/RestoreContainment.test.ts
+  s_d64ccabdb01eb7::t_57da4b85bfd3b7 96,98-99,135,137-138,144,146-147
+assets/app/test/components/versioning/RestoreDialogs.test.ts
+  s_d64ccabdb01eb7::t_678b166d3b8e6f 3-5,8,10,21-50,52-144,263,266,270,276,279,285,293,317-320,328,337,345-536,544-546,551-589,591-746
+assets/app/test/composables/useLive.test.ts
+  s_d64ccabdb01eb7::t_fff4a8b45fd148 3,7-14,44-102
+assets/app/test/setup.ts
+  s_d64ccabdb01eb7::t_69138cf98de978 82-97
+lib/storyarn/flows/variable_reference_tracker.ex
+  s_d64ccabdb01eb7::t_49a43da7809560 249-253,260,279,841,995-997,1001,1014-1020,1317-1318
+lib/storyarn/references/rich_text_mentions.ex
+  s_d64ccabdb01eb7::t_f3794fa737487c 6-7,39,56-76
+lib/storyarn_web/helpers/version_event_helpers.ex
+  s_d64ccabdb01eb7::t_82e634dc531523 53-62,65-74,77-86,195,200-201,205-237,244-245,248
+lib/storyarn_web/helpers/version_history_helpers.ex
+  s_d64ccabdb01eb7::t_48a65a3cb9b8e5 15,18-43,126,146-148,150,155,170-176
+lib/storyarn_web/live/flow_live/show.ex
+  s_d64ccabdb01eb7::t_8850a0c17b58da 469-470,473-474,477-478
+lib/storyarn_web/live/scene_live/show.ex
+  s_d64ccabdb01eb7::t_8bb57a78d56553 764-765,768-769,772-773
+lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex
+  s_d64ccabdb01eb7::t_31ae2773d1dd3c 18,69-78,81-90,93-102,178,181-187,190-202,210,255,258-263,270
+lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex
+  s_d64ccabdb01eb7::t_10056e8738f71e 11,73,94-96,98,102,119-125
+priv/gettext/en/LC_MESSAGES/localization.po
+  s_d64ccabdb01eb7::t_5926a5cdc38e04 19-20,30-31,46-47,52,59-60,85-86,101,107,122-123,128,133-134,139-140,145-146,151,157
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_d64ccabdb01eb7::t_ce70d78a6576ec 40,85,209,214,219,224,264,284,289,411,705,715,738,754,798
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_d64ccabdb01eb7::t_abe05bc3a9eba7 35,234,249,256-257,278,294,373-374,639-640,720,725,730,740,745,750,808,823,833
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_d64ccabdb01eb7::t_4ec9655f9d7049 26,31-32,37-38,43-44,49-50,55-57,67,72,77,82-83,88-89,94-95,100-101,146-147,152
+priv/gettext/es/LC_MESSAGES/localization.po
+  s_d64ccabdb01eb7::t_720c3d55749125 19-20,30-31,46-47,52,59-60,85-86,101,107,122-123,128,133-134,139-140,145-146,151,157
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_d64ccabdb01eb7::t_856b95fa8e811c 40,85,209,214,219,224,264,284,289,411,705,715,738,754,798
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_d64ccabdb01eb7::t_8b44380a67e5b9 35,234,249,256-257,278,294,373-374,639-640,720,725,730,740,745,750,808,823,833
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_d64ccabdb01eb7::t_77ef00793be79a 26,31-32,37-38,43-44,49-50,55-57,67,72,77,82-83,88-89,94-95,100-101,146-147,152
+priv/gettext/scenes.pot
+  s_d64ccabdb01eb7::t_957f993c61dfcc 35,234,249,256-257,278,294,373-374,639-640,720,725,730,740,745,750,808,823,833
+priv/gettext/versioning.pot
+  s_d64ccabdb01eb7::t_5a771f05afb087 26,31-32,37-38,43-44,49-50,55-57,67,72,77,82-83,88-89,94-95,100-101,146-147,152
+test/storyarn/flows/variable_reference_tracker_test.exs
+  s_d64ccabdb01eb7::t_42aa08e8e7d1f7 2912,2915-2919,2926,2929,2935,2943,2946-2951,2970-3129,3672-3689
+test/storyarn/references/rich_text_mentions_test.exs
+  s_d64ccabdb01eb7::t_024dfbcc5fc85d 32-71
+test/storyarn/versioning/conflict_detector_test.exs
+  s_d64ccabdb01eb7::t_7ddac70521b080 55,81-84,131-134,224-282,350,373,524,567-568,571,690,713,741,787-788,812-813,896-904
+test/storyarn_web/helpers/version_event_helpers_test.exs
+  s_d64ccabdb01eb7::t_44e14bd322c08d 56,64,89,121,163,174-324,336-344
+test/storyarn_web/live/flow_live/show_test.exs
+  s_d64ccabdb01eb7::t_95461f2c022958 382-383,386-387
+test/storyarn_web/live/restore_containment_test.exs
+  s_d64ccabdb01eb7::t_29e592c20d6739 115-118
+test/storyarn_web/live/scene_live/show_test.exs
+  s_d64ccabdb01eb7::t_1d2bef2d2f9df5 4126-4127,4130-4131
+test/storyarn_web/live/sheet_live/handlers/history_handlers_test.exs
+  s_d64ccabdb01eb7::t_f0b9260c4f63c7 113-114,117-118,157-160,170-300,309-310,314-326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cb09f79e1ce09562335f3d8866cd8b3864c89674",
+  "prompts": {},
+  "sessions": {
+    "s_d64ccabdb01eb7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff51e-6200-7312-96d7-fd26ee5eb12d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
