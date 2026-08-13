@@ -246,20 +246,19 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   Extracts and validates every variable-reference surface from an entity
   snapshot.
 
-  Flow snapshots contribute nodes that contain a variable surface. Scene
-  snapshots contribute pin conditions, zone actions and conditions, and
-  on-event ambient-flow references across layered and orphan children. Sheet
-  snapshots have no variable-reference surfaces of their own.
+  Flow snapshots contribute nodes that declare a variable surface. Scene
+  snapshots contribute declared pin conditions, zone actions and conditions,
+  and on-event ambient-flow references across layered and orphan children. The
+  strict source parser accepts empty surfaces and rejects malformed ones exactly
+  as restore does. Sheet snapshots have no variable-reference surfaces of their
+  own.
   """
   @spec validate_entity_snapshot_variable_references(integer(), String.t(), map()) ::
           :ok | {:error, term()}
   def validate_entity_snapshot_variable_references(project_id, "flow", %{} = snapshot)
       when is_integer(project_id) and project_id > 0 do
     with {:ok, nodes} <- snapshot_reference_collection(snapshot, "flow", "nodes") do
-      sources =
-        nodes
-        |> Enum.filter(&flow_snapshot_variable_surface?/1)
-        |> Enum.map(&flow_snapshot_variable_source/1)
+      sources = Enum.flat_map(nodes, &flow_snapshot_variable_sources/1)
 
       validate_snapshot_variable_references(project_id, sources)
     end
@@ -278,9 +277,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
           layer_zones ++
           scene_snapshot_variable_sources(orphan_pins, "scene_pin") ++
           scene_snapshot_variable_sources(orphan_zones, "scene_zone") ++
-          (ambient_flows
-           |> Enum.filter(&scene_ambient_snapshot_variable_surface?/1)
-           |> Enum.map(&scene_ambient_snapshot_variable_source/1))
+          Enum.flat_map(ambient_flows, &scene_ambient_snapshot_variable_sources/1)
 
       validate_snapshot_variable_references(project_id, sources)
     end
@@ -1309,46 +1306,54 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     end)
   end
 
-  defp flow_snapshot_variable_surface?(%{"type" => "instruction", "data" => %{} = data}),
-    do: potential_collection_reference_surface?(Map.get(data, "assignments", []))
-
-  defp flow_snapshot_variable_surface?(%{"type" => "condition", "data" => %{} = data}),
-    do: not is_nil(Map.get(data, "condition"))
-
-  defp flow_snapshot_variable_surface?(%{"type" => "dialogue", "data" => %{} = data}),
-    do: potential_collection_reference_surface?(Map.get(data, "responses", []))
-
-  defp flow_snapshot_variable_surface?(_node), do: false
-
-  defp scene_snapshot_variable_sources(elements, source_type) do
-    elements
-    |> Enum.filter(&scene_snapshot_variable_surface?(&1, source_type))
-    |> Enum.map(&scene_snapshot_variable_source(source_type, &1))
+  defp flow_snapshot_variable_sources(%{"type" => "instruction", "data" => %{} = data} = node) do
+    if Map.has_key?(data, "assignments"), do: [flow_snapshot_variable_source(node)], else: []
   end
 
-  defp scene_snapshot_variable_surface?(element, "scene_pin"), do: not is_nil(Map.get(element, "condition"))
-
-  defp scene_snapshot_variable_surface?(element, "scene_zone") do
-    not is_nil(Map.get(element, "condition")) or
-      scene_zone_action_variable_surface?(element["action_type"], element["action_data"])
+  defp flow_snapshot_variable_sources(%{"type" => "condition", "data" => %{} = data} = node) do
+    if Map.has_key?(data, "condition"), do: [flow_snapshot_variable_source(node)], else: []
   end
 
-  defp scene_zone_action_variable_surface?("action", %{} = action_data),
-    do: potential_collection_reference_surface?(Map.get(action_data, "assignments", []))
+  defp flow_snapshot_variable_sources(%{"type" => "dialogue", "data" => %{} = data} = node) do
+    if Map.has_key?(data, "responses"), do: [flow_snapshot_variable_source(node)], else: []
+  end
 
-  defp scene_zone_action_variable_surface?("display", %{}), do: true
+  defp flow_snapshot_variable_sources(_node), do: []
 
-  defp scene_zone_action_variable_surface?("collection", %{} = action_data),
-    do: potential_collection_reference_surface?(Map.get(action_data, "items", []))
+  defp scene_snapshot_variable_sources(elements, source_type) when is_list(elements) do
+    Enum.flat_map(elements, &scene_snapshot_variable_sources(&1, source_type))
+  end
 
-  defp scene_zone_action_variable_surface?(_action_type, _action_data), do: false
+  defp scene_snapshot_variable_sources(%{} = pin, "scene_pin") do
+    if Map.has_key?(pin, "condition"), do: [scene_snapshot_variable_source("scene_pin", pin)], else: []
+  end
 
-  defp scene_ambient_snapshot_variable_surface?(%{"trigger_type" => "on_event", "trigger_config" => %{} = config}),
-    do: Map.get(config, "variable_ref") not in [nil, ""]
+  defp scene_snapshot_variable_sources(%{} = zone, "scene_zone") do
+    if Map.has_key?(zone, "condition") or scene_zone_variable_action?(zone) do
+      [scene_snapshot_variable_source("scene_zone", zone)]
+    else
+      []
+    end
+  end
 
-  defp scene_ambient_snapshot_variable_surface?(_ambient_flow), do: false
+  defp scene_zone_variable_action?(%{"action_type" => "action", "action_data" => %{} = data}),
+    do: Map.has_key?(data, "assignments")
 
-  defp potential_collection_reference_surface?(value), do: value not in [nil, []]
+  defp scene_zone_variable_action?(%{"action_type" => "display", "action_data" => %{} = data}),
+    do: Map.has_key?(data, "variable_ref")
+
+  defp scene_zone_variable_action?(%{"action_type" => "collection", "action_data" => %{} = data}),
+    do: Map.has_key?(data, "items")
+
+  defp scene_zone_variable_action?(_zone), do: false
+
+  defp scene_ambient_snapshot_variable_sources(
+         %{"trigger_type" => "on_event", "trigger_config" => %{} = config} = ambient_flow
+       ) do
+    if Map.has_key?(config, "variable_ref"), do: [scene_ambient_snapshot_variable_source(ambient_flow)], else: []
+  end
+
+  defp scene_ambient_snapshot_variable_sources(_ambient_flow), do: []
 
   defp flow_snapshot_variable_source(node) do
     %{

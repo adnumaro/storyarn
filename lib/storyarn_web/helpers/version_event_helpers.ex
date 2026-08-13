@@ -50,40 +50,47 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
     end
   end
 
-  def handle_preview_restore(%{"version_number" => version_number}, socket, config) do
+  def handle_preview_restore(%{"version_number" => version_number} = params, socket, config) do
+    request_id = params["request_id"]
+
     with_authorized_restore(socket, config.entity_type, fn authorized_socket ->
       with_version(authorized_socket, config, version_number, fn version ->
         VersionHistoryHelpers.detect_and_show_restore_preview(
           authorized_socket,
           config.entity_type,
           entity(authorized_socket, config),
-          version
+          version,
+          request_id
         )
       end)
     end)
   end
 
-  def handle_review_restore(%{"version_number" => version_number}, socket, config) do
+  def handle_review_restore(%{"version_number" => version_number} = params, socket, config) do
+    request_id = params["request_id"]
+
     with_authorized_restore(socket, config.entity_type, fn authorized_socket ->
       with_version(
         authorized_socket,
         config,
         version_number,
         fn version ->
-          show_restore_preview(authorized_socket, config, version)
+          show_restore_preview(authorized_socket, config, version, request_id)
         end,
         missing: :noop
       )
     end)
   end
 
-  def handle_confirm_restore(%{"version_number" => version_number}, socket, config) do
+  def handle_confirm_restore(%{"version_number" => version_number} = params, socket, config) do
+    request_id = params["request_id"]
+
     with_authorized_restore(socket, config.entity_type, fn authorized_socket ->
       with_version(
         authorized_socket,
         config,
         version_number,
-        fn version -> restore_version(authorized_socket, config, version) end,
+        fn version -> restore_version(authorized_socket, config, version, request_id) end,
         missing: :noop
       )
     end)
@@ -195,16 +202,17 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
     end
   end
 
-  defp show_restore_preview(socket, config, version) do
+  defp show_restore_preview(socket, config, version, request_id) do
     VersionHistoryHelpers.show_conflict_preview(
       socket,
       config.entity_type,
       entity(socket, config),
-      version
+      version,
+      request_id
     )
   end
 
-  defp restore_version(socket, config, version) do
+  defp restore_version(socket, config, version, request_id) do
     case Versioning.restore_version(config.entity_type, entity(socket, config), version,
            user_id: socket.assigns.current_scope.user.id
          ) do
@@ -213,7 +221,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
 
         {:noreply,
          socket
-         |> push_event("version_restored", %{})
+         |> push_event("version_restored", %{request_id: request_id})
          |> put_flash(:info, dgettext("versioning", "Version restored."))
          |> push_navigate(to: config.restore_path.(socket))}
 

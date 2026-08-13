@@ -65,26 +65,32 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
     end
   end
 
-  def handle_preview_restore(%{"version_number" => version_number}, socket, _helpers) do
+  def handle_preview_restore(%{"version_number" => version_number} = params, socket, _helpers) do
+    request_id = params["request_id"]
+
     VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
       with_version(authorized_socket, version_number, fn version ->
-        detect_and_show_restore_preview(authorized_socket, version)
+        detect_and_show_restore_preview(authorized_socket, version, request_id)
       end)
     end)
   end
 
-  def handle_review_restore(%{"version_number" => version_number}, socket, _helpers) do
+  def handle_review_restore(%{"version_number" => version_number} = params, socket, _helpers) do
+    request_id = params["request_id"]
+
     VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
       with_version(authorized_socket, version_number, fn version ->
-        show_restore_preview(authorized_socket, version)
+        show_restore_preview(authorized_socket, version, request_id)
       end)
     end)
   end
 
-  def handle_confirm_restore(%{"version_number" => version_number}, socket, helpers) do
+  def handle_confirm_restore(%{"version_number" => version_number} = params, socket, helpers) do
+    request_id = params["request_id"]
+
     VersionEventHelpers.with_authorized_restore(socket, "sheet", fn authorized_socket ->
       with_version(authorized_socket, version_number, fn version ->
-        restore_version(authorized_socket, version, helpers)
+        restore_version(authorized_socket, version, helpers, request_id)
       end)
     end)
   end
@@ -162,13 +168,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
     end
   end
 
-  defp show_restore_preview(socket, version) do
+  defp show_restore_preview(socket, version, request_id) do
     # Capture and verify the safety version at final confirmation. Creating it
     # while this modal opens would leave a race window for collaborator edits.
-    show_conflict_preview(socket, version)
+    show_conflict_preview(socket, version, request_id)
   end
 
-  defp restore_version(socket, version, helpers) do
+  defp restore_version(socket, version, helpers, request_id) do
     sheet = socket.assigns.sheet
     restore_fun = Map.get(helpers, :restore_version, &Versioning.restore_version/4)
 
@@ -176,7 +182,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
       {:ok, _updated_entity} ->
         track_version_event(socket, "version restored")
 
-        on_version_restored(socket, version, helpers)
+        on_version_restored(socket, version, helpers, request_id)
 
       {:error, {:pre_restore_snapshot_failed, _}} ->
         {:noreply,
@@ -221,7 +227,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
     end
   end
 
-  defp on_version_restored(socket, version, helpers) do
+  defp on_version_restored(socket, version, helpers, request_id) do
     updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
 
     {:noreply,
@@ -232,7 +238,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
      |> load_history_data()
      |> push_event("version_restored", %{
        name: updated_sheet.name,
-       shortcut: updated_sheet.shortcut
+       shortcut: updated_sheet.shortcut,
+       request_id: request_id
      })
      |> helpers.broadcast.(:sheet_restored)
      |> put_flash(

@@ -96,7 +96,7 @@ defmodule StoryarnWeb.Helpers.VersionHistoryHelpers do
   end
 
   @doc "Detects unsaved changes and shows appropriate restore modal."
-  def detect_and_show_restore_preview(socket, entity_type, entity, version) do
+  def detect_and_show_restore_preview(socket, entity_type, entity, version, request_id) do
     builder = Versioning.get_builder!(entity_type)
 
     has_unsaved =
@@ -118,15 +118,16 @@ defmodule StoryarnWeb.Helpers.VersionHistoryHelpers do
     if has_unsaved do
       {:noreply,
        push_event(socket, "show_unsaved_modal", %{
-         versionNumber: version.version_number
+         versionNumber: version.version_number,
+         request_id: request_id
        })}
     else
-      show_conflict_preview(socket, entity_type, entity, version)
+      show_conflict_preview(socket, entity_type, entity, version, request_id)
     end
   end
 
   @doc "Shows the conflict preview modal for a version restore."
-  def show_conflict_preview(socket, entity_type, entity, version) do
+  def show_conflict_preview(socket, entity_type, entity, version, request_id) do
     case Versioning.load_version_snapshot(version) do
       {:ok, snapshot} ->
         report = Versioning.detect_restore_conflicts(entity_type, snapshot, entity)
@@ -144,6 +145,7 @@ defmodule StoryarnWeb.Helpers.VersionHistoryHelpers do
         {:noreply,
          push_event(socket, "show_restore_modal", %{
            versionNumber: version.version_number,
+           request_id: request_id,
            report: serialized_report
          })}
 

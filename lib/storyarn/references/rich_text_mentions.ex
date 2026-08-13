@@ -3,6 +3,7 @@ defmodule Storyarn.References.RichTextMentions do
 
   @mention_markup ~r/<[^>]*\bclass\s*=\s*["'](?:[^"']*\s)?mention(?:\s[^"']*)?["'][^>]*>/iu
   @unquoted_mention_markup ~r/<[^>]*\bclass\s*=\s*mention(?=[\s\/>])[^>]*>/iu
+  @class_attribute_markup ~r/\bclass\s*=/iu
 
   @type mention :: %{type: String.t(), id: String.t()}
   @type parse_error ::
@@ -34,7 +35,7 @@ defmodule Storyarn.References.RichTextMentions do
   def extract_from_html(html), do: {:error, {:invalid_html, html}}
 
   defp collect_html_candidates(value, acc) when is_binary(value) do
-    if Regex.match?(@mention_markup, value) or Regex.match?(@unquoted_mention_markup, value),
+    if mention_markup?(value),
       do: [value | acc],
       else: acc
   end
@@ -50,6 +51,26 @@ defmodule Storyarn.References.RichTextMentions do
   end
 
   defp collect_html_candidates(_value, acc), do: acc
+
+  defp mention_markup?(value) do
+    Regex.match?(@mention_markup, value) or
+      Regex.match?(@unquoted_mention_markup, value) or
+      parser_detected_mention_markup?(value)
+  end
+
+  # HTML character references and quoted `>` characters are decoded/handled by the parser before
+  # CSS class matching. Keep the common literal path cheap, and parse only binaries that declare a
+  # class attribute when the fast path cannot decide.
+  defp parser_detected_mention_markup?(value) do
+    if Regex.match?(@class_attribute_markup, value) do
+      case Floki.parse_fragment(value) do
+        {:ok, document} -> Floki.find(document, ".mention") != []
+        {:error, _reason} -> true
+      end
+    else
+      false
+    end
+  end
 
   defp accumulate_mention(element, {:ok, mentions}) do
     type_attributes = attribute_values(element, "data-type")

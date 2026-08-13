@@ -230,6 +230,65 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
       assert malformed_context =~ "malformed variable reference"
     end
 
+    test "blocks restore preview for malformed Flow and Scene variable collections", %{
+      project: project,
+      flow: flow
+    } do
+      flow_snapshot = %{
+        "name" => "Test",
+        "shortcut" => flow.shortcut,
+        "scene_id" => nil,
+        "nodes" => [
+          %{
+            "original_id" => 502,
+            "type" => "instruction",
+            "data" => %{"assignments" => nil}
+          }
+        ],
+        "connections" => []
+      }
+
+      flow_report = ConflictDetector.detect_conflicts("flow", flow_snapshot, flow)
+
+      assert flow_report.has_conflicts
+      assert [%{type: :variable, id: nil, contexts: [flow_context]}] = flow_report.conflicts
+      assert flow_context =~ "Flow node #502"
+      assert flow_context =~ "malformed variable reference"
+
+      scene = scene_fixture(project)
+
+      scene_snapshot = %{
+        "shortcut" => scene.shortcut,
+        "background_asset_id" => nil,
+        "layers" => [
+          %{
+            "pins" => [],
+            "zones" => [
+              %{
+                "original_id" => 602,
+                "action_type" => "collection",
+                "action_data" => %{"items" => nil},
+                "condition" => nil,
+                "target_type" => nil,
+                "target_id" => nil,
+                "label_icon_asset_id" => nil
+              }
+            ]
+          }
+        ],
+        "orphan_pins" => [],
+        "orphan_zones" => [],
+        "ambient_flows" => []
+      }
+
+      scene_report = ConflictDetector.detect_conflicts("scene", scene_snapshot, scene)
+
+      assert scene_report.has_conflicts
+      assert [%{type: :variable, id: nil, contexts: [scene_context]}] = scene_report.conflicts
+      assert scene_context =~ "Scene zone #602"
+      assert scene_context =~ "malformed variable reference"
+    end
+
     test "reports unresolved Scene display variables from layered zones", %{
       project: project
     } do

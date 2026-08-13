@@ -466,20 +466,16 @@ defmodule StoryarnWeb.FlowLive.Show do
     VersionEventHelpers.handle_load_more(socket, flow_version_config())
   end
 
-  def handle_event("preview_restore", %{"version_number" => vn}, socket) do
-    VersionEventHelpers.handle_preview_restore(%{"version_number" => vn}, socket, flow_version_config())
+  def handle_event("preview_restore", %{"version_number" => _version_number} = params, socket) do
+    VersionEventHelpers.handle_preview_restore(params, socket, flow_version_config())
   end
 
-  def handle_event("review_restore", %{"version_number" => vn}, socket) do
-    VersionEventHelpers.handle_review_restore(%{"version_number" => vn}, socket, flow_version_config())
+  def handle_event("review_restore", %{"version_number" => _version_number} = params, socket) do
+    VersionEventHelpers.handle_review_restore(params, socket, flow_version_config())
   end
 
-  def handle_event("confirm_restore", %{"version_number" => vn}, socket) do
-    VersionEventHelpers.handle_confirm_restore(
-      %{"version_number" => vn},
-      socket,
-      flow_version_config()
-    )
+  def handle_event("confirm_restore", %{"version_number" => _version_number} = params, socket) do
+    VersionEventHelpers.handle_confirm_restore(params, socket, flow_version_config())
   end
 
   def handle_event("compare_version", %{"version_number" => vn}, socket) do

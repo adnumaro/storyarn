@@ -69,7 +69,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
     })
   end
 
-  def detect_and_show_restore_preview(socket, version) do
+  def detect_and_show_restore_preview(socket, version, request_id) do
     sheet = socket.assigns.sheet
     builder = Versioning.get_builder!("sheet")
 
@@ -92,14 +92,15 @@ defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
     if has_unsaved do
       {:noreply,
        push_event(socket, "show_unsaved_modal", %{
-         versionNumber: version.version_number
+         versionNumber: version.version_number,
+         request_id: request_id
        })}
     else
-      show_conflict_preview(socket, version)
+      show_conflict_preview(socket, version, request_id)
     end
   end
 
-  def show_conflict_preview(socket, version) do
+  def show_conflict_preview(socket, version, request_id) do
     sheet = socket.assigns.sheet
 
     case Versioning.load_version_snapshot(version) do
@@ -119,6 +120,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
         {:noreply,
          push_event(socket, "show_restore_modal", %{
            versionNumber: version.version_number,
+           request_id: request_id,
            report: serialized_report
          })}
 

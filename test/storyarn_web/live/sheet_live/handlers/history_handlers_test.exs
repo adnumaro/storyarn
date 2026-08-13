@@ -110,8 +110,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlersTest do
       view = mount_sheet(conn, url)
 
       render_click(view, "confirm_restore", %{
-        "version_number" => to_string(version.version_number)
+        "version_number" => to_string(version.version_number),
+        "request_id" => "sheet-confirm-request"
       })
+
+      assert_push_event(view, "version_restored", %{request_id: "sheet-confirm-request"})
 
       restored = Sheets.get_sheet(project.id, sheet.id)
       assert restored.name == "History Sheet"
@@ -151,13 +154,75 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlersTest do
 
         assert {:noreply, result} =
                  HistoryHandlers.handle_confirm_restore(
-                   %{"version_number" => to_string(version.version_number)},
+                   %{
+                     "version_number" => to_string(version.version_number),
+                     "request_id" => "failed-confirm-request"
+                   },
                    socket,
                    helpers
                  )
 
         assert result.assigns.flash["error"] == message
       end
+    end
+  end
+
+  describe "restore request correlation" do
+    test "echoes request IDs from preview and review events", %{
+      conn: conn,
+      user: user,
+      project: project,
+      url: url,
+      sheet: sheet
+    } do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, title: "Restore target")
+
+      {:ok, _changed_sheet} = Sheets.update_sheet(sheet, %{name: "Changed before preview"})
+
+      view = mount_sheet(conn, url)
+
+      render_click(view, "preview_restore", %{
+        "version_number" => to_string(version.version_number),
+        "request_id" => "sheet-preview-request"
+      })
+
+      assert_push_event(view, "show_unsaved_modal", %{request_id: "sheet-preview-request"})
+
+      render_click(view, "review_restore", %{
+        "version_number" => to_string(version.version_number),
+        "request_id" => "sheet-review-request"
+      })
+
+      assert_push_event(view, "show_restore_modal", %{request_id: "sheet-review-request"})
+    end
+
+    test "keeps restore handlers compatible with clients that omit request_id", %{
+      user: user,
+      project: project,
+      sheet: sheet
+    } do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, title: "Restore target")
+
+      socket = handler_socket(user, project, sheet)
+
+      assert {:noreply, preview_result} =
+               HistoryHandlers.handle_preview_restore(
+                 %{"version_number" => to_string(version.version_number)},
+                 socket,
+                 %{}
+               )
+
+      assert {:noreply, review_result} =
+               HistoryHandlers.handle_review_restore(
+                 %{"version_number" => to_string(version.version_number)},
+                 socket,
+                 %{}
+               )
+
+      assert preview_result
+      assert review_result
     end
   end
 

@@ -4123,8 +4123,11 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       view = mount_scene(conn, url)
 
       render_click(view, "confirm_restore", %{
-        "version_number" => to_string(version.version_number)
+        "version_number" => to_string(version.version_number),
+        "request_id" => "scene-confirm-request"
       })
+
+      assert_push_event(view, "version_restored", %{request_id: "scene-confirm-request"})
 
       restored = Scenes.get_scene(project.id, scene.id)
       assert restored.name == "History Scene"
