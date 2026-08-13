@@ -17,7 +17,7 @@ export interface VersionEntry {
 
 export interface RestoreConflict {
   type: string;
-  id: number;
+  id: number | string | null;
   contexts: string[];
 }
 
@@ -26,13 +26,11 @@ export interface RestoreReport {
   shortcutCollision?: boolean;
   resolvedShortcut?: string;
   conflicts: RestoreConflict[];
-  autoResolved?: string[];
 }
 
 export interface RestoreData {
   versionNumber: number;
   report: RestoreReport;
-  skipPreSnapshot: boolean;
 }
 
 /**
@@ -81,7 +79,6 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
       restoreData.value = {
         versionNumber: payload.versionNumber as number,
         report: payload.report as RestoreReport,
-        skipPreSnapshot: payload.skipPreSnapshot as boolean,
       };
       showRestoreModal.value = true;
     });
@@ -167,33 +164,43 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
   function previewRestore(versionNumber: number) {
     if (!restoreEnabled()) return;
     loadingAction.value = `restore-${versionNumber}`;
-    live.pushEvent("preview_restore", { version_number: versionNumber });
+    live.pushEvent(
+      "preview_restore",
+      { version_number: versionNumber },
+      finishRestoreAction,
+      finishRestoreAction,
+    );
   }
 
-  function saveAndRestore() {
+  function reviewRestore() {
     if (!restoreEnabled()) return;
-    loadingAction.value = "save-restore";
-    live.pushEvent("save_and_restore", {
-      version_number: unsavedVersionNumber.value,
-    });
-  }
-
-  function discardAndRestore() {
-    if (!restoreEnabled()) return;
-    loadingAction.value = "discard-restore";
-    live.pushEvent("discard_and_restore", {
-      version_number: unsavedVersionNumber.value,
-    });
+    loadingAction.value = "review-restore";
+    live.pushEvent(
+      "review_restore",
+      {
+        version_number: unsavedVersionNumber.value,
+      },
+      finishRestoreAction,
+      finishRestoreAction,
+    );
   }
 
   function confirmRestore() {
     if (!restoreEnabled()) return;
     if (!restoreData.value) return;
     loadingAction.value = "confirm-restore";
-    live.pushEvent("confirm_restore", {
-      version_number: restoreData.value.versionNumber,
-      skip_pre_snapshot: restoreData.value.skipPreSnapshot,
-    });
+    live.pushEvent(
+      "confirm_restore",
+      {
+        version_number: restoreData.value.versionNumber,
+      },
+      finishRestoreAction,
+      finishRestoreAction,
+    );
+  }
+
+  function finishRestoreAction() {
+    loadingAction.value = null;
   }
 
   function loadMore() {
@@ -230,8 +237,7 @@ export function useVersionHistory(restoreEnabled: () => boolean) {
     openDeleteModal,
     confirmDelete,
     previewRestore,
-    saveAndRestore,
-    discardAndRestore,
+    reviewRestore,
     confirmRestore,
     loadMore,
   };

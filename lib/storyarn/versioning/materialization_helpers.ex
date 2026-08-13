@@ -4,6 +4,8 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Billing
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Sheet
@@ -30,11 +32,49 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   @spec root_position(keyword()) :: integer()
   def root_position(opts), do: Keyword.get(opts, :position, 0)
 
+  @doc false
+  @spec with_project_storage_lock(pos_integer(), (-> term())) ::
+          {:ok, term()} | {:error, term()}
+  def with_project_storage_lock(project_id, fun) when is_integer(project_id) and project_id > 0 and is_function(fun, 0) do
+    case project_workspace_id(project_id) do
+      {:ok, workspace_id} ->
+        workspace_id
+        |> Billing.with_storage_accounting_lock(fn _workspace ->
+          normalize_project_workspace_callback(fun.())
+        end)
+        |> normalize_project_workspace_result()
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def with_project_storage_lock(_project_id, _fun), do: {:error, :project_not_found}
+
+  defp normalize_project_workspace_callback({:ok, value}), do: {:project_workspace_result, value}
+
+  defp normalize_project_workspace_callback({:error, _operation, reason, _changes}), do: Repo.rollback(reason)
+
+  defp normalize_project_workspace_callback({:error, reason}), do: Repo.rollback(reason)
+
+  defp normalize_project_workspace_callback(value), do: {:project_workspace_result, value}
+
+  defp normalize_project_workspace_result({:ok, {:project_workspace_result, value}}), do: {:ok, value}
+
+  defp normalize_project_workspace_result({:error, reason}), do: {:error, reason}
+
+  defp project_workspace_id(project_id) do
+    case Repo.one(from(project in Project, where: project.id == ^project_id, select: project.workspace_id)) do
+      workspace_id when is_integer(workspace_id) -> {:ok, workspace_id}
+      nil -> {:error, {:project_not_found, project_id}}
+    end
+  end
+
   @spec preserve_external_refs?(keyword()) :: boolean()
   def preserve_external_refs?(opts), do: Keyword.get(opts, :preserve_external_refs, true)
 
-  @spec asset_resolution_opts(keyword(), atom()) :: keyword()
-  def asset_resolution_opts(opts, asset_mode) do
+  @spec asset_resolution_opts(keyword(), atom(), pos_integer()) :: keyword()
+  def asset_resolution_opts(opts, asset_mode, project_id) do
     opts
     |> Keyword.take([
       :asset_copy_tracker,
@@ -42,6 +82,17 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
       :asset_source_keys
     ])
     |> Keyword.put(:asset_mode, asset_mode)
+    |> maybe_pin_entity_restore_source(opts, project_id)
+  end
+
+  defp maybe_pin_entity_restore_source(resolution_opts, opts, project_id) do
+    case Keyword.get(opts, :restore_action) do
+      {:entity_version_restore, _entity_type} ->
+        Keyword.put(resolution_opts, :source_project_id, project_id)
+
+      _materialization_action ->
+        resolution_opts
+    end
   end
 
   @doc """

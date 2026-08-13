@@ -898,6 +898,280 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert Repo.get!(Block, block.id).value == %{"content" => "Current value"}
     end
 
+    test "persists the canonical ID form locked for a block reference", %{
+      project: project,
+      sheet: sheet
+    } do
+      target = sheet_fixture(project, %{name: "Historical target"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "reference",
+          value: %{"target_type" => "sheet", "target_id" => target.id}
+        })
+
+      snapshot =
+        sheet
+        |> SheetBuilder.build_snapshot()
+        |> Map.update!("blocks", fn blocks ->
+          Enum.map(blocks, fn block_snapshot ->
+            Map.update!(block_snapshot, "value", fn value ->
+              Map.put(value, "target_id", to_string(target.id))
+            end)
+          end)
+        end)
+
+      assert {:ok, _current_block} =
+               Sheets.update_block_value(block, %{
+                 "target_type" => nil,
+                 "target_id" => nil
+               })
+
+      assert {:ok, _restored} =
+               SheetBuilder.restore_snapshot(sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+
+      assert Repo.get!(Block, block.id).value == %{
+               "target_type" => "sheet",
+               "target_id" => target.id
+             }
+
+      assert block_reference_exists?(block.id, "sheet", target.id)
+    end
+
+    test "rejects inactive and cross-project block targets before changing sheet state", %{
+      project: project,
+      sheet: sheet,
+      user: user
+    } do
+      historical_target = sheet_fixture(project, %{name: "Historical target"})
+      current_target = sheet_fixture(project, %{name: "Current target"})
+      foreign_target = user |> project_fixture() |> sheet_fixture(%{name: "Foreign target"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "reference",
+          value: %{"target_type" => "sheet", "target_id" => historical_target.id}
+        })
+
+      snapshot = SheetBuilder.build_snapshot(sheet)
+      {:ok, current_sheet} = Sheets.update_sheet(sheet, %{name: "Current state"})
+
+      assert {:ok, current_block} =
+               Sheets.update_block_value(block, %{
+                 "target_type" => "sheet",
+                 "target_id" => current_target.id
+               })
+
+      assert {:ok, _trashed_target} = Sheets.trash_sheet(historical_target)
+
+      foreign_snapshot =
+        Map.update!(snapshot, "blocks", fn blocks ->
+          Enum.map(blocks, fn block_snapshot ->
+            Map.put(block_snapshot, "value", %{
+              "target_type" => "sheet",
+              "target_id" => foreign_target.id
+            })
+          end)
+        end)
+
+      for {invalid_snapshot, invalid_target_id} <- [
+            {snapshot, historical_target.id},
+            {foreign_snapshot, foreign_target.id}
+          ] do
+        assert {:error, {:invalid_project_reference, {:block, :value, "sheet"}, target_id}} =
+                 SheetBuilder.restore_snapshot(current_sheet, invalid_snapshot,
+                   restore_action: {:entity_version_restore, "sheet"}
+                 )
+
+        assert target_id == invalid_target_id
+        assert Repo.get!(Sheet, sheet.id).name == "Current state"
+        assert Repo.get!(Block, block.id).value == current_block.value
+        assert block_reference_exists?(block.id, "sheet", current_target.id)
+        refute block_reference_exists?(block.id, "sheet", invalid_target_id)
+      end
+    end
+
+    test "rejects an inactive rich-text mention before changing sheet state", %{
+      project: project,
+      sheet: sheet
+    } do
+      historical_target = sheet_fixture(project, %{name: "Historical mention"})
+      current_target = sheet_fixture(project, %{name: "Current mention"})
+
+      mention = fn target ->
+        ~s(<p><span class="mention" data-type="sheet" data-id="#{target.id}">#{target.name}</span></p>)
+      end
+
+      block =
+        block_fixture(sheet, %{
+          type: "rich_text",
+          value: %{"content" => mention.(historical_target)}
+        })
+
+      snapshot = SheetBuilder.build_snapshot(sheet)
+      {:ok, current_sheet} = Sheets.update_sheet(sheet, %{name: "Current state"})
+
+      assert {:ok, current_block} =
+               Sheets.update_block_value(block, %{
+                 "content" => mention.(current_target)
+               })
+
+      assert {:ok, _trashed_target} = Sheets.trash_sheet(historical_target)
+
+      assert {:error, {:invalid_project_reference, {:block, :content, "sheet"}, target_id}} =
+               SheetBuilder.restore_snapshot(current_sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+
+      assert target_id == to_string(historical_target.id)
+      assert Repo.get!(Sheet, sheet.id).name == "Current state"
+      assert Repo.get!(Block, block.id).value == current_block.value
+      assert block_reference_exists?(block.id, "sheet", current_target.id)
+      refute block_reference_exists?(block.id, "sheet", historical_target.id)
+    end
+
+    test "rejects active non-image assets in every visual asset slot before mutation", %{
+      user: user,
+      project: project,
+      sheet: sheet
+    } do
+      audio = uploaded_asset(project, user, "not-an-image.mp3", "not an image", "audio/mpeg")
+      avatar_asset = uploaded_image_asset(project, user, "current-avatar.png", "current avatar")
+      gallery_asset = uploaded_image_asset(project, user, "current-gallery.png", "current gallery")
+
+      {:ok, avatar} = Sheets.add_avatar(sheet, avatar_asset.id, %{name: "Historical avatar"})
+      gallery_block = block_fixture(sheet, %{type: "gallery", value: %{}})
+      {:ok, gallery_image} = Sheets.add_gallery_image(gallery_block, gallery_asset.id)
+
+      snapshot =
+        sheet
+        |> SheetBuilder.build_snapshot()
+        |> add_snapshot_asset(audio)
+
+      invalid_snapshots = [
+        {:banner, Map.put(snapshot, "banner_asset_id", audio.id)},
+        {:avatar,
+         Map.update!(snapshot, "avatars", fn avatars ->
+           Enum.map(avatars, fn avatar_snapshot ->
+             Map.put(avatar_snapshot, "asset_id", audio.id)
+           end)
+         end)},
+        {:gallery_image,
+         Map.update!(snapshot, "blocks", fn blocks ->
+           Enum.map(blocks, fn
+             %{"original_id" => id} = block_snapshot when id == gallery_block.id ->
+               Map.update!(block_snapshot, "gallery_images", fn images ->
+                 Enum.map(images, &Map.put(&1, "asset_id", audio.id))
+               end)
+
+             block_snapshot ->
+               block_snapshot
+           end)
+         end)}
+      ]
+
+      {:ok, current_sheet} = Sheets.update_sheet(sheet, %{name: "Current sheet must survive"})
+      {:ok, current_avatar} = Sheets.update_avatar(avatar, %{notes: "Current avatar must survive"})
+
+      {:ok, current_gallery_image} =
+        Sheets.update_gallery_image(gallery_image, %{label: "Current gallery must survive"})
+
+      asset_count_before = Repo.aggregate(Asset, :count)
+
+      for {context, invalid_snapshot} <- invalid_snapshots do
+        assert {:error,
+                {:asset_materialization_failed, asset_id, {:invalid_asset_content_type, ^context, asset_id, "audio/mpeg"}}} =
+                 SheetBuilder.restore_snapshot(current_sheet, invalid_snapshot,
+                   restore_action: {:entity_version_restore, "sheet"}
+                 )
+
+        assert asset_id == audio.id
+        assert Repo.get!(Sheet, sheet.id).name == "Current sheet must survive"
+        assert Repo.get!(SheetAvatar, avatar.id).notes == current_avatar.notes
+        assert Repo.get!(BlockGalleryImage, gallery_image.id).label == current_gallery_image.label
+        assert Repo.aggregate(Asset, :count) == asset_count_before
+      end
+    end
+
+    test "rejects historical non-image assets before recreating them from trash", %{
+      user: user,
+      project: project,
+      sheet: sheet
+    } do
+      historical_audio =
+        uploaded_asset(
+          project,
+          user,
+          "historical-not-an-image.mp3",
+          "historical non-image",
+          "audio/mpeg"
+        )
+
+      avatar_asset = uploaded_image_asset(project, user, "historical-avatar.png", "historical avatar")
+      gallery_asset = uploaded_image_asset(project, user, "historical-gallery.png", "historical gallery")
+      {:ok, avatar} = Sheets.add_avatar(sheet, avatar_asset.id, %{name: "Avatar"})
+      gallery_block = block_fixture(sheet, %{type: "gallery", value: %{}})
+      {:ok, gallery_image} = Sheets.add_gallery_image(gallery_block, gallery_asset.id)
+
+      snapshot =
+        sheet
+        |> SheetBuilder.build_snapshot()
+        |> add_snapshot_asset(historical_audio)
+
+      invalid_snapshots = [
+        {:banner, Map.put(snapshot, "banner_asset_id", historical_audio.id)},
+        {:avatar,
+         Map.update!(snapshot, "avatars", fn avatars ->
+           Enum.map(avatars, &Map.put(&1, "asset_id", historical_audio.id))
+         end)},
+        {:gallery_image,
+         Map.update!(snapshot, "blocks", fn blocks ->
+           Enum.map(blocks, fn
+             %{"original_id" => id} = block_snapshot when id == gallery_block.id ->
+               Map.update!(block_snapshot, "gallery_images", fn images ->
+                 Enum.map(images, &Map.put(&1, "asset_id", historical_audio.id))
+               end)
+
+             block_snapshot ->
+               block_snapshot
+           end)
+         end)}
+      ]
+
+      {:ok, _deleted_audio} = Assets.delete_asset(historical_audio)
+      {:ok, current_sheet} = Sheets.update_sheet(sheet, %{name: "Current sheet must survive"})
+      {:ok, current_avatar} = Sheets.update_avatar(avatar, %{notes: "Current avatar must survive"})
+
+      {:ok, current_gallery_image} =
+        Sheets.update_gallery_image(gallery_image, %{label: "Current gallery must survive"})
+
+      asset_count_before = Repo.aggregate(Asset, :count)
+      stored_paths_before = stored_asset_paths(historical_audio.filename)
+
+      for {context, invalid_snapshot} <- invalid_snapshots do
+        assert {:error,
+                {:asset_materialization_failed, asset_id, {:invalid_asset_content_type, ^context, asset_id, "audio/mpeg"}}} =
+                 SheetBuilder.restore_snapshot(current_sheet, invalid_snapshot,
+                   user_id: user.id,
+                   restore_action: {:entity_version_restore, "sheet"}
+                 )
+
+        assert asset_id == historical_audio.id
+        assert Repo.get!(Sheet, sheet.id).name == "Current sheet must survive"
+        assert Repo.get!(SheetAvatar, avatar.id).notes == current_avatar.notes
+        assert Repo.get!(BlockGalleryImage, gallery_image.id).label == current_gallery_image.label
+        assert Repo.aggregate(Asset, :count) == asset_count_before
+        assert stored_asset_paths(historical_audio.filename) == stored_paths_before
+
+        refute Repo.exists?(
+                 from(asset in Asset,
+                   where:
+                     asset.project_id == ^project.id and
+                       is_nil(asset.deleted_at) and
+                       asset.blob_hash == ^historical_audio.blob_hash
+                 )
+               )
+      end
+    end
+
     test "does not mutate blocks already in trash, their nested rows, or localization", %{
       project: project,
       sheet: sheet
@@ -1777,6 +2051,77 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert [] = all_enqueued(worker: DeleteStorageObjectsWorker)
       assert stored_asset_paths(banner_asset.filename) == copied_banner_paths_before
       assert {:ok, "rollback-banner"} = Assets.storage_download(banner_blob_key)
+    end
+
+    test "rejects a historical asset catalog entry owned by another project before writing", %{
+      user: user,
+      project: project,
+      sheet: sheet
+    } do
+      historical_asset =
+        uploaded_image_asset(
+          project,
+          user,
+          "historical-owned-banner.png",
+          "shared historical banner"
+        )
+
+      assert {:ok, sheet_with_banner} =
+               Sheets.update_sheet(sheet, %{banner_asset_id: historical_asset.id})
+
+      snapshot = SheetBuilder.build_snapshot(sheet_with_banner)
+      foreign_project = project_fixture(user)
+
+      _foreign_asset =
+        uploaded_image_asset(
+          foreign_project,
+          user,
+          "foreign-banner.png",
+          "shared historical banner"
+        )
+
+      cross_project_catalog =
+        put_in(
+          snapshot,
+          ["asset_metadata", to_string(historical_asset.id), "project_id"],
+          foreign_project.id
+        )
+
+      assert {:ok, current_sheet} =
+               Sheets.update_sheet(sheet_with_banner, %{
+                 name: "Current sheet",
+                 banner_asset_id: nil
+               })
+
+      assert {:ok, _deleted_asset} = Assets.delete_asset(historical_asset)
+
+      historical_blob_key =
+        BlobStore.blob_key(
+          project.id,
+          historical_asset.blob_hash,
+          BlobStore.ext_from_content_type(historical_asset.content_type)
+        )
+
+      assert :ok = delete_storage_blob(historical_blob_key)
+
+      assert {:error, {:asset_materialization_failed, asset_id, :invalid_asset_source_project}} =
+               SheetBuilder.restore_snapshot(current_sheet, cross_project_catalog,
+                 user_id: user.id,
+                 restore_action: {:entity_version_restore, "sheet"}
+               )
+
+      assert asset_id == historical_asset.id
+      assert Repo.get!(Sheet, sheet.id).name == "Current sheet"
+      assert is_nil(Repo.get!(Sheet, sheet.id).banner_asset_id)
+
+      refute Repo.exists?(
+               from(asset in Asset,
+                 where:
+                   asset.project_id == ^project.id and
+                     asset.id != ^historical_asset.id and
+                     asset.blob_hash == ^historical_asset.blob_hash
+               )
+             )
     end
 
     test "rejects duplicate and foreign IDs before changing any data", %{
@@ -2998,14 +3343,28 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   end
 
   describe "scan_references/1" do
-    test "extracts asset and block inheritance refs" do
+    test "extracts assets, inheritance, reference targets, and rich-text mentions" do
       snapshot = %{
         "avatar_asset_id" => 10,
         "banner_asset_id" => 20,
         "hidden_inherited_block_ids" => [40],
         "blocks" => [
           %{"inherited_from_block_id" => 30, "type" => "text", "position" => 0},
-          %{"inherited_from_block_id" => nil, "type" => "number", "position" => 1}
+          %{
+            "inherited_from_block_id" => nil,
+            "type" => "reference",
+            "position" => 1,
+            "value" => %{"target_type" => "flow", "target_id" => "50"}
+          },
+          %{
+            "inherited_from_block_id" => nil,
+            "type" => "rich_text",
+            "position" => 2,
+            "value" => %{
+              "content" =>
+                ~s(<p><span class="mention" data-type="sheet" data-id="60">Sheet</span><span class="mention" data-type="flow" data-id="70">Flow</span></p>)
+            }
+          }
         ]
       }
 
@@ -3017,7 +3376,33 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert {:asset, 20} in types_and_ids
       assert {:block, 30} in types_and_ids
       assert {:block, 40} in types_and_ids
-      assert length(refs) == 4
+      assert {:flow, "50"} in types_and_ids
+      assert {:sheet, "60"} in types_and_ids
+      assert {:flow, "70"} in types_and_ids
+      assert length(refs) == 7
+    end
+
+    test "surfaces malformed reference blocks and mentions" do
+      snapshot = %{
+        "blocks" => [
+          %{
+            "type" => "reference",
+            "value" => %{"target_type" => "scene", "target_id" => 80}
+          },
+          %{
+            "type" => "rich_text",
+            "value" => %{
+              "content" => ~s(<p><span class="mention" data-type="sheet">Missing ID</span></p>)
+            }
+          }
+        ]
+      }
+
+      refs = SheetBuilder.scan_references(snapshot)
+
+      assert Enum.any?(refs, &(&1.type == :reference and &1.id == 80))
+      assert Enum.any?(refs, &(&1.type == :reference and is_binary(&1.id)))
+      assert Enum.all?(refs, &(&1.context =~ "malformed embedded reference"))
     end
 
     test "skips nil references" do
@@ -3240,20 +3625,47 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   end
 
   defp uploaded_image_asset(project, user, filename, content) do
+    uploaded_asset(project, user, filename, content, "image/png")
+  end
+
+  defp uploaded_asset(project, user, filename, content, content_type) do
     {:ok, asset} =
       Assets.upload_binary_and_create_asset(
         content,
-        %{filename: filename, content_type: "image/png"},
+        %{filename: filename, content_type: content_type},
         project,
         user
       )
 
     on_exit(fn ->
       Assets.storage_delete(asset.key)
-      delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "png"))
+
+      delete_storage_blob(
+        BlobStore.blob_key(
+          project.id,
+          asset.blob_hash,
+          BlobStore.ext_from_content_type(asset.content_type)
+        )
+      )
     end)
 
     asset
+  end
+
+  defp add_snapshot_asset(snapshot, asset) do
+    asset_id = to_string(asset.id)
+
+    snapshot
+    |> put_in(["asset_blob_hashes", asset_id], asset.blob_hash)
+    |> put_in(
+      ["asset_metadata", asset_id],
+      %{
+        "filename" => asset.filename,
+        "content_type" => asset.content_type,
+        "size" => asset.size,
+        "project_id" => asset.project_id
+      }
+    )
   end
 
   defp stored_asset_paths(filename) do

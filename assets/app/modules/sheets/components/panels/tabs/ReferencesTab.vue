@@ -73,6 +73,40 @@ function sceneUrl(sceneId: number | string | undefined): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${sceneId}`;
 }
 
+function isSceneVariableRef(ref: { sourceType?: string }): boolean {
+  return ref.sourceType?.startsWith("scene_") ?? false;
+}
+
+function variableRefUrl(ref: {
+  sourceType?: string;
+  sceneId?: number | string;
+  flowId?: number | string;
+  nodeId?: number | string;
+}): string {
+  return isSceneVariableRef(ref) ? sceneUrl(ref.sceneId) : flowUrl(ref.flowId, ref.nodeId);
+}
+
+function variableRefContainerName(ref: {
+  sourceType?: string;
+  sceneName?: string;
+  flowName?: string;
+}): string | undefined {
+  return isSceneVariableRef(ref) ? ref.sceneName : ref.flowName;
+}
+
+function variableRefSourceName(ref: {
+  sourceType?: string;
+  zoneName?: string;
+  pinLabel?: string;
+  flowName?: string;
+  nodeType?: string;
+}): string | undefined {
+  if (ref.sourceType === "scene_zone") return ref.zoneName;
+  if (ref.sourceType === "scene_pin") return ref.pinLabel;
+  if (ref.sourceType === "scene_ambient_flow") return ref.flowName;
+  return ref.nodeType;
+}
+
 function backlinkUrl(backlink: Backlink): string {
   const si = backlink.sourceInfo;
   if (si.type === "sheet")
@@ -161,11 +195,7 @@ function backlinkUrl(backlink: Backlink): string {
                   <a
                     v-for="(ref, i) in variable.writes"
                     :key="'w' + i"
-                    :href="
-                      ref.sourceType === 'scene_zone'
-                        ? sceneUrl(ref.sceneId)
-                        : flowUrl(ref.flowId, ref.nodeId)
-                    "
+                    :href="variableRefUrl(ref)"
                     data-phx-link="redirect"
                     data-phx-link-state="push"
                     class="flex items-center gap-2 text-xs hover:text-primary group py-1 px-2 -mx-2 rounded-md hover:bg-background/60 transition-colors"
@@ -173,22 +203,20 @@ function backlinkUrl(backlink: Backlink): string {
                     <div
                       :class="[
                         'size-5 rounded flex items-center justify-center shrink-0',
-                        ref.sourceType === 'scene_zone'
+                        isSceneVariableRef(ref)
                           ? 'bg-sky-500/15 text-sky-500'
                           : 'bg-amber-500/15 text-amber-500',
                       ]"
                     >
                       <component
-                        :is="ref.sourceType === 'scene_zone' ? Map : nodeIcon(ref.nodeType)"
+                        :is="isSceneVariableRef(ref) ? Map : nodeIcon(ref.nodeType)"
                         class="size-3"
                       />
                     </div>
-                    <span class="font-medium">{{
-                      ref.sourceType === "scene_zone" ? ref.sceneName : ref.flowName
-                    }}</span>
+                    <span class="font-medium">{{ variableRefContainerName(ref) }}</span>
                     <ArrowRight class="size-3 text-muted-foreground/40" />
                     <Badge variant="outline" class="text-[10px] px-1 py-0">
-                      {{ ref.sourceType === "scene_zone" ? ref.zoneName : ref.nodeType }}
+                      {{ variableRefSourceName(ref) }}
                     </Badge>
                     <span
                       v-if="ref.detail"
@@ -218,11 +246,7 @@ function backlinkUrl(backlink: Backlink): string {
                   <a
                     v-for="(ref, i) in variable.reads"
                     :key="'r' + i"
-                    :href="
-                      ref.sourceType === 'scene_zone'
-                        ? sceneUrl(ref.sceneId)
-                        : flowUrl(ref.flowId, ref.nodeId)
-                    "
+                    :href="variableRefUrl(ref)"
                     data-phx-link="redirect"
                     data-phx-link-state="push"
                     class="flex items-center gap-2 text-xs hover:text-primary group py-1 px-2 -mx-2 rounded-md hover:bg-background/60 transition-colors"
@@ -230,22 +254,20 @@ function backlinkUrl(backlink: Backlink): string {
                     <div
                       :class="[
                         'size-5 rounded flex items-center justify-center shrink-0',
-                        ref.sourceType === 'scene_zone'
+                        isSceneVariableRef(ref)
                           ? 'bg-sky-500/15 text-sky-500'
                           : 'bg-amber-500/15 text-amber-500',
                       ]"
                     >
                       <component
-                        :is="ref.sourceType === 'scene_zone' ? Map : nodeIcon(ref.nodeType)"
+                        :is="isSceneVariableRef(ref) ? Map : nodeIcon(ref.nodeType)"
                         class="size-3"
                       />
                     </div>
-                    <span class="font-medium">{{
-                      ref.sourceType === "scene_zone" ? ref.sceneName : ref.flowName
-                    }}</span>
+                    <span class="font-medium">{{ variableRefContainerName(ref) }}</span>
                     <ArrowRight class="size-3 text-muted-foreground/40" />
                     <Badge variant="outline" class="text-[10px] px-1 py-0">
-                      {{ ref.sourceType === "scene_zone" ? ref.zoneName : ref.nodeType }}
+                      {{ variableRefSourceName(ref) }}
                     </Badge>
                     <Badge
                       v-if="ref.stale"

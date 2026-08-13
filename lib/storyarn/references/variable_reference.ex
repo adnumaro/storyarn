@@ -8,6 +8,7 @@ defmodule Storyarn.References.VariableReference do
   - `"flow_node"`
   - `"scene_pin"`
   - `"scene_zone"`
+  - `"scene_ambient_flow"`
   """
 
   use Ecto.Schema
@@ -30,7 +31,7 @@ defmodule Storyarn.References.VariableReference do
           updated_at: DateTime.t() | nil
         }
 
-  @source_types ~w(flow_node scene_pin scene_zone)
+  @source_types ~w(flow_node scene_pin scene_zone scene_ambient_flow)
 
   schema "variable_references" do
     field :source_type, :string, default: "flow_node"

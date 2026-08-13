@@ -76,20 +76,29 @@
     "unsaved_changes_dialog": {
       "title": "Cambios sin guardar",
       "description": "Tienes cambios que no están guardados en ninguna versión. Restaurar a v{version} reemplazará el estado actual.",
-      "question": "¿Qué quieres hacer con tus cambios actuales?",
-      "save_then_restore": "Guardar estado actual y restaurar",
-      "discard_and_restore": "Descartar cambios y restaurar"
+      "question": "Antes de restaurar, Storyarn guardará y verificará el estado actual como versión de seguridad.",
+      "review_restore": "Revisar restauración"
     },
     "restore_preview_dialog": {
       "title": "Restaurar a versión {version}",
       "shortcut_collision": "Colisión de atajo — se renombrará a \"{name}\"",
-      "missing_entities": "Algunas entidades referenciadas ya no existen:",
+      "missing_entities": "La restauración está bloqueada porque algunas referencias no son válidas o no están disponibles:",
       "missing_prefix": "{type} faltante",
-      "missing_cleared": "Las referencias faltantes se limpiarán.",
-      "missing_cleared_backup": "Las referencias faltantes se limpiarán. Se guardará una copia de seguridad del estado actual.",
+      "entity_types": {
+        "asset": "recurso",
+        "sheet": "ficha",
+        "flow": "flujo",
+        "scene": "escena",
+        "block": "bloque",
+        "avatar": "avatar",
+        "reference": "referencia",
+        "variable": "variable",
+        "entity": "entidad"
+      },
+      "invalid_id": "no válido",
+      "missing_blocked": "Restaura o repara el contenido referenciado, o elige otra versión, e inténtalo de nuevo.",
       "restore_info": "Se restaurará a la versión {version}.",
-      "auto_resolved": "Auto-resuelto:",
-      "restore_anyway": "Restaurar de todos modos",
+      "restore_blocked": "Restauración no disponible",
       "restore": "Restaurar"
     },
     "compare_view": {

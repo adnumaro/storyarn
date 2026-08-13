@@ -479,6 +479,13 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
       scene = scene_fixture(project, %{name: "Camp"})
       pin = pin_fixture(scene, %{"label" => "Gate", "condition" => condition})
 
+      {:ok, _ambient_flow} =
+        Storyarn.Scenes.create_ambient_flow(scene.id, %{
+          "flow_id" => flow.id,
+          "trigger_type" => "on_event",
+          "trigger_config" => %{"variable_ref" => "hero.#{block.variable_name}"}
+        })
+
       zone =
         zone_fixture(scene, %{
           "name" => "Fountain",
@@ -501,6 +508,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
 
       assert "#{base}/sheets/#{sheet.id}?highlight=block:#{block.id}" in urls
       assert "#{base}/flows/#{flow.id}?highlight=node:#{node.id}" in urls
+      assert "#{base}/scenes/#{scene.id}" in urls
       assert "#{base}/scenes/#{scene.id}?highlight=pin:#{pin.id}" in urls
       assert "#{base}/scenes/#{scene.id}?highlight=zone:#{zone.id}" in urls
     end

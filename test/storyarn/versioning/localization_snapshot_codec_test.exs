@@ -145,6 +145,26 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodecTest do
     assert speaker_id == speaker.id
   end
 
+  test "restore rejects missing translator and reviewer identities" do
+    project = project_fixture(user_fixture())
+    source_language_fixture(project, %{locale_code: "en", name: "English"})
+    language_fixture(project, %{locale_code: "es", name: "Spanish"})
+    flow = flow_fixture(project)
+    node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello", "responses" => []}})
+
+    [row] = LocalizationSnapshotCodec.capture(project.id, %{"flow_node" => [node.id]})
+    missing_user_id = 999_999_999
+
+    for actor_field <- ["translated_by_id", "reviewed_by_id"] do
+      assert {:error, {:localization_reference_not_materializable, ^actor_field, ^missing_user_id}} =
+               LocalizationSnapshotCodec.restore(
+                 project.id,
+                 [Map.put(row, actor_field, missing_user_id)],
+                 %{node: %{node.id => node.id}}
+               )
+    end
+  end
+
   test "capture excludes rows belonging to archived target languages" do
     project = project_fixture(user_fixture())
     source_language_fixture(project, %{locale_code: "en", name: "English"})

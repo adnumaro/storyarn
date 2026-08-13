@@ -76,20 +76,29 @@
     "unsaved_changes_dialog": {
       "title": "Unsaved changes",
       "description": "You have changes that aren't saved in any version. Restoring to v{version} will replace the current state.",
-      "question": "What would you like to do with your current changes?",
-      "save_then_restore": "Save current state, then restore",
-      "discard_and_restore": "Discard changes and restore"
+      "question": "Before restoring, Storyarn will save and verify the current state as a safety version.",
+      "review_restore": "Review restore"
     },
     "restore_preview_dialog": {
       "title": "Restore to version {version}",
       "shortcut_collision": "Shortcut collision — will be renamed to \"{name}\"",
-      "missing_entities": "Some referenced entities no longer exist:",
+      "missing_entities": "Restore is blocked because some references are invalid or unavailable:",
       "missing_prefix": "Missing {type}",
-      "missing_cleared": "Missing references will be cleared.",
-      "missing_cleared_backup": "Missing references will be cleared. Current state will be saved as a backup.",
+      "entity_types": {
+        "asset": "asset",
+        "sheet": "sheet",
+        "flow": "flow",
+        "scene": "scene",
+        "block": "block",
+        "avatar": "avatar",
+        "reference": "reference",
+        "variable": "variable",
+        "entity": "entity"
+      },
+      "invalid_id": "invalid",
+      "missing_blocked": "Restore or repair the referenced content, or choose another version, then try again.",
       "restore_info": "This will restore to version {version}.",
-      "auto_resolved": "Auto-resolved:",
-      "restore_anyway": "Restore anyway",
+      "restore_blocked": "Restore unavailable",
       "restore": "Restore"
     },
     "compare_view": {

@@ -92,7 +92,7 @@ msgstr "Formato desconocido"
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:470
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:188
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:264
-#: lib/storyarn_web/live/flow_live/show.ex:1687
+#: lib/storyarn_web/live/flow_live/show.ex:1683
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:99
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:116
 #, elixir-autogen, elixir-format

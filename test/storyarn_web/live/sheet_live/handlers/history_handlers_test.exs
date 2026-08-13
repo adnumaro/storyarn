@@ -110,8 +110,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlersTest do
       view = mount_sheet(conn, url)
 
       render_click(view, "confirm_restore", %{
-        "version_number" => to_string(version.version_number),
-        "skip_pre_snapshot" => true
+        "version_number" => to_string(version.version_number)
       })
 
       restored = Sheets.get_sheet(project.id, sheet.id)

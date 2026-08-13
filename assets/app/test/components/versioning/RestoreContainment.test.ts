@@ -96,7 +96,7 @@ describe("restore containment", () => {
       {
         version_number: 3,
       },
-      undefined,
+      expect.any(Function),
     );
   });
 
@@ -134,7 +134,7 @@ describe("restore containment", () => {
       {
         version_number: 3,
       },
-      undefined,
+      expect.any(Function),
     );
     expect(live.pushEvent).toHaveBeenNthCalledWith(
       2,
@@ -142,7 +142,7 @@ describe("restore containment", () => {
       {
         version_number: 2,
       },
-      undefined,
+      expect.any(Function),
     );
   });
 

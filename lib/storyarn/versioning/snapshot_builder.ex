@@ -48,7 +48,9 @@ defmodule Storyarn.Versioning.SnapshotBuilder do
   Scans a snapshot for external references (foreign keys to other entities).
   Returns a list of reference maps with type, id, and context description.
 
-  Each reference is: `%{type: :asset | :sheet | :flow | :scene, id: integer(), context: String.t()}`
+  Each reference is a map with `type`, `id`, and a human-readable `context`.
+  Malformed embedded references use their original ID payload so the preview
+  can report the same blocking condition that the writer guard will reject.
   """
   @callback scan_references(snapshot :: map()) :: [map()]
 

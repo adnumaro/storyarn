@@ -5,6 +5,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   Captures scene metadata, layers (sorted by position), and per-layer
   zones, pins, and annotations. Connections reference pins by
   (layer_index, pin_index_within_layer) for portability.
+
+  Scenes are editor metadata and intentionally have no localization payload;
+  runtime-localizable sources are limited to sheets, blocks, and flow nodes.
   """
 
   @behaviour Storyarn.Versioning.SnapshotBuilder
@@ -31,6 +34,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
+  alias Storyarn.Versioning.EntityRestoreSafety
   alias Storyarn.Versioning.MaterializationHelpers
   alias Storyarn.Versioning.RestorePolicy
 
@@ -479,10 +483,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp execute_scene_instantiation_transaction(project_id, snapshot, opts) do
-    Repo.transaction(
-      fn -> instantiate_scene_snapshot(project_id, snapshot, opts) end,
-      timeout: :infinity
-    )
+    MaterializationHelpers.with_project_storage_lock(project_id, fn ->
+      instantiate_scene_snapshot(project_id, snapshot, opts)
+    end)
   end
 
   defp instantiate_scene_snapshot(project_id, snapshot, opts) do
@@ -627,10 +630,15 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
              reconcile_reference_items(
                scene.pins,
                &update_scene_pin_references(&1, scene.project_id)
+             ),
+           :ok <-
+             reconcile_reference_items(
+               scene.zones,
+               &update_scene_zone_references(&1, scene.project_id)
              ) do
         reconcile_reference_items(
-          scene.zones,
-          &update_scene_zone_references(&1, scene.project_id)
+          scene.ambient_flows,
+          &update_scene_ambient_flow_references(&1, scene.project_id)
         )
       end
     else
@@ -659,6 +667,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp execute_scene_restore_transaction(scene, snapshot, opts) do
+    MaterializationHelpers.with_project_storage_lock(scene.project_id, fn ->
+      execute_scene_restore_multi(scene, snapshot, opts)
+    end)
+  end
+
+  defp execute_scene_restore_multi(scene, snapshot, opts) do
     Multi.new()
     |> Multi.run(:lock_project, fn repo, _changes ->
       lock_scene_materialization_project(repo, scene.project_id)
@@ -666,9 +680,16 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     |> Multi.run(:lock_scene, fn repo, %{lock_project: _project} ->
       lock_scene_for_restore(repo, scene)
     end)
+    |> Multi.run(:lock_pre_restore_version, fn repo, %{lock_scene: locked_scene} ->
+      case lock_pre_restore_version_record(repo, locked_scene, opts) do
+        :ok -> {:ok, :locked}
+        {:error, reason} -> {:error, reason}
+      end
+    end)
     |> Multi.run(:lock_external_references, fn repo,
                                                %{
-                                                 lock_scene: locked_scene
+                                                 lock_scene: locked_scene,
+                                                 lock_pre_restore_version: _version
                                                } ->
       lock_scene_external_references(repo, locked_scene, snapshot)
     end)
@@ -679,11 +700,23 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
                                          } ->
       lock_scene_restore_scope(repo, locked_scene.id)
     end)
+    |> Multi.run(:verify_pre_restore_baseline, fn _repo,
+                                                  %{
+                                                    lock_scene: locked_scene,
+                                                    lock_restore_scope: _scope,
+                                                    lock_external_references: _references
+                                                  } ->
+      case verify_pre_restore_scene_baseline(locked_scene, opts) do
+        :ok -> {:ok, :verified}
+        {:error, reason} -> {:error, reason}
+      end
+    end)
     |> Multi.run(:validate_snapshot, fn repo,
                                         %{
                                           lock_scene: locked_scene,
                                           lock_restore_scope: _scope,
-                                          lock_external_references: _references
+                                          lock_external_references: _references,
+                                          verify_pre_restore_baseline: _baseline
                                         } ->
       validate_scene_restore_snapshot(repo, locked_scene, snapshot)
     end)
@@ -703,7 +736,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         fog_opacity: snapshot_default(snapshot, "fog_opacity", 0.85),
         exploration_display_mode: snapshot_default(snapshot, "exploration_display_mode", "fit"),
         background_asset_id:
-          resolve_scene_asset(
+          resolve_scene_background_asset(
             snapshot["background_asset_id"],
             snapshot,
             locked_scene.project_id,
@@ -768,6 +801,29 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       nil ->
         {:error, {:scene_not_found, scene_id}}
     end
+  end
+
+  defp lock_pre_restore_version_record(repo, scene, opts) do
+    case EntityRestoreSafety.lock_pre_restore_version(
+           repo,
+           "scene",
+           scene,
+           Keyword.get(opts, :user_id),
+           opts
+         ) do
+      {:ok, _version_or_not_required} -> :ok
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp verify_pre_restore_scene_baseline(scene, opts) do
+    EntityRestoreSafety.verify_pre_restore_baseline(
+      "scene",
+      scene,
+      opts,
+      &do_build_snapshot/1,
+      :scene_changed_since_pre_restore_snapshot
+    )
   end
 
   defp lock_scene_restore_scope(repo, scene_id) do
@@ -868,7 +924,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
               is_nil(asset.deleted_at),
           order_by: [asc: asset.id],
           lock: "FOR UPDATE",
-          select: {asset.id, asset.project_id}
+          select: {asset.id, {asset.project_id, asset.content_type}}
         )
         |> repo.all()
         |> Map.new()
@@ -890,6 +946,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp validate_scene_restore_snapshot(repo, %Scene{} = scene, snapshot) when is_map(snapshot) do
     with :ok <- validate_scene_root_id(scene, snapshot),
          {:ok, plan} <- validate_scene_snapshot_structure(snapshot),
+         :ok <- validate_scene_snapshot_variable_references(scene.project_id, plan),
          :ok <-
            validate_ids_belong_to_scene(
              repo,
@@ -942,12 +999,47 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       {:ok,
        Map.merge(plan, %{
          removed_zone_ids: removed_scene_child_ids(repo, SceneZone, scene.id, plan.zone_ids),
-         removed_pin_ids: removed_scene_child_ids(repo, ScenePin, scene.id, plan.pin_ids)
+         removed_pin_ids: removed_scene_child_ids(repo, ScenePin, scene.id, plan.pin_ids),
+         removed_ambient_flow_ids:
+           removed_scene_child_ids(
+             repo,
+             SceneAmbientFlow,
+             scene.id,
+             plan.ambient_flow_ids
+           )
        })}
     end
   end
 
   defp validate_scene_restore_snapshot(_repo, _scene, snapshot), do: {:error, {:invalid_scene_snapshot, snapshot}}
+
+  defp validate_scene_snapshot_variable_references(project_id, plan) do
+    sources =
+      Enum.map(plan.pins, &scene_snapshot_variable_source("scene_pin", &1)) ++
+        Enum.map(plan.zones, &scene_snapshot_variable_source("scene_zone", &1)) ++
+        Enum.map(plan.ambient_flows, &scene_ambient_snapshot_variable_source/1)
+
+    References.validate_snapshot_variable_references(project_id, sources)
+  end
+
+  defp scene_snapshot_variable_source(source_type, {element, _layer_id}) do
+    %{
+      source_type: source_type,
+      source_id: element["original_id"],
+      action_type: element["action_type"],
+      action_data: element["action_data"],
+      condition: element["condition"]
+    }
+  end
+
+  defp scene_ambient_snapshot_variable_source(ambient_flow) do
+    %{
+      source_type: "scene_ambient_flow",
+      source_id: ambient_flow["original_id"],
+      trigger_type: ambient_flow["trigger_type"],
+      trigger_config: ambient_flow["trigger_config"]
+    }
+  end
 
   defp validate_portable_scene_snapshot(snapshot) do
     case validate_scene_snapshot_structure(snapshot) do
@@ -1924,7 +2016,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     owners =
       Asset
       |> where([asset], asset.id in ^asset_ids and is_nil(asset.deleted_at))
-      |> select([asset], {asset.id, asset.project_id})
+      |> select([asset], {asset.id, {asset.project_id, asset.content_type}})
       |> repo.all()
       |> Map.new()
 
@@ -1934,10 +2026,13 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp validate_scene_asset_reference_owners(owners, asset_ids, project_id, snapshot) do
     Enum.reduce_while(asset_ids, :ok, fn asset_id, :ok ->
       case Map.fetch(owners, asset_id) do
-        {:ok, ^project_id} ->
+        {:ok, {^project_id, "image/" <> _subtype}} ->
           {:cont, :ok}
 
-        {:ok, owner_project_id} ->
+        {:ok, {^project_id, content_type}} ->
+          {:halt, {:error, {:invalid_scene_asset_content_type, asset_id, content_type}}}
+
+        {:ok, {owner_project_id, _content_type}} ->
           {:halt, {:error, {:scene_reference_project_mismatch, :asset, asset_id, project_id, owner_project_id}}}
 
         :error ->
@@ -1947,10 +2042,16 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp validate_missing_scene_asset_reference(snapshot, asset_id) do
-    if scene_snapshot_asset_materializable?(snapshot, asset_id) do
-      {:cont, :ok}
-    else
-      {:halt, {:error, {:scene_asset_not_materializable, asset_id}}}
+    cond do
+      not scene_snapshot_asset_materializable?(snapshot, asset_id) ->
+        {:halt, {:error, {:scene_asset_not_materializable, asset_id}}}
+
+      not scene_snapshot_image_asset?(snapshot, asset_id) ->
+        content_type = get_in(snapshot, ["asset_metadata", to_string(asset_id), "content_type"])
+        {:halt, {:error, {:invalid_scene_asset_content_type, asset_id, content_type}}}
+
+      true ->
+        {:cont, :ok}
     end
   end
 
@@ -1962,6 +2063,13 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       is_map(metadata) and
       is_binary(metadata["filename"]) and
       is_binary(metadata["content_type"])
+  end
+
+  defp scene_snapshot_image_asset?(snapshot, asset_id) do
+    case get_in(snapshot, ["asset_metadata", to_string(asset_id), "content_type"]) do
+      "image/" <> _subtype -> true
+      _content_type -> false
+    end
   end
 
   defp validate_scene_child_entries(entries, label, changeset_fun) do
@@ -2106,7 +2214,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
              scene.id,
              snapshot["ambient_flows"] || []
            ) do
-      {:ok, %{pin_ids: plan.pin_ids, zone_ids: plan.zone_ids}}
+      {:ok,
+       %{
+         pin_ids: plan.pin_ids,
+         zone_ids: plan.zone_ids,
+         ambient_flow_ids: plan.ambient_flow_ids
+       }}
     end
   end
 
@@ -2167,6 +2280,11 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
            ),
          :ok <-
            reconcile_reference_items(
+             plan.removed_ambient_flow_ids,
+             &delete_scene_ambient_flow_references/1
+           ),
+         :ok <-
+           reconcile_reference_items(
              scene_rows_by_id(restored.pin_ids, ScenePin),
              &update_scene_pin_references(&1, project_id)
            ),
@@ -2174,6 +2292,11 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
            reconcile_reference_items(
              scene_rows_by_id(restored.zone_ids, SceneZone),
              &update_scene_zone_references(&1, project_id)
+           ),
+         :ok <-
+           reconcile_reference_items(
+             scene_rows_by_id(restored.ambient_flow_ids, SceneAmbientFlow),
+             &update_scene_ambient_flow_references(&1, project_id)
            ) do
       {:ok, :reconciled}
     end
@@ -2203,6 +2326,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     end
   end
 
+  defp update_scene_ambient_flow_references(ambient_flow, project_id) do
+    References.update_scene_ambient_flow_variable_references(ambient_flow,
+      project_id: project_id
+    )
+  end
+
   defp delete_scene_pin_references(pin_id) do
     with :ok <-
            normalize_reference_delete_result(References.delete_scene_pin_entity_references(pin_id)) do
@@ -2215,6 +2344,10 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
            normalize_reference_delete_result(References.delete_scene_zone_entity_references(zone_id)) do
       References.delete_scene_zone_variable_references(zone_id)
     end
+  end
+
+  defp delete_scene_ambient_flow_references(ambient_flow_id) do
+    References.delete_scene_ambient_flow_variable_references(ambient_flow_id)
   end
 
   defp reconcile_reference_items(items, reconcile_fun) do
@@ -2333,7 +2466,13 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     |> Map.merge(%{
       scene_id: scene_id,
       layer_id: layer_id,
-      label_icon_asset_id: resolve_scene_asset(zone_data["label_icon_asset_id"], snapshot, project_id, opts),
+      label_icon_asset_id:
+        resolve_scene_zone_label_icon_asset(
+          zone_data["label_icon_asset_id"],
+          snapshot,
+          project_id,
+          opts
+        ),
       inserted_at: now,
       updated_at: now
     })
@@ -2488,7 +2627,13 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       scene_id: scene_id,
       layer_id: layer_id,
       sheet_id: resolve_scene_sheet_id(pin_data["sheet_id"], project_id, opts),
-      icon_asset_id: resolve_scene_asset(pin_data["icon_asset_id"], snapshot, project_id, opts),
+      icon_asset_id:
+        resolve_scene_pin_icon_asset(
+          pin_data["icon_asset_id"],
+          snapshot,
+          project_id,
+          opts
+        ),
       inserted_at: now,
       updated_at: now
     })
@@ -2876,7 +3021,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
          target_id: target_id,
          action_data: action_data,
          label_icon_asset_id:
-           resolve_scene_asset(
+           resolve_scene_zone_label_icon_asset(
              zone_data["label_icon_asset_id"],
              snapshot,
              project_id,
@@ -2974,7 +3119,13 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
           opts
         ),
       sheet_id: resolve_scene_sheet_id(pin_data["sheet_id"], project_id, opts),
-      icon_asset_id: resolve_scene_asset(pin_data["icon_asset_id"], snapshot, project_id, opts),
+      icon_asset_id:
+        resolve_scene_pin_icon_asset(
+          pin_data["icon_asset_id"],
+          snapshot,
+          project_id,
+          opts
+        ),
       inserted_at: now,
       updated_at: now
     })
@@ -3149,21 +3300,35 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp resolve_scene_background_asset(asset_id, snapshot, project_id, opts) do
-    resolve_scene_asset(asset_id, snapshot, project_id, opts)
+    resolve_scene_asset(asset_id, snapshot, project_id, opts, :background)
   end
 
-  defp resolve_scene_asset(asset_id, snapshot, project_id, opts) do
+  defp resolve_scene_pin_icon_asset(asset_id, snapshot, project_id, opts) do
+    resolve_scene_asset(asset_id, snapshot, project_id, opts, :pin_icon)
+  end
+
+  defp resolve_scene_zone_label_icon_asset(asset_id, snapshot, project_id, opts) do
+    resolve_scene_asset(asset_id, snapshot, project_id, opts, :zone_label_icon)
+  end
+
+  defp resolve_scene_asset(asset_id, snapshot, project_id, opts, asset_context) do
     case scene_asset_mode(opts) do
       :drop ->
         nil
 
       asset_mode ->
+        resolution_opts =
+          opts
+          |> MaterializationHelpers.asset_resolution_opts(asset_mode, project_id)
+          |> Keyword.put(:expected_content_type_prefix, "image/")
+          |> Keyword.put(:asset_context, asset_context)
+
         AssetHashResolver.resolve_asset_fk(
           asset_id,
           snapshot,
           project_id,
           Keyword.get(opts, :user_id),
-          MaterializationHelpers.asset_resolution_opts(opts, asset_mode)
+          resolution_opts
         )
     end
   end

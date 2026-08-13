@@ -840,11 +840,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("preview_restore", params, socket),
     do: HistoryHandlers.handle_preview_restore(params, socket, history_helpers())
 
-  def handle_event("save_and_restore", params, socket),
-    do: HistoryHandlers.handle_save_and_restore(params, socket, history_helpers())
-
-  def handle_event("discard_and_restore", params, socket),
-    do: HistoryHandlers.handle_discard_and_restore(params, socket, history_helpers())
+  def handle_event("review_restore", params, socket),
+    do: HistoryHandlers.handle_review_restore(params, socket, history_helpers())
 
   def handle_event("confirm_restore", params, socket),
     do: HistoryHandlers.handle_confirm_restore(params, socket, history_helpers())

@@ -11,6 +11,38 @@ defmodule Storyarn.References.ProjectReferenceIntegrityTest do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
+  @max_pg_bigint 9_223_372_036_854_775_807
+
+  describe "normalize_optional_id/1" do
+    test "normalizes optional positive PostgreSQL bigint IDs" do
+      assert {:ok, nil} = ProjectReferenceIntegrity.normalize_optional_id(nil)
+      assert {:ok, nil} = ProjectReferenceIntegrity.normalize_optional_id("")
+      assert {:ok, 1} = ProjectReferenceIntegrity.normalize_optional_id(1)
+      assert {:ok, 1} = ProjectReferenceIntegrity.normalize_optional_id("1")
+      assert {:ok, @max_pg_bigint} = ProjectReferenceIntegrity.normalize_optional_id(@max_pg_bigint)
+      assert {:ok, @max_pg_bigint} = ProjectReferenceIntegrity.normalize_optional_id(to_string(@max_pg_bigint))
+    end
+
+    test "rejects nonpositive, oversized and nonscalar IDs" do
+      invalid_ids = [
+        0,
+        -1,
+        "0",
+        "-1",
+        @max_pg_bigint + 1,
+        to_string(@max_pg_bigint + 1),
+        "not-an-id",
+        1.0,
+        [1],
+        %{id: 1}
+      ]
+
+      for id <- invalid_ids do
+        assert :error = ProjectReferenceIntegrity.normalize_optional_id(id)
+      end
+    end
+  end
+
   test "asset reference validation rejects rows in asset trash" do
     user = user_fixture()
     project = project_fixture(user)

@@ -590,11 +590,17 @@ defmodule Storyarn.Scenes do
   @doc "Returns variable usage for a block from scene pins."
   defdelegate get_scene_pin_variable_usage(block_id, project_id), to: SceneCrud
 
+  @doc "Returns variable usage for a block from Scene ambient flows."
+  defdelegate get_scene_ambient_flow_variable_usage(block_id, project_id), to: SceneCrud
+
   @doc "Returns stale variable reference data for scene zones."
   defdelegate check_stale_scene_zone_variable_references(block_id, project_id), to: SceneCrud
 
   @doc "Returns stale variable reference data for scene pins."
   defdelegate check_stale_scene_pin_variable_references(block_id, project_id), to: SceneCrud
+
+  @doc "Returns stale variable reference data for Scene ambient flows."
+  defdelegate check_stale_scene_ambient_flow_variable_references(block_id, project_id), to: SceneCrud
 
   @doc "Resolves scene pin backlinks for entity reference tracking."
   defdelegate query_scene_pin_backlinks(target_type, target_id, project_id), to: SceneCrud

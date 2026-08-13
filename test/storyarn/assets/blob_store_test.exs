@@ -140,6 +140,40 @@ defmodule Storyarn.Assets.BlobStoreTest do
   end
 
   describe "create_asset_from_blob/5" do
+    test "requires the canonical workspace lock inside an existing transaction", %{
+      project: project,
+      user: user
+    } do
+      content = "transactional asset restore"
+      hash = BlobStore.compute_hash(content)
+      blob_key = BlobStore.blob_key(project.id, hash, "png")
+      tracker = StorageCompensation.new()
+
+      assert {:ok, ^blob_key} = BlobStore.ensure_blob(project.id, hash, "png", content)
+
+      metadata = %{
+        "filename" => "restored.png",
+        "content_type" => "image/png",
+        "size" => byte_size(content)
+      }
+
+      assert {:ok, {:error, :asset_materialization_requires_workspace_lock}} =
+               Repo.transaction(fn ->
+                 BlobStore.create_asset_from_blob(
+                   project.id,
+                   user.id,
+                   hash,
+                   blob_key,
+                   metadata,
+                   asset_copy_tracker: tracker
+                 )
+               end)
+
+      on_exit(fn -> delete_storage_blob(blob_key) end)
+
+      assert :ok = StorageCompensation.discard(tracker)
+    end
+
     test "creates a new asset from blob content", %{project: project, user: user} do
       content = "blob for restoration"
       hash = BlobStore.compute_hash(content)
@@ -312,7 +346,7 @@ defmodule Storyarn.Assets.BlobStoreTest do
       }
 
       assert {:error, {:forced_rollback, asset_key}} =
-               Repo.transaction(fn ->
+               Billing.with_storage_accounting_lock(project.workspace_id, fn _workspace ->
                  {:ok, asset} =
                    BlobStore.create_asset_from_blob(
                      project.id,
@@ -356,8 +390,8 @@ defmodule Storyarn.Assets.BlobStoreTest do
       }
 
       assert {:error, {:forced_rollback, destination_project_id, destination_blob_key, asset_key}} =
-               Repo.transaction(fn ->
-                 destination_project = project_fixture(user)
+               Billing.with_storage_accounting_lock(source_project.workspace_id, fn workspace ->
+                 destination_project = project_fixture(user, %{workspace: workspace})
                  destination_blob_key = BlobStore.blob_key(destination_project.id, hash, "png")
 
                  {:ok, asset} =
@@ -412,7 +446,7 @@ defmodule Storyarn.Assets.BlobStoreTest do
       }
 
       assert {:error, {:forced_rollback, asset_key}} =
-               Repo.transaction(fn ->
+               Billing.with_storage_accounting_lock(destination_project.workspace_id, fn _workspace ->
                  {:ok, asset} =
                    BlobStore.create_asset_from_blob(
                      destination_project.id,

@@ -36,8 +36,8 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
     %{user: user, project: project, flow: flow, version: version}
   end
 
-  describe "handle_save_and_restore/3" do
-    test "shows the restore modal without creating an early race-prone backup", %{
+  describe "handle_review_restore/3" do
+    test "shows the restore modal without creating an early race-prone safety version", %{
       user: user,
       project: project,
       flow: flow,
@@ -52,7 +52,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
         })
 
       assert {:noreply, result} =
-               VersionEventHelpers.handle_save_and_restore(
+               VersionEventHelpers.handle_review_restore(
                  %{"version_number" => to_string(version.version_number)},
                  socket,
                  flow_version_config()
@@ -61,7 +61,8 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
       assert event = pushed_event(result, "show_restore_modal")
       payload = pushed_payload(event)
       assert payload_value(payload, :versionNumber) == version.version_number
-      assert payload_value(payload, :skipPreSnapshot) == false
+      refute Map.has_key?(payload, :skipPreSnapshot)
+      refute Map.has_key?(payload, "skipPreSnapshot")
 
       assert Versioning.count_versions("flow", flow.id) == 1
     end
@@ -83,7 +84,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
         })
 
       assert {:noreply, result} =
-               VersionEventHelpers.handle_save_and_restore(
+               VersionEventHelpers.handle_review_restore(
                  %{"version_number" => to_string(version.version_number)},
                  socket,
                  flow_version_config()
@@ -122,23 +123,15 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
       assert {:noreply, preview_socket} =
                VersionEventHelpers.handle_preview_restore(params, socket, config)
 
-      assert {:noreply, save_socket} =
-               VersionEventHelpers.handle_save_and_restore(params, socket, config)
-
-      assert {:noreply, discard_socket} =
-               VersionEventHelpers.handle_discard_and_restore(params, socket, config)
+      assert {:noreply, review_socket} =
+               VersionEventHelpers.handle_review_restore(params, socket, config)
 
       assert {:noreply, confirm_socket} =
-               VersionEventHelpers.handle_confirm_restore(
-                 Map.put(params, "skip_pre_snapshot", true),
-                 socket,
-                 config
-               )
+               VersionEventHelpers.handle_confirm_restore(params, socket, config)
 
       for result <- [
             preview_socket,
-            save_socket,
-            discard_socket,
+            review_socket,
             confirm_socket
           ] do
         assert result.assigns.flash["error"] == "Could not restore version."

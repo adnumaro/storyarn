@@ -4123,8 +4123,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       view = mount_scene(conn, url)
 
       render_click(view, "confirm_restore", %{
-        "version_number" => to_string(version.version_number),
-        "skip_pre_snapshot" => true
+        "version_number" => to_string(version.version_number)
       })
 
       restored = Scenes.get_scene(project.id, scene.id)

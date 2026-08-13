@@ -10,6 +10,7 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
   alias Storyarn.Flows.NodeCreate
   alias Storyarn.References.AvatarIntegrity
   alias Storyarn.References.ProjectReferenceIntegrity
+  alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
 
   @project_lock_modes [:key_share, :share, :update]
@@ -682,7 +683,7 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
 
   defp mention_reference_specs(data) do
     data
-    |> collect_html_strings([])
+    |> RichTextMentions.html_candidates()
     |> Enum.reduce_while({:ok, []}, fn html, {:ok, specs} ->
       case mention_specs_from_html(html) do
         {:ok, html_specs} -> {:cont, {:ok, html_specs ++ specs}}
@@ -691,56 +692,26 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
     end)
   end
 
-  defp collect_html_strings(value, acc) when is_binary(value) do
-    if String.contains?(value, "mention"), do: [value | acc], else: acc
-  end
-
-  defp collect_html_strings(value, acc) when is_list(value) do
-    Enum.reduce(value, acc, &collect_html_strings/2)
-  end
-
-  defp collect_html_strings(value, acc) when is_map(value) do
-    Enum.reduce(value, acc, fn {_key, nested}, nested_acc ->
-      collect_html_strings(nested, nested_acc)
-    end)
-  end
-
-  defp collect_html_strings(_value, acc), do: acc
-
   defp mention_specs_from_html(html) do
-    case Floki.parse_fragment(html) do
-      {:ok, document} ->
-        document
-        |> Floki.find(".mention")
-        |> Enum.reduce_while({:ok, []}, &accumulate_mention_spec/2)
+    case RichTextMentions.extract_from_html(html) do
+      {:ok, mentions} ->
+        {:ok,
+         Enum.map(mentions, fn %{type: type, id: id} ->
+           reference_type = if(type == "sheet", do: :sheet, else: :flow)
+           {reference_type, {:flow_node_mention, type}, id}
+         end)}
 
-      {:error, reason} ->
+      {:error, {:invalid_html, reason}} ->
         {:error, {:invalid_flow_node_html, reason}}
+
+      {:error, {:invalid_mention, %{type: type_attributes, id: id_attributes}}} ->
+        mention_spec_error(type_attributes, id_attributes)
     end
   end
 
-  defp accumulate_mention_spec(element, {:ok, specs}) do
-    type_attributes = element_attribute_values(element, "data-type")
-    id_attributes = element_attribute_values(element, "data-id")
+  defp mention_spec_error([type], [id]), do: invalid_mention_reference(type, id)
 
-    case mention_spec(type_attributes, id_attributes) do
-      {:ok, spec} -> {:cont, {:ok, [spec | specs]}}
-      {:error, _reason} = error -> {:halt, error}
-    end
-  end
-
-  defp mention_spec([type], [id]) when type in ["sheet", "flow"] and is_binary(id) and byte_size(id) > 0 do
-    if String.trim(id) == "" do
-      invalid_mention_reference(type, id)
-    else
-      reference_type = if(type == "sheet", do: :sheet, else: :flow)
-      {:ok, {reference_type, {:flow_node_mention, type}, id}}
-    end
-  end
-
-  defp mention_spec([type], [id]), do: invalid_mention_reference(type, id)
-
-  defp mention_spec(type_attributes, id_attributes) do
+  defp mention_spec_error(type_attributes, id_attributes) do
     details = %{type: type_attributes, id: id_attributes}
     {:error, {:invalid_project_reference, {:flow_node_mention, :malformed}, details}}
   end
@@ -748,12 +719,6 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
   defp invalid_mention_reference(type, id) do
     {:error, {:invalid_project_reference, {:flow_node_mention, type}, id}}
   end
-
-  defp element_attribute_values({_tag, attributes, _children}, attribute_name) when is_list(attributes) do
-    for {name, value} <- attributes, name == attribute_name, do: value
-  end
-
-  defp element_attribute_values(_element, _attribute_name), do: []
 
   defp lock_and_normalize_jump_target(flow_id, "jump", data) when is_integer(flow_id) and is_map(data) do
     normalize_jump_target(flow_id, data, data["target_hub_id"])
