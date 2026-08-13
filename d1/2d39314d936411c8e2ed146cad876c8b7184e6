@@ -1,0 +1,122 @@
+test/storyarn/scenes/structural_notifications_test.exs
+  s_d64ccabdb01eb7::t_5b70edc024dd4f 1-114
+lib/storyarn/localization/language_crud.ex
+  s_d64ccabdb01eb7::t_549b20246697f1 109-112,201,206,209,211-212,219,221-227
+  s_d64ccabdb01eb7::t_d3b72850d6b0a1 124,207,353-357
+  s_d64ccabdb01eb7::t_b30762a6276ed7 6,13,81-87,95-106,113-115,125-126,184-200,202,210,213-216,358-370
+  s_d64ccabdb01eb7::t_232c295bc5c7d8 107,208,371
+test/storyarn/sheets/structural_notifications_test.exs
+  s_d64ccabdb01eb7::t_67c18ac6224639 1-88
+lib/storyarn/localization.ex
+  s_d64ccabdb01eb7::t_5c6a6e457f37ec 79,86,97
+lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex
+  s_d64ccabdb01eb7::t_dd530691b16152 51,127
+lib/storyarn/sheets/sheet_crud.ex
+  s_d64ccabdb01eb7::t_7b744b581c9c6b 33
+  s_d64ccabdb01eb7::t_d706b65f0e99b8 34,42-50,183
+  s_d64ccabdb01eb7::t_5c87cbb98e2470 6,11,30-32,35-38,112-117,154-157,165-168,181-182,184-196,225-232,414-418
+  s_d64ccabdb01eb7::t_9f481b533932d9 39
+  s_d64ccabdb01eb7::t_d7767a13150a71 40-41,51,419-420
+lib/storyarn_web/live/flow_live/form.ex
+  s_d64ccabdb01eb7::t_dd530691b16152 51
+lib/storyarn_web/live/flow_live/show.ex
+  s_d64ccabdb01eb7::t_dd530691b16152 1673-1678
+lib/storyarn/notifications.ex
+  s_d64ccabdb01eb7::t_9f481b533932d9 132
+  s_d64ccabdb01eb7::t_6efe9bb9275c71 26,35,102-124,127-131
+  s_d64ccabdb01eb7::t_41d7f46d498540 125-126,409-414
+lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex
+  s_d64ccabdb01eb7::t_dd530691b16152 26-27,135
+lib/storyarn/sheets.ex
+  s_d64ccabdb01eb7::t_5c6a6e457f37ec 237,241,258,267,271
+lib/storyarn_web/live/flow_sidebar_live.ex
+  s_d64ccabdb01eb7::t_cf4876cc67af3b 91-95,112,199
+lib/storyarn/scenes/scene_crud.ex
+  s_d64ccabdb01eb7::t_d00a01acccaf9f 12,16,449-450,455-460,462-468,508-513,568-571,592-597,599-605,630-643
+  s_d64ccabdb01eb7::t_9f481b533932d9 461,598
+  s_d64ccabdb01eb7::t_7b744b581c9c6b 451-454
+  s_d64ccabdb01eb7::t_1c52ac73128b04 644
+lib/storyarn/scenes.ex
+  s_d64ccabdb01eb7::t_5c6a6e457f37ec 139,143,158,167,171
+lib/storyarn/flows.ex
+  s_d64ccabdb01eb7::t_5c6a6e457f37ec 163,167,181,190,194
+  s_d64ccabdb01eb7::t_a7f0299ab6b54c 155
+lib/storyarn_web/live/hooks/palette.ex
+  s_d64ccabdb01eb7::t_cb80d3c3f65104 35,221,233,284,584-585,587-588,590-591,593-594,596-597,599-600,612-617,620-621,626,631,634,641
+lib/storyarn_web/live/scene_sidebar_live.ex
+  s_d64ccabdb01eb7::t_cf4876cc67af3b 90-94,112,166
+lib/storyarn_web/live/flow_live/index.ex
+  s_d64ccabdb01eb7::t_dd530691b16152 448
+lib/storyarn_web/live/sheets_sidebar_live.ex
+  s_d64ccabdb01eb7::t_cf4876cc67af3b 90-94,111,167
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  s_d64ccabdb01eb7::t_dd530691b16152 457-461
+test/storyarn_web/live/hooks/palette_test.exs
+  s_d64ccabdb01eb7::t_cfcf1a12bf2c0c 14,739-742,747-754,760-762,948-951,963-970,976-978
+test/storyarn/flows/structural_notifications_test.exs
+  s_d64ccabdb01eb7::t_67c18ac6224639 1-131
+test/storyarn/localization/structural_notifications_test.exs
+  s_d64ccabdb01eb7::t_5b70edc024dd4f 1-128
+lib/storyarn/flows/flow_crud.ex
+  s_d64ccabdb01eb7::t_7b744b581c9c6b 404-407
+  s_d64ccabdb01eb7::t_513b797d44af48 6,20,297-303,305,311-321,323-341,400-403,408-413,415-416,462-467,588-591,615-629,631-634,640-647,1285-1301
+  s_d64ccabdb01eb7::t_9f481b533932d9 414,630
+  s_d64ccabdb01eb7::t_aa2039f91b6024 292-296
+  s_d64ccabdb01eb7::t_549b20246697f1 304,306-308
+  s_d64ccabdb01eb7::t_b673908cea6a7c 342-348,1302-1303
+  s_d64ccabdb01eb7::t_224bb4c1b441ad 397-399
+test/storyarn/notifications_test.exs
+  s_d64ccabdb01eb7::t_f11b5789ffd4fc 207-300
+lib/storyarn_web/live/sheet_live/index.ex
+  s_d64ccabdb01eb7::t_79e1ef8c948a3d 376
+lib/storyarn_web/live/scene_live/index.ex
+  s_d64ccabdb01eb7::t_79e1ef8c948a3d 376
+lib/storyarn_web/live/localization_sidebar_live.ex
+  s_d64ccabdb01eb7::t_cf4876cc67af3b 212,245
+priv/gettext/assets.pot
+  s_d64ccabdb01eb7::t_0ebdcab3645e96 56
+priv/gettext/default.pot
+  s_d64ccabdb01eb7::t_d4c99b3f7b6039 92,95-97,167
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_d64ccabdb01eb7::t_d0569c41d2cb99 56
+priv/gettext/en/LC_MESSAGES/default.po
+  s_d64ccabdb01eb7::t_f01d2faa9447d3 92,95-97,167
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_d64ccabdb01eb7::t_fee9bfd3a42ea9 36-37,42,48,58,69,75,104,158,169,179-181,216,221,372-373,394
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_d64ccabdb01eb7::t_8987394aa1e244 58,83-84,105-106,138,173,319,385,406,461-463,488-489,780-782,803
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_d64ccabdb01eb7::t_6b24ad2d04f227 34-35,46,51,93,123-125,216
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_d64ccabdb01eb7::t_1fd34d44d8cee8 56
+priv/gettext/es/LC_MESSAGES/default.po
+  s_d64ccabdb01eb7::t_d98f75412a7012 92,95-97,167
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_d64ccabdb01eb7::t_5cbafc430d8663 36-37,42,48,58,69,75,104,158,169,179-181,216,221,372-373,394
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_d64ccabdb01eb7::t_b37df366ff14b8 58,83-84,105-106,138,173,319,385,406,461-463,488-489,780-782,803
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_d64ccabdb01eb7::t_7d1594b7206a9c 34-35,46,51,93,123-125,216
+priv/gettext/flows.pot
+  s_d64ccabdb01eb7::t_67e80e7ee14603 36-37,42,48,58,69,75,104,158,169,179-181,216,221,372-373,394
+priv/gettext/scenes.pot
+  s_d64ccabdb01eb7::t_a4553627c57fd8 58,83-84,105-106,138,173,319,385,406,461-463,488-489,780-782,803
+priv/gettext/sheets.pot
+  s_d64ccabdb01eb7::t_c5964fb0314323 34-35,46,51,93,123-125,216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d12d39314d936411c8e2ed146cad876c8b7184e6",
+  "prompts": {},
+  "sessions": {
+    "s_d64ccabdb01eb7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff51e-6200-7312-96d7-fd26ee5eb12d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
