@@ -53,7 +53,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
 
       assert {:noreply, result} =
                VersionEventHelpers.handle_review_restore(
-                 %{"version_number" => to_string(version.version_number)},
+                 restore_params(version, "review-request"),
                  socket,
                  flow_version_config()
                )
@@ -61,6 +61,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
       assert event = pushed_event(result, "show_restore_modal")
       payload = pushed_payload(event)
       assert payload_value(payload, :versionNumber) == version.version_number
+      assert payload_value(payload, :request_id) == "review-request"
       refute Map.has_key?(payload, :skipPreSnapshot)
       refute Map.has_key?(payload, "skipPreSnapshot")
 
@@ -85,7 +86,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
 
       assert {:noreply, result} =
                VersionEventHelpers.handle_review_restore(
-                 %{"version_number" => to_string(version.version_number)},
+                 restore_params(version, "actor-review-request"),
                  socket,
                  flow_version_config()
                )
@@ -117,7 +118,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
           project: project
         })
 
-      params = %{"version_number" => to_string(version.version_number)}
+      params = restore_params(version, "contained-request")
       config = flow_version_config()
 
       assert {:noreply, preview_socket} =
@@ -159,7 +160,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
 
       assert {:noreply, result} =
                VersionEventHelpers.handle_preview_restore(
-                 %{"version_number" => to_string(version.version_number)},
+                 restore_params(version, "viewer-request"),
                  socket,
                  flow_version_config()
                )
@@ -169,6 +170,157 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
 
       refute pushed_event(result, "show_unsaved_modal")
       refute pushed_event(result, "show_restore_modal")
+    end
+
+    test "echoes the exact request ID through preview, review, and confirmation", %{
+      user: user,
+      project: project,
+      flow: flow,
+      version: version
+    } do
+      socket =
+        build_socket(%{
+          current_scope: Scope.for_user(user),
+          flow: flow,
+          membership: %{role: "editor"},
+          project: project
+        })
+
+      assert {:noreply, preview_result} =
+               VersionEventHelpers.handle_preview_restore(
+                 restore_params(version, "preview-request"),
+                 socket,
+                 flow_version_config()
+               )
+
+      assert preview_event =
+               pushed_event(preview_result, "show_unsaved_modal") ||
+                 pushed_event(preview_result, "show_restore_modal")
+
+      assert payload_value(pushed_payload(preview_event), :request_id) == "preview-request"
+
+      assert {:noreply, review_result} =
+               VersionEventHelpers.handle_review_restore(
+                 restore_params(version, "review-request"),
+                 socket,
+                 flow_version_config()
+               )
+
+      assert review_event = pushed_event(review_result, "show_restore_modal")
+      assert payload_value(pushed_payload(review_event), :request_id) == "review-request"
+
+      assert {:noreply, confirm_result} =
+               VersionEventHelpers.handle_confirm_restore(
+                 restore_params(version, "confirm-request"),
+                 socket,
+                 flow_version_config()
+               )
+
+      assert confirm_event = pushed_event(confirm_result, "version_restored")
+      assert payload_value(pushed_payload(confirm_event), :request_id) == "confirm-request"
+    end
+
+    test "accepts and echoes the 64-byte request ID boundary", %{
+      user: user,
+      project: project,
+      flow: flow,
+      version: version
+    } do
+      socket =
+        build_socket(%{
+          current_scope: Scope.for_user(user),
+          flow: flow,
+          membership: %{role: "editor"},
+          project: project
+        })
+
+      request_id = String.duplicate("x", 64)
+
+      assert {:noreply, result} =
+               VersionEventHelpers.handle_review_restore(
+                 restore_params(version, request_id),
+                 socket,
+                 flow_version_config()
+               )
+
+      assert event = pushed_event(result, "show_restore_modal")
+      assert payload_value(pushed_payload(event), :request_id) == request_id
+    end
+
+    test "omits request IDs from all response payloads for legacy clients", %{
+      user: user,
+      project: project,
+      flow: flow,
+      version: version
+    } do
+      socket =
+        build_socket(%{
+          current_scope: Scope.for_user(user),
+          flow: flow,
+          membership: %{role: "editor"},
+          project: project
+        })
+
+      params = %{"version_number" => to_string(version.version_number)}
+
+      assert {:noreply, preview_result} =
+               VersionEventHelpers.handle_preview_restore(params, socket, flow_version_config())
+
+      assert {:noreply, review_result} =
+               VersionEventHelpers.handle_review_restore(params, socket, flow_version_config())
+
+      assert {:noreply, confirm_result} =
+               VersionEventHelpers.handle_confirm_restore(params, socket, flow_version_config())
+
+      assert preview_event =
+               pushed_event(preview_result, "show_unsaved_modal") ||
+                 pushed_event(preview_result, "show_restore_modal")
+
+      assert review_event = pushed_event(review_result, "show_restore_modal")
+      assert confirm_event = pushed_event(confirm_result, "version_restored")
+
+      for event <- [preview_event, review_event, confirm_event] do
+        payload = pushed_payload(event)
+        refute Map.has_key?(payload, :request_id)
+        refute Map.has_key?(payload, "request_id")
+      end
+
+      assert Versioning.count_versions("flow", flow.id) == 3
+    end
+
+    test "rejects present malformed request IDs before authorization or restore", %{
+      user: user,
+      project: project,
+      flow: flow,
+      version: version
+    } do
+      socket =
+        build_socket(%{
+          current_scope: Scope.for_user(user),
+          flow: flow,
+          membership: %{role: "viewer"},
+          project: project
+        })
+
+      config = flow_version_config()
+
+      for request_id <- [nil, 42, %{}, "", String.duplicate("x", 65)],
+          handler <- [
+            :handle_preview_restore,
+            :handle_review_restore,
+            :handle_confirm_restore
+          ] do
+        params = restore_params(version, request_id)
+
+        assert {:noreply, ^socket} =
+                 apply(VersionEventHelpers, handler, [params, socket, config])
+      end
+
+      refute socket.assigns.flash["error"]
+      refute pushed_event(socket, "show_unsaved_modal")
+      refute pushed_event(socket, "show_restore_modal")
+      refute pushed_event(socket, "version_restored")
+      assert Versioning.count_versions("flow", flow.id) == 1
     end
   end
 
@@ -181,7 +333,15 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
   defp flow_version_config do
     %{
       entity_key: :flow,
-      entity_type: "flow"
+      entity_type: "flow",
+      restore_path: fn _socket -> "/restored" end
+    }
+  end
+
+  defp restore_params(version, request_id) do
+    %{
+      "version_number" => to_string(version.version_number),
+      "request_id" => request_id
     }
   end
 

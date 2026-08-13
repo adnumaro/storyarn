@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import {
   Bookmark,
   BookmarkPlus,
@@ -15,6 +16,7 @@ import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive";
 import { useVersionHistory, type VersionEntry } from "./useVersionHistory";
+import VersionTransportError from "./VersionTransportError.vue";
 import {
   CreateVersionDialog,
   PromoteVersionDialog,
@@ -49,6 +51,15 @@ const {
 
 const live = useLive();
 const h = useVersionHistory(() => restoreEnabled);
+const showTransportErrorOutsideDialog = computed(
+  () =>
+    h.transportError.value &&
+    !h.showCreateModal.value &&
+    !h.showPromoteModal.value &&
+    !h.showDeleteModal.value &&
+    !h.showUnsavedModal.value &&
+    !h.showRestoreModal.value,
+);
 
 function changeActionIcon(action: string) {
   if (action === "added") return "+";
@@ -66,6 +77,12 @@ function changeActionColor(action: string) {
 </script>
 
 <template>
+  <VersionTransportError
+    v-if="showTransportErrorOutsideDialog"
+    :visible="h.transportError.value"
+    class="mb-4"
+  />
+
   <!-- Loading -->
   <div v-if="loading" class="flex items-center justify-center p-16">
     <div
@@ -424,6 +441,7 @@ function changeActionColor(action: string) {
     :title="h.createTitle.value"
     :description="h.createDescription.value"
     :loading-action="h.loadingAction.value"
+    :transport-error="h.transportError.value"
     @update:open="h.showCreateModal.value = $event"
     @update:title="h.createTitle.value = $event"
     @update:description="h.createDescription.value = $event"
@@ -436,6 +454,7 @@ function changeActionColor(action: string) {
     :description="h.promoteDescription.value"
     :promote-version="h.promoteVersion.value"
     :loading-action="h.loadingAction.value"
+    :transport-error="h.transportError.value"
     @update:open="h.showPromoteModal.value = $event"
     @update:title="h.promoteTitle.value = $event"
     @update:description="h.promoteDescription.value = $event"
@@ -445,6 +464,7 @@ function changeActionColor(action: string) {
   <DeleteVersionDialog
     :open="h.showDeleteModal.value"
     :loading-action="h.loadingAction.value"
+    :transport-error="h.transportError.value"
     @update:open="h.showDeleteModal.value = $event"
     @confirm="h.confirmDelete"
   />
@@ -454,6 +474,7 @@ function changeActionColor(action: string) {
     :open="h.showUnsavedModal.value"
     :version-number="h.unsavedVersionNumber.value"
     :loading-action="h.loadingAction.value"
+    :transport-error="h.transportError.value"
     @update:open="h.showUnsavedModal.value = $event"
     @review-restore="h.reviewRestore"
   />
@@ -463,6 +484,7 @@ function changeActionColor(action: string) {
     :open="h.showRestoreModal.value"
     :restore-data="h.restoreData.value"
     :loading-action="h.loadingAction.value"
+    :transport-error="h.transportError.value"
     @update:open="h.showRestoreModal.value = $event"
     @confirm="h.confirmRestore"
   />

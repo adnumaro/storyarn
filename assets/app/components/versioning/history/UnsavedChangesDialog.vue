@@ -8,15 +8,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@components/ui/dialog";
+import VersionTransportError from "./VersionTransportError.vue";
 
 const {
   open,
   versionNumber = null,
   loadingAction = null,
+  transportError = false,
 } = defineProps<{
   open: boolean;
   versionNumber?: number | null;
   loadingAction?: string | null;
+  transportError?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -37,6 +40,7 @@ const emit = defineEmits<{
           {{ $t("common.unsaved_changes_dialog.description", { version: versionNumber }) }}
         </DialogDescription>
       </DialogHeader>
+      <VersionTransportError :visible="transportError" />
       <p class="text-sm text-muted-foreground">
         {{ $t("common.unsaved_changes_dialog.question") }}
       </p>

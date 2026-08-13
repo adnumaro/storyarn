@@ -110,8 +110,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlersTest do
       view = mount_sheet(conn, url)
 
       render_click(view, "confirm_restore", %{
-        "version_number" => to_string(version.version_number)
+        "version_number" => to_string(version.version_number),
+        "request_id" => "sheet-confirm-request"
       })
+
+      assert_push_event(view, "version_restored", %{request_id: "sheet-confirm-request"})
 
       restored = Sheets.get_sheet(project.id, sheet.id)
       assert restored.name == "History Sheet"
@@ -151,13 +154,147 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlersTest do
 
         assert {:noreply, result} =
                  HistoryHandlers.handle_confirm_restore(
-                   %{"version_number" => to_string(version.version_number)},
+                   %{
+                     "version_number" => to_string(version.version_number),
+                     "request_id" => "failed-confirm-request"
+                   },
                    socket,
                    helpers
                  )
 
         assert result.assigns.flash["error"] == message
       end
+    end
+  end
+
+  describe "restore request correlation" do
+    test "echoes request IDs from preview and review events", %{
+      conn: conn,
+      user: user,
+      project: project,
+      url: url,
+      sheet: sheet
+    } do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, title: "Restore target")
+
+      {:ok, _changed_sheet} = Sheets.update_sheet(sheet, %{name: "Changed before preview"})
+
+      view = mount_sheet(conn, url)
+
+      render_click(view, "preview_restore", %{
+        "version_number" => to_string(version.version_number),
+        "request_id" => "sheet-preview-request"
+      })
+
+      assert_push_event(view, "show_unsaved_modal", %{request_id: "sheet-preview-request"})
+
+      render_click(view, "review_restore", %{
+        "version_number" => to_string(version.version_number),
+        "request_id" => "sheet-review-request"
+      })
+
+      assert_push_event(view, "show_restore_modal", %{request_id: "sheet-review-request"})
+    end
+
+    test "keeps restore handlers compatible with clients that omit request_id", %{
+      user: user,
+      project: project,
+      sheet: sheet
+    } do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, title: "Restore target")
+
+      socket = handler_socket(user, project, sheet)
+
+      assert {:noreply, preview_result} =
+               HistoryHandlers.handle_preview_restore(
+                 %{"version_number" => to_string(version.version_number)},
+                 socket,
+                 %{}
+               )
+
+      assert {:noreply, review_result} =
+               HistoryHandlers.handle_review_restore(
+                 %{"version_number" => to_string(version.version_number)},
+                 socket,
+                 %{}
+               )
+
+      assert preview_event =
+               pushed_event(preview_result, "show_unsaved_modal") ||
+                 pushed_event(preview_result, "show_restore_modal")
+
+      assert review_event = pushed_event(review_result, "show_restore_modal")
+
+      helpers = %{
+        restore_version: fn "sheet", received_sheet, received_version, opts ->
+          assert received_sheet.id == sheet.id
+          assert received_version.id == version.id
+          assert opts[:user_id] == user.id
+          {:ok, received_sheet}
+        end,
+        reload_blocks: &Function.identity/1,
+        clear_undo: &Function.identity/1,
+        broadcast: fn result, :sheet_restored -> result end
+      }
+
+      assert {:noreply, confirm_result} =
+               HistoryHandlers.handle_confirm_restore(
+                 %{"version_number" => to_string(version.version_number)},
+                 socket,
+                 helpers
+               )
+
+      assert confirm_event = pushed_event(confirm_result, "version_restored")
+
+      for event <- [preview_event, review_event, confirm_event] do
+        payload = pushed_payload(event)
+        refute Map.has_key?(payload, :request_id)
+        refute Map.has_key?(payload, "request_id")
+      end
+    end
+
+    test "rejects malformed request IDs before authorization and restore", %{
+      user: user,
+      project: project,
+      sheet: sheet
+    } do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, title: "Restore target")
+
+      owner_socket = handler_socket(user, project, sheet)
+      socket = %{owner_socket | assigns: Map.put(owner_socket.assigns, :membership, %{role: "viewer"})}
+      test_pid = self()
+
+      helpers = %{
+        restore_version: fn _entity_type, _sheet, _version, _opts ->
+          send(test_pid, :restore_called)
+          {:ok, sheet}
+        end
+      }
+
+      for request_id <- [nil, 42, %{}, "", String.duplicate("x", 65)],
+          handler <- [
+            :handle_preview_restore,
+            :handle_review_restore,
+            :handle_confirm_restore
+          ] do
+        params = %{
+          "version_number" => to_string(version.version_number),
+          "request_id" => request_id
+        }
+
+        assert {:noreply, ^socket} =
+                 apply(HistoryHandlers, handler, [params, socket, helpers])
+      end
+
+      refute_received :restore_called
+      refute socket.assigns.flash["error"]
+      refute pushed_event(socket, "show_unsaved_modal")
+      refute pushed_event(socket, "show_restore_modal")
+      refute pushed_event(socket, "version_restored")
+      assert Versioning.count_versions("sheet", sheet.id) == 1
     end
   end
 
@@ -169,8 +306,22 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlersTest do
         current_scope: Scope.for_user(user),
         membership: %{role: "owner"},
         project: project,
-        sheet: sheet
+        sheet: sheet,
+        workspace: project.workspace
       }
     }
   end
+
+  defp pushed_event(socket, event_name) do
+    socket
+    |> get_in([Access.key(:private), :live_temp, :push_events])
+    |> List.wrap()
+    |> Enum.find(fn
+      [name, _payload] -> name == event_name
+      {name, _payload} -> name == event_name
+    end)
+  end
+
+  defp pushed_payload([_name, payload]), do: payload
+  defp pushed_payload({_name, payload}), do: payload
 end

@@ -23,15 +23,18 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 import type { RestoreData } from "./useVersionHistory";
+import VersionTransportError from "./VersionTransportError.vue";
 
 const {
   open,
   restoreData = null,
   loadingAction = null,
+  transportError = false,
 } = defineProps<{
   open: boolean;
   restoreData?: RestoreData | null;
   loadingAction?: string | null;
+  transportError?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -80,6 +83,7 @@ function conflictLabelKey(type: string) {
           {{ $t("common.restore_preview_dialog.title", { version: restoreData?.versionNumber }) }}
         </DialogTitle>
       </DialogHeader>
+      <VersionTransportError :visible="transportError" />
       <template v-if="restoreData">
         <div v-if="restoreData.report.hasConflicts" class="space-y-3">
           <div

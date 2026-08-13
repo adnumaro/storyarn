@@ -112,7 +112,10 @@ defmodule StoryarnWeb.RestoreContainmentTest do
     {:ok, view, _html} = live(conn, url)
     await_async(view)
 
-    params = %{"version_number" => to_string(version.version_number)}
+    params = %{
+      "version_number" => to_string(version.version_number),
+      "request_id" => "contained-request"
+    }
 
     render_click(view, "preview_restore", params)
     render_click(view, "review_restore", params)

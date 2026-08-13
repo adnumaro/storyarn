@@ -10,10 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@components/ui/dialog";
+import VersionTransportError from "./VersionTransportError.vue";
 
-const { open, loadingAction = null } = defineProps<{
+const {
+  open,
+  loadingAction = null,
+  transportError = false,
+} = defineProps<{
   open: boolean;
   loadingAction?: string | null;
+  transportError?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -32,6 +38,7 @@ const emit = defineEmits<{
         </DialogTitle>
         <DialogDescription>{{ $t("common.delete_version_dialog.description") }}</DialogDescription>
       </DialogHeader>
+      <VersionTransportError :visible="transportError" />
       <DialogFooter>
         <DialogClose as-child
           ><Button variant="ghost" type="button">{{ $t("common.cancel") }}</Button></DialogClose
