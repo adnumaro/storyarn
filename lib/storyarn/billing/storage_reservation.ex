@@ -10,6 +10,7 @@ defmodule Storyarn.Billing.StorageReservation do
 
   import Ecto.Changeset
 
+  alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Projects.Project
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Workspaces.Workspace
@@ -340,20 +341,13 @@ defmodule Storyarn.Billing.StorageReservation do
   end
 
   defp validate_cleanup_inventory_digest(storage_keys, inventory_digest) do
-    if inventory_digest == cleanup_inventory_digest(storage_keys),
+    if inventory_digest == StorageCleanupInventory.digest(storage_keys),
       do: :ok,
       else: {:error, "must match the cleanup inventory digest"}
   end
 
   defp cleanup_inventory_bytes(storage_keys) do
     Enum.reduce(storage_keys, 0, fn storage_key, total -> total + byte_size(storage_key) end)
-  end
-
-  defp cleanup_inventory_digest(storage_keys) do
-    storage_keys
-    |> Enum.map_join(fn storage_key -> "#{byte_size(storage_key)}:#{storage_key}" end)
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
   end
 
   @doc "Releases an active reservation after cleanup ownership has been made durable."

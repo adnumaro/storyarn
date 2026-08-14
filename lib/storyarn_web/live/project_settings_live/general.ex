@@ -277,6 +277,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
      |> assign_theme(project)}
   end
 
+  def handle_info(_message, socket), do: {:noreply, socket}
+
   # ===========================================================================
   # Private
   # ===========================================================================

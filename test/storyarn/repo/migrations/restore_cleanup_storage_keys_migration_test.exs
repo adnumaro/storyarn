@@ -50,6 +50,7 @@ defmodule Storyarn.Repo.Migrations.RestoreCleanupStorageKeysMigrationTest do
     assert index_definition(prefix, @index) =~ "USING gin (cleanup_storage_keys)"
     assert index_definition(prefix, @index) =~ "status = 'active'"
     assert index_definition(prefix, @index) =~ "kind = 'restore_staging'"
+    assert active_owner_lookup_plan(prefix, "a") =~ @index
 
     definition = constraint_definition(prefix, @constraint)
     assert definition =~ "cardinality(cleanup_storage_keys) <= 30000"
@@ -185,6 +186,26 @@ defmodule Storyarn.Repo.Migrations.RestoreCleanupStorageKeysMigrationTest do
       )
 
     definition
+  end
+
+  defp active_owner_lookup_plan(prefix, storage_key) do
+    Repo.query!("SET LOCAL enable_seqscan = off")
+
+    %Postgrex.Result{rows: rows} =
+      Repo.query!(
+        """
+        EXPLAIN (COSTS OFF)
+        SELECT 1
+        FROM #{prefix}.workspace_storage_reservations
+        WHERE status = 'active'
+          AND kind = 'restore_staging'
+          AND storage_started_at IS NOT NULL
+          AND cleanup_storage_keys @> ARRAY[$1]::text[]
+        """,
+        [storage_key]
+      )
+
+    rows |> List.flatten() |> Enum.join("\n")
   end
 
   defp constraint_exists?(prefix, constraint) do

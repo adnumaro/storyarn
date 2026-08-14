@@ -58,6 +58,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   ]
   @snapshot_format_version 2
   @localization_actor_fields ~w(translated_by_id reviewed_by_id)
+  @localization_actor_mode_key :project_recovery_localization_actor_mode
   @snapshot_count_collections %{
     "sheets" => ["sheets"],
     "flows" => ["flows"],
@@ -73,6 +74,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   Creates fresh entities with new IDs and remaps all internal cross-references.
   Referenced assets are always copied and failures are strict by default. The
   caller must authorize the template operation before invoking this function.
+  Localization translator and reviewer identities are discarded because a
+  portable template may be installed into a different workspace.
 
   ## Options
   - `:name` - Name for the materialized project (default: "Recovered Project")
@@ -83,6 +86,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   @spec materialize_template(integer(), map(), integer(), keyword()) ::
           {:ok, Project.t()} | {:error, term()}
   def materialize_template(workspace_id, snapshot_data, user_id, opts \\ []) do
+    opts = Keyword.put(opts, @localization_actor_mode_key, :discard)
     recover_project_with_asset_scope(snapshot_data, workspace_id, user_id, opts)
   end
 
@@ -167,10 +171,15 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     materializes archived localization rows
   - `:asset_materialization_cache` - optional caller-owned cache shared with
     the asset staging phase
+
+  Exact in-situ restore preserves captured localization translator and reviewer
+  identities as historical attribution.
   """
   @spec materialize_into_project(Project.t(), map(), integer(), map(), keyword()) ::
           {:ok, %{project: Project.t(), id_maps: map()}} | {:error, term()}
   def materialize_into_project(project, snapshot_data, user_id, source_id_map, opts \\ []) do
+    opts = Keyword.put(opts, @localization_actor_mode_key, :preserve)
+
     with :ok <- validate_materialization_target(project),
          :ok <- validate_materialization_actor(user_id),
          :ok <- validate_materialization_options(opts),
@@ -232,7 +241,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
            ) do
       recovery_opts =
         opts
-        |> Keyword.take([:asset_materialization_cache])
+        |> Keyword.take([:asset_materialization_cache, @localization_actor_mode_key])
         |> Keyword.put(:asset_materialization_cache, cache)
         |> Keyword.put(:pre_materialized_assets, true)
         |> Keyword.put(:portable_variable_plan, variable_plan)
@@ -934,6 +943,14 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end
   end
 
+  defp validate_recovery_localization_actor_references(snapshot_data, opts) when is_list(opts) do
+    case Keyword.get(opts, @localization_actor_mode_key) do
+      :discard -> :ok
+      :preserve -> validate_recovery_localization_actor_references(snapshot_data)
+      _invalid -> {:error, :invalid_project_recovery_localization_actor_mode}
+    end
+  end
+
   defp localization_actor_rows(%{"localization" => %{"texts" => texts}}) when is_list(texts) do
     if Enum.all?(texts, &is_map/1),
       do: {:ok, texts},
@@ -1002,7 +1019,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp materialize_project_graph_with_receipt(project, snapshot_data, user_id, opts) do
     now = TimeHelpers.now()
 
-    with :ok <- validate_recovery_localization_actor_references(snapshot_data),
+    with :ok <- validate_recovery_localization_actor_references(snapshot_data, opts),
          {:ok, {sheet_maps, snapshot_data}} <-
            recover_sheets_with_portable_namespaces(project.id, snapshot_data, user_id, opts),
          {:ok, scene_maps} <-
@@ -3143,13 +3160,20 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       machine_translated: text["machine_translated"] || false,
       last_translated_at: parse_datetime(text["last_translated_at"]),
       last_reviewed_at: parse_datetime(text["last_reviewed_at"]),
-      translated_by_id: text["translated_by_id"],
-      reviewed_by_id: text["reviewed_by_id"],
+      translated_by_id: recovered_localization_actor_id(text, "translated_by_id", context.opts),
+      reviewed_by_id: recovered_localization_actor_id(text, "reviewed_by_id", context.opts),
       archived_at: parse_datetime(text["archived_at"]),
       archive_reason: recovered_archive_reason(text["archive_reason"]),
       inserted_at: context.now,
       updated_at: context.now
     }
+  end
+
+  defp recovered_localization_actor_id(text, field, opts) do
+    case Keyword.get(opts, @localization_actor_mode_key) do
+      :preserve -> text[field]
+      :discard -> nil
+    end
   end
 
   defp recovered_vo_status(_text, %{vo_eligible: false}, _asset_id), do: "none"

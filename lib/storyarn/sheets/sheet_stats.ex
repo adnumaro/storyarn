@@ -12,6 +12,7 @@ defmodule Storyarn.Sheets.SheetStats do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+  alias Storyarn.Sheets.VariableNamespaceResolver
 
   @variable_types ~w(text rich_text number select multi_select boolean date)
 
@@ -252,24 +253,25 @@ defmodule Storyarn.Sheets.SheetStats do
   defp formula_variable_reference_pairs(_cell), do: []
 
   defp resolve_reference_pairs(project_id, reference_pairs) do
-    shortcuts = reference_pairs |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+    namespaces = reference_pairs |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+    namespace_ids = VariableNamespaceResolver.resolve_sheet_ids(project_id, namespaces)
+    namespace_by_id = Map.new(namespace_ids, fn {namespace, id} -> {id, namespace} end)
+    sheet_ids = Map.keys(namespace_by_id)
 
     from(block in Block,
       join: sheet in Sheet,
       on: block.sheet_id == sheet.id,
       where:
         sheet.project_id == ^project_id and
-          fragment("COALESCE(?, CAST(? AS TEXT))", sheet.shortcut, sheet.id) in ^shortcuts and
+          sheet.id in ^sheet_ids and
           is_nil(sheet.deleted_at) and is_nil(block.deleted_at),
-      select: {
-        coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
-        block.variable_name,
-        block.id
-      }
+      select: {sheet.id, block.variable_name, block.id}
     )
     |> Repo.all()
-    |> Enum.reduce(MapSet.new(), fn {shortcut, variable_name, block_id}, referenced_ids ->
-      if MapSet.member?(reference_pairs, {shortcut, variable_name}) do
+    |> Enum.reduce(MapSet.new(), fn {sheet_id, variable_name, block_id}, referenced_ids ->
+      namespace = Map.fetch!(namespace_by_id, sheet_id)
+
+      if MapSet.member?(reference_pairs, {namespace, variable_name}) do
         MapSet.put(referenced_ids, block_id)
       else
         referenced_ids

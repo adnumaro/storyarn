@@ -12,6 +12,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
+  alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplate
@@ -937,6 +938,49 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert :ok = StorageCompensation.cleanup(transactional_tracker)
   end
 
+  test "rollback cleanup bypasses only its exact restore reservation owner" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = full_project_snapshot_fixture(project)
+    owned_key = cleanup_asset_key("owned-restore-rollback", project.id)
+    concurrently_owned_key = cleanup_asset_key("concurrent-restore-rollback", project.id)
+
+    assert {:ok, _url} = Storage.upload(owned_key, "owned", "image/png")
+    assert {:ok, _url} = Storage.upload(concurrently_owned_key, "concurrent", "image/png")
+
+    on_exit(fn ->
+      Storage.adapter().delete(owned_key)
+      Storage.adapter().delete(concurrently_owned_key)
+    end)
+
+    owner =
+      insert_active_restore_reservation!(project, snapshot, [
+        owned_key,
+        concurrently_owned_key
+      ])
+
+    _concurrent_owner =
+      insert_active_restore_reservation!(project, snapshot, [concurrently_owned_key])
+
+    tracker = StorageCompensation.new()
+    :ok = StorageCompensation.track_force_delete(tracker, owned_key)
+    :ok = StorageCompensation.track_force_delete(tracker, concurrently_owned_key)
+
+    [owned_target, concurrent_target] =
+      tracker
+      |> StorageCompensation.pending_cleanup_targets()
+      |> Enum.sort_by(&String.contains?(&1, "concurrent-restore-rollback"))
+
+    assert {:error, [^concurrent_target]} =
+             StorageCompensation.delete_storage_keys(
+               [owned_target, concurrent_target],
+               restore_cleanup_owner: owner
+             )
+
+    assert {:error, :enoent} = Storage.download(owned_key)
+    assert {:ok, "concurrent"} = Storage.download(concurrently_owned_key)
+  end
+
   test "deferred cleanup deletes content-addressed blobs whose project rolled back" do
     missing_project_id = 9_000_000_000 + System.unique_integer([:positive])
     hash = String.duplicate("b", 64)
@@ -1679,7 +1723,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
       |> Repo.insert!()
 
     canonical_keys = Enum.sort(cleanup_storage_keys)
-    digest = cleanup_inventory_digest(canonical_keys)
+    digest = StorageCleanupInventory.digest(canonical_keys)
 
     reservation
     |> StorageReservation.storage_started_changeset(
@@ -1689,13 +1733,6 @@ defmodule Storyarn.Assets.StorageCompensationTest do
       canonical_keys
     )
     |> Repo.update!()
-  end
-
-  defp cleanup_inventory_digest(storage_keys) do
-    storage_keys
-    |> Enum.map_join(fn storage_key -> "#{byte_size(storage_key)}:#{storage_key}" end)
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
   end
 
   defp cleanup_blob_key(label, project_id \\ 1) do

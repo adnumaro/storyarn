@@ -361,6 +361,45 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycleTest do
       assert request_replay.status == "completed"
     end
 
+    test "rejects missing or malformed replacement entity id lists without raising", context do
+      {:ok, restore} = request(context, Ecto.UUID.generate())
+      job = executing_job!(restore, 1)
+
+      assert {:ok, {:claimed, claimed}} =
+               Versioning.claim_project_snapshot_restore(restore.id, 1,
+                 job_id: job.id,
+                 attempt: 1
+               )
+
+      valid_result = %{
+        result_digest: String.duplicate("a", 64),
+        reservation_id: nil,
+        content_replaced: true,
+        replaced_sheet_ids: [],
+        replaced_flow_ids: [],
+        replaced_scene_ids: []
+      }
+
+      invalid_results = [
+        Map.delete(valid_result, :replaced_sheet_ids),
+        Map.put(valid_result, :replaced_flow_ids, nil),
+        Map.put(valid_result, :replaced_scene_ids, %{})
+      ]
+
+      for invalid_result <- invalid_results do
+        assert {:error, :invalid_project_snapshot_restore_result} =
+                 Versioning.complete_project_snapshot_restore(
+                   restore.id,
+                   claimed.generation,
+                   invalid_result
+                 )
+      end
+
+      persisted = Repo.get!(ProjectSnapshotRestore, restore.id)
+      assert persisted.status == "running"
+      assert persisted.generation == claimed.generation
+    end
+
     test "rejects a job that does not own the exact worker delivery", context do
       {:ok, restore} = request(context, Ecto.UUID.generate())
       job = executing_job!(restore, 1)

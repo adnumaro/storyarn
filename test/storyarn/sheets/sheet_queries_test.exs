@@ -1434,6 +1434,42 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
              ) == block.id
     end
 
+    test "an explicit numeric shortcut deterministically wins over an ID fallback" do
+      %{project: project} = setup_project()
+
+      fallback_sheet = sheet_fixture(project, %{name: "Fallback"})
+
+      fallback_block =
+        block_fixture(fallback_sheet, %{
+          type: "number",
+          config: %{"label" => "Health"},
+          value: %{"content" => 10}
+        })
+
+      explicit_sheet = sheet_fixture(project, %{name: "Explicit"})
+
+      explicit_block =
+        block_fixture(explicit_sheet, %{
+          type: "number",
+          config: %{"label" => "Health"},
+          value: %{"content" => 20}
+        })
+
+      namespace = Integer.to_string(fallback_sheet.id)
+      Repo.update!(Ecto.Changeset.change(fallback_sheet, shortcut: nil))
+      Repo.update!(Ecto.Changeset.change(explicit_sheet, shortcut: namespace))
+
+      assert SheetQueries.resolve_block_id_by_variable(
+               project.id,
+               namespace,
+               fallback_block.variable_name
+             ) == explicit_block.id
+
+      assert SheetQueries.resolve_variable_values(project.id, ["#{namespace}.health"]) == %{
+               "#{namespace}.health" => 20
+             }
+    end
+
     test "returns nil for non-existent variable" do
       %{project: project} = setup_project()
 

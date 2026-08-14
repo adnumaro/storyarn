@@ -58,9 +58,46 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     end
   end
 
+  defmodule SingleBlobArchiveReader do
+    @moduledoc false
+
+    @bytes "failed restore staging bytes"
+    @path "blobs/failed-restore-staging.bin"
+
+    def verify(_snapshot) do
+      {:ok,
+       %{
+         manifest: %{
+           "assets" => [],
+           "objects" => [
+             %{
+               "kind" => "asset_blob",
+               "path" => @path,
+               "size_bytes" => byte_size(@bytes),
+               "sha256" => sha256(@bytes),
+               "content_type" => "application/octet-stream"
+             }
+           ]
+         },
+         project: Process.get({EmptyArchiveReader, :project_object})
+       }}
+    end
+
+    def stream_entry(_plan, @path), do: {:ok, [{:ok, @bytes}]}
+    def path, do: @path
+
+    defp sha256(bytes), do: :sha256 |> :crypto.hash(bytes) |> Base.encode16(case: :lower)
+  end
+
   defmodule FailingMaterializer do
     @moduledoc false
-    def prepare(project_id, restore_id, _manifest, _project, prefix, _keys) do
+
+    def prepare(project_id, restore_id, manifest, _project, prefix, _keys) do
+      logical_bytes =
+        manifest["objects"]
+        |> Enum.filter(&(&1["kind"] == "asset_blob"))
+        |> Enum.sum_by(& &1["size_bytes"])
+
       {:ok,
        %AssetPlan{
          project_id: project_id,
@@ -69,8 +106,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
          assets: [],
          blobs: [],
          source_refs: %{},
-         logical_bytes: 0,
-         staging_bytes: 0
+         logical_bytes: logical_bytes,
+         staging_bytes: logical_bytes
        }}
     end
 
@@ -259,6 +296,22 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     reservation = Repo.get!(StorageReservation, restore.storage_reservation_id)
     assert restore.status == "running"
     assert reservation.status == "active"
+  end
+
+  test "a failed restore deletes staged bytes inline before releasing its reservation", context do
+    assert {:retry, :injected_destination_failure} =
+             ProjectSnapshotRestoreExecutor.execute(context.restore,
+               archive_reader: SingleBlobArchiveReader,
+               asset_materializer: FailingMaterializer,
+               project_recovery: AcceptingRecovery
+             )
+
+    restore = Repo.get!(ProjectSnapshotRestore, context.restore.id)
+    reservation = Repo.get!(StorageReservation, restore.storage_reservation_id)
+    staging_key = reservation.storage_namespace <> "/" <> SingleBlobArchiveReader.path()
+
+    assert reservation.status == "released"
+    assert {:error, :enoent} = Storage.download(staging_key)
   end
 
   test "canonical project fields are mandatory before reservation or storage writes", context do

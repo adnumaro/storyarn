@@ -112,7 +112,10 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert vue.props["project-details"]["name"] == "New Name"
     end
 
-    test "reloads project fields and theme after a snapshot restore", %{conn: conn, user: user} do
+    test "survives replacement invalidations and reloads project fields after a snapshot restore", %{
+      conn: conn,
+      user: user
+    } do
       project = user |> project_fixture(%{name: "Before restore"}) |> Repo.preload(:workspace)
       {:ok, view, _html} = live(conn, settings_path(project))
 
@@ -127,6 +130,12 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       Phoenix.PubSub.broadcast(
         Storyarn.PubSub,
         "project:#{project.id}:shell",
+        {:entities_deleted, :sheet, [123]}
+      )
+
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        "project:#{project.id}:shell",
         {:project_restored, 42}
       )
 
@@ -135,6 +144,20 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert vue.props["project-details"]["name"] == "After restore"
       assert vue.props["theme-primary"] == "#123456"
       assert vue.props["theme-accent"] == "#654321"
+    end
+
+    test "ignores collaborator sidebar messages on the shared shell topic", %{conn: conn, user: user} do
+      project = user |> project_fixture(%{name: "Stable project"}) |> Repo.preload(:workspace)
+      {:ok, view, _html} = live(conn, settings_path(project))
+
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        "project:#{project.id}:shell",
+        {:tree_changed, :sheets}
+      )
+
+      _html = render(view)
+      assert get_general_vue(view).props["project-details"]["name"] == "Stable project"
     end
 
     test "updates project type metadata via update_project event", %{conn: conn, user: user} do

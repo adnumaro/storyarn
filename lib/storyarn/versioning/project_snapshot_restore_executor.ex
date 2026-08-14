@@ -18,6 +18,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageHash
   alias Storyarn.Billing
+  alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
@@ -360,7 +361,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
 
     Enum.all?([
       reservation.cleanup_inventory_count == length(keys),
-      reservation.cleanup_inventory_digest == cleanup_inventory_digest(keys),
+      reservation.cleanup_inventory_digest == StorageCleanupInventory.digest(keys),
       reservation.cleanup_storage_keys == Enum.sort(keys)
     ])
   end
@@ -371,14 +372,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     do: DateTime.after?(expires_at, TimeHelpers.now())
 
   defp unexpired_reservation?(_reservation), do: false
-
-  defp cleanup_inventory_digest(storage_keys) do
-    storage_keys
-    |> Enum.sort()
-    |> Enum.map_join(fn storage_key -> "#{byte_size(storage_key)}:#{storage_key}" end)
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
-  end
 
   defp reservation_key(
          _restore,
@@ -1622,7 +1615,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
 
   defp compensate_failure(restore, tracker, reason, opts) do
     context = Process.get(@compensation_context_key)
-    cleanup_fun = Keyword.get(opts, :cleanup_after_rollback, &StorageCompensation.cleanup_after_rollback/1)
+    cleanup_fun = Keyword.get(opts, :cleanup_after_rollback, &cleanup_after_rollback(&1, context))
     release_fun = Keyword.get(opts, :release_reservation, &release_active_reservation/2)
     cleanup_result = cleanup_fun.(tracker)
 
@@ -1643,6 +1636,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
       do: {:retry, reason},
       else: {:snooze, 30}
   end
+
+  defp cleanup_after_rollback(tracker, %{reservation: %StorageReservation{} = reservation}) do
+    StorageCompensation.cleanup_after_rollback(tracker, restore_cleanup_owner: reservation)
+  end
+
+  defp cleanup_after_rollback(tracker, _context), do: StorageCompensation.cleanup_after_rollback(tracker)
 
   defp persist_failed_cleanup_ownership(tracker, cleanup_result) do
     cleanup_targets = cleanup_failure_targets(cleanup_result)

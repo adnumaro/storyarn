@@ -134,7 +134,7 @@ msgstr "Guardado"
 msgid "This invitation has already been accepted."
 msgstr "Esta invitación ya fue aceptada."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:256
+#: lib/storyarn_web/live/project_settings_live/trash.ex:258
 #, elixir-autogen, elixir-format
 msgid "Trash emptied successfully."
 msgstr "Papelera vaciada exitosamente."
@@ -154,38 +154,38 @@ msgstr "Restaura elementos eliminados del proyecto o elimínalos permanentemente
 msgid "Project Trash"
 msgstr "Papelera del proyecto"
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:165
-#: lib/storyarn_web/live/project_settings_live/trash.ex:180
+#: lib/storyarn_web/live/project_settings_live/trash.ex:167
+#: lib/storyarn_web/live/project_settings_live/trash.ex:182
 #, elixir-autogen, elixir-format
 msgid "Item restored successfully."
 msgstr "Elemento restaurado correctamente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:168
-#: lib/storyarn_web/live/project_settings_live/trash.ex:347
-#: lib/storyarn_web/live/project_settings_live/trash.ex:350
+#: lib/storyarn_web/live/project_settings_live/trash.ex:170
+#: lib/storyarn_web/live/project_settings_live/trash.ex:349
+#: lib/storyarn_web/live/project_settings_live/trash.ex:352
 #, elixir-autogen, elixir-format
 msgid "Failed to restore item."
 msgstr "Error al restaurar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:187
-#: lib/storyarn_web/live/project_settings_live/trash.ex:226
+#: lib/storyarn_web/live/project_settings_live/trash.ex:189
+#: lib/storyarn_web/live/project_settings_live/trash.ex:228
 #, elixir-autogen, elixir-format
 msgid "Item not found."
 msgstr "Elemento no encontrado."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:204
-#: lib/storyarn_web/live/project_settings_live/trash.ex:219
+#: lib/storyarn_web/live/project_settings_live/trash.ex:206
+#: lib/storyarn_web/live/project_settings_live/trash.ex:221
 #, elixir-autogen, elixir-format
 msgid "Item permanently deleted."
 msgstr "Elemento eliminado permanentemente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:222
-#: lib/storyarn_web/live/project_settings_live/trash.ex:372
+#: lib/storyarn_web/live/project_settings_live/trash.ex:224
+#: lib/storyarn_web/live/project_settings_live/trash.ex:374
 #, elixir-autogen, elixir-format
 msgid "Failed to delete item."
 msgstr "Error al eliminar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:260
+#: lib/storyarn_web/live/project_settings_live/trash.ex:262
 #, elixir-autogen, elixir-format
 msgid "Some items could not be deleted."
 msgstr "Algunos elementos no se pudieron eliminar."
@@ -211,7 +211,7 @@ msgstr "Ya eres miembro de este proyecto."
 msgid "Failed to reset theme."
 msgstr "Error al restablecer el tema."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:481
+#: lib/storyarn_web/live/project_settings_live/general.ex:483
 #, elixir-autogen, elixir-format
 msgid "Failed to save theme."
 msgstr "Error al guardar el tema."
@@ -221,7 +221,7 @@ msgstr "Error al guardar el tema."
 msgid "Theme reset to default."
 msgstr "Tema restablecido por defecto."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:478
+#: lib/storyarn_web/live/project_settings_live/general.ex:480
 #, elixir-autogen, elixir-format
 msgid "Theme saved."
 msgstr "Tema guardado."
@@ -261,7 +261,7 @@ msgstr "Configuración del proveedor de traducción"
 msgid "Failed to save settings."
 msgstr "Error al guardar la configuración."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:484
+#: lib/storyarn_web/live/project_settings_live/general.ex:486
 #, elixir-autogen, elixir-format
 msgid "Invalid color format. Use #RRGGBB."
 msgstr "Formato de color no válido. Usa #RRGGBB."
@@ -408,7 +408,7 @@ msgstr "Reintentando tras un problema temporal…"
 msgid "Creating project…"
 msgstr "Creando proyecto…"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:358
+#: lib/storyarn_web/live/project_settings_live/general.ex:360
 #: lib/storyarn_web/live/template_live/show.ex:518
 #, elixir-autogen, elixir-format
 msgid "A template publication is already running."
@@ -702,7 +702,7 @@ msgstr "No se pudo eliminar la template."
 msgid "Template could not be installed."
 msgstr "No se pudo instalar la template."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:370
+#: lib/storyarn_web/live/project_settings_live/general.ex:372
 #, elixir-autogen, elixir-format
 msgid "Template could not be queued."
 msgstr "No se pudo poner en cola la template."
@@ -712,7 +712,7 @@ msgstr "No se pudo poner en cola la template."
 msgid "Template could not be restored."
 msgstr "No se pudo restaurar la template."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:362
+#: lib/storyarn_web/live/project_settings_live/general.ex:364
 #: lib/storyarn_web/live/template_live/show.ex:524
 #, elixir-autogen, elixir-format
 msgid "Template limit reached for your plan."
@@ -735,7 +735,7 @@ msgstr "Template eliminada permanentemente."
 msgid "Template publication could not be queued."
 msgstr "No se pudo poner en cola la publicación de la template."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:319
+#: lib/storyarn_web/live/project_settings_live/general.ex:321
 #: lib/storyarn_web/live/template_live/show.ex:512
 #, elixir-autogen, elixir-format
 msgid "Template publication queued."
@@ -751,7 +751,7 @@ msgstr "Template restaurada."
 msgid "Template version"
 msgstr "Versión de la template"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:366
+#: lib/storyarn_web/live/project_settings_live/general.ex:368
 #: lib/storyarn_web/live/template_live/show.ex:521
 #, elixir-autogen, elixir-format
 msgid "Template version limit reached for your plan."
@@ -1239,12 +1239,12 @@ msgstr "La eliminación de la snapshot ha comenzado."
 msgid "The snapshot could not be deleted."
 msgstr "No se ha podido eliminar la snapshot."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:357
+#: lib/storyarn_web/live/project_settings_live/trash.ex:359
 #, elixir-autogen, elixir-format
 msgid "This item references unavailable content. If any referenced items are in Trash, restore them first and try again."
 msgstr "Este elemento hace referencia a contenido no disponible. Si hay elementos referenciados en la Papelera, restáuralos primero y vuelve a intentarlo."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:366
+#: lib/storyarn_web/live/project_settings_live/trash.ex:368
 #, elixir-autogen, elixir-format
 msgid "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
 msgstr "Este recurso todavía está referenciado por otro contenido. Elimina esas referencias o borra permanentemente de la Papelera los elementos que lo referencian y vuelve a intentarlo."

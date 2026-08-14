@@ -35,7 +35,10 @@ defmodule Storyarn.Scenes.SceneCrud do
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.VariableNamespaceResolver
   alias Storyarn.Shortcuts
+
+  require VariableNamespaceResolver
 
   @stale_variable_reference_sql """
   CASE WHEN ? = 'table' THEN
@@ -54,25 +57,26 @@ defmodule Storyarn.Scenes.SceneCrud do
     sql = @stale_variable_reference_sql
 
     quote do
-      fragment(
-        unquote(sql),
-        unquote(block).type,
-        unquote(reference).source_sheet,
-        coalesce(
-          unquote(sheet).shortcut,
-          fragment("CAST(? AS TEXT)", unquote(sheet).id)
-        ),
-        unquote(block).id,
-        unquote(reference).source_variable,
-        unquote(block).variable_name,
-        unquote(reference).source_sheet,
-        coalesce(
-          unquote(sheet).shortcut,
-          fragment("CAST(? AS TEXT)", unquote(sheet).id)
-        ),
-        unquote(reference).source_variable,
-        unquote(block).variable_name
-      )
+      not VariableNamespaceResolver.authoritative_namespace_owner?(unquote(sheet)) or
+        fragment(
+          unquote(sql),
+          unquote(block).type,
+          unquote(reference).source_sheet,
+          coalesce(
+            unquote(sheet).shortcut,
+            fragment("CAST(? AS TEXT)", unquote(sheet).id)
+          ),
+          unquote(block).id,
+          unquote(reference).source_variable,
+          unquote(block).variable_name,
+          unquote(reference).source_sheet,
+          coalesce(
+            unquote(sheet).shortcut,
+            fragment("CAST(? AS TEXT)", unquote(sheet).id)
+          ),
+          unquote(reference).source_variable,
+          unquote(block).variable_name
+        )
     end
   end
 

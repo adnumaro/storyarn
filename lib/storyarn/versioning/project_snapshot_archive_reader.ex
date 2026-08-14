@@ -577,23 +577,37 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader do
 
   defp verify_local_layout(archive_key, archive_stat, central_entries, directory_offset) do
     central_entries
-    |> Enum.with_index()
-    |> Enum.reduce_while({:ok, [], 0}, fn {central, index}, {:ok, verified, expected_offset} ->
-      next_offset =
-        case Enum.at(central_entries, index + 1) do
-          nil -> directory_offset
-          next -> next.local_header_offset
-        end
-
-      case verify_local_entry(archive_key, archive_stat, central, expected_offset, next_offset) do
-        {:ok, entry} -> {:cont, {:ok, [entry | verified], next_offset}}
-        {:error, _reason} = error -> {:halt, error}
-      end
-    end)
+    |> verify_local_entries(archive_key, archive_stat, directory_offset, 0, [])
     |> case do
       {:ok, verified, ^directory_offset} -> {:ok, Enum.reverse(verified)}
       {:ok, _verified, _offset} -> {:error, :invalid_snapshot_zip_local_region_bounds}
       {:error, _reason} = error -> error
+    end
+  end
+
+  defp verify_local_entries([], _archive_key, _archive_stat, _directory_offset, expected_offset, verified),
+    do: {:ok, verified, expected_offset}
+
+  defp verify_local_entries([central | remaining], archive_key, archive_stat, directory_offset, expected_offset, verified) do
+    next_offset =
+      case remaining do
+        [next | _rest] -> next.local_header_offset
+        [] -> directory_offset
+      end
+
+    case verify_local_entry(archive_key, archive_stat, central, expected_offset, next_offset) do
+      {:ok, entry} ->
+        verify_local_entries(
+          remaining,
+          archive_key,
+          archive_stat,
+          directory_offset,
+          next_offset,
+          [entry | verified]
+        )
+
+      {:error, _reason} = error ->
+        error
     end
   end
 

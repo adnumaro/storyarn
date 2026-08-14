@@ -20,6 +20,7 @@ defmodule Storyarn.Billing.StorageAccounting do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Billing.Plan
+  alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Billing.SubscriptionCrud
   alias Storyarn.Projects.Project
@@ -860,7 +861,7 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   defp persist_storage_started(reservation, storage_keys) do
     canonical_storage_keys = Enum.sort(storage_keys)
-    inventory_digest = cleanup_inventory_digest(canonical_storage_keys)
+    inventory_digest = StorageCleanupInventory.digest(canonical_storage_keys)
     inventory_count = length(canonical_storage_keys)
 
     durable_cleanup_storage_keys =
@@ -2213,9 +2214,10 @@ defmodule Storyarn.Billing.StorageAccounting do
          },
          storage_keys
        ) do
-    if inventory_count == length(storage_keys) and inventory_digest == cleanup_inventory_digest(storage_keys),
-      do: :ok,
-      else: {:error, :storage_reservation_cleanup_inventory_mismatch}
+    if inventory_count == length(storage_keys) and
+         inventory_digest == StorageCleanupInventory.digest(storage_keys),
+       do: :ok,
+       else: {:error, :storage_reservation_cleanup_inventory_mismatch}
   end
 
   defp validate_cleanup_commitment(_reservation, _storage_keys),
@@ -2281,14 +2283,6 @@ defmodule Storyarn.Billing.StorageAccounting do
     if deleting_snapshot? and StorageCleanupOwnershipReceipt.handed_off_for_prefix?(object_prefix),
       do: :ok,
       else: {:error, :snapshot_object_publication_claim_not_poisoned}
-  end
-
-  defp cleanup_inventory_digest(storage_keys) do
-    storage_keys
-    |> Enum.sort()
-    |> Enum.map_join(fn storage_key -> "#{byte_size(storage_key)}:#{storage_key}" end)
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
   end
 
   defp validate_cleanup_inventory(%{staging: staging_prefix, ready: ready_prefix}, cleanup_scope, storage_keys) do

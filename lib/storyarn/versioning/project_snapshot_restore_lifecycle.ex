@@ -1508,10 +1508,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycle do
 
   defp broadcast_replaced_entities(_topic, _type, _ids), do: :ok
 
-  defp valid_entity_ids?(ids) do
+  defp valid_entity_ids?(ids) when is_list(ids) do
     length(ids) <= 100_000 and Enum.all?(ids, &(is_integer(&1) and &1 > 0)) and
       length(ids) == length(Enum.uniq(ids))
   end
+
+  defp valid_entity_ids?(_ids), do: false
 
   defp broadcast_result({:ok, %ProjectSnapshotRestore{} = restore} = result) do
     broadcast(restore)

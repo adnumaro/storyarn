@@ -44,6 +44,9 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
   alias Storyarn.Sheets.VariableCatalog
+  alias Storyarn.Sheets.VariableNamespaceResolver
+
+  require VariableNamespaceResolver
 
   @rebuild_batch_size 100
   @regular_variable_types VariableCatalog.regular_variable_types()
@@ -1681,30 +1684,31 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp filter_stale_variable_references(query) do
     from([reference: reference, block: block, sheet: sheet] in query,
       where:
-        fragment(
-          """
-          CASE WHEN ? = 'table' THEN
-            ? != ? OR NOT EXISTS (
-              SELECT 1 FROM table_rows tr
-              JOIN table_columns tc ON tc.block_id = tr.block_id
-              WHERE tr.block_id = ?
-                AND ? = ? || '.' || tr.slug || '.' || tc.slug
-            )
-          ELSE
-            ? != ? OR ? != ?
-          END
-          """,
-          block.type,
-          reference.source_sheet,
-          coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
-          block.id,
-          reference.source_variable,
-          block.variable_name,
-          reference.source_sheet,
-          coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
-          reference.source_variable,
-          block.variable_name
-        )
+        not VariableNamespaceResolver.authoritative_namespace_owner?(sheet) or
+          fragment(
+            """
+            CASE WHEN ? = 'table' THEN
+              ? != ? OR NOT EXISTS (
+                SELECT 1 FROM table_rows tr
+                JOIN table_columns tc ON tc.block_id = tr.block_id
+                WHERE tr.block_id = ?
+                  AND ? = ? || '.' || tr.slug || '.' || tc.slug
+              )
+            ELSE
+              ? != ? OR ? != ?
+            END
+            """,
+            block.type,
+            reference.source_sheet,
+            coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
+            block.id,
+            reference.source_variable,
+            block.variable_name,
+            reference.source_sheet,
+            coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
+            reference.source_variable,
+            block.variable_name
+          )
     )
   end
 
@@ -2644,6 +2648,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
             block.type in ^@regular_variable_types and
             block.is_constant == false and
             not is_nil(block.variable_name) and block.variable_name != "" and
+            VariableNamespaceResolver.authoritative_namespace_owner?(sheet) and
             fragment(
               "COALESCE(?, CAST(? AS TEXT)) || '.' || ?",
               sheet.shortcut,
@@ -2684,6 +2689,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and
         is_nil(block.deleted_at) and not is_nil(block.variable_name) and
         block.variable_name != "" and
+        VariableNamespaceResolver.authoritative_namespace_owner?(sheet) and
         fragment(
           "COALESCE(?, CAST(? AS TEXT)) || '.' || ? || '.' || ? || '.' || ?",
           sheet.shortcut,
@@ -2723,10 +2729,14 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp resolve_regular_block_ids(_project_id, []), do: %{}
 
   defp resolve_regular_block_ids(project_id, keys) do
-    shortcuts =
+    namespaces =
       keys
       |> Enum.map(&elem(&1, 1))
       |> Enum.uniq()
+
+    namespace_ids = VariableNamespaceResolver.resolve_sheet_ids(project_id, namespaces)
+    namespace_by_id = Map.new(namespace_ids, fn {namespace, id} -> {id, namespace} end)
+    sheet_ids = Map.keys(namespace_by_id)
 
     variable_names =
       keys
@@ -2738,28 +2748,27 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       on: sheet.id == block.sheet_id,
       where:
         sheet.project_id == ^project_id and
-          fragment("COALESCE(?, CAST(? AS TEXT))", sheet.shortcut, sheet.id) in ^shortcuts and
+          sheet.id in ^sheet_ids and
           block.variable_name in ^variable_names and
           block.type in ^@regular_variable_types and
           block.is_constant == false and
           is_nil(sheet.deleted_at) and
           is_nil(block.deleted_at),
-      select: {
-        coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
-        block.variable_name,
-        block.id
-      }
+      select: {sheet.id, block.variable_name, block.id}
     )
     |> Repo.all()
-    |> Map.new(fn {shortcut, variable_name, block_id} ->
-      {{:regular, shortcut, variable_name}, block_id}
+    |> Map.new(fn {sheet_id, variable_name, block_id} ->
+      {{:regular, Map.fetch!(namespace_by_id, sheet_id), variable_name}, block_id}
     end)
   end
 
   defp resolve_table_block_ids(_project_id, []), do: %{}
 
   defp resolve_table_block_ids(project_id, keys) do
-    shortcuts = keys |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
+    namespaces = keys |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
+    namespace_ids = VariableNamespaceResolver.resolve_sheet_ids(project_id, namespaces)
+    namespace_by_id = Map.new(namespace_ids, fn {namespace, id} -> {id, namespace} end)
+    sheet_ids = Map.keys(namespace_by_id)
     table_names = keys |> Enum.map(&elem(&1, 2)) |> Enum.uniq()
     row_slugs = keys |> Enum.map(&elem(&1, 3)) |> Enum.uniq()
     column_slugs = keys |> Enum.map(&elem(&1, 4)) |> Enum.uniq()
@@ -2780,7 +2789,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     |> where(
       [block: block, sheet: sheet, row: row, column: column],
       sheet.project_id == ^project_id and
-        fragment("COALESCE(?, CAST(? AS TEXT))", sheet.shortcut, sheet.id) in ^shortcuts and
+        sheet.id in ^sheet_ids and
         block.variable_name in ^table_names and
         row.slug in ^row_slugs and
         column.slug in ^column_slugs and
@@ -2789,15 +2798,16 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     )
     |> filter_table_variable_targets()
     |> select([block: block, sheet: sheet, row: row, column: column], {
-      coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
+      sheet.id,
       block.variable_name,
       row.slug,
       column.slug,
       block.id
     })
     |> Repo.all()
-    |> Map.new(fn {shortcut, table_name, row_slug, column_slug, block_id} ->
-      {{:table, shortcut, table_name, row_slug, column_slug}, block_id}
+    |> Map.new(fn {sheet_id, table_name, row_slug, column_slug, block_id} ->
+      namespace = Map.fetch!(namespace_by_id, sheet_id)
+      {{:table, namespace, table_name, row_slug, column_slug}, block_id}
     end)
   end
 
@@ -2919,90 +2929,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp list_value(value) when is_list(value), do: value
   defp list_value(_value), do: []
 
-  defp extract_assignment_refs(assign, project_id) do
-    write_ref = resolve_write_ref(project_id, assign)
-    read_ref = resolve_assignment_read_ref(project_id, assign)
-    write_ref ++ read_ref
-  end
-
-  defp resolve_write_ref(project_id, assign) do
-    case resolve_block(project_id, assign["sheet"], assign["variable"]) do
-      nil ->
-        []
-
-      block_id ->
-        [
-          %{
-            block_id: block_id,
-            kind: "write",
-            source_sheet: assign["sheet"],
-            source_variable: assign["variable"]
-          }
-        ]
-    end
-  end
-
-  defp resolve_assignment_read_ref(project_id, %{"value_type" => "variable_ref"} = assign) do
-    case resolve_block(project_id, assign["value_sheet"], assign["value"]) do
-      nil ->
-        []
-
-      block_id ->
-        [
-          %{
-            block_id: block_id,
-            kind: "read",
-            source_sheet: assign["value_sheet"],
-            source_variable: assign["value"]
-          }
-        ]
-    end
-  end
-
-  defp resolve_assignment_read_ref(_project_id, _assign), do: []
-
-  defp resolve_rule_read_ref(rule, project_id) do
-    case resolve_block(project_id, rule["sheet"], rule["variable"]) do
-      nil ->
-        []
-
-      block_id ->
-        [
-          %{
-            block_id: block_id,
-            kind: "read",
-            source_sheet: rule["sheet"],
-            source_variable: rule["variable"]
-          }
-        ]
-    end
-  end
-
   defp get_project_id(flow_id) do
     Repo.one(from(f in Flow, where: f.id == ^flow_id, select: f.project_id))
-  end
-
-  defp resolve_block(project_id, sheet_shortcut, variable_name)
-       when is_binary(sheet_shortcut) and sheet_shortcut != "" and is_binary(variable_name) and variable_name != "" do
-    case String.split(variable_name, ".", parts: 3) do
-      [table_name, row_slug, column_slug] ->
-        resolve_table_block(project_id, sheet_shortcut, table_name, row_slug, column_slug)
-
-      _ ->
-        resolve_regular_block(project_id, sheet_shortcut, variable_name)
-    end
-  end
-
-  defp resolve_block(_, _, _), do: nil
-
-  defp resolve_regular_block(project_id, sheet_shortcut, variable_name) do
-    key = {:regular, sheet_shortcut, variable_name}
-    project_id |> resolve_regular_block_ids([key]) |> Map.get(key)
-  end
-
-  defp resolve_table_block(project_id, sheet_shortcut, table_name, row_slug, column_slug) do
-    key = {:table, sheet_shortcut, table_name, row_slug, column_slug}
-    project_id |> resolve_table_block_ids([key]) |> Map.get(key)
   end
 
   # Repairs node data by replacing stale shortcut/variable references with current values.
@@ -3224,17 +3152,9 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     end
   end
 
-  defp extract_zone_variable_refs(zone, project_id) do
-    action_refs = extract_action_variable_refs(zone, project_id)
-    condition_refs = extract_condition_variable_refs(zone, project_id)
-    action_refs ++ condition_refs
-  end
+  defp extract_zone_variable_refs(zone, project_id), do: extract_scene_element_variable_refs(zone, project_id)
 
-  defp extract_pin_variable_refs(pin, project_id) do
-    action_refs = extract_action_variable_refs(pin, project_id)
-    condition_refs = extract_condition_variable_refs(pin, project_id)
-    action_refs ++ condition_refs
-  end
+  defp extract_pin_variable_refs(pin, project_id), do: extract_scene_element_variable_refs(pin, project_id)
 
   defp extract_ambient_flow_variable_refs(
          %{trigger_type: "on_event", trigger_config: %{"variable_ref" => variable_ref}},
@@ -3245,42 +3165,57 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   defp extract_ambient_flow_variable_refs(_ambient_flow, _project_id), do: []
 
+  defp extract_scene_element_variable_refs(element, project_id) do
+    specs = scene_element_reference_specs(element)
+    resolved_block_ids = resolve_reference_block_ids(project_id, specs)
+    Enum.flat_map(specs, &resolved_flow_node_reference(&1, resolved_block_ids))
+  end
+
+  defp scene_element_reference_specs(element) do
+    source_id = Map.get(element, :id)
+
+    scene_action_reference_specs(element, source_id) ++
+      condition_reference_specs(Map.get(element, :condition), source_id)
+  end
+
   # Shared extraction for action_type + action_data (zones and pins)
-  defp extract_action_variable_refs(element, project_id) do
+  defp scene_action_reference_specs(element, source_id) do
+    action_data = scene_element_action_data(element)
+
     case Map.get(element, :action_type) do
       "action" ->
-        assignments = (Map.get(element, :action_data) || %{})["assignments"] || []
-        Enum.flat_map(assignments, &extract_assignment_refs(&1, project_id))
+        action_data
+        |> Map.get("assignments", [])
+        |> list_value()
+        |> Enum.flat_map(&assignment_reference_specs(source_id, &1))
 
       "display" ->
-        variable_ref = (Map.get(element, :action_data) || %{})["variable_ref"]
-        resolve_display_variable_ref(project_id, variable_ref)
+        qualified_reference_specs(source_id, "read", Map.get(action_data, "variable_ref"))
 
       "collection" ->
-        element
-        |> Map.get(:action_data, %{})
+        action_data
         |> Map.get("items", [])
         |> list_value()
-        |> Enum.flat_map(&extract_collection_item_variable_refs(&1, project_id))
+        |> Enum.flat_map(&collection_item_reference_specs(source_id, &1))
 
       _ ->
         []
     end
   end
 
-  defp extract_collection_item_variable_refs(%{} = item, project_id) do
-    condition_refs = extract_condition_refs(Map.get(item, "condition"), project_id)
+  defp collection_item_reference_specs(source_id, %{} = item) do
+    condition_specs = condition_reference_specs(Map.get(item, "condition"), source_id)
 
-    assignment_refs =
+    assignment_specs =
       item
       |> Map.get("instruction")
       |> collection_instruction_assignments()
-      |> Enum.flat_map(&extract_assignment_refs(&1, project_id))
+      |> Enum.flat_map(&assignment_reference_specs(source_id, &1))
 
-    condition_refs ++ assignment_refs
+    condition_specs ++ assignment_specs
   end
 
-  defp extract_collection_item_variable_refs(_item, _project_id), do: []
+  defp collection_item_reference_specs(_source_id, _item), do: []
 
   defp collection_instruction_assignments(%{} = instruction) do
     instruction
@@ -3289,22 +3224,6 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp collection_instruction_assignments(_instruction), do: []
-
-  # Shared extraction for condition read refs (zones and pins)
-  defp extract_condition_variable_refs(element, project_id) do
-    element
-    |> Map.get(:condition)
-    |> extract_condition_refs(project_id)
-  end
-
-  defp extract_condition_refs(condition, project_id) do
-    if is_nil(condition) do
-      []
-    else
-      rules = Condition.extract_all_rules(condition)
-      Enum.flat_map(rules, &resolve_rule_read_ref(&1, project_id))
-    end
-  end
 
   defp resolve_display_variable_ref(_project_id, nil), do: []
   defp resolve_display_variable_ref(_project_id, ""), do: []

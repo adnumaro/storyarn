@@ -142,6 +142,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     {:noreply, reload_trashed_items(socket)}
   end
 
+  def handle_info(_message, socket), do: {:noreply, socket}
+
   defp do_restore_item(socket, "asset", id, generation) do
     with {:ok, asset_id} <- parse_positive_integer(id),
          {:ok, expected_generation} <- parse_non_negative_integer(generation),

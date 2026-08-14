@@ -92,7 +92,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       assert vue.props["trashed-items"] == []
     end
 
-    test "reloads recoverable trash after a project snapshot restore", %{conn: conn, user: user} do
+    test "survives replacement invalidations and reloads recoverable trash after a project snapshot restore", %{
+      conn: conn,
+      user: user
+    } do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Displaced by restore"})
 
@@ -108,6 +111,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       Phoenix.PubSub.broadcast(
         Storyarn.PubSub,
         "project:#{project.id}:shell",
+        {:entities_deleted, :sheet, [sheet.id]}
+      )
+
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        "project:#{project.id}:shell",
         {:project_restored, 42}
       )
 
@@ -117,6 +126,25 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
                get_trash_vue(view).props["trashed-items"],
                &match?(%{"type" => "sheet", "name" => "Displaced by restore"}, &1)
              )
+    end
+
+    test "ignores collaborator sidebar messages on the shared shell topic", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/trash"
+        )
+
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        "project:#{project.id}:shell",
+        {:tree_changed, :flows}
+      )
+
+      _html = render(view)
+      assert get_trash_vue(view).props["trashed-items"] == []
     end
 
     test "passes all project trash item types to Vue", %{conn: conn, user: user} do

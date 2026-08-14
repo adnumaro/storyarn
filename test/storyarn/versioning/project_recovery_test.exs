@@ -134,6 +134,41 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert membership.role == "owner"
     end
 
+    test "discards localization actor identities when installing into another workspace", %{
+      project: source_project,
+      user: source_owner
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+      reviewer = user_fixture()
+      membership_fixture(source_project, reviewer, "editor")
+      flow = flow_fixture(source_project, %{name: "Attributed localization"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 translated_text: "Hola",
+                 translated_by_id: source_owner.id,
+                 reviewed_by_id: reviewer.id
+               })
+
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(source_project.id)
+      target_owner = user_fixture()
+      target_project = project_fixture(target_owner, %{name: "Target workspace project"})
+
+      assert {:ok, recovered} =
+               ProjectRecovery.materialize_template(
+                 target_project.workspace_id,
+                 snapshot_data,
+                 target_owner.id
+               )
+
+      [restored_text] = Localization.list_texts_for_export(recovered.id, ["es"])
+      assert restored_text.translated_by_id == nil
+      assert restored_text.reviewed_by_id == nil
+    end
+
     test "recovers empty project", %{
       project: project,
       workspace_id: workspace_id,
