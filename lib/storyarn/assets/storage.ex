@@ -71,6 +71,7 @@ defmodule Storyarn.Assets.Storage do
                       incomplete_multipart_upload_count: 2
 
   @snapshot_archive_multipart_cleanup_key_pattern ~r'\Aprojects/[1-9][0-9]*/snapshots/archives/v2/(?:staging|ready)/[A-Za-z0-9_-]{16}/(?:snapshot\.zip|manifest\.json)\z'
+  @restore_staging_multipart_cleanup_key_pattern ~r'\Aprojects/[1-9][0-9]*/storage-reservations/v1/restore-staging/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/blobs/[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z'
 
   @doc "Returns the hard wall-clock deadline shared by UploadPart and cleanup quiescence."
   @spec multipart_upload_part_deadline_ms() :: pos_integer()
@@ -97,7 +98,9 @@ defmodule Storyarn.Assets.Storage do
   @doc false
   @spec multipart_cleanup_key?(term()) :: boolean()
   def multipart_cleanup_key?(key) when is_binary(key),
-    do: Regex.match?(@snapshot_archive_multipart_cleanup_key_pattern, key)
+    do:
+      Regex.match?(@snapshot_archive_multipart_cleanup_key_pattern, key) or
+        Regex.match?(@restore_staging_multipart_cleanup_key_pattern, key)
 
   def multipart_cleanup_key?(_key), do: false
 

@@ -9,6 +9,7 @@ defmodule Storyarn.LocalizationTest do
 
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Repo
 
@@ -114,6 +115,36 @@ defmodule Storyarn.LocalizationTest do
 
       assert restored.is_source
       assert restored.archived_at == nil
+    end
+
+    test "add_language/2 reactivates the newest archived locale without changing older history" do
+      project = project_fixture(user_fixture())
+      older_archived_at = ~U[2026-08-11 10:00:00Z]
+      newest_archived_at = ~U[2026-08-12 10:00:00Z]
+
+      older =
+        insert_archived_language!(project.id, "Historical Spanish", older_archived_at)
+
+      newest_lower_id =
+        insert_archived_language!(project.id, "Previous Spanish", newest_archived_at)
+
+      newest_higher_id =
+        insert_archived_language!(project.id, "Latest Spanish", newest_archived_at)
+
+      untouched_states =
+        Map.new([older, newest_lower_id], &{&1.id, persisted_language_fields(&1)})
+
+      assert {:ok, restored} =
+               Localization.add_language(project, %{locale_code: "es", name: "Spanish"})
+
+      assert restored.id == newest_higher_id.id
+      assert restored.name == "Spanish"
+      assert is_nil(restored.archived_at)
+
+      for {language_id, state} <- untouched_states do
+        language = Repo.get!(ProjectLanguage, language_id)
+        assert persisted_language_fields(language) == state
+      end
     end
 
     test "add_language/2 validates required fields" do
@@ -1187,5 +1218,19 @@ defmodule Storyarn.LocalizationTest do
 
   defp hash(text) do
     :sha256 |> :crypto.hash(text) |> Base.encode16(case: :lower)
+  end
+
+  defp insert_archived_language!(project_id, name, archived_at) do
+    %ProjectLanguage{project_id: project_id}
+    |> ProjectLanguage.create_changeset(%{
+      locale_code: "es",
+      name: name,
+      archived_at: archived_at
+    })
+    |> Repo.insert!()
+  end
+
+  defp persisted_language_fields(language) do
+    Map.take(language, ProjectLanguage.__schema__(:fields))
   end
 end

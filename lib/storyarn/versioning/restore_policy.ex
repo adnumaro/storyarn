@@ -8,7 +8,7 @@ defmodule Storyarn.Versioning.RestorePolicy do
   """
 
   @type entity_type :: String.t()
-  @type action :: {:entity_version_restore, entity_type()}
+  @type action :: {:entity_version_restore, entity_type()} | {:project_snapshot_restore, String.t()}
 
   @entity_actions %{
     "sheet" => :sheet_version_restore,
@@ -22,6 +22,8 @@ defmodule Storyarn.Versioning.RestorePolicy do
       :error -> false
     end
   end
+
+  def enabled?({:project_snapshot_restore, "full"}), do: configured?(:project_snapshot_restore)
 
   def enabled?(_action), do: false
 

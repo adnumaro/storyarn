@@ -22,6 +22,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotPolicy
+  alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
@@ -1154,13 +1155,27 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   end
 
   defp ensure_no_active_snapshot_operations(snapshot_id) do
-    if Repo.exists?(
-         from(reservation in StorageReservation,
-           where: reservation.project_snapshot_id_snapshot == ^snapshot_id and reservation.status == "active"
-         )
-       ),
-       do: {:error, :snapshot_active_operation_blocks_deletion},
-       else: :ok
+    if active_snapshot_reservation?(snapshot_id) or active_snapshot_restore?(snapshot_id),
+      do: {:error, :snapshot_active_operation_blocks_deletion},
+      else: :ok
+  end
+
+  defp active_snapshot_reservation?(snapshot_id) do
+    Repo.exists?(
+      from(reservation in StorageReservation,
+        where: reservation.project_snapshot_id_snapshot == ^snapshot_id and reservation.status == "active"
+      )
+    )
+  end
+
+  defp active_snapshot_restore?(snapshot_id) do
+    Repo.exists?(
+      from(restore in ProjectSnapshotRestore,
+        where:
+          restore.project_snapshot_id == ^snapshot_id and
+            restore.status in ^ProjectSnapshotRestore.active_statuses()
+      )
+    )
   end
 
   defp ensure_hard_delete_operations_supported(%ProjectSnapshot{} = snapshot) do
@@ -1173,7 +1188,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
         )
       )
 
-    if active_reservations == [],
+    if active_reservations == [] and not active_snapshot_restore?(snapshot.id),
       do: :ok,
       else: {:error, :snapshot_active_operation_blocks_deletion}
   end

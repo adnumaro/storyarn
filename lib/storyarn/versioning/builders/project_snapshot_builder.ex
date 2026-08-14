@@ -43,10 +43,16 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   @doc false
   @spec build_snapshot_in_transaction(integer()) :: map()
   def build_snapshot_in_transaction(project_id) do
+    build_snapshot_in_transaction(project_id, localization_scope: :backup)
+  end
+
+  @doc false
+  @spec build_snapshot_in_transaction(integer(), keyword()) :: map()
+  def build_snapshot_in_transaction(project_id, opts) when is_list(opts) do
     if Repo.in_transaction?() do
       project_id
       |> lock_active_project_for_snapshot!()
-      |> build_consistent_snapshot()
+      |> build_consistent_snapshot(Keyword.fetch!(opts, :localization_scope))
     else
       raise ArgumentError, "project snapshot capture requires a database transaction"
     end
@@ -71,19 +77,13 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     end
   end
 
-  defp build_consistent_snapshot(project) do
+  defp build_consistent_snapshot(project, localization_scope) do
     project_id = project.id
     sheets = Sheets.list_sheets_for_export(project_id)
     flows = Flows.list_flows_for_export(project_id)
     scenes = Scenes.list_scenes_for_export(project_id)
 
-    languages = Localization.list_languages_for_backup(project_id)
-    locale_codes = Enum.map(languages, & &1.locale_code)
-
-    texts =
-      if locale_codes == [],
-        do: [],
-        else: Localization.list_texts_for_backup(project_id, locale_codes)
+    {languages, texts} = localization_inventory(project_id, localization_scope)
 
     glossary = Localization.list_glossary_for_export(project_id)
     {asset_blob_hashes, asset_metadata} = localization_asset_metadata(project_id, texts)
@@ -140,6 +140,30 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     }
   end
 
+  defp localization_inventory(project_id, :active) do
+    languages = Localization.list_languages(project_id)
+    locale_codes = Enum.map(languages, & &1.locale_code)
+
+    texts =
+      if locale_codes == [],
+        do: [],
+        else: Localization.list_texts_for_export(project_id, locale_codes)
+
+    {languages, texts}
+  end
+
+  defp localization_inventory(project_id, :backup) do
+    languages = Localization.list_languages_for_backup(project_id)
+    locale_codes = Enum.map(languages, & &1.locale_code)
+
+    texts =
+      if locale_codes == [],
+        do: [],
+        else: Localization.list_texts_for_backup(project_id, locale_codes)
+
+    {languages, texts}
+  end
+
   defp localization_asset_metadata(project_id, texts) do
     texts
     |> Enum.map(& &1.vo_asset_id)
@@ -148,6 +172,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   defp project_to_snapshot(project) do
     %{
+      "name" => project.name,
       "description" => project.description,
       "project_type" => project.project_type,
       "project_subtype" => project.project_subtype,

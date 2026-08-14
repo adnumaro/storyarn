@@ -8,6 +8,7 @@ defmodule Storyarn.Flows.FlowCrudTest do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Flows.Flow
   alias Storyarn.Repo
 
   # ===========================================================================
@@ -719,6 +720,23 @@ defmodule Storyarn.Flows.FlowCrudTest do
 
       assert updated_flow1.is_main == false
       assert updated_flow2.is_main == true
+    end
+
+    test "does not rewrite the main flag stored in recoverable trash" do
+      %{project: project} = create_project_and_flow()
+      previous = flow_fixture(project, %{name: "Previous Main"})
+      replacement = flow_fixture(project, %{name: "Replacement Main"})
+
+      assert {:ok, previous} = Flows.set_main_flow(previous)
+      assert {:ok, trashed} = Flows.delete_flow(previous)
+      assert trashed.is_main
+
+      assert {:ok, current} = Flows.set_main_flow(replacement)
+      assert current.is_main
+
+      persisted_trash = Repo.get!(Flow, trashed.id)
+      assert persisted_trash.is_main
+      assert persisted_trash.deleted_at == trashed.deleted_at
     end
 
     test "keeps the flow main when setting the same flow twice" do

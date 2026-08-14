@@ -90,7 +90,8 @@ if config_env() != :test do
   config :storyarn, Storyarn.Versioning.RestorePolicy,
     sheet_version_restore: bool_env.("SHEET_VERSION_RESTORE_ENABLED"),
     flow_version_restore: bool_env.("FLOW_VERSION_RESTORE_ENABLED"),
-    scene_version_restore: bool_env.("SCENE_VERSION_RESTORE_ENABLED")
+    scene_version_restore: bool_env.("SCENE_VERSION_RESTORE_ENABLED"),
+    project_snapshot_restore: bool_env.("PROJECT_SNAPSHOT_RESTORE_ENABLED")
 
   config :storyarn, Storyarn.Workers.TrashRetentionWorker, enabled: bool_env.("ENTITY_TRASH_RETENTION_ENABLED")
 end
@@ -352,13 +353,6 @@ posthog_env = fn key, default ->
 end
 
 config :storyarn, :contact_email, System.get_env("CONTACT_EMAIL") || "hello@storyarn.com"
-
-# One-release operational acknowledgement for the irreversible ENG-86 schema
-# cleanup. This is not a runtime feature switch: Release.migrate consumes the
-# exact migration version only after the prior v2-only rollout is verified.
-config :storyarn,
-       :project_snapshot_scaffolding_cleanup_authorization,
-       env.("PROJECT_SNAPSHOT_SCAFFOLDING_CLEANUP_AUTHORIZATION")
 
 if config_env() != :test do
   posthog_api_key = posthog_env.("POSTHOG_PROJECT_API_KEY", nil)

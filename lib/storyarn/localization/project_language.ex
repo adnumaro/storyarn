@@ -55,7 +55,9 @@ defmodule Storyarn.Localization.ProjectLanguage do
     |> validate_length(:locale_code, min: 2, max: LocaleCode.max_length())
     |> validate_format(:locale_code, LocaleCode.format())
     |> validate_length(:name, min: 1, max: 100)
-    |> unique_constraint([:project_id, :locale_code])
+    |> unique_constraint([:project_id, :locale_code],
+      name: :project_languages_project_id_locale_code_index
+    )
     |> unique_constraint(:project_id,
       name: :project_languages_one_source,
       message: "already has a source language"
@@ -70,6 +72,9 @@ defmodule Storyarn.Localization.ProjectLanguage do
     language
     |> cast(attrs, [:name, :is_source, :position, :archived_at])
     |> validate_length(:name, min: 1, max: 100)
+    |> unique_constraint([:project_id, :locale_code],
+      name: :project_languages_project_id_locale_code_index
+    )
     |> unique_constraint(:project_id,
       name: :project_languages_one_source,
       message: "already has a source language"

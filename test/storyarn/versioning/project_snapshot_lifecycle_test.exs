@@ -16,6 +16,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
+  alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectFormat
@@ -89,6 +90,26 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert generation == lease.generation
       refute Repo.exists?(SnapshotCleanupIntent)
       refute_receive {:project_snapshot_updated, _snapshot_id}
+    end
+
+    test "keeps a queued exact restore without a reservation as an active deletion fence" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+
+      assert {:ok, restore} =
+               Versioning.request_project_snapshot_restore(user_scope_fixture(user), project, ready.id, %{
+                 idempotency_key: Ecto.UUID.generate()
+               })
+
+      assert %ProjectSnapshotRestore{status: "queued", storage_reservation_id: nil} = restore
+
+      assert {:error, :snapshot_active_operation_blocks_deletion} =
+               Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      assert Repo.get!(ProjectSnapshot, ready.id).lifecycle_state == "ready"
+      assert Repo.get!(ProjectSnapshotRestore, restore.id).project_snapshot_id == ready.id
+      refute Repo.exists?(SnapshotCleanupIntent)
     end
 
     test "records exact immutable ownership before dropping quota and cleans idempotently" do
@@ -543,6 +564,33 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
   end
 
   describe "retention" do
+    test "does not delete a queued exact restore target before staging reserves capacity" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+      now = TimeHelpers.now()
+
+      ready
+      |> Ecto.Changeset.change(origin: "daily", expires_at: DateTime.add(now, -60, :second))
+      |> Repo.update!()
+
+      assert [candidate] = Versioning.list_project_snapshot_retention_candidates(now)
+
+      assert {:ok, restore} =
+               Versioning.request_project_snapshot_restore(user_scope_fixture(user), project, ready.id, %{
+                 idempotency_key: Ecto.UUID.generate()
+               })
+
+      assert %ProjectSnapshotRestore{status: "queued", storage_reservation_id: nil} = restore
+
+      assert {:error, :snapshot_active_operation_blocks_deletion} =
+               Versioning.delete_project_snapshot_retention_candidate(candidate)
+
+      assert Repo.get!(ProjectSnapshot, ready.id).lifecycle_state == "ready"
+      assert Repo.get!(ProjectSnapshotRestore, restore.id).project_snapshot_id == ready.id
+      refute Repo.exists?(SnapshotCleanupIntent)
+    end
+
     test "revalidates every candidate fact under lock before deletion" do
       user = user_fixture()
       project = project_fixture(user)
@@ -1196,6 +1244,55 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       intent = Repo.get_by!(SnapshotCleanupIntent, project_snapshot_id_snapshot: ready.id)
       assert intent.reason == "workspace_hard_delete"
       assert intent.workspace_id_snapshot == workspace.id
+    end
+
+    test "project hard deletion reports a domain fence for a queued restore without a reservation" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+
+      assert {:ok, restore} =
+               Versioning.request_project_snapshot_restore(user_scope_fixture(user), project, ready.id, %{
+                 idempotency_key: Ecto.UUID.generate()
+               })
+
+      job = Repo.get!(Oban.Job, restore.oban_job_id)
+      assert %ProjectSnapshotRestore{status: "queued", storage_reservation_id: nil} = restore
+      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+
+      assert {:error, :snapshot_active_operation_blocks_deletion} =
+               Projects.permanently_delete_project(deleted)
+
+      assert Repo.get!(Projects.Project, project.id).deleted_at
+      assert Repo.get!(ProjectSnapshot, ready.id)
+      assert Repo.get!(ProjectSnapshotRestore, restore.id).project_snapshot_id == ready.id
+      assert Repo.get!(Oban.Job, job.id).state == job.state
+      refute Repo.exists?(SnapshotCleanupIntent)
+    end
+
+    test "workspace hard deletion reports a domain fence for a queued restore without a reservation" do
+      user = user_fixture()
+      project = project_fixture(user)
+      workspace = Repo.preload(project, :workspace).workspace
+      ready = create_ready_snapshot(user, project)
+
+      assert {:ok, restore} =
+               Versioning.request_project_snapshot_restore(user_scope_fixture(user), project, ready.id, %{
+                 idempotency_key: Ecto.UUID.generate()
+               })
+
+      job = Repo.get!(Oban.Job, restore.oban_job_id)
+      assert %ProjectSnapshotRestore{status: "queued", storage_reservation_id: nil} = restore
+
+      assert {:error, :snapshot_active_operation_blocks_deletion} =
+               Workspaces.delete_workspace(workspace)
+
+      assert Repo.get!(Workspaces.Workspace, workspace.id)
+      assert Repo.get!(Projects.Project, project.id)
+      assert Repo.get!(ProjectSnapshot, ready.id)
+      assert Repo.get!(ProjectSnapshotRestore, restore.id).project_snapshot_id == ready.id
+      assert Repo.get!(Oban.Job, job.id).state == job.state
+      refute Repo.exists?(SnapshotCleanupIntent)
     end
 
     test "project deletion fails closed while a build job can still write" do

@@ -1,19 +1,21 @@
 defmodule Storyarn.Versioning.ProjectRecovery do
   @moduledoc """
-  Materializes a portable project-template snapshot into a new project.
+  Materializes portable project snapshots with fresh entity identities.
 
-  Every entity receives a new database identity, internal references are
-  remapped, and every referenced asset is copied into the destination project.
-  This module is not a deleted-project recovery or project-snapshot restore API.
+  Template materialization creates a new project and copies its assets. Exact
+  snapshot restore can reuse the same graph phases inside an existing project
+  after the caller has materialized the archived assets.
   """
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Accounts.User
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
@@ -22,6 +24,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.References
   alias Storyarn.References.AvatarIntegrity
+  alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.ScenePin
@@ -30,11 +33,14 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Versioning.AssetMaterializationCache
   alias Storyarn.Versioning.AssetMaterializationScope
+  alias Storyarn.Versioning.Builders.AssetCopyError
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
+  alias Storyarn.Versioning.SnapshotObjectFormat
 
   require Logger
 
@@ -44,12 +50,14 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     :avatar,
     :flow,
     :node,
-    :connection,
+    :flow_connection,
     :scene,
+    :scene_connection,
     :pin,
     :zone
   ]
   @snapshot_format_version 2
+  @localization_actor_fields ~w(translated_by_id reviewed_by_id)
   @snapshot_count_collections %{
     "sheets" => ["sheets"],
     "flows" => ["flows"],
@@ -76,6 +84,216 @@ defmodule Storyarn.Versioning.ProjectRecovery do
           {:ok, Project.t()} | {:error, term()}
   def materialize_template(workspace_id, snapshot_data, user_id, opts \\ []) do
     recover_project_with_asset_scope(snapshot_data, workspace_id, user_id, opts)
+  end
+
+  @doc false
+  @spec validate_materialization_snapshot(map()) :: :ok | {:error, term()}
+  def validate_materialization_snapshot(snapshot_data) when is_map(snapshot_data) do
+    with :ok <- validate_project_snapshot_envelope(snapshot_data),
+         :ok <- validate_portable_entity_snapshots(snapshot_data),
+         :ok <- validate_active_materialization_localization(snapshot_data),
+         :ok <- validate_recovery_localization_actor_references(snapshot_data),
+         :ok <- SnapshotObjectFormat.validate_project(snapshot_data),
+         {:ok, id_maps} <- preflight_identity_maps(snapshot_data),
+         :ok <- validate_preflight_tree(snapshot_data, id_maps),
+         :ok <- validate_preflight_references(snapshot_data, id_maps),
+         {:ok, _variable_plan} <-
+           VariableReferenceTracker.prepare_portable_project_snapshot(snapshot_data) do
+      validate_materialization_localization(snapshot_data, id_maps)
+    end
+  end
+
+  def validate_materialization_snapshot(_snapshot_data), do: {:error, :invalid_project_snapshot_envelope}
+
+  defp validate_portable_entity_snapshots(snapshot_data) do
+    Enum.reduce_while(
+      [
+        {:sheet, snapshot_data["sheets"], &SheetBuilder.validate_portable_snapshot/1},
+        {:flow, snapshot_data["flows"], &FlowBuilder.validate_portable_snapshot/1},
+        {:scene, snapshot_data["scenes"], &SceneBuilder.validate_portable_snapshot/1}
+      ],
+      :ok,
+      fn {entity_type, entries, validator}, :ok ->
+        case validate_portable_entity_collection(entries, entity_type, validator) do
+          :ok -> {:cont, :ok}
+          {:error, _reason} = error -> {:halt, error}
+        end
+      end
+    )
+  end
+
+  defp validate_portable_entity_collection(entries, entity_type, validator) do
+    Enum.reduce_while(entries, :ok, fn entry, :ok ->
+      case validate_portable_entity_entry(entry, entity_type, validator) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_portable_entity_entry(entry, entity_type, validator) do
+    entry_id = entry["id"]
+    snapshot = entry["snapshot"]
+
+    if snapshot["original_id"] == entry_id,
+      do: validate_portable_entity_payload(snapshot, entity_type, entry_id, validator),
+      else: {:error, {:project_snapshot_root_id_mismatch, entity_type, entry_id, snapshot["original_id"]}}
+  end
+
+  defp validate_portable_entity_payload(snapshot, entity_type, entry_id, validator) do
+    case validator.(snapshot) do
+      :ok -> :ok
+      {:error, reason} -> {:error, {:invalid_project_snapshot_entity, entity_type, entry_id, reason}}
+    end
+  end
+
+  @doc """
+  Materializes a canonical project snapshot into an existing project.
+
+  This function only creates the archived project graph. It does not create or
+  update the project, create memberships, remove current roots, or perform
+  storage I/O. The caller must authorize the operation, open the final restore
+  transaction, lock the active project row, and materialize every archived
+  asset before invoking it. The caller also owns rollback when this function
+  returns an error.
+
+  `source_id_map` is the exact `%{historical_asset_id => destination_asset_id}`
+  mapping returned by the snapshot asset materializer. Its keys must cover the
+  snapshot's `asset_catalog_refs` exactly.
+
+  ## Options
+
+  - `:localization_scope` - required to be `:active`; exact restore never
+    materializes archived localization rows
+  - `:asset_materialization_cache` - optional caller-owned cache shared with
+    the asset staging phase
+  """
+  @spec materialize_into_project(Project.t(), map(), integer(), map(), keyword()) ::
+          {:ok, %{project: Project.t(), id_maps: map()}} | {:error, term()}
+  def materialize_into_project(project, snapshot_data, user_id, source_id_map, opts \\ []) do
+    with :ok <- validate_materialization_target(project),
+         :ok <- validate_materialization_actor(user_id),
+         :ok <- validate_materialization_options(opts),
+         :ok <- validate_materialization_transaction(),
+         :ok <- validate_materialization_snapshot(snapshot_data),
+         {:ok, source_id_map} <- source_id_map(snapshot_data, source_id_map),
+         {:ok, cache, owns_cache?} <- materialization_cache(opts) do
+      try do
+        materialize_existing_project(
+          project,
+          snapshot_data,
+          user_id,
+          source_id_map,
+          cache,
+          opts
+        )
+      after
+        AssetMaterializationCache.discard_if_owned(cache, owns_cache?)
+      end
+    end
+  end
+
+  defp validate_materialization_target(%Project{id: project_id, deleted_at: nil})
+       when is_integer(project_id) and project_id > 0, do: :ok
+
+  defp validate_materialization_target(_project), do: {:error, :invalid_project_materialization_target}
+
+  defp validate_materialization_actor(user_id) when is_integer(user_id) and user_id > 0, do: :ok
+  defp validate_materialization_actor(_user_id), do: {:error, :invalid_project_materialization_actor}
+
+  defp validate_materialization_options(opts) when is_list(opts) do
+    cond do
+      not Keyword.keyword?(opts) ->
+        {:error, :invalid_project_materialization_options}
+
+      Keyword.get(opts, :localization_scope) != :active ->
+        {:error, :project_materialization_requires_active_localization}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_materialization_options(_opts), do: {:error, :invalid_project_materialization_options}
+
+  defp validate_materialization_transaction do
+    if Repo.in_transaction?(), do: :ok, else: {:error, :project_materialization_requires_transaction}
+  end
+
+  defp materialize_existing_project(project, snapshot_data, user_id, source_id_map, cache, opts) do
+    with {:ok, variable_plan} <-
+           VariableReferenceTracker.prepare_portable_project_snapshot(snapshot_data),
+         :ok <-
+           AssetHashResolver.preload_materialized_assets(
+             snapshot_data,
+             source_id_map,
+             project.id,
+             cache
+           ) do
+      recovery_opts =
+        opts
+        |> Keyword.take([:asset_materialization_cache])
+        |> Keyword.put(:asset_materialization_cache, cache)
+        |> Keyword.put(:pre_materialized_assets, true)
+        |> Keyword.put(:portable_variable_plan, variable_plan)
+
+      materialize_project_graph_with_receipt(
+        project,
+        snapshot_data,
+        user_id,
+        recovery_opts
+      )
+    end
+  rescue
+    error in AssetCopyError ->
+      {:error, {:asset_materialization_failed, error.asset_id, error.reason}}
+  end
+
+  defp source_id_map(snapshot_data, source_id_map) do
+    case Map.fetch(snapshot_data, "asset_catalog_refs") do
+      {:ok, source_refs} ->
+        with :ok <- validate_source_id_map(source_id_map),
+             :ok <- validate_materialized_asset_coverage(source_refs, source_id_map) do
+          {:ok, source_id_map}
+        end
+
+      :error ->
+        {:error, :missing_asset_catalog_refs}
+    end
+  end
+
+  defp validate_source_id_map(source_id_map) when is_map(source_id_map) do
+    if Enum.all?(source_id_map, fn {source_id, destination_id} ->
+         is_integer(source_id) and source_id > 0 and is_integer(destination_id) and destination_id > 0
+       end) and MapSet.size(MapSet.new(Map.values(source_id_map))) == map_size(source_id_map),
+       do: :ok,
+       else: {:error, :invalid_snapshot_asset_source_id_map}
+  end
+
+  defp validate_source_id_map(_source_id_map), do: {:error, :invalid_snapshot_asset_source_id_map}
+
+  defp validate_materialized_asset_coverage(source_refs, destination_ids) do
+    expected = source_refs |> Map.keys() |> MapSet.new(&String.to_integer/1)
+    actual = destination_ids |> Map.keys() |> MapSet.new()
+
+    if expected == actual do
+      :ok
+    else
+      {:error,
+       {:materialized_asset_mapping_mismatch,
+        %{
+          missing: expected |> MapSet.difference(actual) |> Enum.sort(),
+          unexpected: actual |> MapSet.difference(expected) |> Enum.sort()
+        }}}
+    end
+  end
+
+  defp materialization_cache(opts) do
+    case Keyword.fetch(opts, :asset_materialization_cache) do
+      :error -> {:ok, AssetMaterializationCache.new(), true}
+      {:ok, cache} when is_reference(cache) -> {:ok, cache, false}
+      {:ok, _cache} -> {:error, :invalid_asset_materialization_cache}
+    end
   end
 
   defp recover_project_with_asset_scope(snapshot_data, workspace_id, user_id, opts) do
@@ -218,13 +436,577 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     )
   end
 
+  defp preflight_identity_maps(snapshot_data) do
+    with {:ok, sheet_ids} <- preflight_collection_ids(snapshot_data["sheets"]),
+         {:ok, block_ids} <- preflight_nested_ids(snapshot_data["sheets"], "blocks"),
+         {:ok, avatar_ids} <- preflight_nested_ids(snapshot_data["sheets"], "avatars"),
+         {:ok, flow_ids} <- preflight_collection_ids(snapshot_data["flows"]),
+         {:ok, node_ids} <- preflight_nested_ids(snapshot_data["flows"], "nodes"),
+         {:ok, flow_connection_ids} <-
+           preflight_nested_ids(snapshot_data["flows"], "connections"),
+         {:ok, scene_ids} <- preflight_collection_ids(snapshot_data["scenes"]),
+         {:ok, scene_connection_ids} <-
+           preflight_nested_ids(snapshot_data["scenes"], "connections"),
+         {:ok, pin_ids} <- preflight_scene_child_ids(snapshot_data["scenes"], "pins"),
+         {:ok, zone_ids} <- preflight_scene_child_ids(snapshot_data["scenes"], "zones") do
+      {:ok,
+       %{
+         sheet: identity_map(sheet_ids),
+         block: identity_map(block_ids),
+         avatar: identity_map(avatar_ids),
+         flow: identity_map(flow_ids),
+         node: identity_map(node_ids),
+         flow_connection: identity_map(flow_connection_ids),
+         scene: identity_map(scene_ids),
+         scene_connection: identity_map(scene_connection_ids),
+         pin: identity_map(pin_ids),
+         zone: identity_map(zone_ids)
+       }}
+    end
+  end
+
+  defp preflight_collection_ids(entries) when is_list(entries) do
+    preflight_ids(entries)
+  end
+
+  defp preflight_collection_ids(_entries), do: {:error, :invalid_project_snapshot_envelope}
+
+  defp preflight_nested_ids(entries, collection_key) when is_list(entries) do
+    with {:ok, nested_entries} <- collect_preflight_nested_entries(entries, collection_key) do
+      preflight_ids(nested_entries, "original_id")
+    end
+  end
+
+  defp preflight_scene_child_ids(entries, child_key) when is_list(entries) do
+    with {:ok, children} <- collect_preflight_scene_children(entries, child_key) do
+      preflight_ids(children, "original_id")
+    end
+  end
+
+  defp preflight_scene_child_ids(_entries, _child_key), do: {:error, :invalid_project_snapshot_entity_identity}
+
+  defp collect_preflight_scene_children(entries, child_key) do
+    Enum.reduce_while(entries, {:ok, []}, fn entry, {:ok, collected} ->
+      snapshot = entry["snapshot"]
+
+      with %{} <- snapshot,
+           layers when is_list(layers) <- snapshot["layers"],
+           orphan_children when is_list(orphan_children) <- snapshot["orphan_#{child_key}"],
+           {:ok, layered_children} <- collect_preflight_layer_children(layers, child_key) do
+        {:cont, {:ok, layered_children ++ orphan_children ++ collected}}
+      else
+        _invalid -> {:halt, {:error, :invalid_project_snapshot_entity_identity}}
+      end
+    end)
+  end
+
+  defp collect_preflight_layer_children(layers, child_key) do
+    Enum.reduce_while(layers, {:ok, []}, fn layer, {:ok, collected} ->
+      case layer[child_key] do
+        children when is_list(children) -> {:cont, {:ok, children ++ collected}}
+        _invalid -> {:halt, {:error, :invalid_project_snapshot_entity_identity}}
+      end
+    end)
+  end
+
+  defp collect_preflight_nested_entries(entries, collection_key) do
+    Enum.reduce_while(entries, {:ok, []}, fn entry, {:ok, collected} ->
+      case get_in(entry, ["snapshot", collection_key]) do
+        nested when is_list(nested) -> {:cont, {:ok, nested ++ collected}}
+        _invalid -> {:halt, {:error, :invalid_project_snapshot_entity_identity}}
+      end
+    end)
+  end
+
+  defp preflight_ids(entries, key \\ "id") do
+    ids =
+      Enum.map(entries, fn
+        entry when is_map(entry) -> entry[key]
+        _invalid -> nil
+      end)
+
+    if Enum.all?(ids, &(is_integer(&1) and &1 > 0)) and length(ids) == MapSet.size(MapSet.new(ids)),
+      do: {:ok, ids},
+      else: {:error, :invalid_project_snapshot_entity_identity}
+  end
+
+  defp identity_map(ids), do: Map.new(ids, &{&1, &1})
+
+  defp validate_preflight_tree(snapshot_data, id_maps) do
+    case snapshot_data["tree"] do
+      %{} = tree ->
+        with :ok <- validate_preflight_tree_collection(tree["sheets"], id_maps.sheet, :sheet),
+             :ok <- validate_preflight_tree_collection(tree["flows"], id_maps.flow, :flow) do
+          validate_preflight_tree_collection(tree["scenes"], id_maps.scene, :scene)
+        end
+
+      _invalid ->
+        {:error, :missing_or_invalid_project_snapshot_tree}
+    end
+  end
+
+  defp validate_preflight_tree_collection(entries, id_map, entity_type) when is_list(entries) do
+    with :ok <- validate_tree_entries(entries, id_map, entity_type) do
+      validate_tree_cycles(entries, entity_type)
+    end
+  end
+
+  defp validate_preflight_tree_collection(_entries, _id_map, entity_type),
+    do: {:error, {:invalid_project_snapshot_tree_collection, entity_type}}
+
+  defp validate_preflight_references(snapshot_data, id_maps) do
+    with {:ok, asset_ids} <- preflight_asset_ids(snapshot_data),
+         {:ok, block_owners} <- preflight_child_owners(snapshot_data["sheets"], "blocks"),
+         {:ok, avatar_owners} <- preflight_child_owners(snapshot_data["sheets"], "avatars"),
+         {:ok, node_owners} <- preflight_child_owners(snapshot_data["flows"], "nodes"),
+         :ok <- validate_preflight_reference_scans(snapshot_data, id_maps, asset_ids, avatar_owners),
+         :ok <- validate_preflight_sheet_inheritance(snapshot_data, id_maps.block, block_owners),
+         :ok <- validate_preflight_flow_cycles(snapshot_data),
+         :ok <- validate_preflight_dynamic_exits(snapshot_data, node_owners) do
+      validate_preflight_global_root_contracts(snapshot_data)
+    end
+  end
+
+  defp preflight_asset_ids(%{"asset_catalog_refs" => source_refs}) when is_map(source_refs) do
+    Enum.reduce_while(Map.keys(source_refs), {:ok, MapSet.new()}, fn source_ref, {:ok, ids} ->
+      case Integer.parse(source_ref) do
+        {id, ""} when id > 0 -> {:cont, {:ok, MapSet.put(ids, id)}}
+        _invalid -> {:halt, {:error, :invalid_asset_source_refs}}
+      end
+    end)
+  end
+
+  defp preflight_asset_ids(_snapshot_data), do: {:error, :missing_asset_catalog_refs}
+
+  defp preflight_child_owners(entries, collection_key) when is_list(entries) do
+    Enum.reduce_while(entries, {:ok, %{}}, fn entry, {:ok, owners} ->
+      put_preflight_entry_child_owners(entry, collection_key, owners)
+    end)
+  end
+
+  defp preflight_child_owners(_entries, _collection_key), do: {:error, :invalid_project_snapshot_entity_identity}
+
+  defp put_preflight_entry_child_owners(entry, collection_key, owners) do
+    case get_in(entry, ["snapshot", collection_key]) do
+      children when is_list(children) ->
+        continue_preflight_child_owners(children, entry["id"], owners)
+
+      _invalid ->
+        {:halt, {:error, :invalid_project_snapshot_entity_identity}}
+    end
+  end
+
+  defp continue_preflight_child_owners(children, owner_id, owners) do
+    case put_preflight_child_owners(children, owner_id, owners) do
+      {:ok, owners} -> {:cont, {:ok, owners}}
+      {:error, _reason} = error -> {:halt, error}
+    end
+  end
+
+  defp put_preflight_child_owners(children, owner_id, owners) do
+    Enum.reduce_while(children, {:ok, owners}, fn child, {:ok, acc} ->
+      child_id = child["original_id"]
+
+      if is_integer(child_id) and child_id > 0 and not Map.has_key?(acc, child_id),
+        do: {:cont, {:ok, Map.put(acc, child_id, owner_id)}},
+        else: {:halt, {:error, :invalid_project_snapshot_entity_identity}}
+    end)
+  end
+
+  defp validate_preflight_reference_scans(snapshot_data, id_maps, asset_ids, avatar_owners) do
+    scanners = [
+      {:sheet, snapshot_data["sheets"], &SheetBuilder.scan_references/1},
+      {:flow, snapshot_data["flows"], &FlowBuilder.scan_references/1},
+      {:scene, snapshot_data["scenes"], &SceneBuilder.scan_references/1}
+    ]
+
+    Enum.reduce_while(scanners, :ok, fn {entity_type, entries, scanner}, :ok ->
+      case validate_preflight_entity_references(
+             entity_type,
+             entries,
+             scanner,
+             id_maps,
+             asset_ids,
+             avatar_owners
+           ) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_preflight_entity_references(entity_type, entries, scanner, id_maps, asset_ids, avatar_owners) do
+    Enum.reduce_while(entries, :ok, fn entry, :ok ->
+      references = scanner.(entry["snapshot"])
+
+      case validate_preflight_entry_references(
+             references,
+             entity_type,
+             entry["id"],
+             id_maps,
+             asset_ids,
+             avatar_owners
+           ) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_preflight_entry_references(references, entity_type, entry_id, id_maps, asset_ids, avatar_owners) do
+    Enum.reduce_while(references, :ok, fn reference, :ok ->
+      case validate_preflight_reference(reference, id_maps, asset_ids, avatar_owners) do
+        :ok ->
+          {:cont, :ok}
+
+        {:error, reason} ->
+          {:halt, {:error, {:missing_project_snapshot_reference, {entity_type, entry_id, reference.context}, reason}}}
+      end
+    end)
+  end
+
+  defp validate_preflight_reference(%{type: :asset, id: id}, _id_maps, asset_ids, _avatar_owners) do
+    if MapSet.member?(asset_ids, normalize_recovery_id(id)), do: :ok, else: {:error, id}
+  end
+
+  defp validate_preflight_reference(%{type: :avatar, id: id} = reference, id_maps, _asset_ids, avatar_owners) do
+    avatar_id = normalize_recovery_id(id)
+    speaker_id = normalize_recovery_id(reference[:speaker_sheet_id])
+
+    cond do
+      is_nil(avatar_id) or not Map.has_key?(id_maps.avatar, avatar_id) -> {:error, id}
+      is_nil(speaker_id) -> :ok
+      Map.get(avatar_owners, avatar_id) == speaker_id -> :ok
+      true -> {:error, {:avatar_speaker_mismatch, avatar_id, Map.get(avatar_owners, avatar_id), speaker_id}}
+    end
+  end
+
+  defp validate_preflight_reference(%{type: type, id: id}, id_maps, _asset_ids, _avatar_owners)
+       when type in [:sheet, :flow, :scene, :block] do
+    normalized_id = normalize_recovery_id(id)
+
+    if Map.has_key?(Map.fetch!(id_maps, type), normalized_id),
+      do: :ok,
+      else: {:error, id}
+  end
+
+  defp validate_preflight_reference(%{type: type, id: id}, _id_maps, _asset_ids, _avatar_owners),
+    do: {:error, {:unsupported_reference, type, id}}
+
+  defp validate_preflight_sheet_inheritance(snapshot_data, block_id_map, _block_owners) do
+    blocks = Enum.flat_map(snapshot_data["sheets"], &get_in(&1, ["snapshot", "blocks"]))
+
+    parents = Map.new(blocks, &{&1["original_id"], &1["inherited_from_block_id"]})
+
+    with :ok <- validate_preflight_inheritance_parents(parents, block_id_map) do
+      validate_preflight_parent_cycles(parents, :block)
+    end
+  end
+
+  defp validate_preflight_inheritance_parents(parents, block_id_map) do
+    case Enum.find(parents, fn {_block_id, parent_id} ->
+           not is_nil(parent_id) and not Map.has_key?(block_id_map, parent_id)
+         end) do
+      nil -> :ok
+      {block_id, parent_id} -> {:error, {:invalid_project_snapshot_inheritance, block_id, parent_id}}
+    end
+  end
+
+  defp validate_preflight_flow_cycles(snapshot_data) do
+    parents =
+      Map.new(snapshot_data["flows"], fn entry ->
+        targets =
+          entry["snapshot"]["nodes"]
+          |> Enum.flat_map(&preflight_flow_reference_targets/1)
+          |> Enum.map(&normalize_recovery_id/1)
+          |> Enum.reject(&is_nil/1)
+
+        {entry["id"], targets}
+      end)
+
+    validate_preflight_graph_cycles(parents, :flow)
+  end
+
+  defp preflight_flow_reference_targets(%{"type" => "subflow", "data" => %{"referenced_flow_id" => target}}), do: [target]
+
+  defp preflight_flow_reference_targets(%{
+         "type" => "exit",
+         "data" => %{"exit_mode" => "flow_reference", "referenced_flow_id" => target}
+       }), do: [target]
+
+  defp preflight_flow_reference_targets(_node), do: []
+
+  defp validate_preflight_parent_cycles(parents, entity_type) do
+    graph = Map.new(parents, fn {id, parent_id} -> {id, if(is_nil(parent_id), do: [], else: [parent_id])} end)
+    validate_preflight_graph_cycles(graph, entity_type)
+  end
+
+  defp validate_preflight_graph_cycles(graph, entity_type) do
+    indegrees =
+      Enum.reduce(graph, Map.new(graph, fn {id, _targets} -> {id, 0} end), fn {_id, targets}, acc ->
+        Enum.reduce(targets, acc, fn target, acc -> Map.update(acc, target, 1, &(&1 + 1)) end)
+      end)
+
+    queue =
+      Enum.reduce(indegrees, :queue.new(), fn
+        {id, 0}, queue -> :queue.in(id, queue)
+        {_id, _indegree}, queue -> queue
+      end)
+
+    case drain_preflight_graph(queue, graph, indegrees, 0) do
+      {_indegrees, count} when count == map_size(indegrees) ->
+        :ok
+
+      {remaining, _count} ->
+        {id, _indegree} = Enum.find(remaining, fn {_id, indegree} -> indegree > 0 end)
+        {:error, {:project_snapshot_reference_cycle, entity_type, id}}
+    end
+  end
+
+  defp drain_preflight_graph(queue, graph, indegrees, count) do
+    case :queue.out(queue) do
+      {:empty, _queue} ->
+        {indegrees, count}
+
+      {{:value, id}, queue} ->
+        {queue, indegrees} =
+          Enum.reduce(Map.get(graph, id, []), {queue, indegrees}, fn target, {queue, indegrees} ->
+            indegrees = Map.update!(indegrees, target, &(&1 - 1))
+            enqueue_preflight_target(queue, indegrees, target)
+          end)
+
+        drain_preflight_graph(queue, graph, indegrees, count + 1)
+    end
+  end
+
+  defp enqueue_preflight_target(queue, indegrees, target) do
+    if indegrees[target] == 0,
+      do: {:queue.in(target, queue), indegrees},
+      else: {queue, indegrees}
+  end
+
+  defp validate_preflight_dynamic_exits(snapshot_data, node_owners) do
+    node_types =
+      snapshot_data["flows"]
+      |> Enum.flat_map(&get_in(&1, ["snapshot", "nodes"]))
+      |> Map.new(&{&1["original_id"], &1["type"]})
+
+    Enum.reduce_while(snapshot_data["flows"], :ok, fn entry, :ok ->
+      nodes = entry["snapshot"]["nodes"]
+
+      case validate_preflight_flow_dynamic_exits(
+             entry["snapshot"]["connections"],
+             nodes,
+             node_types,
+             node_owners
+           ) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_preflight_flow_dynamic_exits(connections, nodes, node_types, node_owners) do
+    Enum.reduce_while(connections, :ok, fn connection, :ok ->
+      source = Enum.at(nodes, connection["source_node_index"])
+
+      case preflight_dynamic_exit(connection, source, node_types, node_owners) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp preflight_dynamic_exit(
+         %{"source_pin" => "exit_" <> id_text} = connection,
+         %{"type" => "subflow", "data" => data},
+         node_types,
+         node_owners
+       ) do
+    with {exit_id, ""} when exit_id > 0 <- Integer.parse(id_text),
+         referenced_flow_id when is_integer(referenced_flow_id) <-
+           normalize_recovery_id(data["referenced_flow_id"]),
+         "exit" <- Map.get(node_types, exit_id),
+         ^referenced_flow_id <- Map.get(node_owners, exit_id) do
+      :ok
+    else
+      _invalid ->
+        {:error,
+         {:dynamic_exit_pin_not_materializable, connection["original_id"], connection["source_pin"],
+          :exit_not_in_referenced_flow_snapshot}}
+    end
+  end
+
+  defp preflight_dynamic_exit(_connection, _source, _node_types, _node_owners), do: :ok
+
+  defp validate_preflight_global_root_contracts(snapshot_data) do
+    with :ok <- validate_preflight_unique_root_field(snapshot_data["sheets"], "shortcut", :sheet),
+         :ok <- validate_preflight_unique_root_field(snapshot_data["flows"], "shortcut", :flow),
+         :ok <- validate_preflight_unique_root_field(snapshot_data["scenes"], "shortcut", :scene),
+         :ok <- validate_preflight_main_flow(snapshot_data["flows"]) do
+      validate_preflight_dialogue_localization_ids(snapshot_data["flows"])
+    end
+  end
+
+  defp validate_preflight_unique_root_field(entries, field, entity_type) do
+    values = entries |> Enum.map(&get_in(&1, ["snapshot", field])) |> Enum.reject(&is_nil/1)
+
+    if length(values) == MapSet.size(MapSet.new(values)),
+      do: :ok,
+      else: {:error, {:duplicate_project_snapshot_root_field, entity_type, field}}
+  end
+
+  defp validate_preflight_main_flow(flows) do
+    count = Enum.count(flows, &(get_in(&1, ["snapshot", "is_main"]) == true))
+    if count <= 1, do: :ok, else: {:error, {:invalid_project_snapshot_main_flow_count, count}}
+  end
+
+  defp validate_preflight_dialogue_localization_ids(flows) do
+    ids =
+      flows
+      |> Enum.flat_map(&get_in(&1, ["snapshot", "nodes"]))
+      |> Enum.flat_map(fn
+        %{"type" => "dialogue", "data" => %{"localization_id" => id}} -> [id]
+        _node -> []
+      end)
+
+    if length(ids) == MapSet.size(MapSet.new(ids)),
+      do: :ok,
+      else: {:error, :duplicate_project_snapshot_dialogue_localization_id}
+  end
+
+  defp validate_materialization_localization(snapshot_data, id_maps) do
+    case snapshot_data["localization"] do
+      localization when is_map(localization) ->
+        validate_recovery_localization(
+          Map.get(localization, "languages", []),
+          Map.get(localization, "texts", []),
+          Map.get(localization, "glossary", []),
+          id_maps,
+          snapshot_data
+        )
+
+      _invalid ->
+        {:error, :invalid_project_snapshot_localization}
+    end
+  end
+
+  defp validate_active_materialization_localization(snapshot_data) do
+    with {:ok, languages, texts} <- active_materialization_localization(snapshot_data),
+         :ok <-
+           validate_active_localization_rows(
+             languages,
+             :archived_project_snapshot_language_not_materializable
+           ) do
+      validate_active_localization_rows(
+        texts,
+        :archived_project_snapshot_localized_text_not_materializable
+      )
+    end
+  end
+
+  defp active_materialization_localization(%{"localization" => %{"languages" => languages, "texts" => texts}})
+       when is_list(languages) and is_list(texts), do: {:ok, languages, texts}
+
+  defp active_materialization_localization(_snapshot_data),
+    do: {:error, :invalid_project_snapshot_localization_collections}
+
+  defp validate_active_localization_rows(rows, error) do
+    if Enum.all?(rows, &active_localization_row?/1), do: :ok, else: {:error, error}
+  end
+
+  defp active_localization_row?(row) when is_map(row), do: is_nil(row["archived_at"])
+  defp active_localization_row?(_row), do: false
+
+  defp validate_recovery_localization_actor_references(snapshot_data) do
+    with {:ok, texts} <- localization_actor_rows(snapshot_data),
+         :ok <- validate_localization_actor_shapes(texts) do
+      actor_ids = localization_actor_ids(texts)
+
+      existing_ids =
+        User
+        |> where([user], user.id in ^actor_ids)
+        |> select([user], user.id)
+        |> Repo.all()
+        |> MapSet.new()
+
+      validate_localization_actor_references(texts, existing_ids)
+    end
+  end
+
+  defp localization_actor_rows(%{"localization" => %{"texts" => texts}}) when is_list(texts) do
+    if Enum.all?(texts, &is_map/1),
+      do: {:ok, texts},
+      else: {:error, :invalid_project_snapshot_localized_text}
+  end
+
+  defp localization_actor_rows(_snapshot_data), do: {:error, :invalid_project_snapshot_localization_collections}
+
+  defp validate_localization_actor_shapes(texts) do
+    case invalid_localization_actor_shape(texts) do
+      nil -> :ok
+      {field, id} -> {:error, {:localization_reference_not_materializable, field, id}}
+    end
+  end
+
+  defp invalid_localization_actor_shape(texts) do
+    texts
+    |> localization_actor_references()
+    |> Enum.find(fn
+      {_field, nil} -> false
+      {_field, id} when is_integer(id) and id > 0 -> false
+      {_field, _id} -> true
+    end)
+  end
+
+  defp localization_actor_ids(texts) do
+    texts
+    |> localization_actor_references()
+    |> Enum.map(&elem(&1, 1))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  defp validate_localization_actor_references(texts, existing_ids) do
+    missing_reference =
+      texts
+      |> localization_actor_references()
+      |> Enum.find(fn {_field, id} -> not is_nil(id) and not MapSet.member?(existing_ids, id) end)
+
+    case missing_reference do
+      nil -> :ok
+      {field, id} -> {:error, {:localization_reference_not_materializable, field, id}}
+    end
+  end
+
+  defp localization_actor_references(texts) do
+    Enum.flat_map(texts, fn text ->
+      Enum.map(@localization_actor_fields, &{&1, text[&1]})
+    end)
+  end
+
   defp do_recover(workspace_id, snapshot_data, user_id, name, opts) do
+    with {:ok, project} <- create_project(workspace_id, user_id, name, snapshot_data),
+         {:ok, _membership} <- create_owner_membership(project, user_id) do
+      materialize_project_graph(project, snapshot_data, user_id, opts)
+    end
+  end
+
+  defp materialize_project_graph(project, snapshot_data, user_id, opts) do
+    with {:ok, %{project: project}} <-
+           materialize_project_graph_with_receipt(project, snapshot_data, user_id, opts) do
+      {:ok, project}
+    end
+  end
+
+  defp materialize_project_graph_with_receipt(project, snapshot_data, user_id, opts) do
     now = TimeHelpers.now()
 
-    with {:ok, project} <- create_project(workspace_id, user_id, name, snapshot_data),
-         {:ok, _membership} <- create_owner_membership(project, user_id),
-         {:ok, sheet_maps} <- recover_sheets(project.id, snapshot_data, user_id, opts),
-         {:ok, scene_maps} <- recover_scenes(project.id, snapshot_data, sheet_maps.sheet, user_id, opts),
+    with :ok <- validate_recovery_localization_actor_references(snapshot_data),
+         {:ok, {sheet_maps, snapshot_data}} <-
+           recover_sheets_with_portable_namespaces(project.id, snapshot_data, user_id, opts),
+         {:ok, scene_maps} <-
+           recover_scenes(project.id, snapshot_data, sheet_maps.sheet, user_id, opts),
          {:ok, flow_maps} <-
            recover_flows(
              project.id,
@@ -254,8 +1036,122 @@ defmodule Storyarn.Versioning.ProjectRecovery do
                opts,
                now
              ) do
-        {:ok, project}
+        {:ok, %{project: project, id_maps: id_maps}}
       end
+    end
+  end
+
+  defp recover_sheets_with_portable_namespaces(project_id, snapshot_data, user_id, opts) do
+    with {:ok, attempt_limit} <- portable_namespace_attempt_limit(opts) do
+      recover_sheets_with_portable_namespaces(
+        project_id,
+        snapshot_data,
+        user_id,
+        opts,
+        attempt_limit
+      )
+    end
+  end
+
+  defp recover_sheets_with_portable_namespaces(project_id, snapshot_data, user_id, opts, 1) do
+    recover_and_rewrite_sheets(project_id, snapshot_data, user_id, opts)
+  end
+
+  defp recover_sheets_with_portable_namespaces(project_id, snapshot_data, user_id, opts, attempts_left)
+       when attempts_left > 1 do
+    result =
+      with_sheet_materialization_savepoint(fn ->
+        recover_and_rewrite_sheets(project_id, snapshot_data, user_id, opts)
+      end)
+
+    case result do
+      {:error, {:ambiguous_destination_variable_namespace, _namespace, _left, _right}} ->
+        recover_sheets_with_portable_namespaces(
+          project_id,
+          snapshot_data,
+          user_id,
+          opts,
+          attempts_left - 1
+        )
+
+      result ->
+        result
+    end
+  end
+
+  @sheet_materialization_savepoint "project_restore_sheet_materialization"
+  @begin_sheet_materialization_savepoint "SAVEPOINT " <> @sheet_materialization_savepoint
+  @rollback_sheet_materialization_savepoint "ROLLBACK TO SAVEPOINT " <>
+                                              @sheet_materialization_savepoint
+  @release_sheet_materialization_savepoint "RELEASE SAVEPOINT " <>
+                                             @sheet_materialization_savepoint
+
+  defp with_sheet_materialization_savepoint(fun) when is_function(fun, 0) do
+    Repo.query!(@begin_sheet_materialization_savepoint)
+
+    finish_sheet_materialization_savepoint(fun.())
+  end
+
+  defp finish_sheet_materialization_savepoint({:ok, _result} = result) do
+    Repo.query!(@release_sheet_materialization_savepoint)
+    result
+  end
+
+  defp finish_sheet_materialization_savepoint(
+         {:error, {:ambiguous_destination_variable_namespace, _namespace, _left, _right}} = error
+       ) do
+    Repo.query!(@rollback_sheet_materialization_savepoint)
+    Repo.query!(@release_sheet_materialization_savepoint)
+    error
+  end
+
+  # Sheet builders can return expected errors through a nested Repo.rollback/1.
+  # That leaves DBConnection rolling back until the caller rolls back the outer
+  # transaction, so issuing savepoint SQL here would mask the original error.
+  defp finish_sheet_materialization_savepoint({:error, _reason} = error), do: error
+
+  defp recover_and_rewrite_sheets(project_id, snapshot_data, user_id, opts) do
+    with {:ok, sheet_maps} <- recover_sheets(project_id, snapshot_data, user_id, opts),
+         {:ok, rewritten_snapshot} <-
+           rewrite_snapshot_variable_namespaces(snapshot_data, sheet_maps.sheet, opts),
+         :ok <-
+           rewrite_materialized_formula_namespaces(project_id, sheet_maps.sheet, opts) do
+      {:ok, {sheet_maps, rewritten_snapshot}}
+    end
+  end
+
+  defp portable_namespace_attempt_limit(opts) do
+    case Keyword.fetch(opts, :portable_variable_plan) do
+      {:ok, plan} -> VariableReferenceTracker.portable_namespace_materialization_attempt_limit(plan)
+      :error -> {:ok, 1}
+    end
+  end
+
+  defp rewrite_snapshot_variable_namespaces(snapshot_data, sheet_id_map, opts) do
+    case Keyword.fetch(opts, :portable_variable_plan) do
+      {:ok, plan} ->
+        VariableReferenceTracker.rewrite_portable_project_snapshot(
+          snapshot_data,
+          plan,
+          sheet_id_map
+        )
+
+      :error ->
+        {:ok, snapshot_data}
+    end
+  end
+
+  defp rewrite_materialized_formula_namespaces(project_id, sheet_id_map, opts) do
+    case Keyword.fetch(opts, :portable_variable_plan) do
+      {:ok, plan} ->
+        VariableReferenceTracker.rewrite_materialized_formula_bindings(
+          project_id,
+          plan,
+          sheet_id_map
+        )
+
+      :error ->
+        :ok
     end
   end
 
@@ -350,12 +1246,17 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       |> Keyword.take([
         :asset_copy_tracker,
         :asset_materialization_cache,
-        :asset_source_keys
+        :asset_source_keys,
+        :pre_materialized_assets
       ])
       |> Keyword.merge(builder_opts)
       |> Keyword.put(:user_id, user_id)
 
-    Keyword.put(builder_opts, :asset_mode, :copy)
+    Keyword.put(builder_opts, :asset_mode, recovery_asset_mode(recovery_opts))
+  end
+
+  defp recovery_asset_mode(opts) do
+    if Keyword.get(opts, :pre_materialized_assets) == true, do: :reuse, else: :copy
   end
 
   defp materialize_entities(entries, entity_type, instantiate_fun) do
@@ -375,6 +1276,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp merge_materialized_entity_maps(entry, entity_type, id_maps, materialized_maps) do
+    materialized_maps = namespace_connection_id_map(materialized_maps, entity_type)
+
     with :ok <- validate_materialized_root_mapping(entry, entity_type, materialized_maps),
          {:ok, merged_maps} <- merge_materialized_id_maps(id_maps, materialized_maps) do
       {:cont, {:ok, merged_maps}}
@@ -382,6 +1285,20 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       {:error, reason} -> halt_materialization(entry, entity_type, reason)
     end
   end
+
+  defp namespace_connection_id_map(materialized_maps, :flow) do
+    materialized_maps
+    |> Map.put(:flow_connection, Map.get(materialized_maps, :connection, %{}))
+    |> Map.delete(:connection)
+  end
+
+  defp namespace_connection_id_map(materialized_maps, :scene) do
+    materialized_maps
+    |> Map.put(:scene_connection, Map.get(materialized_maps, :connection, %{}))
+    |> Map.delete(:connection)
+  end
+
+  defp namespace_connection_id_map(materialized_maps, _entity_type), do: materialized_maps
 
   defp halt_materialization(entry, entity_type, reason) do
     {:halt, {:error, {:materialization_failed, entity_type, entry["id"], reason}}}
@@ -626,23 +1543,18 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp remap_sheet_block_value("reference", value, id_maps, block_id) when is_map(value) do
-    with {:ok, value} <-
-           remap_block_reference_target(
-             value,
-             id_maps,
-             block_id
-           ) do
-      remap_embedded_mentions(value, id_maps, {:block, block_id})
-    end
+    remap_block_reference_target(value, id_maps, block_id)
   end
 
   defp remap_sheet_block_value("reference", value, _id_maps, block_id) do
     {:error, {:invalid_project_snapshot_reference_block, block_id, value}}
   end
 
-  defp remap_sheet_block_value(_block_type, value, id_maps, block_id) do
+  defp remap_sheet_block_value("rich_text", value, id_maps, block_id) do
     remap_embedded_mentions(value, id_maps, {:block, block_id})
   end
+
+  defp remap_sheet_block_value(_block_type, value, _id_maps, _block_id), do: {:ok, value}
 
   defp remap_block_reference_target(value, id_maps, block_id) do
     case {value["target_type"], value["target_id"]} do
@@ -848,7 +1760,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
            ),
          {:ok, new_connection_id} <-
            fetch_recovery_mapping(
-             id_maps.connection,
+             id_maps.flow_connection,
              connection_id,
              connection_id,
              pin,
@@ -1365,10 +2277,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp remap_embedded_mentions(value, _id_maps, _context), do: {:ok, value}
 
   defp mention_markup?(value) do
-    Regex.match?(
-      ~r/<[^>]+\bclass\s*=\s*["'][^"']*\bmention\b[^"']*["']/u,
-      value
-    )
+    RichTextMentions.html_candidates(value) != []
   end
 
   defp remap_mention_nodes(nodes, id_maps, context) when is_list(nodes) do
@@ -2076,7 +2985,14 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp restore_texts(_project_id, [], _id_maps, _snapshot_data, _user_id, _opts, _now), do: :ok
 
   defp restore_texts(project_id, texts, id_maps, snapshot_data, user_id, opts, now) do
-    context = %{project_id: project_id, snapshot_data: snapshot_data, user_id: user_id, opts: opts, now: now}
+    context = %{
+      project_id: project_id,
+      snapshot_data: snapshot_data,
+      user_id: user_id,
+      opts: opts,
+      now: now,
+      mention_block_ids: rich_text_block_ids(snapshot_data)
+    }
 
     case materialize_recovery_texts(texts, id_maps, context) do
       {:ok, entries} ->
@@ -2117,7 +3033,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp recovered_text_map_for_snapshot(text, id_maps, context) do
-    with {:ok, text} <- remap_localization_mentions(text, id_maps) do
+    with {:ok, text} <- remap_localization_mentions(text, id_maps, context.mention_block_ids) do
       metadata =
         SourceContract.field_metadata(
           text["source_type"],
@@ -2142,7 +3058,15 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end
   end
 
-  defp remap_localization_mentions(text, id_maps) do
+  defp remap_localization_mentions(text, id_maps, mention_block_ids) do
+    if mention_capable_localization?(text, mention_block_ids) do
+      remap_localization_mention_text(text, id_maps)
+    else
+      {:ok, text}
+    end
+  end
+
+  defp remap_localization_mention_text(text, id_maps) do
     old_source_hash = text["source_text_hash"]
 
     with {:ok, source_text} <-
@@ -2175,6 +3099,24 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end
   end
 
+  defp rich_text_block_ids(snapshot_data) do
+    snapshot_data["sheets"]
+    |> Enum.flat_map(&get_in(&1, ["snapshot", "blocks"]))
+    |> Enum.filter(&(&1["type"] == "rich_text"))
+    |> MapSet.new(& &1["original_id"])
+  end
+
+  defp mention_capable_localization?(%{"source_type" => "flow_node"}, _block_ids), do: true
+
+  defp mention_capable_localization?(
+         %{"source_type" => "block", "source_id" => source_id, "source_field" => "value.content"},
+         block_ids
+       ) do
+    MapSet.member?(block_ids, source_id)
+  end
+
+  defp mention_capable_localization?(_text, _block_ids), do: false
+
   defp recovered_text_map(text, metadata, source_id, id_maps, context) do
     translated_source_hash = translated_source_hash(text)
     vo_asset_id = recovered_vo_asset_id(text, metadata, context)
@@ -2201,8 +3143,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
       machine_translated: text["machine_translated"] || false,
       last_translated_at: parse_datetime(text["last_translated_at"]),
       last_reviewed_at: parse_datetime(text["last_reviewed_at"]),
-      translated_by_id: nil,
-      reviewed_by_id: nil,
+      translated_by_id: text["translated_by_id"],
+      reviewed_by_id: text["reviewed_by_id"],
       archived_at: parse_datetime(text["archived_at"]),
       archive_reason: recovered_archive_reason(text["archive_reason"]),
       inserted_at: context.now,
@@ -2300,9 +3242,10 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     |> Keyword.take([
       :asset_copy_tracker,
       :asset_materialization_cache,
-      :asset_source_keys
+      :asset_source_keys,
+      :pre_materialized_assets
     ])
-    |> Keyword.put(:asset_mode, :copy)
+    |> Keyword.put(:asset_mode, recovery_asset_mode(opts))
   end
 
   defp asset_copy_tracker(opts) do

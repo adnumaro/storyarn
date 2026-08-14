@@ -59,6 +59,26 @@ defmodule Storyarn.Assets.StorageTest do
 
       assert quiescence_ms >= deadline_ms + 1_000
     end
+
+    test "recognizes only exact restore-reservation blob upload keys" do
+      lease_token = "3abf435a-c086-4801-9b91-5a49a440f917"
+      hash = String.duplicate("a", 64)
+      key = "projects/42/storage-reservations/v1/restore-staging/#{lease_token}/blobs/#{hash}.png"
+
+      assert Storage.multipart_cleanup_key?(key)
+
+      refute Storage.multipart_cleanup_key?(
+               "projects/42/storage-reservations/v1/snapshot-build/#{lease_token}/blobs/#{hash}.png"
+             )
+
+      refute Storage.multipart_cleanup_key?(
+               "projects/42/storage-reservations/v1/restore-staging/#{lease_token}/project.json"
+             )
+
+      refute Storage.multipart_cleanup_key?(key <> "/extra")
+      refute Storage.multipart_cleanup_key?(String.replace(key, lease_token, String.upcase(lease_token)))
+      refute Storage.multipart_cleanup_key?(String.replace(key, "projects/42", "projects/0"))
+    end
   end
 
   describe "canonical_prefix?/1" do

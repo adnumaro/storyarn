@@ -58,12 +58,18 @@ defmodule Storyarn.Scenes.SceneCrud do
         unquote(sql),
         unquote(block).type,
         unquote(reference).source_sheet,
-        unquote(sheet).shortcut,
+        coalesce(
+          unquote(sheet).shortcut,
+          fragment("CAST(? AS TEXT)", unquote(sheet).id)
+        ),
         unquote(block).id,
         unquote(reference).source_variable,
         unquote(block).variable_name,
         unquote(reference).source_sheet,
-        unquote(sheet).shortcut,
+        coalesce(
+          unquote(sheet).shortcut,
+          fragment("CAST(? AS TEXT)", unquote(sheet).id)
+        ),
         unquote(reference).source_variable,
         unquote(block).variable_name
       )

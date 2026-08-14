@@ -274,6 +274,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   # ========== Restore Snapshot ==========
 
+  @doc false
+  @spec validate_portable_snapshot(term()) :: :ok | {:error, term()}
+  def validate_portable_snapshot(snapshot), do: validate_portable_sheet_snapshot(snapshot)
+
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
     with :ok <- validate_sheet_instantiation_localization(project_id, snapshot, opts) do
@@ -295,7 +299,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   defp validate_sheet_instantiation_localization(_project_id, snapshot, _opts) when is_map(snapshot) do
-    validate_portable_sheet_snapshot(snapshot)
+    validate_portable_snapshot(snapshot)
   end
 
   defp validate_sheet_instantiation_localization(_project_id, snapshot, _opts),

@@ -247,47 +247,23 @@ Do not remove or increase the timeout while application traffic is active;
 identify the blocking transaction, let it finish or stop it through the normal
 operational procedure, and retry the release command during a quiet window.
 
-Run this migration only after the preceding v2-only deployment has completed
-and every application, worker, release-command, and one-off machine runs that
-code. The database preflight cannot prove which application image an external
-machine has loaded. This includes stopped Fly Machines that may auto-start.
-Before deploying this cleanup release, inventory the complete application fleet
-and remove or update every machine that can still start a pre-v2 image.
+Run this migration only after the preceding v2-only deployment has completed.
+Confirm that every application, worker, one-off, and stopped machine that can
+start again uses the v2-only image or a later one. This remains an operational
+rollout check, but it no longer requires a temporary runtime authorization
+value.
 
-For an existing production database, `/app/bin/migrate` requires a one-release
-operator acknowledgement in addition to its database checks. Stage the exact
-migration version before starting the normal deploy:
+The production release task verifies the complete prerequisite migration
+history before invoking pending migrations. It rejects a partial or
+inconsistent cutover, while a completed v2-only history proceeds through the
+normal release command without a separate runtime authorization value.
 
-```text
-fly secrets set --stage -a storyarn-prod \
-  PROJECT_SNAPSHOT_SCAFFOLDING_CLEANUP_AUTHORIZATION=20260812100000
-```
-
-The value is neither a runtime feature flag nor an override for a failed
-precondition. It only records that the external machine inventory was checked;
-a missing v2-only marker, weakened constraint, non-`NULL` retired value, or
-active retired/misrouted job still aborts before destructive DDL. A genuinely
-empty database may bootstrap from zero without this acknowledgement, and once
-the cleanup marker exists later releases no longer require it. If that empty
-bootstrap fails before reaching the v2-only marker, the next production run
-fails closed because the schema is no longer provably fresh. Recreate the still
-empty database and retry from zero; do not use the cleanup acknowledgement to
-bypass the required release boundary. If the failed bootstrap has acquired any
-real data, treat it as an existing deployment and advance it through the
-preceding v2-only release first.
-
-After the deploy and release command succeed, remove the temporary value:
-
-```text
-fly secrets unset -a storyarn-prod \
-  PROJECT_SNAPSHOT_SCAFFOLDING_CLEANUP_AUTHORIZATION
-```
-
-If the release command fails, keep the acknowledgement staged, fix the
-precondition or migration, and redeploy forward. Once the cleanup commits, the
-schema is deliberately incompatible with pre-v2 binaries and rollback to one
-is unsupported. Leave the canonical v2 constraints intact; do not reconstruct
-the retired columns or worker-name fence.
+The migration still verifies the exact database constraints, retired values,
+and active worker inventory under lock before destructive DDL. If any check or
+lock acquisition fails, fix the precondition and redeploy forward. Once the
+cleanup commits, the schema is deliberately incompatible with pre-v2 binaries
+and rollback to one is unsupported. Leave the canonical v2 constraints intact;
+do not reconstruct the retired columns or worker-name fence.
 
 ## Real Tigris validation
 

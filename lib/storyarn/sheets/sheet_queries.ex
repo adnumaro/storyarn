@@ -1222,12 +1222,12 @@ defmodule Storyarn.Sheets.SheetQueries do
               """,
               b.type,
               vr.source_sheet,
-              s.shortcut,
+              fragment("COALESCE(?, CAST(? AS TEXT))", s.shortcut, s.id),
               b.id,
               vr.source_variable,
               b.variable_name,
               vr.source_sheet,
-              s.shortcut,
+              fragment("COALESCE(?, CAST(? AS TEXT))", s.shortcut, s.id),
               vr.source_variable,
               b.variable_name
             )
@@ -1263,7 +1263,7 @@ defmodule Storyarn.Sheets.SheetQueries do
           node_data: n.data,
           kind: vr.kind,
           block_id: vr.block_id,
-          current_shortcut: s.shortcut,
+          current_shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
           current_variable: b.variable_name,
           source_sheet: vr.source_sheet,
           source_variable: vr.source_variable
@@ -1337,7 +1337,9 @@ defmodule Storyarn.Sheets.SheetQueries do
         where: is_nil(s.deleted_at),
         where: is_nil(b.deleted_at),
         where: b.type != "table",
-        where: vr.source_sheet != s.shortcut or vr.source_variable != b.variable_name,
+        where:
+          vr.source_sheet != coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)) or
+            vr.source_variable != b.variable_name,
         distinct: true,
         select: {n.flow_id, n.id, vr.source_sheet, vr.source_variable}
       )
@@ -1377,7 +1379,9 @@ defmodule Storyarn.Sheets.SheetQueries do
         where: is_nil(s.deleted_at),
         where: is_nil(b.deleted_at),
         where: b.type == "table",
-        where: vr.source_sheet != s.shortcut or not exists(table_cell_exists),
+        where:
+          vr.source_sheet != coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)) or
+            not exists(table_cell_exists),
         distinct: true,
         select: {n.flow_id, n.id, vr.source_sheet, vr.source_variable}
       )
@@ -1428,7 +1432,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         join: s in Sheet,
         on: s.id == b.sheet_id,
         where: s.project_id == ^project_id,
-        where: s.shortcut == ^sheet_shortcut,
+        where: fragment("COALESCE(?, CAST(? AS TEXT))", s.shortcut, s.id) == ^sheet_shortcut,
         where: b.variable_name == ^variable_name,
         where: b.type in ^variable_types,
         where: b.is_constant == false,
@@ -1460,7 +1464,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         join: tc in TableColumn,
         on: tc.block_id == b.id,
         where: s.project_id == ^project_id,
-        where: s.shortcut == ^sheet_shortcut,
+        where: fragment("COALESCE(?, CAST(? AS TEXT))", s.shortcut, s.id) == ^sheet_shortcut,
         where: b.variable_name == ^table_name,
         where: b.type == "table",
         where: tc.type in ^variable_types,

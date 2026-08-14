@@ -26,6 +26,7 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Shared.SearchHelpers
   alias Storyarn.Shared.ShortcutHelpers
   alias Storyarn.Shared.SoftDelete
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Shared.Trashable
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Shared.WordCount
@@ -645,6 +646,31 @@ defmodule Storyarn.Flows.FlowCrud do
     Map.put(deleted, :notification_outcome, outcome)
   end
 
+  @doc false
+  def delete_flow_subtree_for_project_restore_in_transaction(%Flow{} = flow) do
+    case ReferenceIntegrity.lock_active_flow_for_write(flow) do
+      {:ok, %{flow: locked_flow}} ->
+        affected_flow_ids =
+          locked_flow.id
+          |> NodeCrud.list_subflow_nodes_referencing(locked_flow.project_id)
+          |> Enum.map(& &1.flow_id)
+          |> Enum.uniq()
+
+        case EntityTrashRefs.sweep_project_flow_references(locked_flow.project_id, locked_flow.id) do
+          {:ok, _swept_count} ->
+            locked_flow
+            |> soft_delete_locked_flow_without_global_sweep()
+            |> Map.put(:affected_flow_ids, affected_flow_ids)
+
+          {:error, reason} ->
+            Repo.rollback(reason)
+        end
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
+  end
+
   defp delete_flow_transaction(flow) do
     case ReferenceIntegrity.lock_active_flow_for_write(flow) do
       {:ok, %{flow: locked_flow}} ->
@@ -667,6 +693,25 @@ defmodule Storyarn.Flows.FlowCrud do
     Localization.delete_flow_node_texts_for_flows([locked_flow.id])
 
     case Trashable.soft_delete(locked_flow) do
+      {:ok, deleted_flow} ->
+        child_ids =
+          SoftDelete.soft_delete_children(Flow, locked_flow.project_id, locked_flow.id,
+            pre_delete: &Localization.delete_flow_node_texts_for_flows([&1.id])
+          )
+
+        %{entity: deleted_flow, deleted_ids: [deleted_flow.id | child_ids]}
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
+    end
+  end
+
+  defp soft_delete_locked_flow_without_global_sweep(locked_flow) do
+    Localization.delete_flow_node_texts_for_flows([locked_flow.id])
+
+    case locked_flow
+         |> Ecto.Changeset.change(%{deleted_at: TimeHelpers.now()})
+         |> Repo.update() do
       {:ok, deleted_flow} ->
         child_ids =
           SoftDelete.soft_delete_children(Flow, locked_flow.project_id, locked_flow.id,
@@ -1248,7 +1293,7 @@ defmodule Storyarn.Flows.FlowCrud do
         where:
           candidate.project_id == ^project_id and
             candidate.id != ^locked_flow.id and
-            candidate.is_main == true
+            candidate.is_main == true and is_nil(candidate.deleted_at)
       ),
       set: [is_main: false]
     )

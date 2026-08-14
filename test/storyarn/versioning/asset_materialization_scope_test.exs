@@ -25,4 +25,21 @@ defmodule Storyarn.Versioning.AssetMaterializationScopeTest do
 
     assert {:error, :enoent} = Assets.storage_download(storage_key)
   end
+
+  test "pre-materialized scopes need no storage tracker inside the caller transaction" do
+    assert {:ok, :materialized} =
+             Storyarn.Repo.transaction(fn ->
+               assert {:ok, :materialized} =
+                        AssetMaterializationScope.run(
+                          [pre_materialized_assets: true],
+                          fn opts ->
+                            assert opts[:pre_materialized_assets] == true
+                            assert opts[:asset_copy_tracker] == nil
+                            {:ok, :materialized}
+                          end
+                        )
+
+               :materialized
+             end)
+  end
 end

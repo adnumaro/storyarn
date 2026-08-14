@@ -1009,7 +1009,10 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     sheet_id =
       Repo.one(
         from(s in Sheet,
-          where: s.project_id == ^project_id and s.shortcut == ^sheet_shortcut,
+          where:
+            s.project_id == ^project_id and
+              fragment("COALESCE(?, CAST(? AS TEXT))", s.shortcut, s.id) ==
+                ^sheet_shortcut,
           where: is_nil(s.deleted_at),
           select: s.id,
           limit: 1

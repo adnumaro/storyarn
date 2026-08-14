@@ -258,9 +258,14 @@ defmodule Storyarn.Sheets.SheetStats do
       join: sheet in Sheet,
       on: block.sheet_id == sheet.id,
       where:
-        sheet.project_id == ^project_id and sheet.shortcut in ^shortcuts and
+        sheet.project_id == ^project_id and
+          fragment("COALESCE(?, CAST(? AS TEXT))", sheet.shortcut, sheet.id) in ^shortcuts and
           is_nil(sheet.deleted_at) and is_nil(block.deleted_at),
-      select: {sheet.shortcut, block.variable_name, block.id}
+      select: {
+        coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
+        block.variable_name,
+        block.id
+      }
     )
     |> Repo.all()
     |> Enum.reduce(MapSet.new(), fn {shortcut, variable_name, block_id}, referenced_ids ->

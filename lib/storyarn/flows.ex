@@ -210,6 +210,9 @@ defmodule Storyarn.Flows do
   defdelegate delete_flow_subtree_in_transaction(actor_scope, flow), to: FlowCrud
 
   @doc false
+  defdelegate delete_flow_subtree_for_project_restore_in_transaction(flow), to: FlowCrud
+
+  @doc false
   defdelegate broadcast_flow_refreshes(affected_flow_ids), to: FlowCrud
 
   @doc """

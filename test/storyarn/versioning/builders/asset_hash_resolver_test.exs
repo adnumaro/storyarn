@@ -46,6 +46,134 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
     end
   end
 
+  describe "pre-materialized assets" do
+    test "preloads and resolves an exact destination without consulting storage", %{
+      project: source_project,
+      user: user
+    } do
+      destination_project = project_fixture(user)
+      hash = String.duplicate("a", 64)
+
+      destination =
+        asset_fixture(destination_project, user, %{
+          filename: "archived.png",
+          content_type: "image/png",
+          size: 123,
+          blob_hash: hash
+        })
+
+      snapshot = %{
+        "asset_blob_hashes" => %{"41" => hash},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => destination.filename,
+            "content_type" => destination.content_type,
+            "size" => destination.size
+          }
+        }
+      }
+
+      cache = AssetMaterializationCache.new()
+
+      assert :ok =
+               AssetHashResolver.preload_materialized_assets(
+                 snapshot,
+                 %{41 => destination.id},
+                 destination_project.id,
+                 cache
+               )
+
+      assert destination.id ==
+               AssetHashResolver.resolve_asset_fk(
+                 41,
+                 snapshot,
+                 destination_project.id,
+                 user.id,
+                 pre_materialized_assets: true,
+                 asset_materialization_cache: cache,
+                 asset_mode: :reuse,
+                 asset_source_keys: %{hash => "missing/provider/object.png"}
+               )
+
+      refute source_project.id == destination_project.id
+    end
+
+    test "fails closed when an exact mapping was not preloaded", %{project: project, user: user} do
+      hash = String.duplicate("b", 64)
+
+      snapshot = %{
+        "asset_blob_hashes" => %{"41" => hash},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => "missing.png",
+            "content_type" => "image/png",
+            "size" => 123
+          }
+        }
+      }
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            41,
+            snapshot,
+            project.id,
+            user.id,
+            pre_materialized_assets: true,
+            asset_materialization_cache: AssetMaterializationCache.new()
+          )
+        end
+
+      assert error.asset_id == 41
+      assert error.reason == :missing_pre_materialized_asset_mapping
+    end
+
+    test "rejects conflicting metadata for one historical identity", %{project: project, user: user} do
+      hash = String.duplicate("c", 64)
+
+      destination =
+        asset_fixture(project, user, %{
+          filename: "canonical.png",
+          content_type: "image/png",
+          size: 123,
+          blob_hash: hash
+        })
+
+      snapshot = %{
+        "asset_blob_hashes" => %{"41" => hash},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => destination.filename,
+            "content_type" => destination.content_type,
+            "size" => destination.size
+          }
+        },
+        "sheets" => [
+          %{
+            "snapshot" => %{
+              "asset_blob_hashes" => %{"41" => String.duplicate("d", 64)},
+              "asset_metadata" => %{
+                "41" => %{
+                  "filename" => destination.filename,
+                  "content_type" => destination.content_type,
+                  "size" => destination.size
+                }
+              }
+            }
+          }
+        ]
+      }
+
+      assert {:error, {:asset_materialization_failed, 41, :conflicting_pre_materialized_asset_metadata}} =
+               AssetHashResolver.preload_materialized_assets(
+                 snapshot,
+                 %{41 => destination.id},
+                 project.id,
+                 AssetMaterializationCache.new()
+               )
+    end
+  end
+
   describe "resolve_hashes/1" do
     test "returns empty maps for empty input" do
       assert {%{}, %{}} = AssetHashResolver.resolve_hashes([])

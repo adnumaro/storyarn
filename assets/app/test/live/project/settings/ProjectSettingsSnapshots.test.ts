@@ -1,10 +1,10 @@
-import { mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it } from "vitest";
+import { flushPromises, mount } from "@vue/test-utils";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import ProjectSettingsSnapshots from "../../../../live/project/settings/ProjectSettingsSnapshots.vue";
 import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
 import type { LiveInterface } from "../../../../shared/composables/useLive";
 import type { WorkspaceStorageUsage } from "../../../../shared/utils/storage-accounting";
-import { createMockLive, setTestLocale } from "../../../setup";
+import { createMockLive, createPromiseMockLive, setTestLocale } from "../../../setup";
 
 const storageUsage = {
   currentAssetsBytes: String(512 * 1024),
@@ -55,7 +55,20 @@ interface SnapshotFixture {
   cancelRequestedAt: string | null;
   canCancel: boolean;
   canDelete: boolean;
-  deleteStatus: "ready" | "download_lease" | "active_operation" | null;
+  deleteStatus: "ready" | "download_lease" | "active_operation" | "restore_operation" | null;
+  canRestore: boolean;
+  restoreOperation: {
+    id: number;
+    status: "queued" | "running" | "retrying" | "completed" | "failed";
+    phase: string;
+    attempt: number;
+    requestedAt: string | null;
+    stateUpdatedAt: string | null;
+    completedAt: string | null;
+    failedAt: string | null;
+    failureCode: string | null;
+    failureMessage: string | null;
+  } | null;
   downloadUrl: string | null;
 }
 
@@ -90,6 +103,8 @@ const measuredSnapshot: SnapshotFixture = {
   canCancel: false,
   canDelete: false,
   deleteStatus: "active_operation",
+  canRestore: true,
+  restoreOperation: null,
   downloadUrl: "/workspaces/alpha/projects/veilbreak/snapshots/21/download",
 };
 
@@ -308,5 +323,118 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     confirmation.vm.$emit("confirm");
 
     expect(live.pushEvent).toHaveBeenCalledWith("delete_snapshot", { id: 21 }, undefined);
+  });
+
+  it("requires destructive confirmation and sends a stable UUID for project restore", async () => {
+    const live = createMockLive();
+    const wrapper = mountSnapshots(measuredSnapshot, storageUsage, live);
+
+    await wrapper.get('[data-testid="restore-snapshot-21"]').trigger("click");
+
+    const dialogs = wrapper.findAllComponents(ConfirmDialog);
+    const confirmation = dialogs.find((dialog) => dialog.props("open"));
+    expect(confirmation).toBeDefined();
+    expect(confirmation?.props("variant")).toBe("destructive");
+    expect(confirmation?.props("description")).toContain(
+      "Current sheets, flows, scenes, and assets move to recoverable trash",
+    );
+    expect(confirmation?.props("description")).toContain("remains editable");
+    expect(live.pushEvent).not.toHaveBeenCalledWith(
+      "restore_snapshot",
+      expect.anything(),
+      expect.anything(),
+    );
+
+    confirmation?.vm.$emit("confirm");
+    await wrapper.vm.$nextTick();
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "restore_snapshot",
+      {
+        id: 21,
+        idempotency_key: expect.stringMatching(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+        ),
+      },
+      undefined,
+    );
+
+    const restoreButton = wrapper.get('[data-testid="restore-snapshot-21"]');
+    expect(restoreButton.attributes("disabled")).toBeDefined();
+    expect(restoreButton.text()).toContain("Starting restore");
+    expect(wrapper.get('[data-testid="delete-snapshot-21"]').attributes("disabled")).toBeDefined();
+  });
+
+  it("renders durable restore phase and disables restore/delete while it is active", () => {
+    const wrapper = mount(ProjectSettingsSnapshots, {
+      props: {
+        snapshots: [
+          {
+            ...measuredSnapshot,
+            canRestore: false,
+            canDelete: false,
+            deleteStatus: "restore_operation",
+            restoreOperation: {
+              id: 8,
+              status: "running",
+              phase: "materializing",
+              attempt: 1,
+              requestedAt: "2026-07-17T10:00:00Z",
+              stateUpdatedAt: "2026-07-17T10:01:00Z",
+              completedAt: null,
+              failedAt: null,
+              failureCode: null,
+              failureMessage: null,
+            },
+          },
+        ],
+        storageUsage,
+        snapshotLimit: { used: 2, limit: 10 },
+        restoreOperationActive: true,
+      },
+    });
+
+    const operation = wrapper.get('[data-testid="snapshot-restore-operation-21"]');
+    expect(operation.text()).toContain("Project restore");
+    expect(operation.text()).toContain("Running");
+    expect(operation.text()).toContain("Restoring project content");
+    expect(operation.text()).toContain("continues safely");
+    expect(wrapper.find('[data-testid="restore-snapshot-21"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="delete-snapshot-21"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.get('[data-testid="delete-restore-operation-21"]').text()).toContain(
+      "A project restore is active",
+    );
+  });
+
+  it("surfaces a transport failure and safely re-enables the restore action", async () => {
+    const transport = vi.fn((..._args: unknown[]) => Promise.reject(new Error("disconnected")));
+    const live = createPromiseMockLive({}, transport);
+    const wrapper = mountSnapshots(measuredSnapshot, storageUsage, live);
+
+    await wrapper.get('[data-testid="restore-snapshot-21"]').trigger("click");
+    const confirmation = wrapper
+      .findAllComponents(ConfirmDialog)
+      .find((dialog) => dialog.props("open"));
+    confirmation?.vm.$emit("confirm");
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="snapshot-restore-error"]').text()).toContain(
+      "connection was interrupted",
+    );
+    expect(
+      wrapper.get('[data-testid="restore-snapshot-21"]').attributes("disabled"),
+    ).toBeUndefined();
+
+    const firstRequest = transport.mock.calls.find((call) => call[0] === "restore_snapshot")?.[1];
+    await wrapper.get('[data-testid="restore-snapshot-21"]').trigger("click");
+    wrapper
+      .findAllComponents(ConfirmDialog)
+      .find((dialog) => dialog.props("open"))
+      ?.vm.$emit("confirm");
+    await flushPromises();
+
+    const restoreRequests = transport.mock.calls.filter((call) => call[0] === "restore_snapshot");
+    expect(restoreRequests).toHaveLength(2);
+    expect(restoreRequests[1]?.[1]).toEqual(firstRequest);
   });
 });

@@ -9,6 +9,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageHash
   alias Storyarn.Assets.StorageKeyLock
+  alias Storyarn.Billing.StorageReservation
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
@@ -102,6 +103,15 @@ defmodule Storyarn.Assets.StorageCompensation do
 
     Process.put(retained_key(reference), Enum.reject(retained(reference), &(&1 == storage_key)))
     :ok
+  end
+
+  @doc false
+  @spec pending_cleanup_targets(reference()) :: [String.t()]
+  def pending_cleanup_targets(reference) when is_reference(reference) do
+    reference
+    |> tracked()
+    |> Enum.filter(&valid_cleanup_target?/1)
+    |> Enum.uniq()
   end
 
   @spec cleanup(reference(), keyword()) :: :ok | {:error, term()}
@@ -1271,13 +1281,23 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp delete_owned_storage_key_in_transaction(storage_key, false) do
-    if committed_asset_key?(storage_key),
-      do: retain_committed_asset(storage_key),
-      else: delete_storage_object(storage_key)
+    cond do
+      active_restore_storage_owner?(storage_key) ->
+        {:error, :storage_key_owned_by_active_restore}
+
+      committed_asset_key?(storage_key) ->
+        retain_committed_asset(storage_key)
+
+      true ->
+        delete_storage_object(storage_key)
+    end
   end
 
   defp deferred_storage_delete(storage_key, force_delete?) do
     cond do
+      active_restore_storage_owner?(storage_key) ->
+        {:error, :storage_key_owned_by_active_restore}
+
       committed_asset_key?(storage_key) ->
         retain_committed_asset(storage_key)
 
@@ -1379,6 +1399,16 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp committed_asset_key?(storage_key) do
     Repo.exists?(from asset in Asset, where: asset.key == ^storage_key)
+  end
+
+  defp active_restore_storage_owner?(storage_key) do
+    Repo.exists?(
+      from reservation in StorageReservation,
+        where:
+          reservation.kind == "restore_staging" and reservation.status == "active" and
+            not is_nil(reservation.cleanup_storage_keys) and
+            fragment("? = ANY(?)", ^storage_key, reservation.cleanup_storage_keys)
+    )
   end
 
   defp committed_project?(project_id) do

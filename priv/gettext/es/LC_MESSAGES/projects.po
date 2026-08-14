@@ -37,7 +37,7 @@ msgstr "Conexión establecida."
 msgid "Create Project"
 msgstr "Crear proyecto"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:202
+#: lib/storyarn_web/live/project_settings_live/general.ex:209
 #, elixir-autogen, elixir-format
 msgid "Failed to delete project."
 msgstr "Error al eliminar el proyecto."
@@ -72,22 +72,22 @@ msgstr "Miembro eliminado."
 msgid "No API key configured."
 msgstr "No hay ninguna clave API configurada."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:117
+#: lib/storyarn_web/live/project_settings_live/general.ex:124
 #: lib/storyarn_web/live/project_settings_live/localization.ex:107
 #: lib/storyarn_web/live/project_settings_live/members.ex:104
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:205
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:269
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:123
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:109
 #, elixir-autogen, elixir-format
 msgid "Project Settings"
 msgstr "Configuración del proyecto"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:198
+#: lib/storyarn_web/live/project_settings_live/general.ex:205
 #, elixir-autogen, elixir-format
 msgid "Project deleted."
 msgstr "Proyecto eliminado."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:147
+#: lib/storyarn_web/live/project_settings_live/general.ex:154
 #, elixir-autogen, elixir-format
 msgid "Project updated successfully."
 msgstr "Proyecto actualizado exitosamente."
@@ -134,7 +134,7 @@ msgstr "Guardado"
 msgid "This invitation has already been accepted."
 msgstr "Esta invitación ya fue aceptada."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:244
+#: lib/storyarn_web/live/project_settings_live/trash.ex:256
 #, elixir-autogen, elixir-format
 msgid "Trash emptied successfully."
 msgstr "Papelera vaciada exitosamente."
@@ -149,52 +149,52 @@ msgstr "Papelera"
 msgid "Restore deleted project items or remove them permanently."
 msgstr "Restaura elementos eliminados del proyecto o elimínalos permanentemente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:87
+#: lib/storyarn_web/live/project_settings_live/trash.ex:94
 #, elixir-autogen, elixir-format
 msgid "Project Trash"
 msgstr "Papelera del proyecto"
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:153
-#: lib/storyarn_web/live/project_settings_live/trash.ex:168
+#: lib/storyarn_web/live/project_settings_live/trash.ex:165
+#: lib/storyarn_web/live/project_settings_live/trash.ex:180
 #, elixir-autogen, elixir-format
 msgid "Item restored successfully."
 msgstr "Elemento restaurado correctamente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:156
-#: lib/storyarn_web/live/project_settings_live/trash.ex:335
-#: lib/storyarn_web/live/project_settings_live/trash.ex:338
+#: lib/storyarn_web/live/project_settings_live/trash.ex:168
+#: lib/storyarn_web/live/project_settings_live/trash.ex:347
+#: lib/storyarn_web/live/project_settings_live/trash.ex:350
 #, elixir-autogen, elixir-format
 msgid "Failed to restore item."
 msgstr "Error al restaurar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:175
-#: lib/storyarn_web/live/project_settings_live/trash.ex:214
+#: lib/storyarn_web/live/project_settings_live/trash.ex:187
+#: lib/storyarn_web/live/project_settings_live/trash.ex:226
 #, elixir-autogen, elixir-format
 msgid "Item not found."
 msgstr "Elemento no encontrado."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:192
-#: lib/storyarn_web/live/project_settings_live/trash.ex:207
+#: lib/storyarn_web/live/project_settings_live/trash.ex:204
+#: lib/storyarn_web/live/project_settings_live/trash.ex:219
 #, elixir-autogen, elixir-format
 msgid "Item permanently deleted."
 msgstr "Elemento eliminado permanentemente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:210
-#: lib/storyarn_web/live/project_settings_live/trash.ex:360
+#: lib/storyarn_web/live/project_settings_live/trash.ex:222
+#: lib/storyarn_web/live/project_settings_live/trash.ex:372
 #, elixir-autogen, elixir-format
 msgid "Failed to delete item."
 msgstr "Error al eliminar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:248
+#: lib/storyarn_web/live/project_settings_live/trash.ex:260
 #, elixir-autogen, elixir-format
 msgid "Some items could not be deleted."
 msgstr "Algunos elementos no se pudieron eliminar."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:105
+#: lib/storyarn_web/live/project_settings_live/general.ex:112
 #: lib/storyarn_web/live/project_settings_live/localization.ex:95
 #: lib/storyarn_web/live/project_settings_live/members.ex:92
 #: lib/storyarn_web/live/project_settings_live/members.ex:149
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:193
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:257
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:111
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:97
 #, elixir-autogen, elixir-format
@@ -206,22 +206,22 @@ msgstr "No tienes permiso para gestionar este proyecto."
 msgid "You're already a member of this project."
 msgstr "Ya eres miembro de este proyecto."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:248
+#: lib/storyarn_web/live/project_settings_live/general.ex:255
 #, elixir-autogen, elixir-format
 msgid "Failed to reset theme."
 msgstr "Error al restablecer el tema."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:462
+#: lib/storyarn_web/live/project_settings_live/general.ex:481
 #, elixir-autogen, elixir-format
 msgid "Failed to save theme."
 msgstr "Error al guardar el tema."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:245
+#: lib/storyarn_web/live/project_settings_live/general.ex:252
 #, elixir-autogen, elixir-format
 msgid "Theme reset to default."
 msgstr "Tema restablecido por defecto."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:459
+#: lib/storyarn_web/live/project_settings_live/general.ex:478
 #, elixir-autogen, elixir-format
 msgid "Theme saved."
 msgstr "Tema guardado."
@@ -261,12 +261,12 @@ msgstr "Configuración del proveedor de traducción"
 msgid "Failed to save settings."
 msgstr "Error al guardar la configuración."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:465
+#: lib/storyarn_web/live/project_settings_live/general.ex:484
 #, elixir-autogen, elixir-format
 msgid "Invalid color format. Use #RRGGBB."
 msgstr "Formato de color no válido. Usa #RRGGBB."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:28
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:31
 #, elixir-autogen, elixir-format
 msgid "Snapshots"
 msgstr "Snapshots"
@@ -281,12 +281,12 @@ msgstr "Control de versiones"
 msgid "Version control settings saved."
 msgstr "Ajustes de control de versiones guardados."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:178
+#: lib/storyarn_web/live/project_settings_live/general.ex:185
 #, elixir-autogen, elixir-format
 msgid "Could not update the source language."
 msgstr "No se pudo actualizar el idioma de origen."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:171
+#: lib/storyarn_web/live/project_settings_live/general.ex:178
 #, elixir-autogen, elixir-format
 msgid "Source language updated."
 msgstr "Idioma de origen actualizado."
@@ -408,7 +408,7 @@ msgstr "Reintentando tras un problema temporal…"
 msgid "Creating project…"
 msgstr "Creando proyecto…"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:339
+#: lib/storyarn_web/live/project_settings_live/general.ex:358
 #: lib/storyarn_web/live/template_live/show.ex:518
 #, elixir-autogen, elixir-format
 msgid "A template publication is already running."
@@ -702,7 +702,7 @@ msgstr "No se pudo eliminar la template."
 msgid "Template could not be installed."
 msgstr "No se pudo instalar la template."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:351
+#: lib/storyarn_web/live/project_settings_live/general.ex:370
 #, elixir-autogen, elixir-format
 msgid "Template could not be queued."
 msgstr "No se pudo poner en cola la template."
@@ -712,7 +712,7 @@ msgstr "No se pudo poner en cola la template."
 msgid "Template could not be restored."
 msgstr "No se pudo restaurar la template."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:343
+#: lib/storyarn_web/live/project_settings_live/general.ex:362
 #: lib/storyarn_web/live/template_live/show.ex:524
 #, elixir-autogen, elixir-format
 msgid "Template limit reached for your plan."
@@ -735,7 +735,7 @@ msgstr "Template eliminada permanentemente."
 msgid "Template publication could not be queued."
 msgstr "No se pudo poner en cola la publicación de la template."
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:300
+#: lib/storyarn_web/live/project_settings_live/general.ex:319
 #: lib/storyarn_web/live/template_live/show.ex:512
 #, elixir-autogen, elixir-format
 msgid "Template publication queued."
@@ -751,7 +751,7 @@ msgstr "Template restaurada."
 msgid "Template version"
 msgstr "Versión de la template"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:347
+#: lib/storyarn_web/live/project_settings_live/general.ex:366
 #: lib/storyarn_web/live/template_live/show.ex:521
 #, elixir-autogen, elixir-format
 msgid "Template version limit reached for your plan."
@@ -795,7 +795,7 @@ msgstr "Notas de versión"
 msgid "Versions"
 msgstr "Versiones"
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:215
+#: lib/storyarn_web/live/project_settings_live/general.ex:222
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to publish templates from this project."
 msgstr "No tienes permiso para publicar templates desde este proyecto."
@@ -1214,37 +1214,37 @@ msgstr "No se pudo descartar la importación. Inténtalo de nuevo."
 msgid "Configure automatic entity versioning"
 msgstr "Configura el versionado automático de entidades"
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:30
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:33
 #, elixir-autogen, elixir-format
 msgid "Review snapshot storage, reservations, and integrity"
 msgstr "Revisa el almacenamiento, las reservas y la integridad de las snapshots"
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:235
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:299
 #, elixir-autogen, elixir-format
 msgid "Snapshot creation started."
 msgstr "La creación de la snapshot ha comenzado."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:268
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:332
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be cancelled."
 msgstr "No se ha podido cancelar la snapshot."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:288
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:353
 #, elixir-autogen, elixir-format
 msgid "Snapshot deletion started."
 msgstr "La eliminación de la snapshot ha comenzado."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:294
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:366
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be deleted."
 msgstr "No se ha podido eliminar la snapshot."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:345
+#: lib/storyarn_web/live/project_settings_live/trash.ex:357
 #, elixir-autogen, elixir-format
 msgid "This item references unavailable content. If any referenced items are in Trash, restore them first and try again."
 msgstr "Este elemento hace referencia a contenido no disponible. Si hay elementos referenciados en la Papelera, restáuralos primero y vuelve a intentarlo."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:354
+#: lib/storyarn_web/live/project_settings_live/trash.ex:366
 #, elixir-autogen, elixir-format
 msgid "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
 msgstr "Este recurso todavía está referenciado por otro contenido. Elimina esas referencias o borra permanentemente de la Papelera los elementos que lo referencian y vuelve a intentarlo."

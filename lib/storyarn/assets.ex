@@ -745,14 +745,17 @@ defmodule Storyarn.Assets do
     query |> maybe_active_parent_reference(scope, :scene) |> Repo.exists?()
   end
 
-  defp localized_voiceover_asset_reference?(_project_id, asset_ids, _scope) do
+  defp localized_voiceover_asset_reference?(_project_id, asset_ids, scope) do
     query =
       from(text in LocalizedText,
         where: text.vo_asset_id in ^asset_ids
       )
 
-    # Native backups retain archived localization rows. Their voice-over
-    # references therefore remain live until the row itself is removed.
+    query =
+      if scope == :active,
+        do: where(query, [text], is_nil(text.archived_at)),
+        else: query
+
     Repo.exists?(query)
   end
 
@@ -2512,6 +2515,55 @@ defmodule Storyarn.Assets do
     end
   end
 
+  @doc false
+  @spec import_snapshot_asset(Project.t(), pos_integer() | nil, attrs()) ::
+          {:ok, asset()}
+          | {:error, changeset()}
+          | {:error,
+             :asset_import_capacity_exceeded
+             | :asset_import_capacity_required
+             | :invalid_snapshot_asset_storage_key
+             | :storage_accounting_lock_required}
+  def import_snapshot_asset(%Project{} = project, uploaded_by_id, attrs)
+      when is_nil(uploaded_by_id) or (is_integer(uploaded_by_id) and uploaded_by_id > 0) do
+    upload_kind = snapshot_asset_upload_kind(attrs)
+
+    changeset =
+      asset_create_changeset(
+        %Asset{project_id: project.id, uploaded_by_id: uploaded_by_id},
+        attrs,
+        upload_kind
+      )
+
+    with :ok <- validate_import_asset_authorization(project),
+         :ok <- validate_snapshot_asset_storage_key(project.id, attrs),
+         {:ok, _locked_project} <- lock_active_project_for_asset_write(project.id, project.workspace_id),
+         :ok <- lock_asset_family_references(%Asset{project_id: project.id}, attrs),
+         :ok <- authorize_import_asset(project, changeset) do
+      with_asset_storage_key_lock(attrs, fn -> Repo.insert(changeset) end)
+    end
+  end
+
+  def import_snapshot_asset(%Project{}, _uploaded_by_id, _attrs), do: {:error, :invalid_snapshot_asset_import}
+
+  @doc false
+  @spec update_imported_snapshot_asset_locked(Project.t(), asset(), map()) ::
+          {:ok, asset()} | {:error, term()}
+  def update_imported_snapshot_asset_locked(%Project{} = project, %Asset{project_id: project_id} = asset, metadata)
+      when project.id == project_id and is_map(metadata) do
+    with :ok <- validate_import_asset_authorization(project),
+         {:ok, _locked_project} <- lock_active_project_for_asset_write(project.id, project.workspace_id),
+         {:ok, locked_asset} <- lock_asset_for_write(asset.id, project.id),
+         :ok <- lock_asset_family_references(locked_asset, %{metadata: metadata}) do
+      locked_asset
+      |> Asset.update_changeset(%{metadata: metadata})
+      |> Repo.update()
+    end
+  end
+
+  def update_imported_snapshot_asset_locked(_project, _asset, _metadata),
+    do: {:error, :invalid_snapshot_asset_relationship_update}
+
   defp with_import_capacity_marker(project, total_bytes, fun) do
     case Process.get(@import_capacity_process_key) do
       nil ->
@@ -2550,6 +2602,45 @@ defmodule Storyarn.Assets do
       end
     else
       {:error, :storage_accounting_lock_required}
+    end
+  end
+
+  defp snapshot_asset_upload_kind(attrs) do
+    content_type = Map.get(attrs, :content_type, Map.get(attrs, "content_type"))
+    metadata = Map.get(attrs, :metadata, Map.get(attrs, "metadata", %{}))
+
+    if content_type == "image/svg+xml" and metadata["sanitized_svg"] == true,
+      do: :sanitized_svg,
+      else: :generic
+  end
+
+  defp validate_snapshot_asset_storage_key(project_id, attrs) do
+    key = Map.get(attrs, :key, Map.get(attrs, "key"))
+    prefix = "projects/#{project_id}/assets/"
+
+    case key do
+      <<^prefix::binary, tail::binary>> ->
+        validate_snapshot_asset_storage_tail(tail)
+
+      _key ->
+        {:error, :invalid_snapshot_asset_storage_key}
+    end
+  end
+
+  defp validate_snapshot_asset_storage_tail(tail) do
+    case String.split(tail, "/", trim: false) do
+      [uuid, filename] -> validate_snapshot_asset_storage_parts(uuid, filename)
+      _parts -> {:error, :invalid_snapshot_asset_storage_key}
+    end
+  end
+
+  defp validate_snapshot_asset_storage_parts(uuid, filename) do
+    with {:ok, _uuid} <- Ecto.UUID.cast(uuid),
+         true <- filename == sanitize_filename(filename),
+         true <- filename not in ["", ".", ".."] do
+      :ok
+    else
+      _invalid -> {:error, :invalid_snapshot_asset_storage_key}
     end
   end
 

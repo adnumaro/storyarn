@@ -69,6 +69,13 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     %{project: project, membership: membership} = socket.assigns
     can_manage = Projects.can?(membership.role, :edit_content)
 
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        StoryarnWeb.Live.Shared.ProjectChromeHelpers.shell_topic(project.id)
+      )
+    end
+
     {:ok,
      socket
      |> assign(:current_workspace, project.workspace)
@@ -128,6 +135,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
      socket
      |> assign(:trash_page, normalize_page(page))
      |> load_trashed_items()}
+  end
+
+  @impl true
+  def handle_info({:project_restored, _restore_id}, socket) do
+    {:noreply, reload_trashed_items(socket)}
   end
 
   defp do_restore_item(socket, "asset", id, generation) do

@@ -327,6 +327,8 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
          {:ok, project} <- SnapshotObjectFormat.portable_project(normalized_project),
          {:ok, catalog} <-
            SnapshotObjectFormat.build_catalog(assets, Keyword.put(opts, :project_id, project_id)),
+         project = Map.put(project, "asset_catalog_refs", catalog.source_refs),
+         :ok <- SnapshotObjectFormat.validate_project(project),
          {:ok, project_descriptor, project_json} <- project_descriptor(project, opts),
          {:ok, manifest} <-
            SnapshotObjectFormat.build_manifest(

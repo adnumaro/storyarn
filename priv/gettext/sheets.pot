@@ -11,17 +11,17 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3025
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3029
 #, elixir-autogen, elixir-format
 msgid "Changed avatar"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3039
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3043
 #, elixir-autogen, elixir-format
 msgid "Changed banner"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3004
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3008
 #, elixir-autogen, elixir-format
 msgid "Changed shortcut"
 msgstr ""
@@ -100,7 +100,7 @@ msgstr ""
 msgid "Reference target not found."
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:2997
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3001
 #, elixir-autogen, elixir-format
 msgid "Renamed sheet"
 msgstr ""
@@ -218,53 +218,53 @@ msgstr ""
 msgid "Sheet moved to trash."
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3096
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3100
 #, elixir-autogen, elixir-format
 msgid "Added %{type} block"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3099
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3103
 #, elixir-autogen, elixir-format
 msgid "Added %{type} block \"%{name}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3141
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3146
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3145
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3150
 #, elixir-autogen, elixir-format
 msgid "Avatar image"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3123
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3127
 #, elixir-autogen, elixir-format
 msgid "Banner image"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3132
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3136
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} — inherited source"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3018
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3022
 #, elixir-autogen, elixir-format
 msgid "Changed color"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3108
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3112
 #, elixir-autogen, elixir-format
 msgid "Modified %{type} block"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3111
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3115
 #, elixir-autogen, elixir-format
 msgid "Modified %{type} block \"%{name}\""
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3102
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3106
 #, elixir-autogen, elixir-format
 msgid "Removed %{type} block"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3105
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3109
 #, elixir-autogen, elixir-format
 msgid "Removed %{type} block \"%{name}\""
 msgstr ""
@@ -300,27 +300,27 @@ msgstr ""
 msgid "Unknown"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3162
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3166
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} gallery image"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3032
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3036
 #, elixir-autogen, elixir-format
 msgid "Changed avatars"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3011
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3015
 #, elixir-autogen, elixir-format
 msgid "Changed description"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3046
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3050
 #, elixir-autogen, elixir-format
 msgid "Changed hidden inherited blocks"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3155
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3159
 #, elixir-autogen, elixir-format
 msgid "Hidden inherited block"
 msgstr ""
@@ -406,17 +406,17 @@ msgstr ""
 msgid "Text"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3186
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3190
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} — malformed embedded reference"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3201
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3205
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} — reference target"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/sheet_builder.ex:3205
+#: lib/storyarn/versioning/builders/sheet_builder.ex:3209
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} — rich-text mention"
 msgstr ""

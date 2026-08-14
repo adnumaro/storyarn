@@ -79,7 +79,8 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
     |> Keyword.take([
       :asset_copy_tracker,
       :asset_materialization_cache,
-      :asset_source_keys
+      :asset_source_keys,
+      :pre_materialized_assets
     ])
     |> Keyword.put(:asset_mode, asset_mode)
     |> maybe_pin_entity_restore_source(opts, project_id)

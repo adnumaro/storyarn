@@ -462,9 +462,13 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   # ========== Restore Snapshot ==========
 
+  @doc false
+  @spec validate_portable_snapshot(term()) :: :ok | {:error, term()}
+  def validate_portable_snapshot(snapshot), do: validate_portable_scene_snapshot(snapshot)
+
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    with :ok <- validate_portable_scene_snapshot(snapshot) do
+    with :ok <- validate_portable_snapshot(snapshot) do
       run_scene_instantiation(project_id, snapshot, opts)
     end
   end

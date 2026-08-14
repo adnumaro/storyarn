@@ -72,15 +72,19 @@ defmodule Storyarn.Versioning.AssetMaterializationScope do
   end
 
   defp copy_tracker_scope(opts) do
-    case Keyword.get(opts, :asset_copy_tracker) do
-      reference when is_reference(reference) ->
-        {:ok, reference, false}
-
-      _reference ->
-        if Repo.in_transaction?(),
-          do: {:error, :asset_copy_tracker_required_in_transaction},
-          else: {:ok, StorageCompensation.new(), true}
+    if Keyword.get(opts, :pre_materialized_assets) == true do
+      {:ok, Keyword.get(opts, :asset_copy_tracker), false}
+    else
+      asset_copy_tracker_scope(Keyword.get(opts, :asset_copy_tracker))
     end
+  end
+
+  defp asset_copy_tracker_scope(reference) when is_reference(reference), do: {:ok, reference, false}
+
+  defp asset_copy_tracker_scope(_reference) do
+    if Repo.in_transaction?(),
+      do: {:error, :asset_copy_tracker_required_in_transaction},
+      else: {:ok, StorageCompensation.new(), true}
   end
 
   defp finalize(result, cache, owns_cache?, copy_tracker, owns_copy_tracker?)

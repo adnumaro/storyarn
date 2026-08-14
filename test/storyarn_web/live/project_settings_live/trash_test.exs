@@ -92,6 +92,33 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       assert vue.props["trashed-items"] == []
     end
 
+    test "reloads recoverable trash after a project snapshot restore", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      sheet = sheet_fixture(project, %{name: "Displaced by restore"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/trash"
+        )
+
+      assert get_trash_vue(view).props["trashed-items"] == []
+      {:ok, _trashed} = Sheets.delete_sheet(sheet)
+
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        "project:#{project.id}:shell",
+        {:project_restored, 42}
+      )
+
+      _html = render(view)
+
+      assert Enum.any?(
+               get_trash_vue(view).props["trashed-items"],
+               &match?(%{"type" => "sheet", "name" => "Displaced by restore"}, &1)
+             )
+    end
+
     test "passes all project trash item types to Vue", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Deleted Sheet"})

@@ -97,19 +97,19 @@ msgid_plural "Translated %{count} strings."
 msgstr[0] "Se tradujo %{count} cadena."
 msgstr[1] "Se tradujeron %{count} cadenas."
 
-#: lib/storyarn_web/live/localization_live/edit.ex:150
+#: lib/storyarn_web/live/localization_live/edit.ex:158
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:112
 #, elixir-autogen, elixir-format
 msgid "Translation complete."
 msgstr "Traducción completada."
 
-#: lib/storyarn_web/live/localization_live/edit.ex:159
+#: lib/storyarn_web/live/localization_live/edit.ex:167
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:121
 #, elixir-autogen, elixir-format
 msgid "Translation failed: %{reason}"
 msgstr "Traducción fallida: %{reason}"
 
-#: lib/storyarn_web/live/localization_live/edit.ex:130
+#: lib/storyarn_web/live/localization_live/edit.ex:138
 #, elixir-autogen, elixir-format
 msgid "Translation saved."
 msgstr "Traducción guardada."

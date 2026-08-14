@@ -175,7 +175,7 @@ defmodule Storyarn.Flows.EntityTrashRefs do
 
     project_flow_ids =
       from(flow in Flow,
-        where: flow.project_id == ^project_id,
+        where: flow.project_id == ^project_id and is_nil(flow.deleted_at),
         select: flow.id
       )
 
@@ -184,6 +184,7 @@ defmodule Storyarn.Flows.EntityTrashRefs do
         Repo.all(
           from(node in FlowNode,
             where: node.flow_id in subquery(project_flow_ids),
+            where: is_nil(node.deleted_at),
             where:
               fragment("?->>'referenced_flow_id'", node.data) ==
                 ^target_flow_id_string,
