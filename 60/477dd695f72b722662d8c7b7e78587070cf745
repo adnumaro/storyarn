@@ -1,0 +1,118 @@
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_c2ae682cd97119::t_08c9defb555ecd 280-281
+lib/storyarn/scenes/scene_crud.ex
+  s_c2ae682cd97119::t_b04226d7eeb098 38,41-42,60-79
+lib/storyarn/versioning/project_snapshot_archive_reader.ex
+  s_c2ae682cd97119::t_189945f1b24d5e 580,588-613
+lib/storyarn/assets/storage_compensation.ex
+  s_c2ae682cd97119::t_458db95ecf881e 195,213-222,279-286,292,1265,1270,1315-1318,1320,1426-1440,1443-1461
+lib/storyarn/sheets/sheet_queries.ex
+  s_c2ae682cd97119::t_c9479b5f820c06 27,472-473,509,1221-1222,1354-1355,1397-1398
+  s_c2ae682cd97119::t_cb67cc43495e29 650-652,656,658,661,671,673,680,682-685,724-727,730,734,745,747,755-756,762,764
+  s_c2ae682cd97119::t_aea0c6d56eb713 1272
+  s_c2ae682cd97119::t_7bb9c7342b7825 25,1445-1464,1478-1504
+  s_c2ae682cd97119::t_56bd879c752ad8 26,1223-1245
+test/storyarn_web/live/project_settings_live/trash_test.exs
+  s_c2ae682cd97119::t_dd98adcc57e001 95-98,111-116,131-147
+  s_c2ae682cd97119::t_8b935c6a9f0a10 148-149
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_c2ae682cd97119::t_08c9defb555ecd 145-146
+test/storyarn/versioning/project_recovery_test.exs
+  s_c2ae682cd97119::t_9df84842b46d9c 137-171
+test/storyarn/versioning/project_snapshot_restore_lifecycle_test.exs
+  s_c2ae682cd97119::t_dd98adcc57e001 364-402
+lib/storyarn/sheets/reference_tracker.ex
+  s_c2ae682cd97119::t_81b5ad54af468b 42,1029
+  s_c2ae682cd97119::t_b3a714015e3b36 953-954,956,995-1006,1010,1018-1022
+  s_c2ae682cd97119::t_a57b442328fb93 1023-1024
+lib/storyarn/billing/storage_cleanup_inventory.ex
+  s_c2ae682cd97119::t_236fee5f5dfa0f 1-13
+lib/storyarn/flows/variable_reference_tracker.ex
+  s_c2ae682cd97119::t_c9bb57e85a937f 3155,3157,3168-3180,3182-3184,3187-3190,3193,3196,3199,3206-3207,3209,3213,3215,3218
+  s_c2ae682cd97119::t_6e80a129549f43 1689-1711
+  s_c2ae682cd97119::t_422dc8a9c954c3 47,2732,2737-2740,2751,2757,2760-2761,2768-2771,2792,2801,2808-2810
+  s_c2ae682cd97119::t_9bfd20bef4d447 49,1687-1688,2651,2692
+  s_c2ae682cd97119::t_384755a6f68c98 48
+test/storyarn/versioning/project_snapshot_restore_executor_test.exs
+  s_c2ae682cd97119::t_5d3a9fae916568 61-85,87-91,94-100,109-110,301-315
+  s_c2ae682cd97119::t_1d69bd7f36d86d 86
+  s_c2ae682cd97119::t_c25ad106216ec3 316
+lib/storyarn/versioning/project_snapshot_restore_executor.ex
+  s_c2ae682cd97119::t_afa29112306c1c 21,364
+  s_c2ae682cd97119::t_49341b35371e97 1618,1640-1644
+  s_c2ae682cd97119::t_6a544036901986 1645
+lib/storyarn/versioning/snapshot_archive_storage.ex
+  s_c2ae682cd97119::t_07ab39997ed778 17,186,1230
+lib/storyarn/billing/storage_reservation.ex
+  s_c2ae682cd97119::t_236fee5f5dfa0f 13,344
+lib/storyarn/billing/storage_accounting.ex
+  s_c2ae682cd97119::t_236fee5f5dfa0f 23,864,2217-2218
+  s_c2ae682cd97119::t_2e8d8b9b4285cc 2219-2220
+test/storyarn/billing/storage_cleanup_inventory_test.exs
+  s_c2ae682cd97119::t_2b77c8cd07812a 1-13
+test/storyarn_web/live/project_live/settings_test.exs
+  s_c2ae682cd97119::t_dd98adcc57e001 115-118,130-135,149-160
+  s_c2ae682cd97119::t_744c2116e0c16f 161-162
+lib/storyarn/versioning/project_recovery.ex
+  s_c2ae682cd97119::t_94f53ede07b2ed 61,89,181-182,1022,3163-3164,3172-3176
+  s_c2ae682cd97119::t_3ef1c61dd51372 244,946
+  s_c2ae682cd97119::t_c303e9f38b7aa9 949
+  s_c2ae682cd97119::t_8213ea9ac1fa39 77-78,174-176
+  s_c2ae682cd97119::t_049204c6fa9ed9 947-948,950-951
+  s_c2ae682cd97119::t_fb623e48574f8b 952-953,3177-3178
+test/storyarn/sheets/variable_namespace_resolver_test.exs
+  s_c2ae682cd97119::t_ecbad6f6438d37 8-9,49-95
+  s_c2ae682cd97119::t_cd9d5d2e507ee2 29
+  s_c2ae682cd97119::t_5511cf84d3ed5b 1-7,10-28,30-48,96-97
+lib/storyarn/sheets/variable_namespace_resolver.ex
+  s_c2ae682cd97119::t_2b54329e56dd7a 39-41,89-94,101,103-104
+  s_c2ae682cd97119::t_c2905679078d90 7-8
+  s_c2ae682cd97119::t_ea000e3a07e3c0 50,64-65,69,98-100,102
+  s_c2ae682cd97119::t_c855bbe389ffe1 18-37
+  s_c2ae682cd97119::t_7b05b7c206cb31 1-6,9-17,38,45-49,51,57-60,62,70,85-88,95-97,105-108
+  s_c2ae682cd97119::t_b99eeaca583152 42-44,52-56,61,63,66-68,71-84
+test/storyarn/sheets/sheet_queries_test.exs
+  s_c2ae682cd97119::t_640bf51caf8ad9 1437-1472
+test/storyarn/repo/migrations/restore_cleanup_storage_keys_migration_test.exs
+  s_c2ae682cd97119::t_d72c097f6fae68 53,191-208
+  s_c2ae682cd97119::t_85a4e435ec37f9 209-210
+test/storyarn/assets/storage_compensation_test.exs
+  s_c2ae682cd97119::t_fb16c052de9e22 15,1726
+  s_c2ae682cd97119::t_2b77c8cd07812a 941-983
+test/storyarn/flows/variable_reference_tracker_test.exs
+  s_c2ae682cd97119::t_c9bb57e85a937f 2617-2681,3875-3913
+  s_c2ae682cd97119::t_87238243d3989c 3610-3647,3649-3710,3727-3729
+  s_c2ae682cd97119::t_cd9d5d2e507ee2 3648,3711-3726
+  s_c2ae682cd97119::t_d897a9e068bd40 3914
+lib/storyarn/versioning/project_snapshot_restore_lifecycle.ex
+  s_c2ae682cd97119::t_08c9defb555ecd 1511,1516
+  s_c2ae682cd97119::t_4b61515a0c105a 1517
+lib/storyarn/sheets/sheet_stats.ex
+  s_c2ae682cd97119::t_fe73062bf4bfab 15,256-259,266,268,271-274
+lib/storyarn/sheets/variable_catalog.ex
+  s_c2ae682cd97119::t_52b02026b3952d 304,359,370-422
+  s_c2ae682cd97119::t_414edd116eb6bc 18-20
+  s_c2ae682cd97119::t_b65f4eb4bd8416 300-303,305-337,357-358,360-369
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_c2ae682cd97119::t_4487f172e16a19 137,157-158,163-165,170-171,176-177,182-183,188,214,224,264,411,705,715,738,754,1242,1247
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_c2ae682cd97119::t_d3897d328ac612 137,157-158,163-165,170-171,176-177,182-183,188,214,224,264,411,705,715,738,754,1242,1247
+priv/gettext/projects.pot
+  s_c2ae682cd97119::t_79af63fa25d75b 137,157-158,163-165,170-171,176-177,182-183,188,214,224,264,411,705,715,738,754,1242,1247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "60477dd695f72b722662d8c7b7e78587070cf745",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
