@@ -4,11 +4,13 @@ defmodule Storyarn.ProjectTemplates.Installation do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Accounts.User
   alias Storyarn.Analytics
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Billing
+  alias Storyarn.Notifications
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.Artifact
@@ -116,14 +118,17 @@ defmodule Storyarn.ProjectTemplates.Installation do
          {:ok, workspace, _membership} <- Workspaces.authorize(scope, workspace.id, :create_project),
          :ok <- Billing.can_create_project?(workspace),
          {:ok, snapshot, asset_source_keys} <- load_verified_template_snapshot(version) do
-      instantiate_template_transaction(
-        scope,
-        version,
-        workspace,
-        attrs,
-        snapshot,
-        maybe_put_asset_source_keys([], asset_source_keys)
-      )
+      case instantiate_template_transaction(
+             scope,
+             version,
+             workspace,
+             attrs,
+             snapshot,
+             maybe_put_asset_source_keys([], asset_source_keys)
+           ) do
+        {:ok, {project, _notification_outcome}} -> {:ok, project}
+        {:error, reason} -> {:error, reason}
+      end
     end
   end
 
@@ -299,15 +304,18 @@ defmodule Storyarn.ProjectTemplates.Installation do
            {:ok, snapshot, asset_source_keys} <-
              load_verified_template_snapshot(install.project_template_version),
            {:ok, install} <- mark_stage(install, "materializing"),
-           {:ok, project} <-
+           {:ok, {project, notification_outcome}} <-
              instantiate_template_transaction(
                Scope.for_user(install.user),
                install.project_template_version,
                install.workspace,
                %{name: install.project_name},
                snapshot,
-               maybe_put_asset_source_keys([installation: install], asset_source_keys)
+               [installation: install]
+               |> Keyword.merge(Keyword.take(opts, [:before_install_transaction_commit]))
+               |> maybe_put_asset_source_keys(asset_source_keys)
              ) do
+        Notifications.publish_committed(notification_outcome)
         completed = get_install!(install.id)
         publish_finished(completed, project, started_at)
         {:ok, completed}
@@ -497,7 +505,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
         )
 
       case result do
-        {:ok, _project} ->
+        {:ok, _project_and_outcome} ->
           StorageCompensation.discard(tracker)
           result
 
@@ -656,8 +664,9 @@ defmodule Storyarn.ProjectTemplates.Installation do
     with {:ok, project} <-
            ProjectRecovery.materialize_template(workspace.id, snapshot, scope.user.id, recovery_opts),
          {:ok, project} <- mark_template_origin(project, version),
-         {:ok, _install} <- complete_or_record_install(scope, version, workspace, project, attrs, opts) do
-      {:ok, project}
+         {:ok, notification_outcome} <- complete_or_record_install(scope, version, workspace, project, attrs, opts),
+         :ok <- run_before_install_transaction_commit(opts) do
+      {:ok, {project, notification_outcome}}
     end
   end
 
@@ -676,9 +685,14 @@ defmodule Storyarn.ProjectTemplates.Installation do
 
     case Keyword.get(opts, :installation) do
       %ProjectTemplateInstall{} = install ->
-        install
-        |> ProjectTemplateInstall.completed_changeset(project, now)
-        |> Repo.update()
+        with {:ok, {locked_install, locked_project, requester}} <-
+               lock_install_notification_context(install, project),
+             {:ok, completed} <-
+               locked_install
+               |> ProjectTemplateInstall.completed_changeset(project, now)
+               |> Repo.update() do
+          deliver_install_result(completed, locked_project, requester, "success")
+        end
 
       nil ->
         %ProjectTemplateInstall{
@@ -697,6 +711,10 @@ defmodule Storyarn.ProjectTemplates.Installation do
           completed_at: now
         })
         |> Repo.insert()
+        |> case do
+          {:ok, _install} -> {:ok, :suppressed}
+          {:error, reason} -> {:error, reason}
+        end
     end
   end
 
@@ -733,7 +751,8 @@ defmodule Storyarn.ProjectTemplates.Installation do
     {code, message, permanent?} = classify_error(reason)
 
     if permanent? or attempt >= max_attempts do
-      install = fail_install(install, code, message, attempt, max_attempts)
+      {install, notification_outcome} = fail_install(install, code, message, attempt, max_attempts)
+      Notifications.publish_committed(notification_outcome)
 
       log_terminal_failure(install, code)
 
@@ -753,17 +772,31 @@ defmodule Storyarn.ProjectTemplates.Installation do
   end
 
   defp fail_install(install, code, message, attempt, max_attempts) do
-    install
-    |> ProjectTemplateInstall.failed_changeset(%{
-      status: "failed",
-      stage: "failed",
-      error_code: code,
-      error_message: message,
-      error_report: %{attempt: attempt, max_attempts: max_attempts},
-      completed_at: TimeHelpers.now()
-    })
-    |> Repo.update!()
-    |> preload_install()
+    now = TimeHelpers.now()
+
+    {:ok, {failed, notification_outcome}} =
+      Repo.transact(fn ->
+        with {:ok, {locked_install, _project, requester}} <-
+               lock_install_notification_context(install, nil),
+             {:ok, failed} <-
+               locked_install
+               |> ProjectTemplateInstall.failed_changeset(%{
+                 status: "failed",
+                 stage: "failed",
+                 error_code: code,
+                 error_message: message,
+                 error_report: %{attempt: attempt, max_attempts: max_attempts},
+                 completed_at: now
+               })
+               |> Ecto.Changeset.change(feedback_dismissed_at: now)
+               |> Repo.update(),
+             {:ok, notification_outcome} <-
+               deliver_install_result(failed, nil, requester, "failure") do
+          {:ok, {failed, notification_outcome}}
+        end
+      end)
+
+    {preload_install(failed), notification_outcome}
   end
 
   defp retry_install(install, code, attempt, max_attempts) do
@@ -777,6 +810,104 @@ defmodule Storyarn.ProjectTemplates.Installation do
     })
     |> Repo.update!()
     |> preload_install()
+  end
+
+  defp deliver_install_result(%ProjectTemplateInstall{} = install, project, requester, status) do
+    Notifications.deliver_async_result(
+      Scope.for_user(requester),
+      project,
+      %{
+        entity_type: "template_install",
+        entity_id: install.id,
+        entity_name: install.project_name,
+        status: status,
+        dedupe_key: "template_install:#{install.id}:#{status}"
+      }
+    )
+  end
+
+  defp lock_install_notification_context(%ProjectTemplateInstall{} = candidate, project) do
+    with {:ok, locked_project} <- lock_install_notification_project(project),
+         {:ok, requester} <- lock_install_notification_user(candidate.user_id),
+         %ProjectTemplateInstall{} = install <- lock_terminal_install(candidate.id),
+         :ok <- validate_terminal_install_identity(install, candidate, requester) do
+      {:ok, {install, locked_project, requester}}
+    else
+      nil -> {:error, :installation_context_changed}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp lock_install_notification_project(nil), do: {:ok, nil}
+
+  defp lock_install_notification_project(%Project{id: project_id}) do
+    case Repo.one(from(project in Project, where: project.id == ^project_id, lock: "FOR SHARE")) do
+      %Project{} = project -> {:ok, project}
+      nil -> {:error, :installation_context_changed}
+    end
+  end
+
+  defp lock_install_notification_user(nil), do: {:ok, nil}
+
+  defp lock_install_notification_user(user_id) when is_integer(user_id) do
+    case Repo.one(from(user in User, where: user.id == ^user_id, lock: "FOR KEY SHARE")) do
+      %User{} = user -> {:ok, user}
+      nil -> {:ok, nil}
+    end
+  end
+
+  defp lock_terminal_install(install_id) do
+    ProjectTemplateInstall
+    |> where([install], install.id == ^install_id and install.status in ^@active_statuses)
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp validate_terminal_install_identity(
+         %ProjectTemplateInstall{
+           id: install_id,
+           project_template_version_id: version_id,
+           user_id: user_id,
+           workspace_id: workspace_id,
+           project_id: project_id
+         },
+         %ProjectTemplateInstall{
+           id: install_id,
+           project_template_version_id: version_id,
+           user_id: user_id,
+           workspace_id: workspace_id,
+           project_id: project_id
+         },
+         %User{id: user_id}
+       ), do: :ok
+
+  defp validate_terminal_install_identity(
+         %ProjectTemplateInstall{
+           id: install_id,
+           project_template_version_id: version_id,
+           user_id: current_user_id,
+           workspace_id: workspace_id,
+           project_id: project_id
+         },
+         %ProjectTemplateInstall{
+           id: install_id,
+           project_template_version_id: version_id,
+           user_id: expected_user_id,
+           workspace_id: workspace_id,
+           project_id: project_id
+         },
+         nil
+       )
+       when is_nil(current_user_id) or current_user_id == expected_user_id, do: :ok
+
+  defp validate_terminal_install_identity(%ProjectTemplateInstall{}, %ProjectTemplateInstall{}, _requester),
+    do: {:error, :installation_context_changed}
+
+  defp run_before_install_transaction_commit(opts) do
+    case Keyword.get(opts, :before_install_transaction_commit) do
+      nil -> :ok
+      callback when is_function(callback, 0) -> callback.()
+    end
   end
 
   defp classify_error({:exception, _exception}), do: {"exception", "The installation could not be completed.", false}

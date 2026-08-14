@@ -8,6 +8,7 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Notifications.Notification
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates
   alias Storyarn.ProjectTemplates.ProjectTemplate
@@ -102,7 +103,7 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
       assert vue.props["template-creation"]["failures"] == []
     end
 
-    test "shows a recent failed installation after the workspace is reloaded", %{
+    test "uses the notification center instead of legacy failure feedback after reload", %{
       conn: conn,
       user: user,
       scope: scope
@@ -132,20 +133,15 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
       template_creation = get_dashboard_vue(view).props["template-creation"]
 
       refute Enum.any?(template_creation["installations"], &(&1["id"] == installation.id))
-
-      failed_installation =
-        Enum.find(template_creation["failures"], &(&1["id"] == installation.id))
-
-      assert failed_installation["project_name"] == "Broken Copy"
-      assert failed_installation["error_code"] == "checksum_mismatch"
-      assert failed_installation["error_message"] == "The template failed its integrity check."
-
-      render_hook(view, "dismiss_template_installation_failure", %{
-        "installation_id" => installation.id
-      })
-
+      assert template_creation["failures"] == []
       assert Repo.get!(ProjectTemplateInstall, installation.id).feedback_dismissed_at
-      assert get_dashboard_vue(view).props["template-creation"]["failures"] == []
+
+      assert %Notification{status: "failure", project_id: nil} =
+               Repo.get_by!(Notification,
+                 recipient_id: user.id,
+                 entity_type: "template_install",
+                 entity_id: installation.id
+               )
 
       {:ok, reloaded_view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
       assert get_dashboard_vue(reloaded_view).props["template-creation"]["failures"] == []

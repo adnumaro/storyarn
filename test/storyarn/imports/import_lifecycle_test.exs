@@ -15,6 +15,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
   alias Storyarn.Imports.PlanCleanupRequest
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.ProjectImportAttempt
+  alias Storyarn.Notifications
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
@@ -458,9 +459,12 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     |> Ecto.Changeset.change(expires_at: DateTime.add(TimeHelpers.now(), -60, :second))
     |> Repo.update!()
 
+    :ok = Notifications.subscribe(ctx.scope)
     assert {:ok, expired, nil} = Imports.resume_import(ctx.scope, ctx.project, ready.id)
     assert expired.status == "expired"
     assert {:error, :import_plan_unavailable} = PlanStorage.load(ready.plan_storage_key)
+    refute_receive :notifications_changed
+    assert Notifications.list_notifications(ctx.scope) == []
   end
 
   test "returns the current queued state when enqueue wins while a ready preview is loading", ctx do
@@ -502,7 +506,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
              )
   end
 
-  test "expires and cleans an accepted attempt immediately when its Oban job is terminal", ctx do
+  test "expires an accepted terminal job after locking parents, job, and attempt in order", ctx do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
 
@@ -513,10 +517,61 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     |> Ecto.Changeset.change(state: "discarded", discarded_at: DateTime.utc_now())
     |> Repo.update!()
 
+    handler_id = "import-resume-expiration-lock-order-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    parent = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid do
+            lock =
+              cond do
+                String.contains?(query, ~s(FROM "projects")) and
+                    String.contains?(query, "FOR SHARE") ->
+                  :project
+
+                String.contains?(query, ~s(FROM "users")) and
+                    String.contains?(query, "FOR KEY SHARE") ->
+                  :requester
+
+                String.contains?(query, ~s(FROM "oban_jobs")) and
+                    String.contains?(query, "FOR SHARE") ->
+                  :job
+
+                String.contains?(query, ~s(FROM "project_import_attempts")) and
+                    String.contains?(query, "FOR UPDATE") ->
+                  :attempt
+
+                true ->
+                  nil
+              end
+
+            if lock, do: send(pid, {ref, lock})
+          end
+        end,
+        {parent, marker}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    :ok = Notifications.subscribe(ctx.scope)
     assert {:ok, expired, nil} = Imports.resume_import(ctx.scope, ctx.project, queued.id)
     assert expired.status == "expired"
     assert {:error, :import_plan_unavailable} = PlanStorage.load(queued.plan_storage_key)
     assert Repo.get!(PlanCleanupRequest, queued.plan_cleanup_request_id).state == "completed"
+    assert_receive :notifications_changed
+    assert_import_notification(ctx.scope, expired, "failure")
+
+    lock_order =
+      Enum.map(1..4, fn _index ->
+        assert_receive {^marker, lock}
+        lock
+      end)
+
+    assert lock_order == [:project, :requester, :job, :attempt]
   end
 
   test "expires and cleans an accepted attempt immediately when its Oban job is absent", ctx do
@@ -648,6 +703,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     :ok = Collaboration.subscribe_dashboard(ctx.project.id)
     :ok = Imports.subscribe_project_imports(ctx.project)
+    :ok = Notifications.subscribe(ctx.scope)
 
     assert {:ok, completed} = Imports.perform_import(ready.id, attempt: 1, max_attempts: 3)
     assert completed.status == "completed"
@@ -664,6 +720,9 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert_received {:project_import_updated, completed_broadcast}
     assert completed_broadcast.id == completed.id
     assert completed_broadcast.status == "completed"
+    assert_received :notifications_changed
+
+    assert_import_notification(ctx.scope, completed, "success")
 
     assert {:ok, same_completed} = Imports.perform_import(ready.id, attempt: 2, max_attempts: 3)
     assert same_completed.id == completed.id
@@ -672,6 +731,9 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert_received {:project_import_updated, second_broadcast}
     assert second_broadcast.id == completed.id
     assert second_broadcast.status == "completed"
+    refute_receive :notifications_changed
+
+    assert_import_notification(ctx.scope, completed, "success")
   end
 
   test "materializes and completes while holding the workspace storage-accounting lock", ctx do
@@ -725,26 +787,64 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
 
     :ok = Collaboration.subscribe_dashboard(ctx.project.id)
+    :ok = Notifications.subscribe(ctx.scope)
 
     assert {:error, :retryable_import_error} =
              Imports.perform_import(queued.id,
                attempt: 1,
                max_attempts: 3,
-               before_attempt_completion: fn -> raise "simulated process failure" end
+               before_attempt_completion: fn ->
+                 refute_receive :notifications_changed
+                 raise "simulated process failure"
+               end
              )
 
     retrying = Repo.get!(ProjectImportAttempt, queued.id)
     assert retrying.status == "retrying"
     refute Enum.any?(Flows.list_flows(ctx.project.id), &(&1.name == "Start"))
     refute_received {:dashboard_invalidate, :all}
+    refute_receive :notifications_changed
+    assert Notifications.list_notifications(ctx.scope) == []
 
     assert {:ok, completed} = Imports.perform_import(queued.id, attempt: 2, max_attempts: 3)
     assert completed.status == "completed"
     assert Enum.count(Flows.list_flows(ctx.project.id), &(&1.name == "Start")) == 1
+    assert_receive :notifications_changed
+    assert_import_notification(ctx.scope, completed, "success")
 
     assert {:ok, same_completed} = Imports.perform_import(queued.id, attempt: 3, max_attempts: 3)
     assert same_completed.id == completed.id
     assert Enum.count(Flows.list_flows(ctx.project.id), &(&1.name == "Start")) == 1
+    refute_receive :notifications_changed
+    assert_import_notification(ctx.scope, completed, "success")
+  end
+
+  test "persists and publishes one failure when the final import attempt rolls back", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+    :ok = Notifications.subscribe(ctx.scope)
+
+    assert {:ok, failed} =
+             Imports.perform_import(queued.id,
+               attempt: 1,
+               max_attempts: 1,
+               before_attempt_completion: fn ->
+                 refute_receive :notifications_changed
+                 raise "simulated final process failure"
+               end
+             )
+
+    assert failed.status == "failed"
+    refute Enum.any?(Flows.list_flows(ctx.project.id), &(&1.name == "Start"))
+    assert_receive :notifications_changed
+    assert_import_notification(ctx.scope, failed, "failure")
+
+    assert {:ok, same_failed} = Imports.perform_import(queued.id, attempt: 2, max_attempts: 3)
+    assert same_failed.id == failed.id
+    refute_receive :notifications_changed
+    assert_import_notification(ctx.scope, failed, "failure")
   end
 
   test "publishes running before materialization and resumes without waiting for its locks" do
@@ -929,7 +1029,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert Enum.count(Flows.list_flows(ctx.project.id), &(&1.name == "Start")) == 1
   end
 
-  test "locks project and membership before the attempt", ctx do
+  test "locks project, requester, and membership before the attempt", ctx do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
 
@@ -950,6 +1050,10 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
                 String.contains?(query, ~s(FROM "projects")) and
                     String.contains?(query, "FOR UPDATE") ->
                   :project
+
+                String.contains?(query, ~s(FROM "users")) and
+                    String.contains?(query, "FOR KEY SHARE") ->
+                  :requester
 
                 String.contains?(query, ~s(FROM "project_memberships")) and
                     String.contains?(query, "FOR SHARE") ->
@@ -975,12 +1079,83 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert completed.status == "completed"
 
     lock_order =
+      Enum.map(1..8, fn _index ->
+        assert_receive {^marker, lock}
+        lock
+      end)
+
+    assert lock_order == [
+             :project,
+             :requester,
+             :membership,
+             :attempt,
+             :project,
+             :requester,
+             :membership,
+             :attempt
+           ]
+  end
+
+  test "locks notification parents before the attempt on terminal execution errors", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    handler_id = "import-terminal-error-lock-order-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    parent = self()
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:ok, failed} =
+             Imports.perform_import(queued.id,
+               attempt: 1,
+               max_attempts: 1,
+               before_materialization_transaction: fn ->
+                 :ok =
+                   :telemetry.attach(
+                     handler_id,
+                     [:storyarn, :repo, :query],
+                     fn _event, _measurements, %{query: query}, {pid, ref} ->
+                       if self() == pid do
+                         lock =
+                           cond do
+                             String.contains?(query, ~s(FROM "projects")) and
+                                 String.contains?(query, "FOR SHARE") ->
+                               :project
+
+                             String.contains?(query, ~s(FROM "users")) and
+                                 String.contains?(query, "FOR KEY SHARE") ->
+                               :requester
+
+                             String.contains?(query, ~s(FROM "project_import_attempts")) and
+                                 String.contains?(query, "FOR UPDATE") ->
+                               :attempt
+
+                             true ->
+                               nil
+                           end
+
+                         if lock, do: send(pid, {ref, lock})
+                       end
+                     end,
+                     {parent, marker}
+                   )
+
+                 raise "simulated final failure before materialization"
+               end
+             )
+
+    assert failed.status == "failed"
+
+    lock_order =
       Enum.map(1..3, fn _index ->
         assert_receive {^marker, lock}
         lock
       end)
 
-    assert lock_order == [:project, :membership, :attempt]
+    assert lock_order == [:project, :requester, :attempt]
   end
 
   test "locks authorization before the attempt when cancelling", ctx do
@@ -1371,6 +1546,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
 
     assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+    :ok = Notifications.subscribe(ctx.scope)
 
     assert {:ok, failed} =
              Imports.perform_import(queued.id,
@@ -1384,6 +1560,40 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert failed.status == "failed"
     assert failed.error_code == "unauthorized"
     refute Enum.any?(Flows.list_flows(ctx.project.id), &(&1.name == "Start"))
+    refute_receive :notifications_changed
+    assert Notifications.list_notifications(ctx.scope) == []
+  end
+
+  test "terminalizes with notification suppressed after the requester is deleted", ctx do
+    requester = user_fixture()
+    membership_fixture(ctx.project, requester, "owner")
+    requester_scope = Scope.for_user(requester)
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(requester_scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, queued} = Imports.enqueue_import(requester_scope, ready.id, :rename)
+    :ok = Notifications.subscribe(requester_scope)
+
+    requester |> Storyarn.Workspaces.get_default_workspace() |> Repo.delete!()
+    Repo.delete!(requester)
+
+    assert {:ok, failed} =
+             Imports.perform_import(queued.id, attempt: 1, max_attempts: 1)
+
+    assert failed.status == "failed"
+    assert failed.error_code == "unexpected_import_error"
+    assert is_nil(failed.user_id)
+    refute_receive :notifications_changed
+
+    assert Repo.aggregate(
+             from(notification in Storyarn.Notifications.Notification,
+               where:
+                 notification.entity_type == "project_import" and
+                   notification.entity_id == ^queued.id
+             ),
+             :count
+           ) == 0
   end
 
   test "retains a cleanup tombstone when permanent deletion wins before the worker", ctx do
@@ -1718,7 +1928,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert {:error, :import_plan_unavailable} = PlanStorage.load(ready.plan_storage_key)
   end
 
-  test "expires an active attempt whose Oban job was discarded", ctx do
+  test "sweeps a discarded job after locking parents, job, and attempt in order", ctx do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
 
@@ -1731,6 +1941,46 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     |> Ecto.Changeset.change(state: "discarded", discarded_at: DateTime.utc_now())
     |> Repo.update!()
 
+    handler_id = "import-sweep-expiration-lock-order-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    parent = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid do
+            lock =
+              cond do
+                String.contains?(query, ~s(FROM "projects")) and
+                    String.contains?(query, "FOR SHARE") ->
+                  :project
+
+                String.contains?(query, ~s(FROM "users")) and
+                    String.contains?(query, "FOR KEY SHARE") ->
+                  :requester
+
+                String.contains?(query, ~s(FROM "oban_jobs")) and
+                    String.contains?(query, "FOR SHARE") ->
+                  :job
+
+                String.contains?(query, ~s(FROM "project_import_attempts")) and
+                    String.contains?(query, "FOR UPDATE") ->
+                  :attempt
+
+                true ->
+                  nil
+              end
+
+            if lock, do: send(pid, {ref, lock})
+          end
+        end,
+        {parent, marker}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
     assert {:ok, 1} = Imports.expire_stale_imports()
 
     expired = Repo.get!(ProjectImportAttempt, queued.id)
@@ -1739,6 +1989,14 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     refute expired.idempotency_key
     assert {:error, :import_plan_unavailable} = PlanStorage.load(queued.plan_storage_key)
     assert Repo.get!(PlanCleanupRequest, queued.plan_cleanup_request_id).state == "completed"
+
+    lock_order =
+      Enum.map(1..4, fn _index ->
+        assert_receive {^marker, lock}
+        lock
+      end)
+
+    assert lock_order == [:project, :requester, :job, :attempt]
   end
 
   test "reports an expiration transition failure without exposing import identifiers or source", ctx do
@@ -1939,6 +2197,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     )
 
     :ok = Imports.subscribe_project_imports(ctx.project)
+    :ok = Notifications.subscribe(ctx.scope)
 
     handler_id = "import-worker-expiration-stop-#{System.unique_integer([:positive])}"
     marker = make_ref()
@@ -1967,6 +2226,8 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     # open page kept showing "queued" until its polling backstop noticed.
     assert_receive {:project_import_updated, %ProjectImportAttempt{id: broadcast_id, status: "expired"}}
     assert broadcast_id == queued.id
+    assert_receive :notifications_changed
+    assert_import_notification(ctx.scope, expired, "failure")
 
     assert_receive {^marker, %{count: 1}, %{status: "expired", error_code: "import_expired"}}
     refute_receive {^marker, _measurements, _metadata}
@@ -1992,6 +2253,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
       ]
     )
 
+    :ok = Notifications.subscribe(ctx.scope)
     assert Repo.get!(Oban.Job, queued.oban_job_id).state == "available"
     assert {:ok, 1} = Imports.expire_stale_imports()
 
@@ -2004,6 +2266,8 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     refute expired.idempotency_key
     assert {:error, :import_plan_unavailable} = PlanStorage.load(queued.plan_storage_key)
     assert Repo.get!(PlanCleanupRequest, queued.plan_cleanup_request_id).state == "completed"
+    assert_receive :notifications_changed
+    assert_import_notification(ctx.scope, expired, "failure")
   end
 
   test "an absolute-deadline cancellation failure backs off without deleting the plan", ctx do
@@ -2447,6 +2711,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     mark_stale_for_sweep(attempt, 60)
 
+    :ok = Notifications.subscribe(ctx.scope)
     assert {:ok, 1} = Imports.expire_stale_imports()
 
     expired = Repo.get!(ProjectImportAttempt, attempt.id)
@@ -2454,6 +2719,8 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert expired.stage == "expired"
     assert Repo.get_by!(PlanCleanupRequest, plan_storage_key: attempt.plan_storage_key).state == "completed"
     assert {:error, :import_plan_unavailable} = PlanStorage.load(attempt.plan_storage_key)
+    refute_receive :notifications_changed
+    assert Notifications.list_notifications(ctx.scope) == []
   end
 
   describe "owner-only import authorization" do
@@ -2532,6 +2799,21 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
       assert {:error, :import_not_cancellable} = Imports.cancel_import(ctx.scope, running.id)
       assert Repo.get!(ProjectImportAttempt, running.id).status == "running"
     end
+  end
+
+  defp assert_import_notification(scope, attempt, status) do
+    assert [notification] = Notifications.list_notifications(scope)
+    assert notification.recipient_id == scope.user.id
+    assert is_nil(notification.actor_id)
+    assert notification.project_id == attempt.project_id
+    assert notification.kind == "async_operation"
+    assert notification.entity_type == "project_import"
+    assert notification.entity_id == attempt.id
+    assert is_nil(notification.entity_name)
+    assert notification.status == status
+    assert notification.dedupe_key == "project_import:#{attempt.id}:#{status}"
+
+    notification
   end
 
   defp yarn(dialogue) do

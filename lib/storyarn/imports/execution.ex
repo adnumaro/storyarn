@@ -17,6 +17,7 @@ defmodule Storyarn.Imports.Execution do
   alias Storyarn.Collaboration
   alias Storyarn.Imports.Error
   alias Storyarn.Imports.Materializer
+  alias Storyarn.Imports.NotificationDelivery
   alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Imports.PlanCleanup
   alias Storyarn.Imports.PlanStorage
@@ -24,6 +25,7 @@ defmodule Storyarn.Imports.Execution do
   alias Storyarn.Imports.Queue
   alias Storyarn.Imports.Shared
   alias Storyarn.Imports.Telemetry
+  alias Storyarn.Notifications
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
@@ -162,15 +164,16 @@ defmodule Storyarn.Imports.Execution do
 
   # The short first transaction publishes `running` without touching storage
   # accounting. The second takes the common workspace lock before project,
-  # membership, and attempt, and keeps all imported entities and `completed`
-  # atomic.
+  # requester, membership, and attempt, and keeps all imported entities and
+  # `completed` atomic.
   defp begin_materialization(attempt, project) do
     Repo.transact(fn ->
-      with {:ok, authorized_project} <- authorize_worker_locked(attempt, attempt.user_id),
+      with {:ok, authorized_project, notification_context} <-
+             authorize_worker_locked(attempt, attempt.user_id),
            true <- authorized_project.id == project.id,
            %ProjectImportAttempt{} = locked_attempt <-
              lock_import_attempt(attempt.id, authorized_project.id, attempt.user_id) do
-        begin_locked_attempt(locked_attempt)
+        begin_locked_attempt(locked_attempt, notification_context)
       else
         nil -> {:error, :not_found}
         false -> {:error, :unauthorized}
@@ -179,14 +182,16 @@ defmodule Storyarn.Imports.Execution do
     end)
   end
 
-  defp begin_locked_attempt(%{status: "completed"} = attempt), do: {:ok, {:already_completed, attempt}}
+  defp begin_locked_attempt(%{status: "completed"} = attempt, _notification_context),
+    do: {:ok, {:already_completed, attempt}}
 
-  defp begin_locked_attempt(%{status: status} = attempt) when status in ["failed", "expired"],
+  defp begin_locked_attempt(%{status: status} = attempt, _notification_context) when status in ["failed", "expired"],
     do: {:ok, {:terminal, attempt}}
 
-  defp begin_locked_attempt(%{status: status} = attempt) when status in ["queued", "running", "retrying"] do
+  defp begin_locked_attempt(%{status: status} = attempt, notification_context)
+       when status in ["queued", "running", "retrying"] do
     if PlanCleanup.absolute_plan_deadline_reached?(attempt, TimeHelpers.now()) do
-      expire_locked_import_attempt(attempt)
+      expire_locked_import_attempt(attempt, notification_context)
     else
       case status do
         "running" -> {:ok, {:running, attempt}}
@@ -195,7 +200,7 @@ defmodule Storyarn.Imports.Execution do
     end
   end
 
-  defp begin_locked_attempt(_attempt), do: {:error, :import_not_queued}
+  defp begin_locked_attempt(_attempt, _notification_context), do: {:error, :import_not_queued}
 
   defp tag_started_attempt({:ok, running}), do: {:ok, {:started, running}}
   defp tag_started_attempt({:error, reason}), do: {:error, reason}
@@ -205,11 +210,18 @@ defmodule Storyarn.Imports.Execution do
       project.workspace_id,
       fn _workspace ->
         with_result =
-          with {:ok, authorized_project} <- authorize_worker_locked(attempt, attempt.user_id),
+          with {:ok, authorized_project, notification_context} <-
+                 authorize_worker_locked(attempt, attempt.user_id),
                true <- authorized_project.id == project.id,
                %ProjectImportAttempt{} = locked_attempt <-
                  lock_import_attempt(attempt.id, authorized_project.id, attempt.user_id) do
-            materialize_locked_attempt(locked_attempt, authorized_project, plan, opts)
+            materialize_locked_attempt(
+              locked_attempt,
+              authorized_project,
+              notification_context,
+              plan,
+              opts
+            )
           else
             nil -> {:error, :not_found}
             false -> {:error, :unauthorized}
@@ -237,57 +249,64 @@ defmodule Storyarn.Imports.Execution do
     |> Repo.one()
   end
 
-  defp materialize_locked_attempt(%{status: "completed"} = attempt, _project, _plan, _opts) do
+  defp materialize_locked_attempt(%{status: "completed"} = attempt, _project, _notification_context, _plan, _opts) do
     {:ok, {:already_completed, attempt}}
   end
 
-  defp materialize_locked_attempt(%{status: status} = attempt, _project, _plan, _opts)
+  defp materialize_locked_attempt(%{status: status} = attempt, _project, _notification_context, _plan, _opts)
        when status in ["failed", "expired"] do
     {:ok, {:terminal, attempt}}
   end
 
-  defp materialize_locked_attempt(%{status: status} = attempt, project, plan, opts)
+  defp materialize_locked_attempt(%{status: status} = attempt, project, notification_context, plan, opts)
        when status in ["queued", "running", "retrying"] do
     if PlanCleanup.absolute_plan_deadline_reached?(attempt, TimeHelpers.now()) do
-      expire_locked_import_attempt(attempt)
+      expire_locked_import_attempt(attempt, notification_context)
     else
       with {:ok, result} <-
              Materializer.materialize_locked_project_in_transaction(project, plan,
                conflict_strategy: Shared.strategy_atom(attempt.conflict_strategy)
              ),
+           {:ok, notification_outcome} <-
+             NotificationDelivery.deliver(attempt, notification_context, "success"),
            :ok <- run_before_attempt_completion(opts),
            {:ok, completed} <- complete_attempt(attempt, result.counts),
            :ok <- PlanCleanup.mark_plan_cleanup_pending(completed.plan_storage_key) do
-        {:ok, {:materialized, completed}}
+        {:ok, {:materialized, completed, notification_outcome}}
       end
     end
   end
 
-  defp materialize_locked_attempt(_attempt, _project, _plan, _opts), do: {:error, :import_not_queued}
+  defp materialize_locked_attempt(_attempt, _project, _notification_context, _plan, _opts),
+    do: {:error, :import_not_queued}
 
-  defp expire_locked_import_attempt(attempt) do
+  defp expire_locked_import_attempt(attempt, notification_context) do
     # Only accepted statuses reach here, and an accepted import that ran out
     # of retention is a real outcome, not a preview that aged out: without the
     # code the UI reports "preview expired, upload again" about an import the
     # user had already started.
-    with {:ok, expired} <-
+    with {:ok, notification_outcome} <-
+           NotificationDelivery.deliver(attempt, notification_context, "failure"),
+         {:ok, expired} <-
            attempt
            |> ProjectImportAttempt.expired_changeset(TimeHelpers.now(), "import_expired")
            |> Repo.update(),
          :ok <- PlanCleanup.mark_plan_cleanup_pending(expired.plan_storage_key) do
-      {:ok, {:expired, expired}}
+      {:ok, {:expired, expired, notification_outcome}}
     end
   end
 
-  # Lock the project exclusively before the membership and attempt. Besides
-  # preventing deletion, this serializes all imports into the same project and
-  # avoids upgrading the project lock after the attempt row is held.
+  # Lock the project exclusively before the requester, membership, and attempt.
+  # Besides preventing deletion, this serializes all imports into the same
+  # project and avoids acquiring notification FK parent locks after the attempt
+  # row is held.
   defp authorize_worker_locked(attempt, user_id) do
     with %Project{} = project <-
            Project
            |> where([candidate], candidate.id == ^attempt.project_id and is_nil(candidate.deleted_at))
            |> lock("FOR UPDATE")
            |> Repo.one(),
+         notification_context = NotificationDelivery.lock_context(attempt, project),
          %ProjectMembership{} = locked_membership <-
            ProjectMembership
            |> where(
@@ -297,7 +316,7 @@ defmodule Storyarn.Imports.Execution do
            |> lock("FOR SHARE")
            |> Repo.one(),
          true <- ProjectMembership.can?(locked_membership.role, @import_action) do
-      {:ok, project}
+      {:ok, project, notification_context}
     else
       nil -> {:error, :unauthorized}
       false -> {:error, :unauthorized}
@@ -305,7 +324,8 @@ defmodule Storyarn.Imports.Execution do
     end
   end
 
-  defp finish_import({:materialized, completed}, started_at, opts) do
+  defp finish_import({:materialized, completed, notification_outcome}, started_at, opts) do
+    Notifications.publish_committed(notification_outcome)
     PlanCleanup.cleanup_plan(completed, opts)
     Telemetry.emit_stop(:execute, started_at, Telemetry.attempt_metadata(completed, "completed", "none"))
     replay_completed_side_effects(completed)
@@ -318,7 +338,8 @@ defmodule Storyarn.Imports.Execution do
     {:ok, completed}
   end
 
-  defp finish_import({:expired, attempt}, started_at, opts) do
+  defp finish_import({:expired, attempt, notification_outcome}, started_at, opts) do
+    Notifications.publish_committed(notification_outcome)
     PlanCleanup.cleanup_plan_if_pending(attempt, opts)
 
     Telemetry.emit_stop(
@@ -382,13 +403,14 @@ defmodule Storyarn.Imports.Execution do
     {code, message, permanent?} = Error.classify(reason)
     terminal? = permanent? or attempt_number >= max_attempts
 
-    case persist_execution_error(attempt.id, code, message, attempt_number, max_attempts, terminal?) do
+    case persist_execution_error(attempt, code, message, attempt_number, max_attempts, terminal?) do
       {:ok, {:terminal, terminal_attempt}} ->
         PlanCleanup.cleanup_plan_if_pending(terminal_attempt, opts)
         replay_completed_recovery(terminal_attempt)
         {:ok, terminal_attempt}
 
-      {:ok, {:failed, failed}} ->
+      {:ok, {:failed, failed, notification_outcome}} ->
+        Notifications.publish_committed(notification_outcome)
         metadata = Telemetry.attempt_metadata(failed, "failed", code)
         Error.report(Map.merge(metadata, %{phase: "execute", error_code: code, exception_module: exception_module}))
         PlanCleanup.cleanup_plan(failed, opts)
@@ -419,11 +441,13 @@ defmodule Storyarn.Imports.Execution do
     end
   end
 
-  defp persist_execution_error(attempt_id, code, message, attempt_number, max_attempts, terminal?) do
+  defp persist_execution_error(attempt_hint, code, message, attempt_number, max_attempts, terminal?) do
     Repo.transact(fn ->
+      notification_context = NotificationDelivery.lock_context(attempt_hint)
+
       locked_attempt =
         ProjectImportAttempt
-        |> where([candidate], candidate.id == ^attempt_id)
+        |> where([candidate], candidate.id == ^attempt_hint.id)
         |> lock("FOR UPDATE")
         |> Repo.one()
 
@@ -432,17 +456,33 @@ defmodule Storyarn.Imports.Execution do
           {:ok, :attempt_not_found}
 
         %ProjectImportAttempt{} = attempt ->
-          transition_execution_error(attempt, code, message, attempt_number, max_attempts, terminal?)
+          transition_execution_error(
+            attempt,
+            notification_context,
+            code,
+            message,
+            attempt_number,
+            max_attempts,
+            terminal?
+          )
       end
     end)
   end
 
-  defp transition_execution_error(%{status: status} = attempt, _code, _message, _number, _max, _terminal?)
+  defp transition_execution_error(
+         %{status: status} = attempt,
+         _notification_context,
+         _code,
+         _message,
+         _number,
+         _max,
+         _terminal?
+       )
        when status in ["completed", "failed", "expired"] do
     {:ok, {:terminal, attempt}}
   end
 
-  defp transition_execution_error(%{status: status} = attempt, code, _message, number, max, true)
+  defp transition_execution_error(%{status: status} = attempt, notification_context, code, _message, number, max, true)
        when status in ["queued", "running", "retrying"] do
     attrs = %{
       status: "failed",
@@ -453,13 +493,15 @@ defmodule Storyarn.Imports.Execution do
       completed_at: TimeHelpers.now()
     }
 
-    with {:ok, failed} <- attempt |> ProjectImportAttempt.failed_changeset(attrs) |> Repo.update(),
+    with {:ok, notification_outcome} <-
+           NotificationDelivery.deliver(attempt, notification_context, "failure"),
+         {:ok, failed} <- attempt |> ProjectImportAttempt.failed_changeset(attrs) |> Repo.update(),
          :ok <- PlanCleanup.mark_plan_cleanup_pending(failed.plan_storage_key) do
-      {:ok, {:failed, failed}}
+      {:ok, {:failed, failed, notification_outcome}}
     end
   end
 
-  defp transition_execution_error(%{status: status} = attempt, code, _message, number, max, false)
+  defp transition_execution_error(%{status: status} = attempt, _notification_context, code, _message, number, max, false)
        when status in ["queued", "running", "retrying"] do
     attrs = %{
       status: "retrying",
@@ -476,7 +518,7 @@ defmodule Storyarn.Imports.Execution do
     end
   end
 
-  defp transition_execution_error(_attempt, _code, _message, _number, _max, _terminal?) do
+  defp transition_execution_error(_attempt, _notification_context, _code, _message, _number, _max, _terminal?) do
     {:error, :import_not_queued}
   end
 

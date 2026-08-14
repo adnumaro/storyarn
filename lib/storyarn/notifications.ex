@@ -79,6 +79,31 @@ defmodule Storyarn.Notifications do
   def deliver(%Scope{}, _actor, _project, _attrs), do: {:error, :not_found}
 
   @doc """
+  Inserts a requester-only asynchronous outcome without broadcasting.
+
+  A missing requester or revoked project access suppresses delivery instead of
+  rolling back the source operation's terminal transition. Producers still
+  pass the returned outcome to `publish_committed/1` after their transaction
+  succeeds.
+  """
+  @spec deliver_async_result(Scope.t() | nil, Project.t() | nil, map()) ::
+          {:ok, delivery_outcome()} | {:error, Changeset.t()}
+  def deliver_async_result(nil, _project, attrs) when is_map(attrs) do
+    ensure_inside_transaction!("deliver_async_result/3")
+    {:ok, :suppressed}
+  end
+
+  def deliver_async_result(%Scope{} = recipient_scope, project, attrs) when is_map(attrs) do
+    ensure_inside_transaction!("deliver_async_result/3")
+    attrs = Map.put(attrs, :kind, "async_operation")
+
+    case deliver(recipient_scope, nil, project, attrs) do
+      {:error, :not_found} -> {:ok, :suppressed}
+      result -> result
+    end
+  end
+
+  @doc """
   Inserts a notification for every other member with effective project access.
 
   Direct project members and users inheriting access from the workspace are

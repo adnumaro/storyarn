@@ -4,8 +4,12 @@ defmodule Storyarn.Localization.TranslationRunCrud do
   import Ecto.Query, warn: false
 
   alias Ecto.Multi
+  alias Storyarn.Accounts.Scope
+  alias Storyarn.Accounts.User
   alias Storyarn.Localization.TextCrud
   alias Storyarn.Localization.TranslationRun
+  alias Storyarn.Notifications
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workers.LocalizationBatchTranslationWorker
@@ -83,6 +87,12 @@ defmodule Storyarn.Localization.TranslationRunCrud do
     end
   end
 
+  def transition_terminal(run_id, attrs) when is_map(attrs) do
+    with {:ok, identity} <- terminal_run_identity(run_id) do
+      Repo.transact(fn -> transition_terminal_locked(run_id, attrs, identity) end)
+    end
+  end
+
   def cancel(%TranslationRun{status: status} = run) when status in ["queued", "running"] do
     now = TimeHelpers.now()
 
@@ -128,6 +138,105 @@ defmodule Storyarn.Localization.TranslationRunCrud do
       {:error, changeset}
     end
   end
+
+  defp terminal_run_identity(run_id) do
+    case Repo.one(
+           from(run in TranslationRun,
+             where: run.id == ^run_id and run.status in @active_statuses,
+             select: %{
+               run_id: run.id,
+               project_id: run.project_id,
+               requested_by_id: run.requested_by_id
+             }
+           )
+         ) do
+      identity when is_map(identity) -> {:ok, identity}
+      nil -> {:error, :inactive}
+    end
+  end
+
+  defp lock_terminal_notification_parents(%{project_id: project_id, requested_by_id: requested_by_id}) do
+    with %Project{} = project <- lock_notification_project(project_id),
+         {:ok, requester} <- lock_notification_user(requested_by_id) do
+      {:ok, {project, requester}}
+    else
+      nil -> {:error, :inactive}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp lock_notification_project(project_id) do
+    Repo.one(from(project in Project, where: project.id == ^project_id, lock: "FOR SHARE"))
+  end
+
+  defp lock_notification_user(nil), do: {:ok, nil}
+
+  defp lock_notification_user(user_id) when is_integer(user_id) do
+    case Repo.one(from(user in User, where: user.id == ^user_id, lock: "FOR KEY SHARE")) do
+      %User{} = user -> {:ok, user}
+      nil -> {:ok, nil}
+    end
+  end
+
+  defp lock_active_run(run_id) do
+    TranslationRun
+    |> where([run], run.id == ^run_id and run.status in @active_statuses)
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp transition_terminal_locked(run_id, attrs, identity) do
+    with {:ok, {project, requester}} <- lock_terminal_notification_parents(identity),
+         %TranslationRun{} = run <- lock_active_run(run_id),
+         :ok <- validate_terminal_run_identity(run, identity, requester) do
+      persist_terminal(run, attrs, project, requester)
+    else
+      nil -> {:error, :inactive}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp validate_terminal_run_identity(
+         %TranslationRun{id: run_id, project_id: project_id, requested_by_id: requested_by_id},
+         %{run_id: run_id, project_id: project_id, requested_by_id: requested_by_id},
+         %User{id: requested_by_id}
+       ), do: :ok
+
+  defp validate_terminal_run_identity(
+         %TranslationRun{id: run_id, project_id: project_id, requested_by_id: current_requester_id},
+         %{run_id: run_id, project_id: project_id, requested_by_id: expected_requester_id},
+         nil
+       )
+       when is_nil(current_requester_id) or current_requester_id == expected_requester_id, do: :ok
+
+  defp validate_terminal_run_identity(%TranslationRun{}, _identity, _requester), do: {:error, :inactive}
+
+  defp persist_terminal(run, attrs, project, requester) do
+    with {:ok, updated} <- update_run(run, attrs),
+         {:ok, notification_outcome} <- deliver_terminal_notification(updated, project, requester) do
+      {:ok, {updated, notification_outcome}}
+    end
+  end
+
+  defp deliver_terminal_notification(%TranslationRun{status: status} = run, project, requester)
+       when status in ["completed", "failed"] do
+    notification_status = notification_status(run)
+
+    Notifications.deliver_async_result(
+      Scope.for_user(requester),
+      project,
+      %{
+        entity_type: "localization_batch",
+        entity_id: run.id,
+        entity_name: run.target_locale,
+        status: notification_status,
+        dedupe_key: "localization_batch:#{run.id}:#{notification_status}"
+      }
+    )
+  end
+
+  defp notification_status(%TranslationRun{status: "completed", failed_count: 0}), do: "success"
+  defp notification_status(%TranslationRun{status: status}) when status in ["completed", "failed"], do: "failure"
 
   defp maybe_add(opts, _key, nil), do: opts
   defp maybe_add(opts, key, value), do: Keyword.put(opts, key, value)

@@ -16,9 +16,11 @@ defmodule Storyarn.Imports.Expiration do
   import Ecto.Query, warn: false
 
   alias Storyarn.Imports.Error
+  alias Storyarn.Imports.NotificationDelivery
   alias Storyarn.Imports.PlanCleanup
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Queue
+  alias Storyarn.Notifications
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
@@ -73,7 +75,8 @@ defmodule Storyarn.Imports.Expiration do
     {expired_count, failure_count} =
       Enum.reduce(attempts, {0, 0}, fn attempt, {expired_count, failure_count} ->
         case expire_stale_attempt_safely(attempt, now, opts) do
-          {:ok, {:expired, expired}} ->
+          {:ok, {:expired, expired, notification_outcome}} ->
+            Notifications.publish_committed(notification_outcome)
             Queue.broadcast(expired)
 
             cleanup_failure_count =
@@ -211,18 +214,20 @@ defmodule Storyarn.Imports.Expiration do
 
   def safely_cancel_import_job(_invalid_job_cancel, _job_id), do: {:error, :import_job_cancellation_failed}
 
-  # Oban's pruner can delete a job and then nilify `oban_job_id` through the
-  # foreign key. Lock the job before the attempt to match that order and avoid
-  # a job->attempt / attempt->job deadlock. The attempt and job id are rechecked
-  # under lock; a concurrent replacement is conservatively left for the next
-  # sweep.
+  # Project and requester are notification FK parents, while Oban's pruner can
+  # delete a job and then nilify `oban_job_id`. Lock those parents before the
+  # job and attempt so project/user deletion and pruning all use one order. The
+  # attempt and job id are rechecked under lock; a concurrent replacement is
+  # conservatively left for the next sweep.
   def expire_stale_attempt(%ProjectImportAttempt{} = candidate, now) do
     Repo.transact(fn ->
+      notification_context = NotificationDelivery.lock_context(candidate)
       job_state = lock_import_job_state(candidate.oban_job_id)
 
       candidate.id
       |> lock_stale_attempt(now)
       |> classify_stale_attempt(
+        notification_context,
         candidate.oban_job_id,
         job_state,
         now,
@@ -245,20 +250,23 @@ defmodule Storyarn.Imports.Expiration do
     |> Repo.one()
   end
 
-  defp classify_stale_attempt(nil, _candidate_job_id, _job_state, _now, _absolute_deadline?), do: {:ok, :not_stale}
+  defp classify_stale_attempt(nil, _notification_context, _candidate_job_id, _job_state, _now, _absolute_deadline?),
+    do: {:ok, :not_stale}
 
   defp classify_stale_attempt(
          %ProjectImportAttempt{status: "ready", oban_job_id: nil} = attempt,
+         notification_context,
          _candidate_job_id,
          _job_state,
          now,
          _absolute_deadline?
        ) do
-    expire_stale_attempt_record(attempt, now)
+    expire_stale_attempt_record(attempt, notification_context, now)
   end
 
   defp classify_stale_attempt(
          %ProjectImportAttempt{oban_job_id: job_id},
+         _notification_context,
          candidate_job_id,
          _job_state,
          _now,
@@ -268,7 +276,14 @@ defmodule Storyarn.Imports.Expiration do
     {:ok, :not_stale}
   end
 
-  defp classify_stale_attempt(%ProjectImportAttempt{} = attempt, _candidate_job_id, job_state, now, absolute_deadline?) do
+  defp classify_stale_attempt(
+         %ProjectImportAttempt{} = attempt,
+         notification_context,
+         _candidate_job_id,
+         job_state,
+         now,
+         absolute_deadline?
+       ) do
     case job_state do
       state when state in @executable_import_job_states and absolute_deadline? ->
         {:error, :import_job_cancellation_incomplete}
@@ -277,7 +292,7 @@ defmodule Storyarn.Imports.Expiration do
         {:ok, {:executable, attempt, state}}
 
       state when state in @terminal_import_job_states or state == :absent ->
-        expire_stale_attempt_record(attempt, now)
+        expire_stale_attempt_record(attempt, notification_context, now)
 
       _unknown_state when absolute_deadline? ->
         {:error, :import_job_cancellation_incomplete}
@@ -291,14 +306,22 @@ defmodule Storyarn.Imports.Expiration do
 
   # An accepted import expiring is a real outcome the user must be told about;
   # a `ready` preview aging out carries no code and reads as exactly that.
-  def expire_stale_attempt_record(attempt, now) do
+  def expire_stale_attempt_record(attempt, notification_context, now) do
     error_code = if attempt.status in ~w(queued running retrying), do: "import_expired"
+    notification_status = if error_code, do: "failure"
 
-    with {:ok, expired} <- attempt |> ProjectImportAttempt.expired_changeset(now, error_code) |> Repo.update(),
+    with {:ok, notification_outcome} <-
+           deliver_expiration_result(attempt, notification_context, notification_status),
+         {:ok, expired} <- attempt |> ProjectImportAttempt.expired_changeset(now, error_code) |> Repo.update(),
          :ok <- PlanCleanup.mark_plan_cleanup_pending(expired.plan_storage_key) do
-      {:ok, {:expired, expired}}
+      {:ok, {:expired, expired, notification_outcome}}
     end
   end
+
+  defp deliver_expiration_result(_attempt, _notification_context, nil), do: {:ok, :suppressed}
+
+  defp deliver_expiration_result(attempt, notification_context, status),
+    do: NotificationDelivery.deliver(attempt, notification_context, status)
 
   def lock_import_job_state(nil), do: :absent
 

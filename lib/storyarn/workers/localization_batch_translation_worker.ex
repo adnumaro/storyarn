@@ -7,6 +7,7 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorker do
   alias Storyarn.Localization.LanguageCrud
   alias Storyarn.Localization.Providers.DeepL
   alias Storyarn.Localization.TranslationRunCrud
+  alias Storyarn.Notifications
   alias Storyarn.Shared.TimeHelpers
 
   require Logger
@@ -33,11 +34,19 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorker do
              started_at: run.started_at || TimeHelpers.now(),
              error: nil
            }) do
-      execute_running(running, job)
+      execute_running_safely(running, job)
     else
       false -> cancel_inactive_target(run)
       {:error, :inactive} -> :ok
     end
+  end
+
+  defp execute_running_safely(running, job) do
+    execute_running(running, job)
+  rescue
+    exception -> fail(running, {:exception, exception.__struct__}, job.attempt >= job.max_attempts)
+  catch
+    kind, _reason -> fail(running, {:caught, kind}, job.attempt >= job.max_attempts)
   end
 
   defp execute_running(running, job) do
@@ -72,15 +81,16 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorker do
   end
 
   defp complete(run, base_counts, result) do
-    case TranslationRunCrud.transition_active(
+    case TranslationRunCrud.transition_terminal(
            run.id,
            Map.merge(merged_counts(base_counts, result), %{
              status: "completed",
              completed_at: TimeHelpers.now()
            })
          ) do
-      {:ok, completed} ->
+      {:ok, {completed, notification_outcome}} ->
         TranslationRunCrud.broadcast(completed)
+        Notifications.publish_committed(notification_outcome)
         :ok
 
       {:error, :inactive} ->
@@ -103,9 +113,23 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorker do
         %{error: inspect(reason)}
       end
 
-    case TranslationRunCrud.transition_active(run.id, attrs) do
-      {:ok, updated} -> TranslationRunCrud.broadcast(updated)
-      {:error, :inactive} -> :ok
+    result =
+      if final_attempt? do
+        TranslationRunCrud.transition_terminal(run.id, attrs)
+      else
+        TranslationRunCrud.transition_active(run.id, attrs)
+      end
+
+    case result do
+      {:ok, {updated, notification_outcome}} ->
+        TranslationRunCrud.broadcast(updated)
+        Notifications.publish_committed(notification_outcome)
+
+      {:ok, updated} ->
+        TranslationRunCrud.broadcast(updated)
+
+      {:error, :inactive} ->
+        :ok
     end
 
     Logger.warning(

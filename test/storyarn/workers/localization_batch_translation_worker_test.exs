@@ -8,7 +8,11 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
 
   alias Storyarn.Localization
   alias Storyarn.Localization.ProviderConfig
+  alias Storyarn.Localization.TranslationRun
   alias Storyarn.Localization.TranslationRunCrud
+  alias Storyarn.Notifications
+  alias Storyarn.Notifications.Notification
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.TestSupport.FakeTranslationProvider
   alias Storyarn.Workers.LocalizationBatchTranslationWorker
 
@@ -35,14 +39,23 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
     end
 
     Phoenix.PubSub.subscribe(Storyarn.PubSub, TranslationRunCrud.topic(project.id))
+    :ok = Notifications.subscribe(user_scope_fixture(user))
 
     assert {:ok, run} = Localization.enqueue_batch_translation(project.id, "es", user.id)
     assert run.status == "queued"
+    assert run.requested_by_id == user.id
     assert run.total_count == 3
     assert run.oban_job_id
     assert_enqueued(worker: LocalizationBatchTranslationWorker, args: %{run_id: run.id})
 
+    {lock_marker, lock_handler_id} = attach_terminal_lock_probe("localization_translation_runs")
+    on_exit(fn -> :telemetry.detach(lock_handler_id) end)
+
     assert :ok = perform_job(LocalizationBatchTranslationWorker, %{run_id: run.id})
+
+    assert_receive {^lock_marker, :project}
+    assert_receive {^lock_marker, :requester}
+    assert_receive {^lock_marker, :run}
 
     completed = Localization.get_translation_run(project.id, run.id)
     assert completed.status == "completed"
@@ -52,16 +65,130 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
     assert completed.completed_at
     assert_received {:translation_run_updated, %{status: "running"}}
     assert_received {:translation_run_updated, %{status: "completed"}}
+    assert_received :notifications_changed
+
+    notification = notification_for!(user.id, run.id)
+    assert notification.kind == "async_operation"
+    assert notification.entity_name == "es"
+    assert notification.project_id == project.id
+    assert notification.status == "success"
+    assert notification.dedupe_key == "localization_batch:#{run.id}:success"
 
     assert Enum.all?(Localization.list_texts(project.id), fn text ->
              text.status == "draft" and
                text.translated_source_hash == text.source_text_hash
            end)
+
+    assert :ok = perform_job(LocalizationBatchTranslationWorker, %{run_id: run.id})
+    assert notification_count(user.id, run.id) == 1
   end
 
   test "prevents concurrent runs for the same locale", %{user: user, project: project} do
     assert {:ok, _run} = Localization.enqueue_batch_translation(project.id, "es", user.id)
     assert {:error, :already_running} = Localization.enqueue_batch_translation(project.id, "es", user.id)
+  end
+
+  test "terminalizes without a notification after the requester is nilified", %{
+    user: user,
+    project: project
+  } do
+    localized_text_fixture(project.id, %{source_text: "Translate after requester deletion"})
+
+    assert {:ok, run} = Localization.enqueue_batch_translation(project.id, "es", user.id)
+
+    assert {1, _rows} =
+             Repo.update_all(
+               from(candidate in TranslationRun, where: candidate.id == ^run.id),
+               set: [requested_by_id: nil]
+             )
+
+    assert :ok = perform_job(LocalizationBatchTranslationWorker, %{run_id: run.id})
+
+    completed = Localization.get_translation_run(project.id, run.id)
+    assert completed.status == "completed"
+    assert is_nil(completed.requested_by_id)
+    assert notification_count(user.id, run.id) == 0
+  end
+
+  test "rolls back the terminal run and notification together", %{user: user, project: project} do
+    localized_text_fixture(project.id, %{source_text: "Roll back this translation"})
+
+    assert {:ok, run} = Localization.enqueue_batch_translation(project.id, "es", user.id)
+
+    Phoenix.PubSub.subscribe(Storyarn.PubSub, TranslationRunCrud.topic(project.id))
+    :ok = Notifications.subscribe(user_scope_fixture(user))
+
+    assert {:error, :forced_rollback} =
+             Repo.transact(fn ->
+               assert {:ok, {completed, {:created, _notification}}} =
+                        TranslationRunCrud.transition_terminal(run.id, %{
+                          status: "completed",
+                          processed_count: 1,
+                          translated_count: 1,
+                          failed_count: 0,
+                          completed_at: TimeHelpers.now()
+                        })
+
+               assert completed.status == "completed"
+               assert notification_count(user.id, run.id) == 1
+               refute_receive {:translation_run_updated, _run}
+               refute_receive :notifications_changed
+
+               {:error, :forced_rollback}
+             end)
+
+    persisted = Localization.get_translation_run(project.id, run.id)
+    assert persisted.status == "queued"
+    assert persisted.processed_count == 0
+    assert persisted.translated_count == 0
+    assert is_nil(persisted.completed_at)
+    assert notification_count(user.id, run.id) == 0
+    refute_receive {:translation_run_updated, _run}
+    refute_receive :notifications_changed
+  end
+
+  test "reports a completed batch with item failures as a failed outcome", %{
+    user: user,
+    project: project
+  } do
+    localized_text_fixture(project.id, %{source_text: "Translate me"})
+    localized_text_fixture(project.id, %{source_text: nil, source_text_hash: nil, word_count: 0})
+
+    assert {:ok, run} = Localization.enqueue_batch_translation(project.id, "es", user.id)
+    assert :ok = perform_job(LocalizationBatchTranslationWorker, %{run_id: run.id})
+
+    completed = Localization.get_translation_run(project.id, run.id)
+    assert completed.status == "completed"
+    assert completed.processed_count == 2
+    assert completed.translated_count == 1
+    assert completed.failed_count == 1
+
+    notification = notification_for!(user.id, run.id)
+    assert notification.status == "failure"
+    assert notification.dedupe_key == "localization_batch:#{run.id}:failure"
+  end
+
+  test "rolls back the terminal run and its notification together", %{user: user, project: project} do
+    assert {:ok, run} = Localization.enqueue_batch_translation(project.id, "es", user.id)
+    :ok = Notifications.subscribe(user_scope_fixture(user))
+
+    assert {:error, :simulated_rollback} =
+             Repo.transact(fn ->
+               assert {:ok, {completed, {:created, %Notification{}}}} =
+                        TranslationRunCrud.transition_terminal(run.id, %{
+                          status: "completed",
+                          completed_at: TimeHelpers.now()
+                        })
+
+               assert completed.status == "completed"
+               assert notification_count(user.id, run.id) == 1
+               refute_receive :notifications_changed
+               {:error, :simulated_rollback}
+             end)
+
+    assert Localization.get_translation_run(project.id, run.id).status == "queued"
+    assert notification_count(user.id, run.id) == 0
+    refute_receive :notifications_changed
   end
 
   test "rejects an unsupported text status before enqueuing", %{user: user, project: project} do
@@ -80,6 +207,7 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
 
     assert :ok = perform_job(LocalizationBatchTranslationWorker, %{run_id: run.id})
     assert Localization.get_translation_run(project.id, run.id).status == "cancelled"
+    assert notification_count(user.id, run.id) == 0
   end
 
   test "archiving a target language cancels its active run", %{
@@ -120,6 +248,7 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
     assert retrying.status == "running"
     assert retrying.processed_count == 100
     assert retrying.translated_count == 100
+    assert notification_count(user.id, run.id) == 0
 
     assert :ok =
              LocalizationBatchTranslationWorker.perform(%Oban.Job{
@@ -132,6 +261,10 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
     assert completed.status == "completed"
     assert completed.processed_count == 101
     assert completed.translated_count == 101
+
+    notification = notification_for!(user.id, run.id)
+    assert notification.status == "success"
+    assert notification.dedupe_key == "localization_batch:#{run.id}:success"
   end
 
   test "only marks provider errors failed on the final attempt", %{user: user, project: project} do
@@ -151,7 +284,113 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
     failed = Localization.get_translation_run(project.id, run.id)
     assert failed.status == "failed"
     assert failed.completed_at
+
+    notification = notification_for!(user.id, run.id)
+    assert notification.kind == "async_operation"
+    assert notification.entity_name == "es"
+    assert notification.project_id == project.id
+    assert notification.status == "failure"
+    assert notification.dedupe_key == "localization_batch:#{run.id}:failure"
   end
+
+  test "handles provider exceptions as retryable errors and only notifies on the final attempt", %{
+    user: user,
+    project: project
+  } do
+    localized_text_fixture(project.id, %{source_text: "Raise while translating"})
+    Process.put(:fake_translation_provider_responses, [:unexpected, :unexpected])
+    on_exit(fn -> Process.delete(:fake_translation_provider_responses) end)
+
+    assert {:ok, run} = Localization.enqueue_batch_translation(project.id, "es", user.id)
+
+    assert {:error, _reason} =
+             LocalizationBatchTranslationWorker.perform(%Oban.Job{
+               args: %{"run_id" => run.id},
+               attempt: 1,
+               max_attempts: 3
+             })
+
+    retrying = Localization.get_translation_run(project.id, run.id)
+    assert retrying.status == "running"
+    refute retrying.completed_at
+    assert notification_count(user.id, run.id) == 0
+
+    assert {:error, _reason} =
+             LocalizationBatchTranslationWorker.perform(%Oban.Job{
+               args: %{"run_id" => run.id},
+               attempt: 3,
+               max_attempts: 3
+             })
+
+    failed = Localization.get_translation_run(project.id, run.id)
+    assert failed.status == "failed"
+    assert failed.completed_at
+
+    notification = notification_for!(user.id, run.id)
+    assert notification.status == "failure"
+    assert notification.dedupe_key == "localization_batch:#{run.id}:failure"
+
+    assert :ok =
+             LocalizationBatchTranslationWorker.perform(%Oban.Job{
+               args: %{"run_id" => run.id},
+               attempt: 3,
+               max_attempts: 3
+             })
+
+    assert notification_count(user.id, run.id) == 1
+  end
+
+  defp notification_for!(user_id, run_id) do
+    Repo.get_by!(Notification,
+      recipient_id: user_id,
+      entity_type: "localization_batch",
+      entity_id: run_id
+    )
+  end
+
+  defp notification_count(user_id, run_id) do
+    Repo.aggregate(
+      from(notification in Notification,
+        where:
+          notification.recipient_id == ^user_id and
+            notification.entity_type == "localization_batch" and
+            notification.entity_id == ^run_id
+      ),
+      :count
+    )
+  end
+
+  defp attach_terminal_lock_probe(source_table) do
+    handler_id = "localization-terminal-lock-order-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        &handle_terminal_lock_query/4,
+        {test_pid, marker, source_table}
+      )
+
+    {marker, handler_id}
+  end
+
+  defp handle_terminal_lock_query(_event, _measurements, %{query: query}, {pid, ref, table}) do
+    if self() == pid, do: maybe_send_terminal_lock(pid, ref, terminal_lock(query, table))
+  end
+
+  defp terminal_lock(query, table) do
+    cond do
+      String.contains?(query, ~s(FROM "projects")) and String.contains?(query, "FOR SHARE") -> :project
+      String.contains?(query, ~s(FROM "users")) and String.contains?(query, "FOR KEY SHARE") -> :requester
+      String.contains?(query, ~s(FROM "#{table}")) and String.contains?(query, "FOR UPDATE") -> :run
+      true -> nil
+    end
+  end
+
+  defp maybe_send_terminal_lock(_pid, _ref, nil), do: :ok
+  defp maybe_send_terminal_lock(pid, ref, lock), do: send(pid, {ref, lock})
 
   defp create_provider_config(project_id) do
     %ProviderConfig{project_id: project_id}
