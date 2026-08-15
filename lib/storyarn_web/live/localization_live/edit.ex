@@ -113,6 +113,14 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   @impl true
   def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 
+  def handle_info({:project_restored, _restore_id}, socket) do
+    {:noreply,
+     push_navigate(socket,
+       to:
+         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/localization/texts/#{socket.assigns.text.locale_code}"
+     )}
+  end
+
   def handle_info(_msg, socket), do: {:noreply, socket}
 
   @impl true

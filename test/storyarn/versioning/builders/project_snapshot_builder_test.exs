@@ -29,6 +29,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
     snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
 
     assert snapshot["format_version"] == 2
+    assert snapshot["project"]["name"] == project.name
     assert snapshot["entity_counts"]["sheets"] == length(snapshot["sheets"])
     assert snapshot["entity_counts"]["flows"] == length(snapshot["flows"])
     assert snapshot["entity_counts"]["scenes"] == length(snapshot["scenes"])

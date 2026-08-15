@@ -32,7 +32,8 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     :total_size_bytes,
     :object_count,
     :asset_count,
-    :blob_count
+    :blob_count,
+    :restore_contract_version
   ]
   @ready_object_set_fields [
     :project_id,
@@ -61,7 +62,8 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     :integrity_state,
     :accounted_size_bytes,
     :asset_blob_size_bytes,
-    :accounting_version
+    :accounting_version,
+    :restore_contract_version
   ]
   @origins ~w(user daily pre_restore post_restore)
   @same_generation_transitions %{
@@ -111,6 +113,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
           idempotency_key: String.t(),
           capture_boundary: Ecto.UUID.t(),
           capture_digest: String.t(),
+          restore_contract_version: integer() | nil,
           captured_at: DateTime.t(),
           progress_phase: String.t(),
           progress_bytes: integer(),
@@ -169,6 +172,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     field :idempotency_key, :string
     field :capture_boundary, Ecto.UUID
     field :capture_digest, :string
+    field :restore_contract_version, :integer
     field :captured_at, :utc_datetime
     field :progress_phase, :string
     field :progress_bytes, :integer
@@ -245,6 +249,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :idempotency_key,
       :capture_boundary,
       :capture_digest,
+      :restore_contract_version,
       :captured_at,
       :progress_phase,
       :progress_bytes,
@@ -320,6 +325,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_format(:archive_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:manifest_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:capture_digest, ~r/\A[0-9a-f]{64}\z/)
+    |> validate_inclusion(:restore_contract_version, [1])
     |> validate_ready_object_keys()
     |> validate_object_set_transition(snapshot)
     |> validate_object_counts()
@@ -345,6 +351,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:lifecycle_state, name: :project_snapshots_ready_object_set)
     |> check_constraint(:accounted_size_bytes, name: :project_snapshots_full_ready_accounting)
     |> check_constraint(:capture_digest, name: :project_snapshots_capture_digest_format)
+    |> restore_contract_constraints()
     |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
@@ -520,6 +527,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :idempotency_key,
       :capture_boundary,
       :capture_digest,
+      :restore_contract_version,
       :captured_at,
       :progress_phase,
       :progress_bytes,
@@ -586,6 +594,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_format(:archive_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:manifest_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:capture_digest, ~r/\A[0-9a-f]{64}\z/)
+    |> validate_inclusion(:restore_contract_version, [1])
     |> validate_ready_object_keys()
     |> validate_object_counts()
     |> validate_total_size()
@@ -601,6 +610,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:object_prefix, name: :project_snapshots_object_target)
     |> check_constraint(:accounting_version, name: :project_snapshots_accounting_measurement)
     |> check_constraint(:capture_digest, name: :project_snapshots_capture_digest_format)
+    |> restore_contract_constraints()
     |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
@@ -830,6 +840,16 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     changeset
     |> check_constraint(:origin, name: :project_snapshots_origin_retention)
     |> check_constraint(:lifecycle_generation, name: :project_snapshots_lifecycle_generation)
+  end
+
+  defp restore_contract_constraints(changeset) do
+    changeset
+    |> check_constraint(:restore_contract_version,
+      name: :project_snapshots_restore_contract_version
+    )
+    |> check_constraint(:restore_contract_version,
+      name: :project_snapshots_restore_contract_capture
+    )
   end
 
   defp validate_reconciliation_integrity_source(changeset, snapshot) do

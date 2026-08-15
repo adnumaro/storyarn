@@ -178,6 +178,9 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   - `:asset_materialization_cache` — a reference created by
     `AssetMaterializationCache.new/0`. Supplying it enables portable catalog
     validation and preserves one source-to-destination identity.
+  - `:pre_materialized_assets` — resolves exclusively from entries already
+    loaded into the materialization cache. This path performs no storage I/O
+    and never falls back to a current asset or blob copy.
   - `:asset_source_keys` — an externally verified `%{blob_hash => storage_key}`
     catalog. Snapshot-provided storage keys never populate this option. When
     present, every resolved hash must exist in the catalog.
@@ -194,19 +197,396 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   def resolve_asset_fk(nil, _snapshot, _project_id, _user_id, _opts), do: nil
 
   def resolve_asset_fk(asset_id, snapshot, project_id, user_id, opts) do
-    case asset_mode(opts) do
-      :drop ->
-        nil
+    case Keyword.get(opts, :pre_materialized_assets, false) do
+      true ->
+        resolve_pre_materialized_asset(asset_id, snapshot, project_id, opts)
 
-      mode when mode in [:reuse, :copy] ->
-        resolve_portable_asset(
-          asset_id,
-          snapshot,
-          project_id,
-          user_id,
-          mode,
-          opts
-        )
+      false ->
+        case asset_mode(opts) do
+          :drop ->
+            nil
+
+          mode when mode in [:reuse, :copy] ->
+            resolve_portable_asset(
+              asset_id,
+              snapshot,
+              project_id,
+              user_id,
+              mode,
+              opts
+            )
+        end
+
+      invalid ->
+        raise AssetCopyError,
+          asset_id: asset_id,
+          reason: {:invalid_pre_materialized_assets_option, invalid}
+    end
+  end
+
+  @doc """
+  Loads an exact historical-to-materialized asset mapping into a cache.
+
+  The destination rows must already belong to the target project and match the
+  storage-independent snapshot fingerprint. No object is read or copied.
+  """
+  @spec preload_materialized_assets(map(), %{integer() => integer()}, integer(), reference()) ::
+          :ok | {:error, term()}
+  def preload_materialized_assets(snapshot, materialized_asset_ids, project_id, cache)
+      when is_map(snapshot) and is_map(materialized_asset_ids) and is_integer(project_id) and project_id > 0 and
+             is_reference(cache) do
+    materialized_asset_ids
+    |> Enum.sort_by(fn {source_asset_id, _destination_asset_id} -> source_asset_id end)
+    |> Enum.reduce_while(:ok, fn {source_asset_id, destination_asset_id}, :ok ->
+      case preload_materialized_asset(
+             snapshot,
+             source_asset_id,
+             destination_asset_id,
+             project_id,
+             cache
+           ) do
+        :ok -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, {:asset_materialization_failed, source_asset_id, reason}}}
+      end
+    end)
+  end
+
+  def preload_materialized_assets(_snapshot, _materialized_asset_ids, _project_id, _cache),
+    do: {:error, :invalid_pre_materialized_asset_mapping}
+
+  @doc false
+  @spec validate_pre_materialized_catalogs(map(), map(), [map()]) :: :ok | {:error, term()}
+  def validate_pre_materialized_catalogs(snapshot, source_refs, assets)
+      when is_map(snapshot) and is_map(source_refs) and is_list(assets) do
+    assets_by_logical_id = Map.new(assets, &{&1["logical_id"], &1})
+
+    with :ok <- validate_pre_materialized_catalog_surfaces(snapshot, source_refs, assets_by_logical_id) do
+      validate_pre_materialized_asset_slots(snapshot, source_refs, assets_by_logical_id)
+    end
+  end
+
+  def validate_pre_materialized_catalogs(_snapshot, _source_refs, _assets),
+    do: {:error, :invalid_pre_materialized_asset_catalogs}
+
+  defp validate_pre_materialized_catalog_surfaces(snapshot, source_refs, assets_by_logical_id) do
+    Enum.reduce_while([snapshot | project_entity_snapshots(snapshot)], :ok, fn entity_snapshot, :ok ->
+      case validate_pre_materialized_entity_catalog(entity_snapshot, source_refs, assets_by_logical_id) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_pre_materialized_asset_slots(snapshot, source_refs, assets_by_logical_id) do
+    snapshot
+    |> pre_materialized_asset_slots()
+    |> Enum.reduce_while(:ok, fn slot, :ok ->
+      case validate_pre_materialized_asset_slot(slot, snapshot, source_refs, assets_by_logical_id) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_pre_materialized_asset_slot(
+         %{source_id: source_id, content_type_prefix: content_type_prefix, context: context},
+         snapshot,
+         source_refs,
+         assets_by_logical_id
+       )
+       when is_integer(source_id) and source_id > 0 do
+    source_ref = Integer.to_string(source_id)
+
+    with {:ok, logical_id} <- Map.fetch(source_refs, source_ref),
+         {:ok, asset} <- Map.fetch(assets_by_logical_id, logical_id),
+         [_catalog | _rest] <- pre_materialized_asset_catalogs(snapshot, source_ref),
+         content_type when is_binary(content_type) <- asset["content_type"],
+         true <- String.starts_with?(content_type, content_type_prefix) do
+      :ok
+    else
+      false ->
+        {:error,
+         {:pre_materialized_asset_content_type_mismatch, context, source_id, content_type_prefix,
+          asset_content_type(source_refs, assets_by_logical_id, source_ref)}}
+
+      :error ->
+        {:error, {:pre_materialized_asset_reference_missing, context, source_id}}
+
+      [] ->
+        {:error, {:pre_materialized_asset_catalog_missing, context, source_id}}
+
+      _invalid ->
+        {:error,
+         {:pre_materialized_asset_content_type_mismatch, context, source_id, content_type_prefix,
+          asset_content_type(source_refs, assets_by_logical_id, source_ref)}}
+    end
+  end
+
+  defp validate_pre_materialized_asset_slot(
+         %{source_id: source_id, context: context},
+         _snapshot,
+         _source_refs,
+         _assets_by_logical_id
+       ) do
+    {:error, {:invalid_pre_materialized_asset_reference, context, source_id}}
+  end
+
+  defp asset_content_type(source_refs, assets_by_logical_id, source_ref) do
+    with {:ok, logical_id} <- Map.fetch(source_refs, source_ref),
+         {:ok, asset} <- Map.fetch(assets_by_logical_id, logical_id) do
+      asset["content_type"]
+    else
+      _missing -> nil
+    end
+  end
+
+  defp pre_materialized_asset_slots(snapshot) do
+    localization_asset_slots(snapshot, :project) ++
+      entity_asset_slots(snapshot, "sheets", &sheet_asset_slots/1) ++
+      entity_asset_slots(snapshot, "flows", &flow_asset_slots/1) ++
+      entity_asset_slots(snapshot, "scenes", &scene_asset_slots/1)
+  end
+
+  defp entity_asset_slots(snapshot, collection, slot_fun) do
+    snapshot
+    |> list_field(collection)
+    |> Enum.flat_map(fn
+      %{"snapshot" => entity_snapshot} when is_map(entity_snapshot) -> slot_fun.(entity_snapshot)
+      _invalid -> []
+    end)
+  end
+
+  defp sheet_asset_slots(snapshot) do
+    direct =
+      [
+        asset_slot(snapshot["avatar_asset_id"], "image/", {:sheet, :avatar}),
+        asset_slot(snapshot["banner_asset_id"], "image/", {:sheet, :banner})
+      ]
+
+    avatars =
+      snapshot
+      |> list_field("avatars")
+      |> Enum.with_index()
+      |> Enum.map(fn {avatar, index} ->
+        asset_slot(map_value(avatar, "asset_id"), "image/", {:sheet_avatar, index})
+      end)
+
+    gallery_images =
+      snapshot
+      |> list_field("blocks")
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {block, block_index} ->
+        block
+        |> list_field("gallery_images")
+        |> Enum.with_index()
+        |> Enum.map(fn {image, image_index} ->
+          asset_slot(
+            map_value(image, "asset_id"),
+            "image/",
+            {:sheet_gallery_image, block_index, image_index}
+          )
+        end)
+      end)
+
+    compact_asset_slots(direct ++ avatars ++ gallery_images ++ localization_asset_slots(snapshot, :sheet))
+  end
+
+  defp flow_asset_slots(snapshot) do
+    node_slots =
+      snapshot
+      |> list_field("nodes")
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {node, node_index} ->
+        data = map_field(node, "data")
+
+        audio =
+          asset_slot(data["audio_asset_id"], "audio/", {:flow_node_audio, node_index})
+
+        tracks =
+          node
+          |> list_field("sequence_tracks")
+          |> Enum.with_index()
+          |> Enum.map(fn {track, track_index} ->
+            asset_slot(
+              map_value(track, "asset_id"),
+              "audio/",
+              {:flow_sequence_track, node_index, track_index}
+            )
+          end)
+
+        visual_layers =
+          node
+          |> list_field("sequence_visual_layers")
+          |> Enum.with_index()
+          |> Enum.map(fn {layer, layer_index} ->
+            asset_slot(
+              map_value(layer, "asset_id"),
+              "image/",
+              {:flow_sequence_visual_layer, node_index, layer_index}
+            )
+          end)
+
+        [audio | tracks ++ visual_layers]
+      end)
+
+    compact_asset_slots(node_slots ++ localization_asset_slots(snapshot, :flow))
+  end
+
+  defp scene_asset_slots(snapshot) do
+    direct = [asset_slot(snapshot["background_asset_id"], "image/", {:scene, :background})]
+
+    layer_slots =
+      snapshot
+      |> list_field("layers")
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {layer, layer_index} ->
+        scene_pin_slots(layer, {:scene_layer, layer_index}) ++
+          scene_zone_slots(layer, {:scene_layer, layer_index})
+      end)
+
+    orphan_slots =
+      scene_pin_slots(snapshot, :scene_orphan) ++ scene_zone_slots(snapshot, :scene_orphan)
+
+    compact_asset_slots(direct ++ layer_slots ++ orphan_slots)
+  end
+
+  defp scene_pin_slots(container, context) do
+    key = if context == :scene_orphan, do: "orphan_pins", else: "pins"
+
+    container
+    |> list_field(key)
+    |> Enum.with_index()
+    |> Enum.map(fn {pin, index} ->
+      asset_slot(map_value(pin, "icon_asset_id"), "image/", {:scene_pin_icon, context, index})
+    end)
+  end
+
+  defp scene_zone_slots(container, context) do
+    key = if context == :scene_orphan, do: "orphan_zones", else: "zones"
+
+    container
+    |> list_field(key)
+    |> Enum.with_index()
+    |> Enum.map(fn {zone, index} ->
+      asset_slot(map_value(zone, "label_icon_asset_id"), "image/", {:scene_zone_icon, context, index})
+    end)
+  end
+
+  defp localization_asset_slots(snapshot, context) do
+    snapshot
+    |> localization_rows()
+    |> Enum.with_index()
+    |> Enum.map(fn {text, index} ->
+      asset_slot(map_value(text, "vo_asset_id"), "audio/", {:localization_voice_over, context, index})
+    end)
+    |> compact_asset_slots()
+  end
+
+  defp localization_rows(snapshot) when is_map(snapshot) do
+    case Map.get(snapshot, "localization") do
+      rows when is_list(rows) -> rows
+      %{"texts" => rows} when is_list(rows) -> rows
+      _invalid -> []
+    end
+  end
+
+  defp localization_rows(_snapshot), do: []
+
+  defp asset_slot(nil, _content_type_prefix, _context), do: nil
+
+  defp asset_slot(source_id, content_type_prefix, context) do
+    %{source_id: source_id, content_type_prefix: content_type_prefix, context: context}
+  end
+
+  defp compact_asset_slots(slots), do: Enum.reject(slots, &is_nil/1)
+
+  defp list_field(map, key) when is_map(map) do
+    case Map.get(map, key, []) do
+      value when is_list(value) -> value
+      _invalid -> []
+    end
+  end
+
+  defp list_field(_map, _key), do: []
+
+  defp map_value(map, key) when is_map(map), do: Map.get(map, key)
+  defp map_value(_map, _key), do: nil
+
+  defp validate_pre_materialized_entity_catalog(entity_snapshot, source_refs, assets_by_logical_id) do
+    hashes = map_field(entity_snapshot, "asset_blob_hashes")
+    metadata = map_field(entity_snapshot, "asset_metadata")
+    keys = hashes |> Map.keys() |> Enum.concat(Map.keys(metadata)) |> Enum.uniq()
+
+    Enum.reduce_while(keys, :ok, fn source_id, :ok ->
+      result =
+        with {:ok, hash} <- Map.fetch(hashes, source_id),
+             {:ok, asset_metadata} <- Map.fetch(metadata, source_id),
+             {:ok, logical_id} <- Map.fetch(source_refs, source_id),
+             {:ok, asset} <- Map.fetch(assets_by_logical_id, logical_id),
+             true <- hash == asset["sha256"],
+             true <- asset_metadata_matches_manifest?(asset_metadata, asset) do
+          :ok
+        else
+          _mismatch -> {:error, {:pre_materialized_asset_catalog_mismatch, source_id}}
+        end
+
+      case result do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp asset_metadata_matches_manifest?(metadata, asset) when is_map(metadata) and is_map(asset) do
+    metadata["filename"] == asset["filename"] and
+      metadata["content_type"] == asset["content_type"] and
+      metadata["size"] == asset["size_bytes"] and
+      metadata["sanitized_svg"] == true == (asset["metadata"]["sanitized_svg"] == true)
+  end
+
+  defp asset_metadata_matches_manifest?(_metadata, _asset), do: false
+
+  defp preload_materialized_asset(snapshot, source_asset_id, destination_asset_id, project_id, cache)
+       when is_integer(source_asset_id) and source_asset_id > 0 and is_integer(destination_asset_id) and
+              destination_asset_id > 0 do
+    case pre_materialized_asset_catalogs(snapshot, to_string(source_asset_id)) do
+      [] ->
+        :ok
+
+      _catalogs ->
+        with {:ok, entry} <- fetch_pre_materialized_asset_entry(source_asset_id, snapshot) do
+          AssetMaterializationCache.put(
+            cache,
+            project_id,
+            source_asset_id,
+            entry.fingerprint,
+            :copy,
+            destination_asset_id
+          )
+        end
+    end
+  end
+
+  defp preload_materialized_asset(_snapshot, _source_asset_id, _destination_asset_id, _project_id, _cache),
+    do: {:error, :invalid_pre_materialized_asset_mapping}
+
+  defp resolve_pre_materialized_asset(asset_id, snapshot, project_id, opts) do
+    result =
+      with {:ok, entry} <- fetch_pre_materialized_asset_entry(asset_id, snapshot),
+           :ok <- validate_expected_content_type(asset_id, entry, opts) do
+        fetch_pre_materialized_asset(opts, project_id, asset_id, entry.fingerprint)
+      end
+
+    case result do
+      {:ok, destination_asset_id} -> destination_asset_id
+      {:error, reason} -> raise AssetCopyError, asset_id: asset_id, reason: reason
+    end
+  end
+
+  defp fetch_pre_materialized_asset(opts, project_id, asset_id, fingerprint) do
+    case fetch_cached_asset(opts, project_id, asset_id, fingerprint, :copy) do
+      :miss -> {:error, :missing_pre_materialized_asset_mapping}
+      result -> result
     end
   end
 
@@ -354,6 +734,85 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
         opts
       )
     end
+  end
+
+  defp fetch_pre_materialized_asset_entry(asset_id, snapshot) do
+    id = to_string(asset_id)
+    catalogs = pre_materialized_asset_catalogs(snapshot, id)
+
+    case catalogs do
+      [] ->
+        {:error, :missing_blob_hash}
+
+      catalogs ->
+        Enum.reduce_while(catalogs, {:ok, nil}, &merge_pre_materialized_asset_entry(&1, &2, id))
+    end
+  end
+
+  defp merge_pre_materialized_asset_entry(catalog, {:ok, expected_entry}, id) do
+    case pre_materialized_asset_entry(catalog, id) do
+      {:ok, entry} when is_nil(expected_entry) ->
+        {:cont, {:ok, entry}}
+
+      {:ok, ^expected_entry} ->
+        {:cont, {:ok, expected_entry}}
+
+      {:ok, _conflicting_entry} ->
+        {:halt, {:error, :conflicting_pre_materialized_asset_metadata}}
+
+      {:error, _reason} = error ->
+        {:halt, error}
+    end
+  end
+
+  defp pre_materialized_asset_entry({blob_hashes, asset_metadata}, id) do
+    with {:ok, blob_hash} <- fetch_blob_hash(blob_hashes, id),
+         {:ok, metadata} <- fetch_asset_metadata(asset_metadata, id),
+         :ok <- validate_blob_hash(blob_hash),
+         :ok <- validate_asset_filename(metadata["filename"]),
+         :ok <- validate_asset_content_type(metadata, []),
+         :ok <- validate_asset_size(metadata["size"]) do
+      materialization_metadata = materialization_metadata(metadata)
+
+      {:ok,
+       %{
+         metadata: materialization_metadata,
+         fingerprint: pre_materialized_fingerprint(blob_hash, materialization_metadata)
+       }}
+    end
+  end
+
+  defp pre_materialized_asset_catalogs(snapshot, id) do
+    Enum.flat_map([snapshot | project_entity_snapshots(snapshot)], fn snapshot_surface ->
+      blob_hashes = map_field(snapshot_surface, "asset_blob_hashes")
+      asset_metadata = map_field(snapshot_surface, "asset_metadata")
+
+      if Map.has_key?(blob_hashes, id) or Map.has_key?(asset_metadata, id) do
+        [{blob_hashes, asset_metadata}]
+      else
+        []
+      end
+    end)
+  end
+
+  defp map_field(map, key) when is_map(map) do
+    case Map.get(map, key) do
+      value when is_map(value) -> value
+      _value -> %{}
+    end
+  end
+
+  defp map_field(_map, _key), do: %{}
+
+  defp project_entity_snapshots(snapshot) do
+    Enum.flat_map(~w(sheets flows scenes), fn collection ->
+      snapshot
+      |> Map.get(collection, [])
+      |> Enum.flat_map(fn
+        %{"snapshot" => entity_snapshot} when is_map(entity_snapshot) -> [entity_snapshot]
+        _entry -> []
+      end)
+    end)
   end
 
   defp portable_asset_entry(blob_hash, metadata, expected_source_project_id, opts \\ []) do
@@ -518,6 +977,16 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
       blob_hash: blob_hash,
       source_project_id: source_project_id,
       source_key: source_key,
+      filename: metadata["filename"],
+      content_type: metadata["content_type"],
+      size: metadata["size"],
+      sanitized_svg: metadata["sanitized_svg"] == true
+    }
+  end
+
+  defp pre_materialized_fingerprint(blob_hash, metadata) do
+    %{
+      blob_hash: blob_hash,
       filename: metadata["filename"],
       content_type: metadata["content_type"],
       size: metadata["size"],

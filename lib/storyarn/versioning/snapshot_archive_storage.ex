@@ -14,6 +14,7 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
@@ -182,7 +183,7 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
          staging_prefix: staging,
          ready_prefix: object_prefix,
          storage_keys: keys,
-         inventory_digest: cleanup_inventory_digest(keys)
+         inventory_digest: StorageCleanupInventory.digest(keys)
        }}
     end
   end
@@ -327,6 +328,8 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
          {:ok, project} <- SnapshotObjectFormat.portable_project(normalized_project),
          {:ok, catalog} <-
            SnapshotObjectFormat.build_catalog(assets, Keyword.put(opts, :project_id, project_id)),
+         project = Map.put(project, "asset_catalog_refs", catalog.source_refs),
+         :ok <- SnapshotObjectFormat.validate_project(project),
          {:ok, project_descriptor, project_json} <- project_descriptor(project, opts),
          {:ok, manifest} <-
            SnapshotObjectFormat.build_manifest(
@@ -1224,7 +1227,7 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
        )
        when status in ["active", "committed"] and is_integer(reserved_bytes) and reserved_bytes >= total_size_bytes do
     if inventory_count == length(storage_keys) and
-         inventory_digest == cleanup_inventory_digest(storage_keys),
+         inventory_digest == StorageCleanupInventory.digest(storage_keys),
        do: :ok,
        else: {:error, :snapshot_object_stage_cleanup_commitment_mismatch}
   end
@@ -1823,14 +1826,6 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
 
   defp cleanup_keys(staging, ready) do
     Enum.sort([archive_key(staging), manifest_key(staging), archive_key(ready), manifest_key(ready)])
-  end
-
-  defp cleanup_inventory_digest(storage_keys) do
-    storage_keys
-    |> Enum.sort()
-    |> Enum.map_join(fn key -> "#{byte_size(key)}:#{key}" end)
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
   end
 
   defp token_from_ready_prefix(project_id, prefix) do

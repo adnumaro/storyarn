@@ -545,7 +545,9 @@ defmodule Storyarn.Localization.LanguageCrud do
 
     Repo.one(
       from(l in ProjectLanguage,
-        where: l.project_id == ^project_id and l.locale_code == ^locale_code and not is_nil(l.archived_at)
+        where: l.project_id == ^project_id and l.locale_code == ^locale_code and not is_nil(l.archived_at),
+        order_by: [desc: l.archived_at, desc: l.id],
+        limit: 1
       )
     )
   end

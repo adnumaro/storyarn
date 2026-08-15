@@ -20,6 +20,7 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
   alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.SnapshotArchiveStorage
+  alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
 
   test "owns the exact paired archive namespace and validates ready keys purely" do
@@ -74,6 +75,31 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
                [],
                max_project_bytes: max_project_bytes
              )
+  end
+
+  test "embeds historical asset references before hashing the portable project object" do
+    fixture = request_fixture("catalog reference capture")
+    project = Jason.decode!(fixture.prepared.project_json)
+    manifest = Jason.decode!(fixture.prepared.manifest_json)
+
+    assert project["asset_catalog_refs"] == %{
+             to_string(fixture.asset.id) => "asset-000001"
+           }
+
+    assert :ok =
+             SnapshotObjectFormat.validate_source_refs(
+               project["asset_catalog_refs"],
+               manifest["assets"]
+             )
+
+    project_checksum =
+      fixture.prepared.project_json
+      |> then(&:crypto.hash(:sha256, &1))
+      |> Base.encode16(case: :lower)
+
+    assert fixture.prepared.project_checksum == project_checksum
+    assert manifest["project"]["sha256"] == project_checksum
+    assert manifest["project"]["size_bytes"] == byte_size(fixture.prepared.project_json)
   end
 
   test "derives an empty canonical cleanup scope only for a wholly uncaptured v2 snapshot" do
@@ -848,6 +874,7 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
     %{
       user: user,
       project: project,
+      asset: asset,
       snapshot: snapshot,
       token: List.last(String.split(snapshot.object_prefix, "/")),
       capture: capture,

@@ -2,8 +2,10 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
   use Storyarn.DataCase, async: false
 
   alias Ecto.Adapters.SQL.Sandbox
+  alias Ecto.Migration.Runner
   alias Storyarn.Release
   alias Storyarn.Repo
+  alias Storyarn.Repo.Migrations.AllowZeroByteRestoreStagingReservations
   alias Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffolding
 
   @storage_accounting_migration 20_260_804_120_000
@@ -11,6 +13,7 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
   @barrier_migration 20_260_810_130_000
   @v2_only_migration 20_260_811_180_000
   @migration_version 20_260_812_100_000
+  @zero_byte_restore_migration_version 20_260_813_101_000
   @release_gate :enforce_snapshot_lifecycle_release_gate
   @cleanup_authorization_config :project_snapshot_scaffolding_cleanup_authorization
   @cleanup_authorization "20260812100000"
@@ -26,11 +29,25 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
     )
   end
 
+  if !Code.ensure_loaded?(AllowZeroByteRestoreStagingReservations) do
+    Code.require_file(
+      Path.expand(
+        "../../../../priv/repo/migrations/20260813101000_allow_zero_byte_restore_staging_reservations.exs",
+        __DIR__
+      )
+    )
+  end
+
   setup do
     prefix = "RemoveSnapshotCutover#{System.unique_integer([:positive])}"
     Repo.query!(~s(CREATE SCHEMA "#{prefix}"))
-    create_transitional_schema!(prefix)
     Repo.query!("SELECT set_config('search_path', $1, true)", [~s("#{prefix}", public)])
+    create_transitional_schema!(prefix)
+
+    # The fixture clones today's public table, so explicitly rewind the later
+    # ENG-76 constraint migration to reproduce the schema seen by 20260812100000.
+    assert :ok = run_zero_byte_restore_migration(:down, prefix)
+
     %{prefix: prefix}
   end
 
@@ -42,6 +59,10 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
     VALUES ('Storyarn.Workers.RestoreProjectWorker', 'snapshots', 'completed')
     """)
 
+    assert_positive_values_violation(fn ->
+      insert_storage_reservation(prefix, "restore_staging", "active", 0, nil)
+    end)
+
     assert :ok = run_migration(:up, prefix)
 
     refute column_exists?(prefix, "project_snapshots", "project_storage_key")
@@ -49,6 +70,18 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
     refute constraint_exists?(prefix, "project_snapshots_retired_project_storage")
     refute constraint_exists?(prefix, "workspace_storage_reservations_source_inventory")
     refute constraint_exists?(prefix, "oban_jobs_snapshot_worker_routing")
+
+    assert :ok = run_zero_byte_restore_migration(:up, prefix)
+
+    assert {:ok, _result} =
+             insert_storage_reservation(prefix, "restore_staging", "active", 0, nil)
+
+    assert {:ok, _result} =
+             insert_storage_reservation(prefix, "restore_staging", "committed", 0, 0)
+
+    assert_positive_values_violation(fn ->
+      insert_storage_reservation(prefix, "snapshot_build", "active", 0, nil)
+    end)
 
     assert final_contract(prefix) == final_contract("public")
 
@@ -266,7 +299,7 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
     prefix: prefix
   } do
     with_release_gate(true, fn ->
-      with_application_env(@cleanup_authorization_config, @cleanup_authorization, fn ->
+      with_cleanup_authorization(@cleanup_authorization, fn ->
         assert :ok = Release.run_project_snapshot_migrations(Repo, fn -> run_migration(:up, prefix) end)
       end)
     end)
@@ -386,7 +419,7 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
   end
 
   defp run_migration(direction, prefix) do
-    Ecto.Migration.Runner.run(
+    Runner.run(
       Repo,
       Repo.config(),
       @migration_version,
@@ -399,8 +432,85 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
     )
   end
 
+  defp run_zero_byte_restore_migration(direction, prefix) do
+    Runner.run(
+      Repo,
+      Repo.config(),
+      @zero_byte_restore_migration_version,
+      AllowZeroByteRestoreStagingReservations,
+      :forward,
+      direction,
+      direction,
+      prefix: prefix,
+      log: false
+    )
+  end
+
+  defp insert_storage_reservation(prefix, kind, status, reserved_bytes, actual_bytes) do
+    unique_id = System.unique_integer([:positive])
+    lease_token = Ecto.UUID.generate()
+    now = NaiveDateTime.truncate(NaiveDateTime.utc_now(), :second)
+    expires_at = NaiveDateTime.add(now, 900)
+    settled_at = if status == "committed", do: now
+
+    storage_namespace =
+      "projects/1/storage-reservations/v1/#{String.replace(kind, "_", "-")}/#{lease_token}"
+
+    cleanup_object_prefix =
+      if kind == "snapshot_build" do
+        "projects/1/snapshots/archives/v2/ready/ORDERKILLER00001"
+      else
+        storage_namespace
+      end
+
+    Repo.query(
+      """
+      INSERT INTO #{qualified_table(prefix, "workspace_storage_reservations")} (
+        id, workspace_id_snapshot, project_id_snapshot, project_snapshot_id_snapshot,
+        idempotency_key, kind, status, storage_namespace, cleanup_object_prefix,
+        reserved_bytes, actual_bytes, lease_token, generation, expires_at,
+        storage_started_at, settled_at, accounting_version, accounting_measured_at,
+        inserted_at, updated_at
+      )
+      VALUES (
+        $1, 1, 1, $1, $2, $3, $4, $5, $6, $7, $8, $9, 1, $10,
+        NULL, $11, 1, $12, $12, $12
+      )
+      """,
+      [
+        unique_id,
+        "snapshot-cutover-order-#{unique_id}",
+        kind,
+        status,
+        storage_namespace,
+        cleanup_object_prefix,
+        reserved_bytes,
+        actual_bytes,
+        Ecto.UUID.dump!(lease_token),
+        expires_at,
+        settled_at,
+        now
+      ],
+      mode: :savepoint
+    )
+  end
+
+  defp assert_positive_values_violation(fun) do
+    assert {:error,
+            %Postgrex.Error{
+              postgres: %{
+                code: :check_violation,
+                constraint: "workspace_storage_reservations_positive_values"
+              }
+            }} = fun.()
+  end
+
   defp with_release_gate(value, fun) do
     with_application_env(@release_gate, value, fun)
+  end
+
+  defp with_cleanup_authorization(value, fun) do
+    with_application_env(@cleanup_authorization_config, value, fun)
   end
 
   defp with_application_env(key, value, fun) do

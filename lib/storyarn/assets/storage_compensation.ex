@@ -9,6 +9,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageHash
   alias Storyarn.Assets.StorageKeyLock
+  alias Storyarn.Billing.StorageReservation
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
@@ -104,6 +105,15 @@ defmodule Storyarn.Assets.StorageCompensation do
     :ok
   end
 
+  @doc false
+  @spec pending_cleanup_targets(reference()) :: [String.t()]
+  def pending_cleanup_targets(reference) when is_reference(reference) do
+    reference
+    |> tracked()
+    |> Enum.filter(&valid_cleanup_target?/1)
+    |> Enum.uniq()
+  end
+
   @spec cleanup(reference(), keyword()) :: :ok | {:error, term()}
   def cleanup(reference, opts \\ []) when is_reference(reference) do
     cleanup_targets = reference |> tracked() |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
@@ -182,7 +192,7 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   defp cleanup_storage_keys_after_rollback(reference, storage_keys, opts) do
     enqueue_fun = Keyword.get(opts, :enqueue_fun, &enqueue_cleanup/1)
-    delete_fun = Keyword.get(opts, :delete_fun, &delete_storage_keys/1)
+    delete_fun = rollback_delete_fun(opts)
     persist_fun = Keyword.get(opts, :persist_fun, &persist_cleanup_request/1)
 
     case storage_keys do
@@ -198,6 +208,16 @@ defmodule Storyarn.Assets.StorageCompensation do
           persist_fun
         )
     end
+  end
+
+  defp rollback_delete_fun(opts) do
+    Keyword.get_lazy(opts, :delete_fun, fn ->
+      restore_cleanup_owner = Keyword.get(opts, :restore_cleanup_owner)
+
+      fn cleanup_targets ->
+        delete_storage_keys(cleanup_targets, restore_cleanup_owner: restore_cleanup_owner)
+      end
+    end)
   end
 
   defp unretained_cleanup_targets(reference) do
@@ -256,12 +276,20 @@ defmodule Storyarn.Assets.StorageCompensation do
 
   @spec delete_storage_keys([String.t()]) :: :ok | {:error, [String.t()]}
   def delete_storage_keys(cleanup_targets) when is_list(cleanup_targets) do
+    delete_storage_keys(cleanup_targets, [])
+  end
+
+  @doc false
+  @spec delete_storage_keys([String.t()], keyword()) :: :ok | {:error, [String.t()]}
+  def delete_storage_keys(cleanup_targets, opts) when is_list(cleanup_targets) and is_list(opts) do
+    restore_cleanup_owner = normalize_restore_cleanup_owner(Keyword.get(opts, :restore_cleanup_owner))
+
     failed_targets =
       cleanup_targets
       |> Enum.filter(&valid_cleanup_target?/1)
       |> Enum.uniq()
       |> Enum.filter(fn cleanup_target ->
-        case safe_deferred_storage_delete(cleanup_target) do
+        case safe_deferred_storage_delete(cleanup_target, restore_cleanup_owner) do
           :ok -> false
           {:error, _reason} -> true
         end
@@ -1234,12 +1262,12 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp persisted_retry_result({:ok, _request}, result), do: result
   defp persisted_retry_result({:error, _changeset}, _result), do: :error
 
-  defp safe_deferred_storage_delete(cleanup_target) do
+  defp safe_deferred_storage_delete(cleanup_target, restore_cleanup_owner) do
     storage_key = cleanup_target_storage_key(cleanup_target)
     force_delete? = force_delete_target?(cleanup_target)
 
     StorageKeyLock.with_storage_key_lock(storage_key, fn ->
-      deferred_storage_delete(storage_key, force_delete?)
+      deferred_storage_delete(storage_key, force_delete?, restore_cleanup_owner)
     end)
   rescue
     error ->
@@ -1271,13 +1299,27 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp delete_owned_storage_key_in_transaction(storage_key, false) do
-    if committed_asset_key?(storage_key),
-      do: retain_committed_asset(storage_key),
-      else: delete_storage_object(storage_key)
+    cond do
+      active_restore_storage_owner?(storage_key) ->
+        {:error, :storage_key_owned_by_active_restore}
+
+      committed_asset_key?(storage_key) ->
+        retain_committed_asset(storage_key)
+
+      true ->
+        delete_storage_object(storage_key)
+    end
   end
 
   defp deferred_storage_delete(storage_key, force_delete?) do
+    deferred_storage_delete(storage_key, force_delete?, nil)
+  end
+
+  defp deferred_storage_delete(storage_key, force_delete?, restore_cleanup_owner) do
     cond do
+      active_restore_storage_owner?(storage_key, restore_cleanup_owner) ->
+        {:error, :storage_key_owned_by_active_restore}
+
       committed_asset_key?(storage_key) ->
         retain_committed_asset(storage_key)
 
@@ -1380,6 +1422,42 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp committed_asset_key?(storage_key) do
     Repo.exists?(from asset in Asset, where: asset.key == ^storage_key)
   end
+
+  defp active_restore_storage_owner?(storage_key), do: active_restore_storage_owner?(storage_key, nil)
+
+  defp active_restore_storage_owner?(storage_key, restore_cleanup_owner) do
+    storage_key
+    |> active_restore_storage_owner_query()
+    |> exclude_restore_cleanup_owner(restore_cleanup_owner)
+    |> Repo.exists?()
+  end
+
+  defp active_restore_storage_owner_query(storage_key) do
+    from reservation in StorageReservation,
+      where:
+        reservation.kind == "restore_staging" and reservation.status == "active" and
+          not is_nil(reservation.storage_started_at) and
+          fragment("? @> ARRAY[?]::text[]", reservation.cleanup_storage_keys, ^storage_key)
+  end
+
+  defp exclude_restore_cleanup_owner(query, {reservation_id, lease_token, generation}) do
+    from reservation in query,
+      where:
+        reservation.id != ^reservation_id or reservation.lease_token != ^lease_token or
+          reservation.generation != ^generation
+  end
+
+  defp exclude_restore_cleanup_owner(query, nil), do: query
+
+  defp normalize_restore_cleanup_owner(%StorageReservation{
+         id: reservation_id,
+         lease_token: lease_token,
+         generation: generation
+       })
+       when is_integer(reservation_id) and reservation_id > 0 and is_binary(lease_token) and is_integer(generation) and
+              generation > 0, do: {reservation_id, lease_token, generation}
+
+  defp normalize_restore_cleanup_owner(_restore_cleanup_owner), do: nil
 
   defp committed_project?(project_id) do
     Repo.exists?(from project in Project, where: project.id == ^project_id)

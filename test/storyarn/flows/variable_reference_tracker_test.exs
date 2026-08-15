@@ -2614,6 +2614,71 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
     end
   end
 
+  describe "Scene reference query batching" do
+    test "keeps query count constant as collection references grow", ctx do
+      scene = scene_fixture(ctx.project)
+      condition = variable_condition(ctx.sheet.shortcut, ctx.health_block.variable_name)
+
+      collection_item = fn ->
+        assignment =
+          ctx.sheet.shortcut
+          |> variable_assignment(ctx.health_block.variable_name)
+          |> Map.merge(%{
+            "value_type" => "variable_ref",
+            "value_sheet" => ctx.sheet2.shortcut,
+            "value" => ctx.quest_block.variable_name
+          })
+
+        %{
+          "id" => Ecto.UUID.generate(),
+          "condition" => condition,
+          "instruction" => %{"assignments" => [assignment]}
+        }
+      end
+
+      small_zone =
+        zone_fixture(scene, %{
+          "action_type" => "collection",
+          "action_data" => %{"items" => [collection_item.()]},
+          "condition" => condition
+        })
+
+      large_zone =
+        zone_fixture(scene, %{
+          "action_type" => "collection",
+          "action_data" => %{"items" => for(_index <- 1..20, do: collection_item.())},
+          "condition" => condition
+        })
+
+      {:ok, small_queries} =
+        capture_queries(fn ->
+          VariableReferenceTracker.update_scene_zone_references(
+            small_zone,
+            project_id: ctx.project.id
+          )
+        end)
+
+      {:ok, large_queries} =
+        capture_queries(fn ->
+          VariableReferenceTracker.update_scene_zone_references(
+            large_zone,
+            project_id: ctx.project.id
+          )
+        end)
+
+      assert length(large_queries) == length(small_queries)
+
+      assert large_zone.id
+             |> scene_zone_references()
+             |> MapSet.new(&{&1.block_id, &1.kind, &1.source_sheet, &1.source_variable}) ==
+               MapSet.new([
+                 {ctx.health_block.id, "read", ctx.sheet.shortcut, ctx.health_block.variable_name},
+                 {ctx.health_block.id, "write", ctx.sheet.shortcut, ctx.health_block.variable_name},
+                 {ctx.quest_block.id, "read", ctx.sheet2.shortcut, ctx.quest_block.variable_name}
+               ])
+    end
+  end
+
   describe "strict snapshot variable validation" do
     test "accepts Scene display drafts but still rejects malformed display refs", ctx do
       changeset =
@@ -3542,6 +3607,126 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert block_id == ctx.health_block.id
     end
 
+    test "qualified Scene refs prefer an explicit numeric shortcut over an ID fallback", ctx do
+      fallback_sheet = sheet_fixture(ctx.project, %{name: "Fallback"})
+      explicit_sheet = sheet_fixture(ctx.project, %{name: "Explicit"})
+      namespace = Integer.to_string(fallback_sheet.id)
+
+      Repo.update!(Ecto.Changeset.change(fallback_sheet, shortcut: nil))
+      Repo.update!(Ecto.Changeset.change(explicit_sheet, shortcut: namespace))
+
+      _fallback_block =
+        block_fixture(fallback_sheet, %{
+          type: "number",
+          config: %{"label" => "Health"}
+        })
+
+      explicit_block =
+        block_fixture(explicit_sheet, %{
+          type: "number",
+          config: %{"label" => "Health"}
+        })
+
+      fallback_table = table_block_fixture(fallback_sheet, %{label: "Inventory"})
+      explicit_table = table_block_fixture(explicit_sheet, %{label: "Inventory"})
+      [fallback_row] = fallback_table.table_rows
+      [fallback_column] = fallback_table.table_columns
+      [explicit_row] = explicit_table.table_rows
+      [explicit_column] = explicit_table.table_columns
+
+      assert {fallback_table.variable_name, fallback_row.slug, fallback_column.slug} ==
+               {explicit_table.variable_name, explicit_row.slug, explicit_column.slug}
+
+      scene = scene_fixture(ctx.project)
+
+      refs = [
+        "#{namespace}.#{explicit_block.variable_name}",
+        "#{namespace}.#{explicit_table.variable_name}.#{explicit_row.slug}.#{explicit_column.slug}"
+      ]
+
+      resolved_block_ids =
+        Enum.map(refs, fn variable_ref ->
+          zone =
+            zone_fixture(scene, %{
+              "action_type" => "display",
+              "action_data" => %{"variable_ref" => variable_ref}
+            })
+
+          assert :ok =
+                   VariableReferenceTracker.update_scene_zone_references(
+                     zone,
+                     project_id: ctx.project.id
+                   )
+
+          Repo.one!(
+            from(reference in VariableReference,
+              where:
+                reference.source_type == "scene_zone" and
+                  reference.source_id == ^zone.id,
+              select: reference.block_id
+            )
+          )
+        end)
+
+      assert resolved_block_ids == [explicit_block.id, explicit_table.id]
+    end
+
+    test "a fallback reference becomes stale and rebuilds to a new explicit numeric owner", ctx do
+      fallback_sheet = sheet_fixture(ctx.project, %{name: "Fallback"})
+      namespace = Integer.to_string(fallback_sheet.id)
+      Repo.update!(Ecto.Changeset.change(fallback_sheet, shortcut: nil))
+
+      fallback_block =
+        block_fixture(fallback_sheet, %{
+          type: "number",
+          config: %{"label" => "Health"}
+        })
+
+      node =
+        node_fixture(ctx.flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [variable_assignment(namespace, fallback_block.variable_name)]
+          }
+        })
+
+      assert :ok = VariableReferenceTracker.update_references(node)
+
+      explicit_sheet = sheet_fixture(ctx.project, %{name: "Explicit", shortcut: namespace})
+
+      explicit_block =
+        block_fixture(explicit_sheet, %{
+          type: "number",
+          config: %{"label" => "Health"}
+        })
+
+      assert [%{stale: true}] =
+               VariableReferenceTracker.check_stale_references(
+                 fallback_block.id,
+                 ctx.project.id
+               )
+
+      assert :ok = VariableReferenceTracker.rebuild_project_variable_references(ctx.project.id)
+
+      rebuilt_block_ids =
+        from(reference in VariableReference,
+          where:
+            reference.source_type == "flow_node" and
+              reference.source_id == ^node.id,
+          select: reference.block_id
+        )
+        |> Repo.all()
+        |> MapSet.new()
+
+      assert rebuilt_block_ids == MapSet.new([fallback_block.id, explicit_block.id])
+
+      assert [%{stale: false}] =
+               VariableReferenceTracker.check_stale_references(
+                 explicit_block.id,
+                 ctx.project.id
+               )
+    end
+
     test "indexes, deletes, and rebuilds dotted ambient event refs", ctx do
       scene = scene_fixture(ctx.project)
       linked_flow = flow_fixture(ctx.project)
@@ -3685,6 +3870,46 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       {:ok, result} -> result
       nil -> flunk("variable-reference validation did not terminate")
     end
+  end
+
+  defp capture_queries(fun) when is_function(fun, 0) do
+    handler_id = "variable-reference-tracker-query-budget-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid, do: send(pid, {ref, query})
+        end,
+        {test_pid, marker}
+      )
+
+    try do
+      {fun.(), drain_queries(marker)}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp drain_queries(marker, queries \\ []) do
+    receive do
+      {^marker, query} -> drain_queries(marker, [query | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
+  end
+
+  defp scene_zone_references(zone_id) do
+    Repo.all(
+      from(reference in VariableReference,
+        where:
+          reference.source_type == "scene_zone" and
+            reference.source_id == ^zone_id
+      )
+    )
   end
 
   defp source_identities(block_id) do

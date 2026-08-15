@@ -9,6 +9,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Accounts.User
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
@@ -22,6 +23,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
+  alias Storyarn.Versioning.SnapshotObjectFormat
 
   setup do
     user = user_fixture()
@@ -130,6 +132,41 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       membership = Storyarn.Projects.get_membership(recovered.id, user.id)
       assert membership
       assert membership.role == "owner"
+    end
+
+    test "discards localization actor identities when installing into another workspace", %{
+      project: source_project,
+      user: source_owner
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+      reviewer = user_fixture()
+      membership_fixture(source_project, reviewer, "editor")
+      flow = flow_fixture(source_project, %{name: "Attributed localization"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 translated_text: "Hola",
+                 translated_by_id: source_owner.id,
+                 reviewed_by_id: reviewer.id
+               })
+
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(source_project.id)
+      target_owner = user_fixture()
+      target_project = project_fixture(target_owner, %{name: "Target workspace project"})
+
+      assert {:ok, recovered} =
+               ProjectRecovery.materialize_template(
+                 target_project.workspace_id,
+                 snapshot_data,
+                 target_owner.id
+               )
+
+      [restored_text] = Localization.list_texts_for_export(recovered.id, ["es"])
+      assert restored_text.translated_by_id == nil
+      assert restored_text.reviewed_by_id == nil
     end
 
     test "recovers empty project", %{
@@ -1730,6 +1767,660 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
     end
   end
 
+  describe "materialize_into_project/5" do
+    test "requires the caller's final restore transaction", %{project: source_project, user: user} do
+      snapshot_data = canonical_snapshot(source_project)
+      target_project = project_fixture(user)
+
+      assert {:error, :project_materialization_requires_transaction} =
+               ProjectRecovery.materialize_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{},
+                 localization_scope: :active
+               )
+    end
+
+    test "requires exact restore to declare the active localization scope", %{
+      project: source_project,
+      user: user
+    } do
+      snapshot_data = canonical_snapshot(source_project)
+      target_project = project_fixture(user)
+
+      assert {:error, :project_materialization_requires_active_localization} =
+               ProjectRecovery.materialize_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{}
+               )
+
+      assert {:error, :project_materialization_requires_active_localization} =
+               ProjectRecovery.materialize_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{},
+                 localization_scope: :backup
+               )
+    end
+
+    test "requires exact restore to provide the localization actor prelock result", %{
+      project: source_project,
+      user: user
+    } do
+      snapshot_data = canonical_snapshot(source_project)
+      target_project = project_fixture(user)
+
+      assert {:ok, {:error, :project_materialization_localization_actor_prelock_required}} =
+               Repo.transaction(fn ->
+                 locked_project =
+                   Repo.one!(
+                     from candidate in Project,
+                       where: candidate.id == ^target_project.id,
+                       lock: "FOR UPDATE"
+                   )
+
+                 ProjectRecovery.materialize_into_project(
+                   locked_project,
+                   snapshot_data,
+                   user.id,
+                   %{},
+                   localization_scope: :active
+                 )
+               end)
+    end
+
+    test "rejects archived languages before writing into the existing project", %{
+      project: source_project,
+      user: user
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      spanish = language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+      assert {:ok, _archived} = Localization.remove_language(spanish)
+
+      snapshot_data = canonical_snapshot(source_project)
+      target_project = project_fixture(user)
+      counts_before = materialized_graph_counts(target_project.id)
+
+      assert {:error, :archived_project_snapshot_language_not_materializable} =
+               ProjectRecovery.validate_materialization_snapshot(snapshot_data)
+
+      assert {:error, :archived_project_snapshot_language_not_materializable} =
+               materialize_snapshot_into_project(target_project, snapshot_data, user.id, %{})
+
+      assert materialized_graph_counts(target_project.id) == counts_before
+      assert Localization.list_languages_for_backup(target_project.id) == []
+    end
+
+    test "restores canonical glossary entries whose target language was removed", %{
+      project: source_project,
+      user: user
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      spanish = language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+
+      assert {:ok, glossary} =
+               Localization.create_glossary_entry(source_project, %{
+                 source_term: "Dragon",
+                 source_locale: "en",
+                 target_term: "Dragón",
+                 target_locale: "es",
+                 context: "Creature"
+               })
+
+      assert {:ok, _archived} = Localization.remove_language(spanish)
+
+      snapshot_data = active_canonical_snapshot(source_project)
+      assert Enum.map(snapshot_data["localization"]["languages"], & &1["locale_code"]) == ["en"]
+      assert [%{"target_locale" => "es", "target_term" => "Dragón"}] = snapshot_data["localization"]["glossary"]
+      assert :ok = ProjectRecovery.validate_materialization_snapshot(snapshot_data)
+
+      target_project = project_fixture(user, %{name: "Glossary target"})
+
+      assert {:ok, _materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{}
+               )
+
+      assert Enum.map(Localization.list_languages(target_project.id), & &1.locale_code) == ["en"]
+
+      assert [restored_glossary] = Localization.list_glossary_for_export(target_project.id)
+      assert restored_glossary.source_term == glossary.source_term
+      assert restored_glossary.source_locale == "en"
+      assert restored_glossary.target_term == "Dragón"
+      assert restored_glossary.target_locale == "es"
+    end
+
+    test "rejects archived localized text even when its source is still captured", %{
+      project: source_project,
+      user: user
+    } do
+      {_sheet, block} = localized_block_fixture(source_project)
+      assert Repo.get!(Block, block.id)
+
+      snapshot_data =
+        source_project
+        |> canonical_snapshot()
+        |> update_in(["localization", "texts"], fn texts ->
+          Enum.map(texts, fn text ->
+            if localization_snapshot_key(text) == {"block", block.id, "value.content", "es"} do
+              Map.put(text, "archived_at", DateTime.to_iso8601(DateTime.utc_now(:second)))
+            else
+              text
+            end
+          end)
+        end)
+
+      target_project = project_fixture(user)
+      counts_before = materialized_graph_counts(target_project.id)
+
+      assert {:error, :archived_project_snapshot_localized_text_not_materializable} =
+               ProjectRecovery.validate_materialization_snapshot(snapshot_data)
+
+      assert {:error, :archived_project_snapshot_localized_text_not_materializable} =
+               materialize_snapshot_into_project(target_project, snapshot_data, user.id, %{})
+
+      assert materialized_graph_counts(target_project.id) == counts_before
+      assert Localization.list_all_texts(target_project.id) == []
+    end
+
+    test "rejects an active localized text whose source is absent from the graph", %{
+      project: source_project,
+      user: user
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+      missing_block_id = System.unique_integer([:positive])
+
+      localized_text_fixture(source_project.id, %{
+        source_type: "block",
+        source_id: missing_block_id,
+        source_field: "value.content",
+        source_text: "Orphan runtime text",
+        source_text_hash: sha256("Orphan runtime text"),
+        locale_code: "es"
+      })
+
+      snapshot_data = canonical_snapshot(source_project)
+      target_project = project_fixture(user)
+      counts_before = materialized_graph_counts(target_project.id)
+
+      expected_error =
+        {:missing_project_snapshot_localization_source, "block", missing_block_id, "value.content"}
+
+      assert {:error, ^expected_error} =
+               ProjectRecovery.validate_materialization_snapshot(snapshot_data)
+
+      assert {:error, ^expected_error} =
+               materialize_snapshot_into_project(target_project, snapshot_data, user.id, %{})
+
+      assert materialized_graph_counts(target_project.id) == counts_before
+      assert Localization.list_all_texts(target_project.id) == []
+    end
+
+    test "materializes the full graph into the existing project without changing identity or memberships", %{
+      project: source_project,
+      user: user
+    } do
+      parent = sheet_fixture(source_project, %{name: "Archived parent"})
+      child = sheet_fixture(source_project, %{name: "Archived child"})
+      assert {:ok, _child} = Storyarn.Sheets.move_sheet(child, parent.id, 0)
+
+      referenced_flow = flow_fixture(source_project, %{name: "Archived referenced flow"})
+
+      referenced_exit =
+        node_fixture(referenced_flow, %{
+          type: "exit",
+          data: %{
+            "label" => "Archived branch",
+            "technical_id" => "archived_branch",
+            "exit_mode" => "terminal"
+          }
+        })
+
+      caller_flow = flow_fixture(source_project, %{name: "Archived caller flow"})
+
+      subflow =
+        node_fixture(caller_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => referenced_flow.id}
+        })
+
+      caller_exit =
+        caller_flow.id
+        |> Storyarn.Flows.list_nodes()
+        |> Enum.find(&(&1.type == "exit"))
+
+      _connection =
+        Storyarn.FlowsFixtures.connection_fixture(caller_flow, subflow, caller_exit, %{
+          source_pin: "exit_#{referenced_exit.id}"
+        })
+
+      scene = scene_fixture(source_project, %{name: "Archived scene"})
+
+      _pin =
+        pin_fixture(scene, %{
+          "label" => "Archived pin",
+          "sheet_id" => child.id,
+          "flow_id" => caller_flow.id
+        })
+
+      snapshot_data = canonical_snapshot(source_project)
+      target_project = project_fixture(user, %{name: "Stable target"})
+      current_sheet = sheet_fixture(target_project, %{name: "Current root stays"})
+      collaborator = user_fixture()
+      membership_fixture(target_project, collaborator, "editor")
+
+      identity_before = project_identity(target_project)
+      memberships_before = project_membership_state(target_project.id)
+      project_count_before = workspace_project_count(target_project.workspace_id)
+
+      assert {:ok, materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{}
+               )
+
+      assert project_identity(materialized_project) == identity_before
+      assert project_membership_state(target_project.id) == memberships_before
+      assert workspace_project_count(target_project.workspace_id) == project_count_before
+
+      materialized_sheets = Storyarn.Sheets.list_all_sheets(target_project.id)
+      assert Enum.any?(materialized_sheets, &(&1.id == current_sheet.id))
+      new_parent = Enum.find(materialized_sheets, &(&1.name == "Archived parent"))
+      new_child = Enum.find(materialized_sheets, &(&1.name == "Archived child"))
+      assert new_parent.id != parent.id
+      assert new_child.parent_id == new_parent.id
+
+      materialized_flows = Storyarn.Flows.list_flows(target_project.id)
+      new_referenced_flow = Enum.find(materialized_flows, &(&1.name == "Archived referenced flow"))
+      new_caller_flow = Enum.find(materialized_flows, &(&1.name == "Archived caller flow"))
+      new_subflow = Enum.find(Storyarn.Flows.list_nodes(new_caller_flow.id), &(&1.type == "subflow"))
+
+      new_referenced_exit =
+        new_referenced_flow.id
+        |> Storyarn.Flows.list_nodes()
+        |> Enum.find(&((&1.data || %{})["technical_id"] == "archived_branch"))
+
+      new_connection =
+        new_caller_flow.id
+        |> Storyarn.Flows.list_connections()
+        |> Enum.find(&(&1.source_node_id == new_subflow.id))
+
+      assert new_subflow.data["referenced_flow_id"] == new_referenced_flow.id
+      assert new_connection.source_pin == "exit_#{new_referenced_exit.id}"
+
+      [new_scene] = Enum.filter(Storyarn.Scenes.list_scenes(target_project.id), &(&1.name == "Archived scene"))
+      [new_pin] = Enum.filter(Storyarn.Scenes.list_pins(new_scene.id), &(&1.label == "Archived pin"))
+      assert new_pin.sheet_id == new_child.id
+      assert new_pin.flow_id == new_caller_flow.id
+    end
+
+    test "uses the exact pre-materialized asset identity without storage fallback", %{
+      project: source_project,
+      user: user
+    } do
+      source_asset =
+        uploaded_asset(
+          source_project,
+          user,
+          "archived-banner.png",
+          "archived banner bytes",
+          "image/png"
+        )
+
+      source_sheet = sheet_fixture(source_project, %{name: "Archived asset sheet"})
+      assert {:ok, _sheet} = Storyarn.Sheets.update_sheet(source_sheet, %{banner_asset_id: source_asset.id})
+
+      snapshot_data = canonical_snapshot(source_project)
+      target_project = project_fixture(user, %{name: "Asset target"})
+
+      current_decoy =
+        %Asset{project_id: target_project.id, uploaded_by_id: user.id}
+        |> Asset.create_changeset(%{
+          filename: source_asset.filename,
+          content_type: source_asset.content_type,
+          size: source_asset.size,
+          blob_hash: source_asset.blob_hash,
+          key: "projects/#{target_project.id}/assets/#{Ecto.UUID.generate()}/decoy-#{source_asset.filename}"
+        })
+        |> Repo.insert!()
+
+      target_asset =
+        %Asset{project_id: target_project.id, uploaded_by_id: user.id}
+        |> Asset.create_changeset(%{
+          filename: source_asset.filename,
+          content_type: source_asset.content_type,
+          size: source_asset.size,
+          blob_hash: source_asset.blob_hash,
+          key: "projects/#{target_project.id}/assets/#{Ecto.UUID.generate()}/#{source_asset.filename}"
+        })
+        |> Repo.insert!()
+
+      assert {:ok, materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{source_asset.id => target_asset.id}
+               )
+
+      assert materialized_project.id == target_project.id
+
+      [restored_sheet] = Storyarn.Sheets.list_all_sheets(target_project.id)
+      assert restored_sheet.banner_asset_id == target_asset.id
+      refute restored_sheet.banner_asset_id == source_asset.id
+      refute restored_sheet.banner_asset_id == current_decoy.id
+
+      assert Repo.aggregate(
+               from(asset in Asset,
+                 where:
+                   asset.project_id == ^target_project.id and
+                     asset.blob_hash == ^source_asset.blob_hash
+               ),
+               :count
+             ) == 2
+    end
+
+    test "remaps localization voice-over assets through the same pre-materialized identity", %{
+      project: source_project,
+      user: user
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+
+      voice_asset =
+        uploaded_asset(
+          source_project,
+          user,
+          "archived-voice.mp3",
+          "archived voice bytes",
+          "audio/mpeg"
+        )
+
+      flow = flow_fixture(source_project, %{name: "Archived localized flow"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 translated_text: "Hola",
+                 vo_asset_id: voice_asset.id,
+                 vo_status: "recorded"
+               })
+
+      snapshot_data = canonical_snapshot(source_project)
+      assert :ok = ProjectRecovery.validate_materialization_snapshot(snapshot_data)
+      target_project = project_fixture(user, %{name: "Localization target"})
+
+      target_voice =
+        %Asset{project_id: target_project.id, uploaded_by_id: user.id}
+        |> Asset.create_changeset(%{
+          filename: voice_asset.filename,
+          content_type: voice_asset.content_type,
+          size: voice_asset.size,
+          blob_hash: voice_asset.blob_hash,
+          key: "projects/#{target_project.id}/assets/#{Ecto.UUID.generate()}/#{voice_asset.filename}"
+        })
+        |> Repo.insert!()
+
+      assert {:ok, materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{voice_asset.id => target_voice.id}
+               )
+
+      assert materialized_project.id == target_project.id
+
+      [restored_text] = Localization.list_texts_for_export(target_project.id, ["es"])
+      assert restored_text.vo_asset_id == target_voice.id
+      assert restored_text.translated_text == "Hola"
+    end
+
+    test "preserves existing translator and reviewer identities", %{
+      project: source_project,
+      user: user
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+      reviewer = user_fixture()
+      flow = flow_fixture(source_project, %{name: "Attributed localization"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 translated_text: "Hola",
+                 translated_by_id: user.id,
+                 reviewed_by_id: reviewer.id
+               })
+
+      snapshot_data = canonical_snapshot(source_project)
+      target_project = project_fixture(user, %{name: "Attributed target"})
+
+      assert {:ok, _materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{}
+               )
+
+      [restored_text] = Localization.list_texts_for_export(target_project.id, ["es"])
+      assert restored_text.translated_by_id == user.id
+      assert restored_text.reviewed_by_id == reviewer.id
+    end
+
+    test "preserves existing actors and nullifies actors deleted after snapshot capture", %{
+      project: source_project,
+      user: user
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+      deleted_reviewer = Repo.insert!(%User{email: unique_user_email()})
+      flow = flow_fixture(source_project, %{name: "Historically attributed localization"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 translated_text: "Hola",
+                 translated_by_id: user.id,
+                 reviewed_by_id: deleted_reviewer.id
+               })
+
+      snapshot_data = canonical_snapshot(source_project)
+      [snapshot_text] = snapshot_data["localization"]["texts"]
+      assert snapshot_text["translated_by_id"] == user.id
+      assert snapshot_text["reviewed_by_id"] == deleted_reviewer.id
+
+      Repo.delete!(deleted_reviewer)
+      assert :ok = ProjectRecovery.validate_materialization_snapshot(snapshot_data)
+
+      target_project = project_fixture(user, %{name: "Deleted attribution target"})
+
+      assert {:ok, _materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{}
+               )
+
+      [restored_text] = Localization.list_texts_for_export(target_project.id, ["es"])
+      assert restored_text.translated_by_id == user.id
+      assert restored_text.reviewed_by_id == nil
+    end
+
+    test "accepts actor identities nullified before snapshot capture", %{
+      project: source_project,
+      user: user
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+      deleted_reviewer = Repo.insert!(%User{email: unique_user_email()})
+      flow = flow_fixture(source_project, %{name: "Deleted reviewer localization"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, attributed_text} =
+               Localization.update_text(text, %{
+                 translated_text: "Hola",
+                 translated_by_id: user.id,
+                 reviewed_by_id: deleted_reviewer.id
+               })
+
+      Repo.delete!(deleted_reviewer)
+      assert Repo.reload!(attributed_text).reviewed_by_id == nil
+
+      snapshot_data = canonical_snapshot(source_project)
+      [snapshot_text] = snapshot_data["localization"]["texts"]
+      assert snapshot_text["translated_by_id"] == user.id
+      assert snapshot_text["reviewed_by_id"] == nil
+
+      target_project = project_fixture(user, %{name: "Nullified attribution target"})
+
+      assert {:ok, _materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{}
+               )
+
+      [restored_text] = Localization.list_texts_for_export(target_project.id, ["es"])
+      assert restored_text.translated_by_id == user.id
+      assert restored_text.reviewed_by_id == nil
+    end
+
+    test "accepts adopted catalog assets that are not referenced by the archived graph", %{
+      project: source_project,
+      user: user
+    } do
+      unused_source_asset =
+        uploaded_asset(
+          source_project,
+          user,
+          "unused-archive-asset.png",
+          "unused archive bytes",
+          "image/png"
+        )
+
+      snapshot_data = canonical_snapshot(source_project)
+      target_project = project_fixture(user, %{name: "Unused asset target"})
+
+      adopted_unused_asset =
+        %Asset{project_id: target_project.id, uploaded_by_id: user.id}
+        |> Asset.create_changeset(%{
+          filename: unused_source_asset.filename,
+          content_type: unused_source_asset.content_type,
+          size: unused_source_asset.size,
+          blob_hash: unused_source_asset.blob_hash,
+          key: "projects/#{target_project.id}/assets/#{Ecto.UUID.generate()}/#{unused_source_asset.filename}"
+        })
+        |> Repo.insert!()
+
+      assert {:ok, materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{unused_source_asset.id => adopted_unused_asset.id}
+               )
+
+      assert materialized_project.id == target_project.id
+      assert Repo.get!(Asset, adopted_unused_asset.id).project_id == target_project.id
+    end
+
+    test "rejects a cross-root cycle during preflight without materializing graph rows", %{
+      project: source_project,
+      user: user
+    } do
+      first_flow = flow_fixture(source_project, %{name: "Cycle first"})
+      second_flow = flow_fixture(source_project, %{name: "Cycle second"})
+
+      _first_to_second =
+        node_fixture(first_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => second_flow.id}
+        })
+
+      second_to_first = node_fixture(second_flow, %{type: "subflow", data: %{}})
+
+      snapshot_data =
+        source_project
+        |> canonical_snapshot()
+        |> update_in(["flows"], fn flow_entries ->
+          Enum.map(flow_entries, fn
+            %{"id" => flow_id} = entry when flow_id == second_flow.id ->
+              update_in(entry, ["snapshot", "nodes"], fn nodes ->
+                Enum.map(nodes, fn
+                  %{"original_id" => node_id, "data" => data} = node
+                  when node_id == second_to_first.id ->
+                    Map.put(node, "data", Map.put(data || %{}, "referenced_flow_id", first_flow.id))
+
+                  node ->
+                    node
+                end)
+              end)
+
+            entry ->
+              entry
+          end)
+        end)
+
+      target_project = project_fixture(user, %{name: "Atomic target"})
+      current_sheet = sheet_fixture(target_project, %{name: "Current graph"})
+      counts_before = materialized_graph_counts(target_project.id)
+
+      assert {:error, {:project_snapshot_reference_cycle, :flow, _flow_id}} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{}
+               )
+
+      assert materialized_graph_counts(target_project.id) == counts_before
+      assert Repo.get!(Sheet, current_sheet.id).name == "Current graph"
+    end
+
+    test "rejects missing asset mappings before inserting graph rows", %{
+      project: source_project,
+      user: user
+    } do
+      source_asset =
+        uploaded_asset(source_project, user, "missing-map.png", "missing map", "image/png")
+
+      source_sheet = sheet_fixture(source_project, %{name: "Asset coverage"})
+      assert {:ok, _sheet} = Storyarn.Sheets.update_sheet(source_sheet, %{banner_asset_id: source_asset.id})
+
+      snapshot_data = canonical_snapshot(source_project)
+      target_project = project_fixture(user)
+
+      assert {:error, {:materialized_asset_mapping_mismatch, %{missing: [source_asset_id], unexpected: []}}} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{}
+               )
+
+      assert source_asset_id == source_asset.id
+      assert materialized_graph_counts(target_project.id) == %{flows: 0, scenes: 0, sheets: 0}
+    end
+  end
+
   defp uploaded_asset(project, user, filename, content, content_type) do
     {:ok, asset} =
       Assets.upload_binary_and_create_asset(
@@ -1899,5 +2590,113 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
           entry
       end)
     end)
+  end
+
+  defp canonical_snapshot(project) do
+    project.id
+    |> ProjectSnapshotBuilder.build_snapshot()
+    |> Jason.encode!()
+    |> Jason.decode!()
+    |> then(fn snapshot ->
+      {:ok, portable} = SnapshotObjectFormat.portable_project(snapshot)
+      portable
+    end)
+    |> Map.put("asset_catalog_refs", snapshot_asset_catalog_refs(project.id))
+  end
+
+  defp active_canonical_snapshot(project) do
+    {:ok, snapshot} =
+      Repo.repeatable_read(fn ->
+        ProjectSnapshotBuilder.build_snapshot_in_transaction(project.id,
+          localization_scope: :active
+        )
+      end)
+
+    snapshot
+    |> Jason.encode!()
+    |> Jason.decode!()
+    |> then(fn normalized ->
+      {:ok, portable} = SnapshotObjectFormat.portable_project(normalized)
+      portable
+    end)
+    |> Map.put("asset_catalog_refs", snapshot_asset_catalog_refs(project.id))
+  end
+
+  defp snapshot_asset_catalog_refs(project_id) do
+    project_id
+    |> Assets.list_assets_for_export()
+    |> Enum.sort_by(&{&1.inserted_at, &1.id})
+    |> Enum.with_index(1)
+    |> Map.new(fn {asset, index} ->
+      {to_string(asset.id), "asset-#{index |> Integer.to_string() |> String.pad_leading(6, "0")}"}
+    end)
+  end
+
+  defp project_identity(project) do
+    project
+    |> Repo.reload!()
+    |> Map.take([
+      :id,
+      :name,
+      :slug,
+      :description,
+      :project_type,
+      :project_subtype,
+      :project_type_other,
+      :settings,
+      :auto_version_flows,
+      :auto_version_scenes,
+      :auto_version_sheets,
+      :deleted_at,
+      :deleted_by_id,
+      :created_from_template_version_id,
+      :owner_id,
+      :workspace_id
+    ])
+  end
+
+  defp materialize_snapshot_into_project(project, snapshot_data, user_id, source_id_map) do
+    Repo.transaction(fn ->
+      locked_project =
+        Repo.one!(
+          from(candidate in Project,
+            where: candidate.id == ^project.id and is_nil(candidate.deleted_at),
+            lock: "FOR UPDATE"
+          )
+        )
+
+      with {:ok, actor_ids} <-
+             ProjectRecovery.lock_materializable_localization_actors(snapshot_data,
+               required_actor_ids: [user_id]
+             ),
+           {:ok, %{project: materialized_project}} <-
+             ProjectRecovery.materialize_into_project(
+               locked_project,
+               snapshot_data,
+               user_id,
+               source_id_map,
+               localization_scope: :active,
+               preserved_localization_actor_ids: actor_ids
+             ) do
+        materialized_project
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp project_membership_state(project_id) do
+    project_id
+    |> Storyarn.Projects.list_project_members()
+    |> Enum.map(&{&1.user_id, &1.role})
+    |> Enum.sort()
+  end
+
+  defp materialized_graph_counts(project_id) do
+    %{
+      sheets: length(Storyarn.Sheets.list_all_sheets(project_id)),
+      scenes: length(Storyarn.Scenes.list_scenes(project_id)),
+      flows: length(Storyarn.Flows.list_flows(project_id))
+    }
   end
 end

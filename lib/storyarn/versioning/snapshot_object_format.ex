@@ -20,6 +20,8 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   @project_path "project.json"
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
   @logical_id_regex ~r/\Aasset-[0-9]{6}\z/
+  @source_ref_regex ~r/\A[1-9][0-9]*\z/
+  @max_pg_bigint 9_223_372_036_854_775_807
   @safe_profile_regex ~r/\A[a-z0-9][a-z0-9_-]{0,63}\z/
   @allowed_content_types Asset.allowed_content_types() ++ ["image/svg+xml"]
   @relationship_metadata_keys ~w(original_asset_id web_asset_id variant_asset_ids)
@@ -51,6 +53,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   @type catalog_result :: %{
           assets: [map()],
           blobs: [map()],
+          source_refs: %{String.t() => String.t()},
           source_keys: %{String.t() => String.t()}
         }
 
@@ -86,7 +89,8 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   @doc false
   @spec validate_project(term()) :: :ok | {:error, term()}
   def validate_project(%{"format_version" => @project_format_version} = project) do
-    with :ok <- validate_json_value(project) do
+    with :ok <- validate_json_value(project),
+         :ok <- validate_project_source_refs(project) do
       reject_storage_metadata(project)
     end
   end
@@ -122,6 +126,22 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   end
 
   def build_catalog(_assets, _opts), do: {:error, :invalid_asset_collection}
+
+  @doc false
+  @spec validate_source_refs(term(), term()) :: :ok | {:error, term()}
+  def validate_source_refs(source_refs, assets) when is_map(source_refs) and is_list(assets) do
+    with :ok <- validate_source_ref_shape(source_refs),
+         {:ok, catalog_ids} <- catalog_logical_ids(assets),
+         true <- map_size(source_refs) == MapSet.size(catalog_ids),
+         true <- MapSet.new(Map.values(source_refs)) == catalog_ids do
+      :ok
+    else
+      false -> {:error, :asset_source_refs_mismatch}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  def validate_source_refs(_source_refs, _assets), do: {:error, :invalid_asset_source_refs}
 
   @doc """
   Builds a manifest whose object inventory is independent from current storage.
@@ -232,12 +252,12 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   end
 
   defp build_catalog_entries(logical_assets, limits, project_id, source_key_mode) do
-    logical_ids = Map.new(logical_assets, fn {%Asset{id: id}, logical_id} -> {to_string(id), logical_id} end)
+    source_refs = Map.new(logical_assets, fn {%Asset{id: id}, logical_id} -> {to_string(id), logical_id} end)
 
     logical_assets
     |> Enum.reduce_while({:ok, [], %{}, %{}}, fn {asset, logical_id}, {:ok, entries, blobs, sources} ->
       with {:ok, entry, blob, source_key} <-
-             catalog_entry(asset, logical_id, logical_ids, limits, project_id, source_key_mode),
+             catalog_entry(asset, logical_id, source_refs, limits, project_id, source_key_mode),
            {:ok, blobs} <- put_blob(blobs, blob),
            {:ok, sources} <- put_source(sources, blob["sha256"], source_key) do
         {:cont, {:ok, [entry | entries], blobs, sources}}
@@ -247,12 +267,17 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     end)
     |> case do
       {:ok, entries, blobs, sources} ->
-        {:ok,
-         %{
-           assets: Enum.reverse(entries),
-           blobs: blobs |> Map.values() |> Enum.sort_by(& &1["path"]),
-           source_keys: sources
-         }}
+        entries = Enum.reverse(entries)
+
+        with :ok <- validate_source_refs(source_refs, entries) do
+          {:ok,
+           %{
+             assets: entries,
+             blobs: blobs |> Map.values() |> Enum.sort_by(& &1["path"]),
+             source_refs: source_refs,
+             source_keys: sources
+           }}
+        end
 
       {:error, _reason} = error ->
         error
@@ -605,6 +630,49 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
       duplicates != [] -> {:error, {:duplicate_asset_ids, duplicates}}
       true -> :ok
     end
+  end
+
+  defp validate_project_source_refs(project) do
+    case Map.fetch(project, "asset_catalog_refs") do
+      :error -> :ok
+      {:ok, source_refs} -> validate_source_ref_shape(source_refs)
+    end
+  end
+
+  defp validate_source_ref_shape(source_refs) when is_map(source_refs) do
+    if Enum.all?(source_refs, fn {source_ref, logical_id} ->
+         valid_source_ref?(source_ref) and valid_logical_id?(logical_id)
+       end) and MapSet.size(MapSet.new(Map.values(source_refs))) == map_size(source_refs) do
+      :ok
+    else
+      {:error, :invalid_asset_source_refs}
+    end
+  end
+
+  defp validate_source_ref_shape(_source_refs), do: {:error, :invalid_asset_source_refs}
+
+  defp valid_source_ref?(source_ref) when is_binary(source_ref) do
+    Regex.match?(@source_ref_regex, source_ref) and
+      case Integer.parse(source_ref) do
+        {id, ""} -> id <= @max_pg_bigint
+        _invalid -> false
+      end
+  end
+
+  defp valid_source_ref?(_source_ref), do: false
+
+  defp catalog_logical_ids(assets) do
+    Enum.reduce_while(assets, {:ok, MapSet.new()}, fn
+      %{"logical_id" => logical_id}, {:ok, logical_ids} ->
+        if valid_logical_id?(logical_id) and not MapSet.member?(logical_ids, logical_id) do
+          {:cont, {:ok, MapSet.put(logical_ids, logical_id)}}
+        else
+          {:halt, {:error, :invalid_asset_catalog_for_source_refs}}
+        end
+
+      _asset, _acc ->
+        {:halt, {:error, :invalid_asset_catalog_for_source_refs}}
+    end)
   end
 
   defp protected_source_key(%Asset{blob_hash: hash, content_type: content_type}, project_id) do

@@ -9,6 +9,7 @@ import {
   Image,
   LoaderCircle,
   Plus,
+  RotateCcw,
   ShieldCheck,
   Trash2,
   X,
@@ -74,8 +75,25 @@ interface Snapshot {
   cancelRequestedAt: string | null;
   canCancel: boolean;
   canDelete: boolean;
-  deleteStatus: "ready" | "download_lease" | "active_operation" | null;
+  deleteStatus: "ready" | "download_lease" | "active_operation" | "restore_operation" | null;
+  canRestore: boolean;
+  restoreOperation: RestoreOperation | null;
   downloadUrl: string | null;
+}
+
+type RestoreStatus = "queued" | "running" | "retrying" | "completed" | "failed";
+
+interface RestoreOperation {
+  id: number;
+  status: RestoreStatus;
+  phase: string;
+  attempt: number;
+  requestedAt: string | null;
+  stateUpdatedAt: string | null;
+  completedAt: string | null;
+  failedAt: string | null;
+  failureCode: string | null;
+  failureMessage: string | null;
 }
 
 interface SnapshotLimit {
@@ -87,10 +105,12 @@ const {
   snapshots = [],
   storageUsage,
   snapshotLimit,
+  restoreOperationActive = false,
 } = defineProps<{
   snapshots?: Snapshot[];
   storageUsage: WorkspaceStorageUsage;
   snapshotLimit: SnapshotLimit;
+  restoreOperationActive?: boolean;
 }>();
 
 const { locale, t } = useI18n();
@@ -104,12 +124,23 @@ const cancellingSnapshotIds = ref(new Set<number>());
 const deletingSnapshotIds = ref(new Set<number>());
 const snapshotToDelete = ref<Snapshot | null>(null);
 const deleteError = ref<string | null>(null);
+const restoringSnapshotIds = ref(new Set<number>());
+const snapshotToRestore = ref<Snapshot | null>(null);
+const restoreRequestError = ref<string | null>(null);
+const requestIdempotencyKeyForRestore = ref(newIdempotencyKey());
 const deleteDialogOpen = computed({
   get: () => snapshotToDelete.value !== null,
   set: (open: boolean) => {
     if (!open) snapshotToDelete.value = null;
   },
 });
+const restoreDialogOpen = computed({
+  get: () => snapshotToRestore.value !== null,
+  set: (open: boolean) => {
+    if (!open) snapshotToRestore.value = null;
+  },
+});
+const restoreBusy = computed(() => restoreOperationActive || restoringSnapshotIds.value.size > 0);
 const snapshotLimitReached = computed(
   () => snapshotLimit.limit !== null && snapshotLimit.used >= snapshotLimit.limit,
 );
@@ -155,10 +186,23 @@ const serverEventRefs = [
   }),
   live.handleEvent("snapshot_delete_failed", (payload) => {
     clearDeletingSnapshot(payload.snapshotId);
-    deleteError.value =
-      typeof payload.message === "string"
-        ? payload.message
-        : t("project_settings.snapshots.delete.failed");
+    if (payload.reason === "restore_operation") {
+      deleteError.value = t("project_settings.snapshots.delete.restore_operation");
+    } else {
+      deleteError.value =
+        typeof payload.message === "string"
+          ? payload.message
+          : t("project_settings.snapshots.delete.failed");
+    }
+  }),
+  live.handleEvent("snapshot_restore_accepted", (payload) => {
+    clearRestoringSnapshot(payload.snapshotId);
+    requestIdempotencyKeyForRestore.value = newIdempotencyKey();
+    restoreRequestError.value = null;
+  }),
+  live.handleEvent("snapshot_restore_failed", (payload) => {
+    clearRestoringSnapshot(payload.snapshotId);
+    restoreRequestError.value = snapshotRestoreRequestError(payload);
   }),
 ];
 
@@ -222,14 +266,21 @@ function clearCancellingSnapshot(snapshotId: unknown) {
 }
 
 function openDeleteDialog(snapshot: Snapshot) {
-  if (!snapshot.canDelete || deletingSnapshotIds.value.has(snapshot.id)) return;
+  if (restoreBusy.value || !snapshot.canDelete || deletingSnapshotIds.value.has(snapshot.id))
+    return;
   deleteError.value = null;
   snapshotToDelete.value = snapshot;
 }
 
 function deleteSnapshot() {
   const snapshot = snapshotToDelete.value;
-  if (!snapshot || !snapshot.canDelete || deletingSnapshotIds.value.has(snapshot.id)) return;
+  if (
+    !snapshot ||
+    restoreBusy.value ||
+    !snapshot.canDelete ||
+    deletingSnapshotIds.value.has(snapshot.id)
+  )
+    return;
 
   snapshotToDelete.value = null;
   deletingSnapshotIds.value = new Set(deletingSnapshotIds.value).add(snapshot.id);
@@ -256,6 +307,67 @@ function deleteDialogDescription(snapshot: Snapshot | null) {
     name: snapshot.title || t("project_settings.snapshots.untitled"),
     version: formatCount(snapshot.versionNumber),
   });
+}
+
+function openRestoreDialog(snapshot: Snapshot) {
+  if (!snapshot.canRestore || restoreBusy.value) return;
+  restoreRequestError.value = null;
+  snapshotToRestore.value = snapshot;
+}
+
+function restoreSnapshot() {
+  const snapshot = snapshotToRestore.value;
+  if (!snapshot || !snapshot.canRestore || restoreBusy.value) return;
+
+  snapshotToRestore.value = null;
+  restoringSnapshotIds.value = new Set(restoringSnapshotIds.value).add(snapshot.id);
+
+  live.pushEvent(
+    "restore_snapshot",
+    {
+      id: snapshot.id,
+      idempotency_key: requestIdempotencyKeyForRestore.value,
+    },
+    undefined,
+    () => {
+      clearRestoringSnapshot(snapshot.id);
+      restoreRequestError.value = t("project_settings.snapshots.restore.connection_failed");
+    },
+  );
+}
+
+function clearRestoringSnapshot(snapshotId: unknown) {
+  const normalizedId = typeof snapshotId === "number" ? snapshotId : Number(snapshotId);
+  if (!Number.isInteger(normalizedId)) return;
+
+  const next = new Set(restoringSnapshotIds.value);
+  next.delete(normalizedId);
+  restoringSnapshotIds.value = next;
+}
+
+function restoreDialogDescription(snapshot: Snapshot | null) {
+  if (!snapshot) return "";
+
+  return t("project_settings.snapshots.restore.description", {
+    name: snapshot.title || t("project_settings.snapshots.untitled"),
+    version: formatCount(snapshot.versionNumber),
+  });
+}
+
+function snapshotRestoreRequestError(payload: Record<string, unknown>) {
+  const reasons: Record<string, string> = {
+    restore_temporarily_disabled: "disabled",
+    project_snapshot_not_restorable: "not_restorable",
+    project_snapshot_restore_in_progress: "in_progress",
+    project_snapshot_restore_idempotency_conflict: "request_conflict",
+    project_snapshot_not_found: "not_found",
+    unauthorized: "unauthorized",
+    invalid_project_snapshot_restore_request: "invalid_request",
+    invalid_request: "invalid_request",
+  };
+
+  const reason = typeof payload.reason === "string" ? reasons[payload.reason] : undefined;
+  return t(`project_settings.snapshots.restore.${reason ?? "request_failed"}`);
 }
 
 function snapshotRequestError(payload: Record<string, unknown>) {
@@ -407,6 +519,24 @@ function integrityVariant(status: SnapshotIntegrity | null): BadgeVariant {
   if (status === "unknown") return "secondary";
   if (!status) return "secondary";
   return "destructive";
+}
+
+function restoreStatusLabel(status: RestoreStatus) {
+  return t(`project_settings.snapshots.restore.status.${status}`);
+}
+
+function restorePhaseLabel(phase: string) {
+  return t(`project_settings.snapshots.restore.phase.${phase}`);
+}
+
+function restoreStatusVariant(status: RestoreStatus): BadgeVariant {
+  if (status === "failed") return "destructive";
+  if (status === "completed") return "default";
+  return "secondary";
+}
+
+function restoreOperationIsActive(operation: RestoreOperation) {
+  return ["queued", "running", "retrying"].includes(operation.status);
 }
 
 function formatCount(value: number | null) {
@@ -668,6 +798,15 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
         {{ deleteError }}
       </p>
 
+      <p
+        v-if="restoreRequestError"
+        role="alert"
+        class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        data-testid="snapshot-restore-error"
+      >
+        {{ restoreRequestError }}
+      </p>
+
       <!-- Empty state -->
       <div v-if="snapshots.length === 0" class="text-center py-12">
         <Archive class="size-12 mx-auto mb-4 text-muted-foreground/30" />
@@ -794,6 +933,51 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
               >
                 {{ snapshot.failureMessage }}
               </p>
+              <div
+                v-if="snapshot.restoreOperation"
+                class="mt-3 rounded-lg border border-border/70 bg-background/70 p-3"
+                :data-testid="`snapshot-restore-operation-${snapshot.id}`"
+              >
+                <div class="flex flex-wrap items-center gap-2">
+                  <LoaderCircle
+                    v-if="restoreOperationIsActive(snapshot.restoreOperation)"
+                    class="size-3.5 animate-spin text-primary"
+                    aria-hidden="true"
+                  />
+                  <RotateCcw v-else class="size-3.5 text-muted-foreground" aria-hidden="true" />
+                  <span class="text-xs font-medium">
+                    {{ $t("project_settings.snapshots.restore.operation") }}
+                  </span>
+                  <Badge
+                    :variant="restoreStatusVariant(snapshot.restoreOperation.status)"
+                    class="text-xs"
+                  >
+                    {{ restoreStatusLabel(snapshot.restoreOperation.status) }}
+                  </Badge>
+                  <span class="text-xs text-muted-foreground">
+                    {{ restorePhaseLabel(snapshot.restoreOperation.phase) }}
+                  </span>
+                </div>
+                <p
+                  v-if="
+                    snapshot.restoreOperation.status === 'failed' &&
+                    snapshot.restoreOperation.failureMessage
+                  "
+                  role="status"
+                  class="mt-2 text-xs text-destructive"
+                >
+                  {{ snapshot.restoreOperation.failureMessage }}
+                </p>
+                <p v-else class="mt-2 text-xs text-muted-foreground">
+                  {{
+                    $t(
+                      snapshot.restoreOperation.status === "completed"
+                        ? "project_settings.snapshots.restore.completed_note"
+                        : "project_settings.snapshots.restore.durable_note",
+                    )
+                  }}
+                </p>
+              </div>
               <div class="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground/60">
                 <span v-if="snapshot.createdByEmail">
                   {{ snapshot.createdByEmail }}
@@ -916,7 +1100,50 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                 </a>
               </Button>
               <p
-                v-if="snapshot.deleteStatus === 'download_lease'"
+                v-if="snapshot.canRestore && restoreBusy"
+                :id="`restore-snapshot-reason-${snapshot.id}`"
+                class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
+                :data-testid="`restore-active-operation-${snapshot.id}`"
+              >
+                {{ $t("project_settings.snapshots.restore.active_operation") }}
+              </p>
+              <Button
+                v-if="snapshot.canRestore"
+                type="button"
+                variant="outline"
+                size="sm"
+                :disabled="restoreBusy"
+                :aria-describedby="
+                  restoreBusy ? `restore-snapshot-reason-${snapshot.id}` : undefined
+                "
+                :data-testid="`restore-snapshot-${snapshot.id}`"
+                @click="openRestoreDialog(snapshot)"
+              >
+                <LoaderCircle
+                  v-if="restoringSnapshotIds.has(snapshot.id)"
+                  class="size-4 animate-spin"
+                  aria-hidden="true"
+                />
+                <RotateCcw v-else class="size-4" aria-hidden="true" />
+                {{
+                  restoringSnapshotIds.has(snapshot.id)
+                    ? $t("project_settings.snapshots.restore.submitting")
+                    : $t("project_settings.snapshots.restore.action")
+                }}
+              </Button>
+              <p
+                v-if="
+                  (restoreBusy && snapshot.deleteStatus !== null) ||
+                  snapshot.deleteStatus === 'restore_operation'
+                "
+                :id="`delete-snapshot-reason-${snapshot.id}`"
+                class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
+                :data-testid="`delete-restore-operation-${snapshot.id}`"
+              >
+                {{ $t("project_settings.snapshots.delete.restore_operation") }}
+              </p>
+              <p
+                v-else-if="snapshot.deleteStatus === 'download_lease'"
                 :id="`delete-snapshot-reason-${snapshot.id}`"
                 class="max-w-56 text-xs leading-relaxed text-muted-foreground lg:text-right"
                 :data-testid="`delete-download-lease-${snapshot.id}`"
@@ -937,9 +1164,13 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                 variant="ghost"
                 size="sm"
                 class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                :disabled="!snapshot.canDelete || deletingSnapshotIds.has(snapshot.id)"
+                :disabled="
+                  restoreBusy || !snapshot.canDelete || deletingSnapshotIds.has(snapshot.id)
+                "
                 :aria-describedby="
-                  snapshot.canDelete ? undefined : `delete-snapshot-reason-${snapshot.id}`
+                  snapshot.canDelete && !restoreBusy
+                    ? undefined
+                    : `delete-snapshot-reason-${snapshot.id}`
                 "
                 :data-testid="`delete-snapshot-${snapshot.id}`"
                 @click="openDeleteDialog(snapshot)"
@@ -967,6 +1198,17 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
       variant="destructive"
       :icon="Trash2"
       @confirm="deleteSnapshot"
+    />
+
+    <ConfirmDialog
+      v-model:open="restoreDialogOpen"
+      :title="$t('project_settings.snapshots.restore.title')"
+      :description="restoreDialogDescription(snapshotToRestore)"
+      :confirm-text="$t('project_settings.snapshots.restore.confirm')"
+      :cancel-text="$t('project_settings.snapshots.restore.cancel')"
+      variant="destructive"
+      :icon="RotateCcw"
+      @confirm="restoreSnapshot"
     />
   </div>
 </template>

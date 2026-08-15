@@ -1,7 +1,7 @@
 defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
   @moduledoc """
-  Revalidates and deletes expired system snapshots and abandoned builds in
-  bounded keyset batches.
+  Revalidates and deletes expired system snapshots and abandoned builds, and
+  terminalizes abandoned restore deliveries, in bounded keyset batches.
 
   Candidate selection is advisory. Every destructive decision is repeated
   under the workspace, project, and snapshot locks by the lifecycle context.
@@ -45,6 +45,20 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     expired_build_after_id = Map.get(args, "expired_build_after_id", 0)
     through_id = Map.get(args, "through_id") || Versioning.project_snapshot_lifecycle_high_watermark()
 
+    restore_recovery_after_id =
+      normalize_after_id(Map.get(args, "restore_recovery_after_id", 0))
+
+    restore_recovery_through_id =
+      Map.get(args, "restore_recovery_through_id") ||
+        Versioning.project_snapshot_restore_delivery_recovery_high_watermark()
+
+    abandoned_restores =
+      Versioning.list_abandoned_project_snapshot_restore_deliveries(
+        after_id: restore_recovery_after_id,
+        through_id: restore_recovery_through_id,
+        limit: @batch_size
+      )
+
     expired_builds =
       Versioning.list_expired_project_snapshot_build_candidates(now,
         after_id: expired_build_after_id,
@@ -73,9 +87,13 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
         :retention_candidate_changed
       )
 
+    {abandoned_restore_count, abandoned_restore_failure_count} =
+      process_abandoned_restore_candidates(abandoned_restores)
+
     failure_count =
       failure_count + expired_build_failure_count + build_recovery.failure_count +
-        export_lease_recovery.failure_count + export_lease_purge.failure_count
+        export_lease_recovery.failure_count + export_lease_purge.failure_count +
+        abandoned_restore_failure_count
 
     continuation = %{
       candidates: candidates,
@@ -83,6 +101,9 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
       retention_after_id: retention_after_id,
       expired_build_after_id: expired_build_after_id,
       through_id: through_id,
+      abandoned_restores: abandoned_restores,
+      restore_recovery_after_id: restore_recovery_after_id,
+      restore_recovery_through_id: restore_recovery_through_id,
       export_lease_recovery: export_lease_recovery,
       export_lease_after_id: export_lease_after_id,
       export_lease_cutoff: export_lease_cutoff,
@@ -112,6 +133,7 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
         purged_export_lease_changed_count: export_lease_purge.changed_count,
         orphaned_build_count: build_recovery.orphaned_count,
         settled_build_count: build_recovery.settled_count,
+        abandoned_restore_count: abandoned_restore_count,
         failure_count: failure_count,
         continuation_count: continuation_count
       },
@@ -130,6 +152,17 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
         {:ok, _intent} -> {deleted + 1, failed}
         {:error, ^changed_reason} -> {deleted, failed}
         {:error, _reason} -> {deleted, failed + 1}
+      end
+    end)
+  end
+
+  defp process_abandoned_restore_candidates(candidates) do
+    Enum.reduce(candidates, {0, 0}, fn candidate, {recovered, failed} ->
+      case Versioning.recover_abandoned_project_snapshot_restore_delivery(candidate) do
+        {:ok, :recovered} -> {recovered + 1, failed}
+        {:ok, :stale} -> {recovered, failed}
+        {:error, :project_snapshot_restore_delivery_busy} -> {recovered, failed}
+        {:error, _reason} -> {recovered, failed + 1}
       end
     end)
   end
@@ -179,6 +212,11 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     %{
       retention_after_id: next_after_id(continuation.candidates, continuation.retention_after_id),
       expired_build_after_id: next_after_id(continuation.expired_builds, continuation.expired_build_after_id),
+      restore_recovery_after_id:
+        next_restore_after_id(
+          continuation.abandoned_restores,
+          continuation.restore_recovery_after_id
+        ),
       export_lease_after_id: recovery.last_candidate_id || continuation.export_lease_after_id,
       continue_export_leases?: recovery.candidate_count == @batch_size and is_integer(recovery.last_candidate_id),
       export_lease_purge_after_id: purge.last_candidate_id || continuation.export_lease_purge_after_id,
@@ -196,6 +234,11 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
         continuation.expired_builds,
         cursor.expired_build_after_id,
         continuation.through_id
+      ) or
+      stream_remaining?(
+        continuation.abandoned_restores,
+        cursor.restore_recovery_after_id,
+        continuation.restore_recovery_through_id
       ) or cursor.continue_export_leases? or cursor.continue_export_lease_purge?
   end
 
@@ -206,7 +249,9 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     %{
       retention_after_id: cursor.retention_after_id,
       expired_build_after_id: cursor.expired_build_after_id,
-      through_id: continuation.through_id
+      through_id: continuation.through_id,
+      restore_recovery_after_id: cursor.restore_recovery_after_id,
+      restore_recovery_through_id: continuation.restore_recovery_through_id
     }
     |> maybe_put_export_lease_cursor(
       cursor.continue_export_leases?,
@@ -232,6 +277,12 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
 
   defp next_after_id([], current_after_id), do: current_after_id
   defp next_after_id(candidates, _current_after_id), do: List.last(candidates).snapshot_id
+
+  defp next_restore_after_id([], current_after_id), do: current_after_id
+  defp next_restore_after_id(candidates, _current_after_id), do: List.last(candidates).restore_id
+
+  defp normalize_after_id(after_id) when is_integer(after_id) and after_id >= 0, do: after_id
+  defp normalize_after_id(_after_id), do: 0
 
   defp export_lease_cursor(args, now) do
     after_id = Map.get(args, "export_lease_after_id", Map.get(args, :export_lease_after_id, 0))

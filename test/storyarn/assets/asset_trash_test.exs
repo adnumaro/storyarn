@@ -5,6 +5,7 @@ defmodule Storyarn.Assets.AssetTrashTest do
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
@@ -15,7 +16,9 @@ defmodule Storyarn.Assets.AssetTrashTest do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Billing
   alias Storyarn.Flows.EntityTrashRef
+  alias Storyarn.Localization
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
 
@@ -92,6 +95,40 @@ defmodule Storyarn.Assets.AssetTrashTest do
 
     assert Repo.get!(Asset, asset.id).deleted_at
     assert Repo.reload!(sheet).banner_asset_id == asset.id
+  end
+
+  test "archived localization lets exact restore trash its voice asset but still blocks purge", %{
+    project: project,
+    user: user
+  } do
+    asset = audio_asset_fixture(project, user)
+    text = localized_text_fixture(project.id)
+
+    assert {:ok, text} =
+             Localization.update_text(text, %{
+               vo_asset_id: asset.id,
+               vo_status: "recorded"
+             })
+
+    assert {:error, :asset_still_referenced} =
+             Assets.move_asset_to_trash(project.id, asset.id, user.id)
+
+    text
+    |> Ecto.Changeset.change(
+      archived_at: TimeHelpers.now(),
+      archive_reason: "version_replaced"
+    )
+    |> Repo.update!()
+
+    assert {:ok, trashed} = Assets.move_asset_to_trash(project.id, asset.id, user.id)
+
+    assert {:error, :asset_still_referenced} =
+             Assets.purge_trashed_asset(
+               project.id,
+               asset.id,
+               trashed.deletion_generation,
+               user.id
+             )
   end
 
   test "legacy entity-trash reference types remain purge authority", %{

@@ -24,6 +24,7 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.ProjectSnapshotLifecycle
   alias Storyarn.Versioning.ProjectSnapshotReconciliation
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRepair
+  alias Storyarn.Versioning.ProjectSnapshotRestoreLifecycle
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotDiff
   alias Storyarn.Versioning.SnapshotViewer
@@ -157,6 +158,86 @@ defmodule Storyarn.Versioning do
   defdelegate perform_project_snapshot_build(snapshot_id, opts),
     to: ProjectSnapshotBuild,
     as: :perform
+
+  @doc "Requests one durable exact restore from a canonical full project snapshot."
+  defdelegate request_project_snapshot_restore(current_scope, project, snapshot, attrs),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :request
+
+  @doc "Returns whether exact full-project snapshot restore is enabled."
+  def project_snapshot_restore_enabled? do
+    RestorePolicy.enabled?({:project_snapshot_restore, "full"})
+  end
+
+  @doc "Returns one durable project-snapshot restore operation."
+  defdelegate get_project_snapshot_restore(restore_id),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :get
+
+  @doc "Lists recent exact-restore operations for one project."
+  defdelegate list_project_snapshot_restores(project_id, opts \\ []),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :list_for_project
+
+  @doc "Subscribes the current process to exact-restore lifecycle changes for a project."
+  defdelegate subscribe_project_snapshot_restores(project_id),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :subscribe
+
+  @doc false
+  defdelegate perform_project_snapshot_restore(restore_id, generation, opts),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :perform
+
+  @doc false
+  defdelegate claim_project_snapshot_restore(restore_id, generation, opts),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :claim
+
+  @doc false
+  defdelegate complete_project_snapshot_restore(restore_id, generation, result),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :complete
+
+  @doc false
+  defdelegate fail_project_snapshot_restore(restore_id, generation, reason),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :fail
+
+  @doc false
+  defdelegate advance_project_snapshot_restore_phase(restore_id, generation, phase),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :advance_phase
+
+  @doc false
+  defdelegate bind_project_snapshot_restore_reservation(restore_id, generation, reservation),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :bind_reservation
+
+  @doc false
+  defdelegate reserve_and_bind_project_snapshot_restore(restore_id, generation, reservation_attrs, opts \\ []),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :reserve_and_bind
+
+  @doc false
+  defdelegate project_snapshot_restore_delivery_recovery_high_watermark(),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :delivery_recovery_high_watermark
+
+  @doc false
+  defdelegate project_snapshot_restore_delivery_recovery_quarantine_seconds(),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :delivery_recovery_quarantine_seconds
+
+  @doc false
+  defdelegate list_abandoned_project_snapshot_restore_deliveries(opts \\ []),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :list_abandoned_delivery_candidates
+
+  @doc false
+  defdelegate recover_abandoned_project_snapshot_restore_delivery(candidate, opts \\ []),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :recover_abandoned_delivery
 
   @doc false
   defdelegate heartbeat_project_snapshot_build(snapshot_id, job_id),

@@ -67,6 +67,17 @@ defmodule Storyarn.Billing do
     to: StorageAccounting,
     as: :commit
 
+  @doc false
+  defdelegate commit_project_snapshot_restore_reservation(
+                reservation_id,
+                lease_token,
+                expected_generation,
+                actual_bytes,
+                prelock_fun,
+                owner_fun
+              ),
+              to: StorageAccounting
+
   defdelegate release_storage_reservation(reservation_id, lease_token, expected_generation, attrs),
     to: StorageAccounting,
     as: :release

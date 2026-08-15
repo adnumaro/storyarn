@@ -4,6 +4,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   alias Ecto.Multi
@@ -13,6 +14,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias Storyarn.Sheets.ReferenceTracker
+  alias Storyarn.Sheets.Sheet
 
   @max_pg_bigint 9_223_372_036_854_775_807
 
@@ -705,6 +707,50 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   describe "update_scene_zone_references/1" do
     test "returns :ok for non-matching input" do
       assert :ok == ReferenceTracker.update_scene_zone_references("not a map")
+    end
+
+    test "resolves shortcutless sheet namespaces in display and assignment actions" do
+      %{project: project} = setup_project()
+      target_sheet = sheet_fixture(project, %{name: "Shortcutless target"})
+      Repo.update_all(from(sheet in Sheet, where: sheet.id == ^target_sheet.id), set: [shortcut: nil])
+
+      namespace = Integer.to_string(target_sheet.id)
+      scene = scene_fixture(project)
+
+      zones = [
+        zone_fixture(scene, %{
+          "action_type" => "display",
+          "action_data" => %{"variable_ref" => "#{namespace}.hp"}
+        }),
+        zone_fixture(scene, %{
+          "action_type" => "action",
+          "action_data" => %{
+            "assignments" => [
+              %{
+                "sheet" => namespace,
+                "variable" => "hp",
+                "operator" => "set",
+                "value_type" => "literal",
+                "value" => "1"
+              }
+            ]
+          }
+        })
+      ]
+
+      for zone <- zones do
+        assert {:ok, :ok} =
+                 Repo.transaction(fn ->
+                   ReferenceTracker.update_scene_zone_references(zone,
+                     project_id: project.id
+                   )
+                 end)
+
+        assert Enum.any?(
+                 ReferenceTracker.get_backlinks("sheet", target_sheet.id),
+                 &(&1.source_type == "scene_zone" and &1.source_id == zone.id)
+               )
+      end
     end
   end
 

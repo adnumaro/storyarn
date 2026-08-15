@@ -22,6 +22,9 @@ defmodule Storyarn.Sheets.SheetQueries do
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
   alias Storyarn.Sheets.VariableCatalog
+  alias Storyarn.Sheets.VariableNamespaceResolver
+
+  require VariableNamespaceResolver
 
   # =============================================================================
   # Tree Operations
@@ -466,7 +469,8 @@ defmodule Storyarn.Sheets.SheetQueries do
           b.type in ^variable_types and
           b.is_constant == false and
           not is_nil(b.variable_name) and
-          b.variable_name != "",
+          b.variable_name != "" and
+          VariableNamespaceResolver.authoritative_namespace_owner?(s),
       select: %{
         sheet_id: s.id,
         sheet_name: s.name,
@@ -502,6 +506,7 @@ defmodule Storyarn.Sheets.SheetQueries do
           where: b.type == "table",
           where: tc.type in ^variable_column_types,
           where: tc.is_constant == false or tc.type == "formula",
+          where: VariableNamespaceResolver.authoritative_namespace_owner?(s),
           select: %{
             sheet_id: s.id,
             sheet_name: s.name,
@@ -642,16 +647,18 @@ defmodule Storyarn.Sheets.SheetQueries do
   defp do_resolve_simple(_project_id, []), do: %{}
 
   defp do_resolve_simple(project_id, pairs) do
-    shortcuts = pairs |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+    namespaces = pairs |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+    namespace_ids = VariableNamespaceResolver.resolve_sheet_ids(project_id, namespaces)
+    namespace_by_id = Map.new(namespace_ids, fn {namespace, id} -> {id, namespace} end)
     pair_set = MapSet.new(pairs)
 
     project_id
-    |> query_simple_blocks(shortcuts)
+    |> query_simple_blocks(Map.keys(namespace_by_id))
     |> Repo.all()
-    |> build_simple_results(pair_set)
+    |> build_simple_results(pair_set, namespace_by_id)
   end
 
-  defp query_simple_blocks(project_id, shortcuts) do
+  defp query_simple_blocks(project_id, sheet_ids) do
     from(b in Block,
       join: s in Sheet,
       on: b.sheet_id == s.id,
@@ -661,19 +668,21 @@ defmodule Storyarn.Sheets.SheetQueries do
           is_nil(b.deleted_at) and
           not is_nil(b.variable_name) and
           b.variable_name != "" and
-          coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)) in ^shortcuts,
+          s.id in ^sheet_ids,
       select: %{
-        shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
+        sheet_id: s.id,
         variable_name: b.variable_name,
         value: b.value
       }
     )
   end
 
-  defp build_simple_results(rows, pair_set) do
+  defp build_simple_results(rows, pair_set, namespace_by_id) do
     Enum.reduce(rows, %{}, fn row, acc ->
-      if MapSet.member?(pair_set, {row.shortcut, row.variable_name}) do
-        Map.put(acc, "#{row.shortcut}.#{row.variable_name}", extract_block_value(row.value))
+      namespace = Map.fetch!(namespace_by_id, row.sheet_id)
+
+      if MapSet.member?(pair_set, {namespace, row.variable_name}) do
+        Map.put(acc, "#{namespace}.#{row.variable_name}", extract_block_value(row.value))
       else
         acc
       end
@@ -712,15 +721,17 @@ defmodule Storyarn.Sheets.SheetQueries do
   defp do_resolve_table(_project_id, []), do: %{}
 
   defp do_resolve_table(project_id, parsed) do
-    shortcuts = parsed |> Enum.map(& &1.shortcut) |> Enum.uniq()
-    rows = project_id |> query_table_rows(shortcuts) |> Repo.all()
+    namespaces = parsed |> Enum.map(& &1.shortcut) |> Enum.uniq()
+    namespace_ids = VariableNamespaceResolver.resolve_sheet_ids(project_id, namespaces)
+    namespace_by_id = Map.new(namespace_ids, fn {namespace, id} -> {id, namespace} end)
+    rows = project_id |> query_table_rows(Map.keys(namespace_by_id)) |> Repo.all()
 
     Enum.reduce(parsed, %{}, fn entry, acc ->
-      match_table_row(rows, entry, acc)
+      match_table_row(rows, entry, acc, namespace_by_id)
     end)
   end
 
-  defp query_table_rows(project_id, shortcuts) do
+  defp query_table_rows(project_id, sheet_ids) do
     from(tr in TableRow,
       join: b in Block,
       on: tr.block_id == b.id,
@@ -731,9 +742,9 @@ defmodule Storyarn.Sheets.SheetQueries do
           is_nil(s.deleted_at) and
           is_nil(b.deleted_at) and
           b.type == "table" and
-          coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)) in ^shortcuts,
+          s.id in ^sheet_ids,
       select: %{
-        shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
+        sheet_id: s.id,
         table_name: b.variable_name,
         row_slug: tr.slug,
         cells: tr.cells
@@ -741,16 +752,16 @@ defmodule Storyarn.Sheets.SheetQueries do
     )
   end
 
-  defp match_table_row(rows, entry, acc) do
-    case find_matching_row(rows, entry) do
+  defp match_table_row(rows, entry, acc, namespace_by_id) do
+    case find_matching_row(rows, entry, namespace_by_id) do
       nil -> acc
       row -> Map.put(acc, entry.ref, resolve_cell_value(row.cells, entry.col_slug))
     end
   end
 
-  defp find_matching_row(rows, entry) do
+  defp find_matching_row(rows, entry, namespace_by_id) do
     Enum.find(rows, fn r ->
-      r.shortcut == entry.shortcut and r.table_name == entry.table_name and
+      Map.fetch!(namespace_by_id, r.sheet_id) == entry.shortcut and r.table_name == entry.table_name and
         r.row_slug == entry.row_slug
     end)
   end
@@ -1207,30 +1218,31 @@ defmodule Storyarn.Sheets.SheetQueries do
           source_sheet: vr.source_sheet,
           source_variable: vr.source_variable,
           stale:
-            fragment(
-              """
-              CASE WHEN ? = 'table' THEN
-                ? != ? OR NOT EXISTS (
-                  SELECT 1 FROM table_rows tr
-                  JOIN table_columns tc ON tc.block_id = tr.block_id
-                  WHERE tr.block_id = ?
-                    AND ? = ? || '.' || tr.slug || '.' || tc.slug
-                )
-              ELSE
-                ? != ? OR ? != ?
-              END
-              """,
-              b.type,
-              vr.source_sheet,
-              s.shortcut,
-              b.id,
-              vr.source_variable,
-              b.variable_name,
-              vr.source_sheet,
-              s.shortcut,
-              vr.source_variable,
-              b.variable_name
-            )
+            not VariableNamespaceResolver.authoritative_namespace_owner?(s) or
+              fragment(
+                """
+                CASE WHEN ? = 'table' THEN
+                  ? != ? OR NOT EXISTS (
+                    SELECT 1 FROM table_rows tr
+                    JOIN table_columns tc ON tc.block_id = tr.block_id
+                    WHERE tr.block_id = ?
+                      AND ? = ? || '.' || tr.slug || '.' || tc.slug
+                  )
+                ELSE
+                  ? != ? OR ? != ?
+                END
+                """,
+                b.type,
+                vr.source_sheet,
+                fragment("COALESCE(?, CAST(? AS TEXT))", s.shortcut, s.id),
+                b.id,
+                vr.source_variable,
+                b.variable_name,
+                vr.source_sheet,
+                fragment("COALESCE(?, CAST(? AS TEXT))", s.shortcut, s.id),
+                vr.source_variable,
+                b.variable_name
+              )
         },
         order_by: [asc: vr.kind, asc: f.name]
       )
@@ -1257,13 +1269,14 @@ defmodule Storyarn.Sheets.SheetQueries do
         where: is_nil(f.deleted_at),
         where: is_nil(s.deleted_at),
         where: is_nil(b.deleted_at),
+        where: VariableNamespaceResolver.authoritative_namespace_owner?(s),
         select: %{
           node_id: n.id,
           node_type: n.type,
           node_data: n.data,
           kind: vr.kind,
           block_id: vr.block_id,
-          current_shortcut: s.shortcut,
+          current_shortcut: coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)),
           current_variable: b.variable_name,
           source_sheet: vr.source_sheet,
           source_variable: vr.source_variable
@@ -1337,7 +1350,10 @@ defmodule Storyarn.Sheets.SheetQueries do
         where: is_nil(s.deleted_at),
         where: is_nil(b.deleted_at),
         where: b.type != "table",
-        where: vr.source_sheet != s.shortcut or vr.source_variable != b.variable_name,
+        where:
+          not VariableNamespaceResolver.authoritative_namespace_owner?(s) or
+            vr.source_sheet != coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)) or
+            vr.source_variable != b.variable_name,
         distinct: true,
         select: {n.flow_id, n.id, vr.source_sheet, vr.source_variable}
       )
@@ -1377,7 +1393,10 @@ defmodule Storyarn.Sheets.SheetQueries do
         where: is_nil(s.deleted_at),
         where: is_nil(b.deleted_at),
         where: b.type == "table",
-        where: vr.source_sheet != s.shortcut or not exists(table_cell_exists),
+        where:
+          not VariableNamespaceResolver.authoritative_namespace_owner?(s) or
+            vr.source_sheet != coalesce(s.shortcut, fragment("CAST(? AS TEXT)", s.id)) or
+            not exists(table_cell_exists),
         distinct: true,
         select: {n.flow_id, n.id, vr.source_sheet, vr.source_variable}
       )
@@ -1423,21 +1442,26 @@ defmodule Storyarn.Sheets.SheetQueries do
   def resolve_block_id_by_variable(project_id, sheet_shortcut, variable_name) do
     variable_types = VariableCatalog.regular_variable_types()
 
-    Repo.one(
-      from(b in Block,
-        join: s in Sheet,
-        on: s.id == b.sheet_id,
-        where: s.project_id == ^project_id,
-        where: s.shortcut == ^sheet_shortcut,
-        where: b.variable_name == ^variable_name,
-        where: b.type in ^variable_types,
-        where: b.is_constant == false,
-        where: is_nil(s.deleted_at),
-        where: is_nil(b.deleted_at),
-        select: b.id,
-        limit: 1
-      )
-    )
+    case VariableNamespaceResolver.resolve_sheet_id(project_id, sheet_shortcut) do
+      nil ->
+        nil
+
+      sheet_id ->
+        Repo.one(
+          from(b in Block,
+            join: s in Sheet,
+            on: s.id == b.sheet_id,
+            where: s.project_id == ^project_id and s.id == ^sheet_id,
+            where: b.variable_name == ^variable_name,
+            where: b.type in ^variable_types,
+            where: b.is_constant == false,
+            where: is_nil(s.deleted_at),
+            where: is_nil(b.deleted_at),
+            select: b.id,
+            limit: 1
+          )
+        )
+    end
   end
 
   @doc """
@@ -1451,28 +1475,33 @@ defmodule Storyarn.Sheets.SheetQueries do
     variable_types = VariableCatalog.table_variable_types()
     constant_variable_types = VariableCatalog.constant_table_variable_types()
 
-    Repo.one(
-      from(b in Block,
-        join: s in Sheet,
-        on: s.id == b.sheet_id,
-        join: tr in TableRow,
-        on: tr.block_id == b.id,
-        join: tc in TableColumn,
-        on: tc.block_id == b.id,
-        where: s.project_id == ^project_id,
-        where: s.shortcut == ^sheet_shortcut,
-        where: b.variable_name == ^table_name,
-        where: b.type == "table",
-        where: tc.type in ^variable_types,
-        where: tc.is_constant == false or tc.type in ^constant_variable_types,
-        where: tr.slug == ^row_slug,
-        where: tc.slug == ^column_slug,
-        where: is_nil(s.deleted_at),
-        where: is_nil(b.deleted_at),
-        select: b.id,
-        limit: 1
-      )
-    )
+    case VariableNamespaceResolver.resolve_sheet_id(project_id, sheet_shortcut) do
+      nil ->
+        nil
+
+      sheet_id ->
+        Repo.one(
+          from(b in Block,
+            join: s in Sheet,
+            on: s.id == b.sheet_id,
+            join: tr in TableRow,
+            on: tr.block_id == b.id,
+            join: tc in TableColumn,
+            on: tc.block_id == b.id,
+            where: s.project_id == ^project_id and s.id == ^sheet_id,
+            where: b.variable_name == ^table_name,
+            where: b.type == "table",
+            where: tc.type in ^variable_types,
+            where: tc.is_constant == false or tc.type in ^constant_variable_types,
+            where: tr.slug == ^row_slug,
+            where: tc.slug == ^column_slug,
+            where: is_nil(s.deleted_at),
+            where: is_nil(b.deleted_at),
+            select: b.id,
+            limit: 1
+          )
+        )
+    end
   end
 
   @doc """

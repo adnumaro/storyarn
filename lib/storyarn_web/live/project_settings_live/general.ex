@@ -82,7 +82,14 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     %{project: project, membership: membership} = socket.assigns
 
     if can_open_general_settings?(socket.assigns.current_scope, project, membership) do
-      if connected?(socket), do: ProjectTemplates.subscribe_template_publications(project)
+      if connected?(socket) do
+        ProjectTemplates.subscribe_template_publications(project)
+
+        Phoenix.PubSub.subscribe(
+          Storyarn.PubSub,
+          StoryarnWeb.Live.Shared.ProjectChromeHelpers.shell_topic(project.id)
+        )
+      end
 
       {:ok, source_language} = Localization.ensure_source_language(project)
       project_changeset = Projects.change_project(project)
@@ -257,6 +264,20 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
      |> assign_project_templates()
      |> assign_template_publications()}
   end
+
+  def handle_info({:project_restored, _restore_id}, socket) do
+    project = socket.assigns.project.id |> Projects.get_project!() |> Storyarn.Repo.preload(:workspace)
+
+    {:noreply,
+     socket
+     |> assign(:project, project)
+     |> assign(:current_workspace, project.workspace)
+     |> assign(:project_form, to_form(Projects.change_project(project)))
+     |> assign(:source_language, Localization.get_source_language(project.id))
+     |> assign_theme(project)}
+  end
+
+  def handle_info(_message, socket), do: {:noreply, socket}
 
   # ===========================================================================
   # Private

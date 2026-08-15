@@ -4,6 +4,13 @@ defmodule Storyarn.References.RichTextMentionsTest do
   alias Storyarn.References.RichTextMentions
 
   describe "html_candidates/1" do
+    test "does not treat a differently cased CSS class as a mention" do
+      literal = ~s(<SPAN CLASS="MENTION" DATA-TYPE="sheet" DATA-ID="42">&#169;</SPAN>)
+
+      assert RichTextMentions.html_candidates(%{"content" => literal}) == []
+      assert {:ok, []} = RichTextMentions.extract_from_html(literal)
+    end
+
     test "selects actual mention markup without treating ordinary prose as HTML" do
       mention =
         ~s(<p><span class="pill mention selected" data-type="sheet" data-id="42">Target</span></p>)

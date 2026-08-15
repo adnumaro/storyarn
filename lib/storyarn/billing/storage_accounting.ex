@@ -17,8 +17,10 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Billing.Plan
+  alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Billing.SubscriptionCrud
   alias Storyarn.Projects.Project
@@ -26,6 +28,7 @@ defmodule Storyarn.Billing.StorageAccounting do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotLeasePolicy
+  alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
@@ -166,12 +169,40 @@ defmodule Storyarn.Billing.StorageAccounting do
       when is_integer(requested_bytes) and requested_bytes >= 0 do
     plan = SubscriptionCrud.plan_for(workspace)
     limit = Plan.limit(plan, :storage_bytes_per_workspace)
-    usage = workspace_usage(workspace.id)
+    usage = capacity_usage(workspace.id)
 
     check_capacity_limit(usage, requested_bytes, limit)
   end
 
   def check_capacity(%Workspace{}, _requested_bytes), do: {:error, :invalid_storage_allocation}
+
+  defp capacity_usage(workspace_id) do
+    usage = workspace_usage(workspace_id)
+
+    case Process.get(@storage_commit_process_key) do
+      %{
+        workspace_id: ^workspace_id,
+        kind: "restore_staging",
+        reserved_bytes: reserved_bytes
+      }
+      when is_integer(reserved_bytes) and reserved_bytes >= 0 ->
+        active = usage.active_reservations
+        restore_bytes = max(Map.get(active.by_kind, "restore_staging", 0) - reserved_bytes, 0)
+
+        %{
+          usage
+          | accounted_bytes: max(usage.accounted_bytes - reserved_bytes, 0),
+            active_reservations: %{
+              active
+              | bytes: max(active.bytes - reserved_bytes, 0),
+                by_kind: Map.put(active.by_kind, "restore_staging", restore_bytes)
+            }
+        }
+
+      _context ->
+        usage
+    end
+  end
 
   @doc """
   Runs a short database transaction while holding the workspace row lock.
@@ -399,7 +430,7 @@ defmodule Storyarn.Billing.StorageAccounting do
   `extend_to/4` has ensured the final byte count fits. If `actual_bytes` exceeds
   the reservation, finalization fails closed without invoking the callback.
   """
-  @spec commit(pos_integer(), Ecto.UUID.t(), pos_integer(), pos_integer(), (StorageReservation.t() -> term())) ::
+  @spec commit(pos_integer(), Ecto.UUID.t(), pos_integer(), non_neg_integer(), (StorageReservation.t() -> term())) ::
           {:ok, %{reservation: StorageReservation.t(), result: term()}}
           | {:error, :reservation_underestimated, map()}
           | {:error, term()}
@@ -421,6 +452,58 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   def commit(_reservation_id, _lease_token, _expected_generation, _actual_bytes, _owner_fun),
     do: {:error, :invalid_storage_reservation_commit}
+
+  @doc false
+  @spec commit_project_snapshot_restore_reservation(
+          pos_integer(),
+          Ecto.UUID.t(),
+          pos_integer(),
+          non_neg_integer(),
+          (map() -> {:ok, term()} | {:error, term()}),
+          (StorageReservation.t(), term() -> term())
+        ) ::
+          {:ok, %{reservation: StorageReservation.t(), result: term()}}
+          | {:error, :reservation_underestimated, map()}
+          | {:error, term()}
+  def commit_project_snapshot_restore_reservation(
+        reservation_id,
+        lease_token,
+        expected_generation,
+        actual_bytes,
+        prelock_fun,
+        owner_fun
+      )
+      when valid_fence(reservation_id, lease_token, expected_generation) and is_non_negative_integer(actual_bytes) and
+             is_function(prelock_fun, 1) and is_function(owner_fun, 2) do
+    case Repo.get(StorageReservation, reservation_id) do
+      %StorageReservation{} = reservation ->
+        reservation.workspace_id_snapshot
+        |> locked_result(fn workspace ->
+          commit_project_snapshot_restore_locked(
+            workspace,
+            reservation_id,
+            lease_token,
+            expected_generation,
+            actual_bytes,
+            prelock_fun,
+            owner_fun
+          )
+        end)
+        |> emit_after_mutation(reservation.workspace_id_snapshot, :committed)
+
+      nil ->
+        {:error, :storage_reservation_not_found}
+    end
+  end
+
+  def commit_project_snapshot_restore_reservation(
+        _reservation_id,
+        _lease_token,
+        _expected_generation,
+        _actual_bytes,
+        _prelock_fun,
+        _owner_fun
+      ), do: {:error, :invalid_storage_reservation_commit}
 
   @doc """
   Releases an active reservation after durable cleanup ownership is established.
@@ -666,6 +749,52 @@ defmodule Storyarn.Billing.StorageAccounting do
     end
   end
 
+  # Exact restore finalization shares the common workspace lock, but it also
+  # has a durable operation row. Lock that operation before the immutable
+  # snapshot and reservation so non-accounting project writers observe the
+  # documented workspace -> project -> restore -> snapshot -> reservation
+  # order. Other reservation kinds retain their established order.
+  defp lock_commit_reservation_target(
+         %Workspace{} = workspace,
+         %StorageReservation{kind: "restore_staging"} = reservation
+       ) do
+    with {:ok, _project} <- lock_restore_reservation_project(workspace, reservation) do
+      lock_restore_commit_owner_and_snapshot(reservation)
+    end
+  end
+
+  defp lock_commit_reservation_target(%Workspace{} = workspace, %StorageReservation{} = reservation) do
+    lock_active_reservation_target(workspace, reservation)
+  end
+
+  defp lock_restore_commit_owner_and_snapshot(reservation) do
+    with %ProjectSnapshotRestore{} <-
+           lock_restore_owner(
+             reservation.id,
+             reservation.workspace_id_snapshot,
+             reservation.project_id_snapshot,
+             reservation.project_snapshot_id_snapshot,
+             ["running"]
+           ),
+         {:ok, target} <- validate_reservation_target(restore_reservation_attrs(reservation)),
+         :ok <- validate_active_target_facts(reservation, target) do
+      {:ok, target}
+    else
+      nil -> {:error, :storage_reservation_owner_mismatch}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp restore_reservation_attrs(reservation) do
+    %{
+      project_id: reservation.project_id_snapshot,
+      project_snapshot_id: reservation.project_snapshot_id_snapshot,
+      kind: reservation.kind,
+      reserved_bytes: reservation.reserved_bytes,
+      reservation_id: reservation.id
+    }
+  end
+
   defp acquire_snapshot_export_lease_locked(workspace, attrs) do
     with :ok <- validate_reservation_scope(workspace, attrs),
          {:ok, target} <- validate_reservation_target(attrs),
@@ -790,31 +919,47 @@ defmodule Storyarn.Billing.StorageAccounting do
   end
 
   defp persist_storage_started(reservation, storage_keys) do
-    inventory_digest = cleanup_inventory_digest(storage_keys)
-    inventory_count = length(storage_keys)
+    canonical_storage_keys = Enum.sort(storage_keys)
+    inventory_digest = StorageCleanupInventory.digest(canonical_storage_keys)
+    inventory_count = length(canonical_storage_keys)
 
-    persist_storage_started(reservation, inventory_digest, inventory_count)
+    durable_cleanup_storage_keys =
+      if reservation.kind == "restore_staging", do: canonical_storage_keys
+
+    persist_storage_started(
+      reservation,
+      inventory_digest,
+      inventory_count,
+      durable_cleanup_storage_keys
+    )
   end
 
   defp persist_storage_started(
          %StorageReservation{
            storage_started_at: %DateTime{},
            cleanup_inventory_digest: inventory_digest,
-           cleanup_inventory_count: inventory_count
+           cleanup_inventory_count: inventory_count,
+           cleanup_storage_keys: cleanup_storage_keys
          } = reservation,
          inventory_digest,
-         inventory_count
+         inventory_count,
+         cleanup_storage_keys
        ), do: {:ok, reservation}
 
-  defp persist_storage_started(%StorageReservation{storage_started_at: %DateTime{}}, _digest, _count),
-    do: {:error, :storage_reservation_cleanup_plan_conflict}
+  defp persist_storage_started(
+         %StorageReservation{storage_started_at: %DateTime{}},
+         _digest,
+         _count,
+         _cleanup_storage_keys
+       ), do: {:error, :storage_reservation_cleanup_plan_conflict}
 
-  defp persist_storage_started(reservation, inventory_digest, inventory_count) do
+  defp persist_storage_started(reservation, inventory_digest, inventory_count, cleanup_storage_keys) do
     reservation
     |> StorageReservation.storage_started_changeset(
       TimeHelpers.now(),
       inventory_digest,
-      inventory_count
+      inventory_count,
+      cleanup_storage_keys
     )
     |> Repo.update()
   end
@@ -921,7 +1066,7 @@ defmodule Storyarn.Billing.StorageAccounting do
   defp commit_locked(workspace, reservation_id, lease_token, expected_generation, actual_bytes, owner_fun) do
     case Repo.get(StorageReservation, reservation_id) do
       %StorageReservation{status: "active"} = reservation_hint ->
-        with {:ok, target} <- lock_active_reservation_target(workspace, reservation_hint),
+        with {:ok, target} <- lock_commit_reservation_target(workspace, reservation_hint),
              %StorageReservation{} = reservation <- lock_reservation(reservation_id),
              :ok <- verify_lease(reservation, lease_token),
              :ok <- validate_operation_bytes(reservation, actual_bytes) do
@@ -942,6 +1087,110 @@ defmodule Storyarn.Billing.StorageAccounting do
 
       nil ->
         {:error, :storage_reservation_not_found}
+    end
+  end
+
+  defp commit_project_snapshot_restore_locked(
+         workspace,
+         reservation_id,
+         lease_token,
+         expected_generation,
+         actual_bytes,
+         prelock_fun,
+         owner_fun
+       ) do
+    reservation_id
+    |> then(&Repo.get(StorageReservation, &1))
+    |> commit_project_snapshot_restore_for_status(
+      workspace,
+      reservation_id,
+      lease_token,
+      expected_generation,
+      actual_bytes,
+      prelock_fun,
+      owner_fun
+    )
+  end
+
+  defp commit_project_snapshot_restore_for_status(
+         %StorageReservation{status: "active", kind: "restore_staging"} = reservation_hint,
+         workspace,
+         reservation_id,
+         lease_token,
+         expected_generation,
+         actual_bytes,
+         prelock_fun,
+         owner_fun
+       ) do
+    with {:ok, project} <- lock_restore_reservation_project(workspace, reservation_hint),
+         {:ok, prelock_context} <- run_project_snapshot_restore_prelock(prelock_fun, workspace, project),
+         {:ok, target} <- lock_restore_commit_owner_and_snapshot(reservation_hint),
+         %StorageReservation{} = reservation <- lock_reservation(reservation_id),
+         :ok <- verify_lease(reservation, lease_token),
+         :ok <- validate_operation_bytes(reservation, actual_bytes) do
+      owner_fun = fn locked_reservation -> owner_fun.(locked_reservation, prelock_context) end
+
+      commit_for_status(
+        workspace,
+        reservation,
+        target,
+        expected_generation,
+        actual_bytes,
+        owner_fun
+      )
+    else
+      nil -> {:error, :storage_reservation_not_found}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp commit_project_snapshot_restore_for_status(
+         %StorageReservation{kind: "restore_staging"},
+         workspace,
+         reservation_id,
+         lease_token,
+         expected_generation,
+         actual_bytes,
+         _prelock_fun,
+         owner_fun
+       ) do
+    commit_locked(
+      workspace,
+      reservation_id,
+      lease_token,
+      expected_generation,
+      actual_bytes,
+      fn locked_reservation -> owner_fun.(locked_reservation, nil) end
+    )
+  end
+
+  defp commit_project_snapshot_restore_for_status(
+         %StorageReservation{},
+         _workspace,
+         _reservation_id,
+         _lease_token,
+         _expected_generation,
+         _actual_bytes,
+         _prelock_fun,
+         _owner_fun
+       ), do: {:error, :invalid_project_snapshot_restore_reservation}
+
+  defp commit_project_snapshot_restore_for_status(
+         nil,
+         _workspace,
+         _reservation_id,
+         _lease_token,
+         _expected_generation,
+         _actual_bytes,
+         _prelock_fun,
+         _owner_fun
+       ), do: {:error, :storage_reservation_not_found}
+
+  defp run_project_snapshot_restore_prelock(prelock_fun, workspace, project) do
+    case prelock_fun.(%{workspace: workspace, project: project}) do
+      {:ok, prelock_context} -> {:ok, prelock_context}
+      {:error, _reason} = error -> error
+      _invalid -> {:error, :invalid_project_snapshot_restore_prelock_result}
     end
   end
 
@@ -970,11 +1219,24 @@ defmodule Storyarn.Billing.StorageAccounting do
          owner_fun
        ) do
     with :ok <- verify_generation(reservation, expected_generation),
-         :ok <- verify_storage_started(reservation),
+         :ok <- verify_commit_storage_fence(reservation, actual_bytes),
          :ok <- verify_unexpired(reservation) do
       commit_active_reservation(workspace, reservation, target, actual_bytes, owner_fun)
     end
   end
+
+  defp verify_commit_storage_fence(
+         %StorageReservation{
+           kind: "restore_staging",
+           reserved_bytes: 0,
+           storage_started_at: nil,
+           cleanup_inventory_digest: nil,
+           cleanup_inventory_count: nil
+         },
+         0
+       ), do: :ok
+
+  defp verify_commit_storage_fence(reservation, _actual_bytes), do: verify_storage_started(reservation)
 
   defp commit_active_reservation(workspace, reservation, target, actual_bytes, owner_fun) do
     if actual_bytes > reservation.reserved_bytes do
@@ -1677,15 +1939,10 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   defp validate_reservation_scope(%Workspace{id: workspace_id}, %{project_id: project_id, kind: "restore_staging"})
        when is_integer(project_id) and project_id > 0 do
-    project =
-      Repo.one(
-        from(candidate in Project,
-          where: candidate.id == ^project_id and candidate.workspace_id == ^workspace_id,
-          lock: "FOR UPDATE"
-        )
-      )
-
-    if match?(%Project{}, project), do: :ok, else: {:error, :invalid_storage_reservation_project}
+    case lock_restore_reservation_project(workspace_id, project_id) do
+      %Project{} -> :ok
+      nil -> {:error, :invalid_storage_reservation_project}
+    end
   end
 
   defp validate_reservation_scope(%Workspace{id: workspace_id}, %{project_id: project_id})
@@ -1704,6 +1961,22 @@ defmodule Storyarn.Billing.StorageAccounting do
   end
 
   defp validate_reservation_scope(%Workspace{}, _attrs), do: {:error, :invalid_storage_reservation_project}
+
+  defp lock_restore_reservation_project(%Workspace{id: workspace_id}, %StorageReservation{project_id_snapshot: project_id}) do
+    case lock_restore_reservation_project(workspace_id, project_id) do
+      %Project{} = project -> {:ok, project}
+      nil -> {:error, :invalid_storage_reservation_project}
+    end
+  end
+
+  defp lock_restore_reservation_project(workspace_id, project_id) do
+    Repo.one(
+      from(candidate in Project,
+        where: candidate.id == ^project_id and candidate.workspace_id == ^workspace_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
 
   defp reservation_target_identity(%{project_id: project_id, project_snapshot_id: snapshot_id, kind: "snapshot_build"}) do
     case Repo.one(
@@ -1840,8 +2113,11 @@ defmodule Storyarn.Billing.StorageAccounting do
   defp validate_target_allocation("snapshot_export", bytes, %ProjectSnapshot{}) when is_non_negative_integer(bytes),
     do: :ok
 
+  defp validate_target_allocation("restore_staging", bytes, %ProjectSnapshot{}) when is_non_negative_integer(bytes),
+    do: :ok
+
   defp validate_target_allocation(kind, bytes, %ProjectSnapshot{})
-       when kind in ["snapshot_build", "restore_staging"] and is_positive_integer(bytes), do: :ok
+       when kind == "snapshot_build" and is_positive_integer(bytes), do: :ok
 
   defp validate_target_allocation(_kind, _bytes, _snapshot), do: {:error, :invalid_storage_reservation_allocation}
 
@@ -2022,6 +2298,18 @@ defmodule Storyarn.Billing.StorageAccounting do
     end
   end
 
+  defp validate_planned_cleanup_scope(%StorageReservation{kind: "restore_staging"} = reservation, cleanup_plan) do
+    with {:ok, %{temporary: temporary_prefix}} <- operation_object_prefixes(reservation),
+         ^temporary_prefix <- value(cleanup_plan, :temporary_prefix),
+         storage_keys when is_list(storage_keys) <- value(cleanup_plan, :storage_keys),
+         true <- valid_unique_inventory?(storage_keys),
+         true <- Enum.all?(storage_keys, &restore_cleanup_key?(&1, reservation, temporary_prefix)) do
+      {:ok, storage_keys}
+    else
+      _invalid -> {:error, :invalid_storage_reservation_cleanup_plan}
+    end
+  end
+
   defp validate_planned_cleanup_scope(reservation, cleanup_plan) do
     with {:ok, prefixes} <- operation_object_prefixes(reservation),
          storage_keys when is_list(storage_keys) <- value(cleanup_plan, :storage_keys),
@@ -2030,6 +2318,23 @@ defmodule Storyarn.Billing.StorageAccounting do
       {:ok, storage_keys}
     else
       _invalid -> {:error, :invalid_storage_reservation_cleanup_plan}
+    end
+  end
+
+  defp validate_cleanup_scope(
+         %StorageReservation{kind: "restore_staging"} = reservation,
+         cleanup_request_id,
+         cleanup_scope
+       ) do
+    with :ok <- validate_cleanup_scope_reference(cleanup_request_id, cleanup_scope),
+         {:ok, %{temporary: temporary_prefix}} <- operation_object_prefixes(reservation),
+         ^temporary_prefix <- value(cleanup_scope, :temporary_prefix),
+         storage_keys when is_list(storage_keys) <- value(cleanup_scope, :storage_keys),
+         true <- valid_unique_inventory?(storage_keys),
+         true <- Enum.all?(storage_keys, &restore_cleanup_key?(&1, reservation, temporary_prefix)) do
+      {:ok, storage_keys}
+    else
+      _invalid -> {:error, :storage_reservation_cleanup_ownership_required}
     end
   end
 
@@ -2059,7 +2364,8 @@ defmodule Storyarn.Billing.StorageAccounting do
     # Cleanup ownership must remain provable after operators lower runtime
     # verification limits. The object-format hard bound contains the fixed
     # four-key archive cleanup; digest/count prove the exact inventory.
-    max_count = 2 * (SnapshotObjectFormat.hard_limits().max_objects + 1)
+    limits = SnapshotObjectFormat.hard_limits()
+    max_count = max(2 * (limits.max_objects + 1), limits.max_assets + 2 * (limits.max_objects - 1))
 
     storage_keys != [] and length(storage_keys) <= max_count and
       Enum.all?(storage_keys, &is_binary/1) and
@@ -2082,9 +2388,10 @@ defmodule Storyarn.Billing.StorageAccounting do
          },
          storage_keys
        ) do
-    if inventory_count == length(storage_keys) and inventory_digest == cleanup_inventory_digest(storage_keys),
-      do: :ok,
-      else: {:error, :storage_reservation_cleanup_inventory_mismatch}
+    if inventory_count == length(storage_keys) and
+         inventory_digest == StorageCleanupInventory.digest(storage_keys),
+       do: :ok,
+       else: {:error, :storage_reservation_cleanup_inventory_mismatch}
   end
 
   defp validate_cleanup_commitment(_reservation, _storage_keys),
@@ -2152,14 +2459,6 @@ defmodule Storyarn.Billing.StorageAccounting do
       else: {:error, :snapshot_object_publication_claim_not_poisoned}
   end
 
-  defp cleanup_inventory_digest(storage_keys) do
-    storage_keys
-    |> Enum.sort()
-    |> Enum.map_join(fn storage_key -> "#{byte_size(storage_key)}:#{storage_key}" end)
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
-  end
-
   defp validate_cleanup_inventory(%{staging: staging_prefix, ready: ready_prefix}, cleanup_scope, storage_keys) do
     with ^staging_prefix <- value(cleanup_scope, :staging_prefix),
          ^ready_prefix <- value(cleanup_scope, :ready_prefix),
@@ -2181,6 +2480,25 @@ defmodule Storyarn.Billing.StorageAccounting do
       :ok
     else
       _invalid -> {:error, :invalid_temporary_cleanup_inventory}
+    end
+  end
+
+  defp restore_cleanup_key?(storage_key, reservation, temporary_prefix) do
+    project_id = reservation.project_id_snapshot
+
+    temporary_object_key?(storage_key, temporary_prefix) or
+      restore_project_asset_key?(storage_key, project_id) or
+      match?({:ok, ^project_id, _hash}, Storyarn.Assets.StorageKeyLock.project_blob_identity(storage_key))
+  end
+
+  defp restore_project_asset_key?(storage_key, project_id) do
+    case String.split(storage_key, "/", trim: false) do
+      ["projects", encoded_project_id, "assets", uuid, filename] ->
+        encoded_project_id == Integer.to_string(project_id) and match?({:ok, _uuid}, Ecto.UUID.cast(uuid)) and
+          filename != "" and filename not in [".", ".."] and Storage.canonical_key?(storage_key)
+
+      _invalid ->
+        false
     end
   end
 
@@ -2313,7 +2631,63 @@ defmodule Storyarn.Billing.StorageAccounting do
     owner_expectation(reservation, project_id, snapshot)
   end
 
+  defp committed_owner_expectation(
+         %StorageReservation{
+           id: reservation_id,
+           kind: "restore_staging",
+           workspace_id_snapshot: workspace_id,
+           project_id_snapshot: project_id,
+           project_snapshot_id_snapshot: snapshot_id
+         },
+         %ProjectSnapshot{
+           id: snapshot_id,
+           project_id: project_id,
+           format_version: 2,
+           mode: "full",
+           lifecycle_state: "ready",
+           integrity_state: "verified",
+           accounting_version: @accounting_version
+         }
+       ) do
+    case lock_restore_owner(reservation_id, workspace_id, project_id, snapshot_id, ["running"]) do
+      %ProjectSnapshotRestore{id: restore_id, generation: restore_generation} ->
+        {:ok,
+         %{
+           kind: "restore_staging",
+           restore_id: restore_id,
+           restore_generation: restore_generation,
+           workspace_id: workspace_id,
+           project_id: project_id,
+           snapshot_id: snapshot_id
+         }}
+
+      nil ->
+        {:error, :storage_reservation_owner_mismatch}
+    end
+  end
+
   defp committed_owner_expectation(_reservation, _snapshot), do: {:error, :storage_reservation_not_committable}
+
+  defp lock_restore_owner(reservation_id, workspace_id, project_id, snapshot_id, statuses) do
+    Repo.one(
+      from(restore in ProjectSnapshotRestore,
+        where:
+          restore.storage_reservation_id == ^reservation_id and
+            restore.workspace_id == ^workspace_id and restore.project_id == ^project_id and
+            restore.project_snapshot_id == ^snapshot_id and restore.status in ^statuses,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp active_asset_bytes(project_id) do
+    Repo.one!(
+      from(asset in Asset,
+        where: asset.project_id == ^project_id and is_nil(asset.deleted_at),
+        select: type(coalesce(sum(asset.size), 0), :integer)
+      )
+    )
+  end
 
   defp owner_expectation(%StorageReservation{kind: "snapshot_build"}, project_id, %ProjectSnapshot{
          id: snapshot_id,
@@ -2386,6 +2760,34 @@ defmodule Storyarn.Billing.StorageAccounting do
     end
   end
 
+  defp validate_committed_owner(
+         %StorageReservation{id: reservation_id},
+         %{kind: "restore_staging"} = expectation,
+         %ProjectSnapshotRestore{id: restore_id},
+         actual_bytes
+       )
+       when restore_id == expectation.restore_id do
+    with %ProjectSnapshotRestore{} = restore <-
+           lock_restore_owner(
+             reservation_id,
+             expectation.workspace_id,
+             expectation.project_id,
+             expectation.snapshot_id,
+             ["running", "completed"]
+           ),
+         true <- restore.id == restore_id,
+         true <-
+           (restore.status == "running" and
+              restore.generation == expectation.restore_generation) or
+             (restore.status == "completed" and
+                restore.generation == expectation.restore_generation + 1),
+         true <- active_asset_bytes(expectation.project_id) == actual_bytes do
+      :ok
+    else
+      _invalid -> {:error, :storage_reservation_owner_mismatch}
+    end
+  end
+
   defp validate_committed_owner(_reservation, _expectation, _result, _actual_bytes),
     do: {:error, :storage_reservation_owner_mismatch}
 
@@ -2431,8 +2833,11 @@ defmodule Storyarn.Billing.StorageAccounting do
   defp validate_operation_bytes(%StorageReservation{kind: "snapshot_export"}, bytes) when is_non_negative_integer(bytes),
     do: :ok
 
-  defp validate_operation_bytes(%StorageReservation{kind: kind}, bytes)
-       when kind in ["snapshot_build", "restore_staging"] and is_positive_integer(bytes), do: :ok
+  defp validate_operation_bytes(%StorageReservation{kind: "restore_staging"}, bytes) when is_non_negative_integer(bytes),
+    do: :ok
+
+  defp validate_operation_bytes(%StorageReservation{kind: "snapshot_build"}, bytes) when is_positive_integer(bytes),
+    do: :ok
 
   defp validate_operation_bytes(_reservation, _bytes), do: {:error, :invalid_storage_reservation_allocation}
 
@@ -2524,7 +2929,8 @@ defmodule Storyarn.Billing.StorageAccounting do
       reservation_id: reservation.id,
       workspace_id: reservation.workspace_id_snapshot,
       project_snapshot_id: reservation.project_snapshot_id_snapshot,
-      kind: reservation.kind
+      kind: reservation.kind,
+      reserved_bytes: reservation.reserved_bytes
     })
 
     try do

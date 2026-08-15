@@ -992,7 +992,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   end
 
   defp prepare_archive_capture(project_id) do
-    project_snapshot = ProjectSnapshotBuilder.build_snapshot_in_transaction(project_id)
+    project_snapshot =
+      ProjectSnapshotBuilder.build_snapshot_in_transaction(project_id,
+        localization_scope: :active
+      )
+
     assets = Assets.list_assets_for_export(project_id)
 
     case SnapshotArchiveStorage.prepare(project_id, project_snapshot, assets, source_key_mode: :protected_blob) do
@@ -1083,6 +1087,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       blob_count: prepared.blob_count,
       entity_counts: Map.get(project_snapshot, "entity_counts", %{}),
       capture_digest: prepared.capture_digest,
+      restore_contract_version: 1,
       captured_at: now,
       progress_total_bytes: prepared.snapshot_total_size_bytes,
       state_updated_at: now

@@ -207,7 +207,46 @@
         "cancel": "Conservar snapshot",
         "download_lease": "La protección de descarga está activa. Podrás eliminar la snapshot cuando termine su periodo de protección.",
         "active_operation": "Hay otra operación activa sobre la snapshot. Podrás eliminarla cuando termine.",
+        "restore_operation": "Hay una restauración del proyecto activa. La eliminación de snapshots queda bloqueada hasta que termine.",
         "failed": "No se ha podido eliminar la snapshot."
+      },
+      "restore": {
+        "action": "Restaurar proyecto",
+        "submitting": "Iniciando restauración…",
+        "title": "¿Restaurar esta snapshot del proyecto?",
+        "description": "Restaurar la snapshot v{version}, «{name}», sustituye el grafo y los recursos activos del proyecto. Las fichas, los flujos, las escenas y los recursos actuales pasan a la papelera recuperable; el proyecto y sus membresías se mantienen intactos y el proyecto restaurado sigue siendo editable.",
+        "confirm": "Restaurar proyecto",
+        "cancel": "Conservar proyecto actual",
+        "operation": "Restauración del proyecto",
+        "durable_note": "Esta operación duradera continúa de forma segura aunque salgas de esta página.",
+        "completed_note": "El proyecto se ha restaurado y sigue siendo editable.",
+        "active_operation": "Ya hay otra restauración del proyecto activa.",
+        "disabled": "La restauración de snapshots del proyecto está desactivada temporalmente.",
+        "not_restorable": "Esta snapshot ya no cumple los requisitos verificados de restauración.",
+        "in_progress": "Ya hay otra restauración de snapshot del proyecto en curso.",
+        "request_conflict": "Esta solicitud entra en conflicto con otra solicitud duradera. Actualiza la página e inténtalo de nuevo.",
+        "not_found": "Esta snapshot ya no está disponible.",
+        "unauthorized": "Ya no tienes permiso para restaurar este proyecto.",
+        "invalid_request": "La solicitud de restauración no es válida. Actualiza la página e inténtalo de nuevo.",
+        "request_failed": "No se ha podido solicitar la restauración del proyecto.",
+        "connection_failed": "La conexión se ha interrumpido. Puedes reintentar con seguridad la misma solicitud.",
+        "status": {
+          "queued": "En cola",
+          "running": "En curso",
+          "retrying": "Reintentando",
+          "completed": "Completada",
+          "failed": "Fallida"
+        },
+        "phase": {
+          "queued": "Esperando a un worker",
+          "preflight": "Validando la snapshot y el destino",
+          "staging": "Preparando los recursos archivados",
+          "materializing": "Restaurando el contenido del proyecto",
+          "verifying": "Verificando el proyecto restaurado",
+          "retrying": "Preparando un reintento seguro",
+          "completed": "Restauración completada",
+          "failed": "Restauración fallida"
+        }
       },
       "measurements": {
         "accounted_size": "Almacenamiento de la snapshot",

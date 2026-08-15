@@ -17,6 +17,7 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
@@ -1144,15 +1145,56 @@ defmodule Storyarn.Billing.StorageAccountingTest do
       assert DateTime.diff(reservation.expires_at, reservation.accounting_measured_at, :second) == 24 * 60 * 60
     end
 
-    test "rejects zero-byte storage writers", context do
+    test "rejects zero-byte snapshot builds but permits an asset-free restore", context do
       pending = insert_pending_snapshot!(context.project, 1)
       full = insert_full_snapshot!(context.project, 2, %{project: 10, metadata: 10, assets: 10})
 
       assert {:error, :invalid_storage_reservation_snapshot} =
                reserve(context, "zero-build", "snapshot_build", 0, pending)
 
-      assert {:error, :invalid_storage_reservation_snapshot} =
-               reserve(context, "zero-restore", "restore_staging", 0, full)
+      assert {:ok, restore} = reserve(context, "zero-restore", "restore_staging", 0, full)
+      assert restore.reserved_bytes == 0
+      assert restore.kind == "restore_staging"
+    end
+
+    test "commits a zero-byte restore only to its exact durable operation owner", context do
+      snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 0})
+      assert {:ok, reservation} = reserve(context, "zero-owner", "restore_staging", 0, snapshot)
+      restore = insert_running_restore!(context, snapshot, reservation)
+
+      assert {:ok, %{reservation: committed, result: committed_owner}} =
+               Billing.commit_storage_reservation(
+                 reservation.id,
+                 reservation.lease_token,
+                 reservation.generation,
+                 0,
+                 fn _reservation ->
+                   completed =
+                     restore
+                     |> ProjectSnapshotRestore.complete_changeset(
+                       %{
+                         result_digest: String.duplicate("a", 64),
+                         restored_asset_count: 0
+                       },
+                       TimeHelpers.now()
+                     )
+                     |> Repo.update!()
+
+                   {:ok, completed}
+                 end
+               )
+
+      assert committed.status == "committed"
+      assert committed.actual_bytes == 0
+      assert is_nil(committed.storage_started_at)
+      assert committed_owner.id == restore.id
+      assert committed_owner.status == "completed"
+      assert committed_owner.generation == restore.generation + 1
+      assert committed_owner.result == %{restored_asset_count: 0}
+
+      usage = Billing.workspace_storage_usage(context.workspace.id)
+      assert usage.active_reservations.bytes == 0
+      assert usage.current_assets.bytes == 0
     end
 
     test "database rejects storage-start evidence on a zero-byte export lease", context do
@@ -1473,6 +1515,40 @@ defmodule Storyarn.Billing.StorageAccountingTest do
 
       assert Repo.get!(StorageReservation, claimed.id).status == "released"
     end
+  end
+
+  defp insert_running_restore!(context, snapshot, reservation) do
+    now = TimeHelpers.now()
+
+    Repo.insert!(%ProjectSnapshotRestore{
+      workspace_id: context.workspace.id,
+      project_id: context.project.id,
+      project_snapshot_id: snapshot.id,
+      requested_by_id: context.user.id,
+      idempotency_key: Ecto.UUID.generate(),
+      status: "running",
+      phase: "materializing",
+      generation: 2,
+      attempt: 1,
+      storage_reservation_id: reservation.id,
+      storage_reservation_generation: reservation.generation,
+      storage_reservation_lease_token: reservation.lease_token,
+      snapshot_lifecycle_generation: snapshot.lifecycle_generation,
+      snapshot_accounting_generation: snapshot.accounting_generation,
+      archive_storage_key: snapshot.archive_storage_key,
+      archive_size_bytes: snapshot.archive_size_bytes,
+      archive_checksum: snapshot.archive_checksum,
+      manifest_storage_key: snapshot.manifest_storage_key,
+      manifest_size_bytes: snapshot.manifest_size_bytes,
+      manifest_checksum: snapshot.manifest_checksum,
+      failure_details: %{},
+      result: %{},
+      requested_at: now,
+      claimed_at: now,
+      state_updated_at: now,
+      inserted_at: now,
+      updated_at: now
+    })
   end
 
   defp reserve(context, key, kind, bytes, snapshot) do

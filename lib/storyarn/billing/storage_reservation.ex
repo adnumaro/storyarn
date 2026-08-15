@@ -10,6 +10,7 @@ defmodule Storyarn.Billing.StorageReservation do
 
   import Ecto.Changeset
 
+  alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Projects.Project
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Workspaces.Workspace
@@ -17,6 +18,11 @@ defmodule Storyarn.Billing.StorageReservation do
   @kinds ~w(snapshot_build restore_staging snapshot_export)
   @statuses ~w(active committed released)
   @cleanup_statuses ~w(not_required owned)
+  # One staging key plus one logical destination key per asset, and one
+  # protected project blob key per unique snapshot blob, bounded by the
+  # canonical object format (10k assets / 10k blobs).
+  @max_cleanup_inventory_count 30_000
+  @max_cleanup_inventory_bytes 16 * 1024 * 1024
 
   schema "workspace_storage_reservations" do
     field :workspace_id_snapshot, :integer
@@ -35,6 +41,7 @@ defmodule Storyarn.Billing.StorageReservation do
     field :storage_started_at, :utc_datetime
     field :cleanup_inventory_digest, :string
     field :cleanup_inventory_count, :integer
+    field :cleanup_storage_keys, {:array, :string}
     field :settled_at, :utc_datetime
     field :release_reason, :string
     field :cleanup_status, :string
@@ -205,11 +212,11 @@ defmodule Storyarn.Billing.StorageReservation do
       :status,
       :actual_bytes,
       :generation,
-      :storage_started_at,
       :settled_at,
       :accounting_version,
       :accounting_measured_at
     ])
+    |> validate_commit_storage_started()
     |> validate_allocated_bytes(:actual_bytes)
     |> validate_inclusion(:accounting_version, [1])
     |> validate_actual_within_reservation()
@@ -217,8 +224,17 @@ defmodule Storyarn.Billing.StorageReservation do
     |> storage_constraints()
   end
 
+  defp validate_commit_storage_started(changeset) do
+    case {get_field(changeset, :kind), get_field(changeset, :actual_bytes)} do
+      {"restore_staging", 0} -> changeset
+      {_kind, _actual_bytes} -> validate_required(changeset, [:storage_started_at])
+    end
+  end
+
   @doc "Marks that the operation may begin writing beneath its immutable namespace."
-  def storage_started_changeset(reservation, measured_at, inventory_digest, inventory_count) do
+  def storage_started_changeset(reservation, measured_at, inventory_digest, inventory_count, cleanup_storage_keys \\ nil) do
+    canonical_storage_keys = canonical_cleanup_storage_keys(cleanup_storage_keys)
+
     reservation
     |> change()
     |> require_active()
@@ -226,6 +242,7 @@ defmodule Storyarn.Billing.StorageReservation do
     |> put_change(:storage_started_at, measured_at)
     |> put_change(:cleanup_inventory_digest, inventory_digest)
     |> put_change(:cleanup_inventory_count, inventory_count)
+    |> put_change(:cleanup_storage_keys, canonical_storage_keys)
     |> put_change(:accounting_measured_at, measured_at)
     |> validate_required([
       :storage_started_at,
@@ -234,7 +251,103 @@ defmodule Storyarn.Billing.StorageReservation do
     ])
     |> validate_format(:cleanup_inventory_digest, ~r/\A[0-9a-f]{64}\z/)
     |> validate_number(:cleanup_inventory_count, greater_than: 0)
+    |> validate_restore_cleanup_storage_keys(
+      cleanup_storage_keys,
+      inventory_digest,
+      inventory_count
+    )
     |> storage_constraints()
+  end
+
+  defp canonical_cleanup_storage_keys(storage_keys) when is_list(storage_keys), do: Enum.sort(storage_keys)
+
+  defp canonical_cleanup_storage_keys(_storage_keys), do: nil
+
+  defp validate_restore_cleanup_storage_keys(changeset, original_storage_keys, inventory_digest, inventory_count) do
+    kind = get_field(changeset, :kind)
+    canonical_storage_keys = get_field(changeset, :cleanup_storage_keys)
+
+    case restore_cleanup_storage_keys_error(
+           kind,
+           original_storage_keys,
+           canonical_storage_keys,
+           inventory_digest,
+           inventory_count
+         ) do
+      nil -> changeset
+      message -> add_error(changeset, :cleanup_storage_keys, message)
+    end
+  end
+
+  defp restore_cleanup_storage_keys_error(kind, nil, _canonical_keys, _digest, _count) when kind != "restore_staging",
+    do: nil
+
+  defp restore_cleanup_storage_keys_error(kind, _original_keys, _canonical_keys, _digest, _count)
+       when kind != "restore_staging", do: "is only valid for restore staging"
+
+  defp restore_cleanup_storage_keys_error(
+         "restore_staging",
+         original_keys,
+         canonical_keys,
+         inventory_digest,
+         inventory_count
+       ) do
+    with :ok <- validate_cleanup_storage_keys_present(original_keys),
+         :ok <- validate_cleanup_storage_key_values(original_keys),
+         :ok <- validate_cleanup_storage_key_uniqueness(original_keys),
+         :ok <- validate_cleanup_storage_key_count(original_keys),
+         :ok <- validate_cleanup_storage_key_bytes(original_keys),
+         :ok <- validate_cleanup_inventory_count(canonical_keys, inventory_count),
+         :ok <- validate_cleanup_inventory_digest(canonical_keys, inventory_digest) do
+      nil
+    else
+      {:error, message} -> message
+    end
+  end
+
+  defp validate_cleanup_storage_keys_present(storage_keys) when is_list(storage_keys) and storage_keys != [], do: :ok
+
+  defp validate_cleanup_storage_keys_present(_storage_keys),
+    do: {:error, "must contain the exact restore cleanup inventory"}
+
+  defp validate_cleanup_storage_key_values(storage_keys) do
+    if Enum.all?(storage_keys, &(is_binary(&1) and &1 != "")),
+      do: :ok,
+      else: {:error, "must contain only storage keys"}
+  end
+
+  defp validate_cleanup_storage_key_uniqueness(storage_keys) do
+    if length(storage_keys) == length(Enum.uniq(storage_keys)),
+      do: :ok,
+      else: {:error, "must not contain duplicate storage keys"}
+  end
+
+  defp validate_cleanup_storage_key_count(storage_keys) do
+    if length(storage_keys) <= @max_cleanup_inventory_count,
+      do: :ok,
+      else: {:error, "contains too many storage keys"}
+  end
+
+  defp validate_cleanup_storage_key_bytes(storage_keys) do
+    if cleanup_inventory_bytes(storage_keys) <= @max_cleanup_inventory_bytes,
+      do: :ok,
+      else: {:error, "exceeds the cleanup inventory byte limit"}
+  end
+
+  defp validate_cleanup_inventory_count(storage_keys, inventory_count) do
+    if inventory_count == length(storage_keys),
+      do: :ok,
+      else: {:error, "must match the cleanup inventory count"}
+  end
+
+  defp validate_cleanup_inventory_digest(storage_keys, inventory_digest) do
+    if inventory_digest == StorageCleanupInventory.digest(storage_keys),
+      do: :ok,
+      else: {:error, "must match the cleanup inventory digest"}
+  end
+
+  defp cleanup_inventory_bytes(storage_keys) do
+    Enum.reduce(storage_keys, 0, fn storage_key, total -> total + byte_size(storage_key) end)
   end
 
   @doc "Releases an active reservation after cleanup ownership has been made durable."
@@ -330,11 +443,14 @@ defmodule Storyarn.Billing.StorageReservation do
   end
 
   defp validate_allocated_bytes(changeset, field) do
-    case get_field(changeset, :kind) do
-      "snapshot_export" when field == :reserved_bytes ->
+    case {get_field(changeset, :kind), field} do
+      {"restore_staging", field} when field in [:reserved_bytes, :actual_bytes] ->
         validate_number(changeset, field, greater_than_or_equal_to: 0)
 
-      _kind ->
+      {"snapshot_export", :reserved_bytes} ->
+        validate_number(changeset, field, greater_than_or_equal_to: 0)
+
+      {_kind, _field} ->
         validate_number(changeset, field, greater_than: 0)
     end
   end
@@ -343,6 +459,9 @@ defmodule Storyarn.Billing.StorageReservation do
     case {get_field(changeset, :kind), get_field(changeset, :reserved_bytes)} do
       {"snapshot_export", 0} ->
         add_error(changeset, :storage_started_at, "cannot be set for a zero-byte export lease")
+
+      {"restore_staging", 0} ->
+        add_error(changeset, :storage_started_at, "cannot be set for zero-byte restore staging")
 
       {_kind, _reserved_bytes} ->
         changeset
@@ -479,8 +598,14 @@ defmodule Storyarn.Billing.StorageReservation do
     |> check_constraint(:cleanup_inventory_digest,
       name: :workspace_storage_reservations_cleanup_inventory_commitment
     )
+    |> check_constraint(:cleanup_storage_keys,
+      name: :workspace_storage_reservations_cleanup_storage_keys
+    )
     |> check_constraint(:storage_started_at,
       name: :workspace_storage_reservations_zero_byte_snapshot_export_lease
+    )
+    |> check_constraint(:storage_started_at,
+      name: :workspace_storage_reservations_zero_byte_restore_staging
     )
     |> check_constraint(:storage_namespace,
       name: :workspace_storage_reservations_namespace

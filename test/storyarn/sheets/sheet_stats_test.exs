@@ -14,6 +14,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.HealthChecker
+  alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetStats
 
   setup do
@@ -385,12 +386,52 @@ defmodule Storyarn.Sheets.SheetStatsTest do
              )
     end
 
+    test "counts formula bindings to shortcutless sheets by numeric namespace", %{
+      project: project
+    } do
+      target_sheet = sheet_fixture(project, %{name: "Shortcutless Formula Target"})
+      target_table = table_block_fixture(target_sheet, %{label: "Stats"})
+      target_row = hd(target_table.table_rows)
+      target_column = hd(target_table.table_columns)
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^target_sheet.id),
+        set: [shortcut: nil]
+      )
+
+      source_sheet = sheet_fixture(project, %{name: "Formula Source"})
+      source_table = table_block_fixture(source_sheet, %{label: "Calculations"})
+      formula_column = table_column_fixture(source_table, %{name: "Total", type: "formula"})
+      source_row = hd(source_table.table_rows)
+
+      reference =
+        Enum.join(
+          [
+            target_sheet.id,
+            target_table.variable_name,
+            target_row.slug,
+            target_column.slug
+          ],
+          "."
+        )
+
+      assert {:ok, _row} =
+               Sheets.update_table_cell(source_row, formula_column.slug, %{
+                 "expression" => "value",
+                 "bindings" => %{
+                   "value" => %{"type" => "variable", "ref" => reference}
+                 }
+               })
+
+      refute target_table.id in unused_variable_block_ids(project)
+    end
+
     test "returns missing shortcuts with the canonical code and severity", %{project: project} do
       # Create a sheet, then nil out its shortcut directly
       sheet = sheet_fixture(project, %{name: "No Shortcut"})
 
       Repo.update_all(
-        from(s in Storyarn.Sheets.Sheet, where: s.id == ^sheet.id),
+        from(s in Sheet, where: s.id == ^sheet.id),
         set: [shortcut: nil]
       )
 

@@ -23,6 +23,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker
@@ -109,6 +110,54 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       vue = get_general_vue(view)
       assert vue.props["project-details"]["name"] == "New Name"
+    end
+
+    test "survives replacement invalidations and reloads project fields after a snapshot restore", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture(%{name: "Before restore"}) |> Repo.preload(:workspace)
+      {:ok, view, _html} = live(conn, settings_path(project))
+
+      restored_settings = %{
+        "theme" => %{"primary" => "#123456", "accent" => "#654321"}
+      }
+
+      project
+      |> Project.update_changeset(%{name: "After restore", settings: restored_settings})
+      |> Repo.update!()
+
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        "project:#{project.id}:shell",
+        {:entities_deleted, :sheet, [123]}
+      )
+
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        "project:#{project.id}:shell",
+        {:project_restored, 42}
+      )
+
+      _html = render(view)
+      vue = get_general_vue(view)
+      assert vue.props["project-details"]["name"] == "After restore"
+      assert vue.props["theme-primary"] == "#123456"
+      assert vue.props["theme-accent"] == "#654321"
+    end
+
+    test "ignores collaborator sidebar messages on the shared shell topic", %{conn: conn, user: user} do
+      project = user |> project_fixture(%{name: "Stable project"}) |> Repo.preload(:workspace)
+      {:ok, view, _html} = live(conn, settings_path(project))
+
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        "project:#{project.id}:shell",
+        {:tree_changed, :sheets}
+      )
+
+      _html = render(view)
+      assert get_general_vue(view).props["project-details"]["name"] == "Stable project"
     end
 
     test "updates project type metadata via update_project event", %{conn: conn, user: user} do
@@ -427,7 +476,14 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
       vue = get_snapshots_vue(view)
 
-      assert vue.props |> Map.keys() |> Enum.sort() == ["snapshot-limit", "snapshots", "storage-usage"]
+      assert vue.props |> Map.keys() |> Enum.sort() == [
+               "restore-operation-active",
+               "snapshot-limit",
+               "snapshots",
+               "storage-usage"
+             ]
+
+      assert vue.props["restore-operation-active"] == false
       assert vue.props["snapshot-limit"] == %{"used" => 1, "limit" => 10}
 
       assert [serialized] = vue.props["snapshots"]
@@ -444,7 +500,9 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                "activeReservationBytes",
                "exportReservationBytes",
                "accountingVersion",
-               "deleteStatus"
+               "deleteStatus",
+               "canRestore",
+               "restoreOperation"
              ]) == %{
                "mode" => "full",
                "lifecycleStatus" => "ready",
@@ -457,7 +515,9 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                "activeReservationBytes" => "0",
                "exportReservationBytes" => "60",
                "accountingVersion" => 1,
-               "deleteStatus" => "active_operation"
+               "deleteStatus" => "active_operation",
+               "canRestore" => true,
+               "restoreOperation" => nil
              }
 
       assert is_binary(serialized["accountingMeasuredAt"])
@@ -582,6 +642,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
         |> Map.new(&{&1["id"], &1})
 
       assert serialized_by_id[missing.id]["downloadUrl"] == nil
+      assert serialized_by_id[missing.id]["canRestore"] == false
     end
 
     test "requests and cancels a durable full snapshot from the settings surface", %{
@@ -607,6 +668,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert pending["plannedSizeBytes"] == nil
       assert pending["progressTotalBytes"] == nil
       assert pending["canCancel"] == true
+      assert pending["canRestore"] == false
       assert pending["deleteStatus"] == nil
       assert pending["downloadUrl"] == nil
 
@@ -629,7 +691,153 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       render_click(view, "cancel_snapshot", %{"id" => %{"malformed" => true}})
       render_click(view, "delete_snapshot", %{"id" => ["malformed"]})
 
+      render_click(view, "restore_snapshot", %{
+        "id" => %{"malformed" => true},
+        "idempotency_key" => Ecto.UUID.generate()
+      })
+
+      assert_push_event(view, "snapshot_restore_failed", %{
+        snapshotId: nil,
+        reason: "invalid_request"
+      })
+
       assert get_snapshots_vue(view).props["snapshots"] == []
+    end
+
+    test "requests an idempotent durable restore and exposes only public operation state", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      snapshot = full_project_snapshot_fixture(project, %{title: "Restore boundary"})
+      snapshot_id = snapshot.id
+      idempotency_key = Ecto.UUID.generate()
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+
+      assert [ready] = get_snapshots_vue(view).props["snapshots"]
+      assert ready["canRestore"] == true
+      assert ready["restoreOperation"] == nil
+
+      render_click(view, "restore_snapshot", %{
+        "id" => snapshot_id,
+        "idempotency_key" => idempotency_key
+      })
+
+      assert_push_event(view, "snapshot_restore_accepted", %{
+        snapshotId: ^snapshot_id,
+        restoreId: restore_id
+      })
+
+      restore = Repo.get!(ProjectSnapshotRestore, restore_id)
+      assert restore.idempotency_key == idempotency_key
+      assert restore.requested_by_id == user.id
+
+      vue = get_snapshots_vue(view)
+      assert vue.props["restore-operation-active"] == true
+      assert [queued] = vue.props["snapshots"]
+      assert queued["canRestore"] == false
+      assert queued["canDelete"] == false
+      assert queued["deleteStatus"] == "restore_operation"
+
+      assert queued["restoreOperation"] == %{
+               "attempt" => 0,
+               "completedAt" => nil,
+               "failedAt" => nil,
+               "failureCode" => nil,
+               "failureMessage" => nil,
+               "id" => restore.id,
+               "phase" => "queued",
+               "requestedAt" => DateTime.to_iso8601(restore.requested_at),
+               "stateUpdatedAt" => DateTime.to_iso8601(restore.state_updated_at),
+               "status" => "queued"
+             }
+
+      render_click(view, "delete_snapshot", %{"id" => snapshot_id})
+
+      assert_push_event(view, "snapshot_delete_failed", %{
+        snapshotId: ^snapshot_id,
+        reason: "restore_operation"
+      })
+
+      assert Repo.get(ProjectSnapshot, snapshot_id)
+
+      render_click(view, "restore_snapshot", %{
+        "id" => snapshot_id,
+        "idempotency_key" => idempotency_key
+      })
+
+      assert_push_event(view, "snapshot_restore_accepted", %{
+        snapshotId: ^snapshot_id,
+        restoreId: ^restore_id
+      })
+
+      assert [replayed] = Versioning.list_project_snapshot_restores(project.id)
+      assert replayed.id == restore.id
+
+      job =
+        restore.oban_job_id
+        |> then(&Repo.get!(Oban.Job, &1))
+        |> Ecto.Changeset.change(
+          state: "executing",
+          attempt: 1,
+          attempted_at: %{TimeHelpers.now() | microsecond: {0, 6}}
+        )
+        |> Repo.update!()
+
+      assert {:ok, {:claimed, claimed}} =
+               Versioning.claim_project_snapshot_restore(restore.id, restore.generation,
+                 job_id: job.id,
+                 attempt: job.attempt
+               )
+
+      assert {:ok, failed} =
+               Versioning.fail_project_snapshot_restore(
+                 restore.id,
+                 claimed.generation,
+                 :project_snapshot_restore_preflight_failed
+               )
+
+      vue = get_snapshots_vue(view)
+      assert vue.props["restore-operation-active"] == false
+      assert [failed_snapshot] = vue.props["snapshots"]
+      assert failed_snapshot["canRestore"] == true
+      assert failed_snapshot["canDelete"] == true
+
+      public_failure = failed_snapshot["restoreOperation"]
+      assert public_failure["status"] == "failed"
+      assert public_failure["phase"] == "failed"
+      assert public_failure["failureCode"] == failed.failure_code
+      assert public_failure["failureMessage"] == failed.failure_message
+      refute Map.has_key?(public_failure, "failureDetails")
+      refute Map.has_key?(public_failure, "result")
+    end
+
+    test "restore requests reauthorize the owner's current database membership", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      snapshot = full_project_snapshot_fixture(project)
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+
+      project.id
+      |> Projects.get_membership(user.id)
+      |> then(&Repo.update!(Ecto.Changeset.change(&1, role: "editor")))
+
+      render_click(view, "restore_snapshot", %{
+        "id" => snapshot.id,
+        "idempotency_key" => Ecto.UUID.generate()
+      })
+
+      assert_push_event(view, "snapshot_restore_failed", %{
+        snapshotId: snapshot_id,
+        reason: "unauthorized"
+      })
+
+      assert snapshot_id == snapshot.id
+      assert Versioning.list_project_snapshot_restores(project.id) == []
     end
 
     test "deletes a ready snapshot through the durable cleanup protocol", %{

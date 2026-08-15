@@ -698,6 +698,31 @@ defmodule Storyarn.Assets.Storage.R2Test do
       end
     end
 
+    test "inventories an exact restore-reservation blob key for durable cleanup" do
+      key =
+        "projects/42/storage-reservations/v1/restore-staging/" <>
+          "3abf435a-c086-4801-9b91-5a49a440f917/blobs/#{String.duplicate("a", 64)}.png"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "GET"
+        assert conn.query_params["uploads"] == "1"
+        assert conn.query_params["prefix"] == key
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          """
+          <ListMultipartUploadsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <IsTruncated>false</IsTruncated>
+          </ListMultipartUploadsResult>
+          """
+        )
+      end)
+
+      assert {:ok, 0} = R2.abort_incomplete_multipart_uploads(key, [])
+    end
+
     test "paginates exact-key uploads and aborts every durable cleanup target" do
       key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
       {:ok, request_count} = Agent.start_link(fn -> 0 end)

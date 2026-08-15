@@ -22,7 +22,14 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
 
       assert length(catalog.assets) == 2
       assert length(catalog.blobs) == 1
+
+      assert catalog.source_refs == %{
+               "41" => "asset-000001",
+               "42" => "asset-000002"
+             }
+
       assert map_size(catalog.source_keys) == 1
+      assert :ok = SnapshotObjectFormat.validate_source_refs(catalog.source_refs, catalog.assets)
 
       [first, second] = catalog.assets
       assert first["logical_id"] == "asset-000001"
@@ -32,6 +39,38 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
       assert first["relationships"]["variants"] == %{"avatar" => "asset-000002"}
       assert second["relationships"]["original"] == "asset-000001"
       refute Map.has_key?(second["metadata"], "web_url")
+    end
+
+    test "validates source reference shape, uniqueness, and exact catalog coverage" do
+      assert {:ok, catalog} =
+               SnapshotObjectFormat.build_catalog([
+                 asset(41, "first.png", @hash),
+                 asset(42, "second.png", String.duplicate("b", 64))
+               ])
+
+      assert {:error, :invalid_asset_source_refs} =
+               SnapshotObjectFormat.validate_source_refs(
+                 Map.put(catalog.source_refs, "43", "asset-000001"),
+                 catalog.assets
+               )
+
+      assert {:error, :invalid_asset_source_refs} =
+               SnapshotObjectFormat.validate_source_refs(
+                 %{"041" => "asset-000001", "42" => "asset-000002"},
+                 catalog.assets
+               )
+
+      assert {:error, :asset_source_refs_mismatch} =
+               SnapshotObjectFormat.validate_source_refs(
+                 Map.delete(catalog.source_refs, "42"),
+                 catalog.assets
+               )
+
+      assert {:error, :invalid_asset_source_refs} =
+               SnapshotObjectFormat.validate_source_refs(
+                 %{"9223372036854775808" => "asset-000001", "42" => "asset-000002"},
+                 catalog.assets
+               )
     end
 
     test "fails closed on dangling asset relationships" do
@@ -221,6 +260,20 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
       assert get_in(portable, ["sheets", Access.at(0), "grid"]) == "twelve-column"
       assert get_in(portable, ["sheets", Access.at(0), "nested"]) == %{}
       assert :ok = SnapshotObjectFormat.validate_project(portable)
+    end
+
+    test "reader validates portable asset catalog references when present" do
+      project = %{
+        "format_version" => 2,
+        "asset_catalog_refs" => %{"41" => "asset-000001"}
+      }
+
+      assert :ok = SnapshotObjectFormat.validate_project(project)
+
+      assert {:error, :invalid_asset_source_refs} =
+               project
+               |> put_in(["asset_catalog_refs", "41"], "asset-current-storage-key")
+               |> SnapshotObjectFormat.validate_project()
     end
 
     test "reader rejects recursive project storage locator variants" do

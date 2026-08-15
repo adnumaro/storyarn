@@ -685,9 +685,13 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   # ========== Restore Snapshot ==========
 
+  @doc false
+  @spec validate_portable_snapshot(term()) :: :ok | {:error, term()}
+  def validate_portable_snapshot(snapshot), do: validate_flow_snapshot(snapshot)
+
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    with :ok <- validate_flow_snapshot(snapshot) do
+    with :ok <- validate_portable_snapshot(snapshot) do
       with_asset_materialization_scope(opts, fn scoped_opts ->
         instantiate_flow_snapshot_transaction(
           project_id,
@@ -828,7 +832,9 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     else
       query =
         from(flow in Flow,
-          where: flow.project_id == ^project_id and flow.is_main == true
+          where:
+            flow.project_id == ^project_id and flow.is_main == true and
+              is_nil(flow.deleted_at)
         )
 
       query =

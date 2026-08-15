@@ -39,6 +39,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.VariableNamespaceResolver
 
   @project_target_types %{
     "block" => ~w(sheet flow),
@@ -949,8 +950,10 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     project_id = get_project_id_from_scene(zone.scene_id)
 
     if project_id do
+      sheet_ids = resolve_assignment_sheet_ids(project_id, assignments)
+
       assignments
-      |> Enum.flat_map(&extract_assignment_sheet_refs(&1, project_id))
+      |> Enum.flat_map(&extract_assignment_sheet_refs(&1, sheet_ids))
       |> Enum.uniq_by(fn ref -> {ref.type, ref.id} end)
     else
       []
@@ -989,12 +992,22 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     end
   end
 
-  defp extract_assignment_sheet_refs(assignment, project_id) do
-    write_refs = resolve_sheet_ref(project_id, assignment["sheet"], "assignment")
+  defp resolve_assignment_sheet_ids(project_id, assignments) do
+    namespaces =
+      Enum.flat_map(assignments, fn assignment ->
+        read_namespace = if assignment["value_type"] == "variable_ref", do: assignment["value_sheet"]
+        [assignment["sheet"], read_namespace]
+      end)
+
+    VariableNamespaceResolver.resolve_sheet_ids(project_id, namespaces)
+  end
+
+  defp extract_assignment_sheet_refs(assignment, sheet_ids) do
+    write_refs = resolved_sheet_ref(sheet_ids, assignment["sheet"], "assignment")
 
     read_refs =
       if assignment["value_type"] == "variable_ref" do
-        resolve_sheet_ref(project_id, assignment["value_sheet"], "assignment_source")
+        resolved_sheet_ref(sheet_ids, assignment["value_sheet"], "assignment_source")
       else
         []
       end
@@ -1002,19 +1015,18 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     write_refs ++ read_refs
   end
 
+  defp resolved_sheet_ref(sheet_ids, namespace, context) do
+    case Map.fetch(sheet_ids, namespace) do
+      {:ok, sheet_id} -> [%{type: "sheet", id: sheet_id, context: context}]
+      :error -> []
+    end
+  end
+
   defp resolve_sheet_ref(_project_id, nil, _context), do: []
   defp resolve_sheet_ref(_project_id, "", _context), do: []
 
   defp resolve_sheet_ref(project_id, sheet_shortcut, context) do
-    sheet_id =
-      Repo.one(
-        from(s in Sheet,
-          where: s.project_id == ^project_id and s.shortcut == ^sheet_shortcut,
-          where: is_nil(s.deleted_at),
-          select: s.id,
-          limit: 1
-        )
-      )
+    sheet_id = VariableNamespaceResolver.resolve_sheet_id(project_id, sheet_shortcut)
 
     if sheet_id do
       [%{type: "sheet", id: sheet_id, context: context}]

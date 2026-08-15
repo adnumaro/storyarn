@@ -3,6 +3,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   use Oban.Testing, repo: Storyarn.Repo
 
   import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.VersioningFixtures
 
@@ -15,6 +17,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageAccounting
   alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Localization
   alias Storyarn.Notifications
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
@@ -44,6 +47,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       project = project_fixture(user)
       scope = user_scope_fixture(user)
       asset = upload_asset!(project, user, "capture bytes")
+      flow = flow_fixture(project)
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      spanish = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Archived source", "responses" => []}})
+
+      archived_text = Localization.get_text_by_source("flow_node", node.id, "text", "es")
+
+      assert {:ok, archived_text} =
+               Localization.update_text(archived_text, %{
+                 translated_text: "Archived translation",
+                 status: "final"
+               })
+
+      assert {:ok, _archived_language} = Localization.remove_language(spanish)
       idempotency_key = Ecto.UUID.generate()
 
       assert {:ok, snapshot} =
@@ -64,6 +81,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert is_nil(snapshot.archive_size_bytes)
       assert is_nil(snapshot.project_size_bytes)
       assert is_nil(snapshot.capture_digest)
+      assert is_nil(snapshot.restore_contract_version)
       assert is_nil(snapshot.captured_at)
       assert is_nil(snapshot.total_size_bytes)
       assert snapshot.progress_bytes == 0
@@ -113,6 +131,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert captured.archive_size_bytes > 0
       assert captured.total_size_bytes == captured.archive_size_bytes + captured.manifest_size_bytes
       assert captured.progress_total_bytes == captured.total_size_bytes
+      assert captured.restore_contract_version == 1
       assert capture.capture_boundary == captured.capture_boundary
       assert capture.capture_digest == captured.capture_digest
       assert byte_size(capture.project_json) == captured.project_size_bytes
@@ -122,6 +141,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
 
       assert capture.total_size_bytes ==
                capture.project_size_bytes + capture.manifest_size_bytes + capture.asset_blob_size_bytes
+
+      project_object = Jason.decode!(capture.project_json)
+      assert project_object["project"]["name"] == project.name
+      assert Enum.map(project_object["localization"]["languages"], & &1["locale_code"]) == ["en"]
+      refute Enum.any?(project_object["localization"]["texts"], &(&1["source_id"] == archived_text.source_id))
+
+      assert project_object["asset_catalog_refs"] == %{
+               to_string(asset.id) => "asset-000001"
+             }
 
       blob_key = protected_blob_key(project.id, asset)
       assert Map.values(capture.source_keys) == [blob_key]

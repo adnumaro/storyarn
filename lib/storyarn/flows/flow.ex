@@ -157,8 +157,8 @@ defmodule Storyarn.Flows.Flow do
 
   # Private functions
 
-  # `flows_project_id_is_main_index` is a partial unique index over
-  # `(project_id, is_main) where is_main = true`. Without a matching
+  # `flows_project_id_is_main_index` is a partial unique index over active
+  # `(project_id, is_main)` rows where `is_main = true`. Without a matching
   # `unique_constraint` the database raises `Ecto.ConstraintError` instead of
   # returning a changeset error — which is how a second import into a project
   # that already had a main flow produced a raw 500 with no usable message.

@@ -12,6 +12,7 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
+  alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplate
@@ -848,6 +849,138 @@ defmodule Storyarn.Assets.StorageCompensationTest do
     assert {:error, :enoent} = Storage.download(storage_key)
   end
 
+  test "stale normal and force cleanup defer while a later restore owns the exact keys" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = full_project_snapshot_fixture(project)
+
+    normal_key =
+      "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/normal-cleanup.png"
+
+    force_key =
+      "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/force-cleanup.png"
+
+    transactional_key =
+      "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/transactional-cleanup.png"
+
+    assert {:ok, _url} = Storage.upload(normal_key, "normal", "image/png")
+    assert {:ok, _url} = Storage.upload(force_key, "force", "image/png")
+    assert {:ok, _url} = Storage.upload(transactional_key, "transactional", "image/png")
+
+    on_exit(fn ->
+      Storage.adapter().delete(normal_key)
+      Storage.adapter().delete(force_key)
+      Storage.adapter().delete(transactional_key)
+    end)
+
+    reservation =
+      insert_active_restore_reservation!(project, snapshot, [
+        normal_key,
+        force_key,
+        transactional_key
+      ])
+
+    force_tracker = StorageCompensation.new()
+    :ok = StorageCompensation.track_force_delete(force_tracker, force_key)
+    [force_target] = StorageCompensation.pending_cleanup_targets(force_tracker)
+    transactional_tracker = StorageCompensation.new()
+    :ok = StorageCompensation.track(transactional_tracker, transactional_key)
+
+    assert {:error, [^normal_key]} = StorageCompensation.delete_storage_keys([normal_key])
+    assert {:error, [^force_target]} = StorageCompensation.delete_storage_keys([force_target])
+
+    assert {:ok, {:error, :storage_cleanup_requires_post_transaction}} =
+             Repo.transaction(fn ->
+               StorageCompensation.delete_tracked_or_enqueue(
+                 transactional_tracker,
+                 transactional_key,
+                 delete_attempts: 1
+               )
+             end)
+
+    assert {:ok, "normal"} = Storage.download(normal_key)
+    assert {:ok, "force"} = Storage.download(force_key)
+    assert {:ok, "transactional"} = Storage.download(transactional_key)
+
+    cleanup_request =
+      Repo.insert!(%StorageCleanupRequest{
+        storage_keys: [normal_key, force_key, transactional_key]
+      })
+
+    now = TimeHelpers.now()
+
+    reservation
+    |> StorageReservation.release_changeset("restore attempt settled", %{
+      generation: reservation.generation + 1,
+      settled_at: now,
+      cleanup_status: "owned",
+      cleanup_reference: "storage_cleanup_request:#{cleanup_request.id}",
+      accounting_version: 1,
+      accounting_measured_at: now
+    })
+    |> Repo.update!()
+
+    assert :ok = StorageCompensation.delete_storage_keys([normal_key])
+    assert :ok = StorageCompensation.delete_storage_keys([force_target])
+
+    assert {:ok, :ok} =
+             Repo.transaction(fn ->
+               StorageCompensation.delete_tracked_or_enqueue(
+                 transactional_tracker,
+                 transactional_key,
+                 delete_attempts: 1
+               )
+             end)
+
+    assert {:error, :enoent} = Storage.download(normal_key)
+    assert {:error, :enoent} = Storage.download(force_key)
+    assert {:error, :enoent} = Storage.download(transactional_key)
+    assert :ok = StorageCompensation.cleanup(transactional_tracker)
+  end
+
+  test "rollback cleanup bypasses only its exact restore reservation owner" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = full_project_snapshot_fixture(project)
+    owned_key = cleanup_asset_key("owned-restore-rollback", project.id)
+    concurrently_owned_key = cleanup_asset_key("concurrent-restore-rollback", project.id)
+
+    assert {:ok, _url} = Storage.upload(owned_key, "owned", "image/png")
+    assert {:ok, _url} = Storage.upload(concurrently_owned_key, "concurrent", "image/png")
+
+    on_exit(fn ->
+      Storage.adapter().delete(owned_key)
+      Storage.adapter().delete(concurrently_owned_key)
+    end)
+
+    owner =
+      insert_active_restore_reservation!(project, snapshot, [
+        owned_key,
+        concurrently_owned_key
+      ])
+
+    _concurrent_owner =
+      insert_active_restore_reservation!(project, snapshot, [concurrently_owned_key])
+
+    tracker = StorageCompensation.new()
+    :ok = StorageCompensation.track_force_delete(tracker, owned_key)
+    :ok = StorageCompensation.track_force_delete(tracker, concurrently_owned_key)
+
+    [owned_target, concurrent_target] =
+      tracker
+      |> StorageCompensation.pending_cleanup_targets()
+      |> Enum.sort_by(&String.contains?(&1, "concurrent-restore-rollback"))
+
+    assert {:error, [^concurrent_target]} =
+             StorageCompensation.delete_storage_keys(
+               [owned_target, concurrent_target],
+               restore_cleanup_owner: owner
+             )
+
+    assert {:error, :enoent} = Storage.download(owned_key)
+    assert {:ok, "concurrent"} = Storage.download(concurrently_owned_key)
+  end
+
   test "deferred cleanup deletes content-addressed blobs whose project rolled back" do
     missing_project_id = 9_000_000_000 + System.unique_integer([:positive])
     hash = String.duplicate("b", 64)
@@ -1561,6 +1694,45 @@ defmodule Storyarn.Assets.StorageCompensationTest do
 
   defp cleanup_asset_key(label, project_id \\ 1) do
     "projects/#{project_id}/assets/#{Ecto.UUID.generate()}/#{label}.png"
+  end
+
+  defp insert_active_restore_reservation!(project, snapshot, cleanup_storage_keys) do
+    lease_token = Ecto.UUID.generate()
+    now = TimeHelpers.now()
+
+    namespace =
+      "projects/#{project.id}/storage-reservations/v1/restore-staging/#{lease_token}"
+
+    reservation =
+      %StorageReservation{}
+      |> StorageReservation.create_changeset(%{
+        workspace_id: project.workspace_id,
+        project_id: project.id,
+        project_snapshot_id: snapshot.id,
+        idempotency_key: "storage-compensation-restore:#{lease_token}",
+        kind: "restore_staging",
+        storage_namespace: namespace,
+        cleanup_object_prefix: namespace,
+        reserved_bytes: 1,
+        lease_token: lease_token,
+        generation: 1,
+        expires_at: DateTime.add(now, 3_600, :second),
+        accounting_version: 1,
+        accounting_measured_at: now
+      })
+      |> Repo.insert!()
+
+    canonical_keys = Enum.sort(cleanup_storage_keys)
+    digest = StorageCleanupInventory.digest(canonical_keys)
+
+    reservation
+    |> StorageReservation.storage_started_changeset(
+      now,
+      digest,
+      length(canonical_keys),
+      canonical_keys
+    )
+    |> Repo.update!()
   end
 
   defp cleanup_blob_key(label, project_id \\ 1) do

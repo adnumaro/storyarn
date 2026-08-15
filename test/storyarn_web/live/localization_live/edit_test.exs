@@ -69,6 +69,25 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       assert vue.props["back-url"] =~ "/localization"
     end
 
+    test "leaves a displaced text editor after a project snapshot restore", %{
+      conn: conn,
+      project: project
+    } do
+      text = localized_text_fixture(project.id, %{locale_code: "es"})
+      {:ok, view, _html} = live(conn, edit_url(project, text))
+
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        "project:#{project.id}:shell",
+        {:project_restored, 42}
+      )
+
+      assert_redirect(
+        view,
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/texts/#{text.locale_code}"
+      )
+    end
+
     test "passes source type and field metadata", %{conn: conn, project: project} do
       text =
         localized_text_fixture(project.id, %{

@@ -15,6 +15,9 @@ defmodule Storyarn.Sheets.VariableCatalog do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+  alias Storyarn.Sheets.VariableNamespaceResolver
+
+  require VariableNamespaceResolver
 
   @default_limit 25
   @max_limit 50
@@ -294,48 +297,44 @@ defmodule Storyarn.Sheets.VariableCatalog do
   end
 
   defp regular_definition_query(project_id, limit) do
-    from(block in Block,
-      join: sheet in Sheet,
-      on: block.sheet_id == sheet.id,
-      where:
-        sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and
-          is_nil(block.deleted_at) and block.type in ^@variable_types and
-          block.is_constant == false and not is_nil(block.variable_name) and
-          block.variable_name != "",
-      order_by: [
-        asc:
-          fragment(
-            "LOWER(COALESCE(?, CAST(? AS TEXT)) || '.' || ?) COLLATE \"C\"",
-            sheet.shortcut,
-            sheet.id,
-            block.variable_name
-          ),
-        asc: block.id
-      ],
-      limit: ^limit,
-      select: %{
-        sheet_id: sheet.id,
-        sheet_name: sheet.name,
-        sheet_shortcut: coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
-        block_id: block.id,
-        block_type: block.type,
-        initial_value: fragment("?->'content'", block.value),
-        variable_name: block.variable_name,
-        qualified_ref:
-          fragment(
-            "COALESCE(?, CAST(? AS TEXT)) || '.' || ?",
-            sheet.shortcut,
-            sheet.id,
-            block.variable_name
-          ),
-        table_name: nil,
-        row_id: nil,
-        row_name: nil,
-        row_slug: nil,
-        column_id: nil,
-        column_name: nil,
-        column_slug: nil
-      }
+    filter_authoritative_regular_namespace(
+      from(block in Block,
+        join: sheet in Sheet,
+        on: block.sheet_id == sheet.id,
+        where:
+          sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and is_nil(block.deleted_at) and
+            block.type in ^@variable_types and block.is_constant == false and not is_nil(block.variable_name) and
+            block.variable_name != "",
+        order_by: [
+          asc:
+            fragment(
+              "LOWER(COALESCE(?, CAST(? AS TEXT)) || '.' || ?) COLLATE \"C\"",
+              sheet.shortcut,
+              sheet.id,
+              block.variable_name
+            ),
+          asc: block.id
+        ],
+        limit: ^limit,
+        select: %{
+          sheet_id: sheet.id,
+          sheet_name: sheet.name,
+          sheet_shortcut: coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
+          block_id: block.id,
+          block_type: block.type,
+          initial_value: fragment("?->'content'", block.value),
+          variable_name: block.variable_name,
+          qualified_ref:
+            fragment("COALESCE(?, CAST(? AS TEXT)) || '.' || ?", sheet.shortcut, sheet.id, block.variable_name),
+          table_name: nil,
+          row_id: nil,
+          row_name: nil,
+          row_slug: nil,
+          column_id: nil,
+          column_name: nil,
+          column_slug: nil
+        }
+      )
     )
   end
 
@@ -355,60 +354,72 @@ defmodule Storyarn.Sheets.VariableCatalog do
   end
 
   defp table_definition_query(project_id, limit) do
-    from(column in TableColumn,
-      join: block in Block,
-      on: column.block_id == block.id,
-      join: sheet in Sheet,
-      on: block.sheet_id == sheet.id,
-      join: row in TableRow,
-      on: row.block_id == block.id,
-      where:
-        sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and
-          is_nil(block.deleted_at) and block.type == "table" and
-          column.type in ^@variable_column_types and
-          (column.is_constant == false or
-             column.type in ^@constant_variable_column_types) and
-          not is_nil(block.variable_name) and block.variable_name != "",
-      order_by: [
-        asc:
-          fragment(
-            "LOWER(COALESCE(?, CAST(? AS TEXT)) || '.' || ? || '.' || ? || '.' || ?) COLLATE \"C\"",
-            sheet.shortcut,
-            sheet.id,
-            block.variable_name,
-            row.slug,
-            column.slug
-          ),
-        asc: block.id,
-        asc: row.id,
-        asc: column.id
-      ],
-      limit: ^limit,
-      select: %{
-        sheet_id: sheet.id,
-        sheet_name: sheet.name,
-        sheet_shortcut: coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
-        block_id: block.id,
-        block_type: column.type,
-        initial_value: fragment("?->?", row.cells, column.slug),
-        variable_name: fragment("? || '.' || ? || '.' || ?", block.variable_name, row.slug, column.slug),
-        qualified_ref:
-          fragment(
-            "COALESCE(?, CAST(? AS TEXT)) || '.' || ? || '.' || ? || '.' || ?",
-            sheet.shortcut,
-            sheet.id,
-            block.variable_name,
-            row.slug,
-            column.slug
-          ),
-        table_name: block.variable_name,
-        row_id: row.id,
-        row_name: row.name,
-        row_slug: row.slug,
-        column_id: column.id,
-        column_name: column.name,
-        column_slug: column.slug
-      }
+    filter_authoritative_table_namespace(
+      from(column in TableColumn,
+        join: block in Block,
+        on: column.block_id == block.id,
+        join: sheet in Sheet,
+        on: block.sheet_id == sheet.id,
+        join: row in TableRow,
+        on: row.block_id == block.id,
+        where:
+          sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and is_nil(block.deleted_at) and
+            block.type == "table" and column.type in ^@variable_column_types and
+            (column.is_constant == false or column.type in ^@constant_variable_column_types) and
+            not is_nil(block.variable_name) and block.variable_name != "",
+        order_by: [
+          asc:
+            fragment(
+              "LOWER(COALESCE(?, CAST(? AS TEXT)) || '.' || ? || '.' || ? || '.' || ?) COLLATE \"C\"",
+              sheet.shortcut,
+              sheet.id,
+              block.variable_name,
+              row.slug,
+              column.slug
+            ),
+          asc: block.id,
+          asc: row.id,
+          asc: column.id
+        ],
+        limit: ^limit,
+        select: %{
+          sheet_id: sheet.id,
+          sheet_name: sheet.name,
+          sheet_shortcut: coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
+          block_id: block.id,
+          block_type: column.type,
+          initial_value: fragment("?->?", row.cells, column.slug),
+          variable_name: fragment("? || '.' || ? || '.' || ?", block.variable_name, row.slug, column.slug),
+          qualified_ref:
+            fragment(
+              "COALESCE(?, CAST(? AS TEXT)) || '.' || ? || '.' || ? || '.' || ?",
+              sheet.shortcut,
+              sheet.id,
+              block.variable_name,
+              row.slug,
+              column.slug
+            ),
+          table_name: block.variable_name,
+          row_id: row.id,
+          row_name: row.name,
+          row_slug: row.slug,
+          column_id: column.id,
+          column_name: column.name,
+          column_slug: column.slug
+        }
+      )
+    )
+  end
+
+  defp filter_authoritative_regular_namespace(query) do
+    from([_block, sheet] in query,
+      where: VariableNamespaceResolver.authoritative_namespace_owner?(sheet)
+    )
+  end
+
+  defp filter_authoritative_table_namespace(query) do
+    from([_column, _block, sheet, _row] in query,
+      where: VariableNamespaceResolver.authoritative_namespace_owner?(sheet)
     )
   end
 

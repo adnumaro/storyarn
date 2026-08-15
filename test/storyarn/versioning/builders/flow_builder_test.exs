@@ -1889,7 +1889,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert restored_layer.opacity == 0.0
     end
 
-    test "restores main only when no other active or trashed flow is already main", %{
+    test "restores main when the only other main flow is in recoverable trash", %{
       project: project,
       flow: flow
     } do
@@ -1911,12 +1911,12 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert trashed_main.is_main
       assert trashed_main.deleted_at
 
-      assert {:ok, restored_non_main} =
+      assert {:ok, restored_main_again} =
                FlowBuilder.restore_snapshot(restored_main, main_snapshot,
                  restore_action: {:entity_version_restore, "flow"}
                )
 
-      refute restored_non_main.is_main
+      assert restored_main_again.is_main
 
       persisted_other = Repo.get!(Flow, other_flow.id)
       assert persisted_other.is_main

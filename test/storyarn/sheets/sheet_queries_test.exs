@@ -7,6 +7,7 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetQueries
@@ -1419,6 +1420,56 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       assert result == block.id
     end
 
+    test "resolves a shortcutless sheet by its numeric namespace" do
+      %{project: project} = setup_project()
+
+      sheet = sheet_fixture(project, %{name: "Shortcutless"})
+      block = block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
+      Repo.update_all(from(s in Sheet, where: s.id == ^sheet.id), set: [shortcut: nil])
+
+      assert SheetQueries.resolve_block_id_by_variable(
+               project.id,
+               Integer.to_string(sheet.id),
+               block.variable_name
+             ) == block.id
+    end
+
+    test "an explicit numeric shortcut deterministically wins over an ID fallback" do
+      %{project: project} = setup_project()
+
+      fallback_sheet = sheet_fixture(project, %{name: "Fallback"})
+
+      fallback_block =
+        block_fixture(fallback_sheet, %{
+          type: "number",
+          config: %{"label" => "Health"},
+          value: %{"content" => 10}
+        })
+
+      explicit_sheet = sheet_fixture(project, %{name: "Explicit"})
+
+      explicit_block =
+        block_fixture(explicit_sheet, %{
+          type: "number",
+          config: %{"label" => "Health"},
+          value: %{"content" => 20}
+        })
+
+      namespace = Integer.to_string(fallback_sheet.id)
+      Repo.update!(Ecto.Changeset.change(fallback_sheet, shortcut: nil))
+      Repo.update!(Ecto.Changeset.change(explicit_sheet, shortcut: namespace))
+
+      assert SheetQueries.resolve_block_id_by_variable(
+               project.id,
+               namespace,
+               fallback_block.variable_name
+             ) == explicit_block.id
+
+      assert SheetQueries.resolve_variable_values(project.id, ["#{namespace}.health"]) == %{
+               "#{namespace}.health" => 20
+             }
+    end
+
     test "returns nil for non-existent variable" do
       %{project: project} = setup_project()
 
@@ -1491,6 +1542,24 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       assert result == table.id
     end
 
+    test "resolves a shortcutless table sheet by its numeric namespace" do
+      %{project: project} = setup_project()
+
+      sheet = sheet_fixture(project, %{name: "Shortcutless"})
+      table = table_block_fixture(sheet, %{label: "Stats"})
+      [row] = table.table_rows
+      [column] = table.table_columns
+      Repo.update_all(from(s in Sheet, where: s.id == ^sheet.id), set: [shortcut: nil])
+
+      assert SheetQueries.resolve_table_block_id_by_variable(
+               project.id,
+               Integer.to_string(sheet.id),
+               table.variable_name,
+               row.slug,
+               column.slug
+             ) == table.id
+    end
+
     test "returns nil for non-existent table" do
       %{project: project} = setup_project()
 
@@ -1513,7 +1582,7 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
 
       default_col
       |> Ecto.Changeset.change(is_constant: true)
-      |> Storyarn.Repo.update!()
+      |> Repo.update!()
 
       assert SheetQueries.resolve_table_block_id_by_variable(
                project.id,
@@ -1621,7 +1690,7 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       # so create one and then clear its shortcut
       sheet = sheet_fixture(project, %{name: "No Shortcut"})
 
-      Storyarn.Repo.update_all(
+      Repo.update_all(
         from(s in Sheet, where: s.id == ^sheet.id),
         set: [shortcut: nil]
       )
@@ -1762,6 +1831,41 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
     test "report nothing while both references still resolve", context do
       assert SheetQueries.list_stale_node_ids_by_flow([context.flow.id]) == %{}
       assert per_flow_stale_node_ids(context.flow.id) == MapSet.new()
+    end
+
+    test "treat a shortcutless sheet numeric namespace as current", context do
+      Repo.update_all(from(s in Sheet, where: s.id == ^context.sheet.id), set: [shortcut: nil])
+
+      namespace = Integer.to_string(context.sheet.id)
+      numeric_plain = tracked_assignment_node(context.flow, namespace, context.plain.variable_name)
+
+      numeric_table =
+        tracked_assignment_node(
+          context.flow,
+          namespace,
+          "#{context.table.variable_name}.#{context.row.slug}.#{context.column.slug}"
+        )
+
+      regular_ref =
+        context.plain.id
+        |> SheetQueries.check_stale_flow_node_variable_references(context.project.id)
+        |> Enum.find(&(&1.node_id == numeric_plain.id))
+
+      table_ref =
+        context.table.id
+        |> SheetQueries.check_stale_flow_node_variable_references(context.project.id)
+        |> Enum.find(&(&1.node_id == numeric_table.id))
+
+      assert regular_ref && regular_ref.stale == false
+      assert table_ref && table_ref.stale == false
+
+      stale_ids =
+        [context.flow.id]
+        |> SheetQueries.list_stale_node_ids_by_flow()
+        |> Map.fetch!(context.flow.id)
+
+      refute numeric_plain.id in stale_ids
+      refute numeric_table.id in stale_ids
     end
 
     test "agree when a deleted table row breaks a cell path", context do

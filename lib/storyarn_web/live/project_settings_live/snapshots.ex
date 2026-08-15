@@ -7,8 +7,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
 
   alias Storyarn.Projects
   alias Storyarn.Versioning
+  alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias StoryarnWeb.Helpers.Authorize
+
+  @active_restore_statuses ~w(queued running retrying)
 
   # ===========================================================================
   # Render
@@ -35,7 +38,15 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         v-socket={@socket}
         v-inject="settings-layout"
         id="project-settings-snapshots"
-        snapshots={serialize_snapshots(@project, @snapshots, @snapshot_reservations)}
+        snapshots={
+          serialize_snapshots(
+            @project,
+            @snapshots,
+            @snapshot_reservations,
+            @snapshot_restores
+          )
+        }
+        restore-operation-active={project_restore_active?(@snapshot_restores)}
         storage-usage={serialize_storage_usage(@storage_usage, @storage_limit)}
         snapshot-limit={serialize_snapshot_limit(@snapshot_slots_used, @snapshot_slots_limit)}
       />
@@ -47,11 +58,26 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   # Serialization helpers
   # ===========================================================================
 
-  defp serialize_snapshots(project, snapshots, reservations) do
-    Enum.map(snapshots, &serialize_snapshot(project, &1, reservations))
+  defp serialize_snapshots(project, snapshots, reservations, restores) do
+    restores_by_snapshot =
+      Enum.reduce(restores, %{}, fn restore, acc ->
+        Map.put_new(acc, restore.project_snapshot_id, restore)
+      end)
+
+    active_restore? = project_restore_active?(restores)
+
+    Enum.map(snapshots, fn snapshot ->
+      serialize_snapshot(
+        project,
+        snapshot,
+        reservations,
+        Map.get(restores_by_snapshot, snapshot.id),
+        active_restore?
+      )
+    end)
   end
 
-  defp serialize_snapshot(project, snapshot, reservations) do
+  defp serialize_snapshot(project, snapshot, reservations, restore, active_restore?) do
     reservation = Map.get(reservations, snapshot.id, %{active_bytes: 0, export_bytes: 0, active_count: 0})
 
     %{
@@ -81,8 +107,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       capturedAt: serialize_datetime(snapshot.captured_at),
       cancelRequestedAt: serialize_datetime(snapshot.cancel_requested_at),
       canCancel: snapshot_cancellable?(snapshot),
-      canDelete: snapshot_deletable?(snapshot, reservation),
-      deleteStatus: snapshot_delete_status(snapshot, reservation),
+      canDelete: snapshot_deletable?(snapshot, reservation, active_restore?),
+      deleteStatus: snapshot_delete_status(snapshot, reservation, active_restore?),
+      canRestore: snapshot_restorable?(snapshot) and not active_restore?,
+      restoreOperation: serialize_restore_operation(restore),
       downloadUrl: snapshot_download_url(project, snapshot),
       entityCounts: snapshot.entity_counts,
       createdByEmail: snapshot_creator_email(snapshot)
@@ -97,18 +125,49 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       snapshot.progress_phase != "finalizing" and is_nil(snapshot.cancel_requested_at)
   end
 
-  defp snapshot_deletable?(snapshot, reservation) do
-    snapshot_delete_status(snapshot, reservation) == "ready"
+  defp snapshot_deletable?(snapshot, reservation, active_restore?) do
+    snapshot_delete_status(snapshot, reservation, active_restore?) == "ready"
   end
 
-  defp snapshot_delete_status(%{lifecycle_state: state}, _reservation) when state not in ["ready", "failed", "cancelled"],
-    do: nil
+  defp snapshot_delete_status(%{lifecycle_state: state}, _reservation, _active_restore?)
+       when state not in ["ready", "failed", "cancelled"], do: nil
 
-  defp snapshot_delete_status(_snapshot, %{active_count: 0}), do: "ready"
+  defp snapshot_delete_status(_snapshot, _reservation, true), do: "restore_operation"
 
-  defp snapshot_delete_status(_snapshot, %{active_count: count, active_bytes: 0}) when count > 0, do: "download_lease"
+  defp snapshot_delete_status(_snapshot, %{active_count: 0}, false), do: "ready"
 
-  defp snapshot_delete_status(_snapshot, _reservation), do: "active_operation"
+  defp snapshot_delete_status(_snapshot, %{active_count: count, active_bytes: 0}, false) when count > 0,
+    do: "download_lease"
+
+  defp snapshot_delete_status(_snapshot, _reservation, false), do: "active_operation"
+
+  defp snapshot_restorable?(snapshot) do
+    Versioning.project_snapshot_restore_enabled?() and
+      snapshot.format_version == 2 and snapshot.mode == "full" and
+      snapshot.lifecycle_state == "ready" and snapshot.integrity_state == "verified" and
+      snapshot.accounting_version == 1 and snapshot.restore_contract_version == 1
+  end
+
+  defp serialize_restore_operation(%ProjectSnapshotRestore{} = restore) do
+    %{
+      id: restore.id,
+      status: restore.status,
+      phase: restore.phase,
+      attempt: restore.attempt,
+      requestedAt: serialize_datetime(restore.requested_at),
+      stateUpdatedAt: serialize_datetime(restore.state_updated_at),
+      completedAt: serialize_datetime(restore.completed_at),
+      failedAt: serialize_datetime(restore.failed_at),
+      failureCode: restore.failure_code,
+      failureMessage: restore.failure_message
+    }
+  end
+
+  defp serialize_restore_operation(_restore), do: nil
+
+  defp project_restore_active?(restores) do
+    Enum.any?(restores, &(&1.status in @active_restore_statuses))
+  end
 
   defp snapshot_download_url(project, snapshot) do
     if snapshot_downloadable?(snapshot) do
@@ -171,8 +230,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
 
     if Projects.can?(membership.role, :manage_project) do
       accounting = snapshot_storage_accounting(project)
+      restores = Versioning.list_project_snapshot_restores(project.id)
 
-      if connected?(socket), do: Versioning.subscribe_project_snapshots(project.id)
+      if connected?(socket) do
+        Versioning.subscribe_project_snapshots(project.id)
+        Versioning.subscribe_project_snapshot_restores(project.id)
+      end
 
       socket =
         socket
@@ -183,6 +246,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         |> assign(:snapshot_slots_limit, accounting.snapshot_slots_limit)
         |> assign(:storage_usage, accounting.storage_usage)
         |> assign(:storage_limit, accounting.storage_limit)
+        |> assign(:snapshot_restores, restores)
 
       {:ok, socket}
     else
@@ -274,7 +338,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   @impl true
   def handle_event("delete_snapshot", params, socket) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
-      with {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
+      with false <- project_restore_active_now?(socket.assigns.project.id),
+           {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
            {:ok, _intent} <-
              Versioning.delete_project_snapshot(
                socket.assigns.current_scope,
@@ -287,6 +352,13 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
          |> push_event("snapshot_delete_accepted", %{snapshotId: snapshot_id})
          |> put_flash(:info, dgettext("projects", "Snapshot deletion started."))}
       else
+        true ->
+          {:noreply,
+           push_event(socket, "snapshot_delete_failed", %{
+             snapshotId: event_snapshot_id(params["id"]),
+             reason: "restore_operation"
+           })}
+
         _invalid ->
           {:noreply,
            push_event(socket, "snapshot_delete_failed", %{
@@ -298,8 +370,59 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   end
 
   @impl true
+  def handle_event("restore_snapshot", params, socket) do
+    with :ok <- Authorize.authorize(socket, :manage_project),
+         {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
+         {:ok, restore} <-
+           Versioning.request_project_snapshot_restore(
+             socket.assigns.current_scope,
+             socket.assigns.project,
+             snapshot_id,
+             %{idempotency_key: params["idempotency_key"]}
+           ) do
+      {:noreply,
+       socket
+       |> refresh_snapshot_state()
+       |> push_event("snapshot_restore_accepted", %{
+         snapshotId: snapshot_id,
+         restoreId: restore.id
+       })}
+    else
+      {:error, reason} ->
+        {:noreply,
+         push_snapshot_restore_error(
+           socket,
+           event_snapshot_id(params["id"]),
+           restore_request_error_reason(reason)
+         )}
+
+      :error ->
+        {:noreply,
+         push_snapshot_restore_error(
+           socket,
+           event_snapshot_id(params["id"]),
+           "invalid_request"
+         )}
+    end
+  end
+
+  @impl true
   def handle_info({:project_snapshot_updated, _snapshot_id}, socket) do
-    {:noreply, refresh_snapshot_accounting(socket)}
+    {:noreply, refresh_snapshot_state(socket)}
+  end
+
+  @impl true
+  def handle_info({:project_snapshot_restore_updated, _restore_id}, socket) do
+    {:noreply, refresh_snapshot_state(socket)}
+  end
+
+  defp refresh_snapshot_state(socket) do
+    socket
+    |> refresh_snapshot_accounting()
+    |> assign(
+      :snapshot_restores,
+      Versioning.list_project_snapshot_restores(socket.assigns.project.id)
+    )
   end
 
   defp refresh_snapshot_accounting(socket) do
@@ -322,6 +445,32 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       used: details[:used],
       limit: details[:limit]
     })
+  end
+
+  defp push_snapshot_restore_error(socket, snapshot_id, reason) do
+    push_event(socket, "snapshot_restore_failed", %{
+      snapshotId: snapshot_id,
+      reason: reason
+    })
+  end
+
+  defp restore_request_error_reason(reason)
+       when reason in [
+              :restore_temporarily_disabled,
+              :project_snapshot_not_restorable,
+              :project_snapshot_restore_in_progress,
+              :project_snapshot_restore_idempotency_conflict,
+              :project_snapshot_not_found,
+              :unauthorized,
+              :invalid_project_snapshot_restore_request
+            ], do: Atom.to_string(reason)
+
+  defp restore_request_error_reason(_reason), do: "request_failed"
+
+  defp project_restore_active_now?(project_id) do
+    project_id
+    |> Versioning.list_project_snapshot_restores()
+    |> project_restore_active?()
   end
 
   defp parse_snapshot_id(snapshot_id) when is_integer(snapshot_id) and snapshot_id > 0, do: {:ok, snapshot_id}

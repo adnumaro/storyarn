@@ -121,6 +121,9 @@ config :storyarn, Oban,
     # Snapshot builds stay serialized because one job may stream many large
     # objects and owns durable retry state.
     snapshot_archives: 1,
+    # Exact restores are also serialized: each operation stages and verifies
+    # a complete snapshot-owned object set before its database commit.
+    snapshot_restores: 1,
     snapshots_maintenance: 1,
     storage_cleanup: 1
   ],
@@ -215,14 +218,13 @@ config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
   build_lease_ttl_seconds: 5 * 60,
   export_lease_retention_seconds: 7 * 24 * 60 * 60
 
-# Entity-version restores remain disabled by default while their
-# referential-integrity guarantees are being hardened. Project snapshot
-# lifecycle operations have no runtime enable switch until their canonical
-# workflows are connected.
+# Mutating restore surfaces remain disabled by default and are enabled
+# independently only after their canonical workflows are operationally ready.
 config :storyarn, Storyarn.Versioning.RestorePolicy,
   sheet_version_restore: false,
   flow_version_restore: false,
-  scene_version_restore: false
+  scene_version_restore: false,
+  project_snapshot_restore: false
 
 # Configures the endpoint
 config :storyarn, StoryarnWeb.Endpoint,

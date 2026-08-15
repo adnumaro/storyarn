@@ -32,6 +32,7 @@ defmodule Storyarn.VersioningFixtures do
       idempotency_key: Ecto.UUID.generate(),
       capture_boundary: Ecto.UUID.generate(),
       capture_digest: String.duplicate("c", 64),
+      restore_contract_version: 1,
       progress_total_bytes: 150,
       is_auto: false
     }
@@ -82,6 +83,7 @@ defmodule Storyarn.VersioningFixtures do
       accounted_size_bytes: total_size,
       asset_blob_size_bytes: asset_blob_size,
       accounting_version: 1,
+      restore_contract_version: 1,
       progress_phase: "complete",
       progress_bytes: total_size,
       progress_total_bytes: total_size,

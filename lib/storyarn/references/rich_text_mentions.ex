@@ -54,24 +54,28 @@ defmodule Storyarn.References.RichTextMentions do
   defp collect_html_candidates(_value, acc), do: acc
 
   defp mention_markup?(value) do
-    Regex.match?(@mention_markup, value) or
-      Regex.match?(@unquoted_mention_markup, value) or
+    if Regex.match?(@mention_markup, value) or
+         Regex.match?(@unquoted_mention_markup, value) or
+         parser_candidate?(value) do
       parser_detected_mention_markup?(value)
+    else
+      false
+    end
   end
 
   # HTML character references and quoted `>` characters are decoded/handled by the parser before
   # CSS class matching. Keep the common literal path cheap, and parse only binaries that declare a
   # class attribute and can still contain a mention when the fast path cannot decide.
   defp parser_detected_mention_markup?(value) do
-    if Regex.match?(@class_attribute_markup, value) and
-         (String.contains?(value, "&") or Regex.match?(@mention_hint, value)) do
-      case Floki.parse_fragment(value) do
-        {:ok, document} -> Floki.find(document, ".mention") != []
-        {:error, _reason} -> true
-      end
-    else
-      false
+    case Floki.parse_fragment(value) do
+      {:ok, document} -> Floki.find(document, ".mention") != []
+      {:error, _reason} -> true
     end
+  end
+
+  defp parser_candidate?(value) do
+    Regex.match?(@class_attribute_markup, value) and
+      (String.contains?(value, "&") or Regex.match?(@mention_hint, value))
   end
 
   defp accumulate_mention(element, {:ok, mentions}) do
