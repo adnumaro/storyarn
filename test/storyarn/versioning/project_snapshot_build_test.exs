@@ -2,6 +2,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   use Storyarn.DataCase, async: false
   use Oban.Testing, repo: Storyarn.Repo
 
+  import ExUnit.CaptureLog
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
@@ -594,6 +595,49 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   end
 
   describe "perform_project_snapshot_build/2" do
+    test "logs a safe structured capture reason without leaking exception details" do
+      user = user_fixture()
+      project = project_fixture(user)
+      secret_detail = "{:invalid_avatar_reference, 918273}"
+      assert {:ok, requested} = request_snapshot(user, project)
+      job = requested_job(requested)
+      original_config = Application.get_env(:storyarn, ProjectSnapshotBuild, [])
+
+      Application.put_env(
+        :storyarn,
+        ProjectSnapshotBuild,
+        Keyword.put(original_config, :capture_inventory_observed_fun, fn
+          :repaired, _assets ->
+            raise ArgumentError,
+                  "cannot build a flow snapshot with invalid external references: #{secret_detail}"
+
+          _stage, _assets ->
+            :ok
+        end)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, ProjectSnapshotBuild, original_config)
+      end)
+
+      log =
+        capture_log(fn ->
+          assert {:error, :snapshot_capture_failed} =
+                   ProjectSnapshotBuild.materialize_capture(requested.id, job.id)
+        end)
+
+      assert log =~ "Project snapshot capture failed safely"
+      assert log =~ "event=project_snapshot_capture_failed"
+      assert log =~ "snapshot_id=#{requested.id}"
+      assert log =~ "job_id=#{job.id}"
+      assert log =~ "reason_code=invalid_flow_external_reference"
+      assert log =~ "failure_origin=flow_builder"
+      assert log =~ "exception_module=ArgumentError"
+      refute log =~ secret_detail
+      refute log =~ "918273"
+      refute log =~ "invalid_avatar_reference"
+    end
+
     test "publishes only the immutable capture after current asset deletion" do
       user = user_fixture()
       project = project_fixture(user)
