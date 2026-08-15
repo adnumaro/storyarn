@@ -1807,6 +1807,32 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
                )
     end
 
+    test "requires exact restore to provide the localization actor prelock result", %{
+      project: source_project,
+      user: user
+    } do
+      snapshot_data = canonical_snapshot(source_project)
+      target_project = project_fixture(user)
+
+      assert {:ok, {:error, :project_materialization_localization_actor_prelock_required}} =
+               Repo.transaction(fn ->
+                 locked_project =
+                   Repo.one!(
+                     from candidate in Project,
+                       where: candidate.id == ^target_project.id,
+                       lock: "FOR UPDATE"
+                   )
+
+                 ProjectRecovery.materialize_into_project(
+                   locked_project,
+                   snapshot_data,
+                   user.id,
+                   %{},
+                   localization_scope: :active
+                 )
+               end)
+    end
+
     test "rejects archived languages before writing into the existing project", %{
       project: source_project,
       user: user
@@ -1827,6 +1853,48 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
 
       assert materialized_graph_counts(target_project.id) == counts_before
       assert Localization.list_languages_for_backup(target_project.id) == []
+    end
+
+    test "restores canonical glossary entries whose target language was removed", %{
+      project: source_project,
+      user: user
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      spanish = language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+
+      assert {:ok, glossary} =
+               Localization.create_glossary_entry(source_project, %{
+                 source_term: "Dragon",
+                 source_locale: "en",
+                 target_term: "Dragón",
+                 target_locale: "es",
+                 context: "Creature"
+               })
+
+      assert {:ok, _archived} = Localization.remove_language(spanish)
+
+      snapshot_data = active_canonical_snapshot(source_project)
+      assert Enum.map(snapshot_data["localization"]["languages"], & &1["locale_code"]) == ["en"]
+      assert [%{"target_locale" => "es", "target_term" => "Dragón"}] = snapshot_data["localization"]["glossary"]
+      assert :ok = ProjectRecovery.validate_materialization_snapshot(snapshot_data)
+
+      target_project = project_fixture(user, %{name: "Glossary target"})
+
+      assert {:ok, _materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{}
+               )
+
+      assert Enum.map(Localization.list_languages(target_project.id), & &1.locale_code) == ["en"]
+
+      assert [restored_glossary] = Localization.list_glossary_for_export(target_project.id)
+      assert restored_glossary.source_term == glossary.source_term
+      assert restored_glossary.source_locale == "en"
+      assert restored_glossary.target_term == "Dragón"
+      assert restored_glossary.target_locale == "es"
     end
 
     test "rejects archived localized text even when its source is still captured", %{
@@ -2151,6 +2219,47 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       [restored_text] = Localization.list_texts_for_export(target_project.id, ["es"])
       assert restored_text.translated_by_id == user.id
       assert restored_text.reviewed_by_id == reviewer.id
+    end
+
+    test "preserves existing actors and nullifies actors deleted after snapshot capture", %{
+      project: source_project,
+      user: user
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+      deleted_reviewer = Repo.insert!(%User{email: unique_user_email()})
+      flow = flow_fixture(source_project, %{name: "Historically attributed localization"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
+      [text] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 translated_text: "Hola",
+                 translated_by_id: user.id,
+                 reviewed_by_id: deleted_reviewer.id
+               })
+
+      snapshot_data = canonical_snapshot(source_project)
+      [snapshot_text] = snapshot_data["localization"]["texts"]
+      assert snapshot_text["translated_by_id"] == user.id
+      assert snapshot_text["reviewed_by_id"] == deleted_reviewer.id
+
+      Repo.delete!(deleted_reviewer)
+      assert :ok = ProjectRecovery.validate_materialization_snapshot(snapshot_data)
+
+      target_project = project_fixture(user, %{name: "Deleted attribution target"})
+
+      assert {:ok, _materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{}
+               )
+
+      [restored_text] = Localization.list_texts_for_export(target_project.id, ["es"])
+      assert restored_text.translated_by_id == user.id
+      assert restored_text.reviewed_by_id == nil
     end
 
     test "accepts actor identities nullified before snapshot capture", %{
@@ -2495,6 +2604,24 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
     |> Map.put("asset_catalog_refs", snapshot_asset_catalog_refs(project.id))
   end
 
+  defp active_canonical_snapshot(project) do
+    {:ok, snapshot} =
+      Repo.repeatable_read(fn ->
+        ProjectSnapshotBuilder.build_snapshot_in_transaction(project.id,
+          localization_scope: :active
+        )
+      end)
+
+    snapshot
+    |> Jason.encode!()
+    |> Jason.decode!()
+    |> then(fn normalized ->
+      {:ok, portable} = SnapshotObjectFormat.portable_project(normalized)
+      portable
+    end)
+    |> Map.put("asset_catalog_refs", snapshot_asset_catalog_refs(project.id))
+  end
+
   defp snapshot_asset_catalog_refs(project_id) do
     project_id
     |> Assets.list_assets_for_export()
@@ -2538,14 +2665,21 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
           )
         )
 
-      case ProjectRecovery.materialize_into_project(
-             locked_project,
-             snapshot_data,
-             user_id,
-             source_id_map,
-             localization_scope: :active
-           ) do
-        {:ok, %{project: materialized_project}} -> materialized_project
+      with {:ok, actor_ids} <-
+             ProjectRecovery.lock_materializable_localization_actors(snapshot_data,
+               required_actor_ids: [user_id]
+             ),
+           {:ok, %{project: materialized_project}} <-
+             ProjectRecovery.materialize_into_project(
+               locked_project,
+               snapshot_data,
+               user_id,
+               source_id_map,
+               localization_scope: :active,
+               preserved_localization_actor_ids: actor_ids
+             ) do
+        materialized_project
+      else
         {:error, reason} -> Repo.rollback(reason)
       end
     end)

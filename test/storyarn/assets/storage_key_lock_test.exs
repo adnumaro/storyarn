@@ -5,6 +5,9 @@ defmodule Storyarn.Assets.StorageKeyLockTest do
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Repo
 
+  @lock_key_limit 2_147_483_647
+  @concurrency_timeout 5_000
+
   test "recognizes project blob keys without classifying temporary hard links as blobs" do
     hash = String.duplicate("a", 64)
     blob_key = "projects/42/blobs/#{hash}.png"
@@ -214,6 +217,221 @@ defmodule Storyarn.Assets.StorageKeyLockTest do
     send(owner.pid, :release_transaction_owner)
     assert :ok = Task.await(owner)
   end
+
+  test "acquires a set of transaction locks with one bounded fence" do
+    parent = self()
+    blocked_key = "projects/42/assets/#{Ecto.UUID.generate()}/blocked.png"
+    free_key = "projects/42/assets/#{Ecto.UUID.generate()}/free.png"
+
+    owner =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          StorageKeyLock.with_storage_key_lock(blocked_key, fn ->
+            send(parent, :bulk_lock_blocker_acquired)
+
+            receive do
+              :release_bulk_lock_blocker -> :ok
+            end
+          end)
+        end)
+      end)
+
+    assert_receive :bulk_lock_blocker_acquired
+
+    assert {:ok, {:error, :storage_key_lock_timeout}} =
+             Sandbox.unboxed_run(Repo, fn ->
+               Repo.transaction(fn ->
+                 StorageKeyLock.with_storage_key_locks(
+                   [free_key, blocked_key, free_key],
+                   fn -> flunk("the batch callback must not run while any key is locked") end,
+                   acquisition_timeout: 50
+                 )
+               end)
+             end)
+
+    send(owner.pid, :release_bulk_lock_blocker)
+    assert :ok = Task.await(owner)
+
+    assert {:ok, :all_locked} =
+             Sandbox.unboxed_run(Repo, fn ->
+               Repo.transaction(fn ->
+                 StorageKeyLock.with_storage_key_locks(
+                   [free_key, blocked_key],
+                   fn ->
+                     Repo.query!("SELECT pg_sleep(0.075)")
+                     :all_locked
+                   end,
+                   acquisition_timeout: 50
+                 )
+               end)
+             end)
+  end
+
+  test "overlapping lock sets do not retain a failed attempt's partial locks" do
+    parent = self()
+    barrier = make_ref()
+    [first_unique_key, second_unique_key, common_key] = ordered_storage_keys()
+
+    first =
+      overlapping_batch_task(
+        :first,
+        [first_unique_key, common_key],
+        parent,
+        barrier
+      )
+
+    second =
+      overlapping_batch_task(
+        :second,
+        [second_unique_key, common_key],
+        parent,
+        barrier
+      )
+
+    assert_receive {^barrier, :ready, :first, first_pid}, @concurrency_timeout
+    assert_receive {^barrier, :ready, :second, second_pid}, @concurrency_timeout
+    send(first_pid, {barrier, :start})
+    send(second_pid, {barrier, :start})
+
+    assert_receive {^barrier, :acquired, winner, winner_pid}, @concurrency_timeout
+    assert_receive {^barrier, :timed_out, loser, loser_pid}, @concurrency_timeout
+    assert MapSet.new([winner, loser]) == MapSet.new([:first, :second])
+
+    loser_unique_key =
+      if loser == :first,
+        do: first_unique_key,
+        else: second_unique_key
+
+    # The failed batch keeps its outer transaction open. Its unique key must
+    # nevertheless be immediately available because the failed savepoint owns
+    # no surviving partial advisory locks.
+    assert :loser_unique_key_available =
+             probe_storage_key_lock(loser_unique_key, :loser_unique_key_available, 100)
+
+    # The successful batch still fences every key until its outer transaction
+    # completes, including the key shared by both batches.
+    assert {:error, :storage_key_lock_timeout} =
+             probe_storage_key_lock(common_key, :common_key_must_stay_locked, 50)
+
+    send(loser_pid, {barrier, :release})
+    assert {:ok, {:timed_out, ^loser}} = Task.await(batch_task(loser, first, second), @concurrency_timeout)
+
+    send(winner_pid, {barrier, :release})
+    assert {:ok, {:acquired, ^winner}} = Task.await(batch_task(winner, first, second), @concurrency_timeout)
+  end
+
+  test "rejects transaction lock sets outside a transaction and malformed keys" do
+    storage_key = "projects/42/assets/#{Ecto.UUID.generate()}/portrait.png"
+
+    assert {:error, :storage_key_locks_require_transaction} =
+             Sandbox.unboxed_run(Repo, fn ->
+               StorageKeyLock.with_storage_key_locks([storage_key], fn -> flunk("must not run") end)
+             end)
+
+    assert {:ok, {:error, :invalid_storage_key_lock_set}} =
+             Sandbox.unboxed_run(Repo, fn ->
+               Repo.transaction(fn ->
+                 StorageKeyLock.with_storage_key_locks([storage_key, ""], fn -> flunk("must not run") end)
+               end)
+             end)
+  end
+
+  defp overlapping_batch_task(label, storage_keys, parent, barrier) do
+    Task.async(fn -> run_unboxed_overlapping_batch(label, storage_keys, parent, barrier) end)
+  end
+
+  defp run_unboxed_overlapping_batch(label, storage_keys, parent, barrier) do
+    Sandbox.unboxed_run(Repo, fn ->
+      run_overlapping_batch_transaction(label, storage_keys, parent, barrier)
+    end)
+  end
+
+  defp run_overlapping_batch_transaction(label, storage_keys, parent, barrier) do
+    Repo.transaction(fn -> run_overlapping_batch(label, storage_keys, parent, barrier) end)
+  end
+
+  defp run_overlapping_batch(label, storage_keys, parent, barrier) do
+    send(parent, {barrier, :ready, label, self()})
+    statement_timeout = current_statement_timeout()
+    await_batch_message!(barrier, :start, :batch_start_timeout)
+
+    result =
+      StorageKeyLock.with_storage_key_locks(
+        storage_keys,
+        fn -> hold_acquired_batch(label, parent, barrier, statement_timeout) end,
+        acquisition_timeout: 150
+      )
+
+    finish_overlapping_batch(result, label, parent, barrier, statement_timeout)
+  end
+
+  defp hold_acquired_batch(label, parent, barrier, statement_timeout) do
+    assert_outer_transaction_usable!(statement_timeout)
+    send(parent, {barrier, :acquired, label, self()})
+    await_batch_message!(barrier, :release, :batch_release_timeout)
+    {:acquired, label}
+  end
+
+  defp finish_overlapping_batch({:error, :storage_key_lock_timeout}, label, parent, barrier, statement_timeout) do
+    assert_outer_transaction_usable!(statement_timeout)
+    send(parent, {barrier, :timed_out, label, self()})
+    await_batch_message!(barrier, :release, :batch_release_timeout)
+    {:timed_out, label}
+  end
+
+  defp finish_overlapping_batch(result, _label, _parent, _barrier, _statement_timeout), do: result
+
+  defp await_batch_message!(barrier, message, timeout_reason) do
+    receive do
+      {^barrier, ^message} -> :ok
+    after
+      @concurrency_timeout -> exit(timeout_reason)
+    end
+  end
+
+  defp ordered_storage_keys do
+    keys =
+      for label <- [:first, :second, :common] do
+        "projects/42/assets/#{Ecto.UUID.generate()}/#{label}.png"
+      end
+
+    case keys |> Enum.uniq_by(&storage_lock_key/1) |> Enum.sort_by(&storage_lock_key/1) do
+      [first_unique_key, second_unique_key, common_key] ->
+        [first_unique_key, second_unique_key, common_key]
+
+      _collision ->
+        ordered_storage_keys()
+    end
+  end
+
+  defp storage_lock_key(storage_key), do: :erlang.phash2(storage_key, @lock_key_limit)
+
+  defp probe_storage_key_lock(storage_key, result, acquisition_timeout) do
+    task = Task.async(fn -> run_storage_key_lock_probe(storage_key, result, acquisition_timeout) end)
+    Task.await(task, @concurrency_timeout)
+  end
+
+  defp run_storage_key_lock_probe(storage_key, result, acquisition_timeout) do
+    callback = fn -> result end
+
+    Sandbox.unboxed_run(Repo, fn ->
+      StorageKeyLock.with_storage_key_lock(storage_key, callback, acquisition_timeout: acquisition_timeout)
+    end)
+  end
+
+  defp assert_outer_transaction_usable!(statement_timeout) do
+    %{rows: [[1]]} = Repo.query!("SELECT 1")
+    [[^statement_timeout]] = Repo.query!("SHOW statement_timeout").rows
+    :ok
+  end
+
+  defp current_statement_timeout do
+    [[statement_timeout]] = Repo.query!("SHOW statement_timeout").rows
+    statement_timeout
+  end
+
+  defp batch_task(:first, first, _second), do: first
+  defp batch_task(:second, _first, second), do: second
 
   test "session locks serialize long callbacks without wrapping them in a transaction" do
     parent = self()

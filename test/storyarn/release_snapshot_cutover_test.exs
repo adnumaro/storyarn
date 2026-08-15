@@ -14,6 +14,8 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
   @v2_only_migration 20_260_811_180_000
   @scaffolding_cleanup_migration 20_260_812_100_000
   @release_gate :enforce_snapshot_lifecycle_release_gate
+  @cleanup_authorization_config :project_snapshot_scaffolding_cleanup_authorization
+  @cleanup_authorization "20260812100000"
   @authorization_probe_migration 90_000_000_000_001
   @cleanup_authorization_probe_migration 90_000_000_000_002
 
@@ -102,10 +104,13 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
 
   setup do
     previous = Application.get_env(:storyarn, @release_gate)
+    previous_cleanup_authorization = Application.get_env(:storyarn, @cleanup_authorization_config)
     Application.put_env(:storyarn, @release_gate, true)
+    Application.delete_env(:storyarn, @cleanup_authorization_config)
 
     on_exit(fn ->
       restore_application_env(@release_gate, previous)
+      restore_application_env(@cleanup_authorization_config, previous_cleanup_authorization)
     end)
 
     :ok
@@ -196,7 +201,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     assert constraint_exists?("workspace_storage_reservations_zero_byte_snapshot_export_lease")
   end
 
-  test "a completed v2-only rollout permits the cleanup release without external authorization" do
+  test "a completed v2-only rollout requires the exact one-release cleanup authorization" do
     use_isolated_schema!()
 
     create_schema_migrations!([
@@ -209,19 +214,33 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     Repo.query!("CREATE TABLE project_snapshots (format_version integer, mode text)")
     Repo.query!("INSERT INTO project_snapshots (format_version, mode) VALUES (2, 'full')")
 
-    assert :migrated = Release.run_project_snapshot_migrations(Repo, fn -> :migrated end)
+    assert_raise RuntimeError, ~r/PROJECT_SNAPSHOT_SCAFFOLDING_CLEANUP_AUTHORIZATION/, fn ->
+      Release.run_project_snapshot_migrations(Repo, fn -> :unreachable end)
+    end
+
+    with_cleanup_authorization("wrong", fn ->
+      assert_raise RuntimeError, ~r/PROJECT_SNAPSHOT_SCAFFOLDING_CLEANUP_AUTHORIZATION/, fn ->
+        Release.run_project_snapshot_migrations(Repo, fn -> :unreachable end)
+      end
+    end)
+
+    with_cleanup_authorization(@cleanup_authorization, fn ->
+      assert :migrated = Release.run_project_snapshot_migrations(Repo, fn -> :migrated end)
+    end)
   end
 
-  test "the cleanup release cannot skip the preceding v2-only release" do
+  test "the cleanup authorization cannot skip the preceding v2-only release" do
     use_isolated_schema!()
     create_schema_migrations!(@storage_accounting_migration)
 
-    assert_raise RuntimeError, ~r/deploy the preceding release first/, fn ->
-      Release.run_project_snapshot_migrations(Repo, fn -> :unreachable end)
-    end
+    with_cleanup_authorization(@cleanup_authorization, fn ->
+      assert_raise RuntimeError, ~r/deploy the preceding release first/, fn ->
+        Release.run_project_snapshot_migrations(Repo, fn -> :unreachable end)
+      end
+    end)
   end
 
-  test "an already-applied cleanup remains ready for later releases" do
+  test "an already-applied cleanup no longer requires the temporary authorization" do
     use_isolated_schema!()
 
     create_schema_migrations!([
@@ -394,7 +413,9 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     ])
 
     assert_raise RuntimeError, "probe failure", fn ->
-      Release.run_project_snapshot_migrations(Repo, fn -> raise "probe failure" end)
+      with_cleanup_authorization(@cleanup_authorization, fn ->
+        Release.run_project_snapshot_migrations(Repo, fn -> raise "probe failure" end)
+      end)
     end
 
     refute Process.get(:storyarn_snapshot_scaffolding_cleanup_authorized_v1, false)
@@ -505,6 +526,10 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
 
   defp with_release_gate(value, fun) do
     with_application_env(@release_gate, value, fun)
+  end
+
+  defp with_cleanup_authorization(value, fun) do
+    with_application_env(@cleanup_authorization_config, value, fun)
   end
 
   defp with_application_env(key, value, fun) do

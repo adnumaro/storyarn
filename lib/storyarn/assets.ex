@@ -35,6 +35,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.SearchHelpers
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.Sheet
@@ -47,6 +48,7 @@ defmodule Storyarn.Assets do
   @post_commit_variant_jobs_process_key {__MODULE__, :post_commit_variant_jobs}
   @import_capacity_process_key {__MODULE__, :import_capacity}
   @parent_cleanup_asset_batch_size 250
+  @snapshot_asset_batch_size 500
 
   # =============================================================================
   # Type Definitions
@@ -2564,6 +2566,43 @@ defmodule Storyarn.Assets do
   def update_imported_snapshot_asset_locked(_project, _asset, _metadata),
     do: {:error, :invalid_snapshot_asset_relationship_update}
 
+  @doc false
+  @spec import_snapshot_assets_locked(Project.t(), pos_integer() | nil, [attrs()]) ::
+          {:ok, [asset()]}
+          | {:error, {:snapshot_asset_batch_entry_failed, non_neg_integer(), term()} | term()}
+  def import_snapshot_assets_locked(%Project{} = project, uploaded_by_id, attrs_list)
+      when (is_nil(uploaded_by_id) or (is_integer(uploaded_by_id) and uploaded_by_id > 0)) and is_list(attrs_list) do
+    with :ok <- validate_import_asset_authorization(project),
+         {:ok, _locked_project} <- lock_active_project_for_asset_write(project.id, project.workspace_id),
+         {:ok, changesets} <- prepare_snapshot_asset_changesets(project, uploaded_by_id, attrs_list),
+         :ok <- lock_snapshot_asset_insert_family_references(project.id, changesets) do
+      storage_keys = Enum.map(changesets, &Ecto.Changeset.get_field(&1, :key))
+
+      StorageKeyLock.with_storage_key_locks(storage_keys, fn ->
+        insert_snapshot_asset_changesets(changesets)
+      end)
+    end
+  end
+
+  def import_snapshot_assets_locked(_project, _uploaded_by_id, _attrs_list), do: {:error, :invalid_snapshot_asset_import}
+
+  @doc false
+  @spec update_imported_snapshot_assets_locked(Project.t(), [{asset(), map()}]) ::
+          {:ok, [asset()]}
+          | {:error, {:snapshot_asset_batch_entry_failed, non_neg_integer(), term()} | term()}
+  def update_imported_snapshot_assets_locked(%Project{} = project, updates) when is_list(updates) do
+    with :ok <- validate_import_asset_authorization(project),
+         {:ok, _locked_project} <- lock_active_project_for_asset_write(project.id, project.workspace_id),
+         {:ok, locked_assets} <- lock_snapshot_assets_for_update(project.id, updates),
+         :ok <- lock_snapshot_asset_family_references(project.id, updates),
+         {:ok, changesets} <- prepare_snapshot_asset_update_changesets(updates, locked_assets) do
+      upsert_snapshot_asset_changesets(changesets)
+    end
+  end
+
+  def update_imported_snapshot_assets_locked(_project, _updates),
+    do: {:error, :invalid_snapshot_asset_relationship_update}
+
   defp with_import_capacity_marker(project, total_bytes, fun) do
     case Process.get(@import_capacity_process_key) do
       nil ->
@@ -2581,6 +2620,212 @@ defmodule Storyarn.Assets do
 
       _capacity ->
         {:error, :asset_import_capacity_already_authorized}
+    end
+  end
+
+  defp prepare_snapshot_asset_changesets(project, uploaded_by_id, attrs_list) do
+    attrs_list
+    |> Enum.with_index()
+    |> Enum.reduce_while({:ok, []}, fn {attrs, index}, {:ok, changesets} ->
+      upload_kind = snapshot_asset_upload_kind(attrs)
+
+      changeset =
+        asset_create_changeset(
+          %Asset{project_id: project.id, uploaded_by_id: uploaded_by_id},
+          attrs,
+          upload_kind
+        )
+
+      result =
+        with :ok <- validate_snapshot_asset_storage_key(project.id, attrs),
+             true <- changeset.valid?,
+             :ok <- consume_import_capacity(project, changeset) do
+          {:ok, changeset}
+        else
+          false -> {:error, changeset}
+          {:error, _reason} = error -> error
+        end
+
+      case result do
+        {:ok, changeset} -> {:cont, {:ok, [changeset | changesets]}}
+        {:error, reason} -> {:halt, {:error, {:snapshot_asset_batch_entry_failed, index, reason}}}
+      end
+    end)
+    |> case do
+      {:ok, changesets} -> {:ok, Enum.reverse(changesets)}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp insert_snapshot_asset_changesets([]), do: {:ok, []}
+
+  defp insert_snapshot_asset_changesets(changesets) do
+    now = TimeHelpers.now()
+    rows = Enum.map(changesets, &asset_insert_row(&1, now))
+
+    with {:ok, assets} <- insert_snapshot_asset_batches(rows) do
+      reorder_assets_by(rows, assets, :key)
+    end
+  end
+
+  defp insert_snapshot_asset_batches(rows) do
+    rows
+    |> Enum.chunk_every(@snapshot_asset_batch_size)
+    |> Enum.reduce_while({:ok, []}, fn batch, {:ok, assets} ->
+      case Repo.insert_all(Asset, batch,
+             on_conflict: :nothing,
+             conflict_target: [:project_id, :key],
+             returning: true
+           ) do
+        {count, inserted} when count == length(batch) ->
+          {:cont, {:ok, [inserted | assets]}}
+
+        {_count, _inserted} ->
+          {:halt, {:error, :snapshot_asset_insert_conflict}}
+      end
+    end)
+    |> flatten_snapshot_asset_batches()
+  end
+
+  defp lock_snapshot_assets_for_update(project_id, updates) do
+    ids = Enum.map(updates, fn {asset, _metadata} -> asset.id end)
+
+    assets =
+      Repo.all(
+        from asset in Asset,
+          where: asset.project_id == ^project_id and asset.id in ^ids and is_nil(asset.deleted_at),
+          order_by: [asc: asset.id],
+          lock: "FOR UPDATE"
+      )
+
+    if length(ids) == MapSet.size(MapSet.new(ids)) and
+         MapSet.new(Enum.map(assets, & &1.id)) == MapSet.new(ids),
+       do: {:ok, Map.new(assets, &{&1.id, &1})},
+       else: {:error, :snapshot_asset_inventory_mismatch}
+  end
+
+  defp lock_snapshot_asset_insert_family_references(project_id, changesets) do
+    changesets
+    |> Enum.with_index()
+    |> Enum.map(fn {changeset, index} ->
+      metadata = Ecto.Changeset.get_field(changeset, :metadata)
+      {{:snapshot_asset_import, index}, metadata}
+    end)
+    |> lock_snapshot_asset_family_reference_specs(project_id)
+  end
+
+  defp lock_snapshot_asset_family_references(project_id, updates) do
+    updates
+    |> Enum.map(fn {asset, metadata} -> {{:asset_family, asset.id}, metadata} end)
+    |> lock_snapshot_asset_family_reference_specs(project_id)
+  end
+
+  defp lock_snapshot_asset_family_reference_specs(entries, project_id) do
+    entries
+    |> Enum.reduce_while({:ok, []}, fn {context, metadata}, {:ok, specs} ->
+      case Asset.family_reference_ids(metadata) do
+        {:ok, ids} ->
+          refs = Enum.map(ids, &{:asset, context, &1})
+          {:cont, {:ok, refs ++ specs}}
+
+        :error ->
+          {:halt, {:error, :asset_family_identity_invalid}}
+      end
+    end)
+    |> case do
+      {:ok, specs} ->
+        case ProjectReferenceIntegrity.lock_active_references(project_id, specs) do
+          {:ok, _ids} -> :ok
+          {:error, _reason} -> {:error, :asset_family_identity_invalid}
+        end
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp prepare_snapshot_asset_update_changesets(updates, locked_assets) do
+    updates
+    |> Enum.with_index()
+    |> Enum.reduce_while({:ok, []}, fn {{asset, metadata}, index}, {:ok, changesets} ->
+      locked_asset = Map.fetch!(locked_assets, asset.id)
+      changeset = Asset.update_changeset(locked_asset, %{metadata: metadata})
+
+      if changeset.valid?,
+        do: {:cont, {:ok, [changeset | changesets]}},
+        else: {:halt, {:error, {:snapshot_asset_batch_entry_failed, index, changeset}}}
+    end)
+    |> case do
+      {:ok, changesets} -> {:ok, Enum.reverse(changesets)}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp upsert_snapshot_asset_changesets([]), do: {:ok, []}
+
+  defp upsert_snapshot_asset_changesets(changesets) do
+    now = TimeHelpers.now()
+    rows = Enum.map(changesets, &asset_update_row(&1, now))
+
+    with {:ok, assets} <- upsert_snapshot_asset_batches(rows) do
+      reorder_assets_by(rows, assets, :id)
+    end
+  end
+
+  defp upsert_snapshot_asset_batches(rows) do
+    rows
+    |> Enum.chunk_every(@snapshot_asset_batch_size)
+    |> Enum.reduce_while({:ok, []}, fn batch, {:ok, assets} ->
+      case Repo.insert_all(Asset, batch,
+             on_conflict: {:replace, [:metadata, :updated_at]},
+             conflict_target: [:id],
+             returning: true
+           ) do
+        {count, updated} when count == length(batch) ->
+          {:cont, {:ok, [updated | assets]}}
+
+        {_count, _updated} ->
+          {:halt, {:error, :snapshot_asset_relationship_update_failed}}
+      end
+    end)
+    |> flatten_snapshot_asset_batches()
+  end
+
+  defp flatten_snapshot_asset_batches({:ok, batches}) do
+    {:ok, batches |> Enum.reverse() |> Enum.concat()}
+  end
+
+  defp flatten_snapshot_asset_batches({:error, _reason} = error), do: error
+
+  defp asset_insert_row(changeset, now) do
+    changeset
+    |> Ecto.Changeset.apply_changes()
+    |> asset_fields()
+    |> Map.delete(:id)
+    |> Map.put(:inserted_at, now)
+    |> Map.put(:updated_at, now)
+  end
+
+  defp asset_update_row(changeset, now) do
+    changeset
+    |> Ecto.Changeset.apply_changes()
+    |> asset_fields()
+    |> Map.put(:updated_at, now)
+  end
+
+  defp asset_fields(asset) do
+    asset
+    |> Map.from_struct()
+    |> Map.take(Asset.__schema__(:fields))
+  end
+
+  defp reorder_assets_by(rows, assets, field) do
+    assets_by_field = Map.new(assets, &{Map.fetch!(&1, field), &1})
+
+    if map_size(assets_by_field) == length(rows) do
+      {:ok, Enum.map(rows, &Map.fetch!(assets_by_field, Map.fetch!(&1, field)))}
+    else
+      {:error, :snapshot_asset_insert_result_mismatch}
     end
   end
 

@@ -354,6 +354,13 @@ end
 
 config :storyarn, :contact_email, System.get_env("CONTACT_EMAIL") || "hello@storyarn.com"
 
+# One-release operational acknowledgement for the irreversible ENG-86 schema
+# cleanup. This is not a runtime feature switch: Release.migrate consumes the
+# exact migration version only after the prior v2-only rollout is verified.
+config :storyarn,
+       :project_snapshot_scaffolding_cleanup_authorization,
+       env.("PROJECT_SNAPSHOT_SCAFFOLDING_CLEANUP_AUTHORIZATION")
+
 if config_env() != :test do
   posthog_api_key = posthog_env.("POSTHOG_PROJECT_API_KEY", nil)
   posthog_enabled? = posthog_env.("POSTHOG_ENABLED", nil) in ~w(true 1)

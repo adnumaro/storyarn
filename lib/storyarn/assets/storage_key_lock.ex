@@ -61,6 +61,29 @@ defmodule Storyarn.Assets.StorageKeyLock do
   end
 
   @doc false
+  @spec with_storage_key_locks([String.t()], (-> result), keyword()) ::
+          result
+          | {:error,
+             :invalid_storage_key_lock_set
+             | :storage_key_lock_timeout
+             | :storage_key_locks_require_transaction}
+        when result: term()
+  def with_storage_key_locks(storage_keys, fun, opts \\ [])
+
+  def with_storage_key_locks(storage_keys, fun, opts)
+      when is_list(storage_keys) and is_function(fun, 0) and is_list(opts) do
+    with {:ok, storage_keys} <- normalize_storage_keys(storage_keys),
+         true <- Repo.in_transaction?() do
+      acquire_transaction_locks_and_run(storage_keys, fun, acquisition_deadline(opts))
+    else
+      false -> {:error, :storage_key_locks_require_transaction}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  def with_storage_key_locks(_storage_keys, _fun, _opts), do: {:error, :invalid_storage_key_lock_set}
+
+  @doc false
   @spec wrapper_owned_transaction_lock_held?(String.t()) :: boolean()
   def wrapper_owned_transaction_lock_held?(storage_key) when is_binary(storage_key) do
     Process.get(wrapper_owned_transaction_lock_key(storage_key), 0) > 0
@@ -199,6 +222,105 @@ defmodule Storyarn.Assets.StorageKeyLock do
     end
   end
 
+  defp acquire_transaction_locks_and_run([], fun, _deadline), do: fun.()
+
+  defp acquire_transaction_locks_and_run(storage_keys, fun, deadline) do
+    lock_keys = storage_keys |> Enum.map(&lock_key/1) |> Enum.uniq() |> Enum.sort()
+
+    case acquire_ordered_transaction_locks(lock_keys, deadline) do
+      :ok -> fun.()
+      :timeout -> {:error, :storage_key_lock_timeout}
+    end
+  end
+
+  defp acquire_ordered_transaction_locks(lock_keys, deadline) do
+    previous_statement_timeout =
+      deadline
+      |> remaining_acquisition_timeout()
+      |> set_bounded_statement_timeout!()
+
+    case ordered_transaction_lock_query(lock_keys, previous_statement_timeout) do
+      {:ok, %{rows: [[count, _restored_timeout]]}} when count == length(lock_keys) ->
+        :ok
+
+      {:ok, result} ->
+        raise "ordered storage-key lock query returned an unexpected result: #{inspect(result.rows)}"
+
+      {:error, error} ->
+        restore_statement_timeout!(previous_statement_timeout)
+
+        if lock_acquisition_timeout?(error) do
+          :timeout
+        else
+          raise error
+        end
+    end
+  end
+
+  defp ordered_transaction_lock_query(lock_keys, previous_statement_timeout) do
+    Repo.query(
+      """
+      WITH RECURSIVE acquired(position, locked) AS (
+        SELECT
+          1,
+          pg_advisory_xact_lock($1, ($2::integer[])[1])
+        WHERE cardinality($2::integer[]) > 0
+
+        UNION ALL
+
+        SELECT
+          acquired.position + 1,
+          pg_advisory_xact_lock($1, ($2::integer[])[acquired.position + 1])
+        FROM acquired
+        WHERE acquired.position < cardinality($2::integer[])
+      ),
+      lock_count AS MATERIALIZED (
+        SELECT count(*) AS count
+        FROM acquired
+      )
+      SELECT
+        lock_count.count,
+        set_config('statement_timeout', $3, TRUE)
+      FROM lock_count
+      """,
+      [@lock_namespace, lock_keys, previous_statement_timeout],
+      mode: :savepoint,
+      timeout: :infinity
+    )
+  end
+
+  defp set_bounded_statement_timeout!(timeout_ms) do
+    [[previous_timeout, current_timeout_ms]] =
+      Repo.query!("""
+      SELECT
+        current_setting('statement_timeout'),
+        settings.setting::bigint
+      FROM pg_settings AS settings
+      WHERE settings.name = 'statement_timeout'
+      """).rows
+
+    bounded_timeout_ms =
+      if current_timeout_ms == 0,
+        do: timeout_ms,
+        else: min(current_timeout_ms, timeout_ms)
+
+    Repo.query!("SELECT set_config('statement_timeout', $1, TRUE)", [Integer.to_string(bounded_timeout_ms)])
+    previous_timeout
+  end
+
+  defp restore_statement_timeout!(previous_timeout) do
+    Repo.query!("SELECT set_config('statement_timeout', $1, TRUE)", [previous_timeout])
+  end
+
+  defp remaining_acquisition_timeout(deadline) do
+    max(deadline - System.monotonic_time(:millisecond), 1)
+  end
+
+  defp lock_acquisition_timeout?(%Postgrex.Error{postgres: %{code: code}}),
+    do: code in [:lock_not_available, :query_canceled]
+
+  defp lock_acquisition_timeout?(_error), do: false
+
   defp retry_transaction_lock(storage_key, fun, deadline) do
     if System.monotonic_time(:millisecond) < deadline do
       Process.sleep(@lock_retry_delay_ms)
@@ -223,6 +345,14 @@ defmodule Storyarn.Assets.StorageKeyLock do
            lock_key(storage_key)
          ]) do
       %{rows: [[acquired?]]} when is_boolean(acquired?) -> acquired?
+    end
+  end
+
+  defp normalize_storage_keys(storage_keys) do
+    if Enum.all?(storage_keys, &(is_binary(&1) and &1 != "")) do
+      {:ok, storage_keys |> Enum.uniq() |> Enum.sort()}
+    else
+      {:error, :invalid_storage_key_lock_set}
     end
   end
 

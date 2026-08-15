@@ -87,10 +87,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycle do
     with :ok <- RestorePolicy.ensure_enabled({:project_snapshot_restore, "full"}),
          {:ok, snapshot_id} <- snapshot_id(snapshot),
          {:ok, idempotency_key} <- normalize_idempotency_key(attrs),
-         {:ok, %Project{deleted_at: nil}, _membership} <-
+         {:ok, %Project{id: ^project_id, workspace_id: workspace_id, deleted_at: nil}, _membership} <-
            Projects.authorize(scope, project_id, :manage_project) do
-      project_id
-      |> request_transaction(scope, user_id, snapshot_id, idempotency_key)
+      workspace_id
+      |> request_transaction(project_id, scope, user_id, snapshot_id, idempotency_key)
       |> normalize_request_result(project_id, user_id, snapshot_id, idempotency_key)
     else
       {:ok, %Project{}, _membership} -> {:error, :unauthorized}
@@ -749,9 +749,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycle do
 
   defp broadcast_abandoned_delivery_result(result), do: result
 
-  defp request_transaction(project_id, scope, user_id, snapshot_id, idempotency_key) do
-    Repo.transact(fn ->
+  defp request_transaction(workspace_id, project_id, scope, user_id, snapshot_id, idempotency_key) do
+    Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
       with %Project{} = project <- lock_active_project(project_id),
+           true <- project.workspace_id == workspace_id,
            {:ok, %Project{id: ^project_id, deleted_at: nil}, _membership} <-
              Projects.authorize(scope, project_id, :manage_project),
            true <- project.workspace_id > 0 do

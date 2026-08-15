@@ -11,6 +11,7 @@ defmodule Storyarn.Release do
   @snapshot_v2_cutover_barrier_migration 20_260_810_130_000
   @snapshot_v2_only_migration 20_260_811_180_000
   @snapshot_scaffolding_cleanup_migration 20_260_812_100_000
+  @snapshot_scaffolding_cleanup_authorization "20260812100000"
   # Frozen migrations consume this process-local key directly so they can
   # enforce the release gate without calling application code. Keep the atom
   # stable even if this module or its helper functions are renamed.
@@ -77,13 +78,16 @@ defmodule Storyarn.Release do
   def ensure_project_snapshot_scaffolding_cleanup_ready!(repo) when is_atom(repo) do
     enforced? = Application.get_env(@app, :enforce_snapshot_lifecycle_release_gate, false)
 
-    if enforced?, do: ensure_snapshot_scaffolding_cleanup_ready!(repo), else: :ok
+    if enforced?, do: ensure_snapshot_scaffolding_cleanup_authorized!(repo), else: :ok
   end
 
-  defp ensure_snapshot_scaffolding_cleanup_ready!(repo) do
+  defp ensure_snapshot_scaffolding_cleanup_authorized!(repo) do
     case snapshot_scaffolding_cleanup_state(repo) do
-      {:ok, state} when state in [:complete, :fresh, :v2_complete] ->
+      {:ok, state} when state in [:complete, :fresh] ->
         :ok
+
+      {:ok, :v2_complete} ->
+        assert_snapshot_scaffolding_cleanup_acknowledged!()
 
       {:ok, :preceding_release_required} ->
         raise "Project snapshot transitional cleanup requires the v2-only release to have completed before this release starts; deploy the preceding release first"
@@ -141,6 +145,17 @@ defmodule Storyarn.Release do
       @snapshot_v2_cutover_barrier_migration,
       @snapshot_v2_only_migration
     ])
+  end
+
+  defp assert_snapshot_scaffolding_cleanup_acknowledged! do
+    configured =
+      Application.get_env(@app, :project_snapshot_scaffolding_cleanup_authorization)
+
+    if configured == @snapshot_scaffolding_cleanup_authorization do
+      :ok
+    else
+      raise "Project snapshot transitional cleanup requires operator verification of every Fly machine and PROJECT_SNAPSHOT_SCAFFOLDING_CLEANUP_AUTHORIZATION=#{@snapshot_scaffolding_cleanup_authorization}"
+    end
   end
 
   defp no_application_tables?(repo, prefix) do

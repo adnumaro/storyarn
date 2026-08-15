@@ -1,3 +1,4 @@
+alias Storyarn.Accounts.User
 alias Storyarn.Assets
 alias Storyarn.Assets.Asset
 alias Storyarn.Assets.BlobStore
@@ -200,6 +201,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   defmodule AcceptingRecovery do
     @moduledoc false
     def validate_materialization_snapshot(_project), do: :ok
+
+    def lock_materializable_localization_actors(_project, opts) do
+      {:ok, MapSet.new(Keyword.fetch!(opts, :required_actor_ids))}
+    end
 
     def materialize_into_project(_project, _snapshot, _actor, _source_ids, _opts),
       do: {:error, :unexpected_materialization}
@@ -507,7 +512,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   test "asset trash failure rolls back graph trash and releases storage ownership", context do
     project = Repo.get!(Project, context.restore.project_id)
     current_sheet = sheet_fixture(project, %{name: "Asset trash rollback sentinel"})
-    actor = Repo.get!(Storyarn.Accounts.User, context.restore.requested_by_id)
+    actor = Repo.get!(User, context.restore.requested_by_id)
     current_asset = image_asset_fixture(project, actor)
 
     assert {:retry, :injected_asset_trash_failure} =
@@ -752,6 +757,55 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     assert restored_object["entity_counts"] == target_object["entity_counts"]
     assert restored_object["project"] == target_object["project"]
     assert restored_object["localization"]["glossary"] == target_object["localization"]["glossary"]
+  end
+
+  test "exact restore preserves existing localization actors and nullifies actors deleted after capture", context do
+    project = Repo.get!(Project, context.restore.project_id)
+    _source_language = source_language_fixture(project, %{locale_code: "en", name: "English"})
+    _target_language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+    reviewer = Repo.insert!(%User{email: unique_user_email()})
+    flow = flow_fixture(project, %{name: "Historical attribution"})
+    dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello", "responses" => []}})
+    text = Localization.get_text_by_source("flow_node", dialogue.id, "text", "es")
+
+    assert {:ok, _text} =
+             Localization.update_text(text, %{
+               translated_text: "Hola",
+               status: "final",
+               translated_by_id: context.restore.requested_by_id,
+               reviewed_by_id: reviewer.id
+             })
+
+    target_object = active_project_object(project.id)
+    [snapshot_text] = target_object["localization"]["texts"]
+    assert snapshot_text["translated_by_id"] == context.restore.requested_by_id
+    assert snapshot_text["reviewed_by_id"] == reviewer.id
+
+    Repo.delete!(reviewer)
+    assert :ok = ProjectRecovery.validate_materialization_snapshot(target_object)
+    Process.put({EmptyArchiveReader, :project_object}, target_object)
+
+    assert {:ok, result} =
+             ProjectSnapshotRestoreExecutor.execute(context.restore,
+               archive_reader: EmptyArchiveReader,
+               asset_materializer: EmptyMaterializer,
+               project_recovery: ProjectRecovery
+             )
+
+    assert is_binary(result.semantic_digest)
+
+    restored_text =
+      Repo.one!(
+        from(candidate in LocalizedText,
+          where:
+            candidate.project_id == ^project.id and is_nil(candidate.archived_at) and
+              candidate.source_type == "flow_node" and candidate.source_field == "text" and
+              candidate.translated_text == "Hola"
+        )
+      )
+
+    assert restored_text.translated_by_id == context.restore.requested_by_id
+    assert restored_text.reviewed_by_id == nil
   end
 
   test "semantic postverification rejects a same-count sheet field mutation", context do
@@ -1080,6 +1134,104 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
                )
              )
            ) == [{"flow_node", "write"}, {"scene_pin", "read"}, {"scene_zone", "write"}]
+  end
+
+  test "explicit numeric shortcuts remain authoritative over historical id fallbacks", context do
+    project = Repo.get!(Project, context.restore.project_id)
+    fallback_sheet = sheet_fixture(project, %{name: "Shadowed fallback owner", position: 0})
+
+    _shadowed_variable =
+      block_fixture(fallback_sheet, %{
+        type: "number",
+        is_constant: false,
+        config: %{"label" => "Health", "placeholder" => "0"}
+      })
+
+    Repo.update_all(from(sheet in Sheet, where: sheet.id == ^fallback_sheet.id), set: [shortcut: nil])
+    numeric_namespace = Integer.to_string(fallback_sheet.id)
+
+    explicit_sheet =
+      sheet_fixture(project, %{
+        name: "Explicit numeric owner",
+        position: 1,
+        shortcut: numeric_namespace
+      })
+
+    explicit_variable =
+      block_fixture(explicit_sheet, %{
+        type: "number",
+        is_constant: false,
+        config: %{"label" => "Mana", "placeholder" => "0"}
+      })
+
+    flow = flow_fixture(project, %{name: "Explicit numeric namespace flow"})
+
+    _instruction =
+      node_fixture(flow, %{
+        type: "instruction",
+        data: %{
+          "assignments" => [
+            variable_assignment(numeric_namespace, explicit_variable.variable_name)
+          ]
+        }
+      })
+
+    target_object = active_project_object(project.id)
+    assert :ok = ProjectRecovery.validate_materialization_snapshot(target_object)
+    Process.put({EmptyArchiveReader, :project_object}, target_object)
+
+    assert {:ok, result} =
+             ProjectSnapshotRestoreExecutor.execute(context.restore,
+               archive_reader: EmptyArchiveReader,
+               asset_materializer: EmptyMaterializer,
+               project_recovery: ProjectRecovery
+             )
+
+    assert is_binary(result.semantic_digest)
+
+    restored_explicit =
+      Repo.one!(
+        from(sheet in Sheet,
+          where:
+            sheet.project_id == ^project.id and sheet.name == "Explicit numeric owner" and
+              is_nil(sheet.deleted_at)
+        )
+      )
+
+    assert restored_explicit.shortcut == numeric_namespace
+
+    restored_variable =
+      Repo.one!(
+        from(block in Block,
+          where:
+            block.sheet_id == ^restored_explicit.id and
+              block.variable_name == ^explicit_variable.variable_name and is_nil(block.deleted_at)
+        )
+      )
+
+    restored_instruction =
+      Repo.one!(
+        from(node in FlowNode,
+          join: restored_flow in Flow,
+          on: restored_flow.id == node.flow_id,
+          where:
+            restored_flow.project_id == ^project.id and
+              restored_flow.name == "Explicit numeric namespace flow" and
+              is_nil(restored_flow.deleted_at) and is_nil(node.deleted_at) and
+              node.type == "instruction"
+        )
+      )
+
+    assert hd(restored_instruction.data["assignments"])["sheet"] == numeric_namespace
+
+    assert Repo.exists?(
+             from(reference in VariableReference,
+               where:
+                 reference.source_type == "flow_node" and
+                   reference.source_id == ^restored_instruction.id and
+                   reference.block_id == ^restored_variable.id and reference.kind == "write"
+             )
+           )
   end
 
   test "a generated shortcutless namespace retries locally past a fixed numeric shortcut", context do

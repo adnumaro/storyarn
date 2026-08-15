@@ -359,19 +359,17 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     do: {:error, {:invalid_materialized_formula_rewrite, project_id, plan, sheet_id_map}}
 
   defp portable_snapshot_variable_catalog(%{"sheets" => sheets}) when is_list(sheets) do
-    sheets
-    |> Enum.reduce_while({:ok, empty_portable_variable_catalog()}, fn entry, {:ok, catalog} ->
-      case portable_sheet_variable_definitions(entry) do
-        {:ok, definitions, sheet_id, namespace, rewritable?} ->
-          put_portable_sheet_definitions(catalog, definitions, sheet_id, namespace, rewritable?)
-
-        {:error, _reason} = error ->
-          {:halt, error}
+    with {:ok, entries, sheet_ids} <- portable_variable_sheet_entries(sheets),
+         {:ok, namespace_owners} <- portable_authoritative_namespace_owners(entries) do
+      entries
+      |> Enum.reduce_while(
+        {:ok, empty_portable_variable_catalog()},
+        &put_portable_authoritative_sheet_definitions(&1, &2, namespace_owners)
+      )
+      |> case do
+        {:ok, catalog} -> {:ok, %{catalog | sheet_ids: sheet_ids}}
+        {:error, _reason} = error -> error
       end
-    end)
-    |> case do
-      {:ok, catalog} -> {:ok, catalog}
-      {:error, _reason} = error -> error
     end
   end
 
@@ -387,6 +385,62 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       qualified_targets: %{},
       rewritable_qualified_targets: %{}
     }
+  end
+
+  defp portable_variable_sheet_entries(sheets) do
+    sheets
+    |> Enum.reduce_while({:ok, [], MapSet.new()}, &put_portable_variable_sheet_entry/2)
+    |> case do
+      {:ok, entries, sheet_ids} -> {:ok, Enum.reverse(entries), sheet_ids}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp put_portable_variable_sheet_entry(entry, {:ok, entries, sheet_ids}) do
+    case portable_sheet_variable_definitions(entry) do
+      {:ok, definitions, sheet_id, namespace, rewritable?} ->
+        if MapSet.member?(sheet_ids, sheet_id) do
+          {:halt, {:error, {:duplicate_portable_variable_sheet_identity, sheet_id}}}
+        else
+          {:cont, {:ok, [{definitions, sheet_id, namespace, rewritable?} | entries], MapSet.put(sheet_ids, sheet_id)}}
+        end
+
+      {:error, _reason} = error ->
+        {:halt, error}
+    end
+  end
+
+  defp portable_authoritative_namespace_owners(entries) do
+    entries
+    |> Enum.reduce_while({:ok, %{}, %{}}, fn
+      {_definitions, sheet_id, namespace, true}, {:ok, fallback, explicit} ->
+        {:cont, {:ok, Map.put(fallback, namespace, sheet_id), explicit}}
+
+      {_definitions, sheet_id, namespace, false}, {:ok, fallback, explicit} ->
+        case Map.fetch(explicit, namespace) do
+          {:ok, namespace_owner} ->
+            {:halt, {:error, {:ambiguous_portable_variable_namespace, namespace, namespace_owner, sheet_id}}}
+
+          :error ->
+            {:cont, {:ok, fallback, Map.put(explicit, namespace, sheet_id)}}
+        end
+    end)
+    |> case do
+      {:ok, fallback, explicit} -> {:ok, Map.merge(fallback, explicit)}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp put_portable_authoritative_sheet_definitions(
+         {definitions, sheet_id, namespace, rewritable?},
+         {:ok, catalog},
+         namespace_owners
+       ) do
+    if Map.fetch!(namespace_owners, namespace) == sheet_id do
+      put_portable_sheet_definitions(catalog, definitions, sheet_id, namespace, rewritable?)
+    else
+      {:cont, {:ok, catalog}}
+    end
   end
 
   defp portable_sheet_variable_definitions(%{

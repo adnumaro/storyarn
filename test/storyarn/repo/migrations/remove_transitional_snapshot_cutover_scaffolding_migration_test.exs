@@ -15,6 +15,8 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
   @migration_version 20_260_812_100_000
   @zero_byte_restore_migration_version 20_260_813_101_000
   @release_gate :enforce_snapshot_lifecycle_release_gate
+  @cleanup_authorization_config :project_snapshot_scaffolding_cleanup_authorization
+  @cleanup_authorization "20260812100000"
   @authorization_key :storyarn_snapshot_scaffolding_cleanup_authorized_v1
   @lock_gate_timeout 15_000
 
@@ -297,7 +299,9 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
     prefix: prefix
   } do
     with_release_gate(true, fn ->
-      assert :ok = Release.run_project_snapshot_migrations(Repo, fn -> run_migration(:up, prefix) end)
+      with_cleanup_authorization(@cleanup_authorization, fn ->
+        assert :ok = Release.run_project_snapshot_migrations(Repo, fn -> run_migration(:up, prefix) end)
+      end)
     end)
 
     refute column_exists?(prefix, "project_snapshots", "project_storage_key")
@@ -503,6 +507,10 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
 
   defp with_release_gate(value, fun) do
     with_application_env(@release_gate, value, fun)
+  end
+
+  defp with_cleanup_authorization(value, fun) do
+    with_application_env(@cleanup_authorization_config, value, fun)
   end
 
   defp with_application_env(key, value, fun) do

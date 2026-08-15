@@ -217,6 +217,44 @@ defmodule Storyarn.Flows.PortableProjectSnapshotVariableTest do
     assert response["instruction"] == instruction_json
   end
 
+  test "explicit numeric shortcuts own source namespaces before definitions are cataloged" do
+    entries = [
+      sheet_entry(42, nil, [regular_block(100, "hp")]),
+      sheet_entry(84, "42", [regular_block(200, "mana")])
+    ]
+
+    for sheets <- [entries, Enum.reverse(entries)] do
+      snapshot = project_snapshot(sheets)
+
+      assert {:ok, plan} = VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+      assert plan.sheet_ids == MapSet.new([42, 84])
+      assert plan.namespace_owners == %{"42" => 84}
+      assert plan.rewritable_namespaces == %{}
+      assert Map.keys(plan.qualified_targets) == ["42.mana"]
+      assert plan.rewritable_qualified_targets == %{}
+    end
+  end
+
+  test "rejects references to a fallback shadowed by a variable-free explicit shortcut" do
+    snapshot =
+      project_snapshot(
+        [
+          sheet_entry(42, nil, [regular_block(100, "hp")]),
+          sheet_entry(84, "42", [])
+        ],
+        [
+          %{
+            "original_id" => 200,
+            "type" => "condition",
+            "data" => %{"condition" => condition("42", "hp")}
+          }
+        ]
+      )
+
+    assert {:error, {:unresolved_variable_reference, "flow_node", 200, "read", "42", "hp"}} =
+             VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+  end
+
   test "rejects destination numeric namespaces that collide with fixed shortcuts" do
     snapshot =
       project_snapshot([

@@ -59,6 +59,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   @snapshot_format_version 2
   @localization_actor_fields ~w(translated_by_id reviewed_by_id)
   @localization_actor_mode_key :project_recovery_localization_actor_mode
+  @preserved_localization_actor_ids_key :preserved_localization_actor_ids
   @snapshot_count_collections %{
     "sheets" => ["sheets"],
     "flows" => ["flows"],
@@ -108,6 +109,36 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   def validate_materialization_snapshot(_snapshot_data), do: {:error, :invalid_project_snapshot_envelope}
+
+  @doc false
+  @spec lock_materializable_localization_actors(map(), keyword()) ::
+          {:ok, MapSet.t(pos_integer())} | {:error, term()}
+  def lock_materializable_localization_actors(snapshot_data, opts \\ [])
+
+  def lock_materializable_localization_actors(snapshot_data, opts) when is_map(snapshot_data) and is_list(opts) do
+    with :ok <- validate_materialization_transaction(),
+         true <- Keyword.keyword?(opts),
+         {:ok, texts} <- localization_actor_rows(snapshot_data),
+         :ok <- validate_localization_actor_shapes(texts),
+         {:ok, required_actor_ids} <- localization_actor_lock_ids(opts, :required_actor_ids),
+         {:ok, additional_actor_ids} <- localization_actor_lock_ids(opts, :additional_actor_ids) do
+      actor_ids =
+        texts
+        |> localization_actor_ids()
+        |> Kernel.++(required_actor_ids)
+        |> Kernel.++(additional_actor_ids)
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      lock_existing_localization_actors(actor_ids)
+    else
+      false -> {:error, :invalid_project_materialization_localization_actor_prelock_options}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  def lock_materializable_localization_actors(_snapshot_data, _opts),
+    do: {:error, :invalid_project_materialization_localization_actor_prelock_options}
 
   defp validate_portable_entity_snapshots(snapshot_data) do
     Enum.reduce_while(
@@ -171,9 +202,12 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     materializes archived localization rows
   - `:asset_materialization_cache` - optional caller-owned cache shared with
     the asset staging phase
+  - `:preserved_localization_actor_ids` - required caller-resolved `MapSet` of
+    actor IDs protected before the restore operation row is locked
 
   Exact in-situ restore preserves captured localization translator and reviewer
-  identities as historical attribution.
+  identities that still exist. Identities deleted after capture are normalized
+  to `nil`, matching the live foreign-key deletion contract.
   """
   @spec materialize_into_project(Project.t(), map(), integer(), map(), keyword()) ::
           {:ok, %{project: Project.t(), id_maps: map()}} | {:error, term()}
@@ -241,7 +275,11 @@ defmodule Storyarn.Versioning.ProjectRecovery do
            ) do
       recovery_opts =
         opts
-        |> Keyword.take([:asset_materialization_cache, @localization_actor_mode_key])
+        |> Keyword.take([
+          :asset_materialization_cache,
+          @localization_actor_mode_key,
+          @preserved_localization_actor_ids_key
+        ])
         |> Keyword.put(:asset_materialization_cache, cache)
         |> Keyword.put(:pre_materialized_assets, true)
         |> Keyword.put(:portable_variable_plan, variable_plan)
@@ -929,23 +967,12 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   defp validate_recovery_localization_actor_references(snapshot_data) do
     with {:ok, texts} <- localization_actor_rows(snapshot_data),
-         :ok <- validate_localization_actor_shapes(texts) do
-      actor_ids = localization_actor_ids(texts)
-
-      existing_ids =
-        User
-        |> where([user], user.id in ^actor_ids)
-        |> select([user], user.id)
-        |> Repo.all()
-        |> MapSet.new()
-
-      validate_localization_actor_references(texts, existing_ids)
-    end
+         do: validate_localization_actor_shapes(texts)
   end
 
   defp validate_recovery_localization_actor_references(snapshot_data, opts) when is_list(opts) do
     case Keyword.get(opts, @localization_actor_mode_key) do
-      :discard -> :ok
+      :discard -> validate_recovery_localization_actor_references(snapshot_data)
       :preserve -> validate_recovery_localization_actor_references(snapshot_data)
       _invalid -> {:error, :invalid_project_recovery_localization_actor_mode}
     end
@@ -984,15 +1011,15 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     |> Enum.uniq()
   end
 
-  defp validate_localization_actor_references(texts, existing_ids) do
-    missing_reference =
-      texts
-      |> localization_actor_references()
-      |> Enum.find(fn {_field, id} -> not is_nil(id) and not MapSet.member?(existing_ids, id) end)
+  defp localization_actor_lock_ids(opts, key) do
+    case Keyword.get(opts, key, []) do
+      actor_ids when is_list(actor_ids) ->
+        if Enum.all?(actor_ids, &(is_integer(&1) and &1 > 0)),
+          do: {:ok, actor_ids},
+          else: {:error, :invalid_project_materialization_localization_actor_prelock_options}
 
-    case missing_reference do
-      nil -> :ok
-      {field, id} -> {:error, {:localization_reference_not_materializable, field, id}}
+      _invalid ->
+        {:error, :invalid_project_materialization_localization_actor_prelock_options}
     end
   end
 
@@ -1020,6 +1047,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     now = TimeHelpers.now()
 
     with :ok <- validate_recovery_localization_actor_references(snapshot_data, opts),
+         {:ok, opts, preserved_actor_ids} <-
+           prepare_recovery_localization_actors(snapshot_data, opts),
          {:ok, {sheet_maps, snapshot_data}} <-
            recover_sheets_with_portable_namespaces(project.id, snapshot_data, user_id, opts),
          {:ok, scene_maps} <-
@@ -1053,9 +1082,78 @@ defmodule Storyarn.Versioning.ProjectRecovery do
                opts,
                now
              ) do
-        {:ok, %{project: project, id_maps: id_maps}}
+        {:ok,
+         %{
+           project: project,
+           id_maps: id_maps,
+           preserved_localization_actor_ids: preserved_actor_ids
+         }}
       end
     end
+  end
+
+  defp prepare_recovery_localization_actors(_snapshot_data, opts) do
+    case Keyword.get(opts, @localization_actor_mode_key) do
+      :discard ->
+        preserved_actor_ids = MapSet.new()
+
+        {:ok, Keyword.put(opts, @preserved_localization_actor_ids_key, preserved_actor_ids), preserved_actor_ids}
+
+      :preserve ->
+        opts
+        |> Keyword.fetch(@preserved_localization_actor_ids_key)
+        |> prepare_preserved_localization_actors(opts)
+    end
+  end
+
+  defp prepare_preserved_localization_actors({:ok, %MapSet{} = actor_ids}, opts) do
+    if Enum.all?(actor_ids, &(is_integer(&1) and &1 > 0)),
+      do: {:ok, opts, actor_ids},
+      else: {:error, :invalid_project_materialization_localization_actor_prelock}
+  end
+
+  defp prepare_preserved_localization_actors({:ok, _invalid}, _opts),
+    do: {:error, :invalid_project_materialization_localization_actor_prelock}
+
+  defp prepare_preserved_localization_actors(:error, _opts),
+    do: {:error, :project_materialization_localization_actor_prelock_required}
+
+  defp lock_existing_localization_actors(actor_ids) do
+    if actor_ids == [] do
+      {:ok, MapSet.new()}
+    else
+      locked_actor_ids =
+        User
+        |> where([user], user.id in ^actor_ids)
+        |> order_by([user], asc: user.id)
+        |> lock("FOR KEY SHARE SKIP LOCKED")
+        |> select([user], user.id)
+        |> Repo.all()
+        |> MapSet.new()
+
+      busy_actor_ids =
+        actor_ids
+        |> Enum.reject(&MapSet.member?(locked_actor_ids, &1))
+        |> existing_localization_actor_ids()
+
+      if busy_actor_ids == [],
+        do: {:ok, locked_actor_ids},
+        else: {:error, {:project_materialization_localization_actors_busy, busy_actor_ids}}
+    end
+  end
+
+  defp existing_localization_actor_ids([]), do: []
+
+  defp existing_localization_actor_ids(actor_ids) do
+    User
+    |> where([user], user.id in ^actor_ids)
+    |> order_by([user], asc: user.id)
+    |> select([user], user.id)
+    |> Repo.all()
+  end
+
+  defp actor_id_if_present(actor_id, preserved_actor_ids) do
+    if MapSet.member?(preserved_actor_ids, actor_id), do: actor_id
   end
 
   defp recover_sheets_with_portable_namespaces(project_id, snapshot_data, user_id, opts) do
@@ -2582,7 +2680,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
              texts,
              snapshot_data
            ) do
-      validate_recovery_glossary(glossary, locale_codes)
+      validate_recovery_glossary(glossary)
     end
   end
 
@@ -2937,7 +3035,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   defp valid_recovery_datetime?(_value), do: false
 
-  defp validate_recovery_glossary(glossary, locale_codes) do
+  defp validate_recovery_glossary(glossary) do
     if Enum.all?(glossary, &valid_recovery_glossary_entry?/1) do
       keys =
         Enum.map(
@@ -2949,18 +3047,10 @@ defmodule Storyarn.Versioning.ProjectRecovery do
           }
         )
 
-      cond do
-        length(keys) != MapSet.size(MapSet.new(keys)) ->
-          {:error, :duplicate_project_snapshot_glossary_entry}
-
-        Enum.any?(glossary, fn entry ->
-          not MapSet.member?(locale_codes, entry["source_locale"]) or
-              not MapSet.member?(locale_codes, entry["target_locale"])
-        end) ->
-          {:error, :missing_project_snapshot_glossary_language}
-
-        true ->
-          :ok
+      if length(keys) == MapSet.size(MapSet.new(keys)) do
+        :ok
+      else
+        {:error, :duplicate_project_snapshot_glossary_entry}
       end
     else
       {:error, :invalid_project_snapshot_glossary_entry}
@@ -3171,8 +3261,14 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   defp recovered_localization_actor_id(text, field, opts) do
     case Keyword.get(opts, @localization_actor_mode_key) do
-      :preserve -> text[field]
-      :discard -> nil
+      :preserve ->
+        actor_id_if_present(
+          text[field],
+          Keyword.fetch!(opts, @preserved_localization_actor_ids_key)
+        )
+
+      :discard ->
+        nil
     end
   end
 

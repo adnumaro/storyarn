@@ -53,6 +53,9 @@ defmodule Storyarn.Repo.Migrations.AddProjectSnapshotRestoreContractVersion do
   end
 
   def down do
+    lock_restore_contract_evidence!()
+    assert_no_restore_contract_or_cleanup_evidence!()
+
     execute("DROP TRIGGER IF EXISTS #{@guard_trigger} ON project_snapshots")
     execute("DROP FUNCTION IF EXISTS #{@guard_function}()")
 
@@ -61,6 +64,39 @@ defmodule Storyarn.Repo.Migrations.AddProjectSnapshotRestoreContractVersion do
 
     alter table(:project_snapshots) do
       remove :restore_contract_version
+    end
+  end
+
+  # Run this assertion immediately instead of queueing it with the DDL. In a
+  # multi-migration rollback, the prior cleanup-inventory migration may also be
+  # irreversible; this migration must fail first so the live schema cannot lose
+  # its restore-contract column before that earlier guard is reached.
+  defp lock_restore_contract_evidence! do
+    repo().query!("""
+    LOCK TABLE project_snapshots, workspace_storage_reservations
+    IN ACCESS EXCLUSIVE MODE
+    """)
+  end
+
+  defp assert_no_restore_contract_or_cleanup_evidence! do
+    case repo().query!("""
+         SELECT
+           EXISTS (
+             SELECT 1
+             FROM project_snapshots
+             WHERE restore_contract_version IS NOT NULL
+           ) OR EXISTS (
+             SELECT 1
+             FROM workspace_storage_reservations
+             WHERE cleanup_storage_keys IS NOT NULL
+           )
+         """).rows do
+      [[false]] ->
+        :ok
+
+      [[true]] ->
+        raise Ecto.MigrationError,
+              "AddProjectSnapshotRestoreContractVersion cannot be rolled back after restore-contract or cleanup-inventory evidence exists"
     end
   end
 end

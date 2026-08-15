@@ -451,6 +451,58 @@ defmodule Storyarn.Billing.StorageAccounting do
   def commit(_reservation_id, _lease_token, _expected_generation, _actual_bytes, _owner_fun),
     do: {:error, :invalid_storage_reservation_commit}
 
+  @doc false
+  @spec commit_project_snapshot_restore_reservation(
+          pos_integer(),
+          Ecto.UUID.t(),
+          pos_integer(),
+          non_neg_integer(),
+          (map() -> {:ok, term()} | {:error, term()}),
+          (StorageReservation.t(), term() -> term())
+        ) ::
+          {:ok, %{reservation: StorageReservation.t(), result: term()}}
+          | {:error, :reservation_underestimated, map()}
+          | {:error, term()}
+  def commit_project_snapshot_restore_reservation(
+        reservation_id,
+        lease_token,
+        expected_generation,
+        actual_bytes,
+        prelock_fun,
+        owner_fun
+      )
+      when valid_fence(reservation_id, lease_token, expected_generation) and is_non_negative_integer(actual_bytes) and
+             is_function(prelock_fun, 1) and is_function(owner_fun, 2) do
+    case Repo.get(StorageReservation, reservation_id) do
+      %StorageReservation{} = reservation ->
+        reservation.workspace_id_snapshot
+        |> locked_result(fn workspace ->
+          commit_project_snapshot_restore_locked(
+            workspace,
+            reservation_id,
+            lease_token,
+            expected_generation,
+            actual_bytes,
+            prelock_fun,
+            owner_fun
+          )
+        end)
+        |> emit_after_mutation(reservation.workspace_id_snapshot, :committed)
+
+      nil ->
+        {:error, :storage_reservation_not_found}
+    end
+  end
+
+  def commit_project_snapshot_restore_reservation(
+        _reservation_id,
+        _lease_token,
+        _expected_generation,
+        _actual_bytes,
+        _prelock_fun,
+        _owner_fun
+      ), do: {:error, :invalid_storage_reservation_commit}
+
   @doc """
   Releases an active reservation after durable cleanup ownership is established.
 
@@ -704,8 +756,17 @@ defmodule Storyarn.Billing.StorageAccounting do
          %Workspace{} = workspace,
          %StorageReservation{kind: "restore_staging"} = reservation
        ) do
-    with :ok <- validate_reservation_scope(workspace, restore_reservation_attrs(reservation)),
-         %ProjectSnapshotRestore{} <-
+    with {:ok, _project} <- lock_restore_reservation_project(workspace, reservation) do
+      lock_restore_commit_owner_and_snapshot(reservation)
+    end
+  end
+
+  defp lock_commit_reservation_target(%Workspace{} = workspace, %StorageReservation{} = reservation) do
+    lock_active_reservation_target(workspace, reservation)
+  end
+
+  defp lock_restore_commit_owner_and_snapshot(reservation) do
+    with %ProjectSnapshotRestore{} <-
            lock_restore_owner(
              reservation.id,
              reservation.workspace_id_snapshot,
@@ -720,10 +781,6 @@ defmodule Storyarn.Billing.StorageAccounting do
       nil -> {:error, :storage_reservation_owner_mismatch}
       {:error, _reason} = error -> error
     end
-  end
-
-  defp lock_commit_reservation_target(%Workspace{} = workspace, %StorageReservation{} = reservation) do
-    lock_active_reservation_target(workspace, reservation)
   end
 
   defp restore_reservation_attrs(reservation) do
@@ -1028,6 +1085,110 @@ defmodule Storyarn.Billing.StorageAccounting do
 
       nil ->
         {:error, :storage_reservation_not_found}
+    end
+  end
+
+  defp commit_project_snapshot_restore_locked(
+         workspace,
+         reservation_id,
+         lease_token,
+         expected_generation,
+         actual_bytes,
+         prelock_fun,
+         owner_fun
+       ) do
+    reservation_id
+    |> then(&Repo.get(StorageReservation, &1))
+    |> commit_project_snapshot_restore_for_status(
+      workspace,
+      reservation_id,
+      lease_token,
+      expected_generation,
+      actual_bytes,
+      prelock_fun,
+      owner_fun
+    )
+  end
+
+  defp commit_project_snapshot_restore_for_status(
+         %StorageReservation{status: "active", kind: "restore_staging"} = reservation_hint,
+         workspace,
+         reservation_id,
+         lease_token,
+         expected_generation,
+         actual_bytes,
+         prelock_fun,
+         owner_fun
+       ) do
+    with {:ok, project} <- lock_restore_reservation_project(workspace, reservation_hint),
+         {:ok, prelock_context} <- run_project_snapshot_restore_prelock(prelock_fun, workspace, project),
+         {:ok, target} <- lock_restore_commit_owner_and_snapshot(reservation_hint),
+         %StorageReservation{} = reservation <- lock_reservation(reservation_id),
+         :ok <- verify_lease(reservation, lease_token),
+         :ok <- validate_operation_bytes(reservation, actual_bytes) do
+      owner_fun = fn locked_reservation -> owner_fun.(locked_reservation, prelock_context) end
+
+      commit_for_status(
+        workspace,
+        reservation,
+        target,
+        expected_generation,
+        actual_bytes,
+        owner_fun
+      )
+    else
+      nil -> {:error, :storage_reservation_not_found}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp commit_project_snapshot_restore_for_status(
+         %StorageReservation{kind: "restore_staging"},
+         workspace,
+         reservation_id,
+         lease_token,
+         expected_generation,
+         actual_bytes,
+         _prelock_fun,
+         owner_fun
+       ) do
+    commit_locked(
+      workspace,
+      reservation_id,
+      lease_token,
+      expected_generation,
+      actual_bytes,
+      fn locked_reservation -> owner_fun.(locked_reservation, nil) end
+    )
+  end
+
+  defp commit_project_snapshot_restore_for_status(
+         %StorageReservation{},
+         _workspace,
+         _reservation_id,
+         _lease_token,
+         _expected_generation,
+         _actual_bytes,
+         _prelock_fun,
+         _owner_fun
+       ), do: {:error, :invalid_project_snapshot_restore_reservation}
+
+  defp commit_project_snapshot_restore_for_status(
+         nil,
+         _workspace,
+         _reservation_id,
+         _lease_token,
+         _expected_generation,
+         _actual_bytes,
+         _prelock_fun,
+         _owner_fun
+       ), do: {:error, :storage_reservation_not_found}
+
+  defp run_project_snapshot_restore_prelock(prelock_fun, workspace, project) do
+    case prelock_fun.(%{workspace: workspace, project: project}) do
+      {:ok, prelock_context} -> {:ok, prelock_context}
+      {:error, _reason} = error -> error
+      _invalid -> {:error, :invalid_project_snapshot_restore_prelock_result}
     end
   end
 
@@ -1776,15 +1937,10 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   defp validate_reservation_scope(%Workspace{id: workspace_id}, %{project_id: project_id, kind: "restore_staging"})
        when is_integer(project_id) and project_id > 0 do
-    project =
-      Repo.one(
-        from(candidate in Project,
-          where: candidate.id == ^project_id and candidate.workspace_id == ^workspace_id,
-          lock: "FOR UPDATE"
-        )
-      )
-
-    if match?(%Project{}, project), do: :ok, else: {:error, :invalid_storage_reservation_project}
+    case lock_restore_reservation_project(workspace_id, project_id) do
+      %Project{} -> :ok
+      nil -> {:error, :invalid_storage_reservation_project}
+    end
   end
 
   defp validate_reservation_scope(%Workspace{id: workspace_id}, %{project_id: project_id})
@@ -1803,6 +1959,22 @@ defmodule Storyarn.Billing.StorageAccounting do
   end
 
   defp validate_reservation_scope(%Workspace{}, _attrs), do: {:error, :invalid_storage_reservation_project}
+
+  defp lock_restore_reservation_project(%Workspace{id: workspace_id}, %StorageReservation{project_id_snapshot: project_id}) do
+    case lock_restore_reservation_project(workspace_id, project_id) do
+      %Project{} = project -> {:ok, project}
+      nil -> {:error, :invalid_storage_reservation_project}
+    end
+  end
+
+  defp lock_restore_reservation_project(workspace_id, project_id) do
+    Repo.one(
+      from(candidate in Project,
+        where: candidate.id == ^project_id and candidate.workspace_id == ^workspace_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
 
   defp reservation_target_identity(%{project_id: project_id, project_snapshot_id: snapshot_id, kind: "snapshot_build"}) do
     case Repo.one(

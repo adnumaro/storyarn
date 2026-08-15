@@ -435,29 +435,36 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
   end
 
   defp insert_assets(planned_assets, project, actor_id) do
-    planned_assets
-    |> Enum.reduce_while({:ok, [], %{}}, fn planned, {:ok, assets, logical_id_map} ->
-      attrs = %{
-        filename: planned.filename,
-        content_type: planned.content_type,
-        size: planned.size,
-        key: planned.destination_key,
-        url: Storage.get_url(planned.destination_key),
-        metadata: planned.metadata,
-        blob_hash: planned.sha256
-      }
+    attrs_list =
+      Enum.map(planned_assets, fn planned ->
+        attrs = %{
+          filename: planned.filename,
+          content_type: planned.content_type,
+          size: planned.size,
+          key: planned.destination_key,
+          url: Storage.get_url(planned.destination_key),
+          metadata: planned.metadata,
+          blob_hash: planned.sha256
+        }
 
-      case Assets.import_snapshot_asset(project, actor_id, attrs) do
-        {:ok, asset} ->
-          {:cont, {:ok, [asset | assets], Map.put(logical_id_map, planned.logical_id, asset.id)}}
+        attrs
+      end)
 
-        {:error, reason} ->
-          {:halt, {:error, {:snapshot_asset_insert_failed, planned.logical_id, reason}}}
-      end
-    end)
-    |> case do
-      {:ok, assets, logical_id_map} -> {:ok, Enum.reverse(assets), logical_id_map}
-      {:error, _reason} = error -> error
+    case Assets.import_snapshot_assets_locked(project, actor_id, attrs_list) do
+      {:ok, assets} ->
+        logical_id_map =
+          planned_assets
+          |> Enum.zip(assets)
+          |> Map.new(fn {planned, asset} -> {planned.logical_id, asset.id} end)
+
+        {:ok, assets, logical_id_map}
+
+      {:error, {:snapshot_asset_batch_entry_failed, index, reason}} ->
+        planned = Enum.at(planned_assets, index)
+        {:error, {:snapshot_asset_insert_failed, planned.logical_id, reason}}
+
+      {:error, reason} ->
+        {:error, {:snapshot_asset_insert_failed, :batch, reason}}
     end
   end
 
@@ -465,22 +472,37 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
     assets_by_id = Map.new(assets, &{&1.id, &1})
 
     planned_assets
-    |> Enum.reduce_while({:ok, []}, fn planned, {:ok, updated} ->
+    |> Enum.reduce_while({:ok, []}, fn planned, {:ok, updates} ->
       asset_id = Map.fetch!(logical_id_map, planned.logical_id)
       asset = Map.fetch!(assets_by_id, asset_id)
 
-      with {:ok, relationship_metadata} <- relationship_metadata(planned.relationships, logical_id_map),
-           metadata = Map.merge(planned.metadata, relationship_metadata),
-           {:ok, asset} <- Assets.update_imported_snapshot_asset_locked(project, asset, metadata) do
-        {:cont, {:ok, [asset | updated]}}
-      else
+      case relationship_metadata(planned.relationships, logical_id_map) do
+        {:ok, relationship_metadata} ->
+          metadata = Map.merge(planned.metadata, relationship_metadata)
+          {:cont, {:ok, [{asset, metadata} | updates]}}
+
         {:error, reason} ->
           {:halt, {:error, {:snapshot_asset_relationship_failed, planned.logical_id, reason}}}
       end
     end)
     |> case do
-      {:ok, updated} -> {:ok, Enum.reverse(updated)}
-      {:error, _reason} = error -> error
+      {:ok, updates} ->
+        updates = Enum.reverse(updates)
+
+        case Assets.update_imported_snapshot_assets_locked(project, updates) do
+          {:ok, updated} ->
+            {:ok, updated}
+
+          {:error, {:snapshot_asset_batch_entry_failed, index, reason}} ->
+            planned = Enum.at(planned_assets, index)
+            {:error, {:snapshot_asset_relationship_failed, planned.logical_id, reason}}
+
+          {:error, reason} ->
+            {:error, {:snapshot_asset_relationship_failed, :batch, reason}}
+        end
+
+      {:error, _reason} = error ->
+        error
     end
   end
 

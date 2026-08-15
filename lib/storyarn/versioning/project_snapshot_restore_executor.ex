@@ -66,6 +66,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
 
   @phase_rank %{"preflight" => 0, "staging" => 1, "materializing" => 2, "verifying" => 3}
   @compensation_context_key {__MODULE__, :compensation_context}
+  @localization_actor_fields ~w(translated_by_id reviewed_by_id)
   @retryable_storage_reasons [
     :eagain,
     :eio,
@@ -549,12 +550,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   defp commit_restore(context, tracker) do
     reservation = context.reservation
 
-    case Billing.commit_storage_reservation(
+    case Billing.commit_project_snapshot_restore_reservation(
            reservation.id,
            reservation.lease_token,
            reservation.generation,
            context.asset_plan.logical_bytes,
-           &commit_owner(&1, context, tracker)
+           &prelock_localization_actors(&1, context),
+           &commit_owner(&1, &2, context, tracker)
          ) do
       {:ok, %{result: :already_committed}} -> completed_result(current_restore(context.restore.id))
       {:ok, %{result: %ProjectSnapshotRestore{} = completed}} -> completed_result(completed)
@@ -562,8 +564,32 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     end
   end
 
-  defp commit_owner(_reservation, context, tracker) do
-    with {:ok, locked} <- lock_and_reauthorize(context),
+  defp prelock_localization_actors(%{workspace: _workspace, project: project}, context) do
+    required_actor_ids = [context.restore.requested_by_id, project.owner_id]
+
+    case context.recovery.lock_materializable_localization_actors(
+           context.archive_plan.project,
+           required_actor_ids: required_actor_ids,
+           additional_actor_ids: Enum.reject([project.deleted_by_id], &is_nil/1)
+         ) do
+      {:ok, %MapSet{} = actor_ids} ->
+        if Enum.all?(required_actor_ids, &MapSet.member?(actor_ids, &1)),
+          do: {:ok, actor_ids},
+          else: {:error, :project_snapshot_restore_required_actor_unavailable_during_prelock}
+
+      {:error, _reason} = error ->
+        error
+
+      _invalid ->
+        {:error, :invalid_project_snapshot_restore_localization_actor_prelock}
+    end
+  end
+
+  defp prelock_localization_actors(_locked_parents, _context),
+    do: {:error, :invalid_project_snapshot_restore_lock_context}
+
+  defp commit_owner(_reservation, preserved_localization_actor_ids, context, tracker) do
+    with {:ok, locked} <- lock_and_reauthorize(context, preserved_localization_actor_ids),
          :ok <- RestorePolicy.ensure_enabled({:project_snapshot_restore, "full"}),
          {:ok, previous} <- capture_active_state(locked.project.id),
          :ok <- trash_active_graph(previous),
@@ -577,13 +603,18 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
              tracker
            ),
          {:ok, project} <- restore_project_fields(locked.project, context.archive_plan.project),
-         {:ok, %{id_maps: id_maps}} <-
+         {:ok,
+          %{
+            id_maps: id_maps,
+            preserved_localization_actor_ids: ^preserved_localization_actor_ids
+          }} <-
            context.recovery.materialize_into_project(
              project,
              context.archive_plan.project,
              locked.actor.id,
              adoption.source_id_map,
-             localization_scope: :active
+             localization_scope: :active,
+             preserved_localization_actor_ids: preserved_localization_actor_ids
            ),
          :ok <- context.materializer.verify_adopted_locked(context.asset_plan, adoption.logical_id_map),
          :ok <- context.before_postverify.(),
@@ -593,7 +624,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
              context.archive_plan.project,
              previous,
              id_maps,
-             adoption.source_id_map
+             adoption.source_id_map,
+             preserved_localization_actor_ids
            ),
          {:ok, cleanup_request_id} <- persist_staging_cleanup(context) do
       result = build_result(context, cleanup_request_id, semantic_digest, previous)
@@ -604,9 +636,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     end
   end
 
-  defp lock_and_reauthorize(context) do
+  defp lock_and_reauthorize(context, preserved_localization_actor_ids) do
     # StorageAccounting owns the lock order and invokes us only after locking
-    # workspace -> project -> restore -> snapshot -> reservation.
+    # workspace -> project -> available localization actors -> restore ->
+    # snapshot -> reservation. The User pass uses SKIP LOCKED: a concurrent
+    # delete can therefore never invert a parent/restore FK wait against this
+    # transaction.
     with %Project{deleted_at: nil} = project <- Repo.get(Project, context.project.id),
          %ProjectSnapshotRestore{status: "running", phase: "verifying"} = restore <-
            Repo.get(ProjectSnapshotRestore, context.restore.id),
@@ -614,7 +649,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
          :ok <- validate_snapshot_identity(restore, snapshot),
          true <- restore.generation == context.restore.generation,
          true <- restore.storage_reservation_id == context.reservation.id,
-         %User{} = actor <- Repo.get(User, restore.requested_by_id),
+         true <- restore.requested_by_id == context.actor.id,
+         true <- MapSet.member?(preserved_localization_actor_ids, context.actor.id),
+         %User{} = actor <- context.actor,
          %ProjectMembership{} = membership <- lock_project_membership(project.id, actor.id),
          true <- ProjectMembership.can?(membership.role, :manage_project),
          :ok <- context.after_final_authorization.(membership) do
@@ -757,7 +794,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     project |> Project.update_changeset(attrs) |> Repo.update()
   end
 
-  defp postverify_restore(project_id, project_data, previous, id_maps, source_id_map) do
+  defp postverify_restore(project_id, project_data, previous, id_maps, source_id_map, preserved_localization_actor_ids) do
     expected = project_data["entity_counts"]
     expected_graph = expected_graph_inventory(project_data)
 
@@ -769,17 +806,27 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
          :ok <- verify_active_reference_sources(project_id),
          :ok <- verify_previous_roots_trashed(previous),
          :ok <- verify_project_fields(project_id, project_data["project"]) do
-      verify_semantic_snapshot(project_id, project_data, id_maps, source_id_map)
+      verify_semantic_snapshot(
+        project_id,
+        project_data,
+        id_maps,
+        source_id_map,
+        preserved_localization_actor_ids
+      )
     end
   end
 
-  defp verify_semantic_snapshot(project_id, expected, id_maps, source_id_map) do
+  defp verify_semantic_snapshot(project_id, expected, id_maps, source_id_map, preserved_localization_actor_ids) do
     actual =
       project_id
       |> ProjectSnapshotBuilder.build_snapshot_in_transaction(localization_scope: :active)
       |> normalize_json()
 
-    expected_source = normalize_json(expected)
+    expected_source =
+      expected
+      |> normalize_json()
+      |> normalize_expected_localization_actors(preserved_localization_actor_ids)
+
     source_maps = %{mode: :identity, ids: %{}}
     destination_maps = %{mode: :forward, ids: Map.put(id_maps, :asset, source_id_map)}
 
@@ -805,6 +852,46 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
           first_semantic_difference(expected_destination, actual_destination)}}
       end
     end
+  end
+
+  defp normalize_expected_localization_actors(snapshot, preserved_actor_ids) do
+    snapshot
+    |> update_in(["localization", "texts"], &normalize_expected_localization_rows(&1, preserved_actor_ids))
+    |> normalize_expected_entity_localization("sheets", preserved_actor_ids)
+    |> normalize_expected_entity_localization("flows", preserved_actor_ids)
+  end
+
+  defp normalize_expected_entity_localization(snapshot, collection, preserved_actor_ids) do
+    update_in(snapshot, [collection], fn entries ->
+      Enum.map(entries, fn entry ->
+        update_in(
+          entry,
+          ["snapshot", "localization"],
+          &normalize_expected_localization_rows(&1, preserved_actor_ids)
+        )
+      end)
+    end)
+  end
+
+  defp normalize_expected_localization_rows(rows, preserved_actor_ids) do
+    Enum.map(rows, fn text ->
+      Enum.reduce(
+        @localization_actor_fields,
+        text,
+        &normalize_expected_localization_actor(&1, &2, preserved_actor_ids)
+      )
+    end)
+  end
+
+  defp normalize_expected_localization_actor(field, text, preserved_actor_ids) do
+    case Map.fetch(text, field) do
+      {:ok, actor_id} -> Map.put(text, field, expected_actor_id(actor_id, preserved_actor_ids))
+      :error -> text
+    end
+  end
+
+  defp expected_actor_id(actor_id, preserved_actor_ids) do
+    if MapSet.member?(preserved_actor_ids, actor_id), do: actor_id
   end
 
   defp first_semantic_difference(expected, actual), do: first_semantic_difference(expected, actual, [])

@@ -1,12 +1,15 @@
 defmodule Storyarn.Versioning.ProjectRecoveryMaterializationPreflightTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Localization
+  alias Storyarn.Projects.Project
+  alias Storyarn.Repo
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.ProjectRecovery
@@ -117,24 +120,21 @@ defmodule Storyarn.Versioning.ProjectRecoveryMaterializationPreflightTest do
     end
   end
 
-  test "rejects missing localization actors before graph writes", %{project: project} do
+  test "normalizes missing localization actors during final graph writes", %{project: project} do
     snapshot = project.id |> ProjectSnapshotBuilder.build_snapshot() |> Map.put("asset_catalog_refs", %{})
-    target_project = project_fixture(user_fixture())
     missing_user_id = 999_999_999
 
     for field <- ["translated_by_id", "reviewed_by_id"] do
-      malformed = put_localization_actor(snapshot, field, missing_user_id)
+      historical = put_localization_actor(snapshot, field, missing_user_id)
+      target_project = project_fixture(user_fixture())
 
-      counts_before = materialized_graph_counts(target_project.id)
+      assert :ok = ProjectRecovery.validate_materialization_snapshot(historical)
+      assert {:ok, _materialized} = materialize_snapshot_into_project(target_project, historical)
 
-      assert {:error, {:localization_reference_not_materializable, ^field, ^missing_user_id}} =
-               ProjectRecovery.validate_materialization_snapshot(malformed)
-
-      assert {:error, {:localization_reference_not_materializable, ^field, ^missing_user_id}} =
-               materialize_snapshot_into_project(target_project, malformed)
-
-      assert materialized_graph_counts(target_project.id) == counts_before
-      assert Localization.list_all_texts(target_project.id) == []
+      restored_texts = Localization.list_all_texts(target_project.id)
+      assert restored_texts != []
+      actor_field = String.to_existing_atom(field)
+      assert Enum.all?(restored_texts, &(Map.fetch!(&1, actor_field) == nil))
     end
   end
 
@@ -177,25 +177,27 @@ defmodule Storyarn.Versioning.ProjectRecoveryMaterializationPreflightTest do
   end
 
   defp materialize_snapshot_into_project(project, snapshot) do
-    Storyarn.Repo.transaction(fn ->
-      case ProjectRecovery.materialize_into_project(
-             project,
-             snapshot,
-             project.owner_id,
-             %{},
-             localization_scope: :active
-           ) do
-        {:ok, %{project: materialized_project}} -> materialized_project
-        {:error, reason} -> Storyarn.Repo.rollback(reason)
+    Repo.transaction(fn ->
+      locked_project =
+        Repo.one!(from candidate in Project, where: candidate.id == ^project.id, lock: "FOR UPDATE")
+
+      with {:ok, actor_ids} <-
+             ProjectRecovery.lock_materializable_localization_actors(snapshot,
+               required_actor_ids: [project.owner_id]
+             ),
+           {:ok, %{project: materialized_project}} <-
+             ProjectRecovery.materialize_into_project(
+               locked_project,
+               snapshot,
+               project.owner_id,
+               %{},
+               localization_scope: :active,
+               preserved_localization_actor_ids: actor_ids
+             ) do
+        materialized_project
+      else
+        {:error, reason} -> Repo.rollback(reason)
       end
     end)
-  end
-
-  defp materialized_graph_counts(project_id) do
-    %{
-      sheets: length(Storyarn.Sheets.list_all_sheets(project_id)),
-      scenes: length(Storyarn.Scenes.list_scenes(project_id)),
-      flows: length(Storyarn.Flows.list_flows(project_id))
-    }
   end
 end
