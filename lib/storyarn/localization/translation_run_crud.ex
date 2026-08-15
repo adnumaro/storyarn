@@ -87,11 +87,13 @@ defmodule Storyarn.Localization.TranslationRunCrud do
     end
   end
 
-  def transition_terminal(run_id, attrs) when is_map(attrs) do
+  def transition_terminal(run_id, %{status: status} = attrs) when status in ["completed", "failed"] do
     with {:ok, identity} <- terminal_run_identity(run_id) do
       Repo.transact(fn -> transition_terminal_locked(run_id, attrs, identity) end)
     end
   end
+
+  def transition_terminal(_run_id, _attrs), do: {:error, :invalid_terminal_status}
 
   def cancel(%TranslationRun{status: status} = run) when status in ["queued", "running"] do
     now = TimeHelpers.now()
@@ -235,8 +237,8 @@ defmodule Storyarn.Localization.TranslationRunCrud do
     )
   end
 
-  defp notification_status(%TranslationRun{status: "completed", failed_count: 0}), do: "success"
-  defp notification_status(%TranslationRun{status: status}) when status in ["completed", "failed"], do: "failure"
+  defp notification_status(%TranslationRun{status: "completed"}), do: "success"
+  defp notification_status(%TranslationRun{status: "failed"}), do: "failure"
 
   defp maybe_add(opts, _key, nil), do: opts
   defp maybe_add(opts, key, value), do: Keyword.put(opts, key, value)

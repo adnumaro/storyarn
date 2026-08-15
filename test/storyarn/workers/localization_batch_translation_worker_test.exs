@@ -2,6 +2,7 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
   use Storyarn.DataCase, async: false
   use Oban.Testing, repo: Storyarn.Repo
 
+  import ExUnit.CaptureLog
   import Storyarn.AccountsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
@@ -147,7 +148,7 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
     refute_receive :notifications_changed
   end
 
-  test "reports a completed batch with item failures as a failed outcome", %{
+  test "reports a completed batch with item failures as a successful outcome", %{
     user: user,
     project: project
   } do
@@ -164,8 +165,20 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
     assert completed.failed_count == 1
 
     notification = notification_for!(user.id, run.id)
-    assert notification.status == "failure"
-    assert notification.dedupe_key == "localization_batch:#{run.id}:failure"
+    assert notification.status == "success"
+    assert notification.dedupe_key == "localization_batch:#{run.id}:success"
+  end
+
+  test "rejects a non-terminal transition before updating the run", %{user: user, project: project} do
+    assert {:ok, run} = Localization.enqueue_batch_translation(project.id, "es", user.id)
+
+    assert {:error, :invalid_terminal_status} =
+             TranslationRunCrud.transition_terminal(run.id, %{status: "running", error: "invalid"})
+
+    persisted = Localization.get_translation_run(project.id, run.id)
+    assert persisted.status == "queued"
+    assert is_nil(persisted.error)
+    assert notification_count(user.id, run.id) == 0
   end
 
   test "rolls back the terminal run and its notification together", %{user: user, project: project} do
@@ -293,7 +306,7 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
     assert notification.dedupe_key == "localization_batch:#{run.id}:failure"
   end
 
-  test "handles provider exceptions as retryable errors and only notifies on the final attempt", %{
+  test "re-raises provider exceptions with their stacktrace and only notifies on the final attempt", %{
     user: user,
     project: project
   } do
@@ -303,27 +316,42 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
 
     assert {:ok, run} = Localization.enqueue_batch_translation(project.id, "es", user.id)
 
-    assert {:error, _reason} =
-             LocalizationBatchTranslationWorker.perform(%Oban.Job{
-               args: %{"run_id" => run.id},
-               attempt: 1,
-               max_attempts: 3
-             })
+    retry_log =
+      capture_log(fn ->
+        assert_provider_exception(fn ->
+          LocalizationBatchTranslationWorker.perform(%Oban.Job{
+            args: %{"run_id" => run.id},
+            attempt: 1,
+            max_attempts: 3
+          })
+        end)
+      end)
+
+    assert retry_log =~ "Unexpected localization batch translation exception run_id=#{run.id}"
+    assert retry_log =~ "FunctionClauseError"
+    assert retry_log =~ "fake_translation_provider.ex"
 
     retrying = Localization.get_translation_run(project.id, run.id)
     assert retrying.status == "running"
+    assert retrying.error =~ "FunctionClauseError"
+    refute retrying.error =~ "FakeTranslationProvider"
     refute retrying.completed_at
     assert notification_count(user.id, run.id) == 0
 
-    assert {:error, _reason} =
-             LocalizationBatchTranslationWorker.perform(%Oban.Job{
-               args: %{"run_id" => run.id},
-               attempt: 3,
-               max_attempts: 3
-             })
+    capture_log(fn ->
+      assert_provider_exception(fn ->
+        LocalizationBatchTranslationWorker.perform(%Oban.Job{
+          args: %{"run_id" => run.id},
+          attempt: 3,
+          max_attempts: 3
+        })
+      end)
+    end)
 
     failed = Localization.get_translation_run(project.id, run.id)
     assert failed.status == "failed"
+    assert failed.error =~ "FunctionClauseError"
+    refute failed.error =~ "FakeTranslationProvider"
     assert failed.completed_at
 
     notification = notification_for!(user.id, run.id)
@@ -346,6 +374,19 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
       entity_type: "localization_batch",
       entity_id: run_id
     )
+  end
+
+  defp assert_provider_exception(fun) do
+    fun.()
+    flunk("expected the translation provider to raise")
+  rescue
+    exception in FunctionClauseError ->
+      assert Enum.any?(__STACKTRACE__, fn
+               {FakeTranslationProvider, :respond, _args_or_arity, _location} -> true
+               _frame -> false
+             end)
+
+      exception
   end
 
   defp notification_count(user_id, run_id) do

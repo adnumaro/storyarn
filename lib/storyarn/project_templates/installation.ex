@@ -751,13 +751,21 @@ defmodule Storyarn.ProjectTemplates.Installation do
     {code, message, permanent?} = classify_error(reason)
 
     if permanent? or attempt >= max_attempts do
-      {install, notification_outcome} = fail_install(install, code, message, attempt, max_attempts)
-      Notifications.publish_committed(notification_outcome)
+      case fail_install(install, code, message, attempt, max_attempts) do
+        {:ok, {failed, notification_outcome}} ->
+          Notifications.publish_committed(notification_outcome)
 
-      log_terminal_failure(install, code)
+          log_terminal_failure(failed, code)
 
-      publish_finished(install, nil, started_at)
-      {:ok, install}
+          publish_finished(failed, nil, started_at)
+          {:ok, failed}
+
+        {:error, :installation_context_changed} ->
+          recover_terminal_installation(install.id, started_at)
+
+        {:error, reason} ->
+          {:error, reason}
+      end
     else
       install = retry_install(install, code, attempt, max_attempts)
 
@@ -774,29 +782,53 @@ defmodule Storyarn.ProjectTemplates.Installation do
   defp fail_install(install, code, message, attempt, max_attempts) do
     now = TimeHelpers.now()
 
-    {:ok, {failed, notification_outcome}} =
-      Repo.transact(fn ->
-        with {:ok, {locked_install, _project, requester}} <-
-               lock_install_notification_context(install, nil),
-             {:ok, failed} <-
-               locked_install
-               |> ProjectTemplateInstall.failed_changeset(%{
-                 status: "failed",
-                 stage: "failed",
-                 error_code: code,
-                 error_message: message,
-                 error_report: %{attempt: attempt, max_attempts: max_attempts},
-                 completed_at: now
-               })
-               |> Ecto.Changeset.change(feedback_dismissed_at: now)
-               |> Repo.update(),
-             {:ok, notification_outcome} <-
-               deliver_install_result(failed, nil, requester, "failure") do
-          {:ok, {failed, notification_outcome}}
-        end
-      end)
+    case Repo.transact(fn -> fail_install_transaction(install, code, message, attempt, max_attempts, now) end) do
+      {:ok, {failed, notification_outcome}} ->
+        {:ok, {preload_install(failed), notification_outcome}}
 
-    {preload_install(failed), notification_outcome}
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp fail_install_transaction(install, code, message, attempt, max_attempts, now) do
+    with {:ok, {locked_install, _project, requester}} <- lock_install_notification_context(install, nil),
+         {:ok, failed} <-
+           locked_install
+           |> ProjectTemplateInstall.failed_changeset(%{
+             status: "failed",
+             stage: "failed",
+             error_code: code,
+             error_message: message,
+             error_report: %{attempt: attempt, max_attempts: max_attempts},
+             completed_at: now
+           })
+           |> Ecto.Changeset.change(feedback_dismissed_at: now)
+           |> Repo.update(),
+         {:ok, notification_outcome} <- deliver_install_result(failed, nil, requester, "failure") do
+      {:ok, {failed, notification_outcome}}
+    end
+  end
+
+  defp recover_terminal_installation(install_id, started_at) do
+    case Repo.get(ProjectTemplateInstall, install_id) do
+      %ProjectTemplateInstall{status: "completed"} = completed ->
+        completed = preload_install(completed)
+        project = Repo.get(Project, completed.project_id)
+        publish_finished(completed, project, started_at)
+        {:ok, completed}
+
+      %ProjectTemplateInstall{status: "failed"} = failed ->
+        failed = preload_install(failed)
+        publish_finished(failed, nil, started_at)
+        {:ok, failed}
+
+      %ProjectTemplateInstall{} ->
+        {:error, :installation_context_changed}
+
+      nil ->
+        {:error, :installation_context_changed}
+    end
   end
 
   defp retry_install(install, code, attempt, max_attempts) do
