@@ -1,0 +1,114 @@
+test/storyarn/ai/audit_test.exs
+  s_a5fac722270186::t_c426f95c7e209e 98-103,137,145
+  s_a5fac722270186::t_11c535fbc0ac7f 6,104,108-136,146-147
+  s_a5fac722270186::t_96cd606d8fa6af 10,141-144
+  s_a5fac722270186::t_53621e34858aa3 138-140
+priv/gettext/en/LC_MESSAGES/default.po
+  s_a5fac722270186::t_44e6dba63a837b 69-71,76,81,86,172-174,179,189
+lib/storyarn_web/live/user_live/forgot_password.ex
+  s_a5fac722270186::t_54e214d8110061 100-106,111-119,138-147
+  s_c2ae682cd97119::t_e82833a60e0577 148-149
+lib/storyarn/flows/flow_stats.ex
+  s_a5fac722270186::t_ed7d69abc548c4 9,17-18,89,92-93,95
+priv/gettext/en/LC_MESSAGES/identity.po
+  s_a5fac722270186::t_517d068dedcea8 84,89-91
+  s_a5fac722270186::t_d49eabbac14f5b 92-93
+lib/storyarn/flows/speaker_sheet_id.ex
+  s_a5fac722270186::t_ed7d69abc548c4 1-30
+lib/storyarn/flows/flow_crud.ex
+  s_a5fac722270186::t_ed7d69abc548c4 18,36-37,1462-1463
+priv/gettext/default.pot
+  s_a5fac722270186::t_44e6dba63a837b 69-71,76,81,86,172-174,179,189
+lib/storyarn/ai/allowance.ex
+  s_a5fac722270186::t_fb3a66b23e7afe 122-129
+  s_a5fac722270186::t_601e85ae59228f 608-621
+  s_a5fac722270186::t_f24fd154406acc 21,130-139,143-145,147-148,153-169,172-173
+lib/storyarn_web/controllers/export_controller.ex
+  s_a5fac722270186::t_57f09ee89ecc87 11-12,96,123-125,128-131,155-172
+  s_a5fac722270186::t_a74d366011948a 126-127
+  s_a5fac722270186::t_4e60d13a6f194e 173
+priv/gettext/es/LC_MESSAGES/default.po
+  s_a5fac722270186::t_44e6dba63a837b 69-71,76,81,86,172-174,179,189
+lib/storyarn/sheets/inheritance_audit.ex
+  s_a5fac722270186::t_d93989d55732ed 90-106
+lib/storyarn/docs/guide_builder.ex
+  s_a5fac722270186::t_2acf0f4f8e8a5e 9-10,85
+  s_a5fac722270186::t_8159360592f3ab 4,26,41,82-84,86-96
+  s_a5fac722270186::t_eb30c3261730c5 97
+test/storyarn_web/controllers/export_controller_test.exs
+  s_a5fac722270186::t_57f09ee89ecc87 12,215-248
+  s_a5fac722270186::t_db3fd55ae1596e 249-250
+priv/gettext/identity.pot
+  s_a5fac722270186::t_517d068dedcea8 84,89-91
+  s_a5fac722270186::t_a6ebcf2fafb4db 92-93
+test/storyarn/ai/allowance_test.exs
+  s_a5fac722270186::t_b21b17bf756606 210-253
+test/storyarn/docs/guide_builder_test.exs
+  s_a5fac722270186::t_8159360592f3ab 6,101-117,120-128
+priv/gettext/es/LC_MESSAGES/identity.po
+  s_a5fac722270186::t_517d068dedcea8 84,89-92
+  s_a5fac722270186::t_c2672f46f0eb4f 93
+test/storyarn/workers/reconcile_ai_reservations_worker_test.exs
+  s_a5fac722270186::t_ec7b6a4506606b 278
+  s_a5fac722270186::t_2fbcc48ad897c6 4
+  s_a5fac722270186::t_4f468dd959a720 11-12,225-277,279-287
+  s_a5fac722270186::t_b0711b7878d496 288
+test/storyarn_web/live/user_live/password_reset_test.exs
+  s_a5fac722270186::t_54e214d8110061 15,107-149
+  s_c2ae682cd97119::t_d17eb541b81a2f 150-151
+test/storyarn/sheets/dashboard_health_coverage_test.exs
+  s_a5fac722270186::t_d93989d55732ed 82-117,472-506
+  s_a5fac722270186::t_04f3ceb30b46f2 118-158
+  s_a5fac722270186::t_a66720d2375403 507
+test/storyarn/flows/flow_stats_test.exs
+  s_a5fac722270186::t_0fcef69b07ca52 165-172,180-181
+  s_a5fac722270186::t_ed7d69abc548c4 118-141,159-164,173-179,182
+  s_d64ccabdb01eb7::t_b653d411b46955 183
+lib/storyarn/workers/reconcile_ai_reservations_worker.ex
+  s_a5fac722270186::t_6c653af8e56411 29,32-35,37-42,45-51,53-88,113-144,146-150,155-189
+  s_a5fac722270186::t_2fbcc48ad897c6 145
+  s_a5fac722270186::t_ec7b6a4506606b 151-154
+lib/storyarn/sheets/health_snapshots.ex
+  s_a5fac722270186::t_d93989d55732ed 17,139-144,147,150,159,162
+lib/storyarn/sheets/table_crud.ex
+  s_a5fac722270186::t_d93989d55732ed 283-288,290-296
+lib/storyarn/sheets/property_inheritance.ex
+  s_a5fac722270186::t_d93989d55732ed 114-117,119-122,124,171,173
+  s_a5fac722270186::t_04f3ceb30b46f2 158,165-170,172,174
+  s_a5fac722270186::t_6886d884e06811 175
+priv/repo/migrations/20260815120000_harden_ai_integration_audit_nilification.exs
+  s_a5fac722270186::t_c426f95c7e209e 1-12,14-15,17-54
+  s_a5fac722270186::t_11c535fbc0ac7f 13,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e798e1eb43e5c866b1cd601f6f8f28782ddd7ce8",
+  "prompts": {},
+  "sessions": {
+    "s_a5fac722270186": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a004f4-583e-7830-8f1c-af690bd191f5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_d64ccabdb01eb7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff51e-6200-7312-96d7-fd26ee5eb12d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
