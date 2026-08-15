@@ -87,6 +87,23 @@ defmodule Storyarn.Sheets.InheritanceAudit do
     end)
   end
 
+  @doc """
+  Reuses table data that a caller has already loaded, without querying or
+  decoding the rows and their `cells` maps a second time.
+
+  Accepts the `%{block_id => %{columns: columns, rows: rows}}` shape returned by
+  `Storyarn.Sheets.TableCrud.batch_load_table_data/1`. The returned lists share
+  the already-loaded structs; only the outer structure map is rebuilt.
+  """
+  @spec table_structures_from_data(%{
+          optional(integer()) => %{required(:columns) => [TableColumn.t()], required(:rows) => [TableRow.t()]}
+        }) :: %{integer() => {[TableColumn.t()], [TableRow.t()]}}
+  def table_structures_from_data(table_data) when is_map(table_data) do
+    Map.new(table_data, fn {block_id, data} ->
+      {block_id, {Map.fetch!(data, :columns), Map.fetch!(data, :rows)}}
+    end)
+  end
+
   @doc "Filters and orders the columns belonging to one block."
   @spec columns_for_block([TableColumn.t()], integer()) :: [TableColumn.t()]
   def columns_for_block(columns, block_id) do

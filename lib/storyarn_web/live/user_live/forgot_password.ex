@@ -97,19 +97,26 @@ defmodule StoryarnWeb.UserLive.ForgotPassword do
           |> then(&Phoenix.VerifiedRoutes.unverified_url(socket, &1))
         end
 
-        case Accounts.request_user_reset_password_instructions(email, reset_url) do
-          {:ok, _email} ->
-            :ok
+        case request_reset_instructions(email, reset_url) do
+          {:ok, _queued} ->
+            {:noreply,
+             socket
+             |> assign(:instructions_sent, true)
+             |> assign(:request_error, nil)
+             |> assign_form(request_changeset(%{"email" => email}))}
 
           {:error, reason} ->
             Logger.warning("Password reset instructions could not be queued reason=#{inspect(reason)}")
-        end
 
-        {:noreply,
-         socket
-         |> assign(:instructions_sent, true)
-         |> assign(:request_error, nil)
-         |> assign_form(request_changeset(%{"email" => email}))}
+            {:noreply,
+             socket
+             |> assign(:instructions_sent, false)
+             |> assign(
+               :request_error,
+               dgettext("identity", "We couldn't process your password reset request. Please try again later.")
+             )
+             |> assign_form(request_changeset(%{"email" => email}))}
+        end
 
       {:error, :rate_limited} ->
         {:noreply,
@@ -126,6 +133,18 @@ defmodule StoryarnWeb.UserLive.ForgotPassword do
     |> validate_required([:email])
     |> Validations.validate_email_format()
     |> validate_length(:email, max: 160)
+  end
+
+  defp request_reset_instructions(email, reset_url) do
+    request_fun =
+      :storyarn
+      |> Application.get_env(__MODULE__, [])
+      |> Keyword.get(
+        :request_reset_instructions,
+        &Accounts.request_user_reset_password_instructions/2
+      )
+
+    request_fun.(email, reset_url)
   end
 
   defp assign_form(socket, changeset) do

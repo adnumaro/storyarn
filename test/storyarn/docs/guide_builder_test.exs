@@ -3,6 +3,7 @@ defmodule Storyarn.Docs.GuideBuilderTest do
 
   alias Storyarn.Docs.Guide
   alias Storyarn.Docs.GuideBuilder
+  alias Storyarn.FeatureFlags
 
   test "published Spanish guides emit localized internal documentation links" do
     guides = Guide.list_guides("es")
@@ -97,15 +98,34 @@ defmodule Storyarn.Docs.GuideBuilderTest do
     assert Map.has_key?(link_attributes(guide.body, "exempt"), "data-live-link-exempt")
   end
 
-  defp build_guide(locale, body) do
+  test "preserves registered feature flags" do
+    for flag <- FeatureFlags.known_flags() do
+      guide = build_guide("en", "<p>Flagged guide</p>", %{feature_flag: flag})
+
+      assert guide.feature_flag == flag
+    end
+  end
+
+  test "rejects malformed and unknown feature flags while building docs" do
+    for invalid_flag <- ["ai_integrations", false, :unknown_docs_feature] do
+      assert_raise ArgumentError, ~r/docs feature_flag must be/, fn ->
+        build_guide("en", "<p>Invalid flag</p>", %{feature_flag: invalid_flag})
+      end
+    end
+  end
+
+  defp build_guide(locale, body, extra_attrs \\ %{}) do
     GuideBuilder.build(
       "priv/docs/#{locale}/welcome/00-link-test.md",
-      %{
-        title: "Link test",
-        category_label: "Welcome",
-        order: 0,
-        description: "Description"
-      },
+      Map.merge(
+        %{
+          title: "Link test",
+          category_label: "Welcome",
+          order: 0,
+          description: "Description"
+        },
+        extra_attrs
+      ),
       body
     )
   end

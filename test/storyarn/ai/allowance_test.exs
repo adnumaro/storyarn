@@ -207,6 +207,50 @@ defmodule Storyarn.AI.AllowanceTest do
     assert Repo.aggregate(Operation, :count) == 0
   end
 
+  test "the expiration sweep advances through ordered account batches" do
+    now = TimeHelpers.now()
+
+    grants =
+      for index <- 1..3 do
+        owner = user_fixture()
+        workspace = workspace_fixture(owner)
+
+        assert {:ok, grant} =
+                 Allowance.grant(workspace.id, owner.id, %{
+                   grant_key: "batch-expiry-#{index}",
+                   kind: "one_time",
+                   units: 1,
+                   expires_at: DateTime.add(now, -60, :second)
+                 })
+
+        grant
+      end
+
+    [first, second, third] = grants
+
+    assert %{
+             expired_count: 2,
+             failure_count: 0,
+             more?: true,
+             next_account_id: next_account_id
+           } = Allowance.expire_due(now, batch_size: 2)
+
+    assert next_account_id == second.account_id
+    assert Repo.get!(AllowanceGrant, first.id).remaining_units == 0
+    assert Repo.get!(AllowanceGrant, second.id).remaining_units == 0
+    assert Repo.get!(AllowanceGrant, third.id).remaining_units == 1
+
+    assert %{
+             expired_count: 1,
+             failure_count: 0,
+             more?: false,
+             next_account_id: final_account_id
+           } = Allowance.expire_due(now, batch_size: 2, after_account_id: next_account_id)
+
+    assert final_account_id == third.account_id
+    assert Repo.get!(AllowanceGrant, third.id).remaining_units == 0
+  end
+
   test "concurrent execution cannot overspend one remaining unit", ctx do
     configure_price(1)
     grant!(ctx, 1, "concurrent-unit")

@@ -1,9 +1,12 @@
 defmodule Storyarn.Docs.GuideBuilder do
   @moduledoc false
 
+  alias Storyarn.FeatureFlags
   alias Storyarn.Publication.HtmlLinkLocalizer
   alias Storyarn.Publication.Locales
   alias Storyarn.Shared.HtmlUtils
+
+  @known_feature_flags FeatureFlags.known_flags()
 
   def build(filename, attrs, body) do
     parts =
@@ -20,6 +23,7 @@ defmodule Storyarn.Docs.GuideBuilder do
 
     body = post_process(body, locale)
     toc = extract_toc(body)
+    feature_flag = validate_feature_flag!(attrs[:feature_flag])
 
     %{
       slug: slug,
@@ -34,7 +38,7 @@ defmodule Storyarn.Docs.GuideBuilder do
       section_order: attrs[:section_order] || section_order(section_parts),
       order: attrs[:order],
       description: attrs[:description],
-      feature_flag: attrs[:feature_flag],
+      feature_flag: feature_flag,
       body: body,
       toc: toc
     }
@@ -73,6 +77,22 @@ defmodule Storyarn.Docs.GuideBuilder do
     if !Locales.valid?(locale) do
       raise ArgumentError, "docs locale must be published publicly, got: #{inspect(locale)}"
     end
+  end
+
+  defp validate_feature_flag!(nil), do: nil
+
+  defp validate_feature_flag!(flag) when is_atom(flag) do
+    if flag in @known_feature_flags do
+      flag
+    else
+      raise ArgumentError,
+            "docs feature_flag must be registered, got: #{inspect(flag)}"
+    end
+  end
+
+  defp validate_feature_flag!(flag) do
+    raise ArgumentError,
+          "docs feature_flag must be nil or a registered atom, got: #{inspect(flag)}"
   end
 
   # Extract h2/h3 headings into a TOC list: [{level, id, text}, ...]

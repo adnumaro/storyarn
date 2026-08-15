@@ -9,6 +9,7 @@ defmodule StoryarnWeb.ExportControllerTest do
 
   alias Storyarn.Localization
   alias Storyarn.Repo
+  alias StoryarnWeb.ExportController
 
   setup :register_and_log_in_user
 
@@ -209,6 +210,42 @@ defmodule StoryarnWeb.ExportControllerTest do
 
       assert conn.status == 413
       assert conn.resp_body =~ "Export is too large"
+    end
+
+    test "removes a partial temporary archive when ZIP creation fails", %{
+      conn: conn,
+      project: project
+    } do
+      previous_config = Application.get_env(:storyarn, ExportController)
+      test_pid = self()
+
+      Application.put_env(:storyarn, ExportController,
+        zip_creator: fn zip_filename, _entries ->
+          zip_path = List.to_string(zip_filename)
+          File.write!(zip_path, "partial archive")
+          send(test_pid, {:partial_export_archive, zip_path})
+          {:error, :simulated_write_failure}
+        end
+      )
+
+      on_exit(fn ->
+        if previous_config do
+          Application.put_env(:storyarn, ExportController, previous_config)
+        else
+          Application.delete_env(:storyarn, ExportController)
+        end
+      end)
+
+      exportable_flow_fixture(project, %{name: "Broken Archive"})
+
+      conn = get(conn, export_url(project, "ink"))
+
+      assert_receive {:partial_export_archive, zip_path}
+      on_exit(fn -> File.rm(zip_path) end)
+
+      assert conn.status == 422
+      assert conn.resp_body == "Export failed"
+      refute File.exists?(zip_path)
     end
 
     test "returns 400 for invalid format", %{conn: conn, project: project} do

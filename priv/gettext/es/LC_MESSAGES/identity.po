@@ -81,10 +81,15 @@ msgstr "El enlace de registro no es válido o ha caducado."
 msgid "Invalid or expired password reset link."
 msgstr "El enlace para restablecer la contraseña es inválido o ha caducado."
 
-#: lib/storyarn_web/live/user_live/forgot_password.ex:118
+#: lib/storyarn_web/live/user_live/forgot_password.ex:125
 #, elixir-autogen, elixir-format
 msgid "Too many password reset requests. Please try again later."
 msgstr "Demasiadas solicitudes para restablecer la contraseña. Inténtalo de nuevo más tarde."
+
+#: lib/storyarn_web/live/user_live/forgot_password.ex:116
+#, elixir-autogen, elixir-format
+msgid "We couldn't process your password reset request. Please try again later."
+msgstr "No hemos podido procesar tu solicitud para restablecer la contraseña. Inténtalo de nuevo más tarde."
 
 #: lib/storyarn_web/live/user_live/registration.ex:124
 #, elixir-autogen, elixir-format

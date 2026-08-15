@@ -81,9 +81,14 @@ msgstr ""
 msgid "Invalid or expired password reset link."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/forgot_password.ex:118
+#: lib/storyarn_web/live/user_live/forgot_password.ex:125
 #, elixir-autogen, elixir-format
 msgid "Too many password reset requests. Please try again later."
+msgstr ""
+
+#: lib/storyarn_web/live/user_live/forgot_password.ex:116
+#, elixir-autogen, elixir-format
+msgid "We couldn't process your password reset request. Please try again later."
 msgstr ""
 
 #: lib/storyarn_web/live/user_live/registration.ex:124

@@ -79,6 +79,83 @@ defmodule Storyarn.Sheets.DashboardHealthCoverageTest do
       assert_agree(child, project)
     end
 
+    test "reuses the project table rows when auditing inherited table structure", %{project: project} do
+      parent = sheet_fixture(project, %{name: "Table Ancestor"})
+
+      {:ok, source} =
+        Sheets.create_block(parent, %{
+          type: "table",
+          scope: "children",
+          config: %{"label" => "Inherited Grid", "collapsed" => false}
+        })
+
+      child = child_sheet_fixture(project, parent, %{name: "Table Descendant"})
+      instance = Enum.find(Sheets.list_blocks(child.id), &(&1.inherited_from_block_id == source.id))
+      instance_column = instance.id |> Sheets.list_table_columns() |> hd()
+
+      # Bypass the synchronizing write path to create the stale structure the
+      # inheritance audit exists to report.
+      Repo.update_all(from(c in TableColumn, where: c.id == ^instance_column.id), set: [name: "Out of sync"])
+
+      editor = comparable(editor_findings(child, project))
+
+      {dashboard, queries} =
+        capture_queries(fn ->
+          child
+          |> dashboard_findings(project)
+          |> comparable()
+        end)
+
+      assert Enum.any?(editor, fn {_severity, code, _block_id, _row_id, _column_id, _details} ->
+               code == :broken_inheritance
+             end)
+
+      assert editor == dashboard
+
+      assert [_single_project_row_load] = Enum.filter(queries, &full_table_row_load?/1)
+    end
+
+    test "audits raw inherited formula cells before formula enrichment", %{project: project} do
+      parent = sheet_fixture(project, %{name: "Formula Ancestor"})
+
+      {:ok, source} =
+        Sheets.create_block(parent, %{
+          type: "table",
+          scope: "children",
+          config: %{"label" => "Inherited Formula Grid", "collapsed" => false}
+        })
+
+      formula = table_column_fixture(source, %{name: "Total", type: "formula"})
+      child = child_sheet_fixture(project, parent, %{name: "Formula Descendant"})
+      instance = Enum.find(Sheets.list_blocks(child.id), &(&1.inherited_from_block_id == source.id))
+      instance_row = instance.id |> Sheets.list_table_rows() |> hd()
+
+      # FormulaResolver materializes absent formula keys. Remove one directly so
+      # the inheritance audit must see the raw row before that enrichment.
+      raw_cells = Map.delete(instance_row.cells, formula.slug)
+      Repo.update_all(from(r in TableRow, where: r.id == ^instance_row.id), set: [cells: raw_cells])
+
+      editor = comparable(editor_findings(child, project))
+
+      {snapshot, queries} = capture_queries(fn -> dashboard_snapshot(child, project) end)
+      dashboard = snapshot |> HealthChecker.check() |> comparable()
+
+      enriched_instance_row =
+        snapshot.table_data
+        |> Map.fetch!(instance.id)
+        |> Map.fetch!(:rows)
+        |> hd()
+
+      assert Map.has_key?(enriched_instance_row.cells, formula.slug)
+
+      assert Enum.any?(dashboard, fn {_severity, code, _block_id, _row_id, _column_id, _details} ->
+               code == :broken_inheritance
+             end)
+
+      assert editor == dashboard
+      assert [_single_project_row_load] = Enum.filter(queries, &full_table_row_load?/1)
+    end
+
     test "on a stale incoming variable reference", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Stats", shortcut: "stats"})
       block = block_fixture(sheet, %{type: "number", config: %{"label" => "Health"}})
@@ -390,6 +467,42 @@ defmodule Storyarn.Sheets.DashboardHealthCoverageTest do
     findings
     |> Enum.map(&{&1.severity, &1.code, &1.block_id, &1.row_id, &1.column_id, &1.details})
     |> Enum.sort()
+  end
+
+  defp capture_queries(fun) when is_function(fun, 0) do
+    handler_id = "sheet-health-table-row-loads-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid, do: send(pid, {ref, query})
+        end,
+        {test_pid, marker}
+      )
+
+    try do
+      {fun.(), drain_queries(marker)}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp drain_queries(marker, queries \\ []) do
+    receive do
+      {^marker, query} -> drain_queries(marker, [query | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
+  end
+
+  defp full_table_row_load?(query) do
+    String.contains?(query, ~s(FROM "table_rows")) and
+      String.contains?(query, ~s("inserted_at")) and
+      String.contains?(query, ~s("updated_at"))
   end
 
   # The dashboard stamps the location labels a flat list needs; they are not part
