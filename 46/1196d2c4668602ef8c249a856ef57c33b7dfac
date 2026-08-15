@@ -1,0 +1,36 @@
+priv/repo/migrations/20260815120000_harden_ai_integration_audit_nilification.exs
+  s_a5fac722270186::t_0c625eb1fd9774 16,27-28
+priv/gettext/en/LC_MESSAGES/default.po
+  s_a5fac722270186::t_2fdd558a1c9778 69-71,76,81,86,172-174,179,189
+priv/gettext/default.pot
+  s_a5fac722270186::t_2fdd558a1c9778 69-71,76,81,86,172-174,179,189
+test/storyarn/ai/audit_test.exs
+  s_a5fac722270186::t_0c625eb1fd9774 149-182
+  s_a5fac722270186::t_f1476af3c835b7 104-115
+priv/gettext/es/LC_MESSAGES/default.po
+  s_a5fac722270186::t_2fdd558a1c9778 69-71,76,81,86,172-174,179,189
+lib/storyarn/workers/reconcile_ai_reservations_worker.ex
+  s_a5fac722270186::t_d95485e93008c0 165-169
+  s_a5fac722270186::t_c53a678d922bd6 155-157
+  s_a5fac722270186::t_e7281d04e5b433 158-161,172
+test/storyarn/workers/reconcile_ai_reservations_worker_test.exs
+  s_a5fac722270186::t_e7281d04e5b433 292,309-314
+  s_a5fac722270186::t_d95485e93008c0 257,279,291,293-308,315-338
+  s_a5fac722270186::t_ca0be3fe6062b1 339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "461196d2c4668602ef8c249a856ef57c33b7dfac",
+  "prompts": {},
+  "sessions": {
+    "s_a5fac722270186": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a004f4-583e-7830-8f1c-af690bd191f5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
