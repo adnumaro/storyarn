@@ -165,7 +165,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       "localization_manifest" => LocalizationSnapshotCodec.manifest(localization, target_locales)
     }
 
-    ensure_valid_built_flow_snapshot!(snapshot)
+    ensure_valid_built_flow_snapshot!(snapshot, target_locales)
   end
 
   defp lock_snapshot_project!(project_id) do
@@ -204,9 +204,27 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     end
   end
 
-  defp ensure_valid_built_flow_snapshot!(snapshot) do
-    case validate_flow_snapshot(snapshot) do
-      :ok ->
+  defp ensure_valid_built_flow_snapshot!(snapshot, target_locales) do
+    result =
+      with {:ok, localization} <-
+             complete_missing_snapshot_localization(
+               snapshot["localization"],
+               snapshot["nodes"],
+               target_locales
+             ),
+           snapshot =
+             snapshot
+             |> Map.put("localization", localization)
+             |> Map.put(
+               "localization_manifest",
+               LocalizationSnapshotCodec.manifest(localization, target_locales)
+             ),
+           :ok <- validate_flow_snapshot(snapshot) do
+        {:ok, snapshot}
+      end
+
+    case result do
+      {:ok, snapshot} ->
         snapshot
 
       {:error, reason} ->
@@ -1859,6 +1877,33 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   end
 
   defp validate_snapshot_localization(localization, nodes, target_locales) do
+    with {:ok, {sources, target_locales}} <-
+           validate_snapshot_localization_inventory(
+             localization,
+             nodes,
+             target_locales
+           ) do
+      validate_complete_snapshot_localization(localization, sources, target_locales)
+    end
+  end
+
+  defp complete_missing_snapshot_localization(localization, nodes, target_locales) do
+    with {:ok, {sources, target_locales}} <-
+           validate_snapshot_localization_inventory(
+             localization,
+             nodes,
+             target_locales
+           ) do
+      {:ok,
+       LocalizationSnapshotCodec.complete_pending_rows(
+         localization,
+         pending_localization_sources(sources),
+         target_locales
+       )}
+    end
+  end
+
+  defp validate_snapshot_localization_inventory(localization, nodes, target_locales) do
     with :ok <- validate_snapshot_localization_node_shapes(nodes),
          nodes_by_id = Map.new(nodes, &{&1["original_id"], &1}),
          sources = snapshot_localization_sources(nodes),
@@ -1871,7 +1916,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
          :ok <- validate_unique_snapshot_localization_rows(localization),
          {:ok, target_locales} <-
            validate_snapshot_localization_locales(localization, target_locales) do
-      validate_complete_snapshot_localization(localization, sources, target_locales)
+      {:ok, {sources, target_locales}}
     end
   end
 
@@ -2161,6 +2206,18 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       Enum.reduce(node_localization_sources(node), sources, fn {key, source}, acc ->
         Map.put(acc, key, source)
       end)
+    end)
+  end
+
+  defp pending_localization_sources(sources) do
+    Enum.map(sources, fn {{source_id, source_field}, source} ->
+      %{
+        "source_type" => "flow_node",
+        "source_id" => source_id,
+        "source_field" => source_field,
+        "source_text" => source.text,
+        "speaker_sheet_id" => source.speaker_sheet_id
+      }
     end)
   end
 

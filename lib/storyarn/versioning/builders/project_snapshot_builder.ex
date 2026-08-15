@@ -12,6 +12,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   alias Storyarn.Flows
   alias Storyarn.Localization
+  alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -86,14 +87,36 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     {languages, texts} = localization_inventory(project_id, localization_scope)
 
     glossary = Localization.list_glossary_for_export(project_id)
-    {asset_blob_hashes, asset_metadata} = localization_asset_metadata(project_id, texts)
+
+    sheet_snapshots =
+      Enum.map(sheets, fn sheet ->
+        %{"id" => sheet.id, "snapshot" => SheetBuilder.build_snapshot(sheet)}
+      end)
+
+    flow_snapshots =
+      Enum.map(flows, fn flow ->
+        %{"id" => flow.id, "snapshot" => FlowBuilder.build_snapshot(flow)}
+      end)
+
+    scene_snapshots =
+      Enum.map(scenes, fn scene ->
+        %{"id" => scene.id, "snapshot" => SceneBuilder.build_snapshot(scene)}
+      end)
+
+    text_snapshots =
+      texts
+      |> Enum.map(&text_to_snapshot/1)
+      |> merge_nested_runtime_localization(sheet_snapshots, flow_snapshots)
+
+    {asset_blob_hashes, asset_metadata} =
+      localization_asset_metadata(project_id, text_snapshots)
 
     entity_counts = %{
       "sheets" => length(sheets),
       "flows" => length(flows),
       "scenes" => length(scenes),
       "languages" => length(languages),
-      "localized_texts" => length(texts),
+      "localized_texts" => length(text_snapshots),
       "glossary_entries" => length(glossary)
     }
 
@@ -103,18 +126,9 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       "entity_counts" => entity_counts,
       "asset_blob_hashes" => asset_blob_hashes,
       "asset_metadata" => asset_metadata,
-      "sheets" =>
-        Enum.map(sheets, fn sheet ->
-          %{"id" => sheet.id, "snapshot" => SheetBuilder.build_snapshot(sheet)}
-        end),
-      "flows" =>
-        Enum.map(flows, fn flow ->
-          %{"id" => flow.id, "snapshot" => FlowBuilder.build_snapshot(flow)}
-        end),
-      "scenes" =>
-        Enum.map(scenes, fn scene ->
-          %{"id" => scene.id, "snapshot" => SceneBuilder.build_snapshot(scene)}
-        end),
+      "sheets" => sheet_snapshots,
+      "flows" => flow_snapshots,
+      "scenes" => scene_snapshots,
       "tree" => %{
         "sheets" =>
           Enum.map(
@@ -134,10 +148,51 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       },
       "localization" => %{
         "languages" => Enum.map(languages, &language_to_snapshot/1),
-        "texts" => Enum.map(texts, &text_to_snapshot/1),
+        "texts" => text_snapshots,
         "glossary" => Enum.map(glossary, &glossary_entry_to_snapshot/1)
       }
     }
+  end
+
+  defp merge_nested_runtime_localization(global_rows, sheet_snapshots, flow_snapshots) do
+    active_global_keys =
+      global_rows
+      |> Enum.filter(&is_nil(&1["archived_at"]))
+      |> MapSet.new(&runtime_localization_key/1)
+
+    missing_rows =
+      (sheet_snapshots ++ flow_snapshots)
+      |> Enum.flat_map(&get_in(&1, ["snapshot", "localization"]))
+      |> Enum.reject(&MapSet.member?(active_global_keys, runtime_localization_key(&1)))
+      |> Enum.map(&put_source_contract_metadata/1)
+      |> Enum.sort_by(&runtime_localization_key/1)
+
+    missing_keys = MapSet.new(missing_rows, &runtime_localization_key/1)
+
+    retained_global_rows =
+      Enum.reject(global_rows, fn row ->
+        not is_nil(row["archived_at"]) and
+          MapSet.member?(missing_keys, runtime_localization_key(row))
+      end)
+
+    retained_global_rows ++ missing_rows
+  end
+
+  defp runtime_localization_key(row) do
+    {
+      row["source_type"],
+      row["source_id"],
+      row["source_field"],
+      row["locale_code"]
+    }
+  end
+
+  defp put_source_contract_metadata(row) do
+    metadata = SourceContract.field_metadata(row["source_type"], row["source_field"])
+
+    row
+    |> Map.put("content_role", metadata.content_role)
+    |> Map.put("vo_eligible", metadata.vo_eligible)
   end
 
   defp localization_inventory(project_id, :active) do
@@ -166,7 +221,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   defp localization_asset_metadata(project_id, texts) do
     texts
-    |> Enum.map(& &1.vo_asset_id)
+    |> Enum.map(& &1["vo_asset_id"])
     |> AssetHashResolver.resolve_hashes_for_project!(project_id)
   end
 

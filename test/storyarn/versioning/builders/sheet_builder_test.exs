@@ -116,6 +116,100 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       end
     end
 
+    test "captures untranslated active-locale gaps as explicit pending rows", %{
+      project: project,
+      sheet: sheet
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _ca = language_fixture(project, %{locale_code: "ca", name: "Catalan"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          variable_name: "biography",
+          value: %{"content" => "Biography"}
+        })
+
+      assert {2, _rows} =
+               Repo.delete_all(
+                 from(text in LocalizedText,
+                   where:
+                     text.locale_code == "ca" and
+                       ((text.source_type == "sheet" and text.source_id == ^sheet.id and
+                           text.source_field == "name") or
+                          (text.source_type == "block" and text.source_id == ^block.id and
+                             text.source_field == "value.content"))
+                 )
+               )
+
+      snapshot = SheetBuilder.build_snapshot(sheet)
+
+      assert [
+               %{
+                 "locale_code" => "ca",
+                 "source_field" => "value.content",
+                 "source_id" => block_id,
+                 "source_text" => "Biography",
+                 "status" => "pending",
+                 "translated_source_hash" => nil,
+                 "translated_text" => nil
+               },
+               %{
+                 "locale_code" => "ca",
+                 "source_field" => "name",
+                 "source_id" => sheet_id,
+                 "source_text" => sheet_name,
+                 "status" => "pending",
+                 "translated_source_hash" => nil,
+                 "translated_text" => nil
+               }
+             ] = Enum.sort_by(snapshot["localization"], &{&1["source_type"], &1["source_id"]})
+
+      assert block_id == block.id
+      assert sheet_id == sheet.id
+      assert sheet_name == sheet.name
+      assert snapshot["localization_manifest"]["target_locales"] == ["ca"]
+      assert snapshot["localization_manifest"] == LocalizationSnapshotCodec.manifest(snapshot["localization"], ["ca"])
+
+      assert [] = Localization.get_texts_for_source("block", block.id)
+      assert [] = Localization.get_texts_for_source("sheet", sheet.id)
+
+      assert {:ok, _restored} =
+               SheetBuilder.restore_snapshot(sheet, snapshot, restore_action: {:entity_version_restore, "sheet"})
+
+      assert [%{status: "pending", translated_text: nil, translated_source_hash: nil}] =
+               Localization.get_texts_for_source("block", block.id)
+
+      assert [%{status: "pending", translated_text: nil, translated_source_hash: nil}] =
+               Localization.get_texts_for_source("sheet", sheet.id)
+    end
+
+    test "still rejects an active localization row for a source outside the snapshot contract", %{
+      project: project,
+      sheet: sheet
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _ca = language_fixture(project, %{locale_code: "ca", name: "Catalan"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          variable_name: "biography",
+          value: %{"content" => "Biography"}
+        })
+
+      assert [_row] = Localization.get_texts_for_source("block", block.id)
+
+      Repo.update_all(
+        from(current in Block, where: current.id == ^block.id),
+        set: [is_constant: true]
+      )
+
+      assert_raise ArgumentError, ~r/internally inconsistent sheet snapshot/, fn ->
+        SheetBuilder.build_snapshot(sheet)
+      end
+    end
+
     test "fails closed instead of emitting a structurally invalid block snapshot", %{
       sheet: sheet
     } do

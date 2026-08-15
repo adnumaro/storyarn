@@ -8,6 +8,7 @@ defmodule Storyarn.Assets.BlobStoreTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.Storage.Local
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
   alias Storyarn.Projects.Project
@@ -136,6 +137,259 @@ defmodule Storyarn.Assets.BlobStoreTest do
                BlobStore.ensure_blob_with_status(project.id, webm_hash, "webm", webm)
 
       assert SnapshotReadSwitchStorage.put_content_type(webm_key) == "audio/webm"
+    end
+  end
+
+  describe "ensure_asset_blob/1" do
+    test "reconstructs a missing canonical blob from the verified original", %{
+      project: project,
+      user: user
+    } do
+      content = "legacy asset bytes"
+
+      assert {:ok, asset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "legacy.png", content_type: "image/png"},
+                 project,
+                 user
+               )
+
+      blob_key = BlobStore.blob_key(project.id, asset.blob_hash, "png")
+      assert :ok = delete_storage_blob(blob_key)
+
+      on_exit(fn ->
+        Storage.delete(asset.key)
+        delete_storage_blob(blob_key)
+      end)
+
+      assert {:ok, ^blob_key, :repaired} = BlobStore.ensure_asset_blob(asset)
+      assert {:ok, ^content} = Storage.download(blob_key)
+      assert {:ok, ^blob_key, :present} = BlobStore.ensure_asset_blob(asset)
+    end
+
+    test "replaces a checksum-corrupt canonical blob only after verifying the original", %{
+      project: project,
+      user: user
+    } do
+      content = "verified-canonical-bytes"
+      corrupt = "corrupt!-canonical-bytes"
+      assert byte_size(content) == byte_size(corrupt)
+
+      assert {:ok, asset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "corrupt-canonical.png", content_type: "image/png"},
+                 project,
+                 user
+               )
+
+      blob_key = BlobStore.blob_key(project.id, asset.blob_hash, "png")
+      assert {:ok, _url} = Storage.upload(blob_key, corrupt, "image/png")
+
+      on_exit(fn ->
+        Storage.delete(asset.key)
+        delete_storage_blob(blob_key)
+      end)
+
+      assert {:ok, ^blob_key, :repaired} = BlobStore.ensure_asset_blob(asset)
+      assert {:ok, ^content} = Storage.download(blob_key)
+    end
+
+    test "preserves a valid canonical replacement that wins after corrupt bytes are observed", %{
+      project: project,
+      user: user
+    } do
+      content = "concurrent-valid-bytes"
+      corrupt = "concurrent-bad!!-bytes"
+      assert byte_size(content) == byte_size(corrupt)
+
+      assert {:ok, asset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "concurrent-canonical.png", content_type: "image/png"},
+                 project,
+                 user
+               )
+
+      blob_key = BlobStore.blob_key(project.id, asset.blob_hash, "png")
+      assert {:ok, _url} = Storage.upload(blob_key, corrupt, "image/png")
+
+      original_config = Application.get_env(:storyarn, :storage, [])
+      {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+      destination_reads = :atomics.new(1, signed: false)
+
+      SnapshotReadSwitchStorage.set_stream_result(fn key, offset, length, opts ->
+        if key == blob_key and :atomics.add_get(destination_reads, 1, 1) == 2 do
+          assert {:ok, _url} = Local.upload(blob_key, content, "image/png")
+        end
+
+        Local.stream(key, offset, length, opts)
+      end)
+
+      Application.put_env(
+        :storyarn,
+        :storage,
+        Keyword.put(original_config, :adapter, SnapshotReadSwitchStorage)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, :storage, original_config)
+
+        if Process.whereis(SnapshotReadSwitchStorage) do
+          Agent.stop(SnapshotReadSwitchStorage)
+        end
+
+        Storage.delete(asset.key)
+        delete_storage_blob(blob_key)
+      end)
+
+      assert {:ok, ^blob_key, :present} = BlobStore.ensure_asset_blob(asset)
+      assert {:ok, ^content} = Local.download(blob_key)
+    end
+
+    test "retries then repairs when a concurrent copy winner has invalid content type", %{
+      project: project,
+      user: user
+    } do
+      content = "concurrent-mime-winner"
+
+      assert {:ok, asset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "concurrent-mime.png", content_type: "image/png"},
+                 project,
+                 user
+               )
+
+      blob_key = BlobStore.blob_key(project.id, asset.blob_hash, "png")
+      assert :ok = delete_storage_blob(blob_key)
+
+      original_config = Application.get_env(:storyarn, :storage, [])
+      {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+      destination_stats = :atomics.new(1, signed: false)
+
+      SnapshotReadSwitchStorage.set_stat_result(fn key ->
+        if key == blob_key and :atomics.add_get(destination_stats, 1, 1) == 1 do
+          assert {:ok, _url} = Local.upload(blob_key, content, "image/png")
+          {:error, :enoent}
+        else
+          case Local.stat(key) do
+            {:ok, stat} when key == blob_key -> {:ok, %{stat | content_type: "application/pdf"}}
+            result -> result
+          end
+        end
+      end)
+
+      Application.put_env(
+        :storyarn,
+        :storage,
+        Keyword.put(original_config, :adapter, SnapshotReadSwitchStorage)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, :storage, original_config)
+
+        if Process.whereis(SnapshotReadSwitchStorage) do
+          Agent.stop(SnapshotReadSwitchStorage)
+        end
+
+        Storage.delete(asset.key)
+        delete_storage_blob(blob_key)
+      end)
+
+      assert {:error, :asset_blob_replacement_pending} = BlobStore.ensure_asset_blob(asset)
+      assert {:ok, %{content_type: "application/pdf"}} = Storage.stat(blob_key)
+
+      second_round_stats = :atomics.new(1, signed: false)
+
+      SnapshotReadSwitchStorage.set_stat_result(fn key ->
+        case Local.stat(key) do
+          {:ok, stat} when key == blob_key ->
+            if :atomics.add_get(second_round_stats, 1, 1) == 1,
+              do: {:ok, %{stat | content_type: "application/pdf"}},
+              else: {:ok, stat}
+
+          result ->
+            result
+        end
+      end)
+
+      assert {:ok, ^blob_key, :repaired} = BlobStore.ensure_asset_blob(asset)
+      assert {:ok, %{content_type: "image/png"}} = Local.stat(blob_key)
+      assert {:ok, ^content} = Local.download(blob_key)
+    end
+
+    test "refuses to reconstruct from original bytes that do not match the persisted hash", %{
+      project: project,
+      user: user
+    } do
+      content = "expected-source"
+      tampered = "tampered-source"
+      assert byte_size(content) == byte_size(tampered)
+
+      assert {:ok, asset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "tampered.png", content_type: "image/png"},
+                 project,
+                 user
+               )
+
+      blob_key = BlobStore.blob_key(project.id, asset.blob_hash, "png")
+      assert :ok = delete_storage_blob(blob_key)
+      assert {:ok, _url} = Storage.upload(asset.key, tampered, "image/png")
+
+      on_exit(fn ->
+        Storage.delete(asset.key)
+        delete_storage_blob(blob_key)
+      end)
+
+      assert {:error, :blob_hash_mismatch} = BlobStore.ensure_asset_blob(asset)
+      assert {:error, :enoent} = Storage.download(blob_key)
+    end
+
+    test "repairs each unique blob once and falls back across equivalent originals", %{
+      project: project,
+      user: user
+    } do
+      content = "shared legacy asset bytes"
+
+      assert {:ok, first} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "first.png", content_type: "image/png"},
+                 project,
+                 user
+               )
+
+      assert {:ok, second} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "second.png", content_type: "image/png"},
+                 project,
+                 user
+               )
+
+      assert first.blob_hash == second.blob_hash
+      blob_key = BlobStore.blob_key(project.id, first.blob_hash, "png")
+      assert :ok = delete_storage_blob(blob_key)
+      assert :ok = Storage.delete(first.key)
+
+      on_exit(fn ->
+        Storage.delete(second.key)
+        delete_storage_blob(blob_key)
+      end)
+
+      assert {:ok, summary} = Assets.ensure_active_asset_blobs(project.id)
+
+      assert summary == %{
+               asset_count: 2,
+               blob_count: 1,
+               repaired_blob_count: 1
+             }
+
+      assert {:ok, ^content} = Storage.download(blob_key)
     end
   end
 

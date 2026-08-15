@@ -254,6 +254,11 @@ defmodule Storyarn.Versioning do
     to: ProjectSnapshotBuild,
     as: :reconcile_stale_builds
 
+  @doc false
+  defdelegate project_snapshot_build_statuses(snapshots),
+    to: ProjectSnapshotBuild,
+    as: :build_statuses
+
   @doc "Starts an observation-only, resumable snapshot reconciliation run."
   defdelegate start_project_snapshot_reconciliation(opts \\ []),
     to: ProjectSnapshotReconciliation,

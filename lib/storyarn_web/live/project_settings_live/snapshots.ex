@@ -12,6 +12,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   alias StoryarnWeb.Helpers.Authorize
 
   @active_restore_statuses ~w(queued running retrying)
+  @build_status_refresh_ms 2_000
 
   # ===========================================================================
   # Render
@@ -43,7 +44,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
             @project,
             @snapshots,
             @snapshot_reservations,
-            @snapshot_restores
+            @snapshot_restores,
+            @snapshot_build_statuses
           )
         }
         restore-operation-active={project_restore_active?(@snapshot_restores)}
@@ -58,7 +60,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   # Serialization helpers
   # ===========================================================================
 
-  defp serialize_snapshots(project, snapshots, reservations, restores) do
+  defp serialize_snapshots(project, snapshots, reservations, restores, build_statuses) do
     restores_by_snapshot =
       Enum.reduce(restores, %{}, fn restore, acc ->
         Map.put_new(acc, restore.project_snapshot_id, restore)
@@ -72,13 +74,16 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         snapshot,
         reservations,
         Map.get(restores_by_snapshot, snapshot.id),
-        active_restore?
+        active_restore?,
+        build_statuses
       )
     end)
   end
 
-  defp serialize_snapshot(project, snapshot, reservations, restore, active_restore?) do
+  defp serialize_snapshot(project, snapshot, reservations, restore, active_restore?, build_statuses) do
     reservation = Map.get(reservations, snapshot.id, %{active_bytes: 0, export_bytes: 0, active_count: 0})
+    build_status = Map.get(build_statuses, snapshot.id, %{})
+    retrying = build_status[:retrying] == true or snapshot.progress_phase == "retrying"
 
     %{
       id: snapshot.id,
@@ -102,6 +107,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       progressPhase: snapshot.progress_phase,
       progressBytes: serialize_byte_count(snapshot.progress_bytes || 0),
       progressTotalBytes: snapshot |> measured_progress_total_bytes() |> serialize_optional_byte_count(),
+      buildJobState: build_status[:job_state],
+      buildAttempt: max(snapshot.build_attempt || 0, build_status[:attempt] || 0),
+      buildMaxAttempts: build_status[:max_attempts],
+      retrying: retrying,
+      nextRetryAt: serialize_datetime(build_status[:next_retry_at]),
+      retryErrorCode: if(retrying, do: build_status[:retry_error_code] || "build_failed"),
       failureCode: snapshot.failure_code,
       failureMessage: snapshot.failure_message,
       capturedAt: serialize_datetime(snapshot.captured_at),
@@ -247,6 +258,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         |> assign(:storage_usage, accounting.storage_usage)
         |> assign(:storage_limit, accounting.storage_limit)
         |> assign(:snapshot_restores, restores)
+        |> assign(:snapshot_build_statuses, Versioning.project_snapshot_build_statuses(accounting.snapshots))
+        |> assign(:snapshot_build_status_timer, nil)
+        |> schedule_build_status_refresh()
 
       {:ok, socket}
     else
@@ -416,6 +430,17 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     {:noreply, refresh_snapshot_state(socket)}
   end
 
+  @impl true
+  def handle_info(:refresh_snapshot_build_statuses, socket) do
+    socket =
+      socket
+      |> assign(:snapshot_build_status_timer, nil)
+      |> refresh_snapshot_build_statuses()
+      |> schedule_build_status_refresh()
+
+    {:noreply, socket}
+  end
+
   defp refresh_snapshot_state(socket) do
     socket
     |> refresh_snapshot_accounting()
@@ -435,6 +460,28 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     |> assign(:snapshot_slots_limit, accounting.snapshot_slots_limit)
     |> assign(:storage_usage, accounting.storage_usage)
     |> assign(:storage_limit, accounting.storage_limit)
+    |> assign(:snapshot_build_statuses, Versioning.project_snapshot_build_statuses(accounting.snapshots))
+    |> schedule_build_status_refresh()
+  end
+
+  defp refresh_snapshot_build_statuses(socket) do
+    assign(
+      socket,
+      :snapshot_build_statuses,
+      Versioning.project_snapshot_build_statuses(socket.assigns.snapshots)
+    )
+  end
+
+  defp schedule_build_status_refresh(socket) do
+    active_build? =
+      Enum.any?(socket.assigns.snapshots, &(&1.lifecycle_state in ["pending", "building", "verifying"]))
+
+    if connected?(socket) and active_build? and is_nil(socket.assigns.snapshot_build_status_timer) do
+      timer = Process.send_after(self(), :refresh_snapshot_build_statuses, @build_status_refresh_ms)
+      assign(socket, :snapshot_build_status_timer, timer)
+    else
+      socket
+    end
   end
 
   defp push_snapshot_request_error(socket, reason, details) do

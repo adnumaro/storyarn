@@ -10,6 +10,7 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Repo
+  alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Sheet
 
@@ -123,6 +124,28 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
   def active_target_rows(project_id, rows) when is_list(rows) do
     active_locales = project_id |> active_target_locales() |> MapSet.new()
     Enum.filter(rows, &MapSet.member?(active_locales, &1["locale_code"]))
+  end
+
+  @doc false
+  @spec complete_pending_rows([map()], [map()], Enumerable.t()) :: [map()]
+  def complete_pending_rows(rows, sources, target_locales) when is_list(rows) and is_list(sources) do
+    # Absence carries no authored translation state, so snapshots encode it as
+    # the same pending row extraction would create. Callers validate every
+    # persisted row before completion; corrupt or unexpected rows stay intact
+    # and are rejected by the final snapshot validator.
+    actual = MapSet.new(rows, &snapshot_key/1)
+
+    missing =
+      sources
+      |> Enum.sort_by(&snapshot_source_key/1)
+      |> Enum.flat_map(fn source ->
+        target_locales
+        |> Enum.sort()
+        |> Enum.reject(&MapSet.member?(actual, {snapshot_source_key(source), &1}))
+        |> Enum.map(&pending_snapshot_row(source, &1))
+      end)
+
+    rows ++ missing
   end
 
   @spec capture(integer(), %{optional(String.t()) => [integer()]}, keyword()) :: [map()]
@@ -264,6 +287,45 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
   end
 
   defp valid_target_locales?(_target_locales), do: false
+
+  defp snapshot_key(row), do: {{row["source_type"], row["source_id"], row["source_field"]}, row["locale_code"]}
+
+  defp snapshot_source_key(source), do: {source["source_type"], source["source_id"], source["source_field"]}
+
+  defp pending_snapshot_row(source, locale_code) do
+    source_text = source["source_text"]
+
+    %{
+      "source_type" => source["source_type"],
+      "source_id" => source["source_id"],
+      "source_field" => source["source_field"],
+      "source_text" => source_text,
+      "source_text_hash" => source_text_hash(source_text),
+      "translated_source_hash" => nil,
+      "locale_code" => locale_code,
+      "translated_text" => nil,
+      "status" => "pending",
+      "vo_status" => "none",
+      "vo_asset_id" => nil,
+      "translator_notes" => nil,
+      "reviewer_notes" => nil,
+      "speaker_sheet_id" => source["speaker_sheet_id"],
+      "word_count" => HtmlUtils.word_count(source_text),
+      "machine_translated" => false,
+      "last_translated_at" => nil,
+      "last_reviewed_at" => nil,
+      "translated_by_id" => nil,
+      "reviewed_by_id" => nil,
+      "archived_at" => nil,
+      "archive_reason" => nil
+    }
+  end
+
+  defp source_text_hash(text) do
+    :sha256
+    |> :crypto.hash(text)
+    |> Base.encode16(case: :lower)
+  end
 
   defp restore_entry(row, project_id, id_maps, context, now) do
     source_type = row["source_type"]

@@ -21,6 +21,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Notifications
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotBuild
@@ -98,6 +99,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       job = Repo.get!(Oban.Job, snapshot.build_job_id)
       assert job.queue == "snapshot_archives"
       assert job.args == %{"snapshot_id" => snapshot.id}
+      assert job.max_attempts == 3
 
       assert {:ok, replayed} =
                Versioning.request_full_project_snapshot(scope, project, %{
@@ -158,6 +160,202 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert extended.status == "active"
       assert extended.reserved_bytes == captured.total_size_bytes
       assert extended.generation == reservation.generation + 2
+    end
+
+    test "wakes the snapshot queue after commit for new requests and idempotent replays" do
+      user = user_fixture()
+      project = project_fixture(user)
+      scope = user_scope_fixture(user)
+      idempotency_key = Ecto.UUID.generate()
+      original_config = Application.get_env(:storyarn, ProjectSnapshotBuild, [])
+      parent = self()
+
+      notifier = fn payload ->
+        in_transaction? = Repo.in_transaction?()
+
+        visibility =
+          fn ->
+            snapshot =
+              Repo.get_by!(ProjectSnapshot,
+                project_id: project.id,
+                idempotency_key: idempotency_key
+              )
+
+            reservation = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
+            job = Repo.get!(Oban.Job, snapshot.build_job_id)
+            {snapshot.id, reservation.status, job.state, job.args}
+          end
+          |> Task.async()
+          |> Task.await()
+
+        send(parent, {:snapshot_queue_wakeup, payload, in_transaction?, visibility})
+        :ok
+      end
+
+      Application.put_env(
+        :storyarn,
+        ProjectSnapshotBuild,
+        Keyword.put(original_config, :queue_notifier, notifier)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, ProjectSnapshotBuild, original_config) end)
+
+      attrs = %{idempotency_key: idempotency_key, title: "Durable wake"}
+      assert {:ok, snapshot} = Versioning.request_full_project_snapshot(scope, project, attrs)
+
+      assert_receive {:snapshot_queue_wakeup, %{queue: "snapshot_archives"}, false,
+                      {snapshot_id, "active", "available", %{"snapshot_id" => job_snapshot_id}}}
+
+      assert snapshot_id == snapshot.id
+      assert job_snapshot_id == snapshot.id
+
+      assert {:ok, replayed} =
+               Versioning.request_full_project_snapshot(scope, project, %{attrs | title: "Ignored replay"})
+
+      assert replayed.id == snapshot.id
+
+      assert_receive {:snapshot_queue_wakeup, %{queue: "snapshot_archives"}, false,
+                      {^snapshot_id, "active", "available", %{"snapshot_id" => ^snapshot_id}}}
+    end
+
+    test "a post-commit queue wake failure never invalidates the durable snapshot job" do
+      user = user_fixture()
+      project = project_fixture(user)
+      original_config = Application.get_env(:storyarn, ProjectSnapshotBuild, [])
+
+      Application.put_env(
+        :storyarn,
+        ProjectSnapshotBuild,
+        Keyword.put(original_config, :queue_notifier, fn _payload ->
+          raise "private notifier failure"
+        end)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, ProjectSnapshotBuild, original_config) end)
+
+      assert {:ok, snapshot} = request_snapshot(user, project)
+      assert Repo.get!(ProjectSnapshot, snapshot.id).lifecycle_state == "pending"
+
+      assert %Oban.Job{state: "available", args: %{"snapshot_id" => snapshot_id}} =
+               Repo.get!(Oban.Job, snapshot.build_job_id)
+
+      assert snapshot_id == snapshot.id
+      assert Repo.get!(StorageReservation, snapshot.storage_reservation_id).status == "active"
+    end
+
+    test "reports durable retry timing and a safe generic error without exposing Oban details" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      assert {:ok, snapshot} = request_snapshot(user, project)
+
+      initial = ProjectSnapshotBuild.build_statuses([snapshot])[snapshot.id]
+      assert initial.job_state == "available"
+      assert initial.attempt == 0
+      assert initial.max_attempts == 3
+      refute initial.retrying
+      assert is_nil(initial.next_retry_at)
+      assert is_nil(initial.retry_error_code)
+
+      scheduled_at =
+        TimeHelpers.now()
+        |> DateTime.add(600, :second)
+        |> Map.put(:microsecond, {0, 6})
+
+      snapshot.build_job_id
+      |> then(&Repo.get!(Oban.Job, &1))
+      |> Ecto.Changeset.change(
+        state: "retryable",
+        attempt: 2,
+        scheduled_at: scheduled_at,
+        errors: [
+          %{
+            "attempt" => 1,
+            "at" => DateTime.to_iso8601(TimeHelpers.now()),
+            "error" => "first private provider failure"
+          },
+          %{
+            "attempt" => 2,
+            "at" => DateTime.to_iso8601(TimeHelpers.now()),
+            "error" => "provider secret and stacktrace must never reach the client"
+          }
+        ]
+      )
+      |> Repo.update!()
+
+      retrying = ProjectSnapshotBuild.build_statuses([snapshot])[snapshot.id]
+
+      assert retrying == %{
+               job_state: "retryable",
+               attempt: 2,
+               max_attempts: 3,
+               retrying: true,
+               next_retry_at: scheduled_at,
+               retry_error_code: "build_failed"
+             }
+
+      refute inspect(retrying) =~ "provider secret"
+      refute inspect(retrying) =~ "stacktrace"
+    end
+
+    test "terminalizes a snapshot on the third logical capture failure" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _asset = upload_asset!(project, user, "capture retry budget")
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      job = requested_job(requested)
+      assert job.max_attempts == 3
+
+      original_storage_config = Application.get_env(:storyarn, :storage, [])
+      {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+      SnapshotReadSwitchStorage.set_stat_result({:error, {:storage_timeout, "private provider details"}})
+
+      Application.put_env(
+        :storyarn,
+        :storage,
+        Keyword.put(original_storage_config, :adapter, SnapshotReadSwitchStorage)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, :storage, original_storage_config)
+
+        if Process.whereis(SnapshotReadSwitchStorage) do
+          Agent.stop(SnapshotReadSwitchStorage)
+        end
+      end)
+
+      assert {:error, :build_failed} =
+               job
+               |> Map.put(:errors, [])
+               |> BuildProjectSnapshotWorker.perform()
+
+      assert %ProjectSnapshot{lifecycle_state: "pending", failure_code: nil} =
+               Repo.get!(ProjectSnapshot, requested.id)
+
+      assert {:error, :build_failed} =
+               job
+               |> Map.put(:errors, [%{"attempt" => 1}])
+               |> BuildProjectSnapshotWorker.perform()
+
+      assert %ProjectSnapshot{lifecycle_state: "pending", failure_code: nil} =
+               Repo.get!(ProjectSnapshot, requested.id)
+
+      assert {:discard, :build_failed} =
+               job
+               |> Map.put(:errors, [%{"attempt" => 1}, %{"attempt" => 2}])
+               |> BuildProjectSnapshotWorker.perform()
+
+      failed = Repo.get!(ProjectSnapshot, requested.id)
+      assert failed.lifecycle_state == "failed"
+      assert failed.failure_code == "build_failed"
+
+      assert failed.failure_message ==
+               "The snapshot could not be created. No incomplete snapshot was published."
+
+      refute failed.failure_message =~ "private provider details"
+      assert Repo.get!(StorageReservation, failed.storage_reservation_id).status == "released"
+      refute Repo.get(ProjectSnapshotCapture, failed.id)
     end
 
     test "rejects callers without project management permission before capture" do
@@ -618,7 +816,287 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert requested.manifest_storage_key in cleanup_request.storage_keys
     end
 
-    test "fails closed when a protected source blob is missing" do
+    test "repairs a missing protected source from the verified active asset before capture" do
+      user = user_fixture()
+      project = project_fixture(user)
+      content = "repairable legacy source"
+      asset = upload_asset!(project, user, content)
+
+      _sheet =
+        Storyarn.SheetsFixtures.sheet_fixture(project, %{
+          name: "Legacy asset reference",
+          banner_asset_id: asset.id
+        })
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      blob_key = protected_blob_key(project.id, asset)
+      assert :ok = Local.delete(blob_key)
+
+      job = requested_job(requested)
+
+      assert {:ok, :captured} =
+               ProjectSnapshotBuild.materialize_capture(requested.id, job.id)
+
+      assert {:ok, ^content} = Storage.download(blob_key)
+
+      assert %ProjectSnapshotCapture{source_keys: source_keys} =
+               Repo.get!(ProjectSnapshotCapture, requested.id)
+
+      assert Map.values(source_keys) == [blob_key]
+    end
+
+    test "repairs exactly the captured inventory when a trashed asset is restored after capture" do
+      user = user_fixture()
+      project = project_fixture(user)
+      captured_asset = upload_asset!(project, user, "captured inventory bytes")
+      restored_later = upload_asset!(project, user, "restored after inventory capture")
+
+      assert {:ok, trashed} = Assets.move_asset_to_trash(project.id, restored_later.id, user.id)
+      restored_blob_key = protected_blob_key(project.id, restored_later)
+      assert :ok = Local.delete(restored_blob_key)
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      job = requested_job(requested)
+      captured_blob_key = protected_blob_key(project.id, captured_asset)
+      original_config = Application.get_env(:storyarn, ProjectSnapshotBuild, [])
+      parent = self()
+      observed_ref = make_ref()
+
+      Application.put_env(
+        :storyarn,
+        ProjectSnapshotBuild,
+        Keyword.put(original_config, :capture_inventory_observed_fun, fn
+          :captured, assets ->
+            if !Process.get(observed_ref) do
+              Process.put(observed_ref, true)
+              assert Enum.map(assets, & &1.id) == [captured_asset.id]
+              refute Repo.in_transaction?()
+
+              assert {:ok, _trashed_captured} =
+                       Assets.move_asset_to_trash(project.id, captured_asset.id, user.id)
+
+              assert {:ok, restored} =
+                       Assets.restore_trashed_asset(
+                         project.id,
+                         trashed.id,
+                         trashed.deletion_generation,
+                         user.id
+                       )
+
+              assert is_nil(restored.deleted_at)
+              assert :ok = Local.delete(captured_blob_key)
+              send(parent, {:snapshot_exact_inventory_observed, Repo.in_transaction?()})
+            end
+
+            :ok
+
+          _stage, _assets ->
+            :ok
+        end)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, ProjectSnapshotBuild, original_config)
+      end)
+
+      assert {:ok, :captured} = ProjectSnapshotBuild.materialize_capture(requested.id, job.id)
+      assert_receive {:snapshot_exact_inventory_observed, false}
+
+      capture = Repo.get!(ProjectSnapshotCapture, requested.id)
+      assert capture.asset_count == 1
+      assert capture.source_keys == %{captured_asset.blob_hash => captured_blob_key}
+      refute Map.has_key?(capture.source_keys, restored_later.blob_hash)
+      assert {:ok, "captured inventory bytes"} = Local.download(captured_blob_key)
+      assert {:error, :enoent} = Local.download(restored_blob_key)
+    end
+
+    test "rechecks and repairs active inventory changes before snapshot builders run" do
+      user = user_fixture()
+      project = project_fixture(user)
+      stable_asset = upload_asset!(project, user, "stable inventory bytes")
+      restored_later = upload_asset!(project, user, "restored referenced banner")
+
+      assert {:ok, trashed} = Assets.move_asset_to_trash(project.id, restored_later.id, user.id)
+
+      sheet = Storyarn.SheetsFixtures.sheet_fixture(project, %{name: "Restored banner"})
+
+      assert {1, nil} =
+               Repo.update_all(
+                 from(candidate in Storyarn.Sheets.Sheet, where: candidate.id == ^sheet.id),
+                 set: [banner_asset_id: restored_later.id]
+               )
+
+      restored_blob_key = protected_blob_key(project.id, restored_later)
+      assert :ok = Local.delete(restored_blob_key)
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      job = requested_job(requested)
+      original_config = Application.get_env(:storyarn, ProjectSnapshotBuild, [])
+      parent = self()
+      observed_ref = make_ref()
+
+      Application.put_env(
+        :storyarn,
+        ProjectSnapshotBuild,
+        Keyword.put(original_config, :capture_inventory_observed_fun, fn
+          :repaired, assets ->
+            if !Process.get(observed_ref) do
+              Process.put(observed_ref, true)
+              assert Enum.map(assets, & &1.id) == [stable_asset.id]
+              refute Repo.in_transaction?()
+
+              assert {:ok, restored} =
+                       Assets.restore_trashed_asset(
+                         project.id,
+                         trashed.id,
+                         trashed.deletion_generation,
+                         user.id
+                       )
+
+              send(parent, {:snapshot_inventory_changed_after_repair, restored.id, Repo.in_transaction?()})
+            end
+
+            :ok
+
+          _stage, _assets ->
+            :ok
+        end)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, ProjectSnapshotBuild, original_config)
+      end)
+
+      assert {:ok, :captured} = ProjectSnapshotBuild.materialize_capture(requested.id, job.id)
+      assert_receive {:snapshot_inventory_changed_after_repair, restored_id, false}
+      assert restored_id == restored_later.id
+
+      capture = Repo.get!(ProjectSnapshotCapture, requested.id)
+      assert capture.asset_count == 2
+
+      assert capture.source_keys == %{
+               stable_asset.blob_hash => protected_blob_key(project.id, stable_asset),
+               restored_later.blob_hash => restored_blob_key
+             }
+
+      assert {:ok, "restored referenced banner"} = Local.download(restored_blob_key)
+    end
+
+    test "a legacy five-attempt job repairs its immutable captured asset provenance" do
+      user = user_fixture()
+      project = project_fixture(user)
+      captured_asset = upload_asset!(project, user, "legacy captured source")
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      job = requested_job(requested)
+      assert {:ok, :captured} = ProjectSnapshotBuild.materialize_capture(requested.id, job.id)
+
+      capture_before = Repo.get!(ProjectSnapshotCapture, requested.id)
+      captured_blob_key = protected_blob_key(project.id, captured_asset)
+      assert capture_before.source_keys == %{captured_asset.blob_hash => captured_blob_key}
+
+      assert {:ok, _trashed} = Assets.move_asset_to_trash(project.id, captured_asset.id, user.id)
+      current_asset = upload_asset!(project, user, "current asset outside legacy capture")
+      refute current_asset.blob_hash == captured_asset.blob_hash
+      assert :ok = Local.delete(protected_blob_key(project.id, current_asset))
+      assert :ok = Local.delete(current_asset.key)
+      assert :ok = Local.delete(captured_blob_key)
+
+      legacy_job =
+        job
+        |> Ecto.Changeset.change(
+          attempt: 4,
+          max_attempts: 5,
+          errors: [%{"attempt" => 1}, %{"attempt" => 2}, %{"attempt" => 3}]
+        )
+        |> Repo.update!()
+
+      assert {:ok, :already_captured} =
+               ProjectSnapshotBuild.materialize_capture(requested.id, legacy_job.id)
+
+      capture_after = Repo.get!(ProjectSnapshotCapture, requested.id)
+      assert capture_after.capture_digest == capture_before.capture_digest
+      assert capture_after.project_json == capture_before.project_json
+      assert capture_after.manifest_json == capture_before.manifest_json
+      assert capture_after.source_keys == capture_before.source_keys
+      assert {:ok, "legacy captured source"} = Local.download(captured_blob_key)
+
+      assert :ok = Local.delete(captured_blob_key)
+      assert :ok = BuildProjectSnapshotWorker.perform(legacy_job)
+
+      ready = Repo.get!(ProjectSnapshot, requested.id)
+      assert ready.lifecycle_state == "ready"
+      refute Repo.get(ProjectSnapshotCapture, requested.id)
+
+      assert {:ok, manifest_json} = Storage.download(ready.manifest_storage_key)
+      manifest = Jason.decode!(manifest_json)
+      assert Enum.map(manifest["assets"], & &1["sha256"]) == [captured_asset.blob_hash]
+      refute Enum.any?(manifest["assets"], &(&1["sha256"] == current_asset.blob_hash))
+    end
+
+    test "repairs a sanitized SVG from immutable legacy capture provenance" do
+      user = user_fixture()
+      project = project_fixture(user)
+      svg = ~S(<svg xmlns="http://www.w3.org/2000/svg"><circle cx="4" cy="4" r="3"/></svg>)
+
+      assert {:ok, asset} =
+               Assets.upload_sanitized_svg_and_create_asset(
+                 svg,
+                 %{filename: "snapshot.svg", content_type: "image/svg+xml"},
+                 project,
+                 user
+               )
+
+      assert asset.metadata["sanitized_svg"] == true
+      assert {:ok, source_bytes} = Local.download(asset.key)
+      assert {:ok, requested} = request_snapshot(user, project)
+      job = requested_job(requested)
+      assert {:ok, :captured} = ProjectSnapshotBuild.materialize_capture(requested.id, job.id)
+
+      capture_before = Repo.get!(ProjectSnapshotCapture, requested.id)
+      blob_key = protected_blob_key(project.id, asset)
+      assert capture_before.source_keys == %{asset.blob_hash => blob_key}
+
+      assert {:ok, _trashed} = Assets.move_asset_to_trash(project.id, asset.id, user.id)
+      assert :ok = Local.delete(blob_key)
+
+      assert {:ok, :already_captured} =
+               ProjectSnapshotBuild.materialize_capture(requested.id, job.id)
+
+      capture_after = Repo.get!(ProjectSnapshotCapture, requested.id)
+      assert capture_after.capture_digest == capture_before.capture_digest
+      assert capture_after.source_keys == capture_before.source_keys
+      assert {:ok, ^source_bytes} = Local.download(blob_key)
+    end
+
+    test "legacy repair never substitutes an equivalent asset outside captured provenance" do
+      user = user_fixture()
+      project = project_fixture(user)
+      content = "captured provenance only"
+      captured_asset = upload_asset!(project, user, content)
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      job = requested_job(requested)
+      assert {:ok, :captured} = ProjectSnapshotBuild.materialize_capture(requested.id, job.id)
+
+      assert {:ok, _trashed} = Assets.move_asset_to_trash(project.id, captured_asset.id, user.id)
+      Repo.delete!(Repo.get!(Storyarn.Assets.Asset, captured_asset.id))
+
+      equivalent_current = upload_asset!(project, user, content)
+      assert equivalent_current.blob_hash == captured_asset.blob_hash
+
+      blob_key = protected_blob_key(project.id, captured_asset)
+      assert :ok = Local.delete(blob_key)
+
+      assert {:error, {:missing_snapshot_blob_source, blob_hash}} =
+               ProjectSnapshotBuild.materialize_capture(requested.id, job.id)
+
+      assert blob_hash == captured_asset.blob_hash
+      assert {:error, :enoent} = Local.download(blob_key)
+      assert Repo.get!(ProjectSnapshotCapture, requested.id).source_keys == %{captured_asset.blob_hash => blob_key}
+    end
+
+    test "fails closed when the protected blob and original asset are missing" do
       user = user_fixture()
       project = project_fixture(user)
       scope = user_scope_fixture(user)
@@ -629,6 +1107,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       refute_receive :notifications_changed
 
       assert :ok = Local.delete(protected_blob_key(project.id, asset))
+      assert :ok = Local.delete(asset.key)
 
       job = requested_job(requested)
 
@@ -661,6 +1140,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       :ok = Notifications.subscribe(scope)
       assert {:ok, requested} = request_snapshot(user, project, %{title: "Missing requester"})
       assert :ok = Local.delete(protected_blob_key(project.id, asset))
+      assert :ok = Local.delete(asset.key)
 
       original_config = Application.get_env(:storyarn, ProjectSnapshotBuild, [])
       parent = self()
@@ -710,13 +1190,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert Notifications.list_notifications(scope) == []
     end
 
-    test "fails closed when protected source bytes do not match their captured digest" do
+    test "fails closed when both canonical and original bytes are corrupt" do
       user = user_fixture()
       project = project_fixture(user)
       asset = upload_asset!(project, user, "trusted source")
 
       assert {:ok, requested} = request_snapshot(user, project)
-      assert {:ok, _url} = Local.upload(protected_blob_key(project.id, asset), "tampered bytes", "image/png")
+      blob_key = protected_blob_key(project.id, asset)
+      assert {:ok, _url} = Local.upload(blob_key, "tampered bytes", "image/png")
+      assert {:ok, _url} = Local.upload(asset.key, "tampered bytes", "image/png")
 
       job = requested_job(requested)
 
@@ -734,54 +1216,47 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert {:error, _reason} = Storage.stat(failed.manifest_storage_key)
       assert Repo.get!(StorageReservation, failed.storage_reservation_id).status == "released"
       refute Repo.get(ProjectSnapshotCapture, failed.id)
+      assert {:ok, "tampered bytes"} = Local.download(blob_key)
     end
 
-    test "preserves source corruption when cleanup ownership retries exhaust" do
+    test "rejects source corruption before staging cleanup ownership is needed" do
       user = user_fixture()
       project = project_fixture(user)
       asset = upload_asset!(project, user, "trusted source")
 
       assert {:ok, requested} = request_snapshot(user, project)
       assert {:ok, _url} = Local.upload(protected_blob_key(project.id, asset), "tampered bytes", "image/png")
+      assert {:ok, _url} = Local.upload(asset.key, "tampered bytes", "image/png")
 
       job = requested_job(requested)
       original_snapshot_config = Application.get_env(:storyarn, SnapshotArchiveStorage, [])
+      parent = self()
 
       Application.put_env(
         :storyarn,
         SnapshotArchiveStorage,
         Keyword.put(original_snapshot_config, :cleanup_persist_fun, fn _keys ->
+          send(parent, :snapshot_staging_cleanup_attempted)
           {:error, :database_unavailable}
         end)
       )
 
       on_exit(fn -> Application.put_env(:storyarn, SnapshotArchiveStorage, original_snapshot_config) end)
 
-      assert {:retry, :cleanup_unowned} =
+      assert {:discard, :source_corrupt} =
                Versioning.perform_project_snapshot_build(requested.id,
                  job_id: job.id,
                  attempt: 1,
                  max_attempts: 2
                )
 
-      unsettled = Repo.get!(ProjectSnapshot, requested.id)
-      assert unsettled.lifecycle_state == "building"
-      assert unsettled.integrity_state == "corrupt"
-      assert is_nil(unsettled.failure_code)
-      assert Repo.get!(StorageReservation, requested.storage_reservation_id).status == "active"
-
-      assert {:discard, :source_corrupt} =
-               Versioning.perform_project_snapshot_build(requested.id,
-                 job_id: job.id,
-                 attempt: 2,
-                 max_attempts: 2
-               )
+      refute_receive :snapshot_staging_cleanup_attempted
 
       failed = Repo.get!(ProjectSnapshot, requested.id)
       assert failed.lifecycle_state == "failed"
       assert failed.integrity_state == "corrupt"
       assert failed.failure_code == "source_corrupt"
-      assert Repo.get!(StorageReservation, requested.storage_reservation_id).status == "active"
+      assert Repo.get!(StorageReservation, requested.storage_reservation_id).status == "released"
       refute Repo.get(ProjectSnapshotCapture, failed.id)
     end
 
@@ -1210,7 +1685,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
         assert Repo.get!(SnapshotObjectPublicationClaim, claim.object_prefix).status == claim_status
         assert_active_cancellation_fence(requested.id, reservation.id)
 
-        assert {:discard, :cleanup_unowned} = perform_requested_job(cancellation_requested, 5)
+        assert {:discard, :cleanup_unowned} = perform_requested_job(cancellation_requested, 3)
 
         failed = Repo.get!(ProjectSnapshot, requested.id)
         assert failed.lifecycle_state == "failed"
@@ -1815,6 +2290,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
     snapshot
     |> requested_job()
     |> Map.put(:attempt, attempt)
+    |> Map.put(:errors, List.duplicate(%{}, max(attempt - 1, 0)))
     |> BuildProjectSnapshotWorker.perform()
   end
 
