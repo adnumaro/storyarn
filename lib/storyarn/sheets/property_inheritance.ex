@@ -111,11 +111,17 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   `dashboard_health_coverage_test.exs` pins that against the per-sheet path.
 
   Returns `%{sheet_id => issues}`, with an entry for every sheet in `sheets`.
-  """
-  @spec list_project_health_issues([Sheet.t()]) :: %{integer() => [map()]}
-  def list_project_health_issues([]), do: %{}
 
-  def list_project_health_issues(sheets) do
+  A project snapshot builder should pass its already-loaded `table_data` as the
+  second argument. The one-argument form remains for callers that do not already
+  own that data and loads the required table structures itself.
+  """
+  @spec list_project_health_issues([Sheet.t()], map() | nil) :: %{integer() => [map()]}
+  def list_project_health_issues(sheets, table_data \\ nil)
+
+  def list_project_health_issues([], _table_data), do: %{}
+
+  def list_project_health_issues(sheets, table_data) do
     sheets_by_id = Map.new(sheets, &{&1.id, &1})
     ancestors_by_sheet = Map.new(sheets, &{&1.id, ancestor_chain(&1, sheets_by_id)})
 
@@ -149,15 +155,22 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         {sheet.id, {sources, instances}}
       end)
 
-    structures =
-      resolved
-      |> Enum.flat_map(fn {_sheet_id, {sources, instances}} -> sources ++ instances end)
-      |> Enum.uniq_by(& &1.id)
-      |> InheritanceAudit.table_structures()
+    structures = project_table_structures(resolved, table_data)
 
     Map.new(resolved, fn {sheet_id, {sources, instances}} ->
       {sheet_id, InheritanceAudit.issues(sources, instances, structures)}
     end)
+  end
+
+  defp project_table_structures(resolved, nil) do
+    resolved
+    |> Enum.flat_map(fn {_sheet_id, {sources, instances}} -> sources ++ instances end)
+    |> Enum.uniq_by(& &1.id)
+    |> InheritanceAudit.table_structures()
+  end
+
+  defp project_table_structures(_resolved, table_data) when is_map(table_data) do
+    InheritanceAudit.table_structures_from_data(table_data)
   end
 
   # Nearest ancestor first, mirroring `SheetQueries.list_ancestors/1`, so eligible

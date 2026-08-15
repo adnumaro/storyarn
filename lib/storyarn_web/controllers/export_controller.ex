@@ -8,6 +8,10 @@ defmodule StoryarnWeb.ExportController do
   alias Storyarn.Projects
   alias Storyarn.Shared.NameNormalizer
 
+  require Logger
+
+  @temporary_export_filename ~r/\Astoryarn-export-\d+\.zip\z/
+
   @doc """
   Export a project in the requested format.
 
@@ -91,7 +95,7 @@ defmodule StoryarnWeb.ExportController do
           |> send_chunked(200)
           |> stream_zip_file(zip_path)
         after
-          File.rm(zip_path)
+          remove_temporary_zip(zip_path)
         end
 
       {:error, {:export_too_large, _details}} ->
@@ -118,9 +122,15 @@ defmodule StoryarnWeb.ExportController do
           {String.to_charlist(entry_filename), IO.iodata_to_binary(content)}
         end)
 
-      case :zip.create(String.to_charlist(zip_path), entries) do
-        {:ok, _zip_filename} -> {:ok, zip_path}
-        {:error, _reason} = error -> error
+      zip_creator = zip_creator()
+
+      case zip_creator.(String.to_charlist(zip_path), entries) do
+        {:ok, _zip_filename} ->
+          {:ok, zip_path}
+
+        {:error, _reason} = error ->
+          remove_temporary_zip(zip_path)
+          error
       end
     end
   end
@@ -143,6 +153,48 @@ defmodule StoryarnWeb.ExportController do
 
   defp validate_export_size(total_bytes, max_bytes),
     do: {:error, {:export_too_large, %{bytes: total_bytes, max_bytes: max_bytes}}}
+
+  defp zip_creator do
+    :storyarn
+    |> Application.get_env(__MODULE__, [])
+    |> Keyword.get(:zip_creator, &:zip.create/2)
+  end
+
+  # The path is constrained again at the deletion boundary so future callers
+  # cannot turn this cleanup helper into an arbitrary file deletion primitive.
+  # sobelow_skip ["Traversal.FileModule"]
+  defp remove_temporary_zip(zip_path) do
+    case safe_temporary_zip_path(zip_path) do
+      {:ok, safe_path} ->
+        case File.rm(safe_path) do
+          :ok ->
+            :ok
+
+          {:error, :enoent} ->
+            :ok
+
+          {:error, reason} ->
+            Logger.warning("Temporary export archive cleanup failed path=#{inspect(safe_path)} reason=#{inspect(reason)}")
+        end
+
+      {:error, :invalid_temporary_zip_path} ->
+        Logger.warning("Refusing to remove invalid temporary export archive path=#{inspect(zip_path)}")
+    end
+  end
+
+  defp safe_temporary_zip_path(zip_path) when is_binary(zip_path) do
+    tmp_dir = Path.expand(System.tmp_dir!())
+    expanded_path = Path.expand(zip_path)
+    filename = Path.basename(expanded_path)
+
+    if Path.dirname(expanded_path) == tmp_dir and Regex.match?(@temporary_export_filename, filename) do
+      {:ok, expanded_path}
+    else
+      {:error, :invalid_temporary_zip_path}
+    end
+  end
+
+  defp safe_temporary_zip_path(_zip_path), do: {:error, :invalid_temporary_zip_path}
 
   # zip_path is the internally generated path returned by zip_files_to_disk/1.
   # sobelow_skip ["Traversal.FileModule"]

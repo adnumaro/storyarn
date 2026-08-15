@@ -6,12 +6,15 @@ defmodule Storyarn.Flows.FlowStats do
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.SpeakerSheetId
   alias Storyarn.Flows.StructuralAnalysis
   alias Storyarn.Flows.StructuralAnalysis.Topology
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Sheets.Sheet
+
+  require SpeakerSheetId
 
   # ===========================================================================
   # Stats
@@ -83,13 +86,13 @@ defmodule Storyarn.Flows.FlowStats do
         join: f in Flow,
         on: n.flow_id == f.id,
         left_join: s in Sheet,
-        on: type(fragment("(?->>'speaker_sheet_id')::integer", n.data), :integer) == s.id,
+        on: SpeakerSheetId.safe_query_value(n.data) == s.id,
         where:
           f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and n.type == "dialogue" and
-            not is_nil(fragment("?->>'speaker_sheet_id'", n.data)),
-        group_by: [fragment("(?->>'speaker_sheet_id')::integer", n.data), s.name, s.id],
+            not is_nil(SpeakerSheetId.safe_query_value(n.data)),
+        group_by: [SpeakerSheetId.safe_query_value(n.data), s.name, s.id],
         select: %{
-          sheet_id: fragment("(?->>'speaker_sheet_id')::integer", n.data),
+          sheet_id: SpeakerSheetId.safe_query_value(n.data),
           sheet_name: s.name,
           line_count: count(n.id)
         },

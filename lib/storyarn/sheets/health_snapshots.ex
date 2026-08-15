@@ -14,7 +14,7 @@ defmodule Storyarn.Sheets.HealthSnapshots do
   They differ only in how much they read at a time. Built one sheet at a time the
   snapshot costs ~21 queries (713 for a 34-sheet project, measured), so
   `load_project/2` loads every field ONCE for the whole project and slices it per
-  sheet — a fixed ~20 queries, whatever the sheet count. Slicing is not the same
+  sheet — a fixed query count, whatever the sheet count. Slicing is not the same
   as re-deriving, which is why
   `test/storyarn/sheets/dashboard_health_coverage_test.exs` pins the two against
   each other sheet by sheet.
@@ -136,12 +136,18 @@ defmodule Storyarn.Sheets.HealthSnapshots do
   defp enrichment(project_id, sheets, all_blocks, referenced_ids) do
     referenced_block_ids = referenced_ids || SheetStats.referenced_block_ids_for_project(project_id)
     block_ids = Enum.map(all_blocks, & &1.id)
+    raw_table_data = table_data(all_blocks)
+
+    inheritance_issues =
+      PropertyInheritance.list_project_health_issues(sheets, raw_table_data)
+
+    table_data = FormulaResolver.enrich_table_data(raw_table_data, project_id)
 
     %{
-      table_data: table_data(project_id, all_blocks),
+      table_data: table_data,
       gallery_data: gallery_data(all_blocks),
       parent_sheet_ids: sheets |> Enum.map(& &1.parent_id) |> Enum.reject(&is_nil/1) |> MapSet.new(),
-      inheritance_issues: PropertyInheritance.list_project_health_issues(sheets),
+      inheritance_issues: inheritance_issues,
       referenced_block_ids: referenced_block_ids,
       stale_variable_reference_counts: stale_variable_reference_counts(all_blocks, referenced_block_ids, project_id),
       stale_entity_reference_block_ids: ReferenceTracker.list_stale_block_reference_source_ids(project_id, block_ids),
@@ -150,10 +156,10 @@ defmodule Storyarn.Sheets.HealthSnapshots do
     }
   end
 
-  defp table_data(project_id, all_blocks) do
+  defp table_data(all_blocks) do
     case block_ids_of_type(all_blocks, "table") do
       [] -> %{}
-      table_ids -> table_ids |> TableCrud.batch_load_table_data() |> FormulaResolver.enrich_table_data(project_id)
+      table_ids -> TableCrud.batch_load_table_data(table_ids)
     end
   end
 

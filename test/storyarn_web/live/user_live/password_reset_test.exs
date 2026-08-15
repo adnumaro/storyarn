@@ -12,6 +12,7 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
   alias Storyarn.Repo
   alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
   alias Storyarn.Workers.RequestResetPasswordInstructionsWorker
+  alias StoryarnWeb.UserLive.ForgotPassword
 
   defp get_forgot_password_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/auth/reset-password/AuthForgotPasswordForm")
@@ -101,6 +102,51 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
 
       refute Repo.get_by(UserToken, context: "reset_password")
       refute_reset_password_job_enqueued()
+    end
+
+    test "shows the same generic error when the reset request cannot be queued", %{conn: conn} do
+      existing_email = user_fixture().email
+      missing_email = unique_user_email()
+      previous_config = Application.get_env(:storyarn, ForgotPassword)
+      test_pid = self()
+
+      Application.put_env(:storyarn, ForgotPassword,
+        request_reset_instructions: fn email, _reset_url ->
+          send(test_pid, {:reset_enqueue_attempt, email})
+          {:error, :queue_unavailable}
+        end
+      )
+
+      on_exit(fn ->
+        if previous_config do
+          Application.put_env(:storyarn, ForgotPassword, previous_config)
+        else
+          Application.delete_env(:storyarn, ForgotPassword)
+        end
+      end)
+
+      errors =
+        for email <- [existing_email, missing_email] do
+          {:ok, view, _html} = live(conn, ~p"/users/reset-password")
+
+          ExUnit.CaptureLog.capture_log(fn ->
+            render_click(view, "send_instructions", %{"password_reset" => %{"email" => email}})
+          end)
+
+          assert_received {:reset_enqueue_attempt, ^email}
+
+          vue = get_forgot_password_vue(view)
+          assert vue.props["instructions-sent"] == false
+          refute_enqueued(worker: RequestResetPasswordInstructionsWorker, args: %{"email" => email})
+
+          vue.props["request-error"]
+        end
+
+      assert errors ==
+               List.duplicate(
+                 "We couldn't process your password reset request. Please try again later.",
+                 2
+               )
     end
 
     test "can return from confirmation to the request form", %{conn: conn} do

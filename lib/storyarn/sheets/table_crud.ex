@@ -280,9 +280,20 @@ defmodule Storyarn.Sheets.TableCrud do
   """
   def batch_load_table_data(block_ids) when is_list(block_ids) do
     columns =
-      Repo.all(from(c in TableColumn, where: c.block_id in ^block_ids, order_by: [asc: c.block_id, asc: c.position]))
+      Repo.all(
+        from(c in TableColumn,
+          where: c.block_id in ^block_ids,
+          order_by: [asc: c.block_id, asc: c.position, asc: c.id]
+        )
+      )
 
-    rows = Repo.all(from(r in TableRow, where: r.block_id in ^block_ids, order_by: [asc: r.block_id, asc: r.position]))
+    rows =
+      Repo.all(
+        from(r in TableRow,
+          where: r.block_id in ^block_ids,
+          order_by: [asc: r.block_id, asc: r.position, asc: r.id]
+        )
+      )
 
     columns_by_block = Enum.group_by(columns, & &1.block_id)
     rows_by_block = Enum.group_by(rows, & &1.block_id)

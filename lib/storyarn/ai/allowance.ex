@@ -18,6 +18,7 @@ defmodule Storyarn.AI.Allowance do
   alias Storyarn.Workspaces.Workspace
 
   @account_lock_namespace 981_006
+  @default_expiration_batch_size 100
 
   @type summary :: %{
           status: String.t(),
@@ -118,26 +119,58 @@ defmodule Storyarn.AI.Allowance do
   @spec release(Operation.t()) :: :ok | {:error, atom()}
   def release(%Operation{} = operation), do: settle(operation, "released")
 
-  @doc "Expires available grant units. Reserved units settle through their operation lifecycle."
-  @spec expire_due() :: non_neg_integer()
-  def expire_due do
+  @doc """
+  Expires due grants for one ordered batch of allowance accounts.
+
+  Each selected account remains an atomic lock domain because reservation and
+  grant paths share the same account lock. The batch bounds accounts, not the
+  number of grants already accumulated within one account. Reserved units settle
+  through their operation lifecycle.
+  """
+  @spec expire_due(DateTime.t(), keyword()) :: %{
+          expired_count: non_neg_integer(),
+          failure_count: non_neg_integer(),
+          more?: boolean(),
+          next_account_id: pos_integer() | nil
+        }
+  def expire_due(now \\ TimeHelpers.now(), opts \\ []) do
+    batch_size = positive_option(opts, :batch_size, @default_expiration_batch_size)
+    after_account_id = non_negative_option(opts, :after_account_id, 0)
+
     account_ids =
       Repo.all(
         from(grant in AllowanceGrant,
-          where: not is_nil(grant.account_id) and grant.remaining_units > 0 and grant.expires_at <= ^TimeHelpers.now(),
+          where:
+            grant.account_id > ^after_account_id and grant.remaining_units > 0 and
+              not is_nil(grant.expires_at) and grant.expires_at <= ^now,
           distinct: grant.account_id,
+          order_by: [asc: grant.account_id],
+          limit: ^(batch_size + 1),
           select: grant.account_id
         )
       )
 
-    Enum.reduce(account_ids, 0, &expire_account/2)
+    {batch, overflow} = Enum.split(account_ids, batch_size)
+
+    Enum.reduce(
+      batch,
+      %{
+        expired_count: 0,
+        failure_count: 0,
+        more?: overflow != [],
+        next_account_id: List.last(batch)
+      },
+      fn account_id, summary ->
+        case expire_account(account_id, now) do
+          {:ok, count} -> Map.update!(summary, :expired_count, &(&1 + count))
+          {:error, _reason} -> Map.update!(summary, :failure_count, &(&1 + 1))
+        end
+      end
+    )
   end
 
-  defp expire_account(account_id, total) do
-    case Repo.transaction(fn -> expire_account_locked(account_id, TimeHelpers.now()) end) do
-      {:ok, count} -> total + count
-      {:error, _reason} -> total
-    end
+  defp expire_account(account_id, now) do
+    Repo.transaction(fn -> expire_account_locked(account_id, now) end)
   end
 
   defp grant_locked(workspace_id, actor_id, attrs) do
@@ -571,6 +604,20 @@ defmodule Storyarn.AI.Allowance do
   end
 
   defp value(attrs, key), do: Map.get(attrs, key, Map.get(attrs, Atom.to_string(key)))
+
+  defp positive_option(opts, key, default) do
+    case Keyword.get(opts, key, default) do
+      value when is_integer(value) and value > 0 -> value
+      _invalid -> default
+    end
+  end
+
+  defp non_negative_option(opts, key, default) do
+    case Keyword.get(opts, key, default) do
+      value when is_integer(value) and value >= 0 -> value
+      _invalid -> default
+    end
+  end
 
   defp lock_account_key!(workspace_id) do
     Repo.query!("SELECT pg_advisory_xact_lock($1, $2)", [@account_lock_namespace, workspace_id])

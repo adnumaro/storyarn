@@ -15,6 +15,7 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.ReferenceIntegrity
   alias Storyarn.Flows.SequenceConfig
+  alias Storyarn.Flows.SpeakerSheetId
   alias Storyarn.Flows.TreeOperations
   alias Storyarn.Localization
   alias Storyarn.Notifications
@@ -32,6 +33,8 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Shared.WordCount
   alias Storyarn.Sheets
   alias Storyarn.Shortcuts
+
+  require SpeakerSheetId
 
   @restore_sources_locked_event [
     :storyarn,
@@ -1501,8 +1504,8 @@ defmodule Storyarn.Flows.FlowCrud do
       join: f in Flow,
       on: n.flow_id == f.id,
       where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at),
-      where: fragment("?->>'speaker_sheet_id' ~ '^[0-9]+$'", n.data),
-      select: fragment("(?->>'speaker_sheet_id')::integer", n.data)
+      where: not is_nil(SpeakerSheetId.safe_query_value(n.data)),
+      select: SpeakerSheetId.safe_query_value(n.data)
     )
     |> Repo.all()
     |> MapSet.new()
