@@ -102,7 +102,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     sorted_nodes =
       flow.nodes
       |> Enum.filter(&is_nil(&1.deleted_at))
-      |> Enum.sort_by(&{&1.position_x, &1.position_y, &1.type, &1.id})
+      |> sort_and_normalize_snapshot_nodes(flow.project_id)
 
     ensure_build_external_references!(flow, sorted_nodes)
 
@@ -4822,6 +4822,30 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     |> Enum.with_index()
     |> Enum.reduce(%{}, fn {node, idx}, acc ->
       Map.put_new(acc, node_identity(node), idx)
+    end)
+  end
+
+  defp sort_and_normalize_snapshot_nodes(nodes, project_id) do
+    nodes
+    |> Enum.sort_by(&{&1.position_x, &1.position_y, &1.type, &1.id})
+    |> Enum.map(fn node ->
+      data = node.data || %{}
+
+      case AvatarIntegrity.lock_and_normalize_node_avatar_for_project(
+             project_id,
+             node.type,
+             data
+           ) do
+        {:ok, normalized_data} ->
+          %{node | data: normalized_data}
+
+        {:error, {:invalid_avatar_reference, avatar_id}}
+        when is_integer(avatar_id) and avatar_id > 0 ->
+          %{node | data: Map.put(data, "avatar_id", nil)}
+
+        {:error, _reason} ->
+          node
+      end
     end)
   end
 end

@@ -627,7 +627,108 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       end
     end
 
-    test "fails closed when a persisted avatar does not belong to the selected speaker", %{
+    test "canonicalizes repeated missing optional avatars to nil in the snapshot without mutating nodes", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      speaker = sheet_fixture(project, %{name: "Speaker"})
+
+      avatar_asset =
+        uploaded_asset(
+          project,
+          user,
+          "missing-snapshot-avatar.png",
+          "missing snapshot avatar",
+          "image/png"
+        )
+
+      {:ok, avatar} = Storyarn.Sheets.add_avatar(speaker, avatar_asset.id)
+
+      dialogues =
+        Enum.map(["First dangling avatar", "Second dangling avatar"], fn text ->
+          node_fixture(flow, %{
+            type: "dialogue",
+            data: %{
+              "speaker_sheet_id" => nil,
+              "avatar_id" => avatar.id,
+              "text" => text
+            }
+          })
+        end)
+
+      Repo.delete_all(from(persisted_avatar in Storyarn.Sheets.SheetAvatar, where: persisted_avatar.id == ^avatar.id))
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      dialogue_ids = MapSet.new(dialogues, & &1.id)
+      snapshot_dialogues = Enum.filter(snapshot["nodes"], &MapSet.member?(dialogue_ids, &1["original_id"]))
+
+      assert length(snapshot_dialogues) == 2
+      assert Enum.all?(snapshot_dialogues, &is_nil(&1["data"]["speaker_sheet_id"]))
+      assert Enum.all?(snapshot_dialogues, &is_nil(&1["data"]["avatar_id"]))
+      assert Enum.all?(dialogues, &(Repo.get!(FlowNode, &1.id).data["avatar_id"] == avatar.id))
+    end
+
+    test "continues to fail closed for a cross-project avatar without mutating the node", %{
+      user: user,
+      flow: flow
+    } do
+      other_project = project_fixture(user)
+      other_speaker = sheet_fixture(other_project, %{name: "Foreign speaker"})
+
+      avatar_asset =
+        uploaded_asset(
+          other_project,
+          user,
+          "foreign-snapshot-avatar.png",
+          "foreign snapshot avatar",
+          "image/png"
+        )
+
+      {:ok, avatar} = Storyarn.Sheets.add_avatar(other_speaker, avatar_asset.id)
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker_sheet_id" => nil, "text" => "Foreign avatar"}
+        })
+
+      persisted_data = Map.put(dialogue.data, "avatar_id", avatar.id)
+
+      Repo.update_all(
+        from(node in FlowNode, where: node.id == ^dialogue.id),
+        set: [data: persisted_data]
+      )
+
+      assert_raise ArgumentError, ~r/flow_external_reference_not_materializable/, fn ->
+        FlowBuilder.build_snapshot(flow)
+      end
+
+      assert Repo.get!(FlowNode, dialogue.id).data["avatar_id"] == avatar.id
+    end
+
+    test "continues to fail closed for a malformed avatar without mutating the node", %{flow: flow} do
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker_sheet_id" => nil, "text" => "Malformed avatar"}
+        })
+
+      persisted_data = Map.put(dialogue.data, "avatar_id", "not-an-avatar-id")
+
+      Repo.update_all(
+        from(node in FlowNode, where: node.id == ^dialogue.id),
+        set: [data: persisted_data]
+      )
+
+      assert_raise ArgumentError, ~r/flow_external_reference_not_materializable/, fn ->
+        FlowBuilder.build_snapshot(flow)
+      end
+
+      assert Repo.get!(FlowNode, dialogue.id).data["avatar_id"] == "not-an-avatar-id"
+    end
+
+    test "continues to fail closed for an avatar speaker mismatch without mutating the node", %{
       user: user,
       project: project,
       flow: flow
@@ -669,6 +770,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       assert_raise ArgumentError, ~r/flow_external_reference_not_materializable/, fn ->
         FlowBuilder.build_snapshot(flow)
       end
+
+      persisted_dialogue = Repo.get!(FlowNode, dialogue.id)
+      assert persisted_dialogue.data["speaker_sheet_id"] == second_speaker.id
+      assert persisted_dialogue.data["avatar_id"] == avatar.id
     end
 
     test "validates terminal exit scene and flow targets against the owning project", %{

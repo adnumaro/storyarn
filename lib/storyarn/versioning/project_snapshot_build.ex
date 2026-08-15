@@ -122,9 +122,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     |> materialize_capture_for_snapshot(job_id)
   rescue
     exception ->
+      {reason_code, failure_origin} = capture_exception_classification(exception)
+
       Logger.error(
         "Project snapshot capture failed safely: " <>
-          "snapshot_id=#{snapshot_id} exception_module=#{inspect(exception.__struct__)}"
+          "event=project_snapshot_capture_failed snapshot_id=#{snapshot_id} job_id=#{job_id} " <>
+          "reason_code=#{reason_code} failure_origin=#{failure_origin} " <>
+          "exception_module=#{inspect(exception.__struct__)}"
       )
 
       {:error, :snapshot_capture_failed}
@@ -132,13 +136,30 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     kind, _reason ->
       Logger.error(
         "Project snapshot capture stopped safely: " <>
-          "snapshot_id=#{snapshot_id} failure_kind=#{kind}"
+          "event=project_snapshot_capture_stopped snapshot_id=#{snapshot_id} job_id=#{job_id} " <>
+          "reason_code=#{capture_stop_reason_code(kind)} failure_origin=runtime " <>
+          "exception_module=none"
       )
 
       {:error, :snapshot_capture_failed}
   end
 
   def materialize_capture(_snapshot_id, _job_id), do: {:error, :snapshot_capture_state_invalid}
+
+  defp capture_exception_classification(%ArgumentError{
+         message: "cannot build a flow snapshot with invalid external references:" <> _details
+       }), do: {"invalid_flow_external_reference", "flow_builder"}
+
+  defp capture_exception_classification(%Ecto.NoResultsError{}), do: {"snapshot_source_not_found", "snapshot_builder"}
+
+  defp capture_exception_classification(%ArgumentError{}), do: {"invalid_snapshot_source", "snapshot_builder"}
+
+  defp capture_exception_classification(_exception), do: {"unexpected_capture_exception", "snapshot_materialization"}
+
+  defp capture_stop_reason_code(:throw), do: "uncaught_throw"
+  defp capture_stop_reason_code(:exit), do: "uncaught_exit"
+  defp capture_stop_reason_code(:error), do: "uncaught_error"
+  defp capture_stop_reason_code(_kind), do: "unexpected_capture_stop"
 
   defp materialize_capture_for_snapshot(%ProjectSnapshot{lifecycle_state: state}, _job_id)
        when state in ["ready", "failed", "cancelled", "deleting"], do: {:ok, :terminal}
