@@ -154,6 +154,7 @@
         "failed": "Failed",
         "cancelled": "Cancelled",
         "deleting": "Deleting",
+        "retrying": "Retrying",
         "unknown": "State unknown"
       },
       "integrity": {
@@ -195,6 +196,14 @@
         "cancel": "Cancel build",
         "cancelling": "Cancellation requested",
         "accessibility": "Snapshot build progress: {percent}"
+      },
+      "retry": {
+        "waiting_attempt": "Waiting for attempt {attempt} of {max}",
+        "attempt": "Attempt {attempt} of {max}",
+        "next_retry": "Next retry: {date}",
+        "retry_due": "Retry due since {date}; waiting for a worker.",
+        "waiting_for_worker": "Waiting for a worker to schedule the next retry.",
+        "build_failed": "A temporary build error occurred. Storyarn will retry automatically; no incomplete snapshot was published."
       },
       "download": {
         "action": "Download ZIP"

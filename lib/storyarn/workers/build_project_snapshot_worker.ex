@@ -3,7 +3,7 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
   Executes one durable full-snapshot build outside the LiveView process.
   """
 
-  @max_attempts 5
+  @max_attempts 3
   use Oban.Worker,
     queue: :snapshot_archives,
     max_attempts: @max_attempts,
@@ -16,15 +16,21 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
   alias Storyarn.Versioning
 
   @impl Oban.Worker
-  def backoff(%Oban.Job{attempt: attempt, max_attempts: max_attempts} = job) do
-    logical_attempt =
-      @max_attempts
-      |> Kernel.-(max_attempts - attempt)
-      |> max(1)
-      |> min(@max_attempts)
-
+  def backoff(%Oban.Job{} = job) do
+    logical_attempt = canonical_attempt(job)
     Oban.Worker.backoff(%{job | attempt: logical_attempt, max_attempts: @max_attempts})
   end
+
+  @doc false
+  def canonical_attempt(%Oban.Job{errors: errors}) when is_list(errors) do
+    errors
+    |> length()
+    |> Kernel.+(1)
+    |> min(@max_attempts)
+  end
+
+  @doc false
+  def max_attempts, do: @max_attempts
 
   @impl Oban.Worker
   def perform(%Oban.Job{id: job_id, args: %{"snapshot_id" => snapshot_id}} = job) do
@@ -37,16 +43,16 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
     end
   end
 
-  defp perform_build(%Oban.Job{
-         id: job_id,
-         args: %{"snapshot_id" => snapshot_id},
-         attempt: attempt,
-         max_attempts: max_attempts
-       }) do
+  defp perform_build(
+         %Oban.Job{id: job_id, args: %{"snapshot_id" => snapshot_id}, attempt: _attempt, max_attempts: _max_attempts} =
+           job
+       ) do
+    attempt = canonical_attempt(job)
+
     case Versioning.perform_project_snapshot_build(snapshot_id,
            job_id: job_id,
            attempt: attempt,
-           max_attempts: max_attempts
+           max_attempts: @max_attempts
          ) do
       {:ok, _snapshot} -> :ok
       {:retry, reason} -> {:error, reason}

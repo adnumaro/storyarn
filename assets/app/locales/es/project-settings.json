@@ -154,6 +154,7 @@
         "failed": "Fallida",
         "cancelled": "Cancelada",
         "deleting": "Eliminando",
+        "retrying": "Reintentando",
         "unknown": "Estado desconocido"
       },
       "integrity": {
@@ -195,6 +196,14 @@
         "cancel": "Cancelar creación",
         "cancelling": "Cancelación solicitada",
         "accessibility": "Progreso de creación de la snapshot: {percent}"
+      },
+      "retry": {
+        "waiting_attempt": "Esperando el intento {attempt} de {max}",
+        "attempt": "Intento {attempt} de {max}",
+        "next_retry": "Próximo reintento: {date}",
+        "retry_due": "Reintento pendiente desde {date}; esperando a un worker.",
+        "waiting_for_worker": "Esperando a que un worker programe el próximo reintento.",
+        "build_failed": "Se ha producido un error temporal durante la creación. Storyarn volverá a intentarlo automáticamente; no se ha publicado ninguna snapshot incompleta."
       },
       "download": {
         "action": "Descargar ZIP"

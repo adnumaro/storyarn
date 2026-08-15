@@ -49,6 +49,12 @@ interface SnapshotFixture {
   progressPhase: string | null;
   progressBytes: string;
   progressTotalBytes: string | null;
+  buildJobState: string | null;
+  buildAttempt: number;
+  buildMaxAttempts: number | null;
+  retrying: boolean;
+  nextRetryAt: string | null;
+  retryErrorCode: string | null;
   failureCode: string | null;
   failureMessage: string | null;
   capturedAt: string | null;
@@ -96,6 +102,12 @@ const measuredSnapshot: SnapshotFixture = {
   progressPhase: "complete",
   progressBytes: String(6 * 1024),
   progressTotalBytes: String(6 * 1024),
+  buildJobState: "completed",
+  buildAttempt: 1,
+  buildMaxAttempts: 3,
+  retrying: false,
+  nextRetryAt: null,
+  retryErrorCode: null,
   failureCode: null,
   failureMessage: null,
   capturedAt: "2026-07-17T09:59:00Z",
@@ -235,6 +247,9 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       progressPhase: "pending",
       progressBytes: "0",
       progressTotalBytes: String(6 * 1024),
+      buildJobState: "available",
+      buildAttempt: 0,
+      buildMaxAttempts: 3,
       canCancel: true,
       deleteStatus: null,
       downloadUrl: null,
@@ -244,6 +259,7 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(text).toContain("Full");
     expect(text).toContain("Pending");
     expect(text).toContain("Integrity unknown");
+    expect(text).toContain("Waiting for attempt 1 of 3");
     expect(text).toContain("Reserved storage: 6 KB");
     expect(text).toContain("Planned snapshot: 6 KB");
     expect(wrapper.get("form").element).toBeTruthy();
@@ -251,6 +267,73 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       true,
     );
     expect(wrapper.find('a[href*="/snapshots/"]').exists()).toBe(false);
+  });
+
+  it("shows durable retry attempt, schedule, and a safe generic error", () => {
+    const wrapper = mountSnapshots({
+      ...measuredSnapshot,
+      lifecycleStatus: "pending",
+      integrityStatus: "unknown",
+      accountedSizeBytes: null,
+      archiveSizeBytes: null,
+      sidecarSizeBytes: null,
+      progressPhase: "pending",
+      progressBytes: "0",
+      progressTotalBytes: null,
+      buildJobState: "retryable",
+      buildAttempt: 2,
+      buildMaxAttempts: 3,
+      retrying: true,
+      nextRetryAt: "2000-01-01T10:00:00Z",
+      retryErrorCode: "build_failed",
+      canCancel: true,
+      deleteStatus: null,
+      downloadUrl: null,
+    });
+
+    expect(wrapper.find('[aria-label="Snapshot state: Retrying"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain("Preparing a safe retry");
+    expect(wrapper.get('[data-testid="snapshot-attempt-21"]').text()).toBe("Attempt 2 of 3");
+    expect(wrapper.get('[data-testid="snapshot-next-retry-21"]').text()).toContain(
+      "Retry due since",
+    );
+    expect(wrapper.get('[data-testid="snapshot-next-retry-21"]').text()).toContain(
+      "waiting for a worker",
+    );
+
+    const safeError = wrapper.get('[data-testid="snapshot-retry-error-21"]');
+    expect(safeError.attributes("data-error-code")).toBe("build_failed");
+    expect(safeError.text()).toContain("Storyarn will retry automatically");
+    expect(safeError.text()).toContain("no incomplete snapshot was published");
+    expect(wrapper.text()).not.toContain("stacktrace");
+  });
+
+  it("does not render retry state or controls after the snapshot is terminal", () => {
+    const wrapper = mountSnapshots({
+      ...measuredSnapshot,
+      lifecycleStatus: "failed",
+      integrityStatus: "incomplete",
+      progressPhase: "failed",
+      buildJobState: "discarded",
+      buildAttempt: 3,
+      buildMaxAttempts: 3,
+      retrying: false,
+      nextRetryAt: null,
+      retryErrorCode: null,
+      failureCode: "build_failed",
+      failureMessage: "The snapshot could not be created. No incomplete snapshot was published.",
+      canCancel: false,
+      canDelete: true,
+      canRestore: false,
+      downloadUrl: null,
+    });
+
+    expect(wrapper.find('[aria-label="Snapshot state: Failed"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="snapshot-attempt-21"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="snapshot-next-retry-21"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="snapshot-retry-error-21"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("Storyarn will retry automatically");
+    expect(wrapper.text()).toContain("No incomplete snapshot was published");
   });
 
   it.each([

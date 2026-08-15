@@ -13,6 +13,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
   alias Storyarn.Assets
+  alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
@@ -28,7 +29,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Versioning.ProjectSnapshotCrud
   alias Storyarn.Versioning.ProjectSnapshotLeasePolicy
   alias Storyarn.Versioning.ProjectSnapshotPolicy
+  alias Storyarn.Versioning.ProjectSnapshotZip
   alias Storyarn.Versioning.SnapshotArchiveStorage
+  alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
@@ -36,6 +39,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   require Logger
 
   @capture_timeout to_timeout(minute: 5)
+  @capture_inventory_attempts 3
   @active_build_states ~w(pending building verifying)
   @terminal_job_states ~w(completed discarded cancelled)
   @releasable_waiting_job_states ~w(available scheduled retryable)
@@ -139,8 +143,27 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   defp materialize_capture_for_snapshot(%ProjectSnapshot{lifecycle_state: state}, _job_id)
        when state in ["ready", "failed", "cancelled", "deleting"], do: {:ok, :terminal}
 
-  defp materialize_capture_for_snapshot(%ProjectSnapshot{format_version: 2, capture_digest: digest}, _job_id)
+  defp materialize_capture_for_snapshot(
+         %ProjectSnapshot{format_version: 2, capture_digest: digest, cancel_requested_at: %DateTime{}},
+         _job_id
+       )
        when is_binary(digest), do: {:ok, :already_captured}
+
+  defp materialize_capture_for_snapshot(%ProjectSnapshot{format_version: 2, capture_digest: digest} = snapshot, job_id)
+       when is_binary(digest) do
+    with :ok <- validate_materialization_job(snapshot, job_id),
+         :ok <- heartbeat(snapshot.id, job_id, true),
+         %ProjectSnapshotCapture{} = capture <- Repo.get(ProjectSnapshotCapture, snapshot.id),
+         true <- capture.capture_boundary == snapshot.capture_boundary,
+         true <- capture.capture_digest == snapshot.capture_digest,
+         :ok <- ensure_materialized_capture_asset_blobs(snapshot, capture) do
+      {:ok, :already_captured}
+    else
+      nil -> {:error, :snapshot_capture_missing}
+      false -> {:error, :snapshot_capture_identity_mismatch}
+      {:error, _reason} = error -> error
+    end
+  end
 
   defp materialize_capture_for_snapshot(
          %ProjectSnapshot{format_version: 2, lifecycle_state: "pending", capture_digest: nil} = snapshot,
@@ -148,7 +171,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
        ) do
     with :ok <- validate_materialization_job(snapshot, job_id),
          :ok <- heartbeat(snapshot.id, job_id),
-         {:ok, project_snapshot, prepared} <- capture_archive_inputs(snapshot.project_id),
+         {:ok, project_snapshot, prepared, assets} <- capture_archive_inputs(snapshot.project_id),
+         :ok <- run_capture_inventory_observed(:captured, assets),
+         :ok <- ensure_captured_asset_blobs(assets),
          {:ok, _snapshot} <- persist_materialized_capture(snapshot, job_id, project_snapshot, prepared) do
       {:ok, :captured}
     end
@@ -909,6 +934,51 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   def subscribe(_project_id), do: {:error, :invalid_project_id}
 
+  @doc false
+  @spec build_statuses([ProjectSnapshot.t()]) :: %{optional(pos_integer()) => map()}
+  def build_statuses(snapshots) when is_list(snapshots) do
+    snapshots_by_job_id =
+      snapshots
+      |> Enum.filter(&match?(%ProjectSnapshot{build_job_id: id} when is_integer(id) and id > 0, &1))
+      |> Map.new(&{&1.build_job_id, &1.id})
+
+    job_ids = Map.keys(snapshots_by_job_id)
+
+    from(job in Oban.Job,
+      where:
+        job.id in ^job_ids and job.worker == ^@build_worker and
+          job.queue == ^@archive_build_queue
+    )
+    |> Repo.all()
+    |> Map.new(fn job ->
+      snapshot_id = Map.fetch!(snapshots_by_job_id, job.id)
+      {snapshot_id, serialize_build_status(job)}
+    end)
+  end
+
+  def build_statuses(_snapshots), do: %{}
+
+  defp serialize_build_status(%Oban.Job{} = job) do
+    max_attempts = min(job.max_attempts, BuildProjectSnapshotWorker.max_attempts())
+    retrying = job.errors != [] and job.state in @releasable_waiting_job_states
+
+    attempt =
+      if job.state == "executing" do
+        min(BuildProjectSnapshotWorker.canonical_attempt(job), max_attempts)
+      else
+        min(length(job.errors), max_attempts)
+      end
+
+    %{
+      job_state: job.state,
+      attempt: attempt,
+      max_attempts: max_attempts,
+      retrying: retrying,
+      next_retry_at: if(retrying, do: job.scheduled_at),
+      retry_error_code: if(retrying, do: "build_failed")
+    }
+  end
+
   defp run_request_transaction(project, user_id, request) do
     result =
       Billing.transact_with_workspace_lock(
@@ -918,6 +988,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
     case result do
       {:ok, %ProjectSnapshot{} = snapshot} ->
+        wake_build_queue()
         broadcast(snapshot)
         {:ok, snapshot}
 
@@ -928,6 +999,35 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     exception ->
       Logger.error("Project snapshot request failed safely: #{Exception.message(exception)}")
       {:error, :snapshot_capture_failed}
+  end
+
+  defp wake_build_queue do
+    notifier =
+      case Application.get_env(:storyarn, __MODULE__, []) do
+        opts when is_list(opts) ->
+          case Keyword.get(opts, :queue_notifier) do
+            callback when is_function(callback, 1) -> callback
+            _invalid -> &Oban.Notifier.notify(Oban, :insert, &1)
+          end
+
+        _invalid ->
+          &Oban.Notifier.notify(Oban, :insert, &1)
+      end
+
+    result =
+      try do
+        notifier.(%{queue: @archive_build_queue})
+      rescue
+        _exception -> :error
+      catch
+        _kind, _reason -> :error
+      end
+
+    if result != :ok do
+      Logger.warning("Project snapshot queue wake-up failed after the durable request committed")
+    end
+
+    :ok
   end
 
   defp request_locked(project, user_id, request) do
@@ -981,27 +1081,236 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   end
 
   defp capture_archive_inputs(project_id) do
-    case Repo.repeatable_read(
-           fn -> prepare_archive_capture(project_id) end,
-           timeout: @capture_timeout
-         ) do
-      {:ok, {:ok, project_snapshot, prepared}} -> {:ok, project_snapshot, prepared}
-      {:ok, {:error, reason}} -> {:error, reason}
-      {:error, reason} -> {:error, reason}
+    with {:ok, assets} <- capture_asset_inventory(project_id),
+         :ok <- ensure_captured_asset_blobs(assets),
+         :ok <- run_capture_inventory_observed(:repaired, assets) do
+      capture_archive_inputs(project_id, assets, @capture_inventory_attempts)
     end
   end
 
-  defp prepare_archive_capture(project_id) do
-    project_snapshot =
-      ProjectSnapshotBuilder.build_snapshot_in_transaction(project_id,
-        localization_scope: :active
-      )
+  defp capture_archive_inputs(project_id, expected_assets, attempts_remaining) do
+    case Repo.repeatable_read(
+           fn -> prepare_archive_capture(project_id, expected_assets) end,
+           timeout: @capture_timeout
+         ) do
+      {:ok, {:ok, project_snapshot, prepared, assets}} ->
+        {:ok, project_snapshot, prepared, assets}
 
+      {:ok, {:inventory_changed, assets}} when attempts_remaining > 1 ->
+        with :ok <- ensure_captured_asset_blobs(assets),
+             :ok <- run_capture_inventory_observed(:repaired, assets) do
+          capture_archive_inputs(project_id, assets, attempts_remaining - 1)
+        end
+
+      {:ok, {:inventory_changed, _assets}} ->
+        {:error, :snapshot_capture_inventory_changed}
+
+      {:ok, {:error, reason}} ->
+        {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp capture_asset_inventory(project_id) do
+    case Repo.repeatable_read(
+           fn -> Assets.list_assets_for_export(project_id) end,
+           timeout: @capture_timeout
+         ) do
+      {:ok, assets} when is_list(assets) -> {:ok, assets}
+      {:error, reason} -> {:error, reason}
+      _invalid -> {:error, :snapshot_capture_inventory_invalid}
+    end
+  end
+
+  defp ensure_captured_asset_blobs(assets) do
+    case Assets.ensure_asset_blobs(assets) do
+      {:ok, _repair_summary} -> :ok
+      {:error, reason} -> {:error, normalize_asset_blob_preflight_error(reason)}
+    end
+  end
+
+  defp normalize_asset_blob_preflight_error({kind, %{blob_hash: blob_hash, errors: errors}} = reason)
+       when kind in [:active_asset_blob_unavailable, :snapshot_asset_blob_unavailable] and is_list(errors) do
+    cond do
+      contains_reason?(reason, :asset_blob_repair_cleanup_failed) ->
+        reason
+
+      errors != [] and
+          Enum.all?(errors, fn error ->
+            contains_reason?(error, :asset_blob_source_missing) or
+                contains_reason?(error, :asset_blob_destination_missing)
+          end) ->
+        {:missing_snapshot_blob_source, blob_hash}
+
+      Enum.any?(errors, &corrupt_asset_blob_reason?/1) ->
+        {:snapshot_object_checksum_mismatch, blob_hash}
+
+      true ->
+        reason
+    end
+  end
+
+  defp normalize_asset_blob_preflight_error(reason), do: reason
+
+  defp ensure_materialized_capture_asset_blobs(%ProjectSnapshot{} = snapshot, %ProjectSnapshotCapture{} = capture) do
+    prepared = %{
+      capture_digest: capture.capture_digest,
+      project_json: capture.project_json,
+      manifest_json: capture.manifest_json,
+      source_keys: capture.source_keys,
+      project_size_bytes: capture.project_size_bytes,
+      project_checksum: snapshot.project_checksum,
+      manifest_size_bytes: capture.manifest_size_bytes,
+      manifest_checksum: snapshot.manifest_checksum,
+      total_size_bytes: capture.total_size_bytes,
+      asset_blob_size_bytes: capture.asset_blob_size_bytes,
+      object_count: capture.object_count,
+      asset_count: capture.asset_count,
+      blob_count: capture.blob_count
+    }
+
+    with {:ok, _plan} <- ProjectSnapshotZip.prepare_capture(snapshot.project_id, prepared),
+         {:ok, project} <- Jason.decode(capture.project_json),
+         {:ok, manifest} <- Jason.decode(capture.manifest_json),
+         :ok <- SnapshotObjectFormat.validate_project(project),
+         :ok <- SnapshotObjectFormat.validate_manifest(manifest),
+         :ok <- SnapshotObjectFormat.validate_source_refs(project["asset_catalog_refs"], manifest["assets"]),
+         {:ok, blob_specs} <- capture_blob_specs(snapshot.project_id, project, manifest, capture.source_keys) do
+      case Assets.ensure_snapshot_asset_blobs(snapshot.project_id, blob_specs) do
+        {:ok, _repair_summary} -> :ok
+        {:error, reason} -> {:error, normalize_asset_blob_preflight_error(reason)}
+      end
+    else
+      {:error, %Jason.DecodeError{}} -> {:error, :snapshot_build_input_invalid}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp capture_blob_specs(
+         project_id,
+         %{"asset_catalog_refs" => %{} = source_refs},
+         %{"objects" => objects, "assets" => assets},
+         %{} = source_keys
+       )
+       when is_integer(project_id) and project_id > 0 and is_list(objects) and is_list(assets) do
+    with {:ok, asset_ids_by_logical_id} <- captured_asset_ids_by_logical_id(source_refs) do
+      asset_ids_by_blob_hash =
+        Enum.reduce(assets, %{}, fn asset, ids_by_hash ->
+          asset_id = Map.fetch!(asset_ids_by_logical_id, asset["logical_id"])
+          Map.update(ids_by_hash, asset["sha256"], [asset_id], &[asset_id | &1])
+        end)
+
+      assets_by_blob_hash = Enum.group_by(assets, & &1["sha256"])
+
+      blob_specs =
+        objects
+        |> Enum.filter(&match?(%{"kind" => "asset_blob"}, &1))
+        |> Enum.map(fn object ->
+          captured_assets = Map.fetch!(assets_by_blob_hash, object["sha256"])
+
+          %{
+            blob_hash: object["sha256"],
+            size: object["size_bytes"],
+            content_type: object["content_type"],
+            sanitized_svg: captured_blob_sanitized_svg?(object["content_type"], captured_assets),
+            asset_ids: asset_ids_by_blob_hash |> Map.fetch!(object["sha256"]) |> Enum.sort()
+          }
+        end)
+
+      expected_source_keys =
+        Map.new(blob_specs, fn spec ->
+          extension = BlobStore.ext_from_content_type(spec.content_type)
+          {spec.blob_hash, BlobStore.blob_key(project_id, spec.blob_hash, extension)}
+        end)
+
+      if source_keys == expected_source_keys,
+        do: {:ok, blob_specs},
+        else: {:error, :prepared_snapshot_source_inventory_mismatch}
+    end
+  end
+
+  defp capture_blob_specs(_project_id, _project, _manifest, _source_keys),
+    do: {:error, :prepared_snapshot_source_inventory_mismatch}
+
+  defp captured_blob_sanitized_svg?("image/svg+xml", captured_assets) do
+    captured_assets != [] and
+      Enum.all?(captured_assets, fn asset -> get_in(asset, ["metadata", "sanitized_svg"]) == true end)
+  end
+
+  defp captured_blob_sanitized_svg?(_content_type, _captured_assets), do: false
+
+  defp captured_asset_ids_by_logical_id(source_refs) do
+    Enum.reduce_while(source_refs, {:ok, %{}}, fn {source_ref, logical_id}, {:ok, asset_ids} ->
+      case Integer.parse(source_ref) do
+        {asset_id, ""} when asset_id > 0 ->
+          {:cont, {:ok, Map.put(asset_ids, logical_id, asset_id)}}
+
+        _invalid ->
+          {:halt, {:error, :prepared_snapshot_source_inventory_mismatch}}
+      end
+    end)
+  end
+
+  defp corrupt_asset_blob_reason?(reason) do
+    Enum.any?(
+      [:blob_hash_mismatch, :asset_blob_size_mismatch, :asset_blob_content_type_mismatch],
+      &contains_reason?(reason, &1)
+    )
+  end
+
+  defp prepare_archive_capture(project_id, expected_assets) do
     assets = Assets.list_assets_for_export(project_id)
 
-    case SnapshotArchiveStorage.prepare(project_id, project_snapshot, assets, source_key_mode: :protected_blob) do
-      {:ok, prepared} -> {:ok, project_snapshot, prepared}
-      {:error, reason} -> {:error, reason}
+    if capture_asset_inventory_fingerprint(assets) == capture_asset_inventory_fingerprint(expected_assets) do
+      project_snapshot =
+        ProjectSnapshotBuilder.build_snapshot_in_transaction(project_id,
+          localization_scope: :active
+        )
+
+      case SnapshotArchiveStorage.prepare(project_id, project_snapshot, assets, source_key_mode: :protected_blob) do
+        {:ok, prepared} -> {:ok, project_snapshot, prepared, assets}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:inventory_changed, assets}
+    end
+  end
+
+  defp capture_asset_inventory_fingerprint(assets) do
+    Enum.map(assets, fn asset ->
+      Map.take(asset, [
+        :id,
+        :filename,
+        :content_type,
+        :size,
+        :key,
+        :url,
+        :metadata,
+        :blob_hash,
+        :project_id,
+        :uploaded_by_id,
+        :deleted_at,
+        :deleted_by_id,
+        :deletion_reason,
+        :deletion_generation,
+        :inserted_at,
+        :updated_at
+      ])
+    end)
+  end
+
+  defp run_capture_inventory_observed(stage, assets) when stage in [:repaired, :captured] do
+    case Application.get_env(:storyarn, __MODULE__, []) do
+      opts when is_list(opts) ->
+        case Keyword.get(opts, :capture_inventory_observed_fun) do
+          callback when is_function(callback, 2) -> callback.(stage, assets)
+          _invalid -> :ok
+        end
+
+      _invalid ->
+        :ok
     end
   end
 

@@ -152,22 +152,38 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       "localization_manifest" => LocalizationSnapshotCodec.manifest(localization, target_locales)
     }
 
-    ensure_valid_built_sheet_snapshot!(sheet, snapshot)
+    ensure_valid_built_sheet_snapshot!(sheet, snapshot, target_locales)
   end
 
-  defp ensure_valid_built_sheet_snapshot!(sheet, snapshot) do
+  defp ensure_valid_built_sheet_snapshot!(sheet, snapshot, target_locales) do
     result =
-      with :ok <- validate_portable_sheet_snapshot(snapshot),
+      with {:ok, localization} <-
+             SheetLocalizationSnapshotValidator.complete_missing_rows(
+               snapshot["localization"],
+               snapshot,
+               target_locales
+             ),
+           snapshot =
+             snapshot
+             |> Map.put("localization", localization)
+             |> Map.put(
+               "localization_manifest",
+               LocalizationSnapshotCodec.manifest(localization, target_locales)
+             ),
+           :ok <- validate_portable_sheet_snapshot(snapshot),
            :ok <- validate_sheet_block_reference_ownership(sheet.project_id, snapshot) do
-        validate_effective_sheet_inheritance_graph(
-          sheet.project_id,
-          snapshot["blocks"],
-          forbidden_sheet_id: sheet.id
-        )
+        with :ok <-
+               validate_effective_sheet_inheritance_graph(
+                 sheet.project_id,
+                 snapshot["blocks"],
+                 forbidden_sheet_id: sheet.id
+               ) do
+          {:ok, snapshot}
+        end
       end
 
     case result do
-      :ok ->
+      {:ok, snapshot} ->
         snapshot
 
       {:error, reason} ->

@@ -5,6 +5,7 @@ defmodule Storyarn.Versioning.SheetLocalizationSnapshotValidator do
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Shared.HtmlUtils
+  alias Storyarn.Versioning.LocalizationSnapshotCodec
 
   @localization_snapshot_fields ~w(
     source_type source_id source_field source_text source_text_hash translated_source_hash
@@ -27,6 +28,27 @@ defmodule Storyarn.Versioning.SheetLocalizationSnapshotValidator do
   end
 
   def validate(localization, snapshot), do: {:error, {:invalid_sheet_localization_snapshot, localization, snapshot}}
+
+  @doc false
+  @spec complete_missing_rows([map()], map(), [String.t()]) ::
+          {:ok, [map()]} | {:error, term()}
+  def complete_missing_rows(localization, snapshot, target_locales) when is_list(localization) and is_map(snapshot) do
+    with :ok <- validate_snapshot_source_shape(snapshot),
+         sources = snapshot_sources(snapshot),
+         :ok <- validate_rows(localization, sources),
+         :ok <- validate_unique_rows(localization),
+         {:ok, target_locales} <- validate_locales(localization, target_locales) do
+      {:ok,
+       LocalizationSnapshotCodec.complete_pending_rows(
+         localization,
+         pending_sources(sources),
+         target_locales
+       )}
+    end
+  end
+
+  def complete_missing_rows(localization, snapshot, _target_locales),
+    do: {:error, {:invalid_sheet_localization_snapshot, localization, snapshot}}
 
   @spec validate_sources([map()], map()) :: :ok | {:error, term()}
   def validate_sources(localization, snapshot) when is_list(localization) and is_map(snapshot) do
@@ -292,6 +314,18 @@ defmodule Storyarn.Versioning.SheetLocalizationSnapshotValidator do
           unexpected: sorted_difference(actual, expected)
         }}}
     end
+  end
+
+  defp pending_sources(sources) do
+    Enum.map(sources, fn {{source_type, source_id, source_field}, source} ->
+      %{
+        "source_type" => source_type,
+        "source_id" => source_id,
+        "source_field" => source_field,
+        "source_text" => source.text,
+        "speaker_sheet_id" => source.speaker_sheet_id
+      }
+    end)
   end
 
   defp validate_snapshot_source_shape(snapshot) do

@@ -16,6 +16,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Localization
+  alias Storyarn.Localization.LocalizedText
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
@@ -203,6 +204,138 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
 
       assert [_localized_sheet_name] =
                Localization.list_texts_for_export(recovered.id, ["es"])
+    end
+
+    test "canonicalizes missing runtime translations in global and nested snapshots and recovers them", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _ca = language_fixture(project, %{locale_code: "ca", name: "Catalan"})
+
+      sheet = sheet_fixture(project, %{name: "Hero"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "text",
+          variable_name: "biography",
+          value: %{"content" => "Biography"}
+        })
+
+      flow = flow_fixture(project, %{name: "Introduction"})
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Welcome", "responses" => []}
+        })
+
+      assert {3, _rows} =
+               Repo.delete_all(
+                 from(text in LocalizedText,
+                   where:
+                     text.locale_code == "ca" and
+                       ((text.source_type == "sheet" and text.source_id == ^sheet.id and
+                           text.source_field == "name") or
+                          (text.source_type == "block" and text.source_id == ^block.id and
+                             text.source_field == "value.content") or
+                          (text.source_type == "flow_node" and text.source_id == ^node.id and
+                             text.source_field == "text"))
+                 )
+               )
+
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+
+      nested_rows =
+        Enum.flat_map(snapshot_data["sheets"] ++ snapshot_data["flows"], &get_in(&1, ["snapshot", "localization"]))
+
+      global_rows = snapshot_data["localization"]["texts"]
+
+      expected_contracts = %{
+        {"sheet", sheet.id, "name", "ca"} => {"speaker_name", false},
+        {"block", block.id, "value.content", "ca"} => {"runtime_value", false},
+        {"flow_node", node.id, "text", "ca"} => {"dialogue", true}
+      }
+
+      assert expected_contracts |> Map.keys() |> Enum.sort() ==
+               global_rows |> Enum.map(&localization_snapshot_key/1) |> Enum.sort()
+
+      for {key, {content_role, vo_eligible}} <- expected_contracts do
+        global_row = Enum.find(global_rows, &(localization_snapshot_key(&1) == key))
+        nested_row = Enum.find(nested_rows, &(localization_snapshot_key(&1) == key))
+
+        assert Map.drop(global_row, ["content_role", "vo_eligible"]) == nested_row
+        assert global_row["content_role"] == content_role
+        assert global_row["vo_eligible"] == vo_eligible
+        assert global_row["status"] == "pending"
+        assert global_row["translated_text"] == nil
+        assert global_row["translated_source_hash"] == nil
+        assert global_row["vo_asset_id"] == nil
+        assert global_row["translated_by_id"] == nil
+        assert global_row["reviewed_by_id"] == nil
+      end
+
+      assert snapshot_data["entity_counts"]["localized_texts"] == 3
+      assert [] = Localization.get_texts_for_source("sheet", sheet.id)
+      assert [] = Localization.get_texts_for_source("block", block.id)
+      assert [] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, recovered} =
+               ProjectRecovery.materialize_template(
+                 workspace_id,
+                 snapshot_data,
+                 user.id
+               )
+
+      restored_rows = Localization.list_texts_for_export(recovered.id, ["ca"])
+      assert length(restored_rows) == 3
+
+      assert Enum.all?(restored_rows, fn row ->
+               row.status == "pending" and is_nil(row.translated_text) and
+                 is_nil(row.translated_source_hash) and is_nil(row.vo_asset_id) and
+                 is_nil(row.translated_by_id) and is_nil(row.reviewed_by_id)
+             end)
+    end
+
+    test "replaces an archived runtime row with the canonical pending row in portable backups", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      {_sheet, block} = localized_block_fixture(project)
+
+      assert {1, nil} =
+               Storyarn.Localization.TextCrud.archive_texts_for_source(
+                 "block",
+                 block.id,
+                 "source_deleted"
+               )
+
+      snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
+      key = {"block", block.id, "value.content", "es"}
+
+      assert [global_row] =
+               Enum.filter(
+                 snapshot_data["localization"]["texts"],
+                 &(localization_snapshot_key(&1) == key)
+               )
+
+      nested_row =
+        snapshot_data["sheets"]
+        |> Enum.flat_map(&get_in(&1, ["snapshot", "localization"]))
+        |> Enum.find(&(localization_snapshot_key(&1) == key))
+
+      assert is_nil(global_row["archived_at"])
+      assert global_row["status"] == "pending"
+      assert Map.drop(global_row, ["content_role", "vo_eligible"]) == nested_row
+
+      assert {:ok, _recovered} =
+               ProjectRecovery.materialize_template(
+                 workspace_id,
+                 snapshot_data,
+                 user.id
+               )
     end
 
     test "rejects a global localization row that disagrees with its entity snapshot", %{

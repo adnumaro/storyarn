@@ -21,6 +21,8 @@ defmodule Storyarn.Assets.BlobStore do
 
   require Logger
 
+  @sha256_regex ~r/\A[0-9a-f]{64}\z/
+
   @doc """
   Generates the storage key for a blob.
 
@@ -110,6 +112,320 @@ defmodule Storyarn.Assets.BlobStore do
 
   def ensure_blob_with_status(_project_id, _hash, _ext, _binary_data, _content_type),
     do: {:error, :invalid_blob_content_type}
+
+  @doc """
+  Ensures that an existing asset has its project-scoped canonical blob.
+
+  Canonical blobs are immutable recovery substrate. When the destination is
+  absent or verified corrupt, this verifies the asset's original object by
+  size, content type, and SHA-256 before copying it under the canonical
+  project-blob lock. A corrupt destination is removed only while the same lock
+  is held and only while its provider identity still matches the object that
+  failed verification.
+  """
+  @spec ensure_asset_blob(Asset.t()) ::
+          {:ok, String.t(), :present | :repaired} | {:error, term()}
+  def ensure_asset_blob(
+        %Asset{project_id: project_id, blob_hash: blob_hash, content_type: content_type, size: size, key: source_key} =
+          asset
+      )
+      when is_integer(project_id) and project_id > 0 and is_binary(blob_hash) and is_binary(content_type) and
+             content_type != "" and is_integer(size) and size > 0 and is_binary(source_key) do
+    extension = ext_from_content_type(content_type)
+    destination_key = blob_key(project_id, blob_hash, extension)
+
+    with true <- Regex.match?(@sha256_regex, blob_hash),
+         true <- valid_asset_source_key?(source_key, project_id),
+         true <- valid_asset_content_type?(asset),
+         true <- Storage.canonical_key?(destination_key) do
+      tracker = StorageCompensation.new()
+      opts = [asset_copy_tracker: tracker]
+
+      result =
+        StorageKeyLock.with_project_blob_lock(destination_key, fn ->
+          ensure_asset_blob_under_lock(
+            source_key,
+            destination_key,
+            blob_hash,
+            size,
+            content_type,
+            opts
+          )
+        end)
+
+      finalize_asset_blob_repair(result, tracker)
+    else
+      false -> {:error, :invalid_asset_blob_identity}
+    end
+  end
+
+  def ensure_asset_blob(%Asset{}), do: {:error, :invalid_asset_blob_identity}
+
+  def ensure_asset_blob(_asset), do: {:error, :invalid_asset}
+
+  @doc false
+  @spec verify_asset_blob(pos_integer(), String.t(), pos_integer(), String.t(), keyword()) ::
+          {:ok, String.t(), :present} | {:error, term()}
+  def verify_asset_blob(project_id, blob_hash, size, content_type, opts \\ [])
+
+  def verify_asset_blob(project_id, blob_hash, size, content_type, opts)
+      when is_integer(project_id) and project_id > 0 and is_binary(blob_hash) and is_integer(size) and size > 0 and
+             is_binary(content_type) and content_type != "" and is_list(opts) do
+    destination_key = blob_key(project_id, blob_hash, ext_from_content_type(content_type))
+
+    verify_asset_blob_identity(destination_key, blob_hash, size, content_type, opts)
+  end
+
+  def verify_asset_blob(_project_id, _blob_hash, _size, _content_type, _opts), do: {:error, :invalid_asset_blob_identity}
+
+  defp verify_asset_blob_identity(destination_key, blob_hash, size, content_type, opts) do
+    with true <- Regex.match?(@sha256_regex, blob_hash),
+         true <- valid_snapshot_blob_content_type?(content_type, opts),
+         true <- Storage.canonical_key?(destination_key) do
+      StorageKeyLock.with_project_blob_lock(destination_key, fn ->
+        destination_key
+        |> Storage.stat()
+        |> verify_asset_blob_stat(destination_key, blob_hash, size, content_type)
+      end)
+    else
+      false -> {:error, :invalid_asset_blob_identity}
+    end
+  end
+
+  defp verify_asset_blob_stat({:ok, stat}, destination_key, blob_hash, size, content_type) do
+    case verify_stored_asset_blob(destination_key, stat, blob_hash, size, content_type) do
+      :ok -> {:ok, destination_key, :present}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp verify_asset_blob_stat({:error, reason}, destination_key, _blob_hash, _size, _content_type) do
+    if storage_object_missing?(reason),
+      do: {:error, {:asset_blob_destination_missing, destination_key}},
+      else: {:error, {:asset_blob_destination_stat_failed, reason}}
+  end
+
+  defp verify_asset_blob_stat(_invalid, _destination_key, _blob_hash, _size, _content_type),
+    do: {:error, :invalid_asset_blob_destination_stat}
+
+  defp ensure_asset_blob_under_lock(source_key, destination_key, blob_hash, size, content_type, opts) do
+    destination_key
+    |> Storage.stat()
+    |> ensure_asset_blob_from_stat(source_key, destination_key, blob_hash, size, content_type, opts)
+  end
+
+  defp ensure_asset_blob_from_stat({:ok, stat}, source_key, destination_key, blob_hash, size, content_type, opts) do
+    destination_key
+    |> verify_stored_asset_blob(stat, blob_hash, size, content_type)
+    |> ensure_existing_asset_blob(source_key, destination_key, blob_hash, size, content_type, stat, opts)
+  end
+
+  defp ensure_asset_blob_from_stat({:error, reason}, source_key, destination_key, blob_hash, size, content_type, opts) do
+    if storage_object_missing?(reason),
+      do: repair_asset_blob(source_key, destination_key, blob_hash, size, content_type, opts),
+      else: {:error, {:asset_blob_destination_stat_failed, reason}}
+  end
+
+  defp ensure_asset_blob_from_stat(_invalid, _source_key, _destination_key, _blob_hash, _size, _content_type, _opts),
+    do: {:error, :invalid_asset_blob_destination_stat}
+
+  defp ensure_existing_asset_blob(:ok, _source_key, destination_key, _blob_hash, _size, _content_type, _stat, _opts),
+    do: {:ok, destination_key, :present}
+
+  defp ensure_existing_asset_blob(
+         {:error, reason} = error,
+         source_key,
+         destination_key,
+         blob_hash,
+         size,
+         content_type,
+         stat,
+         opts
+       ) do
+    if verified_asset_blob_corruption?(reason),
+      do: replace_asset_blob(source_key, destination_key, blob_hash, size, content_type, stat, reason, opts),
+      else: error
+  end
+
+  defp repair_asset_blob(source_key, destination_key, blob_hash, size, content_type, opts) do
+    with :ok <- verify_asset_blob_source(source_key, blob_hash, size, content_type) do
+      copy_verified_asset_blob(source_key, destination_key, blob_hash, size, content_type, opts)
+    end
+  end
+
+  defp replace_asset_blob(
+         source_key,
+         destination_key,
+         blob_hash,
+         size,
+         content_type,
+         invalid_stat,
+         corruption_reason,
+         opts
+       ) do
+    with :ok <- verify_asset_blob_source(source_key, blob_hash, size, content_type),
+         :ok <- remove_verified_invalid_blob(destination_key, blob_hash, invalid_stat, corruption_reason, opts) do
+      copy_verified_asset_blob(source_key, destination_key, blob_hash, size, content_type, opts)
+    end
+  end
+
+  defp copy_verified_asset_blob(source_key, destination_key, blob_hash, size, content_type, opts) do
+    with {:ok, ^destination_key, created?} <-
+           copy_verified_blob_if_absent(source_key, destination_key, blob_hash, size, opts),
+         :ok <- verify_asset_blob_content_type(destination_key, content_type) do
+      status = if created?, do: :repaired, else: :present
+      {:ok, destination_key, status}
+    else
+      {:error, {:asset_blob_content_type_mismatch, _expected, _actual}} ->
+        compensate_invalid_blob(opts, destination_key)
+        {:error, :asset_blob_replacement_pending}
+
+      {:error, _reason} ->
+        {:error, :asset_blob_replacement_pending}
+    end
+  end
+
+  defp remove_verified_invalid_blob(
+         destination_key,
+         blob_hash,
+         invalid_stat,
+         {:asset_blob_content_type_mismatch, _expected, _actual},
+         opts
+       ) do
+    case verify_stored_blob(destination_key, invalid_stat, blob_hash) do
+      :ok -> delete_content_type_invalid_blob(destination_key, blob_hash, invalid_stat)
+      {:error, :blob_hash_mismatch} -> force_delete_invalid_blob(destination_key, opts)
+      {:error, _reason} -> {:error, :asset_blob_replacement_pending}
+    end
+  end
+
+  defp remove_verified_invalid_blob(destination_key, _blob_hash, _invalid_stat, _corruption_reason, opts) do
+    force_delete_invalid_blob(destination_key, opts)
+  end
+
+  defp force_delete_invalid_blob(destination_key, opts) do
+    case Keyword.get(opts, :asset_copy_tracker) do
+      tracker when is_reference(tracker) ->
+        case StorageCompensation.delete_force_tracked_or_enqueue(tracker, destination_key) do
+          :ok -> :ok
+          {:error, _reason} -> {:error, :asset_blob_replacement_pending}
+        end
+
+      _invalid ->
+        raise "asset copy storage tracker is not initialized"
+    end
+  end
+
+  defp delete_content_type_invalid_blob(destination_key, blob_hash, invalid_stat) do
+    identity = invalid_blob_identity(invalid_stat, blob_hash)
+    result = Storage.adapter().delete_if_matches(destination_key, identity)
+
+    handle_content_type_invalid_blob_delete(result, destination_key, blob_hash)
+  end
+
+  defp invalid_blob_identity(%{etag: etag}, _blob_hash) when is_binary(etag) and etag != "", do: etag
+  defp invalid_blob_identity(_invalid_stat, blob_hash), do: blob_hash
+
+  defp handle_content_type_invalid_blob_delete(:ok, _destination_key, _blob_hash), do: :ok
+
+  defp handle_content_type_invalid_blob_delete({:error, :object_changed}, destination_key, blob_hash),
+    do: recheck_content_type_invalid_blob(destination_key, blob_hash)
+
+  defp handle_content_type_invalid_blob_delete({:error, _reason}, _destination_key, _blob_hash),
+    do: {:error, :asset_blob_replacement_pending}
+
+  defp recheck_content_type_invalid_blob(destination_key, blob_hash) do
+    case Storage.stat(destination_key) do
+      {:ok, current_stat} ->
+        _verification = verify_stored_blob(destination_key, current_stat, blob_hash)
+        {:error, :asset_blob_replacement_pending}
+
+      {:error, reason} ->
+        if storage_object_missing?(reason), do: :ok, else: {:error, :asset_blob_replacement_pending}
+
+      _invalid ->
+        {:error, :asset_blob_replacement_pending}
+    end
+  end
+
+  defp verify_asset_blob_source(source_key, blob_hash, size, content_type) do
+    case verify_stored_asset_blob(source_key, blob_hash, size, content_type) do
+      {:error, reason} when reason == :enoent -> {:error, {:asset_blob_source_missing, source_key}}
+      {:error, {:http_error, 404, _response}} -> {:error, {:asset_blob_source_missing, source_key}}
+      result -> result
+    end
+  end
+
+  defp verify_stored_asset_blob(storage_key, expected_hash, expected_size, expected_content_type) do
+    with {:ok, stat} <- Storage.stat(storage_key) do
+      verify_stored_asset_blob(storage_key, stat, expected_hash, expected_size, expected_content_type)
+    end
+  end
+
+  defp verify_stored_asset_blob(storage_key, stat, expected_hash, expected_size, expected_content_type) do
+    with :ok <- verify_stored_blob_size(stat, expected_size),
+         :ok <- verify_asset_blob_content_type(stat, expected_content_type) do
+      verify_stored_blob(storage_key, stat, expected_hash)
+    end
+  end
+
+  defp verified_asset_blob_corruption?(:blob_hash_mismatch), do: true
+  defp verified_asset_blob_corruption?({:asset_blob_size_mismatch, _expected, _actual}), do: true
+  defp verified_asset_blob_corruption?({:asset_blob_content_type_mismatch, _expected, _actual}), do: true
+  defp verified_asset_blob_corruption?(_reason), do: false
+
+  defp verify_asset_blob_content_type(storage_key, expected_content_type) when is_binary(storage_key) do
+    with {:ok, stat} <- Storage.stat(storage_key) do
+      verify_asset_blob_content_type(stat, expected_content_type)
+    end
+  end
+
+  defp verify_asset_blob_content_type(%{content_type: actual_content_type}, expected_content_type) do
+    if compatible_content_type?(actual_content_type, expected_content_type),
+      do: :ok,
+      else: {:error, {:asset_blob_content_type_mismatch, expected_content_type, actual_content_type}}
+  end
+
+  defp verify_asset_blob_content_type(_stat, expected_content_type),
+    do: {:error, {:asset_blob_content_type_mismatch, expected_content_type, nil}}
+
+  defp finalize_asset_blob_repair({:ok, _key, _status} = result, tracker) do
+    :ok = StorageCompensation.discard(tracker)
+    result
+  end
+
+  defp finalize_asset_blob_repair({:error, reason} = error, tracker) do
+    case StorageCompensation.cleanup_after_rollback(tracker) do
+      :ok -> error
+      {:error, cleanup_reason} -> {:error, {:asset_blob_repair_cleanup_failed, reason, cleanup_reason}}
+    end
+  end
+
+  defp valid_asset_source_key?(source_key, project_id) do
+    expected_project_id = Integer.to_string(project_id)
+
+    case String.split(source_key, "/", trim: false) do
+      ["projects", ^expected_project_id, "assets", asset_uuid, filename] ->
+        Storage.canonical_key?(source_key) and match?({:ok, _uuid}, Ecto.UUID.cast(asset_uuid)) and
+          filename not in ["", ".", "..", ".storyarn-copy"]
+
+      _other ->
+        false
+    end
+  end
+
+  defp valid_asset_content_type?(%Asset{content_type: "image/svg+xml", metadata: %{"sanitized_svg" => true}}), do: true
+
+  defp valid_asset_content_type?(%Asset{content_type: content_type}), do: Asset.allowed_content_type?(content_type)
+
+  defp valid_snapshot_blob_content_type?("image/svg+xml", opts), do: Keyword.get(opts, :sanitized_svg, false) == true
+
+  defp valid_snapshot_blob_content_type?(content_type, opts),
+    do: Keyword.get(opts, :sanitized_svg, false) == false and Asset.allowed_content_type?(content_type)
+
+  defp storage_object_missing?(:enoent), do: true
+  defp storage_object_missing?({:http_error, 404, _response}), do: true
+  defp storage_object_missing?(_reason), do: false
 
   defp default_blob_content_type("ogg"), do: "audio/ogg"
   defp default_blob_content_type("webm"), do: "audio/webm"

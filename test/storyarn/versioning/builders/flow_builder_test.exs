@@ -83,6 +83,82 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       end
     end
 
+    test "captures untranslated active-locale gaps as explicit pending rows", %{
+      project: project,
+      flow: flow
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _ca = language_fixture(project, %{locale_code: "ca", name: "Catalan"})
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Runtime line", "responses" => []}
+        })
+
+      assert {1, _rows} =
+               Repo.delete_all(
+                 from(text in LocalizedText,
+                   where:
+                     text.source_type == "flow_node" and text.source_id == ^node.id and
+                       text.source_field == "text" and text.locale_code == "ca"
+                 )
+               )
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      assert [
+               %{
+                 "locale_code" => "ca",
+                 "source_field" => "text",
+                 "source_id" => source_id,
+                 "source_text" => "Runtime line",
+                 "status" => "pending",
+                 "translated_source_hash" => nil,
+                 "translated_text" => nil,
+                 "vo_status" => "none"
+               }
+             ] = snapshot["localization"]
+
+      assert source_id == node.id
+
+      assert snapshot["localization_manifest"] ==
+               LocalizationSnapshotCodec.manifest(snapshot["localization"], ["ca"])
+
+      assert [] = Localization.get_texts_for_source("flow_node", node.id)
+
+      assert {:ok, _restored} =
+               FlowBuilder.restore_snapshot(flow, snapshot, restore_action: {:entity_version_restore, "flow"})
+
+      assert [%{status: "pending", translated_text: nil, translated_source_hash: nil}] =
+               Localization.get_texts_for_source("flow_node", node.id)
+    end
+
+    test "still rejects an active localization row for a source outside the snapshot contract", %{
+      project: project,
+      flow: flow
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _ca = language_fixture(project, %{locale_code: "ca", name: "Catalan"})
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Runtime line", "responses" => []}
+        })
+
+      assert [_row] = Localization.get_texts_for_source("flow_node", node.id)
+
+      Repo.update_all(
+        from(current in FlowNode, where: current.id == ^node.id),
+        set: [type: "hub"]
+      )
+
+      assert_raise ArgumentError, ~r/internally inconsistent flow snapshot/, fn ->
+        FlowBuilder.build_snapshot(flow)
+      end
+    end
+
     test "captures connections with index references", %{flow: flow} do
       n1 =
         node_fixture(flow, %{

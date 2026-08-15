@@ -69,6 +69,12 @@ interface Snapshot {
   progressPhase: string | null;
   progressBytes: ByteCount;
   progressTotalBytes: ByteCount | null;
+  buildJobState: string | null;
+  buildAttempt: number;
+  buildMaxAttempts: number | null;
+  retrying: boolean;
+  nextRetryAt: string | null;
+  retryErrorCode: string | null;
   failureCode: string | null;
   failureMessage: string | null;
   capturedAt: string | null;
@@ -486,12 +492,54 @@ function lifecycleLabel(status: SnapshotLifecycle | null) {
   return t(`project_settings.snapshots.lifecycle.${status ?? "unknown"}`);
 }
 
+function snapshotLifecycleLabel(snapshot: Snapshot) {
+  return snapshot.retrying
+    ? t("project_settings.snapshots.lifecycle.retrying")
+    : lifecycleLabel(snapshot.lifecycleStatus);
+}
+
 function integrityLabel(status: SnapshotIntegrity | null) {
   return t(`project_settings.snapshots.integrity.${status ?? "unknown"}`);
 }
 
-function progressPhaseLabel(phase: string | null) {
-  return t(`project_settings.snapshots.progress.${phase ?? "pending"}`);
+function progressPhaseLabel(snapshot: Snapshot) {
+  const phase = snapshot.retrying ? "retrying" : (snapshot.progressPhase ?? "pending");
+  return t(`project_settings.snapshots.progress.${phase}`);
+}
+
+function buildAttemptLabel(snapshot: Snapshot) {
+  if (snapshot.buildMaxAttempts === null) return null;
+
+  if (snapshot.buildAttempt <= 0) {
+    return t("project_settings.snapshots.retry.waiting_attempt", {
+      attempt: 1,
+      max: snapshot.buildMaxAttempts,
+    });
+  }
+
+  return t("project_settings.snapshots.retry.attempt", {
+    attempt: snapshot.buildAttempt,
+    max: snapshot.buildMaxAttempts,
+  });
+}
+
+function retryScheduleLabel(snapshot: Snapshot) {
+  if (!snapshot.retrying) return null;
+  if (!snapshot.nextRetryAt) return t("project_settings.snapshots.retry.waiting_for_worker");
+
+  const retryAt = new Date(snapshot.nextRetryAt);
+  if (Number.isNaN(retryAt.getTime())) {
+    return t("project_settings.snapshots.retry.waiting_for_worker");
+  }
+
+  const date = formatSnapshotDate(snapshot.nextRetryAt);
+  const key = retryAt.getTime() <= Date.now() ? "retry_due" : "next_retry";
+  return t(`project_settings.snapshots.retry.${key}`, { date });
+}
+
+function retryErrorLabel(snapshot: Snapshot) {
+  if (!snapshot.retrying || !snapshot.retryErrorCode) return null;
+  return t("project_settings.snapshots.retry.build_failed");
 }
 
 function snapshotIsActive(snapshot: Snapshot) {
@@ -846,11 +894,11 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                   class="text-xs"
                   :aria-label="
                     $t('project_settings.snapshots.accessibility.lifecycle', {
-                      status: lifecycleLabel(snapshot.lifecycleStatus),
+                      status: snapshotLifecycleLabel(snapshot),
                     })
                   "
                 >
-                  {{ lifecycleLabel(snapshot.lifecycleStatus) }}
+                  {{ snapshotLifecycleLabel(snapshot) }}
                 </Badge>
                 <Badge
                   :variant="integrityVariant(snapshot.integrityStatus)"
@@ -877,7 +925,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                 <div class="flex items-center justify-between gap-3 text-xs">
                   <span class="inline-flex items-center gap-1.5 font-medium text-primary">
                     <LoaderCircle class="size-3.5 animate-spin" aria-hidden="true" />
-                    {{ progressPhaseLabel(snapshot.progressPhase) }}
+                    {{ progressPhaseLabel(snapshot) }}
                   </span>
                   <span class="tabular-nums text-muted-foreground">
                     {{ formatBytes(snapshot.progressBytes, locale) }} /
@@ -893,6 +941,30 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                     })
                   "
                 />
+                <div class="mt-2 space-y-1 text-xs text-muted-foreground">
+                  <p
+                    v-if="buildAttemptLabel(snapshot)"
+                    :data-testid="`snapshot-attempt-${snapshot.id}`"
+                    class="font-medium text-foreground/80"
+                  >
+                    {{ buildAttemptLabel(snapshot) }}
+                  </p>
+                  <p
+                    v-if="retryScheduleLabel(snapshot)"
+                    :data-testid="`snapshot-next-retry-${snapshot.id}`"
+                  >
+                    {{ retryScheduleLabel(snapshot) }}
+                  </p>
+                  <p
+                    v-if="retryErrorLabel(snapshot)"
+                    role="status"
+                    :data-testid="`snapshot-retry-error-${snapshot.id}`"
+                    :data-error-code="snapshot.retryErrorCode"
+                    class="rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-foreground/80"
+                  >
+                    {{ retryErrorLabel(snapshot) }}
+                  </p>
+                </div>
                 <div class="mt-2 flex items-center justify-between gap-3">
                   <span class="text-xs text-muted-foreground">
                     {{
