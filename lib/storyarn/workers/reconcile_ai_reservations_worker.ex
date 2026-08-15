@@ -152,12 +152,24 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorker do
   # coarse Oban staging interval. Serial queue concurrency keeps this page from
   # starting until the current one returns, while older available maintenance
   # jobs remain ahead of the newly inserted continuation.
+  #
+  # A cron tick may already have queued a root job while this page was running.
+  # Coalesce that conflict into the continuation by replacing its args, keeping
+  # the cursor and frozen cutoff instead of silently restarting the sweep. The
+  # continuation period is infinite because an available root can wait longer
+  # than the cron uniqueness window behind another maintenance job. The worker's
+  # compile-time 240-second period still governs ordinary cron insertions.
   defp schedule_followup(args) do
     args
     |> new(
+      replace: [
+        available: [:args],
+        scheduled: [:args],
+        retryable: [:args]
+      ],
       unique: [
         fields: [:worker],
-        period: 240,
+        period: :infinity,
         states: [:available, :scheduled, :retryable]
       ]
     )

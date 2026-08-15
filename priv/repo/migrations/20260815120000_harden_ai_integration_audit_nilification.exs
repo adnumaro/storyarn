@@ -13,7 +13,7 @@ defmodule Storyarn.Repo.Migrations.HardenAiIntegrationAuditNilification do
          AND NEW.id = OLD.id
          AND NEW.user_id IS NULL
          AND OLD.user_id IS NOT NULL
-         AND NOT EXISTS (SELECT 1 FROM users WHERE id = OLD.user_id)
+         AND NOT EXISTS (SELECT 1 FROM public.users WHERE id = OLD.user_id)
          AND NEW.actor_id = OLD.actor_id
          AND NEW.provider = OLD.provider
          AND NEW.action = OLD.action
@@ -24,7 +24,8 @@ defmodule Storyarn.Repo.Migrations.HardenAiIntegrationAuditNilification do
 
       RAISE EXCEPTION 'ai_integration_audits is append-only (UPDATE blocked)';
     END;
-    $$ LANGUAGE plpgsql;
+    $$ LANGUAGE plpgsql
+    SET search_path = pg_catalog, pg_temp;
     """
   end
 

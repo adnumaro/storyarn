@@ -254,6 +254,7 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
           grant
         end
 
+      assert {:ok, root_job} = Oban.insert(ReconcileAIReservationsWorker.new(%{}))
       assert :ok = ReconcileAIReservationsWorker.perform(%Oban.Job{})
 
       [first_operation, second_operation, third_operation] = operations
@@ -275,6 +276,7 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
           )
         )
 
+      assert followup.id == root_job.id
       assert followup.state == "available"
       assert followup.queue == "ai_maintenance"
       assert followup.args["after_operation_id"] == second_operation.id
@@ -285,6 +287,55 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
 
       assert Repo.get!(Operation, third_operation.id).execution_status == "failed"
       assert Repo.get!(AllowanceGrant, third_grant.id).remaining_units == 0
+    end
+
+    test "an aged colliding root job keeps done flags and the frozen sweep cutoff", ctx do
+      Application.put_env(:storyarn, ReconcileAIReservationsWorker,
+        stale_after_seconds: @stale_after,
+        batch_size: 1
+      )
+
+      operations =
+        for index <- 1..2 do
+          operation = execute!(ctx, "colliding continuation #{index}")
+          reserve_stale!(operation, @stale_after + 1)
+          operation
+        end
+
+      sweep_started_at = TimeHelpers.now()
+      sweep_started_at_arg = DateTime.to_iso8601(sweep_started_at)
+
+      assert {:ok, root_job} = Oban.insert(ReconcileAIReservationsWorker.new(%{}))
+
+      assert {1, nil} =
+               Repo.update_all(
+                 from(job in Oban.Job, where: job.id == ^root_job.id),
+                 set: [inserted_at: DateTime.add(TimeHelpers.now(), -241, :second)]
+               )
+
+      assert :ok =
+               ReconcileAIReservationsWorker.perform(%Oban.Job{
+                 args: %{
+                   "allowance_done" => true,
+                   "sweep_started_at" => sweep_started_at_arg
+                 }
+               })
+
+      [first_operation, _second_operation] = operations
+      replaced_root_job = Repo.get!(Oban.Job, root_job.id)
+
+      assert replaced_root_job.args == %{
+               "after_operation_id" => first_operation.id,
+               "allowance_done" => true,
+               "sweep_started_at" => sweep_started_at_arg
+             }
+
+      assert Repo.aggregate(
+               from(job in Oban.Job,
+                 where: job.worker == ^inspect(ReconcileAIReservationsWorker)
+               ),
+               :count
+             ) == 1
     end
   end
 

@@ -66,24 +66,24 @@ msgstr "hizo un cambio"
 msgid "moved a node"
 msgstr "movió un nodo"
 
-#: lib/storyarn_web/controllers/export_controller.ex:52
-#: lib/storyarn_web/controllers/export_controller.ex:58
-#: lib/storyarn_web/controllers/export_controller.ex:103
+#: lib/storyarn_web/controllers/export_controller.ex:54
+#: lib/storyarn_web/controllers/export_controller.ex:60
+#: lib/storyarn_web/controllers/export_controller.ex:105
 #, elixir-autogen, elixir-format
 msgid "Export failed"
 msgstr "Error al exportar"
 
-#: lib/storyarn_web/controllers/export_controller.ex:34
+#: lib/storyarn_web/controllers/export_controller.ex:36
 #, elixir-autogen, elixir-format
 msgid "Invalid format"
 msgstr "Formato no válido"
 
-#: lib/storyarn_web/controllers/export_controller.ex:43
+#: lib/storyarn_web/controllers/export_controller.ex:45
 #, elixir-autogen, elixir-format
 msgid "Not found"
 msgstr "No encontrado"
 
-#: lib/storyarn_web/controllers/export_controller.ex:31
+#: lib/storyarn_web/controllers/export_controller.ex:33
 #, elixir-autogen, elixir-format
 msgid "Unknown format"
 msgstr "Formato desconocido"
@@ -169,14 +169,14 @@ msgstr "Alguien"
 msgid "You don't have permission to edit."
 msgstr "No tienes permiso para editar."
 
-#: lib/storyarn_web/controllers/export_controller.ex:46
-#: lib/storyarn_web/controllers/export_controller.ex:76
-#: lib/storyarn_web/controllers/export_controller.ex:100
+#: lib/storyarn_web/controllers/export_controller.ex:48
+#: lib/storyarn_web/controllers/export_controller.ex:78
+#: lib/storyarn_web/controllers/export_controller.ex:102
 #, elixir-autogen, elixir-format
 msgid "Export is too large"
 msgstr "La exportación es demasiado grande"
 
-#: lib/storyarn_web/controllers/export_controller.ex:37
+#: lib/storyarn_web/controllers/export_controller.ex:39
 #, elixir-autogen, elixir-format
 msgid "Invalid localization policy"
 msgstr "Política de localización no válida"
@@ -186,7 +186,7 @@ msgstr "Política de localización no válida"
 msgid "Media not found"
 msgstr "Archivo multimedia no encontrado"
 
-#: lib/storyarn_web/controllers/export_controller.ex:40
+#: lib/storyarn_web/controllers/export_controller.ex:42
 #, elixir-autogen, elixir-format
 msgid "You do not have permission to export this project"
 msgstr "No tienes permiso para exportar este proyecto"
