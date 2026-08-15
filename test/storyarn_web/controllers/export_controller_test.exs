@@ -243,6 +243,8 @@ defmodule StoryarnWeb.ExportControllerTest do
       assert_receive {:partial_export_archive, zip_path}
       on_exit(fn -> File.rm(zip_path) end)
 
+      assert Path.dirname(Path.expand(zip_path)) == Path.expand(System.tmp_dir!())
+      assert Path.basename(zip_path) =~ ~r/\Astoryarn-export-\d+\.zip\z/
       assert conn.status == 422
       assert conn.resp_body == "Export failed"
       refute File.exists?(zip_path)
