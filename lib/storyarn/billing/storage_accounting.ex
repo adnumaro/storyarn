@@ -391,11 +391,13 @@ defmodule Storyarn.Billing.StorageAccounting do
   @doc """
   Atomically replaces an active reservation with durable billable ownership.
 
-  `owner_fun` performs database ownership writes only and must return
-  `{:ok, result}` or `{:error, reason}`. Large object transfers and manifest
-  publication happen before this short transaction, after `extend_to/4` has
-  ensured the final byte count fits. If `actual_bytes` exceeds the reservation,
-  finalization fails closed without invoking the callback.
+  `owner_fun` performs only the short database writes that must commit with the
+  storage owner and returns `{:ok, result}` or `{:error, reason}`. Snapshot-build
+  callbacks may return `{snapshot, transaction_metadata}` so callers can perform
+  post-commit work without publishing from inside this transaction. Large object
+  transfers and manifest publication happen before this short transaction, after
+  `extend_to/4` has ensured the final byte count fits. If `actual_bytes` exceeds
+  the reservation, finalization fails closed without invoking the callback.
   """
   @spec commit(pos_integer(), Ecto.UUID.t(), pos_integer(), pos_integer(), (StorageReservation.t() -> term())) ::
           {:ok, %{reservation: StorageReservation.t(), result: term()}}

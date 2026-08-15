@@ -34,19 +34,11 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorker do
              started_at: run.started_at || TimeHelpers.now(),
              error: nil
            }) do
-      execute_running_safely(running, job)
+      execute_running(running, job)
     else
       false -> cancel_inactive_target(run)
       {:error, :inactive} -> :ok
     end
-  end
-
-  defp execute_running_safely(running, job) do
-    execute_running(running, job)
-  rescue
-    exception -> fail(running, {:exception, exception.__struct__}, job.attempt >= job.max_attempts)
-  catch
-    kind, _reason -> fail(running, {:caught, kind}, job.attempt >= job.max_attempts)
   end
 
   defp execute_running(running, job) do
@@ -63,11 +55,30 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorker do
         progress_callback: &persist_progress(running, base_counts, &1)
       ]
 
-    case BatchTranslator.translate_batch(running.project_id, running.target_locale, opts) do
-      {:ok, result} -> complete(running, base_counts, result)
-      {:error, :cancelled} -> mark_cancelled(running)
-      {:error, reason} -> fail(running, reason, job.attempt >= job.max_attempts)
+    case translate_batch(running, opts) do
+      {:returned, {:ok, result}} ->
+        complete(running, base_counts, result)
+
+      {:returned, {:error, :cancelled}} ->
+        mark_cancelled(running)
+
+      {:returned, {:error, reason}} ->
+        fail(running, reason, job.attempt >= job.max_attempts)
+
+      {:raised, exception, stacktrace} ->
+        fail_and_reraise(running, exception, stacktrace, job.attempt >= job.max_attempts)
+
+      {:caught, kind, reason, stacktrace} ->
+        fail_and_raise(running, kind, reason, stacktrace, job.attempt >= job.max_attempts)
     end
+  end
+
+  defp translate_batch(running, opts) do
+    {:returned, BatchTranslator.translate_batch(running.project_id, running.target_locale, opts)}
+  rescue
+    exception -> {:raised, exception, __STACKTRACE__}
+  catch
+    kind, reason -> {:caught, kind, reason, __STACKTRACE__}
   end
 
   defp persist_progress(run, base_counts, result) do
@@ -137,6 +148,30 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorker do
     )
 
     {:error, reason}
+  end
+
+  defp fail_and_reraise(run, exception, stacktrace, final_attempt?) do
+    log_unexpected_exception(run, exception, stacktrace)
+    fail(run, {:exception, exception.__struct__}, final_attempt?)
+    reraise exception, stacktrace
+  end
+
+  defp fail_and_raise(run, kind, reason, stacktrace, final_attempt?) do
+    log_unexpected_catch(run, kind, reason, stacktrace)
+    fail(run, {:caught, kind}, final_attempt?)
+    :erlang.raise(kind, reason, stacktrace)
+  end
+
+  defp log_unexpected_exception(run, exception, stacktrace) do
+    Logger.error(
+      "Unexpected localization batch translation exception run_id=#{run.id}\n#{Exception.format(:error, exception, stacktrace)}"
+    )
+  end
+
+  defp log_unexpected_catch(run, kind, reason, stacktrace) do
+    Logger.error(
+      "Unexpected localization batch translation catch run_id=#{run.id}\n#{Exception.format(kind, reason, stacktrace)}"
+    )
   end
 
   defp active_target?(run) do

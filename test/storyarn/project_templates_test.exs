@@ -30,6 +30,7 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.ScenesFixtures
   alias Storyarn.Sheets.Sheet
   alias Storyarn.SheetsFixtures
+  alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
   alias Storyarn.Workers.DeleteStorageObjectsWorker
@@ -1358,6 +1359,84 @@ defmodule Storyarn.ProjectTemplatesTest do
       assert notification.status == "failure"
       assert notification.dedupe_key == "template_install:#{installation.id}:failure"
       assert_received :notifications_changed
+    end
+
+    test "recovers idempotently when an installation becomes terminal before failure handling" do
+      user = AccountsFixtures.user_fixture()
+      scope = AccountsFixtures.user_scope_fixture(user)
+      workspace = WorkspacesFixtures.workspace_fixture(user)
+      source_project = ProjectsFixtures.project_fixture(user, %{name: "Concurrent Failure Source"})
+
+      assert {:ok, template} =
+               ProjectTemplates.create_template_from_project(scope, source_project, %{
+                 name: "Concurrent Failure Starter"
+               })
+
+      version =
+        ProjectTemplateVersion
+        |> Repo.get!(template.current_version_id)
+        |> Ecto.Changeset.change(checksum: String.duplicate("0", 64))
+        |> Repo.update!()
+
+      assert {:ok, installation} =
+               ProjectTemplates.request_template_instantiation(scope, version, workspace, %{
+                 name: "Concurrent Failure Copy",
+                 source: "workspace_dashboard"
+               })
+
+      original_storage = Application.fetch_env!(:storyarn, :storage)
+
+      start_supervised!(%{
+        id: SnapshotReadSwitchStorage,
+        start: {SnapshotReadSwitchStorage, :start_link, [%{}]},
+        restart: :temporary
+      })
+
+      Application.put_env(
+        :storyarn,
+        :storage,
+        Keyword.put(original_storage, :adapter, SnapshotReadSwitchStorage)
+      )
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, :storage, original_storage)
+      end)
+
+      SnapshotReadSwitchStorage.observe_io(fn
+        :stat, storage_key when storage_key == version.snapshot_storage_key ->
+          now = DateTime.utc_now(:second)
+
+          ProjectTemplateInstall
+          |> Repo.get!(installation.id)
+          |> ProjectTemplateInstall.failed_changeset(%{
+            status: "failed",
+            stage: "failed",
+            error_code: "concurrent_failure",
+            error_message: "The installation already failed.",
+            completed_at: now
+          })
+          |> Ecto.Changeset.change(feedback_dismissed_at: now)
+          |> Repo.update!()
+
+        _operation, _storage_key ->
+          :ok
+      end)
+
+      assert {:ok, failed} =
+               ProjectTemplates.perform_template_installation(installation.id,
+                 attempt: 1,
+                 max_attempts: 1
+               )
+
+      assert failed.status == "failed"
+      assert failed.error_code == "concurrent_failure"
+      assert failed.feedback_dismissed_at
+
+      refute Repo.get_by(Notification,
+               recipient_id: user.id,
+               entity_type: "template_install",
+               entity_id: installation.id
+             )
     end
 
     test "rolls back a success notification when the installation transaction fails late" do
