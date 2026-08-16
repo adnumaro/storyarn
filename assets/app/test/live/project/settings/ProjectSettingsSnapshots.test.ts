@@ -22,6 +22,7 @@ const storageUsage = {
 
 interface SnapshotFixture {
   id: number;
+  mode: "full" | null;
   title: string;
   description: string;
   versionNumber: number;
@@ -104,6 +105,7 @@ interface SnapshotFixture {
 
 const measuredSnapshot: SnapshotFixture = {
   id: 21,
+  mode: "full",
   title: "Playtest checkpoint",
   description: "Ready for QA",
   versionNumber: 2,
