@@ -324,6 +324,57 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     end
   end
 
+  test "executor accepts a strict legacy archive without embedded content health" do
+    user = user_fixture()
+    project = project_fixture(user)
+
+    snapshot =
+      full_project_snapshot_fixture(project, %{
+        asset_blob_size_bytes: 0,
+        content_health: SnapshotContentHealth.legacy_strict()
+      })
+
+    assert {:ok, requested} =
+             Versioning.request_project_snapshot_restore(user_scope_fixture(user), project, snapshot, %{
+               idempotency_key: Ecto.UUID.generate()
+             })
+
+    job =
+      requested.oban_job_id
+      |> then(&Repo.get!(Oban.Job, &1))
+      |> Ecto.Changeset.change(
+        state: "executing",
+        attempt: 1,
+        attempted_at: %{TimeHelpers.now() | microsecond: {0, 6}}
+      )
+      |> Repo.update!()
+
+    assert {:ok, {:claimed, restore}} =
+             Versioning.claim_project_snapshot_restore(requested.id, 1,
+               job_id: job.id,
+               attempt: 1
+             )
+
+    project_object = project |> empty_project_object() |> Map.delete("content_health")
+    Process.put({EmptyArchiveReader, :project_object}, project_object)
+    Process.delete({PrepareSpyMaterializer, :called})
+
+    on_exit(fn ->
+      Process.delete({EmptyArchiveReader, :project_object})
+      Process.delete({PrepareSpyMaterializer, :called})
+    end)
+
+    assert {:error, :unexpected_materializer_prepare} =
+             ProjectSnapshotRestoreExecutor.execute(restore,
+               archive_reader: EmptyArchiveReader,
+               asset_materializer: PrepareSpyMaterializer,
+               project_recovery: AcceptingRecovery
+             )
+
+    assert Process.get({PrepareSpyMaterializer, :called})
+    refute Repo.get!(ProjectSnapshotRestore, restore.id).storage_reservation_id
+  end
+
   test "a failed attempt durably releases its reservation and the next attempt rotates the lease", context do
     job = Repo.get!(Oban.Job, context.restore.oban_job_id)
 

@@ -326,7 +326,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
           else: {:error, :invalid_snapshot_content_health}
 
       :error ->
-        if persisted_content_health == SnapshotContentHealth.unknown(),
+        if persisted_content_health == SnapshotContentHealth.legacy_strict(),
           do: :ok,
           else: {:error, :invalid_snapshot_content_health}
     end

@@ -1151,7 +1151,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
   defp ensure_captured_asset_blobs(asset_inventory) do
     case SnapshotAssetCapture.rematerialize(asset_inventory) do
-      {:ok, _repair_summary} -> :ok
       :ok -> :ok
       {:error, reason} -> {:error, normalize_asset_blob_preflight_error(reason)}
     end
@@ -1292,11 +1291,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
     if capture_asset_inventory_fingerprint(assets) ==
          capture_asset_inventory_fingerprint(expected_inventory.raw_assets) do
+      {project_snapshot, builder_issues} =
+        ProjectSnapshotBuilder.build_canonical_snapshot_with_issues_in_transaction(project_id,
+          localization_scope: :active
+        )
+
       project_snapshot =
-        project_id
-        |> ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(localization_scope: :active)
+        project_snapshot
         |> put_capture_asset_catalog(assets)
-        |> put_asset_relationship_health(project_id, assets, expected_inventory.invalid_asset_ids)
+        |> put_capture_content_health(builder_issues, project_id, assets, expected_inventory.invalid_asset_ids)
 
       case SnapshotArchiveStorage.prepare(project_id, project_snapshot, expected_inventory.effective_assets,
              source_key_mode: :protected_blob
@@ -1364,33 +1367,30 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     |> Map.put("asset_metadata", asset_metadata)
   end
 
-  defp put_asset_relationship_health(project_snapshot, project_id, assets, invalid_identity_ids) do
-    Map.update!(project_snapshot, "content_health", fn report ->
+  defp put_capture_content_health(project_snapshot, builder_issues, project_id, assets, invalid_identity_ids) do
+    catalog_issues =
       case SnapshotObjectFormat.unmaterializable_catalog_asset_ids(assets) do
         {:ok, asset_ids} ->
-          issues =
-            asset_ids
-            |> Enum.concat(invalid_identity_ids)
-            |> Enum.uniq()
-            |> Enum.sort()
-            |> Enum.map(&invalid_asset_relationship_issue(&1, project_id))
-
-          SnapshotContentHealth.replace_issue_family(
-            report,
-            :capture,
-            :invalid_asset_snapshot_content,
-            issues
-          )
+          asset_ids
+          |> Enum.concat(invalid_identity_ids)
+          |> Enum.uniq()
+          |> Enum.sort()
+          |> Enum.map(&invalid_asset_catalog_issue(&1, project_id))
 
         {:error, _reason} ->
-          SnapshotContentHealth.add_issue(report, unclassified_project_content_issue(project_id))
+          [unclassified_project_content_issue(project_id)]
       end
-    end)
+
+    Map.put(
+      project_snapshot,
+      "content_health",
+      SnapshotContentHealth.build(builder_issues ++ catalog_issues)
+    )
   end
 
-  defp invalid_asset_relationship_issue(asset_id, project_id) do
+  defp invalid_asset_catalog_issue(asset_id, project_id) do
     %{
-      code: :invalid_asset_snapshot_content,
+      code: :invalid_asset_catalog_content,
       severity: :warning,
       entity_type: :asset,
       entity_id: asset_id,

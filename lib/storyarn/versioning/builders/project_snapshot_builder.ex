@@ -64,6 +64,13 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   @doc false
   @spec build_canonical_snapshot_in_transaction(integer(), keyword()) :: map()
   def build_canonical_snapshot_in_transaction(project_id, opts) when is_list(opts) do
+    {snapshot, issues} = build_canonical_snapshot_with_issues_in_transaction(project_id, opts)
+    Map.put(snapshot, "content_health", SnapshotContentHealth.build(issues))
+  end
+
+  @doc false
+  @spec build_canonical_snapshot_with_issues_in_transaction(integer(), keyword()) :: {map(), [map()]}
+  def build_canonical_snapshot_with_issues_in_transaction(project_id, opts) when is_list(opts) do
     if Repo.in_transaction?() do
       project_id
       |> lock_active_project_for_snapshot!()
@@ -156,7 +163,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       }
     }
 
-    maybe_put_content_health(snapshot, project_id, mode, [
+    finalize_content_health(snapshot, project_id, mode, [
       sheet_issues,
       flow_issues,
       scene_issues,
@@ -213,42 +220,19 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   defp maybe_merge_nested_runtime_localization(rows, _sheet_snapshots, _flow_snapshots, :canonical), do: rows
 
-  defp maybe_put_content_health(snapshot, _project_id, :strict, _issue_groups), do: snapshot
+  defp finalize_content_health(snapshot, _project_id, :strict, _issue_groups), do: snapshot
 
-  defp maybe_put_content_health(snapshot, project_id, :canonical, issue_groups) do
+  defp finalize_content_health(snapshot, project_id, :canonical, issue_groups) do
     issues =
       issue_groups
       |> List.flatten()
       |> Kernel.++(safe_project_content_issues(snapshot, project_id))
-      |> Kernel.++(canonical_dashboard_issues(project_id))
 
-    Map.put(snapshot, "content_health", SnapshotContentHealth.build(issues))
+    {snapshot, issues}
   end
 
   defp safe_project_content_issues(snapshot, project_id) do
     SnapshotProjectContentHealth.issues(snapshot, project_id)
-  rescue
-    _exception -> [unclassified_project_issue(project_id)]
-  catch
-    _kind, _reason -> [unclassified_project_issue(project_id)]
-  end
-
-  defp canonical_dashboard_issues(project_id) do
-    List.flatten([
-      safe_dashboard_issues(:sheet, project_id, fn ->
-        Sheets.list_dashboard_health_findings(project_id)
-      end),
-      safe_dashboard_issues(:flow, project_id, fn ->
-        Flows.list_dashboard_health_findings(project_id)
-      end),
-      safe_dashboard_issues(:scene, project_id, fn ->
-        Scenes.list_dashboard_health_findings(project_id)
-      end)
-    ])
-  end
-
-  defp safe_dashboard_issues(domain, project_id, list_fun) do
-    SnapshotContentHealth.canonical_issues(domain, list_fun.())
   rescue
     _exception -> [unclassified_project_issue(project_id)]
   catch

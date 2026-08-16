@@ -28,7 +28,6 @@ interface SnapshotFixture {
   insertedAt: string;
   entityCounts: Record<string, number>;
   createdByEmail: string;
-  mode: "full" | null;
   lifecycleStatus:
     | "pending"
     | "building"
@@ -60,7 +59,7 @@ interface SnapshotFixture {
   retryErrorCode: string | null;
   contentHealth: {
     version: 1;
-    state: "unknown" | "healthy" | "warnings";
+    state: "unknown" | "legacy_strict" | "healthy" | "warnings";
     issue_count: number;
     issues_truncated: boolean;
     issue_counts_by_code: Record<string, number>;
@@ -70,7 +69,7 @@ interface SnapshotFixture {
       code: string;
       container_id: number | string | null;
       container_type: string | null;
-      domain: "capture" | "flow" | "scene" | "sheet";
+      domain: "capture";
       entity_id: number | string | null;
       entity_type: string;
       impact: "restore_blocked" | "runtime_degraded";
@@ -111,7 +110,6 @@ const measuredSnapshot: SnapshotFixture = {
   insertedAt: "2026-07-17T10:00:00Z",
   entityCounts: { sheets: 2 },
   createdByEmail: "owner@example.com",
-  mode: "full",
   lifecycleStatus: "ready",
   integrityStatus: "verified",
   accountedSizeBytes: String(6 * 1024),
@@ -267,7 +265,6 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
   it("renders a pending canonical row before accounting measurements are available", () => {
     const wrapper = mountSnapshots({
       ...measuredSnapshot,
-      mode: "full",
       lifecycleStatus: "pending",
       integrityStatus: "unknown",
       accountedSizeBytes: null,
@@ -476,6 +473,60 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     },
   );
 
+  it.each([
+    {
+      locale: "en",
+      location: "Flow #42 · Sheet avatar #44 · Sheet",
+      genericEntity: "Item #44",
+      genericField: "Related field",
+    },
+    {
+      locale: "es",
+      location: "Flujo #42 · Avatar de ficha #44 · Ficha",
+      genericEntity: "Elemento #44",
+      genericField: "Campo relacionado",
+    },
+  ])(
+    "renders stable $locale locations for capture entity types and dynamic fields",
+    ({ locale, location, genericEntity, genericField }) => {
+      setTestLocale(locale);
+
+      const wrapper = mountSnapshots({
+        ...measuredSnapshot,
+        canRestore: false,
+        restoreBlockedByContentIssues: true,
+        contentHealth: {
+          version: 1,
+          state: "warnings",
+          issue_count: 1,
+          issues_truncated: false,
+          issue_counts_by_code: { "capture.invalid_flow_node": 1 },
+          impact_counts: { restore_blocked: 1, runtime_degraded: 0 },
+          severity_counts: { error: 0, warning: 1, info: 0 },
+          issues: [
+            {
+              code: "invalid_flow_node",
+              container_id: 42,
+              container_type: "flow",
+              domain: "capture",
+              entity_id: 44,
+              entity_type: "sheet_avatar",
+              impact: "restore_blocked",
+              locationUrl: "/workspaces/alpha/projects/veilbreak/flows/42",
+              severity: "warning",
+              source_field: "action_data.items.0.sheet_id",
+            },
+          ],
+        },
+      });
+
+      const panel = wrapper.get('[data-testid="snapshot-content-health-21"]');
+      expect(panel.text()).toContain(location);
+      expect(panel.text()).not.toContain(genericEntity);
+      expect(panel.text()).not.toContain(genericField);
+    },
+  );
+
   it("keeps capture issue copy exhaustive and in EN/ES parity", () => {
     const sourceMatch = snapshotContentHealthSource.match(
       /@capture_codes MapSet\.new\(~w\(\s*([\s\S]*?)\s*\)\)/,
@@ -513,7 +564,24 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(card.get('[data-testid="restore-snapshot-21"]').attributes("disabled")).toBeDefined();
   });
 
-  it("shows runtime degradation without disabling exact restore", () => {
+  it("keeps a migration-assessed strict historical snapshot restorable without a warning badge", () => {
+    const wrapper = mountSnapshots({
+      ...measuredSnapshot,
+      canRestore: true,
+      restoreBlockedByContentIssues: false,
+      contentHealth: {
+        ...measuredSnapshot.contentHealth,
+        state: "legacy_strict",
+      },
+    });
+
+    const card = wrapper.get('[data-testid="snapshot-card-21"]');
+    expect(card.find('[data-testid="snapshot-content-health-unknown-21"]').exists()).toBe(false);
+    expect(card.find('[data-testid="snapshot-content-health-badge-21"]').exists()).toBe(false);
+    expect(card.get('[data-testid="restore-snapshot-21"]').attributes("disabled")).toBeUndefined();
+  });
+
+  it("keeps nonblocking runtime findings out of the snapshot warning UI", () => {
     const wrapper = mountSnapshots({
       ...measuredSnapshot,
       contentHealth: {
@@ -521,15 +589,15 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
         state: "warnings",
         issue_count: 1,
         issues_truncated: false,
-        issue_counts_by_code: { "flow.missing_entry": 1 },
+        issue_counts_by_code: { "capture.invalid_flow_node": 1 },
         impact_counts: { restore_blocked: 0, runtime_degraded: 1 },
         severity_counts: { error: 0, warning: 1, info: 0 },
         issues: [
           {
-            code: "missing_entry",
+            code: "invalid_flow_node",
             container_id: 42,
             container_type: "flow",
-            domain: "flow",
+            domain: "capture",
             entity_id: 42,
             entity_type: "flow",
             impact: "runtime_degraded",
@@ -541,12 +609,62 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       },
     });
 
-    const panel = wrapper.get('[data-testid="snapshot-content-health-21"]');
-    expect(panel.text()).toContain("Missing Entry node");
-    expect(panel.text()).toContain("remains downloadable and restorable");
+    expect(wrapper.find('[data-testid="snapshot-content-health-21"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="snapshot-content-health-badge-21"]').exists()).toBe(false);
     expect(
       wrapper.get('[data-testid="restore-snapshot-21"]').attributes("disabled"),
     ).toBeUndefined();
+  });
+
+  it("counts and lists only restore blockers when a report contains mixed impacts", () => {
+    const wrapper = mountSnapshots({
+      ...measuredSnapshot,
+      canRestore: false,
+      restoreBlockedByContentIssues: true,
+      contentHealth: {
+        version: 1,
+        state: "warnings",
+        issue_count: 2,
+        issues_truncated: false,
+        issue_counts_by_code: {
+          "capture.localization_speaker_mismatch": 1,
+          "capture.invalid_flow_node": 1,
+        },
+        impact_counts: { restore_blocked: 1, runtime_degraded: 1 },
+        severity_counts: { error: 0, warning: 2, info: 0 },
+        issues: [
+          {
+            code: "localization_speaker_mismatch",
+            container_id: 42,
+            container_type: "flow",
+            domain: "capture",
+            entity_id: 101,
+            entity_type: "flow_node",
+            impact: "restore_blocked",
+            locationUrl: "/workspaces/alpha/projects/veilbreak/flows/42",
+            severity: "warning",
+            source_field: "speaker_sheet_id",
+          },
+          {
+            code: "invalid_flow_node",
+            container_id: 42,
+            container_type: "flow",
+            domain: "capture",
+            entity_id: 42,
+            entity_type: "flow",
+            impact: "runtime_degraded",
+            locationUrl: "/workspaces/alpha/projects/veilbreak/flows/42",
+            severity: "warning",
+            source_field: null,
+          },
+        ],
+      },
+    });
+
+    const card = wrapper.get('[data-testid="snapshot-card-21"]');
+    expect(card.text()).toContain("Content issues: 1");
+    expect(card.text()).toContain("Localization speaker is inconsistent");
+    expect(card.text()).not.toContain("Flow node content cannot be materialized");
   });
 
   it.each([

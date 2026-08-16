@@ -10,21 +10,28 @@ defmodule Storyarn.Versioning.SnapshotContentHealthTest do
     assert SnapshotContentHealth.restore_blocked?(report)
   end
 
-  test "builds a deterministic sanitized report from capture and canonical findings" do
-    canonical =
-      SnapshotContentHealth.canonical_issues(:flow, [
-        %{
-          code: :missing_entry,
-          severity: :error,
-          flow_id: 42,
-          entity_type: :flow,
-          entity_id: 42,
-          details: %{flow_name: "secret author title"}
-        }
-      ])
+  test "strict legacy captures are assessed and remain restorable without findings" do
+    report = SnapshotContentHealth.legacy_strict()
 
+    assert :ok = SnapshotContentHealth.validate(report)
+    assert report["state"] == "legacy_strict"
+    assert report["issue_count"] == 0
+    refute SnapshotContentHealth.restore_blocked?(report)
+  end
+
+  test "builds a deterministic sanitized report from capture findings" do
     report =
       SnapshotContentHealth.build([
+        %{
+          code: :invalid_project_snapshot_content,
+          severity: :warning,
+          entity_type: :project,
+          entity_id: 7,
+          impact: :runtime_degraded,
+          container_type: :project,
+          container_id: 7,
+          details: %{flow_name: "secret author title"}
+        },
         %{
           code: :localization_speaker_mismatch,
           severity: :warning,
@@ -35,16 +42,36 @@ defmodule Storyarn.Versioning.SnapshotContentHealthTest do
           container_type: :flow,
           container_id: 42
         }
-        | canonical
       ])
 
     assert report["state"] == "warnings"
     assert report["issue_count"] == 2
     assert report["impact_counts"] == %{"restore_blocked" => 1, "runtime_degraded" => 1}
     assert report["issue_counts_by_code"]["capture.localization_speaker_mismatch"] == 1
-    assert report["issue_counts_by_code"]["flow.missing_entry"] == 1
+    assert report["issue_counts_by_code"]["capture.invalid_project_snapshot_content"] == 1
     assert SnapshotContentHealth.restore_blocked?(report)
     refute inspect(report) =~ "secret author title"
+    assert :ok = SnapshotContentHealth.validate(report)
+  end
+
+  test "a dashboard namespace cannot enter the durable report" do
+    report =
+      SnapshotContentHealth.build([
+        %{
+          domain: :flow,
+          code: :missing_entry,
+          severity: :error,
+          entity_type: :flow,
+          entity_id: 42,
+          impact: :runtime_degraded,
+          container_type: :flow,
+          container_id: 42
+        }
+      ])
+
+    assert report["issue_counts_by_code"] == %{"capture.unclassified_content_issue" => 1}
+    assert report["issues"] |> hd() |> Map.fetch!("domain") == "capture"
+    assert SnapshotContentHealth.restore_blocked?(report)
     assert :ok = SnapshotContentHealth.validate(report)
   end
 
@@ -69,38 +96,33 @@ defmodule Storyarn.Versioning.SnapshotContentHealthTest do
     assert SnapshotContentHealth.restore_blocked?(report)
   end
 
-  test "replaces a truncated issue family with the exact authoritative inventory" do
-    prior_issues =
-      for entity_id <- 1..55 do
-        %{
-          code: :avatar_project_mismatch,
-          severity: :warning,
-          entity_type: :flow_node,
-          entity_id: entity_id,
-          source_field: :avatar_id,
-          impact: :restore_blocked,
-          container_type: :flow,
-          container_id: 42
-        }
-      end
+  test "rebuilds from the full inventory without losing issues hidden by an earlier bound" do
+    catalog_issues = Enum.map(1..55, &asset_catalog_issue/1)
+    other_issues = Enum.map(101..110, &missing_asset_issue/1)
+    initial = SnapshotContentHealth.build(catalog_issues ++ other_issues)
 
-    partial_asset_issue = asset_issue(901)
-    report = SnapshotContentHealth.build([partial_asset_issue | prior_issues])
-    assert report["issues_truncated"]
-    refute partial_asset_issue in report["issues"]
+    assert initial["issue_count"] == 65
+    assert initial["issues_truncated"]
+    assert initial["issue_counts_by_code"]["capture.invalid_asset_catalog_content"] == 55
+    assert initial["issue_counts_by_code"]["capture.missing_asset_reference"] == 10
 
-    replaced =
-      SnapshotContentHealth.replace_issue_family(
-        report,
-        :capture,
-        :invalid_asset_snapshot_content,
-        [asset_issue(902), asset_issue(903)]
-      )
+    for {authoritative_catalog, expected_count} <- [
+          {[asset_catalog_issue(201), asset_catalog_issue(202)], 12},
+          {[], 10}
+        ] do
+      rebuilt = SnapshotContentHealth.build(other_issues ++ authoritative_catalog)
 
-    assert :ok = SnapshotContentHealth.validate(replaced)
-    assert replaced["issue_count"] == 57
-    assert replaced["issue_counts_by_code"]["capture.invalid_asset_snapshot_content"] == 2
-    assert replaced["issues_truncated"]
+      assert :ok = SnapshotContentHealth.validate(rebuilt)
+      assert rebuilt["issue_count"] == expected_count
+      assert rebuilt["issue_counts_by_code"]["capture.missing_asset_reference"] == 10
+
+      assert Map.get(rebuilt["issue_counts_by_code"], "capture.invalid_asset_catalog_content", 0) ==
+               length(authoritative_catalog)
+
+      refute rebuilt["issues_truncated"]
+      refute Map.has_key?(rebuilt["issue_counts_by_code"], "capture.unclassified_content_issue")
+      assert length(rebuilt["issues"]) == expected_count
+    end
   end
 
   test "retains every current scene capture code instead of genericizing it" do
@@ -142,9 +164,9 @@ defmodule Storyarn.Versioning.SnapshotContentHealthTest do
              codes |> Enum.map(&"capture.#{&1}") |> Enum.sort()
   end
 
-  defp asset_issue(asset_id) do
+  defp asset_catalog_issue(asset_id) do
     %{
-      code: :invalid_asset_snapshot_content,
+      code: :invalid_asset_catalog_content,
       severity: :warning,
       entity_type: :asset,
       entity_id: asset_id,
@@ -152,6 +174,19 @@ defmodule Storyarn.Versioning.SnapshotContentHealthTest do
       impact: :restore_blocked,
       container_type: :project,
       container_id: 7
+    }
+  end
+
+  defp missing_asset_issue(entity_id) do
+    %{
+      code: :missing_asset_reference,
+      severity: :warning,
+      entity_type: :flow_node,
+      entity_id: entity_id,
+      source_field: :avatar_id,
+      impact: :restore_blocked,
+      container_type: :flow,
+      container_id: 42
     }
   end
 

@@ -365,6 +365,56 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
     end
   end
 
+  describe "capture_catalog_maps/1" do
+    test "scrubs nested persisted storage locators but preserves typed relationship profiles", %{
+      project: project,
+      user: user
+    } do
+      asset = asset_fixture(project, user)
+
+      persisted_metadata = %{
+        "key" => "projects/current/asset.png",
+        "url" => "https://storage.invalid/current.png",
+        "custom_url" => "https://content.invalid/asset",
+        "variant_asset_ids" => %{"url" => 123},
+        "caption" => "Retained caption",
+        "nested" => %{
+          "storage_key" => "projects/current/nested.png",
+          "project_id" => project.id,
+          "label" => "Retained nested metadata",
+          "items" => [
+            %{
+              "url" => "https://storage.invalid/item.png",
+              "label" => "Retained list metadata"
+            }
+          ]
+        }
+      }
+
+      Repo.update_all(
+        from(candidate in Asset, where: candidate.id == ^asset.id),
+        set: [metadata: persisted_metadata]
+      )
+
+      asset = Repo.get!(Asset, asset.id)
+
+      {_hashes, catalog} = AssetHashResolver.capture_catalog_maps([asset])
+      captured = catalog[to_string(asset.id)]
+
+      assert captured["variant_asset_ids"] == %{"url" => 123}
+
+      assert captured["persisted_metadata"] == %{
+               "variant_asset_ids" => %{"url" => 123},
+               "caption" => "Retained caption",
+               "custom_url" => "https://content.invalid/asset",
+               "nested" => %{
+                 "label" => "Retained nested metadata",
+                 "items" => [%{"label" => "Retained list metadata"}]
+               }
+             }
+    end
+  end
+
   describe "resolve_asset_fk/4" do
     test "returns nil for nil input" do
       assert nil == AssetHashResolver.resolve_asset_fk(nil, %{}, 1)

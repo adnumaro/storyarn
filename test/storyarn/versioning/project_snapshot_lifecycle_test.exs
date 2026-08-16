@@ -808,6 +808,30 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert Repo.get!(StorageReservation, reservation.id).status == "released"
     end
 
+    test "returns a domain fence for an incoherent active restore on an expired build" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, snapshot} = request_snapshot(user, project)
+      now = TimeHelpers.now()
+      stale_at = DateTime.add(now, -16 * 60, :second)
+      {_building, job, _reservation} = stale_executing_build!(snapshot, stale_at)
+
+      assert %{failure_count: 0, orphaned_count: 1, settled_count: 0} =
+               Versioning.reconcile_stale_project_snapshot_builds()
+
+      discard_job!(job.id, stale_at)
+      assert [candidate] = Versioning.list_expired_project_snapshot_build_candidates(now)
+
+      restore = insert_incoherent_active_restore!(user, project, Repo.get!(ProjectSnapshot, snapshot.id))
+
+      assert {:error, :snapshot_active_operation_blocks_deletion} =
+               Versioning.delete_expired_project_snapshot_build_candidate(candidate)
+
+      assert Repo.get!(ProjectSnapshot, snapshot.id)
+      assert Repo.get!(ProjectSnapshotRestore, restore.id).project_snapshot_id == snapshot.id
+      refute Repo.exists?(SnapshotCleanupIntent)
+    end
+
     test "reclaims a crashed cancelled build through the same durable cleanup path" do
       user = user_fixture()
       project = project_fixture(user)
@@ -1480,6 +1504,34 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       discarded_at: %{timestamp | microsecond: {0, 6}}
     )
     |> Repo.update!()
+  end
+
+  defp insert_incoherent_active_restore!(user, project, snapshot) do
+    trigger = "project_snapshot_restores_content_health_guard"
+    Repo.query!("ALTER TABLE project_snapshot_restores DISABLE TRIGGER #{trigger}")
+
+    try do
+      %ProjectSnapshotRestore{}
+      |> ProjectSnapshotRestore.request_changeset(%{
+        workspace_id: project.workspace_id,
+        project_id: project.id,
+        project_snapshot_id: snapshot.id,
+        requested_by_id: user.id,
+        idempotency_key: Ecto.UUID.generate(),
+        snapshot_lifecycle_generation: snapshot.lifecycle_generation,
+        snapshot_accounting_generation: snapshot.accounting_generation || 1,
+        archive_storage_key: "incoherent/archive",
+        archive_size_bytes: 1,
+        archive_checksum: String.duplicate("a", 64),
+        manifest_storage_key: "incoherent/manifest",
+        manifest_size_bytes: 1,
+        manifest_checksum: String.duplicate("b", 64),
+        requested_at: TimeHelpers.now()
+      })
+      |> Repo.insert!()
+    after
+      Repo.query!("ALTER TABLE project_snapshot_restores ENABLE TRIGGER #{trigger}")
+    end
   end
 
   defp stale_executing_build!(snapshot, now) do

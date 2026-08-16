@@ -51,7 +51,7 @@ interface SnapshotContentIssue {
   code: string;
   container_id: number | string | null;
   container_type: string | null;
-  domain: "capture" | "flow" | "scene" | "sheet";
+  domain: "capture";
   entity_id: number | string | null;
   entity_type: string;
   impact: "restore_blocked" | "runtime_degraded";
@@ -62,7 +62,7 @@ interface SnapshotContentIssue {
 
 interface SnapshotContentHealth {
   version: 1;
-  state: "unknown" | "healthy" | "warnings";
+  state: "unknown" | "legacy_strict" | "healthy" | "warnings";
   issue_count: number;
   issues_truncated: boolean;
   issue_counts_by_code: Record<string, number>;
@@ -538,8 +538,11 @@ function integrityBadgeVisible(status: SnapshotIntegrity | null) {
   return ["missing", "corrupt", "incomplete"].includes(status ?? "");
 }
 
-function contentHealthHasWarnings(snapshot: Snapshot) {
-  return snapshot.contentHealth.state === "warnings" && snapshot.contentHealth.issue_count > 0;
+function contentHealthHasBlockingIssues(snapshot: Snapshot) {
+  return (
+    snapshot.contentHealth.state === "warnings" &&
+    snapshot.contentHealth.impact_counts.restore_blocked > 0
+  );
 }
 
 function contentHealthUnknown(snapshot: Snapshot) {
@@ -548,21 +551,16 @@ function contentHealthUnknown(snapshot: Snapshot) {
 
 function contentHealthBadgeLabel(snapshot: Snapshot) {
   return t("project_settings.snapshots.content_health.badge", {
-    count: formatCount(snapshot.contentHealth.issue_count),
+    count: formatCount(snapshot.contentHealth.impact_counts.restore_blocked),
   });
+}
+
+function contentHealthBlockingIssues(snapshot: Snapshot) {
+  return snapshot.contentHealth.issues.filter((issue) => issue.impact === "restore_blocked");
 }
 
 function contentIssueLabel(issue: SnapshotContentIssue) {
   const captureKey = `project_settings.snapshots.content_health.issue_types.${issue.code}`;
-  if (issue.domain === "capture" && te(captureKey)) return t(captureKey);
-
-  const domainKeys: Record<string, string> = {
-    flow: `flows.health.issue_types.${issue.code}`,
-    scene: `scenes.health.issue_types.${issue.code}`,
-    sheet: `sheets.health.issue_types.${issue.code}`,
-  };
-  const domainKey = domainKeys[issue.domain];
-  if (domainKey && te(domainKey)) return t(domainKey);
   if (te(captureKey)) return t(captureKey);
 
   return t("project_settings.snapshots.content_health.generic_issue");
@@ -595,10 +593,22 @@ function locationPart(entityType: string | null, id: number | string | null) {
 function sourceFieldPart(sourceField: string | null) {
   if (!sourceField) return null;
 
-  const fieldKey = `project_settings.snapshots.content_health.source_fields.${sourceField}`;
-  return te(fieldKey)
-    ? t(fieldKey)
+  const directKey = `project_settings.snapshots.content_health.source_fields.${sourceField}`;
+  if (te(directKey)) return t(directKey);
+
+  const normalizedField = normalizeDynamicSourceField(sourceField);
+  const normalizedKey = `project_settings.snapshots.content_health.source_fields.${normalizedField}`;
+
+  return te(normalizedKey)
+    ? t(normalizedKey)
     : t("project_settings.snapshots.content_health.source_fields.related");
+}
+
+function normalizeDynamicSourceField(sourceField: string) {
+  if (/^action_data\.items\.\d+\.sheet_id$/.test(sourceField)) return "sheet_id";
+  if (/^[a-z][a-z0-9_]*_node_id$/.test(sourceField)) return "node_id";
+
+  return sourceField;
 }
 
 function progressPhaseLabel(snapshot: Snapshot) {
@@ -1003,7 +1013,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                   {{ integrityLabel(snapshot.integrityStatus) }}
                 </Badge>
                 <Badge
-                  v-if="contentHealthHasWarnings(snapshot)"
+                  v-if="contentHealthHasBlockingIssues(snapshot)"
                   :variant="snapshot.restoreBlockedByContentIssues ? 'destructive' : 'outline'"
                   class="text-xs"
                   :data-testid="`snapshot-content-health-badge-${snapshot.id}`"
@@ -1115,7 +1125,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                 </p>
               </div>
               <div
-                v-if="contentHealthHasWarnings(snapshot)"
+                v-if="contentHealthHasBlockingIssues(snapshot)"
                 class="mt-3 rounded-lg border border-amber-500/35 bg-amber-500/10 p-3"
                 :data-testid="`snapshot-content-health-${snapshot.id}`"
               >
@@ -1129,17 +1139,11 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                       {{ $t("project_settings.snapshots.content_health.heading") }}
                     </p>
                     <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      {{
-                        $t(
-                          snapshot.restoreBlockedByContentIssues
-                            ? "project_settings.snapshots.content_health.restore_blocked"
-                            : "project_settings.snapshots.content_health.runtime_degraded",
-                        )
-                      }}
+                      {{ $t("project_settings.snapshots.content_health.restore_blocked") }}
                     </p>
                     <ul class="mt-2 space-y-1.5">
                       <li
-                        v-for="(issue, index) in snapshot.contentHealth.issues"
+                        v-for="(issue, index) in contentHealthBlockingIssues(snapshot)"
                         :key="`${issue.domain}-${issue.code}-${issue.container_id}-${issue.entity_id}-${index}`"
                         class="text-xs"
                       >

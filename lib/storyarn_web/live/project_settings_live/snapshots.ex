@@ -84,7 +84,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   defp serialize_snapshot(project, snapshot, reservations, restore, active_restore?, build_statuses) do
     reservation = Map.get(reservations, snapshot.id, %{active_bytes: 0, export_bytes: 0, active_count: 0})
     build_status = Map.get(build_statuses, snapshot.id, %{})
-    retrying = snapshot_retrying?(snapshot, build_status)
+    retrying = build_status[:retrying] == true or snapshot.progress_phase == "retrying"
     structurally_restorable? = snapshot_restorable?(snapshot)
     restore_blocked_by_content? = restore_blocked_by_content?(snapshot, structurally_restorable?)
 
@@ -108,14 +108,14 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       accountingMeasuredAt: serialize_datetime(snapshot.accounting_measured_at),
       plannedSizeBytes: serialize_optional_byte_count(snapshot.total_size_bytes),
       progressPhase: snapshot.progress_phase,
-      progressBytes: snapshot |> snapshot_progress_bytes() |> serialize_byte_count(),
+      progressBytes: serialize_byte_count(snapshot.progress_bytes || 0),
       progressTotalBytes: snapshot |> measured_progress_total_bytes() |> serialize_optional_byte_count(),
       buildJobState: build_status[:job_state],
-      buildAttempt: snapshot_build_attempt(snapshot, build_status),
+      buildAttempt: max(snapshot.build_attempt || 0, build_status[:attempt] || 0),
       buildMaxAttempts: build_status[:max_attempts],
       retrying: retrying,
       nextRetryAt: serialize_datetime(build_status[:next_retry_at]),
-      retryErrorCode: retry_error_code(retrying, build_status),
+      retryErrorCode: if(retrying, do: build_status[:retry_error_code] || "build_failed"),
       contentHealth: serialize_content_health(project, snapshot.content_health),
       failureCode: snapshot.failure_code,
       failureMessage: snapshot.failure_message,
@@ -133,19 +133,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     }
   end
 
-  defp snapshot_retrying?(snapshot, build_status),
-    do: build_status[:retrying] == true or snapshot.progress_phase == "retrying"
-
   defp restore_blocked_by_content?(snapshot, true), do: SnapshotContentHealth.restore_blocked?(snapshot.content_health)
 
   defp restore_blocked_by_content?(_snapshot, false), do: false
-
-  defp snapshot_progress_bytes(snapshot), do: snapshot.progress_bytes || 0
-
-  defp snapshot_build_attempt(snapshot, build_status), do: max(snapshot.build_attempt || 0, build_status[:attempt] || 0)
-
-  defp retry_error_code(false, _build_status), do: nil
-  defp retry_error_code(true, build_status), do: build_status[:retry_error_code] || "build_failed"
 
   defp can_restore?(structurally_restorable?, restore_blocked_by_content?, active_restore?) do
     structurally_restorable? and not restore_blocked_by_content? and not active_restore?

@@ -110,6 +110,24 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
              }
     end
 
+    test "admits a zero-byte asset only through the restore-blocked capture catalog" do
+      empty = %{asset(41, "empty.png", sha256("")) | size: 0}
+
+      assert {:error, {:invalid_size, :asset, 0}} =
+               SnapshotObjectFormat.build_catalog([empty])
+
+      assert {:ok, [41]} = SnapshotObjectFormat.unmaterializable_catalog_asset_ids([empty])
+
+      assert {:ok, catalog} =
+               SnapshotObjectFormat.build_catalog([empty],
+                 asset_content_mode: :omit_unmaterializable
+               )
+
+      assert [%{"size_bytes" => 0, "sha256" => hash}] = catalog.assets
+      assert hash == sha256("")
+      assert [%{"size_bytes" => 0, "sha256" => ^hash}] = catalog.blobs
+    end
+
     test "rejects unsafe intrinsic metadata and configured limits" do
       unsafe = asset(41, "portrait.png", @hash, %{"nested" => %{"download_url" => "https://example.test"}})
 
@@ -361,7 +379,25 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
                   "key" => "projects/7/assets/current/portrait.png",
                   "url" => "https://storage.invalid/portrait.png",
                   "original_asset_id" => 99,
-                  "variant_asset_ids" => %{"url" => 100}
+                  "variant_asset_ids" => %{"url" => 100},
+                  "persisted_metadata" => %{
+                    "caption" => "Authored asset caption",
+                    "custom_url" => "https://content.invalid/asset",
+                    "variant_asset_ids" => %{"url" => 100},
+                    "nested" => %{
+                      "key" => "projects/7/assets/current/nested.png",
+                      "url" => "https://storage.invalid/nested.png",
+                      "storage_key" => "projects/7/assets/current/storage.png",
+                      "project_id" => 7,
+                      "label" => "Retained metadata",
+                      "items" => [
+                        %{
+                          "url" => "https://storage.invalid/item.png",
+                          "label" => "Retained list metadata"
+                        }
+                      ]
+                    }
+                  }
                 }
               },
               "referenced_sheets" => %{
@@ -388,7 +424,16 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
       assert snapshot["asset_metadata"]["41"] == %{
                "filename" => "portrait.png",
                "original_asset_id" => 99,
-               "variant_asset_ids" => %{"url" => 100}
+               "variant_asset_ids" => %{"url" => 100},
+               "persisted_metadata" => %{
+                 "caption" => "Authored asset caption",
+                 "custom_url" => "https://content.invalid/asset",
+                 "variant_asset_ids" => %{"url" => 100},
+                 "nested" => %{
+                   "label" => "Retained metadata",
+                   "items" => [%{"label" => "Retained list metadata"}]
+                 }
+               }
              }
 
       assert snapshot["referenced_sheets"]["12"] == %{"id" => 12, "name" => "Hero"}
@@ -398,6 +443,26 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
                SnapshotObjectFormat.validate_project(project)
 
       assert unsafe_key in ["key", "url", "avatar_url", "banner_url"]
+    end
+
+    test "reader rejects storage locators nested in persisted asset metadata" do
+      for key <- ~w(key url storage_key project_id) do
+        project = %{
+          "format_version" => 2,
+          "asset_metadata" => %{
+            "41" => %{
+              "persisted_metadata" => %{
+                "safe" => %{
+                  "nested" => [%{"label" => "retained", key => "current-storage-locator"}]
+                }
+              }
+            }
+          }
+        }
+
+        assert {:error, {:unsafe_project_metadata_key, ^key}} =
+                 SnapshotObjectFormat.validate_project(project)
+      end
     end
   end
 

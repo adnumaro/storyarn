@@ -8,18 +8,14 @@ defmodule Storyarn.Versioning.SnapshotContentHealth do
   to the canonical snapshot digest.
   """
 
-  alias Storyarn.Flows.HealthChecker, as: FlowHealthChecker
-  alias Storyarn.Scenes.HealthChecker, as: SceneHealthChecker
-  alias Storyarn.Sheets.HealthChecker, as: SheetHealthChecker
-
   @version 1
   @max_issues 50
   @max_encoded_bytes 64 * 1024
   @max_pg_bigint 9_223_372_036_854_775_807
-  @domains ~w(capture flow scene sheet)
+  @domains ~w(capture)
   @severities ~w(error warning info)
   @impacts ~w(restore_blocked runtime_degraded)
-  @states ~w(unknown healthy warnings)
+  @states ~w(unknown legacy_strict healthy warnings)
   @safe_identifier ~r/\A[a-z][a-z0-9_.-]{0,127}\z/
   @safe_location_id ~r/\A[A-Za-z0-9][A-Za-z0-9_-]{0,99}\z/
 
@@ -35,6 +31,7 @@ defmodule Storyarn.Versioning.SnapshotContentHealth do
     incomplete_localization
     inheritance_cycle
     invalid_active_localization_archive_state
+    invalid_asset_catalog_content
     invalid_asset_reference
     invalid_asset_snapshot_content
     invalid_avatar_reference
@@ -125,12 +122,6 @@ defmodule Storyarn.Versioning.SnapshotContentHealth do
     unclassified_content_issue
   ))
 
-  @canonical_codes %{
-    "flow" => MapSet.new(FlowHealthChecker.codes(), &Atom.to_string/1),
-    "scene" => MapSet.new(SceneHealthChecker.codes(), &Atom.to_string/1),
-    "sheet" => MapSet.new(SheetHealthChecker.codes(), &Atom.to_string/1)
-  }
-
   @report_keys ~w(
     impact_counts
     issue_count
@@ -161,6 +152,12 @@ defmodule Storyarn.Versioning.SnapshotContentHealth do
     empty_report("unknown")
   end
 
+  @doc "An assessed legacy report produced by the strict pre-health snapshot pipeline."
+  @spec legacy_strict() :: report()
+  def legacy_strict do
+    empty_report("legacy_strict")
+  end
+
   @doc "An assessed report with no content findings."
   @spec healthy() :: report()
   def healthy do
@@ -170,32 +167,6 @@ defmodule Storyarn.Versioning.SnapshotContentHealth do
   @doc "Maximum number of located findings retained in the portable report."
   @spec max_issues() :: pos_integer()
   def max_issues, do: @max_issues
-
-  @doc "Converts canonical dashboard findings without retaining their details."
-  @spec canonical_issues(atom() | String.t(), [map()]) :: [map()]
-  def canonical_issues(domain, findings) when is_list(findings) do
-    domain = normalize_string(domain)
-
-    if domain in ~w(flow scene sheet) do
-      Enum.map(findings, fn finding ->
-        %{
-          code: field(finding, :code),
-          container_id: field(finding, container_id_key(domain)),
-          container_type: domain,
-          domain: domain,
-          entity_id: field(finding, :entity_id),
-          entity_type: field(finding, :entity_type),
-          impact: :runtime_degraded,
-          severity: field(finding, :severity),
-          source_field: nil
-        }
-      end)
-    else
-      []
-    end
-  end
-
-  def canonical_issues(_domain, _findings), do: []
 
   @doc "Builds a deterministic report or returns `unknown/0` for an invalid producer shape."
   @spec build([map()]) :: report()
@@ -220,24 +191,6 @@ defmodule Storyarn.Versioning.SnapshotContentHealth do
       {:error, :invalid_snapshot_content_health} -> build([normalized])
     end
   end
-
-  @doc false
-  @spec replace_issue_family(report(), atom() | String.t(), atom() | String.t(), [map()]) :: report()
-  def replace_issue_family(report, domain, code, issues) when is_list(issues) do
-    domain = normalize_string(domain)
-    code = normalize_string(code)
-    normalized = Enum.map(issues, &normalize_issue_or_fallback/1)
-
-    with :ok <- validate(report),
-         true <- replacement_family?(normalized, domain, code),
-         true <- replacement_covers_existing_family?(report, domain, code, normalized) do
-      replace_normalized_issue_family(report, domain, code, normalized)
-    else
-      _invalid -> add_issue(report, %{})
-    end
-  end
-
-  def replace_issue_family(report, _domain, _code, _issues), do: add_issue(report, %{})
 
   @doc "Returns the report only when it satisfies the complete portable contract."
   @spec validate(term()) :: :ok | {:error, :invalid_snapshot_content_health}
@@ -356,89 +309,6 @@ defmodule Storyarn.Versioning.SnapshotContentHealth do
     end
   end
 
-  defp replacement_family?(normalized, domain, code) do
-    Enum.all?(normalized, fn issue ->
-      issue["domain"] == domain and issue["code"] == code
-    end) and Enum.uniq(normalized) == normalized
-  end
-
-  defp replacement_covers_existing_family?(report, domain, code, normalized) do
-    qualified = domain <> "." <> code
-    existing_count = Map.get(report["issue_counts_by_code"], qualified, 0)
-
-    length(normalized) >= existing_count and
-      stable_family_semantics?(report, qualified, normalized)
-  end
-
-  defp stable_family_semantics?(_report, _qualified, []), do: true
-
-  defp stable_family_semantics?(report, qualified, [replacement | replacements]) do
-    same_semantics? = fn issue ->
-      issue["impact"] == replacement["impact"] and
-        issue["severity"] == replacement["severity"]
-    end
-
-    Enum.all?(replacements, same_semantics?) and
-      report["issues"]
-      |> Enum.filter(&(qualified_code(&1) == qualified))
-      |> Enum.all?(same_semantics?)
-  end
-
-  defp replace_normalized_issue_family(report, domain, code, replacements) do
-    qualified = domain <> "." <> code
-    existing_count = Map.get(report["issue_counts_by_code"], qualified, 0)
-    replacement_count = length(replacements)
-    replacement = List.first(replacements)
-    issue_count = report["issue_count"] - existing_count + replacement_count
-
-    issues =
-      report["issues"]
-      |> Enum.reject(&(qualified_code(&1) == qualified))
-      |> Kernel.++(replacements)
-      |> Enum.uniq()
-      |> Enum.sort_by(&issue_sort_key/1)
-      |> Enum.take(@max_issues)
-
-    candidate =
-      report
-      |> Map.put("issue_count", issue_count)
-      |> Map.put("issue_counts_by_code", replace_family_count(report, qualified, replacement_count))
-      |> Map.put("impact_counts", replace_family_impact_counts(report, replacement, existing_count, replacement_count))
-      |> Map.put(
-        "severity_counts",
-        replace_family_severity_counts(report, replacement, existing_count, replacement_count)
-      )
-      |> Map.put("issues", issues)
-      |> Map.put("issues_truncated", issue_count > @max_issues)
-      |> Map.put("state", if(issue_count == 0, do: "healthy", else: "warnings"))
-
-    case validate(candidate) do
-      :ok -> candidate
-      {:error, :invalid_snapshot_content_health} -> add_issue(report, %{})
-    end
-  end
-
-  defp replace_family_count(report, qualified, 0), do: Map.delete(report["issue_counts_by_code"], qualified)
-
-  defp replace_family_count(report, qualified, replacement_count),
-    do: Map.put(report["issue_counts_by_code"], qualified, replacement_count)
-
-  defp replace_family_impact_counts(report, nil, _existing_count, _replacement_count), do: report["impact_counts"]
-
-  defp replace_family_impact_counts(report, replacement, existing_count, replacement_count) do
-    Map.update!(report["impact_counts"], replacement["impact"], fn count ->
-      count - existing_count + replacement_count
-    end)
-  end
-
-  defp replace_family_severity_counts(report, nil, _existing_count, _replacement_count), do: report["severity_counts"]
-
-  defp replace_family_severity_counts(report, replacement, existing_count, replacement_count) do
-    Map.update!(report["severity_counts"], replacement["severity"], fn count ->
-      count - existing_count + replacement_count
-    end)
-  end
-
   defp hidden_summary_may_contain?(%{"issues_truncated" => true} = report, normalized) do
     qualified = qualified_code(normalized)
     retained_count = Enum.count(report["issues"], &(qualified_code(&1) == qualified))
@@ -554,20 +424,13 @@ defmodule Storyarn.Versioning.SnapshotContentHealth do
   end
 
   defp valid_state?("unknown", 0), do: true
+  defp valid_state?("legacy_strict", 0), do: true
   defp valid_state?("healthy", 0), do: true
   defp valid_state?("warnings", count), do: count > 0
   defp valid_state?(_state, _count), do: false
 
-  defp valid_code?(domain, code) do
-    MapSet.member?(@capture_codes, code) or canonical_code?(domain, code)
-  end
-
-  defp canonical_code?(domain, code) do
-    case Map.fetch(@canonical_codes, domain) do
-      {:ok, codes} -> MapSet.member?(codes, code)
-      :error -> false
-    end
-  end
+  defp valid_code?("capture", code), do: MapSet.member?(@capture_codes, code)
+  defp valid_code?(_domain, _code), do: false
 
   defp valid_identifier?(value), do: is_binary(value) and Regex.match?(@safe_identifier, value)
 
@@ -614,10 +477,6 @@ defmodule Storyarn.Versioning.SnapshotContentHealth do
   defp sortable_id(nil), do: {0, ""}
   defp sortable_id(value) when is_integer(value), do: {1, value}
   defp sortable_id(value), do: {2, value}
-
-  defp container_id_key("flow"), do: :flow_id
-  defp container_id_key("scene"), do: :scene_id
-  defp container_id_key("sheet"), do: :sheet_id
 
   defp normalize_string(value) when is_atom(value), do: Atom.to_string(value)
   defp normalize_string(value) when is_binary(value), do: value

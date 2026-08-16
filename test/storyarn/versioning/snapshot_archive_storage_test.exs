@@ -94,15 +94,12 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
         }
       end
 
-    report = SnapshotContentHealth.build([invalid_asset_issue(41) | prior_issues])
-
     report =
-      SnapshotContentHealth.replace_issue_family(
-        report,
-        :capture,
-        :invalid_asset_snapshot_content,
-        [invalid_asset_issue(41), invalid_asset_issue(42)]
-      )
+      SnapshotContentHealth.build([
+        invalid_asset_catalog_issue(41),
+        invalid_asset_catalog_issue(42)
+        | prior_issues
+      ])
 
     assets = [unmaterializable_asset(41), unmaterializable_asset(42)]
 
@@ -116,6 +113,21 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
     assert prepared.asset_count == 2
     manifest = Jason.decode!(prepared.manifest_json)
     assert Enum.all?(manifest["assets"], &(&1["relationships"]["original"] == nil))
+  end
+
+  test "does not let precise asset reference issues authorize catalog omission" do
+    report =
+      SnapshotContentHealth.build([
+        precise_asset_issue(41),
+        precise_asset_issue(42)
+      ])
+
+    assert {:error, {:dangling_asset_relationship, 999_999}} =
+             SnapshotArchiveStorage.prepare(
+               42,
+               %{"format_version" => 2, "content_health" => report},
+               [unmaterializable_asset(41), unmaterializable_asset(42)]
+             )
   end
 
   test "embeds historical asset references before hashing the portable project object" do
@@ -848,9 +860,17 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
     assert Enum.any?(targets, &String.ends_with?(&1, "/snapshot.zip"))
   end
 
-  defp invalid_asset_issue(asset_id) do
+  defp invalid_asset_catalog_issue(asset_id) do
+    asset_issue(:invalid_asset_catalog_content, asset_id)
+  end
+
+  defp precise_asset_issue(asset_id) do
+    asset_issue(:invalid_asset_snapshot_content, asset_id)
+  end
+
+  defp asset_issue(code, asset_id) do
     %{
-      code: :invalid_asset_snapshot_content,
+      code: code,
       severity: :warning,
       entity_type: :asset,
       entity_id: asset_id,

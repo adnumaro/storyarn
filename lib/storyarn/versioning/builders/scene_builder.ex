@@ -741,21 +741,44 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp capture_scene_content_issues(scene, snapshot, layer_ids, asset_references) do
-    {:ok, data} = collect_scene_restore_data(snapshot)
-
     capture_scene_snapshot_validation_issue(scene, snapshot) ++
       capture_scene_layer_ownership_issues(scene, layer_ids) ++
       capture_scene_external_reference_issues(scene) ++
       capture_scene_asset_content_type_issues(scene, asset_references) ++
-      validation_content_issues(
-        validate_scene_snapshot_variable_references(scene.project_id, data),
-        :invalid_scene_variable_reference,
-        :scene,
-        scene.id,
-        nil,
-        :restore_blocked,
-        scene.id
-      )
+      capture_scene_restore_data_issues(scene, snapshot)
+  rescue
+    _exception -> [unclassified_scene_capture_issue(scene)]
+  catch
+    _kind, _reason -> [unclassified_scene_capture_issue(scene)]
+  end
+
+  defp capture_scene_restore_data_issues(%Scene{} = scene, snapshot) do
+    case collect_scene_restore_data(snapshot) do
+      {:ok, data} ->
+        validation_content_issues(
+          validate_scene_snapshot_variable_references(scene.project_id, data),
+          :invalid_scene_variable_reference,
+          :scene,
+          scene.id,
+          nil,
+          :restore_blocked,
+          scene.id
+        )
+
+      {:error, _reason} ->
+        [unclassified_scene_capture_issue(scene)]
+    end
+  end
+
+  defp unclassified_scene_capture_issue(scene) do
+    content_health_issue(
+      :unclassified_content_issue,
+      :scene,
+      scene.id,
+      nil,
+      :restore_blocked,
+      scene.id
+    )
   end
 
   defp capture_scene_snapshot_validation_issue(scene, snapshot) do

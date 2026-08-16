@@ -386,7 +386,7 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
 
     case SnapshotObjectFormat.unmaterializable_catalog_asset_ids(assets) do
       {:ok, []} -> false
-      {:ok, asset_ids} -> Map.get(counts, "capture.invalid_asset_snapshot_content", 0) >= length(asset_ids)
+      {:ok, asset_ids} -> Map.get(counts, "capture.invalid_asset_catalog_content", 0) >= length(asset_ids)
       {:error, _reason} -> Map.get(counts, "capture.unclassified_content_issue", 0) > 0
     end
   end

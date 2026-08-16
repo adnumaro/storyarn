@@ -18,13 +18,11 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   alias Storyarn.Repo
   alias Storyarn.Versioning.AssetMaterializationCache
   alias Storyarn.Versioning.Builders.AssetCopyError
+  alias Storyarn.Versioning.SnapshotObjectFormat
 
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
   @max_asset_size 52_428_800
   @relationship_metadata_keys ~w(original_asset_id web_asset_id variant_asset_ids)
-  @internal_metadata_keys ~w(
-    blob_key key project_id storage_key thumbnail_key thumbnail_path url web_url
-  )
 
   @doc """
   Given a list of asset IDs, batch-loads their blob hashes and metadata.
@@ -256,7 +254,8 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
     end
   end
 
-  defp capture_persisted_metadata(metadata) when is_map(metadata), do: Map.drop(metadata, @internal_metadata_keys)
+  defp capture_persisted_metadata(metadata) when is_map(metadata),
+    do: SnapshotObjectFormat.scrub_persisted_asset_metadata(metadata)
 
   defp capture_persisted_metadata(nil), do: nil
 

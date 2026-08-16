@@ -248,7 +248,8 @@ defmodule Storyarn.Assets.BlobStore do
   end
 
   defp repair_asset_blob(source_key, destination_key, blob_hash, size, content_type, opts) do
-    with true <- valid_asset_source_key?(source_key, Keyword.fetch!(opts, :source_project_id)),
+    with {:ok, source_project_id} <- asset_blob_source_project_id(opts),
+         true <- valid_asset_source_key?(source_key, source_project_id),
          :ok <- verify_asset_blob_source(source_key, blob_hash, size, content_type) do
       copy_verified_asset_blob(source_key, destination_key, blob_hash, size, content_type, opts)
     else
@@ -267,13 +268,21 @@ defmodule Storyarn.Assets.BlobStore do
          corruption_reason,
          opts
        ) do
-    with true <- valid_asset_source_key?(source_key, Keyword.fetch!(opts, :source_project_id)),
+    with {:ok, source_project_id} <- asset_blob_source_project_id(opts),
+         true <- valid_asset_source_key?(source_key, source_project_id),
          :ok <- verify_asset_blob_source(source_key, blob_hash, size, content_type),
          :ok <- remove_verified_invalid_blob(destination_key, blob_hash, invalid_stat, corruption_reason, opts) do
       copy_verified_asset_blob(source_key, destination_key, blob_hash, size, content_type, opts)
     else
       false -> {:error, :invalid_asset_blob_identity}
       {:error, _reason} = error -> error
+    end
+  end
+
+  defp asset_blob_source_project_id(opts) do
+    case Keyword.fetch(opts, :source_project_id) do
+      {:ok, project_id} when is_integer(project_id) and project_id > 0 -> {:ok, project_id}
+      _missing_or_invalid -> {:error, :invalid_asset_blob_identity}
     end
   end
 

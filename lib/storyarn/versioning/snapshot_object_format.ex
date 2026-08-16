@@ -66,11 +66,13 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   def hard_limits, do: @default_limits
 
   @doc """
-  Removes current-storage durability fields from the project payload.
+  Removes generated current-storage durability fields from the project payload.
 
   Entity identifiers remain snapshot-local relationship labels and are remapped
-  by recovery. Object keys, URLs, project ownership IDs, and thumbnail paths do
-  not survive into the canonical payload.
+  by recovery. Storage locators are removed only from system-owned structural
+  surfaces, including asset catalogs and their persisted metadata. Arbitrary
+  authored entity content is not traversed, so user-defined keys and URLs remain
+  part of the exact captured project state.
   """
   @spec portable_project(map()) :: {:ok, map()} | {:error, term()}
   def portable_project(%{"format_version" => @project_format_version} = project) do
@@ -85,6 +87,16 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   def portable_project(%{"format_version" => version}), do: {:error, {:unsupported_project_format, version}}
 
   def portable_project(_project), do: {:error, :invalid_project_object}
+
+  @doc """
+  Removes storage locators from system-owned persisted asset metadata.
+
+  This function interprets locator-shaped keys only inside the typed persisted
+  metadata surface. It does not inspect arbitrary authored project payloads or
+  infer storage locators from their values.
+  """
+  @spec scrub_persisted_asset_metadata(term()) :: term()
+  def scrub_persisted_asset_metadata(metadata), do: scrub_persisted_metadata_value(metadata)
 
   @doc false
   @spec validate_project(term()) :: :ok | {:error, term()}
@@ -354,7 +366,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
 
     with :ok <- validate_sha256(asset.blob_hash),
          :ok <- validate_content_type(asset.content_type),
-         :ok <- validate_size(asset.size, limits.max_asset_bytes, :asset),
+         :ok <- validate_catalog_asset_size(asset.size, limits.max_asset_bytes, asset_content_mode),
          source_key = source_key(asset, project_id, source_key_mode),
          :ok <- validate_source_key(source_key, project_id, asset.blob_hash, asset.content_type, source_key_mode),
          {:ok, filename} <- catalog_filename(asset, logical_id, asset_content_mode),
@@ -389,6 +401,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     metadata = asset.metadata
 
     is_map(metadata) and
+      match?(:ok, validate_catalog_asset_size(asset.size, limits.max_asset_bytes, :strict)) and
       match?(:ok, validate_filename(asset.filename)) and
       match?({:ok, _relationships}, relationships(metadata, logical_ids, :strict)) and
       match?({:ok, _metadata}, intrinsic_metadata(metadata, limits))
@@ -853,6 +866,12 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
 
   defp validate_source_key(key, _project_id, _hash, _content_type, _mode), do: {:error, {:invalid_asset_source_key, key}}
 
+  defp validate_catalog_asset_size(0, _max_size, :strict), do: {:error, {:invalid_size, :asset, 0}}
+
+  defp validate_catalog_asset_size(size, max_size, mode) when mode in [:strict, :omit_unmaterializable] do
+    validate_size(size, max_size, :asset)
+  end
+
   defp validate_size(size, max_size, label) when is_integer(size) and size >= 0 do
     if size <= max_size do
       :ok
@@ -954,7 +973,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   defp scrub_asset_metadata_catalog(catalog) when is_map(catalog) do
     Map.new(catalog, fn
       {source_id, metadata} when is_map(metadata) ->
-        {source_id, Map.drop(metadata, @storage_metadata_keys)}
+        {source_id, scrub_asset_metadata_entry(metadata)}
 
       entry ->
         entry
@@ -963,10 +982,25 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
 
   defp scrub_asset_metadata_catalog(catalog), do: catalog
 
+  defp scrub_asset_metadata_entry(metadata) do
+    Enum.reduce(metadata, %{}, fn {key, value}, portable ->
+      cond do
+        storage_metadata_key?(key) ->
+          portable
+
+        persisted_metadata_key?(key) ->
+          Map.put(portable, key, scrub_persisted_asset_metadata(value))
+
+        true ->
+          Map.put(portable, key, value)
+      end
+    end)
+  end
+
   defp scrub_referenced_sheets(referenced_sheets) when is_map(referenced_sheets) do
     Map.new(referenced_sheets, fn
       {sheet_id, metadata} when is_map(metadata) ->
-        {sheet_id, Map.drop(metadata, ["avatar_url", "banner_url"])}
+        {sheet_id, reject_keys(metadata, &storage_metadata_key?/1)}
 
       entry ->
         entry
@@ -974,6 +1008,40 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   end
 
   defp scrub_referenced_sheets(referenced_sheets), do: referenced_sheets
+
+  defp scrub_persisted_metadata_value(metadata) when is_map(metadata) do
+    Enum.reduce(metadata, %{}, fn {key, value}, portable ->
+      cond do
+        persisted_storage_metadata_key?(key) ->
+          portable
+
+        variant_relationship_key?(key) ->
+          Map.put(portable, key, scrub_variant_relationship_targets(value))
+
+        true ->
+          Map.put(portable, key, scrub_persisted_metadata_value(value))
+      end
+    end)
+  end
+
+  defp scrub_persisted_metadata_value(metadata) when is_list(metadata),
+    do: Enum.map(metadata, &scrub_persisted_metadata_value/1)
+
+  defp scrub_persisted_metadata_value(metadata), do: metadata
+
+  defp scrub_variant_relationship_targets(variants) when is_map(variants) do
+    Map.new(variants, fn {profile, target} ->
+      {profile, scrub_persisted_metadata_value(target)}
+    end)
+  end
+
+  defp scrub_variant_relationship_targets(value), do: scrub_persisted_metadata_value(value)
+
+  defp reject_keys(map, reject?) do
+    Enum.reduce(map, %{}, fn {key, value}, kept ->
+      if reject?.(key), do: kept, else: Map.put(kept, key, value)
+    end)
+  end
 
   defp reject_storage_metadata(project) when is_map(project) do
     with :ok <- reject_project_root_storage_metadata(project["project"]),
@@ -1031,7 +1099,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   defp reject_asset_metadata_catalog(catalog) when is_map(catalog) do
     Enum.reduce_while(catalog, :ok, fn
       {_source_id, metadata}, :ok when is_map(metadata) ->
-        case Enum.find(Map.keys(metadata), &storage_metadata_key?/1) do
+        case find_asset_metadata_storage_key(metadata) do
           nil -> {:cont, :ok}
           key -> {:halt, {:error, {:unsafe_project_metadata_key, key}}}
         end
@@ -1042,6 +1110,35 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   end
 
   defp reject_asset_metadata_catalog(_catalog), do: {:error, :invalid_project_asset_metadata}
+
+  defp find_asset_metadata_storage_key(metadata) do
+    Enum.find(Map.keys(metadata), &storage_metadata_key?/1) ||
+      Enum.find_value(metadata, fn
+        {key, value} ->
+          if persisted_metadata_key?(key), do: find_persisted_metadata_storage_key(value)
+      end)
+  end
+
+  defp find_persisted_metadata_storage_key(metadata) when is_map(metadata) do
+    Enum.find(Map.keys(metadata), &persisted_storage_metadata_key?/1) ||
+      Enum.find_value(metadata, fn {key, value} ->
+        if variant_relationship_key?(key) do
+          find_variant_relationship_storage_key(value)
+        else
+          find_persisted_metadata_storage_key(value)
+        end
+      end)
+  end
+
+  defp find_persisted_metadata_storage_key(metadata) when is_list(metadata),
+    do: Enum.find_value(metadata, &find_persisted_metadata_storage_key/1)
+
+  defp find_persisted_metadata_storage_key(_metadata), do: nil
+
+  defp find_variant_relationship_storage_key(variants) when is_map(variants),
+    do: variants |> Map.values() |> Enum.find_value(&find_persisted_metadata_storage_key/1)
+
+  defp find_variant_relationship_storage_key(value), do: find_persisted_metadata_storage_key(value)
 
   defp reject_referenced_sheet_storage_metadata(nil), do: :ok
 
@@ -1088,6 +1185,9 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     if Map.has_key?(map, key), do: Map.update!(map, key, update_fun), else: map
   end
 
+  defp persisted_metadata_key?(key), do: key in ["persisted_metadata", :persisted_metadata]
+  defp variant_relationship_key?(key), do: key in ["variant_asset_ids", :variant_asset_ids]
+
   defp unsafe_asset_metadata_key?(key) do
     key in @storage_metadata_keys or
       Regex.match?(@unsafe_metadata_snake_key, key) or
@@ -1109,6 +1209,20 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
 
   defp storage_metadata_key?(key) when is_atom(key), do: key |> Atom.to_string() |> storage_metadata_key?()
   defp storage_metadata_key?(_key), do: false
+
+  defp persisted_storage_metadata_key?(key) when is_binary(key) do
+    key in @storage_metadata_keys or
+      (String.valid?(key) and
+         (Regex.match?(@unsafe_project_storage_snake_key, key) or
+            Regex.match?(@unsafe_project_storage_compound_key, key) or
+            Regex.match?(@unsafe_project_ownership_key, key) or
+            Regex.match?(@unsafe_project_generic_storage_key, key)))
+  end
+
+  defp persisted_storage_metadata_key?(key) when is_atom(key),
+    do: key |> Atom.to_string() |> persisted_storage_metadata_key?()
+
+  defp persisted_storage_metadata_key?(_key), do: false
 
   defp valid_optional_logical_id?(nil), do: true
   defp valid_optional_logical_id?(id), do: valid_logical_id?(id)

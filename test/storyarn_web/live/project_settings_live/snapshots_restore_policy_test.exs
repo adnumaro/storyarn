@@ -146,11 +146,17 @@ defmodule StoryarnWeb.ProjectSettingsLive.SnapshotsRestorePolicyTest do
     project = user |> project_fixture() |> Repo.preload(:workspace)
 
     content_health =
-      :flow
-      |> SnapshotContentHealth.canonical_issues([
-        %{code: :missing_entry, severity: :error, flow_id: 42, entity_type: :flow, entity_id: 42}
+      SnapshotContentHealth.build([
+        %{
+          code: :invalid_project_snapshot_main_flow_count,
+          severity: :warning,
+          entity_type: :project,
+          entity_id: project.id,
+          impact: :runtime_degraded,
+          container_type: :project,
+          container_id: project.id
+        }
       ])
-      |> SnapshotContentHealth.build()
 
     snapshot = full_project_snapshot_fixture(project, %{content_health: content_health})
 
