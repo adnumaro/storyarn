@@ -25,7 +25,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
-  alias Storyarn.Versioning.ProjectRecovery
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.ProjectSnapshotCrud
@@ -34,7 +33,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Versioning.ProjectSnapshotZip
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotAssetCapture
-  alias Storyarn.Versioning.SnapshotContentHealth
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Versioning.SnapshotStorage
@@ -1196,8 +1194,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       blob_count: capture.blob_count
     }
 
-    with :ok <- validate_capture_content_health(snapshot, capture),
-         {:ok, _plan} <- ProjectSnapshotZip.prepare_capture(snapshot.project_id, prepared),
+    with {:ok, _plan} <- ProjectSnapshotZip.prepare_capture(snapshot.project_id, prepared),
          {:ok, project} <- Jason.decode(capture.project_json),
          {:ok, manifest} <- Jason.decode(capture.manifest_json),
          :ok <- SnapshotObjectFormat.validate_project(project),
@@ -1291,21 +1288,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
 
     if capture_asset_inventory_fingerprint(assets) ==
          capture_asset_inventory_fingerprint(expected_inventory.raw_assets) do
-      {project_snapshot, builder_issues} =
-        ProjectSnapshotBuilder.build_canonical_snapshot_with_issues_in_transaction(project_id,
+      project_snapshot =
+        ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(project_id,
           localization_scope: :active
         )
 
-      project_snapshot =
-        project_snapshot
-        |> put_capture_asset_catalog(assets)
-        |> put_capture_content_health(builder_issues, project_id, assets, expected_inventory.invalid_asset_ids)
+      project_snapshot = put_capture_asset_catalog(project_snapshot, assets)
 
       case SnapshotArchiveStorage.prepare(project_id, project_snapshot, expected_inventory.effective_assets,
-             source_key_mode: :protected_blob
+             source_key_mode: :protected_blob,
+             asset_content_mode: :omit_unmaterializable
            ) do
         {:ok, prepared} ->
-          seal_materialization_health(project_id, project_snapshot, expected_inventory, prepared)
+          {:ok, project_snapshot, prepared, expected_inventory}
 
         {:error, reason} ->
           {:error, reason}
@@ -1315,103 +1310,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp seal_materialization_health(project_id, project_snapshot, asset_inventory, prepared) do
-    if prepared_materializable?(prepared) do
-      {:ok, project_snapshot, prepared, asset_inventory}
-    else
-      diagnosed_snapshot =
-        Map.update!(project_snapshot, "content_health", fn report ->
-          SnapshotContentHealth.add_issue(report, invalid_project_content_issue(project_id))
-        end)
-
-      case SnapshotArchiveStorage.prepare(project_id, diagnosed_snapshot, asset_inventory.effective_assets,
-             source_key_mode: :protected_blob
-           ) do
-        {:ok, diagnosed_prepared} -> {:ok, diagnosed_snapshot, diagnosed_prepared, asset_inventory}
-        {:error, reason} -> {:error, reason}
-      end
-    end
-  end
-
-  defp prepared_materializable?(prepared) do
-    with {:ok, %{} = project_snapshot} <- Jason.decode(prepared.project_json),
-         :ok <- ProjectRecovery.validate_materialization_snapshot(project_snapshot) do
-      true
-    else
-      _invalid -> false
-    end
-  rescue
-    _exception -> false
-  catch
-    _kind, _reason -> false
-  end
-
-  defp invalid_project_content_issue(project_id) do
-    %{
-      code: :invalid_project_snapshot_content,
-      severity: :warning,
-      entity_type: :project,
-      entity_id: project_id,
-      source_field: nil,
-      impact: :restore_blocked,
-      container_type: :project,
-      container_id: project_id
-    }
-  end
-
   defp put_capture_asset_catalog(project_snapshot, assets) do
     {asset_blob_hashes, asset_metadata} = AssetHashResolver.capture_catalog_maps(assets)
 
     project_snapshot
     |> Map.put("asset_blob_hashes", asset_blob_hashes)
     |> Map.put("asset_metadata", asset_metadata)
-  end
-
-  defp put_capture_content_health(project_snapshot, builder_issues, project_id, assets, invalid_identity_ids) do
-    catalog_issues =
-      case SnapshotObjectFormat.unmaterializable_catalog_asset_ids(assets) do
-        {:ok, asset_ids} ->
-          asset_ids
-          |> Enum.concat(invalid_identity_ids)
-          |> Enum.uniq()
-          |> Enum.sort()
-          |> Enum.map(&invalid_asset_catalog_issue(&1, project_id))
-
-        {:error, _reason} ->
-          [unclassified_project_content_issue(project_id)]
-      end
-
-    Map.put(
-      project_snapshot,
-      "content_health",
-      SnapshotContentHealth.build(builder_issues ++ catalog_issues)
-    )
-  end
-
-  defp invalid_asset_catalog_issue(asset_id, project_id) do
-    %{
-      code: :invalid_asset_catalog_content,
-      severity: :warning,
-      entity_type: :asset,
-      entity_id: asset_id,
-      source_field: :metadata,
-      impact: :restore_blocked,
-      container_type: :project,
-      container_id: project_id
-    }
-  end
-
-  defp unclassified_project_content_issue(project_id) do
-    %{
-      code: :unclassified_content_issue,
-      severity: :error,
-      entity_type: :project,
-      entity_id: project_id,
-      source_field: nil,
-      impact: :restore_blocked,
-      container_type: :project,
-      container_id: project_id
-    }
   end
 
   defp capture_asset_inventory_fingerprint(assets) do
@@ -1490,10 +1394,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
            storage_started_at: nil
          } <- reservation,
          :ok <- validate_executing_build_job(snapshot),
-         {:ok, content_health} <- validate_new_capture_content_health(project_snapshot, prepared),
          {:ok, captured_snapshot} <-
-           persist_capture_metadata(snapshot, project_snapshot, prepared, content_health),
-         {:ok, _capture} <- insert_capture(captured_snapshot, prepared, content_health),
+           persist_capture_metadata(snapshot, project_snapshot, prepared),
+         {:ok, _capture} <- insert_capture(captured_snapshot, prepared),
          {:ok, _reservation} <-
            Billing.extend_storage_reservation(
              reservation.id,
@@ -1517,7 +1420,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp persist_capture_metadata(snapshot, project_snapshot, prepared, content_health) do
+  defp persist_capture_metadata(snapshot, project_snapshot, prepared) do
     now = TimeHelpers.now()
 
     snapshot
@@ -1533,7 +1436,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       asset_count: prepared.asset_count,
       blob_count: prepared.blob_count,
       entity_counts: Map.get(project_snapshot, "entity_counts", %{}),
-      content_health: content_health,
       capture_digest: prepared.capture_digest,
       restore_contract_version: 1,
       captured_at: now,
@@ -1543,7 +1445,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     |> Repo.update()
   end
 
-  defp insert_capture(snapshot, prepared, content_health) do
+  defp insert_capture(snapshot, prepared) do
     attrs = %{
       project_snapshot_id: snapshot.id,
       capture_boundary: snapshot.capture_boundary,
@@ -1551,7 +1453,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       project_json: prepared.project_json,
       manifest_json: prepared.manifest_json,
       source_keys: prepared.source_keys,
-      content_health: content_health,
       project_size_bytes: prepared.project_size_bytes,
       manifest_size_bytes: prepared.manifest_size_bytes,
       asset_blob_size_bytes: prepared.asset_blob_size_bytes,
@@ -2702,8 +2603,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     with %ProjectSnapshot{capture: %ProjectSnapshotCapture{} = capture} <- snapshot,
          %StorageReservation{} = reservation <- snapshot.storage_reservation,
          true <- capture.capture_boundary == snapshot.capture_boundary,
-         true <- capture.capture_digest == snapshot.capture_digest,
-         :ok <- validate_capture_content_health(snapshot, capture) do
+         true <- capture.capture_digest == snapshot.capture_digest do
       {:ok,
        %{
          snapshot: snapshot,
@@ -2728,46 +2628,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       false -> {:error, :snapshot_capture_identity_mismatch}
       nil -> {:error, :snapshot_capture_missing}
       _invalid -> {:error, :snapshot_build_input_invalid}
-    end
-  end
-
-  defp validate_new_capture_content_health(project_snapshot, prepared) do
-    with %{} = content_health <- Map.get(project_snapshot, "content_health"),
-         :ok <- SnapshotContentHealth.validate(content_health),
-         {:ok, %{} = prepared_project} <- Jason.decode(prepared.project_json),
-         true <- Map.get(prepared_project, "content_health") == content_health do
-      {:ok, content_health}
-    else
-      _invalid -> {:error, :snapshot_capture_content_health_invalid}
-    end
-  end
-
-  defp validate_capture_content_health(snapshot, capture) do
-    with :ok <- SnapshotContentHealth.validate(snapshot.content_health),
-         :ok <- SnapshotContentHealth.validate(capture.content_health),
-         true <- snapshot.content_health == capture.content_health,
-         {:ok, %{} = project} <- Jason.decode(capture.project_json),
-         :ok <- validate_embedded_content_health(project, snapshot.content_health) do
-      :ok
-    else
-      _invalid -> {:error, :snapshot_capture_content_health_invalid}
-    end
-  end
-
-  defp validate_embedded_content_health(project, persisted_content_health) do
-    case Map.fetch(project, "content_health") do
-      {:ok, embedded_content_health} ->
-        with :ok <- SnapshotContentHealth.validate(embedded_content_health),
-             true <- embedded_content_health == persisted_content_health do
-          :ok
-        else
-          _invalid -> {:error, :snapshot_capture_content_health_invalid}
-        end
-
-      :error ->
-        if persisted_content_health == SnapshotContentHealth.unknown(),
-          do: :ok,
-          else: {:error, :snapshot_capture_content_health_invalid}
     end
   end
 

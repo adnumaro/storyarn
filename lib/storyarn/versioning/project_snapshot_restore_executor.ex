@@ -35,7 +35,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.References
-  alias Storyarn.References.EntityReference
   alias Storyarn.References.RichTextMentions
   alias Storyarn.References.VariableReference
   alias Storyarn.Repo
@@ -63,7 +62,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Versioning.ProjectSnapshotAssetMaterializer
   alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.RestorePolicy
-  alias Storyarn.Versioning.SnapshotContentHealth
 
   @phase_rank %{"preflight" => 0, "staging" => 1, "materializing" => 2, "verifying" => 3}
   @compensation_context_key {__MODULE__, :compensation_context}
@@ -199,15 +197,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
            Projects.authorize(Scope.for_user(actor), project.id, :manage_project),
          true <- project_id == restore.project_id,
          {:ok, archive_plan} <- reader.verify(snapshot),
-         :ok <- validate_archive_content_health(snapshot, archive_plan.project),
          :ok <- validate_canonical_project_fields(project, archive_plan.project),
-         :ok <- recovery.validate_materialization_snapshot(archive_plan.project),
          bound_reservation = bound_reservation(restore),
          lease_token = reservation_lease_token(bound_reservation),
          staging_prefix = staging_prefix(project.id, lease_token),
          staging_keys = staging_keys(archive_plan.manifest, staging_prefix),
          {:ok, asset_plan} <-
-           materializer.prepare(
+           prepare_asset_plan(
+             materializer,
              project.id,
              lease_token,
              archive_plan.manifest,
@@ -256,6 +253,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     end
   end
 
+  defp prepare_asset_plan(materializer, project_id, lease_token, manifest, project, prefix, keys) do
+    if Code.ensure_loaded?(materializer) and function_exported?(materializer, :prepare, 7) do
+      materializer.prepare(project_id, lease_token, manifest, project, prefix, keys, materialization_mode: :exact)
+    else
+      materializer.prepare(project_id, lease_token, manifest, project, prefix, keys)
+    end
+  end
+
   defp validate_execution_fence(%ProjectSnapshotRestore{} = restore), do: validate_running_restore(restore)
 
   defp validate_running_restore(%ProjectSnapshotRestore{
@@ -296,40 +301,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
         snapshot.manifest_checksum == restore.manifest_checksum
       ])
 
-    cond do
-      SnapshotContentHealth.restore_blocked?(snapshot.content_health) ->
-        {:error, :snapshot_contains_unrestorable_content}
-
-      exact? ->
-        :ok
-
-      true ->
-        {:error, :project_snapshot_restore_identity_mismatch}
-    end
-  end
-
-  defp validate_archive_content_health(snapshot, project_snapshot) do
-    with :ok <- SnapshotContentHealth.validate(snapshot.content_health),
-         :ok <- validate_embedded_content_health(project_snapshot, snapshot.content_health),
-         false <- SnapshotContentHealth.restore_blocked?(snapshot.content_health) do
-      :ok
-    else
-      _invalid -> {:error, :snapshot_contains_unrestorable_content}
-    end
-  end
-
-  defp validate_embedded_content_health(project_snapshot, persisted_content_health) do
-    case Map.fetch(project_snapshot, "content_health") do
-      {:ok, embedded_content_health} ->
-        if embedded_content_health == persisted_content_health,
-          do: SnapshotContentHealth.validate(embedded_content_health),
-          else: {:error, :invalid_snapshot_content_health}
-
-      :error ->
-        if persisted_content_health == SnapshotContentHealth.legacy_strict(),
-          do: :ok,
-          else: {:error, :invalid_snapshot_content_health}
-    end
+    if exact?, do: :ok, else: {:error, :project_snapshot_restore_identity_mismatch}
   end
 
   @project_field_keys MapSet.new(~w(
@@ -339,9 +311,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
 
   defp validate_canonical_project_fields(project, %{"project" => attrs}) when is_map(attrs) do
     exact_keys? = attrs |> Map.keys() |> MapSet.new() |> MapSet.equal?(@project_field_keys)
-    changeset = Project.update_changeset(project, attrs)
 
-    if exact_keys? and changeset.valid?,
+    if exact_keys? and is_integer(project.id) and project.id > 0,
       do: :ok,
       else: {:error, :invalid_project_snapshot_project_fields}
   end
@@ -649,6 +620,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
              locked.actor.id,
              adoption.source_id_map,
              localization_scope: :active,
+             materialization_mode: :exact,
              preserved_localization_actor_ids: preserved_localization_actor_ids
            ),
          :ok <- context.materializer.verify_adopted_locked(context.asset_plan, adoption.logical_id_map),
@@ -821,12 +793,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
 
   defp restore_project_fields(project, project_data) do
     attrs =
-      Map.take(
-        project_data["project"],
-        ~w(name description project_type project_subtype project_type_other settings auto_version_flows auto_version_scenes auto_version_sheets)
-      )
+      Map.new(@project_field_keys, fn key ->
+        {String.to_existing_atom(key), Map.fetch!(project_data["project"], key)}
+      end)
 
-    project |> Project.update_changeset(attrs) |> Repo.update()
+    project |> Ecto.Changeset.change(attrs) |> Repo.update()
   end
 
   defp postverify_restore(project_id, project_data, previous, id_maps, source_id_map, preserved_localization_actor_ids) do
@@ -838,7 +809,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
          :ok <- verify_active_count(Scene, project_id, expected["scenes"]),
          :ok <- verify_graph_inventory(project_id, expected_graph),
          :ok <- verify_localization_inventory(project_id, project_data),
-         :ok <- verify_active_reference_sources(project_id),
+         :ok <- rebuild_active_reference_sources(project_id),
          :ok <- verify_previous_roots_trashed(previous),
          :ok <- verify_project_fields(project_id, project_data["project"]) do
       verify_semantic_snapshot(
@@ -854,7 +825,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   defp verify_semantic_snapshot(project_id, expected, id_maps, source_id_map, preserved_localization_actor_ids) do
     actual =
       project_id
-      |> ProjectSnapshotBuilder.build_snapshot_in_transaction(localization_scope: :active)
+      |> ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(localization_scope: :active)
       |> normalize_json()
 
     expected_source =
@@ -866,7 +837,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     destination_maps = %{mode: :forward, ids: Map.put(id_maps, :asset, source_id_map)}
 
     with {:ok, variable_plan} <-
-           VariableReferenceTracker.prepare_portable_project_snapshot(expected_source),
+           VariableReferenceTracker.prepare_exact_project_snapshot(expected_source),
          {:ok, expected_rewritten} <-
            VariableReferenceTracker.rewrite_portable_project_snapshot(
              expected_source,
@@ -974,7 +945,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     maps = Map.put(maps, :mention_block_ids, rich_text_block_ids(snapshot))
 
     snapshot
-    |> Map.drop(~w(asset_blob_hashes asset_metadata asset_catalog_refs content_health))
+    |> Map.take(~w(format_version project entity_counts sheets flows scenes tree localization))
     |> Map.update!("sheets", &Enum.map(&1, fn entry -> canonical_sheet_entry(entry, maps) end))
     |> Map.update!("flows", &Enum.map(&1, fn entry -> canonical_flow_entry(entry, maps) end))
     |> Map.update!("scenes", &Enum.map(&1, fn entry -> canonical_scene_entry(entry, maps) end))
@@ -995,7 +966,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     |> Map.update!("avatar_asset_id", &canonical_id(&1, :asset, maps))
     |> Map.update!("banner_asset_id", &canonical_id(&1, :asset, maps))
     |> Map.update!("avatars", &Enum.map(&1, fn avatar -> canonical_avatar(avatar, maps) end))
-    |> Map.update!("hidden_inherited_block_ids", &Enum.map(&1, fn id -> canonical_id(id, :block, maps) end))
+    |> Map.update!("hidden_inherited_block_ids", fn
+      nil -> nil
+      ids -> Enum.map(ids, &canonical_authored_id(&1, :block, maps))
+    end)
     |> Map.update!("blocks", &Enum.map(&1, fn block -> canonical_block(block, maps) end))
     |> Map.update!("localization", &canonical_localization_rows(&1, maps))
   end
@@ -1009,7 +983,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   defp canonical_block(block, maps) do
     block
     |> Map.update!("original_id", &canonical_id(&1, :block, maps))
-    |> Map.update!("inherited_from_block_id", &canonical_id(&1, :block, maps))
+    |> Map.update!("inherited_from_block_id", &canonical_authored_id(&1, :block, maps))
     |> Map.update!("value", &canonical_block_value(block["type"], &1, maps))
     |> update_if_present("table_data", &canonical_table_data(&1, maps))
     |> update_if_present("gallery_images", fn images ->
@@ -1059,7 +1033,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   defp canonical_flow_node(node, maps) do
     node
     |> Map.update!("original_id", &canonical_id(&1, :node, maps))
-    |> Map.update!("parent_id", &canonical_id(&1, :node, maps))
+    |> Map.update!("parent_id", &canonical_authored_id(&1, :node, maps))
     |> Map.update!("data", &canonical_flow_node_data(&1, maps))
     |> update_if_present("sequence_tracks", fn tracks ->
       Enum.map(tracks, &canonical_sequence_resource(&1, maps))
@@ -1072,10 +1046,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   defp canonical_flow_node_data(data, maps) do
     data
     |> canonical_mentions(maps)
-    |> update_if_present("speaker_sheet_id", &canonical_id(&1, :sheet, maps))
-    |> update_if_present("location_sheet_id", &canonical_id(&1, :sheet, maps))
-    |> update_if_present("referenced_flow_id", &canonical_id(&1, :flow, maps))
-    |> update_if_present("avatar_id", &canonical_id(&1, :avatar, maps))
+    |> update_if_present("speaker_sheet_id", &canonical_authored_id(&1, :sheet, maps))
+    |> update_if_present("location_sheet_id", &canonical_authored_id(&1, :sheet, maps))
+    |> update_if_present("referenced_flow_id", &canonical_authored_id(&1, :flow, maps))
+    |> update_if_present("avatar_id", &canonical_authored_id(&1, :avatar, maps))
     |> update_if_present("audio_asset_id", &canonical_id(&1, :asset, maps))
     |> canonical_typed_target(maps, %{"flow" => :flow, "scene" => :scene})
   end
@@ -1089,6 +1063,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   defp canonical_flow_connection(connection, nodes, maps) do
     connection
     |> Map.delete("original_id")
+    |> update_if_present("source_node_id", &canonical_id(&1, :node, maps))
+    |> update_if_present("target_node_id", &canonical_id(&1, :node, maps))
     |> update_dynamic_subflow_exit_pin(nodes, maps)
   end
 
@@ -1104,7 +1080,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
 
   defp canonical_dynamic_exit_pin("exit_" <> id_text = pin, maps) do
     case Integer.parse(id_text) do
-      {id, ""} -> "exit_#{canonical_id_text(id, :node, maps)}"
+      {id, ""} -> "exit_#{canonical_authored_id_text(id, :node, maps)}"
       _invalid -> pin
     end
   end
@@ -1153,7 +1129,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     action_data =
       update_if_present(action_data, "items", fn items ->
         Enum.map(items, fn item ->
-          update_if_present(item, "sheet_id", &canonical_id(&1, :sheet, maps))
+          update_if_present(item, "sheet_id", &canonical_authored_id(&1, :sheet, maps))
         end)
       end)
 
@@ -1193,7 +1169,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   defp canonical_tree_item(item, kind, maps) do
     item
     |> Map.update!("id", &canonical_id(&1, kind, maps))
-    |> Map.update!("parent_id", &canonical_id(&1, kind, maps))
+    |> Map.update!("parent_id", &canonical_authored_id(&1, kind, maps))
   end
 
   defp canonical_project_localization(localization, maps) do
@@ -1229,13 +1205,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     |> Map.put("translated_text", translated_text)
     |> Map.put("translated_source_hash", translated_source_hash)
     |> Map.update!("source_id", &canonical_source_id(row["source_type"], &1, maps))
-    |> Map.update!("speaker_sheet_id", &canonical_id(&1, :sheet, maps))
+    |> Map.update!("speaker_sheet_id", &canonical_authored_id(&1, :sheet, maps))
     |> Map.update!("vo_asset_id", &canonical_id(&1, :asset, maps))
   end
 
-  defp canonical_source_id("sheet", id, maps), do: canonical_id(id, :sheet, maps)
-  defp canonical_source_id("block", id, maps), do: canonical_id(id, :block, maps)
-  defp canonical_source_id("flow_node", id, maps), do: canonical_id(id, :node, maps)
+  defp canonical_source_id("sheet", id, maps), do: canonical_authored_id(id, :sheet, maps)
+  defp canonical_source_id("block", id, maps), do: canonical_authored_id(id, :block, maps)
+  defp canonical_source_id("flow_node", id, maps), do: canonical_authored_id(id, :node, maps)
   defp canonical_source_id(_source_type, id, _maps), do: id
 
   defp rich_text_block_ids(snapshot) do
@@ -1264,7 +1240,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
 
   defp canonical_typed_target(%{"target_type" => type, "target_id" => id} = value, maps, kinds) when not is_nil(id) do
     case Map.fetch(kinds, type) do
-      {:ok, kind} -> Map.put(value, "target_id", canonical_id(id, kind, maps))
+      {:ok, kind} -> Map.put(value, "target_id", canonical_authored_id(id, kind, maps))
       :error -> value
     end
   end
@@ -1284,6 +1260,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     end
   end
 
+  defp canonical_authored_id(nil, _kind, _maps), do: nil
+  defp canonical_authored_id(value, _kind, %{mode: :identity}), do: value
+
+  defp canonical_authored_id(value, kind, %{mode: :forward, ids: ids}) do
+    kind
+    |> then(&Map.get(ids, &1, %{}))
+    |> fetch_canonical_id(value)
+    |> case do
+      {:ok, destination_id} -> destination_id
+      :error -> value
+    end
+  end
+
   defp fetch_canonical_id(mapping, value) do
     case Map.fetch(mapping, value) do
       {:ok, _destination} = found -> found
@@ -1300,12 +1289,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
 
   defp fetch_string_canonical_id(_mapping, _value), do: :error
 
-  defp canonical_id_text(value, kind, maps) do
-    case canonical_id(value, kind, maps) do
-      id when is_integer(id) -> Integer.to_string(id)
-      _missing -> "missing-#{kind}-#{value}"
-    end
-  end
+  defp canonical_authored_id_text(value, kind, maps), do: value |> canonical_authored_id(kind, maps) |> to_string()
 
   defp update_if_present(map, key, fun) do
     case Map.fetch(map, key) do
@@ -1355,7 +1339,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
       with {:ok, kind} <- Map.fetch(%{"sheet" => :sheet, "flow" => :flow}, type),
            id_text when is_binary(id_text) <- mention_attribute(attributes, "data-id"),
            {id, ""} <- Integer.parse(id_text) do
-        List.keystore(attributes, "data-id", 0, {"data-id", canonical_id_text(id, kind, maps)})
+        List.keystore(attributes, "data-id", 0, {"data-id", canonical_authored_id_text(id, kind, maps)})
       else
         _invalid -> attributes
       end
@@ -1506,18 +1490,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
       else: {:error, {:project_snapshot_restore_count_mismatch, schema, expected, actual}}
   end
 
-  defp verify_active_reference_sources(project_id) do
+  defp rebuild_active_reference_sources(project_id) do
     ids = active_graph_ids(project_id)
-    before = active_reference_inventory(ids)
 
     with :ok <- References.rebuild_project_entity_references(project_id),
-         :ok <- delete_active_variable_references(ids),
-         :ok <- References.rebuild_project_variable_references(project_id),
-         true <- before == active_reference_inventory(ids) do
-      :ok
-    else
-      false -> {:error, :project_snapshot_restore_active_reference_mismatch}
-      {:error, _reason} = error -> error
+         :ok <- delete_active_variable_references(ids) do
+      References.rebuild_project_variable_references(project_id)
     end
   end
 
@@ -1547,65 +1525,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     )
 
     :ok
-  end
-
-  defp active_reference_inventory(ids) do
-    pins = child_ids(ScenePin, :scene_id, ids.scene_ids)
-    zones = child_ids(SceneZone, :scene_id, ids.scene_ids)
-    ambient_flows = child_ids(SceneAmbientFlow, :scene_id, ids.scene_ids)
-
-    %{
-      entity:
-        semantic_entity_references(%{
-          "block" => ids.block_ids,
-          "flow_node" => ids.node_ids,
-          "scene_pin" => pins,
-          "scene_zone" => zones
-        }),
-      variable:
-        semantic_variable_references(%{
-          "flow_node" => ids.node_ids,
-          "scene_pin" => pins,
-          "scene_zone" => zones,
-          "scene_ambient_flow" => ambient_flows
-        })
-    }
-  end
-
-  defp semantic_entity_references(sources) do
-    sources
-    |> Enum.flat_map(fn {source_type, ids} ->
-      if ids == [] do
-        []
-      else
-        Repo.all(
-          from(ref in EntityReference,
-            where: ref.source_type == ^source_type and ref.source_id in ^ids,
-            select: {ref.source_type, ref.source_id, ref.target_type, ref.target_id, ref.context}
-          )
-        )
-      end
-    end)
-    |> Enum.sort()
-  end
-
-  defp semantic_variable_references(sources) do
-    sources
-    |> Enum.flat_map(fn {source_type, ids} ->
-      if ids == [] do
-        []
-      else
-        Repo.all(
-          from(ref in VariableReference,
-            where: ref.source_type == ^source_type and ref.source_id in ^ids,
-            select:
-              {ref.source_type, ref.source_id, ref.flow_node_id, ref.block_id, ref.kind, ref.source_sheet,
-               ref.source_variable}
-          )
-        )
-      end
-    end)
-    |> Enum.sort()
   end
 
   defp verify_project_fields(project_id, expected) do

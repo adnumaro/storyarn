@@ -940,403 +940,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
     end
   end
 
-  describe "build_snapshot_with_content_health/1" do
-    test "matches the strict snapshot for a healthy flow", %{flow: flow} do
-      strict_snapshot = FlowBuilder.build_snapshot(flow)
-
-      assert {^strict_snapshot, []} =
-               FlowBuilder.build_snapshot_with_content_health(flow)
-    end
-
-    test "preserves missing avatars and inconsistent localization without synthesizing rows", %{
-      user: user,
-      project: project,
-      flow: flow
-    } do
-      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
-      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-      speaker = sheet_fixture(project, %{name: "Speaker"})
-
-      avatar_asset =
-        uploaded_asset(
-          project,
-          user,
-          "capture-missing-avatar.png",
-          "capture missing avatar",
-          "image/png"
-        )
-
-      {:ok, avatar} = Storyarn.Sheets.add_avatar(speaker, avatar_asset.id)
-
-      dialogue =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{
-            "speaker_sheet_id" => nil,
-            "avatar_id" => avatar.id,
-            "text" => "Runtime line",
-            "stage_directions" => "Quietly",
-            "responses" => []
-          }
-        })
-
-      texts = Localization.get_texts_for_source("flow_node", dialogue.id)
-      text_row = Enum.find(texts, &(&1.source_field == "text"))
-      stage_directions_row = Enum.find(texts, &(&1.source_field == "stage_directions"))
-
-      Repo.delete!(text_row)
-
-      Repo.update_all(
-        from(row in LocalizedText, where: row.id == ^stage_directions_row.id),
-        set: [speaker_sheet_id: speaker.id]
-      )
-
-      Repo.delete_all(
-        from(persisted_avatar in SheetAvatar,
-          where: persisted_avatar.id == ^avatar.id
-        )
-      )
-
-      {snapshot, issues} = FlowBuilder.build_snapshot_with_content_health(flow)
-      snapshot_dialogue = Enum.find(snapshot["nodes"], &(&1["original_id"] == dialogue.id))
-
-      assert snapshot_dialogue["data"]["avatar_id"] == avatar.id
-
-      assert [captured_row] = snapshot["localization"]
-      assert captured_row["source_field"] == "stage_directions"
-      assert captured_row["speaker_sheet_id"] == speaker.id
-
-      assert content_health_issue(
-               :invalid_avatar_reference,
-               :flow_node,
-               dialogue.id,
-               "avatar_id",
-               flow.id
-             ) in issues
-
-      assert content_health_issue(
-               :localization_speaker_mismatch,
-               :flow_node,
-               dialogue.id,
-               "stage_directions",
-               flow.id
-             ) in issues
-
-      assert content_health_issue(
-               :incomplete_flow_localization_snapshot,
-               :flow_node,
-               dialogue.id,
-               "text",
-               flow.id
-             ) in issues
-
-      assert Repo.get!(FlowNode, dialogue.id).data["avatar_id"] == avatar.id
-      assert Repo.get!(LocalizedText, stage_directions_row.id).speaker_sheet_id == speaker.id
-      refute Repo.get(LocalizedText, text_row.id)
-    end
-
-    test "preserves unmaterializable connection endpoints and dynamic exit pins", %{
-      project: project,
-      flow: flow
-    } do
-      source = node_fixture(flow, %{type: "hub"})
-      foreign_flow = flow_fixture(project)
-      foreign_target = node_fixture(foreign_flow, %{type: "hub"})
-
-      corrupt_endpoint =
-        %FlowConnection{flow_id: flow.id}
-        |> FlowConnection.create_changeset(%{
-          source_node_id: source.id,
-          target_node_id: foreign_target.id,
-          source_pin: "output",
-          target_pin: "input"
-        })
-        |> Repo.insert!()
-
-      referenced_flow = flow_fixture(project)
-      referenced_exit = active_exit_node(referenced_flow.id)
-      wrong_flow = flow_fixture(project)
-      wrong_exit = active_exit_node(wrong_flow.id)
-
-      subflow =
-        node_fixture(flow, %{
-          type: "subflow",
-          data: %{"referenced_flow_id" => referenced_flow.id}
-        })
-
-      target = node_fixture(flow, %{type: "hub"})
-
-      invalid_dynamic_pin =
-        connection_fixture(flow, subflow, target, %{
-          source_pin: "exit_#{referenced_exit.id}"
-        })
-
-      Repo.update_all(
-        from(connection in FlowConnection, where: connection.id == ^invalid_dynamic_pin.id),
-        set: [source_pin: "exit_#{wrong_exit.id}"]
-      )
-
-      {snapshot, issues} = FlowBuilder.build_snapshot_with_content_health(flow)
-
-      endpoint_snapshot =
-        Enum.find(snapshot["connections"], &(&1["original_id"] == corrupt_endpoint.id))
-
-      assert is_integer(endpoint_snapshot["source_node_index"])
-      assert endpoint_snapshot["target_node_index"] == nil
-      assert endpoint_snapshot["target_node_id"] == foreign_target.id
-      refute Map.has_key?(endpoint_snapshot, "source_node_id")
-
-      dynamic_snapshot =
-        Enum.find(snapshot["connections"], &(&1["original_id"] == invalid_dynamic_pin.id))
-
-      assert dynamic_snapshot["source_pin"] == "exit_#{wrong_exit.id}"
-
-      assert content_health_issue(
-               :invalid_flow_connection,
-               :flow_connection,
-               corrupt_endpoint.id,
-               "target_node_id",
-               flow.id
-             ) in issues
-
-      assert content_health_issue(
-               :dynamic_exit_pin_not_materializable,
-               :flow_connection,
-               invalid_dynamic_pin.id,
-               "source_pin",
-               flow.id
-             ) in issues
-    end
-
-    test "preserves external, asset, and circular references while omitting invalid asset catalogs", %{
-      user: user,
-      project: project,
-      flow: flow
-    } do
-      foreign_project = project_fixture(user)
-      foreign_speaker = sheet_fixture(foreign_project, %{name: "Foreign speaker"})
-
-      foreign_audio =
-        uploaded_asset(
-          foreign_project,
-          user,
-          "capture-foreign-audio.mp3",
-          "capture foreign audio",
-          "audio/mpeg"
-        )
-
-      dialogue =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => "Corrupt references", "responses" => []}
-        })
-
-      persisted_data =
-        dialogue.data
-        |> Map.put("speaker_sheet_id", foreign_speaker.id)
-        |> Map.put("audio_asset_id", foreign_audio.id)
-
-      Repo.update_all(
-        from(node in FlowNode, where: node.id == ^dialogue.id),
-        set: [data: persisted_data]
-      )
-
-      referenced_flow = flow_fixture(project)
-
-      _subflow =
-        node_fixture(flow, %{
-          type: "subflow",
-          data: %{"referenced_flow_id" => referenced_flow.id}
-        })
-
-      referenced_exit = active_exit_node(referenced_flow.id)
-
-      set_node_data(referenced_exit, %{
-        "exit_mode" => "flow_reference",
-        "referenced_flow_id" => flow.id
-      })
-
-      {snapshot, issues} = FlowBuilder.build_snapshot_with_content_health(flow)
-      snapshot_dialogue = Enum.find(snapshot["nodes"], &(&1["original_id"] == dialogue.id))
-
-      assert snapshot_dialogue["data"]["speaker_sheet_id"] == foreign_speaker.id
-      assert snapshot_dialogue["data"]["audio_asset_id"] == foreign_audio.id
-      refute Map.has_key?(snapshot["asset_blob_hashes"], to_string(foreign_audio.id))
-      refute Map.has_key?(snapshot["asset_metadata"], to_string(foreign_audio.id))
-
-      assert content_health_issue(
-               :flow_external_reference_not_materializable,
-               :flow_node,
-               dialogue.id,
-               "speaker_sheet_id",
-               flow.id
-             ) in issues
-
-      assert content_health_issue(
-               :cross_project_asset_reference,
-               :flow_node,
-               dialogue.id,
-               "audio_asset_id",
-               flow.id
-             ) in issues
-
-      assert content_health_issue(
-               :circular_flow_reference,
-               :flow_node,
-               Enum.find(snapshot["nodes"], &(&1["type"] == "subflow"))["original_id"],
-               "referenced_flow_id",
-               flow.id
-             ) in issues
-    end
-
-    test "preserves invalid graph structure and reports every reachable validator", %{
-      project: project,
-      flow: flow
-    } do
-      Repo.delete_all(
-        from(node in FlowNode,
-          where: node.flow_id == ^flow.id and node.type == "exit"
-        )
-      )
-
-      other_flow = flow_fixture(project)
-
-      {:ok, foreign_sequence} =
-        Flows.create_sequence(other_flow.id, %{
-          "name" => "Foreign sequence",
-          "width" => 400.0,
-          "height" => 240.0
-        })
-
-      child = node_fixture(flow, %{type: "hub"})
-
-      Repo.update_all(
-        from(node in FlowNode, where: node.id == ^child.id),
-        set: [parent_id: foreign_sequence.id]
-      )
-
-      {:ok, broken_sequence} =
-        Flows.create_sequence(flow.id, %{
-          "name" => "Broken sequence",
-          "width" => 400.0,
-          "height" => 240.0
-        })
-
-      Repo.delete_all(
-        from(config in SequenceConfig,
-          where: config.flow_node_id == ^broken_sequence.id
-        )
-      )
-
-      {snapshot, issues} = FlowBuilder.build_snapshot_with_content_health(flow)
-      snapshot_child = Enum.find(snapshot["nodes"], &(&1["original_id"] == child.id))
-      snapshot_sequence = Enum.find(snapshot["nodes"], &(&1["original_id"] == broken_sequence.id))
-
-      assert snapshot_child["parent_id"] == foreign_sequence.id
-      assert snapshot_sequence["sequence_config"] == nil
-      refute Enum.any?(snapshot["nodes"], &(&1["type"] == "exit"))
-
-      assert Enum.any?(issues, &(&1.code == :invalid_snapshot_exit_count))
-      assert Enum.any?(issues, &(&1.code == :invalid_snapshot_node_parent))
-
-      assert content_health_issue(
-               :invalid_sequence_config_snapshot,
-               :flow_node,
-               broken_sequence.id,
-               nil,
-               flow.id
-             ) in issues
-    end
-
-    test "preserves malformed raw dialogue data and reports it", %{
-      flow: flow
-    } do
-      dialogue =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => "Initially valid", "responses" => []}
-        })
-
-      set_node_data(dialogue, %{"text" => 123})
-
-      {snapshot, issues} = FlowBuilder.build_snapshot_with_content_health(flow)
-      captured_dialogue = Enum.find(snapshot["nodes"], &(&1["original_id"] == dialogue.id))
-
-      assert captured_dialogue["data"]["text"] == 123
-
-      assert content_health_issue(
-               :invalid_flow_node,
-               :flow_node,
-               dialogue.id,
-               "text",
-               flow.id
-             ) in issues
-
-      assert Repo.get!(FlowNode, dialogue.id).data["text"] == 123
-    end
-
-    test "preserves residual sequence rows after a node type drift", %{
-      user: user,
-      project: project,
-      flow: flow
-    } do
-      audio = uploaded_asset(project, user, "residual.mp3", "residual audio", "audio/mpeg")
-      image = uploaded_asset(project, user, "residual.png", "residual image", "image/png")
-
-      {:ok, sequence} =
-        Flows.create_sequence(flow.id, %{
-          "name" => "Residual sequence",
-          "width" => 640.0,
-          "height" => 360.0
-        })
-
-      assert {:ok, track} =
-               Flows.upsert_sequence_track(sequence.id, "music", %{
-                 "asset_id" => audio.id,
-                 "position" => 0
-               })
-
-      assert {:ok, layer} =
-               Flows.create_sequence_visual_layer(sequence.id, %{
-                 "asset_id" => image.id,
-                 "kind" => "backdrop",
-                 "label" => "Residual layer"
-               })
-
-      Repo.update_all(from(node in FlowNode, where: node.id == ^sequence.id), set: [type: "hub"])
-
-      {snapshot, issues} = FlowBuilder.build_snapshot_with_content_health(flow)
-      captured = Enum.find(snapshot["nodes"], &(&1["original_id"] == sequence.id))
-
-      assert captured["type"] == "hub"
-      assert captured["sequence_config"]["name"] == "Residual sequence"
-      assert [%{"original_id" => track_id}] = captured["sequence_tracks"]
-      assert [%{"original_id" => layer_id}] = captured["sequence_visual_layers"]
-      assert track_id == track.id
-      assert layer_id == layer.id
-
-      for source_field <- ~w(sequence_config sequence_tracks sequence_visual_layers) do
-        assert content_health_issue(
-                 :invalid_flow_node,
-                 :flow_node,
-                 sequence.id,
-                 source_field,
-                 flow.id
-               ) in issues
-      end
-
-      persisted =
-        FlowNode
-        |> Repo.get!(sequence.id)
-        |> Repo.preload([:sequence_config, :sequence_tracks, :sequence_visual_layers])
-
-      assert persisted.type == "hub"
-      assert persisted.sequence_config.flow_node_id == sequence.id
-      assert Enum.map(persisted.sequence_tracks, & &1.id) == [track.id]
-      assert Enum.map(persisted.sequence_visual_layers, & &1.id) == [layer.id]
-    end
-  end
-
   describe "validate_materialized_reference_cycles/1" do
     test "validates the final persisted graph after cross-flow IDs are remapped", %{
       project: project,
@@ -4092,6 +3695,140 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   end
 
   describe "instantiate_snapshot/3" do
+    test "exact capture and materialization preserve dangling speaker and avatar values", %{
+      user: user,
+      flow: flow
+    } do
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Authored as stored", "responses" => []}
+        })
+
+      dangling_speaker_id = 9_000_000_000 + System.unique_integer([:positive])
+      dangling_avatar_id = dangling_speaker_id + 1
+
+      raw_data =
+        dialogue.data
+        |> Map.put("speaker_sheet_id", dangling_speaker_id)
+        |> Map.put("avatar_id", dangling_avatar_id)
+
+      Repo.update_all(
+        from(node in FlowNode, where: node.id == ^dialogue.id),
+        set: [data: raw_data]
+      )
+
+      snapshot = FlowBuilder.build_capture_snapshot(flow)
+      captured_dialogue = Enum.find(snapshot["nodes"], &(&1["original_id"] == dialogue.id))
+
+      assert captured_dialogue["data"]["speaker_sheet_id"] == dangling_speaker_id
+      assert captured_dialogue["data"]["avatar_id"] == dangling_avatar_id
+
+      target_project = project_fixture(user)
+
+      assert {:ok, materialized, id_maps} =
+               FlowBuilder.instantiate_snapshot(target_project.id, snapshot,
+                 materialization_mode: :exact,
+                 reset_shortcut: true,
+                 preserve_external_refs: false,
+                 restore_localization: false,
+                 rebuild_references: false
+               )
+
+      restored_dialogue = Enum.find(materialized.nodes, &(&1.id == id_maps.node[dialogue.id]))
+
+      assert restored_dialogue.data["speaker_sheet_id"] == dangling_speaker_id
+      assert restored_dialogue.data["avatar_id"] == dangling_avatar_id
+    end
+
+    test "exact capture materializes residual sequence rows and a missing sequence config", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      audio = uploaded_asset(project, user, "residual.mp3", "residual audio", "audio/mpeg")
+      image = uploaded_asset(project, user, "residual.png", "residual image", "image/png")
+
+      {:ok, residual_node} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Residual sequence",
+          "width" => 640.0,
+          "height" => 360.0
+        })
+
+      assert {:ok, source_track} =
+               Flows.upsert_sequence_track(residual_node.id, "music", %{
+                 "asset_id" => audio.id,
+                 "position" => 0
+               })
+
+      assert {:ok, source_layer} =
+               Flows.create_sequence_visual_layer(residual_node.id, %{
+                 "asset_id" => image.id,
+                 "kind" => "backdrop",
+                 "label" => "Residual layer"
+               })
+
+      Repo.update_all(
+        from(node in FlowNode, where: node.id == ^residual_node.id),
+        set: [type: "hub"]
+      )
+
+      {:ok, configless_sequence} =
+        Flows.create_sequence(flow.id, %{
+          "name" => "Configless sequence",
+          "width" => 320.0,
+          "height" => 180.0
+        })
+
+      Repo.delete_all(
+        from(config in SequenceConfig,
+          where: config.flow_node_id == ^configless_sequence.id
+        )
+      )
+
+      snapshot = FlowBuilder.build_capture_snapshot(flow)
+      captured_residual = Enum.find(snapshot["nodes"], &(&1["original_id"] == residual_node.id))
+      captured_configless = Enum.find(snapshot["nodes"], &(&1["original_id"] == configless_sequence.id))
+
+      assert captured_residual["type"] == "hub"
+      assert captured_residual["sequence_config"]["name"] == "Residual sequence"
+      assert [%{"original_id" => captured_track_id}] = captured_residual["sequence_tracks"]
+      assert [%{"original_id" => captured_layer_id}] = captured_residual["sequence_visual_layers"]
+      assert captured_track_id == source_track.id
+      assert captured_layer_id == source_layer.id
+      assert captured_configless["sequence_config"] == nil
+
+      target_project = project_fixture(user)
+
+      assert {:ok, materialized, id_maps} =
+               FlowBuilder.instantiate_snapshot(target_project.id, snapshot,
+                 materialization_mode: :exact,
+                 reset_shortcut: true,
+                 preserve_external_refs: false,
+                 restore_localization: false,
+                 rebuild_references: false
+               )
+
+      restored_residual = Enum.find(materialized.nodes, &(&1.id == id_maps.node[residual_node.id]))
+      restored_configless = Enum.find(materialized.nodes, &(&1.id == id_maps.node[configless_sequence.id]))
+
+      assert restored_residual.type == "hub"
+      assert restored_residual.sequence_config.name == "Residual sequence"
+      assert [restored_track] = restored_residual.sequence_tracks
+      assert [restored_layer] = restored_residual.sequence_visual_layers
+      assert restored_track.id == id_maps.sequence_track[source_track.id]
+      assert restored_layer.id == id_maps.sequence_visual_layer[source_layer.id]
+      assert restored_track.asset_id != audio.id
+      assert restored_layer.asset_id != image.id
+      assert restored_configless.type == "sequence"
+      assert restored_configless.sequence_config == nil
+
+      copied_assets = Enum.map([restored_track.asset_id, restored_layer.asset_id], &Repo.get!(Asset, &1))
+
+      on_exit(fn -> Enum.each(copied_assets, &Assets.storage_delete(&1.key)) end)
+    end
+
     test "rejects missing or duplicate response identities atomically", %{
       user: user,
       flow: flow
@@ -5677,6 +5414,47 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
              ) == count_before
     end
 
+    test "exact materialization keeps an authored dynamic pin when no exit map exists", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      referenced_flow = flow_fixture(project)
+      referenced_exit = node_fixture(referenced_flow, %{type: "exit", position_x: 300.0})
+
+      subflow_node =
+        node_fixture(flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => referenced_flow.id}
+        })
+
+      next_node = node_fixture(flow, %{type: "dialogue", position_x: 200.0})
+      source_pin = "exit_#{referenced_exit.id}"
+
+      _connection =
+        connection_fixture(flow, subflow_node, next_node, %{
+          source_pin: source_pin
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      target_project = project_fixture(user)
+      target_referenced_flow = flow_fixture(target_project)
+
+      assert {:ok, materialized, _id_maps} =
+               FlowBuilder.instantiate_snapshot(target_project.id, snapshot,
+                 materialization_mode: :exact,
+                 reset_shortcut: true,
+                 preserve_external_refs: false,
+                 restore_localization: false,
+                 rebuild_references: false,
+                 external_id_maps: %{
+                   flow: %{referenced_flow.id => target_referenced_flow.id}
+                 }
+               )
+
+      assert [%FlowConnection{source_pin: ^source_pin}] = materialized.connections
+    end
+
     test "keeps exit-shaped pins unchanged for non-subflow source nodes", %{project: project, flow: flow} do
       source = node_fixture(flow, %{type: "hub", position_x: 100.0, position_y: 100.0})
       target = node_fixture(flow, %{type: "hub", position_x: 200.0, position_y: 100.0})
@@ -5988,19 +5766,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
     Enum.map(rows, fn row ->
       if row == target, do: update_fun.(row), else: row
     end)
-  end
-
-  defp content_health_issue(code, entity_type, entity_id, source_field, flow_id) do
-    %{
-      code: code,
-      severity: :warning,
-      entity_type: entity_type,
-      entity_id: entity_id,
-      source_field: source_field,
-      impact: :restore_blocked,
-      container_type: :flow,
-      container_id: flow_id
-    }
   end
 
   defp entity_version_identity(%EntityVersion{} = version) do

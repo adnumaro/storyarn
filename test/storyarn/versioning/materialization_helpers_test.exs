@@ -24,10 +24,10 @@ defmodule Storyarn.Versioning.MaterializationHelpersTest do
 
     test "keeps cross-project materializations unpinned" do
       assert MaterializationHelpers.asset_resolution_opts(
-               [restore_action: {:project_snapshot_restore, "full"}],
+               [restore_action: {:project_snapshot_restore, "full"}, materialization_mode: :exact],
                :copy,
                42
-             ) == [asset_mode: :copy]
+             ) == [asset_mode: :copy, materialization_mode: :exact]
     end
   end
 end

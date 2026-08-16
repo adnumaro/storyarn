@@ -2941,19 +2941,16 @@ defmodule Storyarn.Assets do
     attrs_list
     |> Enum.with_index()
     |> Enum.reduce_while({:ok, []}, fn {attrs, index}, {:ok, changesets} ->
-      upload_kind = snapshot_asset_upload_kind(attrs)
-
       changeset =
-        asset_create_changeset(
+        Asset.snapshot_restore_changeset(
           %Asset{project_id: project.id, uploaded_by_id: uploaded_by_id},
-          attrs,
-          upload_kind
+          attrs
         )
 
       result =
         with :ok <- validate_snapshot_asset_storage_key(project.id, attrs),
              true <- changeset.valid?,
-             :ok <- consume_import_capacity(project, changeset) do
+             :ok <- consume_snapshot_import_capacity(project, attrs, changeset) do
           {:ok, changeset}
         else
           false -> {:error, changeset}
@@ -3211,6 +3208,16 @@ defmodule Storyarn.Assets do
 
       _capacity ->
         {:error, :asset_import_capacity_required}
+    end
+  end
+
+  defp consume_snapshot_import_capacity(project, attrs, changeset) do
+    content_size = Map.get(attrs, :snapshot_content_size, Map.get(attrs, "snapshot_content_size"))
+
+    if is_integer(content_size) and content_size >= 0 do
+      consume_import_capacity(project, Ecto.Changeset.put_change(changeset, :size, content_size))
+    else
+      {:error, :invalid_snapshot_asset_content_size}
     end
   end
 

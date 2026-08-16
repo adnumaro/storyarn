@@ -46,9 +46,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   alias Storyarn.Versioning.ProjectSnapshotZip
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotArchiveStorage
-  alias Storyarn.Versioning.SnapshotContentHealth
   alias Storyarn.Versioning.SnapshotObjectFormat
-  alias Storyarn.Workers.RestoreProjectSnapshotWorker
 
   defmodule EmptyArchiveReader do
     @moduledoc false
@@ -177,15 +175,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     def verify(_snapshot), do: {:error, Process.get({__MODULE__, :reason})}
   end
 
-  defmodule ArchiveReaderSpy do
-    @moduledoc false
-
-    def verify(_snapshot) do
-      Process.put({__MODULE__, :called}, true)
-      {:error, :unexpected_archive_read}
-    end
-  end
-
   defmodule OversizedMaterializer do
     @moduledoc false
 
@@ -253,126 +242,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     on_exit(fn -> Process.delete({EmptyArchiveReader, :project_object}) end)
 
     %{restore: restore, snapshot: snapshot, project_object: project_object}
-  end
-
-  test "executor revalidation rejects an unassessed legacy snapshot before archive reads" do
-    user = user_fixture()
-    project = project_fixture(user)
-
-    snapshot =
-      full_project_snapshot_fixture(project, %{
-        asset_blob_size_bytes: 0,
-        content_health: SnapshotContentHealth.unknown()
-      })
-
-    # Simulate a restore row that predates the migration-level guard. The
-    # executor remains fail-closed even if that outer database fence is absent.
-    Repo.query!(
-      "ALTER TABLE project_snapshot_restores DISABLE TRIGGER " <>
-        "project_snapshot_restores_content_health_guard"
-    )
-
-    try do
-      restore =
-        %ProjectSnapshotRestore{}
-        |> ProjectSnapshotRestore.request_changeset(%{
-          workspace_id: project.workspace_id,
-          project_id: project.id,
-          project_snapshot_id: snapshot.id,
-          requested_by_id: user.id,
-          idempotency_key: Ecto.UUID.generate(),
-          snapshot_lifecycle_generation: snapshot.lifecycle_generation,
-          snapshot_accounting_generation: snapshot.accounting_generation,
-          archive_storage_key: snapshot.archive_storage_key,
-          archive_size_bytes: snapshot.archive_size_bytes,
-          archive_checksum: snapshot.archive_checksum,
-          manifest_storage_key: snapshot.manifest_storage_key,
-          manifest_size_bytes: snapshot.manifest_size_bytes,
-          manifest_checksum: snapshot.manifest_checksum,
-          requested_at: TimeHelpers.now()
-        })
-        |> Repo.insert!()
-
-      assert {:ok, job} =
-               %{restore_id: restore.id, generation: restore.generation}
-               |> RestoreProjectSnapshotWorker.new(queue: :snapshot_restores)
-               |> Oban.insert()
-
-      restore =
-        restore
-        |> ProjectSnapshotRestore.bind_job_changeset(job.id)
-        |> Repo.update!()
-        |> ProjectSnapshotRestore.claim_changeset(1, TimeHelpers.now())
-        |> Repo.update!()
-
-      Process.delete({ArchiveReaderSpy, :called})
-
-      assert {:error, :snapshot_contains_unrestorable_content} =
-               ProjectSnapshotRestoreExecutor.execute(restore,
-                 archive_reader: ArchiveReaderSpy,
-                 asset_materializer: PrepareSpyMaterializer,
-                 project_recovery: AcceptingRecovery
-               )
-
-      refute Process.get({ArchiveReaderSpy, :called})
-      refute Repo.get!(ProjectSnapshotRestore, restore.id).storage_reservation_id
-    after
-      Repo.query!(
-        "ALTER TABLE project_snapshot_restores ENABLE TRIGGER " <>
-          "project_snapshot_restores_content_health_guard"
-      )
-    end
-  end
-
-  test "executor accepts a strict legacy archive without embedded content health" do
-    user = user_fixture()
-    project = project_fixture(user)
-
-    snapshot =
-      full_project_snapshot_fixture(project, %{
-        asset_blob_size_bytes: 0,
-        content_health: SnapshotContentHealth.legacy_strict()
-      })
-
-    assert {:ok, requested} =
-             Versioning.request_project_snapshot_restore(user_scope_fixture(user), project, snapshot, %{
-               idempotency_key: Ecto.UUID.generate()
-             })
-
-    job =
-      requested.oban_job_id
-      |> then(&Repo.get!(Oban.Job, &1))
-      |> Ecto.Changeset.change(
-        state: "executing",
-        attempt: 1,
-        attempted_at: %{TimeHelpers.now() | microsecond: {0, 6}}
-      )
-      |> Repo.update!()
-
-    assert {:ok, {:claimed, restore}} =
-             Versioning.claim_project_snapshot_restore(requested.id, 1,
-               job_id: job.id,
-               attempt: 1
-             )
-
-    project_object = project |> empty_project_object() |> Map.delete("content_health")
-    Process.put({EmptyArchiveReader, :project_object}, project_object)
-    Process.delete({PrepareSpyMaterializer, :called})
-
-    on_exit(fn ->
-      Process.delete({EmptyArchiveReader, :project_object})
-      Process.delete({PrepareSpyMaterializer, :called})
-    end)
-
-    assert {:error, :unexpected_materializer_prepare} =
-             ProjectSnapshotRestoreExecutor.execute(restore,
-               archive_reader: EmptyArchiveReader,
-               asset_materializer: PrepareSpyMaterializer,
-               project_recovery: AcceptingRecovery
-             )
-
-    assert Process.get({PrepareSpyMaterializer, :called})
-    refute Repo.get!(ProjectSnapshotRestore, restore.id).storage_reservation_id
   end
 
   test "a failed attempt durably releases its reservation and the next attempt rotates the lease", context do
@@ -452,15 +321,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
 
   test "canonical project fields are mandatory before reservation or storage writes", context do
     project_before = Repo.get!(Project, context.restore.project_id)
-    persisted_snapshot = Repo.reload!(context.snapshot)
-
-    assert context.project_object["content_health"] == persisted_snapshot.content_health
-    assert :ok = SnapshotContentHealth.validate(persisted_snapshot.content_health)
-    refute SnapshotContentHealth.restore_blocked?(persisted_snapshot.content_health)
 
     for required_key <- ["name", "settings", "auto_version_flows"] do
       invalid_object = update_in(context.project_object, ["project"], &Map.delete(&1, required_key))
-      assert invalid_object["content_health"] == persisted_snapshot.content_health
       Process.put({EmptyArchiveReader, :project_object}, invalid_object)
 
       assert {:error, :invalid_project_snapshot_project_fields} =
@@ -475,32 +338,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
       assert is_nil(restore.storage_reservation_id)
       assert Repo.get!(Project, project_before.id) == project_before
     end
-  end
-
-  test "malformed nested entity snapshots are rejected before asset planning or writes", context do
-    malformed =
-      context.project_object
-      |> Map.put("entity_counts", Map.put(context.project_object["entity_counts"], "sheets", 1))
-      |> Map.put("sheets", [
-        %{
-          "id" => 11,
-          "snapshot" => %{"original_id" => 11, "name" => "", "blocks" => [], "avatars" => []}
-        }
-      ])
-
-    Process.put({EmptyArchiveReader, :project_object}, malformed)
-    Process.delete({PrepareSpyMaterializer, :called})
-
-    assert {:error, {:invalid_project_snapshot_entity, :sheet, 11, _reason}} =
-             ProjectSnapshotRestoreExecutor.execute(context.restore,
-               archive_reader: EmptyArchiveReader,
-               asset_materializer: PrepareSpyMaterializer,
-               project_recovery: ProjectRecovery
-             )
-
-    refute Process.get({PrepareSpyMaterializer, :called})
-    restore = Repo.get!(ProjectSnapshotRestore, context.restore.id)
-    assert is_nil(restore.storage_reservation_id)
   end
 
   test "postverification failure rolls the final database transaction back", context do
@@ -532,6 +369,171 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     assert restore.status == "running"
     assert reservation.status == "released"
     assert reservation.cleanup_status == "not_required"
+  end
+
+  test "exact restore postverifies null and FK-safe authored references", context do
+    project = Repo.get!(Project, context.restore.project_id)
+    null_sheet = sheet_fixture(project, %{name: "Authored null inheritance state"})
+    stale_sheet = sheet_fixture(project, %{name: "Physically retained stale parent"})
+    authored_sheet = sheet_fixture(project, %{name: "Authored residual references"})
+    source_sheet = sheet_fixture(project, %{name: "Inheritance source owner"})
+    stale_block = block_fixture(source_sheet, %{type: "text", value: %{"content" => "Stale parent"}})
+    inherited_block = block_fixture(authored_sheet, %{type: "text", value: %{"content" => "Child"}})
+    dangling_block_id = 1_700_000_000 + rem(System.unique_integer([:positive]), 100_000_000)
+    flow = flow_fixture(project, %{name: "Authored residual parent flow"})
+
+    assert {:ok, stale_sequence} =
+             Storyarn.Flows.create_sequence(flow.id, %{
+               "name" => "Physically retained stale sequence",
+               "width" => 400.0,
+               "height" => 240.0
+             })
+
+    dialogue =
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"text" => "Residual speaker", "responses" => []}
+      })
+
+    now = TimeHelpers.now()
+
+    assert {1, nil} =
+             Repo.update_all(
+               from(current in Sheet, where: current.id == ^null_sheet.id),
+               set: [hidden_inherited_block_ids: nil]
+             )
+
+    assert {1, nil} =
+             Repo.update_all(
+               from(current in Sheet, where: current.id == ^authored_sheet.id),
+               set: [parent_id: stale_sheet.id, hidden_inherited_block_ids: [dangling_block_id]]
+             )
+
+    assert {1, nil} =
+             Repo.update_all(
+               from(current in Block, where: current.id == ^inherited_block.id),
+               set: [inherited_from_block_id: stale_block.id]
+             )
+
+    assert {1, nil} =
+             Repo.update_all(
+               from(current in Sheet, where: current.id == ^stale_sheet.id),
+               set: [deleted_at: now]
+             )
+
+    assert {1, nil} =
+             Repo.update_all(
+               from(current in Block, where: current.id == ^stale_block.id),
+               set: [deleted_at: now]
+             )
+
+    assert {1, nil} =
+             Repo.update_all(
+               from(current in FlowNode, where: current.id == ^stale_sequence.id),
+               set: [deleted_at: now]
+             )
+
+    # The soft-delete trigger reparents current children. Reapply the authored
+    # FK-safe residual state after archival so capture must preserve it.
+    assert {1, nil} =
+             Repo.update_all(
+               from(current in FlowNode, where: current.id == ^dialogue.id),
+               set: [parent_id: stale_sequence.id]
+             )
+
+    _source_language = source_language_fixture(project, %{locale_code: "en", name: "English"})
+    _target_language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+    speaker_text =
+      localized_text_fixture(project.id, %{
+        source_type: "flow_node",
+        source_id: dialogue.id,
+        source_field: "text",
+        source_text: "Residual speaker",
+        locale_code: "es"
+      })
+
+    assert {1, nil} =
+             Repo.update_all(
+               from(text in LocalizedText, where: text.id == ^speaker_text.id),
+               set: [speaker_sheet_id: stale_sheet.id]
+             )
+
+    target_object = project.id |> capture_project_object() |> Map.put("asset_catalog_refs", %{})
+
+    target_sheets = Map.new(target_object["sheets"], &{&1["snapshot"]["name"], &1["snapshot"]})
+    assert target_sheets[null_sheet.name]["hidden_inherited_block_ids"] == nil
+    assert target_sheets[authored_sheet.name]["hidden_inherited_block_ids"] == [dangling_block_id]
+    assert target_sheets[authored_sheet.name]["parent_id"] == nil
+
+    assert Enum.find(target_object["tree"]["sheets"], &(&1["id"] == authored_sheet.id))["parent_id"] ==
+             stale_sheet.id
+
+    assert Enum.find(target_sheets[authored_sheet.name]["blocks"], &(&1["original_id"] == inherited_block.id))[
+             "inherited_from_block_id"
+           ] == stale_block.id
+
+    target_flow = Enum.find(target_object["flows"], &(&1["id"] == flow.id))["snapshot"]
+    assert Enum.find(target_flow["nodes"], &(&1["original_id"] == dialogue.id))["parent_id"] == stale_sequence.id
+
+    assert Enum.find(target_object["localization"]["texts"], fn text ->
+             text["source_type"] == "flow_node" and text["source_id"] == dialogue.id and
+               text["source_field"] == "text" and text["locale_code"] == "es"
+           end)["speaker_sheet_id"] == stale_sheet.id
+
+    Process.put({EmptyArchiveReader, :project_object}, target_object)
+
+    assert {1, nil} =
+             Repo.update_all(
+               from(current in Sheet, where: current.id == ^authored_sheet.id),
+               set: [parent_id: nil]
+             )
+
+    assert {:ok, _result} =
+             ProjectSnapshotRestoreExecutor.execute(context.restore,
+               archive_reader: EmptyArchiveReader,
+               asset_materializer: EmptyMaterializer,
+               project_recovery: ProjectRecovery
+             )
+
+    restored_sheets =
+      Repo.all(from restored in Sheet, where: restored.project_id == ^project.id and is_nil(restored.deleted_at))
+
+    restored_null = Enum.find(restored_sheets, &(&1.name == null_sheet.name))
+    restored_authored = Enum.find(restored_sheets, &(&1.name == authored_sheet.name))
+    assert restored_null.hidden_inherited_block_ids == nil
+    assert restored_authored.hidden_inherited_block_ids == [dangling_block_id]
+    assert restored_authored.parent_id == stale_sheet.id
+
+    restored_block =
+      Repo.one!(
+        from block in Block,
+          where: block.sheet_id == ^restored_authored.id and is_nil(block.deleted_at)
+      )
+
+    assert restored_block.inherited_from_block_id == stale_block.id
+
+    restored_flow =
+      Repo.one!(from current in Flow, where: current.project_id == ^project.id and is_nil(current.deleted_at))
+
+    restored_dialogue =
+      Repo.one!(
+        from node in FlowNode,
+          where: node.flow_id == ^restored_flow.id and is_nil(node.deleted_at) and node.type == "dialogue"
+      )
+
+    assert restored_dialogue.parent_id == stale_sequence.id
+
+    assert Repo.exists?(
+             from text in LocalizedText,
+               where:
+                 text.project_id == ^project.id and is_nil(text.archived_at) and
+                   text.source_type == "flow_node" and text.source_id == ^restored_dialogue.id and
+                   text.source_field == "text" and text.locale_code == "es" and
+                   text.speaker_sheet_id == ^stale_sheet.id
+           )
+
+    assert Repo.get!(ProjectSnapshotRestore, context.restore.id).status == "completed"
   end
 
   test "archive availability and integrity failures stop before reservation or mutation", context do
@@ -742,7 +744,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
                translator_notes: "Exact target dialogue"
              })
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     assert :ok = ProjectRecovery.validate_materialization_snapshot(target_object)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
@@ -890,7 +892,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
                    text.translated_text == "Hola" and text.translator_notes == "Exact target dialogue"
            )
 
-    restored_object = active_project_object(project.id, context.snapshot.content_health)
+    restored_object = active_project_object(project.id)
     assert restored_object["entity_counts"] == target_object["entity_counts"]
     assert restored_object["project"] == target_object["project"]
     assert restored_object["localization"]["glossary"] == target_object["localization"]["glossary"]
@@ -913,7 +915,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
                reviewed_by_id: reviewer.id
              })
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     [snapshot_text] = target_object["localization"]["texts"]
     assert snapshot_text["translated_by_id"] == context.restore.requested_by_id
     assert snapshot_text["reviewed_by_id"] == reviewer.id
@@ -1046,7 +1048,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     assert second_text.source_id == second.id
     assert {:ok, [_second, _first]} = Storyarn.Sheets.reorder_blocks(sheet.id, [second.id, first.id])
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
     assert {:ok, result} =
@@ -1074,7 +1076,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     sheet = sheet_fixture(project, %{name: "Position collision"})
 
     Repo.update_all(from(row in Sheet, where: row.id == ^sheet.id), set: [position: sheet.id])
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
     assert {:retry, {:project_snapshot_restore_semantic_mismatch, path}} =
@@ -1106,7 +1108,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     |> Sheet.create_changeset(%{name: "Colliding sheet", shortcut: "colliding-sheet"})
     |> Repo.insert!()
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
     assert {:ok, result} =
@@ -1177,7 +1179,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
                }
              })
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     assert :ok = ProjectRecovery.validate_materialization_snapshot(target_object)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
@@ -1313,7 +1315,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
         }
       })
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     assert :ok = ProjectRecovery.validate_materialization_snapshot(target_object)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
@@ -1416,7 +1418,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
         }
       })
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     assert :ok = ProjectRecovery.validate_materialization_snapshot(target_object)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
     Process.delete({CountingEmptyMaterializer, :stage_count})
@@ -1490,7 +1492,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
         value: %{"content" => "ordinary content"}
       })
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
     assert {:ok, _result} =
@@ -1514,7 +1516,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
         }
       })
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
     assert {:ok, _result} =
@@ -1554,7 +1556,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
         value: %{"content" => literal}
       })
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
     assert {:ok, _result} =
@@ -1597,7 +1599,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
         value: %{"content" => literal}
       })
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
     assert {:ok, _result} =
@@ -1636,7 +1638,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
         }
       })
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
     assert {:ok, _result} =
@@ -1688,7 +1690,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     _connection =
       Storyarn.FlowsFixtures.connection_fixture(flow, source, target, %{source_pin: response_key})
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
     assert {:ok, _result} =
@@ -1722,7 +1724,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
       set: [translated_source_hash: stale_hash, status: "review"]
     )
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
 
     assert {:ok, _result} =
@@ -1900,8 +1902,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
         asset_count: 4,
         blob_count: 3,
         capture_digest: prepared.capture_digest,
-        entity_counts: capture["entity_counts"],
-        content_health: capture["content_health"]
+        entity_counts: capture["entity_counts"]
       })
 
     restore = request_and_claim_restore(scope, project, snapshot)
@@ -2027,7 +2028,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
                translator_notes: "semantic receipt"
              })
 
-    target_object = active_project_object(project.id, context.snapshot.content_health)
+    target_object = active_project_object(project.id)
     assert :ok = ProjectRecovery.validate_materialization_snapshot(target_object)
     Process.put({EmptyArchiveReader, :project_object}, target_object)
     %{project: project, sheet: sheet, flow: flow, dialogue: dialogue, text: text, target: target_object}
@@ -2063,7 +2064,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
       "asset_blob_hashes" => %{},
       "asset_metadata" => %{},
       "asset_catalog_refs" => %{},
-      "content_health" => SnapshotContentHealth.healthy(),
       "sheets" => [],
       "flows" => [],
       "scenes" => [],
@@ -2072,7 +2072,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     }
   end
 
-  defp active_project_object(project_id, persisted_content_health) do
+  defp active_project_object(project_id) do
     {:ok, snapshot} =
       Repo.repeatable_read(fn ->
         ProjectSnapshotBuilder.build_snapshot_in_transaction(project_id,
@@ -2083,9 +2083,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     normalized = snapshot |> Jason.encode!() |> Jason.decode!()
     {:ok, portable} = SnapshotObjectFormat.portable_project(normalized)
 
-    portable
-    |> Map.put("asset_catalog_refs", %{})
-    |> Map.put("content_health", persisted_content_health)
+    Map.put(portable, "asset_catalog_refs", %{})
   end
 
   defp capture_project_object(project_id) do

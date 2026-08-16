@@ -68,7 +68,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
 
   @doc false
   @spec resolve_hashes_for_project_capture([{term(), map()}], integer()) ::
-          {map(), map(), [map()]}
+          {map(), map()}
   def resolve_hashes_for_project_capture(references, project_id) when is_list(references) and is_integer(project_id) do
     positive_ids =
       references
@@ -81,79 +81,23 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
       |> Repo.all()
       |> Map.new(&{&1.id, &1})
 
-    {materializable_assets, issues} =
-      Enum.reduce(references, {%{}, []}, fn {asset_id, context}, {assets, issues} ->
-        capture_asset_reference(asset_id, context, assets_by_id, project_id, assets, issues)
-      end)
-
-    {hash_map, metadata_map} =
-      materializable_assets
-      |> Map.values()
-      |> Enum.sort_by(& &1.id)
-      |> resolved_asset_maps(:capture)
-
-    {hash_map, metadata_map, Enum.reverse(issues)}
+    references
+    |> Enum.reduce(%{}, fn {asset_id, _context}, assets ->
+      case Map.get(assets_by_id, asset_id) do
+        %Asset{project_id: ^project_id, deleted_at: nil} = asset -> Map.put(assets, asset.id, asset)
+        _missing_or_foreign -> assets
+      end
+    end)
+    |> Map.values()
+    |> Enum.sort_by(& &1.id)
+    |> resolved_asset_maps(:capture)
   end
 
-  def resolve_hashes_for_project_capture(_references, _project_id), do: {%{}, %{}, []}
+  def resolve_hashes_for_project_capture(_references, _project_id), do: {%{}, %{}}
 
   @doc false
   @spec capture_catalog_maps([Asset.t()]) :: {map(), map()}
   def capture_catalog_maps(assets) when is_list(assets), do: resolved_asset_maps(assets, :capture)
-
-  defp capture_asset_reference(nil, _context, _assets_by_id, _project_id, assets, issues), do: {assets, issues}
-
-  defp capture_asset_reference(asset_id, context, _assets_by_id, _project_id, assets, issues)
-       when not (is_integer(asset_id) and asset_id > 0) do
-    {assets, [capture_asset_issue(:invalid_asset_reference, context) | issues]}
-  end
-
-  defp capture_asset_reference(asset_id, context, assets_by_id, project_id, assets, issues) do
-    case Map.get(assets_by_id, asset_id) do
-      nil ->
-        {assets, [capture_asset_issue(:missing_asset_reference, context) | issues]}
-
-      %Asset{project_id: owner_project_id} when owner_project_id != project_id ->
-        {assets, [capture_asset_issue(:cross_project_asset_reference, context) | issues]}
-
-      %Asset{deleted_at: deleted_at} when not is_nil(deleted_at) ->
-        {assets, [capture_asset_issue(:inactive_asset_reference, context) | issues]}
-
-      %Asset{} = asset ->
-        case capture_materializable_asset(asset, project_id) do
-          :ok ->
-            {Map.put(assets, asset.id, asset), issues}
-
-          {:error, _reason} ->
-            {assets, [capture_asset_issue(:invalid_asset_snapshot_content, context) | issues]}
-        end
-    end
-  end
-
-  defp capture_materializable_asset(%Asset{metadata: metadata}, _project_id) when not is_map(metadata),
-    do: {:error, :invalid_asset_metadata}
-
-  defp capture_materializable_asset(%Asset{} = asset, project_id) do
-    metadata =
-      Map.merge(svg_sanitization_metadata(asset.metadata), %{
-        "filename" => asset.filename,
-        "content_type" => asset.content_type,
-        "size" => asset.size,
-        "project_id" => asset.project_id,
-        "persisted_metadata" => asset.metadata
-      })
-
-    case validate_portable_catalog_entry(asset.blob_hash, metadata, project_id) do
-      {:ok, ^project_id} -> :ok
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  defp capture_asset_issue(code, context) do
-    context
-    |> Map.take([:entity_type, :entity_id, :source_field, :container_type, :container_id])
-    |> Map.merge(%{code: code, severity: :warning, impact: :restore_blocked})
-  end
 
   defp resolve_project_asset_maps!(asset_ids, project_id) do
     assets = Repo.all(from(a in Asset, where: a.id in ^asset_ids and is_nil(a.deleted_at)))
@@ -364,17 +308,19 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
     do: {:error, :invalid_pre_materialized_asset_mapping}
 
   @doc false
-  @spec validate_pre_materialized_catalogs(map(), map(), [map()]) :: :ok | {:error, term()}
-  def validate_pre_materialized_catalogs(snapshot, source_refs, assets)
-      when is_map(snapshot) and is_map(source_refs) and is_list(assets) do
+  @spec validate_pre_materialized_catalogs(map(), map(), [map()], keyword()) :: :ok | {:error, term()}
+  def validate_pre_materialized_catalogs(snapshot, source_refs, assets, opts \\ [])
+
+  def validate_pre_materialized_catalogs(snapshot, source_refs, assets, opts)
+      when is_map(snapshot) and is_map(source_refs) and is_list(assets) and is_list(opts) do
     assets_by_logical_id = Map.new(assets, &{&1["logical_id"], &1})
 
     with :ok <- validate_pre_materialized_catalog_surfaces(snapshot, source_refs, assets_by_logical_id) do
-      validate_pre_materialized_asset_slots(snapshot, source_refs, assets_by_logical_id)
+      validate_pre_materialized_asset_slots(snapshot, source_refs, assets_by_logical_id, opts)
     end
   end
 
-  def validate_pre_materialized_catalogs(_snapshot, _source_refs, _assets),
+  def validate_pre_materialized_catalogs(_snapshot, _source_refs, _assets, _opts),
     do: {:error, :invalid_pre_materialized_asset_catalogs}
 
   defp validate_pre_materialized_catalog_surfaces(snapshot, source_refs, assets_by_logical_id) do
@@ -386,11 +332,11 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
     end)
   end
 
-  defp validate_pre_materialized_asset_slots(snapshot, source_refs, assets_by_logical_id) do
+  defp validate_pre_materialized_asset_slots(snapshot, source_refs, assets_by_logical_id, opts) do
     snapshot
     |> pre_materialized_asset_slots()
     |> Enum.reduce_while(:ok, fn slot, :ok ->
-      case validate_pre_materialized_asset_slot(slot, snapshot, source_refs, assets_by_logical_id) do
+      case validate_pre_materialized_asset_slot(slot, snapshot, source_refs, assets_by_logical_id, opts) do
         :ok -> {:cont, :ok}
         {:error, _reason} = error -> {:halt, error}
       end
@@ -401,7 +347,8 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
          %{source_id: source_id, content_type_prefix: content_type_prefix, context: context},
          snapshot,
          source_refs,
-         assets_by_logical_id
+         assets_by_logical_id,
+         opts
        )
        when is_integer(source_id) and source_id > 0 do
     source_ref = Integer.to_string(source_id)
@@ -410,14 +357,9 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
          {:ok, asset} <- Map.fetch(assets_by_logical_id, logical_id),
          [_catalog | _rest] <- pre_materialized_asset_catalogs(snapshot, source_ref),
          content_type when is_binary(content_type) <- asset["content_type"],
-         true <- String.starts_with?(content_type, content_type_prefix) do
+         :ok <- validate_slot_content_type(content_type, content_type_prefix, context, source_id, opts) do
       :ok
     else
-      false ->
-        {:error,
-         {:pre_materialized_asset_content_type_mismatch, context, source_id, content_type_prefix,
-          asset_content_type(source_refs, assets_by_logical_id, source_ref)}}
-
       :error ->
         {:error, {:pre_materialized_asset_reference_missing, context, source_id}}
 
@@ -435,9 +377,26 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
          %{source_id: source_id, context: context},
          _snapshot,
          _source_refs,
-         _assets_by_logical_id
+         _assets_by_logical_id,
+         _opts
        ) do
     {:error, {:invalid_pre_materialized_asset_reference, context, source_id}}
+  end
+
+  defp validate_slot_content_type(content_type, prefix, context, source_id, opts) when is_list(opts) do
+    if exact_materialization?(opts) do
+      :ok
+    else
+      validate_portable_slot_content_type(content_type, prefix, context, source_id)
+    end
+  end
+
+  defp validate_portable_slot_content_type(content_type, prefix, context, source_id) do
+    if String.starts_with?(content_type, prefix) do
+      :ok
+    else
+      {:error, {:pre_materialized_asset_content_type_mismatch, context, source_id, prefix, content_type}}
+    end
   end
 
   defp asset_content_type(source_refs, assets_by_logical_id, source_ref) do
@@ -725,7 +684,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
         :ok
 
       prefix when is_binary(prefix) ->
-        if String.starts_with?(entry.metadata["content_type"], prefix) do
+        if exact_materialization?(opts) or String.starts_with?(entry.metadata["content_type"], prefix) do
           :ok
         else
           {:error,
@@ -736,6 +695,8 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
         {:error, {:invalid_expected_content_type_prefix, invalid_prefix}}
     end
   end
+
+  defp exact_materialization?(opts), do: Keyword.get(opts, :materialization_mode, :portable) == :exact
 
   defp resolve_cached_or_materialize(asset_id, project_id, user_id, mode, entry, opts) do
     case fetch_cached_asset(opts, project_id, asset_id, entry.fingerprint, mode) do
