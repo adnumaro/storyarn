@@ -296,6 +296,75 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
     end
   end
 
+  describe "resolve_hashes_for_project_capture/2" do
+    test "keeps valid metadata while reporting broken references as content health", %{
+      project: project,
+      user: user
+    } do
+      {asset, hash} =
+        materializable_asset(
+          project,
+          user,
+          "captured asset",
+          filename: "captured.jpg",
+          content_type: "image/jpeg"
+        )
+
+      foreign_project = project_fixture(user)
+      foreign_asset = asset_fixture(foreign_project, user)
+      inactive_asset = asset_fixture(project, user)
+      invalid_asset = asset_fixture(project, user)
+      trash_asset_row!(inactive_asset, user.id)
+
+      Repo.update_all(
+        from(asset in Asset, where: asset.id == ^invalid_asset.id),
+        set: [content_type: "not-a-valid-content-type"]
+      )
+
+      missing_id = foreign_asset.id + 10_000_000
+
+      context = %{
+        entity_type: :flow_node,
+        entity_id: 123,
+        source_field: "audio_asset_id",
+        container_type: :flow,
+        container_id: 45
+      }
+
+      {hashes, metadata, issues} =
+        AssetHashResolver.resolve_hashes_for_project_capture(
+          [
+            {asset.id, context},
+            {foreign_asset.id, context},
+            {inactive_asset.id, context},
+            {invalid_asset.id, context},
+            {missing_id, context},
+            {"malformed", context},
+            {nil, context}
+          ],
+          project.id
+        )
+
+      assert hashes == %{to_string(asset.id) => hash}
+      assert metadata[to_string(asset.id)]["project_id"] == project.id
+
+      assert MapSet.new(issues, & &1.code) ==
+               MapSet.new([
+                 :cross_project_asset_reference,
+                 :inactive_asset_reference,
+                 :invalid_asset_snapshot_content,
+                 :missing_asset_reference,
+                 :invalid_asset_reference
+               ])
+
+      assert Enum.all?(issues, fn issue ->
+               issue.entity_type == :flow_node and issue.entity_id == 123 and
+                 issue.source_field == "audio_asset_id" and
+                 issue.impact == :restore_blocked
+             end)
+    end
+  end
+
   describe "resolve_asset_fk/4" do
     test "returns nil for nil input" do
       assert nil == AssetHashResolver.resolve_asset_fk(nil, %{}, 1)

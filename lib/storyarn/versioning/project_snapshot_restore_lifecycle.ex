@@ -22,6 +22,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycle do
   alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.ProjectSnapshotRestoreExecutor
   alias Storyarn.Versioning.RestorePolicy
+  alias Storyarn.Versioning.SnapshotContentHealth
   alias Storyarn.Workers.RestoreProjectSnapshotWorker
 
   @restore_worker inspect(RestoreProjectSnapshotWorker)
@@ -1286,7 +1287,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycle do
         valid_digest?(snapshot.manifest_checksum)
       ])
 
-    if valid?, do: :ok, else: {:error, :project_snapshot_not_restorable}
+    cond do
+      not valid? ->
+        {:error, :project_snapshot_not_restorable}
+
+      SnapshotContentHealth.restore_blocked?(snapshot.content_health) ->
+        {:error, :snapshot_contains_unrestorable_content}
+
+      true ->
+        :ok
+    end
   end
 
   defp target_identity_matches?(restore, snapshot) do

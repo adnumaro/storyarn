@@ -141,6 +141,32 @@ defmodule Storyarn.Assets.BlobStoreTest do
   end
 
   describe "ensure_asset_blob/1" do
+    test "accepts a verified canonical blob before consulting a legacy source key", %{
+      project: project,
+      user: user
+    } do
+      content = "canonical bytes survive legacy key drift"
+
+      assert {:ok, asset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "legacy-key.png", content_type: "image/png"},
+                 project,
+                 user
+               )
+
+      blob_key = BlobStore.blob_key(project.id, asset.blob_hash, "png")
+      legacy_asset = %{asset | key: "legacy/noncanonical/#{asset.id}.png"}
+
+      on_exit(fn ->
+        Storage.delete(asset.key)
+        delete_storage_blob(blob_key)
+      end)
+
+      assert {:ok, ^blob_key, :present} = BlobStore.ensure_asset_blob(legacy_asset)
+      assert {:ok, ^content} = Storage.download(blob_key)
+    end
+
     test "reconstructs a missing canonical blob from the verified original", %{
       project: project,
       user: user

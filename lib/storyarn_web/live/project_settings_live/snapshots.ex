@@ -9,6 +9,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.SnapshotArchiveStorage
+  alias Storyarn.Versioning.SnapshotContentHealth
   alias StoryarnWeb.Helpers.Authorize
 
   @active_restore_statuses ~w(queued running retrying)
@@ -83,7 +84,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   defp serialize_snapshot(project, snapshot, reservations, restore, active_restore?, build_statuses) do
     reservation = Map.get(reservations, snapshot.id, %{active_bytes: 0, export_bytes: 0, active_count: 0})
     build_status = Map.get(build_statuses, snapshot.id, %{})
-    retrying = build_status[:retrying] == true or snapshot.progress_phase == "retrying"
+    retrying = snapshot_retrying?(snapshot, build_status)
+    structurally_restorable? = snapshot_restorable?(snapshot)
+    restore_blocked_by_content? = restore_blocked_by_content?(snapshot, structurally_restorable?)
 
     %{
       id: snapshot.id,
@@ -105,14 +108,15 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       accountingMeasuredAt: serialize_datetime(snapshot.accounting_measured_at),
       plannedSizeBytes: serialize_optional_byte_count(snapshot.total_size_bytes),
       progressPhase: snapshot.progress_phase,
-      progressBytes: serialize_byte_count(snapshot.progress_bytes || 0),
+      progressBytes: snapshot |> snapshot_progress_bytes() |> serialize_byte_count(),
       progressTotalBytes: snapshot |> measured_progress_total_bytes() |> serialize_optional_byte_count(),
       buildJobState: build_status[:job_state],
-      buildAttempt: max(snapshot.build_attempt || 0, build_status[:attempt] || 0),
+      buildAttempt: snapshot_build_attempt(snapshot, build_status),
       buildMaxAttempts: build_status[:max_attempts],
       retrying: retrying,
       nextRetryAt: serialize_datetime(build_status[:next_retry_at]),
-      retryErrorCode: if(retrying, do: build_status[:retry_error_code] || "build_failed"),
+      retryErrorCode: retry_error_code(retrying, build_status),
+      contentHealth: serialize_content_health(project, snapshot.content_health),
       failureCode: snapshot.failure_code,
       failureMessage: snapshot.failure_message,
       capturedAt: serialize_datetime(snapshot.captured_at),
@@ -120,7 +124,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       canCancel: snapshot_cancellable?(snapshot),
       canDelete: snapshot_deletable?(snapshot, reservation, active_restore?),
       deleteStatus: snapshot_delete_status(snapshot, reservation, active_restore?),
-      canRestore: snapshot_restorable?(snapshot) and not active_restore?,
+      canRestore: can_restore?(structurally_restorable?, restore_blocked_by_content?, active_restore?),
+      restoreBlockedByContentIssues: restore_blocked_by_content?,
       restoreOperation: serialize_restore_operation(restore),
       downloadUrl: snapshot_download_url(project, snapshot),
       entityCounts: snapshot.entity_counts,
@@ -128,8 +133,48 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     }
   end
 
+  defp snapshot_retrying?(snapshot, build_status),
+    do: build_status[:retrying] == true or snapshot.progress_phase == "retrying"
+
+  defp restore_blocked_by_content?(snapshot, true), do: SnapshotContentHealth.restore_blocked?(snapshot.content_health)
+
+  defp restore_blocked_by_content?(_snapshot, false), do: false
+
+  defp snapshot_progress_bytes(snapshot), do: snapshot.progress_bytes || 0
+
+  defp snapshot_build_attempt(snapshot, build_status), do: max(snapshot.build_attempt || 0, build_status[:attempt] || 0)
+
+  defp retry_error_code(false, _build_status), do: nil
+  defp retry_error_code(true, build_status), do: build_status[:retry_error_code] || "build_failed"
+
+  defp can_restore?(structurally_restorable?, restore_blocked_by_content?, active_restore?) do
+    structurally_restorable? and not restore_blocked_by_content? and not active_restore?
+  end
+
   defp serialize_datetime(%DateTime{} = value), do: DateTime.to_iso8601(value)
   defp serialize_datetime(_value), do: nil
+
+  defp serialize_content_health(project, content_health) do
+    content_health
+    |> SnapshotContentHealth.safe()
+    |> Map.update!("issues", fn issues ->
+      Enum.map(issues, &Map.put(&1, "locationUrl", content_issue_location_url(project, &1)))
+    end)
+  end
+
+  defp content_issue_location_url(project, %{"container_type" => "sheet", "container_id" => id}) when is_integer(id) do
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{id}"
+  end
+
+  defp content_issue_location_url(project, %{"container_type" => "flow", "container_id" => id}) when is_integer(id) do
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{id}"
+  end
+
+  defp content_issue_location_url(project, %{"container_type" => "scene", "container_id" => id}) when is_integer(id) do
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{id}"
+  end
+
+  defp content_issue_location_url(_project, _issue), do: nil
 
   defp snapshot_cancellable?(snapshot) do
     snapshot.lifecycle_state in ["pending", "building", "verifying"] and
@@ -505,6 +550,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
        when reason in [
               :restore_temporarily_disabled,
               :project_snapshot_not_restorable,
+              :snapshot_contains_unrestorable_content,
               :project_snapshot_restore_in_progress,
               :project_snapshot_restore_idempotency_conflict,
               :project_snapshot_not_found,

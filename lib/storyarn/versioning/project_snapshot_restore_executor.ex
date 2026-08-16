@@ -63,6 +63,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Versioning.ProjectSnapshotAssetMaterializer
   alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.RestorePolicy
+  alias Storyarn.Versioning.SnapshotContentHealth
 
   @phase_rank %{"preflight" => 0, "staging" => 1, "materializing" => 2, "verifying" => 3}
   @compensation_context_key {__MODULE__, :compensation_context}
@@ -198,6 +199,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
            Projects.authorize(Scope.for_user(actor), project.id, :manage_project),
          true <- project_id == restore.project_id,
          {:ok, archive_plan} <- reader.verify(snapshot),
+         :ok <- validate_archive_content_health(snapshot, archive_plan.project),
          :ok <- validate_canonical_project_fields(project, archive_plan.project),
          :ok <- recovery.validate_materialization_snapshot(archive_plan.project),
          bound_reservation = bound_reservation(restore),
@@ -294,7 +296,40 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
         snapshot.manifest_checksum == restore.manifest_checksum
       ])
 
-    if exact?, do: :ok, else: {:error, :project_snapshot_restore_identity_mismatch}
+    cond do
+      SnapshotContentHealth.restore_blocked?(snapshot.content_health) ->
+        {:error, :snapshot_contains_unrestorable_content}
+
+      exact? ->
+        :ok
+
+      true ->
+        {:error, :project_snapshot_restore_identity_mismatch}
+    end
+  end
+
+  defp validate_archive_content_health(snapshot, project_snapshot) do
+    with :ok <- SnapshotContentHealth.validate(snapshot.content_health),
+         :ok <- validate_embedded_content_health(project_snapshot, snapshot.content_health),
+         false <- SnapshotContentHealth.restore_blocked?(snapshot.content_health) do
+      :ok
+    else
+      _invalid -> {:error, :snapshot_contains_unrestorable_content}
+    end
+  end
+
+  defp validate_embedded_content_health(project_snapshot, persisted_content_health) do
+    case Map.fetch(project_snapshot, "content_health") do
+      {:ok, embedded_content_health} ->
+        if embedded_content_health == persisted_content_health,
+          do: SnapshotContentHealth.validate(embedded_content_health),
+          else: {:error, :invalid_snapshot_content_health}
+
+      :error ->
+        if persisted_content_health == SnapshotContentHealth.unknown(),
+          do: :ok,
+          else: {:error, :invalid_snapshot_content_health}
+    end
   end
 
   @project_field_keys MapSet.new(~w(
@@ -939,7 +974,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     maps = Map.put(maps, :mention_block_ids, rich_text_block_ids(snapshot))
 
     snapshot
-    |> Map.drop(~w(asset_blob_hashes asset_metadata asset_catalog_refs))
+    |> Map.drop(~w(asset_blob_hashes asset_metadata asset_catalog_refs content_health))
     |> Map.update!("sheets", &Enum.map(&1, fn entry -> canonical_sheet_entry(entry, maps) end))
     |> Map.update!("flows", &Enum.map(&1, fn entry -> canonical_flow_entry(entry, maps) end))
     |> Map.update!("scenes", &Enum.map(&1, fn entry -> canonical_scene_entry(entry, maps) end))

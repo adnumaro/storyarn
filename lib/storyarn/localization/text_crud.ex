@@ -587,6 +587,30 @@ defmodule Storyarn.Localization.TextCrud do
     |> maybe_attach_runtime_localization_keys(opts)
   end
 
+  @doc """
+  Lists every active localized-text row for canonical snapshot capture.
+
+  This inventory intentionally does not filter by locale registration, source
+  existence, source lifecycle, or runtime source type. Canonical snapshots must
+  preserve active database drift so content health can report it without losing
+  the original row.
+  """
+  @spec list_texts_for_canonical_snapshot(integer()) :: [LocalizedText.t()]
+  def list_texts_for_canonical_snapshot(project_id) do
+    Repo.all(
+      from(lt in LocalizedText,
+        where: lt.project_id == ^project_id and is_nil(lt.archived_at),
+        order_by: [
+          asc: lt.source_type,
+          asc: lt.source_id,
+          asc: lt.source_field,
+          asc: lt.locale_code,
+          asc: lt.id
+        ]
+      )
+    )
+  end
+
   @doc "Returns the active, source-scoped localized-text query used by engine exports."
   def texts_for_export_query(project_id, locale_codes, opts \\ []) do
     query =

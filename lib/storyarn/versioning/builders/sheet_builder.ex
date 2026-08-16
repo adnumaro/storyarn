@@ -51,6 +51,16 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   @impl true
   def build_snapshot(%Sheet{} = sheet) do
+    build_snapshot(sheet, :strict)
+  end
+
+  @doc false
+  @spec build_snapshot_with_content_health(Sheet.t()) :: {map(), [map()]}
+  def build_snapshot_with_content_health(%Sheet{} = sheet) do
+    build_snapshot(sheet, :capture)
+  end
+
+  defp build_snapshot(%Sheet{} = sheet, mode) when mode in [:strict, :capture] do
     {:ok, snapshot} =
       Repo.transaction(
         fn ->
@@ -58,7 +68,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
           locked_sheet = lock_sheet_for_snapshot!(sheet)
 
           :ok = LocalizableWords.lock_inventory!(locked_sheet.project_id)
-          do_build_snapshot(locked_sheet)
+          do_build_snapshot(locked_sheet, mode)
         end,
         isolation: :repeatable_read
       )
@@ -96,7 +106,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end
   end
 
-  defp do_build_snapshot(%Sheet{} = sheet) do
+  defp do_build_snapshot(%Sheet{} = sheet), do: do_build_snapshot(sheet, :strict)
+
+  defp do_build_snapshot(%Sheet{} = sheet, mode) do
     active_blocks =
       from(b in Block,
         where: is_nil(b.deleted_at),
@@ -114,15 +126,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       sheet.avatars
       |> sorted_avatars()
       |> Enum.map(&avatar_to_snapshot/1)
-      |> normalize_avatar_snapshot_defaults()
+      |> maybe_normalize_avatar_snapshot_defaults(mode)
 
-    block_snapshots = Enum.map(sheet.blocks, &block_to_snapshot/1)
+    block_snapshots = Enum.map(sheet.blocks, &block_to_snapshot(&1, mode))
     default_avatar_asset_id = default_avatar_asset_id(avatar_snapshots)
-    asset_ids = [sheet.banner_asset_id | snapshot_asset_ids(avatar_snapshots, block_snapshots)]
-
-    {hash_map, metadata_map} =
-      AssetHashResolver.resolve_hashes_for_project!(asset_ids, sheet.project_id)
-
     target_locales = LocalizationSnapshotCodec.active_target_locales(sheet.project_id)
 
     localization =
@@ -135,6 +142,15 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
         target_locales: target_locales
       )
 
+    {hash_map, metadata_map, asset_issues} =
+      resolve_snapshot_assets(
+        mode,
+        sheet,
+        avatar_snapshots,
+        block_snapshots,
+        localization
+      )
+
     snapshot = %{
       "original_id" => sheet.id,
       "name" => sheet.name,
@@ -144,7 +160,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       "avatars" => avatar_snapshots,
       "banner_asset_id" => sheet.banner_asset_id,
       "color" => sheet.color,
-      "hidden_inherited_block_ids" => sheet.hidden_inherited_block_ids || [],
+      "hidden_inherited_block_ids" => snapshot_hidden_inherited_block_ids(sheet, mode),
       "blocks" => block_snapshots,
       "asset_blob_hashes" => hash_map,
       "asset_metadata" => metadata_map,
@@ -152,8 +168,212 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       "localization_manifest" => LocalizationSnapshotCodec.manifest(localization, target_locales)
     }
 
-    ensure_valid_built_sheet_snapshot!(sheet, snapshot, target_locales)
+    case mode do
+      :strict -> ensure_valid_built_sheet_snapshot!(sheet, snapshot, target_locales)
+      :capture -> {snapshot, capture_content_issues(sheet, snapshot, asset_issues)}
+    end
   end
+
+  defp resolve_snapshot_assets(:strict, sheet, avatar_snapshots, block_snapshots, _localization) do
+    asset_ids = [sheet.banner_asset_id | snapshot_asset_ids(avatar_snapshots, block_snapshots)]
+
+    {hash_map, metadata_map} =
+      AssetHashResolver.resolve_hashes_for_project!(asset_ids, sheet.project_id)
+
+    {hash_map, metadata_map, []}
+  end
+
+  defp resolve_snapshot_assets(:capture, sheet, avatar_snapshots, block_snapshots, localization) do
+    references =
+      [
+        {sheet.banner_asset_id, capture_context(:sheet, sheet.id, "banner_asset_id", sheet.id)}
+      ] ++
+        Enum.map(avatar_snapshots, fn avatar ->
+          {avatar["asset_id"], capture_context(:sheet_avatar, avatar["original_id"], "asset_id", sheet.id)}
+        end) ++
+        Enum.flat_map(block_snapshots, fn block ->
+          Enum.map(Map.get(block, "gallery_images", []), fn image ->
+            {image["asset_id"],
+             capture_context(
+               :block_gallery_image,
+               image["original_id"],
+               "asset_id",
+               sheet.id
+             )}
+          end)
+        end) ++
+        Enum.map(localization, fn row ->
+          {row["vo_asset_id"],
+           capture_context(
+             row["source_type"],
+             row["source_id"],
+             "vo_asset_id",
+             sheet.id
+           )}
+        end)
+
+    AssetHashResolver.resolve_hashes_for_project_capture(references, sheet.project_id)
+  end
+
+  defp capture_context(entity_type, entity_id, source_field, sheet_id) do
+    %{
+      entity_type: entity_type,
+      entity_id: entity_id,
+      source_field: source_field,
+      container_type: :sheet,
+      container_id: sheet_id
+    }
+  end
+
+  defp capture_content_issues(sheet, snapshot, asset_issues) do
+    localization_errors = capture_localization_content_errors(snapshot)
+
+    validations =
+      [
+        capture_validation(fn -> validate_portable_sheet_snapshot(snapshot) end),
+        capture_validation(fn ->
+          validate_sheet_block_reference_ownership(sheet.project_id, snapshot)
+        end),
+        capture_validation(fn ->
+          validate_effective_sheet_inheritance_graph(
+            sheet.project_id,
+            snapshot["blocks"],
+            forbidden_sheet_id: sheet.id
+          )
+        end)
+      ] ++ Enum.map(localization_errors, &{:error, &1})
+
+    validation_issues =
+      Enum.flat_map(validations, fn
+        :ok -> []
+        {:error, reason} -> [capture_validation_issue(sheet.id, reason)]
+      end)
+
+    Enum.uniq(asset_issues ++ validation_issues ++ raw_state_issues(sheet))
+  end
+
+  defp capture_localization_content_errors(snapshot) do
+    SheetLocalizationSnapshotValidator.content_health_errors(
+      snapshot["localization"],
+      snapshot
+    )
+  rescue
+    _exception -> [:unclassified_content_issue]
+  catch
+    _kind, _reason -> [:unclassified_content_issue]
+  end
+
+  defp capture_validation(validation_fun) do
+    validation_fun.()
+  rescue
+    _exception -> {:error, :unclassified_content_issue}
+  catch
+    _kind, _reason -> {:error, :unclassified_content_issue}
+  end
+
+  defp raw_state_issues(sheet) do
+    hidden_inheritance_issues =
+      if is_list(sheet.hidden_inherited_block_ids) do
+        []
+      else
+        [capture_raw_state_issue(:sheet, sheet.id, "hidden_inherited_block_ids", sheet.id)]
+      end
+
+    block_issues =
+      Enum.flat_map(sheet.blocks, fn block ->
+        []
+        |> maybe_add_raw_collection_issue(
+          block.type != "table" and
+            (sequence_present?(block.table_columns) or sequence_present?(block.table_rows)),
+          :block,
+          block.id,
+          "table_data",
+          sheet.id
+        )
+        |> maybe_add_raw_collection_issue(
+          block.type != "gallery" and sequence_present?(block.gallery_images),
+          :block,
+          block.id,
+          "gallery_images",
+          sheet.id
+        )
+      end)
+
+    hidden_inheritance_issues ++ block_issues
+  end
+
+  defp maybe_add_raw_collection_issue(issues, false, _entity_type, _entity_id, _source_field, _sheet_id), do: issues
+
+  defp maybe_add_raw_collection_issue(issues, true, entity_type, entity_id, source_field, sheet_id) do
+    [capture_raw_state_issue(entity_type, entity_id, source_field, sheet_id) | issues]
+  end
+
+  defp capture_raw_state_issue(entity_type, entity_id, source_field, sheet_id) do
+    %{
+      code: :invalid_sheet_snapshot_content,
+      severity: :warning,
+      entity_type: entity_type,
+      entity_id: entity_id,
+      source_field: source_field,
+      impact: :restore_blocked,
+      container_type: :sheet,
+      container_id: sheet_id
+    }
+  end
+
+  defp sequence_present?(value), do: is_list(value) and value != []
+
+  defp capture_validation_issue(sheet_id, reason) do
+    {code, entity_type, entity_id, source_field} = sheet_issue_location(reason, sheet_id)
+
+    %{
+      code: code,
+      severity: :warning,
+      entity_type: entity_type,
+      entity_id: entity_id,
+      source_field: source_field,
+      impact: :restore_blocked,
+      container_type: :sheet,
+      container_id: sheet_id
+    }
+  end
+
+  defp sheet_issue_location({code, source_type, source_id, source_field}, _sheet_id)
+       when code in [
+              :localization_source_text_mismatch,
+              :localization_source_text_hash_mismatch,
+              :localization_word_count_mismatch,
+              :localization_speaker_mismatch
+            ] do
+    {code, source_type, source_id, source_field}
+  end
+
+  defp sheet_issue_location({:invalid_snapshot, {:invalid_block_reference, block_id}}, _sheet_id),
+    do: {:invalid_block_reference, :block, block_id, "inherited_from_block_id"}
+
+  defp sheet_issue_location({:invalid_snapshot, {:inheritance_cycle, block_id}}, _sheet_id),
+    do: {:inheritance_cycle, :block, block_id, "inherited_from_block_id"}
+
+  defp sheet_issue_location({:incomplete_sheet_localization_snapshot, _details}, sheet_id),
+    do: {:incomplete_localization, :sheet, sheet_id, nil}
+
+  defp sheet_issue_location({code, source_type, source_id, source_field, _locale}, _sheet_id)
+       when code in [
+              :invalid_active_localization_archive_state,
+              :invalid_localization_translation_state,
+              :invalid_localization_placeholders,
+              :invalid_localization_voiceover_state,
+              :localization_locale_outside_snapshot
+            ] do
+    {code, source_type, source_id, source_field}
+  end
+
+  defp sheet_issue_location(
+         {:invalid_localization_placeholders, source_type, source_id, source_field, _locale, _details},
+         _sheet_id
+       ), do: {:invalid_localization_placeholders, source_type, source_id, source_field}
+
+  defp sheet_issue_location(_reason, sheet_id), do: {:invalid_sheet_snapshot_content, :sheet, sheet_id, nil}
 
   defp ensure_valid_built_sheet_snapshot!(sheet, snapshot, target_locales) do
     result =
@@ -214,7 +434,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     }
   end
 
-  defp block_to_snapshot(%Block{} = block) do
+  defp block_to_snapshot(%Block{} = block, mode) do
     base = %{
       "original_id" => block.id,
       "type" => block.type,
@@ -232,20 +452,40 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     }
 
     base
-    |> maybe_put_table_data(block)
-    |> maybe_put_gallery_images(block)
+    |> maybe_put_table_data(block, mode)
+    |> maybe_put_gallery_images(block, mode)
   end
 
-  defp maybe_put_table_data(snapshot, %Block{type: "table"} = block) do
+  defp maybe_put_table_data(snapshot, %Block{type: "table"} = block, _mode) do
+    put_table_data(snapshot, block)
+  end
+
+  defp maybe_put_table_data(snapshot, block, :capture) do
+    if sequence_present?(block.table_columns) or sequence_present?(block.table_rows),
+      do: put_table_data(snapshot, block),
+      else: snapshot
+  end
+
+  defp maybe_put_table_data(snapshot, _block, _mode), do: snapshot
+
+  defp put_table_data(snapshot, block) do
     Map.put(snapshot, "table_data", %{
       "columns" => block.table_columns |> sort_positioned() |> Enum.map(&column_to_snapshot/1),
       "rows" => block.table_rows |> sort_positioned() |> Enum.map(&row_to_snapshot/1)
     })
   end
 
-  defp maybe_put_table_data(snapshot, _block), do: snapshot
+  defp maybe_put_gallery_images(snapshot, %Block{type: "gallery"} = block, _mode) do
+    put_gallery_images(snapshot, block)
+  end
 
-  defp maybe_put_gallery_images(snapshot, %Block{type: "gallery"} = block) do
+  defp maybe_put_gallery_images(snapshot, block, :capture) do
+    if sequence_present?(block.gallery_images), do: put_gallery_images(snapshot, block), else: snapshot
+  end
+
+  defp maybe_put_gallery_images(snapshot, _block, _mode), do: snapshot
+
+  defp put_gallery_images(snapshot, block) do
     Map.put(
       snapshot,
       "gallery_images",
@@ -253,7 +493,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     )
   end
 
-  defp maybe_put_gallery_images(snapshot, _block), do: snapshot
+  defp snapshot_hidden_inherited_block_ids(sheet, :capture), do: sheet.hidden_inherited_block_ids
+  defp snapshot_hidden_inherited_block_ids(sheet, :strict), do: sheet.hidden_inherited_block_ids || []
 
   defp gallery_image_to_snapshot(%BlockGalleryImage{} = image) do
     %{
@@ -2885,6 +3126,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
     Enum.map(avatars, &Map.put(&1, "is_default", &1["original_id"] == default["original_id"]))
   end
+
+  defp maybe_normalize_avatar_snapshot_defaults(avatars, :strict), do: normalize_avatar_snapshot_defaults(avatars)
+
+  defp maybe_normalize_avatar_snapshot_defaults(avatars, :capture), do: avatars
 
   defp avatar_snapshot_order_key(avatar) do
     {

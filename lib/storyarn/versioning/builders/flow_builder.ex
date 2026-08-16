@@ -40,6 +40,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Sheets
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
@@ -68,6 +69,12 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     speaker_sheet_id word_count machine_translated last_translated_at last_reviewed_at
     translated_by_id reviewed_by_id archived_at archive_reason
   )
+  @content_health_source_fields ~w(
+    scene_id speaker_sheet_id location_sheet_id referenced_flow_id target_id avatar_id
+    audio_asset_id vo_asset_id asset_id source_node_id target_node_id source_pin
+    original_id localization_id node_cardinality sequence_tracks sequence_visual_layers
+    sequence_config parent_id connections nodes locale_code text
+  )
 
   # ========== Build Snapshot ==========
 
@@ -85,6 +92,23 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       )
 
     snapshot
+  end
+
+  @doc false
+  @spec build_snapshot_with_content_health(Flow.t()) :: {map(), [map()]}
+  def build_snapshot_with_content_health(%Flow{} = flow) do
+    {:ok, result} =
+      Repo.transaction(
+        fn ->
+          lock_snapshot_project!(flow.project_id)
+          locked_flow = lock_flow_for_snapshot!(flow)
+          :ok = LocalizableWords.lock_inventory!(locked_flow.project_id)
+          do_build_snapshot_with_content_health(locked_flow)
+        end,
+        isolation: :repeatable_read
+      )
+
+    result
   end
 
   defp do_build_snapshot(%Flow{} = flow) do
@@ -166,6 +190,140 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     }
 
     ensure_valid_built_flow_snapshot!(snapshot, target_locales)
+  end
+
+  defp do_build_snapshot_with_content_health(%Flow{} = flow) do
+    flow =
+      Repo.preload(
+        flow,
+        [
+          :connections,
+          nodes: [:sequence_config, :sequence_tracks, :sequence_visual_layers]
+        ],
+        force: true
+      )
+
+    nodes =
+      flow.nodes
+      |> Enum.filter(&is_nil(&1.deleted_at))
+      |> Enum.sort_by(&{&1.position_x, &1.position_y, &1.type, &1.id})
+
+    id_to_index = nodes |> Enum.with_index() |> Map.new(fn {node, idx} -> {node.id, idx} end)
+    node_snapshots = Enum.map(nodes, &node_to_capture_snapshot/1)
+    endpoint_states = snapshot_connection_endpoint_states(flow.connections)
+
+    {connection_snapshots, connection_issues} =
+      capture_connection_snapshots(flow, id_to_index, endpoint_states)
+
+    target_locales = LocalizationSnapshotCodec.active_target_locales(flow.project_id)
+
+    localization =
+      LocalizationSnapshotCodec.capture(
+        flow.project_id,
+        %{"flow_node" => Enum.map(nodes, & &1.id)},
+        target_locales: target_locales
+      )
+
+    {asset_blob_hashes, asset_metadata, asset_issues} =
+      capture_asset_metadata(nodes, localization, flow)
+
+    snapshot = %{
+      "original_id" => flow.id,
+      "name" => flow.name,
+      "shortcut" => flow.shortcut,
+      "description" => flow.description,
+      "is_main" => flow.is_main,
+      "settings" => flow.settings,
+      "scene_id" => flow.scene_id,
+      "nodes" => node_snapshots,
+      "connections" => connection_snapshots,
+      "asset_blob_hashes" => asset_blob_hashes,
+      "asset_metadata" => asset_metadata,
+      "referenced_sheets" => build_capture_referenced_sheets(nodes, flow.project_id),
+      "localization" => localization,
+      "localization_manifest" => LocalizationSnapshotCodec.manifest(localization, target_locales)
+    }
+
+    issues =
+      safely_capture_content_health_issues(
+        flow,
+        snapshot,
+        nodes,
+        connection_issues,
+        asset_issues
+      )
+
+    {snapshot, issues}
+  end
+
+  defp safely_capture_content_health_issues(flow, snapshot, nodes, connection_issues, asset_issues) do
+    flow
+    |> capture_content_health_issues(snapshot, nodes)
+    |> Kernel.++(capture_raw_node_content_issues(flow, nodes))
+    |> Kernel.++(capture_residual_sequence_issues(flow, nodes))
+    |> Kernel.++(connection_issues)
+    |> Kernel.++(asset_issues)
+    |> Enum.uniq()
+    |> Enum.sort_by(&content_health_issue_sort_key/1)
+  rescue
+    _exception -> [unclassified_content_health_issue(flow)]
+  catch
+    _kind, _reason -> [unclassified_content_health_issue(flow)]
+  end
+
+  defp capture_raw_node_content_issues(flow, nodes) do
+    Enum.flat_map(nodes, fn
+      %FlowNode{type: "dialogue", data: %{"text" => text}} = node when not is_binary(text) ->
+        [
+          content_health_issue(
+            :invalid_flow_node,
+            :flow_node,
+            node.id,
+            "text",
+            :restore_blocked,
+            flow.id
+          )
+        ]
+
+      _node ->
+        []
+    end)
+  end
+
+  defp unclassified_content_health_issue(flow) do
+    content_health_issue(
+      :unclassified_content_issue,
+      :flow,
+      flow.id,
+      nil,
+      :restore_blocked,
+      flow.id
+    )
+  end
+
+  defp capture_residual_sequence_issues(flow, nodes) do
+    Enum.flat_map(nodes, &capture_residual_sequence_issue(flow, &1))
+  end
+
+  defp capture_residual_sequence_issue(_flow, %FlowNode{type: "sequence"}), do: []
+
+  defp capture_residual_sequence_issue(flow, node) do
+    [
+      {not is_nil(node.sequence_config), "sequence_config"},
+      {sequence_tracks(node) != [], "sequence_tracks"},
+      {sequence_visual_layers(node) != [], "sequence_visual_layers"}
+    ]
+    |> Enum.filter(&elem(&1, 0))
+    |> Enum.map(fn {_present, source_field} ->
+      content_health_issue(
+        :invalid_flow_node,
+        :flow_node,
+        node.id,
+        source_field,
+        :restore_blocked,
+        flow.id
+      )
+    end)
   end
 
   defp lock_snapshot_project!(project_id) do
@@ -524,22 +682,39 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     }
 
     if node.type == "sequence" do
-      Map.merge(snapshot, %{
-        "sequence_config" => sequence_config_to_snapshot(node.sequence_config),
-        "sequence_tracks" =>
-          node
-          |> sequence_tracks()
-          |> Enum.sort_by(&{&1.kind, &1.position, &1.id})
-          |> Enum.map(&sequence_track_to_snapshot/1),
-        "sequence_visual_layers" =>
-          node
-          |> sequence_visual_layers()
-          |> Enum.sort_by(&{&1.z_index, &1.id})
-          |> Enum.map(&sequence_visual_layer_to_snapshot/1)
-      })
+      Map.merge(snapshot, sequence_snapshot_fields(node))
     else
       snapshot
     end
+  end
+
+  defp node_to_capture_snapshot(%FlowNode{} = node) do
+    snapshot = node_to_snapshot(node)
+
+    if node.type != "sequence" and residual_sequence_resources?(node),
+      do: Map.merge(snapshot, sequence_snapshot_fields(node)),
+      else: snapshot
+  end
+
+  defp residual_sequence_resources?(node) do
+    not is_nil(node.sequence_config) or sequence_tracks(node) != [] or
+      sequence_visual_layers(node) != []
+  end
+
+  defp sequence_snapshot_fields(node) do
+    %{
+      "sequence_config" => sequence_config_to_snapshot(node.sequence_config),
+      "sequence_tracks" =>
+        node
+        |> sequence_tracks()
+        |> Enum.sort_by(&{&1.kind, &1.position, &1.id})
+        |> Enum.map(&sequence_track_to_snapshot/1),
+      "sequence_visual_layers" =>
+        node
+        |> sequence_visual_layers()
+        |> Enum.sort_by(&{&1.z_index, &1.id})
+        |> Enum.map(&sequence_visual_layer_to_snapshot/1)
+    }
   end
 
   defp sequence_config_to_snapshot(%SequenceConfig{} = config) do
@@ -604,6 +779,73 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     }
   end
 
+  defp capture_connection_snapshots(flow, id_to_index, endpoint_states) do
+    flow.connections
+    |> Enum.sort_by(&{&1.source_node_id, &1.source_pin, &1.target_node_id, &1.target_pin, &1.id})
+    |> Enum.map_reduce([], fn connection, issues ->
+      source_index = Map.get(id_to_index, connection.source_node_id)
+      target_index = Map.get(id_to_index, connection.target_node_id)
+
+      snapshot =
+        %{
+          "original_id" => connection.id,
+          "source_node_index" => source_index,
+          "target_node_index" => target_index,
+          "source_pin" => connection.source_pin,
+          "target_pin" => connection.target_pin,
+          "label" => connection.label
+        }
+        |> maybe_put_raw_endpoint("source_node_id", connection.source_node_id, source_index)
+        |> maybe_put_raw_endpoint("target_node_id", connection.target_node_id, target_index)
+
+      connection_issues =
+        capture_connection_endpoint_issues(
+          flow,
+          connection,
+          id_to_index,
+          endpoint_states
+        )
+
+      {snapshot, connection_issues ++ issues}
+    end)
+    |> then(fn {snapshots, issues} -> {snapshots, Enum.reverse(issues)} end)
+  end
+
+  defp maybe_put_raw_endpoint(snapshot, _field, _node_id, index) when is_integer(index), do: snapshot
+  defp maybe_put_raw_endpoint(snapshot, field, node_id, _index), do: Map.put(snapshot, field, node_id)
+
+  defp capture_connection_endpoint_issues(flow, connection, id_to_index, endpoint_states) do
+    Enum.flat_map(
+      [
+        {:source, connection.source_node_id},
+        {:target, connection.target_node_id}
+      ],
+      fn {endpoint, node_id} ->
+        state = Map.get(endpoint_states, node_id)
+
+        if materializable_capture_endpoint?(state, flow.id, id_to_index, node_id) do
+          []
+        else
+          [
+            content_health_issue(
+              :invalid_flow_connection,
+              :flow_connection,
+              connection.id,
+              "#{endpoint}_node_id",
+              :restore_blocked,
+              flow.id
+            )
+          ]
+        end
+      end
+    )
+  end
+
+  defp materializable_capture_endpoint?(%{flow_id: flow_id, deleted_at: nil}, flow_id, id_to_index, node_id),
+    do: Map.has_key?(id_to_index, node_id)
+
+  defp materializable_capture_endpoint?(_state, _flow_id, _id_to_index, _node_id), do: false
+
   defp snapshot_connection_endpoint_states(connections) do
     endpoint_ids =
       connections
@@ -612,7 +854,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
     from(node in FlowNode,
       where: node.id in ^endpoint_ids,
-      select: {node.id, %{flow_id: node.flow_id, deleted_at: node.deleted_at}}
+      select: {node.id, %{flow_id: node.flow_id, type: node.type, deleted_at: node.deleted_at}}
     )
     |> Repo.all()
     |> Map.new()
@@ -687,6 +929,704 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
          }}
       end)
     end
+  end
+
+  defp build_capture_referenced_sheets(nodes, project_id) do
+    nodes
+    |> Enum.map(fn node ->
+      data = capture_node_data(node)
+      [data["speaker_sheet_id"], data["location_sheet_id"]]
+    end)
+    |> List.flatten()
+    |> Enum.filter(&(is_integer(&1) and &1 > 0))
+    |> Enum.uniq()
+    |> case do
+      [] ->
+        %{}
+
+      sheet_ids ->
+        project_id
+        |> Sheets.list_sheets_by_ids(sheet_ids)
+        |> Map.new(fn sheet ->
+          {to_string(sheet.id),
+           %{
+             "id" => sheet.id,
+             "name" => sheet.name,
+             "shortcut" => sheet.shortcut,
+             "color" => sheet.color,
+             "avatar_url" => extract_default_avatar_url(sheet),
+             "banner_url" => extract_asset_url(sheet.banner_asset)
+           }}
+        end)
+    end
+  end
+
+  defp capture_node_data(%FlowNode{data: data}) when is_map(data), do: data
+  defp capture_node_data(%FlowNode{}), do: %{}
+
+  defp capture_asset_metadata(nodes, localization, flow) do
+    nodes
+    |> capture_asset_reference_specs(localization)
+    |> Enum.map(fn spec ->
+      context =
+        spec
+        |> Map.take([:entity_type, :entity_id, :source_field])
+        |> Map.merge(%{container_type: :flow, container_id: flow.id})
+
+      {spec.asset_id, context}
+    end)
+    |> AssetHashResolver.resolve_hashes_for_project_capture(flow.project_id)
+  end
+
+  defp capture_asset_reference_specs(nodes, localization) do
+    node_specs =
+      Enum.flat_map(nodes, fn node ->
+        data = capture_node_data(node)
+
+        [
+          capture_asset_reference_spec(
+            data["audio_asset_id"],
+            :flow_node,
+            node.id,
+            "audio_asset_id"
+          )
+        ] ++
+          Enum.map(sequence_tracks(node), fn track ->
+            capture_asset_reference_spec(track.asset_id, :sequence_track, track.id, "asset_id")
+          end) ++
+          Enum.map(sequence_visual_layers(node), fn layer ->
+            capture_asset_reference_spec(
+              layer.asset_id,
+              :sequence_visual_layer,
+              layer.id,
+              "asset_id"
+            )
+          end)
+      end)
+
+    localization_specs =
+      Enum.map(localization, fn row ->
+        capture_asset_reference_spec(
+          row["vo_asset_id"],
+          :flow_node,
+          row["source_id"],
+          "vo_asset_id"
+        )
+      end)
+
+    (node_specs ++ localization_specs)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.sort_by(&{&1.entity_type, &1.entity_id, &1.source_field, &1.asset_id})
+  end
+
+  defp capture_asset_reference_spec(nil, _entity_type, _entity_id, _source_field), do: nil
+
+  defp capture_asset_reference_spec(asset_id, entity_type, entity_id, source_field) do
+    %{
+      asset_id: asset_id,
+      entity_type: entity_type,
+      entity_id: entity_id,
+      source_field: source_field
+    }
+  end
+
+  defp capture_content_health_issues(flow, snapshot, nodes) do
+    capture_external_reference_issues(flow, snapshot) ++
+      capture_avatar_issues(flow, nodes) ++
+      capture_reference_cycle_issues(flow, nodes) ++
+      capture_dynamic_pin_issues(flow, nodes) ++
+      capture_snapshot_validation_issues(flow, snapshot)
+  end
+
+  defp capture_external_reference_issues(flow, snapshot) do
+    {specs, shape_issues} = capture_external_reference_specs(flow, snapshot)
+
+    active_ids =
+      specs
+      |> Enum.filter(&(is_integer(&1.normalized_id) and &1.normalized_id > 0))
+      |> Enum.group_by(& &1.schema, & &1.normalized_id)
+      |> Map.new(fn {schema, ids} ->
+        owned_ids =
+          Repo.all(
+            from(record in schema,
+              where:
+                record.id in ^Enum.uniq(ids) and record.project_id == ^flow.project_id and
+                  is_nil(field(record, :deleted_at)),
+              order_by: [asc: record.id],
+              lock: "FOR SHARE",
+              select: record.id
+            )
+          )
+
+        {schema, MapSet.new(owned_ids)}
+      end)
+
+    reference_issues =
+      Enum.flat_map(specs, fn spec ->
+        cond do
+          is_nil(spec.value) ->
+            []
+
+          is_nil(spec.normalized_id) ->
+            [capture_reference_issue(:invalid_flow_external_reference, spec, flow.id)]
+
+          MapSet.member?(Map.get(active_ids, spec.schema, MapSet.new()), spec.normalized_id) ->
+            []
+
+          true ->
+            [capture_reference_issue(:flow_external_reference_not_materializable, spec, flow.id)]
+        end
+      end)
+
+    shape_issues ++ reference_issues
+  end
+
+  defp capture_external_reference_specs(flow, snapshot) do
+    flow_spec =
+      capture_reference_spec(
+        Scene,
+        snapshot["scene_id"],
+        :flow,
+        flow.id,
+        "scene_id"
+      )
+
+    {node_specs, issues} =
+      Enum.reduce(snapshot["nodes"], {[], []}, fn node, {specs, issues} ->
+        data = if(is_map(node["data"]), do: node["data"], else: %{})
+        node_id = health_entity_id(node["original_id"], flow.id)
+
+        specs =
+          [
+            capture_reference_spec(Sheet, data["speaker_sheet_id"], :flow_node, node_id, "speaker_sheet_id"),
+            capture_reference_spec(Sheet, data["location_sheet_id"], :flow_node, node_id, "location_sheet_id"),
+            capture_reference_spec(Flow, data["referenced_flow_id"], :flow_node, node_id, "referenced_flow_id")
+          ] ++ specs
+
+        capture_exit_target_reference(node, flow.id, specs, issues)
+      end)
+
+    localization_specs =
+      Enum.map(snapshot["localization"], fn row ->
+        capture_reference_spec(
+          Sheet,
+          row["speaker_sheet_id"],
+          :flow_node,
+          health_entity_id(row["source_id"], flow.id),
+          "speaker_sheet_id"
+        )
+      end)
+
+    {[flow_spec | node_specs] ++ localization_specs, issues}
+  end
+
+  defp capture_exit_target_reference(
+         %{"type" => "exit", "original_id" => node_id, "data" => data},
+         flow_id,
+         specs,
+         issues
+       )
+       when is_map(data) do
+    case validate_flow_exit_target_contract(node_id, data) do
+      :ok ->
+        case normalized_flow_exit_target(data) do
+          {"scene", target_id} ->
+            {[capture_reference_spec(Scene, target_id, :flow_node, node_id, "target_id") | specs], issues}
+
+          {"flow", target_id} ->
+            {[capture_reference_spec(Flow, target_id, :flow_node, node_id, "target_id") | specs], issues}
+
+          nil ->
+            {specs, issues}
+        end
+
+      {:error, reason} ->
+        issue =
+          content_health_issue(
+            validation_reason_code(reason, :invalid_flow_exit_target),
+            :flow_node,
+            health_entity_id(node_id, flow_id),
+            "target_id",
+            :restore_blocked,
+            flow_id
+          )
+
+        {specs, [issue | issues]}
+    end
+  end
+
+  defp capture_exit_target_reference(_node, _flow_id, specs, issues), do: {specs, issues}
+
+  defp capture_reference_spec(schema, value, entity_type, entity_id, source_field) do
+    %{
+      schema: schema,
+      value: value,
+      normalized_id: normalize_materialized_reference_id(value),
+      entity_type: entity_type,
+      entity_id: entity_id,
+      source_field: source_field
+    }
+  end
+
+  defp capture_reference_issue(code, spec, flow_id) do
+    content_health_issue(
+      code,
+      spec.entity_type,
+      spec.entity_id,
+      spec.source_field,
+      :restore_blocked,
+      flow_id
+    )
+  end
+
+  defp capture_avatar_issues(flow, nodes) do
+    specs = capture_avatar_specs(nodes)
+    avatars_by_id = load_capture_avatars(specs)
+
+    Enum.flat_map(specs, &capture_avatar_issue(&1, avatars_by_id, flow))
+  end
+
+  defp capture_avatar_specs(nodes) do
+    nodes
+    |> Enum.map(fn node ->
+      data = capture_node_data(node)
+
+      %{
+        avatar_id: data["avatar_id"],
+        speaker_sheet_id: data["speaker_sheet_id"],
+        node_id: node.id
+      }
+    end)
+    |> Enum.reject(&is_nil(&1.avatar_id))
+  end
+
+  defp load_capture_avatars(specs) do
+    avatar_ids =
+      specs
+      |> Enum.map(&normalize_materialized_reference_id(&1.avatar_id))
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    from(avatar in SheetAvatar,
+      join: sheet in Sheet,
+      on: sheet.id == avatar.sheet_id,
+      where: avatar.id in ^avatar_ids,
+      order_by: [asc: avatar.id],
+      lock: "FOR SHARE",
+      select: {avatar.id, sheet.id, sheet.project_id, sheet.deleted_at}
+    )
+    |> Repo.all()
+    |> Map.new(fn {avatar_id, sheet_id, project_id, deleted_at} ->
+      {avatar_id, %{sheet_id: sheet_id, project_id: project_id, deleted_at: deleted_at}}
+    end)
+  end
+
+  defp capture_avatar_issue(spec, avatars_by_id, flow) do
+    avatar_id = normalize_materialized_reference_id(spec.avatar_id)
+    speaker_sheet_id = normalize_materialized_reference_id(spec.speaker_sheet_id)
+    avatar = Map.get(avatars_by_id, avatar_id)
+
+    code = capture_avatar_issue_code(spec, avatar_id, speaker_sheet_id, avatar, flow.project_id)
+
+    if is_nil(code),
+      do: [],
+      else: [content_health_issue(code, :flow_node, spec.node_id, "avatar_id", :restore_blocked, flow.id)]
+  end
+
+  defp capture_avatar_issue_code(_spec, nil, _speaker_sheet_id, _avatar, _project_id), do: :invalid_avatar_reference
+
+  defp capture_avatar_issue_code(_spec, _avatar_id, _speaker_sheet_id, nil, _project_id), do: :invalid_avatar_reference
+
+  defp capture_avatar_issue_code(_spec, _avatar_id, _speaker_sheet_id, avatar, project_id)
+       when avatar.project_id != project_id or not is_nil(avatar.deleted_at), do: :avatar_project_mismatch
+
+  defp capture_avatar_issue_code(spec, _avatar_id, nil, _avatar, _project_id) when not is_nil(spec.speaker_sheet_id),
+    do: nil
+
+  defp capture_avatar_issue_code(_spec, _avatar_id, speaker_sheet_id, avatar, _project_id)
+       when not is_nil(speaker_sheet_id) and speaker_sheet_id != avatar.sheet_id, do: :avatar_speaker_mismatch
+
+  defp capture_avatar_issue_code(_spec, _avatar_id, _speaker_sheet_id, _avatar, _project_id), do: nil
+
+  defp capture_reference_cycle_issues(flow, nodes) do
+    references =
+      nodes
+      |> Enum.map(fn node ->
+        target_flow_id =
+          node
+          |> then(&%{"type" => &1.type, "data" => &1.data})
+          |> materialized_flow_reference_target()
+          |> normalize_materialized_reference_id()
+
+        {node.id, target_flow_id}
+      end)
+      |> Enum.filter(fn {_node_id, target_flow_id} -> is_integer(target_flow_id) end)
+
+    cyclic_targets =
+      references
+      |> Enum.map(&elem(&1, 1))
+      |> Enum.uniq()
+      |> Enum.filter(&NodeCreate.has_circular_reference?(flow.id, &1))
+      |> MapSet.new()
+
+    Enum.flat_map(references, fn {node_id, target_flow_id} ->
+      if MapSet.member?(cyclic_targets, target_flow_id) do
+        [
+          content_health_issue(
+            :circular_flow_reference,
+            :flow_node,
+            node_id,
+            "referenced_flow_id",
+            :restore_blocked,
+            flow.id
+          )
+        ]
+      else
+        []
+      end
+    end)
+  end
+
+  defp capture_dynamic_pin_issues(flow, nodes) do
+    nodes_by_id = Map.new(nodes, &{&1.id, &1})
+
+    {specs, immediate_issues} =
+      Enum.reduce(flow.connections, {[], []}, fn connection, {specs, issues} ->
+        case Map.get(nodes_by_id, connection.source_node_id) do
+          %FlowNode{type: "subflow"} = source_node ->
+            capture_dynamic_pin_spec(flow, connection, source_node, specs, issues)
+
+          _source ->
+            {specs, issues}
+        end
+      end)
+
+    exits =
+      specs
+      |> Enum.map(& &1.exit_id)
+      |> Enum.uniq()
+      |> then(fn exit_ids ->
+        Repo.all(
+          from(node in FlowNode,
+            where: node.id in ^exit_ids,
+            order_by: [asc: node.id],
+            lock: "FOR SHARE",
+            select: {node.id, node.flow_id, node.type, node.deleted_at}
+          )
+        )
+      end)
+      |> Map.new(fn {id, flow_id, type, deleted_at} ->
+        {id, %{flow_id: flow_id, type: type, deleted_at: deleted_at}}
+      end)
+
+    resolved_issues =
+      Enum.flat_map(specs, fn spec ->
+        case dynamic_exit_pin_state(Map.get(exits, spec.exit_id), spec.referenced_flow_id) do
+          :ok -> []
+          _reason -> [dynamic_pin_content_issue(flow.id, spec.connection_id)]
+        end
+      end)
+
+    immediate_issues ++ resolved_issues
+  end
+
+  defp capture_dynamic_pin_spec(flow, connection, source_node, specs, issues) do
+    case parse_dynamic_exit_pin(connection.source_pin) do
+      :not_dynamic ->
+        {specs, issues}
+
+      {:error, _reason} ->
+        {specs, [dynamic_pin_content_issue(flow.id, connection.id) | issues]}
+
+      {:ok, exit_id} ->
+        referenced_flow_id =
+          source_node
+          |> capture_node_data()
+          |> Map.get("referenced_flow_id")
+          |> normalize_materialized_reference_id()
+
+        if is_nil(referenced_flow_id) do
+          {specs, [dynamic_pin_content_issue(flow.id, connection.id) | issues]}
+        else
+          spec = %{connection_id: connection.id, exit_id: exit_id, referenced_flow_id: referenced_flow_id}
+          {[spec | specs], issues}
+        end
+    end
+  end
+
+  defp dynamic_pin_content_issue(flow_id, connection_id) do
+    content_health_issue(
+      :dynamic_exit_pin_not_materializable,
+      :flow_connection,
+      connection_id,
+      "source_pin",
+      :restore_blocked,
+      flow_id
+    )
+  end
+
+  defp capture_snapshot_validation_issues(flow, snapshot) do
+    nodes = snapshot["nodes"]
+    connections = snapshot["connections"]
+    localization = snapshot["localization"]
+    target_locales = snapshot["localization_manifest"]["target_locales"]
+
+    capture_flow_payload_issues(flow, snapshot) ++
+      capture_node_validation_issues(flow, nodes) ++
+      capture_graph_validation_issues(flow, nodes) ++
+      capture_connection_validation_issues(flow, connections, nodes) ++
+      capture_localization_validation_issues(flow, localization, nodes, target_locales)
+  end
+
+  defp capture_flow_payload_issues(flow, snapshot) do
+    validation_content_issues(
+      validate_flow_snapshot_payload(snapshot),
+      :invalid_flow_snapshot,
+      :flow,
+      flow.id,
+      nil,
+      :restore_blocked,
+      flow.id
+    )
+  end
+
+  defp capture_node_validation_issues(flow, nodes) do
+    Enum.flat_map(nodes, fn node ->
+      node_id = health_entity_id(node["original_id"], flow.id)
+
+      validation_content_issues(
+        validate_snapshot_node(node),
+        :invalid_flow_node,
+        :flow_node,
+        node_id,
+        nil,
+        :restore_blocked,
+        flow.id
+      )
+    end)
+  end
+
+  defp capture_graph_validation_issues(flow, nodes) do
+    Enum.flat_map(
+      [
+        {validate_snapshot_entry_ids(nodes, :node), "original_id"},
+        {validate_dialogue_runtime_id_uniqueness(nodes), "localization_id"},
+        {validate_flow_node_cardinality(nodes), "node_cardinality"},
+        {validate_sequence_resource_ids(nodes, "sequence_tracks", :sequence_track), "sequence_tracks"},
+        {validate_sequence_resource_ids(nodes, "sequence_visual_layers", :sequence_visual_layer),
+         "sequence_visual_layers"},
+        {validate_snapshot_parents(nodes), "parent_id"}
+      ],
+      fn {result, source_field} ->
+        validation_content_issues(
+          result,
+          :invalid_flow_graph,
+          :flow,
+          flow.id,
+          source_field,
+          :restore_blocked,
+          flow.id
+        )
+      end
+    )
+  end
+
+  defp capture_connection_validation_issues(flow, connections, nodes) do
+    connection_issues =
+      Enum.flat_map(connections, fn connection ->
+        connection_id = health_entity_id(connection["original_id"], flow.id)
+
+        validation_content_issues(
+          validate_snapshot_connection(connection, nodes),
+          :invalid_flow_connection,
+          :flow_connection,
+          connection_id,
+          nil,
+          :restore_blocked,
+          flow.id
+        )
+      end)
+
+    uniqueness_issues =
+      validation_content_issues(
+        validate_unique_connection_tuples(connections),
+        :duplicate_snapshot_connection,
+        :flow,
+        flow.id,
+        "connections",
+        :restore_blocked,
+        flow.id
+      )
+
+    connection_issues ++ uniqueness_issues
+  end
+
+  defp capture_localization_validation_issues(flow, localization, nodes, target_locales) do
+    nodes_by_id = Map.new(nodes, &{&1["original_id"], &1})
+    sources = snapshot_localization_sources(nodes)
+
+    row_issues =
+      Enum.flat_map(localization, fn row ->
+        source_id = health_entity_id(row["source_id"], flow.id)
+        source_field = health_source_field(row["source_field"])
+        source = Map.get(sources, {row["source_id"], row["source_field"]})
+
+        validation_content_issues(
+          validate_snapshot_localization_row(row, nodes_by_id, sources),
+          :invalid_flow_localization,
+          :flow_node,
+          source_id,
+          source_field,
+          :restore_blocked,
+          flow.id
+        ) ++ capture_localization_semantic_issues(flow, row, source)
+      end)
+
+    inventory_issues =
+      Enum.flat_map(
+        [
+          {validate_snapshot_localization_node_shapes(nodes), :invalid_flow_localization, "nodes"},
+          {validate_unique_snapshot_localization_rows(localization), :duplicate_flow_localization_snapshot,
+           "localization"},
+          {validate_snapshot_localization_locales(localization, target_locales), :localization_locale_outside_snapshot,
+           "locale_code"}
+        ],
+        fn {result, fallback_code, source_field} ->
+          validation_content_issues(
+            result,
+            fallback_code,
+            :flow,
+            flow.id,
+            source_field,
+            :restore_blocked,
+            flow.id
+          )
+        end
+      )
+
+    row_issues ++
+      inventory_issues ++
+      capture_localization_completeness_issues(flow, localization, sources, target_locales)
+  end
+
+  defp capture_localization_semantic_issues(_flow, _row, nil), do: []
+
+  defp capture_localization_semantic_issues(flow, row, source) do
+    expected_hash = source_text_hash(source.text)
+    source_id = health_entity_id(row["source_id"], flow.id)
+    source_field = health_source_field(row["source_field"])
+
+    Enum.flat_map(
+      [
+        validate_localization_source_text(row, source.text),
+        validate_localization_source_hash(row, expected_hash),
+        validate_localization_word_count(row, source.text),
+        validate_localization_speaker(row, source.speaker_sheet_id),
+        validate_active_localization_state(row),
+        validate_localization_translation_state(row),
+        validate_localization_placeholders(row),
+        validate_localization_voiceover_state(row, source.metadata)
+      ],
+      fn result ->
+        validation_content_issues(
+          result,
+          :invalid_flow_localization,
+          :flow_node,
+          source_id,
+          source_field,
+          :restore_blocked,
+          flow.id
+        )
+      end
+    )
+  end
+
+  defp capture_localization_completeness_issues(flow, localization, sources, target_locales) do
+    expected =
+      for {source_key, _source} <- sources,
+          locale <- target_locales,
+          into: MapSet.new(),
+          do: {source_key, locale}
+
+    actual =
+      MapSet.new(localization, fn row ->
+        {{row["source_id"], row["source_field"]}, row["locale_code"]}
+      end)
+
+    expected
+    |> MapSet.difference(actual)
+    |> Enum.map(fn {source_key, _locale} -> source_key end)
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Enum.map(fn {source_id, source_field} ->
+      content_health_issue(
+        :incomplete_flow_localization_snapshot,
+        :flow_node,
+        health_entity_id(source_id, flow.id),
+        health_source_field(source_field),
+        :restore_blocked,
+        flow.id
+      )
+    end)
+  end
+
+  defp validation_content_issues(:ok, _fallback, _entity_type, _entity_id, _source_field, _impact, _flow_id), do: []
+
+  defp validation_content_issues({:ok, _value}, _fallback, _entity_type, _entity_id, _source_field, _impact, _flow_id),
+    do: []
+
+  defp validation_content_issues(result, fallback, entity_type, entity_id, source_field, impact, flow_id) do
+    [
+      content_health_issue(
+        validation_reason_code(result, fallback),
+        entity_type,
+        entity_id,
+        source_field,
+        impact,
+        flow_id
+      )
+    ]
+  end
+
+  defp validation_reason_code({:error, reason}, fallback), do: validation_reason_code(reason, fallback)
+  defp validation_reason_code({code, _rest}, _fallback) when is_atom(code), do: code
+  defp validation_reason_code(reason, _fallback) when is_tuple(reason) and tuple_size(reason) > 0, do: elem(reason, 0)
+
+  defp validation_reason_code(code, _fallback) when is_atom(code), do: code
+  defp validation_reason_code(_reason, fallback), do: fallback
+
+  defp content_health_issue(code, entity_type, entity_id, source_field, impact, flow_id) do
+    %{
+      code: code,
+      severity: :warning,
+      entity_type: entity_type,
+      entity_id: health_entity_id(entity_id, flow_id),
+      source_field: health_source_field(source_field),
+      impact: impact,
+      container_type: :flow,
+      container_id: flow_id
+    }
+  end
+
+  defp health_entity_id(entity_id, _fallback) when is_integer(entity_id) and entity_id > 0, do: entity_id
+  defp health_entity_id(_entity_id, fallback), do: fallback
+
+  defp health_source_field(source_field) when is_binary(source_field) do
+    if source_field in @content_health_source_fields or
+         SourceContract.field?("flow_node", source_field),
+       do: source_field
+  end
+
+  defp health_source_field(_source_field), do: nil
+
+  defp content_health_issue_sort_key(issue) do
+    {
+      Atom.to_string(issue.code),
+      Atom.to_string(issue.entity_type),
+      issue.entity_id,
+      issue.source_field || "",
+      Atom.to_string(issue.impact)
+    }
   end
 
   defp extract_asset_url(%{url: url}) when is_binary(url), do: url
@@ -2221,7 +3161,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     end)
   end
 
-  defp node_localization_sources(%{"original_id" => node_id, "type" => "dialogue", "data" => data}) do
+  defp node_localization_sources(%{"original_id" => node_id, "type" => "dialogue", "data" => data}) when is_map(data) do
     speaker_sheet_id = data["speaker_sheet_id"]
 
     []
@@ -2236,7 +3176,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     |> add_response_localization_sources(node_id, data["responses"], speaker_sheet_id)
   end
 
-  defp node_localization_sources(%{"original_id" => node_id, "type" => "exit", "data" => data}) do
+  defp node_localization_sources(%{"original_id" => node_id, "type" => "exit", "data" => data}) when is_map(data) do
     maybe_add_localization_source([], node_id, "label", data["label"], nil)
   end
 
@@ -3972,7 +4912,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     references = [
       {"speaker_sheet_id", Sheet, :sheet},
       {"location_sheet_id", Sheet, :sheet},
-      {"avatar_id", Storyarn.Sheets.SheetAvatar, :avatar},
+      {"avatar_id", SheetAvatar, :avatar},
       {"referenced_flow_id", Flow, :flow}
     ]
 
