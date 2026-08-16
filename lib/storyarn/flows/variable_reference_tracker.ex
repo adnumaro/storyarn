@@ -270,20 +270,124 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     with {:ok, catalog} <- portable_snapshot_variable_catalog(project_snapshot),
          {:ok, specs} <- portable_snapshot_reference_specs(project_snapshot),
          :ok <- validate_portable_snapshot_specs(specs, catalog.resolution_keys) do
-      {:ok,
-       %{
-         version: 1,
-         sheet_ids: catalog.sheet_ids,
-         namespace_owners: catalog.namespace_owners,
-         rewritable_namespaces: catalog.rewritable_namespaces,
-         qualified_targets: catalog.qualified_targets,
-         rewritable_qualified_targets: catalog.rewritable_qualified_targets
-       }}
+      {:ok, portable_project_snapshot_plan(catalog)}
     end
   end
 
   def prepare_portable_project_snapshot(project_snapshot),
     do: {:error, {:invalid_portable_variable_project_snapshot, project_snapshot}}
+
+  @doc false
+  @spec prepare_exact_project_snapshot(map()) :: {:ok, portable_project_snapshot_plan()}
+  def prepare_exact_project_snapshot(%{} = project_snapshot) do
+    plan =
+      case portable_snapshot_variable_catalog(project_snapshot) do
+        {:ok, catalog} -> portable_project_snapshot_plan(catalog)
+        {:error, _reason} -> exact_project_snapshot_fallback_plan(project_snapshot)
+      end
+
+    {:ok, plan}
+  end
+
+  def prepare_exact_project_snapshot(_project_snapshot), do: {:ok, exact_project_snapshot_fallback_plan(%{})}
+
+  defp portable_project_snapshot_plan(catalog) do
+    %{
+      version: 1,
+      sheet_ids: catalog.sheet_ids,
+      namespace_owners: catalog.namespace_owners,
+      rewritable_namespaces: catalog.rewritable_namespaces,
+      qualified_targets: catalog.qualified_targets,
+      rewritable_qualified_targets: catalog.rewritable_qualified_targets
+    }
+  end
+
+  defp exact_project_snapshot_fallback_plan(project_snapshot) do
+    entries = exact_variable_sheet_entries(project_snapshot)
+
+    explicit_owners =
+      entries
+      |> Enum.reject(& &1.rewritable?)
+      |> Map.new(&{&1.namespace, &1.sheet_id})
+
+    fallback_owners = Map.new(entries, &{&1.namespace, &1.sheet_id})
+    namespace_owners = Map.merge(fallback_owners, explicit_owners)
+
+    rewritable_namespaces =
+      entries
+      |> Enum.filter(&(&1.rewritable? and Map.get(namespace_owners, &1.namespace) == &1.sheet_id))
+      |> Map.new(&{&1.namespace, &1.sheet_id})
+
+    {qualified_targets, rewritable_qualified_targets} =
+      Enum.reduce(entries, {%{}, %{}}, &put_exact_qualified_targets(&1, &2, namespace_owners))
+
+    %{
+      version: 1,
+      sheet_ids: MapSet.new(entries, & &1.sheet_id),
+      namespace_owners: namespace_owners,
+      rewritable_namespaces: rewritable_namespaces,
+      qualified_targets: qualified_targets,
+      rewritable_qualified_targets: rewritable_qualified_targets
+    }
+  end
+
+  defp put_exact_qualified_targets(entry, acc, namespace_owners) do
+    if Map.get(namespace_owners, entry.namespace) == entry.sheet_id,
+      do: merge_exact_qualified_targets(entry, acc),
+      else: acc
+  end
+
+  defp merge_exact_qualified_targets(entry, {qualified, rewritable}) do
+    qualified = merge_qualified_targets(entry.qualified_targets, qualified)
+
+    rewritable =
+      if entry.rewritable?,
+        do: merge_qualified_targets(entry.qualified_targets, rewritable),
+        else: rewritable
+
+    {qualified, rewritable}
+  end
+
+  defp merge_qualified_targets(left, right),
+    do: Map.merge(left, right, fn _key, left_value, _right_value -> left_value end)
+
+  defp exact_variable_sheet_entries(%{"sheets" => sheets}) when is_list(sheets) do
+    Enum.flat_map(sheets, &exact_variable_sheet_entry/1)
+  end
+
+  defp exact_variable_sheet_entries(_project_snapshot), do: []
+
+  defp exact_variable_sheet_entry(%{
+         "id" => sheet_id,
+         "snapshot" => %{"original_id" => sheet_id, "shortcut" => shortcut, "blocks" => blocks}
+       })
+       when is_integer(sheet_id) and sheet_id > 0 and (is_nil(shortcut) or is_binary(shortcut)) and is_list(blocks) do
+    namespace = if is_nil(shortcut) or shortcut == "", do: Integer.to_string(sheet_id), else: shortcut
+
+    [
+      %{
+        sheet_id: sheet_id,
+        namespace: namespace,
+        rewritable?: is_nil(shortcut) or shortcut == "",
+        qualified_targets: exact_sheet_qualified_targets(blocks, namespace)
+      }
+    ]
+  end
+
+  defp exact_variable_sheet_entry(_invalid), do: []
+
+  defp exact_sheet_qualified_targets(blocks, namespace) do
+    blocks
+    |> Enum.flat_map(&portable_block_variable_definitions_or_empty(&1, namespace))
+    |> Map.new(&{&1.qualified_ref, &1.resolution_key})
+  end
+
+  defp portable_block_variable_definitions_or_empty(block, namespace) do
+    case portable_block_variable_definitions(block, namespace) do
+      {:ok, definitions} -> definitions
+      {:error, _reason} -> []
+    end
+  end
 
   @doc false
   @spec rewrite_portable_project_snapshot(map(), portable_project_snapshot_plan(), map()) ::

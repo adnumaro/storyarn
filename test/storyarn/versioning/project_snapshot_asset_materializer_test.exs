@@ -136,7 +136,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
              )
   end
 
-  test "rejects a top-level localization voice-over backed by an image before staging", %{project: project} do
+  test "keeps MIME slot validation strict by default but does not block exact restore", %{project: project} do
     fixture = catalog_fixture(project.id)
     catalogs = fingerprint_catalogs(fixture, "41")
 
@@ -156,6 +156,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
                fixture.staging_prefix,
                fixture.staging_keys
              )
+
+    assert {:ok, plan} =
+             ProjectSnapshotAssetMaterializer.prepare(
+               project.id,
+               1,
+               fixture.manifest,
+               project_object,
+               fixture.staging_prefix,
+               fixture.staging_keys,
+               materialization_mode: :exact
+             )
+
+    assert Enum.map(plan.assets, & &1.content_type) == ["image/png", "image/png"]
   end
 
   test "rejects a graph asset reference absent from source refs before staging", %{project: project} do
@@ -278,6 +291,68 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
     assert :ok = StorageCompensation.cleanup_unretained(tracker)
     assert {:ok, ^expected_bytes} = Storage.download(original.key)
     assert {:ok, ^expected_bytes} = Storage.download(derived.key)
+
+    cleanup_fixture_objects(fixture, plan)
+  end
+
+  test "restores a zero-byte row with captured legacy metadata and remapped valid relationships", %{
+    project: project,
+    user: user
+  } do
+    fixture = zero_byte_catalog_fixture(project.id)
+    upload_staging_fixture(fixture)
+    assert {:ok, plan} = prepare_plan(project.id, fixture)
+    tracker = StorageCompensation.new()
+    assert :ok = ProjectSnapshotAssetMaterializer.stage_destination_objects(plan, tracker)
+
+    assert {:ok, adoption} =
+             Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+               locked_project = Repo.get!(Project, project.id)
+
+               with {:ok, adoption} <-
+                      ProjectSnapshotAssetMaterializer.adopt_locked(
+                        plan,
+                        locked_project,
+                        user.id,
+                        tracker
+                      ),
+                    :ok <-
+                      ProjectSnapshotAssetMaterializer.verify_adopted_locked(
+                        plan,
+                        adoption.logical_id_map
+                      ) do
+                 {:ok, adoption}
+               end
+             end)
+
+    restored = Repo.get!(Asset, adoption.logical_id_map["asset-000001"])
+    assert restored.filename == "empty.png"
+    assert restored.content_type == "image/png"
+    assert restored.size == 0
+    assert restored.blob_hash == fixture.sha256
+
+    assert restored.metadata == %{
+             "legacy_profile" => %{"label" => "kept exactly"},
+             "original_asset_id" => restored.id
+           }
+
+    assert {:ok, ""} = Storage.download(restored.key)
+    cleanup_fixture_objects(fixture, plan)
+  end
+
+  test "rejects corrupt zero-byte staging content", %{project: project} do
+    fixture = zero_byte_catalog_fixture(project.id)
+    assert {:ok, plan} = prepare_plan(project.id, fixture)
+
+    Enum.each(Map.values(fixture.staging_keys), fn key ->
+      assert {:ok, _url} = Storage.upload(key, "corrupt", "image/png")
+    end)
+
+    tracker = StorageCompensation.new()
+    corrupt_size = byte_size("corrupt")
+
+    assert {:error, {:snapshot_blob_staging_failed, _path, {:snapshot_blob_size_mismatch, 0, ^corrupt_size}}} =
+             ProjectSnapshotAssetMaterializer.stage_destination_objects(plan, tracker)
 
     cleanup_fixture_objects(fixture, plan)
   end
@@ -472,6 +547,71 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
       "projects/#{project_id}/storage-reservations/v1/restore-staging/#{Ecto.UUID.generate()}"
 
     %{
+      manifest: manifest,
+      project_object: project_object,
+      staging_prefix: staging_prefix,
+      staging_keys: %{blob_path => staging_prefix <> "/" <> blob_path}
+    }
+  end
+
+  defp zero_byte_catalog_fixture(project_id) do
+    bytes = ""
+    digest = sha256(bytes)
+    blob_path = SnapshotObjectFormat.blob_path(digest, "image/png")
+
+    assets = [
+      asset_entry("asset-000001", "empty.png", bytes, digest, blob_path, %{
+        "original" => "asset-000001",
+        "web" => nil,
+        "variants" => %{}
+      })
+    ]
+
+    blob = %{
+      "kind" => "asset_blob",
+      "path" => blob_path,
+      "sha256" => digest,
+      "size_bytes" => 0,
+      "content_type" => "image/png"
+    }
+
+    project_object = %{
+      "format_version" => 2,
+      "asset_catalog_refs" => %{"41" => "asset-000001"},
+      "asset_blob_hashes" => %{"41" => digest},
+      "asset_metadata" => %{
+        "41" => %{
+          "filename" => "empty.png",
+          "content_type" => "image/png",
+          "size" => 0,
+          "persisted_metadata" => %{
+            "legacy_profile" => %{"label" => "kept exactly"},
+            "original_asset_id" => 41
+          }
+        }
+      }
+    }
+
+    project_json = Jason.encode!(project_object)
+
+    project_descriptor = %{
+      "kind" => "project",
+      "path" => "project.json",
+      "sha256" => sha256(project_json),
+      "size_bytes" => byte_size(project_json),
+      "content_type" => "application/json"
+    }
+
+    {:ok, manifest} =
+      SnapshotObjectFormat.build_manifest(project_object, assets, [blob], project_descriptor: project_descriptor)
+
+    staging_prefix =
+      "projects/#{project_id}/storage-reservations/v1/restore-staging/#{Ecto.UUID.generate()}"
+
+    %{
+      bytes: bytes,
+      sha256: digest,
+      blob_path: blob_path,
       manifest: manifest,
       project_object: project_object,
       staging_prefix: staging_prefix,

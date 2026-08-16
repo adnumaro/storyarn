@@ -91,21 +91,21 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   @doc false
-  @spec build_snapshot_with_content_health(Scene.t()) :: {map(), [map()]}
-  def build_snapshot_with_content_health(%Scene{} = scene) do
-    {:ok, result} =
+  @spec build_capture_snapshot(Scene.t()) :: map()
+  def build_capture_snapshot(%Scene{} = scene) do
+    {:ok, snapshot} =
       Repo.transaction(
         fn ->
           :ok = lock_scene_project_for_snapshot!(scene.project_id)
 
           scene
           |> lock_scene_for_snapshot!()
-          |> do_build_snapshot_with_content_health()
+          |> do_build_capture_snapshot()
         end,
         isolation: :repeatable_read
       )
 
-    result
+    snapshot
   end
 
   defp lock_scene_project_for_snapshot!(project_id) do
@@ -234,7 +234,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     ensure_valid_built_scene_snapshot!(scene, snapshot)
   end
 
-  defp do_build_snapshot_with_content_health(%Scene{} = scene) do
+  defp do_build_capture_snapshot(%Scene{} = scene) do
     scene =
       Repo.preload(
         scene,
@@ -271,8 +271,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         )
       end)
 
-    {connection_snapshots, connection_issues} =
-      capture_connection_snapshots(scene, pin_index_map)
+    connection_snapshots = capture_connection_snapshots(scene, pin_index_map)
 
     ambient_flow_snapshots =
       scene.ambient_flows
@@ -281,13 +280,13 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
     asset_references = capture_scene_asset_references(scene)
 
-    {hash_map, metadata_map, asset_issues} =
+    {hash_map, metadata_map} =
       AssetHashResolver.resolve_hashes_for_project_capture(
         asset_references,
         scene.project_id
       )
 
-    snapshot = %{
+    %{
       "original_id" => scene.id,
       "name" => scene.name,
       "shortcut" => scene.shortcut,
@@ -312,16 +311,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "asset_blob_hashes" => hash_map,
       "asset_metadata" => metadata_map
     }
-
-    issues =
-      scene
-      |> capture_scene_content_issues(snapshot, layer_ids, asset_references)
-      |> Kernel.++(connection_issues)
-      |> Kernel.++(asset_issues)
-      |> Enum.uniq()
-      |> Enum.sort_by(&content_health_issue_sort_key/1)
-
-    {snapshot, issues}
   end
 
   defp ensure_persisted_scene_layer_integrity!(scene_id) do
@@ -614,12 +603,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
       {layer_index, pin_index, connection.id}
     end)
-    |> Enum.map_reduce([], fn connection, issues ->
-      snapshot = capture_connection_to_snapshot(connection, pin_index_map)
-      connection_issues = capture_connection_issues(scene, connection, pin_index_map)
-      {snapshot, connection_issues ++ issues}
-    end)
-    |> then(fn {snapshots, issues} -> {snapshots, Enum.reverse(issues)} end)
+    |> Enum.map(&capture_connection_to_snapshot(&1, pin_index_map))
   end
 
   defp capture_connection_to_snapshot(%SceneConnection{} = connection, pin_index_map) do
@@ -654,58 +638,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp capture_optional_pin_index(_pin_index_map, nil), do: {nil, nil}
   defp capture_optional_pin_index(pin_index_map, pin_id), do: Map.get(pin_index_map, pin_id, {nil, nil})
 
-  defp capture_connection_issues(scene, connection, pin_index_map) do
-    route_issues =
-      if RoutePoints.enough_points?(
-           connection.from_pin_id,
-           connection.to_pin_id,
-           connection.waypoints
-         ) do
-        []
-      else
-        [
-          content_health_issue(
-            :invalid_scene_connection_route,
-            :scene_connection,
-            connection.id,
-            "waypoints",
-            :restore_blocked,
-            scene.id
-          )
-        ]
-      end
-
-    endpoint_issues =
-      Enum.flat_map(
-        [
-          {connection.from_pin_id, "from_pin_id"},
-          {connection.to_pin_id, "to_pin_id"}
-        ],
-        fn
-          {nil, _field} ->
-            []
-
-          {pin_id, field} ->
-            if Map.has_key?(pin_index_map, pin_id) do
-              []
-            else
-              [
-                content_health_issue(
-                  :scene_connection_pin_not_in_snapshot,
-                  :scene_connection,
-                  connection.id,
-                  field,
-                  :restore_blocked,
-                  scene.id
-                )
-              ]
-            end
-        end
-      )
-
-    route_issues ++ endpoint_issues
-  end
-
   defp ambient_flow_to_snapshot(%SceneAmbientFlow{} = ambient_flow) do
     %{
       "original_id" => ambient_flow.id,
@@ -737,396 +669,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       source_field: source_field,
       container_type: :scene,
       container_id: scene_id
-    }
-  end
-
-  defp capture_scene_content_issues(scene, snapshot, layer_ids, asset_references) do
-    capture_scene_snapshot_validation_issue(scene, snapshot) ++
-      capture_scene_layer_ownership_issues(scene, layer_ids) ++
-      capture_scene_external_reference_issues(scene) ++
-      capture_scene_asset_content_type_issues(scene, asset_references) ++
-      capture_scene_restore_data_issues(scene, snapshot)
-  rescue
-    _exception -> [unclassified_scene_capture_issue(scene)]
-  catch
-    _kind, _reason -> [unclassified_scene_capture_issue(scene)]
-  end
-
-  defp capture_scene_restore_data_issues(%Scene{} = scene, snapshot) do
-    case collect_scene_restore_data(snapshot) do
-      {:ok, data} ->
-        validation_content_issues(
-          validate_scene_snapshot_variable_references(scene.project_id, data),
-          :invalid_scene_variable_reference,
-          :scene,
-          scene.id,
-          nil,
-          :restore_blocked,
-          scene.id
-        )
-
-      {:error, _reason} ->
-        [unclassified_scene_capture_issue(scene)]
-    end
-  end
-
-  defp unclassified_scene_capture_issue(scene) do
-    content_health_issue(
-      :unclassified_content_issue,
-      :scene,
-      scene.id,
-      nil,
-      :restore_blocked,
-      scene.id
-    )
-  end
-
-  defp capture_scene_snapshot_validation_issue(scene, snapshot) do
-    case validate_scene_snapshot_structure(snapshot) do
-      {:ok, _plan} ->
-        []
-
-      {:error, reason} ->
-        case scene_issue_location(reason, scene.id) do
-          nil ->
-            []
-
-          {code, entity_type, entity_id, source_field} ->
-            [
-              content_health_issue(
-                code,
-                entity_type,
-                entity_id,
-                source_field,
-                :restore_blocked,
-                scene.id
-              )
-            ]
-        end
-    end
-  end
-
-  defp scene_issue_location(:scene_snapshot_requires_at_least_one_layer, scene_id),
-    do: {:scene_snapshot_requires_at_least_one_layer, :scene, scene_id, "layers"}
-
-  defp scene_issue_location({:invalid_scene_default_layer_count, _count}, scene_id),
-    do: {:invalid_scene_default_layer_count, :scene, scene_id, "layers"}
-
-  defp scene_issue_location({:invalid_scene_snapshot_field, entity_type, entity_id, source_field, _value}, _scene_id),
-    do: {:invalid_scene_snapshot_field, entity_type, entity_id, source_field}
-
-  defp scene_issue_location({:missing_scene_snapshot_field, entity_type, entity_id, source_field}, _scene_id),
-    do: {:missing_scene_snapshot_field, entity_type, entity_id, source_field}
-
-  defp scene_issue_location({code, entity_type, entity_id}, _scene_id)
-       when code in [:invalid_snapshot_original_id, :duplicate_snapshot_original_id],
-       do: {code, entity_type, entity_id, "original_id"}
-
-  defp scene_issue_location({:invalid_scene_child_snapshot, entity_type, entity_id, _errors}, _scene_id),
-    do: {:invalid_scene_child_snapshot, entity_type, entity_id, nil}
-
-  defp scene_issue_location(
-         {:invalid_scene_zone_target_contract, zone_id, _action_type, _target_type, _target_id},
-         _scene_id
-       ), do: {:invalid_scene_zone_target_contract, :scene_zone, zone_id, "target_id"}
-
-  defp scene_issue_location({code, zone_id, _details}, _scene_id)
-       when code in [:invalid_scene_zone_collection, :invalid_scene_zone_collection_item],
-       do: {code, :scene_zone, zone_id, "action_data"}
-
-  defp scene_issue_location({:invalid_scene_zone_collection_item, zone_id, _index, _reason, _value}, _scene_id),
-    do: {:invalid_scene_zone_collection_item, :scene_zone, zone_id, "action_data"}
-
-  defp scene_issue_location({:invalid_scene_connection_route, _connection_id}, _scene_id), do: nil
-
-  defp scene_issue_location({:scene_connection_pin_not_in_snapshot, _pin_id}, _scene_id), do: nil
-
-  defp scene_issue_location({code, connection_id, _details}, _scene_id)
-       when code in [
-              :invalid_scene_connection_snapshot,
-              :invalid_scene_connection_waypoints,
-              :invalid_scene_connection_endpoint
-            ], do: {code, :scene_connection, connection_id, nil}
-
-  defp scene_issue_location({:invalid_scene_ambient_flow_trigger_config, ambient_flow_id, _config}, _scene_id),
-    do: {:invalid_scene_ambient_flow_trigger_config, :scene_ambient_flow, ambient_flow_id, "trigger_config"}
-
-  defp scene_issue_location(reason, scene_id) do
-    {validation_reason_code(reason, :invalid_scene_snapshot_content), :scene, scene_id, nil}
-  end
-
-  defp capture_scene_layer_ownership_issues(scene, layer_ids) do
-    Enum.flat_map(
-      [
-        {scene.zones, :scene_zone},
-        {scene.pins, :scene_pin},
-        {scene.annotations, :scene_annotation}
-      ],
-      fn {children, entity_type} ->
-        capture_scene_child_layer_issues(children, entity_type, scene.id, layer_ids)
-      end
-    )
-  end
-
-  defp capture_scene_child_layer_issues(children, entity_type, scene_id, layer_ids) do
-    Enum.flat_map(children, fn child ->
-      if is_nil(child.layer_id) or MapSet.member?(layer_ids, child.layer_id) do
-        []
-      else
-        [
-          content_health_issue(
-            :scene_child_layer_not_in_scene,
-            entity_type,
-            child.id,
-            "layer_id",
-            :restore_blocked,
-            scene_id
-          )
-        ]
-      end
-    end)
-  end
-
-  defp capture_scene_external_reference_issues(scene) do
-    specs = capture_scene_external_reference_specs(scene)
-
-    states_by_schema =
-      specs
-      |> Enum.filter(&(is_integer(&1.value) and &1.value > 0))
-      |> Enum.group_by(& &1.schema, & &1.value)
-      |> Map.new(fn {schema, ids} ->
-        states =
-          from(record in schema,
-            where: record.id in ^Enum.uniq(ids),
-            select: {record.id, record.project_id, record.deleted_at}
-          )
-          |> Repo.all()
-          |> Map.new(fn {id, project_id, deleted_at} ->
-            {id, %{project_id: project_id, deleted_at: deleted_at}}
-          end)
-
-        {schema, states}
-      end)
-
-    Enum.flat_map(specs, &capture_scene_external_reference_issue(&1, scene, states_by_schema))
-  end
-
-  defp capture_scene_external_reference_issue(spec, scene, states_by_schema) do
-    state = get_in(states_by_schema, [spec.schema, spec.value])
-
-    case scene_external_reference_issue_code(spec.value, state, scene.project_id) do
-      nil ->
-        []
-
-      code ->
-        [
-          content_health_issue(
-            code,
-            spec.entity_type,
-            spec.entity_id,
-            spec.source_field,
-            :restore_blocked,
-            scene.id
-          )
-        ]
-    end
-  end
-
-  defp scene_external_reference_issue_code(nil, _state, _project_id), do: nil
-
-  defp scene_external_reference_issue_code(value, _state, _project_id) when not (is_integer(value) and value > 0),
-    do: :invalid_scene_external_reference
-
-  defp scene_external_reference_issue_code(_value, nil, _project_id), do: :scene_reference_not_found
-
-  defp scene_external_reference_issue_code(_value, %{deleted_at: deleted_at}, _project_id) when not is_nil(deleted_at),
-    do: :scene_reference_not_found
-
-  defp scene_external_reference_issue_code(_value, %{project_id: project_id}, project_id), do: nil
-  defp scene_external_reference_issue_code(_value, _state, _project_id), do: :scene_reference_project_mismatch
-
-  defp capture_scene_external_reference_specs(scene) do
-    pin_specs =
-      Enum.flat_map(scene.pins, fn pin ->
-        [
-          capture_reference_spec(Flow, pin.flow_id, :scene_pin, pin.id, "flow_id"),
-          capture_reference_spec(Sheet, pin.sheet_id, :scene_pin, pin.id, "sheet_id")
-        ]
-      end)
-
-    zone_specs =
-      Enum.flat_map(scene.zones, fn zone ->
-        target_specs =
-          case zone.target_type do
-            "flow" ->
-              [capture_reference_spec(Flow, zone.target_id, :scene_zone, zone.id, "target_id")]
-
-            "scene" ->
-              [capture_reference_spec(Scene, zone.target_id, :scene_zone, zone.id, "target_id")]
-
-            _other ->
-              []
-          end
-
-        target_specs ++ capture_scene_collection_reference_specs(zone)
-      end)
-
-    ambient_specs =
-      Enum.map(scene.ambient_flows, fn ambient_flow ->
-        capture_reference_spec(
-          Flow,
-          ambient_flow.flow_id,
-          :scene_ambient_flow,
-          ambient_flow.id,
-          "flow_id"
-        )
-      end)
-
-    pin_specs ++ zone_specs ++ ambient_specs
-  end
-
-  defp capture_scene_collection_reference_specs(%SceneZone{
-         id: zone_id,
-         action_type: "collection",
-         action_data: %{"items" => items}
-       })
-       when is_list(items) do
-    items
-    |> Enum.with_index()
-    |> Enum.flat_map(fn
-      {item, index} when is_map(item) ->
-        [
-          capture_reference_spec(
-            Sheet,
-            item["sheet_id"],
-            :scene_zone,
-            zone_id,
-            "action_data.items.#{index}.sheet_id"
-          )
-        ]
-
-      {_item, _index} ->
-        []
-    end)
-  end
-
-  defp capture_scene_collection_reference_specs(_zone), do: []
-
-  defp capture_reference_spec(schema, value, entity_type, entity_id, source_field) do
-    %{
-      schema: schema,
-      value: value,
-      entity_type: entity_type,
-      entity_id: entity_id,
-      source_field: source_field
-    }
-  end
-
-  defp capture_scene_asset_content_type_issues(scene, asset_references) do
-    asset_ids =
-      asset_references
-      |> Enum.map(&elem(&1, 0))
-      |> Enum.filter(&(is_integer(&1) and &1 > 0))
-      |> Enum.uniq()
-
-    assets_by_id =
-      from(asset in Asset,
-        where: asset.id in ^asset_ids,
-        select: {asset.id, asset.project_id, asset.deleted_at, asset.content_type}
-      )
-      |> Repo.all()
-      |> Map.new(fn {id, project_id, deleted_at, content_type} ->
-        {id, %{project_id: project_id, deleted_at: deleted_at, content_type: content_type}}
-      end)
-
-    Enum.flat_map(asset_references, fn {asset_id, context} ->
-      case Map.get(assets_by_id, asset_id) do
-        %{project_id: project_id, deleted_at: nil, content_type: "image/" <> _subtype}
-        when project_id == scene.project_id ->
-          []
-
-        %{project_id: project_id, deleted_at: nil}
-        when project_id == scene.project_id ->
-          [
-            content_health_issue(
-              :invalid_scene_asset_content_type,
-              context.entity_type,
-              context.entity_id,
-              context.source_field,
-              :restore_blocked,
-              scene.id
-            )
-          ]
-
-        _other ->
-          []
-      end
-    end)
-  end
-
-  defp validation_content_issues(:ok, _fallback, _entity_type, _entity_id, _source_field, _impact, _scene_id), do: []
-
-  defp validation_content_issues({:ok, _value}, _fallback, _entity_type, _entity_id, _source_field, _impact, _scene_id),
-    do: []
-
-  defp validation_content_issues(result, fallback, entity_type, entity_id, source_field, impact, scene_id) do
-    [
-      content_health_issue(
-        validation_reason_code(result, fallback),
-        entity_type,
-        entity_id,
-        validation_reason_source_field(result, source_field),
-        impact,
-        scene_id
-      )
-    ]
-  end
-
-  defp validation_reason_code({:error, reason}, fallback), do: validation_reason_code(reason, fallback)
-
-  defp validation_reason_code(reason, _fallback)
-       when is_tuple(reason) and tuple_size(reason) > 0 and is_atom(elem(reason, 0)), do: elem(reason, 0)
-
-  defp validation_reason_code(code, _fallback) when is_atom(code), do: code
-  defp validation_reason_code(_reason, fallback), do: fallback
-
-  defp validation_reason_source_field({:error, reason}, fallback), do: validation_reason_source_field(reason, fallback)
-
-  defp validation_reason_source_field({:invalid_scene_snapshot_field, _label, _id, field, _value}, _fallback),
-    do: health_source_field(field)
-
-  defp validation_reason_source_field({:missing_scene_snapshot_field, _label, _id, field}, _fallback),
-    do: health_source_field(field)
-
-  defp validation_reason_source_field(_reason, fallback), do: health_source_field(fallback)
-
-  defp content_health_issue(code, entity_type, entity_id, source_field, impact, scene_id) do
-    %{
-      code: code,
-      severity: :warning,
-      entity_type: entity_type,
-      entity_id: health_entity_id(entity_id, scene_id),
-      source_field: health_source_field(source_field),
-      impact: impact,
-      container_type: :scene,
-      container_id: scene_id
-    }
-  end
-
-  defp health_entity_id(entity_id, _fallback) when is_integer(entity_id) and entity_id > 0, do: entity_id
-
-  defp health_entity_id(_entity_id, fallback), do: fallback
-
-  defp health_source_field(source_field) when is_binary(source_field), do: source_field
-  defp health_source_field(_source_field), do: nil
-
-  defp content_health_issue_sort_key(issue) do
-    {
-      Atom.to_string(issue.code),
-      Atom.to_string(issue.entity_type),
-      issue.entity_id,
-      issue.source_field || "",
-      Atom.to_string(issue.impact)
     }
   end
 
@@ -1167,10 +709,18 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    with :ok <- validate_portable_snapshot(snapshot) do
+    with :ok <- validate_instantiation_snapshot(snapshot, opts) do
       run_scene_instantiation(project_id, snapshot, opts)
     end
   end
+
+  defp validate_instantiation_snapshot(snapshot, opts) do
+    if exact_materialization?(opts) and is_map(snapshot),
+      do: :ok,
+      else: validate_portable_snapshot(snapshot)
+  end
+
+  defp exact_materialization?(opts), do: Keyword.get(opts, :materialization_mode) == :exact
 
   defp run_scene_instantiation(project_id, snapshot, opts) do
     opts
@@ -3698,15 +3248,19 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp insert_layer_zones_with_ids(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts), do: {:ok, %{}}
 
   defp insert_layer_zones_with_ids(repo, scene_id, layer_id, zones_data, now, snapshot, project_id, opts) do
-    with :ok <- validate_scene_zone_target_contracts(zones_data) do
+    with :ok <- maybe_validate_scene_zone_target_contracts(zones_data, opts) do
       insert_scene_snapshot_rows(repo, SceneZone, zones_data, fn zone_data ->
         build_materialized_zone_attrs(zone_data, scene_id, layer_id, now, snapshot, project_id, opts)
       end)
     end
   end
 
+  defp maybe_validate_scene_zone_target_contracts(zones_data, opts) do
+    if exact_materialization?(opts), do: :ok, else: validate_scene_zone_target_contracts(zones_data)
+  end
+
   defp build_materialized_zone_attrs(zone_data, scene_id, layer_id, now, snapshot, project_id, opts) do
-    attrs = zone_base_attrs(zone_data)
+    attrs = materialized_zone_base_attrs(zone_data, opts)
     {target_type, target_id} = resolve_materialized_zone_target(attrs, zone_data, project_id, opts)
 
     with {:ok, action_data} <-
@@ -3734,6 +3288,10 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
          updated_at: now
        })}
     end
+  end
+
+  defp materialized_zone_base_attrs(zone_data, opts) do
+    if exact_materialization?(opts), do: zone_restore_attrs(zone_data), else: zone_base_attrs(zone_data)
   end
 
   defp resolve_materialized_zone_action_data(

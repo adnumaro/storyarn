@@ -20,7 +20,6 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshotLeasePolicy
   alias Storyarn.Versioning.ProjectSnapshotZip
-  alias Storyarn.Versioning.SnapshotContentHealth
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Versioning.SnapshotStorage
@@ -327,7 +326,7 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
 
     with {:ok, normalized_project} <- normalize_project_snapshot(project_snapshot, limits),
          {:ok, project} <- SnapshotObjectFormat.portable_project(normalized_project),
-         asset_content_mode = catalog_asset_content_mode(project, assets),
+         asset_content_mode = Keyword.get(opts, :asset_content_mode, :strict),
          catalog_opts = Keyword.put(opts, :asset_content_mode, asset_content_mode),
          {:ok, catalog} <-
            SnapshotObjectFormat.build_catalog(
@@ -368,28 +367,6 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
   end
 
   defp normalize_project_snapshot(_project_snapshot, _limits), do: {:error, :invalid_project_object}
-
-  defp catalog_asset_content_mode(project, assets) do
-    report = Map.get(project, "content_health")
-
-    with :ok <- SnapshotContentHealth.validate(report),
-         true <- SnapshotContentHealth.restore_blocked?(report),
-         true <- asset_content_report_covers_inventory?(report, assets) do
-      :omit_unmaterializable
-    else
-      _not_authorized -> :strict
-    end
-  end
-
-  defp asset_content_report_covers_inventory?(report, assets) do
-    counts = report["issue_counts_by_code"]
-
-    case SnapshotObjectFormat.unmaterializable_catalog_asset_ids(assets) do
-      {:ok, []} -> false
-      {:ok, asset_ids} -> Map.get(counts, "capture.invalid_asset_catalog_content", 0) >= length(asset_ids)
-      {:error, _reason} -> Map.get(counts, "capture.unclassified_content_issue", 0) > 0
-    end
-  end
 
   defp validate_encoded_project_size(json, limits) do
     case SnapshotObjectFormat.validate_limits(limits) do

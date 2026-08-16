@@ -12,7 +12,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotCapture do
   import Ecto.Changeset
 
   alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Versioning.SnapshotContentHealth
 
   @primary_key false
   schema "project_snapshot_captures" do
@@ -23,7 +22,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotCapture do
     field :project_json, :binary
     field :manifest_json, :binary
     field :source_keys, :map
-    field :content_health, :map
     field :project_size_bytes, :integer
     field :manifest_size_bytes, :integer
     field :asset_blob_size_bytes, :integer
@@ -44,7 +42,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotCapture do
       :project_json,
       :manifest_json,
       :source_keys,
-      :content_health,
       :project_size_bytes,
       :manifest_size_bytes,
       :asset_blob_size_bytes,
@@ -61,7 +58,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotCapture do
       :project_json,
       :manifest_json,
       :source_keys,
-      :content_health,
       :project_size_bytes,
       :manifest_size_bytes,
       :asset_blob_size_bytes,
@@ -79,13 +75,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotCapture do
     |> validate_number(:object_count, greater_than_or_equal_to: 2)
     |> validate_number(:asset_count, greater_than_or_equal_to: 0)
     |> validate_number(:blob_count, greater_than_or_equal_to: 0)
-    |> validate_content_health()
     |> validate_inventory()
     |> foreign_key_constraint(:project_snapshot_id)
     |> unique_constraint(:project_snapshot_id, name: :project_snapshot_captures_pkey)
     |> unique_constraint(:capture_boundary)
     |> check_constraint(:capture_digest, name: :project_snapshot_captures_digest_format)
-    |> check_constraint(:content_health, name: :project_snapshot_captures_content_health)
     |> check_constraint(:total_size_bytes, name: :project_snapshot_captures_inventory)
   end
 
@@ -116,13 +110,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotCapture do
 
       true ->
         changeset
-    end
-  end
-
-  defp validate_content_health(changeset) do
-    case SnapshotContentHealth.validate(get_field(changeset, :content_health)) do
-      :ok -> changeset
-      {:error, :invalid_snapshot_content_health} -> add_error(changeset, :content_health, "is invalid")
     end
   end
 end

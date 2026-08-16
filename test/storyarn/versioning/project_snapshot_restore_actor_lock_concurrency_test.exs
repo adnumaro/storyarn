@@ -20,7 +20,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreActorLockConcurrencyTest do
   alias Storyarn.Versioning.ProjectRecovery
   alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.ProjectSnapshotRestoreExecutor
-  alias Storyarn.Versioning.SnapshotContentHealth
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Workspaces.Workspace
 
@@ -227,13 +226,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreActorLockConcurrencyTest do
 
       assert {:ok, text} = Localization.update_text(text, actor_attrs)
       project = maybe_mark_deleted_by(project, mode, reviewer)
-      content_health = SnapshotContentHealth.healthy()
-      project_object = active_project_object(project.id, content_health)
+      project_object = active_project_object(project.id)
 
       snapshot =
         full_project_snapshot_fixture(project, %{
-          asset_blob_size_bytes: 0,
-          content_health: content_health
+          asset_blob_size_bytes: 0
         })
 
       restore = request_and_claim_restore(owner, project, snapshot)
@@ -270,7 +267,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreActorLockConcurrencyTest do
     Repo.reload!(project)
   end
 
-  defp active_project_object(project_id, content_health) do
+  defp active_project_object(project_id) do
     {:ok, snapshot} =
       Repo.repeatable_read(fn ->
         ProjectSnapshotBuilder.build_snapshot_in_transaction(project_id,
@@ -281,9 +278,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreActorLockConcurrencyTest do
     normalized = snapshot |> Jason.encode!() |> Jason.decode!()
     {:ok, portable} = SnapshotObjectFormat.portable_project(normalized)
 
-    portable
-    |> Map.put("asset_catalog_refs", %{})
-    |> Map.put("content_health", content_health)
+    Map.put(portable, "asset_catalog_refs", %{})
   end
 
   defp request_and_claim_restore(owner, project, snapshot) do

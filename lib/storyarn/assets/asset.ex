@@ -133,6 +133,14 @@ defmodule Storyarn.Assets.Asset do
     create_changeset(asset, attrs, @sanitized_svg_content_types)
   end
 
+  @doc false
+  def snapshot_restore_changeset(asset, attrs) do
+    asset
+    |> cast(attrs, [:filename, :content_type, :size, :key, :url, :metadata, :blob_hash])
+    |> require_non_nil([:filename, :content_type, :size, :key])
+    |> unique_constraint(:key, name: :assets_project_id_key_index)
+  end
+
   defp create_changeset(asset, attrs, allowed_content_types) do
     asset
     |> cast(attrs, [:filename, :content_type, :size, :key, :url, :metadata, :blob_hash])
@@ -140,6 +148,14 @@ defmodule Storyarn.Assets.Asset do
     |> validate_inclusion(:content_type, allowed_content_types, message: "is not a supported file type")
     |> validate_number(:size, greater_than: 0, less_than_or_equal_to: 52_428_800)
     |> unique_constraint(:key, name: :assets_project_id_key_index)
+  end
+
+  defp require_non_nil(changeset, fields) do
+    Enum.reduce(fields, changeset, fn field, changeset ->
+      if is_nil(get_field(changeset, field)),
+        do: add_error(changeset, field, "can't be nil"),
+        else: changeset
+    end)
   end
 
   @doc """

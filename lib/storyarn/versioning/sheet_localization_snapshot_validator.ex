@@ -62,59 +62,6 @@ defmodule Storyarn.Versioning.SheetLocalizationSnapshotValidator do
   def validate_sources(localization, snapshot),
     do: {:error, {:invalid_sheet_localization_snapshot, localization, snapshot}}
 
-  @doc false
-  @spec content_health_errors(term(), term()) :: [term()]
-  def content_health_errors(localization, snapshot) when is_list(localization) and is_map(snapshot) do
-    case validate_snapshot_source_shape(snapshot) do
-      :ok ->
-        collect_content_health_errors(localization, snapshot)
-
-      {:error, reason} ->
-        [reason]
-    end
-  end
-
-  def content_health_errors(localization, snapshot), do: [{:invalid_sheet_localization_snapshot, localization, snapshot}]
-
-  defp collect_content_health_errors(localization, snapshot) do
-    sources = snapshot_sources(snapshot)
-    target_locales = get_in(snapshot, ["localization_manifest", "target_locales"])
-    row_errors = content_health_row_errors(localization, sources)
-
-    aggregate_errors =
-      Enum.flat_map(
-        [
-          validate_unique_rows(localization),
-          validate_locales(localization, target_locales),
-          validate_complete_health_inventory(localization, sources, target_locales, row_errors)
-        ],
-        &validation_errors/1
-      )
-
-    Enum.uniq(row_errors ++ aggregate_errors)
-  end
-
-  defp content_health_row_errors(localization, sources) do
-    Enum.flat_map(localization, fn row ->
-      row
-      |> validate_row(sources)
-      |> validation_errors()
-    end)
-  end
-
-  defp validation_errors(:ok), do: []
-  defp validation_errors({:ok, _value}), do: []
-  defp validation_errors({:error, reason}), do: [reason]
-
-  defp validate_complete_health_inventory(_localization, _sources, _target_locales, [_error | _rest]), do: :ok
-
-  defp validate_complete_health_inventory(localization, sources, target_locales, []) when is_list(target_locales) do
-    validate_complete_inventory(localization, sources, MapSet.new(target_locales))
-  end
-
-  defp validate_complete_health_inventory(_localization, _sources, target_locales, []),
-    do: {:error, {:invalid_localization_target_locales, target_locales}}
-
   defp validate_rows(localization, sources) do
     Enum.reduce_while(localization, :ok, fn row, :ok ->
       case validate_row(row, sources) do

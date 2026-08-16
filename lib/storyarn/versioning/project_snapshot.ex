@@ -16,9 +16,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.SnapshotArchiveStorage
-  alias Storyarn.Versioning.SnapshotContentHealth
-
-  @unknown_content_health SnapshotContentHealth.unknown()
 
   @allocated_object_set_fields [
     :project_id,
@@ -36,8 +33,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     :object_count,
     :asset_count,
     :blob_count,
-    :restore_contract_version,
-    :content_health
+    :restore_contract_version
   ]
   @ready_object_set_fields [
     :project_id,
@@ -67,8 +63,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     :accounted_size_bytes,
     :asset_blob_size_bytes,
     :accounting_version,
-    :restore_contract_version,
-    :content_health
+    :restore_contract_version
   ]
   @origins ~w(user daily pre_restore post_restore)
   @same_generation_transitions %{
@@ -137,7 +132,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
           cancelled_at: DateTime.t() | nil,
           state_updated_at: DateTime.t(),
           entity_counts: map(),
-          content_health: SnapshotContentHealth.report(),
           created_by_id: integer() | nil,
           created_by: User.t() | NotLoaded.t() | nil,
           is_auto: boolean(),
@@ -196,7 +190,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     field :cancelled_at, :utc_datetime
     field :state_updated_at, :utc_datetime, read_after_writes: true
     field :entity_counts, :map, default: %{}
-    field :content_health, :map, default: @unknown_content_health
     field :is_auto, :boolean, default: false
 
     belongs_to :project, Project
@@ -232,7 +225,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :project_size_bytes,
       :project_checksum,
       :entity_counts,
-      :content_health,
       :created_by_id,
       :is_auto,
       :format_version,
@@ -274,7 +266,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :version_number,
       :project_size_bytes,
       :project_checksum,
-      :content_health,
       :format_version,
       :object_prefix,
       :manifest_storage_key,
@@ -335,7 +326,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_format(:manifest_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:capture_digest, ~r/\A[0-9a-f]{64}\z/)
     |> validate_inclusion(:restore_contract_version, [1])
-    |> validate_content_health()
     |> validate_ready_object_keys()
     |> validate_object_set_transition(snapshot)
     |> validate_object_counts()
@@ -361,7 +351,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:lifecycle_state, name: :project_snapshots_ready_object_set)
     |> check_constraint(:accounted_size_bytes, name: :project_snapshots_full_ready_accounting)
     |> check_constraint(:capture_digest, name: :project_snapshots_capture_digest_format)
-    |> check_constraint(:content_health, name: :project_snapshots_content_health)
     |> restore_contract_constraints()
     |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
@@ -392,7 +381,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       |> put_default(:progress_bytes, 0)
       |> put_default(:progress_total_bytes, 0)
       |> put_default(:build_attempt, 0)
-      |> put_default(:content_health, @unknown_content_health)
       |> put_default(:state_updated_at, TimeHelpers.now())
       |> put_default(:origin, "user")
       |> put_default(:lifecycle_generation, 1)
@@ -415,7 +403,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :capture_boundary,
       :lifecycle_state,
       :integrity_state,
-      :content_health,
       :progress_phase,
       :progress_bytes,
       :progress_total_bytes,
@@ -438,7 +425,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :capture_boundary,
       :lifecycle_state,
       :integrity_state,
-      :content_health,
       :progress_phase,
       :progress_bytes,
       :progress_total_bytes,
@@ -462,8 +448,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_number(:progress_total_bytes, equal_to: 0)
     |> validate_number(:build_attempt, equal_to: 0)
     |> validate_number(:lifecycle_generation, equal_to: 1)
-    |> validate_content_health()
-    |> validate_queued_content_health()
     |> validate_ready_object_keys()
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:created_by_id)
@@ -476,7 +460,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:mode, name: :project_snapshots_accounting_identity)
     |> check_constraint(:object_prefix, name: :project_snapshots_object_target)
     |> check_constraint(:capture_digest, name: :project_snapshots_capture_digest_format)
-    |> check_constraint(:content_health, name: :project_snapshots_content_health)
     |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_timestamps)
@@ -509,7 +492,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       |> put_default(:progress_phase, "pending")
       |> put_default(:progress_bytes, 0)
       |> put_default(:build_attempt, 0)
-      |> put_default(:content_health, @unknown_content_health)
       |> put_default(:captured_at, TimeHelpers.now())
       |> put_default(:state_updated_at, TimeHelpers.now())
       |> put_default(:origin, "user")
@@ -528,7 +510,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :project_size_bytes,
       :project_checksum,
       :entity_counts,
-      :content_health,
       :created_by_id,
       :is_auto,
       :format_version,
@@ -562,7 +543,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
       :version_number,
       :project_size_bytes,
       :project_checksum,
-      :content_health,
       :format_version,
       :object_prefix,
       :manifest_storage_key,
@@ -615,7 +595,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> validate_format(:manifest_checksum, ~r/\A[0-9a-f]{64}\z/)
     |> validate_format(:capture_digest, ~r/\A[0-9a-f]{64}\z/)
     |> validate_inclusion(:restore_contract_version, [1])
-    |> validate_content_health()
     |> validate_ready_object_keys()
     |> validate_object_counts()
     |> validate_total_size()
@@ -631,7 +610,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     |> check_constraint(:object_prefix, name: :project_snapshots_object_target)
     |> check_constraint(:accounting_version, name: :project_snapshots_accounting_measurement)
     |> check_constraint(:capture_digest, name: :project_snapshots_capture_digest_format)
-    |> check_constraint(:content_health, name: :project_snapshots_content_health)
     |> restore_contract_constraints()
     |> check_constraint(:progress_phase, name: :project_snapshots_build_progress)
     |> check_constraint(:lifecycle_state, name: :project_snapshots_build_failure)
@@ -1128,19 +1106,6 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
     if is_binary(prefix) and key == prefix <> "/" <> filename,
       do: changeset,
       else: add_error(changeset, field, message)
-  end
-
-  defp validate_content_health(changeset) do
-    case SnapshotContentHealth.validate(get_field(changeset, :content_health)) do
-      :ok -> changeset
-      {:error, :invalid_snapshot_content_health} -> add_error(changeset, :content_health, "is invalid")
-    end
-  end
-
-  defp validate_queued_content_health(changeset) do
-    if get_field(changeset, :content_health) == @unknown_content_health,
-      do: changeset,
-      else: add_error(changeset, :content_health, "must be unknown before capture")
   end
 
   defp validate_object_set_transition(changeset, snapshot) do

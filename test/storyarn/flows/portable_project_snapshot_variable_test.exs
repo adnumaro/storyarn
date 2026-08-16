@@ -272,6 +272,30 @@ defmodule Storyarn.Flows.PortableProjectSnapshotVariableTest do
              )
   end
 
+  test "exact restore remaps valid namespaces without validating unresolved references" do
+    snapshot =
+      project_snapshot(
+        [sheet_entry(10, nil, [regular_block(100, "hp")])],
+        [
+          %{
+            "original_id" => 200,
+            "type" => "condition",
+            "data" => %{"condition" => condition("10", "missing")}
+          }
+        ]
+      )
+
+    assert {:ok, plan} = VariableReferenceTracker.prepare_exact_project_snapshot(snapshot)
+
+    assert {:ok, rewritten} =
+             VariableReferenceTracker.rewrite_portable_project_snapshot(snapshot, plan, %{10 => 42})
+
+    [flow] = rewritten["flows"]
+    [node] = flow["snapshot"]["nodes"]
+
+    assert get_in(node, ["data", "condition", "blocks", Access.at(0), "rules", Access.at(0), "sheet"]) == "42"
+  end
+
   test "rejects a non-injective destination sheet mapping" do
     snapshot =
       project_snapshot([

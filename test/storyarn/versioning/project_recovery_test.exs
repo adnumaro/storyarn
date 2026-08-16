@@ -2030,6 +2030,200 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert restored_glossary.target_locale == "es"
     end
 
+    test "exact materialization preserves an incomplete localization inventory without synthesizing rows", %{
+      project: source_project,
+      user: user
+    } do
+      {_sheet, block} = localized_block_fixture(source_project)
+      key = {"block", block.id, "value.content", "es"}
+
+      snapshot_data =
+        source_project
+        |> active_canonical_snapshot()
+        |> update_in(["localization", "texts"], fn texts ->
+          Enum.reject(texts, &(localization_snapshot_key(&1) == key))
+        end)
+        |> update_in(["entity_counts", "localized_texts"], &(&1 - 1))
+
+      assert {:error, {:project_snapshot_runtime_localization_coverage_mismatch, _details}} =
+               ProjectRecovery.validate_materialization_snapshot(snapshot_data)
+
+      target_project = project_fixture(user, %{name: "Exact localization target"})
+
+      assert {:ok, _materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{},
+                 materialization_mode: :exact
+               )
+
+      restored_sheet =
+        target_project.id
+        |> Storyarn.Sheets.list_all_sheets()
+        |> Enum.find(&(&1.name == "Localized Sheet"))
+
+      [restored_block] = Storyarn.Sheets.list_blocks(restored_sheet.id)
+      assert [] = Localization.get_texts_for_source("block", restored_block.id)
+    end
+
+    test "exact materialization preserves authored unresolved ids, mentions, nulls, and FK-safe archived references", %{
+      project: source_project,
+      user: user
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+
+      known_mention = sheet_fixture(source_project, %{name: "Known mention"})
+      archived_speaker = sheet_fixture(source_project, %{name: "Archived speaker"})
+      source_sheet = sheet_fixture(source_project, %{name: "Archived inheritance source"})
+      authored_sheet = sheet_fixture(source_project, %{name: "Authored unresolved state"})
+      null_sheet = sheet_fixture(source_project, %{name: "Null hidden state"})
+
+      source_block = block_fixture(source_sheet, %{type: "text", variable_name: "archived_source"})
+      dangling_id = 2_000_000_000 + rem(System.unique_integer([:positive]), 100_000_000)
+
+      valid_rich_text =
+        ~s(<p><span class="mention" data-type="sheet" data-id="#{known_mention.id}">Known</span></p>)
+
+      rich_text =
+        ~s(<p><span class="mention" data-type="sheet" data-id="#{known_mention.id}">Known</span><span class="mention" data-type="sheet" data-id="#{dangling_id}">Missing</span></p>)
+
+      authored_block =
+        block_fixture(authored_sheet, %{
+          type: "rich_text",
+          value: %{"content" => valid_rich_text},
+          inherited_from_block_id: source_block.id
+        })
+
+      [localized_text] = Localization.get_texts_for_source("block", authored_block.id)
+
+      Repo.update_all(
+        from(block in Block, where: block.id == ^authored_block.id),
+        set: [value: %{"content" => rich_text}]
+      )
+
+      Repo.update_all(
+        from(text in LocalizedText, where: text.id == ^localized_text.id),
+        set: [
+          source_text: rich_text,
+          source_text_hash: sha256(rich_text),
+          speaker_sheet_id: archived_speaker.id
+        ]
+      )
+
+      now = DateTime.utc_now(:second)
+
+      Repo.update_all(
+        from(block in Block, where: block.id == ^source_block.id),
+        set: [deleted_at: now]
+      )
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^archived_speaker.id),
+        set: [deleted_at: now]
+      )
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^authored_sheet.id),
+        set: [hidden_inherited_block_ids: [source_block.id, dangling_id]]
+      )
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^null_sheet.id),
+        set: [hidden_inherited_block_ids: nil]
+      )
+
+      snapshot_data = active_exact_capture_snapshot(source_project)
+
+      Repo.update_all(
+        from(text in LocalizedText,
+          where: text.project_id == ^source_project.id and is_nil(text.archived_at)
+        ),
+        set: [archived_at: DateTime.utc_now(:second), archive_reason: "version_replaced"]
+      )
+
+      target_project = project_fixture(user, %{name: "Exact authored references target"})
+
+      assert {:ok, _materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{},
+                 materialization_mode: :exact
+               )
+
+      restored_sheets = Storyarn.Sheets.list_all_sheets(target_project.id)
+      restored_known = Enum.find(restored_sheets, &(&1.name == "Known mention"))
+      restored_authored = Enum.find(restored_sheets, &(&1.name == "Authored unresolved state"))
+      restored_null = Enum.find(restored_sheets, &(&1.name == "Null hidden state"))
+      [restored_block] = Storyarn.Sheets.list_blocks(restored_authored.id)
+
+      restored_authored = Repo.get!(Sheet, restored_authored.id)
+      restored_null = Repo.get!(Sheet, restored_null.id)
+
+      assert restored_authored.hidden_inherited_block_ids == [source_block.id, dangling_id]
+      assert restored_null.hidden_inherited_block_ids == nil
+      assert restored_block.inherited_from_block_id == source_block.id
+      assert restored_block.value["content"] =~ ~s(data-id="#{restored_known.id}")
+      assert restored_block.value["content"] =~ ~s(data-id="#{dangling_id}")
+
+      [restored_text] = Localization.get_texts_for_source("block", restored_block.id)
+      assert restored_text.speaker_sheet_id == archived_speaker.id
+      assert restored_text.source_text =~ ~s(data-id="#{restored_known.id}")
+      assert restored_text.source_text =~ ~s(data-id="#{dangling_id}")
+    end
+
+    test "exact materialization accepts authored tree cycles, incomplete coverage, and archived parents", %{
+      project: source_project,
+      user: user
+    } do
+      first = sheet_fixture(source_project, %{name: "Cycle first"})
+      second = sheet_fixture(source_project, %{name: "Cycle second"})
+      omitted = sheet_fixture(source_project, %{name: "Tree entry omitted"})
+      archived_parent = sheet_fixture(source_project, %{name: "Archived tree parent"})
+      _archived_child = sheet_fixture(source_project, %{name: "Archived tree child", parent_id: archived_parent.id})
+
+      Repo.update_all(from(sheet in Sheet, where: sheet.id == ^first.id), set: [parent_id: second.id])
+      Repo.update_all(from(sheet in Sheet, where: sheet.id == ^second.id), set: [parent_id: first.id])
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^archived_parent.id),
+        set: [deleted_at: DateTime.utc_now(:second)]
+      )
+
+      snapshot_data =
+        source_project
+        |> active_exact_capture_snapshot()
+        |> update_in(["tree", "sheets"], fn entries ->
+          Enum.reject(entries, &(&1["id"] == omitted.id))
+        end)
+
+      target_project = project_fixture(user, %{name: "Exact authored tree target"})
+
+      assert {:ok, _materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{},
+                 materialization_mode: :exact
+               )
+
+      restored_sheets = Storyarn.Sheets.list_all_sheets(target_project.id)
+      restored_first = Enum.find(restored_sheets, &(&1.name == "Cycle first"))
+      restored_second = Enum.find(restored_sheets, &(&1.name == "Cycle second"))
+      restored_omitted = Enum.find(restored_sheets, &(&1.name == "Tree entry omitted"))
+      restored_archived_child = Enum.find(restored_sheets, &(&1.name == "Archived tree child"))
+
+      assert restored_first.parent_id == restored_second.id
+      assert restored_second.parent_id == restored_first.id
+      assert restored_omitted
+      assert restored_archived_child.parent_id == archived_parent.id
+    end
+
     test "rejects archived localized text even when its source is still captured", %{
       project: source_project,
       user: user
@@ -2755,6 +2949,24 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
     |> Map.put("asset_catalog_refs", snapshot_asset_catalog_refs(project.id))
   end
 
+  defp active_exact_capture_snapshot(project) do
+    {:ok, snapshot} =
+      Repo.repeatable_read(fn ->
+        ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(project.id,
+          localization_scope: :active
+        )
+      end)
+
+    snapshot
+    |> Jason.encode!()
+    |> Jason.decode!()
+    |> then(fn normalized ->
+      {:ok, portable} = SnapshotObjectFormat.portable_project(normalized)
+      portable
+    end)
+    |> Map.put("asset_catalog_refs", snapshot_asset_catalog_refs(project.id))
+  end
+
   defp snapshot_asset_catalog_refs(project_id) do
     project_id
     |> Assets.list_assets_for_export()
@@ -2788,7 +3000,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
     ])
   end
 
-  defp materialize_snapshot_into_project(project, snapshot_data, user_id, source_id_map) do
+  defp materialize_snapshot_into_project(project, snapshot_data, user_id, source_id_map, opts \\ []) do
     Repo.transaction(fn ->
       locked_project =
         Repo.one!(
@@ -2808,8 +3020,13 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
                snapshot_data,
                user_id,
                source_id_map,
-               localization_scope: :active,
-               preserved_localization_actor_ids: actor_ids
+               Keyword.merge(
+                 [
+                   localization_scope: :active,
+                   preserved_localization_actor_ids: actor_ids
+                 ],
+                 opts
+               )
              ) do
         materialized_project
       else

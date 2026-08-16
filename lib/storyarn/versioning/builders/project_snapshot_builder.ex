@@ -21,8 +21,6 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
-  alias Storyarn.Versioning.SnapshotContentHealth
-  alias Storyarn.Versioning.SnapshotProjectContentHealth
 
   @doc """
   Builds a portable project-template snapshot containing all active entities.
@@ -64,13 +62,6 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   @doc false
   @spec build_canonical_snapshot_in_transaction(integer(), keyword()) :: map()
   def build_canonical_snapshot_in_transaction(project_id, opts) when is_list(opts) do
-    {snapshot, issues} = build_canonical_snapshot_with_issues_in_transaction(project_id, opts)
-    Map.put(snapshot, "content_health", SnapshotContentHealth.build(issues))
-  end
-
-  @doc false
-  @spec build_canonical_snapshot_with_issues_in_transaction(integer(), keyword()) :: {map(), [map()]}
-  def build_canonical_snapshot_with_issues_in_transaction(project_id, opts) when is_list(opts) do
     if Repo.in_transaction?() do
       project_id
       |> lock_active_project_for_snapshot!()
@@ -109,16 +100,16 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
     glossary = Localization.list_glossary_for_export(project_id)
 
-    {sheet_snapshots, sheet_issues} = build_sheet_snapshots(sheets, mode)
-    {flow_snapshots, flow_issues} = build_flow_snapshots(flows, mode)
-    {scene_snapshots, scene_issues} = build_scene_snapshots(scenes, mode)
+    sheet_snapshots = build_sheet_snapshots(sheets, mode)
+    flow_snapshots = build_flow_snapshots(flows, mode)
+    scene_snapshots = build_scene_snapshots(scenes, mode)
 
     text_snapshots =
       texts
       |> Enum.map(&text_to_snapshot/1)
       |> maybe_merge_nested_runtime_localization(sheet_snapshots, flow_snapshots, mode)
 
-    {asset_blob_hashes, asset_metadata, localization_asset_issues} =
+    {asset_blob_hashes, asset_metadata} =
       localization_asset_metadata(project_id, text_snapshots, mode)
 
     entity_counts = %{
@@ -130,7 +121,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       "glossary_entries" => length(glossary)
     }
 
-    snapshot = %{
+    %{
       "format_version" => 2,
       "project" => project_to_snapshot(project),
       "entity_counts" => entity_counts,
@@ -162,56 +153,36 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         "glossary" => Enum.map(glossary, &glossary_entry_to_snapshot/1)
       }
     }
-
-    finalize_content_health(snapshot, project_id, mode, [
-      sheet_issues,
-      flow_issues,
-      scene_issues,
-      localization_asset_issues
-    ])
   end
 
   defp build_sheet_snapshots(sheets, :strict) do
-    build_strict_entity_snapshots(sheets, &SheetBuilder.build_snapshot/1)
+    build_entity_snapshots(sheets, &SheetBuilder.build_snapshot/1)
   end
 
   defp build_sheet_snapshots(sheets, :canonical) do
-    build_canonical_entity_snapshots(sheets, &SheetBuilder.build_snapshot_with_content_health/1)
+    build_entity_snapshots(sheets, &SheetBuilder.build_capture_snapshot/1)
   end
 
   defp build_flow_snapshots(flows, :strict) do
-    build_strict_entity_snapshots(flows, &FlowBuilder.build_snapshot/1)
+    build_entity_snapshots(flows, &FlowBuilder.build_snapshot/1)
   end
 
   defp build_flow_snapshots(flows, :canonical) do
-    build_canonical_entity_snapshots(flows, &FlowBuilder.build_snapshot_with_content_health/1)
+    build_entity_snapshots(flows, &FlowBuilder.build_capture_snapshot/1)
   end
 
   defp build_scene_snapshots(scenes, :strict) do
-    build_strict_entity_snapshots(scenes, &SceneBuilder.build_snapshot/1)
+    build_entity_snapshots(scenes, &SceneBuilder.build_snapshot/1)
   end
 
   defp build_scene_snapshots(scenes, :canonical) do
-    build_canonical_entity_snapshots(scenes, &SceneBuilder.build_snapshot_with_content_health/1)
+    build_entity_snapshots(scenes, &SceneBuilder.build_capture_snapshot/1)
   end
 
-  defp build_strict_entity_snapshots(entities, build_fun) do
-    snapshots =
-      Enum.map(entities, fn entity ->
-        %{"id" => entity.id, "snapshot" => build_fun.(entity)}
-      end)
-
-    {snapshots, []}
-  end
-
-  defp build_canonical_entity_snapshots(entities, build_fun) do
-    {snapshots, issue_groups} =
-      Enum.map_reduce(entities, [], fn entity, issue_groups ->
-        {snapshot, issues} = build_fun.(entity)
-        {%{"id" => entity.id, "snapshot" => snapshot}, [issues | issue_groups]}
-      end)
-
-    {snapshots, issue_groups |> Enum.reverse() |> List.flatten()}
+  defp build_entity_snapshots(entities, build_fun) do
+    Enum.map(entities, fn entity ->
+      %{"id" => entity.id, "snapshot" => build_fun.(entity)}
+    end)
   end
 
   defp maybe_merge_nested_runtime_localization(rows, sheet_snapshots, flow_snapshots, :strict) do
@@ -219,38 +190,6 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   end
 
   defp maybe_merge_nested_runtime_localization(rows, _sheet_snapshots, _flow_snapshots, :canonical), do: rows
-
-  defp finalize_content_health(snapshot, _project_id, :strict, _issue_groups), do: snapshot
-
-  defp finalize_content_health(snapshot, project_id, :canonical, issue_groups) do
-    issues =
-      issue_groups
-      |> List.flatten()
-      |> Kernel.++(safe_project_content_issues(snapshot, project_id))
-
-    {snapshot, issues}
-  end
-
-  defp safe_project_content_issues(snapshot, project_id) do
-    SnapshotProjectContentHealth.issues(snapshot, project_id)
-  rescue
-    _exception -> [unclassified_project_issue(project_id)]
-  catch
-    _kind, _reason -> [unclassified_project_issue(project_id)]
-  end
-
-  defp unclassified_project_issue(project_id) do
-    %{
-      code: :unclassified_content_issue,
-      severity: :error,
-      entity_type: :project,
-      entity_id: project_id,
-      source_field: nil,
-      impact: :restore_blocked,
-      container_type: :project,
-      container_id: project_id
-    }
-  end
 
   defp merge_nested_runtime_localization(global_rows, sheet_snapshots, flow_snapshots) do
     active_global_keys =
@@ -322,12 +261,9 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   end
 
   defp localization_asset_metadata(project_id, texts, :strict) do
-    {hashes, metadata} =
-      texts
-      |> Enum.map(& &1["vo_asset_id"])
-      |> AssetHashResolver.resolve_hashes_for_project!(project_id)
-
-    {hashes, metadata, []}
+    texts
+    |> Enum.map(& &1["vo_asset_id"])
+    |> AssetHashResolver.resolve_hashes_for_project!(project_id)
   end
 
   defp localization_asset_metadata(project_id, texts, :canonical) do
