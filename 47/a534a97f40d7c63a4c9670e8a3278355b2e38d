@@ -1,0 +1,109 @@
+test/storyarn/versioning/project_snapshot_restore_executor_test.exs
+  s_c2ae682cd97119::t_b675d5b12a2435 327-377
+test/storyarn/versioning/project_snapshot_lifecycle_test.exs
+  s_c2ae682cd97119::t_fea7a3fecb2bda 811-834,1509-1534
+  s_c2ae682cd97119::t_11ec255a56a4c2 1535-1536
+lib/storyarn/versioning/snapshot_archive_storage.ex
+  s_c2ae682cd97119::t_5060ce00207573 389
+lib/storyarn/versioning/project_snapshot_build.ex
+  s_c2ae682cd97119::t_47da69774a00d2 1294-1298,1300,1302,1370-1371,1374-1378,1381,1383-1387
+  s_c2ae682cd97119::t_8faf8b3d31dc63 1388,1391,1393
+test/storyarn/versioning/snapshot_archive_storage_test.exs
+  s_c2ae682cd97119::t_05e184cb0857b3 863
+  s_c2ae682cd97119::t_3cb73029b476ba 98-102
+  s_c2ae682cd97119::t_7e939dc9e21b41 118-132,864-871,873
+assets/app/test/live/project/settings/ProjectSettingsSnapshots.test.ts
+  s_c2ae682cd97119::t_a26ccfccc91de5 62,476-529,567-581,612-613,619-630,632-648,650-651,653-666
+  s_c2ae682cd97119::t_6802def1c9691c 72,667
+  s_c2ae682cd97119::t_fa27fc5586f66b 584
+  s_c2ae682cd97119::t_65c3bc2bc3c064 592,597,600,631,649,652
+  s_c2ae682cd97119::t_1022aaf60c3e5c 582-583,668-669
+assets/app/locales/es/project-settings.json
+  s_c2ae682cd97119::t_3dcc82efb1b820 169,178,180,186,198,201-204,207-209,212-216,219,232,250
+lib/storyarn/versioning/builders/project_snapshot_builder.ex
+  s_c2ae682cd97119::t_cad3b674eba3f3 67-73,166,223,225,231
+test/storyarn/versioning/builders/project_snapshot_builder_test.exs
+  s_c2ae682cd97119::t_9ea372396545b4 15,50-72
+  s_c2ae682cd97119::t_d537873026a4ec 73-74
+lib/storyarn/versioning/project_snapshot_lifecycle.ex
+  s_c2ae682cd97119::t_1cb9c11f1880fb 1209-1213
+  s_c2ae682cd97119::t_24733fc0872c5d 1214-1215
+lib/storyarn/versioning/project_snapshot_restore_executor.ex
+  s_c2ae682cd97119::t_b23563745d8509 329
+test/storyarn/versioning/snapshot_content_health_test.exs
+  s_c2ae682cd97119::t_8ac46c21b6c67e 13-20,75,97-98,167,169,181
+  s_c2ae682cd97119::t_8ec1918a6a4c7b 22,25-34,51,57,61-63,73,86
+  s_c2ae682cd97119::t_d2246f5d5369eb 99-125,180,182-190
+  s_c2ae682cd97119::t_6672bf5eee7803 78-80,82,84-85,90,92-96,191-192
+test/storyarn/versioning/project_snapshot_build_test.exs
+  s_c2ae682cd97119::t_d8ca81cda36738 697,729,770,841,892,935,976,1085-1102,1105-1113,1115-1119,2061
+  s_c2ae682cd97119::t_18b136abf9b028 636,3303
+  s_c2ae682cd97119::t_3b839bffbe1157 10,620-635,637-653,3285-3302,3304-3313
+  s_c2ae682cd97119::t_4f01303fe2c5ca 3314-3315
+test/storyarn/versioning/snapshot_object_format_test.exs
+  s_c2ae682cd97119::t_97405f609ae473 121,382-384,386-400,427-429,431-436,447-465
+  s_c2ae682cd97119::t_ffcd01c0a51156 385,430
+  s_c2ae682cd97119::t_4b5bc5a710dd55 113-120,122-130,466
+priv/repo/migrations/20260815130000_add_snapshot_content_health.exs
+  s_c2ae682cd97119::t_ad79cdf037bdf1 90-93,96,98-131
+  s_c2ae682cd97119::t_dd3a090d187c5b 15-25,38-39,69,77-81,86-89,94-95,97,132-134,210
+test/storyarn_web/live/project_settings_live/snapshots_restore_policy_test.exs
+  s_c2ae682cd97119::t_3e5aa2e88db8d5 149-158
+assets/app/locales/en/project-settings.json
+  s_c2ae682cd97119::t_3dcc82efb1b820 169,178,180,186,198,201-204,207-209,212-216,219,232,250
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_c2ae682cd97119::t_6802def1c9691c 54
+  s_c2ae682cd97119::t_3dcc82efb1b820 1142
+  s_c2ae682cd97119::t_a26ccfccc91de5 65,541-545,554,558-561,596-603,607-613,1016,1128,1146
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_c2ae682cd97119::t_a26ccfccc91de5 87,111,114,118
+test/storyarn/versioning/builders/asset_hash_resolver_test.exs
+  s_c2ae682cd97119::t_ffcd01c0a51156 378,409
+  s_c2ae682cd97119::t_97405f609ae473 368-372,389,400-408,410-417
+  s_c2ae682cd97119::t_0b5d35b24f3276 373-377,379-388,390-399
+lib/storyarn/versioning/snapshot_content_health.ex
+  s_c2ae682cd97119::t_8aeebf4f3617a3 15,432-433
+  s_c2ae682cd97119::t_2db3b4f1af324a 18,34,155-160,427
+test/storyarn/repo/migrations/add_snapshot_content_health_migration_test.exs
+  s_c2ae682cd97119::t_7ee99936adc05a 64,78-80,85-86,129-131,134,139-144,146,154,224,226,252,257-263,273-298,376,379-381,384,388,390-396,398,402,419,432-433,435,437-440,450,452-453,455-457
+  s_c2ae682cd97119::t_7d34ad4f09e3d4 420,422-431
+  s_c2ae682cd97119::t_e09aa1f982b0ac 84,87-128,132-133,135-138,145,147-151,230-250,299,338-375,377-378,382-383,385-387,389,397,399,434,436,441-449,451,454,458
+  s_c2ae682cd97119::t_cdef615d501231 152-153,227,251,300,400-401,459
+lib/storyarn/versioning/snapshot_object_format.ex
+  s_c2ae682cd97119::t_84789422261e9b 69,72-75,91-100,369,404,869-874,976,985-987,989-999,1003,1012-1014,1016-1045,1102,1114,1116-1122,1124-1142,1188-1189
+  s_c2ae682cd97119::t_e1c5dfb7899aa0 988,1015,1115,1123
+  s_c2ae682cd97119::t_ffcd01c0a51156 1213-1225
+  s_c2ae682cd97119::t_eb00abc8836021 1190,1226
+lib/storyarn/versioning/builders/asset_hash_resolver.ex
+  s_c2ae682cd97119::t_84789422261e9b 21,257-258
+lib/storyarn/versioning/builders/scene_builder.ex
+  s_c2ae682cd97119::t_a1557687238901 748-781
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_c2ae682cd97119::t_d91e70b092b3ea 78,197,1222,1227,1232,1237
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_c2ae682cd97119::t_e4c71a4eeab956 504,509,514,519,524,529,534,539,544,549,554,559,564,569,574,579,584,589,594,599,604,609,614,619,624,695,700,705,813,863,868,873,878,883,888
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_c2ae682cd97119::t_6ea1e8d5bd1ff4 78,197,1222,1227,1232,1237
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_c2ae682cd97119::t_d45967d8763184 504,509,514,519,524,529,534,539,544,549,554,559,564,569,574,579,584,589,594,599,604,609,614,619,624,695,700,705,813,863,868,873,878,883,888
+priv/gettext/projects.pot
+  s_c2ae682cd97119::t_715fe5ae74ccfd 78,197,1222,1227,1232,1237
+priv/gettext/scenes.pot
+  s_c2ae682cd97119::t_0833f34edc79ff 504,509,514,519,524,529,534,539,544,549,554,559,564,569,574,579,584,589,594,599,604,609,614,619,624,695,700,705,813,863,868,873,878,883,888
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "47a534a97f40d7c63a4c9670e8a3278355b2e38d",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
