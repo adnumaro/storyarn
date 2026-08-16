@@ -1206,8 +1206,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
       )
 
     case active_reservations do
-      [%StorageReservation{id: ^expected_reservation_id, kind: "snapshot_build"}] -> :ok
-      _reservations -> {:error, :snapshot_active_operation_blocks_deletion}
+      [%StorageReservation{id: ^expected_reservation_id, kind: "snapshot_build"}] ->
+        if active_snapshot_restore?(snapshot.id),
+          do: {:error, :snapshot_active_operation_blocks_deletion},
+          else: :ok
+
+      _reservations ->
+        {:error, :snapshot_active_operation_blocks_deletion}
     end
   end
 

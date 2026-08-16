@@ -21,6 +21,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
+  alias Storyarn.Versioning.SnapshotContentHealth
+  alias Storyarn.Versioning.SnapshotProjectContentHealth
 
   @doc """
   Builds a portable project-template snapshot containing all active entities.
@@ -53,9 +55,28 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     if Repo.in_transaction?() do
       project_id
       |> lock_active_project_for_snapshot!()
-      |> build_consistent_snapshot(Keyword.fetch!(opts, :localization_scope))
+      |> build_consistent_snapshot(Keyword.fetch!(opts, :localization_scope), :strict)
     else
       raise ArgumentError, "project snapshot capture requires a database transaction"
+    end
+  end
+
+  @doc false
+  @spec build_canonical_snapshot_in_transaction(integer(), keyword()) :: map()
+  def build_canonical_snapshot_in_transaction(project_id, opts) when is_list(opts) do
+    {snapshot, issues} = build_canonical_snapshot_with_issues_in_transaction(project_id, opts)
+    Map.put(snapshot, "content_health", SnapshotContentHealth.build(issues))
+  end
+
+  @doc false
+  @spec build_canonical_snapshot_with_issues_in_transaction(integer(), keyword()) :: {map(), [map()]}
+  def build_canonical_snapshot_with_issues_in_transaction(project_id, opts) when is_list(opts) do
+    if Repo.in_transaction?() do
+      project_id
+      |> lock_active_project_for_snapshot!()
+      |> build_consistent_snapshot(Keyword.fetch!(opts, :localization_scope), :canonical)
+    else
+      raise ArgumentError, "canonical project snapshot capture requires a database transaction"
     end
   end
 
@@ -78,38 +99,27 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     end
   end
 
-  defp build_consistent_snapshot(project, localization_scope) do
+  defp build_consistent_snapshot(project, localization_scope, mode) do
     project_id = project.id
     sheets = Sheets.list_sheets_for_export(project_id)
     flows = Flows.list_flows_for_export(project_id)
     scenes = Scenes.list_scenes_for_export(project_id)
 
-    {languages, texts} = localization_inventory(project_id, localization_scope)
+    {languages, texts} = localization_inventory(project_id, localization_scope, mode)
 
     glossary = Localization.list_glossary_for_export(project_id)
 
-    sheet_snapshots =
-      Enum.map(sheets, fn sheet ->
-        %{"id" => sheet.id, "snapshot" => SheetBuilder.build_snapshot(sheet)}
-      end)
-
-    flow_snapshots =
-      Enum.map(flows, fn flow ->
-        %{"id" => flow.id, "snapshot" => FlowBuilder.build_snapshot(flow)}
-      end)
-
-    scene_snapshots =
-      Enum.map(scenes, fn scene ->
-        %{"id" => scene.id, "snapshot" => SceneBuilder.build_snapshot(scene)}
-      end)
+    {sheet_snapshots, sheet_issues} = build_sheet_snapshots(sheets, mode)
+    {flow_snapshots, flow_issues} = build_flow_snapshots(flows, mode)
+    {scene_snapshots, scene_issues} = build_scene_snapshots(scenes, mode)
 
     text_snapshots =
       texts
       |> Enum.map(&text_to_snapshot/1)
-      |> merge_nested_runtime_localization(sheet_snapshots, flow_snapshots)
+      |> maybe_merge_nested_runtime_localization(sheet_snapshots, flow_snapshots, mode)
 
-    {asset_blob_hashes, asset_metadata} =
-      localization_asset_metadata(project_id, text_snapshots)
+    {asset_blob_hashes, asset_metadata, localization_asset_issues} =
+      localization_asset_metadata(project_id, text_snapshots, mode)
 
     entity_counts = %{
       "sheets" => length(sheets),
@@ -120,7 +130,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
       "glossary_entries" => length(glossary)
     }
 
-    %{
+    snapshot = %{
       "format_version" => 2,
       "project" => project_to_snapshot(project),
       "entity_counts" => entity_counts,
@@ -151,6 +161,94 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
         "texts" => text_snapshots,
         "glossary" => Enum.map(glossary, &glossary_entry_to_snapshot/1)
       }
+    }
+
+    finalize_content_health(snapshot, project_id, mode, [
+      sheet_issues,
+      flow_issues,
+      scene_issues,
+      localization_asset_issues
+    ])
+  end
+
+  defp build_sheet_snapshots(sheets, :strict) do
+    build_strict_entity_snapshots(sheets, &SheetBuilder.build_snapshot/1)
+  end
+
+  defp build_sheet_snapshots(sheets, :canonical) do
+    build_canonical_entity_snapshots(sheets, &SheetBuilder.build_snapshot_with_content_health/1)
+  end
+
+  defp build_flow_snapshots(flows, :strict) do
+    build_strict_entity_snapshots(flows, &FlowBuilder.build_snapshot/1)
+  end
+
+  defp build_flow_snapshots(flows, :canonical) do
+    build_canonical_entity_snapshots(flows, &FlowBuilder.build_snapshot_with_content_health/1)
+  end
+
+  defp build_scene_snapshots(scenes, :strict) do
+    build_strict_entity_snapshots(scenes, &SceneBuilder.build_snapshot/1)
+  end
+
+  defp build_scene_snapshots(scenes, :canonical) do
+    build_canonical_entity_snapshots(scenes, &SceneBuilder.build_snapshot_with_content_health/1)
+  end
+
+  defp build_strict_entity_snapshots(entities, build_fun) do
+    snapshots =
+      Enum.map(entities, fn entity ->
+        %{"id" => entity.id, "snapshot" => build_fun.(entity)}
+      end)
+
+    {snapshots, []}
+  end
+
+  defp build_canonical_entity_snapshots(entities, build_fun) do
+    {snapshots, issue_groups} =
+      Enum.map_reduce(entities, [], fn entity, issue_groups ->
+        {snapshot, issues} = build_fun.(entity)
+        {%{"id" => entity.id, "snapshot" => snapshot}, [issues | issue_groups]}
+      end)
+
+    {snapshots, issue_groups |> Enum.reverse() |> List.flatten()}
+  end
+
+  defp maybe_merge_nested_runtime_localization(rows, sheet_snapshots, flow_snapshots, :strict) do
+    merge_nested_runtime_localization(rows, sheet_snapshots, flow_snapshots)
+  end
+
+  defp maybe_merge_nested_runtime_localization(rows, _sheet_snapshots, _flow_snapshots, :canonical), do: rows
+
+  defp finalize_content_health(snapshot, _project_id, :strict, _issue_groups), do: snapshot
+
+  defp finalize_content_health(snapshot, project_id, :canonical, issue_groups) do
+    issues =
+      issue_groups
+      |> List.flatten()
+      |> Kernel.++(safe_project_content_issues(snapshot, project_id))
+
+    {snapshot, issues}
+  end
+
+  defp safe_project_content_issues(snapshot, project_id) do
+    SnapshotProjectContentHealth.issues(snapshot, project_id)
+  rescue
+    _exception -> [unclassified_project_issue(project_id)]
+  catch
+    _kind, _reason -> [unclassified_project_issue(project_id)]
+  end
+
+  defp unclassified_project_issue(project_id) do
+    %{
+      code: :unclassified_content_issue,
+      severity: :error,
+      entity_type: :project,
+      entity_id: project_id,
+      source_field: nil,
+      impact: :restore_blocked,
+      container_type: :project,
+      container_id: project_id
     }
   end
 
@@ -195,7 +293,11 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     |> Map.put("vo_eligible", metadata.vo_eligible)
   end
 
-  defp localization_inventory(project_id, :active) do
+  defp localization_inventory(project_id, :active, :canonical) do
+    {Localization.list_languages(project_id), Localization.list_texts_for_canonical_snapshot(project_id)}
+  end
+
+  defp localization_inventory(project_id, :active, _mode) do
     languages = Localization.list_languages(project_id)
     locale_codes = Enum.map(languages, & &1.locale_code)
 
@@ -207,7 +309,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     {languages, texts}
   end
 
-  defp localization_inventory(project_id, :backup) do
+  defp localization_inventory(project_id, :backup, _mode) do
     languages = Localization.list_languages_for_backup(project_id)
     locale_codes = Enum.map(languages, & &1.locale_code)
 
@@ -219,10 +321,28 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     {languages, texts}
   end
 
-  defp localization_asset_metadata(project_id, texts) do
+  defp localization_asset_metadata(project_id, texts, :strict) do
+    {hashes, metadata} =
+      texts
+      |> Enum.map(& &1["vo_asset_id"])
+      |> AssetHashResolver.resolve_hashes_for_project!(project_id)
+
+    {hashes, metadata, []}
+  end
+
+  defp localization_asset_metadata(project_id, texts, :canonical) do
     texts
-    |> Enum.map(& &1["vo_asset_id"])
-    |> AssetHashResolver.resolve_hashes_for_project!(project_id)
+    |> Enum.map(fn text ->
+      {text["vo_asset_id"],
+       %{
+         entity_type: text["source_type"],
+         entity_id: text["source_id"],
+         source_field: "vo_asset_id",
+         container_type: :project,
+         container_id: project_id
+       }}
+    end)
+    |> AssetHashResolver.resolve_hashes_for_project_capture(project_id)
   end
 
   defp project_to_snapshot(project) do

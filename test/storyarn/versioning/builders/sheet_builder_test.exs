@@ -116,6 +116,102 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       end
     end
 
+    test "canonical capture preserves inconsistent localization and reports it", %{
+      project: project,
+      sheet: sheet
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      :ok = Localization.sync_sheet_names(project.id)
+      [text] = Localization.get_texts_for_source("sheet", sheet.id)
+
+      Repo.update_all(
+        from(localized_text in LocalizedText, where: localized_text.id == ^text.id),
+        set: [source_text: "Persisted drift"]
+      )
+
+      {snapshot, issues} = SheetBuilder.build_snapshot_with_content_health(sheet)
+
+      assert [%{"source_text" => "Persisted drift"}] = snapshot["localization"]
+
+      assert Enum.any?(issues, fn issue ->
+               issue.code == :localization_source_text_mismatch and
+                 issue.entity_type == "sheet" and issue.entity_id == sheet.id and
+                 issue.impact == :restore_blocked
+             end)
+
+      assert [%{source_text: "Persisted drift"}] =
+               Localization.get_texts_for_source("sheet", sheet.id)
+    end
+
+    test "canonical capture preserves missing localization rows instead of synthesizing them", %{
+      project: project,
+      sheet: sheet
+    } do
+      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _ca = language_fixture(project, %{locale_code: "ca", name: "Catalan"})
+      :ok = Localization.sync_sheet_names(project.id)
+
+      assert {1, _rows} =
+               Repo.delete_all(
+                 from(text in LocalizedText,
+                   where:
+                     text.source_type == "sheet" and text.source_id == ^sheet.id and
+                       text.source_field == "name" and text.locale_code == "ca"
+                 )
+               )
+
+      {snapshot, issues} = SheetBuilder.build_snapshot_with_content_health(sheet)
+
+      assert snapshot["localization"] == []
+      assert Enum.any?(issues, &(&1.code == :incomplete_localization))
+      assert [] = Localization.get_texts_for_source("sheet", sheet.id)
+    end
+
+    test "canonical capture preserves nullable inheritance and residual block children", %{
+      project: project,
+      sheet: sheet,
+      user: user
+    } do
+      table_block = table_block_fixture(sheet)
+      column = table_column_fixture(table_block, %{name: "Residual column"})
+      row = table_row_fixture(table_block, %{name: "Residual row"})
+
+      gallery_asset = uploaded_image_asset(project, user, "residual-gallery.png", "residual gallery")
+      gallery_block = block_fixture(sheet, %{type: "gallery", value: %{}})
+      {:ok, gallery_image} = Sheets.add_gallery_image(gallery_block, gallery_asset.id)
+
+      Repo.update_all(
+        from(current in Sheet, where: current.id == ^sheet.id),
+        set: [hidden_inherited_block_ids: nil]
+      )
+
+      Repo.update_all(
+        from(block in Block, where: block.id in ^[table_block.id, gallery_block.id]),
+        set: [type: "text"]
+      )
+
+      {snapshot, issues} = SheetBuilder.build_snapshot_with_content_health(sheet)
+
+      assert snapshot["hidden_inherited_block_ids"] == nil
+
+      captured_table = Enum.find(snapshot["blocks"], &(&1["original_id"] == table_block.id))
+      assert Enum.any?(captured_table["table_data"]["columns"], &(&1["original_id"] == column.id))
+      assert Enum.any?(captured_table["table_data"]["rows"], &(&1["original_id"] == row.id))
+
+      captured_gallery = Enum.find(snapshot["blocks"], &(&1["original_id"] == gallery_block.id))
+      assert [%{"original_id" => gallery_image_id}] = captured_gallery["gallery_images"]
+      assert gallery_image_id == gallery_image.id
+
+      assert Enum.any?(issues, &(&1.source_field == "hidden_inherited_block_ids" and &1.entity_id == sheet.id))
+      assert Enum.any?(issues, &(&1.source_field == "table_data" and &1.entity_id == table_block.id))
+      assert Enum.any?(issues, &(&1.source_field == "gallery_images" and &1.entity_id == gallery_block.id))
+
+      assert Repo.get!(Sheet, sheet.id).hidden_inherited_block_ids == nil
+      assert Repo.get!(Block, table_block.id).type == "text"
+      assert Repo.get!(Block, gallery_block.id).type == "text"
+    end
+
     test "captures untranslated active-locale gaps as explicit pending rows", %{
       project: project,
       sheet: sheet
@@ -376,6 +472,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert first_id == first.id
       assert zero_default_snapshot["avatar_asset_id"] == first.asset_id
 
+      {exact_zero_default_snapshot, zero_default_issues} =
+        SheetBuilder.build_snapshot_with_content_health(sheet)
+
+      assert Enum.all?(exact_zero_default_snapshot["avatars"], &(&1["is_default"] == false))
+      assert exact_zero_default_snapshot["avatar_asset_id"] == nil
+      assert Enum.any?(zero_default_issues, &(&1.code == :invalid_sheet_snapshot_content))
+
       Repo.update_all(
         from(avatar in SheetAvatar, where: avatar.id in ^[first.id, second.id]),
         set: [is_default: true]
@@ -387,6 +490,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
                multiple_default_snapshot["avatars"]
 
       assert multiple_default_snapshot["avatar_asset_id"] == first.asset_id
+
+      {exact_multiple_default_snapshot, multiple_default_issues} =
+        SheetBuilder.build_snapshot_with_content_health(sheet)
+
+      assert Enum.all?(exact_multiple_default_snapshot["avatars"], &(&1["is_default"] == true))
+      assert exact_multiple_default_snapshot["avatar_asset_id"] == first.asset_id
+      assert Enum.any?(multiple_default_issues, &(&1.code == :invalid_sheet_snapshot_content))
     end
 
     test "rejects cross-project banner, avatar, and gallery assets", %{

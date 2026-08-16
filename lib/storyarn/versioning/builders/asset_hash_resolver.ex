@@ -18,9 +18,11 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   alias Storyarn.Repo
   alias Storyarn.Versioning.AssetMaterializationCache
   alias Storyarn.Versioning.Builders.AssetCopyError
+  alias Storyarn.Versioning.SnapshotObjectFormat
 
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
   @max_asset_size 52_428_800
+  @relationship_metadata_keys ~w(original_asset_id web_asset_id variant_asset_ids)
 
   @doc """
   Given a list of asset IDs, batch-loads their blob hashes and metadata.
@@ -62,6 +64,95 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
       [] -> {%{}, %{}}
       ids -> resolve_project_asset_maps!(ids, project_id)
     end
+  end
+
+  @doc false
+  @spec resolve_hashes_for_project_capture([{term(), map()}], integer()) ::
+          {map(), map(), [map()]}
+  def resolve_hashes_for_project_capture(references, project_id) when is_list(references) and is_integer(project_id) do
+    positive_ids =
+      references
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.filter(&(is_integer(&1) and &1 > 0))
+      |> Enum.uniq()
+
+    assets_by_id =
+      from(asset in Asset, where: asset.id in ^positive_ids)
+      |> Repo.all()
+      |> Map.new(&{&1.id, &1})
+
+    {materializable_assets, issues} =
+      Enum.reduce(references, {%{}, []}, fn {asset_id, context}, {assets, issues} ->
+        capture_asset_reference(asset_id, context, assets_by_id, project_id, assets, issues)
+      end)
+
+    {hash_map, metadata_map} =
+      materializable_assets
+      |> Map.values()
+      |> Enum.sort_by(& &1.id)
+      |> resolved_asset_maps(:capture)
+
+    {hash_map, metadata_map, Enum.reverse(issues)}
+  end
+
+  def resolve_hashes_for_project_capture(_references, _project_id), do: {%{}, %{}, []}
+
+  @doc false
+  @spec capture_catalog_maps([Asset.t()]) :: {map(), map()}
+  def capture_catalog_maps(assets) when is_list(assets), do: resolved_asset_maps(assets, :capture)
+
+  defp capture_asset_reference(nil, _context, _assets_by_id, _project_id, assets, issues), do: {assets, issues}
+
+  defp capture_asset_reference(asset_id, context, _assets_by_id, _project_id, assets, issues)
+       when not (is_integer(asset_id) and asset_id > 0) do
+    {assets, [capture_asset_issue(:invalid_asset_reference, context) | issues]}
+  end
+
+  defp capture_asset_reference(asset_id, context, assets_by_id, project_id, assets, issues) do
+    case Map.get(assets_by_id, asset_id) do
+      nil ->
+        {assets, [capture_asset_issue(:missing_asset_reference, context) | issues]}
+
+      %Asset{project_id: owner_project_id} when owner_project_id != project_id ->
+        {assets, [capture_asset_issue(:cross_project_asset_reference, context) | issues]}
+
+      %Asset{deleted_at: deleted_at} when not is_nil(deleted_at) ->
+        {assets, [capture_asset_issue(:inactive_asset_reference, context) | issues]}
+
+      %Asset{} = asset ->
+        case capture_materializable_asset(asset, project_id) do
+          :ok ->
+            {Map.put(assets, asset.id, asset), issues}
+
+          {:error, _reason} ->
+            {assets, [capture_asset_issue(:invalid_asset_snapshot_content, context) | issues]}
+        end
+    end
+  end
+
+  defp capture_materializable_asset(%Asset{metadata: metadata}, _project_id) when not is_map(metadata),
+    do: {:error, :invalid_asset_metadata}
+
+  defp capture_materializable_asset(%Asset{} = asset, project_id) do
+    metadata =
+      Map.merge(svg_sanitization_metadata(asset.metadata), %{
+        "filename" => asset.filename,
+        "content_type" => asset.content_type,
+        "size" => asset.size,
+        "project_id" => asset.project_id,
+        "persisted_metadata" => asset.metadata
+      })
+
+    case validate_portable_catalog_entry(asset.blob_hash, metadata, project_id) do
+      {:ok, ^project_id} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp capture_asset_issue(code, context) do
+    context
+    |> Map.take([:entity_type, :entity_id, :source_field, :container_type, :container_id])
+    |> Map.merge(%{code: code, severity: :warning, impact: :restore_blocked})
   end
 
   defp resolve_project_asset_maps!(asset_ids, project_id) do
@@ -128,33 +219,51 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
     end)
   end
 
-  defp resolved_asset_maps(assets) do
+  defp resolved_asset_maps(assets, mode \\ :strict) do
     hash_map = Map.new(assets, &{to_string(&1.id), &1.blob_hash})
 
     metadata_map =
       Map.new(assets, fn asset ->
-        {to_string(asset.id), resolved_asset_metadata(asset)}
+        {to_string(asset.id), resolved_asset_metadata(asset, mode)}
       end)
 
     {hash_map, metadata_map}
   end
 
-  defp resolved_asset_metadata(asset) do
-    Map.merge(svg_sanitization_metadata(asset.metadata || %{}), %{
-      "filename" => asset.filename,
-      "content_type" => asset.content_type,
-      "size" => asset.size,
-      "key" => asset.key,
-      "url" => asset.url,
-      "project_id" => asset.project_id,
-      "blob_key" => blob_key(asset)
-    })
+  defp resolved_asset_metadata(asset, mode \\ :strict) do
+    persisted_metadata = asset.metadata
+    metadata = persisted_metadata || %{}
+
+    portable_metadata =
+      Map.merge(svg_sanitization_metadata(metadata), %{
+        "filename" => asset.filename,
+        "content_type" => asset.content_type,
+        "size" => asset.size,
+        "key" => asset.key,
+        "url" => asset.url,
+        "project_id" => asset.project_id,
+        "blob_key" => blob_key(asset)
+      })
+
+    if mode == :capture do
+      portable_metadata
+      |> Map.merge(Map.take(metadata, @relationship_metadata_keys))
+      |> Map.put("persisted_metadata", capture_persisted_metadata(persisted_metadata))
+    else
+      portable_metadata
+    end
   end
+
+  defp capture_persisted_metadata(metadata) when is_map(metadata),
+    do: SnapshotObjectFormat.scrub_persisted_asset_metadata(metadata)
+
+  defp capture_persisted_metadata(nil), do: nil
 
   defp svg_sanitization_metadata(%{"sanitized_svg" => true}), do: %{"sanitized_svg" => true}
   defp svg_sanitization_metadata(_metadata), do: %{}
 
-  defp blob_key(%Asset{blob_hash: blob_hash} = asset) when is_binary(blob_hash) do
+  defp blob_key(%Asset{blob_hash: blob_hash, content_type: content_type} = asset)
+       when is_binary(blob_hash) and is_binary(content_type) do
     ext = BlobStore.ext_from_content_type(asset.content_type)
     BlobStore.blob_key(asset.project_id, asset.blob_hash, ext)
   end

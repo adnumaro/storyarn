@@ -80,6 +80,54 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
                SnapshotObjectFormat.build_catalog([dangling])
     end
 
+    test "can omit every unmaterializable relationship shape for a restore-blocked archive" do
+      assets = [
+        asset(41, "dangling-original.png", @hash, %{"original_asset_id" => 999}),
+        asset(42, "invalid-web.png", String.duplicate("b", 64), %{"web_asset_id" => [41]}),
+        asset(43, "invalid-variants.png", String.duplicate("c", 64), %{
+          "variant_asset_ids" => "not-an-object"
+        }),
+        asset(44, "mixed-variants.png", String.duplicate("d", 64), %{
+          "variant_asset_ids" => %{"valid" => 41, "UPPER CASE" => 42, "missing" => 999}
+        })
+      ]
+
+      assert {:ok, [41, 42, 43, 44]} =
+               SnapshotObjectFormat.unmaterializable_relationship_asset_ids(assets)
+
+      assert {:ok, catalog} =
+               SnapshotObjectFormat.build_catalog(assets,
+                 asset_content_mode: :omit_unmaterializable
+               )
+
+      by_id = Map.new(catalog.assets, &{&1["logical_id"], &1})
+      assert by_id["asset-000001"]["relationships"]["original"] == nil
+      assert by_id["asset-000002"]["relationships"]["web"] == nil
+      assert by_id["asset-000003"]["relationships"]["variants"] == %{}
+
+      assert by_id["asset-000004"]["relationships"]["variants"] == %{
+               "valid" => "asset-000001"
+             }
+    end
+
+    test "admits a zero-byte asset only through the restore-blocked capture catalog" do
+      empty = %{asset(41, "empty.png", sha256("")) | size: 0}
+
+      assert {:error, {:invalid_size, :asset, 0}} =
+               SnapshotObjectFormat.build_catalog([empty])
+
+      assert {:ok, [41]} = SnapshotObjectFormat.unmaterializable_catalog_asset_ids([empty])
+
+      assert {:ok, catalog} =
+               SnapshotObjectFormat.build_catalog([empty],
+                 asset_content_mode: :omit_unmaterializable
+               )
+
+      assert [%{"size_bytes" => 0, "sha256" => hash}] = catalog.assets
+      assert hash == sha256("")
+      assert [%{"size_bytes" => 0, "sha256" => ^hash}] = catalog.blobs
+    end
+
     test "rejects unsafe intrinsic metadata and configured limits" do
       unsafe = asset(41, "portrait.png", @hash, %{"nested" => %{"download_url" => "https://example.test"}})
 
@@ -234,7 +282,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
                )
     end
 
-    test "scrubs project storage locators recursively while retaining logical entity ids" do
+    test "scrubs only structural storage catalogs while retaining user content keys" do
       project = %{
         "format_version" => 2,
         "project" => %{"id" => 41, "project_id" => 7},
@@ -258,7 +306,13 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
       assert get_in(portable, ["sheets", Access.at(0), "id"]) == 101
       assert get_in(portable, ["sheets", Access.at(0), "parent_id"]) == 41
       assert get_in(portable, ["sheets", Access.at(0), "grid"]) == "twelve-column"
-      assert get_in(portable, ["sheets", Access.at(0), "nested"]) == %{}
+
+      assert get_in(portable, ["sheets", Access.at(0), "nested"]) == %{
+               "storageKeys" => ["current/key"],
+               "presignedUrls" => ["https://storage.invalid/current"],
+               "thumbnailPaths" => ["current/thumb.png"]
+             }
+
       assert :ok = SnapshotObjectFormat.validate_project(portable)
     end
 
@@ -276,7 +330,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
                |> SnapshotObjectFormat.validate_project()
     end
 
-    test "reader rejects recursive project storage locator variants" do
+    test "reader retains locator-shaped names outside structural storage catalogs" do
       for key <- [
             "storage_keys",
             "storageKeys",
@@ -292,8 +346,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
           "sheets" => [%{"id" => 101, "nested" => %{key => "current-object"}}]
         }
 
-        assert {:error, {:unsafe_project_metadata_key, ^key}} =
-                 SnapshotObjectFormat.validate_project(project)
+        assert :ok = SnapshotObjectFormat.validate_project(project)
       end
 
       assert :ok =
@@ -305,25 +358,111 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
   end
 
   describe "portable_project/1" do
-    test "removes every URL-shaped field from the canonical project object" do
+    test "preserves URL-shaped user content while removing generated catalog locators" do
       project = %{
         "format_version" => 2,
         "project" => %{"name" => "Portable"},
-        "sheets" => [
+        "flows" => [
           %{
-            "avatar_url" => "https://storage.invalid/avatar.png",
-            "bannerUrl" => "/media/assets/42",
-            "externalURL" => "https://example.invalid/profile",
-            "label" => "Hero"
+            "id" => 9,
+            "snapshot" => %{
+              "nodes" => [
+                %{
+                  "data" => %{
+                    "options" => [%{"key" => "opt1", "url" => "https://content.invalid"}]
+                  }
+                }
+              ],
+              "asset_metadata" => %{
+                "41" => %{
+                  "filename" => "portrait.png",
+                  "key" => "projects/7/assets/current/portrait.png",
+                  "url" => "https://storage.invalid/portrait.png",
+                  "original_asset_id" => 99,
+                  "variant_asset_ids" => %{"url" => 100},
+                  "persisted_metadata" => %{
+                    "caption" => "Authored asset caption",
+                    "custom_url" => "https://content.invalid/asset",
+                    "variant_asset_ids" => %{"url" => 100},
+                    "nested" => %{
+                      "key" => "projects/7/assets/current/nested.png",
+                      "url" => "https://storage.invalid/nested.png",
+                      "storage_key" => "projects/7/assets/current/storage.png",
+                      "project_id" => 7,
+                      "label" => "Retained metadata",
+                      "items" => [
+                        %{
+                          "url" => "https://storage.invalid/item.png",
+                          "label" => "Retained list metadata"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "referenced_sheets" => %{
+                "12" => %{
+                  "id" => 12,
+                  "name" => "Hero",
+                  "avatar_url" => "https://storage.invalid/avatar.png",
+                  "banner_url" => "/media/assets/42"
+                }
+              }
+            }
           }
         ]
       }
 
       assert {:ok, portable} = SnapshotObjectFormat.portable_project(project)
-      assert [%{"label" => "Hero"}] = portable["sheets"]
+      [flow] = portable["flows"]
+      snapshot = flow["snapshot"]
 
-      assert {:error, {:unsafe_project_metadata_key, "avatar_url"}} =
+      assert get_in(snapshot, ["nodes", Access.at(0), "data", "options"]) == [
+               %{"key" => "opt1", "url" => "https://content.invalid"}
+             ]
+
+      assert snapshot["asset_metadata"]["41"] == %{
+               "filename" => "portrait.png",
+               "original_asset_id" => 99,
+               "variant_asset_ids" => %{"url" => 100},
+               "persisted_metadata" => %{
+                 "caption" => "Authored asset caption",
+                 "custom_url" => "https://content.invalid/asset",
+                 "variant_asset_ids" => %{"url" => 100},
+                 "nested" => %{
+                   "label" => "Retained metadata",
+                   "items" => [%{"label" => "Retained list metadata"}]
+                 }
+               }
+             }
+
+      assert snapshot["referenced_sheets"]["12"] == %{"id" => 12, "name" => "Hero"}
+      assert :ok = SnapshotObjectFormat.validate_project(portable)
+
+      assert {:error, {:unsafe_project_metadata_key, unsafe_key}} =
                SnapshotObjectFormat.validate_project(project)
+
+      assert unsafe_key in ["key", "url", "avatar_url", "banner_url"]
+    end
+
+    test "reader rejects storage locators nested in persisted asset metadata" do
+      for key <- ~w(key url storage_key project_id) do
+        project = %{
+          "format_version" => 2,
+          "asset_metadata" => %{
+            "41" => %{
+              "persisted_metadata" => %{
+                "safe" => %{
+                  "nested" => [%{"label" => "retained", key => "current-storage-locator"}]
+                }
+              }
+            }
+          }
+        }
+
+        assert {:error, {:unsafe_project_metadata_key, ^key}} =
+                 SnapshotObjectFormat.validate_project(project)
+      end
     end
   end
 

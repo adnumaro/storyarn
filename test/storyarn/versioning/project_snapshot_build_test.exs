@@ -7,9 +7,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.VersioningFixtures
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.Storage.Local
@@ -18,10 +20,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageAccounting
   alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
+  alias Storyarn.Localization.LocalizedText
   alias Storyarn.Notifications
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets.Sheet
   alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
@@ -31,6 +36,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.RetryStorageCleanupRequestsWorker
+
+  @content_health_keys ~w(
+    impact_counts issue_count issue_counts_by_code issues issues_truncated severity_counts state version
+  )
 
   describe "request_full_project_snapshot/3" do
     test "normalizes inserted lifecycle time to the database clock" do
@@ -51,7 +60,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       asset = upload_asset!(project, user, "capture bytes")
       flow = flow_fixture(project)
       source_language_fixture(project, %{locale_code: "en", name: "English"})
-      spanish = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      _spanish = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Archived source", "responses" => []}})
 
       archived_text = Localization.get_text_by_source("flow_node", node.id, "text", "es")
@@ -62,7 +71,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
                  status: "final"
                })
 
-      assert {:ok, _archived_language} = Localization.remove_language(spanish)
+      assert {1, nil} =
+               Repo.update_all(
+                 from(current in FlowNode, where: current.id == ^node.id),
+                 set: [deleted_at: TimeHelpers.now()]
+               )
+
       idempotency_key = Ecto.UUID.generate()
 
       assert {:ok, snapshot} =
@@ -147,8 +161,24 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
 
       project_object = Jason.decode!(capture.project_json)
       assert project_object["project"]["name"] == project.name
-      assert Enum.map(project_object["localization"]["languages"], & &1["locale_code"]) == ["en"]
-      refute Enum.any?(project_object["localization"]["texts"], &(&1["source_id"] == archived_text.source_id))
+
+      assert Enum.map(project_object["localization"]["languages"], & &1["locale_code"]) == ["en", "es"]
+
+      captured_text =
+        Enum.find(project_object["localization"]["texts"], fn row ->
+          row["source_type"] == archived_text.source_type and
+            row["source_id"] == archived_text.source_id and
+            row["source_field"] == archived_text.source_field and
+            row["locale_code"] == archived_text.locale_code
+        end)
+
+      assert captured_text == localized_text_snapshot(archived_text)
+      assert captured.content_health == project_object["content_health"]
+      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
+
+      assert captured.content_health["issue_counts_by_code"][
+               "capture.localization_source_outside_snapshot"
+             ] == 1
 
       assert project_object["asset_catalog_refs"] == %{
                to_string(asset.id) => "asset-000001"
@@ -398,6 +428,763 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
         snapshot
         |> Ecto.Changeset.change(capture_digest: String.duplicate("f", 64))
         |> Repo.update!()
+      end
+    end
+
+    test "canonical capture preserves active localization outside source and locale inventories" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _active_locale = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      archived_locale = language_fixture(project, %{locale_code: "fr", name: "French"})
+      assert {:ok, _archived_locale} = Localization.remove_language(archived_locale)
+
+      flow = flow_fixture(project)
+      deleted_node = node_fixture(flow)
+      assert {:ok, _deleted_node, _meta} = Storyarn.Flows.delete_node(deleted_node)
+      wrong_type_sheet = sheet_without_flow_node_id(project)
+
+      base_id = 1_000_000_000 + rem(project.id, 10_000_000) * 10
+
+      drift_rows = [
+        localized_text_fixture(project.id, %{
+          source_id: wrong_type_sheet.id,
+          locale_code: "es",
+          source_text: "Wrong table source",
+          source_text_hash: "wrong-table-source-hash",
+          translated_source_hash: "wrong-table-translation-hash",
+          translated_text: "Wrong table translation",
+          status: "draft",
+          word_count: 3
+        }),
+        localized_text_fixture(project.id, %{
+          source_id: deleted_node.id,
+          locale_code: "fr",
+          source_text: "Deleted source",
+          source_text_hash: "deleted-source-hash",
+          translated_source_hash: "deleted-translation-hash",
+          translated_text: "Deleted translation",
+          status: "review",
+          word_count: 2
+        }),
+        localized_text_fixture(project.id, %{
+          source_type: "block",
+          source_id: base_id + 1,
+          locale_code: "zz",
+          source_text: "Dangling source",
+          source_text_hash: "dangling-source-hash",
+          translated_source_hash: "dangling-translation-hash",
+          translated_text: "Dangling translation",
+          status: "in_progress",
+          word_count: 2,
+          machine_translated: true
+        })
+      ]
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      project_json = Jason.decode!(capture.project_json)
+      captured_texts = project_json["localization"]["texts"]
+
+      captured_by_key =
+        Map.new(captured_texts, fn row ->
+          {{row["source_type"], row["source_id"], row["source_field"], row["locale_code"]}, row}
+        end)
+
+      Enum.each(drift_rows, fn row ->
+        key = {row.source_type, row.source_id, row.source_field, row.locale_code}
+        assert captured_by_key[key] == localized_text_snapshot(row)
+      end)
+
+      active_inventory = Localization.list_texts_for_canonical_snapshot(project.id)
+      assert length(captured_texts) == length(active_inventory)
+      assert project_json["entity_counts"]["localized_texts"] == length(active_inventory)
+      assert captured.content_health == capture.content_health
+      assert captured.content_health == project_json["content_health"]
+      assert captured.content_health["state"] == "warnings"
+      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
+
+      assert captured.content_health["issue_counts_by_code"][
+               "capture.localization_locale_outside_snapshot"
+             ] == 2
+
+      assert captured.content_health["issue_counts_by_code"][
+               "capture.localization_source_outside_snapshot"
+             ] == 3
+    end
+
+    test "captures missing speaker drift as durable restore-blocking health without mutating raw content" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _source = source_language_fixture(project, %{locale_code: "en", name: "English"})
+      _target = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      speaker = Storyarn.SheetsFixtures.sheet_fixture(project, %{name: "Legacy speaker"})
+      flow = flow_fixture(project)
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "speaker_sheet_id" => speaker.id,
+            "text" => "Production line",
+            "stage_directions" => "Quietly",
+            "responses" => []
+          }
+        })
+
+      dialogue_text =
+        "flow_node"
+        |> Localization.get_texts_for_source(dialogue.id)
+        |> Enum.find(&(&1.source_field == "text"))
+
+      Repo.update_all(
+        from(row in LocalizedText, where: row.id == ^dialogue_text.id),
+        set: [speaker_sheet_id: nil]
+      )
+
+      assert {:ok, trashed_speaker} = Storyarn.Sheets.trash_sheet(speaker)
+      assert trashed_speaker.deleted_at
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      project_json = Jason.decode!(capture.project_json)
+
+      assert captured.content_health == capture.content_health
+      assert captured.content_health == project_json["content_health"]
+      assert captured.content_health["state"] == "warnings"
+      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
+
+      assert captured.content_health["issue_counts_by_code"][
+               "capture.localization_speaker_mismatch"
+             ] == 1
+
+      flow_snapshot =
+        project_json["flows"]
+        |> Enum.find(&(&1["id"] == flow.id))
+        |> Map.fetch!("snapshot")
+
+      captured_dialogue = Enum.find(flow_snapshot["nodes"], &(&1["original_id"] == dialogue.id))
+      assert captured_dialogue["data"]["speaker_sheet_id"] == speaker.id
+
+      captured_text =
+        Enum.find(flow_snapshot["localization"], fn row ->
+          row["source_id"] == dialogue.id and row["source_field"] == "text"
+        end)
+
+      assert captured_text["speaker_sheet_id"] == nil
+      assert Repo.get!(FlowNode, dialogue.id).data["speaker_sheet_id"] == speaker.id
+
+      assert Repo.get!(LocalizedText, dialogue_text.id).speaker_sheet_id ==
+               nil
+
+      assert Repo.get!(Sheet, speaker.id).deleted_at
+    end
+
+    test "captures malformed raw flow data with a restore-blocking diagnostic" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Initially valid", "responses" => []}
+        })
+
+      Repo.update_all(
+        from(node in FlowNode, where: node.id == ^dialogue.id),
+        set: [data: Map.put(dialogue.data, "text", 123)]
+      )
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      project_json = Jason.decode!(capture.project_json)
+
+      flow_snapshot =
+        project_json["flows"]
+        |> Enum.find(&(&1["id"] == flow.id))
+        |> Map.fetch!("snapshot")
+
+      captured_dialogue = Enum.find(flow_snapshot["nodes"], &(&1["original_id"] == dialogue.id))
+
+      assert captured_dialogue["data"]["text"] == 123
+      assert captured.content_health == capture.content_health
+      assert captured.content_health == project_json["content_health"]
+      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
+      assert captured.content_health["issue_counts_by_code"]["capture.invalid_flow_node"] > 0
+      assert Repo.get!(FlowNode, dialogue.id).data["text"] == 123
+    end
+
+    test "keeps snapshot content health clean for materializable editorial work in progress" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project)
+
+      _dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Draft line without a speaker", "responses" => []}
+        })
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+
+      assert captured.content_health["state"] == "healthy"
+      assert captured.content_health["issue_count"] == 0
+
+      assert captured.content_health["impact_counts"] == %{
+               "restore_blocked" => 0,
+               "runtime_degraded" => 0
+             }
+
+      refute Map.has_key?(
+               captured.content_health["issue_counts_by_code"],
+               "flow.missing_dialogue_speaker"
+             )
+    end
+
+    test "keeps precise asset references separate from authoritative catalog diagnostics" do
+      assert_asset_health_families!(10, 2, false)
+      assert_asset_health_families!(1, 3, false)
+      assert_asset_health_families!(55, 2, true)
+    end
+
+    test "preserves malformed asset relationships while preparing a restore-blocked archive" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = upload_asset!(project, user, "relationship bytes #{Ecto.UUID.generate()}")
+
+      raw_relationships = %{
+        "original_asset_id" => 999_999_999,
+        "web_asset_id" => [asset.id],
+        "custom_id" => "content-id",
+        "custom_url" => "https://content.invalid/asset",
+        "deep_content" => %{
+          "one" => %{
+            "two" => %{"three" => %{"four" => %{"five" => %{"six" => %{"seven" => %{"eight" => %{"nine" => "exact"}}}}}}}
+          }
+        },
+        "variant_asset_ids" => %{
+          "valid-profile" => 888_888_888,
+          "INVALID PROFILE" => asset.id
+        }
+      }
+
+      Repo.update_all(
+        from(current in Asset, where: current.id == ^asset.id),
+        set: [filename: "../unsafe.png", metadata: raw_relationships]
+      )
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      project_json = Jason.decode!(capture.project_json)
+      manifest = Jason.decode!(capture.manifest_json)
+      captured_metadata = project_json["asset_metadata"][to_string(asset.id)]
+
+      assert Map.take(captured_metadata, ~w(original_asset_id web_asset_id variant_asset_ids)) ==
+               Map.take(raw_relationships, ~w(original_asset_id web_asset_id variant_asset_ids))
+
+      assert captured_metadata["persisted_metadata"] == raw_relationships
+      assert captured_metadata["filename"] == "../unsafe.png"
+      assert captured.content_health == capture.content_health
+      assert captured.content_health == project_json["content_health"]
+      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
+
+      assert captured.content_health["issue_counts_by_code"][
+               "capture.invalid_asset_catalog_content"
+             ] == 1
+
+      assert [%{"filename" => manifest_filename, "metadata" => %{}, "relationships" => relationships}] =
+               manifest["assets"]
+
+      assert manifest_filename == "unrestorable-asset-000001.png"
+      assert relationships == %{"original" => nil, "web" => nil, "variants" => %{}}
+      assert Repo.get!(Asset, asset.id).metadata == raw_relationships
+      assert Repo.get!(Asset, asset.id).filename == "../unsafe.png"
+    end
+
+    test "preserves nullable asset metadata while neutralizing only the restore manifest" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = upload_asset!(project, user, "nullable metadata bytes #{Ecto.UUID.generate()}")
+
+      Repo.update_all(from(current in Asset, where: current.id == ^asset.id), set: [metadata: nil])
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      project_json = Jason.decode!(capture.project_json)
+      manifest = Jason.decode!(capture.manifest_json)
+      captured_metadata = project_json["asset_metadata"][to_string(asset.id)]
+
+      assert Map.has_key?(captured_metadata, "persisted_metadata")
+      assert captured_metadata["persisted_metadata"] == nil
+      assert project_json["content_health"] == captured.content_health
+      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
+
+      assert captured.content_health["issue_counts_by_code"][
+               "capture.invalid_asset_catalog_content"
+             ] == 1
+
+      assert [%{"metadata" => %{}, "relationships" => relationships}] = manifest["assets"]
+      assert relationships == %{"original" => nil, "web" => nil, "variants" => %{}}
+      assert Repo.get!(Asset, asset.id).metadata == nil
+    end
+
+    test "captures a verified canonical blob when the persisted asset key is legacy", %{} do
+      user = user_fixture()
+      project = project_fixture(user)
+      contents = "verified bytes with a legacy persisted key"
+      asset = upload_asset!(project, user, contents)
+      legacy_key = "projects/#{project.id}/legacy-assets/#{asset.id}.png"
+
+      assert {1, nil} =
+               Repo.update_all(
+                 from(current in Asset, where: current.id == ^asset.id),
+                 set: [key: legacy_key]
+               )
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      project_json = Jason.decode!(capture.project_json)
+      manifest = Jason.decode!(capture.manifest_json)
+      captured_metadata = project_json["asset_metadata"][to_string(asset.id)]
+
+      assert project_json["asset_blob_hashes"][to_string(asset.id)] == asset.blob_hash
+      assert captured_metadata["content_type"] == asset.content_type
+      assert captured_metadata["size"] == asset.size
+      refute Map.has_key?(captured_metadata, "key")
+
+      assert [%{"sha256" => hash, "size_bytes" => size, "content_type" => "image/png"}] =
+               manifest["assets"]
+
+      assert hash == asset.blob_hash
+      assert size == byte_size(contents)
+      assert capture.source_keys == %{asset.blob_hash => protected_blob_key(project.id, asset)}
+
+      assert captured.content_health["issue_counts_by_code"][
+               "capture.invalid_asset_catalog_content"
+             ] == 1
+
+      assert Repo.get!(Asset, asset.id).key == legacy_key
+    end
+
+    test "keeps restore health clean when an exact canonical survives a missing active source" do
+      user = user_fixture()
+      project = project_fixture(user)
+      contents = "exact canonical survives its missing active source"
+      asset = upload_asset!(project, user, contents)
+      canonical_key = protected_blob_key(project.id, asset)
+
+      assert :ok = Local.delete(asset.key)
+      assert {:ok, ^contents} = Local.download(canonical_key)
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      manifest = Jason.decode!(capture.manifest_json)
+
+      assert [%{"sha256" => hash, "size_bytes" => size, "content_type" => "image/png"}] =
+               manifest["assets"]
+
+      assert hash == asset.blob_hash
+      assert size == asset.size
+      assert capture.source_keys == %{asset.blob_hash => canonical_key}
+      assert captured.content_health["state"] == "healthy"
+      assert captured.content_health["issue_count"] == 0
+      assert captured.content_health["impact_counts"]["restore_blocked"] == 0
+
+      persisted = Repo.get!(Asset, asset.id)
+      assert persisted.blob_hash == asset.blob_hash
+      assert persisted.key == asset.key
+    end
+
+    test "prefers active project bytes when the persisted hash points at another valid canonical blob" do
+      user = user_fixture()
+      project = project_fixture(user)
+      active_contents = String.duplicate("A", 32)
+      stale_contents = String.duplicate("B", 32)
+      active_asset = upload_asset!(project, user, active_contents)
+      stale_asset = upload_asset!(project, user, stale_contents)
+      active_hash = active_asset.blob_hash
+      stale_hash = stale_asset.blob_hash
+
+      assert byte_size(active_contents) == byte_size(stale_contents)
+      refute active_hash == stale_hash
+      assert {:ok, ^stale_contents} = Storage.download(protected_blob_key(project.id, stale_asset))
+
+      assert {1, nil} =
+               Repo.update_all(
+                 from(current in Asset, where: current.id == ^active_asset.id),
+                 set: [blob_hash: stale_hash]
+               )
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      project_json = Jason.decode!(capture.project_json)
+      manifest = Jason.decode!(capture.manifest_json)
+      logical_id = project_json["asset_catalog_refs"][to_string(active_asset.id)]
+      captured_active_asset = Enum.find(manifest["assets"], &(&1["logical_id"] == logical_id))
+
+      assert project_json["asset_blob_hashes"][to_string(active_asset.id)] == stale_hash
+      assert captured_active_asset["sha256"] == active_hash
+      assert captured_active_asset["size_bytes"] == byte_size(active_contents)
+      assert capture.source_keys[active_hash] == protected_blob_key(project.id, active_asset)
+      assert {:ok, ^active_contents} = Storage.download(capture.source_keys[active_hash])
+
+      assert captured.content_health["issue_counts_by_code"][
+               "capture.invalid_asset_catalog_content"
+             ] == 1
+
+      persisted = Repo.get!(Asset, active_asset.id)
+      assert persisted.blob_hash == stale_hash
+      assert persisted.key == active_asset.key
+    end
+
+    test "captures active bytes from a project blob locator whose embedded hash is stale" do
+      user = user_fixture()
+      project = project_fixture(user)
+      contents = "active bytes outlive their stale blob locator"
+      asset = upload_asset!(project, user, contents)
+      actual_hash = asset.blob_hash
+      stale_hash = BlobStore.compute_hash("different bytes named by the active locator")
+      stale_key = BlobStore.blob_key(project.id, stale_hash, "png")
+      actual_key = protected_blob_key(project.id, asset)
+
+      refute actual_hash == stale_hash
+      assert :ok = Local.delete(asset.key)
+      assert :ok = Local.delete(actual_key)
+      assert {:ok, _url} = Local.upload(stale_key, contents, "image/png")
+
+      assert {1, nil} =
+               Repo.update_all(
+                 from(current in Asset, where: current.id == ^asset.id),
+                 set: [key: stale_key]
+               )
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      job = requested_job(requested)
+
+      assert {:ok, ready} =
+               Versioning.perform_project_snapshot_build(requested.id,
+                 job_id: job.id,
+                 attempt: 1,
+                 max_attempts: 1
+               )
+
+      assert {:ok, inspected} = SnapshotArchiveStorage.inspect_ready_archive(ready)
+      assert [%{"sha256" => ^actual_hash, "blob_path" => blob_path}] = inspected.manifest["assets"]
+      assert {:ok, archive} = Storage.download(ready.archive_storage_key)
+      assert {:ok, entries} = :zip.extract(archive, [:memory])
+      extracted = Map.new(entries, fn {path, bytes} -> {List.to_string(path), bytes} end)
+      project_json = extracted |> Map.fetch!("project.json") |> Jason.decode!()
+
+      assert extracted[blob_path] == contents
+      assert project_json["asset_blob_hashes"][to_string(asset.id)] == actual_hash
+      assert {:ok, ^contents} = Local.download(actual_key)
+
+      assert ready.content_health["issue_counts_by_code"][
+               "capture.invalid_asset_catalog_content"
+             ] == 1
+
+      persisted = Repo.get!(Asset, asset.id)
+      assert persisted.blob_hash == actual_hash
+      assert persisted.key == stale_key
+    end
+
+    test "derives a verified manifest identity from a project-owned source when technical fields drift" do
+      user = user_fixture()
+      project = project_fixture(user)
+      contents = "bytes remain authoritative despite nullable legacy identity"
+      asset = upload_asset!(project, user, contents)
+      expected_hash = BlobStore.compute_hash(contents)
+      canonical_key = protected_blob_key(project.id, asset)
+
+      assert :ok = Local.delete(canonical_key)
+
+      assert {1, nil} =
+               Repo.update_all(
+                 from(current in Asset, where: current.id == ^asset.id),
+                 set: [blob_hash: nil, size: -7, content_type: "legacy/unknown"]
+               )
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      project_json = Jason.decode!(capture.project_json)
+      manifest = Jason.decode!(capture.manifest_json)
+      captured_metadata = project_json["asset_metadata"][to_string(asset.id)]
+
+      assert project_json["asset_blob_hashes"][to_string(asset.id)] == nil
+      assert captured_metadata["content_type"] == "legacy/unknown"
+      assert captured_metadata["size"] == -7
+
+      assert [%{"sha256" => ^expected_hash, "size_bytes" => size, "content_type" => "image/png"}] =
+               manifest["assets"]
+
+      assert size == byte_size(contents)
+      assert capture.source_keys == %{expected_hash => canonical_key}
+      assert {:ok, ^contents} = Storage.download(canonical_key)
+
+      assert captured.content_health["issue_counts_by_code"][
+               "capture.invalid_asset_catalog_content"
+             ] == 1
+
+      persisted = Repo.get!(Asset, asset.id)
+      assert persisted.blob_hash == nil
+      assert persisted.size == -7
+      assert persisted.content_type == "legacy/unknown"
+    end
+
+    test "normalizes one manifest MIME for active assets that share the same verified bytes" do
+      user = user_fixture()
+      project = project_fixture(user)
+      contents = "same bytes with conflicting persisted MIME semantics"
+
+      assert {:ok, png_asset} =
+               Assets.upload_binary_and_create_asset(
+                 contents,
+                 %{filename: "shared.png", content_type: "image/png"},
+                 project,
+                 user
+               )
+
+      assert {:ok, pdf_asset} =
+               Assets.upload_binary_and_create_asset(
+                 contents,
+                 %{filename: "shared.pdf", content_type: "application/pdf"},
+                 project,
+                 user
+               )
+
+      assert png_asset.blob_hash == pdf_asset.blob_hash
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      manifest = Jason.decode!(capture.manifest_json)
+
+      assert captured.blob_count == 1
+      assert Enum.map(manifest["assets"], & &1["content_type"]) == ["application/pdf", "application/pdf"]
+      assert Enum.map(manifest["assets"], & &1["sha256"]) == [png_asset.blob_hash, png_asset.blob_hash]
+
+      assert captured.content_health["issue_counts_by_code"][
+               "capture.invalid_asset_catalog_content"
+             ] == 1
+
+      assert Repo.get!(Asset, png_asset.id).content_type == "image/png"
+      assert Repo.get!(Asset, pdf_asset.id).content_type == "application/pdf"
+    end
+
+    test "repairs a missing normalized canonical blob from a verified raw-MIME canonical" do
+      user = user_fixture()
+      project = project_fixture(user)
+      contents = "same bytes survive normalized canonical loss"
+
+      assert {:ok, png_asset} =
+               Assets.upload_binary_and_create_asset(
+                 contents,
+                 %{filename: "shared.png", content_type: "image/png"},
+                 project,
+                 user
+               )
+
+      assert {:ok, pdf_asset} =
+               Assets.upload_binary_and_create_asset(
+                 contents,
+                 %{filename: "shared.pdf", content_type: "application/pdf"},
+                 project,
+                 user
+               )
+
+      png_blob_key = protected_blob_key(project.id, png_asset)
+      pdf_blob_key = protected_blob_key(project.id, pdf_asset)
+      original_config = Application.get_env(:storyarn, ProjectSnapshotBuild, [])
+
+      Application.put_env(
+        :storyarn,
+        ProjectSnapshotBuild,
+        Keyword.put(original_config, :capture_inventory_observed_fun, fn
+          :captured, _assets ->
+            assert :ok = Local.delete(pdf_blob_key)
+            assert :ok = Local.delete(png_asset.key)
+            assert :ok = Local.delete(pdf_asset.key)
+            assert {:ok, ^contents} = Local.download(png_blob_key)
+            :ok
+
+          _stage, _assets ->
+            :ok
+        end)
+      )
+
+      on_exit(fn -> Application.put_env(:storyarn, ProjectSnapshotBuild, original_config) end)
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      manifest = Jason.decode!(capture.manifest_json)
+
+      assert Enum.map(manifest["assets"], & &1["content_type"]) == ["application/pdf", "application/pdf"]
+      assert capture.source_keys == %{png_asset.blob_hash => pdf_blob_key}
+      assert {:ok, ^contents} = Local.download(pdf_blob_key)
+    end
+
+    test "finds a verified canonical blob stored under a legacy MIME extension" do
+      user = user_fixture()
+      project = project_fixture(user)
+      contents = "canonical bytes beneath a legacy extension"
+      asset = upload_asset!(project, user, contents)
+      hash = asset.blob_hash
+      legacy_content_type = "application/x-storyarn-legacy"
+      legacy_extension = BlobStore.ext_from_content_type(legacy_content_type)
+      legacy_blob_key = BlobStore.blob_key(project.id, hash, legacy_extension)
+
+      assert {:ok, _url} = Storage.upload(legacy_blob_key, contents, legacy_content_type)
+      assert :ok = Local.delete(protected_blob_key(project.id, asset))
+      assert :ok = Local.delete(asset.key)
+
+      assert {1, nil} =
+               Repo.update_all(
+                 from(current in Asset, where: current.id == ^asset.id),
+                 set: [content_type: legacy_content_type, key: "projects/#{project.id}/legacy-assets/missing.bin"]
+               )
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      manifest = Jason.decode!(capture.manifest_json)
+      generic_key = BlobStore.blob_key(project.id, hash, "bin")
+
+      assert [%{"sha256" => ^hash, "content_type" => "application/octet-stream"}] = manifest["assets"]
+      assert capture.source_keys == %{hash => generic_key}
+      assert {:ok, ^contents} = Storage.download(generic_key)
+      assert Repo.get!(Asset, asset.id).content_type == legacy_content_type
+    end
+
+    test "captures an empty but readable legacy source as a zero-byte blob" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = upload_asset!(project, user, "original non-empty bytes")
+      old_canonical_key = protected_blob_key(project.id, asset)
+      empty_hash = BlobStore.compute_hash("")
+
+      assert :ok = Local.delete(old_canonical_key)
+      assert {:ok, _url} = Storage.upload(asset.key, "", "image/png")
+
+      assert {1, nil} =
+               Repo.update_all(
+                 from(current in Asset, where: current.id == ^asset.id),
+                 set: [blob_hash: nil, size: -1, content_type: "legacy/unknown"]
+               )
+
+      assert {:ok, requested} = request_snapshot(user, project)
+      job = requested_job(requested)
+
+      assert {:ok, ready} =
+               Versioning.perform_project_snapshot_build(requested.id,
+                 job_id: job.id,
+                 attempt: 1,
+                 max_attempts: 1
+               )
+
+      assert ready.lifecycle_state == "ready"
+      assert ready.content_health["impact_counts"]["restore_blocked"] > 0
+
+      assert ready.content_health["issue_counts_by_code"][
+               "capture.invalid_asset_catalog_content"
+             ] == 1
+
+      assert {:ok, inspected} = SnapshotArchiveStorage.inspect_ready_archive(ready)
+      manifest = inspected.manifest
+      empty_blob_key = BlobStore.blob_key(project.id, empty_hash, "png")
+
+      assert [
+               %{
+                 "sha256" => ^empty_hash,
+                 "size_bytes" => 0,
+                 "content_type" => "image/png",
+                 "blob_path" => blob_path
+               }
+             ] = manifest["assets"]
+
+      assert {:ok, ""} = Storage.download(empty_blob_key)
+
+      assert {:ok, archive} = Storage.download(ready.archive_storage_key)
+      assert {:ok, entries} = :zip.extract(archive, [:memory])
+      extracted = Map.new(entries, fn {path, bytes} -> {List.to_string(path), bytes} end)
+      assert extracted[blob_path] == ""
+      assert Repo.get!(Asset, asset.id).size == -1
+    end
+
+    test "database rejects content-health mutation after capture materialization" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, snapshot} = request_snapshot(user, project)
+      snapshot = materialize_snapshot_capture!(snapshot)
+      snapshot = Repo.get!(ProjectSnapshot, snapshot.id)
+
+      mutated_health =
+        Storyarn.Versioning.SnapshotContentHealth.build([
+          %{
+            code: :unclassified_content_issue,
+            severity: :error,
+            entity_type: :project,
+            entity_id: project.id,
+            impact: :restore_blocked,
+            container_type: :project,
+            container_id: project.id
+          }
+        ])
+
+      refute snapshot.content_health == mutated_health
+
+      assert_raise Postgrex.Error, ~r/project snapshot content health is immutable/, fn ->
+        snapshot
+        |> Ecto.Changeset.change(content_health: mutated_health)
+        |> Repo.update!()
+      end
+    end
+
+    test "database trigger rejects a malformed health report during capture materialization" do
+      user = user_fixture()
+      project = project_fixture(user)
+      assert {:ok, snapshot} = request_snapshot(user, project)
+      malformed = Map.delete(snapshot.content_health, "state")
+
+      assert_raise Postgrex.Error, ~r/project snapshot content health is immutable/, fn ->
+        Repo.update_all(
+          from(current in ProjectSnapshot, where: current.id == ^snapshot.id),
+          set: [
+            capture_digest: String.duplicate("e", 64),
+            captured_at: TimeHelpers.now(),
+            content_health: malformed
+          ]
+        )
+      end
+    end
+
+    for missing_key <- [nil | @content_health_keys] do
+      label = missing_key || "all required keys"
+
+      test "database check rejects a report missing #{label}" do
+        project = project_fixture(user_fixture())
+        baseline = pending_project_snapshot_fixture(project)
+
+        invalid_report =
+          case unquote(missing_key) do
+            nil -> %{}
+            key -> Map.delete(baseline.content_health, key)
+          end
+
+        changeset = cloned_pending_snapshot_changeset(baseline, invalid_report)
+
+        assert_raise Ecto.ConstraintError, ~r/project_snapshots_content_health/, fn ->
+          Repo.insert!(changeset)
+        end
       end
     end
 
@@ -966,7 +1753,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
 
       assert {1, nil} =
                Repo.update_all(
-                 from(candidate in Storyarn.Sheets.Sheet, where: candidate.id == ^sheet.id),
+                 from(candidate in Sheet, where: candidate.id == ^sheet.id),
                  set: [banner_asset_id: restored_later.id]
                )
 
@@ -1124,7 +1911,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert {:ok, :captured} = ProjectSnapshotBuild.materialize_capture(requested.id, job.id)
 
       assert {:ok, _trashed} = Assets.move_asset_to_trash(project.id, captured_asset.id, user.id)
-      Repo.delete!(Repo.get!(Storyarn.Assets.Asset, captured_asset.id))
+      Repo.delete!(Repo.get!(Asset, captured_asset.id))
 
       equivalent_current = upload_asset!(project, user, content)
       assert equivalent_current.blob_hash == captured_asset.blob_hash
@@ -1234,43 +2021,61 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert Notifications.list_notifications(scope) == []
     end
 
-    test "fails closed when both canonical and original bytes are corrupt" do
+    test "captures current active bytes when the persisted identity is stale" do
       user = user_fixture()
       project = project_fixture(user)
       asset = upload_asset!(project, user, "trusted source")
+      active_contents = "tampered bytes"
+      active_hash = BlobStore.compute_hash(active_contents)
 
       assert {:ok, requested} = request_snapshot(user, project)
-      blob_key = protected_blob_key(project.id, asset)
-      assert {:ok, _url} = Local.upload(blob_key, "tampered bytes", "image/png")
-      assert {:ok, _url} = Local.upload(asset.key, "tampered bytes", "image/png")
+      stale_blob_key = protected_blob_key(project.id, asset)
+      active_blob_key = BlobStore.blob_key(project.id, active_hash, "png")
+      assert {:ok, _url} = Local.upload(stale_blob_key, active_contents, "image/png")
+      assert {:ok, _url} = Local.upload(asset.key, active_contents, "image/png")
 
       job = requested_job(requested)
 
-      assert {:discard, :source_corrupt} =
+      assert {:ok, ready} =
                Versioning.perform_project_snapshot_build(requested.id,
                  job_id: job.id,
                  attempt: 1,
                  max_attempts: 1
                )
 
-      failed = Repo.get!(ProjectSnapshot, requested.id)
-      assert failed.lifecycle_state == "failed"
-      assert failed.integrity_state == "corrupt"
-      assert failed.failure_code == "source_corrupt"
-      assert {:error, _reason} = Storage.stat(failed.manifest_storage_key)
-      assert Repo.get!(StorageReservation, failed.storage_reservation_id).status == "released"
-      refute Repo.get(ProjectSnapshotCapture, failed.id)
-      assert {:ok, "tampered bytes"} = Local.download(blob_key)
+      assert {:ok, inspected} = SnapshotArchiveStorage.inspect_ready_archive(ready)
+      manifest = inspected.manifest
+      assert {:ok, archive} = Storage.download(ready.archive_storage_key)
+      assert {:ok, entries} = :zip.extract(archive, [:memory])
+      extracted = Map.new(entries, fn {path, bytes} -> {List.to_string(path), bytes} end)
+      project_json = extracted |> Map.fetch!("project.json") |> Jason.decode!()
+
+      assert ready.lifecycle_state == "ready"
+      assert ready.integrity_state == "verified"
+      assert project_json["asset_blob_hashes"][to_string(asset.id)] == asset.blob_hash
+      assert [%{"sha256" => ^active_hash, "size_bytes" => 14, "blob_path" => blob_path}] = manifest["assets"]
+      assert extracted[blob_path] == active_contents
+      assert {:ok, ^active_contents} = Local.download(active_blob_key)
+
+      assert ready.content_health["issue_counts_by_code"][
+               "capture.invalid_asset_catalog_content"
+             ] == 1
+
+      assert Repo.get!(StorageReservation, ready.storage_reservation_id).status == "committed"
+      assert Repo.get!(Asset, asset.id).blob_hash == asset.blob_hash
+      assert {:ok, ^active_contents} = Local.download(stale_blob_key)
+      refute Repo.get(ProjectSnapshotCapture, ready.id)
     end
 
-    test "rejects source corruption before staging cleanup ownership is needed" do
+    test "publishes divergent active bytes without entering corruption cleanup" do
       user = user_fixture()
       project = project_fixture(user)
       asset = upload_asset!(project, user, "trusted source")
+      active_contents = "tampered bytes"
 
       assert {:ok, requested} = request_snapshot(user, project)
-      assert {:ok, _url} = Local.upload(protected_blob_key(project.id, asset), "tampered bytes", "image/png")
-      assert {:ok, _url} = Local.upload(asset.key, "tampered bytes", "image/png")
+      assert {:ok, _url} = Local.upload(protected_blob_key(project.id, asset), active_contents, "image/png")
+      assert {:ok, _url} = Local.upload(asset.key, active_contents, "image/png")
 
       job = requested_job(requested)
       original_snapshot_config = Application.get_env(:storyarn, SnapshotArchiveStorage, [])
@@ -1287,7 +2092,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
 
       on_exit(fn -> Application.put_env(:storyarn, SnapshotArchiveStorage, original_snapshot_config) end)
 
-      assert {:discard, :source_corrupt} =
+      assert {:ok, ready} =
                Versioning.perform_project_snapshot_build(requested.id,
                  job_id: job.id,
                  attempt: 1,
@@ -1295,13 +2100,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
                )
 
       refute_receive :snapshot_staging_cleanup_attempted
-
-      failed = Repo.get!(ProjectSnapshot, requested.id)
-      assert failed.lifecycle_state == "failed"
-      assert failed.integrity_state == "corrupt"
-      assert failed.failure_code == "source_corrupt"
-      assert Repo.get!(StorageReservation, requested.storage_reservation_id).status == "released"
-      refute Repo.get(ProjectSnapshotCapture, failed.id)
+      assert ready.lifecycle_state == "ready"
+      assert ready.integrity_state == "verified"
+      assert Repo.get!(StorageReservation, requested.storage_reservation_id).status == "committed"
+      refute Repo.get(ProjectSnapshotCapture, ready.id)
     end
 
     test "allocates a fresh owned namespace and reservation before retrying" do
@@ -1312,6 +2114,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
 
       :ok = Notifications.subscribe(scope)
       assert {:ok, requested} = request_snapshot(user, project)
+      requested = materialize_snapshot_capture!(requested)
       job = requested_job(requested)
       original_storage_config = Application.get_env(:storyarn, :storage, [])
 
@@ -1368,6 +2171,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       scope = user_scope_fixture(user)
       _asset = upload_asset!(project, user, "cancel retry race source")
       assert {:ok, requested} = request_snapshot(user, project)
+      requested = materialize_snapshot_capture!(requested)
       job = requested_job(requested)
       original_storage_config = Application.get_env(:storyarn, :storage, [])
       handler_id = "snapshot-retry-cancel-race-#{System.unique_integer([:positive])}"
@@ -1442,6 +2246,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       project = project_fixture(user)
       _asset = upload_asset!(project, user, "ambiguous cleanup source")
       assert {:ok, requested} = request_snapshot(user, project)
+      requested = materialize_snapshot_capture!(requested)
       job = requested_job(requested)
       original_storage_config = Application.get_env(:storyarn, :storage, [])
       original_snapshot_config = Application.get_env(:storyarn, SnapshotArchiveStorage, [])
@@ -2258,9 +3063,75 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
     {started, cleanup_scope, claim, capture}
   end
 
+  defp sheet_without_flow_node_id(project) do
+    sheet = Storyarn.SheetsFixtures.sheet_fixture(project)
+
+    if Repo.get(FlowNode, sheet.id),
+      do: sheet_without_flow_node_id(project),
+      else: sheet
+  end
+
+  defp localized_text_snapshot(text) do
+    fields = [
+      :source_type,
+      :source_id,
+      :source_field,
+      :source_text,
+      :source_text_hash,
+      :translated_source_hash,
+      :locale_code,
+      :translated_text,
+      :status,
+      :vo_status,
+      :vo_asset_id,
+      :translator_notes,
+      :reviewer_notes,
+      :speaker_sheet_id,
+      :word_count,
+      :content_role,
+      :vo_eligible,
+      :machine_translated,
+      :last_translated_at,
+      :last_reviewed_at,
+      :translated_by_id,
+      :reviewed_by_id,
+      :archived_at,
+      :archive_reason
+    ]
+
+    text
+    |> Map.from_struct()
+    |> Map.take(fields)
+    |> Map.new(fn {key, value} -> {Atom.to_string(key), value} end)
+    |> Jason.encode!()
+    |> Jason.decode!()
+  end
+
   defp request_snapshot(user, project, attrs \\ %{}) do
     request_attrs = Map.put(attrs, :idempotency_key, Ecto.UUID.generate())
     Versioning.request_full_project_snapshot(user_scope_fixture(user), project, request_attrs)
+  end
+
+  defp cloned_pending_snapshot_changeset(snapshot, content_health) do
+    token = 12 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
+    object_prefix = SnapshotArchiveStorage.ready_prefix(snapshot.project_id, token)
+
+    attrs =
+      snapshot
+      |> Map.from_struct()
+      |> Map.take(ProjectSnapshot.__schema__(:fields))
+      |> Map.delete(:id)
+      |> Map.merge(%{
+        archive_storage_key: SnapshotArchiveStorage.archive_key(object_prefix),
+        capture_boundary: Ecto.UUID.generate(),
+        content_health: content_health,
+        idempotency_key: Ecto.UUID.generate(),
+        manifest_storage_key: SnapshotArchiveStorage.manifest_key(object_prefix),
+        object_prefix: object_prefix,
+        version_number: snapshot.version_number + 1
+      })
+
+    Ecto.Changeset.change(%ProjectSnapshot{}, attrs)
   end
 
   defp assert_snapshot_notification(scope, snapshot, status, entity_name) do
@@ -2409,6 +3280,37 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
              )
 
     asset
+  end
+
+  defp assert_asset_health_families!(reference_count, catalog_count, truncated?) do
+    user = user_fixture()
+    project = project_fixture(user)
+
+    assets =
+      Enum.map(1..catalog_count, fn index ->
+        upload_asset!(project, user, "catalog family #{reference_count}-#{catalog_count}-#{index}")
+      end)
+
+    Enum.each(0..(reference_count - 1), fn index ->
+      asset = Enum.at(assets, rem(index, catalog_count))
+      scene_fixture(project, %{background_asset_id: asset.id})
+    end)
+
+    asset_ids = Enum.map(assets, & &1.id)
+
+    Repo.update_all(
+      from(asset in Asset, where: asset.id in ^asset_ids),
+      set: [content_type: "not-a-valid-content-type"]
+    )
+
+    assert {:ok, requested} = request_snapshot(user, project)
+    captured = materialize_snapshot_capture!(requested)
+    counts = captured.content_health["issue_counts_by_code"]
+
+    assert counts["capture.invalid_asset_snapshot_content"] == reference_count
+    assert counts["capture.invalid_asset_catalog_content"] == catalog_count
+    refute Map.has_key?(counts, "capture.unclassified_content_issue")
+    assert captured.content_health["issues_truncated"] == truncated?
   end
 
   defp protected_blob_key(project_id, asset) do

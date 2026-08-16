@@ -19,6 +19,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycleTest do
   alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.ProjectSnapshotRestoreExecutor
   alias Storyarn.Versioning.RestorePolicy
+  alias Storyarn.Versioning.SnapshotContentHealth
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker
   alias Storyarn.Workers.RestoreProjectSnapshotWorker
 
@@ -150,6 +151,54 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycleTest do
                  context.snapshot,
                  %{idempotency_key: "not-a-uuid"}
                )
+    end
+
+    test "rejects captured restore blockers with a stable error before persistence", context do
+      content_health =
+        SnapshotContentHealth.build([
+          %{
+            code: :localization_speaker_mismatch,
+            severity: :warning,
+            entity_type: :flow_node,
+            entity_id: 101,
+            source_field: "speaker_sheet_id",
+            impact: :restore_blocked,
+            container_type: :flow,
+            container_id: 42
+          }
+        ])
+
+      blocked_snapshot =
+        full_project_snapshot_fixture(context.project, %{content_health: content_health})
+
+      assert {:error, :snapshot_contains_unrestorable_content} =
+               Versioning.request_project_snapshot_restore(
+                 context.scope,
+                 context.project,
+                 blocked_snapshot,
+                 %{idempotency_key: Ecto.UUID.generate()}
+               )
+
+      assert Repo.aggregate(ProjectSnapshotRestore, :count) == 0
+      assert all_enqueued(worker: RestoreProjectSnapshotWorker) == []
+    end
+
+    test "rejects an unassessed historical snapshot before persistence", context do
+      unassessed_snapshot =
+        full_project_snapshot_fixture(context.project, %{
+          content_health: SnapshotContentHealth.unknown()
+        })
+
+      assert {:error, :snapshot_contains_unrestorable_content} =
+               Versioning.request_project_snapshot_restore(
+                 context.scope,
+                 context.project,
+                 unassessed_snapshot,
+                 %{idempotency_key: Ecto.UUID.generate()}
+               )
+
+      assert Repo.aggregate(ProjectSnapshotRestore, :count) == 0
+      assert all_enqueued(worker: RestoreProjectSnapshotWorker) == []
     end
 
     test "returns clean conflicts for a reused key or another active restore", context do

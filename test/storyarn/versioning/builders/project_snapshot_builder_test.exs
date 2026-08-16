@@ -12,6 +12,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Localization
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
+  alias Storyarn.Versioning.SnapshotContentHealth
 
   setup do
     user = user_fixture()
@@ -44,6 +45,31 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilderTest do
     end
 
     assert Enum.sort(Map.keys(snapshot["tree"])) == ~w(flows scenes sheets)
+  end
+
+  test "canonical capture exposes the complete issue inventory before the bounded report", %{
+    project: project
+  } do
+    assert {:ok, {raw_snapshot, issues}} =
+             Repo.transaction(fn ->
+               ProjectSnapshotBuilder.build_canonical_snapshot_with_issues_in_transaction(
+                 project.id,
+                 localization_scope: :active
+               )
+             end)
+
+    assert is_list(issues)
+    refute Map.has_key?(raw_snapshot, "content_health")
+
+    assert {:ok, wrapped_snapshot} =
+             Repo.transaction(fn ->
+               ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(project.id,
+                 localization_scope: :active
+               )
+             end)
+
+    assert Map.delete(wrapped_snapshot, "content_health") == raw_snapshot
+    assert wrapped_snapshot["content_health"] == SnapshotContentHealth.build(issues)
   end
 
   test "builds an empty portable project graph", %{user: user} do

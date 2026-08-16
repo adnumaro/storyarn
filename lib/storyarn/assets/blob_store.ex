@@ -57,6 +57,7 @@ defmodule Storyarn.Assets.BlobStore do
   def ext_from_content_type("audio/ogg"), do: "ogg"
   def ext_from_content_type("audio/webm"), do: "webm"
   def ext_from_content_type("application/pdf"), do: "pdf"
+  def ext_from_content_type("application/octet-stream"), do: "bin"
 
   def ext_from_content_type(other) do
     other |> String.split("/") |> List.last() |> String.split("+") |> List.first()
@@ -135,7 +136,6 @@ defmodule Storyarn.Assets.BlobStore do
     destination_key = blob_key(project_id, blob_hash, extension)
 
     with true <- Regex.match?(@sha256_regex, blob_hash),
-         true <- valid_asset_source_key?(source_key, project_id),
          true <- valid_asset_content_type?(asset),
          true <- Storage.canonical_key?(destination_key) do
       tracker = StorageCompensation.new()
@@ -149,7 +149,7 @@ defmodule Storyarn.Assets.BlobStore do
             blob_hash,
             size,
             content_type,
-            opts
+            Keyword.put(opts, :source_project_id, project_id)
           )
         end)
 
@@ -248,8 +248,13 @@ defmodule Storyarn.Assets.BlobStore do
   end
 
   defp repair_asset_blob(source_key, destination_key, blob_hash, size, content_type, opts) do
-    with :ok <- verify_asset_blob_source(source_key, blob_hash, size, content_type) do
+    with {:ok, source_project_id} <- asset_blob_source_project_id(opts),
+         true <- valid_asset_source_key?(source_key, source_project_id),
+         :ok <- verify_asset_blob_source(source_key, blob_hash, size, content_type) do
       copy_verified_asset_blob(source_key, destination_key, blob_hash, size, content_type, opts)
+    else
+      false -> {:error, :invalid_asset_blob_identity}
+      {:error, _reason} = error -> error
     end
   end
 
@@ -263,9 +268,21 @@ defmodule Storyarn.Assets.BlobStore do
          corruption_reason,
          opts
        ) do
-    with :ok <- verify_asset_blob_source(source_key, blob_hash, size, content_type),
+    with {:ok, source_project_id} <- asset_blob_source_project_id(opts),
+         true <- valid_asset_source_key?(source_key, source_project_id),
+         :ok <- verify_asset_blob_source(source_key, blob_hash, size, content_type),
          :ok <- remove_verified_invalid_blob(destination_key, blob_hash, invalid_stat, corruption_reason, opts) do
       copy_verified_asset_blob(source_key, destination_key, blob_hash, size, content_type, opts)
+    else
+      false -> {:error, :invalid_asset_blob_identity}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp asset_blob_source_project_id(opts) do
+    case Keyword.fetch(opts, :source_project_id) do
+      {:ok, project_id} when is_integer(project_id) and project_id > 0 -> {:ok, project_id}
+      _missing_or_invalid -> {:error, :invalid_asset_blob_identity}
     end
   end
 

@@ -90,6 +90,24 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     snapshot
   end
 
+  @doc false
+  @spec build_snapshot_with_content_health(Scene.t()) :: {map(), [map()]}
+  def build_snapshot_with_content_health(%Scene{} = scene) do
+    {:ok, result} =
+      Repo.transaction(
+        fn ->
+          :ok = lock_scene_project_for_snapshot!(scene.project_id)
+
+          scene
+          |> lock_scene_for_snapshot!()
+          |> do_build_snapshot_with_content_health()
+        end,
+        isolation: :repeatable_read
+      )
+
+    result
+  end
+
   defp lock_scene_project_for_snapshot!(project_id) do
     case Repo.one(from(project in Project, where: project.id == ^project_id, lock: "FOR UPDATE")) do
       %Project{deleted_at: nil} ->
@@ -216,6 +234,96 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     ensure_valid_built_scene_snapshot!(scene, snapshot)
   end
 
+  defp do_build_snapshot_with_content_health(%Scene{} = scene) do
+    scene =
+      Repo.preload(
+        scene,
+        [
+          :layers,
+          :zones,
+          :pins,
+          :annotations,
+          :connections,
+          :ambient_flows
+        ],
+        force: true
+      )
+
+    sorted_layers = Enum.sort_by(scene.layers, &{&1.position, &1.id})
+    layer_ids = MapSet.new(sorted_layers, & &1.id)
+
+    {zones_by_layer, orphan_zones} = capture_scene_children(scene.zones, layer_ids)
+    {pins_by_layer, orphan_pins} = capture_scene_children(scene.pins, layer_ids)
+
+    {annotations_by_layer, orphan_annotations} =
+      capture_scene_children(scene.annotations, layer_ids)
+
+    pin_index_map =
+      build_capture_pin_index_map(sorted_layers, pins_by_layer, orphan_pins)
+
+    layer_snapshots =
+      Enum.map(sorted_layers, fn layer ->
+        capture_layer_to_snapshot(
+          layer,
+          zones_by_layer,
+          pins_by_layer,
+          annotations_by_layer
+        )
+      end)
+
+    {connection_snapshots, connection_issues} =
+      capture_connection_snapshots(scene, pin_index_map)
+
+    ambient_flow_snapshots =
+      scene.ambient_flows
+      |> Enum.sort_by(&{&1.position, &1.id})
+      |> Enum.map(&ambient_flow_to_snapshot/1)
+
+    asset_references = capture_scene_asset_references(scene)
+
+    {hash_map, metadata_map, asset_issues} =
+      AssetHashResolver.resolve_hashes_for_project_capture(
+        asset_references,
+        scene.project_id
+      )
+
+    snapshot = %{
+      "original_id" => scene.id,
+      "name" => scene.name,
+      "shortcut" => scene.shortcut,
+      "description" => scene.description,
+      "width" => scene.width,
+      "height" => scene.height,
+      "default_zoom" => scene.default_zoom,
+      "default_center_x" => scene.default_center_x,
+      "default_center_y" => scene.default_center_y,
+      "scale_unit" => scene.scale_unit,
+      "scale_value" => scene.scale_value,
+      "fog_color" => scene.fog_color,
+      "fog_opacity" => scene.fog_opacity,
+      "exploration_display_mode" => scene.exploration_display_mode,
+      "background_asset_id" => scene.background_asset_id,
+      "layers" => layer_snapshots,
+      "orphan_zones" => Enum.map(orphan_zones, &capture_orphan_child_snapshot(&1, layer_ids)),
+      "orphan_pins" => Enum.map(orphan_pins, &capture_orphan_child_snapshot(&1, layer_ids)),
+      "orphan_annotations" => Enum.map(orphan_annotations, &capture_orphan_child_snapshot(&1, layer_ids)),
+      "connections" => connection_snapshots,
+      "ambient_flows" => ambient_flow_snapshots,
+      "asset_blob_hashes" => hash_map,
+      "asset_metadata" => metadata_map
+    }
+
+    issues =
+      scene
+      |> capture_scene_content_issues(snapshot, layer_ids, asset_references)
+      |> Kernel.++(connection_issues)
+      |> Kernel.++(asset_issues)
+      |> Enum.uniq()
+      |> Enum.sort_by(&content_health_issue_sort_key/1)
+
+    {snapshot, issues}
+  end
+
   defp ensure_persisted_scene_layer_integrity!(scene_id) do
     layer_ids =
       Repo.all(
@@ -294,6 +402,85 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       |> Enum.map(fn {pin, pin_idx} -> {pin.id, {-1, pin_idx}} end)
 
     Map.new(layer_pin_map ++ orphan_pin_map)
+  end
+
+  defp capture_scene_children(children, layer_ids) do
+    children = Enum.sort_by(children, &{&1.position, &1.id})
+
+    {layered, orphans} =
+      Enum.split_with(children, fn child ->
+        MapSet.member?(layer_ids, child.layer_id)
+      end)
+
+    {Enum.group_by(layered, & &1.layer_id), orphans}
+  end
+
+  defp build_capture_pin_index_map(sorted_layers, pins_by_layer, orphan_pins) do
+    layer_pin_map =
+      sorted_layers
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {layer, layer_idx} ->
+        pins_by_layer
+        |> Map.get(layer.id, [])
+        |> Enum.with_index()
+        |> Enum.map(fn {pin, pin_idx} -> {pin.id, {layer_idx, pin_idx}} end)
+      end)
+
+    orphan_pin_map =
+      orphan_pins
+      |> Enum.with_index()
+      |> Enum.map(fn {pin, pin_idx} -> {pin.id, {-1, pin_idx}} end)
+
+    Map.new(layer_pin_map ++ orphan_pin_map)
+  end
+
+  defp capture_layer_to_snapshot(layer, zones_by_layer, pins_by_layer, annotations_by_layer) do
+    %{
+      "original_id" => layer.id,
+      "name" => layer.name,
+      "is_default" => layer.is_default,
+      "position" => layer.position,
+      "visible" => layer.visible,
+      "fog_enabled" => layer.fog_enabled,
+      "zones" =>
+        zones_by_layer
+        |> Map.get(layer.id, [])
+        |> Enum.map(&zone_to_snapshot/1),
+      "pins" =>
+        pins_by_layer
+        |> Map.get(layer.id, [])
+        |> Enum.map(&pin_to_snapshot/1),
+      "annotations" =>
+        annotations_by_layer
+        |> Map.get(layer.id, [])
+        |> Enum.map(&annotation_to_snapshot/1)
+    }
+  end
+
+  defp capture_orphan_child_snapshot(%SceneZone{} = zone, layer_ids) do
+    zone
+    |> zone_to_snapshot()
+    |> maybe_put_raw_layer_id(zone.layer_id, layer_ids)
+  end
+
+  defp capture_orphan_child_snapshot(%ScenePin{} = pin, layer_ids) do
+    pin
+    |> pin_to_snapshot()
+    |> maybe_put_raw_layer_id(pin.layer_id, layer_ids)
+  end
+
+  defp capture_orphan_child_snapshot(%SceneAnnotation{} = annotation, layer_ids) do
+    annotation
+    |> annotation_to_snapshot()
+    |> maybe_put_raw_layer_id(annotation.layer_id, layer_ids)
+  end
+
+  defp maybe_put_raw_layer_id(snapshot, nil, _layer_ids), do: snapshot
+
+  defp maybe_put_raw_layer_id(snapshot, layer_id, layer_ids) do
+    if MapSet.member?(layer_ids, layer_id),
+      do: snapshot,
+      else: Map.put(snapshot, "raw_layer_id", layer_id)
   end
 
   defp layer_to_snapshot(%SceneLayer{} = layer, annotations_by_layer) do
@@ -419,6 +606,106 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     }
   end
 
+  defp capture_connection_snapshots(scene, pin_index_map) do
+    scene.connections
+    |> Enum.sort_by(fn connection ->
+      {layer_index, pin_index} =
+        Map.get(pin_index_map, connection.from_pin_id, {999_999, 999_999})
+
+      {layer_index, pin_index, connection.id}
+    end)
+    |> Enum.map_reduce([], fn connection, issues ->
+      snapshot = capture_connection_to_snapshot(connection, pin_index_map)
+      connection_issues = capture_connection_issues(scene, connection, pin_index_map)
+      {snapshot, connection_issues ++ issues}
+    end)
+    |> then(fn {snapshots, issues} -> {snapshots, Enum.reverse(issues)} end)
+  end
+
+  defp capture_connection_to_snapshot(%SceneConnection{} = connection, pin_index_map) do
+    {from_layer_index, from_pin_index} =
+      capture_optional_pin_index(pin_index_map, connection.from_pin_id)
+
+    {to_layer_index, to_pin_index} =
+      capture_optional_pin_index(pin_index_map, connection.to_pin_id)
+
+    %{
+      "original_id" => connection.id,
+      "from_pin_original_id" => connection.from_pin_id,
+      "to_pin_original_id" => connection.to_pin_id,
+      "from_layer_index" => from_layer_index,
+      "from_pin_index" => from_pin_index,
+      "to_layer_index" => to_layer_index,
+      "to_pin_index" => to_pin_index,
+      "line_style" => connection.line_style,
+      "line_width" => connection.line_width,
+      "color" => connection.color,
+      "label" => connection.label,
+      "bidirectional" => connection.bidirectional,
+      "show_label" => connection.show_label,
+      "waypoints" => connection.waypoints,
+      "from_stop" => connection.from_stop,
+      "to_stop" => connection.to_stop,
+      "from_pause_ms" => connection.from_pause_ms,
+      "to_pause_ms" => connection.to_pause_ms
+    }
+  end
+
+  defp capture_optional_pin_index(_pin_index_map, nil), do: {nil, nil}
+  defp capture_optional_pin_index(pin_index_map, pin_id), do: Map.get(pin_index_map, pin_id, {nil, nil})
+
+  defp capture_connection_issues(scene, connection, pin_index_map) do
+    route_issues =
+      if RoutePoints.enough_points?(
+           connection.from_pin_id,
+           connection.to_pin_id,
+           connection.waypoints
+         ) do
+        []
+      else
+        [
+          content_health_issue(
+            :invalid_scene_connection_route,
+            :scene_connection,
+            connection.id,
+            "waypoints",
+            :restore_blocked,
+            scene.id
+          )
+        ]
+      end
+
+    endpoint_issues =
+      Enum.flat_map(
+        [
+          {connection.from_pin_id, "from_pin_id"},
+          {connection.to_pin_id, "to_pin_id"}
+        ],
+        fn
+          {nil, _field} ->
+            []
+
+          {pin_id, field} ->
+            if Map.has_key?(pin_index_map, pin_id) do
+              []
+            else
+              [
+                content_health_issue(
+                  :scene_connection_pin_not_in_snapshot,
+                  :scene_connection,
+                  connection.id,
+                  field,
+                  :restore_blocked,
+                  scene.id
+                )
+              ]
+            end
+        end
+      )
+
+    route_issues ++ endpoint_issues
+  end
+
   defp ambient_flow_to_snapshot(%SceneAmbientFlow{} = ambient_flow) do
     %{
       "original_id" => ambient_flow.id,
@@ -428,6 +715,418 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "priority" => ambient_flow.priority,
       "enabled" => ambient_flow.enabled,
       "position" => ambient_flow.position
+    }
+  end
+
+  defp capture_scene_asset_references(scene) do
+    [
+      {scene.background_asset_id, capture_context(:scene, scene.id, "background_asset_id", scene.id)}
+    ] ++
+      Enum.map(scene.zones, fn zone ->
+        {zone.label_icon_asset_id, capture_context(:scene_zone, zone.id, "label_icon_asset_id", scene.id)}
+      end) ++
+      Enum.map(scene.pins, fn pin ->
+        {pin.icon_asset_id, capture_context(:scene_pin, pin.id, "icon_asset_id", scene.id)}
+      end)
+  end
+
+  defp capture_context(entity_type, entity_id, source_field, scene_id) do
+    %{
+      entity_type: entity_type,
+      entity_id: entity_id,
+      source_field: source_field,
+      container_type: :scene,
+      container_id: scene_id
+    }
+  end
+
+  defp capture_scene_content_issues(scene, snapshot, layer_ids, asset_references) do
+    capture_scene_snapshot_validation_issue(scene, snapshot) ++
+      capture_scene_layer_ownership_issues(scene, layer_ids) ++
+      capture_scene_external_reference_issues(scene) ++
+      capture_scene_asset_content_type_issues(scene, asset_references) ++
+      capture_scene_restore_data_issues(scene, snapshot)
+  rescue
+    _exception -> [unclassified_scene_capture_issue(scene)]
+  catch
+    _kind, _reason -> [unclassified_scene_capture_issue(scene)]
+  end
+
+  defp capture_scene_restore_data_issues(%Scene{} = scene, snapshot) do
+    case collect_scene_restore_data(snapshot) do
+      {:ok, data} ->
+        validation_content_issues(
+          validate_scene_snapshot_variable_references(scene.project_id, data),
+          :invalid_scene_variable_reference,
+          :scene,
+          scene.id,
+          nil,
+          :restore_blocked,
+          scene.id
+        )
+
+      {:error, _reason} ->
+        [unclassified_scene_capture_issue(scene)]
+    end
+  end
+
+  defp unclassified_scene_capture_issue(scene) do
+    content_health_issue(
+      :unclassified_content_issue,
+      :scene,
+      scene.id,
+      nil,
+      :restore_blocked,
+      scene.id
+    )
+  end
+
+  defp capture_scene_snapshot_validation_issue(scene, snapshot) do
+    case validate_scene_snapshot_structure(snapshot) do
+      {:ok, _plan} ->
+        []
+
+      {:error, reason} ->
+        case scene_issue_location(reason, scene.id) do
+          nil ->
+            []
+
+          {code, entity_type, entity_id, source_field} ->
+            [
+              content_health_issue(
+                code,
+                entity_type,
+                entity_id,
+                source_field,
+                :restore_blocked,
+                scene.id
+              )
+            ]
+        end
+    end
+  end
+
+  defp scene_issue_location(:scene_snapshot_requires_at_least_one_layer, scene_id),
+    do: {:scene_snapshot_requires_at_least_one_layer, :scene, scene_id, "layers"}
+
+  defp scene_issue_location({:invalid_scene_default_layer_count, _count}, scene_id),
+    do: {:invalid_scene_default_layer_count, :scene, scene_id, "layers"}
+
+  defp scene_issue_location({:invalid_scene_snapshot_field, entity_type, entity_id, source_field, _value}, _scene_id),
+    do: {:invalid_scene_snapshot_field, entity_type, entity_id, source_field}
+
+  defp scene_issue_location({:missing_scene_snapshot_field, entity_type, entity_id, source_field}, _scene_id),
+    do: {:missing_scene_snapshot_field, entity_type, entity_id, source_field}
+
+  defp scene_issue_location({code, entity_type, entity_id}, _scene_id)
+       when code in [:invalid_snapshot_original_id, :duplicate_snapshot_original_id],
+       do: {code, entity_type, entity_id, "original_id"}
+
+  defp scene_issue_location({:invalid_scene_child_snapshot, entity_type, entity_id, _errors}, _scene_id),
+    do: {:invalid_scene_child_snapshot, entity_type, entity_id, nil}
+
+  defp scene_issue_location(
+         {:invalid_scene_zone_target_contract, zone_id, _action_type, _target_type, _target_id},
+         _scene_id
+       ), do: {:invalid_scene_zone_target_contract, :scene_zone, zone_id, "target_id"}
+
+  defp scene_issue_location({code, zone_id, _details}, _scene_id)
+       when code in [:invalid_scene_zone_collection, :invalid_scene_zone_collection_item],
+       do: {code, :scene_zone, zone_id, "action_data"}
+
+  defp scene_issue_location({:invalid_scene_zone_collection_item, zone_id, _index, _reason, _value}, _scene_id),
+    do: {:invalid_scene_zone_collection_item, :scene_zone, zone_id, "action_data"}
+
+  defp scene_issue_location({:invalid_scene_connection_route, _connection_id}, _scene_id), do: nil
+
+  defp scene_issue_location({:scene_connection_pin_not_in_snapshot, _pin_id}, _scene_id), do: nil
+
+  defp scene_issue_location({code, connection_id, _details}, _scene_id)
+       when code in [
+              :invalid_scene_connection_snapshot,
+              :invalid_scene_connection_waypoints,
+              :invalid_scene_connection_endpoint
+            ], do: {code, :scene_connection, connection_id, nil}
+
+  defp scene_issue_location({:invalid_scene_ambient_flow_trigger_config, ambient_flow_id, _config}, _scene_id),
+    do: {:invalid_scene_ambient_flow_trigger_config, :scene_ambient_flow, ambient_flow_id, "trigger_config"}
+
+  defp scene_issue_location(reason, scene_id) do
+    {validation_reason_code(reason, :invalid_scene_snapshot_content), :scene, scene_id, nil}
+  end
+
+  defp capture_scene_layer_ownership_issues(scene, layer_ids) do
+    Enum.flat_map(
+      [
+        {scene.zones, :scene_zone},
+        {scene.pins, :scene_pin},
+        {scene.annotations, :scene_annotation}
+      ],
+      fn {children, entity_type} ->
+        capture_scene_child_layer_issues(children, entity_type, scene.id, layer_ids)
+      end
+    )
+  end
+
+  defp capture_scene_child_layer_issues(children, entity_type, scene_id, layer_ids) do
+    Enum.flat_map(children, fn child ->
+      if is_nil(child.layer_id) or MapSet.member?(layer_ids, child.layer_id) do
+        []
+      else
+        [
+          content_health_issue(
+            :scene_child_layer_not_in_scene,
+            entity_type,
+            child.id,
+            "layer_id",
+            :restore_blocked,
+            scene_id
+          )
+        ]
+      end
+    end)
+  end
+
+  defp capture_scene_external_reference_issues(scene) do
+    specs = capture_scene_external_reference_specs(scene)
+
+    states_by_schema =
+      specs
+      |> Enum.filter(&(is_integer(&1.value) and &1.value > 0))
+      |> Enum.group_by(& &1.schema, & &1.value)
+      |> Map.new(fn {schema, ids} ->
+        states =
+          from(record in schema,
+            where: record.id in ^Enum.uniq(ids),
+            select: {record.id, record.project_id, record.deleted_at}
+          )
+          |> Repo.all()
+          |> Map.new(fn {id, project_id, deleted_at} ->
+            {id, %{project_id: project_id, deleted_at: deleted_at}}
+          end)
+
+        {schema, states}
+      end)
+
+    Enum.flat_map(specs, &capture_scene_external_reference_issue(&1, scene, states_by_schema))
+  end
+
+  defp capture_scene_external_reference_issue(spec, scene, states_by_schema) do
+    state = get_in(states_by_schema, [spec.schema, spec.value])
+
+    case scene_external_reference_issue_code(spec.value, state, scene.project_id) do
+      nil ->
+        []
+
+      code ->
+        [
+          content_health_issue(
+            code,
+            spec.entity_type,
+            spec.entity_id,
+            spec.source_field,
+            :restore_blocked,
+            scene.id
+          )
+        ]
+    end
+  end
+
+  defp scene_external_reference_issue_code(nil, _state, _project_id), do: nil
+
+  defp scene_external_reference_issue_code(value, _state, _project_id) when not (is_integer(value) and value > 0),
+    do: :invalid_scene_external_reference
+
+  defp scene_external_reference_issue_code(_value, nil, _project_id), do: :scene_reference_not_found
+
+  defp scene_external_reference_issue_code(_value, %{deleted_at: deleted_at}, _project_id) when not is_nil(deleted_at),
+    do: :scene_reference_not_found
+
+  defp scene_external_reference_issue_code(_value, %{project_id: project_id}, project_id), do: nil
+  defp scene_external_reference_issue_code(_value, _state, _project_id), do: :scene_reference_project_mismatch
+
+  defp capture_scene_external_reference_specs(scene) do
+    pin_specs =
+      Enum.flat_map(scene.pins, fn pin ->
+        [
+          capture_reference_spec(Flow, pin.flow_id, :scene_pin, pin.id, "flow_id"),
+          capture_reference_spec(Sheet, pin.sheet_id, :scene_pin, pin.id, "sheet_id")
+        ]
+      end)
+
+    zone_specs =
+      Enum.flat_map(scene.zones, fn zone ->
+        target_specs =
+          case zone.target_type do
+            "flow" ->
+              [capture_reference_spec(Flow, zone.target_id, :scene_zone, zone.id, "target_id")]
+
+            "scene" ->
+              [capture_reference_spec(Scene, zone.target_id, :scene_zone, zone.id, "target_id")]
+
+            _other ->
+              []
+          end
+
+        target_specs ++ capture_scene_collection_reference_specs(zone)
+      end)
+
+    ambient_specs =
+      Enum.map(scene.ambient_flows, fn ambient_flow ->
+        capture_reference_spec(
+          Flow,
+          ambient_flow.flow_id,
+          :scene_ambient_flow,
+          ambient_flow.id,
+          "flow_id"
+        )
+      end)
+
+    pin_specs ++ zone_specs ++ ambient_specs
+  end
+
+  defp capture_scene_collection_reference_specs(%SceneZone{
+         id: zone_id,
+         action_type: "collection",
+         action_data: %{"items" => items}
+       })
+       when is_list(items) do
+    items
+    |> Enum.with_index()
+    |> Enum.flat_map(fn
+      {item, index} when is_map(item) ->
+        [
+          capture_reference_spec(
+            Sheet,
+            item["sheet_id"],
+            :scene_zone,
+            zone_id,
+            "action_data.items.#{index}.sheet_id"
+          )
+        ]
+
+      {_item, _index} ->
+        []
+    end)
+  end
+
+  defp capture_scene_collection_reference_specs(_zone), do: []
+
+  defp capture_reference_spec(schema, value, entity_type, entity_id, source_field) do
+    %{
+      schema: schema,
+      value: value,
+      entity_type: entity_type,
+      entity_id: entity_id,
+      source_field: source_field
+    }
+  end
+
+  defp capture_scene_asset_content_type_issues(scene, asset_references) do
+    asset_ids =
+      asset_references
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.filter(&(is_integer(&1) and &1 > 0))
+      |> Enum.uniq()
+
+    assets_by_id =
+      from(asset in Asset,
+        where: asset.id in ^asset_ids,
+        select: {asset.id, asset.project_id, asset.deleted_at, asset.content_type}
+      )
+      |> Repo.all()
+      |> Map.new(fn {id, project_id, deleted_at, content_type} ->
+        {id, %{project_id: project_id, deleted_at: deleted_at, content_type: content_type}}
+      end)
+
+    Enum.flat_map(asset_references, fn {asset_id, context} ->
+      case Map.get(assets_by_id, asset_id) do
+        %{project_id: project_id, deleted_at: nil, content_type: "image/" <> _subtype}
+        when project_id == scene.project_id ->
+          []
+
+        %{project_id: project_id, deleted_at: nil}
+        when project_id == scene.project_id ->
+          [
+            content_health_issue(
+              :invalid_scene_asset_content_type,
+              context.entity_type,
+              context.entity_id,
+              context.source_field,
+              :restore_blocked,
+              scene.id
+            )
+          ]
+
+        _other ->
+          []
+      end
+    end)
+  end
+
+  defp validation_content_issues(:ok, _fallback, _entity_type, _entity_id, _source_field, _impact, _scene_id), do: []
+
+  defp validation_content_issues({:ok, _value}, _fallback, _entity_type, _entity_id, _source_field, _impact, _scene_id),
+    do: []
+
+  defp validation_content_issues(result, fallback, entity_type, entity_id, source_field, impact, scene_id) do
+    [
+      content_health_issue(
+        validation_reason_code(result, fallback),
+        entity_type,
+        entity_id,
+        validation_reason_source_field(result, source_field),
+        impact,
+        scene_id
+      )
+    ]
+  end
+
+  defp validation_reason_code({:error, reason}, fallback), do: validation_reason_code(reason, fallback)
+
+  defp validation_reason_code(reason, _fallback)
+       when is_tuple(reason) and tuple_size(reason) > 0 and is_atom(elem(reason, 0)), do: elem(reason, 0)
+
+  defp validation_reason_code(code, _fallback) when is_atom(code), do: code
+  defp validation_reason_code(_reason, fallback), do: fallback
+
+  defp validation_reason_source_field({:error, reason}, fallback), do: validation_reason_source_field(reason, fallback)
+
+  defp validation_reason_source_field({:invalid_scene_snapshot_field, _label, _id, field, _value}, _fallback),
+    do: health_source_field(field)
+
+  defp validation_reason_source_field({:missing_scene_snapshot_field, _label, _id, field}, _fallback),
+    do: health_source_field(field)
+
+  defp validation_reason_source_field(_reason, fallback), do: health_source_field(fallback)
+
+  defp content_health_issue(code, entity_type, entity_id, source_field, impact, scene_id) do
+    %{
+      code: code,
+      severity: :warning,
+      entity_type: entity_type,
+      entity_id: health_entity_id(entity_id, scene_id),
+      source_field: health_source_field(source_field),
+      impact: impact,
+      container_type: :scene,
+      container_id: scene_id
+    }
+  end
+
+  defp health_entity_id(entity_id, _fallback) when is_integer(entity_id) and entity_id > 0, do: entity_id
+
+  defp health_entity_id(_entity_id, fallback), do: fallback
+
+  defp health_source_field(source_field) when is_binary(source_field), do: source_field
+  defp health_source_field(_source_field), do: nil
+
+  defp content_health_issue_sort_key(issue) do
+    {
+      Atom.to_string(issue.code),
+      Atom.to_string(issue.entity_type),
+      issue.entity_id,
+      issue.source_field || "",
+      Atom.to_string(issue.impact)
     }
   end
 

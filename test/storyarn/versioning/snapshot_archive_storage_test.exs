@@ -6,6 +6,7 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.Storage.Local
@@ -20,6 +21,7 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
   alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCapture
   alias Storyarn.Versioning.SnapshotArchiveStorage
+  alias Storyarn.Versioning.SnapshotContentHealth
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
 
@@ -74,6 +76,57 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
                project_snapshot,
                [],
                max_project_bytes: max_project_bytes
+             )
+  end
+
+  test "prepares a truncated report with the exact invalid asset family" do
+    prior_issues =
+      for entity_id <- 1..55 do
+        %{
+          code: :avatar_project_mismatch,
+          severity: :warning,
+          entity_type: :flow_node,
+          entity_id: entity_id,
+          source_field: :avatar_id,
+          impact: :restore_blocked,
+          container_type: :flow,
+          container_id: 42
+        }
+      end
+
+    report =
+      SnapshotContentHealth.build([
+        invalid_asset_catalog_issue(41),
+        invalid_asset_catalog_issue(42)
+        | prior_issues
+      ])
+
+    assets = [unmaterializable_asset(41), unmaterializable_asset(42)]
+
+    assert {:ok, prepared} =
+             SnapshotArchiveStorage.prepare(
+               42,
+               %{"format_version" => 2, "content_health" => report},
+               assets
+             )
+
+    assert prepared.asset_count == 2
+    manifest = Jason.decode!(prepared.manifest_json)
+    assert Enum.all?(manifest["assets"], &(&1["relationships"]["original"] == nil))
+  end
+
+  test "does not let precise asset reference issues authorize catalog omission" do
+    report =
+      SnapshotContentHealth.build([
+        precise_asset_issue(41),
+        precise_asset_issue(42)
+      ])
+
+    assert {:error, {:dangling_asset_relationship, 999_999}} =
+             SnapshotArchiveStorage.prepare(
+               42,
+               %{"format_version" => 2, "content_health" => report},
+               [unmaterializable_asset(41), unmaterializable_asset(42)]
              )
   end
 
@@ -805,6 +858,45 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
     assert targets == Enum.uniq(targets)
     assert Enum.any?(targets, &String.contains?(&1, ".storyarn-copy"))
     assert Enum.any?(targets, &String.ends_with?(&1, "/snapshot.zip"))
+  end
+
+  defp invalid_asset_catalog_issue(asset_id) do
+    asset_issue(:invalid_asset_catalog_content, asset_id)
+  end
+
+  defp precise_asset_issue(asset_id) do
+    asset_issue(:invalid_asset_snapshot_content, asset_id)
+  end
+
+  defp asset_issue(code, asset_id) do
+    %{
+      code: code,
+      severity: :warning,
+      entity_type: :asset,
+      entity_id: asset_id,
+      source_field: :metadata,
+      impact: :restore_blocked,
+      container_type: :project,
+      container_id: 42
+    }
+  end
+
+  defp unmaterializable_asset(id) do
+    filename = "asset-#{id}.png"
+    uuid = "00000000-0000-0000-0000-#{id |> Integer.to_string() |> String.pad_leading(12, "0")}"
+    blob_hash = :sha256 |> :crypto.hash("asset-#{id}") |> Base.encode16(case: :lower)
+
+    %Asset{
+      id: id,
+      project_id: 42,
+      filename: filename,
+      content_type: "image/png",
+      size: 12,
+      blob_hash: blob_hash,
+      key: "projects/42/assets/#{uuid}/#{filename}",
+      metadata: %{"original_asset_id" => 999_999},
+      inserted_at: DateTime.from_unix!(id)
+    }
   end
 
   defp request_fixture(contents) do

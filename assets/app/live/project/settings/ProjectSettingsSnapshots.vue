@@ -12,11 +12,13 @@ import {
   RotateCcw,
   ShieldCheck,
   Trash2,
+  TriangleAlert,
   X,
 } from "@lucide/vue";
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
+import LiveLink from "@components/navigation/LiveLink.vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -44,6 +46,30 @@ type SnapshotLifecycle =
   | "deleting";
 type SnapshotIntegrity = "unknown" | "verified" | "missing" | "corrupt" | "incomplete";
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+
+interface SnapshotContentIssue {
+  code: string;
+  container_id: number | string | null;
+  container_type: string | null;
+  domain: "capture";
+  entity_id: number | string | null;
+  entity_type: string;
+  impact: "restore_blocked" | "runtime_degraded";
+  locationUrl: string | null;
+  severity: "error" | "warning" | "info";
+  source_field: string | null;
+}
+
+interface SnapshotContentHealth {
+  version: 1;
+  state: "unknown" | "legacy_strict" | "healthy" | "warnings";
+  issue_count: number;
+  issues_truncated: boolean;
+  issue_counts_by_code: Record<string, number>;
+  impact_counts: Record<"restore_blocked" | "runtime_degraded", number>;
+  severity_counts: Record<"error" | "warning" | "info", number>;
+  issues: SnapshotContentIssue[];
+}
 
 interface Snapshot {
   id: number;
@@ -75,6 +101,7 @@ interface Snapshot {
   retrying: boolean;
   nextRetryAt: string | null;
   retryErrorCode: string | null;
+  contentHealth: SnapshotContentHealth;
   failureCode: string | null;
   failureMessage: string | null;
   capturedAt: string | null;
@@ -83,6 +110,7 @@ interface Snapshot {
   canDelete: boolean;
   deleteStatus: "ready" | "download_lease" | "active_operation" | "restore_operation" | null;
   canRestore: boolean;
+  restoreBlockedByContentIssues: boolean;
   restoreOperation: RestoreOperation | null;
   downloadUrl: string | null;
 }
@@ -119,7 +147,7 @@ const {
   restoreOperationActive?: boolean;
 }>();
 
-const { locale, t } = useI18n();
+const { locale, t, te } = useI18n();
 const live = useLive();
 const title = ref("");
 const description = ref("");
@@ -364,6 +392,7 @@ function snapshotRestoreRequestError(payload: Record<string, unknown>) {
   const reasons: Record<string, string> = {
     restore_temporarily_disabled: "disabled",
     project_snapshot_not_restorable: "not_restorable",
+    snapshot_contains_unrestorable_content: "content_issues",
     project_snapshot_restore_in_progress: "in_progress",
     project_snapshot_restore_idempotency_conflict: "request_conflict",
     project_snapshot_not_found: "not_found",
@@ -484,10 +513,6 @@ function remainingStorageLabel() {
   return formatBytes(storageUsage.remainingBytes, locale.value);
 }
 
-function modeLabel(mode: SnapshotMode | null) {
-  return t(`project_settings.snapshots.mode.${mode ?? "unknown"}`);
-}
-
 function lifecycleLabel(status: SnapshotLifecycle | null) {
   return t(`project_settings.snapshots.lifecycle.${status ?? "unknown"}`);
 }
@@ -500,6 +525,90 @@ function snapshotLifecycleLabel(snapshot: Snapshot) {
 
 function integrityLabel(status: SnapshotIntegrity | null) {
   return t(`project_settings.snapshots.integrity.${status ?? "unknown"}`);
+}
+
+function lifecycleBadgeVisible(snapshot: Snapshot) {
+  return (
+    snapshot.retrying ||
+    ["building", "verifying", "failed", "deleting"].includes(snapshot.lifecycleStatus ?? "")
+  );
+}
+
+function integrityBadgeVisible(status: SnapshotIntegrity | null) {
+  return ["missing", "corrupt", "incomplete"].includes(status ?? "");
+}
+
+function contentHealthHasBlockingIssues(snapshot: Snapshot) {
+  return (
+    snapshot.contentHealth.state === "warnings" &&
+    snapshot.contentHealth.impact_counts.restore_blocked > 0
+  );
+}
+
+function contentHealthUnknown(snapshot: Snapshot) {
+  return snapshot.lifecycleStatus === "ready" && snapshot.contentHealth.state === "unknown";
+}
+
+function contentHealthBadgeLabel(snapshot: Snapshot) {
+  return t("project_settings.snapshots.content_health.badge", {
+    count: formatCount(snapshot.contentHealth.impact_counts.restore_blocked),
+  });
+}
+
+function contentHealthBlockingIssues(snapshot: Snapshot) {
+  return snapshot.contentHealth.issues.filter((issue) => issue.impact === "restore_blocked");
+}
+
+function contentIssueLabel(issue: SnapshotContentIssue) {
+  const captureKey = `project_settings.snapshots.content_health.issue_types.${issue.code}`;
+  if (te(captureKey)) return t(captureKey);
+
+  return t("project_settings.snapshots.content_health.generic_issue");
+}
+
+function contentIssueLocation(issue: SnapshotContentIssue) {
+  const locations = [
+    locationPart(issue.container_type, issue.container_id),
+    locationPart(issue.entity_type, issue.entity_id),
+    sourceFieldPart(issue.source_field),
+  ].filter(
+    (location, index, all): location is string =>
+      Boolean(location) && all.indexOf(location) === index,
+  );
+
+  return locations.join(" · ");
+}
+
+function locationPart(entityType: string | null, id: number | string | null) {
+  if (!entityType || id === null) return null;
+
+  const labelKey = `project_settings.snapshots.content_health.entity_types.${entityType}`;
+  const label = te(labelKey)
+    ? t(labelKey)
+    : t("project_settings.snapshots.content_health.entity_types.item");
+
+  return t("project_settings.snapshots.content_health.location", { label, id: String(id) });
+}
+
+function sourceFieldPart(sourceField: string | null) {
+  if (!sourceField) return null;
+
+  const directKey = `project_settings.snapshots.content_health.source_fields.${sourceField}`;
+  if (te(directKey)) return t(directKey);
+
+  const normalizedField = normalizeDynamicSourceField(sourceField);
+  const normalizedKey = `project_settings.snapshots.content_health.source_fields.${normalizedField}`;
+
+  return te(normalizedKey)
+    ? t(normalizedKey)
+    : t("project_settings.snapshots.content_health.source_fields.related");
+}
+
+function normalizeDynamicSourceField(sourceField: string) {
+  if (/^action_data\.items\.\d+\.sheet_id$/.test(sourceField)) return "sheet_id";
+  if (/^[a-z][a-z0-9_]*_node_id$/.test(sourceField)) return "node_id";
+
+  return sourceField;
 }
 
 function progressPhaseLabel(snapshot: Snapshot) {
@@ -871,25 +980,16 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
           v-for="snapshot in snapshots"
           :key="snapshot.id"
           class="rounded-lg border border-border bg-muted/30 p-4"
+          :data-testid="`snapshot-card-${snapshot.id}`"
         >
           <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div class="flex-1 min-w-0">
               <div class="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary" class="text-xs">
-                  v{{ formatCount(snapshot.versionNumber) }}
-                </Badge>
+                <span class="min-w-0 text-base font-semibold leading-tight">
+                  {{ snapshot.title || $t("project_settings.snapshots.untitled") }}
+                </span>
                 <Badge
-                  variant="outline"
-                  class="text-xs"
-                  :aria-label="
-                    $t('project_settings.snapshots.accessibility.mode', {
-                      status: modeLabel(snapshot.mode),
-                    })
-                  "
-                >
-                  {{ modeLabel(snapshot.mode) }}
-                </Badge>
-                <Badge
+                  v-if="lifecycleBadgeVisible(snapshot)"
                   :variant="lifecycleVariant(snapshot.lifecycleStatus)"
                   class="text-xs"
                   :aria-label="
@@ -901,6 +1001,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                   {{ snapshotLifecycleLabel(snapshot) }}
                 </Badge>
                 <Badge
+                  v-if="integrityBadgeVisible(snapshot.integrityStatus)"
                   :variant="integrityVariant(snapshot.integrityStatus)"
                   class="text-xs"
                   :aria-label="
@@ -911,9 +1012,15 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
                 >
                   {{ integrityLabel(snapshot.integrityStatus) }}
                 </Badge>
-                <span class="font-medium truncate">
-                  {{ snapshot.title || $t("project_settings.snapshots.untitled") }}
-                </span>
+                <Badge
+                  v-if="contentHealthHasBlockingIssues(snapshot)"
+                  :variant="snapshot.restoreBlockedByContentIssues ? 'destructive' : 'outline'"
+                  class="text-xs"
+                  :data-testid="`snapshot-content-health-badge-${snapshot.id}`"
+                >
+                  <TriangleAlert class="size-3" aria-hidden="true" />
+                  {{ contentHealthBadgeLabel(snapshot) }}
+                </Badge>
               </div>
               <p v-if="snapshot.description" class="text-sm text-muted-foreground mt-1">
                 {{ snapshot.description }}
@@ -1005,6 +1112,68 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
               >
                 {{ snapshot.failureMessage }}
               </p>
+              <div
+                v-if="contentHealthUnknown(snapshot)"
+                class="mt-3 rounded-lg border border-border/70 bg-background/70 px-3 py-2.5"
+                :data-testid="`snapshot-content-health-unknown-${snapshot.id}`"
+              >
+                <p class="text-sm font-medium">
+                  {{ $t("project_settings.snapshots.content_health.unknown_title") }}
+                </p>
+                <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {{ $t("project_settings.snapshots.content_health.unknown_description") }}
+                </p>
+              </div>
+              <div
+                v-if="contentHealthHasBlockingIssues(snapshot)"
+                class="mt-3 rounded-lg border border-amber-500/35 bg-amber-500/10 p-3"
+                :data-testid="`snapshot-content-health-${snapshot.id}`"
+              >
+                <div class="flex items-start gap-2">
+                  <TriangleAlert
+                    class="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-300"
+                    aria-hidden="true"
+                  />
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold">
+                      {{ $t("project_settings.snapshots.content_health.heading") }}
+                    </p>
+                    <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {{ $t("project_settings.snapshots.content_health.restore_blocked") }}
+                    </p>
+                    <ul class="mt-2 space-y-1.5">
+                      <li
+                        v-for="(issue, index) in contentHealthBlockingIssues(snapshot)"
+                        :key="`${issue.domain}-${issue.code}-${issue.container_id}-${issue.entity_id}-${index}`"
+                        class="text-xs"
+                      >
+                        <span class="font-medium text-foreground/90">
+                          {{ contentIssueLabel(issue) }}
+                        </span>
+                        <LiveLink
+                          v-if="contentIssueLocation(issue) && issue.locationUrl"
+                          :to="issue.locationUrl"
+                          class="ml-1 text-primary underline-offset-2 hover:underline"
+                        >
+                          · {{ contentIssueLocation(issue) }}
+                        </LiveLink>
+                        <span
+                          v-else-if="contentIssueLocation(issue)"
+                          class="ml-1 text-muted-foreground"
+                        >
+                          · {{ contentIssueLocation(issue) }}
+                        </span>
+                      </li>
+                    </ul>
+                    <p
+                      v-if="snapshot.contentHealth.issues_truncated"
+                      class="mt-2 text-xs text-muted-foreground"
+                    >
+                      {{ $t("project_settings.snapshots.content_health.truncated") }}
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div
                 v-if="snapshot.restoreOperation"
                 class="mt-3 rounded-lg border border-border/70 bg-background/70 p-3"
@@ -1179,14 +1348,24 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
               >
                 {{ $t("project_settings.snapshots.restore.active_operation") }}
               </p>
+              <p
+                v-if="snapshot.restoreBlockedByContentIssues"
+                :id="`restore-snapshot-reason-${snapshot.id}`"
+                class="max-w-64 text-xs leading-relaxed text-amber-700 dark:text-amber-300 lg:text-right"
+                :data-testid="`restore-content-blocked-${snapshot.id}`"
+              >
+                {{ $t("project_settings.snapshots.restore.content_issues") }}
+              </p>
               <Button
-                v-if="snapshot.canRestore"
+                v-if="snapshot.canRestore || snapshot.restoreBlockedByContentIssues"
                 type="button"
                 variant="outline"
                 size="sm"
-                :disabled="restoreBusy"
+                :disabled="restoreBusy || snapshot.restoreBlockedByContentIssues"
                 :aria-describedby="
-                  restoreBusy ? `restore-snapshot-reason-${snapshot.id}` : undefined
+                  restoreBusy || snapshot.restoreBlockedByContentIssues
+                    ? `restore-snapshot-reason-${snapshot.id}`
+                    : undefined
                 "
                 :data-testid="`restore-snapshot-${snapshot.id}`"
                 @click="openRestoreDialog(snapshot)"
