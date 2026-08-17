@@ -137,10 +137,8 @@ defmodule Storyarn.Localization.LocalizableWords do
     end
   end
 
-  @spec extract_flow_node(FlowNode.t(), keyword()) :: :ok | {:error, term()}
-  def extract_flow_node(node, opts \\ [])
-
-  def extract_flow_node(%FlowNode{} = node, opts) do
+  @spec extract_flow_node(FlowNode.t()) :: :ok | {:error, term()}
+  def extract_flow_node(%FlowNode{} = node) do
     case_result =
       case flow_project_id(node.flow_id) do
         nil ->
@@ -148,7 +146,7 @@ defmodule Storyarn.Localization.LocalizableWords do
 
         project_id ->
           with_source_lock(project_id, @flow_node_lock_namespace, node.id, fn ->
-            reconcile_flow_node(project_id, node.id, opts)
+            reconcile_flow_node(project_id, node.id)
           end)
       end
 
@@ -229,10 +227,8 @@ defmodule Storyarn.Localization.LocalizableWords do
     )
   end
 
-  @spec extract_block(Block.t(), keyword()) :: :ok | {:error, term()}
-  def extract_block(block, opts \\ [])
-
-  def extract_block(%Block{} = block, opts) do
+  @spec extract_block(Block.t()) :: :ok | {:error, term()}
+  def extract_block(%Block{} = block) do
     case_result =
       case sheet_project_id(block.sheet_id) do
         nil ->
@@ -240,17 +236,17 @@ defmodule Storyarn.Localization.LocalizableWords do
 
         project_id ->
           with_source_lock(project_id, @block_lock_namespace, block.id, fn ->
-            reconcile_block(project_id, block.id, opts)
+            reconcile_block(project_id, block.id)
           end)
       end
 
     normalize_lock_result(case_result)
   end
 
-  defp reconcile_flow_node(project_id, node_id, opts \\ []) do
+  defp reconcile_flow_node(project_id, node_id) do
     case Repo.get(FlowNode, node_id) do
       %FlowNode{deleted_at: nil} = current ->
-        upsert_source_fields(project_id, "flow_node", current.id, flow_node_source_fields(current), opts)
+        upsert_source_fields(project_id, "flow_node", current.id, flow_node_source_fields(current))
 
       _missing_or_deleted ->
         TextCrud.archive_texts_for_source("flow_node", node_id, "source_deleted")
@@ -258,7 +254,7 @@ defmodule Storyarn.Localization.LocalizableWords do
     end
   end
 
-  defp reconcile_block(project_id, block_id, opts \\ []) do
+  defp reconcile_block(project_id, block_id) do
     current =
       Repo.one(
         from(block in Block,
@@ -272,31 +268,31 @@ defmodule Storyarn.Localization.LocalizableWords do
       )
 
     case current do
-      %Block{} = block -> reconcile_current_block(project_id, block, opts)
+      %Block{} = block -> reconcile_current_block(project_id, block)
       nil -> TextCrud.archive_texts_for_source("block", block_id, "source_deleted")
     end
 
     :ok
   end
 
-  defp reconcile_current_block(project_id, block, opts) do
+  defp reconcile_current_block(project_id, block) do
     if SourceContract.localizable_block?(block) do
-      upsert_source_fields(project_id, "block", block.id, block_source_fields(block), opts)
+      upsert_source_fields(project_id, "block", block.id, block_source_fields(block))
     else
       TextCrud.archive_texts_for_source("block", block.id, "source_not_runtime")
     end
   end
 
   @doc "Synchronizes active sheet names because engine serializers emit sheets as runtime actors."
-  @spec sync_sheet_names(integer(), keyword()) :: :ok | {:error, term()}
-  def sync_sheet_names(project_id, opts \\ []) do
+  @spec sync_sheet_names(integer()) :: :ok | {:error, term()}
+  def sync_sheet_names(project_id) do
     project_id
     |> with_inventory_lock(fn ->
       sources = build_sources(runtime_sheets(project_id), "sheet", &speaker_source_fields/1)
       locales = get_target_locales(project_id)
 
       entries = for source <- sources, locale <- locales, do: source_to_entry(source, locale)
-      TextCrud.batch_upsert_texts(project_id, entries, opts)
+      TextCrud.batch_upsert_texts(project_id, entries)
 
       active_ids = MapSet.new(sources, & &1.source_id)
 
@@ -490,7 +486,7 @@ defmodule Storyarn.Localization.LocalizableWords do
   # Private — Extraction Helpers
   # =============================================================================
 
-  defp upsert_source_fields(project_id, source_type, source_id, fields, opts) do
+  defp upsert_source_fields(project_id, source_type, source_id, fields) do
     target_locales = get_target_locales(project_id)
 
     entries =
@@ -500,7 +496,7 @@ defmodule Storyarn.Localization.LocalizableWords do
         |> source_to_entry(locale)
       end
 
-    TextCrud.batch_upsert_texts(project_id, entries, opts)
+    TextCrud.batch_upsert_texts(project_id, entries)
 
     cleanup_removed_fields(source_type, source_id, fields)
   end

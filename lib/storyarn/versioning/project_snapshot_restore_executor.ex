@@ -255,7 +255,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   end
 
   defp prepare_asset_plan(materializer, project_id, lease_token, manifest, project, prefix, keys) do
-    materializer.prepare(project_id, lease_token, manifest, project, prefix, keys, materialization_mode: :exact)
+    materializer.prepare(project_id, lease_token, manifest, project, prefix, keys)
   end
 
   defp validate_execution_fence(%ProjectSnapshotRestore{} = restore), do: validate_running_restore(restore)

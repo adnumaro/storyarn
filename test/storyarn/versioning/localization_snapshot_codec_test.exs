@@ -61,7 +61,7 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodecTest do
     assert restored_at
   end
 
-  test "restore inserts a new active row without mutating recovery trash" do
+  test "restore reuses the archived row and restores the captured active state" do
     project = project_fixture(user_fixture())
     source_language_fixture(project, %{locale_code: "en", name: "English"})
     language_fixture(project, %{locale_code: "es", name: "Spanish"})
@@ -75,7 +75,7 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodecTest do
              Localization.update_text(current, %{
                translated_text: "Current translation",
                status: "draft",
-               reviewer_notes: "Keep this recovery state"
+               reviewer_notes: "Displaced state"
              })
 
     assert {1, nil} =
@@ -86,9 +86,9 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodecTest do
                "version_replaced"
              )
 
-    archived_before = Repo.get!(LocalizedText, current.id)
-    assert archived_before.archived_at
-    assert archived_before.archive_reason == "version_replaced"
+    archived = Repo.get!(LocalizedText, current.id)
+    assert archived.archived_at
+    assert archived.archive_reason == "version_replaced"
 
     snapshot_row =
       Map.merge(snapshot_row, %{
@@ -104,24 +104,18 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodecTest do
                %{node: %{node.id => node.id}}
              )
 
-    texts =
-      project.id
-      |> Localization.list_all_texts(source_type: "flow_node")
-      |> Enum.filter(&(&1.source_id == node.id and &1.locale_code == "es"))
+    assert [active] =
+             project.id
+             |> Localization.list_all_texts(source_type: "flow_node")
+             |> Enum.filter(&(&1.source_id == node.id and &1.locale_code == "es"))
 
-    assert [active] = Enum.filter(texts, &is_nil(&1.archived_at))
-    assert [archived] = Enum.reject(texts, &is_nil(&1.archived_at))
-
-    assert active.id != archived.id
+    assert active.id == current.id
     assert active.project_id == project.id
     assert active.translated_text == "Snapshot translation"
     assert active.reviewer_notes == "Captured reviewer note"
-
-    assert archived.id == current.id
-    assert archived.project_id == project.id
-    assert archived.translated_text == "Current translation"
-    assert archived.reviewer_notes == "Keep this recovery state"
-    assert Repo.get!(LocalizedText, archived.id) == archived_before
+    assert is_nil(active.archived_at)
+    assert is_nil(active.archive_reason)
+    assert active.lock_version > archived.lock_version
   end
 
   test "restore deduplicates rows that remap onto the same runtime source key" do

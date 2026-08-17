@@ -2576,11 +2576,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
            LocalizationSnapshotCodec.restore(
              sheet.project_id,
              localization,
-             id_maps,
-             revive_archived: true
+             id_maps
            ),
          :ok <- reconcile_restored_block_localization(target_ids) do
-      Localization.sync_sheet_names(sheet.project_id, revive_archived: true)
+      Localization.sync_sheet_names(sheet.project_id)
     end
   end
 
@@ -2588,7 +2587,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     block_ids
     |> Enum.map(&Repo.get(Block, &1))
     |> Enum.reduce_while(:ok, fn block, :ok ->
-      case Localization.extract_block(block, revive_archived: true) do
+      case Localization.extract_block(block) do
         :ok -> {:cont, :ok}
         {:error, reason} -> {:halt, {:error, reason}}
       end
@@ -2612,7 +2611,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       instance = Repo.get!(Block, instance_id)
 
       with :ok <- reconcile_block_references(instance, project_id, opts) do
-        Localization.extract_block(instance, revive_archived: true)
+        Localization.extract_block(instance)
       end
     end)
   end

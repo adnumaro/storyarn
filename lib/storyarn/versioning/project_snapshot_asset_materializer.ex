@@ -43,7 +43,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
       :logical_bytes,
       :staging_bytes
     ]
-    defstruct @enforce_keys ++ [materialization_mode: :portable]
+    defstruct @enforce_keys
   end
 
   @type plan :: %Plan{}
@@ -55,24 +55,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
   blob declared by the manifest. Current project assets and their storage keys
   are deliberately not inputs to this function.
   """
-  @spec prepare(pos_integer(), String.t() | pos_integer(), map(), map(), String.t(), map(), keyword()) ::
+  @spec prepare(pos_integer(), String.t() | pos_integer(), map(), map(), String.t(), map()) ::
           {:ok, plan()} | {:error, term()}
-  def prepare(project_id, restore_identity, manifest, project_object, staging_prefix, staging_keys, opts \\ [])
-
-  def prepare(project_id, restore_identity, manifest, project_object, staging_prefix, staging_keys, opts)
+  def prepare(project_id, restore_identity, manifest, project_object, staging_prefix, staging_keys)
       when is_integer(project_id) and project_id > 0 and is_map(manifest) and is_map(project_object) and
-             is_binary(staging_prefix) and is_map(staging_keys) and is_list(opts) do
+             is_binary(staging_prefix) and is_map(staging_keys) do
     assets = manifest["assets"]
     objects = manifest["objects"]
     source_refs = project_object["asset_catalog_refs"]
-    materialization_mode = Keyword.get(opts, :materialization_mode, :portable)
 
-    with true <- materialization_mode in [:portable, :exact],
-         :ok <- validate_restore_identity(restore_identity),
+    with :ok <- validate_restore_identity(restore_identity),
          :ok <- SnapshotObjectFormat.validate_manifest(manifest),
          :ok <- SnapshotObjectFormat.validate_project(project_object),
          :ok <- SnapshotObjectFormat.validate_source_refs(source_refs, assets),
-         :ok <- AssetHashResolver.validate_pre_materialized_catalogs(project_object, source_refs, assets, opts),
+         :ok <- AssetHashResolver.validate_pre_materialized_catalogs(project_object, source_refs, assets),
          {:ok, blobs} <- blob_objects(objects),
          :ok <- validate_staging_keys(blobs, staging_prefix, staging_keys),
          {:ok, planned_assets} <-
@@ -86,16 +82,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
          blobs: plan_blobs(project_id, blobs, staging_keys),
          source_refs: source_refs,
          logical_bytes: Enum.reduce(assets, 0, &(&1["size_bytes"] + &2)),
-         staging_bytes: Enum.reduce(blobs, 0, &(&1["size_bytes"] + &2)),
-         materialization_mode: materialization_mode
+         staging_bytes: Enum.reduce(blobs, 0, &(&1["size_bytes"] + &2))
        }}
     else
-      false -> {:error, :invalid_snapshot_asset_materialization_mode}
       {:error, _reason} = error -> error
     end
   end
 
-  def prepare(_project_id, _restore_identity, _manifest, _project_object, _staging_prefix, _staging_keys, _opts),
+  def prepare(_project_id, _restore_identity, _manifest, _project_object, _staging_prefix, _staging_keys),
     do: {:error, :invalid_snapshot_asset_materialization_source}
 
   defp validate_restore_identity(identity) when is_binary(identity) and identity != "", do: :ok
@@ -157,8 +151,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
              assets,
              logical_id_map,
              source_id_map,
-             project,
-             plan.materialization_mode
+             project
            ),
          :ok <- retain_adopted_objects(plan, tracker) do
       {:ok,
@@ -190,8 +183,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
         plan.assets,
         assets_by_id,
         logical_id_map,
-        source_id_map,
-        plan.materialization_mode
+        source_id_map
       )
     else
       false -> {:error, :snapshot_asset_inventory_mismatch}
@@ -201,14 +193,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
 
   def verify_adopted_locked(_plan, _logical_id_map), do: {:error, :invalid_snapshot_asset_verification}
 
-  defp verify_planned_assets(planned_assets, assets_by_id, logical_id_map, source_id_map, materialization_mode) do
+  defp verify_planned_assets(planned_assets, assets_by_id, logical_id_map, source_id_map) do
     Enum.reduce_while(planned_assets, :ok, fn planned, :ok ->
       case verified_planned_asset(
              planned,
              assets_by_id,
              logical_id_map,
-             source_id_map,
-             materialization_mode
+             source_id_map
            ) do
         :ok -> {:cont, :ok}
         {:error, _reason} = error -> {:halt, error}
@@ -216,20 +207,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
     end)
   end
 
-  defp verified_planned_asset(planned, assets_by_id, logical_id_map, source_id_map, materialization_mode) do
+  defp verified_planned_asset(planned, assets_by_id, logical_id_map, source_id_map) do
     asset_id = logical_id_map[planned.logical_id]
 
     case Map.fetch(assets_by_id, asset_id) do
       {:ok, asset} ->
-        if adopted_asset_matches?(
-             asset,
-             planned,
-             logical_id_map,
-             source_id_map,
-             materialization_mode
-           ),
-           do: :ok,
-           else: postverify_error(planned.logical_id)
+        if adopted_asset_matches?(asset, planned, source_id_map),
+          do: :ok,
+          else: postverify_error(planned.logical_id)
 
       :error ->
         postverify_error(planned.logical_id)
@@ -275,8 +260,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
            {:ok, uuid} <- deterministic_uuid(restore_identity, logical_id),
            {:ok, source_key} <- Map.fetch(staging_keys, asset["blob_path"]),
            {:ok, source_id} <- Map.fetch(source_ids_by_logical_id, logical_id),
-           persisted = Map.get(persisted_catalog, source_id, %{}),
-           true <- is_map(persisted) do
+           {:ok, persisted, persisted_metadata} <- exact_persisted_asset_metadata(persisted_catalog, source_id) do
         destination_key =
           "projects/#{project_id}/assets/#{uuid}/#{Assets.sanitize_filename(asset["filename"])}"
 
@@ -288,9 +272,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
           sha256: asset["sha256"],
           content_size: asset["size_bytes"],
           content_type_for_storage: asset["content_type"],
-          metadata: persisted_metadata(persisted, asset["metadata"]),
-          metadata_captured?: Map.has_key?(persisted, "persisted_metadata"),
-          relationships: asset["relationships"],
+          metadata: persisted_metadata,
           source_key: source_key,
           destination_key: destination_key,
           destination_blob_key:
@@ -303,7 +285,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
 
         {:cont, {:ok, [entry | planned]}}
       else
-        false -> {:halt, {:error, :invalid_snapshot_asset_persisted_catalog}}
         :error -> {:halt, {:error, :snapshot_staging_inventory_mismatch}}
         {:error, _reason} = error -> {:halt, error}
       end
@@ -314,11 +295,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
     end
   end
 
-  defp persisted_metadata(persisted, fallback) do
-    if Map.has_key?(persisted, "persisted_metadata"),
-      do: persisted["persisted_metadata"],
-      else: fallback
+  defp exact_persisted_asset_metadata(catalog, source_id) when is_map(catalog) do
+    with {:ok, persisted} when is_map(persisted) <- Map.fetch(catalog, source_id),
+         filename when is_binary(filename) <- persisted["filename"],
+         {:ok, metadata} when is_nil(metadata) or is_map(metadata) <- Map.fetch(persisted, "persisted_metadata") do
+      {:ok, Map.put(persisted, "filename", filename), metadata}
+    else
+      _missing_or_invalid -> {:error, :invalid_snapshot_asset_persisted_catalog}
+    end
   end
+
+  defp exact_persisted_asset_metadata(_catalog, _source_id), do: {:error, :invalid_snapshot_asset_persisted_catalog}
 
   defp plan_blobs(project_id, blobs, staging_keys) do
     Enum.map(blobs, fn blob ->
@@ -522,7 +509,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
     end
   end
 
-  defp apply_relationships(planned_assets, assets, logical_id_map, source_id_map, project, materialization_mode) do
+  defp apply_relationships(planned_assets, assets, logical_id_map, source_id_map, project) do
     assets_by_id = Map.new(assets, &{&1.id, &1})
 
     planned_assets
@@ -530,12 +517,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
       asset_id = Map.fetch!(logical_id_map, planned.logical_id)
       asset = Map.fetch!(assets_by_id, asset_id)
 
-      case restored_relationship_update(
-             planned,
-             logical_id_map,
-             source_id_map,
-             materialization_mode
-           ) do
+      case exact_restored_metadata(planned.metadata, source_id_map) do
         {:ok, metadata, lock_ids} ->
           {:cont, {:ok, [{asset, metadata, lock_ids} | updates]}}
 
@@ -547,7 +529,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
       {:ok, updates} ->
         updates = Enum.reverse(updates)
 
-        case update_relationships(project, updates, materialization_mode) do
+        case Assets.update_imported_snapshot_assets_exact_locked(project, updates) do
           {:ok, updated} ->
             {:ok, updated}
 
@@ -561,32 +543,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
 
       {:error, _reason} = error ->
         error
-    end
-  end
-
-  defp update_relationships(project, updates, :exact),
-    do: Assets.update_imported_snapshot_assets_exact_locked(project, updates)
-
-  defp update_relationships(project, updates, :portable) do
-    updates = Enum.map(updates, fn {asset, metadata, _lock_ids} -> {asset, metadata} end)
-    Assets.update_imported_snapshot_assets_locked(project, updates)
-  end
-
-  defp restored_relationship_update(planned, logical_id_map, source_id_map, :exact) do
-    if planned.metadata_captured? do
-      exact_restored_metadata(planned.metadata, source_id_map)
-    else
-      with {:ok, relationships} <- relationship_metadata(planned.relationships, logical_id_map) do
-        metadata = restored_metadata(planned, relationships)
-        {:ok, metadata, relationship_lock_ids(relationships)}
-      end
-    end
-  end
-
-  defp restored_relationship_update(planned, logical_id_map, _source_id_map, :portable) do
-    with {:ok, relationships} <- relationship_metadata(planned.relationships, logical_id_map) do
-      metadata = restored_metadata(planned, relationships)
-      {:ok, metadata, relationship_lock_ids(relationships)}
     end
   end
 
@@ -646,66 +602,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
 
   defp captured_asset_id(_value), do: :error
 
-  defp relationship_lock_ids(relationships) do
-    variants = relationships["variant_asset_ids"] || %{}
-
-    [relationships["original_asset_id"], relationships["web_asset_id"] | Map.values(variants)]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
-  end
-
-  defp relationship_metadata(%{"original" => original, "web" => web, "variants" => variants}, id_map)
-       when is_map(variants) do
-    with {:ok, original_id} <- relationship_id(original, id_map),
-         {:ok, web_id} <- relationship_id(web, id_map),
-         {:ok, variant_ids} <- relationship_ids(variants, id_map) do
-      {:ok,
-       %{
-         "original_asset_id" => original_id,
-         "web_asset_id" => web_id,
-         "variant_asset_ids" => variant_ids
-       }}
-    end
-  end
-
-  defp relationship_metadata(_relationships, _id_map), do: {:error, :invalid_snapshot_asset_relationships}
-
   defp initial_metadata(metadata) when is_map(metadata) do
     Map.drop(metadata, ["original_asset_id", "web_asset_id", "variant_asset_ids"])
   end
 
   defp initial_metadata(nil), do: nil
-
-  defp restored_metadata(%{metadata_captured?: true, metadata: nil}, _relationships), do: nil
-
-  defp restored_metadata(%{metadata_captured?: true, metadata: metadata}, relationships) do
-    Enum.reduce(relationships, metadata, fn {key, value}, metadata ->
-      if Map.has_key?(metadata, key), do: Map.put(metadata, key, value), else: metadata
-    end)
-  end
-
-  defp restored_metadata(%{metadata: metadata}, relationships) when is_map(metadata),
-    do: Map.merge(metadata, relationships)
-
-  defp relationship_id(nil, _id_map), do: {:ok, nil}
-
-  defp relationship_id(logical_id, id_map) when is_binary(logical_id) do
-    case Map.fetch(id_map, logical_id) do
-      {:ok, id} -> {:ok, id}
-      :error -> {:error, {:missing_snapshot_asset_relationship, logical_id}}
-    end
-  end
-
-  defp relationship_id(value, _id_map), do: {:error, {:invalid_snapshot_asset_relationship, value}}
-
-  defp relationship_ids(variants, id_map) do
-    Enum.reduce_while(variants, {:ok, %{}}, fn {profile, logical_id}, {:ok, ids} ->
-      case relationship_id(logical_id, id_map) do
-        {:ok, id} -> {:cont, {:ok, Map.put(ids, profile, id)}}
-        {:error, _reason} = error -> {:halt, error}
-      end
-    end)
-  end
 
   defp source_id_map(source_refs, logical_id_map) do
     Enum.reduce_while(source_refs, {:ok, %{}}, fn {encoded_source_id, logical_id}, {:ok, result} ->
@@ -731,8 +632,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
     :ok
   end
 
-  defp adopted_asset_matches?(asset, planned, logical_id_map, source_id_map, materialization_mode) do
-    case restored_relationship_update(planned, logical_id_map, source_id_map, materialization_mode) do
+  defp adopted_asset_matches?(asset, planned, source_id_map) do
+    case exact_restored_metadata(planned.metadata, source_id_map) do
       {:ok, metadata, _lock_ids} ->
         asset.filename == planned.filename and
           asset.content_type == planned.content_type and

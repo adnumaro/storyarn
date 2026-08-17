@@ -1539,8 +1539,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
              LocalizationSnapshotCodec.restore(
                flow.project_id,
                localization_rows,
-               %{node: node_data.node_id_map},
-               revive_archived: true
+               %{node: node_data.node_id_map}
              ) do
         {:ok, length(localization_rows)}
       end
@@ -3453,7 +3452,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp extract_restored_node_localization(nodes) do
     Enum.reduce_while(nodes, {:ok, 0}, fn node, {:ok, count} ->
-      case Localization.extract_flow_node(node, revive_archived: true) do
+      case Localization.extract_flow_node(node) do
         :ok -> {:cont, {:ok, count + 1}}
         {:error, reason} -> {:halt, {:error, reason}}
       end
@@ -4017,7 +4016,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         word_count: WordCount.for_node_data(node_data["type"], data)
       )
     else
-      legacy_materialized_node_changeset(flow_id, node_data, data, now)
+      portable_materialized_node_changeset(flow_id, node_data, data, now)
     end
   end
 
@@ -4031,7 +4030,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp temporary_sequence_node?(_node_data, _opts), do: false
 
-  defp legacy_materialized_node_changeset(flow_id, node_data, data, now) do
+  defp portable_materialized_node_changeset(flow_id, node_data, data, now) do
     FlowNode.materialize_changeset(%FlowNode{flow_id: flow_id, inserted_at: now, updated_at: now}, %{
       type: node_data["type"],
       position_x: node_data["position_x"] || 0.0,

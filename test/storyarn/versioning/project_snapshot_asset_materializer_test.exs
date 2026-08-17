@@ -11,6 +11,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
   alias Storyarn.Billing
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.ProjectSnapshotAssetMaterializer
   alias Storyarn.Versioning.SnapshotObjectFormat
 
@@ -57,6 +58,20 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
              Enum.map(plan.assets, & &1.destination_key)
   end
 
+  test "rejects an asset catalog without the current exact restore contract", %{project: project} do
+    fixture = catalog_fixture(project.id)
+
+    assert {:error, :invalid_snapshot_asset_restore_contract} =
+             ProjectSnapshotAssetMaterializer.prepare(
+               project.id,
+               1,
+               fixture.manifest,
+               Map.delete(fixture.project_object, "asset_restore_contract_version"),
+               fixture.staging_prefix,
+               fixture.staging_keys
+             )
+  end
+
   test "rejects staging inventories that are not exact and restore-owned", %{project: project} do
     fixture = catalog_fixture(project.id)
     [{path, key}] = Map.to_list(fixture.staging_keys)
@@ -84,78 +99,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
              )
   end
 
-  test "rejects entity asset fingerprints that diverge from the manifest before staging", %{project: project} do
+  test "exact restore preserves a verified asset even when its MIME family mismatches the slot", %{project: project} do
     fixture = catalog_fixture(project.id)
 
-    entity_snapshot = %{
-      "asset_blob_hashes" => %{"41" => String.duplicate("f", 64)},
-      "asset_metadata" => %{
-        "41" => %{
-          "filename" => "duplicate.png",
-          "content_type" => "image/png",
-          "size" => byte_size(fixture.bytes)
-        }
-      }
-    }
-
-    project_object = Map.put(fixture.project_object, "sheets", [%{"snapshot" => entity_snapshot}])
-
-    assert {:error, {:pre_materialized_asset_catalog_mismatch, "41"}} =
-             ProjectSnapshotAssetMaterializer.prepare(
-               project.id,
-               1,
-               fixture.manifest,
-               project_object,
-               fixture.staging_prefix,
-               fixture.staging_keys
-             )
-  end
-
-  test "rejects top-level asset fingerprints that diverge from the manifest before staging", %{project: project} do
-    fixture = catalog_fixture(project.id)
-
-    project_object =
-      fixture.project_object
-      |> Map.put("asset_blob_hashes", %{"41" => String.duplicate("0", 64)})
-      |> Map.put("asset_metadata", %{
-        "41" => %{
-          "filename" => "duplicate.png",
-          "content_type" => "image/png",
-          "size" => byte_size(fixture.bytes)
-        }
-      })
-
-    assert {:error, {:pre_materialized_asset_catalog_mismatch, "41"}} =
-             ProjectSnapshotAssetMaterializer.prepare(
-               project.id,
-               1,
-               fixture.manifest,
-               project_object,
-               fixture.staging_prefix,
-               fixture.staging_keys
-             )
-  end
-
-  test "keeps MIME slot validation strict by default but does not block exact restore", %{project: project} do
-    fixture = catalog_fixture(project.id)
-    catalogs = fingerprint_catalogs(fixture, "41")
-
-    project_object =
-      fixture.project_object
-      |> Map.merge(catalogs)
-      |> Map.put("localization", %{"texts" => [%{"vo_asset_id" => 41}]})
-
-    assert {:error,
-            {:pre_materialized_asset_content_type_mismatch, {:localization_voice_over, :project, 0}, 41, "audio/",
-             "image/png"}} =
-             ProjectSnapshotAssetMaterializer.prepare(
-               project.id,
-               1,
-               fixture.manifest,
-               project_object,
-               fixture.staging_prefix,
-               fixture.staging_keys
-             )
+    project_object = Map.put(fixture.project_object, "localization", %{"texts" => [%{"vo_asset_id" => 41}]})
 
     assert {:ok, plan} =
              ProjectSnapshotAssetMaterializer.prepare(
@@ -164,8 +111,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
                fixture.manifest,
                project_object,
                fixture.staging_prefix,
-               fixture.staging_keys,
-               materialization_mode: :exact
+               fixture.staging_keys
              )
 
     assert Enum.map(plan.assets, & &1.content_type) == ["image/png", "image/png"]
@@ -188,7 +134,35 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
              )
   end
 
-  test "rejects a graph asset without its portable fingerprint before staging", %{project: project} do
+  test "rejects a graph asset without its captured catalog before staging", %{project: project} do
+    fixture = catalog_fixture(project.id)
+
+    sheet_snapshot = %{
+      "avatar_asset_id" => nil,
+      "banner_asset_id" => 41,
+      "avatars" => [],
+      "blocks" => [],
+      "localization" => []
+    }
+
+    project_object =
+      fixture.project_object
+      |> update_in(["asset_blob_hashes"], &Map.delete(&1, "41"))
+      |> update_in(["asset_metadata"], &Map.delete(&1, "41"))
+      |> Map.put("sheets", [%{"snapshot" => sheet_snapshot}])
+
+    assert {:error, {:pre_materialized_asset_catalog_missing, {:sheet, :banner}, 41}} =
+             ProjectSnapshotAssetMaterializer.prepare(
+               project.id,
+               1,
+               fixture.manifest,
+               project_object,
+               fixture.staging_prefix,
+               fixture.staging_keys
+             )
+  end
+
+  test "accepts an image-backed sheet slot present in the exact catalog", %{project: project} do
     fixture = catalog_fixture(project.id)
 
     sheet_snapshot = %{
@@ -202,33 +176,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
     project_object =
       Map.put(fixture.project_object, "sheets", [%{"snapshot" => sheet_snapshot}])
 
-    assert {:error, {:pre_materialized_asset_catalog_missing, {:sheet, :banner}, 41}} =
-             ProjectSnapshotAssetMaterializer.prepare(
-               project.id,
-               1,
-               fixture.manifest,
-               project_object,
-               fixture.staging_prefix,
-               fixture.staging_keys
-             )
-  end
-
-  test "accepts an image-backed sheet slot with an exact portable fingerprint", %{project: project} do
-    fixture = catalog_fixture(project.id)
-    catalogs = fingerprint_catalogs(fixture, "41")
-
-    sheet_snapshot =
-      Map.merge(catalogs, %{
-        "avatar_asset_id" => nil,
-        "banner_asset_id" => 41,
-        "avatars" => [],
-        "blocks" => [],
-        "localization" => []
-      })
-
-    project_object =
-      Map.put(fixture.project_object, "sheets", [%{"snapshot" => sheet_snapshot}])
-
     assert {:ok, _plan} =
              ProjectSnapshotAssetMaterializer.prepare(
                project.id,
@@ -238,61 +185,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
                fixture.staging_prefix,
                fixture.staging_keys
              )
-  end
-
-  test "stages final objects before the transaction and adopts relationships in two phases", %{
-    project: project,
-    user: user
-  } do
-    fixture = catalog_fixture(project.id)
-    upload_staging_fixture(fixture)
-
-    assert {:ok, plan} = prepare_plan(project.id, fixture)
-    tracker = StorageCompensation.new()
-    assert :ok = ProjectSnapshotAssetMaterializer.stage_destination_objects(plan, tracker)
-
-    expected_bytes = fixture.bytes
-
-    assert Enum.all?(plan.assets, fn asset ->
-             match?({:ok, ^expected_bytes}, Storage.download(asset.destination_key))
-           end)
-
-    assert {:ok, adoption} =
-             Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
-               locked_project = Repo.get!(Project, project.id)
-
-               with {:ok, adoption} <-
-                      ProjectSnapshotAssetMaterializer.adopt_locked(
-                        plan,
-                        locked_project,
-                        user.id,
-                        tracker
-                      ),
-                    :ok <-
-                      ProjectSnapshotAssetMaterializer.verify_adopted_locked(
-                        plan,
-                        adoption.logical_id_map
-                      ) do
-                 {:ok, adoption}
-               end
-             end)
-
-    assert map_size(adoption.logical_id_map) == 2
-    assert adoption.source_id_map |> Map.keys() |> Enum.sort() == [41, 42]
-
-    original = Repo.get!(Asset, adoption.logical_id_map["asset-000001"])
-    derived = Repo.get!(Asset, adoption.logical_id_map["asset-000002"])
-
-    assert derived.metadata["original_asset_id"] == original.id
-    assert original.filename == derived.filename
-    refute original.key == derived.key
-    assert original.blob_hash == derived.blob_hash
-
-    assert :ok = StorageCompensation.cleanup_unretained(tracker)
-    assert {:ok, ^expected_bytes} = Storage.download(original.key)
-    assert {:ok, ^expected_bytes} = Storage.download(derived.key)
-
-    cleanup_fixture_objects(fixture, plan)
   end
 
   test "exact restore uses verified manifest identity and preserves authored relationship drift", %{
@@ -341,16 +233,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
         }
       })
 
-    assert {:error, {:pre_materialized_asset_catalog_mismatch, "41"}} =
-             ProjectSnapshotAssetMaterializer.prepare(
-               project.id,
-               "restore-stays-strict",
-               fixture.manifest,
-               project_object,
-               fixture.staging_prefix,
-               fixture.staging_keys
-             )
-
     assert {:ok, plan} =
              ProjectSnapshotAssetMaterializer.prepare(
                project.id,
@@ -358,8 +240,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
                fixture.manifest,
                project_object,
                fixture.staging_prefix,
-               fixture.staging_keys,
-               materialization_mode: :exact
+               fixture.staging_keys
              )
 
     assert Enum.map(plan.assets, &{&1.filename, &1.content_type, &1.size}) == [
@@ -427,7 +308,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
     cleanup_fixture_objects(fixture, plan)
   end
 
-  test "restores a zero-byte row with captured legacy metadata and remapped valid relationships", %{
+  test "restores a zero-byte row with captured metadata and remapped valid relationships", %{
     project: project,
     user: user
   } do
@@ -464,7 +345,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
     assert restored.blob_hash == fixture.sha256
 
     assert restored.metadata == %{
-             "legacy_profile" => %{"label" => "kept exactly"},
+             "custom_profile" => %{"label" => "kept exactly"},
              "original_asset_id" => restored.id
            }
 
@@ -598,10 +479,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
       "content_type" => "image/png"
     }
 
-    project_object = %{
-      "format_version" => 2,
-      "asset_catalog_refs" => %{"41" => "asset-000001", "42" => "asset-000002"}
-    }
+    project_object =
+      exact_project_object(%{"41" => "asset-000001", "42" => "asset-000002"}, assets)
 
     project_json = Jason.encode!(project_object)
 
@@ -661,7 +540,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
       |> Enum.with_index(1)
       |> Map.new(fn {asset, index} -> {to_string(10_000 + index), asset["logical_id"]} end)
 
-    project_object = %{"format_version" => 2, "asset_catalog_refs" => source_refs}
+    project_object = exact_project_object(source_refs, assets)
     project_json = Jason.encode!(project_object)
 
     project_descriptor = %{
@@ -709,6 +588,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
 
     project_object = %{
       "format_version" => 2,
+      "asset_restore_contract_version" => AssetHashResolver.exact_restore_contract_version(),
       "asset_catalog_refs" => %{"41" => "asset-000001"},
       "asset_blob_hashes" => %{"41" => digest},
       "asset_metadata" => %{
@@ -717,7 +597,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
           "content_type" => "image/png",
           "size" => 0,
           "persisted_metadata" => %{
-            "legacy_profile" => %{"label" => "kept exactly"},
+            "custom_profile" => %{"label" => "kept exactly"},
             "original_asset_id" => 41
           }
         }
@@ -751,6 +631,50 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
     }
   end
 
+  defp exact_project_object(source_refs, assets) do
+    assets_by_logical_id = Map.new(assets, &{&1["logical_id"], &1})
+    source_ids_by_logical_id = Map.new(source_refs, fn {source_id, logical_id} -> {logical_id, source_id} end)
+
+    %{
+      "format_version" => 2,
+      "asset_restore_contract_version" => AssetHashResolver.exact_restore_contract_version(),
+      "asset_catalog_refs" => source_refs,
+      "asset_blob_hashes" =>
+        Map.new(source_refs, fn {source_id, logical_id} ->
+          {source_id, assets_by_logical_id[logical_id]["sha256"]}
+        end),
+      "asset_metadata" =>
+        Map.new(source_refs, fn {source_id, logical_id} ->
+          asset = assets_by_logical_id[logical_id]
+
+          {source_id,
+           %{
+             "filename" => asset["filename"],
+             "content_type" => asset["content_type"],
+             "size" => asset["size_bytes"],
+             "persisted_metadata" => fixture_persisted_metadata(asset["relationships"], source_ids_by_logical_id)
+           }}
+        end)
+    }
+  end
+
+  defp fixture_persisted_metadata(%{"original" => nil, "web" => nil, "variants" => variants}, _source_ids)
+       when map_size(variants) == 0, do: nil
+
+  defp fixture_persisted_metadata(relationships, source_ids) do
+    %{
+      "original_asset_id" => fixture_relationship_id(relationships["original"], source_ids),
+      "web_asset_id" => fixture_relationship_id(relationships["web"], source_ids),
+      "variant_asset_ids" =>
+        Map.new(relationships["variants"], fn {profile, logical_id} ->
+          {profile, fixture_relationship_id(logical_id, source_ids)}
+        end)
+    }
+  end
+
+  defp fixture_relationship_id(nil, _source_ids), do: nil
+  defp fixture_relationship_id(logical_id, source_ids), do: String.to_integer(source_ids[logical_id])
+
   defp asset_entry(logical_id, filename, bytes, sha256, blob_path, relationships) do
     %{
       "logical_id" => logical_id,
@@ -761,24 +685,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
       "blob_path" => blob_path,
       "metadata" => %{"width" => 20, "height" => 10},
       "relationships" => relationships
-    }
-  end
-
-  defp fingerprint_catalogs(fixture, source_ref) do
-    asset =
-      Enum.find(fixture.manifest["assets"], fn asset ->
-        fixture.project_object["asset_catalog_refs"][source_ref] == asset["logical_id"]
-      end)
-
-    %{
-      "asset_blob_hashes" => %{source_ref => asset["sha256"]},
-      "asset_metadata" => %{
-        source_ref => %{
-          "filename" => asset["filename"],
-          "content_type" => asset["content_type"],
-          "size" => asset["size_bytes"]
-        }
-      }
     }
   end
 

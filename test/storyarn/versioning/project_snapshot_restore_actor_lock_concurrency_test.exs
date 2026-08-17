@@ -47,7 +47,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreActorLockConcurrencyTest do
 
     alias Storyarn.Versioning.ProjectSnapshotAssetMaterializer.Plan
 
-    def prepare(project_id, restore_id, _manifest, _project, prefix, _keys, _opts) do
+    def prepare(project_id, restore_id, _manifest, _project, prefix, _keys) do
       {:ok,
        %Plan{
          project_id: project_id,

@@ -284,37 +284,37 @@ msgstr ""
 msgid "Set or modify variable values"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5040
+#: lib/storyarn/versioning/builders/flow_builder.ex:5039
 #, elixir-autogen, elixir-format
 msgid "Added %{type} node"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5105
+#: lib/storyarn/versioning/builders/flow_builder.ex:5104
 #, elixir-autogen, elixir-format
 msgid "Added connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4929
+#: lib/storyarn/versioning/builders/flow_builder.ex:4928
 #, elixir-autogen, elixir-format
 msgid "Changed description"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4936
+#: lib/storyarn/versioning/builders/flow_builder.ex:4935
 #, elixir-autogen, elixir-format
 msgid "Changed scene"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4943
+#: lib/storyarn/versioning/builders/flow_builder.ex:4942
 #, elixir-autogen, elixir-format
 msgid "Changed settings"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4922
+#: lib/storyarn/versioning/builders/flow_builder.ex:4921
 #, elixir-autogen, elixir-format
 msgid "Changed shortcut"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5135
+#: lib/storyarn/versioning/builders/flow_builder.ex:5134
 #, elixir-autogen, elixir-format
 msgid "Flow backdrop scene"
 msgstr ""
@@ -324,42 +324,42 @@ msgstr ""
 msgid "Flow not found"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5053
+#: lib/storyarn/versioning/builders/flow_builder.ex:5052
 #, elixir-autogen, elixir-format
 msgid "Modified %{type} node"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5121
+#: lib/storyarn/versioning/builders/flow_builder.ex:5120
 #, elixir-autogen, elixir-format
 msgid "Modified connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5163
+#: lib/storyarn/versioning/builders/flow_builder.ex:5162
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — audio"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5159
+#: lib/storyarn/versioning/builders/flow_builder.ex:5158
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — referenced flow"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5149
+#: lib/storyarn/versioning/builders/flow_builder.ex:5148
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — speaker"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5041
+#: lib/storyarn/versioning/builders/flow_builder.ex:5040
 #, elixir-autogen, elixir-format
 msgid "Removed %{type} node"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5106
+#: lib/storyarn/versioning/builders/flow_builder.ex:5105
 #, elixir-autogen, elixir-format
 msgid "Removed connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:4915
+#: lib/storyarn/versioning/builders/flow_builder.ex:4914
 #, elixir-autogen, elixir-format
 msgid "Renamed flow"
 msgstr ""
@@ -422,12 +422,12 @@ msgstr ""
 msgid "Sequence created"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5272
+#: lib/storyarn/versioning/builders/flow_builder.ex:5271
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} sequence track #%{track} — audio"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5291
+#: lib/storyarn/versioning/builders/flow_builder.ex:5290
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} sequence visual layer #%{layer}"
 msgstr ""
@@ -440,7 +440,7 @@ msgstr ""
 msgid "Flow"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5312
+#: lib/storyarn/versioning/builders/flow_builder.ex:5311
 #, elixir-autogen, elixir-format
 msgid "Localization row #%{n} — voice-over"
 msgstr ""
@@ -455,27 +455,27 @@ msgstr ""
 msgid "Sequence"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5318
+#: lib/storyarn/versioning/builders/flow_builder.ex:5317
 #, elixir-autogen, elixir-format
 msgid "Localization row #%{n} — speaker"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5169
+#: lib/storyarn/versioning/builders/flow_builder.ex:5168
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — avatar"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5154
+#: lib/storyarn/versioning/builders/flow_builder.ex:5153
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — location"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5226
+#: lib/storyarn/versioning/builders/flow_builder.ex:5225
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — rich-text mention"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:5218
+#: lib/storyarn/versioning/builders/flow_builder.ex:5217
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — terminal target"
 msgstr ""

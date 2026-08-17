@@ -9,7 +9,6 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.SourceContract
-  alias Storyarn.Localization.TextCrud
   alias Storyarn.Repo
   alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Shared.TimeHelpers
@@ -170,23 +169,21 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
     |> Enum.map(&to_snapshot/1)
   end
 
-  @spec restore(integer(), [map()], map(), keyword()) :: :ok | {:error, term()}
-  def restore(project_id, rows, id_maps, opts \\ [])
+  @spec restore(integer(), [map()], map()) :: :ok | {:error, term()}
+  def restore(_project_id, [], _id_maps), do: :ok
 
-  def restore(_project_id, [], _id_maps, _opts), do: :ok
-
-  def restore(project_id, rows, id_maps, opts) do
+  def restore(project_id, rows, id_maps) do
     if Repo.in_transaction?() do
-      do_restore(project_id, rows, id_maps, opts)
+      do_restore(project_id, rows, id_maps)
     else
-      restore_in_transaction(project_id, rows, id_maps, opts)
+      restore_in_transaction(project_id, rows, id_maps)
     end
   end
 
-  defp restore_in_transaction(project_id, rows, id_maps, opts) do
+  defp restore_in_transaction(project_id, rows, id_maps) do
     fn ->
       project_id
-      |> do_restore(rows, id_maps, opts)
+      |> do_restore(rows, id_maps)
       |> rollback_failed_restore()
     end
     |> Repo.transaction()
@@ -199,13 +196,13 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
   defp normalize_restore_transaction({:ok, :ok}), do: :ok
   defp normalize_restore_transaction({:error, reason}), do: {:error, reason}
 
-  defp do_restore(project_id, rows, id_maps, opts) do
+  defp do_restore(project_id, rows, id_maps) do
     context = restore_context(project_id, rows)
     now = TimeHelpers.now()
 
     with :ok <- validate_referenced_ids(rows, context),
          {:ok, entries} <- materialize_restore_entries(rows, project_id, id_maps, context, now) do
-      insert_restore_entries(project_id, entries, opts)
+      insert_restore_entries(entries)
     end
   end
 
@@ -219,15 +216,11 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
     end
   end
 
-  defp insert_restore_entries(project_id, entries, opts) do
-    if Keyword.get(opts, :revive_archived, false) do
-      TextCrud.revive_archived_texts(project_id, entries)
-    end
-
+  defp insert_restore_entries(entries) do
     result =
       Repo.insert_all(LocalizedText, entries,
         on_conflict: restore_conflict_query(),
-        conflict_target: LocalizedText.active_identity_conflict_target()
+        conflict_target: [:source_type, :source_id, :source_field, :locale_code]
       )
 
     case result do
@@ -236,8 +229,10 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
     end
   end
 
-  defp restore_conflict_query do
+  @doc false
+  def restore_conflict_query do
     from(text in LocalizedText,
+      where: text.project_id == fragment("EXCLUDED.project_id"),
       update: [
         set: [
           source_text: fragment("EXCLUDED.source_text"),

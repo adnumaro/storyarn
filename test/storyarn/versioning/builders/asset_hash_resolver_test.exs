@@ -112,7 +112,8 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
           blob_hash: effective_hash
         })
 
-      legacy_capture = %{
+      snapshot = %{
+        "asset_restore_contract_version" => AssetHashResolver.exact_restore_contract_version(),
         "asset_catalog_refs" => %{"41" => "asset-000001"},
         "asset_blob_hashes" => %{"41" => "authored-invalid-hash"},
         "asset_metadata" => %{
@@ -125,49 +126,40 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
         }
       }
 
-      versioned_capture =
-        Map.put(
-          legacy_capture,
-          "asset_restore_contract_version",
-          AssetHashResolver.exact_restore_contract_version()
-        )
+      cache = AssetMaterializationCache.new()
 
-      Enum.each([legacy_capture, versioned_capture], fn snapshot ->
-        cache = AssetMaterializationCache.new()
+      assert :ok =
+               AssetHashResolver.preload_materialized_assets(
+                 snapshot,
+                 %{41 => destination.id},
+                 project.id,
+                 cache
+               )
 
-        assert :ok =
-                 AssetHashResolver.preload_materialized_assets(
-                   snapshot,
-                   %{41 => destination.id},
-                   project.id,
-                   cache
-                 )
+      assert destination.id ==
+               AssetHashResolver.resolve_asset_fk(
+                 41,
+                 snapshot,
+                 project.id,
+                 user.id,
+                 pre_materialized_assets: true,
+                 asset_materialization_cache: cache,
+                 materialization_mode: :exact
+               )
 
-        assert destination.id ==
-                 AssetHashResolver.resolve_asset_fk(
-                   41,
-                   snapshot,
-                   project.id,
-                   user.id,
-                   pre_materialized_assets: true,
-                   asset_materialization_cache: cache,
-                   materialization_mode: :exact
-                 )
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            41,
+            snapshot,
+            project.id,
+            user.id,
+            pre_materialized_assets: true,
+            asset_materialization_cache: cache
+          )
+        end
 
-        error =
-          assert_raise AssetCopyError, fn ->
-            AssetHashResolver.resolve_asset_fk(
-              41,
-              snapshot,
-              project.id,
-              user.id,
-              pre_materialized_assets: true,
-              asset_materialization_cache: cache
-            )
-          end
-
-        assert error.reason == :invalid_blob_hash
-      end)
+      assert error.reason == :invalid_blob_hash
     end
 
     test "keeps one exact identity across top-level preload and nested builder snapshots", %{
@@ -260,6 +252,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
         })
 
       snapshot = %{
+        "asset_restore_contract_version" => AssetHashResolver.exact_restore_contract_version(),
         "asset_blob_hashes" => %{"41" => hash},
         "asset_metadata" => %{
           "41" => %{

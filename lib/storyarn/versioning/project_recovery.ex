@@ -42,6 +42,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
+  alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
   alias Storyarn.Versioning.SnapshotObjectFormat
 
@@ -3579,23 +3580,27 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
     case materialize_recovery_texts(texts, id_maps, context) do
       {:ok, entries} ->
-        insert_recovery_text_entries(entries, opts)
+        insert_recovery_text_entries(entries)
 
       {:error, _reason} = error ->
         error
     end
   end
 
-  defp insert_recovery_text_entries(entries, opts) do
+  defp insert_recovery_text_entries(entries) do
     entries
     |> Enum.chunk_every(500)
     |> Enum.reduce_while(:ok, fn chunk, :ok ->
-      insert_recovery_text_chunk(chunk, opts)
+      insert_recovery_text_chunk(chunk)
     end)
   end
 
-  defp insert_recovery_text_chunk(chunk, _opts) do
-    result = Repo.insert_all(LocalizedText, chunk)
+  defp insert_recovery_text_chunk(chunk) do
+    result =
+      Repo.insert_all(LocalizedText, chunk,
+        on_conflict: LocalizationSnapshotCodec.restore_conflict_query(),
+        conflict_target: [:source_type, :source_id, :source_field, :locale_code]
+      )
 
     case result do
       {count, _rows} when count == length(chunk) -> {:cont, :ok}

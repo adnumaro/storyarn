@@ -2494,7 +2494,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert Localization.list_all_texts(target_project.id) == []
     end
 
-    test "exact materialization preserves authored localization source ids without adopting foreign rows", %{
+    test "exact materialization rejects authored localization identities owned by another project", %{
       project: source_project,
       user: user
     } do
@@ -2517,8 +2517,9 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
 
       snapshot_data = active_exact_capture_snapshot(source_project)
       target_project = project_fixture(user, %{name: "Cross-project localization target"})
+      counts_before = materialized_graph_counts(target_project.id)
 
-      assert {:ok, _materialized_project} =
+      assert {:error, {:localized_text_materialization_failed, {1, nil}}} =
                materialize_snapshot_into_project(
                  target_project,
                  snapshot_data,
@@ -2527,14 +2528,8 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
                  materialization_mode: :exact
                )
 
-      assert %LocalizedText{project_id: target_project_id, source_id: source_id} =
-               Enum.find(
-                 Localization.list_all_texts(target_project.id),
-                 &(&1.source_type == "block" and &1.source_id == foreign_block.id)
-               )
-
-      assert target_project_id == target_project.id
-      assert source_id == foreign_block.id
+      assert materialized_graph_counts(target_project.id) == counts_before
+      assert Localization.list_all_texts(target_project.id) == []
       assert Repo.get!(Block, foreign_block.id).sheet_id == source_sheet.id
     end
 

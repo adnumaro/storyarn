@@ -94,7 +94,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   defmodule FailingMaterializer do
     @moduledoc false
 
-    def prepare(project_id, restore_id, manifest, _project, prefix, _keys, _opts) do
+    def prepare(project_id, restore_id, manifest, _project, prefix, _keys) do
       logical_bytes =
         manifest["objects"]
         |> Enum.filter(&(&1["kind"] == "asset_blob"))
@@ -121,7 +121,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   defmodule EmptyMaterializer do
     @moduledoc false
 
-    def prepare(project_id, restore_id, _manifest, _project, prefix, _keys, _opts) do
+    def prepare(project_id, restore_id, _manifest, _project, prefix, _keys) do
       {:ok,
        %AssetPlan{
          project_id: project_id,
@@ -148,8 +148,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     @moduledoc false
     alias Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest.EmptyMaterializer
 
-    def prepare(project_id, restore_id, manifest, project, prefix, keys, opts) do
-      EmptyMaterializer.prepare(project_id, restore_id, manifest, project, prefix, keys, opts)
+    def prepare(project_id, restore_id, manifest, project, prefix, keys) do
+      EmptyMaterializer.prepare(project_id, restore_id, manifest, project, prefix, keys)
     end
 
     def stage_destination_objects(plan, tracker) do
@@ -165,8 +165,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   defmodule PrepareSpyMaterializer do
     @moduledoc false
 
-    def prepare(_project_id, _restore_id, _manifest, _project, _prefix, _keys, opts) do
-      Process.put({__MODULE__, :called}, opts)
+    def prepare(_project_id, _restore_id, _manifest, _project, _prefix, _keys) do
+      Process.put({__MODULE__, :called}, true)
       {:error, :unexpected_materializer_prepare}
     end
   end
@@ -179,7 +179,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   defmodule OversizedMaterializer do
     @moduledoc false
 
-    def prepare(project_id, restore_id, _manifest, _project, prefix, _keys, _opts) do
+    def prepare(project_id, restore_id, _manifest, _project, prefix, _keys) do
       {:ok,
        %AssetPlan{
          project_id: project_id,
@@ -581,7 +581,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     end
   end
 
-  test "asset materializer preflight always receives exact mode", context do
+  test "asset materializer preflight uses the exact-only API", context do
     Process.delete({PrepareSpyMaterializer, :called})
 
     assert {:error, :unexpected_materializer_prepare} =
@@ -591,7 +591,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
                project_recovery: ProjectRecovery
              )
 
-    assert Process.get({PrepareSpyMaterializer, :called}) == [materialization_mode: :exact]
+    assert Process.get({PrepareSpyMaterializer, :called})
   end
 
   test "a transient archive read failure retries through the lifecycle", context do
