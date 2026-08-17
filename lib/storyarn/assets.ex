@@ -2917,6 +2917,27 @@ defmodule Storyarn.Assets do
   def update_imported_snapshot_assets_locked(_project, _updates),
     do: {:error, :invalid_snapshot_asset_relationship_update}
 
+  @doc false
+  @spec update_imported_snapshot_assets_exact_locked(
+          Project.t(),
+          [{asset(), map() | nil, [pos_integer()]}]
+        ) ::
+          {:ok, [asset()]}
+          | {:error, {:snapshot_asset_batch_entry_failed, non_neg_integer(), term()} | term()}
+  def update_imported_snapshot_assets_exact_locked(%Project{} = project, updates) when is_list(updates) do
+    with :ok <- validate_exact_snapshot_asset_updates(updates),
+         :ok <- validate_import_asset_authorization(project),
+         {:ok, _locked_project} <- lock_active_project_for_asset_write(project.id, project.workspace_id),
+         {:ok, locked_assets} <- lock_snapshot_assets_for_update(project.id, updates),
+         :ok <- lock_exact_snapshot_asset_family_references(project.id, updates),
+         {:ok, changesets} <- prepare_snapshot_asset_update_changesets(updates, locked_assets) do
+      upsert_snapshot_asset_changesets(changesets)
+    end
+  end
+
+  def update_imported_snapshot_assets_exact_locked(_project, _updates),
+    do: {:error, :invalid_snapshot_asset_relationship_update}
+
   defp with_import_capacity_marker(project, total_bytes, fun) do
     case Process.get(@import_capacity_process_key) do
       nil ->
@@ -2999,7 +3020,7 @@ defmodule Storyarn.Assets do
   end
 
   defp lock_snapshot_assets_for_update(project_id, updates) do
-    ids = Enum.map(updates, fn {asset, _metadata} -> asset.id end)
+    ids = Enum.map(updates, &snapshot_asset_update_id/1)
 
     assets =
       Repo.all(
@@ -3031,6 +3052,30 @@ defmodule Storyarn.Assets do
     |> lock_snapshot_asset_family_reference_specs(project_id)
   end
 
+  defp validate_exact_snapshot_asset_updates(updates) do
+    if Enum.all?(updates, fn
+         {%Asset{}, metadata, lock_ids} when (is_map(metadata) or is_nil(metadata)) and is_list(lock_ids) ->
+           Enum.all?(lock_ids, &(is_integer(&1) and &1 > 0))
+
+         _invalid ->
+           false
+       end),
+       do: :ok,
+       else: {:error, :invalid_snapshot_asset_relationship_update}
+  end
+
+  defp lock_exact_snapshot_asset_family_references(project_id, updates) do
+    specs =
+      Enum.flat_map(updates, fn {asset, _metadata, lock_ids} ->
+        Enum.map(lock_ids, &{:asset, {:asset_family, asset.id}, &1})
+      end)
+
+    case ProjectReferenceIntegrity.lock_active_references(project_id, specs) do
+      {:ok, _ids} -> :ok
+      {:error, _reason} -> {:error, :asset_family_identity_invalid}
+    end
+  end
+
   defp lock_snapshot_asset_family_reference_specs(entries, project_id) do
     entries
     |> Enum.reduce_while({:ok, []}, fn {context, metadata}, {:ok, specs} ->
@@ -3058,7 +3103,8 @@ defmodule Storyarn.Assets do
   defp prepare_snapshot_asset_update_changesets(updates, locked_assets) do
     updates
     |> Enum.with_index()
-    |> Enum.reduce_while({:ok, []}, fn {{asset, metadata}, index}, {:ok, changesets} ->
+    |> Enum.reduce_while({:ok, []}, fn {update, index}, {:ok, changesets} ->
+      {asset, metadata} = snapshot_asset_update(update)
       locked_asset = Map.fetch!(locked_assets, asset.id)
       changeset = Asset.update_changeset(locked_asset, %{metadata: metadata})
 
@@ -3071,6 +3117,12 @@ defmodule Storyarn.Assets do
       {:error, _reason} = error -> error
     end
   end
+
+  defp snapshot_asset_update_id({%Asset{id: id}, _metadata}), do: id
+  defp snapshot_asset_update_id({%Asset{id: id}, _metadata, _lock_ids}), do: id
+
+  defp snapshot_asset_update({%Asset{} = asset, metadata}), do: {asset, metadata}
+  defp snapshot_asset_update({%Asset{} = asset, metadata, _lock_ids}), do: {asset, metadata}
 
   defp upsert_snapshot_asset_changesets([]), do: {:ok, []}
 

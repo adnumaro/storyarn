@@ -15,6 +15,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   use Gettext, backend: Storyarn.Gettext
 
   import Ecto.Query, warn: false
+  import Storyarn.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
   alias Ecto.Multi
   alias Storyarn.Assets.Asset
@@ -720,8 +721,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       else: validate_portable_snapshot(snapshot)
   end
 
-  defp exact_materialization?(opts), do: Keyword.get(opts, :materialization_mode) == :exact
-
+  # Exact-mode selection is shared across snapshot materializers.
   defp run_scene_instantiation(project_id, snapshot, opts) do
     opts
     |> MaterializationHelpers.with_asset_copy_tracker(fn tracked_opts ->
@@ -804,7 +804,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
                  scene_id,
                  snapshot["connections"] || [],
                  pin_ids_by_layer,
-                 now
+                 project_id,
+                 now,
+                 materialization_opts
                ),
              {:ok, ambient_flow_id_map} <-
                insert_scene_ambient_flows(
@@ -3304,7 +3306,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     |> Enum.with_index()
     |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, remapped_items} ->
       source_sheet_id = item["sheet_id"]
-      resolved_sheet_id = resolve_scene_sheet_id(source_sheet_id, project_id, opts)
+      resolved_sheet_id = resolve_materialized_collection_sheet_id(source_sheet_id, project_id, opts)
 
       if is_nil(source_sheet_id) or not is_nil(resolved_sheet_id) do
         remapped_item = Map.put(item, "sheet_id", resolved_sheet_id)
@@ -3328,19 +3330,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp resolve_materialized_zone_target(%{action_type: "action"}, zone_data, project_id, opts) do
     case normalize_zone_target(zone_data["target_type"], zone_data["target_id"]) do
       {target_type, target_id} when target_type in ["flow", "scene"] ->
-        schema = if target_type == "flow", do: Flow, else: Scene
-        map_key = if target_type == "flow", do: :flow, else: :scene
-
-        case MaterializationHelpers.resolve_project_external_ref(
-               target_id,
-               schema,
-               map_key,
-               project_id,
-               opts
-             ) do
-          nil -> {nil, nil}
-          resolved_id -> {target_type, resolved_id}
-        end
+        resolve_materialized_zone_reference(target_type, target_id, project_id, opts)
 
       {nil, nil} ->
         {nil, nil}
@@ -3348,6 +3338,25 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp resolve_materialized_zone_target(attrs, _zone_data, _project_id, _opts), do: {attrs.target_type, attrs.target_id}
+
+  defp resolve_materialized_zone_reference(target_type, target_id, project_id, opts) do
+    map_key = if target_type == "flow", do: :flow, else: :scene
+
+    if exact_materialization?(opts) do
+      {target_type, resolve_exact_authored_json_id(target_id, map_key, opts)}
+    else
+      resolve_portable_zone_reference(target_type, target_id, map_key, project_id, opts)
+    end
+  end
+
+  defp resolve_portable_zone_reference(target_type, target_id, map_key, project_id, opts) do
+    schema = if target_type == "flow", do: Flow, else: Scene
+
+    case MaterializationHelpers.resolve_project_external_ref(target_id, schema, map_key, project_id, opts) do
+      nil -> {nil, nil}
+      resolved_id -> {target_type, resolved_id}
+    end
+  end
 
   defp insert_layer_pins_with_ids(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts), do: {:ok, %{}}
 
@@ -3430,36 +3439,110 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp normalize_scene_snapshot_row_attrs({:error, _reason} = error), do: error
   defp normalize_scene_snapshot_row_attrs(attrs) when is_map(attrs), do: {:ok, attrs}
 
-  defp insert_scene_connections(_repo, _scene_id, [], _pin_ids_by_layer, _now), do: {:ok, %{}}
+  defp insert_scene_connections(_repo, _scene_id, [], _pin_ids_by_layer, _project_id, _now, _opts), do: {:ok, %{}}
 
-  defp insert_scene_connections(repo, scene_id, connections_data, pin_ids_by_layer, now) do
+  defp insert_scene_connections(repo, scene_id, connections_data, pin_ids_by_layer, project_id, now, opts) do
     insert_scene_snapshot_rows(repo, SceneConnection, connections_data, fn conn ->
-      from_pin_id =
-        lookup_scene_pin(pin_ids_by_layer, conn["from_layer_index"], conn["from_pin_index"])
-
-      to_pin_id =
-        lookup_scene_pin(pin_ids_by_layer, conn["to_layer_index"], conn["to_pin_index"])
-
-      Map.merge(
-        %{
-          scene_id: scene_id,
-          from_pin_id: from_pin_id,
-          to_pin_id: to_pin_id,
-          line_style: Map.get(conn, "line_style", "solid"),
-          line_width: Map.get(conn, "line_width", 2),
-          color: conn["color"],
-          label: conn["label"],
-          bidirectional: Map.get(conn, "bidirectional", true),
-          show_label: Map.get(conn, "show_label", true),
-          waypoints: Map.get(conn, "waypoints", []),
-          from_stop: Map.get(conn, "from_stop", true),
-          to_stop: Map.get(conn, "to_stop", true),
-          from_pause_ms: conn["from_pause_ms"],
-          to_pause_ms: conn["to_pause_ms"]
-        },
-        MaterializationHelpers.timestamps(now)
-      )
+      with {:ok, from_pin_id} <-
+             resolve_materialized_scene_connection_endpoint(
+               repo,
+               conn,
+               :from,
+               pin_ids_by_layer,
+               project_id,
+               opts
+             ),
+           {:ok, to_pin_id} <-
+             resolve_materialized_scene_connection_endpoint(
+               repo,
+               conn,
+               :to,
+               pin_ids_by_layer,
+               project_id,
+               opts
+             ) do
+        {:ok,
+         Map.merge(
+           %{
+             scene_id: scene_id,
+             from_pin_id: from_pin_id,
+             to_pin_id: to_pin_id,
+             line_style: Map.get(conn, "line_style", "solid"),
+             line_width: Map.get(conn, "line_width", 2),
+             color: conn["color"],
+             label: conn["label"],
+             bidirectional: Map.get(conn, "bidirectional", true),
+             show_label: Map.get(conn, "show_label", true),
+             waypoints: Map.get(conn, "waypoints", []),
+             from_stop: Map.get(conn, "from_stop", true),
+             to_stop: Map.get(conn, "to_stop", true),
+             from_pause_ms: conn["from_pause_ms"],
+             to_pause_ms: conn["to_pause_ms"]
+           },
+           MaterializationHelpers.timestamps(now)
+         )}
+      end
     end)
+  end
+
+  defp resolve_materialized_scene_connection_endpoint(repo, connection, endpoint, pin_ids_by_layer, project_id, opts) do
+    {layer_key, pin_key, raw_key} = materialized_scene_connection_endpoint_keys(endpoint)
+    layer_index = connection[layer_key]
+    pin_index = connection[pin_key]
+
+    if exact_materialization?(opts) and is_nil(layer_index) and is_nil(pin_index) do
+      resolve_exact_scene_connection_pin(
+        repo,
+        connection["original_id"],
+        endpoint,
+        connection[raw_key],
+        project_id,
+        opts
+      )
+    else
+      {:ok, lookup_scene_pin(pin_ids_by_layer, layer_index, pin_index)}
+    end
+  end
+
+  defp materialized_scene_connection_endpoint_keys(:from),
+    do: {"from_layer_index", "from_pin_index", "from_pin_original_id"}
+
+  defp materialized_scene_connection_endpoint_keys(:to), do: {"to_layer_index", "to_pin_index", "to_pin_original_id"}
+
+  defp resolve_exact_scene_connection_pin(_repo, _connection_id, _endpoint, nil, _project_id, _opts), do: {:ok, nil}
+
+  defp resolve_exact_scene_connection_pin(repo, connection_id, endpoint, source_pin_id, project_id, opts)
+       when is_integer(source_pin_id) and source_pin_id > 0 do
+    resolved_pin_id = resolve_exact_external_id(source_pin_id, :pin, opts)
+
+    case exact_scene_connection_pin_owner(repo, resolved_pin_id) do
+      ^project_id ->
+        {:ok, resolved_pin_id}
+
+      nil ->
+        {:ok, nil}
+
+      owner_project_id ->
+        {:error,
+         {:exact_scene_connection_pin_project_mismatch, connection_id, endpoint, source_pin_id, resolved_pin_id,
+          owner_project_id, project_id}}
+    end
+  end
+
+  defp resolve_exact_scene_connection_pin(_repo, connection_id, endpoint, source_pin_id, _project_id, _opts) do
+    {:error, {:invalid_exact_scene_connection_pin, connection_id, endpoint, source_pin_id}}
+  end
+
+  defp exact_scene_connection_pin_owner(repo, pin_id) do
+    repo.one(
+      from(pin in ScenePin,
+        join: scene in Scene,
+        on: scene.id == pin.scene_id,
+        where: pin.id == ^pin_id,
+        lock: "FOR KEY SHARE",
+        select: scene.project_id
+      )
+    )
   end
 
   defp insert_scene_ambient_flows(repo, scene_id, ambient_flows, project_id, now, opts) do
@@ -4202,6 +4285,28 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       project_id,
       opts
     )
+  end
+
+  defp resolve_materialized_collection_sheet_id(sheet_id, project_id, opts) do
+    if exact_materialization?(opts),
+      do: resolve_exact_authored_json_id(sheet_id, :sheet, opts),
+      else: resolve_scene_sheet_id(sheet_id, project_id, opts)
+  end
+
+  defp resolve_exact_authored_json_id(nil, _map_key, _opts), do: nil
+
+  defp resolve_exact_authored_json_id(source_id, map_key, opts) do
+    resolve_exact_external_id(source_id, map_key, opts)
+  end
+
+  defp resolve_exact_external_id(source_id, map_key, opts) do
+    with external_maps when is_map(external_maps) <- Keyword.get(opts, :external_id_maps, %{}),
+         id_map when is_map(id_map) <- Map.get(external_maps, map_key, %{}),
+         {:ok, remapped_id} when is_integer(remapped_id) and remapped_id > 0 <- Map.fetch(id_map, source_id) do
+      remapped_id
+    else
+      _missing_or_invalid -> source_id
+    end
   end
 
   defp scene_root_container do

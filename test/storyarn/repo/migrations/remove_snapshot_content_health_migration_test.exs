@@ -19,11 +19,11 @@ defmodule Storyarn.Repo.Migrations.RemoveSnapshotContentHealthMigrationTest do
     )
   end
 
-  test "fresh migrated schema never creates snapshot health state or a restore gate" do
+  test "fresh migrated schema retains inert legacy columns without a restore gate" do
     prefix = current_schema()
 
     for table <- ~w(project_snapshots project_snapshot_captures) do
-      refute column_exists?(prefix, table, "content_health")
+      assert column_exists?(prefix, table, "content_health")
       refute constraint_exists?(prefix, "#{table}_content_health")
     end
 

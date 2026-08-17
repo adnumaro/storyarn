@@ -214,6 +214,7 @@ defmodule Storyarn.Localization do
   @doc "Extracts localizable texts from a flow node after its data is updated."
   @spec extract_flow_node(struct()) :: :ok
   defdelegate extract_flow_node(node), to: TextExtractor
+  defdelegate extract_flow_node(node, opts), to: TextExtractor
 
   @doc false
   defdelegate flow_node_texts_current?(node, project_id), to: TextExtractor
@@ -224,7 +225,9 @@ defmodule Storyarn.Localization do
   @doc "Extracts localizable runtime text from a block after its value is updated. No-op if nil."
   @spec extract_block(struct() | nil) :: :ok
   def extract_block(nil), do: :ok
+  def extract_block(nil, _opts), do: :ok
   defdelegate extract_block(block), to: TextExtractor
+  defdelegate extract_block(block, opts), to: TextExtractor
 
   @doc "Extracts runtime texts for every active node in a flow."
   @spec extract_flow_nodes(id()) :: :ok | {:error, term()}
@@ -244,6 +247,7 @@ defmodule Storyarn.Localization do
 
   @doc "Synchronizes active sheet names emitted as runtime actors by engine serializers."
   defdelegate sync_sheet_names(project_id), to: TextExtractor
+  defdelegate sync_sheet_names(project_id, opts), to: TextExtractor
 
   @doc "Archives localized texts when a flow node is deleted."
   @spec delete_flow_node_texts(id()) :: :ok

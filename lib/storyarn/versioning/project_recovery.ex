@@ -26,7 +26,9 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.References.AvatarIntegrity
   alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAmbientFlow
+  alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.NameNormalizer
@@ -40,6 +42,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
+  alias Storyarn.Versioning.MaterializationHelpers
   alias Storyarn.Versioning.SnapshotObjectFormat
 
   require Logger
@@ -61,30 +64,6 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   @localization_actor_mode_key :project_recovery_localization_actor_mode
   @preserved_localization_actor_ids_key :preserved_localization_actor_ids
   @materialization_mode_key :materialization_mode
-  @exact_localized_text_conflict_fields [
-    :project_id,
-    :source_text,
-    :source_text_hash,
-    :translated_source_hash,
-    :translated_text,
-    :status,
-    :vo_status,
-    :vo_asset_id,
-    :translator_notes,
-    :reviewer_notes,
-    :speaker_sheet_id,
-    :word_count,
-    :content_role,
-    :vo_eligible,
-    :machine_translated,
-    :last_translated_at,
-    :last_reviewed_at,
-    :translated_by_id,
-    :reviewed_by_id,
-    :archived_at,
-    :archive_reason,
-    :updated_at
-  ]
   @snapshot_count_collections %{
     "sheets" => ["sheets"],
     "flows" => ["flows"],
@@ -298,7 +277,6 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp validate_materialization_options(_opts), do: {:error, :invalid_project_materialization_options}
 
   defp materialization_mode(opts), do: Keyword.get(opts, @materialization_mode_key, :portable)
-  defp exact_materialization?(opts), do: materialization_mode(opts) == :exact
 
   defp validate_materialization_transaction do
     if Repo.in_transaction?(), do: :ok, else: {:error, :project_materialization_requires_transaction}
@@ -338,7 +316,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp prepare_materialization_variable_plan(snapshot_data, opts) when is_list(opts) do
-    if exact_materialization?(opts) do
+    if MaterializationHelpers.exact_materialization?(opts) do
       VariableReferenceTracker.prepare_exact_project_snapshot(snapshot_data)
     else
       VariableReferenceTracker.prepare_portable_project_snapshot(snapshot_data)
@@ -1119,12 +1097,13 @@ defmodule Storyarn.Versioning.ProjectRecovery do
            ) do
       id_maps = merge_recovery_id_maps([sheet_maps, scene_maps, flow_maps])
 
-      with :ok <- remap_sheet_refs(id_maps, snapshot_data, opts),
+      with :ok <- validate_materialized_id_map_coverage(snapshot_data, id_maps),
+           :ok <- remap_sheet_refs(project.id, id_maps, snapshot_data, opts),
            :ok <- maybe_validate_recovered_sheet_inheritance(project.id, opts),
-           :ok <- remap_flow_refs(id_maps, snapshot_data, opts),
+           :ok <- remap_flow_refs(project.id, id_maps, snapshot_data, opts),
            :ok <- maybe_validate_recovered_flow_cycles(id_maps.flow, opts),
-           :ok <- remap_scene_refs(id_maps, snapshot_data, opts),
-           :ok <- restore_tree_hierarchy(snapshot_data, id_maps, opts),
+           :ok <- remap_scene_refs(project.id, id_maps, snapshot_data, opts),
+           :ok <- restore_tree_hierarchy(project.id, snapshot_data, id_maps, opts),
            :ok <- References.rebuild_project_entity_references(project.id),
            :ok <- References.rebuild_project_variable_references(project.id),
            :ok <-
@@ -1522,9 +1501,39 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end)
   end
 
+  defp validate_materialized_id_map_coverage(snapshot_data, id_maps) do
+    case preflight_identity_maps(snapshot_data) do
+      {:ok, captured_maps} -> validate_materialized_id_maps(captured_maps, id_maps)
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp validate_materialized_id_maps(captured_maps, id_maps) do
+    Enum.reduce_while(@recovery_id_map_keys, :ok, fn kind, :ok ->
+      validate_materialized_id_map(kind, captured_maps, id_maps)
+    end)
+  end
+
+  defp validate_materialized_id_map(kind, captured_maps, id_maps) do
+    captured_ids = captured_maps |> Map.fetch!(kind) |> Map.keys() |> MapSet.new()
+    materialized_ids = id_maps |> Map.fetch!(kind) |> Map.keys() |> MapSet.new()
+
+    if MapSet.equal?(captured_ids, materialized_ids) do
+      {:cont, :ok}
+    else
+      {:halt,
+       {:error,
+        {:materialized_id_map_coverage_mismatch, kind,
+         %{
+           missing: captured_ids |> MapSet.difference(materialized_ids) |> Enum.sort(),
+           unexpected: materialized_ids |> MapSet.difference(captured_ids) |> Enum.sort()
+         }}}}
+    end
+  end
+
   # ========== Phase B: Remap Cross-Entity References ==========
 
-  defp remap_sheet_refs(id_maps, snapshot_data, opts) do
+  defp remap_sheet_refs(project_id, id_maps, snapshot_data, opts) do
     Enum.reduce_while(snapshot_data["sheets"] || [], :ok, fn entry, :ok ->
       with {:ok, new_sheet_id} <-
              fetch_required_mapping(
@@ -1541,6 +1550,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
              ),
            :ok <-
              remap_block_inheritance(
+               project_id,
                entry["snapshot"]["blocks"] || [],
                id_maps.block,
                opts
@@ -1559,7 +1569,9 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp maybe_validate_recovered_sheet_inheritance(project_id, opts) do
-    if exact_materialization?(opts), do: :ok, else: validate_recovered_sheet_inheritance(project_id)
+    if MaterializationHelpers.exact_materialization?(opts),
+      do: :ok,
+      else: validate_recovered_sheet_inheritance(project_id)
   end
 
   defp validate_recovered_sheet_inheritance(project_id) do
@@ -1657,7 +1669,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end
   end
 
-  defp remap_block_inheritance(blocks_data, block_id_map, opts) do
+  defp remap_block_inheritance(project_id, blocks_data, block_id_map, opts) do
     Enum.reduce_while(blocks_data, :ok, fn block_data, :ok ->
       with {:ok, new_block_id} <-
              fetch_required_mapping(
@@ -1670,6 +1682,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
                block_id_map,
                block_data["inherited_from_block_id"],
                Block,
+               project_id,
                {:block, block_data["original_id"], "inherited_from_block_id"},
                {:exact_snapshot_fk_not_materializable, :block, :inherited_from_block_id,
                 block_data["inherited_from_block_id"]},
@@ -1730,7 +1743,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp remap_sheet_block_value("reference", value, _id_maps, block_id, opts) do
-    if exact_materialization?(opts),
+    if MaterializationHelpers.exact_materialization?(opts),
       do: {:ok, value},
       else: {:error, {:invalid_project_snapshot_reference_block, block_id, value}}
   end
@@ -1765,18 +1778,18 @@ defmodule Storyarn.Versioning.ProjectRecovery do
         end
 
       {target_type, source_target_id} ->
-        if exact_materialization?(opts),
+        if MaterializationHelpers.exact_materialization?(opts),
           do: {:ok, value},
           else: {:error, {:invalid_project_snapshot_typed_reference, {:block, block_id}, target_type, source_target_id}}
     end
   end
 
-  defp remap_flow_refs(id_maps, snapshot_data, opts) do
+  defp remap_flow_refs(project_id, id_maps, snapshot_data, opts) do
     flow_entries = snapshot_data["flows"] || []
     snapshot_node_index = build_flow_snapshot_node_index(flow_entries)
 
     Enum.reduce_while(flow_entries, :ok, fn entry, :ok ->
-      case remap_single_flow_snapshot(entry, id_maps, snapshot_node_index, opts) do
+      case remap_single_flow_snapshot(entry, project_id, id_maps, snapshot_node_index, opts) do
         :ok -> {:cont, :ok}
         {:error, _reason} = error -> {:halt, error}
       end
@@ -1784,7 +1797,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp maybe_validate_recovered_flow_cycles(flow_id_map, opts) do
-    if exact_materialization?(opts), do: :ok, else: validate_recovered_flow_cycles(flow_id_map)
+    if MaterializationHelpers.exact_materialization?(opts), do: :ok, else: validate_recovered_flow_cycles(flow_id_map)
   end
 
   defp validate_recovered_flow_cycles(flow_id_map) do
@@ -1827,7 +1840,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end
   end
 
-  defp remap_single_flow_snapshot(entry, id_maps, snapshot_node_index, opts) do
+  defp remap_single_flow_snapshot(entry, project_id, id_maps, snapshot_node_index, opts) do
     with {:ok, new_flow_id} <-
            fetch_required_mapping(
              id_maps.flow,
@@ -1839,12 +1852,21 @@ defmodule Storyarn.Versioning.ProjectRecovery do
              new_flow_id,
              entry["snapshot"]["scene_id"],
              id_maps.scene,
+             project_id,
              opts
            ),
          :ok <-
            remap_flow_nodes(
              entry["snapshot"]["nodes"] || [],
              new_flow_id,
+             id_maps,
+             opts
+           ),
+         :ok <-
+           remap_flow_connection_endpoints(
+             entry["snapshot"],
+             new_flow_id,
+             project_id,
              id_maps,
              opts
            ) do
@@ -1856,6 +1878,75 @@ defmodule Storyarn.Versioning.ProjectRecovery do
         opts
       )
     end
+  end
+
+  defp remap_flow_connection_endpoints(snapshot, new_flow_id, project_id, id_maps, opts) do
+    nodes = snapshot["nodes"] || []
+
+    Enum.reduce_while(snapshot["connections"] || [], :ok, fn connection, :ok ->
+      case remap_single_flow_connection_endpoints(
+             connection,
+             nodes,
+             new_flow_id,
+             project_id,
+             id_maps,
+             opts
+           ) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp remap_single_flow_connection_endpoints(connection, nodes, new_flow_id, project_id, id_maps, opts) do
+    with {:ok, new_connection_id} <-
+           fetch_required_mapping(
+             id_maps.flow_connection,
+             connection["original_id"],
+             {:flow_connection, connection["original_id"]}
+           ),
+         {:ok, source_node_id} <-
+           remap_flow_connection_endpoint(connection, nodes, :source, project_id, id_maps, opts),
+         {:ok, target_node_id} <-
+           remap_flow_connection_endpoint(connection, nodes, :target, project_id, id_maps, opts) do
+      case Repo.update_all(
+             from(flow_connection in FlowConnection,
+               where:
+                 flow_connection.id == ^new_connection_id and
+                   flow_connection.flow_id == ^new_flow_id
+             ),
+             set: [source_node_id: source_node_id, target_node_id: target_node_id]
+           ) do
+        {1, _rows} -> :ok
+        {count, _rows} -> {:error, {:materialized_row_count_mismatch, :flow_connection, new_connection_id, count}}
+      end
+    end
+  end
+
+  defp remap_flow_connection_endpoint(connection, nodes, endpoint, project_id, id_maps, opts) do
+    index_key = if endpoint == :source, do: "source_node_index", else: "target_node_index"
+    id_key = if endpoint == :source, do: "source_node_id", else: "target_node_id"
+    error_field = if endpoint == :source, do: :source_node_id, else: :target_node_id
+
+    indexed_node =
+      if is_integer(connection[index_key]),
+        do: Enum.at(nodes, connection[index_key])
+
+    source_id =
+      case indexed_node do
+        %{"original_id" => original_id} -> original_id
+        _missing_index -> connection[id_key]
+      end
+
+    fetch_optional_materialized_fk_mapping(
+      id_maps.node,
+      source_id,
+      FlowNode,
+      project_id,
+      {:flow_connection, connection["original_id"], id_key},
+      {:exact_snapshot_fk_not_materializable, :flow_connection, error_field, source_id},
+      opts
+    )
   end
 
   defp remap_flow_nodes(nodes, new_flow_id, id_maps, opts) do
@@ -1933,7 +2024,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     do: :ok
 
   defp maybe_preserve_exact_dynamic_pin({:error, reason}, opts) do
-    if exact_materialization?(opts), do: :ok, else: {:error, reason}
+    if MaterializationHelpers.exact_materialization?(opts), do: :ok, else: {:error, reason}
   end
 
   defp maybe_preserve_exact_dynamic_pin(result, _opts), do: result
@@ -2090,14 +2181,18 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end
   end
 
-  defp remap_flow_scene_id(_new_flow_id, nil, _scene_map, _opts), do: :ok
+  defp remap_flow_scene_id(_new_flow_id, nil, _scene_map, _project_id, _opts), do: :ok
 
-  defp remap_flow_scene_id(new_flow_id, old_scene_id, scene_map, _opts) do
+  defp remap_flow_scene_id(new_flow_id, old_scene_id, scene_map, project_id, opts) do
     with {:ok, new_scene_id} <-
-           fetch_required_mapping(
+           fetch_optional_materialized_fk_mapping(
              scene_map,
              old_scene_id,
-             {:flow, new_flow_id, "scene_id"}
+             Scene,
+             project_id,
+             {:flow, new_flow_id, "scene_id"},
+             {:exact_snapshot_fk_not_materializable, :flow, :scene_id, old_scene_id},
+             opts
            ),
          {1, _rows} <-
            Repo.update_all(
@@ -2169,7 +2264,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp maybe_normalize_recovered_node_avatar(flow_id, node_type, data, opts) do
-    if exact_materialization?(opts),
+    if MaterializationHelpers.exact_materialization?(opts),
       do: {:ok, data},
       else: AvatarIntegrity.lock_and_normalize_node_avatar(flow_id, node_type, data)
   end
@@ -2228,7 +2323,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
         end
 
       {target_type, source_target_id} ->
-        if exact_materialization?(opts) do
+        if MaterializationHelpers.exact_materialization?(opts) do
           {:ok, data}
         else
           source = {:flow_node, source_node_id}
@@ -2237,16 +2332,16 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end
   end
 
-  defp remap_scene_refs(id_maps, snapshot_data, opts) do
+  defp remap_scene_refs(project_id, id_maps, snapshot_data, opts) do
     Enum.reduce_while(snapshot_data["scenes"] || [], :ok, fn entry, :ok ->
-      case remap_single_scene_snapshot(entry, id_maps, opts) do
+      case remap_single_scene_snapshot(entry, project_id, id_maps, opts) do
         :ok -> {:cont, :ok}
         {:error, _reason} = error -> {:halt, error}
       end
     end)
   end
 
-  defp remap_single_scene_snapshot(entry, id_maps, opts) do
+  defp remap_single_scene_snapshot(entry, project_id, id_maps, opts) do
     snapshot = entry["snapshot"]
 
     with {:ok, scene_id} <-
@@ -2255,22 +2350,24 @@ defmodule Storyarn.Versioning.ProjectRecovery do
              entry["id"],
              {:scene, entry["id"]}
            ),
-         :ok <- remap_scene_pin_refs(snapshot["orphan_pins"] || [], id_maps, opts),
+         :ok <- remap_scene_pin_refs(snapshot["orphan_pins"] || [], project_id, id_maps, opts),
          :ok <- remap_scene_zone_refs(snapshot["orphan_zones"] || [], id_maps, opts),
+         :ok <- remap_scene_connection_refs(snapshot["connections"] || [], project_id, id_maps, opts),
          :ok <-
            remap_scene_ambient_flows(
              scene_id,
              snapshot["ambient_flows"] || [],
              id_maps.flow,
+             project_id,
              opts
            ) do
-      remap_scene_layer_refs(snapshot["layers"] || [], id_maps, opts)
+      remap_scene_layer_refs(snapshot["layers"] || [], project_id, id_maps, opts)
     end
   end
 
-  defp remap_scene_layer_refs(layers, id_maps, opts) do
+  defp remap_scene_layer_refs(layers, project_id, id_maps, opts) do
     Enum.reduce_while(layers, :ok, fn layer, :ok ->
-      with :ok <- remap_scene_pin_refs(layer["pins"] || [], id_maps, opts),
+      with :ok <- remap_scene_pin_refs(layer["pins"] || [], project_id, id_maps, opts),
            :ok <- remap_scene_zone_refs(layer["zones"] || [], id_maps, opts) do
         {:cont, :ok}
       else
@@ -2279,13 +2376,17 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end)
   end
 
-  defp remap_scene_ambient_flows(scene_id, ambient_flows, flow_id_map, _opts) do
+  defp remap_scene_ambient_flows(scene_id, ambient_flows, flow_id_map, project_id, opts) do
     Enum.reduce_while(ambient_flows, :ok, fn ambient_flow, :ok ->
       with {:ok, flow_id} <-
-             fetch_required_mapping(
+             fetch_optional_materialized_fk_mapping(
                flow_id_map,
                ambient_flow["flow_id"],
-               {:scene_ambient_flow, ambient_flow["original_id"], "flow_id"}
+               Flow,
+               project_id,
+               {:scene_ambient_flow, ambient_flow["original_id"], "flow_id"},
+               {:exact_snapshot_fk_not_materializable, :scene_ambient_flow, :flow_id, ambient_flow["flow_id"]},
+               opts
              ),
            {:ok, _ambient_flow} <-
              %SceneAmbientFlow{scene_id: scene_id}
@@ -2305,9 +2406,9 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end)
   end
 
-  defp remap_scene_pin_refs(pin_snapshots, id_maps, opts) do
+  defp remap_scene_pin_refs(pin_snapshots, project_id, id_maps, opts) do
     Enum.reduce_while(pin_snapshots, :ok, fn pin, :ok ->
-      case remap_single_scene_pin_ref(pin, id_maps, opts) do
+      case remap_single_scene_pin_ref(pin, project_id, id_maps, opts) do
         :ok -> {:cont, :ok}
         {:error, _reason} = error -> {:halt, error}
       end
@@ -2323,33 +2424,89 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end)
   end
 
-  defp remap_single_scene_pin_ref(pin_data, id_maps, opts) do
+  defp remap_single_scene_pin_ref(pin_data, project_id, id_maps, opts) do
     with {:ok, new_pin_id} <-
            fetch_required_mapping(
              id_maps.pin,
              pin_data["original_id"],
              {:scene_pin, pin_data["original_id"]}
            ),
-         {:ok, updates} <- build_scene_pin_updates(pin_data, id_maps, opts) do
+         {:ok, updates} <- build_scene_pin_updates(pin_data, project_id, id_maps, opts) do
       maybe_update_scene_pin(updates, new_pin_id)
     end
   end
 
-  defp build_scene_pin_updates(pin_data, id_maps, _opts) do
+  defp build_scene_pin_updates(pin_data, project_id, id_maps, opts) do
     with {:ok, sheet_id} <-
-           fetch_optional_mapping(
+           fetch_optional_materialized_fk_mapping(
              id_maps.sheet,
              pin_data["sheet_id"],
-             {:scene_pin, pin_data["original_id"], "sheet_id"}
+             Sheet,
+             project_id,
+             {:scene_pin, pin_data["original_id"], "sheet_id"},
+             {:exact_snapshot_fk_not_materializable, :scene_pin, :sheet_id, pin_data["sheet_id"]},
+             opts
            ),
          {:ok, flow_id} <-
-           fetch_optional_mapping(
+           fetch_optional_materialized_fk_mapping(
              id_maps.flow,
              pin_data["flow_id"],
-             {:scene_pin, pin_data["original_id"], "flow_id"}
+             Flow,
+             project_id,
+             {:scene_pin, pin_data["original_id"], "flow_id"},
+             {:exact_snapshot_fk_not_materializable, :scene_pin, :flow_id, pin_data["flow_id"]},
+             opts
            ) do
       {:ok, [sheet_id: sheet_id, flow_id: flow_id]}
     end
+  end
+
+  defp remap_scene_connection_refs(connections, project_id, id_maps, opts) do
+    Enum.reduce_while(connections, :ok, fn connection, :ok ->
+      case remap_single_scene_connection_ref(connection, project_id, id_maps, opts) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp remap_single_scene_connection_ref(connection, project_id, id_maps, opts) do
+    with {:ok, new_connection_id} <-
+           fetch_required_mapping(
+             id_maps.scene_connection,
+             connection["original_id"],
+             {:scene_connection, connection["original_id"]}
+           ),
+         {:ok, from_pin_id} <-
+           remap_scene_connection_endpoint(connection, :from, project_id, id_maps, opts),
+         {:ok, to_pin_id} <-
+           remap_scene_connection_endpoint(connection, :to, project_id, id_maps, opts) do
+      case Repo.update_all(
+             from(scene_connection in SceneConnection,
+               where: scene_connection.id == ^new_connection_id
+             ),
+             set: [from_pin_id: from_pin_id, to_pin_id: to_pin_id]
+           ) do
+        {1, _rows} -> :ok
+        {count, _rows} -> {:error, {:materialized_row_count_mismatch, :scene_connection, new_connection_id, count}}
+      end
+    end
+  end
+
+  defp remap_scene_connection_endpoint(connection, endpoint, project_id, id_maps, opts) do
+    field = if endpoint == :from, do: "from_pin_original_id", else: "to_pin_original_id"
+    error_field = if endpoint == :from, do: :from_pin_original_id, else: :to_pin_original_id
+    source_id = connection[field]
+
+    fetch_optional_materialized_fk_mapping(
+      id_maps.pin,
+      source_id,
+      ScenePin,
+      project_id,
+      {:scene_connection, connection["original_id"], field},
+      {:exact_snapshot_fk_not_materializable, :scene_connection, error_field, source_id},
+      opts
+    )
   end
 
   defp maybe_update_scene_pin(updates, new_pin_id) do
@@ -2375,14 +2532,55 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp build_scene_zone_updates(zone_data, id_maps, opts) do
-    maybe_put_target_update(
-      [],
-      zone_data["target_type"],
-      zone_data["target_id"],
-      id_maps,
-      zone_data["original_id"],
-      opts
-    )
+    with {:ok, updates} <-
+           maybe_put_target_update(
+             [],
+             zone_data["target_type"],
+             zone_data["target_id"],
+             id_maps,
+             zone_data["original_id"],
+             opts
+           ),
+         {:ok, action_data} <- remap_scene_zone_action_data(zone_data, id_maps, opts) do
+      {:ok, Keyword.put(updates, :action_data, action_data)}
+    end
+  end
+
+  defp remap_scene_zone_action_data(
+         %{"action_type" => "collection", "action_data" => %{"items" => items} = action_data},
+         id_maps,
+         opts
+       )
+       when is_list(items) do
+    items
+    |> Enum.reduce_while({:ok, []}, fn
+      %{} = item, {:ok, remapped_items} ->
+        case fetch_optional_authored_json_mapping(
+               id_maps.sheet,
+               item["sheet_id"],
+               {:scene_zone, "collection", "sheet_id"},
+               opts
+             ) do
+          {:ok, sheet_id} ->
+            {:cont, {:ok, [Map.put(item, "sheet_id", sheet_id) | remapped_items]}}
+
+          {:error, _reason} = error ->
+            {:halt, error}
+        end
+
+      item, {:ok, remapped_items} ->
+        if MaterializationHelpers.exact_materialization?(opts),
+          do: {:cont, {:ok, [item | remapped_items]}},
+          else: {:halt, {:error, {:invalid_project_snapshot_scene_zone_collection_item, item}}}
+    end)
+    |> case do
+      {:ok, remapped_items} -> {:ok, Map.put(action_data, "items", Enum.reverse(remapped_items))}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp remap_scene_zone_action_data(zone_data, _id_maps, _opts) do
+    {:ok, zone_data["action_data"] || %{}}
   end
 
   defp maybe_update_scene_zone([], _new_zone_id), do: :ok
@@ -2403,8 +2601,12 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp maybe_put_target_update(updates, type, old_id, id_maps, zone_id, opts) do
     case remap_target_id(type, old_id, id_maps) do
       nil ->
-        if exact_materialization?(opts),
-          do: {:ok, updates},
+        if MaterializationHelpers.exact_materialization?(opts),
+          do:
+            {:ok,
+             updates
+             |> Keyword.put(:target_type, type)
+             |> Keyword.put(:target_id, old_id)},
           else: {:error, {:missing_project_snapshot_reference, {:scene_zone, zone_id, "target_id", type}, old_id}}
 
       new_id ->
@@ -2445,17 +2647,11 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp fetch_authored_json_mapping(id_map, source_id, context, opts) do
     case fetch_required_mapping(id_map, source_id, context) do
       {:error, reason} when is_list(opts) ->
-        if exact_materialization?(opts), do: {:ok, source_id}, else: {:error, reason}
+        if MaterializationHelpers.exact_materialization?(opts), do: {:ok, source_id}, else: {:error, reason}
 
       result ->
         result
     end
-  end
-
-  defp fetch_optional_mapping(_id_map, nil, _context), do: {:ok, nil}
-
-  defp fetch_optional_mapping(id_map, source_id, context) do
-    fetch_required_mapping(id_map, source_id, context)
   end
 
   defp fetch_optional_authored_json_mapping(_id_map, nil, _context, _opts), do: {:ok, nil}
@@ -2464,32 +2660,71 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     fetch_authored_json_mapping(id_map, source_id, context, opts)
   end
 
-  defp fetch_optional_materialized_fk_mapping(_id_map, nil, _schema, _context, _exact_error, _opts), do: {:ok, nil}
+  defp fetch_optional_materialized_fk_mapping(_id_map, nil, _schema, _project_id, _context, _exact_error, _opts),
+    do: {:ok, nil}
 
-  defp fetch_optional_materialized_fk_mapping(id_map, source_id, schema, context, exact_error, opts) do
+  defp fetch_optional_materialized_fk_mapping(id_map, source_id, schema, project_id, context, exact_error, opts) do
     case fetch_required_mapping(id_map, source_id, context) do
       {:ok, destination_id} ->
         {:ok, destination_id}
 
       {:error, _reason} = error ->
-        recover_existing_materialized_fk(error, source_id, schema, exact_error, opts)
+        recover_existing_materialized_fk(error, source_id, schema, project_id, exact_error, opts)
     end
   end
 
-  defp recover_existing_materialized_fk(error, source_id, schema, exact_error, opts) do
-    if exact_materialization?(opts) do
-      preserve_existing_materialized_fk(source_id, schema, exact_error)
+  defp recover_existing_materialized_fk(error, source_id, schema, project_id, exact_error, opts) do
+    if MaterializationHelpers.exact_materialization?(opts) do
+      preserve_existing_materialized_fk(source_id, schema, project_id, exact_error)
     else
       error
     end
   end
 
-  defp preserve_existing_materialized_fk(source_id, schema, exact_error) do
+  defp preserve_existing_materialized_fk(source_id, schema, project_id, exact_error) do
     source_id = normalize_recovery_id(source_id)
 
-    if is_integer(source_id) and Repo.exists?(from(record in schema, where: record.id == ^source_id)),
+    if is_integer(source_id) and materialized_fk_owned_by_project?(schema, source_id, project_id),
       do: {:ok, source_id},
       else: {:error, exact_error}
+  end
+
+  defp materialized_fk_owned_by_project?(schema, source_id, project_id) when schema in [Sheet, Flow, Scene] do
+    Repo.exists?(
+      from(record in schema,
+        where: record.id == ^source_id and record.project_id == ^project_id
+      )
+    )
+  end
+
+  defp materialized_fk_owned_by_project?(Block, source_id, project_id) do
+    Repo.exists?(
+      from(block in Block,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where: block.id == ^source_id and sheet.project_id == ^project_id
+      )
+    )
+  end
+
+  defp materialized_fk_owned_by_project?(FlowNode, source_id, project_id) do
+    Repo.exists?(
+      from(node in FlowNode,
+        join: flow in Flow,
+        on: flow.id == node.flow_id,
+        where: node.id == ^source_id and flow.project_id == ^project_id
+      )
+    )
+  end
+
+  defp materialized_fk_owned_by_project?(ScenePin, source_id, project_id) do
+    Repo.exists?(
+      from(pin in ScenePin,
+        join: scene in Scene,
+        on: scene.id == pin.scene_id,
+        where: pin.id == ^source_id and scene.project_id == ^project_id
+      )
+    )
   end
 
   defp remap_required_ids(source_ids, id_map, context) do
@@ -2510,7 +2745,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp remap_authored_ids(nil, _id_map, _context, opts) do
-    if exact_materialization?(opts), do: {:ok, nil}, else: {:ok, []}
+    if MaterializationHelpers.exact_materialization?(opts), do: {:ok, nil}, else: {:ok, []}
   end
 
   defp remap_authored_ids(source_ids, id_map, context, opts) when is_list(source_ids) do
@@ -2579,7 +2814,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp recover_invalid_embedded_mention(value, context, reason, opts) do
-    if exact_materialization?(opts),
+    if MaterializationHelpers.exact_materialization?(opts),
       do: {:ok, value},
       else: {:error, {:invalid_project_snapshot_mention, context, reason}}
   end
@@ -2654,7 +2889,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
     case result do
       {:error, _reason} when is_list(opts) ->
-        if exact_materialization?(opts), do: {:ok, attributes}, else: result
+        if MaterializationHelpers.exact_materialization?(opts), do: {:ok, attributes}, else: result
 
       _result ->
         result
@@ -2700,45 +2935,46 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   # ========== Phase C: Tree Hierarchy ==========
 
-  defp restore_tree_hierarchy(%{"tree" => tree}, id_maps, opts) when is_map(tree) do
-    with :ok <- remap_tree(tree["sheets"], id_maps.sheet, Sheet, :sheet, opts),
-         :ok <- remap_tree(tree["flows"], id_maps.flow, Flow, :flow, opts) do
+  defp restore_tree_hierarchy(project_id, %{"tree" => tree}, id_maps, opts) when is_map(tree) do
+    with :ok <- remap_tree(tree["sheets"], id_maps.sheet, Sheet, project_id, :sheet, opts),
+         :ok <- remap_tree(tree["flows"], id_maps.flow, Flow, project_id, :flow, opts) do
       remap_tree(
         tree["scenes"],
         id_maps.scene,
-        Storyarn.Scenes.Scene,
+        Scene,
+        project_id,
         :scene,
         opts
       )
     end
   end
 
-  defp restore_tree_hierarchy(_snapshot_data, _id_maps, _opts) do
+  defp restore_tree_hierarchy(_project_id, _snapshot_data, _id_maps, _opts) do
     {:error, :missing_or_invalid_project_snapshot_tree}
   end
 
-  defp remap_tree(tree_entries, id_map, schema, entity_type, opts) when is_list(tree_entries) do
-    if exact_materialization?(opts) do
-      remap_tree_entries(tree_entries, id_map, schema, entity_type, opts)
+  defp remap_tree(tree_entries, id_map, schema, project_id, entity_type, opts) when is_list(tree_entries) do
+    if MaterializationHelpers.exact_materialization?(opts) do
+      remap_tree_entries(tree_entries, id_map, schema, project_id, entity_type, opts)
     else
       with :ok <- validate_tree_entries(tree_entries, id_map, entity_type),
            :ok <- validate_tree_cycles(tree_entries, entity_type) do
-        remap_tree_entries(tree_entries, id_map, schema, entity_type, opts)
+        remap_tree_entries(tree_entries, id_map, schema, project_id, entity_type, opts)
       end
     end
   end
 
-  defp remap_tree(_tree_entries, _id_map, _schema, entity_type, _opts) do
+  defp remap_tree(_tree_entries, _id_map, _schema, _project_id, entity_type, _opts) do
     {:error, {:invalid_project_snapshot_tree_collection, entity_type}}
   end
 
-  defp remap_tree_entries(tree_entries, id_map, schema, entity_type, opts) do
+  defp remap_tree_entries(tree_entries, id_map, schema, project_id, entity_type, opts) do
     Enum.reduce_while(tree_entries, :ok, fn entry, :ok ->
-      remap_tree_entry(entry, id_map, schema, entity_type, opts)
+      remap_tree_entry(entry, id_map, schema, project_id, entity_type, opts)
     end)
   end
 
-  defp remap_tree_entry(entry, id_map, schema, entity_type, opts) do
+  defp remap_tree_entry(entry, id_map, schema, project_id, entity_type, opts) do
     with {:ok, new_id} <-
            fetch_required_mapping(
              id_map,
@@ -2750,6 +2986,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
              id_map,
              entry["parent_id"],
              schema,
+             project_id,
              {:tree, entity_type, entry["id"], "parent_id"},
              {:exact_snapshot_fk_not_materializable, entity_type, :parent_id, entry["parent_id"]},
              opts
@@ -2885,7 +3122,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp validate_recovery_localization_for_mode(languages, texts, glossary, id_maps, snapshot_data, opts) do
-    if exact_materialization?(opts) do
+    if MaterializationHelpers.exact_materialization?(opts) do
       validate_exact_recovery_localization(languages, texts, glossary)
     else
       validate_recovery_localization(languages, texts, glossary, id_maps, snapshot_data)
@@ -2904,7 +3141,9 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp recovery_texts_for_mode(texts, id_maps, opts) do
-    if exact_materialization?(opts), do: texts, else: materializable_recovery_texts(texts, id_maps)
+    if MaterializationHelpers.exact_materialization?(opts),
+      do: texts,
+      else: materializable_recovery_texts(texts, id_maps)
   end
 
   defp validate_recovery_localization(languages, texts, glossary, id_maps, snapshot_data)
@@ -3355,16 +3594,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end)
   end
 
-  defp insert_recovery_text_chunk(chunk, opts) do
-    result =
-      if exact_materialization?(opts) do
-        Repo.insert_all(LocalizedText, chunk,
-          on_conflict: {:replace, @exact_localized_text_conflict_fields},
-          conflict_target: [:source_type, :source_id, :source_field, :locale_code]
-        )
-      else
-        Repo.insert_all(LocalizedText, chunk)
-      end
+  defp insert_recovery_text_chunk(chunk, _opts) do
+    result = Repo.insert_all(LocalizedText, chunk)
 
     case result do
       {count, _rows} when count == length(chunk) -> {:cont, :ok}
@@ -3393,7 +3624,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp recovered_text_map_for_mode(text, id_maps, context) do
-    if exact_materialization?(context.opts) do
+    if MaterializationHelpers.exact_materialization?(context.opts) do
       exact_recovered_text_map(text, id_maps, context)
     else
       metadata =
@@ -3415,7 +3646,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   defp exact_recovered_text_map(text, id_maps, context) do
     with {:ok, source_id} <- exact_recovered_source_id(text, id_maps),
-         {:ok, speaker_sheet_id} <- exact_recovered_speaker_id(text, id_maps, context.opts),
+         {:ok, speaker_sheet_id} <-
+           exact_recovered_speaker_id(text, id_maps, context.project_id, context.opts),
          {:ok, vo_asset_id} <- exact_recovered_vo_asset_id(text, context) do
       {:ok,
        %{
@@ -3453,46 +3685,40 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp exact_recovered_source_id(text, id_maps) do
     case remap_source_id(text["source_type"], text["source_id"], id_maps) do
       nil ->
-        preserve_existing_localization_source_id(text)
+        preserve_authored_localization_source_id(text)
 
       destination_id ->
         {:ok, destination_id}
     end
   end
 
-  defp preserve_existing_localization_source_id(text) do
+  defp preserve_authored_localization_source_id(text) do
     source_type = text["source_type"]
     source_id = normalize_recovery_id(text["source_id"])
 
-    with {:ok, schema} <- localization_source_schema(source_type),
-         true <- is_integer(source_id) and Repo.exists?(from(source in schema, where: source.id == ^source_id)) do
+    if is_integer(source_id) do
       {:ok, source_id}
     else
-      _missing ->
-        {:error,
-         {:exact_snapshot_reference_not_materializable, :localized_text, :source_id, source_type, text["source_id"]}}
+      {:error,
+       {:exact_snapshot_reference_not_materializable, :localized_text, :source_id, source_type, text["source_id"]}}
     end
   end
 
-  defp localization_source_schema("block"), do: {:ok, Block}
-  defp localization_source_schema("sheet"), do: {:ok, Sheet}
-  defp localization_source_schema("flow_node"), do: {:ok, FlowNode}
-  defp localization_source_schema(_source_type), do: :error
+  defp exact_recovered_speaker_id(%{"speaker_sheet_id" => nil}, _id_maps, _project_id, _opts), do: {:ok, nil}
 
-  defp exact_recovered_speaker_id(%{"speaker_sheet_id" => nil}, _id_maps, _opts), do: {:ok, nil}
-
-  defp exact_recovered_speaker_id(%{"speaker_sheet_id" => source_id}, id_maps, opts) do
+  defp exact_recovered_speaker_id(%{"speaker_sheet_id" => source_id}, id_maps, project_id, opts) do
     fetch_optional_materialized_fk_mapping(
       id_maps.sheet,
       source_id,
       Sheet,
+      project_id,
       {:localized_text, "speaker_sheet_id"},
       {:exact_snapshot_fk_not_materializable, :localized_text, :speaker_sheet_id, source_id},
       opts
     )
   end
 
-  defp exact_recovered_speaker_id(_text, _id_maps, _opts), do: {:ok, nil}
+  defp exact_recovered_speaker_id(_text, _id_maps, _project_id, _opts), do: {:ok, nil}
 
   defp exact_recovered_vo_asset_id(%{"vo_asset_id" => nil}, _context), do: {:ok, nil}
 
@@ -3668,7 +3894,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp parse_datetime(_value), do: nil
 
   defp materialized_default(value, default, opts) do
-    if exact_materialization?(opts), do: value, else: value || default
+    if MaterializationHelpers.exact_materialization?(opts), do: value, else: value || default
   end
 
   defp translated_source_hash(%{"translated_source_hash" => hash}) when is_binary(hash), do: hash

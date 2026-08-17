@@ -295,6 +295,138 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
     cleanup_fixture_objects(fixture, plan)
   end
 
+  test "exact restore uses verified manifest identity and preserves authored relationship drift", %{
+    project: project,
+    user: user
+  } do
+    fixture = catalog_fixture(project.id)
+    manifest_bytes = byte_size(fixture.bytes)
+
+    first_metadata = %{
+      "authored" => %{"kept" => true},
+      "original_asset_id" => "42",
+      "web_asset_id" => 999_999_999,
+      "variant_asset_ids" => %{
+        "captured" => 42,
+        "dangling" => "888888888",
+        "malformed" => [42],
+        "nullable" => nil
+      }
+    }
+
+    second_metadata = %{
+      "original_asset_id" => %{"malformed" => 41},
+      "web_asset_id" => 41,
+      "variant_asset_ids" => "malformed"
+    }
+
+    project_object =
+      fixture.project_object
+      |> Map.put("asset_blob_hashes", %{
+        "41" => String.duplicate("0", 64),
+        "42" => String.duplicate("1", 64)
+      })
+      |> Map.put("asset_metadata", %{
+        "41" => %{
+          "filename" => "../authored-first.png",
+          "content_type" => "text/html",
+          "size" => 999_999_999,
+          "persisted_metadata" => first_metadata
+        },
+        "42" => %{
+          "filename" => "authored-second.bin",
+          "content_type" => "application/x-broken",
+          "size" => -7,
+          "persisted_metadata" => second_metadata
+        }
+      })
+
+    assert {:error, {:pre_materialized_asset_catalog_mismatch, "41"}} =
+             ProjectSnapshotAssetMaterializer.prepare(
+               project.id,
+               "restore-stays-strict",
+               fixture.manifest,
+               project_object,
+               fixture.staging_prefix,
+               fixture.staging_keys
+             )
+
+    assert {:ok, plan} =
+             ProjectSnapshotAssetMaterializer.prepare(
+               project.id,
+               "restore-effective-identity",
+               fixture.manifest,
+               project_object,
+               fixture.staging_prefix,
+               fixture.staging_keys,
+               materialization_mode: :exact
+             )
+
+    assert Enum.map(plan.assets, &{&1.filename, &1.content_type, &1.size}) == [
+             {"../authored-first.png", "image/png", manifest_bytes},
+             {"authored-second.bin", "image/png", manifest_bytes}
+           ]
+
+    upload_staging_fixture(fixture)
+    tracker = StorageCompensation.new()
+    assert :ok = ProjectSnapshotAssetMaterializer.stage_destination_objects(plan, tracker)
+
+    assert {:ok, adoption} =
+             Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+               locked_project = Repo.get!(Project, project.id)
+
+               with {:ok, adoption} <-
+                      ProjectSnapshotAssetMaterializer.adopt_locked(
+                        plan,
+                        locked_project,
+                        user.id,
+                        tracker
+                      ),
+                    :ok <-
+                      ProjectSnapshotAssetMaterializer.verify_adopted_locked(
+                        plan,
+                        adoption.logical_id_map
+                      ) do
+                 {:ok, adoption}
+               end
+             end)
+
+    first = Repo.get!(Asset, adoption.logical_id_map["asset-000001"])
+    second = Repo.get!(Asset, adoption.logical_id_map["asset-000002"])
+
+    assert {first.filename, first.content_type, first.size, first.blob_hash} ==
+             {"../authored-first.png", "image/png", manifest_bytes, fixture.sha256}
+
+    assert {second.filename, second.content_type, second.size, second.blob_hash} ==
+             {"authored-second.bin", "image/png", manifest_bytes, fixture.sha256}
+
+    assert first.metadata == %{
+             "authored" => %{"kept" => true},
+             "original_asset_id" => second.id,
+             "web_asset_id" => 999_999_999,
+             "variant_asset_ids" => %{
+               "captured" => second.id,
+               "dangling" => "888888888",
+               "malformed" => [42],
+               "nullable" => nil
+             }
+           }
+
+    assert second.metadata == %{
+             "original_asset_id" => %{"malformed" => 41},
+             "web_asset_id" => first.id,
+             "variant_asset_ids" => "malformed"
+           }
+
+    assert Billing.project_storage_usage(project.id).current_assets == %{
+             bytes: 2 * manifest_bytes,
+             count: 2
+           }
+
+    assert :ok = StorageCompensation.cleanup_unretained(tracker)
+    cleanup_fixture_objects(fixture, plan)
+  end
+
   test "restores a zero-byte row with captured legacy metadata and remapped valid relationships", %{
     project: project,
     user: user

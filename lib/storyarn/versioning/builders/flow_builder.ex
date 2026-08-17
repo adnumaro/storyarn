@@ -11,6 +11,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   use Gettext, backend: Storyarn.Gettext
 
   import Ecto.Query, warn: false
+  import Storyarn.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
   alias Ecto.Multi
   alias Storyarn.Flows.Flow
@@ -933,7 +934,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   end
 
   defp materialization_mode(opts), do: Keyword.get(opts, :materialization_mode, :portable)
-  defp exact_materialization?(opts), do: materialization_mode(opts) == :exact
 
   defp maybe_validate_materialized_flow_reference_cycles(flow_id, nodes, opts) do
     if exact_materialization?(opts),
@@ -995,19 +995,23 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
              opts
            ),
          node_id_map = node_data.id_map,
-         {:ok, _linked_parents} <- link_snapshot_node_parents(Repo, nodes, node_id_map, opts),
+         {:ok, _linked_parents} <- link_snapshot_node_parents(Repo, nodes, node_id_map, project_id, opts),
          {:ok, sequence_resource_data} <-
            insert_sequence_resources(Repo, nodes, node_id_map, snapshot, project_id, opts, now),
          :ok <- restore_exact_authored_node_types(Repo, nodes, node_id_map, opts),
+         connection_context = %{
+           nodes_data: nodes,
+           materialized_nodes_data: external_refs.nodes,
+           node_id_map: node_id_map,
+           project_id: project_id,
+           opts: opts
+         },
          {:ok, connection_id_map} <-
            insert_flow_connections(
              Repo,
              flow_id,
              connections,
-             nodes,
-             external_refs.nodes,
-             node_id_map,
-             opts,
+             connection_context,
              now
            ) do
       complete_flow_instantiation(
@@ -1493,7 +1497,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       )
     end)
     |> Multi.run(:restore_parents, fn repo, %{restore_nodes: node_data} ->
-      link_snapshot_node_parents(repo, nodes_data, node_data.node_id_map, opts)
+      link_snapshot_node_parents(repo, nodes_data, node_data.node_id_map, flow.project_id, opts)
     end)
     |> Multi.run(:restore_connections, fn repo, _changes ->
       reconcile_snapshot_connections(repo, flow.id, connections_data, nodes_data, target_node_ids)
@@ -1535,7 +1539,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
              LocalizationSnapshotCodec.restore(
                flow.project_id,
                localization_rows,
-               %{node: node_data.node_id_map}
+               %{node: node_data.node_id_map},
+               revive_archived: true
              ) do
         {:ok, length(localization_rows)}
       end
@@ -3448,7 +3453,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp extract_restored_node_localization(nodes) do
     Enum.reduce_while(nodes, {:ok, 0}, fn node, {:ok, count} ->
-      case Localization.extract_flow_node(node) do
+      case Localization.extract_flow_node(node, revive_archived: true) do
         :ok -> {:cont, {:ok, count + 1}}
         {:error, reason} -> {:halt, {:error, reason}}
       end
@@ -3584,30 +3589,40 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   defp valid_snapshot_string?(value, max_length),
     do: is_binary(value) and value != "" and String.length(value) <= max_length
 
-  defp link_snapshot_node_parents(repo, nodes_data, node_id_map, opts) do
+  defp link_snapshot_node_parents(repo, nodes_data, node_id_map, project_id, opts) do
     nodes_by_original_id =
       nodes_data
       |> Enum.reject(&is_nil(&1["original_id"]))
       |> Map.new(&{&1["original_id"], &1})
 
     Enum.reduce_while(nodes_data, {:ok, 0}, fn node_data, acc ->
-      link_snapshot_node_parent(repo, node_data, acc, nodes_by_original_id, node_id_map, opts)
+      link_snapshot_node_parent(repo, node_data, acc, nodes_by_original_id, node_id_map, project_id, opts)
     end)
   end
 
-  defp link_snapshot_node_parent(repo, node_data, acc, nodes_by_original_id, node_id_map, opts) do
+  defp link_snapshot_node_parent(repo, node_data, acc, nodes_by_original_id, node_id_map, project_id, opts) do
     link_snapshot_node_parent(
       repo,
       node_data,
       acc,
       nodes_by_original_id,
       node_id_map,
+      project_id,
       opts,
       node_data["parent_id"]
     )
   end
 
-  defp link_snapshot_node_parent(_repo, _node_data, {:ok, count}, _nodes_by_original_id, _node_id_map, _opts, nil) do
+  defp link_snapshot_node_parent(
+         _repo,
+         _node_data,
+         {:ok, count},
+         _nodes_by_original_id,
+         _node_id_map,
+         _project_id,
+         _opts,
+         nil
+       ) do
     {:cont, {:ok, count}}
   end
 
@@ -3617,11 +3632,12 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
          {:ok, count},
          nodes_by_original_id,
          node_id_map,
+         project_id,
          opts,
          parent_original_id
        ) do
     if exact_materialization?(opts) do
-      link_exact_snapshot_node_parent(repo, node_data, count, node_id_map, parent_original_id)
+      link_exact_snapshot_node_parent(repo, node_data, count, node_id_map, parent_original_id, project_id)
     else
       link_portable_snapshot_node_parent(
         repo,
@@ -3634,11 +3650,11 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     end
   end
 
-  defp link_exact_snapshot_node_parent(repo, node_data, count, node_id_map, parent_original_id) do
+  defp link_exact_snapshot_node_parent(repo, node_data, count, node_id_map, parent_original_id, project_id) do
     child_id = Map.get(node_id_map, node_data["original_id"])
 
     with child_id when is_integer(child_id) <- child_id,
-         {:ok, parent_id} <- exact_snapshot_node_parent_id(repo, node_id_map, parent_original_id),
+         {:ok, parent_id} <- exact_snapshot_node_parent_id(repo, node_id_map, parent_original_id, project_id),
          %FlowNode{} = child <- repo.get(FlowNode, child_id),
          {:ok, _updated_child} <-
            child
@@ -3651,15 +3667,22 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     end
   end
 
-  defp exact_snapshot_node_parent_id(repo, node_id_map, parent_original_id) do
+  defp exact_snapshot_node_parent_id(repo, node_id_map, parent_original_id, project_id) do
     case Map.fetch(node_id_map, parent_original_id) do
       {:ok, parent_id} when is_integer(parent_id) ->
         {:ok, parent_id}
 
       _missing ->
-        if is_integer(parent_original_id) and repo.exists?(from(node in FlowNode, where: node.id == ^parent_original_id)),
-          do: {:ok, parent_original_id},
-          else: {:error, {:exact_snapshot_fk_not_materializable, :flow_node, :parent_id, parent_original_id}}
+        if is_integer(parent_original_id) and
+             repo.exists?(
+               from(node in FlowNode,
+                 join: flow in Flow,
+                 on: flow.id == node.flow_id,
+                 where: node.id == ^parent_original_id and flow.project_id == ^project_id
+               )
+             ),
+           do: {:ok, parent_original_id},
+           else: {:error, {:exact_snapshot_fk_not_materializable, :flow_node, :parent_id, parent_original_id}}
     end
   end
 
@@ -4018,37 +4041,31 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     })
   end
 
-  defp insert_flow_connections(_repo, _flow_id, [], _nodes_data, _materialized_nodes_data, _node_id_map, _opts, _now),
-    do: {:ok, %{}}
+  defp insert_flow_connections(_repo, _flow_id, [], _context, _now), do: {:ok, %{}}
 
-  defp insert_flow_connections(
-         repo,
-         flow_id,
-         connections_data,
-         nodes_data,
-         materialized_nodes_data,
-         node_id_map,
-         opts,
-         now
-       ) do
+  defp insert_flow_connections(repo, flow_id, connections_data, context, now) do
     Enum.reduce_while(connections_data, {:ok, %{}}, fn connection_data, {:ok, id_map} ->
-      source_node = Enum.at(nodes_data, connection_data["source_node_index"])
-      target_node = Enum.at(nodes_data, connection_data["target_node_index"])
-
-      materialized_source_node =
-        Enum.at(materialized_nodes_data, connection_data["source_node_index"])
-
-      with %{"original_id" => source_original_id} <- source_node,
-           %{"original_id" => target_original_id} <- target_node,
-           {:ok, source_node_id} <- Map.fetch(node_id_map, source_original_id),
-           {:ok, target_node_id} <- Map.fetch(node_id_map, target_original_id),
+      with {:ok, {source_node_id, source_node, materialized_source_node}} <-
+             materialize_connection_endpoint(
+               repo,
+               connection_data,
+               :source,
+               context
+             ),
+           {:ok, {target_node_id, _target_node, _materialized_target_node}} <-
+             materialize_connection_endpoint(
+               repo,
+               connection_data,
+               :target,
+               context
+             ),
            {:ok, source_pin} <-
              materialize_dynamic_pin(
                repo,
                connection_data,
                source_node,
                materialized_source_node,
-               opts
+               context.opts
              ),
            {:ok, connection} <-
              flow_id
@@ -4058,7 +4075,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
                source_pin,
                connection_data,
                now,
-               opts
+               context.opts
              )
              |> repo.insert() do
         {:cont,
@@ -4076,6 +4093,79 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
           {:halt, {:error, {:connection_materialization_failed, connection_data["original_id"], reason}}}
       end
     end)
+  end
+
+  defp materialize_connection_endpoint(repo, connection, endpoint, context) do
+    keys = connection_endpoint_keys(endpoint)
+    indexed_endpoint = indexed_connection_endpoint(connection[elem(keys, 0)], context)
+
+    resolve_connection_endpoint(repo, connection, endpoint, keys, indexed_endpoint, context)
+  end
+
+  defp connection_endpoint_keys(:source), do: {"source_node_index", "source_node_id"}
+  defp connection_endpoint_keys(:target), do: {"target_node_index", "target_node_id"}
+
+  defp indexed_connection_endpoint(index, context) when is_integer(index) do
+    snapshot_node = Enum.at(context.nodes_data, index)
+    materialized_node = Enum.at(context.materialized_nodes_data, index)
+
+    {mapped_snapshot_node_id(snapshot_node, context.node_id_map), snapshot_node, materialized_node}
+  end
+
+  defp indexed_connection_endpoint(_index, _context), do: {nil, nil, nil}
+
+  defp mapped_snapshot_node_id(%{"original_id" => original_id}, node_id_map), do: Map.get(node_id_map, original_id)
+  defp mapped_snapshot_node_id(_snapshot_node, _node_id_map), do: nil
+
+  defp resolve_connection_endpoint(
+         _repo,
+         _connection,
+         _endpoint,
+         _keys,
+         {mapped_id, snapshot_node, materialized_node},
+         _context
+       )
+       when is_integer(mapped_id) do
+    {:ok, {mapped_id, snapshot_node, materialized_node}}
+  end
+
+  defp resolve_connection_endpoint(repo, connection, endpoint, {index_key, id_key}, _indexed_endpoint, context) do
+    if exact_materialization?(context.opts) do
+      materialize_exact_connection_endpoint(
+        repo,
+        connection,
+        endpoint,
+        id_key,
+        context.node_id_map,
+        context.project_id
+      )
+    else
+      {:error, {:missing_flow_connection_endpoint_mapping, endpoint, connection[index_key]}}
+    end
+  end
+
+  defp materialize_exact_connection_endpoint(repo, connection, endpoint, id_key, node_id_map, project_id) do
+    source_id = normalize_materialized_reference_id(connection[id_key])
+    remapped_id = if is_integer(source_id), do: Map.get(node_id_map, source_id)
+
+    cond do
+      is_integer(remapped_id) ->
+        {:ok, {remapped_id, nil, nil}}
+
+      is_integer(source_id) and
+          repo.exists?(
+            from(node in FlowNode,
+              join: flow in Flow,
+              on: flow.id == node.flow_id,
+              where: node.id == ^source_id and flow.project_id == ^project_id
+            )
+          ) ->
+        {:ok, {source_id, nil, nil}}
+
+      true ->
+        {:error,
+         {:exact_snapshot_fk_not_materializable, :flow_connection, connection["original_id"], endpoint, source_id}}
+    end
   end
 
   defp flow_connection_changeset(flow_id, source_node_id, target_node_id, source_pin, connection_data, now, opts) do
@@ -4096,10 +4186,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp materialize_flow_external_references(snapshot, project_id, opts, mode) do
     with {:ok, scene_id} <-
-           materialize_external_reference(
+           materialize_flow_scene_reference(
              snapshot["scene_id"],
-             Scene,
-             :scene,
              project_id,
              opts,
              mode,
@@ -4114,6 +4202,49 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
            ) do
       {:ok, %{scene_id: scene_id, nodes: nodes}}
     end
+  end
+
+  defp materialize_flow_scene_reference(nil, _project_id, _opts, _mode, _context), do: {:ok, nil}
+
+  defp materialize_flow_scene_reference(value, project_id, opts, :exact, context) do
+    source_id = normalize_materialized_reference_id(value)
+
+    resolved_id =
+      MaterializationHelpers.resolve_project_external_ref(
+        source_id,
+        Scene,
+        :scene,
+        project_id,
+        opts
+      )
+
+    cond do
+      is_integer(resolved_id) ->
+        {:ok, resolved_id}
+
+      is_integer(source_id) and
+          Repo.exists?(
+            from(scene in Scene,
+              where: scene.id == ^source_id and scene.project_id == ^project_id
+            )
+          ) ->
+        {:ok, source_id}
+
+      true ->
+        {:error, {:exact_snapshot_fk_not_materializable, :flow, :scene_id, value, context}}
+    end
+  end
+
+  defp materialize_flow_scene_reference(value, project_id, opts, mode, context) do
+    materialize_external_reference(
+      value,
+      Scene,
+      :scene,
+      project_id,
+      opts,
+      mode,
+      context
+    )
   end
 
   defp lock_and_normalize_restored_node_references(project_id, flow_id, nodes) do

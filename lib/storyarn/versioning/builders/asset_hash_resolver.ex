@@ -18,11 +18,17 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   alias Storyarn.Repo
   alias Storyarn.Versioning.AssetMaterializationCache
   alias Storyarn.Versioning.Builders.AssetCopyError
+  alias Storyarn.Versioning.MaterializationHelpers
   alias Storyarn.Versioning.SnapshotObjectFormat
 
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
   @max_asset_size 52_428_800
   @relationship_metadata_keys ~w(original_asset_id web_asset_id variant_asset_ids)
+  @exact_restore_contract_key "asset_restore_contract_version"
+  @exact_restore_contract_version 1
+
+  @doc false
+  def exact_restore_contract_version, do: @exact_restore_contract_version
 
   @doc """
   Given a list of asset IDs, batch-loads their blob hashes and metadata.
@@ -315,13 +321,27 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
       when is_map(snapshot) and is_map(source_refs) and is_list(assets) and is_list(opts) do
     assets_by_logical_id = Map.new(assets, &{&1["logical_id"], &1})
 
-    with :ok <- validate_pre_materialized_catalog_surfaces(snapshot, source_refs, assets_by_logical_id) do
+    with :ok <-
+           maybe_validate_pre_materialized_catalog_surfaces(
+             snapshot,
+             source_refs,
+             assets_by_logical_id,
+             opts
+           ) do
       validate_pre_materialized_asset_slots(snapshot, source_refs, assets_by_logical_id, opts)
     end
   end
 
   def validate_pre_materialized_catalogs(_snapshot, _source_refs, _assets, _opts),
     do: {:error, :invalid_pre_materialized_asset_catalogs}
+
+  defp maybe_validate_pre_materialized_catalog_surfaces(snapshot, source_refs, assets_by_logical_id, opts) do
+    if exact_restore_catalog?(snapshot) and MaterializationHelpers.exact_materialization?(opts) do
+      :ok
+    else
+      validate_pre_materialized_catalog_surfaces(snapshot, source_refs, assets_by_logical_id)
+    end
+  end
 
   defp validate_pre_materialized_catalog_surfaces(snapshot, source_refs, assets_by_logical_id) do
     Enum.reduce_while([snapshot | project_entity_snapshots(snapshot)], :ok, fn entity_snapshot, :ok ->
@@ -384,7 +404,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   end
 
   defp validate_slot_content_type(content_type, prefix, context, source_id, opts) when is_list(opts) do
-    if exact_materialization?(opts) do
+    if MaterializationHelpers.exact_materialization?(opts) do
       :ok
     else
       validate_portable_slot_content_type(content_type, prefix, context, source_id)
@@ -617,6 +637,24 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
   defp preload_materialized_asset(snapshot, source_asset_id, destination_asset_id, project_id, cache)
        when is_integer(source_asset_id) and source_asset_id > 0 and is_integer(destination_asset_id) and
               destination_asset_id > 0 do
+    if exact_restore_catalog?(snapshot) do
+      AssetMaterializationCache.put(
+        cache,
+        project_id,
+        source_asset_id,
+        exact_pre_materialized_fingerprint(source_asset_id),
+        :copy,
+        destination_asset_id
+      )
+    else
+      preload_legacy_materialized_asset(snapshot, source_asset_id, destination_asset_id, project_id, cache)
+    end
+  end
+
+  defp preload_materialized_asset(_snapshot, _source_asset_id, _destination_asset_id, _project_id, _cache),
+    do: {:error, :invalid_pre_materialized_asset_mapping}
+
+  defp preload_legacy_materialized_asset(snapshot, source_asset_id, destination_asset_id, project_id, cache) do
     case pre_materialized_asset_catalogs(snapshot, to_string(source_asset_id)) do
       [] ->
         :ok
@@ -635,21 +673,107 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
     end
   end
 
-  defp preload_materialized_asset(_snapshot, _source_asset_id, _destination_asset_id, _project_id, _cache),
-    do: {:error, :invalid_pre_materialized_asset_mapping}
-
   defp resolve_pre_materialized_asset(asset_id, snapshot, project_id, opts) do
-    result =
-      with {:ok, entry} <- fetch_pre_materialized_asset_entry(asset_id, snapshot),
+    with_result =
+      with {:ok, entry} <- pre_materialized_asset_entry_for_restore(asset_id, snapshot, opts),
            :ok <- validate_expected_content_type(asset_id, entry, opts) do
         fetch_pre_materialized_asset(opts, project_id, asset_id, entry.fingerprint)
       end
+
+    result = maybe_resolve_legacy_exact_fingerprint(with_result, asset_id, snapshot, project_id, opts)
 
     case result do
       {:ok, destination_asset_id} -> destination_asset_id
       {:error, reason} -> raise AssetCopyError, asset_id: asset_id, reason: reason
     end
   end
+
+  defp pre_materialized_asset_entry_for_restore(asset_id, snapshot, opts) do
+    if MaterializationHelpers.exact_materialization?(opts) do
+      {:ok,
+       %{
+         metadata: %{},
+         fingerprint: exact_pre_materialized_fingerprint(asset_id)
+       }}
+    else
+      fetch_pre_materialized_asset_entry(asset_id, snapshot)
+    end
+  end
+
+  defp maybe_resolve_legacy_exact_fingerprint(
+         {:error,
+          {:asset_materialization_conflict,
+           %{cached_fingerprint: cached_fingerprint, requested_fingerprint: requested_fingerprint}}} = error,
+         asset_id,
+         snapshot,
+         project_id,
+         opts
+       ) do
+    if MaterializationHelpers.exact_materialization?(opts) and
+         exact_pre_materialized_fingerprint?(requested_fingerprint) and
+         technical_pre_materialized_fingerprint?(cached_fingerprint) do
+      with {:ok, entry} <- fetch_pre_materialized_asset_entry(asset_id, snapshot),
+           :ok <- validate_expected_content_type(asset_id, entry, opts) do
+        fetch_pre_materialized_asset(opts, project_id, asset_id, entry.fingerprint)
+      end
+    else
+      error
+    end
+  end
+
+  defp maybe_resolve_legacy_exact_fingerprint(result, _asset_id, _snapshot, _project_id, _opts), do: result
+
+  defp exact_restore_contract?(snapshot) when is_map(snapshot),
+    do: snapshot[@exact_restore_contract_key] == @exact_restore_contract_version
+
+  defp exact_restore_contract?(_snapshot), do: false
+
+  defp exact_restore_catalog?(snapshot) do
+    exact_restore_contract?(snapshot) or legacy_exact_restore_catalog?(snapshot)
+  end
+
+  defp legacy_exact_restore_catalog?(snapshot) when is_map(snapshot) do
+    source_refs = map_field(snapshot, "asset_catalog_refs")
+    hashes = map_field(snapshot, "asset_blob_hashes")
+    metadata = map_field(snapshot, "asset_metadata")
+
+    source_refs != %{} and
+      Enum.all?(Map.keys(source_refs), fn source_ref ->
+        Map.has_key?(hashes, source_ref) and
+          match?(%{"persisted_metadata" => _value}, Map.get(metadata, source_ref))
+      end)
+  end
+
+  defp legacy_exact_restore_catalog?(_snapshot), do: false
+
+  defp exact_pre_materialized_fingerprint(source_asset_id) do
+    %{
+      materialization_mode: :exact,
+      restore_contract: @exact_restore_contract_version,
+      source_asset_id: source_asset_id
+    }
+  end
+
+  defp exact_pre_materialized_fingerprint?(%{
+         materialization_mode: :exact,
+         restore_contract: @exact_restore_contract_version,
+         source_asset_id: source_asset_id
+       }), do: is_integer(source_asset_id) and source_asset_id > 0
+
+  defp exact_pre_materialized_fingerprint?(_fingerprint), do: false
+
+  defp technical_pre_materialized_fingerprint?(%{
+         blob_hash: blob_hash,
+         filename: filename,
+         content_type: content_type,
+         size: size,
+         sanitized_svg: sanitized_svg
+       }) do
+    is_binary(blob_hash) and is_binary(filename) and is_binary(content_type) and
+      is_integer(size) and is_boolean(sanitized_svg)
+  end
+
+  defp technical_pre_materialized_fingerprint?(_fingerprint), do: false
 
   defp fetch_pre_materialized_asset(opts, project_id, asset_id, fingerprint) do
     case fetch_cached_asset(opts, project_id, asset_id, fingerprint, :copy) do
@@ -684,7 +808,8 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
         :ok
 
       prefix when is_binary(prefix) ->
-        if exact_materialization?(opts) or String.starts_with?(entry.metadata["content_type"], prefix) do
+        if MaterializationHelpers.exact_materialization?(opts) or
+             String.starts_with?(entry.metadata["content_type"], prefix) do
           :ok
         else
           {:error,
@@ -695,8 +820,6 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
         {:error, {:invalid_expected_content_type_prefix, invalid_prefix}}
     end
   end
-
-  defp exact_materialization?(opts), do: Keyword.get(opts, :materialization_mode, :portable) == :exact
 
   defp resolve_cached_or_materialize(asset_id, project_id, user_id, mode, entry, opts) do
     case fetch_cached_asset(opts, project_id, asset_id, entry.fingerprint, mode) do

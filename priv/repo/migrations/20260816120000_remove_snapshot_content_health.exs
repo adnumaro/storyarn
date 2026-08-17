@@ -1,10 +1,9 @@
 defmodule Storyarn.Repo.Migrations.RemoveSnapshotContentHealth do
   use Ecto.Migration
 
-  # Fresh databases never create the legacy content_health columns because the
-  # migration that introduced them is no longer in the migration chain. Keep
-  # columns that already exist during an upgrade so older application instances
-  # can finish a rolling deployment, while removing every database health gate.
+  # The published migration that introduced content_health remains in the
+  # migration chain. Keep those columns so older application instances can
+  # finish a rolling deployment, while removing every database health gate.
   def up do
     execute("""
     DROP TRIGGER IF EXISTS project_snapshot_restores_content_health_guard
@@ -30,8 +29,8 @@ defmodule Storyarn.Repo.Migrations.RemoveSnapshotContentHealth do
 
   def down do
     raise Ecto.MigrationError,
-          "RemoveSnapshotContentHealth is irreversible because fresh schemas never created the " <>
-            "legacy columns and the removed health guards cannot be reconstructed safely"
+          "RemoveSnapshotContentHealth is irreversible because the removed health guards " <>
+            "cannot be reconstructed safely"
   end
 
   defp restore_capture_identity_function do

@@ -1314,6 +1314,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     {asset_blob_hashes, asset_metadata} = AssetHashResolver.capture_catalog_maps(assets)
 
     project_snapshot
+    |> Map.put("asset_restore_contract_version", AssetHashResolver.exact_restore_contract_version())
     |> Map.put("asset_blob_hashes", asset_blob_hashes)
     |> Map.put("asset_metadata", asset_metadata)
   end

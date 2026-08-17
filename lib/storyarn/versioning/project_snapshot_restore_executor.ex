@@ -35,6 +35,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.References
+  alias Storyarn.References.EntityReference
   alias Storyarn.References.RichTextMentions
   alias Storyarn.References.VariableReference
   alias Storyarn.Repo
@@ -254,11 +255,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   end
 
   defp prepare_asset_plan(materializer, project_id, lease_token, manifest, project, prefix, keys) do
-    if Code.ensure_loaded?(materializer) and function_exported?(materializer, :prepare, 7) do
-      materializer.prepare(project_id, lease_token, manifest, project, prefix, keys, materialization_mode: :exact)
-    else
-      materializer.prepare(project_id, lease_token, manifest, project, prefix, keys)
-    end
+    materializer.prepare(project_id, lease_token, manifest, project, prefix, keys, materialization_mode: :exact)
   end
 
   defp validate_execution_fence(%ProjectSnapshotRestore{} = restore), do: validate_running_restore(restore)
@@ -312,12 +309,38 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   defp validate_canonical_project_fields(project, %{"project" => attrs}) when is_map(attrs) do
     exact_keys? = attrs |> Map.keys() |> MapSet.new() |> MapSet.equal?(@project_field_keys)
 
-    if exact_keys? and is_integer(project.id) and project.id > 0,
+    if exact_keys? and technically_valid_project_fields?(attrs) and is_integer(project.id) and project.id > 0,
       do: :ok,
       else: {:error, :invalid_project_snapshot_project_fields}
   end
 
   defp validate_canonical_project_fields(_project, _project_data), do: {:error, :invalid_project_snapshot_project_fields}
+
+  defp technically_valid_project_fields?(attrs) do
+    technically_valid_project_text_fields?(attrs) and
+      technically_valid_project_settings?(attrs) and
+      technically_valid_project_version_flags?(attrs)
+  end
+
+  defp technically_valid_project_text_fields?(attrs) do
+    is_binary(attrs["name"]) and
+      nullable_binary?(attrs["description"]) and
+      nullable_binary?(attrs["project_type"]) and
+      nullable_binary?(attrs["project_subtype"]) and
+      nullable_binary?(attrs["project_type_other"])
+  end
+
+  defp technically_valid_project_settings?(attrs) do
+    is_map(attrs["settings"]) or is_nil(attrs["settings"])
+  end
+
+  defp technically_valid_project_version_flags?(attrs) do
+    is_boolean(attrs["auto_version_flows"]) and
+      is_boolean(attrs["auto_version_scenes"]) and
+      is_boolean(attrs["auto_version_sheets"])
+  end
+
+  defp nullable_binary?(value), do: is_nil(value) or is_binary(value)
 
   defp bound_reservation(%ProjectSnapshotRestore{storage_reservation_id: nil}), do: nil
 
@@ -1492,10 +1515,16 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
 
   defp rebuild_active_reference_sources(project_id) do
     ids = active_graph_ids(project_id)
+    before = active_reference_inventory(ids)
 
     with :ok <- References.rebuild_project_entity_references(project_id),
-         :ok <- delete_active_variable_references(ids) do
-      References.rebuild_project_variable_references(project_id)
+         :ok <- delete_active_variable_references(ids),
+         :ok <- References.rebuild_project_variable_references(project_id),
+         true <- before == active_reference_inventory(ids) do
+      :ok
+    else
+      false -> {:error, :project_snapshot_restore_active_reference_mismatch}
+      {:error, _reason} = error -> error
     end
   end
 
@@ -1525,6 +1554,65 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     )
 
     :ok
+  end
+
+  defp active_reference_inventory(ids) do
+    pins = child_ids(ScenePin, :scene_id, ids.scene_ids)
+    zones = child_ids(SceneZone, :scene_id, ids.scene_ids)
+    ambient_flows = child_ids(SceneAmbientFlow, :scene_id, ids.scene_ids)
+
+    %{
+      entity:
+        semantic_entity_references(%{
+          "block" => ids.block_ids,
+          "flow_node" => ids.node_ids,
+          "scene_pin" => pins,
+          "scene_zone" => zones
+        }),
+      variable:
+        semantic_variable_references(%{
+          "flow_node" => ids.node_ids,
+          "scene_pin" => pins,
+          "scene_zone" => zones,
+          "scene_ambient_flow" => ambient_flows
+        })
+    }
+  end
+
+  defp semantic_entity_references(sources) do
+    sources
+    |> Enum.flat_map(fn {source_type, source_ids} ->
+      if source_ids == [] do
+        []
+      else
+        Repo.all(
+          from(ref in EntityReference,
+            where: ref.source_type == ^source_type and ref.source_id in ^source_ids,
+            select: {ref.source_type, ref.source_id, ref.target_type, ref.target_id, ref.context}
+          )
+        )
+      end
+    end)
+    |> Enum.sort()
+  end
+
+  defp semantic_variable_references(sources) do
+    sources
+    |> Enum.flat_map(fn {source_type, source_ids} ->
+      if source_ids == [] do
+        []
+      else
+        Repo.all(
+          from(ref in VariableReference,
+            where: ref.source_type == ^source_type and ref.source_id in ^source_ids,
+            select:
+              {ref.source_type, ref.source_id, ref.flow_node_id, ref.block_id, ref.kind, ref.source_sheet,
+               ref.source_variable}
+          )
+        )
+      end
+    end)
+    |> Enum.sort()
   end
 
   defp verify_project_fields(project_id, expected) do

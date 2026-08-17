@@ -10,6 +10,7 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodecTest do
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.TextCrud
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Versioning.LocalizationSnapshotCodec
@@ -42,6 +43,14 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodecTest do
              )
 
     assert archived_at
+
+    [archived_text] =
+      project.id
+      |> Localization.list_all_texts(source_type: "flow_node")
+      |> Enum.filter(&(&1.source_id == node.id))
+
+    Repo.delete!(archived_text)
+
     assert :ok = LocalizationSnapshotCodec.restore(project.id, [row], %{node: %{node.id => node.id}})
 
     assert [%{archived_at: restored_at, archive_reason: "source_deleted"}] =
@@ -50,6 +59,69 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodecTest do
              |> Enum.filter(&(&1.source_id == node.id))
 
     assert restored_at
+  end
+
+  test "restore inserts a new active row without mutating recovery trash" do
+    project = project_fixture(user_fixture())
+    source_language_fixture(project, %{locale_code: "en", name: "English"})
+    language_fixture(project, %{locale_code: "es", name: "Spanish"})
+    flow = flow_fixture(project)
+    node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Snapshot line", "responses" => []}})
+    [current] = Localization.get_texts_for_source("flow_node", node.id)
+
+    [snapshot_row] = LocalizationSnapshotCodec.capture(project.id, %{"flow_node" => [node.id]})
+
+    assert {:ok, current} =
+             Localization.update_text(current, %{
+               translated_text: "Current translation",
+               status: "draft",
+               reviewer_notes: "Keep this recovery state"
+             })
+
+    assert {1, nil} =
+             TextCrud.archive_texts_for_active_target_locales(
+               project.id,
+               "flow_node",
+               [node.id],
+               "version_replaced"
+             )
+
+    archived_before = Repo.get!(LocalizedText, current.id)
+    assert archived_before.archived_at
+    assert archived_before.archive_reason == "version_replaced"
+
+    snapshot_row =
+      Map.merge(snapshot_row, %{
+        "translated_text" => "Snapshot translation",
+        "status" => "draft",
+        "reviewer_notes" => "Captured reviewer note"
+      })
+
+    assert :ok =
+             LocalizationSnapshotCodec.restore(
+               project.id,
+               [snapshot_row],
+               %{node: %{node.id => node.id}}
+             )
+
+    texts =
+      project.id
+      |> Localization.list_all_texts(source_type: "flow_node")
+      |> Enum.filter(&(&1.source_id == node.id and &1.locale_code == "es"))
+
+    assert [active] = Enum.filter(texts, &is_nil(&1.archived_at))
+    assert [archived] = Enum.reject(texts, &is_nil(&1.archived_at))
+
+    assert active.id != archived.id
+    assert active.project_id == project.id
+    assert active.translated_text == "Snapshot translation"
+    assert active.reviewer_notes == "Captured reviewer note"
+
+    assert archived.id == current.id
+    assert archived.project_id == project.id
+    assert archived.translated_text == "Current translation"
+    assert archived.reviewer_notes == "Keep this recovery state"
+    assert Repo.get!(LocalizedText, archived.id) == archived_before
   end
 
   test "restore deduplicates rows that remap onto the same runtime source key" do

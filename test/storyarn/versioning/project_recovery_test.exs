@@ -13,12 +13,18 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.TextCrud
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneAmbientFlow
+  alias Storyarn.Scenes.SceneConnection
+  alias Storyarn.Scenes.ScenePin
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.Sheet
@@ -306,7 +312,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       {_sheet, block} = localized_block_fixture(project)
 
       assert {1, nil} =
-               Storyarn.Localization.TextCrud.archive_texts_for_source(
+               TextCrud.archive_texts_for_source(
                  "block",
                  block.id,
                  "source_deleted"
@@ -2075,13 +2081,17 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       source_language_fixture(source_project, %{locale_code: "en", name: "English"})
       language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
 
+      target_project = project_fixture(user, %{name: "Exact authored references target"})
+      target_archived_speaker = sheet_fixture(target_project, %{name: "Target archived speaker"})
+      target_source_sheet = sheet_fixture(target_project, %{name: "Target archived inheritance source"})
+
+      target_archived_block =
+        block_fixture(target_source_sheet, %{type: "text", variable_name: "archived_target_source"})
+
       known_mention = sheet_fixture(source_project, %{name: "Known mention"})
-      archived_speaker = sheet_fixture(source_project, %{name: "Archived speaker"})
-      source_sheet = sheet_fixture(source_project, %{name: "Archived inheritance source"})
       authored_sheet = sheet_fixture(source_project, %{name: "Authored unresolved state"})
       null_sheet = sheet_fixture(source_project, %{name: "Null hidden state"})
 
-      source_block = block_fixture(source_sheet, %{type: "text", variable_name: "archived_source"})
       dangling_id = 2_000_000_000 + rem(System.unique_integer([:positive]), 100_000_000)
 
       valid_rich_text =
@@ -2094,7 +2104,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         block_fixture(authored_sheet, %{
           type: "rich_text",
           value: %{"content" => valid_rich_text},
-          inherited_from_block_id: source_block.id
+          inherited_from_block_id: target_archived_block.id
         })
 
       [localized_text] = Localization.get_texts_for_source("block", authored_block.id)
@@ -2109,25 +2119,25 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         set: [
           source_text: rich_text,
           source_text_hash: sha256(rich_text),
-          speaker_sheet_id: archived_speaker.id
+          speaker_sheet_id: target_archived_speaker.id
         ]
       )
 
       now = DateTime.utc_now(:second)
 
       Repo.update_all(
-        from(block in Block, where: block.id == ^source_block.id),
+        from(block in Block, where: block.id == ^target_archived_block.id),
         set: [deleted_at: now]
       )
 
       Repo.update_all(
-        from(sheet in Sheet, where: sheet.id == ^archived_speaker.id),
+        from(sheet in Sheet, where: sheet.id == ^target_archived_speaker.id),
         set: [deleted_at: now]
       )
 
       Repo.update_all(
         from(sheet in Sheet, where: sheet.id == ^authored_sheet.id),
-        set: [hidden_inherited_block_ids: [source_block.id, dangling_id]]
+        set: [hidden_inherited_block_ids: [target_archived_block.id, dangling_id]]
       )
 
       Repo.update_all(
@@ -2143,8 +2153,6 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         ),
         set: [archived_at: DateTime.utc_now(:second), archive_reason: "version_replaced"]
       )
-
-      target_project = project_fixture(user, %{name: "Exact authored references target"})
 
       assert {:ok, _materialized_project} =
                materialize_snapshot_into_project(
@@ -2164,33 +2172,260 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       restored_authored = Repo.get!(Sheet, restored_authored.id)
       restored_null = Repo.get!(Sheet, restored_null.id)
 
-      assert restored_authored.hidden_inherited_block_ids == [source_block.id, dangling_id]
+      assert restored_authored.hidden_inherited_block_ids == [target_archived_block.id, dangling_id]
       assert restored_null.hidden_inherited_block_ids == nil
-      assert restored_block.inherited_from_block_id == source_block.id
+      assert restored_block.inherited_from_block_id == target_archived_block.id
       assert restored_block.value["content"] =~ ~s(data-id="#{restored_known.id}")
       assert restored_block.value["content"] =~ ~s(data-id="#{dangling_id}")
 
       [restored_text] = Localization.get_texts_for_source("block", restored_block.id)
-      assert restored_text.speaker_sheet_id == archived_speaker.id
+      assert restored_text.speaker_sheet_id == target_archived_speaker.id
       assert restored_text.source_text =~ ~s(data-id="#{restored_known.id}")
       assert restored_text.source_text =~ ~s(data-id="#{dangling_id}")
+    end
+
+    test "exact materialization preserves same-project archived FKs and remaps global scene pins", %{
+      project: source_project,
+      user: user
+    } do
+      source_sheet = sheet_fixture(source_project, %{name: "Captured pin sheet"})
+      source_flow = flow_fixture(source_project, %{name: "Captured physical flow"})
+      source_scene = scene_fixture(source_project, %{name: "Captured physical scene"})
+      source_pin_scene = scene_fixture(source_project, %{name: "Captured pin owner"})
+
+      source_pin =
+        pin_fixture(source_pin_scene, %{
+          "label" => "Cross-scene captured pin",
+          "sheet_id" => source_sheet.id,
+          "flow_id" => source_flow.id
+        })
+
+      source_connection =
+        Repo.insert!(%SceneConnection{
+          scene_id: source_scene.id,
+          from_pin_id: source_pin.id,
+          waypoints: []
+        })
+
+      raw_source_connection =
+        Repo.insert!(%SceneConnection{
+          scene_id: source_scene.id,
+          to_pin_id: source_pin.id,
+          waypoints: []
+        })
+
+      {:ok, _source_ambient} =
+        Storyarn.Scenes.create_ambient_flow(source_scene.id, %{
+          "flow_id" => source_flow.id,
+          "trigger_type" => "timed",
+          "trigger_config" => %{"interval_ms" => 2_000}
+        })
+
+      snapshot_data = active_exact_capture_snapshot(source_project)
+
+      Repo.delete!(source_connection)
+      Repo.delete!(raw_source_connection)
+      Repo.delete!(source_pin)
+
+      target_project = project_fixture(user, %{name: "Archived FK target"})
+      archived_sheet = sheet_fixture(target_project, %{name: "Archived target sheet"})
+      archived_flow = flow_fixture(target_project, %{name: "Archived target flow"})
+      archived_scene = scene_fixture(target_project, %{name: "Archived target scene"})
+      archived_pin = pin_fixture(archived_scene, %{"label" => "Archived target pin"})
+      now = DateTime.utc_now(:second)
+
+      Repo.update_all(from(sheet in Sheet, where: sheet.id == ^archived_sheet.id), set: [deleted_at: now])
+      Repo.update_all(from(flow in Flow, where: flow.id == ^archived_flow.id), set: [deleted_at: now])
+      Repo.update_all(from(scene in Scene, where: scene.id == ^archived_scene.id), set: [deleted_at: now])
+
+      exact_snapshot =
+        snapshot_data
+        |> update_snapshot_entity("flows", source_flow.id, fn flow_snapshot ->
+          Map.put(flow_snapshot, "scene_id", archived_scene.id)
+        end)
+        |> update_snapshot_entity("scenes", source_pin_scene.id, fn scene_snapshot ->
+          update_scene_pin_snapshot(scene_snapshot, source_pin.id, fn pin ->
+            pin
+            |> Map.put("sheet_id", archived_sheet.id)
+            |> Map.put("flow_id", archived_flow.id)
+          end)
+        end)
+        |> update_snapshot_entity("scenes", source_scene.id, fn scene_snapshot ->
+          scene_snapshot
+          |> update_in(["ambient_flows"], fn ambient_flows ->
+            Enum.map(ambient_flows, &Map.put(&1, "flow_id", archived_flow.id))
+          end)
+          |> update_in(["connections"], fn connections ->
+            Enum.map(connections, fn
+              %{"original_id" => id} = connection when id == raw_source_connection.id ->
+                connection
+                |> Map.put("to_layer_index", nil)
+                |> Map.put("to_pin_index", nil)
+                |> Map.put("to_pin_original_id", archived_pin.id)
+
+              connection ->
+                connection
+            end)
+          end)
+        end)
+
+      assert {:ok, _materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 exact_snapshot,
+                 user.id,
+                 %{},
+                 materialization_mode: :exact
+               )
+
+      restored_flow = Enum.find(Storyarn.Flows.list_flows(target_project.id), &(&1.name == source_flow.name))
+      restored_scene = Enum.find(Storyarn.Scenes.list_scenes(target_project.id), &(&1.name == source_scene.name))
+
+      restored_pin_scene =
+        Enum.find(Storyarn.Scenes.list_scenes(target_project.id), &(&1.name == source_pin_scene.name))
+
+      restored_pin = Repo.one!(from(pin in ScenePin, where: pin.scene_id == ^restored_pin_scene.id))
+
+      restored_connections =
+        Repo.all(from(connection in SceneConnection, where: connection.scene_id == ^restored_scene.id))
+
+      restored_connection = Enum.find(restored_connections, &(&1.from_pin_id == restored_pin.id))
+      restored_raw_connection = Enum.find(restored_connections, &(&1.to_pin_id == archived_pin.id))
+
+      restored_ambient = Repo.one!(from(ambient in SceneAmbientFlow, where: ambient.scene_id == ^restored_scene.id))
+
+      assert restored_flow.scene_id == archived_scene.id
+      assert restored_pin.sheet_id == archived_sheet.id
+      assert restored_pin.flow_id == archived_flow.id
+      assert restored_connection.from_pin_id == restored_pin.id
+      refute restored_connection.from_pin_id == source_pin.id
+      assert restored_raw_connection.to_pin_id == archived_pin.id
+      assert restored_ambient.flow_id == archived_flow.id
+    end
+
+    test "exact materialization rejects every cross-project physical FK with rollback", %{
+      project: source_project,
+      user: user
+    } do
+      source_sheet = sheet_fixture(source_project)
+      source_flow = flow_fixture(source_project)
+      source_scene = scene_fixture(source_project)
+      source_pin = pin_fixture(source_scene, %{"sheet_id" => source_sheet.id, "flow_id" => source_flow.id})
+
+      source_connection =
+        Repo.insert!(%SceneConnection{
+          scene_id: source_scene.id,
+          from_pin_id: source_pin.id,
+          waypoints: []
+        })
+
+      {:ok, _source_ambient} =
+        Storyarn.Scenes.create_ambient_flow(source_scene.id, %{
+          "flow_id" => source_flow.id,
+          "trigger_type" => "timed",
+          "trigger_config" => %{"interval_ms" => 2_000}
+        })
+
+      base_snapshot = active_exact_capture_snapshot(source_project)
+      foreign_project = project_fixture(user)
+      foreign_sheet = sheet_fixture(foreign_project)
+      foreign_flow = flow_fixture(foreign_project)
+      foreign_scene = scene_fixture(foreign_project)
+      foreign_pin = pin_fixture(foreign_scene)
+      missing_pin_id = System.unique_integer([:positive])
+      target_project = project_fixture(user, %{name: "Cross-project FK target"})
+
+      cases = [
+        {:scene_id,
+         update_snapshot_entity(base_snapshot, "flows", source_flow.id, &Map.put(&1, "scene_id", foreign_scene.id)),
+         foreign_scene.id},
+        {:sheet_id,
+         update_snapshot_entity(base_snapshot, "scenes", source_scene.id, fn scene_snapshot ->
+           update_scene_pin_snapshot(scene_snapshot, source_pin.id, &Map.put(&1, "sheet_id", foreign_sheet.id))
+         end), foreign_sheet.id},
+        {:pin_flow_id,
+         update_snapshot_entity(base_snapshot, "scenes", source_scene.id, fn scene_snapshot ->
+           update_scene_pin_snapshot(scene_snapshot, source_pin.id, &Map.put(&1, "flow_id", foreign_flow.id))
+         end), foreign_flow.id},
+        {:ambient_flow_id,
+         update_snapshot_entity(base_snapshot, "scenes", source_scene.id, fn scene_snapshot ->
+           update_in(scene_snapshot, ["ambient_flows"], fn ambient_flows ->
+             Enum.map(ambient_flows, &Map.put(&1, "flow_id", foreign_flow.id))
+           end)
+         end), foreign_flow.id},
+        {:connection_pin_id,
+         update_snapshot_entity(base_snapshot, "scenes", source_scene.id, fn scene_snapshot ->
+           update_in(scene_snapshot, ["connections"], fn connections ->
+             Enum.map(connections, fn
+               %{"original_id" => id} = connection when id == source_connection.id ->
+                 connection
+                 |> Map.put("from_layer_index", nil)
+                 |> Map.put("from_pin_index", nil)
+                 |> Map.put("from_pin_original_id", foreign_pin.id)
+
+               connection ->
+                 connection
+             end)
+           end)
+         end), foreign_pin.id},
+        {:missing_connection_pin_id,
+         update_snapshot_entity(base_snapshot, "scenes", source_scene.id, fn scene_snapshot ->
+           update_in(scene_snapshot, ["connections"], fn connections ->
+             Enum.map(connections, fn
+               %{"original_id" => id} = connection when id == source_connection.id ->
+                 connection
+                 |> Map.put("from_layer_index", nil)
+                 |> Map.put("from_pin_index", nil)
+                 |> Map.put("from_pin_original_id", missing_pin_id)
+
+               connection ->
+                 connection
+             end)
+           end)
+         end), missing_pin_id}
+      ]
+
+      Enum.each(cases, fn {_field, invalid_snapshot, foreign_id} ->
+        counts_before = materialized_graph_counts(target_project.id)
+
+        assert {:error, reason} =
+                 materialize_snapshot_into_project(
+                   target_project,
+                   invalid_snapshot,
+                   user.id,
+                   %{},
+                   materialization_mode: :exact
+                 )
+
+        assert inspect(reason) =~ Integer.to_string(foreign_id)
+        assert materialized_graph_counts(target_project.id) == counts_before
+        assert Localization.list_all_texts(target_project.id) == []
+      end)
     end
 
     test "exact materialization accepts authored tree cycles, incomplete coverage, and archived parents", %{
       project: source_project,
       user: user
     } do
+      target_project = project_fixture(user, %{name: "Exact authored tree target"})
+      target_archived_parent = sheet_fixture(target_project, %{name: "Target archived tree parent"})
+
       first = sheet_fixture(source_project, %{name: "Cycle first"})
       second = sheet_fixture(source_project, %{name: "Cycle second"})
       omitted = sheet_fixture(source_project, %{name: "Tree entry omitted"})
-      archived_parent = sheet_fixture(source_project, %{name: "Archived tree parent"})
-      _archived_child = sheet_fixture(source_project, %{name: "Archived tree child", parent_id: archived_parent.id})
+
+      archived_child = sheet_fixture(source_project, %{name: "Archived tree child"})
 
       Repo.update_all(from(sheet in Sheet, where: sheet.id == ^first.id), set: [parent_id: second.id])
       Repo.update_all(from(sheet in Sheet, where: sheet.id == ^second.id), set: [parent_id: first.id])
 
       Repo.update_all(
-        from(sheet in Sheet, where: sheet.id == ^archived_parent.id),
+        from(sheet in Sheet, where: sheet.id == ^archived_child.id),
+        set: [parent_id: target_archived_parent.id]
+      )
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^target_archived_parent.id),
         set: [deleted_at: DateTime.utc_now(:second)]
       )
 
@@ -2200,8 +2435,6 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         |> update_in(["tree", "sheets"], fn entries ->
           Enum.reject(entries, &(&1["id"] == omitted.id))
         end)
-
-      target_project = project_fixture(user, %{name: "Exact authored tree target"})
 
       assert {:ok, _materialized_project} =
                materialize_snapshot_into_project(
@@ -2221,7 +2454,126 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       assert restored_first.parent_id == restored_second.id
       assert restored_second.parent_id == restored_first.id
       assert restored_omitted
-      assert restored_archived_child.parent_id == archived_parent.id
+      assert restored_archived_child.parent_id == target_archived_parent.id
+    end
+
+    test "exact materialization rejects cross-project block fallbacks and rolls back", %{
+      project: source_project,
+      user: user
+    } do
+      inheritance_source_sheet = sheet_fixture(source_project, %{name: "Foreign inheritance source"})
+      authored_sheet = sheet_fixture(source_project, %{name: "Authored inheritance"})
+      foreign_block = block_fixture(inheritance_source_sheet, %{type: "text"})
+
+      _authored_block =
+        block_fixture(authored_sheet, %{
+          type: "text",
+          inherited_from_block_id: foreign_block.id
+        })
+
+      Repo.update_all(
+        from(block in Block, where: block.id == ^foreign_block.id),
+        set: [deleted_at: DateTime.utc_now(:second)]
+      )
+
+      snapshot_data = active_exact_capture_snapshot(source_project)
+      target_project = project_fixture(user, %{name: "Cross-project block target"})
+      counts_before = materialized_graph_counts(target_project.id)
+
+      assert {:error, {:exact_snapshot_fk_not_materializable, :block, :inherited_from_block_id, foreign_block_id}} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{},
+                 materialization_mode: :exact
+               )
+
+      assert foreign_block_id == foreign_block.id
+      assert materialized_graph_counts(target_project.id) == counts_before
+      assert Localization.list_all_texts(target_project.id) == []
+    end
+
+    test "exact materialization preserves authored localization source ids without adopting foreign rows", %{
+      project: source_project,
+      user: user
+    } do
+      source_language_fixture(source_project, %{locale_code: "en", name: "English"})
+      language_fixture(source_project, %{locale_code: "es", name: "Spanish"})
+      source_sheet = sheet_fixture(source_project, %{name: "Foreign localization source"})
+
+      foreign_block =
+        block_fixture(source_sheet, %{
+          type: "rich_text",
+          value: %{"content" => "Foreign archived source"}
+        })
+
+      assert [_text] = Localization.get_texts_for_source("block", foreign_block.id)
+
+      Repo.update_all(
+        from(block in Block, where: block.id == ^foreign_block.id),
+        set: [deleted_at: DateTime.utc_now(:second)]
+      )
+
+      snapshot_data = active_exact_capture_snapshot(source_project)
+      target_project = project_fixture(user, %{name: "Cross-project localization target"})
+
+      assert {:ok, _materialized_project} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{},
+                 materialization_mode: :exact
+               )
+
+      assert %LocalizedText{project_id: target_project_id, source_id: source_id} =
+               Enum.find(
+                 Localization.list_all_texts(target_project.id),
+                 &(&1.source_type == "block" and &1.source_id == foreign_block.id)
+               )
+
+      assert target_project_id == target_project.id
+      assert source_id == foreign_block.id
+      assert Repo.get!(Block, foreign_block.id).sheet_id == source_sheet.id
+    end
+
+    test "exact materialization rejects cross-project localization speakers and rolls back", %{
+      project: source_project,
+      user: user
+    } do
+      {_sheet, block} = localized_block_fixture(source_project)
+      foreign_speaker = sheet_fixture(source_project, %{name: "Foreign archived speaker"})
+      [text] = Localization.get_texts_for_source("block", block.id)
+
+      Repo.update_all(
+        from(text_row in LocalizedText, where: text_row.id == ^text.id),
+        set: [speaker_sheet_id: foreign_speaker.id]
+      )
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^foreign_speaker.id),
+        set: [deleted_at: DateTime.utc_now(:second)]
+      )
+
+      TextCrud.archive_texts_for_sources("sheet", [foreign_speaker.id], "source_deleted")
+
+      snapshot_data = active_exact_capture_snapshot(source_project)
+      target_project = project_fixture(user, %{name: "Cross-project speaker target"})
+      counts_before = materialized_graph_counts(target_project.id)
+
+      assert {:error, {:exact_snapshot_fk_not_materializable, :localized_text, :speaker_sheet_id, foreign_speaker_id}} =
+               materialize_snapshot_into_project(
+                 target_project,
+                 snapshot_data,
+                 user.id,
+                 %{},
+                 materialization_mode: :exact
+               )
+
+      assert foreign_speaker_id == foreign_speaker.id
+      assert materialized_graph_counts(target_project.id) == counts_before
+      assert Localization.list_all_texts(target_project.id) == []
     end
 
     test "rejects archived localized text even when its source is still captured", %{
@@ -2974,6 +3326,33 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
     |> Enum.with_index(1)
     |> Map.new(fn {asset, index} ->
       {to_string(asset.id), "asset-#{index |> Integer.to_string() |> String.pad_leading(6, "0")}"}
+    end)
+  end
+
+  defp update_snapshot_entity(snapshot, collection, source_id, update_fun) do
+    update_in(snapshot, [collection], fn entries ->
+      Enum.map(entries, fn
+        %{"id" => id, "snapshot" => entity_snapshot} = entry when id == source_id ->
+          Map.put(entry, "snapshot", update_fun.(entity_snapshot))
+
+        entry ->
+          entry
+      end)
+    end)
+  end
+
+  defp update_scene_pin_snapshot(scene_snapshot, source_pin_id, update_fun) do
+    update_pins = fn pins ->
+      Enum.map(pins || [], fn
+        %{"original_id" => id} = pin when id == source_pin_id -> update_fun.(pin)
+        pin -> pin
+      end)
+    end
+
+    scene_snapshot
+    |> update_in(["orphan_pins"], update_pins)
+    |> update_in(["layers"], fn layers ->
+      Enum.map(layers || [], &update_in(&1, ["pins"], update_pins))
     end)
   end
 

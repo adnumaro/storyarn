@@ -32,6 +32,9 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   @spec root_position(keyword()) :: integer()
   def root_position(opts), do: Keyword.get(opts, :position, 0)
 
+  @spec exact_materialization?(keyword()) :: boolean()
+  def exact_materialization?(opts), do: Keyword.get(opts, :materialization_mode, :portable) == :exact
+
   @doc false
   @spec with_project_storage_lock(pos_integer(), (-> term())) ::
           {:ok, term()} | {:error, term()}

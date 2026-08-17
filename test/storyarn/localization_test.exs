@@ -781,6 +781,45 @@ defmodule Storyarn.LocalizationTest do
       assert text.vo_eligible
     end
 
+    test "upsert_text/2 isolates the same active source identity by project" do
+      user = user_fixture()
+      first_project = project_fixture(user, %{name: "First localization tenant"})
+      second_project = project_fixture(user, %{name: "Second localization tenant"})
+
+      attrs = %{
+        source_type: "flow_node",
+        source_id: 991,
+        source_field: "text",
+        source_text: "Shared runtime identity",
+        source_text_hash: hash("Shared runtime identity"),
+        locale_code: "es"
+      }
+
+      assert {:ok, first} = Localization.upsert_text(first_project.id, attrs)
+      assert {:ok, second} = Localization.upsert_text(second_project.id, attrs)
+
+      assert first.id != second.id
+      assert first.project_id == first_project.id
+      assert second.project_id == second_project.id
+
+      updated_attrs = %{
+        attrs
+        | source_text: "Second tenant update",
+          source_text_hash: hash("Second tenant update")
+      }
+
+      assert {:ok, updated_second} =
+               Localization.upsert_text(second_project.id, updated_attrs)
+
+      assert updated_second.id == second.id
+      assert updated_second.project_id == second_project.id
+      assert updated_second.source_text == "Second tenant update"
+
+      preserved_first = Repo.get!(LocalizedText, first.id)
+      assert preserved_first.project_id == first_project.id
+      assert preserved_first.source_text == "Shared runtime identity"
+    end
+
     test "upsert_text/2 updates source_text when hash changes" do
       user = user_fixture()
       project = project_fixture(user)

@@ -227,7 +227,7 @@ defmodule Storyarn.Localization.TextCrud do
 
     case Repo.insert(changeset,
            on_conflict: :nothing,
-           conflict_target: [:source_type, :source_id, :source_field, :locale_code]
+           conflict_target: LocalizedText.active_identity_conflict_target()
          ) do
       {:ok, %{id: nil}} ->
         resolve_upsert_conflict(project_id, attrs, source_type, source_id, source_field, locale_code, retries_left)
@@ -908,12 +908,23 @@ defmodule Storyarn.Localization.TextCrud do
   end
 
   defp resolve_upsert_conflict(project_id, attrs, source_type, source_id, source_field, locale_code, retries_left) do
-    existing = get_text_by_source(source_type, source_id, source_field, locale_code, include_archived: true)
+    existing = get_active_text_by_source(project_id, source_type, source_id, source_field, locale_code)
 
     case if(existing, do: update_source_text(existing, attrs), else: create_text(project_id, attrs)) do
       {:error, changeset} = error -> maybe_retry_upsert(error, changeset, project_id, attrs, retries_left)
       result -> result
     end
+  end
+
+  defp get_active_text_by_source(project_id, source_type, source_id, source_field, locale_code) do
+    Repo.one(
+      from(text in LocalizedText,
+        where:
+          text.project_id == ^project_id and text.source_type == ^source_type and
+            text.source_id == ^source_id and text.source_field == ^source_field and
+            text.locale_code == ^locale_code and is_nil(text.archived_at)
+      )
+    )
   end
 
   @doc """
@@ -930,19 +941,21 @@ defmodule Storyarn.Localization.TextCrud do
 
   Returns the total number of entries processed.
   """
-  @spec batch_upsert_texts(integer(), [map()]) :: non_neg_integer()
-  def batch_upsert_texts(_project_id, []), do: 0
+  @spec batch_upsert_texts(integer(), [map()], keyword()) :: non_neg_integer()
+  def batch_upsert_texts(project_id, entries, opts \\ [])
 
-  def batch_upsert_texts(project_id, entries) when is_list(entries) do
+  def batch_upsert_texts(_project_id, [], _opts), do: 0
+
+  def batch_upsert_texts(project_id, entries, opts) when is_list(entries) do
     if Repo.in_transaction?() do
-      do_batch_upsert_texts(project_id, entries)
+      do_batch_upsert_texts(project_id, entries, opts)
     else
-      {:ok, count} = Repo.transaction(fn -> do_batch_upsert_texts(project_id, entries) end)
+      {:ok, count} = Repo.transaction(fn -> do_batch_upsert_texts(project_id, entries, opts) end)
       count
     end
   end
 
-  defp do_batch_upsert_texts(project_id, entries) do
+  defp do_batch_upsert_texts(project_id, entries, opts) do
     now = TimeHelpers.now()
 
     rows =
@@ -969,11 +982,104 @@ defmodule Storyarn.Localization.TextCrud do
         }
       end)
 
+    if Keyword.get(opts, :revive_archived, true) do
+      revive_archived_texts(project_id, rows)
+    end
+
     rows
     |> Enum.chunk_every(500)
     |> Enum.each(&do_batch_upsert_chunk/1)
 
     length(rows)
+  end
+
+  @revive_archived_sql """
+  WITH identities(source_type, source_id, source_field, locale_code) AS (
+    SELECT * FROM unnest($2::text[], $3::bigint[], $4::text[], $5::text[])
+  ),
+  candidates AS (
+    SELECT DISTINCT ON (
+      archived.source_type,
+      archived.source_id,
+      archived.source_field,
+      archived.locale_code
+    ) archived.id
+    FROM localized_texts AS archived
+    INNER JOIN identities AS identity
+      ON identity.source_type = archived.source_type
+      AND identity.source_id = archived.source_id
+      AND identity.source_field = archived.source_field
+      AND identity.locale_code = archived.locale_code
+    WHERE archived.project_id = $1
+      AND archived.archived_at IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM localized_texts AS active
+        WHERE active.project_id = archived.project_id
+          AND active.source_type = archived.source_type
+          AND active.source_id = archived.source_id
+          AND active.source_field = archived.source_field
+          AND active.locale_code = archived.locale_code
+          AND active.archived_at IS NULL
+      )
+    ORDER BY
+      archived.source_type,
+      archived.source_id,
+      archived.source_field,
+      archived.locale_code,
+      archived.archived_at DESC,
+      archived.updated_at DESC,
+      archived.id DESC
+  )
+  UPDATE localized_texts AS text
+  SET archived_at = NULL,
+      archive_reason = NULL,
+      updated_at = $6,
+      lock_version = text.lock_version + 1
+  FROM candidates
+  WHERE text.id = candidates.id
+  RETURNING text.id
+  """
+
+  @doc false
+  @spec revive_archived_texts(integer(), [map()]) :: non_neg_integer()
+  def revive_archived_texts(_project_id, []), do: 0
+
+  def revive_archived_texts(project_id, entries) when is_list(entries) do
+    identities =
+      entries
+      |> Enum.map(fn entry ->
+        {
+          entry[:source_type] || entry["source_type"],
+          entry[:source_id] || entry["source_id"],
+          entry[:source_field] || entry["source_field"],
+          entry[:locale_code] || entry["locale_code"]
+        }
+      end)
+      |> Enum.uniq()
+
+    {source_types, source_ids, source_fields, locale_codes} =
+      Enum.reduce(identities, {[], [], [], []}, fn {source_type, source_id, source_field, locale_code},
+                                                   {types, ids, fields, locales} ->
+        {
+          [source_type | types],
+          [source_id | ids],
+          [source_field | fields],
+          [locale_code | locales]
+        }
+      end)
+
+    %{num_rows: count} =
+      Repo.query!(@revive_archived_sql, [
+        project_id,
+        Enum.reverse(source_types),
+        Enum.reverse(source_ids),
+        Enum.reverse(source_fields),
+        Enum.reverse(locale_codes),
+        TimeHelpers.now()
+      ])
+
+    count
   end
 
   @upsert_sql """
@@ -987,7 +1093,8 @@ defmodule Storyarn.Localization.TextCrud do
     $6::text[], $7::text[], $8::int[], $9::bigint[], $10::text[],
     $11::boolean[], $12::text[], $13::text[], $14::boolean[], $15::timestamp[], $16::timestamp[]
   )
-  ON CONFLICT (source_type, source_id, source_field, locale_code)
+  ON CONFLICT (project_id, source_type, source_id, source_field, locale_code)
+  WHERE archived_at IS NULL
   DO UPDATE SET
     source_text = EXCLUDED.source_text,
     source_text_hash = EXCLUDED.source_text_hash,

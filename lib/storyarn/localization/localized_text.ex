@@ -5,9 +5,10 @@ defmodule Storyarn.Localization.LocalizedText do
   Stores translations for all localizable content in a project. Each row represents
   one translation of one field in one locale.
 
-  The composite key `(source_type, source_id, source_field, locale_code)` uniquely
-  identifies a translation. The `source_type` + `source_id` point to the origin entity,
-  and `source_field` identifies which field within that entity.
+  The active composite key
+  `(project_id, source_type, source_id, source_field, locale_code)` uniquely
+  identifies a translation. Archived rows retain the same authored identity so
+  exact restore can keep displaced translation state recoverable.
 
   Source types: `"flow_node"`, `"block"`, and runtime speaker `"sheet"` names. The accepted fields and their
   runtime roles are defined by `Storyarn.Localization.SourceContract`.
@@ -33,6 +34,10 @@ defmodule Storyarn.Localization.LocalizedText do
   @valid_archive_reasons ~w(source_deleted source_field_removed source_not_runtime version_replaced)
   @valid_source_types SourceContract.source_types()
   @valid_content_roles SourceContract.content_roles()
+  @active_identity_conflict_target {
+    :unsafe_fragment,
+    "(project_id, source_type, source_id, source_field, locale_code) WHERE archived_at IS NULL"
+  }
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -140,8 +145,9 @@ defmodule Storyarn.Localization.LocalizedText do
     |> validate_recorded_voiceover_has_asset()
     |> validate_length(:locale_code, min: 2, max: LocaleCode.max_length())
     |> validate_format(:locale_code, LocaleCode.format())
-    |> unique_constraint([:source_type, :source_id, :source_field, :locale_code],
-      name: :localized_texts_source_locale_unique
+    |> unique_constraint([:project_id, :source_type, :source_id, :source_field, :locale_code],
+      name: :localized_texts_source_locale_unique,
+      error_key: :source_type
     )
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:vo_asset_id)
@@ -157,6 +163,9 @@ defmodule Storyarn.Localization.LocalizedText do
       name: :localized_texts_recorded_voiceover_requires_asset
     )
   end
+
+  @doc false
+  def active_identity_conflict_target, do: @active_identity_conflict_target
 
   @doc """
   Changeset for updating a translation (manual editing).

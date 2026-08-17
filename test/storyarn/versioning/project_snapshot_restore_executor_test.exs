@@ -7,6 +7,7 @@ alias Storyarn.Assets.Storage.Local
 alias Storyarn.Scenes.PinCrud
 alias Storyarn.Scenes.Scene
 alias Storyarn.Scenes.ZoneCrud
+alias Storyarn.Versioning.Builders.AssetHashResolver
 
 defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   use Storyarn.DataCase, async: false
@@ -93,7 +94,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   defmodule FailingMaterializer do
     @moduledoc false
 
-    def prepare(project_id, restore_id, manifest, _project, prefix, _keys) do
+    def prepare(project_id, restore_id, manifest, _project, prefix, _keys, _opts) do
       logical_bytes =
         manifest["objects"]
         |> Enum.filter(&(&1["kind"] == "asset_blob"))
@@ -120,7 +121,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   defmodule EmptyMaterializer do
     @moduledoc false
 
-    def prepare(project_id, restore_id, _manifest, _project, prefix, _keys) do
+    def prepare(project_id, restore_id, _manifest, _project, prefix, _keys, _opts) do
       {:ok,
        %AssetPlan{
          project_id: project_id,
@@ -147,8 +148,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     @moduledoc false
     alias Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest.EmptyMaterializer
 
-    def prepare(project_id, restore_id, manifest, project, prefix, keys) do
-      EmptyMaterializer.prepare(project_id, restore_id, manifest, project, prefix, keys)
+    def prepare(project_id, restore_id, manifest, project, prefix, keys, opts) do
+      EmptyMaterializer.prepare(project_id, restore_id, manifest, project, prefix, keys, opts)
     end
 
     def stage_destination_objects(plan, tracker) do
@@ -164,8 +165,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   defmodule PrepareSpyMaterializer do
     @moduledoc false
 
-    def prepare(_project_id, _restore_id, _manifest, _project, _prefix, _keys) do
-      Process.put({__MODULE__, :called}, true)
+    def prepare(_project_id, _restore_id, _manifest, _project, _prefix, _keys, opts) do
+      Process.put({__MODULE__, :called}, opts)
       {:error, :unexpected_materializer_prepare}
     end
   end
@@ -178,7 +179,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   defmodule OversizedMaterializer do
     @moduledoc false
 
-    def prepare(project_id, restore_id, _manifest, _project, prefix, _keys) do
+    def prepare(project_id, restore_id, _manifest, _project, prefix, _keys, _opts) do
       {:ok,
        %AssetPlan{
          project_id: project_id,
@@ -324,6 +325,29 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
 
     for required_key <- ["name", "settings", "auto_version_flows"] do
       invalid_object = update_in(context.project_object, ["project"], &Map.delete(&1, required_key))
+      Process.put({EmptyArchiveReader, :project_object}, invalid_object)
+
+      assert {:error, :invalid_project_snapshot_project_fields} =
+               ProjectSnapshotRestoreExecutor.execute(context.restore,
+                 archive_reader: EmptyArchiveReader,
+                 asset_materializer: EmptyMaterializer,
+                 project_recovery: ProjectRecovery
+               )
+
+      restore = Repo.get!(ProjectSnapshotRestore, context.restore.id)
+      assert restore.status == "running"
+      assert is_nil(restore.storage_reservation_id)
+      assert Repo.get!(Project, project_before.id) == project_before
+    end
+
+    for {field, invalid_value} <- [
+          {"name", nil},
+          {"description", 123},
+          {"project_type", %{}},
+          {"settings", []},
+          {"auto_version_flows", "true"}
+        ] do
+      invalid_object = put_in(context.project_object, ["project", field], invalid_value)
       Process.put({EmptyArchiveReader, :project_object}, invalid_object)
 
       assert {:error, :invalid_project_snapshot_project_fields} =
@@ -555,6 +579,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
       assert is_nil(Repo.get!(Sheet, current_sheet.id).deleted_at)
       assert is_nil(Repo.get!(ProjectSnapshotRestore, context.restore.id).storage_reservation_id)
     end
+  end
+
+  test "asset materializer preflight always receives exact mode", context do
+    Process.delete({PrepareSpyMaterializer, :called})
+
+    assert {:error, :unexpected_materializer_prepare} =
+             ProjectSnapshotRestoreExecutor.execute(context.restore,
+               archive_reader: EmptyArchiveReader,
+               asset_materializer: PrepareSpyMaterializer,
+               project_recovery: ProjectRecovery
+             )
+
+    assert Process.get({PrepareSpyMaterializer, :called}) == [materialization_mode: :exact]
   end
 
   test "a transient archive read failure retries through the lifecycle", context do
@@ -1862,8 +1899,45 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     assert {:ok, _pretrash} = Assets.move_asset_to_trash(project.id, pretrash.id, user.id)
     pretrash_before = Repo.get!(Asset, pretrash.id)
 
-    capture = capture_project_object(project.id)
     active_assets = Assets.list_assets_for_export(project.id)
+
+    {captured_hashes, captured_metadata} =
+      AssetHashResolver.capture_catalog_maps(active_assets)
+
+    authored_original_metadata = %{
+      "restore_role" => "original",
+      "original_asset_id" => [original.id],
+      "web_asset_id" => web.id,
+      "variant_asset_ids" => %{
+        "thumbnail" => variant.id,
+        "dangling" => 999_999_999,
+        "malformed" => [variant.id]
+      },
+      "width" => 800,
+      "height" => 600
+    }
+
+    capture =
+      project.id
+      |> capture_project_object()
+      |> Map.put(
+        "asset_restore_contract_version",
+        AssetHashResolver.exact_restore_contract_version()
+      )
+      |> Map.put(
+        "asset_blob_hashes",
+        Map.put(captured_hashes, to_string(original.id), String.duplicate("0", 64))
+      )
+      |> Map.put(
+        "asset_metadata",
+        Map.update!(captured_metadata, to_string(original.id), fn metadata ->
+          metadata
+          |> Map.put("filename", "../authored-duplicate.png")
+          |> Map.put("content_type", "text/html")
+          |> Map.put("size", 999_999_999)
+          |> Map.put("persisted_metadata", authored_original_metadata)
+        end)
+      )
 
     captured_assets = [original, web, variant, orphan]
     captured_ids = Enum.map(captured_assets, & &1.id)
@@ -1950,10 +2024,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
       )
 
     assert length(active_assets) == 4
-    assert Enum.count(active_assets, &(&1.filename == "duplicate.png")) == 2
+    assert Enum.count(active_assets, &(&1.filename == "duplicate.png")) == 1
 
     assert Enum.sort(Enum.map(active_assets, & &1.filename)) ==
-             ["duplicate.png", "duplicate.png", "orphan.png", "variant.png"]
+             ["../authored-duplicate.png", "duplicate.png", "orphan.png", "variant.png"]
 
     assert Enum.all?(active_assets, &(&1.id not in captured_ids))
     assert length(Enum.uniq(Enum.map(active_assets, & &1.id))) == 4
@@ -1965,11 +2039,29 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     restored_web = restored_by_role["web"]
     restored_variant = restored_by_role["variant"]
     restored_orphan = restored_by_role["orphan"]
+    assert restored_original.content_type == "image/png"
+    assert restored_original.size == byte_size(shared_bytes)
+    assert restored_original.blob_hash == original.blob_hash
+    assert restored_original.metadata["original_asset_id"] == [original.id]
     assert restored_original.metadata["web_asset_id"] == restored_web.id
-    assert restored_original.metadata["variant_asset_ids"] == %{"thumbnail" => restored_variant.id}
+
+    assert restored_original.metadata["variant_asset_ids"] == %{
+             "thumbnail" => restored_variant.id,
+             "dangling" => 999_999_999,
+             "malformed" => [variant.id]
+           }
+
     assert restored_web.metadata["original_asset_id"] == restored_original.id
     assert restored_variant.metadata["original_asset_id"] == restored_original.id
     assert restored_orphan.metadata["purpose"] == "portable-catalog-sentinel"
+
+    expected_asset_bytes =
+      2 * byte_size(shared_bytes) + byte_size(variant_bytes) + byte_size(orphan_bytes)
+
+    assert Storyarn.Billing.project_storage_usage(project.id).current_assets == %{
+             bytes: expected_asset_bytes,
+             count: 4
+           }
 
     restored_sheet =
       Repo.one!(

@@ -98,6 +98,153 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       refute source_project.id == destination_project.id
     end
 
+    test "uses captured identity for exact catalogs whose authored technical fields drift", %{
+      project: project,
+      user: user
+    } do
+      effective_hash = String.duplicate("a", 64)
+
+      destination =
+        asset_fixture(project, user, %{
+          filename: "../authored-name.png",
+          content_type: "image/png",
+          size: 17,
+          blob_hash: effective_hash
+        })
+
+      legacy_capture = %{
+        "asset_catalog_refs" => %{"41" => "asset-000001"},
+        "asset_blob_hashes" => %{"41" => "authored-invalid-hash"},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => "../authored-name.png",
+            "content_type" => "text/html",
+            "size" => -99,
+            "persisted_metadata" => %{"authored" => true}
+          }
+        }
+      }
+
+      versioned_capture =
+        Map.put(
+          legacy_capture,
+          "asset_restore_contract_version",
+          AssetHashResolver.exact_restore_contract_version()
+        )
+
+      Enum.each([legacy_capture, versioned_capture], fn snapshot ->
+        cache = AssetMaterializationCache.new()
+
+        assert :ok =
+                 AssetHashResolver.preload_materialized_assets(
+                   snapshot,
+                   %{41 => destination.id},
+                   project.id,
+                   cache
+                 )
+
+        assert destination.id ==
+                 AssetHashResolver.resolve_asset_fk(
+                   41,
+                   snapshot,
+                   project.id,
+                   user.id,
+                   pre_materialized_assets: true,
+                   asset_materialization_cache: cache,
+                   materialization_mode: :exact
+                 )
+
+        error =
+          assert_raise AssetCopyError, fn ->
+            AssetHashResolver.resolve_asset_fk(
+              41,
+              snapshot,
+              project.id,
+              user.id,
+              pre_materialized_assets: true,
+              asset_materialization_cache: cache
+            )
+          end
+
+        assert error.reason == :invalid_blob_hash
+      end)
+    end
+
+    test "keeps one exact identity across top-level preload and nested builder snapshots", %{
+      project: project,
+      user: user
+    } do
+      effective_hash = String.duplicate("b", 64)
+
+      destination =
+        asset_fixture(project, user, %{
+          filename: "effective.png",
+          content_type: "image/png",
+          size: 23,
+          blob_hash: effective_hash
+        })
+
+      project_snapshot = %{
+        "asset_restore_contract_version" => AssetHashResolver.exact_restore_contract_version(),
+        "asset_catalog_refs" => %{"41" => "asset-000001"},
+        "asset_blob_hashes" => %{"41" => "authored-invalid-hash"},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => "../authored.png",
+            "content_type" => "text/html",
+            "size" => -1,
+            "persisted_metadata" => %{"authored" => true}
+          }
+        }
+      }
+
+      nested_snapshot = %{
+        "asset_blob_hashes" => %{"41" => effective_hash},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => destination.filename,
+            "content_type" => destination.content_type,
+            "size" => destination.size
+          }
+        }
+      }
+
+      cache = AssetMaterializationCache.new()
+
+      assert :ok =
+               AssetHashResolver.preload_materialized_assets(
+                 project_snapshot,
+                 %{41 => destination.id},
+                 project.id,
+                 cache
+               )
+
+      exact_opts = [
+        pre_materialized_assets: true,
+        asset_materialization_cache: cache,
+        materialization_mode: :exact
+      ]
+
+      assert destination.id ==
+               AssetHashResolver.resolve_asset_fk(41, project_snapshot, project.id, user.id, exact_opts)
+
+      assert destination.id ==
+               AssetHashResolver.resolve_asset_fk(41, nested_snapshot, project.id, user.id, exact_opts)
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            41,
+            nested_snapshot,
+            project.id,
+            user.id,
+            Keyword.delete(exact_opts, :materialization_mode)
+          )
+        end
+
+      assert {:asset_materialization_conflict, %{cached_mode: :copy, requested_mode: :copy}} = error.reason
+    end
+
     test "exact materialization preserves a verified asset even when its MIME family mismatches the slot", %{
       project: project,
       user: user

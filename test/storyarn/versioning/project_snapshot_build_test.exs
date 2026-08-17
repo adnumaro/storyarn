@@ -639,6 +639,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       manifest = Jason.decode!(capture.manifest_json)
       captured_metadata = project_json["asset_metadata"][to_string(asset.id)]
 
+      assert project_json["asset_restore_contract_version"] ==
+               Storyarn.Versioning.Builders.AssetHashResolver.exact_restore_contract_version()
+
       assert Map.take(captured_metadata, ~w(original_asset_id web_asset_id variant_asset_ids)) ==
                Map.take(raw_relationships, ~w(original_asset_id web_asset_id variant_asset_ids))
 

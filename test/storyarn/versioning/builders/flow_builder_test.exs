@@ -25,6 +25,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Versioning.Builders.FlowBuilder
@@ -609,7 +610,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       deleted_at = DateTime.truncate(DateTime.utc_now(), :second)
 
       Repo.update_all(
-        from(scene in Storyarn.Scenes.Scene, where: scene.id == ^local_scene.id),
+        from(scene in Scene, where: scene.id == ^local_scene.id),
         set: [deleted_at: deleted_at]
       )
 
@@ -3739,6 +3740,183 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
 
       assert restored_dialogue.data["speaker_sheet_id"] == dangling_speaker_id
       assert restored_dialogue.data["avatar_id"] == dangling_avatar_id
+    end
+
+    test "exact materialization scopes physical scene and parent fallbacks to the target project", %{
+      user: user,
+      flow: source_flow
+    } do
+      child = node_fixture(source_flow, %{type: "hub", position_x: 140.0})
+      snapshot = FlowBuilder.build_capture_snapshot(source_flow)
+      target_project = project_fixture(user)
+      target_scene = scene_fixture(target_project)
+      target_flow = flow_fixture(target_project)
+
+      {:ok, archived_parent} =
+        Flows.create_sequence(target_flow.id, %{
+          "name" => "Archived parent",
+          "width" => 320.0,
+          "height" => 180.0
+        })
+
+      now = DateTime.utc_now(:second)
+      Repo.update_all(from(scene in Scene, where: scene.id == ^target_scene.id), set: [deleted_at: now])
+      Repo.update_all(from(node in FlowNode, where: node.id == ^archived_parent.id), set: [deleted_at: now])
+
+      exact_snapshot =
+        snapshot
+        |> Map.put("scene_id", target_scene.id)
+        |> update_in(["nodes"], fn nodes ->
+          Enum.map(nodes, fn
+            %{"original_id" => id} = node when id == child.id -> Map.put(node, "parent_id", archived_parent.id)
+            node -> node
+          end)
+        end)
+
+      assert {:ok, restored, id_maps} =
+               FlowBuilder.instantiate_snapshot(target_project.id, exact_snapshot,
+                 materialization_mode: :exact,
+                 reset_shortcut: true,
+                 preserve_external_refs: false,
+                 restore_localization: false,
+                 rebuild_references: false
+               )
+
+      assert restored.scene_id == target_scene.id
+      assert Repo.get!(FlowNode, id_maps.node[child.id]).parent_id == archived_parent.id
+
+      foreign_project = project_fixture(user)
+      foreign_scene = scene_fixture(foreign_project)
+      foreign_flow = flow_fixture(foreign_project)
+
+      {:ok, foreign_parent} =
+        Flows.create_sequence(foreign_flow.id, %{
+          "name" => "Foreign parent",
+          "width" => 320.0,
+          "height" => 180.0
+        })
+
+      flow_count = Repo.aggregate(from(flow in Flow, where: flow.project_id == ^target_project.id), :count)
+
+      assert {:error, {:exact_snapshot_fk_not_materializable, :flow, :scene_id, foreign_scene_id, _context}} =
+               FlowBuilder.instantiate_snapshot(target_project.id, Map.put(snapshot, "scene_id", foreign_scene.id),
+                 materialization_mode: :exact,
+                 reset_shortcut: true,
+                 preserve_external_refs: false,
+                 restore_localization: false,
+                 rebuild_references: false
+               )
+
+      assert foreign_scene_id == foreign_scene.id
+      assert Repo.aggregate(from(flow in Flow, where: flow.project_id == ^target_project.id), :count) == flow_count
+
+      foreign_parent_snapshot =
+        update_in(snapshot, ["nodes"], fn nodes ->
+          Enum.map(nodes, fn
+            %{"original_id" => id} = node when id == child.id -> Map.put(node, "parent_id", foreign_parent.id)
+            node -> node
+          end)
+        end)
+
+      assert {:error,
+              {:invalid_snapshot_node_parent, child_id, foreign_parent_id,
+               {:error, {:exact_snapshot_fk_not_materializable, :flow_node, :parent_id, foreign_parent_id}}}} =
+               FlowBuilder.instantiate_snapshot(target_project.id, foreign_parent_snapshot,
+                 materialization_mode: :exact,
+                 reset_shortcut: true,
+                 preserve_external_refs: false,
+                 restore_localization: false,
+                 rebuild_references: false
+               )
+
+      assert child_id == child.id
+      assert foreign_parent_id == foreign_parent.id
+      assert Repo.aggregate(from(flow in Flow, where: flow.project_id == ^target_project.id), :count) == flow_count
+    end
+
+    test "exact materialization remaps captured raw connection endpoints and rejects foreign fallbacks", %{
+      user: user,
+      flow: source_flow
+    } do
+      source = node_fixture(source_flow, %{type: "hub", position_x: 120.0})
+      target = node_fixture(source_flow, %{type: "hub", position_x: 240.0})
+      _connection = connection_fixture(source_flow, source, target)
+      snapshot = FlowBuilder.build_capture_snapshot(source_flow)
+
+      raw_snapshot =
+        update_in(snapshot, ["connections"], fn [connection] ->
+          [
+            connection
+            |> Map.put("source_node_index", nil)
+            |> Map.put("source_node_id", source.id)
+          ]
+        end)
+
+      target_project = project_fixture(user)
+
+      assert {:ok, materialized, id_maps} =
+               FlowBuilder.instantiate_snapshot(target_project.id, raw_snapshot,
+                 materialization_mode: :exact,
+                 reset_shortcut: true,
+                 preserve_external_refs: false,
+                 restore_localization: false,
+                 rebuild_references: false
+               )
+
+      assert [%FlowConnection{source_node_id: source_node_id}] = materialized.connections
+      assert source_node_id == id_maps.node[source.id]
+
+      archived_flow = flow_fixture(target_project)
+      archived_node = node_fixture(archived_flow, %{type: "hub"})
+
+      Repo.update_all(
+        from(node in FlowNode, where: node.id == ^archived_node.id),
+        set: [deleted_at: DateTime.utc_now(:second)]
+      )
+
+      archived_snapshot =
+        update_in(raw_snapshot, ["connections"], fn [connection] ->
+          [Map.put(connection, "source_node_id", archived_node.id)]
+        end)
+
+      assert {:ok, archived_materialized, _archived_id_maps} =
+               FlowBuilder.instantiate_snapshot(target_project.id, archived_snapshot,
+                 materialization_mode: :exact,
+                 reset_shortcut: true,
+                 preserve_external_refs: false,
+                 restore_localization: false,
+                 rebuild_references: false
+               )
+
+      assert [%FlowConnection{source_node_id: archived_source_node_id}] = archived_materialized.connections
+      assert archived_source_node_id == archived_node.id
+
+      foreign_project = project_fixture(user)
+      foreign_flow = flow_fixture(foreign_project)
+      foreign_node = node_fixture(foreign_flow, %{type: "hub"})
+
+      foreign_snapshot =
+        update_in(raw_snapshot, ["connections"], fn [connection] ->
+          [Map.put(connection, "source_node_id", foreign_node.id)]
+        end)
+
+      flow_count = Repo.aggregate(from(flow in Flow, where: flow.project_id == ^target_project.id), :count)
+
+      assert {:error,
+              {:connection_materialization_failed, _connection_id,
+               {:error,
+                {:exact_snapshot_fk_not_materializable, :flow_connection, _snapshot_connection_id, :source,
+                 foreign_node_id}}}} =
+               FlowBuilder.instantiate_snapshot(target_project.id, foreign_snapshot,
+                 materialization_mode: :exact,
+                 reset_shortcut: true,
+                 preserve_external_refs: false,
+                 restore_localization: false,
+                 rebuild_references: false
+               )
+
+      assert foreign_node_id == foreign_node.id
+      assert Repo.aggregate(from(flow in Flow, where: flow.project_id == ^target_project.id), :count) == flow_count
     end
 
     test "exact capture materializes residual sequence rows and a missing sequence config", %{

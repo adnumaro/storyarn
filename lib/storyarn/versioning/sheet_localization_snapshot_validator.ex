@@ -50,18 +50,6 @@ defmodule Storyarn.Versioning.SheetLocalizationSnapshotValidator do
   def complete_missing_rows(localization, snapshot, _target_locales),
     do: {:error, {:invalid_sheet_localization_snapshot, localization, snapshot}}
 
-  @spec validate_sources([map()], map()) :: :ok | {:error, term()}
-  def validate_sources(localization, snapshot) when is_list(localization) and is_map(snapshot) do
-    with :ok <- validate_snapshot_source_shape(snapshot),
-         sources = snapshot_sources(snapshot),
-         :ok <- validate_rows(localization, sources) do
-      validate_unique_rows(localization)
-    end
-  end
-
-  def validate_sources(localization, snapshot),
-    do: {:error, {:invalid_sheet_localization_snapshot, localization, snapshot}}
-
   defp validate_rows(localization, sources) do
     Enum.reduce_while(localization, :ok, fn row, :ok ->
       case validate_row(row, sources) do

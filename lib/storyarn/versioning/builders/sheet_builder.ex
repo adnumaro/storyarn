@@ -12,6 +12,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   use Gettext, backend: Storyarn.Gettext
 
   import Ecto.Query, warn: false
+  import Storyarn.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizableWords
@@ -524,8 +525,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end
   end
 
-  defp exact_materialization?(opts), do: Keyword.get(opts, :materialization_mode) == :exact
-
+  # Exact-mode selection is shared across snapshot materializers.
   defp maybe_validate_materialized_sheet_inheritance_graph(project_id, snapshot, locked_external_block_ids, opts) do
     if exact_materialization?(opts),
       do: :ok,
@@ -2576,10 +2576,11 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
            LocalizationSnapshotCodec.restore(
              sheet.project_id,
              localization,
-             id_maps
+             id_maps,
+             revive_archived: true
            ),
          :ok <- reconcile_restored_block_localization(target_ids) do
-      Localization.sync_sheet_names(sheet.project_id)
+      Localization.sync_sheet_names(sheet.project_id, revive_archived: true)
     end
   end
 
@@ -2587,7 +2588,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     block_ids
     |> Enum.map(&Repo.get(Block, &1))
     |> Enum.reduce_while(:ok, fn block, :ok ->
-      case Localization.extract_block(block) do
+      case Localization.extract_block(block, revive_archived: true) do
         :ok -> {:cont, :ok}
         {:error, reason} -> {:halt, {:error, reason}}
       end
@@ -2611,7 +2612,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       instance = Repo.get!(Block, instance_id)
 
       with :ok <- reconcile_block_references(instance, project_id, opts) do
-        Localization.extract_block(instance)
+        Localization.extract_block(instance, revive_archived: true)
       end
     end)
   end

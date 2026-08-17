@@ -501,127 +501,127 @@ msgstr "Zona pegada."
 msgid "Shows a variable value on the map"
 msgstr "Muestra el valor de una variable en el mapa"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4487
+#: lib/storyarn/versioning/builders/scene_builder.ex:4128
 #, elixir-autogen, elixir-format
 msgid "Added annotation in layer \"%{layer}\""
 msgstr "Anotación añadida en capa \"%{layer}\""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4374
+#: lib/storyarn/versioning/builders/scene_builder.ex:4015
 #, elixir-autogen, elixir-format
 msgid "Added connection"
 msgstr "Conexión añadida"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4428
+#: lib/storyarn/versioning/builders/scene_builder.ex:4069
 #, elixir-autogen, elixir-format
 msgid "Added layer \"%{name}\""
 msgstr "Capa \"%{name}\" añadida"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4438
+#: lib/storyarn/versioning/builders/scene_builder.ex:4079
 #, elixir-autogen, elixir-format
 msgid "Added pin \"%{label}\" in layer \"%{layer}\""
 msgstr "Pin \"%{label}\" añadido en capa \"%{layer}\""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4463
+#: lib/storyarn/versioning/builders/scene_builder.ex:4104
 #, elixir-autogen, elixir-format
 msgid "Added zone \"%{name}\" in layer \"%{layer}\""
 msgstr "Zona \"%{name}\" añadida en capa \"%{layer}\""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4508
+#: lib/storyarn/versioning/builders/scene_builder.ex:4149
 #, elixir-autogen, elixir-format
 msgid "Background image"
 msgstr "Imagen de fondo"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4124
+#: lib/storyarn/versioning/builders/scene_builder.ex:3765
 #, elixir-autogen, elixir-format
 msgid "Changed background"
 msgstr "Fondo cambiado"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4096
+#: lib/storyarn/versioning/builders/scene_builder.ex:3737
 #, elixir-autogen, elixir-format
 msgid "Changed default view"
 msgstr "Vista por defecto cambiada"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4082
+#: lib/storyarn/versioning/builders/scene_builder.ex:3723
 #, elixir-autogen, elixir-format
 msgid "Changed description"
 msgstr "Descripción cambiada"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4089
+#: lib/storyarn/versioning/builders/scene_builder.ex:3730
 #, elixir-autogen, elixir-format
 msgid "Changed dimensions"
 msgstr "Dimensiones cambiadas"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4103
+#: lib/storyarn/versioning/builders/scene_builder.ex:3744
 #, elixir-autogen, elixir-format
 msgid "Changed scale settings"
 msgstr "Ajustes de escala cambiados"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4075
+#: lib/storyarn/versioning/builders/scene_builder.ex:3716
 #, elixir-autogen, elixir-format
 msgid "Changed shortcut"
 msgstr "Atajo cambiado"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4531
+#: lib/storyarn/versioning/builders/scene_builder.ex:4172
 #, elixir-autogen, elixir-format
 msgid "Layer %{l}, Pin %{p}"
 msgstr "Capa %{l}, Pin %{p}"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4545
+#: lib/storyarn/versioning/builders/scene_builder.ex:4186
 #, elixir-autogen, elixir-format
 msgid "Layer %{l}, Zone %{z}"
 msgstr "Capa %{l}, Zona %{z}"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4493
+#: lib/storyarn/versioning/builders/scene_builder.ex:4134
 #, elixir-autogen, elixir-format
 msgid "Modified annotation in layer \"%{layer}\""
 msgstr "Anotación modificada en capa \"%{layer}\""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4380
+#: lib/storyarn/versioning/builders/scene_builder.ex:4021
 #, elixir-autogen, elixir-format
 msgid "Modified connection"
 msgstr "Conexión modificada"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4309
+#: lib/storyarn/versioning/builders/scene_builder.ex:3950
 #, elixir-autogen, elixir-format
 msgid "Modified layer \"%{name}\""
 msgstr "Capa \"%{name}\" modificada"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4450
+#: lib/storyarn/versioning/builders/scene_builder.ex:4091
 #, elixir-autogen, elixir-format
 msgid "Modified pin \"%{label}\" in layer \"%{layer}\""
 msgstr "Pin \"%{label}\" modificado en capa \"%{layer}\""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4475
+#: lib/storyarn/versioning/builders/scene_builder.ex:4116
 #, elixir-autogen, elixir-format
 msgid "Modified zone \"%{name}\" in layer \"%{layer}\""
 msgstr "Zona \"%{name}\" modificada en capa \"%{layer}\""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4490
+#: lib/storyarn/versioning/builders/scene_builder.ex:4131
 #, elixir-autogen, elixir-format
 msgid "Removed annotation in layer \"%{layer}\""
 msgstr "Anotación eliminada en capa \"%{layer}\""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4377
+#: lib/storyarn/versioning/builders/scene_builder.ex:4018
 #, elixir-autogen, elixir-format
 msgid "Removed connection"
 msgstr "Conexión eliminada"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4430
+#: lib/storyarn/versioning/builders/scene_builder.ex:4071
 #, elixir-autogen, elixir-format
 msgid "Removed layer \"%{name}\""
 msgstr "Capa \"%{name}\" eliminada"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4444
+#: lib/storyarn/versioning/builders/scene_builder.ex:4085
 #, elixir-autogen, elixir-format
 msgid "Removed pin \"%{label}\" in layer \"%{layer}\""
 msgstr "Pin \"%{label}\" eliminado en capa \"%{layer}\""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4469
+#: lib/storyarn/versioning/builders/scene_builder.ex:4110
 #, elixir-autogen, elixir-format
 msgid "Removed zone \"%{name}\" in layer \"%{layer}\""
 msgstr "Zona \"%{name}\" eliminada en capa \"%{layer}\""
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4068
+#: lib/storyarn/versioning/builders/scene_builder.ex:3709
 #, elixir-autogen, elixir-format
 msgid "Renamed scene"
 msgstr "Escena renombrada"
@@ -692,17 +692,17 @@ msgstr "Progreso guardado."
 msgid "Saved scene no longer exists. Starting on current scene."
 msgstr "La escena guardada ya no existe. Iniciando en la escena actual."
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4558
+#: lib/storyarn/versioning/builders/scene_builder.ex:4199
 #, elixir-autogen, elixir-format
 msgid "Scene Pin %{p}"
 msgstr "Pin de escena %{p}"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4571
+#: lib/storyarn/versioning/builders/scene_builder.ex:4212
 #, elixir-autogen, elixir-format
 msgid "Scene Zone %{z}"
 msgstr "Zona de escena %{z}"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4650
+#: lib/storyarn/versioning/builders/scene_builder.ex:4313
 #, elixir-autogen, elixir-format
 msgid "Scene root"
 msgstr "Raíz de escena"
@@ -810,7 +810,7 @@ msgstr "No tienes permiso para editar."
 msgid "Asset not found."
 msgstr "Recurso no encontrado."
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4110
+#: lib/storyarn/versioning/builders/scene_builder.ex:3751
 #, elixir-autogen, elixir-format
 msgid "Changed fog design"
 msgstr "Diseño de fog cambiado"
@@ -860,32 +860,32 @@ msgstr "Elemento"
 msgid "%{type} #%{id}"
 msgstr "%{type} n.º %{id}"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4595
+#: lib/storyarn/versioning/builders/scene_builder.ex:4236
 #, elixir-autogen, elixir-format
 msgid " — collection item %{item} sheet"
 msgstr " — ficha del elemento de colección %{item}"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4170
+#: lib/storyarn/versioning/builders/scene_builder.ex:3811
 #, elixir-autogen, elixir-format
 msgid "Added ambient flow %{flow_id}"
 msgstr "Flujo ambiental %{flow_id} añadido"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4617
+#: lib/storyarn/versioning/builders/scene_builder.ex:4258
 #, elixir-autogen, elixir-format
 msgid "Ambient flow %{index}"
 msgstr "Flujo ambiental %{index}"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4117
+#: lib/storyarn/versioning/builders/scene_builder.ex:3758
 #, elixir-autogen, elixir-format
 msgid "Changed exploration display"
 msgstr "Visualización de exploración cambiada"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4176
+#: lib/storyarn/versioning/builders/scene_builder.ex:3817
 #, elixir-autogen, elixir-format
 msgid "Modified ambient flow %{flow_id}"
 msgstr "Flujo ambiental %{flow_id} modificado"
 
-#: lib/storyarn/versioning/builders/scene_builder.ex:4173
+#: lib/storyarn/versioning/builders/scene_builder.ex:3814
 #, elixir-autogen, elixir-format
 msgid "Removed ambient flow %{flow_id}"
 msgstr "Flujo ambiental %{flow_id} eliminado"
