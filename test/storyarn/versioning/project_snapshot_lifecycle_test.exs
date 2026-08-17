@@ -808,7 +808,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       assert Repo.get!(StorageReservation, reservation.id).status == "released"
     end
 
-    test "returns a domain fence for an incoherent active restore on an expired build" do
+    test "returns a domain fence for an active restore on an expired build" do
       user = user_fixture()
       project = project_fixture(user)
       assert {:ok, snapshot} = request_snapshot(user, project)
@@ -822,7 +822,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
       discard_job!(job.id, stale_at)
       assert [candidate] = Versioning.list_expired_project_snapshot_build_candidates(now)
 
-      restore = insert_incoherent_active_restore!(user, project, Repo.get!(ProjectSnapshot, snapshot.id))
+      restore = insert_active_restore!(user, project, Repo.get!(ProjectSnapshot, snapshot.id))
 
       assert {:error, :snapshot_active_operation_blocks_deletion} =
                Versioning.delete_expired_project_snapshot_build_candidate(candidate)
@@ -1506,32 +1506,25 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycleTest do
     |> Repo.update!()
   end
 
-  defp insert_incoherent_active_restore!(user, project, snapshot) do
-    trigger = "project_snapshot_restores_content_health_guard"
-    Repo.query!("ALTER TABLE project_snapshot_restores DISABLE TRIGGER #{trigger}")
-
-    try do
-      %ProjectSnapshotRestore{}
-      |> ProjectSnapshotRestore.request_changeset(%{
-        workspace_id: project.workspace_id,
-        project_id: project.id,
-        project_snapshot_id: snapshot.id,
-        requested_by_id: user.id,
-        idempotency_key: Ecto.UUID.generate(),
-        snapshot_lifecycle_generation: snapshot.lifecycle_generation,
-        snapshot_accounting_generation: snapshot.accounting_generation || 1,
-        archive_storage_key: "incoherent/archive",
-        archive_size_bytes: 1,
-        archive_checksum: String.duplicate("a", 64),
-        manifest_storage_key: "incoherent/manifest",
-        manifest_size_bytes: 1,
-        manifest_checksum: String.duplicate("b", 64),
-        requested_at: TimeHelpers.now()
-      })
-      |> Repo.insert!()
-    after
-      Repo.query!("ALTER TABLE project_snapshot_restores ENABLE TRIGGER #{trigger}")
-    end
+  defp insert_active_restore!(user, project, snapshot) do
+    %ProjectSnapshotRestore{}
+    |> ProjectSnapshotRestore.request_changeset(%{
+      workspace_id: project.workspace_id,
+      project_id: project.id,
+      project_snapshot_id: snapshot.id,
+      requested_by_id: user.id,
+      idempotency_key: Ecto.UUID.generate(),
+      snapshot_lifecycle_generation: snapshot.lifecycle_generation,
+      snapshot_accounting_generation: snapshot.accounting_generation || 1,
+      archive_storage_key: "active/archive",
+      archive_size_bytes: 1,
+      archive_checksum: String.duplicate("a", 64),
+      manifest_storage_key: "active/manifest",
+      manifest_size_bytes: 1,
+      manifest_checksum: String.duplicate("b", 64),
+      requested_at: TimeHelpers.now()
+    })
+    |> Repo.insert!()
   end
 
   defp stale_executing_build!(snapshot, now) do

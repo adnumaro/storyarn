@@ -12,6 +12,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   use Gettext, backend: Storyarn.Gettext
 
   import Ecto.Query, warn: false
+  import Storyarn.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizableWords
@@ -55,8 +56,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   @doc false
-  @spec build_snapshot_with_content_health(Sheet.t()) :: {map(), [map()]}
-  def build_snapshot_with_content_health(%Sheet{} = sheet) do
+  @spec build_capture_snapshot(Sheet.t()) :: map()
+  def build_capture_snapshot(%Sheet{} = sheet) do
     build_snapshot(sheet, :capture)
   end
 
@@ -142,7 +143,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
         target_locales: target_locales
       )
 
-    {hash_map, metadata_map, asset_issues} =
+    {hash_map, metadata_map} =
       resolve_snapshot_assets(
         mode,
         sheet,
@@ -170,7 +171,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
     case mode do
       :strict -> ensure_valid_built_sheet_snapshot!(sheet, snapshot, target_locales)
-      :capture -> {snapshot, capture_content_issues(sheet, snapshot, asset_issues)}
+      :capture -> snapshot
     end
   end
 
@@ -180,7 +181,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     {hash_map, metadata_map} =
       AssetHashResolver.resolve_hashes_for_project!(asset_ids, sheet.project_id)
 
-    {hash_map, metadata_map, []}
+    {hash_map, metadata_map}
   end
 
   defp resolve_snapshot_assets(:capture, sheet, avatar_snapshots, block_snapshots, localization) do
@@ -224,156 +225,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       container_id: sheet_id
     }
   end
-
-  defp capture_content_issues(sheet, snapshot, asset_issues) do
-    localization_errors = capture_localization_content_errors(snapshot)
-
-    validations =
-      [
-        capture_validation(fn -> validate_portable_sheet_snapshot(snapshot) end),
-        capture_validation(fn ->
-          validate_sheet_block_reference_ownership(sheet.project_id, snapshot)
-        end),
-        capture_validation(fn ->
-          validate_effective_sheet_inheritance_graph(
-            sheet.project_id,
-            snapshot["blocks"],
-            forbidden_sheet_id: sheet.id
-          )
-        end)
-      ] ++ Enum.map(localization_errors, &{:error, &1})
-
-    validation_issues =
-      Enum.flat_map(validations, fn
-        :ok -> []
-        {:error, reason} -> [capture_validation_issue(sheet.id, reason)]
-      end)
-
-    Enum.uniq(asset_issues ++ validation_issues ++ raw_state_issues(sheet))
-  end
-
-  defp capture_localization_content_errors(snapshot) do
-    SheetLocalizationSnapshotValidator.content_health_errors(
-      snapshot["localization"],
-      snapshot
-    )
-  rescue
-    _exception -> [:unclassified_content_issue]
-  catch
-    _kind, _reason -> [:unclassified_content_issue]
-  end
-
-  defp capture_validation(validation_fun) do
-    validation_fun.()
-  rescue
-    _exception -> {:error, :unclassified_content_issue}
-  catch
-    _kind, _reason -> {:error, :unclassified_content_issue}
-  end
-
-  defp raw_state_issues(sheet) do
-    hidden_inheritance_issues =
-      if is_list(sheet.hidden_inherited_block_ids) do
-        []
-      else
-        [capture_raw_state_issue(:sheet, sheet.id, "hidden_inherited_block_ids", sheet.id)]
-      end
-
-    block_issues =
-      Enum.flat_map(sheet.blocks, fn block ->
-        []
-        |> maybe_add_raw_collection_issue(
-          block.type != "table" and
-            (sequence_present?(block.table_columns) or sequence_present?(block.table_rows)),
-          :block,
-          block.id,
-          "table_data",
-          sheet.id
-        )
-        |> maybe_add_raw_collection_issue(
-          block.type != "gallery" and sequence_present?(block.gallery_images),
-          :block,
-          block.id,
-          "gallery_images",
-          sheet.id
-        )
-      end)
-
-    hidden_inheritance_issues ++ block_issues
-  end
-
-  defp maybe_add_raw_collection_issue(issues, false, _entity_type, _entity_id, _source_field, _sheet_id), do: issues
-
-  defp maybe_add_raw_collection_issue(issues, true, entity_type, entity_id, source_field, sheet_id) do
-    [capture_raw_state_issue(entity_type, entity_id, source_field, sheet_id) | issues]
-  end
-
-  defp capture_raw_state_issue(entity_type, entity_id, source_field, sheet_id) do
-    %{
-      code: :invalid_sheet_snapshot_content,
-      severity: :warning,
-      entity_type: entity_type,
-      entity_id: entity_id,
-      source_field: source_field,
-      impact: :restore_blocked,
-      container_type: :sheet,
-      container_id: sheet_id
-    }
-  end
-
-  defp sequence_present?(value), do: is_list(value) and value != []
-
-  defp capture_validation_issue(sheet_id, reason) do
-    {code, entity_type, entity_id, source_field} = sheet_issue_location(reason, sheet_id)
-
-    %{
-      code: code,
-      severity: :warning,
-      entity_type: entity_type,
-      entity_id: entity_id,
-      source_field: source_field,
-      impact: :restore_blocked,
-      container_type: :sheet,
-      container_id: sheet_id
-    }
-  end
-
-  defp sheet_issue_location({code, source_type, source_id, source_field}, _sheet_id)
-       when code in [
-              :localization_source_text_mismatch,
-              :localization_source_text_hash_mismatch,
-              :localization_word_count_mismatch,
-              :localization_speaker_mismatch
-            ] do
-    {code, source_type, source_id, source_field}
-  end
-
-  defp sheet_issue_location({:invalid_snapshot, {:invalid_block_reference, block_id}}, _sheet_id),
-    do: {:invalid_block_reference, :block, block_id, "inherited_from_block_id"}
-
-  defp sheet_issue_location({:invalid_snapshot, {:inheritance_cycle, block_id}}, _sheet_id),
-    do: {:inheritance_cycle, :block, block_id, "inherited_from_block_id"}
-
-  defp sheet_issue_location({:incomplete_sheet_localization_snapshot, _details}, sheet_id),
-    do: {:incomplete_localization, :sheet, sheet_id, nil}
-
-  defp sheet_issue_location({code, source_type, source_id, source_field, _locale}, _sheet_id)
-       when code in [
-              :invalid_active_localization_archive_state,
-              :invalid_localization_translation_state,
-              :invalid_localization_placeholders,
-              :invalid_localization_voiceover_state,
-              :localization_locale_outside_snapshot
-            ] do
-    {code, source_type, source_id, source_field}
-  end
-
-  defp sheet_issue_location(
-         {:invalid_localization_placeholders, source_type, source_id, source_field, _locale, _details},
-         _sheet_id
-       ), do: {:invalid_localization_placeholders, source_type, source_id, source_field}
-
-  defp sheet_issue_location(_reason, sheet_id), do: {:invalid_sheet_snapshot_content, :sheet, sheet_id, nil}
 
   defp ensure_valid_built_sheet_snapshot!(sheet, snapshot, target_locales) do
     result =
@@ -485,6 +336,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   defp maybe_put_gallery_images(snapshot, _block, _mode), do: snapshot
 
+  defp sequence_present?(value), do: is_list(value) and value != []
+
   defp put_gallery_images(snapshot, block) do
     Map.put(
       snapshot,
@@ -555,8 +408,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end)
   end
 
-  defp validate_sheet_instantiation_localization(_project_id, snapshot, _opts) when is_map(snapshot) do
-    validate_portable_snapshot(snapshot)
+  defp validate_sheet_instantiation_localization(_project_id, snapshot, opts) when is_map(snapshot) do
+    if exact_materialization?(opts), do: :ok, else: validate_portable_snapshot(snapshot)
   end
 
   defp validate_sheet_instantiation_localization(_project_id, snapshot, _opts),
@@ -622,7 +475,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
          {:ok, locked_external_block_ids} <-
            lock_materialized_sheet_block_references(project_id, snapshot, opts),
          :ok <-
-           validate_materialized_sheet_inheritance_graph(
+           maybe_validate_materialized_sheet_inheritance_graph(
              project_id,
              snapshot,
              locked_external_block_ids,
@@ -672,6 +525,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end
   end
 
+  # Exact-mode selection is shared across snapshot materializers.
+  defp maybe_validate_materialized_sheet_inheritance_graph(project_id, snapshot, locked_external_block_ids, opts) do
+    if exact_materialization?(opts),
+      do: :ok,
+      else: validate_materialized_sheet_inheritance_graph(project_id, snapshot, locked_external_block_ids, opts)
+  end
+
   defp sheet_snapshot_attrs(project_id, snapshot, opts, now) do
     Map.merge(
       %{
@@ -702,7 +562,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     candidate_ids =
       snapshot["blocks"]
       |> Enum.map(& &1["inherited_from_block_id"])
-      |> Enum.concat(snapshot["hidden_inherited_block_ids"])
+      |> Enum.concat(snapshot["hidden_inherited_block_ids"] || [])
       |> Enum.reject(&(is_nil(&1) or MapSet.member?(internal_ids, &1)))
       |> Enum.map(&materialized_external_block_candidate(&1, opts))
       |> Enum.reject(&is_nil/1)
@@ -3031,18 +2891,22 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   defp remap_hidden_inherited_block_ids(sheet_id, source_ids, block_id_map, project_id, locked_external_block_ids, opts) do
     remapped_ids =
-      source_ids
-      |> Enum.map(
-        &resolve_materialized_block_reference(
-          &1,
-          block_id_map,
-          project_id,
-          locked_external_block_ids,
-          opts
+      if exact_materialization?(opts) and is_nil(source_ids) do
+        nil
+      else
+        source_ids
+        |> Enum.map(
+          &resolve_materialized_block_reference(
+            &1,
+            block_id_map,
+            project_id,
+            locked_external_block_ids,
+            opts
+          )
         )
-      )
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq()
+      end
 
     case Repo.update_all(
            from(sheet in Sheet, where: sheet.id == ^sheet_id),
@@ -3156,11 +3020,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   defp build_avatar_entries(snapshot, project_id, now, opts) do
-    snapshot
-    |> avatar_snapshots()
-    |> Enum.map(&avatar_entry(&1, snapshot, project_id, now, opts))
-    |> Enum.reject(&is_nil/1)
-    |> ensure_default_avatar()
+    entries =
+      snapshot
+      |> avatar_snapshots()
+      |> Enum.map(&avatar_entry(&1, snapshot, project_id, now, opts))
+      |> Enum.reject(&is_nil/1)
+
+    if exact_materialization?(opts), do: entries, else: ensure_default_avatar(entries)
   end
 
   defp avatar_snapshots(%{"avatars" => avatars}) when is_list(avatars) and avatars != [] do

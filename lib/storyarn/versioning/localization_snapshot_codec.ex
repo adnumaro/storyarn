@@ -229,11 +229,12 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
     end
   end
 
-  defp restore_conflict_query do
+  @doc false
+  def restore_conflict_query do
     from(text in LocalizedText,
+      where: text.project_id == fragment("EXCLUDED.project_id"),
       update: [
         set: [
-          project_id: fragment("EXCLUDED.project_id"),
           source_text: fragment("EXCLUDED.source_text"),
           source_text_hash: fragment("EXCLUDED.source_text_hash"),
           translated_source_hash: fragment("EXCLUDED.translated_source_hash"),

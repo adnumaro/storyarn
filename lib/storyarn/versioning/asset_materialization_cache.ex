@@ -187,6 +187,13 @@ defmodule Storyarn.Versioning.AssetMaterializationCache do
     Repo.one(query)
   end
 
+  defp destination_matches_fingerprint?(%Asset{}, %{
+         materialization_mode: :exact,
+         restore_contract: 1,
+         source_asset_id: source_asset_id
+       })
+       when is_integer(source_asset_id) and source_asset_id > 0, do: true
+
   defp destination_matches_fingerprint?(asset, fingerprint) when is_map(fingerprint) do
     asset.blob_hash == fingerprint[:blob_hash] and
       asset.filename == fingerprint[:filename] and

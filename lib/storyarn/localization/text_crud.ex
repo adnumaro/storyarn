@@ -592,8 +592,7 @@ defmodule Storyarn.Localization.TextCrud do
 
   This inventory intentionally does not filter by locale registration, source
   existence, source lifecycle, or runtime source type. Canonical snapshots must
-  preserve active database drift so content health can report it without losing
-  the original row.
+  preserve every active row exactly, including inconsistent stored state.
   """
   @spec list_texts_for_canonical_snapshot(integer()) :: [LocalizedText.t()]
   def list_texts_for_canonical_snapshot(project_id) do

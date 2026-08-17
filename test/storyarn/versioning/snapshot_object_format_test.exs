@@ -92,9 +92,6 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
         })
       ]
 
-      assert {:ok, [41, 42, 43, 44]} =
-               SnapshotObjectFormat.unmaterializable_relationship_asset_ids(assets)
-
       assert {:ok, catalog} =
                SnapshotObjectFormat.build_catalog(assets,
                  asset_content_mode: :omit_unmaterializable
@@ -110,13 +107,11 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
              }
     end
 
-    test "admits a zero-byte asset only through the restore-blocked capture catalog" do
+    test "admits a zero-byte asset through the exact capture catalog" do
       empty = %{asset(41, "empty.png", sha256("")) | size: 0}
 
       assert {:error, {:invalid_size, :asset, 0}} =
                SnapshotObjectFormat.build_catalog([empty])
-
-      assert {:ok, [41]} = SnapshotObjectFormat.unmaterializable_catalog_asset_ids([empty])
 
       assert {:ok, catalog} =
                SnapshotObjectFormat.build_catalog([empty],

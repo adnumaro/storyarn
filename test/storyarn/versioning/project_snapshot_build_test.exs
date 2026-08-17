@@ -7,7 +7,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
-  import Storyarn.ScenesFixtures
   import Storyarn.VersioningFixtures
 
   alias Storyarn.Assets
@@ -36,10 +35,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.RetryStorageCleanupRequestsWorker
-
-  @content_health_keys ~w(
-    impact_counts issue_count issue_counts_by_code issues issues_truncated severity_counts state version
-  )
 
   describe "request_full_project_snapshot/3" do
     test "normalizes inserted lifecycle time to the database clock" do
@@ -173,12 +168,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
         end)
 
       assert captured_text == localized_text_snapshot(archived_text)
-      assert captured.content_health == project_object["content_health"]
-      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
-
-      assert captured.content_health["issue_counts_by_code"][
-               "capture.localization_source_outside_snapshot"
-             ] == 1
 
       assert project_object["asset_catalog_refs"] == %{
                to_string(asset.id) => "asset-000001"
@@ -499,21 +488,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       active_inventory = Localization.list_texts_for_canonical_snapshot(project.id)
       assert length(captured_texts) == length(active_inventory)
       assert project_json["entity_counts"]["localized_texts"] == length(active_inventory)
-      assert captured.content_health == capture.content_health
-      assert captured.content_health == project_json["content_health"]
-      assert captured.content_health["state"] == "warnings"
-      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
-
-      assert captured.content_health["issue_counts_by_code"][
-               "capture.localization_locale_outside_snapshot"
-             ] == 2
-
-      assert captured.content_health["issue_counts_by_code"][
-               "capture.localization_source_outside_snapshot"
-             ] == 3
     end
 
-    test "captures missing speaker drift as durable restore-blocking health without mutating raw content" do
+    test "captures missing speaker drift without mutating raw content" do
       user = user_fixture()
       project = project_fixture(user)
       _source = source_language_fixture(project, %{locale_code: "en", name: "English"})
@@ -550,15 +527,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       capture = Repo.get!(ProjectSnapshotCapture, captured.id)
       project_json = Jason.decode!(capture.project_json)
 
-      assert captured.content_health == capture.content_health
-      assert captured.content_health == project_json["content_health"]
-      assert captured.content_health["state"] == "warnings"
-      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
-
-      assert captured.content_health["issue_counts_by_code"][
-               "capture.localization_speaker_mismatch"
-             ] == 1
-
       flow_snapshot =
         project_json["flows"]
         |> Enum.find(&(&1["id"] == flow.id))
@@ -581,7 +549,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert Repo.get!(Sheet, speaker.id).deleted_at
     end
 
-    test "captures malformed raw flow data with a restore-blocking diagnostic" do
+    test "captures malformed raw flow data without blocking the snapshot" do
       user = user_fixture()
       project = project_fixture(user)
       flow = flow_fixture(project)
@@ -610,19 +578,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       captured_dialogue = Enum.find(flow_snapshot["nodes"], &(&1["original_id"] == dialogue.id))
 
       assert captured_dialogue["data"]["text"] == 123
-      assert captured.content_health == capture.content_health
-      assert captured.content_health == project_json["content_health"]
-      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
-      assert captured.content_health["issue_counts_by_code"]["capture.invalid_flow_node"] > 0
       assert Repo.get!(FlowNode, dialogue.id).data["text"] == 123
     end
 
-    test "keeps snapshot content health clean for materializable editorial work in progress" do
+    test "captures editorial work in progress without requiring a dialogue speaker" do
       user = user_fixture()
       project = project_fixture(user)
       flow = flow_fixture(project)
 
-      _dialogue =
+      dialogue =
         node_fixture(flow, %{
           type: "dialogue",
           data: %{"text" => "Draft line without a speaker", "responses" => []}
@@ -630,28 +594,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
 
       assert {:ok, requested} = request_snapshot(user, project)
       captured = materialize_snapshot_capture!(requested)
+      capture = Repo.get!(ProjectSnapshotCapture, captured.id)
+      project_json = Jason.decode!(capture.project_json)
 
-      assert captured.content_health["state"] == "healthy"
-      assert captured.content_health["issue_count"] == 0
+      flow_snapshot =
+        project_json["flows"]
+        |> Enum.find(&(&1["id"] == flow.id))
+        |> Map.fetch!("snapshot")
 
-      assert captured.content_health["impact_counts"] == %{
-               "restore_blocked" => 0,
-               "runtime_degraded" => 0
-             }
-
-      refute Map.has_key?(
-               captured.content_health["issue_counts_by_code"],
-               "flow.missing_dialogue_speaker"
-             )
+      captured_dialogue = Enum.find(flow_snapshot["nodes"], &(&1["original_id"] == dialogue.id))
+      assert captured_dialogue["data"] == dialogue.data
     end
 
-    test "keeps precise asset references separate from authoritative catalog diagnostics" do
-      assert_asset_health_families!(10, 2, false)
-      assert_asset_health_families!(1, 3, false)
-      assert_asset_health_families!(55, 2, true)
-    end
-
-    test "preserves malformed asset relationships while preparing a restore-blocked archive" do
+    test "preserves malformed asset relationships in the captured project object" do
       user = user_fixture()
       project = project_fixture(user)
       asset = upload_asset!(project, user, "relationship bytes #{Ecto.UUID.generate()}")
@@ -684,29 +639,26 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       manifest = Jason.decode!(capture.manifest_json)
       captured_metadata = project_json["asset_metadata"][to_string(asset.id)]
 
+      assert project_json["asset_restore_contract_version"] ==
+               Storyarn.Versioning.Builders.AssetHashResolver.exact_restore_contract_version()
+
       assert Map.take(captured_metadata, ~w(original_asset_id web_asset_id variant_asset_ids)) ==
                Map.take(raw_relationships, ~w(original_asset_id web_asset_id variant_asset_ids))
 
       assert captured_metadata["persisted_metadata"] == raw_relationships
       assert captured_metadata["filename"] == "../unsafe.png"
-      assert captured.content_health == capture.content_health
-      assert captured.content_health == project_json["content_health"]
-      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
-
-      assert captured.content_health["issue_counts_by_code"][
-               "capture.invalid_asset_catalog_content"
-             ] == 1
 
       assert [%{"filename" => manifest_filename, "metadata" => %{}, "relationships" => relationships}] =
                manifest["assets"]
 
-      assert manifest_filename == "unrestorable-asset-000001.png"
+      refute manifest_filename == captured_metadata["filename"]
+      assert String.ends_with?(manifest_filename, ".png")
       assert relationships == %{"original" => nil, "web" => nil, "variants" => %{}}
       assert Repo.get!(Asset, asset.id).metadata == raw_relationships
       assert Repo.get!(Asset, asset.id).filename == "../unsafe.png"
     end
 
-    test "preserves nullable asset metadata while neutralizing only the restore manifest" do
+    test "preserves nullable asset metadata while keeping the archive manifest valid" do
       user = user_fixture()
       project = project_fixture(user)
       asset = upload_asset!(project, user, "nullable metadata bytes #{Ecto.UUID.generate()}")
@@ -722,12 +674,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
 
       assert Map.has_key?(captured_metadata, "persisted_metadata")
       assert captured_metadata["persisted_metadata"] == nil
-      assert project_json["content_health"] == captured.content_health
-      assert captured.content_health["impact_counts"]["restore_blocked"] > 0
-
-      assert captured.content_health["issue_counts_by_code"][
-               "capture.invalid_asset_catalog_content"
-             ] == 1
 
       assert [%{"metadata" => %{}, "relationships" => relationships}] = manifest["assets"]
       assert relationships == %{"original" => nil, "web" => nil, "variants" => %{}}
@@ -766,14 +712,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert size == byte_size(contents)
       assert capture.source_keys == %{asset.blob_hash => protected_blob_key(project.id, asset)}
 
-      assert captured.content_health["issue_counts_by_code"][
-               "capture.invalid_asset_catalog_content"
-             ] == 1
-
       assert Repo.get!(Asset, asset.id).key == legacy_key
     end
 
-    test "keeps restore health clean when an exact canonical survives a missing active source" do
+    test "captures an exact canonical when the active source is missing" do
       user = user_fixture()
       project = project_fixture(user)
       contents = "exact canonical survives its missing active source"
@@ -794,9 +736,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert hash == asset.blob_hash
       assert size == asset.size
       assert capture.source_keys == %{asset.blob_hash => canonical_key}
-      assert captured.content_health["state"] == "healthy"
-      assert captured.content_health["issue_count"] == 0
-      assert captured.content_health["impact_counts"]["restore_blocked"] == 0
 
       persisted = Repo.get!(Asset, asset.id)
       assert persisted.blob_hash == asset.blob_hash
@@ -836,10 +775,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert captured_active_asset["size_bytes"] == byte_size(active_contents)
       assert capture.source_keys[active_hash] == protected_blob_key(project.id, active_asset)
       assert {:ok, ^active_contents} = Storage.download(capture.source_keys[active_hash])
-
-      assert captured.content_health["issue_counts_by_code"][
-               "capture.invalid_asset_catalog_content"
-             ] == 1
 
       persisted = Repo.get!(Asset, active_asset.id)
       assert persisted.blob_hash == stale_hash
@@ -888,10 +823,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert project_json["asset_blob_hashes"][to_string(asset.id)] == actual_hash
       assert {:ok, ^contents} = Local.download(actual_key)
 
-      assert ready.content_health["issue_counts_by_code"][
-               "capture.invalid_asset_catalog_content"
-             ] == 1
-
       persisted = Repo.get!(Asset, asset.id)
       assert persisted.blob_hash == actual_hash
       assert persisted.key == stale_key
@@ -931,10 +862,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert capture.source_keys == %{expected_hash => canonical_key}
       assert {:ok, ^contents} = Storage.download(canonical_key)
 
-      assert captured.content_health["issue_counts_by_code"][
-               "capture.invalid_asset_catalog_content"
-             ] == 1
-
       persisted = Repo.get!(Asset, asset.id)
       assert persisted.blob_hash == nil
       assert persisted.size == -7
@@ -971,10 +898,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert captured.blob_count == 1
       assert Enum.map(manifest["assets"], & &1["content_type"]) == ["application/pdf", "application/pdf"]
       assert Enum.map(manifest["assets"], & &1["sha256"]) == [png_asset.blob_hash, png_asset.blob_hash]
-
-      assert captured.content_health["issue_counts_by_code"][
-               "capture.invalid_asset_catalog_content"
-             ] == 1
 
       assert Repo.get!(Asset, png_asset.id).content_type == "image/png"
       assert Repo.get!(Asset, pdf_asset.id).content_type == "application/pdf"
@@ -1092,11 +1015,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
                )
 
       assert ready.lifecycle_state == "ready"
-      assert ready.content_health["impact_counts"]["restore_blocked"] > 0
-
-      assert ready.content_health["issue_counts_by_code"][
-               "capture.invalid_asset_catalog_content"
-             ] == 1
 
       assert {:ok, inspected} = SnapshotArchiveStorage.inspect_ready_archive(ready)
       manifest = inspected.manifest
@@ -1118,74 +1036,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       extracted = Map.new(entries, fn {path, bytes} -> {List.to_string(path), bytes} end)
       assert extracted[blob_path] == ""
       assert Repo.get!(Asset, asset.id).size == -1
-    end
-
-    test "database rejects content-health mutation after capture materialization" do
-      user = user_fixture()
-      project = project_fixture(user)
-      assert {:ok, snapshot} = request_snapshot(user, project)
-      snapshot = materialize_snapshot_capture!(snapshot)
-      snapshot = Repo.get!(ProjectSnapshot, snapshot.id)
-
-      mutated_health =
-        Storyarn.Versioning.SnapshotContentHealth.build([
-          %{
-            code: :unclassified_content_issue,
-            severity: :error,
-            entity_type: :project,
-            entity_id: project.id,
-            impact: :restore_blocked,
-            container_type: :project,
-            container_id: project.id
-          }
-        ])
-
-      refute snapshot.content_health == mutated_health
-
-      assert_raise Postgrex.Error, ~r/project snapshot content health is immutable/, fn ->
-        snapshot
-        |> Ecto.Changeset.change(content_health: mutated_health)
-        |> Repo.update!()
-      end
-    end
-
-    test "database trigger rejects a malformed health report during capture materialization" do
-      user = user_fixture()
-      project = project_fixture(user)
-      assert {:ok, snapshot} = request_snapshot(user, project)
-      malformed = Map.delete(snapshot.content_health, "state")
-
-      assert_raise Postgrex.Error, ~r/project snapshot content health is immutable/, fn ->
-        Repo.update_all(
-          from(current in ProjectSnapshot, where: current.id == ^snapshot.id),
-          set: [
-            capture_digest: String.duplicate("e", 64),
-            captured_at: TimeHelpers.now(),
-            content_health: malformed
-          ]
-        )
-      end
-    end
-
-    for missing_key <- [nil | @content_health_keys] do
-      label = missing_key || "all required keys"
-
-      test "database check rejects a report missing #{label}" do
-        project = project_fixture(user_fixture())
-        baseline = pending_project_snapshot_fixture(project)
-
-        invalid_report =
-          case unquote(missing_key) do
-            nil -> %{}
-            key -> Map.delete(baseline.content_health, key)
-          end
-
-        changeset = cloned_pending_snapshot_changeset(baseline, invalid_report)
-
-        assert_raise Ecto.ConstraintError, ~r/project_snapshots_content_health/, fn ->
-          Repo.insert!(changeset)
-        end
-      end
     end
 
     test "heartbeat rejects a build job outside the canonical archive queue" do
@@ -2056,10 +1906,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert [%{"sha256" => ^active_hash, "size_bytes" => 14, "blob_path" => blob_path}] = manifest["assets"]
       assert extracted[blob_path] == active_contents
       assert {:ok, ^active_contents} = Local.download(active_blob_key)
-
-      assert ready.content_health["issue_counts_by_code"][
-               "capture.invalid_asset_catalog_content"
-             ] == 1
 
       assert Repo.get!(StorageReservation, ready.storage_reservation_id).status == "committed"
       assert Repo.get!(Asset, asset.id).blob_hash == asset.blob_hash
@@ -3112,28 +2958,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
     Versioning.request_full_project_snapshot(user_scope_fixture(user), project, request_attrs)
   end
 
-  defp cloned_pending_snapshot_changeset(snapshot, content_health) do
-    token = 12 |> :crypto.strong_rand_bytes() |> Base.url_encode64(padding: false)
-    object_prefix = SnapshotArchiveStorage.ready_prefix(snapshot.project_id, token)
-
-    attrs =
-      snapshot
-      |> Map.from_struct()
-      |> Map.take(ProjectSnapshot.__schema__(:fields))
-      |> Map.delete(:id)
-      |> Map.merge(%{
-        archive_storage_key: SnapshotArchiveStorage.archive_key(object_prefix),
-        capture_boundary: Ecto.UUID.generate(),
-        content_health: content_health,
-        idempotency_key: Ecto.UUID.generate(),
-        manifest_storage_key: SnapshotArchiveStorage.manifest_key(object_prefix),
-        object_prefix: object_prefix,
-        version_number: snapshot.version_number + 1
-      })
-
-    Ecto.Changeset.change(%ProjectSnapshot{}, attrs)
-  end
-
   defp assert_snapshot_notification(scope, snapshot, status, entity_name) do
     assert [notification] = Notifications.list_notifications(scope)
     assert notification.recipient_id == scope.user.id
@@ -3280,37 +3104,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
              )
 
     asset
-  end
-
-  defp assert_asset_health_families!(reference_count, catalog_count, truncated?) do
-    user = user_fixture()
-    project = project_fixture(user)
-
-    assets =
-      Enum.map(1..catalog_count, fn index ->
-        upload_asset!(project, user, "catalog family #{reference_count}-#{catalog_count}-#{index}")
-      end)
-
-    Enum.each(0..(reference_count - 1), fn index ->
-      asset = Enum.at(assets, rem(index, catalog_count))
-      scene_fixture(project, %{background_asset_id: asset.id})
-    end)
-
-    asset_ids = Enum.map(assets, & &1.id)
-
-    Repo.update_all(
-      from(asset in Asset, where: asset.id in ^asset_ids),
-      set: [content_type: "not-a-valid-content-type"]
-    )
-
-    assert {:ok, requested} = request_snapshot(user, project)
-    captured = materialize_snapshot_capture!(requested)
-    counts = captured.content_health["issue_counts_by_code"]
-
-    assert counts["capture.invalid_asset_snapshot_content"] == reference_count
-    assert counts["capture.invalid_asset_catalog_content"] == catalog_count
-    refute Map.has_key?(counts, "capture.unclassified_content_issue")
-    assert captured.content_health["issues_truncated"] == truncated?
   end
 
   defp protected_blob_key(project_id, asset) do

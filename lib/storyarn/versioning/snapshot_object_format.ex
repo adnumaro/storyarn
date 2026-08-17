@@ -142,61 +142,6 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   def build_catalog(_assets, _opts), do: {:error, :invalid_asset_collection}
 
   @doc false
-  @spec unmaterializable_relationship_asset_ids(term()) ::
-          {:ok, [pos_integer()]} | {:error, :invalid_asset_relationship_inventory}
-  def unmaterializable_relationship_asset_ids(assets) when is_list(assets) do
-    with true <- Enum.all?(assets, &match?(%Asset{id: id} when is_integer(id) and id > 0, &1)),
-         true <- assets |> Enum.map(& &1.id) |> Enum.uniq() |> length() == length(assets) do
-      logical_ids = Map.new(assets, &{to_string(&1.id), to_string(&1.id)})
-
-      invalid_ids =
-        assets
-        |> Enum.filter(fn asset ->
-          not match?({:ok, _relationships}, relationships(asset.metadata || %{}, logical_ids, :strict))
-        end)
-        |> Enum.map(& &1.id)
-        |> Enum.sort()
-
-      {:ok, invalid_ids}
-    else
-      false -> {:error, :invalid_asset_relationship_inventory}
-    end
-  rescue
-    _exception -> {:error, :invalid_asset_relationship_inventory}
-  catch
-    _kind, _reason -> {:error, :invalid_asset_relationship_inventory}
-  end
-
-  def unmaterializable_relationship_asset_ids(_assets), do: {:error, :invalid_asset_relationship_inventory}
-
-  @doc false
-  @spec unmaterializable_catalog_asset_ids(term()) ::
-          {:ok, [pos_integer()]} | {:error, :invalid_asset_catalog_inventory}
-  def unmaterializable_catalog_asset_ids(assets) when is_list(assets) do
-    with true <- Enum.all?(assets, &match?(%Asset{id: id} when is_integer(id) and id > 0, &1)),
-         true <- assets |> Enum.map(& &1.id) |> Enum.uniq() |> length() == length(assets) do
-      logical_ids = Map.new(assets, &{to_string(&1.id), to_string(&1.id)})
-      limits = limits()
-
-      invalid_ids =
-        assets
-        |> Enum.reject(&materializable_catalog_content?(&1, logical_ids, limits))
-        |> Enum.map(& &1.id)
-        |> Enum.sort()
-
-      {:ok, invalid_ids}
-    else
-      false -> {:error, :invalid_asset_catalog_inventory}
-    end
-  rescue
-    _exception -> {:error, :invalid_asset_catalog_inventory}
-  catch
-    _kind, _reason -> {:error, :invalid_asset_catalog_inventory}
-  end
-
-  def unmaterializable_catalog_asset_ids(_assets), do: {:error, :invalid_asset_catalog_inventory}
-
-  @doc false
   @spec validate_source_refs(term(), term()) :: :ok | {:error, term()}
   def validate_source_refs(source_refs, assets) when is_map(source_refs) and is_list(assets) do
     with :ok <- validate_source_ref_shape(source_refs),
@@ -395,16 +340,6 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
 
       {:ok, entry, blob, source_key}
     end
-  end
-
-  defp materializable_catalog_content?(asset, logical_ids, limits) do
-    metadata = asset.metadata
-
-    is_map(metadata) and
-      match?(:ok, validate_catalog_asset_size(asset.size, limits.max_asset_bytes, :strict)) and
-      match?(:ok, validate_filename(asset.filename)) and
-      match?({:ok, _relationships}, relationships(metadata, logical_ids, :strict)) and
-      match?({:ok, _metadata}, intrinsic_metadata(metadata, limits))
   end
 
   defp catalog_metadata(nil, :omit_unmaterializable), do: %{}

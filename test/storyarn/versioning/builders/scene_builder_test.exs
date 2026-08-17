@@ -346,260 +346,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
     end
   end
 
-  describe "build_snapshot_with_content_health/1" do
-    test "matches the strict snapshot for valid persisted content", %{scene: scene} do
-      layer = layer_fixture(scene)
-      pin_a = pin_fixture(scene, %{"layer_id" => layer.id, "position" => 0})
-      pin_b = pin_fixture(scene, %{"layer_id" => layer.id, "position" => 1})
-      _connection = connection_fixture(scene, pin_a, pin_b)
-
-      strict_snapshot = SceneBuilder.build_snapshot(scene)
-      {capture_snapshot, issues} = SceneBuilder.build_snapshot_with_content_health(scene)
-
-      assert capture_snapshot == strict_snapshot
-      assert issues == []
-    end
-
-    test "preserves misplaced scene-owned rows exactly once with their raw layer IDs", %{
-      project: project,
-      scene: scene
-    } do
-      own_layer = layer_fixture(scene)
-      other_scene = scene_fixture(project)
-      other_layer = layer_fixture(other_scene)
-
-      zone = zone_fixture(scene, %{"layer_id" => own_layer.id})
-      pin = pin_fixture(scene, %{"layer_id" => own_layer.id})
-      annotation = annotation_fixture(scene, %{"layer_id" => own_layer.id})
-
-      Repo.update_all(
-        from(current in SceneZone, where: current.id == ^zone.id),
-        set: [layer_id: other_layer.id]
-      )
-
-      Repo.update_all(
-        from(current in ScenePin, where: current.id == ^pin.id),
-        set: [layer_id: other_layer.id]
-      )
-
-      Repo.update_all(
-        from(current in SceneAnnotation, where: current.id == ^annotation.id),
-        set: [layer_id: other_layer.id]
-      )
-
-      {snapshot, issues} = SceneBuilder.build_snapshot_with_content_health(scene)
-
-      assert %{"original_id" => zone_id, "raw_layer_id" => raw_zone_layer_id} =
-               Enum.find(snapshot["orphan_zones"], &(&1["original_id"] == zone.id))
-
-      assert %{"original_id" => pin_id, "raw_layer_id" => raw_pin_layer_id} =
-               Enum.find(snapshot["orphan_pins"], &(&1["original_id"] == pin.id))
-
-      assert %{"original_id" => annotation_id, "raw_layer_id" => raw_annotation_layer_id} =
-               Enum.find(snapshot["orphan_annotations"], &(&1["original_id"] == annotation.id))
-
-      assert zone_id == zone.id
-      assert pin_id == pin.id
-      assert annotation_id == annotation.id
-      assert raw_zone_layer_id == other_layer.id
-      assert raw_pin_layer_id == other_layer.id
-      assert raw_annotation_layer_id == other_layer.id
-
-      refute Enum.any?(snapshot["layers"], fn layer ->
-               Enum.any?(layer["zones"], &(&1["original_id"] == zone.id)) or
-                 Enum.any?(layer["pins"], &(&1["original_id"] == pin.id)) or
-                 Enum.any?(layer["annotations"], &(&1["original_id"] == annotation.id))
-             end)
-
-      for {entity_type, entity_id} <- [
-            {:scene_zone, zone.id},
-            {:scene_pin, pin.id},
-            {:scene_annotation, annotation.id}
-          ] do
-        assert Enum.any?(issues, fn issue ->
-                 issue.code == :scene_child_layer_not_in_scene and
-                   issue.entity_type == entity_type and
-                   issue.entity_id == entity_id and
-                   issue.source_field == "layer_id" and
-                   issue.impact == :restore_blocked
-               end)
-      end
-    end
-
-    test "keeps dangling connection endpoint IDs and invalid routes with nullable indexes", %{
-      project: project,
-      scene: scene
-    } do
-      own_layer = layer_fixture(scene)
-      own_pin = pin_fixture(scene, %{"layer_id" => own_layer.id})
-
-      other_scene = scene_fixture(project)
-      other_layer = layer_fixture(other_scene)
-      foreign_pin = pin_fixture(other_scene, %{"layer_id" => other_layer.id})
-
-      dangling_connection =
-        Repo.insert!(%SceneConnection{
-          scene_id: scene.id,
-          from_pin_id: own_pin.id,
-          to_pin_id: foreign_pin.id,
-          waypoints: []
-        })
-
-      invalid_route = Repo.insert!(%SceneConnection{scene_id: scene.id, waypoints: []})
-
-      {snapshot, issues} = SceneBuilder.build_snapshot_with_content_health(scene)
-
-      dangling_snapshot =
-        Enum.find(snapshot["connections"], &(&1["original_id"] == dangling_connection.id))
-
-      assert dangling_snapshot["from_pin_original_id"] == own_pin.id
-      assert is_integer(dangling_snapshot["from_layer_index"])
-      assert is_integer(dangling_snapshot["from_pin_index"])
-      assert dangling_snapshot["to_pin_original_id"] == foreign_pin.id
-      assert is_nil(dangling_snapshot["to_layer_index"])
-      assert is_nil(dangling_snapshot["to_pin_index"])
-
-      assert Enum.any?(issues, fn issue ->
-               issue.code == :scene_connection_pin_not_in_snapshot and
-                 issue.entity_type == :scene_connection and
-                 issue.entity_id == dangling_connection.id and
-                 issue.source_field == "to_pin_id"
-             end)
-
-      assert %{
-               "from_pin_original_id" => nil,
-               "to_pin_original_id" => nil,
-               "from_layer_index" => nil,
-               "from_pin_index" => nil,
-               "to_layer_index" => nil,
-               "to_pin_index" => nil,
-               "waypoints" => []
-             } = Enum.find(snapshot["connections"], &(&1["original_id"] == invalid_route.id))
-
-      assert Enum.any?(issues, fn issue ->
-               issue.code == :invalid_scene_connection_route and
-                 issue.entity_type == :scene_connection and
-                 issue.entity_id == invalid_route.id and
-                 issue.source_field == "waypoints"
-             end)
-    end
-
-    test "captures invalid shape and zone semantics as restore-blocking issues", %{
-      scene: scene
-    } do
-      zone =
-        zone_fixture(scene, %{
-          "target_type" => "scene",
-          "target_id" => scene.id,
-          "action_type" => "action",
-          "action_data" => %{"assignments" => []}
-        })
-
-      Repo.update_all(
-        from(current in SceneZone, where: current.id == ^zone.id),
-        set: [action_type: "display", action_data: %{"variable_ref" => "hero.health"}]
-      )
-
-      {snapshot, issues} = SceneBuilder.build_snapshot_with_content_health(scene)
-
-      captured_zone =
-        Enum.find(snapshot["orphan_zones"], &(&1["original_id"] == zone.id))
-
-      assert captured_zone["action_type"] == "display"
-      assert captured_zone["target_type"] == "scene"
-      assert captured_zone["target_id"] == scene.id
-      assert captured_zone["action_data"] == %{"variable_ref" => "hero.health"}
-
-      assert Enum.any?(issues, fn issue ->
-               issue.code == :invalid_scene_zone_target_contract and
-                 issue.entity_type == :scene_zone and
-                 issue.entity_id == zone.id and
-                 issue.source_field == "target_id" and
-                 issue.impact == :restore_blocked
-             end)
-
-      Repo.delete_all(from(layer in SceneLayer, where: layer.scene_id == ^scene.id))
-
-      {layerless_snapshot, layerless_issues} =
-        SceneBuilder.build_snapshot_with_content_health(scene)
-
-      assert layerless_snapshot["layers"] == []
-
-      assert Enum.any?(layerless_issues, fn issue ->
-               issue.code == :scene_snapshot_requires_at_least_one_layer and
-                 issue.entity_type == :scene and
-                 issue.entity_id == scene.id and
-                 issue.source_field == "layers"
-             end)
-    end
-
-    test "preserves foreign references and non-image assets while inventorying each blocker", %{
-      user: user,
-      project: project,
-      scene: scene
-    } do
-      layer = layer_fixture(scene)
-      pin = pin_fixture(scene, %{"layer_id" => layer.id})
-      foreign_project = project_fixture(user)
-      foreign_flow = FlowsFixtures.flow_fixture(foreign_project)
-
-      foreign_background =
-        uploaded_image_asset(
-          foreign_project,
-          user,
-          "foreign-scene-background.png",
-          "foreign scene background"
-        )
-
-      audio_icon = uploaded_asset(project, user, "pin-icon.mp3", "pin icon", "audio/mpeg")
-
-      Repo.update_all(
-        from(current in Scene, where: current.id == ^scene.id),
-        set: [background_asset_id: foreign_background.id]
-      )
-
-      Repo.update_all(
-        from(current in ScenePin, where: current.id == ^pin.id),
-        set: [flow_id: foreign_flow.id, icon_asset_id: audio_icon.id]
-      )
-
-      {snapshot, issues} = SceneBuilder.build_snapshot_with_content_health(scene)
-
-      assert snapshot["background_asset_id"] == foreign_background.id
-      refute Map.has_key?(snapshot["asset_blob_hashes"], to_string(foreign_background.id))
-      assert Map.has_key?(snapshot["asset_blob_hashes"], to_string(audio_icon.id))
-
-      pin_snapshot =
-        snapshot["layers"]
-        |> Enum.flat_map(& &1["pins"])
-        |> Enum.find(&(&1["original_id"] == pin.id))
-
-      assert pin_snapshot["flow_id"] == foreign_flow.id
-      assert pin_snapshot["icon_asset_id"] == audio_icon.id
-
-      assert Enum.any?(issues, fn issue ->
-               issue.code == :cross_project_asset_reference and
-                 issue.entity_type == :scene and
-                 issue.entity_id == scene.id and
-                 issue.source_field == "background_asset_id"
-             end)
-
-      assert Enum.any?(issues, fn issue ->
-               issue.code == :invalid_scene_asset_content_type and
-                 issue.entity_type == :scene_pin and
-                 issue.entity_id == pin.id and
-                 issue.source_field == "icon_asset_id"
-             end)
-
-      assert Enum.any?(issues, fn issue ->
-               issue.code == :scene_reference_project_mismatch and
-                 issue.entity_type == :scene_pin and
-                 issue.entity_id == pin.id and
-                 issue.source_field == "flow_id"
-             end)
-    end
-  end
-
   describe "restore_snapshot/3" do
     test "restores scene with layers, pins, and connections", %{scene: scene} do
       layer = layer_fixture(scene)
@@ -2309,6 +2055,208 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert cloned_connection.to_pin_id in pin_ids
       assert cloned_connection.from_pin_id != pin1.id
       assert cloned_connection.to_pin_id != pin2.id
+    end
+
+    test "exact materialization stages a purged captured endpoint and remaps it through the global pin map", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      layer = layer_fixture(scene, %{"name" => "Local pins"})
+      local_from = pin_fixture(scene, %{"label" => "Local from", "layer_id" => layer.id})
+      local_to = pin_fixture(scene, %{"label" => "Local to", "layer_id" => layer.id})
+      connection = connection_fixture(scene, local_from, local_to)
+
+      external_scene = scene_fixture(project)
+      external_pin = pin_fixture(external_scene, %{"label" => "Captured elsewhere"})
+
+      Repo.update_all(
+        from(current in SceneConnection, where: current.id == ^connection.id),
+        set: [from_pin_id: external_pin.id]
+      )
+
+      external_snapshot = SceneBuilder.build_capture_snapshot(external_scene)
+      snapshot = SceneBuilder.build_capture_snapshot(scene)
+      captured_connection = hd(snapshot["connections"])
+      assert captured_connection["from_pin_original_id"] == external_pin.id
+      assert captured_connection["from_layer_index"] == nil
+      assert captured_connection["from_pin_index"] == nil
+
+      Repo.delete!(external_pin)
+
+      target_project = project_fixture(user)
+
+      assert {:ok, _temporarily_materialized, temporary_id_maps} =
+               SceneBuilder.instantiate_snapshot(target_project.id, snapshot,
+                 materialization_mode: :exact,
+                 rebuild_references: false,
+                 reset_shortcut: true
+               )
+
+      temporary_connection = Repo.get!(SceneConnection, temporary_id_maps.connection[connection.id])
+      assert temporary_connection.from_pin_id == nil
+      assert temporary_connection.to_pin_id == temporary_id_maps.pin[local_to.id]
+
+      assert {:ok, _external_materialized, external_id_maps} =
+               SceneBuilder.instantiate_snapshot(target_project.id, external_snapshot,
+                 materialization_mode: :exact,
+                 rebuild_references: false,
+                 reset_shortcut: true
+               )
+
+      mapped_pin_id = external_id_maps.pin[external_pin.id]
+      assert Repo.get!(ScenePin, mapped_pin_id).scene_id == external_id_maps.scene[external_scene.id]
+
+      assert {:ok, _materialized, id_maps} =
+               SceneBuilder.instantiate_snapshot(target_project.id, snapshot,
+                 materialization_mode: :exact,
+                 external_id_maps: %{pin: %{external_pin.id => mapped_pin_id}},
+                 rebuild_references: false,
+                 reset_shortcut: true
+               )
+
+      cloned_connection = Repo.get!(SceneConnection, id_maps.connection[connection.id])
+      assert cloned_connection.from_pin_id == mapped_pin_id
+      assert cloned_connection.to_pin_id == id_maps.pin[local_to.id]
+    end
+
+    test "exact materialization preserves a raw endpoint owned by a soft-deleted scene in the target project", %{
+      project: project,
+      scene: scene
+    } do
+      layer = layer_fixture(scene, %{"name" => "Local pins"})
+      local_from = pin_fixture(scene, %{"label" => "Local from", "layer_id" => layer.id})
+      local_to = pin_fixture(scene, %{"label" => "Local to", "layer_id" => layer.id})
+      connection = connection_fixture(scene, local_from, local_to)
+
+      deleted_scene = scene_fixture(project)
+      retained_pin = pin_fixture(deleted_scene, %{"label" => "Retained trash endpoint"})
+
+      Repo.update_all(
+        from(current in Scene, where: current.id == ^deleted_scene.id),
+        set: [deleted_at: DateTime.utc_now(:second)]
+      )
+
+      Repo.update_all(
+        from(current in SceneConnection, where: current.id == ^connection.id),
+        set: [from_pin_id: retained_pin.id]
+      )
+
+      snapshot = SceneBuilder.build_capture_snapshot(scene)
+
+      assert {:ok, _materialized, id_maps} =
+               SceneBuilder.instantiate_snapshot(project.id, snapshot,
+                 materialization_mode: :exact,
+                 rebuild_references: false,
+                 reset_shortcut: true
+               )
+
+      cloned_connection = Repo.get!(SceneConnection, id_maps.connection[connection.id])
+      assert cloned_connection.from_pin_id == retained_pin.id
+      assert cloned_connection.to_pin_id == id_maps.pin[local_to.id]
+    end
+
+    test "exact materialization rejects a raw connection endpoint owned by another project", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      layer = layer_fixture(scene, %{"name" => "Local pins"})
+      local_from = pin_fixture(scene, %{"label" => "Local from", "layer_id" => layer.id})
+      local_to = pin_fixture(scene, %{"label" => "Local to", "layer_id" => layer.id})
+      connection = connection_fixture(scene, local_from, local_to)
+
+      foreign_project = project_fixture(user)
+      foreign_scene = scene_fixture(foreign_project)
+      foreign_pin = pin_fixture(foreign_scene, %{"label" => "Foreign endpoint"})
+
+      Repo.update_all(
+        from(current in SceneConnection, where: current.id == ^connection.id),
+        set: [from_pin_id: foreign_pin.id]
+      )
+
+      snapshot = SceneBuilder.build_capture_snapshot(scene)
+      scene_count = Repo.aggregate(Scene, :count)
+
+      assert {:error,
+              {:exact_scene_connection_pin_project_mismatch, connection_id, :from, source_pin_id, resolved_pin_id,
+               owner_project_id, target_project_id}} =
+               SceneBuilder.instantiate_snapshot(project.id, snapshot,
+                 materialization_mode: :exact,
+                 rebuild_references: false,
+                 reset_shortcut: true
+               )
+
+      assert connection_id == connection.id
+      assert source_pin_id == foreign_pin.id
+      assert resolved_pin_id == foreign_pin.id
+      assert owner_project_id == foreign_project.id
+      assert target_project_id == project.id
+      assert Repo.aggregate(Scene, :count) == scene_count
+    end
+
+    test "exact materialization remaps captured authored JSON ids and preserves unmapped ids", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      source_flow = FlowsFixtures.flow_fixture(project, %{name: "Captured target"})
+      source_sheet = sheet_fixture(project)
+      item_id = Ecto.UUID.generate()
+
+      target_zone =
+        zone_fixture(scene, %{
+          "name" => "Flow target",
+          "target_type" => "flow",
+          "target_id" => source_flow.id,
+          "action_type" => "action",
+          "action_data" => %{"assignments" => []}
+        })
+
+      collection_zone =
+        zone_fixture(scene, %{
+          "name" => "Collection",
+          "action_type" => "collection",
+          "action_data" => %{
+            "items" => [%{"id" => item_id, "label" => "Linked", "sheet_id" => source_sheet.id}]
+          }
+        })
+
+      snapshot = SceneBuilder.build_capture_snapshot(scene)
+
+      mapped_project = project_fixture(user)
+      mapped_flow = FlowsFixtures.flow_fixture(mapped_project, %{name: "Mapped target"})
+      mapped_sheet = sheet_fixture(mapped_project)
+
+      assert {:ok, _mapped_scene, mapped_id_maps} =
+               SceneBuilder.instantiate_snapshot(mapped_project.id, snapshot,
+                 materialization_mode: :exact,
+                 external_id_maps: %{
+                   flow: %{source_flow.id => mapped_flow.id},
+                   sheet: %{source_sheet.id => mapped_sheet.id}
+                 },
+                 rebuild_references: false,
+                 reset_shortcut: true
+               )
+
+      mapped_target = Repo.get!(SceneZone, mapped_id_maps.zone[target_zone.id])
+      mapped_collection = Repo.get!(SceneZone, mapped_id_maps.zone[collection_zone.id])
+      assert {mapped_target.target_type, mapped_target.target_id} == {"flow", mapped_flow.id}
+      assert get_in(mapped_collection.action_data, ["items", Access.at(0), "sheet_id"]) == mapped_sheet.id
+
+      raw_project = project_fixture(user)
+
+      assert {:ok, _raw_scene, raw_id_maps} =
+               SceneBuilder.instantiate_snapshot(raw_project.id, snapshot,
+                 materialization_mode: :exact,
+                 rebuild_references: false,
+                 reset_shortcut: true
+               )
+
+      raw_target = Repo.get!(SceneZone, raw_id_maps.zone[target_zone.id])
+      raw_collection = Repo.get!(SceneZone, raw_id_maps.zone[collection_zone.id])
+      assert {raw_target.target_type, raw_target.target_id} == {"flow", source_flow.id}
+      assert get_in(raw_collection.action_data, ["items", Access.at(0), "sheet_id"]) == source_sheet.id
     end
 
     test "rejects malformed or truncated zone payloads before materialization", %{

@@ -116,7 +116,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       end
     end
 
-    test "canonical capture preserves inconsistent localization and reports it", %{
+    test "canonical capture preserves inconsistent localization", %{
       project: project,
       sheet: sheet
     } do
@@ -130,15 +130,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
         set: [source_text: "Persisted drift"]
       )
 
-      {snapshot, issues} = SheetBuilder.build_snapshot_with_content_health(sheet)
+      snapshot = SheetBuilder.build_capture_snapshot(sheet)
 
       assert [%{"source_text" => "Persisted drift"}] = snapshot["localization"]
-
-      assert Enum.any?(issues, fn issue ->
-               issue.code == :localization_source_text_mismatch and
-                 issue.entity_type == "sheet" and issue.entity_id == sheet.id and
-                 issue.impact == :restore_blocked
-             end)
 
       assert [%{source_text: "Persisted drift"}] =
                Localization.get_texts_for_source("sheet", sheet.id)
@@ -161,10 +155,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
                  )
                )
 
-      {snapshot, issues} = SheetBuilder.build_snapshot_with_content_health(sheet)
+      snapshot = SheetBuilder.build_capture_snapshot(sheet)
 
       assert snapshot["localization"] == []
-      assert Enum.any?(issues, &(&1.code == :incomplete_localization))
       assert [] = Localization.get_texts_for_source("sheet", sheet.id)
     end
 
@@ -191,7 +184,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
         set: [type: "text"]
       )
 
-      {snapshot, issues} = SheetBuilder.build_snapshot_with_content_health(sheet)
+      snapshot = SheetBuilder.build_capture_snapshot(sheet)
 
       assert snapshot["hidden_inherited_block_ids"] == nil
 
@@ -202,10 +195,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       captured_gallery = Enum.find(snapshot["blocks"], &(&1["original_id"] == gallery_block.id))
       assert [%{"original_id" => gallery_image_id}] = captured_gallery["gallery_images"]
       assert gallery_image_id == gallery_image.id
-
-      assert Enum.any?(issues, &(&1.source_field == "hidden_inherited_block_ids" and &1.entity_id == sheet.id))
-      assert Enum.any?(issues, &(&1.source_field == "table_data" and &1.entity_id == table_block.id))
-      assert Enum.any?(issues, &(&1.source_field == "gallery_images" and &1.entity_id == gallery_block.id))
 
       assert Repo.get!(Sheet, sheet.id).hidden_inherited_block_ids == nil
       assert Repo.get!(Block, table_block.id).type == "text"
@@ -472,12 +461,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert first_id == first.id
       assert zero_default_snapshot["avatar_asset_id"] == first.asset_id
 
-      {exact_zero_default_snapshot, zero_default_issues} =
-        SheetBuilder.build_snapshot_with_content_health(sheet)
+      exact_zero_default_snapshot = SheetBuilder.build_capture_snapshot(sheet)
 
       assert Enum.all?(exact_zero_default_snapshot["avatars"], &(&1["is_default"] == false))
       assert exact_zero_default_snapshot["avatar_asset_id"] == nil
-      assert Enum.any?(zero_default_issues, &(&1.code == :invalid_sheet_snapshot_content))
 
       Repo.update_all(
         from(avatar in SheetAvatar, where: avatar.id in ^[first.id, second.id]),
@@ -491,12 +478,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
 
       assert multiple_default_snapshot["avatar_asset_id"] == first.asset_id
 
-      {exact_multiple_default_snapshot, multiple_default_issues} =
-        SheetBuilder.build_snapshot_with_content_health(sheet)
+      exact_multiple_default_snapshot = SheetBuilder.build_capture_snapshot(sheet)
 
       assert Enum.all?(exact_multiple_default_snapshot["avatars"], &(&1["is_default"] == true))
       assert exact_multiple_default_snapshot["avatar_asset_id"] == first.asset_id
-      assert Enum.any?(multiple_default_issues, &(&1.code == :invalid_sheet_snapshot_content))
     end
 
     test "rejects cross-project banner, avatar, and gallery assets", %{
@@ -2697,6 +2682,31 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   end
 
   describe "instantiate_snapshot/3" do
+    test "exact materialization preserves nullable hidden inherited block IDs", %{
+      project: project,
+      sheet: sheet
+    } do
+      Repo.update_all(
+        from(current in Sheet, where: current.id == ^sheet.id),
+        set: [hidden_inherited_block_ids: nil]
+      )
+
+      snapshot = SheetBuilder.build_capture_snapshot(sheet)
+
+      assert snapshot["hidden_inherited_block_ids"] == nil
+
+      assert {:error, {:invalid_snapshot, {:expected_id_list, :hidden_inherited_block}}} =
+               SheetBuilder.instantiate_snapshot(project.id, snapshot, reset_shortcut: true)
+
+      assert {:ok, materialized, _id_maps} =
+               SheetBuilder.instantiate_snapshot(project.id, snapshot,
+                 reset_shortcut: true,
+                 materialization_mode: :exact
+               )
+
+      assert Repo.get!(Sheet, materialized.id).hidden_inherited_block_ids == nil
+    end
+
     test "rejects malformed nested collections before materializing anything", %{
       user: user,
       sheet: sheet

@@ -6,7 +6,6 @@ defmodule Storyarn.VersioningFixtures do
   alias Storyarn.Repo
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotArchiveStorage
-  alias Storyarn.Versioning.SnapshotContentHealth
 
   def pending_project_snapshot_fixture(project, attrs \\ %{}) do
     attrs = Map.new(attrs)
@@ -85,7 +84,6 @@ defmodule Storyarn.VersioningFixtures do
       asset_blob_size_bytes: asset_blob_size,
       accounting_version: 1,
       restore_contract_version: 1,
-      content_health: SnapshotContentHealth.healthy(),
       progress_phase: "complete",
       progress_bytes: total_size,
       progress_total_bytes: total_size,

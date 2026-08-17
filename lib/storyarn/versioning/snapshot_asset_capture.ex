@@ -16,19 +16,17 @@ defmodule Storyarn.Versioning.SnapshotAssetCapture do
 
   @type materialized_inventory :: %{
           raw_assets: [Asset.t()],
-          effective_assets: [Asset.t()],
-          invalid_asset_ids: [pos_integer()]
+          effective_assets: [Asset.t()]
         }
 
   @spec materialize([Asset.t()], pos_integer()) :: {:ok, materialized_inventory()} | {:error, term()}
   def materialize(assets, project_id) when is_list(assets) and is_integer(project_id) and project_id > 0 do
     with :ok <- validate_inventory(assets, project_id),
-         {:ok, effective_assets, invalid_asset_ids} <- materialize_assets(assets) do
+         {:ok, effective_assets} <- materialize_assets(assets) do
       {:ok,
        %{
          raw_assets: assets,
-         effective_assets: effective_assets,
-         invalid_asset_ids: invalid_asset_ids
+         effective_assets: effective_assets
        }}
     end
   end
@@ -85,22 +83,21 @@ defmodule Storyarn.Versioning.SnapshotAssetCapture do
   end
 
   defp materialize_assets(assets) do
-    case Enum.reduce_while(assets, {:ok, [], []}, &materialize_inventory_asset/2) do
-      {:ok, effective_assets, invalid_ids} ->
+    case Enum.reduce_while(assets, {:ok, []}, &materialize_inventory_asset/2) do
+      {:ok, effective_assets} ->
         effective_assets
         |> Enum.reverse()
-        |> normalize_shared_blob_identities(Enum.reverse(invalid_ids))
+        |> normalize_shared_blob_identities()
 
       {:error, _reason} = error ->
         error
     end
   end
 
-  defp materialize_inventory_asset(asset, {:ok, effective_assets, invalid_ids}) do
+  defp materialize_inventory_asset(asset, {:ok, effective_assets}) do
     case materialize_asset(asset, nil) do
-      {:ok, effective_asset, invalid?} ->
-        invalid_ids = if invalid?, do: [asset.id | invalid_ids], else: invalid_ids
-        {:cont, {:ok, [effective_asset | effective_assets], invalid_ids}}
+      {:ok, effective_asset, _identity_changed?} ->
+        {:cont, {:ok, [effective_asset | effective_assets]}}
 
       {:error, reason} ->
         {:halt, {:error, reason}}
@@ -316,7 +313,7 @@ defmodule Storyarn.Versioning.SnapshotAssetCapture do
 
   defp raw_identity_materializable?(%Asset{} = asset) do
     is_binary(asset.blob_hash) and Regex.match?(@sha256_regex, asset.blob_hash) and
-      is_integer(asset.size) and asset.size > 0 and asset.size <= @max_asset_size and
+      is_integer(asset.size) and asset.size >= 0 and asset.size <= @max_asset_size and
       capture_content_type?(asset.content_type, asset.metadata) and
       canonical_asset_source_key?(asset.key, asset.project_id)
   end
@@ -376,25 +373,25 @@ defmodule Storyarn.Versioning.SnapshotAssetCapture do
     %{blob_hash: asset.blob_hash, size: asset.size, content_type: asset.content_type}
   end
 
-  defp normalize_shared_blob_identities(effective_assets, invalid_ids) do
+  defp normalize_shared_blob_identities(effective_assets) do
     content_type_by_hash =
       effective_assets
       |> Enum.group_by(& &1.blob_hash, & &1.content_type)
       |> Map.new(fn {hash, content_types} -> {hash, Enum.min(content_types)} end)
 
-    {normalized_assets, invalid_ids} =
-      Enum.map_reduce(effective_assets, invalid_ids, fn asset, invalid_ids ->
+    normalized_assets =
+      Enum.map(effective_assets, fn asset ->
         content_type = Map.fetch!(content_type_by_hash, asset.blob_hash)
 
         if asset.content_type == content_type do
-          {asset, invalid_ids}
+          asset
         else
           canonical_key = canonical_blob_key(asset.project_id, asset.blob_hash, content_type)
-          {%{asset | content_type: content_type, key: canonical_key}, [asset.id | invalid_ids]}
+          %{asset | content_type: content_type, key: canonical_key}
         end
       end)
 
-    {:ok, normalized_assets, invalid_ids |> Enum.uniq() |> Enum.sort()}
+    {:ok, normalized_assets}
   end
 
   defp ensure_blob_spec(project_id, %{blob_hash: blob_hash, size: size, content_type: content_type, asset_ids: asset_ids})
