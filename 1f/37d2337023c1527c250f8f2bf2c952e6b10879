@@ -1,0 +1,85 @@
+lib/storyarn/localization/text_crud.ex
+  s_c2ae682cd97119::t_043da9b80345f3 230,911,933-934,936,938,940,945,990
+  s_c2ae682cd97119::t_03156b057a5399 595
+test/storyarn/repo/migrations/drop_snapshot_content_health_columns_migration_test.exs
+  s_c2ae682cd97119::t_d1804991284d1c 29,31
+  s_c2ae682cd97119::t_eeb81663fefac2 1,5,7,9,12,18-20,23-24,27,33-34,37-48,51,56,58-59
+lib/storyarn/versioning/builders/flow_builder.ex
+  s_c2ae682cd97119::t_356fa143f7becf 1542,3455
+  s_c2ae682cd97119::t_03156b057a5399 4019,4033
+lib/storyarn/versioning/project_snapshot_restore_executor.ex
+  s_c2ae682cd97119::t_f5accdf8da5266 258
+test/storyarn/versioning/project_snapshot_asset_materializer_test.exs
+  s_c2ae682cd97119::t_0215983eb75575 311,348,600
+  s_c2ae682cd97119::t_456407216d007e 14,105,662,676
+  s_c2ae682cd97119::t_f4fd822b45fb08 482-483,543,591,634-661,663-675
+  s_c2ae682cd97119::t_fd7b5f2646c640 102,114,137,149-152,165,167-174
+  s_c2ae682cd97119::t_d6a831b0fafac6 243
+  s_c2ae682cd97119::t_04d83ac1d3b6ae 61,64,69,71
+  s_c2ae682cd97119::t_23c0602532f5be 677
+  s_c2ae682cd97119::t_65a84d2c4706ce 75,77,79,84,86,89,91,96,98
+test/storyarn/versioning/project_snapshot_restore_actor_lock_concurrency_test.exs
+  s_c2ae682cd97119::t_52e1b607976b19 50
+lib/storyarn/localization/localizable_words.ex
+  s_c2ae682cd97119::t_043da9b80345f3 140-141,149,230-231,239,246,249,257,271,278,280,287-288,295,489,499
+test/storyarn/versioning/localization_snapshot_codec_test.exs
+  s_c2ae682cd97119::t_a9631d97a2b6dc 64,78,89-91,107-110,112,116-118
+test/storyarn/repo/migrations/restore_localized_text_global_identity_migration_test.exs
+  s_c2ae682cd97119::t_d1804991284d1c 1,5,7-8,10,13,20,22,27-29,31,34-35,38-40,42-43,46-48,51,60,65-69,73-74,77,79,81,85,90,92-93,100,106,108-109
+priv/repo/migrations/20260817120000_restore_localized_text_global_identity.exs
+  s_c2ae682cd97119::t_576d5caa43c397 1-48
+priv/repo/migrations/20260817130000_drop_snapshot_content_health_columns.exs
+  s_c2ae682cd97119::t_eeb81663fefac2 1-20
+lib/storyarn/versioning/localization_snapshot_codec.ex
+  s_c2ae682cd97119::t_356fa143f7becf 172-173,175,177,179,183,186,199,205,219,223,232-233,235
+lib/storyarn/versioning/project_recovery.ex
+  s_c2ae682cd97119::t_bac86b6ca0cef0 45,3583,3590,3594,3598-3603
+test/storyarn/versioning/builders/asset_hash_resolver_test.exs
+  s_c2ae682cd97119::t_046dcaca46b4c2 115-116,129-162
+  s_c2ae682cd97119::t_bd56605042ce07 255
+test/storyarn/versioning/project_recovery_test.exs
+  s_c2ae682cd97119::t_03e6603058fc15 2522
+  s_c2ae682cd97119::t_a9631d97a2b6dc 2497,2520,2531-2532
+lib/storyarn/versioning/project_snapshot_asset_materializer.ex
+  s_c2ae682cd97119::t_0951ccd0bafe0c 46,58,60,62,67,71,85,92,154,186,196,202,210,215-217
+  s_c2ae682cd97119::t_b6a34e7ff579fb 263,275,298-305,308-309
+  s_c2ae682cd97119::t_caef6f04a8447a 636
+  s_c2ae682cd97119::t_520d124531d84a 512,520,532,635
+lib/storyarn/versioning/builders/asset_hash_resolver.ex
+  s_c2ae682cd97119::t_33d1bcb49ec6b2 317-319,322-323,325,329-330,332,336,344,347,353-354,364,372
+  s_c2ae682cd97119::t_0648a498a7dc99 552,562,569,589
+test/storyarn/versioning/project_snapshot_restore_executor_test.exs
+  s_c2ae682cd97119::t_f075450e651eea 97,124,151-152,168-169,182,584,594
+lib/storyarn/localization/localized_text.ex
+  s_c2ae682cd97119::t_f45f7effc13fdd 8-10,143-144
+lib/storyarn/versioning/builders/sheet_builder.ex
+  s_c2ae682cd97119::t_356fa143f7becf 2579,2582,2590,2614
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_c2ae682cd97119::t_bc046d510fa87b 287,292,297,302,307,312,317,327,332,337,342,347,352,357,362,425,430,443,458,463,468,473,478
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_c2ae682cd97119::t_2ca156bc814002 14,19,24,103,221,226,231-232,237,242,247,252,257,262,267,303,308,313,318,323,409,414,419
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_c2ae682cd97119::t_54010ceb2eb7d7 287,292,297,302,307,312,317,327,332,337,342,347,352,357,362,425,430,443,458,463,468,473,478
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_c2ae682cd97119::t_dd9a17653f9047 14,19,24,103,221,226,231-232,237,242,247,252,257,262,267,303,308,313,318,323,409,414,419
+priv/gettext/flows.pot
+  s_c2ae682cd97119::t_9a6f7590852364 287,292,297,302,307,312,317,327,332,337,342,347,352,357,362,425,430,443,458,463,468,473,478
+priv/gettext/sheets.pot
+  s_c2ae682cd97119::t_59843b53e5f351 14,19,24,103,221,226,231-232,237,242,247,252,257,262,267,303,308,313,318,323,409,414,419
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1f37d2337023c1527c250f8f2bf2c952e6b10879",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
