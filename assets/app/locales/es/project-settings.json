@@ -167,14 +167,14 @@
         "notes": "Notas",
         "notes_placeholder": "Contexto opcional para tu equipo",
         "full_mode": "Snapshot completa · sin dependencias de recursos externos",
-        "reservation_note": "Storyarn mide la captura exacta y reserva ese almacenamiento antes de iniciar el trabajo en segundo plano. Si no hay capacidad suficiente, no se encola nada.",
+        "reservation_note": "Storyarn mide la captura exacta y reserva el almacenamiento necesario.",
         "slot_usage": "Espacios para snapshots: {used} de {limit} usados",
         "slot_usage_unknown": "Espacios para snapshots usados: {used} · límite no disponible",
         "submit": "Crear snapshot",
         "submitting": "Capturando…",
-        "storage_limit_reached": "Esta snapshot necesita {required}, pero solo hay {available} disponibles. No se ha encolado nada.",
-        "snapshot_limit_reached": "Este proyecto usa {used} de {limit} espacios para snapshots. No se ha encolado nada.",
-        "request_failed": "No se ha podido solicitar la snapshot. No se ha encolado nada.",
+        "storage_limit_reached": "Esta snapshot necesita {required}, pero solo hay {available} disponibles.",
+        "snapshot_limit_reached": "Este proyecto usa {used} de {limit} espacios para snapshots.",
+        "request_failed": "No se ha podido solicitar la snapshot.",
         "connection_failed": "La conexión se ha interrumpido. Puedes reintentar con seguridad la misma solicitud.",
         "cancel_failed": "No se ha podido cancelar la snapshot."
       },
@@ -198,7 +198,7 @@
         "next_retry": "Próximo reintento: {date}",
         "retry_due": "Reintento pendiente desde {date}; esperando a un worker.",
         "waiting_for_worker": "Esperando a que un worker programe el próximo reintento.",
-        "build_failed": "Se ha producido un error temporal durante la creación. Storyarn volverá a intentarlo automáticamente; no se ha publicado ninguna snapshot incompleta."
+        "build_failed": "Se ha producido un error temporal durante la creación. Storyarn volverá a intentarlo automáticamente."
       },
       "download": {
         "action": "Descargar ZIP"

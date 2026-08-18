@@ -51,9 +51,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   @progress_checkpoint_bytes 8 * 1024 * 1024
   @progress_checkpoint_ms 2_000
   @safe_failure_messages %{
-    "build_failed" => "The snapshot could not be created. No incomplete snapshot was published.",
-    "source_missing" => "A required asset was unavailable. No incomplete snapshot was published.",
-    "source_corrupt" => "A required asset failed integrity verification. No incomplete snapshot was published.",
+    "build_failed" => "The snapshot could not be created.",
+    "source_missing" => "A required asset was unavailable.",
+    "source_corrupt" => "A required asset failed integrity verification.",
     "storage_limit_reached" => "The workspace no longer has enough storage for this snapshot.",
     "cleanup_unowned" => "The build stopped safely and requires storage reconciliation before it can continue."
   }

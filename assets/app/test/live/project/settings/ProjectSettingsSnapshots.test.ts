@@ -303,7 +303,6 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     const safeError = wrapper.get('[data-testid="snapshot-retry-error-21"]');
     expect(safeError.attributes("data-error-code")).toBe("build_failed");
     expect(safeError.text()).toContain("Storyarn will retry automatically");
-    expect(safeError.text()).toContain("no incomplete snapshot was published");
     expect(wrapper.text()).not.toContain("stacktrace");
   });
 
@@ -320,7 +319,7 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       nextRetryAt: null,
       retryErrorCode: null,
       failureCode: "build_failed",
-      failureMessage: "The snapshot could not be created. No incomplete snapshot was published.",
+      failureMessage: "The snapshot could not be created.",
       canCancel: false,
       canDelete: true,
       canRestore: false,
@@ -332,7 +331,7 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(wrapper.find('[data-testid="snapshot-next-retry-21"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="snapshot-retry-error-21"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain("Storyarn will retry automatically");
-    expect(wrapper.text()).toContain("No incomplete snapshot was published");
+    expect(wrapper.text()).toContain("The snapshot could not be created.");
   });
   it.each([
     { limitKind: "unknown" as const, limitBytes: null, remainingBytes: null },

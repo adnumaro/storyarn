@@ -428,7 +428,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       assert failed.failure_code == "build_failed"
 
       assert failed.failure_message ==
-               "The snapshot could not be created. No incomplete snapshot was published."
+               "The snapshot could not be created."
 
       refute failed.failure_message =~ "private provider details"
       assert Repo.get!(StorageReservation, failed.storage_reservation_id).status == "released"
