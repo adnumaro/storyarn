@@ -318,6 +318,63 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
       refute inspect(retrying) =~ "stacktrace"
     end
 
+    test "terminalizes an exact capture that exceeds workspace storage without retrying" do
+      user = user_fixture()
+      workspace = Storyarn.WorkspacesFixtures.workspace_fixture(user)
+      project = project_fixture(user, %{workspace: workspace})
+      capacity_project = project_fixture(user, %{workspace: workspace})
+      scope = user_scope_fixture(user)
+      storage_limit = Billing.plan_limit(Billing.default_plan(), :storage_bytes_per_workspace)
+
+      %Asset{}
+      |> Ecto.Changeset.change(%{
+        filename: "workspace-capacity.bin",
+        content_type: "application/octet-stream",
+        size: storage_limit - 1,
+        key: "projects/#{capacity_project.id}/assets/workspace-capacity.bin",
+        url: "https://example.com/workspace-capacity.bin",
+        project_id: capacity_project.id,
+        uploaded_by_id: user.id
+      })
+      |> Repo.insert!()
+
+      :ok = Notifications.subscribe(scope)
+      assert {:ok, requested} = request_snapshot(user, project, %{title: "Too large"})
+      job = requested_job(requested)
+      assert BuildProjectSnapshotWorker.canonical_attempt(job) == 1
+
+      assert {:discard, :storage_limit_reached} = BuildProjectSnapshotWorker.perform(job)
+      assert_receive :notifications_changed
+      refute_receive :notifications_changed
+
+      failed = Repo.get!(ProjectSnapshot, requested.id)
+      assert failed.lifecycle_state == "failed"
+      assert failed.progress_phase == "failed"
+      assert failed.failure_code == "storage_limit_reached"
+      assert failed.failure_message == "The workspace no longer has enough storage for this snapshot."
+      refute Repo.get(ProjectSnapshotCapture, failed.id)
+
+      assert %StorageReservation{status: "released", release_reason: "storage_limit_reached"} =
+               Repo.get!(StorageReservation, requested.storage_reservation_id)
+
+      assert Repo.aggregate(
+               from(reservation in StorageReservation,
+                 where: reservation.project_snapshot_id_snapshot == ^requested.id
+               ),
+               :count
+             ) == 1
+
+      status = ProjectSnapshotBuild.build_statuses([failed])[failed.id]
+      refute status.retrying
+      assert is_nil(status.next_retry_at)
+      assert is_nil(status.retry_error_code)
+      assert_snapshot_notification(scope, failed, "failure", "Too large")
+
+      assert :ok = BuildProjectSnapshotWorker.perform(job)
+      refute_receive :notifications_changed
+      assert_snapshot_notification(scope, failed, "failure", "Too large")
+    end
+
     test "terminalizes a snapshot on the third logical capture failure" do
       user = user_fixture()
       project = project_fixture(user)
