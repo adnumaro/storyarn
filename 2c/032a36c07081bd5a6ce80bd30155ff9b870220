@@ -1,0 +1,27 @@
+assets/app/locales/es/project-settings.json
+  s_c2ae682cd97119::t_dcbf057734e3aa 170,175-177,201
+test/storyarn/versioning/project_snapshot_build_test.exs
+  s_c2ae682cd97119::t_dcbf057734e3aa 431
+lib/storyarn/versioning/project_snapshot_build.ex
+  s_c2ae682cd97119::t_dcbf057734e3aa 54-56
+assets/app/test/live/project/settings/ProjectSettingsSnapshots.test.ts
+  s_c2ae682cd97119::t_dcbf057734e3aa 322,334
+assets/app/locales/en/project-settings.json
+  s_c2ae682cd97119::t_dcbf057734e3aa 170,175-177,201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2c032a36c07081bd5a6ce80bd30155ff9b870220",
+  "prompts": {},
+  "sessions": {
+    "s_c2ae682cd97119": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc808-0cdc-7d91-9295-63d410e04228",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
