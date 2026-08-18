@@ -1413,6 +1413,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       nil ->
         {:error, :project_snapshot_not_found}
 
+      {:error, :limit_reached, details} ->
+        {:error, {:limit_reached, details}}
+
       {:error, reason} ->
         {:error, reason}
 
@@ -1852,6 +1855,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     else
       %ProjectSnapshot{} -> {:error, :snapshot_build_cancelled}
       nil -> {:error, :snapshot_build_state_missing}
+      {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}
       {:error, reason} -> {:error, reason}
       _invalid -> {:error, :snapshot_build_state_conflict}
     end
