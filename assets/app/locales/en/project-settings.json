@@ -167,14 +167,14 @@
         "notes": "Notes",
         "notes_placeholder": "Optional context for your team",
         "full_mode": "Full snapshot · no external asset dependencies",
-        "reservation_note": "Storyarn measures the exact capture and reserves that storage before background work starts. If capacity is insufficient, nothing is queued.",
+        "reservation_note": "Storyarn measures the exact capture and reserves the required storage.",
         "slot_usage": "Snapshot slots: {used} of {limit} used",
         "slot_usage_unknown": "Snapshot slots used: {used} · limit unavailable",
         "submit": "Create snapshot",
         "submitting": "Capturing…",
-        "storage_limit_reached": "This snapshot requires {required}, but only {available} is available. Nothing was queued.",
-        "snapshot_limit_reached": "This project uses {used} of {limit} snapshot slots. Nothing was queued.",
-        "request_failed": "The snapshot could not be requested. Nothing was queued.",
+        "storage_limit_reached": "This snapshot requires {required}, but only {available} is available.",
+        "snapshot_limit_reached": "This project uses {used} of {limit} snapshot slots.",
+        "request_failed": "The snapshot could not be requested.",
         "connection_failed": "The connection was interrupted. Retry safely to resume the same request.",
         "cancel_failed": "The snapshot could not be cancelled."
       },
@@ -198,7 +198,7 @@
         "next_retry": "Next retry: {date}",
         "retry_due": "Retry due since {date}; waiting for a worker.",
         "waiting_for_worker": "Waiting for a worker to schedule the next retry.",
-        "build_failed": "A temporary build error occurred. Storyarn will retry automatically; no incomplete snapshot was published."
+        "build_failed": "A temporary build error occurred. Storyarn will retry automatically."
       },
       "download": {
         "action": "Download ZIP"
