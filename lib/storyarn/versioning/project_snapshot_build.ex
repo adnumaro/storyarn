@@ -51,9 +51,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   @progress_checkpoint_bytes 8 * 1024 * 1024
   @progress_checkpoint_ms 2_000
   @safe_failure_messages %{
-    "build_failed" => "The snapshot could not be created. No incomplete snapshot was published.",
-    "source_missing" => "A required asset was unavailable. No incomplete snapshot was published.",
-    "source_corrupt" => "A required asset failed integrity verification. No incomplete snapshot was published.",
+    "build_failed" => "The snapshot could not be created.",
+    "source_missing" => "A required asset was unavailable.",
+    "source_corrupt" => "A required asset failed integrity verification.",
     "storage_limit_reached" => "The workspace no longer has enough storage for this snapshot.",
     "cleanup_unowned" => "The build stopped safely and requires storage reconciliation before it can continue."
   }
@@ -1413,6 +1413,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
       nil ->
         {:error, :project_snapshot_not_found}
 
+      {:error, :limit_reached, details} ->
+        {:error, {:limit_reached, details}}
+
       {:error, reason} ->
         {:error, reason}
 
@@ -1852,6 +1855,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     else
       %ProjectSnapshot{} -> {:error, :snapshot_build_cancelled}
       nil -> {:error, :snapshot_build_state_missing}
+      {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}
       {:error, reason} -> {:error, reason}
       _invalid -> {:error, :snapshot_build_state_conflict}
     end
