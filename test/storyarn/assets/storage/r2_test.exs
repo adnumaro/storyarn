@@ -46,6 +46,18 @@ defmodule Storyarn.Assets.Storage.R2Test do
     end)
   end
 
+  test "presigns direct PUT with the browser-safe signed content type and requested expiry" do
+    key = "workspace-snapshot-imports/v1/1/#{Ecto.UUID.generate()}/snapshot.zip"
+
+    assert {:ok, url, %{headers: %{"content-type" => "application/zip"}}} =
+             R2.presigned_upload_url(key, "application/zip", expires_in: 3600, content_length: 123)
+
+    query = url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+    assert query["X-Amz-Expires"] == "3600"
+    assert "content-length" in String.split(query["X-Amz-SignedHeaders"], ";")
+    assert "content-type" in String.split(query["X-Amz-SignedHeaders"], ";")
+  end
+
   describe "stat/1" do
     test "reads object metadata through a signed HEAD request" do
       Req.Test.expect(__MODULE__, fn conn ->

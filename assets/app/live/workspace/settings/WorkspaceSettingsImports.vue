@@ -23,9 +23,10 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 import { Progress } from "@components/ui/progress";
+import { useLive } from "@shared/composables/useLive";
 import { formatBytes, type ByteCount } from "@shared/utils/storage-accounting";
 
-type ImportStatus = "queued" | "running" | "retrying" | "completed" | "failed";
+type ImportStatus = "uploading" | "queued" | "running" | "retrying" | "completed" | "failed";
 
 interface WorkspaceSnapshotImport {
   id: number;
@@ -58,6 +59,7 @@ const { imports, quotaRejection, requestErrorCode, uploadErrorCode, uploadConfig
 }>();
 
 const { locale, t } = useI18n();
+const live = useLive();
 const quotaOpen = ref(quotaRejection !== null);
 const submitted = ref(false);
 
@@ -70,8 +72,13 @@ const upload = useLiveUpload(
 );
 
 const selectedEntry = computed(() => upload.entries.value[0] ?? null);
+const hasActiveImport = computed(() => imports.some(activeImport));
 const canSubmit = computed(
-  () => selectedEntry.value?.valid === true && !submitted.value && uploadErrorCode === null,
+  () =>
+    selectedEntry.value?.valid === true &&
+    !submitted.value &&
+    !hasActiveImport.value &&
+    uploadErrorCode === null,
 );
 
 const visibleError = computed(() => {
@@ -81,6 +88,8 @@ const visibleError = computed(() => {
   if (code === "file_too_large") return t("settings.workspace.imports.errors.file_too_large");
   if (code === "unauthorized") return t("settings.workspace.imports.errors.unauthorized");
   if (code === "invalid_file") return t("settings.workspace.imports.errors.invalid_file");
+  if (code === "in_progress") return t("settings.workspace.imports.errors.in_progress");
+  if (code === "rate_limited") return t("settings.workspace.imports.errors.rate_limited");
   return t("settings.workspace.imports.errors.unavailable");
 });
 
@@ -116,11 +125,11 @@ function statusVariant(status: ImportStatus): "default" | "secondary" | "destruc
 }
 
 function activeImport(item: WorkspaceSnapshotImport): boolean {
-  return ["queued", "running", "retrying"].includes(item.status);
+  return ["uploading", "queued", "running", "retrying"].includes(item.status);
 }
 
 function phaseLabel(item: WorkspaceSnapshotImport): string {
-  const knownPhases = new Set(["queued", "verifying", "materializing", "retrying"]);
+  const knownPhases = new Set(["uploading", "queued", "verifying", "materializing", "retrying"]);
 
   if (item.phase && knownPhases.has(item.phase)) {
     return t(`settings.workspace.imports.phase.${item.phase}`);
@@ -168,6 +177,23 @@ function failureMessage(item: WorkspaceSnapshotImport): string {
 
   return t("settings.workspace.imports.errors.failed");
 }
+
+function cancelStoredUpload(id: number): void {
+  window.dispatchEvent(
+    new CustomEvent("storyarn:workspace-snapshot-upload-cancel", { detail: { import_id: id } }),
+  );
+  live.pushEvent("cancel_snapshot_upload", { id });
+}
+
+function cancelSelectedUpload(): void {
+  if (!selectedEntry.value) return;
+  window.dispatchEvent(
+    new CustomEvent("storyarn:workspace-snapshot-upload-cancel", {
+      detail: { ref: selectedEntry.value.ref },
+    }),
+  );
+  upload.cancel(selectedEntry.value.ref);
+}
 </script>
 
 <template>
@@ -205,7 +231,7 @@ function failureMessage(item: WorkspaceSnapshotImport): string {
             type="button"
             variant="outline"
             size="sm"
-            :disabled="submitted"
+            :disabled="submitted || hasActiveImport"
             @click="upload.showFilePicker()"
           >
             <FileArchive class="size-4" aria-hidden="true" />
@@ -215,6 +241,10 @@ function failureMessage(item: WorkspaceSnapshotImport): string {
             {{ t("settings.workspace.imports.upload.file_help") }}
           </p>
         </div>
+
+        <p v-if="hasActiveImport" class="text-sm text-muted-foreground">
+          {{ t("settings.workspace.imports.errors.in_progress") }}
+        </p>
 
         <div
           v-if="selectedEntry"
@@ -235,6 +265,16 @@ function failureMessage(item: WorkspaceSnapshotImport): string {
               t('settings.workspace.imports.progress', { percent: selectedEntry.progress })
             "
           />
+          <Button
+            v-if="submitted"
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="mt-2"
+            @click="cancelSelectedUpload"
+          >
+            {{ t("settings.workspace.imports.cancel") }}
+          </Button>
         </div>
 
         <p
@@ -292,7 +332,7 @@ function failureMessage(item: WorkspaceSnapshotImport): string {
                 <h3 class="min-w-0 truncate font-semibold text-foreground">
                   {{ importTitle(item) }}
                 </h3>
-                <Badge :variant="statusVariant(item.status)">
+                <Badge :variant="statusVariant(item.status)" aria-live="polite" aria-atomic="true">
                   {{ statusLabel(item.status) }}
                 </Badge>
               </div>
@@ -357,7 +397,6 @@ function failureMessage(item: WorkspaceSnapshotImport): string {
 
               <p
                 v-if="item.status === 'failed'"
-                role="alert"
                 class="mt-3 flex items-start gap-2 text-sm text-destructive"
               >
                 <XCircle class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -372,7 +411,16 @@ function failureMessage(item: WorkspaceSnapshotImport): string {
               </p>
             </div>
 
-            <Button v-if="item.status === 'completed' && item.projectPath" as-child size="sm">
+            <Button
+              v-if="item.status === 'uploading'"
+              type="button"
+              variant="ghost"
+              size="sm"
+              @click="cancelStoredUpload(item.id)"
+            >
+              {{ t("settings.workspace.imports.cancel") }}
+            </Button>
+            <Button v-else-if="item.status === 'completed' && item.projectPath" as-child size="sm">
               <LiveLink :to="item.projectPath">
                 {{ t("settings.workspace.imports.open_project") }}
               </LiveLink>

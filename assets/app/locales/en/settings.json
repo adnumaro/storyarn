@@ -171,6 +171,7 @@
           "empty_description": "Imports started from this workspace will appear here."
         },
         "status": {
+          "uploading": "Uploading",
           "queued": "Queued",
           "running": "Importing",
           "retrying": "Retrying",
@@ -178,6 +179,7 @@
           "failed": "Failed"
         },
         "phase": {
+          "uploading": "Uploading ZIP",
           "queued": "Waiting to start",
           "verifying": "Validating snapshot",
           "materializing": "Restoring project",
@@ -185,10 +187,13 @@
         },
         "attempt": "Attempt {attempt} of {max}",
         "progress": "Import progress: {percent}%",
+        "cancel": "Cancel upload",
         "open_project": "Open project",
         "errors": {
           "invalid_file": "This file is not a valid Storyarn snapshot ZIP.",
           "file_too_large": "This ZIP exceeds the maximum supported upload size.",
+          "in_progress": "Wait for the active project import to finish before starting another.",
+          "rate_limited": "Several snapshot uploads were started recently. Try again in about an hour.",
           "unauthorized": "You no longer have permission to import projects into this workspace.",
           "failed": "The project could not be imported.",
           "unavailable": "The snapshot could not be validated. Please try again."

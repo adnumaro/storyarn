@@ -67,6 +67,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   @preserved_localization_actor_ids_key :preserved_localization_actor_ids
   @materialization_mode_key :materialization_mode
   @snapshot_import_asset_catalog_fun_key :snapshot_import_asset_catalog_fun
+  @snapshot_import_asset_id_map_key :snapshot_import_asset_id_map
   @snapshot_import_project_id_key :snapshot_import_project_id
   @snapshot_import_tombstone_nodes_fun_key :snapshot_import_tombstone_nodes_fun
   @snapshot_import_external_tombstone_node_map_key :snapshot_import_external_tombstone_node_map
@@ -1150,7 +1151,10 @@ defmodule Storyarn.Versioning.ProjectRecovery do
                project.id,
                cache
              ) do
-        {:ok, Keyword.put(opts, :pre_materialized_assets, true)}
+        {:ok,
+         opts
+         |> Keyword.put(:pre_materialized_assets, true)
+         |> Keyword.put(@snapshot_import_asset_id_map_key, materialized_asset_ids)}
       else
         {:error, _reason} = error -> error
       end
@@ -1236,6 +1240,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
       with :ok <- validate_materialized_id_map_coverage(snapshot_data, active_id_maps),
            {:ok, id_maps} <- merge_materialized_id_maps(active_id_maps, tombstone_id_maps),
+           :ok <- remap_snapshot_import_tombstone_payloads(snapshot_data, id_maps, opts),
            :ok <- remap_sheet_refs(project.id, id_maps, snapshot_data, opts),
            :ok <- maybe_validate_recovered_sheet_inheritance(project.id, opts),
            :ok <- remap_flow_refs(project.id, id_maps, snapshot_data, opts),
@@ -1709,6 +1714,48 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   defp snapshot_import_tombstone_entries(snapshot_data),
     do: get_in(snapshot_data, ["referenced_tombstones", "entries"]) || []
+
+  defp remap_snapshot_import_tombstone_payloads(snapshot_data, id_maps, opts) do
+    if snapshot_import_materialization?(opts) do
+      id_maps = Map.put(id_maps, :asset, Keyword.fetch!(opts, @snapshot_import_asset_id_map_key))
+
+      snapshot_data
+      |> snapshot_import_tombstone_entries()
+      |> remap_snapshot_import_tombstone_entries(id_maps, opts)
+    else
+      :ok
+    end
+  end
+
+  defp remap_snapshot_import_tombstone_entries(entries, id_maps, opts) do
+    Enum.reduce_while(entries, :ok, fn entry, :ok ->
+      case remap_snapshot_import_tombstone_payload(entry, id_maps, opts) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp remap_snapshot_import_tombstone_payload(
+         %{"entity_type" => "block", "id" => source_id, "snapshot" => snapshot},
+         id_maps,
+         opts
+       ) do
+    remap_sheet_block_payloads([Map.put(snapshot, "original_id", source_id)], id_maps, opts)
+  end
+
+  defp remap_snapshot_import_tombstone_payload(
+         %{"entity_type" => "flow_node", "id" => source_id, "owner" => %{"id" => source_flow_id}, "snapshot" => snapshot},
+         id_maps,
+         opts
+       ) do
+    with {:ok, flow_id} <-
+           fetch_required_mapping(id_maps.flow, source_flow_id, {:tombstone_flow_node_owner, source_id}) do
+      remap_flow_nodes([Map.put(snapshot, "original_id", source_id)], flow_id, id_maps, opts)
+    end
+  end
+
+  defp remap_snapshot_import_tombstone_payload(_entry, _id_maps, _opts), do: :ok
 
   defp snapshot_import_materialization?(opts) do
     case Keyword.get(opts, @snapshot_import_project_id_key) do
@@ -2633,56 +2680,30 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp remap_single_node_data(node_id, new_flow_id, source_node_id, node_type, data, id_maps, opts) do
     original_data = data
 
-    with {:ok, data} <-
-           remap_node_data_reference(
-             data,
-             "speaker_sheet_id",
-             id_maps.sheet,
-             source_node_id,
-             opts
-           ),
-         {:ok, data} <-
-           remap_node_data_reference(
-             data,
-             "location_sheet_id",
-             id_maps.sheet,
-             source_node_id,
-             opts
-           ),
-         {:ok, data} <-
-           remap_node_data_reference(
-             data,
-             "referenced_flow_id",
-             id_maps.flow,
-             source_node_id,
-             opts
-           ),
-         {:ok, data} <-
-           remap_node_data_reference(
-             data,
-             "avatar_id",
-             id_maps.avatar,
-             source_node_id,
-             opts
-           ),
-         {:ok, data} <-
-           remap_node_typed_target(
-             data,
-             id_maps,
-             source_node_id,
-             opts
-           ),
-         {:ok, data} <-
-           remap_embedded_mentions(
-             data,
-             id_maps,
-             {:flow_node, source_node_id},
-             opts
-           ),
+    with {:ok, data} <- remap_authored_node_data(source_node_id, data, id_maps, opts),
          {:ok, new_data} <- maybe_normalize_recovered_node_avatar(new_flow_id, node_type, data, opts) do
       persist_remapped_node_data(node_id, original_data, new_data)
     end
   end
+
+  defp remap_authored_node_data(source_node_id, data, id_maps, opts) do
+    with {:ok, data} <-
+           remap_node_data_reference(data, "speaker_sheet_id", id_maps.sheet, source_node_id, opts),
+         {:ok, data} <-
+           remap_node_data_reference(data, "location_sheet_id", id_maps.sheet, source_node_id, opts),
+         {:ok, data} <-
+           remap_node_data_reference(data, "referenced_flow_id", id_maps.flow, source_node_id, opts),
+         {:ok, data} <- remap_node_data_reference(data, "avatar_id", id_maps.avatar, source_node_id, opts),
+         {:ok, data} <- remap_node_asset_reference(data, source_node_id, id_maps, opts),
+         {:ok, data} <- remap_node_typed_target(data, id_maps, source_node_id, opts) do
+      remap_embedded_mentions(data, id_maps, {:flow_node, source_node_id}, opts)
+    end
+  end
+
+  defp remap_node_asset_reference(data, source_node_id, %{asset: asset_ids}, opts),
+    do: remap_node_data_reference(data, "audio_asset_id", asset_ids, source_node_id, opts)
+
+  defp remap_node_asset_reference(data, _source_node_id, _id_maps, _opts), do: {:ok, data}
 
   defp maybe_normalize_recovered_node_avatar(flow_id, node_type, data, opts) do
     if MaterializationHelpers.exact_materialization?(opts),

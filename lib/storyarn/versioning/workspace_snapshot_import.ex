@@ -17,9 +17,9 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImport do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workspaces.Workspace
 
-  @statuses ~w(queued running retrying completed failed)
-  @active_statuses ~w(queued running retrying)
-  @stages ~w(queued verifying materializing retrying completed failed)
+  @statuses ~w(uploading queued running retrying completed failed)
+  @active_statuses ~w(uploading queued running retrying)
+  @stages ~w(uploading queued verifying materializing retrying completed failed)
   @running_stages ~w(verifying materializing)
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
 
@@ -32,7 +32,6 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImport do
           project_id: integer() | nil,
           project: Project.t() | NotLoaded.t() | nil,
           oban_job_id: integer() | nil,
-          idempotency_key: String.t() | nil,
           original_filename: String.t() | nil,
           project_name: String.t() | nil,
           archive_storage_key: String.t() | nil,
@@ -59,7 +58,6 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImport do
         }
 
   schema "workspace_snapshot_imports" do
-    field :idempotency_key, :string
     field :original_filename, :string
     field :project_name, :string
     field :archive_storage_key, :string
@@ -95,53 +93,54 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImport do
   def active_statuses, do: @active_statuses
   def stages, do: @stages
 
-  @doc "Builds the immutable queued operation accepted by synchronous admission."
-  @spec request_changeset(t(), map()) :: Ecto.Changeset.t()
-  def request_changeset(import, attrs) when is_map(attrs) do
+  @doc "Owns a direct-upload key before any snapshot payload is trusted."
+  def upload_changeset(import, attrs) when is_map(attrs) do
     import
     |> cast(attrs, [
       :workspace_id,
       :user_id,
-      :idempotency_key,
       :original_filename,
       :project_name,
       :archive_storage_key,
       :archive_size_bytes,
-      :archive_checksum,
-      :manifest_checksum,
-      :project_checksum,
-      :reserved_bytes,
       :staging_storage_keys,
       :progress_total_bytes,
       :max_attempts
     ])
-    |> change(
-      status: "queued",
-      stage: "queued",
-      progress_bytes: 0,
-      attempt: 0,
-      project_id: nil,
-      oban_job_id: nil,
-      failure_code: nil,
-      failure_details: %{},
-      started_at: nil,
-      completed_at: nil
-    )
+    |> change(status: "uploading", stage: "uploading", reserved_bytes: 0)
     |> validate_required([
       :workspace_id,
       :user_id,
-      :idempotency_key,
       :original_filename,
       :project_name,
       :archive_storage_key,
       :archive_size_bytes,
-      :archive_checksum,
+      :staging_storage_keys,
+      :progress_total_bytes,
+      :max_attempts
+    ])
+    |> validate_common()
+  end
+
+  @doc "Accepts a preflighted upload and reserves capacity before its worker is enqueued."
+  def admit_changeset(import, attrs) when is_map(attrs) do
+    import
+    |> cast(attrs, [
+      :project_name,
       :manifest_checksum,
       :project_checksum,
       :reserved_bytes,
       :staging_storage_keys,
-      :progress_total_bytes,
-      :max_attempts
+      :progress_total_bytes
+    ])
+    |> change(status: "queued", stage: "queued", progress_bytes: 0)
+    |> validate_required([
+      :project_name,
+      :manifest_checksum,
+      :project_checksum,
+      :reserved_bytes,
+      :staging_storage_keys,
+      :progress_total_bytes
     ])
     |> validate_common()
   end
@@ -214,6 +213,21 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImport do
     |> validate_common()
   end
 
+  @doc "Pins the checksum calculated by the asynchronous full verification pass."
+  def verified_changeset(import, archive_checksum) do
+    import
+    |> change(archive_checksum: archive_checksum)
+    |> validate_required([:archive_checksum])
+    |> validate_common()
+  end
+
+  @doc "Heartbeats a direct upload and exposes its browser-side byte progress."
+  def upload_progress_changeset(import, progress_bytes) when is_integer(progress_bytes) and progress_bytes >= 0 do
+    import
+    |> change(progress_bytes: min(progress_bytes, import.progress_total_bytes))
+    |> validate_common()
+  end
+
   @doc "Records a retryable failure without releasing reserved capacity."
   @spec retrying_changeset(t(), String.t(), map()) :: Ecto.Changeset.t()
   def retrying_changeset(import, failure_code, failure_details \\ %{}) do
@@ -270,7 +284,6 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImport do
     changeset
     |> validate_inclusion(:status, @statuses)
     |> validate_inclusion(:stage, @stages)
-    |> validate_length(:idempotency_key, is: 64)
     |> validate_length(:original_filename, min: 1, max: 255)
     |> validate_length(:project_name, min: 1, max: 255)
     |> validate_length(:archive_storage_key, min: 1, max: 520)
@@ -289,8 +302,8 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImport do
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:oban_job_id)
-    |> unique_constraint([:workspace_id, :idempotency_key],
-      name: :workspace_snapshot_imports_active_idempotency_idx
+    |> unique_constraint(:workspace_id,
+      name: :workspace_snapshot_imports_one_active_idx
     )
     |> unique_constraint(:oban_job_id,
       name: :workspace_snapshot_imports_oban_job_idx

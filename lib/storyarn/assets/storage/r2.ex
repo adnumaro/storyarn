@@ -607,18 +607,19 @@ defmodule Storyarn.Assets.Storage.R2 do
   def presigned_upload_url(key, content_type, opts) do
     bucket = bucket()
     expires_in = Keyword.get(opts, :expires_in, 3600)
+    content_length = Keyword.fetch!(opts, :content_length)
 
     presign_opts = [
       expires_in: expires_in,
       virtual_host: false,
-      query_params: [{"Content-Type", content_type}]
+      headers: [{"content-type", content_type}, {"content-length", Integer.to_string(content_length)}]
     ]
 
     config = ExAws.Config.new(:s3)
 
     case ExAws.S3.presigned_url(config, :put, bucket, key, presign_opts) do
       {:ok, url} ->
-        {:ok, url, %{content_type: content_type}}
+        {:ok, url, %{headers: %{"content-type" => content_type}}}
 
       {:error, reason} ->
         {:error, reason}

@@ -7,13 +7,14 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageHash
-  alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Billing
   alias Storyarn.Notifications
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectRecovery
   alias Storyarn.Versioning.ProjectSnapshotArchiveReader
   alias Storyarn.Versioning.ProjectSnapshotAssetMaterializer
@@ -25,46 +26,36 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
 
   require Logger
 
-  @active_statuses ~w(queued running retrying)
+  @active_statuses ~w(uploading queued running retrying)
   @terminal_delivery_job_states ~w(cancelled completed discarded)
   @archive_content_type "application/zip"
   @file_chunk_size 1_048_576
   @progress_flush_bytes 1_048_576
   @history_limit 50
-  @lock_snooze_seconds 30
+  @duplicate_delivery_snooze_seconds 30
+  @upload_ttl_seconds 3_600
+  @max_live_upload_grants 3
 
-  @doc "Validates, reserves and durably stages one standalone project snapshot."
+  @doc "Validates and stages a local upload without holding a database checkout during file I/O."
   def request(scope, workspace, uploaded_path, attrs, opts \\ [])
 
-  def request(%Scope{user: %User{id: user_id}} = scope, %Workspace{id: workspace_id}, uploaded_path, attrs, opts)
+  def request(%Scope{} = scope, %Workspace{} = workspace, uploaded_path, attrs, opts)
       when is_binary(uploaded_path) and is_map(attrs) and is_list(opts) do
     reader = Keyword.get(opts, :archive_reader, ProjectSnapshotArchiveReader)
     storage = Keyword.get(opts, :storage, Storage)
 
     with {:ok, workspace, _membership} <-
-           Workspaces.authorize(scope, workspace_id, :access_workspace_settings),
-         {:ok, _workspace, _membership} <-
-           Workspaces.authorize(scope, workspace_id, :create_project),
+           Workspaces.authorize(scope, workspace.id, :access_workspace_settings),
+         {:ok, _workspace, _membership} <- Workspaces.authorize(scope, workspace.id, :create_project),
          {:ok, original_filename} <- original_filename(attrs),
          {:ok, preflight} <- reader.preflight_file(uploaded_path),
-         :ok <- ProjectRecovery.validate_snapshot_import(preflight.project),
-         {:ok, project_name} <- project_name(preflight.project),
-         :ok <- validate_preflight(preflight) do
-      semantic_key = semantic_key(user_id, workspace_id, preflight)
-
-      admission_context = %{
-        scope: scope,
-        workspace: workspace,
-        uploaded_path: uploaded_path,
-        original_filename: original_filename,
-        project_name: project_name,
-        preflight: preflight,
-        storage: storage
-      }
-
-      StorageKeyLock.with_session_lock(semantic_lock_name(semantic_key), fn ->
-        admit_after_semantic_dedupe(admission_context)
-      end)
+         :ok <- validate_preflight(preflight),
+         {:ok, upload} <-
+           prepare_upload(scope, workspace, %{
+             original_filename: original_filename,
+             archive_size_bytes: preflight.archive_size_bytes
+           }) do
+      complete_local_upload(scope, workspace, upload, uploaded_path, upload.project_name, preflight, storage)
     end
   rescue
     error ->
@@ -79,16 +70,125 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   def request(%Scope{}, %Workspace{}, _uploaded_path, _attrs, _opts), do: {:error, :unauthorized}
   def request(_scope, _workspace, _uploaded_path, _attrs, _opts), do: {:error, :invalid_snapshot_import_request}
 
+  @doc "Creates the durable owner of one direct-upload key before bytes leave the browser."
+  def prepare_upload(%Scope{user: %User{}} = scope, %Workspace{} = workspace, attrs) when is_map(attrs),
+    do: prepare_upload(scope, workspace, attrs, false)
+
+  def prepare_upload(_scope, _workspace, _attrs), do: {:error, :invalid_snapshot_import_request}
+
+  defp prepare_upload(%Scope{user: %User{}} = scope, %Workspace{} = workspace, attrs, enforce_grant_limit?)
+       when is_map(attrs) and is_boolean(enforce_grant_limit?) do
+    with {:ok, original_filename} <- original_filename(attrs),
+         {:ok, archive_size_bytes} <- archive_size_bytes(attrs),
+         {:ok, workspace, _membership} <-
+           Workspaces.authorize(scope, workspace.id, :access_workspace_settings),
+         {:ok, _workspace, _membership} <- Workspaces.authorize(scope, workspace.id, :create_project) do
+      insert_upload_owner(scope, workspace, original_filename, archive_size_bytes, enforce_grant_limit?)
+    end
+  end
+
+  defp prepare_upload(_scope, _workspace, _attrs, _enforce_grant_limit?), do: {:error, :invalid_snapshot_import_request}
+
+  @doc "Creates an owned upload and returns a short-lived direct PUT."
+  def prepare_external_upload(scope, workspace, attrs, opts \\ [])
+
+  def prepare_external_upload(%Scope{} = scope, %Workspace{} = workspace, attrs, opts)
+      when is_map(attrs) and is_list(opts) do
+    storage = Keyword.get(opts, :storage, Storage)
+
+    with {:ok, upload} <- prepare_upload(scope, workspace, attrs, true) do
+      presign_upload(scope, workspace, upload, storage)
+    end
+  end
+
+  def prepare_external_upload(_scope, _workspace, _attrs, _opts), do: {:error, :invalid_snapshot_import_request}
+
+  defp presign_upload(scope, workspace, upload, storage) do
+    case storage.presigned_upload_url(upload.archive_storage_key, @archive_content_type,
+           expires_in: @upload_ttl_seconds,
+           content_length: upload.archive_size_bytes
+         ) do
+      {:ok, url, metadata} when is_binary(url) and is_map(metadata) ->
+        {:ok,
+         %{
+           import_id: upload.id,
+           url: url,
+           headers: Map.get(metadata, :headers, %{"content-type" => @archive_content_type})
+         }}
+
+      {:error, _reason} ->
+        discard_upload_result(scope, workspace, upload.id, {:error, :snapshot_import_unavailable})
+    end
+  rescue
+    _error -> discard_upload_result(scope, workspace, upload.id, {:error, :snapshot_import_unavailable})
+  catch
+    _kind, _reason -> discard_upload_result(scope, workspace, upload.id, {:error, :snapshot_import_unavailable})
+  end
+
+  @doc "Preflights an owned private object, reserves capacity, and enqueues its asynchronous import."
+  def request_stored(scope, workspace, import_id, opts \\ [])
+
+  def request_stored(%Scope{} = scope, %Workspace{} = workspace, import_id, opts)
+      when is_integer(import_id) and import_id > 0 and is_list(opts) do
+    reader = Keyword.get(opts, :archive_reader, ProjectSnapshotArchiveReader)
+
+    with {:ok, upload} <- owned_upload(scope, workspace, import_id),
+         {:ok, preflight} <-
+           reader.preflight_archive(%{
+             archive_storage_key: upload.archive_storage_key,
+             archive_size_bytes: upload.archive_size_bytes
+           }),
+         :ok <- validate_preflight(preflight),
+         {:ok, accepted} <- admit_preflight(scope, workspace, upload, upload.project_name, preflight) do
+      publish(accepted)
+      {:ok, accepted}
+    else
+      {:error, _reason} = error -> discard_upload_result(scope, workspace, import_id, error)
+      {:error, _reason, _details} = error -> discard_upload_result(scope, workspace, import_id, error)
+    end
+  end
+
+  def request_stored(_scope, _workspace, _import_id, _opts), do: {:error, :invalid_snapshot_import_request}
+
+  @doc false
+  def upload_progress(%Scope{} = scope, %Workspace{} = workspace, import_id, percent)
+      when is_integer(import_id) and import_id > 0 and is_integer(percent) and percent in 0..100 do
+    with {:ok, _workspace, _membership} <-
+           Workspaces.authorize(scope, workspace.id, :access_workspace_settings),
+         {1, _rows} <- heartbeat_upload(scope.user.id, workspace.id, import_id, percent),
+         %WorkspaceSnapshotImport{} = updated <- Repo.get(WorkspaceSnapshotImport, import_id) do
+      publish(updated)
+      {:ok, updated}
+    else
+      _stale_or_unauthorized -> {:error, :workspace_snapshot_upload_not_found}
+    end
+  end
+
+  def upload_progress(_scope, _workspace, _import_id, _percent), do: {:error, :workspace_snapshot_upload_not_found}
+
+  @doc false
+  def cancel_upload(%Scope{} = scope, %Workspace{} = workspace, import_id),
+    do: discard_upload(scope, workspace, import_id)
+
   @doc "Lists recent imports visible in one workspace settings surface."
   def list(%Scope{} = scope, %Workspace{id: workspace_id}) do
     case Workspaces.authorize(scope, workspace_id, :access_workspace_settings) do
       {:ok, _workspace, _membership} ->
-        WorkspaceSnapshotImport
-        |> where([import], import.workspace_id == ^workspace_id)
-        |> order_by([import], desc: import.inserted_at, desc: import.id)
-        |> limit(@history_limit)
-        |> preload(:project)
-        |> Repo.all()
+        active =
+          WorkspaceSnapshotImport
+          |> where([import], import.workspace_id == ^workspace_id and import.status in ^@active_statuses)
+          |> preload(:project)
+          |> Repo.all()
+
+        terminal =
+          WorkspaceSnapshotImport
+          |> where([import], import.workspace_id == ^workspace_id and import.status in ["completed", "failed"])
+          |> order_by([import], desc: import.inserted_at, desc: import.id)
+          |> limit(@history_limit)
+          |> preload(:project)
+          |> Repo.all()
+
+        Enum.sort_by(active ++ terminal, &{&1.inserted_at, &1.id}, :desc)
 
       {:error, _reason} ->
         []
@@ -96,19 +196,6 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   end
 
   def list(_scope, _workspace), do: []
-
-  @doc "Returns one scoped workspace import."
-  def get(%Scope{} = scope, import_id) when is_integer(import_id) and import_id > 0 do
-    with %WorkspaceSnapshotImport{} = import <- Repo.get(WorkspaceSnapshotImport, import_id),
-         {:ok, _workspace, _membership} <-
-           Workspaces.authorize(scope, import.workspace_id, :access_workspace_settings) do
-      {:ok, Repo.preload(import, :project)}
-    else
-      _not_visible -> {:error, :not_found}
-    end
-  end
-
-  def get(_scope, _import_id), do: {:error, :not_found}
 
   @doc "Subscribes to committed lifecycle changes for one workspace."
   def subscribe(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
@@ -139,22 +226,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   def perform(import_id, opts \\ [])
 
   def perform(import_id, opts) when is_integer(import_id) and import_id > 0 and is_list(opts) do
-    case Repo.get(WorkspaceSnapshotImport, import_id) do
-      %WorkspaceSnapshotImport{} = import ->
-        lock_opts =
-          case Keyword.fetch(opts, :lock_acquisition_timeout) do
-            {:ok, timeout} -> [acquisition_timeout: timeout]
-            :error -> []
-          end
-
-        import.idempotency_key
-        |> request_lock_name()
-        |> StorageKeyLock.with_session_lock(fn -> perform_locked(import_id, opts) end, lock_opts)
-        |> normalize_session_lock_result()
-
-      nil ->
-        {:discard, :workspace_snapshot_import_not_found}
-    end
+    perform_attempt(import_id, opts)
   end
 
   def perform(_import_id, _opts), do: {:discard, :invalid_workspace_snapshot_import_job}
@@ -164,23 +236,26 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
 
   def reconcile_abandoned_deliveries(opts) when is_list(opts) do
     limit = opts |> Keyword.get(:limit, 50) |> min(50) |> max(1)
+    upload_ttl = Keyword.get(opts, :upload_ttl_seconds, @upload_ttl_seconds)
+    stale_before = DateTime.add(TimeHelpers.now(), -upload_ttl, :second)
 
     candidates =
       WorkspaceSnapshotImport
       |> join(:left, [import], job in Oban.Job, on: job.id == import.oban_job_id)
       |> where(
         [import, job],
-        import.status in ^@active_statuses and
-          (is_nil(job.id) or job.state in ^@terminal_delivery_job_states)
+        (import.status == "uploading" and import.updated_at < ^stale_before) or
+          (import.status in ["queued", "running", "retrying"] and
+             (is_nil(job.id) or job.state in ^@terminal_delivery_job_states))
       )
       |> order_by([import, _job], asc: import.id)
       |> limit(^limit)
       |> select([import, _job], %{
         import_id: import.id,
-        workspace_id: import.workspace_id,
-        idempotency_key: import.idempotency_key
+        workspace_id: import.workspace_id
       })
       |> Repo.all()
+      |> Enum.map(&Map.put(&1, :stale_before, stale_before))
 
     Enum.reduce(
       candidates,
@@ -192,201 +267,226 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   def reconcile_abandoned_deliveries(_opts),
     do: %{candidate_count: 0, terminalized_count: 0, changed_count: 0, failure_count: 1}
 
-  defp admit_after_semantic_dedupe(context) do
-    case get_semantic_active(context.scope.user.id, context.workspace.id, context.preflight) do
-      %WorkspaceSnapshotImport{} = candidate ->
-        with {:ok, archive_checksum} <-
-               hash_uploaded_file(context.uploaded_path, context.preflight.archive_size_bytes) do
-          resolve_semantic_candidate(context, candidate, archive_checksum)
-        end
+  defp insert_upload_owner(scope, workspace, original_filename, archive_size_bytes, enforce_grant_limit?) do
+    Billing.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
+      with {:ok, _membership} <- authorize_locked_import_member(scope, locked_workspace),
+           :ok <- normalize_project_capacity(Billing.can_create_project?(locked_workspace)),
+           :ok <- maybe_enforce_upload_grant_limit(locked_workspace.id, enforce_grant_limit?) do
+        token = Ecto.UUID.generate()
+        archive_storage_key = archive_key(locked_workspace.id, token)
 
-      nil ->
-        with :ok <- early_capacity_check(context.workspace, context.preflight.logical_asset_bytes),
-             {:ok, archive_checksum} <-
-               hash_uploaded_file(context.uploaded_path, context.preflight.archive_size_bytes) do
-          admit_new_archive(context, archive_checksum)
-        end
-    end
-  end
+        attrs = %{
+          workspace_id: locked_workspace.id,
+          user_id: scope.user.id,
+          original_filename: original_filename,
+          project_name: Path.rootname(original_filename),
+          archive_storage_key: archive_storage_key,
+          archive_size_bytes: archive_size_bytes,
+          staging_storage_keys: [archive_storage_key],
+          progress_total_bytes: archive_size_bytes,
+          max_attempts: ImportProjectSnapshotWorker.max_attempts()
+        }
 
-  defp resolve_semantic_candidate(
-         _context,
-         %WorkspaceSnapshotImport{archive_checksum: archive_checksum} = candidate,
-         archive_checksum
-       ) do
-    {:ok, Repo.preload(candidate, :project)}
-  end
-
-  defp resolve_semantic_candidate(context, _candidate, archive_checksum), do: admit_new_archive(context, archive_checksum)
-
-  defp admit_new_archive(context, archive_checksum) do
-    idempotency_key = idempotency_key(context.scope.user.id, context.workspace.id, archive_checksum)
-    context = Map.merge(context, %{archive_checksum: archive_checksum, idempotency_key: idempotency_key})
-
-    StorageKeyLock.with_session_lock(request_lock_name(idempotency_key), fn ->
-      admit_and_stage(context)
+        %WorkspaceSnapshotImport{}
+        |> WorkspaceSnapshotImport.upload_changeset(attrs)
+        |> Repo.insert()
+        |> normalize_active_import_insert()
+      end
     end)
   end
 
-  defp admit_and_stage(context) do
-    with {:ok, {import, admission}} <- admit_operation(context) do
-      stage_admission(admission, import, context)
-    end
+  defp maybe_enforce_upload_grant_limit(workspace_id, true), do: enforce_upload_grant_limit(workspace_id)
+  defp maybe_enforce_upload_grant_limit(_workspace_id, false), do: :ok
+
+  defp enforce_upload_grant_limit(workspace_id) do
+    cutoff =
+      DateTime.add(
+        TimeHelpers.now(),
+        -@upload_ttl_seconds - Storage.multipart_cleanup_quiescence_seconds(),
+        :second
+      )
+
+    count =
+      StorageCleanupRequest
+      |> where(
+        [request],
+        request.owner_kind == "storage_compensation" and request.inserted_at >= ^cutoff and
+          request.multipart_quiescence_not_before > fragment("clock_timestamp()")
+      )
+      |> where(
+        [request],
+        fragment(
+          "EXISTS (SELECT 1 FROM unnest(?) AS keys(storage_key) WHERE storage_key LIKE ?)",
+          request.storage_keys,
+          ^"workspace-snapshot-imports/v1/#{workspace_id}/%"
+        )
+      )
+      |> Repo.aggregate(:count)
+
+    if count < @max_live_upload_grants, do: :ok, else: {:error, :workspace_snapshot_upload_rate_limited}
   end
 
-  defp stage_admission(:existing, import, _context), do: {:ok, import}
-
-  defp stage_admission(:created, import, context) do
-    case upload_archive(context.uploaded_path, import, context.storage) do
+  defp complete_local_upload(scope, workspace, upload, path, project_name, preflight, storage) do
+    case upload_archive(path, upload, storage) do
       :ok ->
-        publish(import)
-        {:ok, import}
+        case admit_preflight(scope, workspace, upload, project_name, preflight) do
+          {:ok, accepted} ->
+            publish(accepted)
+            {:ok, accepted}
 
-      {:error, reason} ->
-        terminalize_admission_failure(import, reason)
+          {:error, _reason} = error ->
+            discard_upload_result(scope, workspace, upload.id, error)
+
+          {:error, _reason, _details} = error ->
+            discard_upload_result(scope, workspace, upload.id, error)
+        end
+
+      {:error, _reason} ->
+        discard_upload_result(scope, workspace, upload.id, {:error, :snapshot_archive_stage_failed})
     end
   end
 
-  defp admit_operation(context) do
-    context.workspace.id
+  defp heartbeat_upload(user_id, workspace_id, import_id, percent) do
+    query =
+      from(import in WorkspaceSnapshotImport,
+        where:
+          import.id == ^import_id and import.workspace_id == ^workspace_id and import.user_id == ^user_id and
+            import.status == "uploading",
+        update: [
+          set: [
+            progress_bytes:
+              fragment("GREATEST(?, (? * ?) / 100)", import.progress_bytes, import.archive_size_bytes, ^percent),
+            updated_at: ^TimeHelpers.now()
+          ]
+        ]
+      )
+
+    Repo.update_all(query, [])
+  end
+
+  defp owned_upload(%Scope{user: %User{id: user_id}} = scope, %Workspace{id: workspace_id}, import_id) do
+    with {:ok, _workspace, _membership} <-
+           Workspaces.authorize(scope, workspace_id, :access_workspace_settings),
+         %WorkspaceSnapshotImport{} = upload <-
+           WorkspaceSnapshotImport
+           |> where(
+             [import],
+             import.id == ^import_id and import.workspace_id == ^workspace_id and import.user_id == ^user_id and
+               import.status == "uploading"
+           )
+           |> Repo.one() do
+      {:ok, upload}
+    else
+      _not_owned -> {:error, :workspace_snapshot_upload_not_found}
+    end
+  end
+
+  defp admit_preflight(scope, workspace, upload, project_name, preflight) do
+    workspace.id
     |> Billing.transact_with_workspace_lock(fn locked_workspace ->
-      with {:ok, _membership} <- authorize_locked_import_member(context.scope, locked_workspace) do
-        admit_locked_operation(context, locked_workspace)
+      locked_upload =
+        WorkspaceSnapshotImport
+        |> where(
+          [import],
+          import.id == ^upload.id and import.workspace_id == ^locked_workspace.id and
+            import.user_id == ^scope.user.id and import.status == "uploading"
+        )
+        |> lock("FOR UPDATE")
+        |> Repo.one()
+
+      with %WorkspaceSnapshotImport{} = locked_upload <- locked_upload,
+           {:ok, _membership} <- authorize_locked_import_member(scope, locked_workspace),
+           :ok <- normalize_project_capacity(Billing.can_publish_reserved_project?(locked_workspace)),
+           :ok <-
+             normalize_storage_capacity(Billing.can_upload_asset?(locked_workspace, preflight.logical_asset_bytes)),
+           {:ok, queued} <- persist_admitted_upload(locked_upload, project_name, preflight),
+           {:ok, job} <- %{"import_id" => queued.id} |> ImportProjectSnapshotWorker.new() |> Oban.insert(),
+           {:ok, bound} <- queued |> WorkspaceSnapshotImport.bind_job_changeset(job.id) |> Repo.update() do
+        {:ok, Repo.preload(bound, :project)}
+      else
+        nil -> {:error, :workspace_snapshot_upload_not_found}
+        {:error, _reason} = error -> error
       end
     end)
     |> normalize_capacity_transaction_result()
   end
 
-  defp admit_locked_operation(context, locked_workspace) do
-    case active_by_idempotency(locked_workspace.id, context.idempotency_key) do
-      %WorkspaceSnapshotImport{} = import ->
-        {:ok, {Repo.preload(import, :project), :existing}}
-
-      nil ->
-        insert_locked_operation(context, locked_workspace)
-    end
-  end
-
-  defp insert_locked_operation(context, locked_workspace) do
-    with :ok <- normalize_project_capacity(Billing.can_create_project?(locked_workspace)),
-         :ok <-
-           normalize_storage_capacity(
-             Billing.can_upload_asset?(
-               locked_workspace,
-               context.preflight.logical_asset_bytes
-             )
-           ) do
-      insert_operation(
-        context.scope.user.id,
-        locked_workspace.id,
-        context.original_filename,
-        context.project_name,
-        context.preflight,
-        context.archive_checksum,
-        context.idempotency_key
-      )
-    end
-  end
-
-  defp insert_operation(
-         user_id,
-         workspace_id,
-         original_filename,
-         project_name,
-         preflight,
-         archive_checksum,
-         idempotency_key
-       ) do
-    plan = admission_plan(workspace_id, idempotency_key, preflight.manifest)
-
-    attrs = %{
-      workspace_id: workspace_id,
-      user_id: user_id,
-      idempotency_key: idempotency_key,
-      original_filename: original_filename,
+  defp persist_admitted_upload(upload, project_name, preflight) do
+    upload
+    |> WorkspaceSnapshotImport.admit_changeset(%{
       project_name: project_name,
-      archive_storage_key: plan.archive_key,
-      archive_size_bytes: preflight.archive_size_bytes,
-      archive_checksum: archive_checksum,
       manifest_checksum: preflight.manifest_checksum,
       project_checksum: preflight.project_checksum,
       reserved_bytes: preflight.logical_asset_bytes,
-      staging_storage_keys: plan.staging_keys,
-      progress_total_bytes: progress_total_bytes(preflight),
-      max_attempts: ImportProjectSnapshotWorker.max_attempts()
-    }
+      staging_storage_keys: planned_keys_from_preflight(upload, preflight.manifest),
+      progress_total_bytes: progress_total_bytes(preflight)
+    })
+    |> Repo.update()
+  end
 
-    with {:ok, import} <-
-           %WorkspaceSnapshotImport{}
-           |> WorkspaceSnapshotImport.request_changeset(attrs)
-           |> Repo.insert(),
-         {:ok, job} <-
-           %{"import_id" => import.id}
-           |> ImportProjectSnapshotWorker.new()
-           |> Oban.insert(),
-         {:ok, import} <-
-           import
-           |> WorkspaceSnapshotImport.bind_job_changeset(job.id)
-           |> Repo.update() do
-      {:ok, {Repo.preload(import, :project), :created}}
+  defp discard_upload_result(scope, workspace, import_id, original_result) do
+    case discard_upload(scope, workspace, import_id) do
+      {:ok, _discarded} -> original_result
+      {:error, :workspace_snapshot_upload_not_found} -> original_result
+      {:error, _reason} -> {:error, :snapshot_import_unavailable}
     end
   end
 
-  defp active_by_idempotency(workspace_id, idempotency_key) do
-    WorkspaceSnapshotImport
-    |> where(
-      [import],
-      import.workspace_id == ^workspace_id and import.idempotency_key == ^idempotency_key and
-        import.status in ^@active_statuses
-    )
-    |> lock("FOR UPDATE")
-    |> Repo.one()
-  end
+  defp discard_upload(%Scope{} = scope, %Workspace{} = workspace, import_id) do
+    result =
+      Billing.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
+        with {:ok, _membership} <- authorize_locked_import_member(scope, locked_workspace),
+             %WorkspaceSnapshotImport{} = upload <-
+               WorkspaceSnapshotImport
+               |> where(
+                 [import],
+                 import.id == ^import_id and import.workspace_id == ^locked_workspace.id and import.status == "uploading"
+               )
+               |> lock("FOR UPDATE")
+               |> Repo.one(),
+             {:ok, _cleanup_request} <-
+               persist_import_cleanup(upload, upload.staging_storage_keys),
+             {:ok, deleted} <- Repo.delete(upload) do
+          {:ok, deleted}
+        else
+          nil -> {:error, :workspace_snapshot_upload_not_found}
+          {:error, _reason} = error -> error
+        end
+      end)
 
-  defp get_semantic_active(user_id, workspace_id, preflight) do
-    WorkspaceSnapshotImport
-    |> where(
-      [import],
-      import.user_id == ^user_id and import.workspace_id == ^workspace_id and
-        import.manifest_checksum == ^preflight.manifest_checksum and
-        import.project_checksum == ^preflight.project_checksum and
-        import.archive_size_bytes == ^preflight.archive_size_bytes and import.status in ^@active_statuses
-    )
-    |> order_by([import], desc: import.id)
-    |> limit(1)
-    |> Repo.one()
-  end
+    case result do
+      {:ok, discarded} ->
+        delete_provisional_objects(discarded.staging_storage_keys)
+        publish(discarded)
+        {:ok, discarded}
 
-  defp early_capacity_check(workspace, requested_bytes) do
-    workspace.id
-    |> Billing.transact_with_workspace_lock(&validate_early_capacity(&1, requested_bytes))
-    |> normalize_early_capacity_result()
-  end
-
-  defp validate_early_capacity(locked_workspace, requested_bytes) do
-    with :ok <- normalize_project_capacity(Billing.can_create_project?(locked_workspace)),
-         :ok <- normalize_storage_capacity(Billing.can_upload_asset?(locked_workspace, requested_bytes)) do
-      {:ok, :admitted}
+      {:error, _reason} = error ->
+        error
     end
   end
 
-  defp normalize_early_capacity_result({:ok, :admitted}), do: :ok
+  defp planned_keys_from_preflight(import, manifest) do
+    [
+      import.archive_storage_key
+      | Map.values(planned_blob_keys(import.workspace_id, import_token(import.archive_storage_key), manifest))
+    ]
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
 
-  defp normalize_early_capacity_result({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}
+  defp normalize_active_import_insert({:error, %Ecto.Changeset{} = changeset}) do
+    if Keyword.has_key?(changeset.errors, :workspace_id),
+      do: {:error, :workspace_snapshot_import_in_progress},
+      else: {:error, changeset}
+  end
 
-  defp normalize_early_capacity_result({:error, _reason} = error), do: error
+  defp normalize_active_import_insert(result), do: result
 
   defp upload_archive(path, import, storage) do
-    upload_archive(
-      path,
-      import.archive_storage_key,
-      import.archive_size_bytes,
-      import.archive_checksum,
-      storage
-    )
+    upload_archive(path, import.archive_storage_key, import.archive_size_bytes, storage)
   end
 
-  defp upload_archive(path, archive_storage_key, archive_size_bytes, _archive_checksum, storage) do
+  defp upload_archive(path, archive_storage_key, archive_size_bytes, storage) do
     chunks = path |> File.stream!(@file_chunk_size, []) |> Stream.map(&{:ok, &1})
 
     with {:ok, _url} <- storage.upload_stream(archive_storage_key, chunks, @archive_content_type),
@@ -402,32 +502,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     kind, reason -> {:error, {:archive_upload_failure, kind, safe_reason(reason)}}
   end
 
-  defp admission_plan(workspace_id, _idempotency_key, manifest) do
-    token = Ecto.UUID.generate()
-    archive_key = archive_key(workspace_id, token)
-    blob_keys = planned_blob_keys(workspace_id, token, manifest)
-
-    %{
-      archive_key: archive_key,
-      staging_keys: [archive_key | Map.values(blob_keys)] |> Enum.uniq() |> Enum.sort()
-    }
-  end
-
-  defp terminalize_admission_failure(import, reason) do
-    case fail_terminal(import.id, failure_code(reason), import.attempt, import.max_attempts) do
-      {:ok, _failed} ->
-        {:error, :snapshot_archive_stage_failed}
-
-      {:error, terminal_reason} ->
-        Logger.error(
-          "Snapshot import admission failure could not terminalize import_id=#{import.id} error=#{safe_error(terminal_reason)}"
-        )
-
-        {:error, :snapshot_import_unavailable}
-    end
-  end
-
-  defp perform_locked(import_id, opts) do
+  defp perform_attempt(import_id, opts) do
     attempt = Keyword.get(opts, :attempt, 1)
     max_attempts = Keyword.get(opts, :max_attempts, ImportProjectSnapshotWorker.max_attempts())
     job_id = Keyword.get(opts, :job_id)
@@ -445,35 +520,23 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
       {:discard, _reason} = discard ->
         discard
 
+      {:snooze, _seconds} = snooze ->
+        snooze
+
       {:error, reason} ->
-        handle_execution_error(import_id, {:claim, reason}, attempt, max_attempts)
+        if retryable_database_failure?(reason) and attempt < max_attempts,
+          do: {:retry, failure_code(reason)},
+          else: {:discard, :workspace_snapshot_import_claim_failed}
     end
   end
 
   defp claim(import_id, job_id, attempt, max_attempts) do
     fn ->
-      import =
-        WorkspaceSnapshotImport
-        |> where([import], import.id == ^import_id)
-        |> lock("FOR UPDATE")
-        |> Repo.one()
-
-      case import do
-        nil ->
-          {:error, {:discard, :workspace_snapshot_import_not_found}}
-
-        %WorkspaceSnapshotImport{status: status} = terminal when status in ["completed", "failed"] ->
-          {:ok, Repo.preload(terminal, :project)}
-
-        %WorkspaceSnapshotImport{oban_job_id: stored_job_id}
-        when not is_integer(job_id) or stored_job_id != job_id ->
-          {:error, {:discard, :workspace_snapshot_import_job_mismatch}}
-
-        %WorkspaceSnapshotImport{} = active ->
-          active
-          |> WorkspaceSnapshotImport.running_changeset(attempt, max_attempts)
-          |> Repo.update()
-      end
+      WorkspaceSnapshotImport
+      |> where([import], import.id == ^import_id)
+      |> lock("FOR UPDATE")
+      |> Repo.one()
+      |> transition_claim(job_id, attempt, max_attempts)
     end
     |> Repo.transact()
     |> case do
@@ -485,6 +548,32 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
         normalize_claim_error(reason)
     end
   end
+
+  defp transition_claim(nil, _job_id, _attempt, _max_attempts),
+    do: {:error, {:discard, :workspace_snapshot_import_not_found}}
+
+  defp transition_claim(%WorkspaceSnapshotImport{status: status} = terminal, _job_id, _attempt, _max_attempts)
+       when status in ["completed", "failed"], do: {:ok, Repo.preload(terminal, :project)}
+
+  defp transition_claim(%WorkspaceSnapshotImport{oban_job_id: stored_job_id}, job_id, _attempt, _max_attempts)
+       when not is_integer(job_id) or stored_job_id != job_id,
+       do: {:error, {:discard, :workspace_snapshot_import_job_mismatch}}
+
+  defp transition_claim(
+         %WorkspaceSnapshotImport{status: status, attempt: stored_attempt} = active,
+         _job_id,
+         attempt,
+         max_attempts
+       )
+       when status in ["queued", "retrying", "running"] and is_integer(attempt) and attempt > stored_attempt and
+              is_integer(max_attempts) and attempt <= max_attempts do
+    active
+    |> WorkspaceSnapshotImport.running_changeset(attempt, max_attempts)
+    |> Repo.update()
+  end
+
+  defp transition_claim(%WorkspaceSnapshotImport{}, _job_id, _attempt, _max_attempts),
+    do: {:error, {:snooze, @duplicate_delivery_snooze_seconds}}
 
   defp run_import(import, opts) do
     reader = Keyword.get(opts, :archive_reader, ProjectSnapshotArchiveReader)
@@ -508,6 +597,8 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
                ),
                :archive_verification
              ),
+           {:ok, verified_name} <- project_name(plan.project),
+           {:ok, import} <- pin_verified_identity(import, plan.archive_checksum, verified_name),
            :ok <- validate_verified_plan(import, plan),
            {:ok, import, asset_plan} <- prepare_materialization(import, plan, opts) do
         stage_and_materialize(import, plan, asset_plan, opts)
@@ -517,16 +608,16 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
 
     case result do
       {:ok, _completed} = success -> success
-      {:error, reason} -> handle_execution_error(import.id, reason, import.attempt, import.max_attempts)
+      {:error, reason} -> handle_execution_error(import, reason)
     end
   rescue
     error ->
       Process.delete({__MODULE__, :progress, import.id})
-      handle_execution_error(import.id, {:exception, error}, import.attempt, import.max_attempts)
+      handle_execution_error(import, {:exception, error})
   catch
     kind, reason ->
       Process.delete({__MODULE__, :progress, import.id})
-      handle_execution_error(import.id, {kind, safe_reason(reason)}, import.attempt, import.max_attempts)
+      handle_execution_error(import, {kind, safe_reason(reason)})
   end
 
   defp verify_archive(reader, archive_identity, consume_entry) do
@@ -597,7 +688,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     state = %{state | current: current}
 
     if current - state.persisted >= @progress_flush_bytes or current >= import.progress_total_bytes do
-      case persist_progress(import.id, current) do
+      case persist_progress(import, current) do
         {:ok, updated} ->
           Process.put(progress_key, %{current: current, persisted: current})
           publish(updated)
@@ -612,15 +703,46 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     end
   end
 
-  defp persist_progress(import_id, progress_bytes) do
-    case Repo.get(WorkspaceSnapshotImport, import_id) do
-      %WorkspaceSnapshotImport{status: "running"} = import ->
-        import
-        |> WorkspaceSnapshotImport.progress_changeset(progress_bytes)
-        |> Repo.update()
+  defp persist_progress(import, progress_bytes) do
+    Repo.transact(fn ->
+      case lock_owned_running(import) do
+        %WorkspaceSnapshotImport{} = owned ->
+          owned |> WorkspaceSnapshotImport.progress_changeset(progress_bytes) |> Repo.update()
 
-      _not_running ->
-        {:error, :workspace_snapshot_import_context_changed}
+        nil ->
+          {:error, :workspace_snapshot_import_context_changed}
+      end
+    end)
+  end
+
+  defp pin_verified_identity(import, archive_checksum, project_name) do
+    result =
+      Repo.transact(fn ->
+        case lock_owned_running(import) do
+          %WorkspaceSnapshotImport{archive_checksum: nil} = owned ->
+            owned
+            |> WorkspaceSnapshotImport.verified_changeset(archive_checksum)
+            |> Ecto.Changeset.put_change(:project_name, project_name)
+            |> Repo.update()
+
+          %WorkspaceSnapshotImport{archive_checksum: ^archive_checksum} = owned ->
+            owned |> Ecto.Changeset.change(project_name: project_name) |> Repo.update()
+
+          %WorkspaceSnapshotImport{} ->
+            {:error, :snapshot_import_identity_mismatch}
+
+          nil ->
+            {:error, :workspace_snapshot_import_context_changed}
+        end
+      end)
+
+    case result do
+      {:ok, updated} ->
+        publish(updated)
+        {:ok, updated}
+
+      {:error, _reason} = error ->
+        error
     end
   end
 
@@ -650,7 +772,11 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
       Billing.transact_with_workspace_lock(import.workspace_id, fn _locked_workspace ->
         locked_import =
           WorkspaceSnapshotImport
-          |> where([candidate], candidate.id == ^import.id and candidate.status == "running")
+          |> where(
+            [candidate],
+            candidate.id == ^import.id and candidate.oban_job_id == ^import.oban_job_id and
+              candidate.attempt == ^import.attempt and candidate.status == "running"
+          )
           |> lock("FOR UPDATE")
           |> Repo.one()
 
@@ -762,11 +888,11 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
 
     result =
       Billing.transact_with_workspace_lock(import.workspace_id, fn locked_workspace ->
-        with %WorkspaceSnapshotImport{} = locked_import <- lock_running_import(import.id),
+        with %WorkspaceSnapshotImport{} = locked_import <- lock_running_import(import),
              %User{} = requester <- Repo.get(User, locked_import.user_id),
              {:ok, _membership} <-
                authorize_locked_import_member(Scope.for_user(requester), locked_workspace),
-             :ok <- normalize_project_capacity(Billing.can_create_project?(locked_workspace)),
+             :ok <- normalize_project_capacity(Billing.can_publish_reserved_project?(locked_workspace)),
              {:ok, unreserved} <- clear_reservation(locked_import),
              {:ok, %Project{} = project} <-
                materialize_fun.(locked_workspace.id, plan.project, requester.id,
@@ -779,7 +905,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
                |> WorkspaceSnapshotImport.completed_changeset(project)
                |> Repo.update(),
              {:ok, _cleanup_request} <-
-               StorageCompensation.persist_planned_cleanup_request(locked_import.staging_storage_keys),
+               persist_import_cleanup(locked_import, locked_import.staging_storage_keys),
              {:ok, notification_outcome} <-
                deliver_result(completed, project, requester, "success"),
              :ok <- StorageCompensation.prepare_unretained_cleanup(tracker) do
@@ -793,6 +919,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     case result do
       {:ok, {completed, notification_outcome}} ->
         StorageCompensation.discard(tracker)
+        delete_provisional_objects(completed.staging_storage_keys)
         Notifications.publish_committed(notification_outcome)
         completed = Repo.preload(completed, :project, force: true)
         publish(completed)
@@ -803,9 +930,24 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     end
   end
 
-  defp lock_running_import(import_id) do
+  defp lock_running_import(import) do
     WorkspaceSnapshotImport
-    |> where([import], import.id == ^import_id and import.status == "running" and import.stage == "materializing")
+    |> where(
+      [candidate],
+      candidate.id == ^import.id and candidate.oban_job_id == ^import.oban_job_id and
+        candidate.attempt == ^import.attempt and candidate.status == "running" and candidate.stage == "materializing"
+    )
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+  end
+
+  defp lock_owned_running(import) do
+    WorkspaceSnapshotImport
+    |> where(
+      [candidate],
+      candidate.id == ^import.id and candidate.oban_job_id == ^import.oban_job_id and
+        candidate.attempt == ^import.attempt and candidate.status == "running"
+    )
     |> lock("FOR UPDATE")
     |> Repo.one()
   end
@@ -841,22 +983,25 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     |> Repo.update()
   end
 
-  defp handle_execution_error(import_id, reason, attempt, max_attempts) do
-    if not retryable_failure?(reason) or attempt >= max_attempts do
-      case fail_terminal(import_id, failure_code(reason), attempt, max_attempts) do
+  defp handle_execution_error(import, reason) do
+    if not retryable_failure?(reason) or import.attempt >= import.max_attempts do
+      case fail_terminal(import, failure_code(reason)) do
         {:ok, failed} ->
           {:ok, failed}
 
+        {:discard, _reason} = discard ->
+          discard
+
         {:error, terminal_reason} ->
           Logger.error(
-            "Snapshot import could not persist terminal state import_id=#{import_id} " <>
+            "Snapshot import could not persist terminal state import_id=#{import.id} " <>
               "error=#{safe_error(terminal_reason)}"
           )
 
-          {:snooze, @lock_snooze_seconds}
+          {:retry, :workspace_snapshot_import_terminal_state_failed}
       end
     else
-      retry(import_id, reason, attempt, max_attempts)
+      retry(import, reason)
     end
   end
 
@@ -868,21 +1013,12 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     end
   end
 
-  defp reconcile_abandoned_delivery(%{import_id: import_id, workspace_id: workspace_id, idempotency_key: idempotency_key}) do
-    idempotency_key
-    |> request_lock_name()
-    |> StorageKeyLock.with_session_lock(
-      fn -> reconcile_abandoned_delivery_locked(import_id, workspace_id) end,
-      acquisition_timeout: 0
-    )
-  end
-
-  defp reconcile_abandoned_delivery_locked(import_id, workspace_id) do
+  defp reconcile_abandoned_delivery(%{import_id: import_id, workspace_id: workspace_id, stale_before: stale_before}) do
     workspace_id
     |> Billing.transact_with_workspace_lock(fn _workspace ->
       import_id
       |> lock_reconciliation_import()
-      |> reconcile_locked_import()
+      |> reconcile_locked_import(stale_before)
     end)
     |> finalize_reconciliation()
   end
@@ -894,12 +1030,27 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     |> Repo.one()
   end
 
-  defp reconcile_locked_import(nil), do: {:ok, :changed}
+  defp reconcile_locked_import(nil, _stale_before), do: {:ok, :changed}
 
-  defp reconcile_locked_import(%WorkspaceSnapshotImport{status: status}) when status not in @active_statuses,
-    do: {:ok, :changed}
+  defp reconcile_locked_import(%WorkspaceSnapshotImport{status: status}, _stale_before)
+       when status not in @active_statuses, do: {:ok, :changed}
 
-  defp reconcile_locked_import(%WorkspaceSnapshotImport{} = import) do
+  defp reconcile_locked_import(
+         %WorkspaceSnapshotImport{status: "uploading", updated_at: updated_at} = import,
+         stale_before
+       ) do
+    if DateTime.before?(updated_at, stale_before) do
+      with {:ok, _cleanup_request} <-
+             persist_import_cleanup(import, import.staging_storage_keys),
+           {:ok, deleted} <- Repo.delete(import) do
+        {:ok, {:discarded_upload, deleted}}
+      end
+    else
+      {:ok, :changed}
+    end
+  end
+
+  defp reconcile_locked_import(%WorkspaceSnapshotImport{} = import, _stale_before) do
     if abandoned_delivery_job?(get_delivery_job(import.oban_job_id)),
       do: terminalize_abandoned_import(import),
       else: {:ok, :changed}
@@ -908,9 +1059,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   defp terminalize_abandoned_import(import) do
     case terminalize_import_locked(
            import,
-           "snapshot_import_delivery_abandoned",
-           import.attempt,
-           import.max_attempts
+           "snapshot_import_delivery_abandoned"
          ) do
       {:ok, {failed, notification_outcome}} ->
         {:ok, {:terminalized, failed, notification_outcome}}
@@ -921,9 +1070,16 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   end
 
   defp finalize_reconciliation({:ok, {:terminalized, failed, notification_outcome}}) do
+    delete_provisional_objects(cleanup_storage_keys(failed))
     Notifications.publish_committed(notification_outcome)
     publish(failed)
     {:ok, :terminalized}
+  end
+
+  defp finalize_reconciliation({:ok, {:discarded_upload, upload}}) do
+    delete_provisional_objects(upload.staging_storage_keys)
+    publish(upload)
+    {:ok, :changed}
   end
 
   defp finalize_reconciliation({:ok, :changed}), do: {:ok, :changed}
@@ -935,74 +1091,70 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   defp get_delivery_job(job_id) when is_integer(job_id) and job_id > 0, do: Repo.get(Oban.Job, job_id)
   defp get_delivery_job(_job_id), do: nil
 
-  defp retry(import_id, reason, attempt, max_attempts) do
-    details = %{attempt: attempt, max_attempts: max_attempts}
+  defp retry(import, reason) do
+    details = %{attempt: import.attempt, max_attempts: import.max_attempts}
 
-    case Repo.get(WorkspaceSnapshotImport, import_id) do
-      %WorkspaceSnapshotImport{status: status} = import when status in @active_statuses ->
-        case import
-             |> WorkspaceSnapshotImport.retrying_changeset(failure_code(reason), details)
-             |> Repo.update() do
-          {:ok, retrying} ->
-            publish(retrying)
-            {:retry, failure_code(reason)}
+    result =
+      Repo.transact(fn ->
+        case lock_owned_running(import) do
+          %WorkspaceSnapshotImport{} = owned ->
+            owned
+            |> WorkspaceSnapshotImport.retrying_changeset(failure_code(reason), details)
+            |> Repo.update()
 
-          {:error, changeset} ->
-            {:retry, {:workspace_snapshot_import_retry_state_failed, changeset}}
+          nil ->
+            {:error, :workspace_snapshot_import_context_changed}
         end
+      end)
 
-      %WorkspaceSnapshotImport{} = terminal ->
-        {:ok, Repo.preload(terminal, :project)}
+    case result do
+      {:ok, retrying} ->
+        publish(retrying)
+        {:retry, failure_code(reason)}
 
-      nil ->
-        {:discard, :workspace_snapshot_import_not_found}
+      {:error, :workspace_snapshot_import_context_changed} ->
+        {:discard, :workspace_snapshot_import_stale_delivery}
+
+      {:error, changeset} ->
+        {:retry, {:workspace_snapshot_import_retry_state_failed, changeset}}
     end
   end
 
-  defp fail_terminal(import_id, code, attempt, max_attempts) do
+  defp fail_terminal(import, code) do
     result =
-      Repo.transact(fn ->
-        import =
-          WorkspaceSnapshotImport
-          |> where([import], import.id == ^import_id)
-          |> lock("FOR UPDATE")
-          |> Repo.one()
-
-        case import do
-          %WorkspaceSnapshotImport{status: status} = terminal when status in ["completed", "failed"] ->
-            {:ok, {terminal, :suppressed}}
-
-          %WorkspaceSnapshotImport{} = active ->
-            terminalize_import_locked(active, code, attempt, max_attempts)
-
-          nil ->
-            {:error, :workspace_snapshot_import_not_found}
+      Billing.transact_with_workspace_lock(import.workspace_id, fn _locked_workspace ->
+        case lock_owned_running(import) do
+          %WorkspaceSnapshotImport{} = active -> terminalize_import_locked(active, code)
+          nil -> {:error, :workspace_snapshot_import_context_changed}
         end
       end)
 
     case result do
       {:ok, {failed, notification_outcome}} ->
+        delete_provisional_objects(cleanup_storage_keys(failed))
         Notifications.publish_committed(notification_outcome)
         publish(failed)
         {:ok, failed}
 
       {:error, reason} ->
-        {:error, reason}
+        if reason == :workspace_snapshot_import_context_changed,
+          do: {:discard, :workspace_snapshot_import_stale_delivery},
+          else: {:error, reason}
     end
   end
 
-  defp terminalize_import_locked(active, code, attempt, max_attempts) do
+  defp terminalize_import_locked(active, code) do
     requester = Repo.get(User, active.user_id)
 
     with {:ok, failed} <-
            active
            |> WorkspaceSnapshotImport.failed_changeset(code, %{
-             attempt: attempt,
-             max_attempts: max_attempts
+             attempt: active.attempt,
+             max_attempts: active.max_attempts
            })
            |> Repo.update(),
          {:ok, _cleanup_request} <-
-           StorageCompensation.persist_planned_cleanup_request(cleanup_storage_keys(active)),
+           persist_import_cleanup(active, cleanup_storage_keys(active)),
          {:ok, notification_outcome} <-
            deliver_result(failed, nil, requester, "failure") do
       {:ok, {failed, notification_outcome}}
@@ -1026,7 +1178,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   defp deliver_result(_import, _project, nil, _status), do: {:ok, :suppressed}
 
   defp cleanup_materialization_rollback(tracker, reason) do
-    case StorageCompensation.cleanup_after_rollback(tracker) do
+    case StorageCompensation.cleanup(tracker) do
       :ok -> {:error, reason}
       {:error, cleanup_reason} -> {:error, {:asset_storage_cleanup_failed, cleanup_reason}}
     end
@@ -1036,6 +1188,30 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     (import.staging_storage_keys ++ import.materialization_storage_keys)
     |> Enum.uniq()
     |> Enum.sort()
+  end
+
+  # A presigned PUT remains reusable until expiry. Keep the durable cleanup
+  # receipt asleep beyond that window so cancel, rejection, failure and success
+  # cannot consume it before a cooperative browser finishes or aborts the PUT.
+  defp persist_import_cleanup(import, storage_keys) do
+    not_before =
+      DateTime.add(
+        import.inserted_at,
+        @upload_ttl_seconds + Storage.multipart_cleanup_quiescence_seconds(),
+        :second
+      )
+
+    StorageCompensation.persist_planned_cleanup_request(storage_keys, not_before: not_before)
+  end
+
+  defp delete_provisional_objects(storage_keys), do: Enum.each(storage_keys, &delete_provisional_object/1)
+
+  defp delete_provisional_object(storage_key) do
+    Storage.delete(storage_key)
+  rescue
+    _error -> :ok
+  catch
+    _kind, _reason -> :ok
   end
 
   defp planned_blob_keys(workspace_id, token, manifest) do
@@ -1063,15 +1239,15 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     blob_key(import.workspace_id, import_token(import.archive_storage_key), checksum, content_type)
   end
 
-  defp archive_key(workspace_id, token), do: "workspaces/#{workspace_id}/snapshot-imports/v1/#{token}/snapshot.zip"
+  defp archive_key(workspace_id, token), do: "workspace-snapshot-imports/v1/#{workspace_id}/#{token}/snapshot.zip"
 
   defp blob_key(workspace_id, token, checksum, content_type) do
     extension = BlobStore.ext_from_content_type(content_type)
-    "workspaces/#{workspace_id}/snapshot-imports/v1/#{token}/blobs/#{checksum}.#{extension}"
+    "workspace-snapshot-imports/v1/#{workspace_id}/#{token}/blobs/#{checksum}.#{extension}"
   end
 
   defp import_token(archive_key) do
-    archive_key |> String.split("/") |> Enum.at(4)
+    archive_key |> String.split("/") |> Enum.at(3)
   end
 
   defp progress_total_bytes(preflight) do
@@ -1079,7 +1255,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   end
 
   defp validate_preflight(preflight) do
-    with true <- is_map(preflight.manifest) and is_map(preflight.project),
+    with true <- is_map(preflight.manifest),
          true <- is_binary(preflight.manifest_json),
          true <- is_integer(preflight.archive_size_bytes) and preflight.archive_size_bytes > 0,
          true <- is_integer(preflight.logical_asset_bytes) and preflight.logical_asset_bytes >= 0,
@@ -1122,47 +1298,16 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     end
   end
 
-  defp hash_uploaded_file(path, expected_size) do
-    with {:ok, %{type: :regular, size: ^expected_size}} <- File.stat(path),
-         {:ok, checksum} <-
-           path
-           |> File.stream!(@file_chunk_size, [])
-           |> Stream.map(&{:ok, &1})
-           |> StorageHash.sha256_chunks(),
-         {:ok, %{type: :regular, size: ^expected_size}} <- File.stat(path) do
-      {:ok, checksum}
-    else
-      _invalid -> {:error, :invalid_snapshot_archive_file}
+  defp archive_size_bytes(attrs) do
+    case Map.get(attrs, :archive_size_bytes, Map.get(attrs, "archive_size_bytes")) do
+      size when is_integer(size) and size > 0 ->
+        if size <= ProjectSnapshotArchiveReader.max_archive_size_bytes(),
+          do: {:ok, size},
+          else: {:error, :invalid_snapshot_archive_size}
+
+      _invalid ->
+        {:error, :invalid_snapshot_archive_size}
     end
-  end
-
-  defp idempotency_key(user_id, workspace_id, archive_checksum) do
-    secret = Application.fetch_env!(:storyarn, :import_idempotency_secret)
-    payload = :erlang.term_to_binary({"workspace_snapshot_import/v1", user_id, workspace_id, archive_checksum})
-
-    hmac_idempotency_key(secret, payload)
-  end
-
-  defp semantic_key(user_id, workspace_id, preflight) do
-    secret = Application.fetch_env!(:storyarn, :import_idempotency_secret)
-
-    payload =
-      :erlang.term_to_binary({
-        "workspace_snapshot_import_semantic_lock/v1",
-        user_id,
-        workspace_id,
-        preflight.manifest_checksum,
-        preflight.project_checksum,
-        preflight.archive_size_bytes
-      })
-
-    hmac_idempotency_key(secret, payload)
-  end
-
-  defp hmac_idempotency_key(secret, payload) do
-    :hmac
-    |> :crypto.mac(:sha256, secret, payload)
-    |> Base.encode16(case: :lower)
   end
 
   defp normalize_project_capacity(:ok), do: :ok
@@ -1188,11 +1333,8 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   defp normalize_capacity_transaction_result(result), do: result
 
   defp normalize_claim_error({:discard, reason}), do: {:discard, reason}
+  defp normalize_claim_error({:snooze, seconds}), do: {:snooze, seconds}
   defp normalize_claim_error(reason), do: {:error, reason}
-
-  defp normalize_session_lock_result({:error, :session_lock_timeout}), do: {:snooze, @lock_snooze_seconds}
-
-  defp normalize_session_lock_result(result), do: result
 
   defp tag_error({:ok, value}, _phase), do: {:ok, value}
   defp tag_error({:error, reason}, phase), do: {:error, {phase, reason}}
@@ -1201,11 +1343,10 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
 
   defp retryable_failure?({:asset_provider_staging, reason}), do: retryable_provider_failure?(reason)
 
-  defp retryable_failure?({:claim, reason}), do: retryable_database_failure?(reason)
   defp retryable_failure?({:exception, reason}), do: retryable_database_failure?(reason)
   defp retryable_failure?(reason), do: retryable_database_failure?(reason)
 
-  defp retryable_provider_failure?(reason) when reason in [:session_lock_timeout, :storage_key_lock_timeout], do: true
+  defp retryable_provider_failure?(:storage_key_lock_timeout), do: true
 
   defp retryable_provider_failure?({:snapshot_blob_staging_failed, _path, reason}),
     do: retryable_provider_failure?(reason)
@@ -1248,8 +1389,6 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   defp failure_code({reason, _details}) when is_atom(reason), do: failure_code(reason)
   defp failure_code(_reason), do: "snapshot_import_failed"
 
-  defp request_lock_name(idempotency_key), do: "workspace-snapshot-import:#{idempotency_key}"
-  defp semantic_lock_name(semantic_key), do: "workspace-snapshot-import-admission:#{semantic_key}"
   defp workspace_topic(workspace_id), do: "workspace_snapshot_imports:workspace:#{workspace_id}"
 
   defp publish(%WorkspaceSnapshotImport{} = import) do

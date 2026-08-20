@@ -29,7 +29,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
 
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
   @logical_id_regex ~r/\Aasset-[0-9]{6}\z/
-  @workspace_snapshot_import_staging_prefix_regex ~r/\Aworkspaces\/[1-9][0-9]*\/snapshot-imports\/v1\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
+  @workspace_snapshot_import_staging_prefix_regex ~r/\Aworkspace-snapshot-imports\/v1\/[1-9][0-9]*\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
 
   defmodule Plan do
     @moduledoc false
@@ -73,7 +73,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
          {:ok, blobs} <- blob_objects(objects),
          :ok <- validate_staging_keys(blobs, staging_prefix, staging_keys),
          {:ok, planned_assets} <-
-           plan_assets(project_id, restore_identity, assets, staging_keys, source_refs, project_object) do
+           plan_assets(
+             project_id,
+             restore_identity,
+             assets,
+             staging_keys,
+             source_refs,
+             project_object,
+             staging_prefix
+           ) do
       {:ok,
        %Plan{
          project_id: project_id,
@@ -106,8 +114,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
     if Repo.in_transaction?() do
       {:error, :snapshot_asset_staging_inside_transaction}
     else
-      with :ok <- stage_protected_blobs(plan.blobs, tracker) do
-        stage_logical_assets(plan.assets, tracker)
+      lock_destinations? = not workspace_snapshot_import_staging_prefix?(plan.staging_prefix)
+
+      with :ok <- stage_protected_blobs(plan.blobs, tracker, lock_destinations?) do
+        stage_logical_assets(plan.assets, tracker, lock_destinations?)
       end
     end
   end
@@ -266,7 +276,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
       else: staging_prefix <> "/" <> path
   end
 
-  defp plan_assets(project_id, restore_identity, assets, staging_keys, source_refs, project_object) do
+  defp plan_assets(project_id, restore_identity, assets, staging_keys, source_refs, project_object, staging_prefix) do
     source_ids_by_logical_id = Map.new(source_refs, fn {source_id, logical_id} -> {logical_id, source_id} end)
     persisted_catalog = Map.get(project_object, "asset_metadata", %{})
 
@@ -277,8 +287,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
            {:ok, source_key} <- Map.fetch(staging_keys, asset["blob_path"]),
            {:ok, source_id} <- Map.fetch(source_ids_by_logical_id, logical_id),
            {:ok, persisted, persisted_metadata} <- exact_persisted_asset_metadata(persisted_catalog, source_id) do
-        destination_key =
-          "projects/#{project_id}/assets/#{uuid}/#{Assets.sanitize_filename(asset["filename"])}"
+        destination_key = destination_asset_key(project_id, uuid, asset, staging_prefix)
 
         entry = %{
           logical_id: logical_id,
@@ -323,6 +332,18 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
 
   defp exact_persisted_asset_metadata(_catalog, _source_id), do: {:error, :invalid_snapshot_asset_persisted_catalog}
 
+  defp destination_asset_key(project_id, uuid, asset, staging_prefix) do
+    filename =
+      if workspace_snapshot_import_staging_prefix?(staging_prefix) do
+        extension = BlobStore.ext_from_content_type(asset["content_type"])
+        "#{asset["sha256"]}.#{extension}"
+      else
+        Assets.sanitize_filename(asset["filename"])
+      end
+
+    "projects/#{project_id}/assets/#{uuid}/#{filename}"
+  end
+
   defp plan_blobs(project_id, blobs, staging_keys) do
     Enum.map(blobs, fn blob ->
       %{
@@ -360,9 +381,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
     end
   end
 
-  defp stage_protected_blobs(blobs, tracker) do
+  defp stage_protected_blobs(blobs, tracker, lock_destinations?) do
     Enum.reduce_while(blobs, :ok, fn blob, :ok ->
-      case stage_protected_blob(blob, tracker) do
+      case stage_protected_blob(blob, tracker, lock_destinations?) do
         :ok ->
           {:cont, :ok}
 
@@ -372,7 +393,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
     end)
   end
 
-  defp stage_protected_blob(blob, tracker) do
+  defp stage_protected_blob(blob, tracker, false) do
+    with :ok <- verify_object(blob.source_key, blob.size, blob.sha256) do
+      stage_protected_blob_locked(blob, tracker)
+    end
+  end
+
+  defp stage_protected_blob(blob, tracker, true) do
     with :ok <- verify_object(blob.source_key, blob.size, blob.sha256) do
       StorageKeyLock.with_storage_key_lock(
         blob.destination_key,
@@ -429,16 +456,22 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
     end
   end
 
-  defp stage_logical_assets(assets, tracker) do
+  defp stage_logical_assets(assets, tracker, lock_destinations?) do
     Enum.reduce_while(assets, :ok, fn asset, :ok ->
-      case stage_logical_asset(asset, tracker) do
+      case stage_logical_asset(asset, tracker, lock_destinations?) do
         :ok -> {:cont, :ok}
         {:error, reason} -> {:halt, {:error, {:snapshot_asset_staging_failed, asset.logical_id, reason}}}
       end
     end)
   end
 
-  defp stage_logical_asset(asset, tracker) do
+  defp stage_logical_asset(asset, tracker, false) do
+    with :ok <- verify_object(asset.source_key, asset.content_size, asset.sha256) do
+      do_stage_logical_asset(asset, tracker)
+    end
+  end
+
+  defp stage_logical_asset(asset, tracker, true) do
     with :ok <- verify_object(asset.source_key, asset.content_size, asset.sha256) do
       StorageKeyLock.with_storage_key_lock(asset.destination_key, fn ->
         do_stage_logical_asset(asset, tracker)
@@ -573,10 +606,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
   end
 
   defp validate_unmapped_relationship_ids(%Plan{staging_prefix: staging_prefix, assets: planned_assets}, source_id_map) do
-    if Regex.match?(@workspace_snapshot_import_staging_prefix_regex, staging_prefix),
+    if workspace_snapshot_import_staging_prefix?(staging_prefix),
       do: reject_existing_unmapped_relationship_ids(planned_assets, source_id_map),
       else: :ok
   end
+
+  defp workspace_snapshot_import_staging_prefix?(staging_prefix),
+    do: Regex.match?(@workspace_snapshot_import_staging_prefix_regex, staging_prefix)
 
   defp reject_existing_unmapped_relationship_ids(planned_assets, source_id_map) do
     captured_ids = MapSet.new(Map.keys(source_id_map))

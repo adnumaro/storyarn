@@ -19,10 +19,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImportsTest do
     defaults = %{
       workspace_id: workspace.id,
       user_id: user.id,
-      idempotency_key:
-        :sha256
-        |> :crypto.hash(inspect(make_ref()))
-        |> Base.encode16(case: :lower),
       original_filename: "complete-project.zip",
       project_name: "Recovered story",
       archive_storage_key: "workspace-imports/#{workspace.id}/complete-project.zip",
@@ -37,7 +33,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImportsTest do
     }
 
     %WorkspaceSnapshotImport{}
-    |> WorkspaceSnapshotImport.request_changeset(Map.merge(defaults, attrs))
+    |> WorkspaceSnapshotImport.upload_changeset(Map.merge(defaults, attrs))
+    |> WorkspaceSnapshotImport.admit_changeset(Map.merge(defaults, attrs))
     |> Repo.insert!()
   end
 

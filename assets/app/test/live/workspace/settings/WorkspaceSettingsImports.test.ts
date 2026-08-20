@@ -1,15 +1,17 @@
 import { mount } from "@vue/test-utils";
 import { computed, ref } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useLiveUpload, type UploadConfig } from "live_vue";
 import WorkspaceSettingsImports from "../../../../live/workspace/settings/WorkspaceSettingsImports.vue";
 import { createMockLive, setTestLocale } from "../../../setup";
 
+const { mockUseLiveUpload } = vi.hoisted(() => ({ mockUseLiveUpload: vi.fn() }));
+
 vi.mock("live_vue", () => ({
-  useLiveUpload: vi.fn(),
+  useLiveUpload: mockUseLiveUpload,
 }));
 
 interface FakeUploadEntry {
+  ref: string;
   client_name: string;
   client_size: number;
   progress: number;
@@ -19,7 +21,7 @@ interface FakeUploadEntry {
 const passthrough = { template: "<div><slot /></div>" };
 const uploadConfig = {
   entries: [],
-} as unknown as UploadConfig;
+} as never;
 
 const baseProps = {
   imports: [],
@@ -29,25 +31,29 @@ const baseProps = {
   uploadConfig,
 };
 
+let mockLive = createMockLive();
+
 function configureUpload(initialEntries: FakeUploadEntry[] = []) {
   const entries = ref(initialEntries);
   const showFilePicker = vi.fn();
   const submit = vi.fn();
+  const cancel = vi.fn();
 
-  vi.mocked(useLiveUpload).mockReturnValue({
+  mockUseLiveUpload.mockReturnValue({
     entries: computed(() => entries.value),
     showFilePicker,
     submit,
-  } as unknown as ReturnType<typeof useLiveUpload>);
+    cancel,
+  });
 
-  return { entries, showFilePicker, submit };
+  return { entries, showFilePicker, submit, cancel };
 }
 
 function mountImports(props: Record<string, unknown> = {}) {
   return mount(WorkspaceSettingsImports, {
     props: { ...baseProps, ...props },
     global: {
-      provide: { _live_vue: createMockLive() },
+      provide: { _live_vue: mockLive },
       stubs: {
         Dialog: {
           props: ["open"],
@@ -67,12 +73,14 @@ describe("WorkspaceSettingsImports", () => {
   beforeEach(() => {
     setTestLocale("en");
     vi.clearAllMocks();
+    mockLive = createMockLive();
     configureUpload();
   });
 
   it("uses the LiveView upload contract and submits one valid ZIP", async () => {
     const upload = configureUpload([
       {
+        ref: "upload-ref",
         client_name: "complete-project.zip",
         client_size: 1_048_576,
         progress: 0,
@@ -92,19 +100,25 @@ describe("WorkspaceSettingsImports", () => {
 
     expect(upload.submit).toHaveBeenCalledOnce();
     expect(wrapper.get("#workspace-snapshot-import-submit").attributes("disabled")).toBeDefined();
-    expect(vi.mocked(useLiveUpload).mock.calls.at(-1)?.[1]).toEqual({
+    await wrapper
+      .findAll("button")
+      .find((button) => button.text().includes("Cancel upload"))!
+      .trigger("click");
+    expect(upload.cancel).toHaveBeenCalledWith("upload-ref");
+    expect(mockUseLiveUpload.mock.calls.at(-1)?.[1]).toEqual({
       changeEvent: "validate_snapshot_zip",
       submitEvent: "import_snapshot",
     });
   });
 
-  it("shows a terminal quota modal with exact capacity and no retry action", () => {
+  it("shows terminal quota and upload grant errors without a retry action", () => {
     const wrapper = mountImports({
       quotaRejection: {
         requiredBytes: "125829120",
         availableBytes: "20971520",
         limitBytes: "104857600",
       },
+      requestErrorCode: "rate_limited",
     });
 
     const modal = wrapper.get('[data-testid="workspace-snapshot-quota-modal"]');
@@ -114,6 +128,7 @@ describe("WorkspaceSettingsImports", () => {
     expect(modal.text()).toContain("100 MB");
     expect(modal.text()).not.toContain("Retry");
     expect(modal.text()).not.toContain("partial");
+    expect(wrapper.text()).toContain("Try again in about an hour");
   });
 
   it("renders durable progress, retry attempts, and the completed project destination", () => {
@@ -153,6 +168,8 @@ describe("WorkspaceSettingsImports", () => {
     });
 
     const retrying = wrapper.get('[data-testid="workspace-snapshot-import-41"]');
+    expect(wrapper.get("#workspace-snapshot-import-picker").attributes("disabled")).toBeDefined();
+    expect(wrapper.text()).toContain("Wait for the active project import");
     expect(retrying.text()).toContain("Preparing another attempt");
     expect(retrying.text()).toContain("2 MB / 4 MB");
     expect(retrying.text()).toContain("Attempt 2 of 3");

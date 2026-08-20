@@ -155,15 +155,26 @@ defmodule Storyarn.Versioning do
     to: WorkspaceSnapshotImports,
     as: :request
 
+  defdelegate prepare_external_workspace_snapshot_import(current_scope, workspace, attrs),
+    to: WorkspaceSnapshotImports,
+    as: :prepare_external_upload
+
+  defdelegate request_stored_workspace_snapshot_import(current_scope, workspace, import_id),
+    to: WorkspaceSnapshotImports,
+    as: :request_stored
+
+  defdelegate update_workspace_snapshot_upload_progress(current_scope, workspace, import_id, percent),
+    to: WorkspaceSnapshotImports,
+    as: :upload_progress
+
+  defdelegate cancel_workspace_snapshot_upload(current_scope, workspace, import_id),
+    to: WorkspaceSnapshotImports,
+    as: :cancel_upload
+
   @doc "Lists recent standalone snapshot imports for one workspace."
   defdelegate list_workspace_snapshot_imports(current_scope, workspace),
     to: WorkspaceSnapshotImports,
     as: :list
-
-  @doc "Returns one scoped standalone snapshot import."
-  defdelegate get_workspace_snapshot_import(current_scope, import_id),
-    to: WorkspaceSnapshotImports,
-    as: :get
 
   @doc "Subscribes to committed standalone snapshot-import lifecycle changes."
   defdelegate subscribe_workspace_snapshot_imports(workspace_id),

@@ -51,7 +51,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotReferencedTombstonesIntegrationTe
     %{user: user, scope: user_scope_fixture(user), workspace: workspace, project: project}
   end
 
-  test "standalone ZIP restores every active FK to its referenced tombstone only", context do
+  test "standalone ZIP restores every active FK and keeps referenced tombstones restorable", context do
     graph = referenced_graph!(context.project)
     unrelated = unrelated_trash!(context.project, graph)
     active_bytes = "active snapshot asset"
@@ -62,9 +62,15 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotReferencedTombstonesIntegrationTe
     snapshot = build_ready_snapshot!(context.scope, context.project)
     assert {:ok, archive} = Storage.download(snapshot.archive_storage_key)
     archive_path = temporary_archive_path!(archive)
-    assert {:ok, preflight} = ProjectSnapshotArchiveReader.preflight_file(archive_path)
 
-    assert_capture_contract(preflight, graph, unrelated, active_asset, trashed_asset)
+    assert {:ok, capture} =
+             ProjectSnapshotArchiveReader.verify_archive(%{
+               archive_storage_key: snapshot.archive_storage_key,
+               archive_size_bytes: snapshot.archive_size_bytes,
+               archive_checksum: snapshot.archive_checksum
+             })
+
+    assert_capture_contract(capture, graph, unrelated, active_asset, trashed_asset)
 
     source_project_id = context.project.id
     original_keys = source_storage_keys(snapshot, [active_asset, trashed_asset])
@@ -109,6 +115,18 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotReferencedTombstonesIntegrationTe
     assert is_nil(recovered_graph.localized_text.archived_at)
     assert_unrelated_trash_absent(recovered.id)
 
+    assert recovered_graph.block_target.value["target_id"] == recovered_graph.authored_sheet_target.id
+    assert recovered_graph.source_node_target.data["speaker_sheet_id"] == recovered_graph.authored_sheet_target.id
+    refute recovered_graph.authored_sheet_target.id == graph.authored_sheet_target.id
+
+    assert {:ok, restored_block} = Sheets.restore_block(recovered_graph.block_target)
+    assert restored_block.value["target_id"] == recovered_graph.authored_sheet_target.id
+
+    assert {:ok, restored_node} =
+             Flows.restore_node(recovered_graph.connection_flow.id, recovered_graph.source_node_target.id)
+
+    assert restored_node.data["speaker_sheet_id"] == recovered_graph.authored_sheet_target.id
+
     assert [recovered_asset] = Assets.list_assets(recovered.id)
     assert recovered_asset.filename == active_asset.filename
     assert {:ok, ^active_bytes} = Storage.download(recovered_asset.key)
@@ -129,8 +147,15 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotReferencedTombstonesIntegrationTe
     _flow_scene_source =
       flow_fixture(project, %{name: "active-flow-scene-source", scene_id: flow_scene_target.id})
 
+    authored_sheet_target = sheet_fixture(project, %{name: "active-authored-reference-target"})
     block_owner = sheet_fixture(project, %{name: "active-block-owner"})
-    block_target = block_fixture(block_owner, %{variable_name: "tombstone_block_target"})
+
+    block_target =
+      block_fixture(block_owner, %{
+        type: "reference",
+        config: %{"label" => "Tombstone reference", "allowed_types" => ["sheet", "flow"]},
+        value: %{"target_type" => "sheet", "target_id" => authored_sheet_target.id}
+      })
 
     _block_source =
       block_fixture(block_owner, %{
@@ -140,7 +165,15 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotReferencedTombstonesIntegrationTe
       })
 
     connection_flow = flow_fixture(project, %{name: "active-connection-owner"})
-    source_node_target = node_fixture(connection_flow, %{data: node_data("tombstone-source-node")})
+
+    source_node_target =
+      node_fixture(connection_flow, %{
+        data:
+          "tombstone-source-node"
+          |> node_data()
+          |> Map.put("speaker_sheet_id", authored_sheet_target.id)
+      })
+
     target_node_target = node_fixture(connection_flow, %{data: node_data("tombstone-target-node")})
     _connection = Storyarn.FlowsFixtures.connection_fixture(connection_flow, source_node_target, target_node_target)
 
@@ -188,6 +221,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotReferencedTombstonesIntegrationTe
 
     %{
       flow_scene_target: flow_scene_target,
+      authored_sheet_target: authored_sheet_target,
       block_owner: block_owner,
       block_target: block_target,
       connection_flow: connection_flow,
@@ -248,12 +282,15 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotReferencedTombstonesIntegrationTe
     flow_scene_source = one_by_name!(Flow, project_id, "active-flow-scene-source")
     connection_flow = one_by_name!(Flow, project_id, "active-connection-owner")
     scene_host = one_by_name!(Scene, project_id, "active-scene-reference-host")
+    block_source = one_block!(project_id, "active_block_source")
 
     %{
       flow_scene_source: flow_scene_source,
       flow_scene_target: one_by_name!(Scene, project_id, "tombstone-flow-scene"),
-      block_source: one_block!(project_id, "active_block_source"),
-      block_target: one_block!(project_id, "tombstone_block_target"),
+      authored_sheet_target: one_by_name!(Sheet, project_id, "active-authored-reference-target"),
+      block_source: block_source,
+      block_target: Repo.get!(Block, block_source.inherited_from_block_id),
+      connection_flow: connection_flow,
       connection: Repo.one!(from connection in FlowConnection, where: connection.flow_id == ^connection_flow.id),
       source_node_target:
         Repo.one!(

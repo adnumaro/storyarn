@@ -99,7 +99,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReaderTest do
 
     assert {:ok, preflight} = ProjectSnapshotArchiveReader.preflight_file(path)
     assert preflight.manifest == Jason.decode!(fixture.prepared.manifest_json)
-    assert preflight.project == Jason.decode!(fixture.prepared.project_json)
+    assert preflight.project == nil
     assert preflight.archive_size_bytes == byte_size(corrupted)
     assert preflight.manifest_checksum == sha256(fixture.prepared.manifest_json)
     assert preflight.project_checksum == sha256(fixture.prepared.project_json)
@@ -124,14 +124,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReaderTest do
   test "fully verifies an autonomous archive without a snapshot row or manifest sidecar" do
     fixture = archive_fixture(:binary.copy("autonomous archive", 20_000))
     assert :ok = Local.delete(fixture.snapshot.manifest_storage_key)
+    install_read_switch()
 
     archive = %{
       archive_storage_key: fixture.snapshot.archive_storage_key,
-      archive_size_bytes: byte_size(fixture.archive),
-      archive_checksum: sha256(fixture.archive)
+      archive_size_bytes: byte_size(fixture.archive)
     }
 
+    assert {:ok, preflight} = ProjectSnapshotArchiveReader.preflight_archive(archive)
+    assert preflight.logical_asset_bytes == byte_size(fixture.bytes)
+    assert SnapshotReadSwitchStorage.stream_count(fixture.snapshot.archive_storage_key) <= 10
     assert {:ok, %Plan{} = plan} = ProjectSnapshotArchiveReader.verify_archive(archive)
+    assert plan.archive_checksum == sha256(fixture.archive)
+    assert plan.archive_identity == {:sha256, plan.archive_checksum}
     assert plan.manifest == Jason.decode!(fixture.prepared.manifest_json)
     assert plan.project == Jason.decode!(fixture.prepared.project_json)
     assert plan.logical_asset_bytes == byte_size(fixture.bytes)

@@ -564,7 +564,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
   end
 
   defp workspace_snapshot_import_fixture(fixture, workspace_id) do
-    prefix = "workspaces/#{workspace_id}/snapshot-imports/v1/#{Ecto.UUID.generate()}"
+    prefix = "workspace-snapshot-imports/v1/#{workspace_id}/#{Ecto.UUID.generate()}"
 
     staging_keys =
       Map.new(fixture.staging_keys, fn {path, _key} ->

@@ -2,12 +2,15 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
   @moduledoc """
   Imports a downloaded project snapshot into the current workspace.
 
-  Admission is synchronous: the snapshot is validated and workspace storage is
-  reserved before the durable background import appears in the UI.
+  The browser uploads directly to object storage in production. Admission then
+  validates the bounded archive metadata and reserves workspace capacity before
+  the durable background import starts.
   """
 
   use StoryarnWeb, :live_view
 
+  alias Storyarn.Assets.Storage
+  alias Storyarn.Assets.Storage.R2
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshotArchiveReader
   alias Storyarn.Workspaces
@@ -24,11 +27,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
         |> assign(:quota_rejection, nil)
         |> assign(:request_error_code, nil)
         |> assign(:upload_error_code, nil)
-        |> allow_upload(:snapshot_zip,
-          accept: [".zip"],
-          max_entries: 1,
-          max_file_size: ProjectSnapshotArchiveReader.max_archive_size_bytes()
-        )
+        |> assign(:external_upload?, Storage.adapter() == R2)
+        |> allow_snapshot_upload()
         |> reload_imports()
 
       if connected?(socket) do
@@ -103,14 +103,46 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
     end
   end
 
+  def handle_event("cancel-upload", %{"ref" => ref}, socket) do
+    meta = upload_meta(socket, ref)
+    maybe_cancel_upload_owner(socket, meta)
+
+    {:noreply,
+     socket
+     |> cancel_upload(:snapshot_zip, ref)
+     |> reload_imports()}
+  end
+
+  def handle_event("cancel_snapshot_upload", %{"id" => import_id}, socket) do
+    case Integer.parse(to_string(import_id)) do
+      {id, ""} ->
+        _ = Versioning.cancel_workspace_snapshot_upload(socket.assigns.current_scope, socket.assigns.workspace, id)
+        {:noreply, socket |> cancel_upload_entry(id) |> reload_imports()}
+
+      _invalid ->
+        {:noreply, socket}
+    end
+  end
+
   @impl true
+  def handle_info(
+        {:workspace_snapshot_import_updated, %{id: id, __meta__: %Ecto.Schema.Metadata{state: :deleted}}},
+        socket
+      ) do
+    {:noreply,
+     socket
+     |> push_event("workspace-snapshot-upload-cancelled", %{import_id: id})
+     |> cancel_upload_entry(id)
+     |> reload_imports()}
+  end
+
   def handle_info({:workspace_snapshot_import_updated, _import}, socket) do
     {:noreply, reload_imports(socket)}
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
 
-  defp consume_snapshot_upload(socket, workspace) do
+  defp consume_snapshot_upload(%{assigns: %{external_upload?: false}} = socket, workspace) do
     consume_uploaded_entries(socket, :snapshot_zip, fn %{path: path}, entry ->
       result =
         Versioning.request_workspace_snapshot_import(
@@ -123,6 +155,90 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
       {:ok, result}
     end)
   end
+
+  defp consume_snapshot_upload(%{assigns: %{external_upload?: true}} = socket, workspace) do
+    consume_uploaded_entries(socket, :snapshot_zip, fn %{import_id: import_id}, _entry ->
+      {:ok,
+       Versioning.request_stored_workspace_snapshot_import(
+         socket.assigns.current_scope,
+         workspace,
+         import_id
+       )}
+    end)
+  end
+
+  defp allow_snapshot_upload(%{assigns: %{external_upload?: external?}} = socket) do
+    opts = [
+      accept: [".zip"],
+      max_entries: 1,
+      max_file_size: ProjectSnapshotArchiveReader.max_archive_size_bytes(),
+      progress: &snapshot_upload_progress/3
+    ]
+
+    opts = if external?, do: Keyword.put(opts, :external, &presign_snapshot_upload/2), else: opts
+    allow_upload(socket, :snapshot_zip, opts)
+  end
+
+  defp presign_snapshot_upload(entry, socket) do
+    result =
+      Versioning.prepare_external_workspace_snapshot_import(
+        socket.assigns.current_scope,
+        socket.assigns.workspace,
+        %{original_filename: entry.client_name, archive_size_bytes: entry.client_size}
+      )
+
+    case result do
+      {:ok, direct} ->
+        meta = %{uploader: "WorkspaceSnapshot", url: direct.url, headers: direct.headers, import_id: direct.import_id}
+        {:ok, meta, socket}
+
+      {:error, _reason} = error ->
+        {:error, %{reason: request_error_code(elem(error, 1))}, apply_request_result(socket, error)}
+
+      {:error, _reason, _details} = error ->
+        {:error, %{reason: "quota"}, apply_request_result(socket, error)}
+    end
+  end
+
+  defp snapshot_upload_progress(:snapshot_zip, entry, socket) do
+    meta = upload_meta(socket, entry.ref)
+
+    if upload_errors(socket.assigns.uploads.snapshot_zip, entry) == [] do
+      with %{import_id: import_id} <- meta do
+        _ =
+          Versioning.update_workspace_snapshot_upload_progress(
+            socket.assigns.current_scope,
+            socket.assigns.workspace,
+            import_id,
+            entry.progress
+          )
+      end
+
+      {:noreply, socket}
+    else
+      maybe_cancel_upload_owner(socket, meta)
+
+      {:noreply,
+       socket |> cancel_upload(:snapshot_zip, entry.ref) |> assign(:upload_error_code, "unavailable") |> reload_imports()}
+    end
+  end
+
+  defp upload_meta(socket, ref), do: Map.get(socket.assigns.uploads.snapshot_zip.entry_refs_to_metas, ref, %{})
+
+  defp cancel_upload_entry(socket, import_id) do
+    ref =
+      Enum.find_value(socket.assigns.uploads.snapshot_zip.entry_refs_to_metas, fn {ref, meta} ->
+        if Map.get(meta, :import_id) == import_id, do: ref
+      end)
+
+    if ref, do: cancel_upload(socket, :snapshot_zip, ref), else: socket
+  end
+
+  defp maybe_cancel_upload_owner(socket, %{import_id: import_id}) do
+    Versioning.cancel_workspace_snapshot_upload(socket.assigns.current_scope, socket.assigns.workspace, import_id)
+  end
+
+  defp maybe_cancel_upload_owner(_socket, _meta), do: :ok
 
   defp apply_request_result(socket, {:ok, _import}) do
     socket
@@ -225,6 +341,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
   defp upload_error_code(:too_large), do: "file_too_large"
   defp upload_error_code(:not_accepted), do: "invalid_file"
   defp upload_error_code(:too_many_files), do: "invalid_file"
+  defp upload_error_code(:external_client_failure), do: "unavailable"
+  defp upload_error_code(%{reason: reason}) when is_binary(reason), do: reason
   defp upload_error_code(nil), do: nil
   defp upload_error_code(_error), do: "invalid_file"
 
@@ -248,5 +366,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
             ], do: "invalid_file"
 
   defp request_error_code(:unauthorized), do: "unauthorized"
+  defp request_error_code(:workspace_snapshot_import_in_progress), do: "in_progress"
+  defp request_error_code(:workspace_snapshot_upload_rate_limited), do: "rate_limited"
   defp request_error_code(_reason), do: "unavailable"
 end

@@ -119,7 +119,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader do
          archive_key: metadata.archive_key,
          archive_size_bytes: metadata.archive_size_bytes,
          archive_checksum: metadata.archive_checksum,
-         archive_identity: archive_identity(archive_stat, metadata.archive_checksum),
+         archive_identity: archive_identity(archive_stat, archive_checksum),
          logical_asset_bytes: nil,
          entries_by_path: Map.new(entries, &{&1.path, &1}),
          entry_order: Enum.map(entries, & &1.path)
@@ -183,9 +183,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader do
   @doc """
   Performs a bounded synchronous inspection of one uploaded canonical archive.
 
-  The preflight reads ZIP framing plus the embedded `manifest.json` and
-  `project.json`. Asset blob payloads are deliberately left unread for the
-  asynchronous full verification pass.
+  The preflight reads ZIP framing plus the embedded `manifest.json`. Project
+  and asset payloads are deliberately left unread for asynchronous verification.
   """
   @spec preflight_file(Path.t(), keyword()) :: {:ok, map()} | {:error, term()}
   def preflight_file(path, opts \\ [])
@@ -206,6 +205,31 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader do
   end
 
   def preflight_file(_path, _opts), do: {:error, :invalid_snapshot_archive_file}
+
+  @doc "Performs the same bounded preflight against an archive already in private storage."
+  @spec preflight_archive(map(), keyword()) :: {:ok, map()} | {:error, term()}
+  def preflight_archive(archive, opts \\ [])
+
+  def preflight_archive(%{archive_storage_key: archive_key, archive_size_bytes: archive_size_bytes}, opts)
+      when is_binary(archive_key) and is_integer(archive_size_bytes) and is_list(opts) do
+    metadata = %{archive_key: archive_key, archive_size_bytes: archive_size_bytes}
+
+    with {:ok, maximum} <- preflight_max_archive_size(opts),
+         true <- Storage.canonical_key?(archive_key) and Path.basename(archive_key) == @archive_filename,
+         :ok <- validate_archive_size(archive_size_bytes),
+         :ok <- validate_preflight_archive_size(archive_size_bytes, maximum),
+         {:ok, stat} <- autonomous_archive_stat(metadata),
+         source = storage_source(archive_key),
+         {:ok, inspection} <- inspect_embedded_preflight(source, archive_size_bytes, stat),
+         :ok <- stable_autonomous_archive_stat(metadata, stat) do
+      {:ok, preflight_result(inspection, archive_size_bytes)}
+    else
+      false -> {:error, :invalid_snapshot_archive_metadata}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  def preflight_archive(_archive, _opts), do: {:error, :invalid_snapshot_archive_metadata}
 
   @doc """
   Fully verifies an autonomous canonical archive already held in private storage.
@@ -231,12 +255,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader do
              inspection.eocd_bytes,
              consume_entry
            ),
-         :ok <-
-           verify_checksum(
-             archive_checksum,
-             metadata.archive_checksum,
-             :snapshot_archive_checksum_mismatch
-           ),
+         :ok <- verify_optional_checksum(archive_checksum, metadata.archive_checksum),
          :ok <- verify_embedded_manifest(captures.manifest, inspection.manifest_json),
          {:ok, project} <- decode_project(captures.project),
          :ok <- validate_embedded_payload(inspection.manifest, project),
@@ -250,8 +269,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader do
          manifest_json: inspection.manifest_json,
          archive_key: metadata.archive_key,
          archive_size_bytes: metadata.archive_size_bytes,
-         archive_checksum: metadata.archive_checksum,
-         archive_identity: archive_identity(archive_stat, metadata.archive_checksum),
+         archive_checksum: archive_checksum,
+         archive_identity: archive_identity(archive_stat, archive_checksum),
          logical_asset_bytes: inspection.logical_asset_bytes,
          entries_by_path: Map.new(entries, &{&1.path, &1}),
          entry_order: Enum.map(entries, & &1.path)
@@ -333,38 +352,39 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader do
          :ok <- validate_preflight_archive_size(file_stat.size, max_archive_size_bytes),
          source = file_source(io_device, path, file_stat),
          archive_stat = file_archive_stat(file_stat),
-         {:ok, inspection} <- inspect_embedded_archive(source, file_stat.size, archive_stat),
+         {:ok, inspection} <- inspect_embedded_preflight(source, file_stat.size, archive_stat),
          :ok <- stable_file_stat(source) do
-      {:ok,
-       %{
-         manifest: inspection.manifest,
-         project: inspection.project,
-         manifest_json: inspection.manifest_json,
-         archive_size_bytes: file_stat.size,
-         manifest_checksum: sha256(inspection.manifest_json),
-         project_checksum: inspection.project_checksum,
-         logical_asset_bytes: inspection.logical_asset_bytes,
-         asset_count: inspection.manifest["counts"]["assets"],
-         blob_count: inspection.manifest["counts"]["blobs"],
-         entry_order: Enum.map(inspection.verified_entries, & &1.entry.path)
-       }}
+      {:ok, preflight_result(inspection, file_stat.size)}
     end
+  end
+
+  defp preflight_result(inspection, archive_size_bytes) do
+    %{
+      manifest: inspection.manifest,
+      project: Map.get(inspection, :project),
+      manifest_json: inspection.manifest_json,
+      archive_size_bytes: archive_size_bytes,
+      manifest_checksum: sha256(inspection.manifest_json),
+      project_checksum: inspection.project_checksum,
+      logical_asset_bytes: inspection.logical_asset_bytes,
+      asset_count: inspection.manifest["counts"]["assets"],
+      blob_count: inspection.manifest["counts"]["blobs"],
+      entry_order: Enum.map(inspection.verified_entries, & &1.entry.path)
+    }
   end
 
   defp validate_preflight_archive_size(size, maximum) when size <= maximum, do: :ok
 
   defp validate_preflight_archive_size(_size, maximum), do: {:error, {:snapshot_archive_size_limit_exceeded, maximum}}
 
-  defp autonomous_archive_metadata(%{
-         archive_storage_key: archive_key,
-         archive_size_bytes: archive_size_bytes,
-         archive_checksum: archive_checksum
-       }) do
+  defp autonomous_archive_metadata(%{archive_storage_key: archive_key, archive_size_bytes: archive_size_bytes} = archive) do
+    archive_checksum = Map.get(archive, :archive_checksum)
+
     with true <-
            is_binary(archive_key) and Storage.canonical_key?(archive_key) and
              Path.basename(archive_key) == @archive_filename,
          :ok <- validate_archive_size(archive_size_bytes),
-         true <- valid_sha256?(archive_checksum) do
+         true <- is_nil(archive_checksum) or valid_sha256?(archive_checksum) do
       {:ok,
        %{
          archive_key: archive_key,
@@ -418,21 +438,95 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader do
            bootstrap_embedded_manifest(source, archive_stat, unbound_entries),
          {:ok, expected} <- expected_entries(manifest_json, manifest),
          {:ok, verified_entries} <- bind_verified_entries(unbound_entries, expected),
-         {:ok, project_json, project} <- read_embedded_project(source, archive_stat, verified_entries),
-         :ok <- validate_embedded_payload(manifest, project),
          {:ok, logical_asset_bytes} <- SnapshotObjectFormat.logical_asset_bytes(manifest) do
       {:ok,
        %{
          manifest_json: manifest_json,
          manifest: manifest,
-         project: project,
-         project_checksum: sha256(project_json),
          logical_asset_bytes: logical_asset_bytes,
          verified_entries: verified_entries,
          directory_bytes: directory_bytes,
          eocd_bytes: eocd_bytes
        }}
     end
+  end
+
+  defp embedded_project_checksum([_manifest, %{entry: %Entry{path: "project.json", sha256: checksum}} | _])
+       when is_binary(checksum), do: {:ok, checksum}
+
+  defp embedded_project_checksum(_entries), do: {:error, :missing_snapshot_project_object}
+
+  # Remote admission intentionally avoids one range-read triplet per asset.
+  # The central directory is bounded and fully matched to the embedded manifest;
+  # the worker performs the exhaustive local-header and payload verification.
+  defp inspect_embedded_preflight(source, archive_size_bytes, archive_stat) do
+    with {:ok, eocd, eocd_bytes} <- read_eocd(source, archive_size_bytes, archive_stat),
+         :ok <- validate_untrusted_eocd(eocd, archive_size_bytes),
+         {:ok, directory_bytes} <- read_exact(source, eocd.directory_offset, eocd.directory_size, archive_stat),
+         {:ok, central_entries} <- parse_central_directory(directory_bytes, eocd.total_entries),
+         {:ok, unbound_entries} <- infer_local_layout(central_entries, eocd.directory_offset),
+         :ok <- verify_bootstrap_local_entries(source, archive_stat, central_entries, eocd.directory_offset),
+         {:ok, manifest_json, manifest} <- bootstrap_embedded_manifest(source, archive_stat, unbound_entries),
+         {:ok, expected} <- expected_entries(manifest_json, manifest),
+         {:ok, verified_entries} <- bind_verified_entries(unbound_entries, expected),
+         {:ok, project_checksum} <- embedded_project_checksum(verified_entries),
+         {:ok, logical_asset_bytes} <- SnapshotObjectFormat.logical_asset_bytes(manifest) do
+      {:ok,
+       %{
+         manifest_json: manifest_json,
+         manifest: manifest,
+         project_checksum: project_checksum,
+         logical_asset_bytes: logical_asset_bytes,
+         verified_entries: verified_entries,
+         directory_bytes: directory_bytes,
+         eocd_bytes: eocd_bytes
+       }}
+    end
+  end
+
+  defp infer_local_layout(entries, directory_offset) do
+    entries
+    |> Enum.reduce_while({:ok, [], 0}, fn central, {:ok, inferred, expected_offset} ->
+      data_offset = expected_offset + @local_header_bytes + byte_size(central.path)
+      next_offset = data_offset + central.size_bytes + @data_descriptor_bytes
+
+      if central.local_header_offset == expected_offset and next_offset <= directory_offset do
+        entry = %Entry{
+          path: central.path,
+          size_bytes: central.size_bytes,
+          sha256: central.sha256,
+          content_type: central.content_type,
+          data_offset: data_offset,
+          crc32: central.crc32,
+          local_header_offset: central.local_header_offset
+        }
+
+        {:cont, {:ok, [%{entry: entry, local_header: <<>>, data_descriptor: <<>>} | inferred], next_offset}}
+      else
+        {:halt, {:error, {:snapshot_zip_local_header_mismatch, central.path}}}
+      end
+    end)
+    |> case do
+      {:ok, inferred, ^directory_offset} -> {:ok, Enum.reverse(inferred)}
+      {:ok, _inferred, _offset} -> {:error, :invalid_snapshot_zip_local_region_bounds}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp verify_bootstrap_local_entries(source, archive_stat, entries, directory_offset) do
+    entries
+    |> Enum.take(2)
+    |> Enum.with_index()
+    |> Enum.reduce_while(:ok, fn {central, index}, :ok ->
+      expected_offset = central.local_header_offset
+      next = Enum.at(entries, index + 1)
+      next_offset = if next, do: next.local_header_offset, else: directory_offset
+
+      case verify_local_entry(source, archive_stat, central, expected_offset, next_offset) do
+        {:ok, _verified} -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
   end
 
   defp bootstrap_embedded_manifest(source, archive_stat, [manifest, project | _remaining]) do
@@ -452,15 +546,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader do
 
   defp bootstrap_embedded_manifest(_source, _archive_stat, _entries),
     do: {:error, :invalid_snapshot_zip_bootstrap_inventory}
-
-  defp read_embedded_project(source, archive_stat, [_manifest, project | _remaining]) do
-    with {:ok, bytes} <- read_entry_bytes(source, archive_stat, project.entry, project.entry.sha256),
-         {:ok, decoded} <- decode_project(bytes) do
-      {:ok, bytes, decoded}
-    end
-  end
-
-  defp read_embedded_project(_source, _archive_stat, _entries), do: {:error, :missing_snapshot_project_object}
 
   defp read_entry_bytes(source, archive_stat, entry, expected_checksum) do
     with {:ok, bytes} <- read_exact(source, entry.data_offset, entry.size_bytes, archive_stat),
@@ -1575,6 +1660,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader do
   defp verify_checksum(actual, expected, error) do
     if secure_digest_equal?(actual, expected), do: :ok, else: {:error, error}
   end
+
+  defp verify_optional_checksum(_actual, nil), do: :ok
+
+  defp verify_optional_checksum(actual, expected),
+    do: verify_checksum(actual, expected, :snapshot_archive_checksum_mismatch)
 
   defp decode_json(bytes, path) do
     case Jason.decode(bytes) do

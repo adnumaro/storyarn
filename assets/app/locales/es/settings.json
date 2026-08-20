@@ -171,6 +171,7 @@
           "empty_description": "Las importaciones iniciadas desde este espacio aparecerán aquí."
         },
         "status": {
+          "uploading": "Subiendo",
           "queued": "En cola",
           "running": "Importando",
           "retrying": "Reintentando",
@@ -178,6 +179,7 @@
           "failed": "Fallida"
         },
         "phase": {
+          "uploading": "Subiendo ZIP",
           "queued": "Esperando para comenzar",
           "verifying": "Validando el snapshot",
           "materializing": "Restaurando el proyecto",
@@ -185,10 +187,13 @@
         },
         "attempt": "Intento {attempt} de {max}",
         "progress": "Progreso de importación: {percent}%",
+        "cancel": "Cancelar subida",
         "open_project": "Abrir proyecto",
         "errors": {
           "invalid_file": "Este archivo no es un ZIP de snapshot válido de Storyarn.",
           "file_too_large": "Este ZIP supera el tamaño máximo de subida permitido.",
+          "in_progress": "Espera a que termine la importación activa antes de iniciar otra.",
+          "rate_limited": "Se han iniciado varias subidas de snapshots recientemente. Inténtalo de nuevo dentro de aproximadamente una hora.",
           "unauthorized": "Ya no tienes permiso para importar proyectos en este espacio.",
           "failed": "No se ha podido importar el proyecto.",
           "unavailable": "No se ha podido validar el snapshot. Inténtalo de nuevo."

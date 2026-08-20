@@ -38,7 +38,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   @storage_reservation_kinds ~w(snapshot-build restore-staging snapshot-export)
   @storage_reservation_lease_pattern ~r/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
   @storage_reservation_path_segment_pattern ~r/\A[A-Za-z0-9][A-Za-z0-9._-]{0,127}\z/
-  @workspace_snapshot_import_key_pattern ~r'\Aworkspaces/[1-9]\d*/snapshot-imports/v1/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(?:snapshot\.zip|blobs/[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31})\z'
+  @workspace_snapshot_import_key_pattern ~r'\Aworkspace-snapshot-imports/v1/[1-9]\d*/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(?:snapshot\.zip|blobs/[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31})\z'
   @max_storage_reservation_relative_key_bytes 512
   @max_storage_reservation_path_segments 16
   @multipart_cleanup_evidence_key {__MODULE__, :multipart_cleanup_aborted_count}
@@ -1137,14 +1137,37 @@ defmodule Storyarn.Assets.StorageCompensation do
   @doc "Persists a planned storage cleanup handoff without reporting a fallback."
   @spec persist_planned_cleanup_request([String.t()]) ::
           {:ok, StorageCleanupRequest.t()} | {:error, term()}
-  def persist_planned_cleanup_request(cleanup_targets) when is_list(cleanup_targets) do
+  def persist_planned_cleanup_request(cleanup_targets), do: persist_planned_cleanup_request(cleanup_targets, [])
+
+  @doc false
+  @spec persist_planned_cleanup_request([String.t()], keyword()) ::
+          {:ok, StorageCleanupRequest.t()} | {:error, term()}
+  def persist_planned_cleanup_request(cleanup_targets, opts) when is_list(cleanup_targets) and is_list(opts) do
     cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
 
     case cleanup_targets do
-      [] -> {:error, :no_valid_storage_keys}
-      cleanup_targets -> insert_cleanup_request(cleanup_targets, %{}, :planned_handoff)
+      [] ->
+        {:error, :no_valid_storage_keys}
+
+      cleanup_targets ->
+        cleanup_targets
+        |> insert_cleanup_request(%{}, :planned_handoff)
+        |> defer_planned_cleanup(Keyword.get(opts, :not_before))
     end
   end
+
+  defp defer_planned_cleanup({:ok, _request} = result, nil), do: result
+
+  defp defer_planned_cleanup({:ok, request}, %DateTime{} = not_before) do
+    now = database_clock_now()
+
+    if DateTime.after?(not_before, now),
+      do: request |> StorageCleanupRequest.multipart_quiescence_changeset(now, not_before) |> Repo.update(),
+      else: {:ok, request}
+  end
+
+  defp defer_planned_cleanup({:ok, _request}, _invalid), do: {:error, :invalid_cleanup_not_before}
+  defp defer_planned_cleanup({:error, _reason} = error, _not_before), do: error
 
   @doc false
   @spec persist_snapshot_lifecycle_cleanup([String.t()], Ecto.UUID.t(), String.t()) ::

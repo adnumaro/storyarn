@@ -11,15 +11,12 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Ecto.Adapters.SQL.Sandbox
-  alias Storyarn.Accounts.User
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Billing
   alias Storyarn.Flows
   alias Storyarn.Localization
@@ -37,12 +34,22 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
   alias Storyarn.Versioning.WorkspaceSnapshotImports
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.ImportProjectSnapshotWorker
-  alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.Workspace
-  alias Storyarn.Workspaces.WorkspaceMembership
 
-  @concurrency_timeout 10_000
-  @concurrency_poll_interval 20
+  defmodule DirectUploadStorage do
+    @moduledoc false
+    def presigned_upload_url(key, content_type, _opts),
+      do: {:ok, "https://uploads.example/#{key}", %{headers: %{"content-type" => content_type}}}
+  end
+
+  defmodule RaisingDirectUploadStorage do
+    @moduledoc false
+    def presigned_upload_url(_key, _content_type, _opts), do: raise("presign failure")
+  end
+
+  defmodule ThrowingDirectUploadStorage do
+    @moduledoc false
+    def presigned_upload_url(_key, _content_type, _opts), do: throw(:presign_failure)
+  end
 
   defmodule RetryableAssetStagingFailure do
     @moduledoc false
@@ -69,58 +76,6 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
 
     def stage_destination_objects(_asset_plan, _tracker) do
       {:error, {:snapshot_asset_staging_failed, "logical", {:destination_stat_failed, {:http_error, 400, %{}}}}}
-    end
-  end
-
-  defmodule IntegrityAssetStagingFailure do
-    @moduledoc false
-
-    defdelegate prepare(project_id, owner_token, manifest, project, staging_prefix, staging_keys),
-      to: ProjectSnapshotAssetMaterializer
-
-    defdelegate planned_storage_keys(asset_plan),
-      to: ProjectSnapshotAssetMaterializer
-
-    def stage_destination_objects(_asset_plan, _tracker) do
-      {:error,
-       {:snapshot_asset_staging_failed, "logical",
-        {:snapshot_object_checksum_mismatch, String.duplicate("a", 64), String.duplicate("b", 64)}}}
-    end
-  end
-
-  defmodule RaisedTransientAssetStagingFailure do
-    @moduledoc false
-
-    defdelegate prepare(project_id, owner_token, manifest, project, staging_prefix, staging_keys),
-      to: ProjectSnapshotAssetMaterializer
-
-    defdelegate planned_storage_keys(asset_plan),
-      to: ProjectSnapshotAssetMaterializer
-
-    def stage_destination_objects(_asset_plan, _tracker) do
-      raise %Req.TransportError{reason: :timeout}
-    end
-  end
-
-  defmodule RaisedPermanentAssetStagingFailure do
-    @moduledoc false
-
-    defdelegate prepare(project_id, owner_token, manifest, project, staging_prefix, staging_keys),
-      to: ProjectSnapshotAssetMaterializer
-
-    defdelegate planned_storage_keys(asset_plan),
-      to: ProjectSnapshotAssetMaterializer
-
-    def stage_destination_objects(_asset_plan, _tracker) do
-      raise ArgumentError, "permanent staging bug"
-    end
-  end
-
-  defmodule FailingAdmissionStorage do
-    @moduledoc false
-
-    def upload_stream(_storage_key, _chunks, _content_type) do
-      {:error, {:http_error, 503, %{}}}
     end
   end
 
@@ -161,13 +116,10 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
     job_count = import_job_count()
     notification_count = import_notification_count(context.user.id)
 
+    {_direct, upload} = prepare_stored_upload!(context, archive_path, "too-large.zip")
+
     assert {:error, :limit_reached, details} =
-             Versioning.request_workspace_snapshot_import(
-               context.scope,
-               context.workspace,
-               archive_path,
-               %{original_filename: "too-large.zip"}
-             )
+             WorkspaceSnapshotImports.request_stored(context.scope, context.workspace, upload.id)
 
     assert details.required_bytes > 0
     assert details.available_bytes == 0
@@ -180,87 +132,45 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
              "workspace_snapshot_import"
            ] in [nil, 0]
 
-    assert {:ok, %{objects: []}} = Storage.list_prefix(import_prefix(context.workspace.id))
+    assert [%StorageCleanupRequest{storage_keys: [archive_key], multipart_quiescence_not_before: not_before}] =
+             Repo.all(StorageCleanupRequest)
+
+    assert String.starts_with?(archive_key, import_prefix(context.workspace.id))
+    assert {:error, :enoent} = Storage.stat(archive_key)
+    assert DateTime.after?(not_before, TimeHelpers.now())
   end
 
-  test "a normal archive upload failure terminalizes synchronous admission and releases capacity", context do
-    asset_bytes = "admission failure asset"
-    _asset = upload_asset!(context.project, context.user, "admission.png", asset_bytes, "image/png")
-    archive_path = ready_archive_file!(context.scope, context.project)
-
-    assert {:error, :snapshot_archive_stage_failed} =
-             WorkspaceSnapshotImports.request(
-               context.scope,
-               context.workspace,
-               archive_path,
-               %{original_filename: "provider-upload-failure.zip"},
-               storage: FailingAdmissionStorage
-             )
-
-    assert [failed] = Repo.all(WorkspaceSnapshotImport)
-    assert failed.status == "failed"
-    assert failed.stage == "failed"
-    assert failed.reserved_bytes == 0
-    assert failed.failure_code == "snapshot_import_failed"
-    refute failed.project_id
-
-    assert Repo.aggregate(
-             from(import in WorkspaceSnapshotImport,
-               where: import.status in ["queued", "running", "retrying"]
-             ),
-             :count
-           ) == 0
-
-    expected_cleanup_keys = Enum.sort(failed.staging_storage_keys)
-
-    assert [%StorageCleanupRequest{storage_keys: ^expected_cleanup_keys}] =
-             import_cleanup_requests(failed)
-
-    assert [%Notification{status: "failure"}] = import_notifications(failed)
-    assert Billing.workspace_storage_usage(context.workspace.id).active_reservations.by_kind == %{}
-  end
-
-  test "accepted request is durable and active request plus duplicate job delivery are idempotent", context do
+  test "direct request is durable and duplicate job delivery is idempotent", context do
     asset_bytes = "durable snapshot asset"
     _asset = upload_asset!(context.project, context.user, "durable.png", asset_bytes, "image/png")
     archive_path = ready_archive_file!(context.scope, context.project)
 
-    assert {:ok, first} =
-             Versioning.request_workspace_snapshot_import(
-               context.scope,
-               context.workspace,
-               archive_path,
-               %{original_filename: "durable.zip"}
-             )
+    {_direct, upload} = prepare_stored_upload!(context, archive_path, "durable.zip")
+    assert {:ok, first} = WorkspaceSnapshotImports.request_stored(context.scope, context.workspace, upload.id)
 
-    assert {:ok, duplicate} =
-             Versioning.request_workspace_snapshot_import(
-               context.scope,
-               context.workspace,
-               archive_path,
-               %{original_filename: "renamed-but-identical.zip"}
-             )
-
-    assert duplicate.id == first.id
-    assert Repo.aggregate(WorkspaceSnapshotImport, :count) == 1
     assert import_job_count() == 1
     assert first.status == "queued"
-    assert first.stage == "queued"
     assert first.reserved_bytes == byte_size(asset_bytes)
     assert first.oban_job_id
-    assert {:ok, %{size: staged_size}} = Storage.stat(first.archive_storage_key)
-    assert staged_size == first.archive_size_bytes
 
     usage = Billing.workspace_storage_usage(context.workspace.id)
     assert usage.active_reservations.by_kind["workspace_snapshot_import"] == byte_size(asset_bytes)
 
     job = import_job!(first)
+
+    assert {:discard, :workspace_snapshot_import_job_mismatch} =
+             Versioning.perform_workspace_snapshot_import(first.id,
+               job_id: job.id + 1,
+               attempt: 1,
+               max_attempts: job.max_attempts
+             )
+
+    assert Repo.get!(WorkspaceSnapshotImport, first.id).status == "queued"
     assert :ok = ImportProjectSnapshotWorker.perform(job)
     assert :ok = ImportProjectSnapshotWorker.perform(job)
 
     completed = Repo.get!(WorkspaceSnapshotImport, first.id)
     assert completed.status == "completed"
-    assert completed.stage == "completed"
     assert completed.reserved_bytes == 0
     assert completed.progress_bytes == completed.progress_total_bytes
     assert completed.project_id
@@ -275,9 +185,16 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
     assert import_notification_count(context.user.id) == 1
   end
 
-  test "a delivery snoozes without claiming the import while its request session lock is held", context do
-    asset_bytes = "locked delivery asset"
-    _asset = upload_asset!(context.project, context.user, "delivery-lock.png", asset_bytes, "image/png")
+  test "imports a maximum-length visible asset filename through a bounded physical key", context do
+    filename = String.duplicate("a", 251) <> ".png"
+    asset_bytes = "maximum filename snapshot asset"
+
+    context.project
+    |> upload_asset!(context.user, "source.png", asset_bytes, "image/png")
+    |> Ecto.Changeset.change(filename: filename)
+    |> Repo.update!()
+
+    assert byte_size(filename) == 255
     archive_path = ready_archive_file!(context.scope, context.project)
 
     assert {:ok, accepted} =
@@ -285,78 +202,21 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
                context.scope,
                context.workspace,
                archive_path,
-               %{original_filename: "delivery-lock.zip"}
+               %{original_filename: "maximum-asset-filename.zip"}
              )
 
-    before_delivery = Repo.get!(WorkspaceSnapshotImport, accepted.id)
-    job = import_job!(accepted)
-    parent = self()
-    import_id = accepted.id
-    lock_name = "workspace-snapshot-import:#{accepted.idempotency_key}"
+    assert :ok = accepted |> import_job!() |> ImportProjectSnapshotWorker.perform()
 
-    lock_owner =
-      Task.async(fn ->
-        Sandbox.unboxed_run(Repo, fn ->
-          StorageKeyLock.with_session_lock(lock_name, fn ->
-            send(parent, {:workspace_import_delivery_lock_held, import_id})
+    completed = Repo.get!(WorkspaceSnapshotImport, accepted.id)
+    assert [recovered_asset] = Assets.list_assets(completed.project_id)
 
-            receive do
-              :release_workspace_import_delivery_lock -> :ok
-            end
-          end)
-        end)
-      end)
-
-    assert_receive {:workspace_import_delivery_lock_held, ^import_id}
-
-    delivery_result =
-      try do
-        Versioning.perform_workspace_snapshot_import(
-          accepted.id,
-          job_id: job.id,
-          attempt: 1,
-          max_attempts: ImportProjectSnapshotWorker.max_attempts(),
-          lock_acquisition_timeout: 0
-        )
-      after
-        send(lock_owner.pid, :release_workspace_import_delivery_lock)
-      end
-
-    assert :ok = Task.await(lock_owner)
-    assert delivery_result == {:snooze, 30}
-
-    after_delivery = Repo.get!(WorkspaceSnapshotImport, accepted.id)
-
-    assert Map.take(after_delivery, [
-             :status,
-             :stage,
-             :attempt,
-             :reserved_bytes,
-             :reserved_project_id,
-             :materialization_storage_keys,
-             :failure_code,
-             :failure_details,
-             :started_at,
-             :completed_at,
-             :updated_at
-           ]) ==
-             Map.take(before_delivery, [
-               :status,
-               :stage,
-               :attempt,
-               :reserved_bytes,
-               :reserved_project_id,
-               :materialization_storage_keys,
-               :failure_code,
-               :failure_details,
-               :started_at,
-               :completed_at,
-               :updated_at
-             ])
-
-    assert after_delivery.reserved_bytes == byte_size(asset_bytes)
-    assert import_cleanup_requests(after_delivery) == []
-    assert import_notifications(after_delivery) == []
+    assert completed.status == "completed"
+    assert recovered_asset.filename == filename
+    assert byte_size(recovered_asset.key) <= 255
+    assert String.ends_with?(recovered_asset.key, "/#{recovered_asset.blob_hash}.png")
+    refute String.ends_with?(recovered_asset.key, "/#{filename}")
+    assert Enum.all?(completed.materialization_storage_keys, &(byte_size(&1) <= 255))
+    assert {:ok, ^asset_bytes} = Storage.download(recovered_asset.key)
   end
 
   test "a transient commit failure preserves its durable plan and succeeds on retry", context do
@@ -509,86 +369,6 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
     assert [%Notification{status: "failure"}] = import_notifications(failed)
   end
 
-  test "reconciliation leaves an abandoned import untouched while its request session lock is held", context do
-    asset_bytes = "locked abandoned delivery asset"
-    _asset = upload_asset!(context.project, context.user, "locked.png", asset_bytes, "image/png")
-    archive_path = ready_archive_file!(context.scope, context.project)
-
-    assert {:ok, accepted} =
-             Versioning.request_workspace_snapshot_import(
-               context.scope,
-               context.workspace,
-               archive_path,
-               %{original_filename: "locked-abandoned.zip"}
-             )
-
-    mark_import_job_discarded!(accepted)
-    before_reconciliation = Repo.get!(WorkspaceSnapshotImport, accepted.id)
-    parent = self()
-    import_id = accepted.id
-    lock_name = "workspace-snapshot-import:#{accepted.idempotency_key}"
-
-    lock_owner =
-      Task.async(fn ->
-        Sandbox.unboxed_run(Repo, fn ->
-          StorageKeyLock.with_session_lock(lock_name, fn ->
-            send(parent, {:workspace_import_lock_held, import_id})
-
-            receive do
-              :release_workspace_import_lock -> :ok
-            end
-          end)
-        end)
-      end)
-
-    assert_receive {:workspace_import_lock_held, ^import_id}
-
-    reconciliation =
-      try do
-        Versioning.reconcile_abandoned_workspace_snapshot_import_deliveries(limit: 50)
-      after
-        send(lock_owner.pid, :release_workspace_import_lock)
-      end
-
-    assert :ok = Task.await(lock_owner)
-
-    assert %{
-             candidate_count: 1,
-             terminalized_count: 0,
-             changed_count: 0,
-             failure_count: 1
-           } = reconciliation
-
-    after_reconciliation = Repo.get!(WorkspaceSnapshotImport, accepted.id)
-
-    assert Map.take(after_reconciliation, [
-             :status,
-             :stage,
-             :reserved_bytes,
-             :reserved_project_id,
-             :materialization_storage_keys,
-             :failure_code,
-             :failure_details,
-             :completed_at,
-             :updated_at
-           ]) ==
-             Map.take(before_reconciliation, [
-               :status,
-               :stage,
-               :reserved_bytes,
-               :reserved_project_id,
-               :materialization_storage_keys,
-               :failure_code,
-               :failure_details,
-               :completed_at,
-               :updated_at
-             ])
-
-    assert after_reconciliation.reserved_bytes == byte_size(asset_bytes)
-    assert import_cleanup_requests(after_reconciliation) == []
-    assert import_notifications(after_reconciliation) == []
-  end
-
   test "nested provider failures retry only transient staging errors", context do
     asset_bytes = "provider classifier asset"
     _asset = upload_asset!(context.project, context.user, "provider.png", asset_bytes, "image/png")
@@ -651,93 +431,6 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
     assert failed_client_error.attempt == 1
     assert failed_client_error.reserved_bytes == 0
     assert [%Notification{status: "failure"}] = import_notifications(failed_client_error)
-
-    assert {:ok, integrity_error} =
-             Versioning.request_workspace_snapshot_import(
-               context.scope,
-               context.workspace,
-               archive_path,
-               %{original_filename: "provider-integrity.zip"}
-             )
-
-    assert {:ok, failed_integrity_error} =
-             Versioning.perform_workspace_snapshot_import(
-               integrity_error.id,
-               job_id: import_job!(integrity_error).id,
-               attempt: 1,
-               max_attempts: ImportProjectSnapshotWorker.max_attempts(),
-               asset_materializer: IntegrityAssetStagingFailure
-             )
-
-    assert failed_integrity_error.status == "failed"
-    assert failed_integrity_error.stage == "failed"
-    assert failed_integrity_error.attempt == 1
-    assert failed_integrity_error.reserved_bytes == 0
-    assert [%Notification{status: "failure"}] = import_notifications(failed_integrity_error)
-  end
-
-  test "only explicit transport exceptions raised during asset staging are retryable", context do
-    asset_bytes = "raised provider failure asset"
-    _asset = upload_asset!(context.project, context.user, "raised.png", asset_bytes, "image/png")
-    archive_path = ready_archive_file!(context.scope, context.project)
-
-    assert {:ok, transient} =
-             Versioning.request_workspace_snapshot_import(
-               context.scope,
-               context.workspace,
-               archive_path,
-               %{original_filename: "raised-transport.zip"}
-             )
-
-    transient_job = import_job!(transient)
-
-    assert {:retry, _reason} =
-             Versioning.perform_workspace_snapshot_import(
-               transient.id,
-               job_id: transient_job.id,
-               attempt: 1,
-               max_attempts: ImportProjectSnapshotWorker.max_attempts(),
-               asset_materializer: RaisedTransientAssetStagingFailure
-             )
-
-    retrying = Repo.get!(WorkspaceSnapshotImport, transient.id)
-    assert retrying.status == "retrying"
-    assert retrying.reserved_bytes == byte_size(asset_bytes)
-    assert import_notifications(retrying) == []
-
-    assert {:ok, completed} =
-             Versioning.perform_workspace_snapshot_import(
-               transient.id,
-               job_id: transient_job.id,
-               attempt: 2,
-               max_attempts: ImportProjectSnapshotWorker.max_attempts()
-             )
-
-    assert completed.status == "completed"
-
-    assert {:ok, permanent} =
-             Versioning.request_workspace_snapshot_import(
-               context.scope,
-               context.workspace,
-               archive_path,
-               %{original_filename: "raised-programming-error.zip"}
-             )
-
-    assert {:ok, failed} =
-             Versioning.perform_workspace_snapshot_import(
-               permanent.id,
-               job_id: import_job!(permanent).id,
-               attempt: 1,
-               max_attempts: ImportProjectSnapshotWorker.max_attempts(),
-               asset_materializer: RaisedPermanentAssetStagingFailure
-             )
-
-    assert failed.status == "failed"
-    assert failed.stage == "failed"
-    assert failed.failure_code == "exception"
-    assert failed.attempt == 1
-    assert failed.reserved_bytes == 0
-    assert [%Notification{status: "failure"}] = import_notifications(failed)
   end
 
   test "a corrupt staged ZIP is terminal on attempt one and emits one failure notification", context do
@@ -764,23 +457,9 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
 
     failed = Repo.get!(WorkspaceSnapshotImport, accepted.id)
     assert failed.status == "failed"
-    assert failed.stage == "failed"
-    assert failed.attempt == 1
     assert failed.failure_code == "snapshot_zip_local_header_mismatch"
-    assert failed.reserved_bytes == 0
-    refute failed.project_id
-    assert import_notification_count(context.user.id) == 1
 
-    assert [%Notification{status: "failure", dedupe_key: dedupe_key}] =
-             Repo.all(
-               from(notification in Notification,
-                 where:
-                   notification.recipient_id == ^context.user.id and
-                     notification.entity_type == "workspace_snapshot_import"
-               )
-             )
-
-    assert dedupe_key == "workspace_snapshot_import:#{accepted.id}:failure"
+    assert [%Notification{status: "failure"}] = import_notifications(failed)
 
     assert Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
              MapSet.subset?(
@@ -790,75 +469,88 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
            end)
   end
 
-  test "reimporting the same terminal ZIP uses disjoint staging and materialization namespaces", context do
-    asset_bytes = "repeatable import bytes"
-    _asset = upload_asset!(context.project, context.user, "repeat.png", asset_bytes, "image/png")
+  test "cancel and TTL remove direct-upload owners without jobs or notifications", context do
     archive_path = ready_archive_file!(context.scope, context.project)
-
-    assert {:ok, first_accepted} =
-             Versioning.request_workspace_snapshot_import(
-               context.scope,
-               context.workspace,
-               archive_path,
-               %{original_filename: "repeat.zip"}
-             )
-
-    assert :ok = first_accepted |> import_job!() |> ImportProjectSnapshotWorker.perform()
-    first = Repo.get!(WorkspaceSnapshotImport, first_accepted.id)
-    assert first.status == "completed"
-
-    assert Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
-             first.archive_storage_key in request.storage_keys
-           end)
-
-    assert {:ok, second_accepted} =
-             Versioning.request_workspace_snapshot_import(
-               context.scope,
-               context.workspace,
-               archive_path,
-               %{original_filename: "repeat-again.zip"}
-             )
-
-    assert second_accepted.id != first.id
-    assert second_accepted.archive_storage_key != first.archive_storage_key
-
-    assert MapSet.disjoint?(
-             MapSet.new(second_accepted.staging_storage_keys),
-             MapSet.new(first.staging_storage_keys)
-           )
-
-    assert :ok = second_accepted |> import_job!() |> ImportProjectSnapshotWorker.perform()
-    second = Repo.get!(WorkspaceSnapshotImport, second_accepted.id)
-    assert second.status == "completed"
-    assert second.project_id != first.project_id
-
-    assert MapSet.disjoint?(
-             MapSet.new(second.materialization_storage_keys),
-             MapSet.new(first.materialization_storage_keys)
-           )
-
-    assert import_notification_count(context.user.id) == 2
-  end
-
-  test "workspace hard delete is rejected while an import is active", context do
-    archive_path = ready_archive_file!(context.scope, context.project)
-
-    assert {:ok, accepted} =
-             Versioning.request_workspace_snapshot_import(
-               context.scope,
-               context.workspace,
-               archive_path,
-               %{original_filename: "active.zip"}
-             )
+    {_direct, upload} = prepare_stored_upload!(context, archive_path, "cancel.zip")
 
     assert {:error, :workspace_snapshot_import_in_progress} =
-             Workspaces.delete_workspace(context.workspace)
+             Versioning.prepare_external_workspace_snapshot_import(context.scope, context.workspace, %{
+               original_filename: "blocked.zip",
+               archive_size_bytes: File.stat!(archive_path).size
+             })
 
-    assert Repo.get!(WorkspaceSnapshotImport, accepted.id).status == "queued"
-    assert Repo.get!(Workspace, context.workspace.id)
-    assert Repo.get!(Project, context.project.id)
-    assert {:ok, %{size: size}} = Storage.stat(accepted.archive_storage_key)
-    assert size == accepted.archive_size_bytes
+    admin = user_fixture()
+    workspace_membership_fixture(context.workspace, admin, "admin")
+
+    assert {:ok, _deleted} =
+             Versioning.cancel_workspace_snapshot_upload(user_scope_fixture(admin), context.workspace, upload.id)
+
+    refute Repo.get(WorkspaceSnapshotImport, upload.id)
+    archive_key = upload.archive_storage_key
+    assert [%StorageCleanupRequest{storage_keys: [^archive_key]}] = Repo.all(StorageCleanupRequest)
+    assert import_job_count() == 0
+
+    {_direct, stale} = prepare_stored_upload!(context, archive_path, "stale.zip")
+
+    Repo.update_all(from(import in WorkspaceSnapshotImport, where: import.id == ^stale.id),
+      set: [updated_at: ~U[2020-01-01 00:00:00Z]]
+    )
+
+    assert %{changed_count: 1, failure_count: 0} =
+             Versioning.reconcile_abandoned_workspace_snapshot_import_deliveries(upload_ttl_seconds: 1)
+
+    refute Repo.get(WorkspaceSnapshotImport, stale.id)
+    assert import_job_count() == 0
+    assert import_notification_count(context.user.id) == 0
+  end
+
+  test "cancelled direct uploads exhaust the bounded grant window", context do
+    prepare = fn ->
+      WorkspaceSnapshotImports.prepare_external_upload(
+        context.scope,
+        context.workspace,
+        %{original_filename: "cancel.zip", archive_size_bytes: 1},
+        storage: DirectUploadStorage
+      )
+    end
+
+    Enum.each(1..3, fn _attempt ->
+      assert {:ok, %{import_id: import_id}} = prepare.()
+      assert {:ok, _upload} = WorkspaceSnapshotImports.cancel_upload(context.scope, context.workspace, import_id)
+    end)
+
+    assert {:error, :workspace_snapshot_upload_rate_limited} = prepare.()
+
+    assert Repo.aggregate(StorageCleanupRequest, :count) == 3
+
+    assert {:ok, local} =
+             WorkspaceSnapshotImports.prepare_upload(context.scope, context.workspace, %{
+               original_filename: "local.zip",
+               archive_size_bytes: 1
+             })
+
+    assert {:ok, _upload} = WorkspaceSnapshotImports.cancel_upload(context.scope, context.workspace, local.id)
+    assert Repo.aggregate(WorkspaceSnapshotImport, :count) == 0
+    assert import_job_count() == 0
+    assert import_notification_count(context.user.id) == 0
+  end
+
+  test "presign crashes discard the direct-upload owner durably", context do
+    Enum.each([RaisingDirectUploadStorage, ThrowingDirectUploadStorage], fn storage ->
+      assert {:error, :snapshot_import_unavailable} =
+               WorkspaceSnapshotImports.prepare_external_upload(
+                 context.scope,
+                 context.workspace,
+                 %{original_filename: "crash.zip", archive_size_bytes: 1},
+                 storage: storage
+               )
+
+      assert Repo.aggregate(WorkspaceSnapshotImport, :count) == 0
+    end)
+
+    assert Repo.aggregate(StorageCleanupRequest, :count) == 2
+    assert import_job_count() == 0
+    assert import_notification_count(context.user.id) == 0
   end
 
   test "a downloaded canonical ZIP alone reconstructs a hard-deleted project exactly", context do
@@ -1099,272 +791,25 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
     assert import_job_count() == 0
   end
 
-  test "concurrent workspace role revocation fences both admission and final publication" do
-    fixture = committed_authorization_fixture!()
-    on_exit(fn -> cleanup_committed_authorization_fixture(fixture) end)
-
-    admission_revoker =
-      hold_role_revocation(fixture.admission_membership.id, self(), :admission)
-
-    assert_receive {:role_revocation_pending, :admission, admission_revoker_pid, admission_revoker_backend},
-                   @concurrency_timeout
-
-    admission_requester =
-      unboxed_task(fn ->
-        [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
-        send(self_test_process(), {:import_request_started, self(), backend_pid})
-
-        Versioning.request_workspace_snapshot_import(
-          fixture.admission_scope,
-          fixture.workspace,
-          fixture.archive_path,
-          %{original_filename: "authorization-race.zip"}
-        )
-      end)
-
-    assert_receive {:import_request_started, admission_requester_pid, admission_requester_backend},
-                   @concurrency_timeout
-
-    assert admission_requester_pid == admission_requester.pid
-
-    assert_eventually_blocked_by(
-      admission_requester_backend,
-      admission_revoker_backend,
-      admission_requester
-    )
-
-    refute Task.yield(admission_requester, 0)
-    send(admission_revoker_pid, {:release_role_revocation, :admission})
-
-    assert %WorkspaceMembership{role: "viewer"} = Task.await(admission_revoker, @concurrency_timeout)
-
-    assert {:error, :unauthorized} = Task.await(admission_requester, @concurrency_timeout)
-
-    assert Sandbox.unboxed_run(Repo, fn ->
-             Repo.aggregate(
-               from(import in WorkspaceSnapshotImport,
-                 where: import.workspace_id == ^fixture.workspace.id
-               ),
-               :count
-             )
-           end) == 0
-
-    accepted =
-      Sandbox.unboxed_run(Repo, fn ->
-        assert {:ok, accepted} =
-                 Versioning.request_workspace_snapshot_import(
-                   fixture.publication_scope,
-                   fixture.workspace,
-                   fixture.archive_path,
-                   %{original_filename: "publication-authorization-race.zip"}
-                 )
-
-        accepted
-      end)
-
-    job = Sandbox.unboxed_run(Repo, fn -> import_job!(accepted) end)
-
-    publication_revoker =
-      hold_role_revocation(fixture.publication_membership.id, self(), :publication)
-
-    assert_receive {:role_revocation_pending, :publication, publication_revoker_pid, publication_revoker_backend},
-                   @concurrency_timeout
-
-    publication_runner =
-      unboxed_task(fn ->
-        [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
-        send(self_test_process(), {:import_publication_started, self(), backend_pid})
-
-        Versioning.perform_workspace_snapshot_import(
-          accepted.id,
-          job_id: job.id,
-          attempt: 1,
-          max_attempts: ImportProjectSnapshotWorker.max_attempts()
-        )
-      end)
-
-    assert_receive {:import_publication_started, publication_runner_pid, publication_runner_backend},
-                   @concurrency_timeout
-
-    assert publication_runner_pid == publication_runner.pid
-
-    assert_eventually_blocked_by(
-      publication_runner_backend,
-      publication_revoker_backend,
-      publication_runner
-    )
-
-    send(publication_revoker_pid, {:release_role_revocation, :publication})
-
-    assert %WorkspaceMembership{role: "viewer"} = Task.await(publication_revoker, @concurrency_timeout)
-
-    assert {:ok, %WorkspaceSnapshotImport{status: "failed"} = failed} =
-             Task.await(publication_runner, @concurrency_timeout)
-
-    assert failed.project_id == nil
-    assert failed.reserved_bytes == 0
-
-    assert Sandbox.unboxed_run(Repo, fn ->
-             Repo.aggregate(
-               from(project in Project, where: project.workspace_id == ^fixture.workspace.id),
-               :count
-             )
-           end) == 1
-  end
-
   defp ready_archive_file!(scope, project) do
     snapshot = build_ready_snapshot!(scope, project)
     assert {:ok, archive} = Storage.download(snapshot.archive_storage_key)
     temporary_archive_path!(archive)
   end
 
-  defp committed_authorization_fixture! do
-    fixture =
-      Sandbox.unboxed_run(Repo, fn ->
-        owner = user_fixture(%{email: "snapshot-auth-owner-#{Ecto.UUID.generate()}@example.com"})
-        admission_user = user_fixture(%{email: "snapshot-auth-admission-#{Ecto.UUID.generate()}@example.com"})
-        publication_user = user_fixture(%{email: "snapshot-auth-publication-#{Ecto.UUID.generate()}@example.com"})
-        workspace = workspace_fixture(owner)
-        project = project_fixture(owner, %{workspace: workspace, name: "Authorization race source"})
+  defp prepare_stored_upload!(context, archive_path, filename) do
+    assert {:ok, direct} =
+             WorkspaceSnapshotImports.prepare_external_upload(
+               context.scope,
+               context.workspace,
+               %{original_filename: filename, archive_size_bytes: File.stat!(archive_path).size},
+               storage: DirectUploadStorage
+             )
 
-        assert {:ok, admission_membership} =
-                 Workspaces.create_membership(workspace.id, admission_user.id, "admin")
-
-        assert {:ok, publication_membership} =
-                 Workspaces.create_membership(workspace.id, publication_user.id, "admin")
-
-        owner_scope = user_scope_fixture(owner)
-        snapshot = build_ready_snapshot!(owner_scope, project)
-        assert {:ok, archive} = Storage.download(snapshot.archive_storage_key)
-
-        %{
-          owner: owner,
-          admission_user: admission_user,
-          admission_scope: user_scope_fixture(admission_user),
-          admission_membership: admission_membership,
-          publication_user: publication_user,
-          publication_scope: user_scope_fixture(publication_user),
-          publication_membership: publication_membership,
-          workspace: workspace,
-          project: project,
-          source_snapshot: snapshot,
-          archive: archive
-        }
-      end)
-
-    Map.put(fixture, :archive_path, temporary_archive_path!(fixture.archive))
-  end
-
-  defp hold_role_revocation(membership_id, test_process, marker) do
-    unboxed_task(fn ->
-      fn ->
-        [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
-        membership = Repo.get!(WorkspaceMembership, membership_id)
-        assert {:ok, updated} = Workspaces.update_member_role(membership, "viewer")
-        send(test_process, {:role_revocation_pending, marker, self(), backend_pid})
-
-        receive do
-          {:release_role_revocation, ^marker} -> updated
-        after
-          @concurrency_timeout * 2 -> exit(:workspace_role_revocation_release_timeout)
-        end
-      end
-      |> Repo.transaction()
-      |> case do
-        {:ok, updated} -> updated
-        {:error, reason} -> exit({:workspace_role_revocation_failed, reason})
-      end
-    end)
-  end
-
-  defp unboxed_task(fun) do
-    test_process = self()
-
-    Task.async(fn ->
-      Process.put({__MODULE__, :test_process}, test_process)
-      :ok = Sandbox.checkout(Repo, sandbox: false)
-
-      try do
-        fun.()
-      after
-        Sandbox.checkin(Repo)
-      end
-    end)
-  end
-
-  defp self_test_process, do: Process.get({__MODULE__, :test_process})
-
-  defp assert_eventually_blocked_by(waiter_backend_pid, holder_backend_pid, task, attempts \\ 500)
-
-  defp assert_eventually_blocked_by(_waiter_backend_pid, _holder_backend_pid, _task, 0) do
-    flunk("workspace snapshot import never waited on the locked membership")
-  end
-
-  defp assert_eventually_blocked_by(waiter_backend_pid, holder_backend_pid, task, attempts) do
-    blocked? =
-      Sandbox.unboxed_run(Repo, fn ->
-        Repo.query!("SELECT $2 = ANY(pg_blocking_pids($1))", [waiter_backend_pid, holder_backend_pid]).rows == [[true]]
-      end)
-
-    if blocked? do
-      :ok
-    else
-      case Task.yield(task, 0) do
-        nil ->
-          Process.sleep(@concurrency_poll_interval)
-          assert_eventually_blocked_by(waiter_backend_pid, holder_backend_pid, task, attempts - 1)
-
-        {:ok, result} ->
-          flunk("workspace snapshot import finished before the membership lock: #{inspect(result)}")
-      end
-    end
-  end
-
-  defp cleanup_committed_authorization_fixture(fixture) do
-    storage_keys =
-      Sandbox.unboxed_run(Repo, fn ->
-        imports =
-          Repo.all(
-            from(import in WorkspaceSnapshotImport,
-              where: import.workspace_id == ^fixture.workspace.id
-            )
-          )
-
-        storage_keys =
-          imports
-          |> Enum.flat_map(&(&1.staging_storage_keys ++ &1.materialization_storage_keys))
-          |> Kernel.++([
-            fixture.source_snapshot.archive_storage_key,
-            fixture.source_snapshot.manifest_storage_key
-          ])
-          |> Enum.uniq()
-
-        cleanup_requests =
-          StorageCleanupRequest
-          |> Repo.all()
-          |> Enum.filter(fn request ->
-            Enum.any?(request.storage_keys, &String.starts_with?(&1, import_prefix(fixture.workspace.id)))
-          end)
-
-        Enum.each(cleanup_requests, &Repo.delete!/1)
-
-        user_ids = [fixture.owner.id, fixture.admission_user.id, fixture.publication_user.id]
-        Repo.delete_all(from(workspace in Workspace, where: workspace.owner_id in ^user_ids))
-
-        job_ids =
-          imports
-          |> Enum.map(& &1.oban_job_id)
-          |> Kernel.++([fixture.source_snapshot.build_job_id])
-          |> Enum.reject(&is_nil/1)
-
-        Repo.delete_all(from(job in Oban.Job, where: job.id in ^job_ids))
-
-        Repo.delete_all(from(user in User, where: user.id in ^user_ids))
-        storage_keys
-      end)
-
-    storage = Storage.adapter()
-    Enum.each(storage_keys, &storage.delete/1)
+    upload = Repo.get!(WorkspaceSnapshotImport, direct.import_id)
+    assert upload.status == "uploading"
+    assert {:ok, _url} = Storage.upload(upload.archive_storage_key, File.read!(archive_path), "application/zip")
+    {direct, upload}
   end
 
   defp build_ready_snapshot!(scope, project) do
@@ -1476,5 +921,5 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
     )
   end
 
-  defp import_prefix(workspace_id), do: "workspaces/#{workspace_id}/snapshot-imports/v1/"
+  defp import_prefix(workspace_id), do: "workspace-snapshot-imports/v1/#{workspace_id}/"
 end
