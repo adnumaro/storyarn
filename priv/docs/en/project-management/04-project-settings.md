@@ -50,6 +50,6 @@ Workspace membership and project membership are separate. A person must be able 
 
 ## Import and Export
 
-The Import & Export page can preview and import Yarn Spinner `.yarn` files or project ZIPs. It also configures export engine format, included sections, asset handling, formatting, and pre-export validation. Importing requires content-editing permission. See the dedicated [Import and Export guide](/docs/import-export/import-export-overview).
+The Import & Export page can preview and import Yarn Spinner `.yarn` files or project ZIPs. It also configures export engine format, included sections, asset handling, formatting, and pre-export validation. Only project owners, who hold the `manage_project` permission, can prepare or run an import. See the dedicated [Import and Export guide](/docs/import-export/import-export-overview).
 
 Snapshots and Trash are covered separately in [Snapshots and Trash](/docs/project-management/recovery-and-trash).

@@ -176,6 +176,8 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(text).toContain("2 sheets");
 
     const card = wrapper.get('[data-testid="snapshot-card-21"]');
+    expect(card.attributes("id")).toBe("snapshot-21");
+    expect(card.classes()).toContain("target:ring-2");
     expect(card.text()).toContain("Playtest checkpoint");
     expect(card.text()).not.toContain("v2");
     expect(card.find('[aria-label="Snapshot mode: Full"]').exists()).toBe(false);

@@ -15,48 +15,75 @@ defmodule Storyarn.Imports.ReplacementTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Flows.Flow
   alias Storyarn.Imports
+  alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Replacement
   alias Storyarn.Localization
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Projects
+  alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Versioning
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
+  alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotArchiveStorage
 
+  @yarn_project_fixture_root Path.expand("../../fixtures/imports/yarn/emberfall", __DIR__)
+  @yarn_project_fixture_files [
+    "Emberfall.yarnproject",
+    "Dialogue/01_arrival.yarn",
+    "Dialogue/02_market.yarn",
+    "Dialogue/03_watchtower.yarn"
+  ]
+
   setup do
-    previous_restore_policy = Application.get_env(:storyarn, RestorePolicy)
-    previous_import_policy = Application.get_env(:storyarn, Imports)
-
-    Application.put_env(
-      :storyarn,
-      RestorePolicy,
-      Keyword.put(previous_restore_policy || [], :project_snapshot_restore, true)
-    )
-
-    Application.put_env(
-      :storyarn,
-      Imports,
-      Keyword.put(previous_import_policy || [], :replace_project_enabled, true)
-    )
-
-    on_exit(fn ->
-      restore_application_env(RestorePolicy, previous_restore_policy)
-      restore_application_env(Imports, previous_import_policy)
-    end)
-
     user = user_fixture()
     project = project_fixture(user)
 
     %{scope: Scope.for_user(user), user: user, project: project}
+  end
+
+  test "Storyarn-owned multi-file Yarn project is eligible for whole-project replacement" do
+    assert {:ok, %ImportPlan{} = plan} =
+             Imports.parse_file("emberfall.zip", yarn_project_fixture_archive())
+
+    assert plan.parser_version == "5"
+    assert plan.source_kind == :archive
+    assert plan.replace_eligible
+    assert plan.issues == []
+
+    flows = Map.new(plan.data["flows"], &{&1["name"], &1})
+    assert flows |> Map.keys() |> Enum.sort() == ["Arrival", "Market", "Watchtower"]
+
+    variables_sheet = Enum.find(plan.data["sheets"], &(&1["shortcut"] == "yarn"))
+
+    assert variables_sheet["blocks"]
+           |> Enum.map(& &1["variable_name"])
+           |> Enum.sort() == ["has_watch_map", "mara_trust", "watch_alerted"]
+
+    speaker_names = MapSet.new(plan.data["sheets"], & &1["name"])
+
+    assert MapSet.subset?(
+             MapSet.new(["Captain Ilyra", "Mara", "Narrator", "Player", "Tarin"]),
+             speaker_names
+           )
+
+    arrival_targets =
+      flows["Arrival"]["nodes"]
+      |> Enum.filter(&(&1["type"] == "exit"))
+      |> MapSet.new(& &1["data"]["referenced_flow_id"])
+
+    assert arrival_targets ==
+             MapSet.new([flows["Market"]["id"], flows["Watchtower"]["id"]])
   end
 
   test "confirmed replacement queues durably without creating a snapshot in the request", ctx do
@@ -83,47 +110,25 @@ defmodule Storyarn.Imports.ReplacementTest do
     assert Repo.aggregate(ProjectSnapshot, :count) == snapshot_count
   end
 
-  test "the producer gate rejects replacement races but never strands an accepted job", ctx do
-    assert {:ok, additive_ready, _preview} =
+  test "snapshot-backed replacement is available without runtime gates", ctx do
+    assert Imports.replace_project_available?()
+
+    assert {:ok, prepared, _preview} =
              Imports.prepare_import(
                ctx.scope,
                ctx.project,
-               "gated-replacement.zip",
+               "available-replacement.zip",
                replaceable_yarn_archive()
              )
 
-    assert additive_ready.replace_eligible
-
-    set_replace_producer_enabled(false)
-    refute Imports.replace_project_available?()
-
-    assert {:error, :project_snapshot_restore_disabled} =
-             Imports.update_import_mode(ctx.scope, additive_ready.id, "replace_project")
-
-    set_replace_producer_enabled(true)
-    assert {:ok, ready} = Imports.update_import_mode(ctx.scope, additive_ready.id, "replace_project")
-
-    set_replace_producer_enabled(false)
-
-    assert {:error, :project_snapshot_restore_disabled} =
-             Imports.enqueue_import(ctx.scope, ready.id, :rename,
-               import_mode: "replace_project",
-               replace_acknowledged: true
-             )
-
-    assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
-
-    set_replace_producer_enabled(true)
+    assert prepared.replace_eligible
+    assert {:ok, ready} = Imports.update_import_mode(ctx.scope, prepared.id, "replace_project")
 
     assert {:ok, queued} =
              Imports.enqueue_import(ctx.scope, ready.id, :rename,
                import_mode: "replace_project",
                replace_acknowledged: true
              )
-
-    # This is a producer rollout gate, not a worker kill switch. Once accepted,
-    # the restore policy is the only execution-time emergency stop.
-    set_replace_producer_enabled(false)
 
     assert {:ok, completed} =
              Imports.perform_import(queued.id,
@@ -387,9 +392,22 @@ defmodule Storyarn.Imports.ReplacementTest do
   end
 
   test "a ready checkpoint replaces active narrative state and preserves recoverable state", ctx do
+    preserved_settings = %{
+      "import_contract" => "preserve",
+      "theme" => %{"accent" => "#abcdef", "primary" => "#123456"}
+    }
+
+    assert {:ok, _configured_project} =
+             Projects.update_project(ctx.project, %{settings: preserved_settings})
+
+    member = user_fixture()
+    membership = membership_fixture(ctx.project, member, "editor")
     old_sheet = sheet_fixture(ctx.project, %{name: "Old character"})
     old_flow = flow_fixture(ctx.project, %{name: "Old flow"})
     old_scene = scene_fixture(ctx.project, %{name: "Old scene"})
+
+    assert {:ok, version} =
+             Versioning.create_version("sheet", old_sheet, ctx.project.id, ctx.user.id, title: "Before Yarn replacement")
 
     preserved_asset =
       asset_fixture(ctx.project, ctx.user, %{blob_hash: String.duplicate("e", 64)})
@@ -437,11 +455,42 @@ defmodule Storyarn.Imports.ReplacementTest do
     assert Repo.get!(Asset, preserved_asset.id).deleted_at == nil
     assert Repo.get!(ProjectLanguage, language.id).archived_at
     assert Repo.get!(LocalizedText, text.id).archived_at
-    assert Repo.get(GlossaryEntry, glossary.id) == nil
+
+    preserved_glossary = Repo.get!(GlossaryEntry, glossary.id)
+    assert preserved_glossary.source_term == glossary.source_term
+    assert preserved_glossary.target_term == glossary.target_term
+
+    assert Repo.get!(Project, ctx.project.id).settings == preserved_settings
+    assert Repo.get!(ProjectMembership, membership.id).role == "editor"
+    assert Repo.get!(EntityVersion, version.id).storage_key == version.storage_key
 
     active_flows = Storyarn.Flows.list_flows(ctx.project.id)
     assert Enum.any?(active_flows, &(&1.name == "Start"))
     refute Enum.any?(active_flows, &(&1.id == old_flow.id))
+
+    snapshot_count = Repo.aggregate(ProjectSnapshot, :count)
+    active_flow_ids = active_flows |> Enum.map(& &1.id) |> Enum.sort()
+
+    assert {:ok, replayed} =
+             Imports.perform_import(completed.id,
+               attempt: 2,
+               max_attempts: 3,
+               snapshot_request: fn _scope, _project, _attrs ->
+                 flunk("a completed replacement must not request another snapshot")
+               end,
+               before_materialization_transaction: fn ->
+                 flunk("a completed replacement must not materialize twice")
+               end
+             )
+
+    assert replayed.id == completed.id
+    assert replayed.pre_import_snapshot_id == completed.pre_import_snapshot_id
+    assert Repo.aggregate(ProjectSnapshot, :count) == snapshot_count
+
+    assert ctx.project.id
+           |> Storyarn.Flows.list_flows()
+           |> Enum.map(& &1.id)
+           |> Enum.sort() == active_flow_ids
   end
 
   test "drift and a post-trash failure both leave the prior project active", ctx do
@@ -557,11 +606,14 @@ defmodule Storyarn.Imports.ReplacementTest do
     binary
   end
 
-  defp set_replace_producer_enabled(enabled?) do
-    current = Application.get_env(:storyarn, Imports, [])
-    Application.put_env(:storyarn, Imports, Keyword.put(current, :replace_project_enabled, enabled?))
-  end
+  defp yarn_project_fixture_archive do
+    entries =
+      Enum.map(@yarn_project_fixture_files, fn relative_path ->
+        source_path = Path.join(@yarn_project_fixture_root, relative_path)
+        {String.to_charlist(relative_path), File.read!(source_path)}
+      end)
 
-  defp restore_application_env(module, nil), do: Application.delete_env(:storyarn, module)
-  defp restore_application_env(module, value), do: Application.put_env(:storyarn, module, value)
+    {:ok, {_name, binary}} = :zip.create(~c"emberfall.zip", entries, [:memory])
+    binary
+  end
 end

@@ -40,7 +40,7 @@ Only project owners can prepare or execute an import. Storyarn checks that permi
 
 Whole-project replacement is offered only for an explicit Yarn project ZIP with one valid `.yarnproject` file. A standalone `.yarn` file or an implicit-project ZIP can still be added, but cannot replace the current project.
 
-Before replacement, Storyarn creates a normal, visible full-project snapshot and waits until it is verified and recoverable. Nothing is changed while that snapshot is being built. Storyarn then checks that the project still exactly matches the snapshot and, in one database transaction, moves the active Sheets, Flows, Scenes, and localization content to recoverable trash or archive before importing the Yarn project. Existing assets, project settings, members, snapshots, prior trash, and entity version history are preserved. If the snapshot fails, recovery is unavailable, the project changes after capture, or materialization fails, the replacement stops without retaining partial changes.
+Before replacement, Storyarn creates a normal, visible full-project snapshot and waits until it is verified and recoverable. Nothing is changed while that snapshot is being built. Storyarn then checks that the project still exactly matches the snapshot and, in one database transaction, moves the active Sheets, Flows, Scenes, and localization languages and texts to recoverable trash or archive before importing the Yarn project. Existing assets, project settings, members, snapshots, glossary entries, prior trash, and entity version history are preserved. If the snapshot fails, recovery is unavailable, the project changes after capture, or materialization fails, the replacement stops without retaining partial changes.
 
 ### Current Yarn import boundaries
 
@@ -49,7 +49,7 @@ Before replacement, Storyarn creates a normal, visible full-project snapshot and
 - Yarn 3 line groups, node groups and storylet `when` clauses are not converted yet. Files that use them are rejected because flattening their selection rules would change which dialogue is shown. Stateful `once` blocks are rejected for the same reason.
 - Imported speaker sheets contain the inferred name only; enrich them with your project-specific schema after import. Dynamic speaker expressions remain in the dialogue text and are flagged for review instead of being linked to a character sheet.
 - Images, audio, Unity assets, Godot resources, and compiled Yarn bytecode are not imported.
-- Replace mode requires full-project snapshot recovery to be enabled and enough workspace storage to create the recovery point.
+- Replace mode requires enough workspace storage for Storyarn to create and verify the full-project recovery snapshot. If that recovery point cannot be completed, the existing project remains intact.
 
 ## Export formats
 

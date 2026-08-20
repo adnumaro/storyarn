@@ -6,6 +6,7 @@ import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Label } from "@components/ui/label";
+import LiveLink from "@components/navigation/LiveLink.vue";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import {
   Table,
@@ -63,6 +64,11 @@ const currentImportMode = computed<ImportMode>(() =>
   importState.importMode === "replace_project" ? "replace_project" : "additive",
 );
 const replacementSelected = computed(() => currentImportMode.value === "replace_project");
+const recoverySnapshotUrl = computed(() =>
+  replacementSelected.value && typeof importState.recoverySnapshotUrl === "string"
+    ? importState.recoverySnapshotUrl
+    : null,
+);
 const replacementAvailable = computed(
   () => importState.replaceEligible && importState.replaceAvailable,
 );
@@ -686,6 +692,16 @@ watch(replaceDialogOpen, (open) => {
           </span>
         </div>
 
+        <LiveLink
+          v-if="recoverySnapshotUrl"
+          :to="recoverySnapshotUrl"
+          data-testid="yarn-import-recovery-snapshot-link"
+          class="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+        >
+          <ShieldCheck class="size-4" />
+          {{ $t("project_settings.import.recovery_snapshot_link") }}
+        </LiveLink>
+
         <Table v-if="entityCountRows.length">
           <TableHeader>
             <TableRow>
@@ -717,6 +733,16 @@ watch(replaceDialogOpen, (open) => {
           <AlertTriangle class="size-5 shrink-0" />
           <span>{{ terminalErrorMessage }}</span>
         </div>
+
+        <LiveLink
+          v-if="recoverySnapshotUrl"
+          :to="recoverySnapshotUrl"
+          data-testid="yarn-import-recovery-snapshot-link"
+          class="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+        >
+          <ShieldCheck class="size-4" />
+          {{ $t("project_settings.import.recovery_snapshot_link") }}
+        </LiveLink>
 
         <Button data-testid="yarn-import-reset" variant="ghost" size="sm" @click="resetImport">
           {{ $t("project_settings.import.try_again") }}

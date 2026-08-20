@@ -31,6 +31,17 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
     :ok
   end
 
+  test "exact full-project restore is always available independently of entity switches" do
+    Application.put_env(:storyarn, RestorePolicy,
+      sheet_version_restore: false,
+      flow_version_restore: false,
+      scene_version_restore: false
+    )
+
+    assert RestorePolicy.enabled?({:project_snapshot_restore, "full"})
+    assert :ok = RestorePolicy.ensure_enabled({:project_snapshot_restore, "full"})
+  end
+
   test "missing, unknown, and non-boolean entity configuration values fail closed" do
     Application.delete_env(:storyarn, RestorePolicy)
 

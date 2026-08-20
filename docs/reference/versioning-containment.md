@@ -347,34 +347,26 @@ These switches do not affect project snapshot creation or downloads.
 
 ### Yarn replacement rollout and containment
 
-Yarn whole-project replacement has two independent runtime controls:
+Exact project-snapshot restore and Yarn replacement do not have runtime feature
+flags. They are normal authorized product capabilities. Their safety boundary
+is the verified snapshot identity, the current-project checksum fence, and the
+single final replacement transaction.
 
-```text
-PROJECT_SNAPSHOT_RESTORE_ENABLED=false
-YARN_IMPORT_REPLACE_ENABLED=false
-```
+For the initial rollout, apply the migration before starting replacement-aware
+application processes and avoid accepting imports until every `imports` queue
+consumer runs the new release. The database completion fence prevents an older
+worker from committing a replacement as an additive import, but pausing the
+queue avoids needless retries while processes are mixed.
 
-`PROJECT_SNAPSHOT_RESTORE_ENABLED` is the fail-closed restore switch and a
-mandatory execution prerequisite for replacement. `YARN_IMPORT_REPLACE_ENABLED`
-is only a producer gate: disabling it prevents new replacement jobs, but does
-not stop one that has already been accepted.
+For incident containment, put the import surface into maintenance and pause the
+`imports` queue. Cancel ready or queued attempts through the supported import
+cancellation path and let running or retrying attempts settle; do not edit
+attempts or Oban rows by hand. A final transaction that has already acquired
+its locks may complete atomically.
 
-Keep both values disabled while deploying the replacement-capable release and
-running its migrations. After every process consuming the `imports` queue is on
-that release, complete the real-provider snapshot smoke above, enable project
-snapshot restore, and then enable the Yarn producer gate. Do not enable the
-producer while an older imports worker can still claim jobs.
-
-For incident containment, disable `YARN_IMPORT_REPLACE_ENABLED` first. If an
-accepted replacement must also stop, disable
-`PROJECT_SNAPSHOT_RESTORE_ENABLED`; an execution that has not crossed the final
-replacement gate then fails closed before project content is removed. A final
-transaction already past that gate may still complete, so wait for active work
-to settle. This also disables normal project-snapshot restores, so treat it as
-the broader emergency switch.
-
-Before rolling application code or this migration back, keep the producer gate
-disabled and verify that no replacement attempt remains active:
+Before rolling application code or the replacement migration back, block new
+imports, pause queue consumers, and verify that no replacement attempt remains
+active:
 
 ```sql
 SELECT status, stage, count(*)
@@ -385,13 +377,14 @@ GROUP BY status, stage
 ORDER BY status, stage;
 ```
 
-Wait for the query to return no rows. Cancel ready or queued work through the
-supported import cancellation path and let running or retrying work reach a
-terminal state; do not edit attempts or Oban rows by hand. Re-enable the gates
-only after all imports workers are current again. Monitor the
-low-cardinality, content-free import metrics by `import_mode`, especially
-snapshot transitions and execute/error outcomes; filenames, project IDs, user
-IDs, and imported content must never be added as tags.
+Wait for the query to return no rows. The migration `down` path also takes an
+exclusive table lock and aborts when it finds active replacement work. Only
+after the query and migration guard pass may the older application release be
+started and the queue resumed.
+
+Monitor the low-cardinality, content-free import metrics by `import_mode`,
+especially snapshot transitions and execute/error outcomes. Filenames, project
+IDs, user IDs, and imported content must never be added as tags.
 
 Provider lifecycle rules must not expire ready snapshot namespaces outside the
 application protocol. Maintain external immutable object backup, access

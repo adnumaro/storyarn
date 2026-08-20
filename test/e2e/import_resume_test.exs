@@ -10,14 +10,29 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
   import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
+  import Storyarn.VersioningFixtures
   import StoryarnWeb.E2EHelpers
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Assets
   alias Storyarn.Imports
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Repo
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Versioning.Builders.AssetHashResolver
+  alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
+  alias Storyarn.Versioning.SnapshotArchiveStorage
 
   @moduletag :e2e
+
+  @yarn_project_fixture_root Path.expand("../fixtures/imports/yarn/emberfall", __DIR__)
+  @yarn_project_fixture_files [
+    "Emberfall.yarnproject",
+    "Dialogue/01_arrival.yarn",
+    "Dialogue/02_market.yarn",
+    "Dialogue/03_watchtower.yarn"
+  ]
 
   test "restores a completed import after navigation and reset does not resurrect it", %{conn: conn} do
     user = user_fixture()
@@ -73,6 +88,120 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     |> refute_has("span", text: "The Yarn project was imported successfully.")
   end
 
+  test "resumes a replacement while its recovery snapshot is pending and links to recovery", %{conn: conn} do
+    user = user_fixture()
+
+    project =
+      user
+      |> project_fixture(%{name: "Emberfall Replacement Project"})
+      |> Repo.preload(:workspace)
+
+    old_sheet = sheet_fixture(project, %{name: "Previous campaign notes"})
+    yarn_path = yarn_project_fixture()
+
+    import_path =
+      "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
+
+    recovery_path =
+      "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/snapshots"
+
+    navigation_path = "/users/settings"
+
+    session =
+      conn
+      |> authenticate(user)
+      |> visit(import_path)
+      |> assert_has("#yarn-import-file-picker")
+      |> unwrap(fn %{frame_id: frame_id} ->
+        {:ok, _} =
+          PlaywrightEx.Frame.set_input_files(frame_id,
+            selector: "input[name='import_file']",
+            local_paths: [yarn_path],
+            timeout: 10_000
+          )
+      end)
+      |> assert_has("span", text: Path.basename(yarn_path))
+      |> click("#yarn-import-preview")
+      |> assert_has("[data-testid='yarn-import-mode-selector']")
+      |> click("[data-testid='yarn-import-mode-replace'] [role='radio']")
+      |> assert_has("#yarn-import-confirm", text: "Replace project content")
+      |> select_suggested_speaker_actions()
+      |> assert_has("#yarn-import-review-acknowledgement")
+      |> click("#yarn-import-review-acknowledgement")
+      |> assert_has("#yarn-import-validate:not([disabled])")
+      |> click("#yarn-import-validate")
+      |> assert_has("#yarn-import-confirm:not([disabled])")
+      |> click("#yarn-import-confirm")
+      |> assert_has("button", text: "Create snapshot and replace")
+      |> click_button("Create snapshot and replace")
+      |> assert_has("[data-testid='yarn-import-awaiting-snapshot']")
+      |> visit(navigation_path)
+      |> assert_has("#profile-display-name")
+      |> visit(import_path)
+      |> assert_has("[data-testid='yarn-import-awaiting-snapshot']")
+      |> visit(navigation_path)
+      |> unwrap(fn _browser ->
+        queued = latest_active_attempt(project.id, user.id)
+
+        assert {:ok, completed} =
+                 Imports.perform_import(queued.id,
+                   attempt: 1,
+                   max_attempts: 3,
+                   snapshot_request: ready_snapshot_request(user, current_project_checksum(project))
+                 )
+
+        assert completed.status == "completed"
+        assert Repo.get!(Sheet, old_sheet.id).deleted_at
+      end)
+
+    completed =
+      Repo.one!(
+        from attempt in ProjectImportAttempt,
+          where: attempt.project_id == ^project.id and attempt.status == "completed",
+          order_by: [desc: attempt.id],
+          limit: 1
+      )
+
+    snapshot_id = completed.pre_import_snapshot_id
+    assert is_integer(snapshot_id)
+    recovery_href = "#{recovery_path}#snapshot-#{snapshot_id}"
+
+    session =
+      session
+      |> visit(import_path)
+      |> assert_has("span", text: "The Yarn project replaced the previous narrative content successfully.")
+      |> assert_has(
+        "[data-testid='yarn-import-recovery-snapshot-link'][href='#{recovery_href}']",
+        text: "View recovery snapshot"
+      )
+
+    session
+    |> click("[data-testid='yarn-import-recovery-snapshot-link']")
+    |> assert_path(recovery_path)
+    |> evaluate("window.location.hash", fn hash ->
+      assert hash == "#snapshot-#{snapshot_id}"
+    end)
+    |> assert_has("#snapshot-#{snapshot_id}")
+    |> assert_has("[data-testid='snapshot-card-#{snapshot_id}']")
+  end
+
+  defp select_suggested_speaker_actions(session) do
+    evaluate(
+      session,
+      """
+      (() => {
+        const actions = Array.from(
+          document.querySelectorAll('[data-testid="yarn-import-action-create-sheet"]')
+        );
+
+        actions.forEach((action) => action.click());
+        return actions.length;
+      })()
+      """,
+      fn count -> assert count == 5 end
+    )
+  end
+
   defp assert_attempt_reference_matches_latest(session, project_id, user_id, resume_storage_key) do
     attempt = latest_active_attempt(project_id, user_id)
     attempt_storage_key = "#{resume_storage_key}:attempt:#{attempt.id}"
@@ -123,5 +252,56 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     on_exit(fn -> File.rm(path) end)
 
     path
+  end
+
+  defp yarn_project_fixture do
+    filename = "storyarn-emberfall-#{System.unique_integer([:positive])}.zip"
+    path = Path.join(System.tmp_dir!(), filename)
+
+    entries =
+      Enum.map(@yarn_project_fixture_files, fn relative_path ->
+        source_path = Path.join(@yarn_project_fixture_root, relative_path)
+        {String.to_charlist(relative_path), File.read!(source_path)}
+      end)
+
+    {:ok, {_name, archive}} = :zip.create(~c"emberfall.zip", entries, [:memory])
+    File.write!(path, archive)
+    on_exit(fn -> File.rm(path) end)
+
+    path
+  end
+
+  defp ready_snapshot_request(user, checksum) do
+    fn _scope, project, attrs ->
+      {:ok,
+       full_project_snapshot_fixture(project, %{
+         created_by_id: user.id,
+         idempotency_key: attrs.idempotency_key,
+         project_checksum: checksum,
+         asset_blob_size_bytes: 0
+       })}
+    end
+  end
+
+  defp current_project_checksum(project) do
+    assert {:ok, checksum} =
+             Repo.transact(fn ->
+               assets = Assets.list_assets_for_export(project.id)
+               {asset_blob_hashes, asset_metadata} = AssetHashResolver.capture_catalog_maps(assets)
+
+               snapshot =
+                 project.id
+                 |> ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(localization_scope: :active)
+                 |> Map.put(
+                   "asset_restore_contract_version",
+                   AssetHashResolver.exact_restore_contract_version()
+                 )
+                 |> Map.put("asset_blob_hashes", asset_blob_hashes)
+                 |> Map.put("asset_metadata", asset_metadata)
+
+               SnapshotArchiveStorage.canonical_project_checksum(snapshot, assets)
+             end)
+
+    checksum
   end
 end

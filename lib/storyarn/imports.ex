@@ -37,7 +37,6 @@ defmodule Storyarn.Imports do
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Versioning
   alias Storyarn.Workers.ImportProjectWorker
 
   @plan_retention_seconds 86_400
@@ -50,16 +49,9 @@ defmodule Storyarn.Imports do
   # happened to check it.
   @import_action :manage_project
 
-  @doc "Returns whether the server may produce snapshot-backed replacement jobs."
+  @doc "Returns whether snapshot-backed replacement is supported by this release."
   @spec replace_project_available?() :: boolean()
-  def replace_project_available? do
-    producer_enabled? =
-      :storyarn
-      |> Application.get_env(__MODULE__, [])
-      |> Keyword.get(:replace_project_enabled, false)
-
-    producer_enabled? == true and Versioning.project_snapshot_restore_enabled?()
-  end
+  def replace_project_available?, do: true
 
   @doc """
   Parse an import file and detect its format.
@@ -923,11 +915,7 @@ defmodule Storyarn.Imports do
 
   defp ensure_import_mode_available(%ProjectImportAttempt{}, "additive"), do: :ok
 
-  defp ensure_import_mode_available(%ProjectImportAttempt{replace_eligible: true}, "replace_project") do
-    if replace_project_available?(),
-      do: :ok,
-      else: {:error, :project_snapshot_restore_disabled}
-  end
+  defp ensure_import_mode_available(%ProjectImportAttempt{replace_eligible: true}, "replace_project"), do: :ok
 
   defp ensure_import_mode_available(%ProjectImportAttempt{}, "replace_project"),
     do: {:error, :import_replace_not_eligible}

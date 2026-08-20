@@ -1338,6 +1338,44 @@ describe("ImportPanel resume state", () => {
     wrapper.unmount();
   });
 
+  it.each([
+    ["completed", "done"],
+    ["failed", "error"],
+  ] as const)(
+    "links a %s replacement result to the server-derived recovery snapshot area",
+    (status, step) => {
+      const recoverySnapshotUrl =
+        "/workspaces/opaque-workspace/projects/opaque-project/settings/snapshots#snapshot-91";
+      const state = {
+        ...attemptState(status, step),
+        importMode: "replace_project",
+        replaceEligible: true,
+        recoverySnapshotUrl,
+        errorCode: status === "failed" ? "import_project_replacement_failed" : null,
+      } satisfies ImportState;
+      const wrapper = mountPanel(state);
+
+      const link = wrapper.get('[data-testid="yarn-import-recovery-snapshot-link"]');
+      expect(link.attributes("href")).toBe(recoverySnapshotUrl);
+      expect(link.text()).toContain("View recovery snapshot");
+
+      wrapper.unmount();
+    },
+  );
+
+  it("never renders a recovery snapshot link for an additive result", () => {
+    const state = {
+      ...attemptState("completed", "done"),
+      recoverySnapshotUrl:
+        "/workspaces/opaque-workspace/projects/opaque-project/settings/snapshots#snapshot-91",
+    } satisfies ImportState;
+    const wrapper = mountPanel(state);
+
+    expect(wrapper.find('[data-testid="yarn-import-recovery-snapshot-link"]').exists()).toBe(false);
+
+    wrapper.unmount();
+  });
+
   it("renders the replacement safety contract in Spanish", () => {
     setTestLocale("es");
     const wrapper = mountPanel(replacementPreviewState());
@@ -1347,6 +1385,24 @@ describe("ImportPanel resume state", () => {
     );
     expect(wrapper.get("#yarn-import-confirm").text()).toContain(
       "Reemplazar contenido del proyecto",
+    );
+
+    wrapper.unmount();
+  });
+
+  it("localizes the recovery snapshot link in Spanish", () => {
+    setTestLocale("es");
+    const state = {
+      ...attemptState("completed", "done"),
+      importMode: "replace_project",
+      replaceEligible: true,
+      recoverySnapshotUrl:
+        "/workspaces/opaque-workspace/projects/opaque-project/settings/snapshots#snapshot-91",
+    } satisfies ImportState;
+    const wrapper = mountPanel(state);
+
+    expect(wrapper.get('[data-testid="yarn-import-recovery-snapshot-link"]').text()).toContain(
+      "Ver snapshot de recuperación",
     );
 
     wrapper.unmount();

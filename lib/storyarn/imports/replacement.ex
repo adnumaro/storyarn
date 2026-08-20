@@ -17,7 +17,6 @@ defmodule Storyarn.Imports.Replacement do
   alias Storyarn.Flows.Flow
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Telemetry
-  alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Projects.Project
@@ -50,8 +49,7 @@ defmodule Storyarn.Imports.Replacement do
       when is_list(opts) do
     snapshot_previously_bound? = is_integer(attempt.pre_import_snapshot_id)
 
-    with :ok <- ensure_restore_enabled(),
-         {:ok, bound_attempt} <- ensure_snapshot_requested(attempt, project, opts) do
+    with {:ok, bound_attempt} <- ensure_snapshot_requested(attempt, project, opts) do
       result =
         bound_attempt
         |> inspect_snapshot_state(project)
@@ -101,9 +99,6 @@ defmodule Storyarn.Imports.Replacement do
 
       not Billing.workspace_lock_held?(project.workspace_id) ->
         {:error, :storage_accounting_lock_required}
-
-      not Versioning.project_snapshot_restore_enabled?() ->
-        {:error, :project_snapshot_restore_disabled}
 
       true ->
         verify_and_prepare_project(attempt, project)
@@ -207,7 +202,6 @@ defmodule Storyarn.Imports.Replacement do
            %ProjectImportAttempt{} = attempt <- lock_attempt(attempt_hint, project),
            true <- attempt.pre_import_snapshot_id == snapshot.id,
            true <- attempt.status in ["queued", "running", "retrying"],
-           :ok <- ensure_restore_enabled(),
            :ok <- validate_snapshot_request_identity(attempt, project, snapshot) do
         bind_snapshot_by_state(attempt, snapshot)
       else
@@ -370,7 +364,6 @@ defmodule Storyarn.Imports.Replacement do
       set: [archived_at: now, archive_reason: "version_replaced", updated_at: now]
     )
 
-    Repo.delete_all(from entry in GlossaryEntry, where: entry.project_id == ^project_id)
     :ok
   end
 
@@ -464,21 +457,10 @@ defmodule Storyarn.Imports.Replacement do
 
   defp current_attempt(id), do: Repo.get!(ProjectImportAttempt, id)
 
-  defp ensure_restore_enabled do
-    case Versioning.ensure_restore_enabled({:project_snapshot_restore, "full"}) do
-      :ok -> :ok
-      {:error, reason} -> {:error, normalize_restore_policy_error(reason)}
-    end
-  end
-
   defp normalize_snapshot_request_error(reason) when reason in [:limit_reached, :snapshot_limit_reached],
     do: :pre_import_snapshot_capacity_unavailable
 
   defp normalize_snapshot_request_error(:unauthorized), do: :unauthorized
   defp normalize_snapshot_request_error(:invalid_snapshot_request), do: :invalid_import_snapshot_request
   defp normalize_snapshot_request_error(_reason), do: :pre_import_snapshot_request_failed
-
-  defp normalize_restore_policy_error(:restore_temporarily_disabled), do: :project_snapshot_restore_disabled
-
-  defp normalize_restore_policy_error(reason), do: reason
 end

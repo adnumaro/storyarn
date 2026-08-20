@@ -172,8 +172,10 @@ export interface ImportState {
   importMode: ImportMode;
   /** True only for a validated archive that contains one real `.yarnproject`. */
   replaceEligible: boolean;
-  /** Runtime, fail-closed capability supplied by the server. */
+  /** Replacement support shipped by this release; the server always supplies `true`. */
   replaceAvailable: boolean;
+  /** Server-derived internal route to the exact replacement recovery snapshot card. */
+  recoverySnapshotUrl?: string | null;
   warningCodes?: string[];
   status?: ImportAttemptStatus | null;
 }

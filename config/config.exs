@@ -182,12 +182,6 @@ config :storyarn, Storyarn.Gettext,
   default_locale: "en",
   locales: ~w(en es)
 
-# Enabling exact snapshot restore is necessary but not sufficient for Yarn
-# replacement imports. Keep their producer disabled during rolling deploys so
-# an older imports worker can never consume a destructive-mode job it does not
-# understand. Operators enable this only after every imports worker is current.
-config :storyarn, Storyarn.Imports, replace_project_enabled: false
-
 # Configures the mailer
 # Development uses Mailpit (SMTP on localhost:1025, UI on localhost:8025)
 # Production uses Resend API (configured in runtime.exs)
@@ -224,13 +218,14 @@ config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
   build_lease_ttl_seconds: 5 * 60,
   export_lease_retention_seconds: 7 * 24 * 60 * 60
 
-# Mutating restore surfaces remain disabled by default and are enabled
+# Entity-version restore surfaces remain disabled by default and are enabled
 # independently only after their canonical workflows are operationally ready.
+# Exact full-project snapshot restore is part of the recovery contract and is
+# always available to authorized project managers.
 config :storyarn, Storyarn.Versioning.RestorePolicy,
   sheet_version_restore: false,
   flow_version_restore: false,
-  scene_version_restore: false,
-  project_snapshot_restore: false
+  scene_version_restore: false
 
 # Configures the endpoint
 config :storyarn, StoryarnWeb.Endpoint,

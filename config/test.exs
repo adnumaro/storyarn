@@ -141,7 +141,6 @@ config :storyarn, Storyarn.AI.Settlement, StoryarnTest.AI.FakeSettlement
 # Slice-2 contract tests use a deterministic provider and non-financial fake
 # settlement. Production keeps every one of these boundaries unavailable.
 config :storyarn, Storyarn.AI.TaskRegistry, tasks: [StoryarnTest.AI.ContractTask]
-config :storyarn, Storyarn.Imports, replace_project_enabled: true
 
 # In test we don't send emails
 config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Test
@@ -168,8 +167,7 @@ config :storyarn, Storyarn.Repo,
 config :storyarn, Storyarn.Versioning.RestorePolicy,
   sheet_version_restore: true,
   flow_version_restore: true,
-  scene_version_restore: true,
-  project_snapshot_restore: true
+  scene_version_restore: true
 
 # Server is enabled for E2E tests (Playwright requires a running server)
 config :storyarn, StoryarnWeb.Endpoint,

@@ -1,0 +1,18 @@
+title: Arrival
+tags: chapter_1 emberfall_gate
+---
+<<declare $mara_trust = 0>>
+<<declare $has_watch_map = false>>
+<<declare $watch_alerted = false>>
+Narrator: Rain turns the road to Emberfall into black glass. #line:arrival_rain
+Mara: The western gate closes at midnight. Decide whether you are coming with me. #line:arrival_mara_offer
+-> Help Mara hide the courier satchel #line:arrival_help
+    Player: I will carry it through the market. #line:arrival_help_reply
+    <<set $mara_trust to $mara_trust + 1>>
+    <<set $has_watch_map to true>>
+    <<jump Market>>
+-> Refuse and approach the watch alone #line:arrival_refuse
+    Player: I want no part in a smuggler's bargain. #line:arrival_refuse_reply
+    <<set $mara_trust to $mara_trust - 1>>
+    <<jump Watchtower>>
+===

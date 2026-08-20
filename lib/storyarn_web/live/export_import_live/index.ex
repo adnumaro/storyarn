@@ -162,6 +162,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       importMode: state.import_mode,
       replaceEligible: state.replace_eligible,
       replaceAvailable: Imports.replace_project_available?(),
+      recoverySnapshotUrl: Map.get(state, :recovery_snapshot_url),
       warningCodes: state.warning_codes,
       status: state.status
     }
@@ -729,6 +730,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       conflict_strategy: "rename",
       import_mode: "additive",
       replace_eligible: false,
+      recovery_snapshot_url: nil,
       warning_codes: [],
       status: nil
     }
@@ -924,6 +926,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
           conflict_strategy: attempt.conflict_strategy || "rename",
           import_mode: attempt.import_mode || "additive",
           replace_eligible: attempt.replace_eligible == true,
+          recovery_snapshot_url: recovery_snapshot_url(socket, attempt),
           warning_codes: attempt.warning_codes || [],
           status: attempt.status
         })
@@ -956,12 +959,31 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       conflict_strategy: attempt.conflict_strategy || "rename",
       import_mode: attempt.import_mode || "additive",
       replace_eligible: attempt.replace_eligible == true,
+      recovery_snapshot_url: recovery_snapshot_url(socket, attempt),
       warning_codes: attempt.warning_codes || [],
       status: attempt.status
     }
 
     assign(socket, :import_state, state)
   end
+
+  defp recovery_snapshot_url(socket, %ProjectImportAttempt{
+         status: status,
+         import_mode: "replace_project",
+         pre_import_snapshot_id: snapshot_id,
+         snapshot_reference_bound_at: %DateTime{},
+         snapshot_lifecycle_generation: lifecycle_generation,
+         snapshot_capture_digest: capture_digest
+       })
+       when status in ["completed", "failed", "expired"] and is_integer(snapshot_id) and snapshot_id > 0 and
+              is_integer(lifecycle_generation) and lifecycle_generation > 0 and is_binary(capture_digest) do
+    base =
+      ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/settings/snapshots"
+
+    "#{base}#snapshot-#{snapshot_id}"
+  end
+
+  defp recovery_snapshot_url(_socket, %ProjectImportAttempt{}), do: nil
 
   defp import_attempt_preview(_state, attempt, "done", _resumed_preview) do
     %{

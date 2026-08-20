@@ -7,6 +7,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+  import Storyarn.VersioningFixtures
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Flows.FlowConnection
@@ -46,6 +47,11 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
   defp export_url(project) do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
+  end
+
+  defp snapshot_url(project, snapshot_id) do
+    base = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/snapshots"
+    "#{base}#snapshot-#{snapshot_id}"
   end
 
   describe "import and export page" do
@@ -957,6 +963,44 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert state["step"] == "done"
       assert state["attemptId"] == completed.id
       assert state["preview"]["counts"] == completed.counts
+      assert state["recoverySnapshotUrl"] == nil
+    end
+
+    test "rehydrates a completed replacement with its recovery snapshot route", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      completed = terminal_replacement_attempt(Scope.for_user(user), project, :completed)
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => completed.id})
+      assert_reply(view, %{ok: true, status: "completed"})
+
+      state = import_state(view)
+      assert state["step"] == "done"
+
+      assert state["recoverySnapshotUrl"] ==
+               snapshot_url(project, completed.pre_import_snapshot_id)
+
+      refute Map.has_key?(state, "recoverySnapshotId")
+    end
+
+    test "rehydrates a failed replacement with its recovery snapshot route", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      failed = terminal_replacement_attempt(Scope.for_user(user), project, :failed)
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => failed.id})
+      assert_reply(view, %{ok: true, status: "failed"})
+
+      state = import_state(view)
+      assert state["step"] == "error"
+      assert state["recoverySnapshotUrl"] == snapshot_url(project, failed.pre_import_snapshot_id)
+      refute Map.has_key?(state, "recoverySnapshotId")
     end
 
     test "polling a terminal attempt reveals another import that is still active", %{
@@ -1818,6 +1862,72 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
     {:ok, {_name, binary}} = :zip.create(~c"replaceable-yarn.zip", entries, [:memory])
     binary
+  end
+
+  defp terminal_replacement_attempt(scope, project, terminal_status) do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(
+               scope,
+               project,
+               "replaceable-project.zip",
+               replaceable_yarn_archive()
+             )
+
+    assert {:ok, replacement} =
+             Imports.update_import_mode(scope, ready.id, "replace_project")
+
+    assert {:ok, reviewed, _preview, fingerprint} =
+             Imports.resolve_import_review(scope, replacement.id, false, [])
+
+    assert {:ok, queued} =
+             Imports.enqueue_import(scope, reviewed.id, :rename,
+               import_mode: "replace_project",
+               replace_acknowledged: true,
+               review_confirmation_fingerprint: fingerprint
+             )
+
+    snapshot =
+      full_project_snapshot_fixture(project, %{
+        created_by_id: scope.user.id,
+        idempotency_key: queued.snapshot_request_key,
+        asset_blob_size_bytes: 0
+      })
+
+    bound =
+      queued
+      |> Ecto.Changeset.change(
+        pre_import_snapshot_id: snapshot.id,
+        snapshot_reference_bound_at: TimeHelpers.now()
+      )
+      |> Repo.update!()
+
+    snapshot_ready =
+      bound
+      |> ProjectImportAttempt.snapshot_ready_changeset(snapshot)
+      |> Repo.update!()
+
+    now = TimeHelpers.now()
+
+    case terminal_status do
+      :completed ->
+        snapshot_ready
+        |> ProjectImportAttempt.running_changeset(now)
+        |> Repo.update!()
+        |> ProjectImportAttempt.completed_changeset(now, %{"flows" => 1}, replacement_prepared_at: now)
+        |> Repo.update!()
+
+      :failed ->
+        snapshot_ready
+        |> ProjectImportAttempt.failed_changeset(%{
+          status: "failed",
+          stage: "failed",
+          error_code: "import_project_replacement_failed",
+          error_message: nil,
+          error_report: %{},
+          completed_at: now
+        })
+        |> Repo.update!()
+    end
   end
 
   defp condition(sheet, variable) do

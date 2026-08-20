@@ -1,0 +1,19 @@
+title: Market
+tags: chapter_1 emberfall_market
+---
+Tarin: Fresh lamps, dry tinder, and questions that cost extra. #line:market_tarin_greeting
+<<if $has_watch_map>>
+    Mara: Tarin marked a maintenance stair beneath the watchtower. #line:market_map_route
+<<elseif $mara_trust > 0>>
+    Mara: Stay close. I know another way past the patrol. #line:market_trusted_route
+<<else>>
+    Tarin: Without a map, the front gate is your only road. #line:market_no_route
+<<endif>>
+-> Follow Mara toward the maintenance stair #line:market_follow
+    Mara: Keep your hood up and let me speak first. #line:market_follow_reply
+    <<jump Watchtower>>
+-> Ask Tarin who warned the watch <<if $mara_trust >= 1>> #line:market_question
+    Tarin: Captain Ilyra paid for every rumour before sunset. #line:market_warning
+    <<set $watch_alerted to true>>
+    <<jump Watchtower>>
+===

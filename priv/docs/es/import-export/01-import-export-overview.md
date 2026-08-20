@@ -40,7 +40,7 @@ Solo los propietarios del proyecto pueden preparar o ejecutar una importación. 
 
 El reemplazo completo solo se ofrece para un ZIP de proyecto Yarn explícito que contenga un único `.yarnproject` válido. Un archivo `.yarn` suelto o un ZIP de proyecto implícito se puede añadir, pero no puede reemplazar el proyecto actual.
 
-Antes del reemplazo, Storyarn crea un snapshot completo normal y visible, y espera hasta que esté verificado y se pueda recuperar. Mientras se construye, no modifica nada. Después comprueba que el proyecto siga coincidiendo exactamente con el snapshot y, en una única transacción de base de datos, mueve las Fichas, Flujos, Escenas y el contenido de localización activos a la papelera o archivo recuperable antes de importar el proyecto Yarn. Se conservan los assets, ajustes del proyecto, miembros, snapshots, contenido que ya estaba en la papelera y el historial de versiones de entidades. Si falla el snapshot, la recuperación no está disponible, el proyecto cambia tras la captura o falla la materialización, el reemplazo se detiene sin conservar cambios parciales.
+Antes del reemplazo, Storyarn crea un snapshot completo normal y visible, y espera hasta que esté verificado y se pueda recuperar. Mientras se construye, no modifica nada. Después comprueba que el proyecto siga coincidiendo exactamente con el snapshot y, en una única transacción de base de datos, mueve las Fichas, Flujos, Escenas, idiomas y textos de localización activos a la papelera o archivo recuperable antes de importar el proyecto Yarn. Se conservan los assets, ajustes del proyecto, miembros, snapshots, entradas del glosario, contenido que ya estaba en la papelera y el historial de versiones de entidades. Si falla el snapshot, la recuperación no está disponible, el proyecto cambia tras la captura o falla la materialización, el reemplazo se detiene sin conservar cambios parciales.
 
 ### Límites actuales del importador de Yarn
 
@@ -49,7 +49,7 @@ Antes del reemplazo, Storyarn crea un snapshot completo normal y visible, y espe
 - Los grupos de líneas, los grupos de nodos y las cláusulas `when` de los storylets de Yarn 3 todavía no se convierten. Los archivos que los usan se rechazan porque aplanar sus reglas de selección cambiaría qué diálogo aparece. Los bloques `once` con estado se rechazan por el mismo motivo.
 - Las fichas de hablante importadas solo contienen el nombre inferido; complétalas después con el esquema propio de tu proyecto. Las expresiones de hablante dinámicas permanecen en el texto del diálogo y se marcan para revisión en vez de enlazarse a una ficha de personaje.
 - No se importan imágenes, audio, assets de Unity, recursos de Godot ni bytecode compilado de Yarn.
-- El modo de reemplazo requiere que la recuperación mediante snapshots completos esté habilitada y que el workspace tenga espacio suficiente para crear el punto de recuperación.
+- El modo de reemplazo requiere espacio suficiente en el workspace para que Storyarn cree y verifique el snapshot completo de recuperación. Si no puede completar ese punto de recuperación, el proyecto existente permanece intacto.
 
 ## Formatos de exportacion
 

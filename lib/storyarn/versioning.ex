@@ -164,7 +164,7 @@ defmodule Storyarn.Versioning do
     to: ProjectSnapshotRestoreLifecycle,
     as: :request
 
-  @doc "Returns whether exact full-project snapshot restore is enabled."
+  @doc "Returns whether this release supports exact full-project snapshot restore."
   def project_snapshot_restore_enabled? do
     RestorePolicy.enabled?({:project_snapshot_restore, "full"})
   end
