@@ -56,10 +56,12 @@ describe("SettingsLayout workspace navigation", () => {
 
     expect(hrefs).toContain("/users/settings/workspaces/admin/general");
     expect(hrefs).toContain("/users/settings/workspaces/admin/members");
+    expect(hrefs).toContain("/users/settings/workspaces/admin/imports");
     expect(hrefs).toContain("/users/settings/workspaces/admin/deleted-projects");
 
     expect(hrefs).toContain("/users/settings/workspaces/member/general");
     expect(hrefs).not.toContain("/users/settings/workspaces/member/members");
+    expect(hrefs).not.toContain("/users/settings/workspaces/member/imports");
     expect(hrefs).not.toContain("/users/settings/workspaces/member/deleted-projects");
 
     expect(hrefs.some((href) => href?.includes("/workspaces/viewer/"))).toBe(false);

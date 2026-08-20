@@ -201,6 +201,40 @@ defmodule Storyarn.Versioning.SnapshotObjectFormatTest do
   end
 
   describe "manifest validation" do
+    test "sums logical asset bytes instead of deduplicated blob bytes" do
+      first = asset(41, "first.png", @hash)
+      second = asset(42, "second.png", @hash)
+      assert {:ok, catalog} = SnapshotObjectFormat.build_catalog([first, second])
+      assert length(catalog.assets) == 2
+      assert length(catalog.blobs) == 1
+
+      project = %{"format_version" => 2, "project" => %{"name" => "Portable"}}
+      project_json = Jason.encode!(project)
+
+      project_descriptor = %{
+        "kind" => "project",
+        "path" => "project.json",
+        "sha256" => sha256(project_json),
+        "size_bytes" => byte_size(project_json),
+        "content_type" => "application/json"
+      }
+
+      assert {:ok, manifest} =
+               SnapshotObjectFormat.build_manifest(
+                 project,
+                 catalog.assets,
+                 catalog.blobs,
+                 project_descriptor: project_descriptor
+               )
+
+      assert {:ok, 24} = SnapshotObjectFormat.logical_asset_bytes(manifest)
+
+      assert {:error, {:snapshot_object_count_mismatch, _expected, _actual}} =
+               manifest
+               |> put_in(["counts", "assets"], 1)
+               |> SnapshotObjectFormat.logical_asset_bytes()
+    end
+
     test "validates the exact inventory and rejects count or path tampering" do
       asset = asset(41, "portrait.png", @hash)
       assert {:ok, catalog} = SnapshotObjectFormat.build_catalog([asset])

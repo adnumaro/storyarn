@@ -2,8 +2,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   @moduledoc """
   Read-only inventory of projects retained in workspace trash.
 
-  Recovery remains unavailable until the canonical project-snapshot restore
-  workflow is connected.
+  A downloaded project snapshot can be imported as a new project from the
+  workspace imports page.
   """
   use StoryarnWeb, :live_view
 
@@ -55,6 +55,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
         v-inject="settings-layout"
         id="settings-deleted-projects-vue"
         deleted-projects={serialize_deleted_projects(@deleted_projects)}
+        imports-path={~p"/users/settings/workspaces/#{@workspace.slug}/imports"}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """

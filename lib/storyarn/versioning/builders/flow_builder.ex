@@ -70,6 +70,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     speaker_sheet_id word_count machine_translated last_translated_at last_reviewed_at
     translated_by_id reviewed_by_id archived_at archive_reason
   )
+  @snapshot_import_tombstone_nodes_fun_key :snapshot_import_tombstone_nodes_fun
+  @snapshot_import_external_tombstone_node_map_key :snapshot_import_external_tombstone_node_map
 
   # ========== Build Snapshot ==========
 
@@ -995,6 +997,14 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
              opts
            ),
          node_id_map = node_data.id_map,
+         {:ok, tombstone_node_id_map} <-
+           materialize_snapshot_import_tombstone_nodes(
+             flow_id,
+             snapshot,
+             node_id_map,
+             now,
+             opts
+           ),
          {:ok, _linked_parents} <- link_snapshot_node_parents(Repo, nodes, node_id_map, project_id, opts),
          {:ok, sequence_resource_data} <-
            insert_sequence_resources(Repo, nodes, node_id_map, snapshot, project_id, opts, now),
@@ -1002,7 +1012,12 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
          connection_context = %{
            nodes_data: nodes,
            materialized_nodes_data: external_refs.nodes,
-           node_id_map: node_id_map,
+           node_id_map:
+             snapshot_import_connection_node_id_map(
+               node_id_map,
+               tombstone_node_id_map,
+               opts
+             ),
            project_id: project_id,
            opts: opts
          },
@@ -1019,6 +1034,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         snapshot,
         flow_id,
         node_id_map,
+        tombstone_node_id_map,
         connection_id_map,
         sequence_resource_data,
         opts
@@ -1120,6 +1136,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
          snapshot,
          flow_id,
          node_id_map,
+         tombstone_node_id_map,
          connection_id_map,
          sequence_resource_data,
          opts
@@ -1132,13 +1149,18 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         force: true
       )
 
-    id_maps = %{
-      flow: MaterializationHelpers.root_id_map(snapshot, flow_id),
-      node: node_id_map,
-      connection: connection_id_map,
-      sequence_track: sequence_resource_data.track_id_map,
-      sequence_visual_layer: sequence_resource_data.visual_layer_id_map
-    }
+    id_maps =
+      maybe_put_snapshot_import_tombstone_node_map(
+        %{
+          flow: MaterializationHelpers.root_id_map(snapshot, flow_id),
+          node: node_id_map,
+          connection: connection_id_map,
+          sequence_track: sequence_resource_data.track_id_map,
+          sequence_visual_layer: sequence_resource_data.visual_layer_id_map
+        },
+        tombstone_node_id_map,
+        opts
+      )
 
     with :ok <- maybe_restore_instantiated_flow_localization(project_id, snapshot, id_maps, opts),
          :ok <-
@@ -1151,6 +1173,49 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     else
       {:error, reason} -> Repo.rollback(reason)
     end
+  end
+
+  defp materialize_snapshot_import_tombstone_nodes(flow_id, snapshot, node_id_map, now, opts) do
+    case Keyword.get(opts, @snapshot_import_tombstone_nodes_fun_key) do
+      nil ->
+        {:ok, %{}}
+
+      fun when is_function(fun, 4) ->
+        with {:ok, tombstone_node_id_map} <- fun.(flow_id, snapshot, node_id_map, now),
+             :ok <- validate_snapshot_import_tombstone_node_map(tombstone_node_id_map, node_id_map) do
+          {:ok, tombstone_node_id_map}
+        end
+
+      _invalid ->
+        {:error, :invalid_snapshot_import_tombstone_nodes_materializer}
+    end
+  end
+
+  defp validate_snapshot_import_tombstone_node_map(tombstone_node_id_map, active_node_id_map)
+       when is_map(tombstone_node_id_map) do
+    valid? =
+      Enum.all?(tombstone_node_id_map, fn {source_id, destination_id} ->
+        is_integer(source_id) and source_id > 0 and is_integer(destination_id) and destination_id > 0 and
+          not Map.has_key?(active_node_id_map, source_id)
+      end)
+
+    if valid?, do: :ok, else: {:error, :invalid_snapshot_import_tombstone_node_map}
+  end
+
+  defp validate_snapshot_import_tombstone_node_map(_invalid, _active_node_id_map),
+    do: {:error, :invalid_snapshot_import_tombstone_node_map}
+
+  defp maybe_put_snapshot_import_tombstone_node_map(id_maps, tombstone_node_id_map, opts) do
+    if Keyword.has_key?(opts, @snapshot_import_tombstone_nodes_fun_key),
+      do: Map.put(id_maps, :referenced_tombstone_node, tombstone_node_id_map),
+      else: id_maps
+  end
+
+  defp snapshot_import_connection_node_id_map(active_node_id_map, tombstone_node_id_map, opts) do
+    opts
+    |> Keyword.get(@snapshot_import_external_tombstone_node_map_key, %{})
+    |> Map.merge(active_node_id_map)
+    |> Map.merge(tombstone_node_id_map)
   end
 
   defp maybe_restore_instantiated_flow_localization(project_id, snapshot, id_maps, opts) do

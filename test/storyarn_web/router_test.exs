@@ -33,6 +33,11 @@ defmodule StoryarnWeb.RouterTest do
       assert redirected_to(conn) =~ "/users/log-in"
     end
 
+    test "redirects to login for unauthenticated workspace imports access", %{conn: conn} do
+      conn = get(conn, ~p"/users/settings/workspaces/test-ws/imports")
+      assert redirected_to(conn) =~ "/users/log-in"
+    end
+
     test "connected accounts route is not exposed", %{conn: conn} do
       conn = get(conn, "/users/settings/connections")
       assert response(conn, 404)

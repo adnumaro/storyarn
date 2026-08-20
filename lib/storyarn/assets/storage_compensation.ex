@@ -16,6 +16,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   alias Storyarn.Repo
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
+  alias Storyarn.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   require Logger
@@ -37,6 +38,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   @storage_reservation_kinds ~w(snapshot-build restore-staging snapshot-export)
   @storage_reservation_lease_pattern ~r/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
   @storage_reservation_path_segment_pattern ~r/\A[A-Za-z0-9][A-Za-z0-9._-]{0,127}\z/
+  @workspace_snapshot_import_key_pattern ~r'\Aworkspaces/[1-9]\d*/snapshot-imports/v1/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(?:snapshot\.zip|blobs/[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31})\z'
   @max_storage_reservation_relative_key_bytes 512
   @max_storage_reservation_path_segments 16
   @multipart_cleanup_evidence_key {__MODULE__, :multipart_cleanup_aborted_count}
@@ -1303,6 +1305,9 @@ defmodule Storyarn.Assets.StorageCompensation do
       active_restore_storage_owner?(storage_key) ->
         {:error, :storage_key_owned_by_active_restore}
 
+      active_workspace_snapshot_import_storage_owner?(storage_key) ->
+        {:error, :storage_key_owned_by_active_workspace_snapshot_import}
+
       committed_asset_key?(storage_key) ->
         retain_committed_asset(storage_key)
 
@@ -1320,6 +1325,9 @@ defmodule Storyarn.Assets.StorageCompensation do
       active_restore_storage_owner?(storage_key, restore_cleanup_owner) ->
         {:error, :storage_key_owned_by_active_restore}
 
+      active_workspace_snapshot_import_storage_owner?(storage_key) ->
+        {:error, :storage_key_owned_by_active_workspace_snapshot_import}
+
       committed_asset_key?(storage_key) ->
         retain_committed_asset(storage_key)
 
@@ -1333,15 +1341,19 @@ defmodule Storyarn.Assets.StorageCompensation do
         delete_if_still_invalid(storage_key)
 
       match?({:ok, _project_id}, StorageKeyLock.project_blob_id(storage_key)) ->
-        {:ok, project_id} = StorageKeyLock.project_blob_id(storage_key)
-
-        if Repo.exists?(from project in Project, where: project.id == ^project_id),
-          do: retain_committed_project_blob(project_id),
-          else: delete_storage_object(storage_key)
+        delete_uncommitted_project_blob(storage_key)
 
       true ->
         delete_storage_object(storage_key)
     end
+  end
+
+  defp delete_uncommitted_project_blob(storage_key) do
+    {:ok, project_id} = StorageKeyLock.project_blob_id(storage_key)
+
+    if Repo.exists?(from project in Project, where: project.id == ^project_id),
+      do: retain_committed_project_blob(project_id),
+      else: delete_storage_object(storage_key)
   end
 
   defp delete_if_still_invalid(storage_key) do
@@ -1448,6 +1460,15 @@ defmodule Storyarn.Assets.StorageCompensation do
   end
 
   defp exclude_restore_cleanup_owner(query, nil), do: query
+
+  defp active_workspace_snapshot_import_storage_owner?(storage_key) do
+    Repo.exists?(
+      from import in WorkspaceSnapshotImport,
+        where:
+          import.status in ^WorkspaceSnapshotImport.active_statuses() and
+            fragment("? @> ARRAY[?]::varchar[]", import.materialization_storage_keys, ^storage_key)
+    )
+  end
 
   defp normalize_restore_cleanup_owner(%StorageReservation{
          id: reservation_id,
@@ -1617,7 +1638,8 @@ defmodule Storyarn.Assets.StorageCompensation do
   defp valid_storage_key?(storage_key) when is_binary(storage_key) do
     String.valid?(storage_key) and
       (project_owned_storage_key?(storage_key) or template_storage_key?(storage_key) or
-         snapshot_archive_storage_key?(storage_key) or storage_reservation_key?(storage_key))
+         snapshot_archive_storage_key?(storage_key) or storage_reservation_key?(storage_key) or
+         String.match?(storage_key, @workspace_snapshot_import_key_pattern))
   end
 
   @doc false

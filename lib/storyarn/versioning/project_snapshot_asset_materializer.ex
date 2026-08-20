@@ -29,6 +29,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
 
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
   @logical_id_regex ~r/\Aasset-[0-9]{6}\z/
+  @workspace_snapshot_import_staging_prefix_regex ~r/\Aworkspaces\/[1-9][0-9]*\/snapshot-imports\/v1\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
 
   defmodule Plan do
     @moduledoc false
@@ -113,6 +114,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
 
   def stage_destination_objects(_plan, _tracker), do: {:error, :invalid_snapshot_asset_staging_request}
 
+  @doc false
+  @spec planned_storage_keys(plan()) :: [String.t()]
+  def planned_storage_keys(%Plan{} = plan) do
+    (Enum.map(plan.blobs, & &1.destination_key) ++
+       Enum.map(plan.assets, & &1.destination_key))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
   @doc """
   Adopts a staged catalog inside the final restore transaction.
 
@@ -147,7 +157,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
          {:ok, source_id_map} <- source_id_map(plan.source_refs, logical_id_map),
          {:ok, assets} <-
            apply_relationships(
-             plan.assets,
+             plan,
              assets,
              logical_id_map,
              source_id_map,
@@ -234,7 +244,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
   defp blob_objects(_objects), do: {:error, :invalid_snapshot_blob_inventory}
 
   defp validate_staging_keys(blobs, staging_prefix, staging_keys) do
-    expected = Map.new(blobs, &{&1["path"], staging_prefix <> "/" <> &1["path"]})
+    expected = Map.new(blobs, &{&1["path"], expected_staging_key(staging_prefix, &1["path"])})
 
     if staging_prefix_valid?(staging_prefix) and staging_keys == expected and
          Enum.all?(Map.values(staging_keys), &Storage.canonical_key?/1) do
@@ -245,9 +255,15 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
   end
 
   defp staging_prefix_valid?(prefix) do
-    Storage.canonical_key?(prefix) and
-      not String.ends_with?(prefix, "/") and
-      String.contains?(prefix, "/storage-reservations/v1/restore-staging/")
+    Storage.canonical_key?(prefix) and not String.ends_with?(prefix, "/") and
+      (String.contains?(prefix, "/storage-reservations/v1/restore-staging/") or
+         Regex.match?(@workspace_snapshot_import_staging_prefix_regex, prefix))
+  end
+
+  defp expected_staging_key(staging_prefix, path) do
+    if String.starts_with?(staging_prefix, "workspaces/"),
+      do: staging_prefix <> "/blobs/" <> Path.basename(path),
+      else: staging_prefix <> "/" <> path
   end
 
   defp plan_assets(project_id, restore_identity, assets, staging_keys, source_refs, project_object) do
@@ -509,42 +525,108 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializer do
     end
   end
 
-  defp apply_relationships(planned_assets, assets, logical_id_map, source_id_map, project) do
+  defp apply_relationships(%Plan{} = plan, assets, logical_id_map, source_id_map, project) do
+    with :ok <- validate_unmapped_relationship_ids(plan, source_id_map),
+         {:ok, updates} <- relationship_updates(plan.assets, assets, logical_id_map, source_id_map) do
+      persist_relationship_updates(project, plan.assets, updates)
+    end
+  end
+
+  defp relationship_updates(planned_assets, assets, logical_id_map, source_id_map) do
     assets_by_id = Map.new(assets, &{&1.id, &1})
 
     planned_assets
     |> Enum.reduce_while({:ok, []}, fn planned, {:ok, updates} ->
-      asset_id = Map.fetch!(logical_id_map, planned.logical_id)
-      asset = Map.fetch!(assets_by_id, asset_id)
-
-      case exact_restored_metadata(planned.metadata, source_id_map) do
-        {:ok, metadata, lock_ids} ->
-          {:cont, {:ok, [{asset, metadata, lock_ids} | updates]}}
-
-        {:error, reason} ->
-          {:halt, {:error, {:snapshot_asset_relationship_failed, planned.logical_id, reason}}}
-      end
+      reduce_relationship_update(planned, updates, assets_by_id, logical_id_map, source_id_map)
     end)
     |> case do
-      {:ok, updates} ->
-        updates = Enum.reverse(updates)
-
-        case Assets.update_imported_snapshot_assets_exact_locked(project, updates) do
-          {:ok, updated} ->
-            {:ok, updated}
-
-          {:error, {:snapshot_asset_batch_entry_failed, index, reason}} ->
-            planned = Enum.at(planned_assets, index)
-            {:error, {:snapshot_asset_relationship_failed, planned.logical_id, reason}}
-
-          {:error, reason} ->
-            {:error, {:snapshot_asset_relationship_failed, :batch, reason}}
-        end
-
-      {:error, _reason} = error ->
-        error
+      {:ok, updates} -> {:ok, Enum.reverse(updates)}
+      {:error, _reason} = error -> error
     end
   end
+
+  defp reduce_relationship_update(planned, updates, assets_by_id, logical_id_map, source_id_map) do
+    asset_id = Map.fetch!(logical_id_map, planned.logical_id)
+    asset = Map.fetch!(assets_by_id, asset_id)
+
+    case exact_restored_metadata(planned.metadata, source_id_map) do
+      {:ok, metadata, lock_ids} ->
+        {:cont, {:ok, [{asset, metadata, lock_ids} | updates]}}
+
+      {:error, reason} ->
+        {:halt, {:error, {:snapshot_asset_relationship_failed, planned.logical_id, reason}}}
+    end
+  end
+
+  defp persist_relationship_updates(project, planned_assets, updates) do
+    case Assets.update_imported_snapshot_assets_exact_locked(project, updates) do
+      {:ok, updated} ->
+        {:ok, updated}
+
+      {:error, {:snapshot_asset_batch_entry_failed, index, reason}} ->
+        planned = Enum.at(planned_assets, index)
+        {:error, {:snapshot_asset_relationship_failed, planned.logical_id, reason}}
+
+      {:error, reason} ->
+        {:error, {:snapshot_asset_relationship_failed, :batch, reason}}
+    end
+  end
+
+  defp validate_unmapped_relationship_ids(%Plan{staging_prefix: staging_prefix, assets: planned_assets}, source_id_map) do
+    if Regex.match?(@workspace_snapshot_import_staging_prefix_regex, staging_prefix),
+      do: reject_existing_unmapped_relationship_ids(planned_assets, source_id_map),
+      else: :ok
+  end
+
+  defp reject_existing_unmapped_relationship_ids(planned_assets, source_id_map) do
+    captured_ids = MapSet.new(Map.keys(source_id_map))
+
+    unmapped_ids =
+      planned_assets
+      |> Enum.flat_map(&relationship_ids(&1.metadata))
+      |> Enum.uniq()
+      |> Enum.reject(&MapSet.member?(captured_ids, &1))
+      |> Enum.sort()
+
+    case unmapped_ids do
+      [] ->
+        :ok
+
+      ids ->
+        existing_ids =
+          Asset
+          |> where([asset], asset.id in ^ids)
+          |> order_by([asset], asc: asset.id)
+          |> lock("FOR UPDATE")
+          |> select([asset], asset.id)
+          |> Repo.all()
+
+        if existing_ids == [],
+          do: :ok,
+          else: {:error, {:snapshot_asset_unmapped_existing_relationship_ids, existing_ids}}
+    end
+  end
+
+  defp relationship_ids(nil), do: []
+
+  defp relationship_ids(metadata) when is_map(metadata) do
+    direct = Enum.map(~w(original_asset_id web_asset_id), &Map.get(metadata, &1))
+
+    variants =
+      case Map.get(metadata, "variant_asset_ids") do
+        values when is_map(values) -> Map.values(values)
+        _absent_or_invalid -> []
+      end
+
+    Enum.flat_map(direct ++ variants, fn value ->
+      case captured_asset_id(value) do
+        {:ok, id} -> [id]
+        :error -> []
+      end
+    end)
+  end
+
+  defp relationship_ids(_metadata), do: []
 
   defp exact_restored_metadata(nil, _source_id_map), do: {:ok, nil, []}
 

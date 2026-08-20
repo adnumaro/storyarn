@@ -13,6 +13,7 @@
         "ai_team": "My AI Team",
         "workspace_general": "General",
         "workspace_members": "Members",
+        "workspace_imports": "Imports",
         "deleted_projects": "Deleted Projects"
       }
     },
@@ -144,12 +145,62 @@
         "no_members": "No members found.",
         "remove_member": "Remove member"
       },
+      "imports": {
+        "title": "Imports",
+        "subtitle": "Recover a project from a Storyarn snapshot ZIP",
+        "upload": {
+          "title": "Import a project snapshot",
+          "description": "Choose a downloaded Storyarn snapshot ZIP. Storyarn validates it and checks workspace capacity before starting the import.",
+          "choose_file": "Choose ZIP",
+          "file_help": "Only Storyarn snapshot ZIP files are supported.",
+          "submit": "Validate and import",
+          "validating": "Validating snapshot…"
+        },
+        "quota": {
+          "title": "Not enough workspace storage",
+          "description": "This snapshot needs more storage than is currently available.",
+          "required": "Required",
+          "available": "Available",
+          "limit": "Workspace limit",
+          "action": "Free up workspace storage or increase the limit, then choose the ZIP again.",
+          "close": "Close"
+        },
+        "history": {
+          "title": "Project imports",
+          "empty_title": "No project imports",
+          "empty_description": "Imports started from this workspace will appear here."
+        },
+        "status": {
+          "queued": "Queued",
+          "running": "Importing",
+          "retrying": "Retrying",
+          "completed": "Completed",
+          "failed": "Failed"
+        },
+        "phase": {
+          "queued": "Waiting to start",
+          "verifying": "Validating snapshot",
+          "materializing": "Restoring project",
+          "retrying": "Preparing another attempt"
+        },
+        "attempt": "Attempt {attempt} of {max}",
+        "progress": "Import progress: {percent}%",
+        "open_project": "Open project",
+        "errors": {
+          "invalid_file": "This file is not a valid Storyarn snapshot ZIP.",
+          "file_too_large": "This ZIP exceeds the maximum supported upload size.",
+          "unauthorized": "You no longer have permission to import projects into this workspace.",
+          "failed": "The project could not be imported.",
+          "unavailable": "The snapshot could not be validated. Please try again."
+        }
+      },
       "deleted_projects": {
         "title": "Deleted Projects",
         "subtitle": "Review projects retained in workspace trash",
-        "unavailable": {
-          "title": "Project recovery is not available yet",
-          "description": "Deleted projects remain retained and count toward workspace storage. Recovery will return only after the canonical snapshot restore flow can verify the complete project before changing data."
+        "recovery": {
+          "title": "Recover a project from a snapshot",
+          "description": "If you downloaded a project snapshot before deleting it, import that ZIP to rebuild the project in this workspace.",
+          "action": "Go to imports"
         },
         "empty": {
           "title": "No deleted projects",

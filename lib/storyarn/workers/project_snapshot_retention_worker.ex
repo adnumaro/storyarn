@@ -26,6 +26,10 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
 
     now = TimeHelpers.now()
     build_recovery = Versioning.reconcile_stale_project_snapshot_builds()
+
+    snapshot_import_recovery =
+      Versioning.reconcile_abandoned_workspace_snapshot_import_deliveries(limit: @batch_size)
+
     {export_lease_after_id, export_lease_cutoff} = export_lease_cursor(args, now)
     {export_lease_purge_after_id, export_lease_purge_cutoff} = export_lease_purge_cursor(args, now)
 
@@ -93,7 +97,7 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     failure_count =
       failure_count + expired_build_failure_count + build_recovery.failure_count +
         export_lease_recovery.failure_count + export_lease_purge.failure_count +
-        abandoned_restore_failure_count
+        abandoned_restore_failure_count + snapshot_import_recovery.failure_count
 
     continuation = %{
       candidates: candidates,
@@ -134,6 +138,9 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
         orphaned_build_count: build_recovery.orphaned_count,
         settled_build_count: build_recovery.settled_count,
         abandoned_restore_count: abandoned_restore_count,
+        abandoned_snapshot_import_candidate_count: snapshot_import_recovery.candidate_count,
+        abandoned_snapshot_import_terminalized_count: snapshot_import_recovery.terminalized_count,
+        abandoned_snapshot_import_changed_count: snapshot_import_recovery.changed_count,
         failure_count: failure_count,
         continuation_count: continuation_count
       },

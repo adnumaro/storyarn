@@ -14,6 +14,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Localization
@@ -1906,6 +1907,212 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
     end
   end
 
+  describe "materialize_snapshot_import/4" do
+    test "creates a fresh project with the captured project settings", %{
+      project: project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      source =
+        project
+        |> Ecto.Changeset.change(%{
+          name: "Imported exact project",
+          description: "Captured description",
+          project_type: "legacy_type",
+          project_subtype: "legacy_subtype",
+          project_type_other: "Legacy type",
+          settings: %{"theme" => %{"primary" => "#123456"}},
+          auto_version_flows: false,
+          auto_version_scenes: false,
+          auto_version_sheets: false
+        })
+        |> Repo.update!()
+
+      snapshot_data = active_exact_capture_snapshot(source, include_referenced_tombstones: true)
+      [[reserved_project_id]] = Repo.query!("SELECT nextval(pg_get_serial_sequence('projects', 'id'))").rows
+
+      assert {:ok, recovered} =
+               ProjectRecovery.materialize_snapshot_import(
+                 workspace_id,
+                 snapshot_data,
+                 user.id,
+                 snapshot_import_project_id: reserved_project_id,
+                 snapshot_import_asset_catalog_fun: fn _project, _snapshot, _user_id, _opts ->
+                   {:ok, %{}}
+                 end
+               )
+
+      assert recovered.id == reserved_project_id
+      assert recovered.id != source.id
+
+      assert Map.take(recovered, [
+               :name,
+               :description,
+               :project_type,
+               :project_subtype,
+               :project_type_other,
+               :settings,
+               :auto_version_flows,
+               :auto_version_scenes,
+               :auto_version_sheets
+             ]) ==
+               Map.take(source, [
+                 :name,
+                 :description,
+                 :project_type,
+                 :project_subtype,
+                 :project_type_other,
+                 :settings,
+                 :auto_version_flows,
+                 :auto_version_scenes,
+                 :auto_version_sheets
+               ])
+    end
+
+    test "recreates referenced tombstones with fresh ids after the source project is hard-deleted", %{
+      project: source_project,
+      workspace_id: workspace_id,
+      user: user
+    } do
+      deleted_at = DateTime.utc_now(:second)
+
+      deleted_scene =
+        scene_fixture(source_project, %{
+          name: "Deleted scene dependency",
+          description: "Referenced by the active flow"
+        })
+
+      active_flow = flow_fixture(source_project, %{name: "Flow with deleted dependencies"})
+
+      Repo.update_all(
+        from(flow in Flow, where: flow.id == ^active_flow.id),
+        set: [scene_id: deleted_scene.id]
+      )
+
+      active_sheet = sheet_fixture(source_project, %{name: "Active block owner"})
+      deleted_owner_sheet = sheet_fixture(source_project, %{name: "Deleted block owner"})
+
+      deleted_block =
+        block_fixture(deleted_owner_sheet, %{
+          type: "text",
+          value: %{"content" => "Deleted source"},
+          variable_name: "deleted_source"
+        })
+
+      active_block =
+        block_fixture(active_sheet, %{
+          type: "text",
+          value: %{"content" => "Active inheritor"},
+          variable_name: "active_inheritor",
+          inherited_from_block_id: deleted_block.id
+        })
+
+      active_node = node_fixture(active_flow)
+      deleted_owner_flow = flow_fixture(source_project, %{name: "Deleted node owner"})
+      deleted_node = node_fixture(deleted_owner_flow)
+
+      Repo.insert!(%FlowConnection{
+        flow_id: active_flow.id,
+        source_node_id: active_node.id,
+        target_node_id: deleted_node.id,
+        source_pin: "output",
+        target_pin: "input"
+      })
+
+      Repo.update_all(from(scene in Scene, where: scene.id == ^deleted_scene.id), set: [deleted_at: deleted_at])
+
+      Repo.update_all(
+        from(sheet in Sheet, where: sheet.id == ^deleted_owner_sheet.id),
+        set: [deleted_at: deleted_at]
+      )
+
+      Repo.update_all(
+        from(flow in Flow, where: flow.id == ^deleted_owner_flow.id),
+        set: [deleted_at: deleted_at]
+      )
+
+      Repo.update_all(from(block in Block, where: block.id == ^deleted_block.id), set: [deleted_at: deleted_at])
+      Repo.update_all(from(node in FlowNode, where: node.id == ^deleted_node.id), set: [deleted_at: deleted_at])
+
+      snapshot_data = active_exact_capture_snapshot(source_project, include_referenced_tombstones: true)
+
+      assert Enum.map(snapshot_data["referenced_tombstones"]["entries"], &{&1["entity_type"], &1["id"]}) == [
+               {"sheet", deleted_owner_sheet.id},
+               {"flow", deleted_owner_flow.id},
+               {"scene", deleted_scene.id},
+               {"block", deleted_block.id},
+               {"flow_node", deleted_node.id}
+             ]
+
+      Repo.delete!(source_project)
+      [[reserved_project_id]] = Repo.query!("SELECT nextval(pg_get_serial_sequence('projects', 'id'))").rows
+
+      assert {:ok, recovered} =
+               ProjectRecovery.materialize_snapshot_import(
+                 workspace_id,
+                 snapshot_data,
+                 user.id,
+                 snapshot_import_project_id: reserved_project_id,
+                 snapshot_import_asset_catalog_fun: fn _project, _snapshot, _user_id, _opts ->
+                   {:ok, %{}}
+                 end
+               )
+
+      restored_flow =
+        Repo.one!(
+          from(flow in Flow,
+            where:
+              flow.project_id == ^recovered.id and flow.name == ^active_flow.name and
+                is_nil(flow.deleted_at)
+          )
+        )
+
+      restored_scene = Repo.get_by!(Scene, project_id: recovered.id, name: deleted_scene.name)
+
+      restored_sheet =
+        Repo.one!(
+          from(sheet in Sheet,
+            where:
+              sheet.project_id == ^recovered.id and sheet.name == ^active_sheet.name and
+                is_nil(sheet.deleted_at)
+          )
+        )
+
+      restored_active_block =
+        Repo.one!(
+          from(block in Block,
+            where:
+              block.sheet_id == ^restored_sheet.id and
+                block.variable_name == ^active_block.variable_name and is_nil(block.deleted_at)
+          )
+        )
+
+      restored_deleted_block = Repo.get!(Block, restored_active_block.inherited_from_block_id)
+      restored_deleted_owner_sheet = Repo.get!(Sheet, restored_deleted_block.sheet_id)
+
+      restored_connection =
+        Repo.one!(from(connection in FlowConnection, where: connection.flow_id == ^restored_flow.id))
+
+      restored_deleted_node = Repo.get!(FlowNode, restored_connection.target_node_id)
+      restored_deleted_owner_flow = Repo.get!(Flow, restored_deleted_node.flow_id)
+
+      assert restored_flow.scene_id == restored_scene.id
+      assert restored_scene.deleted_at == deleted_at
+      assert restored_deleted_block.deleted_at == deleted_at
+      assert restored_deleted_owner_sheet.deleted_at == deleted_at
+      assert restored_deleted_owner_sheet.name == deleted_owner_sheet.name
+      assert restored_deleted_node.deleted_at == deleted_at
+      assert restored_deleted_owner_flow.deleted_at == deleted_at
+      assert restored_deleted_owner_flow.name == deleted_owner_flow.name
+
+      refute restored_scene.id == deleted_scene.id
+      refute restored_deleted_owner_sheet.id == deleted_owner_sheet.id
+      refute restored_deleted_block.id == deleted_block.id
+      refute restored_deleted_owner_flow.id == deleted_owner_flow.id
+      refute restored_deleted_node.id == deleted_node.id
+    end
+  end
+
   describe "materialize_into_project/5" do
     test "requires the caller's final restore transaction", %{project: source_project, user: user} do
       snapshot_data = canonical_snapshot(source_project)
@@ -3296,11 +3503,12 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
     |> Map.put("asset_catalog_refs", snapshot_asset_catalog_refs(project.id))
   end
 
-  defp active_exact_capture_snapshot(project) do
+  defp active_exact_capture_snapshot(project, opts \\ []) do
     {:ok, snapshot} =
       Repo.repeatable_read(fn ->
-        ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(project.id,
-          localization_scope: :active
+        ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(
+          project.id,
+          Keyword.put(opts, :localization_scope, :active)
         )
       end)
 

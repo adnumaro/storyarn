@@ -30,6 +30,7 @@
       "content": "content",
       "project_snapshot": "project snapshot",
       "project_import": "project import",
+      "workspace_snapshot_import": "snapshot import",
       "template_install": "template installation",
       "localization_batch": "localization batch",
       "sheet": "sheet",

@@ -149,11 +149,12 @@ describe("restore containment", () => {
     );
   });
 
-  it("renders deleted projects as read-only inventory without recovery contracts", () => {
+  it("links deleted-project recovery to the managed workspace imports page", () => {
     const { live, global } = liveGlobal();
 
     const wrapper = mount(WorkspaceSettingsDeletedProjects, {
       props: {
+        importsPath: "/users/settings/workspaces/story-room/imports",
         deletedProjects: [
           {
             id: 31,
@@ -165,8 +166,11 @@ describe("restore containment", () => {
       global,
     });
 
-    expect(wrapper.text()).toContain("Project recovery is not available yet");
+    expect(wrapper.text()).toContain("Recover a project from a snapshot");
     expect(wrapper.text()).toContain("Deleted story");
+    expect(wrapper.get('[data-testid="open-workspace-imports"]').attributes("href")).toBe(
+      "/users/settings/workspaces/story-room/imports",
+    );
     expect(wrapper.find('[data-testid="recover-deleted-project"]').exists()).toBe(false);
     expect(wrapper.find("button").exists()).toBe(false);
     expect(live.pushEvent).not.toHaveBeenCalled();

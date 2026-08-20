@@ -6,11 +6,56 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReaderTest do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.Storage.Local
   alias Storyarn.SnapshotReadSwitchStorage
+  alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.ProjectSnapshotArchiveReader
   alias Storyarn.Versioning.ProjectSnapshotArchiveReader.Entry
   alias Storyarn.Versioning.ProjectSnapshotArchiveReader.Plan
   alias Storyarn.Versioning.ProjectSnapshotZip
   alias Storyarn.Versioning.SnapshotArchiveStorage
+
+  test "classifies only explicit transient storage failures as retryable" do
+    assert ProjectSnapshotArchiveReader.retryable_error?(:timeout)
+    assert ProjectSnapshotArchiveReader.retryable_error?(%Req.TransportError{reason: :closed})
+    assert ProjectSnapshotArchiveReader.retryable_error?(%Req.HTTPError{protocol: :http2, reason: :unprocessed})
+
+    assert ProjectSnapshotArchiveReader.retryable_error?({:snapshot_archive_storage_read_failed, "snapshot.zip", :eio})
+
+    assert ProjectSnapshotArchiveReader.retryable_error?(
+             {:snapshot_archive_entry_consumer_failed, "assets/blob.png",
+              {:staged_object_verification_failed, {:http_error, 503, nil}}}
+           )
+
+    assert ProjectSnapshotArchiveReader.retryable_error?(
+             {:snapshot_archive_entry_consumer_failed, "assets/blob.png", :multipart_upload_part_timeout}
+           )
+
+    assert ProjectSnapshotArchiveReader.retryable_error?(
+             {:snapshot_archive_entry_consumer_failed, "assets/blob.png",
+              {:multipart_upload_abort_failed, :invalid_upload, {:http_error, 503, nil}}}
+           )
+
+    assert ProjectSnapshotArchiveReader.retryable_error?(
+             {:snapshot_archive_entry_consumer_failed, "assets/blob.png",
+              {:multipart_upload_failed, :error, %Req.TransportError{reason: :timeout}}}
+           )
+
+    refute ProjectSnapshotArchiveReader.retryable_error?(:unexpected_eof)
+    refute ProjectSnapshotArchiveReader.retryable_error?(%Req.TransportError{reason: :nxdomain})
+    refute ProjectSnapshotArchiveReader.retryable_error?(%Req.HTTPError{protocol: :http1, reason: :invalid_status_line})
+    refute ProjectSnapshotArchiveReader.retryable_error?({:unsafe_snapshot_zip_path, "../project.json"})
+    refute ProjectSnapshotArchiveReader.retryable_error?({:unsupported_snapshot_zip_compression, "blob", 8})
+    refute ProjectSnapshotArchiveReader.retryable_error?({:snapshot_zip_entry_crc_mismatch, "blob"})
+    refute ProjectSnapshotArchiveReader.retryable_error?({:snapshot_zip_entry_size_mismatch, "blob", 1, 0})
+
+    refute ProjectSnapshotArchiveReader.retryable_error?(
+             {:snapshot_archive_entry_consumer_failed, "assets/blob.png",
+              {:multipart_upload_abort_failed, {:http_error, 400, nil}, :invalid_abort}}
+           )
+
+    refute ProjectSnapshotArchiveReader.retryable_error?(
+             {:snapshot_archive_entry_consumer_exception, RuntimeError.exception("bug")}
+           )
+  end
 
   test "verifies the exact canonical archive and exposes bounded replay streams" do
     fixture = archive_fixture(:binary.copy("verified archive bytes", 60_000))
@@ -43,6 +88,74 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReaderTest do
     assert {:ok, replayed} = collect_entry(chunks)
     assert replayed == fixture.bytes
     assert Enum.all?(entry_chunks(plan, fixture.blob_path), &(byte_size(&1) <= 1_048_576))
+  end
+
+  test "preflights embedded metadata without reading asset blob payloads" do
+    fixture = archive_fixture("preflight leaves blob payload unread")
+    corrupted = flip_entry_byte(fixture.archive, fixture.blob_path)
+    path = temporary_archive_path()
+    File.write!(path, corrupted)
+    on_exit(fn -> File.rm(path) end)
+
+    assert {:ok, preflight} = ProjectSnapshotArchiveReader.preflight_file(path)
+    assert preflight.manifest == Jason.decode!(fixture.prepared.manifest_json)
+    assert preflight.project == Jason.decode!(fixture.prepared.project_json)
+    assert preflight.archive_size_bytes == byte_size(corrupted)
+    assert preflight.manifest_checksum == sha256(fixture.prepared.manifest_json)
+    assert preflight.project_checksum == sha256(fixture.prepared.project_json)
+    assert preflight.logical_asset_bytes == byte_size(fixture.bytes)
+    assert preflight.asset_count == 1
+    assert preflight.blob_count == 1
+    assert preflight.entry_order == ["manifest.json", "project.json", fixture.blob_path]
+
+    assert ProjectSnapshotArchiveReader.max_archive_size_bytes() == 0xFFFFFFFE
+
+    assert {:error, {:snapshot_archive_size_limit_exceeded, maximum}} =
+             ProjectSnapshotArchiveReader.preflight_file(path,
+               max_archive_size_bytes: byte_size(corrupted) - 1
+             )
+
+    assert maximum == byte_size(corrupted) - 1
+
+    assert {:error, :invalid_snapshot_archive_reader_options} =
+             ProjectSnapshotArchiveReader.preflight_file(path, [:invalid])
+  end
+
+  test "fully verifies an autonomous archive without a snapshot row or manifest sidecar" do
+    fixture = archive_fixture(:binary.copy("autonomous archive", 20_000))
+    assert :ok = Local.delete(fixture.snapshot.manifest_storage_key)
+
+    archive = %{
+      archive_storage_key: fixture.snapshot.archive_storage_key,
+      archive_size_bytes: byte_size(fixture.archive),
+      archive_checksum: sha256(fixture.archive)
+    }
+
+    assert {:ok, %Plan{} = plan} = ProjectSnapshotArchiveReader.verify_archive(archive)
+    assert plan.manifest == Jason.decode!(fixture.prepared.manifest_json)
+    assert plan.project == Jason.decode!(fixture.prepared.project_json)
+    assert plan.logical_asset_bytes == byte_size(fixture.bytes)
+    assert plan.entry_order == ["manifest.json", "project.json", fixture.blob_path]
+
+    assert {:ok, chunks} = ProjectSnapshotArchiveReader.stream_entry(plan, fixture.blob_path)
+    assert {:ok, fixture.bytes} == collect_entry(chunks)
+  end
+
+  test "autonomous verification detects blob corruption deferred by preflight" do
+    fixture = archive_fixture("deferred corruption")
+    corrupted = flip_entry_byte(fixture.archive, fixture.blob_path)
+    snapshot = publish_archive_variant(fixture, corrupted)
+
+    archive = %{
+      archive_storage_key: snapshot.archive_storage_key,
+      archive_size_bytes: snapshot.archive_size_bytes,
+      archive_checksum: snapshot.archive_checksum
+    }
+
+    assert {:error, {:snapshot_zip_entry_checksum_mismatch, blob_path}} =
+             ProjectSnapshotArchiveReader.verify_archive(archive)
+
+    assert blob_path == fixture.blob_path
   end
 
   test "streams every verified entry through a synchronous staging consumer" do
@@ -266,6 +379,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReaderTest do
 
     project = %{
       "format_version" => 2,
+      "asset_restore_contract_version" => AssetHashResolver.exact_restore_contract_version(),
       "project" => %{"name" => "Archive reader fixture"},
       "entity_counts" => %{},
       "asset_metadata" => %{
@@ -545,6 +659,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReaderTest do
       Application.put_env(:storyarn, :storage, original)
       if Process.whereis(SnapshotReadSwitchStorage), do: Agent.stop(SnapshotReadSwitchStorage)
     end)
+  end
+
+  defp temporary_archive_path do
+    Path.join(System.tmp_dir!(), "storyarn-snapshot-#{Ecto.UUID.generate()}.zip")
   end
 
   defp sha256(bytes), do: bytes |> then(&:crypto.hash(:sha256, &1)) |> Base.encode16(case: :lower)

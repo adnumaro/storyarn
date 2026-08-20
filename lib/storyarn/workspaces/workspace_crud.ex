@@ -182,6 +182,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
     result =
       Billing.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
         with {:ok, cleanup_intents} <- Versioning.prepare_workspace_snapshot_hard_delete(locked_workspace),
+             :ok <- Versioning.prepare_workspace_snapshot_import_hard_delete(locked_workspace),
              :ok <- Assets.prepare_parent_hard_delete_locked(locked_workspace.id, :all),
              {:ok, deleted_workspace} <- Repo.delete(locked_workspace) do
           {:ok, {deleted_workspace, cleanup_intents}}

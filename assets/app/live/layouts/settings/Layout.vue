@@ -8,6 +8,7 @@ import {
   Bot,
   ChevronLeft,
   CircleHelp,
+  FileUp,
   Gauge,
   GitBranch,
   Languages,
@@ -88,6 +89,7 @@ const iconMap: Record<string, Component> = {
   "book-open": BookOpen,
   bot: Bot,
   "chevron-left": ChevronLeft,
+  "file-up": FileUp,
   gauge: Gauge,
   "git-branch": GitBranch,
   languages: Languages,
@@ -260,6 +262,11 @@ const sections = computed<SettingsSection[]>(() => {
           label: t("settings.nav.items.workspace_members"),
           path: `/users/settings/workspaces/${workspace.slug}/members`,
           icon: "users",
+        },
+        {
+          label: t("settings.nav.items.workspace_imports"),
+          path: `/users/settings/workspaces/${workspace.slug}/imports`,
+          icon: "file-up",
         },
         {
           label: t("settings.nav.items.deleted_projects"),
