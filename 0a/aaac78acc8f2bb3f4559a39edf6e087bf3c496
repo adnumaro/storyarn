@@ -1,0 +1,20 @@
+test/storyarn/versioning/project_snapshot_archive_reader_test.exs
+  s_6ce2be7da793bc::t_6f012cbf0b5eae 541-542
+  s_6ce2be7da793bc::t_2c8d80fc25c3f3 547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0aaaac78acc8f2bb3f4559a39edf6e087bf3c496",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
