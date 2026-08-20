@@ -538,12 +538,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReaderTest do
 
   defp install_read_switch do
     original = Application.fetch_env!(:storyarn, :storage)
-    {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+    {:ok, pid} = SnapshotReadSwitchStorage.start_link(%{})
+    Process.unlink(pid)
     Application.put_env(:storyarn, :storage, Keyword.put(original, :adapter, SnapshotReadSwitchStorage))
 
     on_exit(fn ->
       Application.put_env(:storyarn, :storage, original)
-      if Process.whereis(SnapshotReadSwitchStorage), do: Agent.stop(SnapshotReadSwitchStorage)
+      Agent.stop(pid)
     end)
   end
 
